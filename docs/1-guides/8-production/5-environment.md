@@ -145,7 +145,7 @@ Load order (later files override earlier):
 Define and validate environment variables with `$env`:
 
 ```typescript
-import { $env } from "alepha/core";
+import { $env } from "alepha";
 
 class Config {
   env = $env({

@@ -2,6 +2,8 @@
 
 ## Installation
 
+Part of the `alepha` package. Import from `alepha/vite`.
+
 ```bash
 npm install alepha
 ```

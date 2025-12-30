@@ -1,4 +1,4 @@
-# Alepha Bucket Azure
+# Alepha @alepha/bucket Azure
 
 Azure Blob Storage implementation for the bucket file storage.
 

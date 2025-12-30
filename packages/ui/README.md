@@ -1,4 +1,4 @@
-# Alepha Ui
+# Alepha @alepha/ui
 
 UI components and themes for Alepha framework based on Mantine UI library.
 

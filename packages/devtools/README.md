@@ -1,4 +1,4 @@
-# Alepha Devtools
+# Alepha @alepha/devtools
 
 Developer tools for monitoring and debugging Alepha applications.
 

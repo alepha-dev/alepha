@@ -2,6 +2,8 @@
 
 ## Installation
 
+Part of the `alepha` package. Import from `alepha/batch`.
+
 ```bash
 npm install alepha
 ```

@@ -2,6 +2,8 @@
 
 ## Installation
 
+Part of the `alepha` package. Import from `alepha/websocket`.
+
 ```bash
 npm install alepha
 ```

@@ -87,7 +87,7 @@ nodejs_heap_size_used_bytes / nodejs_heap_size_total_bytes
 Need application-specific metrics? Use the metrics provider directly:
 
 ```typescript
-import { $inject } from "alepha/core";
+import { $inject } from "alepha";
 import { MetricsProvider } from "alepha/server-metrics";
 
 class OrderService {

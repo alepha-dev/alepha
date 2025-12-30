@@ -4,6 +4,8 @@ Easy-to-use modern TypeScript framework for building many kind of applications.
 
 ## Installation
 
+Part of the `alepha` package. Import from `alepha`.
+
 ```bash
 npm install alepha
 ```

@@ -9,13 +9,20 @@ interface FileHeaderProps {
   lastModified?: string | null;
 }
 
+// Strip sorting prefixes like "1-", "02-", "123-" from path segments
+const stripSortPrefix = (path: string) =>
+  path
+    .split("/")
+    .map((segment) => segment.replace(/^\d+-/, ""))
+    .join("/");
+
 const FileHeader = (props: FileHeaderProps) => {
   const { l } = useI18n();
 
   // Extract directory and filename from path
   const pathParts = props.path?.split("/") || [];
   const fileName = pathParts.pop() || "README.md";
-  const directory = pathParts.join("/");
+  const directory = stripSortPrefix(pathParts.join("/"));
 
   return (
     <div className="pt-6 mb-8 pb-6">

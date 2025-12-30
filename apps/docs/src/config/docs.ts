@@ -6,12 +6,12 @@ export const docs = generated.docs;
 // Add LLM folder to the tree
 const llmFolder: DocNode = {
   slug: "llm",
-  name: "LLM",
+  name: "llm",
   order: 99,
   children: [
     {
-      slug: "llm-full-docs",
-      name: "Full Docs",
+      slug: "llm-llms",
+      name: "llms",
       order: 1,
       href: "/llms.txt",
       description: "Full documentation for LLMs",

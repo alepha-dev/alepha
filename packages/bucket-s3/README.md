@@ -1,4 +1,4 @@
-# Alepha Bucket S3
+# Alepha @alepha/bucket S3
 
 S3-compatible storage implementation for the bucket file storage. Works with AWS S3, Cloudflare R2, MinIO, DigitalOcean Spaces, and more.
 

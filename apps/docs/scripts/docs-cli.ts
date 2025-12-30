@@ -534,9 +534,23 @@ class DocsCliApp {
     content += `## Installation\n\n`;
 
     if (packageName === "alepha") {
-      content += `\`\`\`bash\nnpm install alepha\n\`\`\`\n\n`;
+      // Convert module name to import path: lock-redis → lock/redis, api-users → api/users
+      let importPath: string;
+      if (moduleName === "core") {
+        importPath = "alepha";
+      } else {
+        const hyphenIndex = moduleName.indexOf("-");
+        if (hyphenIndex === -1) {
+          importPath = `alepha/${moduleName}`;
+        } else {
+          const prefix = moduleName.substring(0, hyphenIndex);
+          const rest = moduleName.substring(hyphenIndex + 1);
+          importPath = `alepha/${prefix}/${rest}`;
+        }
+      }
+      content += `Part of the \`alepha\` package. Import from \`${importPath}\`.\n\n\`\`\`bash\nnpm install alepha\n\`\`\`\n\n`;
     } else {
-      content += `This module is part of the Alepha framework:\n\n\`\`\`bash\nnpm install ${pkgJson.name}\n\`\`\`\n\n`;
+      content += `\`\`\`bash\nnpm install ${pkgJson.name}\n\`\`\`\n\n`;
     }
 
     if (moduleDescription) {
@@ -947,32 +961,69 @@ class DocsCliApp {
   }
 
   /**
-   * Maps package names to their output directories.
-   * Core packages (alepha, react, ui) get their own numbered directories.
-   * All other packages go into the plugins directory.
+   * Converts a package name to a filesystem-safe directory name with ordering prefix.
+   * alepha → 1-alepha
+   * @alepha/react → 2-@alepha-react
+   * @alepha/ui → 3-@alepha-ui
+   * others → alphabetical order starting from 4
    */
-  getPackageOutputDir(
-    packageName: string,
-    baseDocsDir: string,
-  ): { dir: string; order: number } {
-    const corePackages: Record<string, { dir: string; order: number }> = {
-      alepha: { dir: "1-alepha", order: 1 },
-      react: { dir: "2-react", order: 2 },
-      ui: { dir: "3-ui", order: 3 },
+  getPackageDirName(pkgName: string, allPackages: string[]): string {
+    const safeName = pkgName.replace(/\//g, "-");
+
+    // Define explicit ordering for core packages
+    const coreOrder: Record<string, number> = {
+      alepha: 1,
+      "@alepha/react": 2,
+      "@alepha/ui": 3,
     };
 
-    if (corePackages[packageName]) {
-      return {
-        dir: join(baseDocsDir, corePackages[packageName].dir),
-        order: corePackages[packageName].order,
-      };
+    if (coreOrder[pkgName]) {
+      return `${coreOrder[pkgName]}-${safeName}`;
     }
 
-    // All other packages go into plugins
-    return {
-      dir: join(baseDocsDir, "4-plugins"),
-      order: 4,
-    };
+    // For other packages, assign order based on alphabetical position starting from 4
+    const otherPackages = allPackages.filter((p) => !coreOrder[p]).sort();
+    const index = otherPackages.indexOf(pkgName);
+    const order = index !== -1 ? 4 + index : 99;
+
+    return `${order}-${safeName}`;
+  }
+
+  /**
+   * Determines the file path for a module within the alepha package.
+   * Groups related modules into subdirectories:
+   * - api-users → api/users.md
+   * - server-cookies → server/cookies.md
+   * - server → server/core.md (when there are server-* modules)
+   * - core → core.md
+   * - batch → batch.md (standalone, no related modules)
+   */
+  getAlephaModuleFilePath(
+    moduleName: string,
+    subdirPrefixes: Set<string>,
+  ): { subdir: string | null; filename: string } {
+    if (moduleName === "core") {
+      return { subdir: null, filename: "core.md" };
+    }
+
+    const hyphenIndex = moduleName.indexOf("-");
+    const prefix =
+      hyphenIndex === -1 ? moduleName : moduleName.substring(0, hyphenIndex);
+
+    // Check if this prefix should be a subdirectory
+    if (!subdirPrefixes.has(prefix)) {
+      // Standalone module like "batch", "bucket", "orm"
+      return { subdir: null, filename: `${moduleName}.md` };
+    }
+
+    if (hyphenIndex === -1) {
+      // No hyphen but has related modules: "server" → "server/core.md"
+      return { subdir: prefix, filename: "core.md" };
+    }
+
+    // Has hyphen: "server-cookies" → "server/cookies.md"
+    const rest = moduleName.substring(hyphenIndex + 1);
+    return { subdir: prefix, filename: `${rest}.md` };
   }
 
   readme = $command({
@@ -993,13 +1044,6 @@ class DocsCliApp {
       await fs.mkdir(docsDir, { recursive: true });
       this.log.trace("Cleaned and recreated docs directory");
 
-      // Create the four main directories
-      await fs.mkdir(join(docsDir, "1-alepha"), { recursive: true });
-      await fs.mkdir(join(docsDir, "2-react"), { recursive: true });
-      await fs.mkdir(join(docsDir, "3-ui"), { recursive: true });
-      await fs.mkdir(join(docsDir, "4-plugins"), { recursive: true });
-      this.log.trace("Created package directories");
-
       let dirents: Dirent[];
 
       try {
@@ -1009,6 +1053,56 @@ class DocsCliApp {
         this.log.error(`Could not read packages directory at: ${packagesDir}`);
         throw error;
       }
+
+      // First pass: collect all package names and alepha modules
+      const alephaModules: string[] = [];
+      const allPackageNames: string[] = [];
+
+      for (const dirent of dirents) {
+        if (!dirent.isDirectory()) continue;
+
+        const packagePath = join(packagesDir, dirent.name);
+        const pkgJsonPath = join(packagePath, "package.json");
+
+        try {
+          const pkgJsonContent = await fs.readFile(pkgJsonPath, "utf-8");
+          const pkgJson = JSON.parse(pkgJsonContent);
+
+          if (pkgJson.private) continue;
+
+          allPackageNames.push(pkgJson.name);
+
+          if (pkgJson.name === "alepha") {
+            const modules = this.extractModules(pkgJson, packagePath);
+            if (modules) {
+              alephaModules.push(...modules.map((m) => m.name));
+            }
+          }
+        } catch {
+          // Skip packages without valid package.json
+        }
+      }
+
+      this.log.debug(`Found packages: ${allPackageNames.join(", ")}`);
+
+      // Determine which prefixes should be subdirectories
+      const prefixCounts = new Map<string, number>();
+      for (const mod of alephaModules) {
+        const hyphenIndex = mod.indexOf("-");
+        const prefix = hyphenIndex === -1 ? mod : mod.substring(0, hyphenIndex);
+        prefixCounts.set(prefix, (prefixCounts.get(prefix) || 0) + 1);
+      }
+
+      const subdirPrefixes = new Set<string>();
+      for (const [prefix, count] of prefixCounts) {
+        if (count > 1) {
+          subdirPrefixes.add(prefix);
+        }
+      }
+
+      this.log.debug(
+        `Subdirectory prefixes for alepha: ${[...subdirPrefixes].join(", ")}`,
+      );
 
       const stats = {
         generated: 0,
@@ -1027,11 +1121,10 @@ class DocsCliApp {
           const packagePath = join(packagesDir, dirent.name);
           const pkgJsonPath = join(packagePath, "package.json");
 
-          let pkgJsonContent: string;
           let pkgJson: any;
 
           try {
-            pkgJsonContent = await fs.readFile(pkgJsonPath, "utf-8");
+            const pkgJsonContent = await fs.readFile(pkgJsonPath, "utf-8");
             pkgJson = JSON.parse(pkgJsonContent);
             this.log.trace(`Read package.json for ${dirent.name}`);
           } catch {
@@ -1046,24 +1139,23 @@ class DocsCliApp {
             return;
           }
 
-          const packageName =
-            pkgJson.name?.replace("@alepha/", "") || dirent.name;
-
-          // Determine output directory based on package name
-          const { dir: outputDir } = this.getPackageOutputDir(
-            packageName,
-            docsDir,
+          // Use real package name (alepha, @alepha/react, etc.)
+          const realPkgName: string = pkgJson.name;
+          const packageDirName = this.getPackageDirName(
+            realPkgName,
+            allPackageNames,
           );
+          const packageDocsDir = join(docsDir, packageDirName);
 
           // Check if package has multiple modules
           const modules = this.extractModules(pkgJson, packagePath);
 
           if (modules) {
-            // Multi-module package - write each module as separate file
+            // Create package directory only for multi-module packages
+            await fs.mkdir(packageDocsDir, { recursive: true });
             this.log.debug(
-              `Creating multi-module documentation for ${packageName}`,
+              `Creating multi-module documentation for ${realPkgName}`,
             );
-            this.log.trace(`Using directory: ${outputDir}`);
 
             for (const module of modules) {
               this.log.debug(`Generating docs for module: ${module.name}`);
@@ -1071,41 +1163,58 @@ class DocsCliApp {
                 pkgJson,
                 module.name,
                 module.sourcePath,
-                packageName,
+                realPkgName,
               );
 
-              // Skip if no @module tag found
               if (markdown === null) {
                 this.log.debug(`Skipped module: ${module.name}`);
                 stats.skipped++;
                 continue;
               }
 
-              const markdownPath = join(outputDir, `${module.name}.md`);
+              // Determine file path based on package type
+              let targetDir: string;
+              let filename: string;
+
+              if (realPkgName === "alepha") {
+                const { subdir, filename: fname } =
+                  this.getAlephaModuleFilePath(module.name, subdirPrefixes);
+                targetDir = subdir
+                  ? join(packageDocsDir, subdir)
+                  : packageDocsDir;
+                filename = fname;
+              } else {
+                // For @alepha/* packages, use module name directly
+                targetDir = packageDocsDir;
+                filename = `${module.name}.md`;
+              }
+
+              await fs.mkdir(targetDir, { recursive: true });
+              const markdownPath = join(targetDir, filename);
               await fs.writeFile(markdownPath, markdown, "utf-8");
               this.log.debug(`Wrote module docs: ${markdownPath}`);
               stats.generated++;
             }
           } else {
-            // Single module package - create single markdown file
+            // Single module package - write as file directly, not directory with core.md
             this.log.debug(
-              `Creating single-module documentation for ${packageName}`,
+              `Creating single-module documentation for ${realPkgName}`,
             );
             const sourcePath = join(packagePath, "src");
 
             const markdown = await this.generateModuleMarkdown(
               pkgJson,
-              packageName,
+              dirent.name,
               sourcePath,
-              packageName,
+              realPkgName,
             );
 
-            // Skip if no @module tag found
             if (markdown === null) {
-              this.log.debug(`Skipped package: ${packageName}`);
+              this.log.debug(`Skipped package: ${realPkgName}`);
               stats.skipped++;
             } else {
-              const markdownPath = join(outputDir, `${packageName}.md`);
+              // Single module packages become a file directly (e.g., 7-@alepha-devtools.md)
+              const markdownPath = join(docsDir, `${packageDirName}.md`);
               await fs.writeFile(markdownPath, markdown, "utf-8");
               this.log.debug(`Wrote single-module docs: ${markdownPath}`);
               stats.generated++;
@@ -1113,13 +1222,13 @@ class DocsCliApp {
           }
 
           // Generate README.md for package
-          this.log.debug(`Generating README for ${packageName}`);
+          this.log.debug(`Generating README for ${realPkgName}`);
 
           // Special case: alepha package gets root README.md
-          if (packageName === "alepha") {
+          if (realPkgName === "alepha") {
             const rootReadmePath = join(rootDir, "README.md");
             const packageReadmePath = join(packagePath, "README.md");
-            this.log.debug(`Copying root README to ${packageName} package`);
+            this.log.debug(`Copying root README to ${realPkgName} package`);
             const rootReadme = await fs.readFile(rootReadmePath, "utf-8");
             await fs.writeFile(packageReadmePath, rootReadme, "utf-8");
             this.log.debug(`Copied README to: ${packageReadmePath}`);
@@ -1127,7 +1236,7 @@ class DocsCliApp {
             const readme = await this.generatePackageReadme(
               pkgJson,
               packagePath,
-              packageName,
+              realPkgName,
             );
             const readmePath = join(packagePath, "README.md");
             await fs.writeFile(readmePath, readme, "utf-8");
@@ -1530,67 +1639,13 @@ class DocsCliApp {
   }
 
   /**
-   * Generate display name for package documentation
+   * Generate display name for package documentation.
+   * Returns just the final part (slug) since the parent directory already provides context.
+   * e.g., "Api Files" -> "api-files" (not "@alepha/plugins/api-files")
    */
-  getPackageDisplayName(categoryPath: string, itemName: string): string {
-    const parts = categoryPath.split("/");
-
-    // Check if we're in the packages section
-    const packagesIndex = parts.findIndex((p) => p.startsWith("3-"));
-    if (packagesIndex === -1) {
-      return itemName;
-    }
-
-    // Get the package name (first part after "3-packages")
-    const packageName = parts[packagesIndex + 1];
-
-    if (!packageName) {
-      // Direct child of packages section - single package with no modules
-      // Format: @alepha/packagename (e.g., "@alepha/ui", "@alepha/devtools")
-      const cleanedItemName = this.cleanName(itemName);
-      return `@alepha/${this.slug(cleanedItemName)}`;
-    }
-
-    const cleanedPackageName = this.cleanName(packageName);
-    // Convert the prettified name back to slug format (e.g., "Api Files" -> "api-files")
-    const itemSlug = this.slug(itemName);
-
-    // Special case: "core" doesn't exist as a separate module, it's the package itself
-    if (itemSlug === "core") {
-      if (cleanedPackageName === "alepha") {
-        return "alepha";
-      }
-      return `@alepha/${cleanedPackageName}`;
-    }
-
-    // If it's the alepha package
-    if (cleanedPackageName === "alepha") {
-      return `alepha/${itemSlug}`;
-    }
-
-    // For other packages like react, bucket-azure, etc.
-    return `@alepha/${cleanedPackageName}/${itemSlug}`;
-  }
-
-  /**
-   * Generate display name for package category node
-   */
-  getPackageCategoryName(categoryPath: string, categoryName: string): string {
-    const parts = categoryPath.split("/");
-    const packagesIndex = parts.findIndex((p) => p.startsWith("3-"));
-
-    if (packagesIndex === -1) {
-      return this.pretty(categoryName);
-    }
-
-    // This is a package directory under "3-packages"
-    const cleanedName = this.cleanName(categoryName);
-
-    if (cleanedName === "alepha") {
-      return "alepha";
-    }
-
-    return `@alepha/${cleanedName}`;
+  getPackageDisplayName(_categoryPath: string, itemName: string): string {
+    // Just return the slug of the item name - the directory structure provides context
+    return this.slug(itemName);
   }
 
   buildTree(items: DocItem[]): DocNode[] {
@@ -1617,12 +1672,25 @@ class DocsCliApp {
         const categoryName = parts[i];
 
         if (!categoryMap.has(categoryPath)) {
-          // Check if this is a package category node
-          const isPackageNode = parts.some((p) => p.startsWith("3-")) && i > 0;
+          // Check if this is inside packages section
+          const packagesIndex = parts.findIndex((p) => p.startsWith("3-"));
+          const isInsidePackages = packagesIndex !== -1 && i > packagesIndex;
+
+          // Determine display name
+          let displayName: string;
+          if (isInsidePackages) {
+            // Strip order prefix and convert to package name
+            // 1-alepha → alepha, 2-@alepha-react → @alepha/react
+            const withoutPrefix = categoryName.replace(/^\d+-/, "");
+            displayName = withoutPrefix.replace(/^@alepha-/, "@alepha/");
+          } else {
+            // Use slug format for non-package directories (lowercase, hyphen-separated)
+            displayName = this.slug(categoryName);
+          }
 
           const node: DocNode = {
             slug: this.slug(categoryName),
-            name: this.pretty(categoryName),
+            name: displayName,
             order: this.extractOrder(categoryName),
             children: [],
           };
@@ -1651,11 +1719,8 @@ class DocsCliApp {
       if (parentNode) {
         parentNode.children = parentNode.children || [];
 
-        // Check if this is a package documentation item
-        const isPackageDoc = item.category.includes("3-packages");
-        const displayName = isPackageDoc
-          ? this.getPackageDisplayName(item.category, item.name)
-          : item.name;
+        // Use slug format for all names (lowercase, hyphen-separated)
+        const displayName = this.slug(item.name);
 
         parentNode.children.push({
           slug: item.slug,

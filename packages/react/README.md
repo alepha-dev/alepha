@@ -1,4 +1,4 @@
-# Alepha React
+# Alepha @alepha/react
 
 React components and hooks for building Alepha applications.
 

@@ -96,7 +96,7 @@ Need to check database connectivity or external services? Extend the health chec
 
 ```typescript
 import { $action } from "alepha/server";
-import { $inject } from "alepha/core";
+import { $inject } from "alepha";
 import { DatabaseService } from "./DatabaseService";
 
 class CustomHealthApi {

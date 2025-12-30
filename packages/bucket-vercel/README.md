@@ -1,4 +1,4 @@
-# Alepha Bucket Vercel
+# Alepha @alepha/bucket Vercel
 
 Vercel Blob Storage implementation for the bucket file storage.
 
