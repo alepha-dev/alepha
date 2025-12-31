@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $inject, Alepha, AlephaError } from "alepha";
-import type { RunnerMethod } from "alepha/command";
+import { EnvUtils, type RunnerMethod } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { boot } from "alepha/vite";
@@ -31,6 +31,7 @@ import { version } from "../version.ts";
 export class AlephaCliUtils {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly envUtils = $inject(EnvUtils);
 
   /**
    * Execute a command using npx with inherited stdio.
@@ -499,29 +500,11 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
    * Reads the .env file in the specified root directory and sets
    * the environment variables in process.env.
    */
-  public async loadEnvFile(
+  public async loadEnv(
     root: string,
     files: string[] = [".env"],
   ): Promise<void> {
-    for (const it of files) {
-      for (const file of [it, `${it}.local`]) {
-        const envPath = join(root, file);
-        try {
-          const envContent = await readFile(envPath, "utf8");
-          const lines = envContent.split("\n");
-          for (const line of lines) {
-            const [key, ...rest] = line.split("=");
-            if (key) {
-              const value = rest.join("=");
-              process.env[key.trim()] = value.trim();
-            }
-          }
-          this.log.debug(`Loaded environment variables from ${envPath}`);
-        } catch {
-          this.log.debug(`No ${file} file found at ${envPath}, skipping load.`);
-        }
-      }
-    }
+    await this.envUtils.loadEnv(root, files);
   }
 
   public async getPackageManager(

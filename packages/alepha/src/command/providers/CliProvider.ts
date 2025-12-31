@@ -16,6 +16,7 @@ import {
 import { $logger } from "alepha/logger";
 import { CommandError } from "../errors/CommandError.ts";
 import { Asker } from "../helpers/Asker.ts";
+import { EnvUtils } from "../helpers/EnvUtils.ts";
 import { Runner } from "../helpers/Runner.ts";
 import {
   $command,
@@ -81,6 +82,7 @@ export class CliProvider {
   protected readonly log = $logger();
   protected readonly runner = $inject(Runner);
   protected readonly asker = $inject(Asker);
+  protected readonly envUtils = $inject(EnvUtils);
 
   protected readonly options = $use(cliOptions);
 
@@ -111,8 +113,12 @@ export class CliProvider {
     on: "ready",
     handler: async () => {
       const argv = [...this.argv];
-      const commandName = argv.find((arg) => !arg.startsWith("-")) ?? "";
-      let command = this.findCommand(commandName);
+
+      // Extract positional arguments (potential command path)
+      const positionalArgs = argv.filter((arg) => !arg.startsWith("-"));
+
+      // Resolve command using the new resolution logic
+      const { command, consumedArgs } = this.resolveCommand(positionalArgs);
 
       const globalFlags = this.parseFlags(
         argv,
@@ -128,73 +134,198 @@ export class CliProvider {
       }
 
       if (!command) {
-        // check if one command is the root command (name === "") and has 'args'
+        // Check if there's a root command (name === "")
         const rootCommand = this.findCommand("");
-        if (rootCommand?.options.args) {
-          command = rootCommand;
-        } else {
-          if (commandName !== "") {
-            this.log.error(`Unknown command: '${commandName}'`);
-            this.printHelp();
-          }
+
+        // If we have positional args but no matching command, show error
+        const commandName = positionalArgs[0] ?? "";
+        if (commandName !== "" && !rootCommand?.options.args) {
+          this.log.error(`Unknown command: '${commandName}'`);
+          this.printHelp();
           return;
         }
+
+        // Execute root command if it exists
+        if (rootCommand) {
+          await this.executeCommand(rootCommand, argv, true);
+          return;
+        }
+
+        // No command found and no root command
+        return;
       }
 
-      const commandFlags = this.parseCommandFlags(argv, command.flags);
-      const commandArgs = this.parseCommandArgs(
-        argv,
-        command.options.args,
-        command.name === "",
-        command.flags,
-      );
+      // Remove consumed command path args from argv for argument parsing
+      const remainingArgv = this.removeConsumedArgs(argv, consumedArgs);
 
-      await this.alepha.context.run(async () => {
-        this.log.debug(`Executing command '${command.name}'...`, {
-          flags: commandFlags,
-          args: commandArgs,
-        });
-
-        const runner = this.runner;
-
-        // Start command session for pretty print
-        runner.startCommand(this.name, command.name);
-
-        const args = {
-          flags: commandFlags,
-          args: commandArgs,
-          run: runner.run,
-          ask: this.asker.ask,
-          fs,
-          glob,
-          root: process.cwd(),
-        };
-
-        // Execute pre-hooks
-        const preHooks = this.findPreHooks(command.name);
-        for (const hook of preHooks) {
-          this.log.debug(`Executing pre-hook for '${command.name}'...`);
-          await hook.options.handler(args as CommandHandlerArgs<TObject>);
-        }
-
-        // Execute main command
-        await command.options.handler(args as CommandHandlerArgs<TObject>);
-
-        // Execute post-hooks
-        const postHooks = this.findPostHooks(command.name);
-        for (const hook of postHooks) {
-          this.log.debug(`Executing post-hook for '${command.name}'...`);
-          await hook.options.handler(args as CommandHandlerArgs<TObject>);
-        }
-
-        if (command.options.summary !== false) {
-          runner.summary();
-        }
-
-        this.log.debug(`Command '${command.name}' executed successfully.`);
-      });
+      // Since we've removed the command path, treat it like a root command for parsing
+      await this.executeCommand(command, remainingArgv, true);
     },
   });
+
+  /**
+   * Execute a command with the given argv.
+   */
+  protected async executeCommand(
+    command: CommandPrimitive<TObject>,
+    argv: string[],
+    isRootCommand: boolean,
+  ): Promise<void> {
+    const root = process.cwd();
+
+    // Handle --mode flag if command has mode option enabled
+    let modeValue: string | undefined;
+    if (command.options.mode) {
+      modeValue = this.parseModeFlag(argv);
+      // Use default mode if not provided and mode is a string
+      if (modeValue === undefined && typeof command.options.mode === "string") {
+        modeValue = command.options.mode;
+      }
+      await this.loadModeEnv(root, modeValue);
+    }
+
+    const commandFlags = this.parseCommandFlags(argv, command.flags);
+    const commandArgs = this.parseCommandArgs(
+      argv,
+      command.options.args,
+      isRootCommand,
+      command.flags,
+    );
+    const commandEnv = this.parseCommandEnv(command.env, command.name);
+
+    await this.alepha.context.run(async () => {
+      this.log.debug(`Executing command '${command.name}'...`, {
+        flags: commandFlags,
+        args: commandArgs,
+        mode: modeValue,
+      });
+
+      const runner = this.runner;
+
+      // Start command session for pretty print
+      runner.startCommand(this.name, command.name);
+
+      const args = {
+        flags: commandFlags,
+        args: commandArgs,
+        env: commandEnv,
+        run: runner.run,
+        ask: this.asker.ask,
+        fs,
+        glob,
+        root,
+        help: () => this.printHelp(command),
+        mode: modeValue,
+      };
+
+      // Execute pre-hooks
+      const preHooks = this.findPreHooks(command.name);
+      for (const hook of preHooks) {
+        this.log.debug(`Executing pre-hook for '${command.name}'...`);
+        await hook.options.handler(args as CommandHandlerArgs<TObject>);
+      }
+
+      // Execute main command
+      await command.options.handler(args as CommandHandlerArgs<TObject>);
+
+      // Execute post-hooks
+      const postHooks = this.findPostHooks(command.name);
+      for (const hook of postHooks) {
+        this.log.debug(`Executing post-hook for '${command.name}'...`);
+        await hook.options.handler(args as CommandHandlerArgs<TObject>);
+      }
+
+      if (command.options.summary !== false) {
+        runner.summary();
+      }
+
+      this.log.debug(`Command '${command.name}' executed successfully.`);
+    });
+  }
+
+  /**
+   * Remove consumed command path arguments from argv.
+   */
+  protected removeConsumedArgs(
+    argv: string[],
+    consumedArgs: string[],
+  ): string[] {
+    const result: string[] = [];
+    let consumedIndex = 0;
+
+    for (const arg of argv) {
+      if (arg.startsWith("-")) {
+        result.push(arg);
+      } else if (
+        consumedIndex < consumedArgs.length &&
+        arg === consumedArgs[consumedIndex]
+      ) {
+        consumedIndex++;
+        // Skip this arg, it's part of the command path
+      } else {
+        result.push(arg);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Resolve a command from positional arguments.
+   *
+   * Supports:
+   * 1. Space-separated subcommands: `deploy vercel` -> finds deploy command, then vercel child
+   * 2. Colon notation (backwards compat): `deploy:vercel` -> finds command with name "deploy:vercel"
+   * 3. Simple commands: `build` -> finds command with name "build"
+   */
+  protected resolveCommand(positionalArgs: string[]): {
+    command: CommandPrimitive<TObject> | undefined;
+    consumedArgs: string[];
+  } {
+    if (positionalArgs.length === 0) {
+      return { command: undefined, consumedArgs: [] };
+    }
+
+    const firstArg = positionalArgs[0];
+
+    // First, try colon notation for backwards compatibility (e.g., "deploy:vercel")
+    if (firstArg.includes(":")) {
+      const command = this.findCommand(firstArg);
+      if (command) {
+        return { command, consumedArgs: [firstArg] };
+      }
+    }
+
+    // Try to find command with space-separated subcommand path
+    let currentCommand = this.findCommand(firstArg);
+    const consumedArgs: string[] = [];
+
+    if (!currentCommand) {
+      return { command: undefined, consumedArgs: [] };
+    }
+
+    consumedArgs.push(firstArg);
+
+    // Walk through remaining args to find nested subcommands
+    for (let i = 1; i < positionalArgs.length; i++) {
+      const arg = positionalArgs[i];
+
+      if (!currentCommand.hasChildren) {
+        break;
+      }
+
+      const childCommand = currentCommand.findChild(arg);
+      if (childCommand) {
+        currentCommand = childCommand;
+        consumedArgs.push(arg);
+      } else {
+        // No matching child, stop here
+        break;
+      }
+    }
+
+    return { command: currentCommand, consumedArgs };
+  }
 
   public get commands(): CommandPrimitive<any>[] {
     return this.alepha.primitives($command);
@@ -221,35 +352,13 @@ export class CliProvider {
   }
 
   /**
-   * Get all global flags including those from the root command (name === "")
+   * Get global flags (help only, root command flags are NOT global).
    */
   protected getAllGlobalFlags(): Record<
     string,
     { aliases: string[]; description?: string; schema: TSchema }
   > {
-    const rootCommand = this.commands.find((cmd) => cmd.name === "");
-    const allGlobalFlags: Record<
-      string,
-      { aliases: string[]; description?: string; schema: TSchema }
-    > = { ...this.globalFlags };
-
-    if (rootCommand) {
-      // Add root command flags to global flags
-      for (const [key, value] of Object.entries(rootCommand.flags.properties)) {
-        allGlobalFlags[key] = {
-          aliases: [
-            key,
-            ...((value as any).aliases ??
-              ((value as any).alias ? [(value as any).alias] : undefined) ??
-              []),
-          ],
-          description: (value as any).description,
-          schema: value as TSchema,
-        };
-      }
-    }
-
-    return allGlobalFlags;
+    return { ...this.globalFlags };
   }
 
   protected parseCommandFlags(
@@ -290,6 +399,87 @@ export class CliProvider {
       }
       throw error;
     }
+  }
+
+  protected parseCommandEnv(
+    schema: TObject,
+    commandName: string,
+  ): Record<string, any> {
+    const result: Record<string, any> = {};
+    const missing: string[] = [];
+
+    for (const [key, propSchema] of Object.entries(schema.properties)) {
+      const value = process.env[key];
+
+      if (value !== undefined) {
+        result[key] = value;
+      } else if (t.schema.isOptional(propSchema)) {
+        // Check for default value
+        if ("default" in propSchema) {
+          result[key] = propSchema.default;
+        }
+      } else {
+        missing.push(key);
+      }
+    }
+
+    if (missing.length > 0) {
+      const vars = missing.join(", ");
+      throw new CommandError(
+        `Missing required environment variable${missing.length > 1 ? "s" : ""}: ${vars}`,
+      );
+    }
+
+    try {
+      return this.alepha.codec.decode(schema, result);
+    } catch (error) {
+      if (error instanceof TypeBoxError) {
+        throw new CommandError(
+          `Invalid environment variable: ${error.cause.instancePath || "env"} ${error.cause.message}`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Parse --mode or -m flag from argv.
+   */
+  protected parseModeFlag(argv: string[]): string | undefined {
+    for (let i = 0; i < argv.length; i++) {
+      const arg = argv[i];
+
+      // Handle --mode=value or -m=value
+      if (arg.startsWith("--mode=") || arg.startsWith("-m=")) {
+        return arg.split("=")[1];
+      }
+
+      // Handle --mode value or -m value
+      if (arg === "--mode" || arg === "-m") {
+        const nextArg = argv[i + 1];
+        if (nextArg && !nextArg.startsWith("-")) {
+          return nextArg;
+        }
+        throw new CommandError("Flag --mode requires a value.");
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Load environment files based on mode.
+   */
+  protected async loadModeEnv(
+    root: string,
+    mode: string | undefined,
+  ): Promise<void> {
+    const envFiles = [".env"];
+    if (mode) {
+      envFiles.push(`.env.${mode}`);
+    }
+    this.log.debug(`Loading env files: ${envFiles.join(", ")}`);
+    await this.envUtils.loadEnv(root, envFiles);
   }
 
   protected parseFlags(
@@ -522,13 +712,36 @@ export class CliProvider {
 
     if (command?.name) {
       // Command-specific help
-      const argsUsage = this.generateArgsUsage(command.options.args);
-      const usage = `${cliName} ${command.name}${argsUsage}`.trim();
+      const hasChildren = command.hasChildren;
+      const argsUsage = hasChildren
+        ? " <command>"
+        : this.generateArgsUsage(command.options.args);
+      const commandPath = this.getCommandPath(command);
+      const usage = `${cliName} ${commandPath}${argsUsage}`.trim();
       this.log.info(`Usage: \`${usage}\``);
 
       if (command.options.description) {
         this.log.info(``);
         this.log.info(`\t${command.options.description}`);
+      }
+
+      // Show subcommands if this is a parent command
+      if (hasChildren) {
+        this.log.info("");
+        this.log.info("Commands:");
+        const maxSubCmdLength = this.getMaxChildCmdLength(command.children);
+
+        for (const child of command.children) {
+          if (child.options.hide) {
+            continue;
+          }
+          const childArgsUsage = this.generateArgsUsage(child.options.args);
+          const cmdStr = [child.name, ...child.aliases].join(", ");
+          const fullCmdStr = `${cmdStr}${childArgsUsage}`;
+          this.log.info(
+            `    ${cliName} ${command.name} ${fullCmdStr.padEnd(maxSubCmdLength)} # ${child.options.description ?? ""}`,
+          );
+        }
       }
 
       this.log.info("");
@@ -541,6 +754,19 @@ export class CliProvider {
           aliases: (value as any).alias ?? [key],
           description: (value as any).description,
         })),
+        // Add --mode flag if command has mode option enabled
+        ...(command.options.mode
+          ? [
+              {
+                key: "mode",
+                aliases: ["m", "mode"],
+                description:
+                  typeof command.options.mode === "string"
+                    ? `Environment mode - loads .env.{mode} (default: ${command.options.mode})`
+                    : "Environment mode (e.g., production, staging) - loads .env.{mode}",
+              },
+            ]
+          : []),
         ...Object.entries(this.getAllGlobalFlags()).map(([key, value]) => ({
           key,
           ...value,
@@ -556,21 +782,42 @@ export class CliProvider {
           `    ${flagStr.padEnd(maxFlagLength)} # ${description ?? ""}`,
         );
       }
+
+      // Show environment variables if defined
+      const envVars = Object.entries(command.env.properties);
+      if (envVars.length > 0) {
+        this.log.info("");
+        this.log.info("Env:");
+        const maxEnvLength = Math.max(...envVars.map(([key]) => key.length));
+        for (const [key, schema] of envVars) {
+          const isOptional = t.schema.isOptional(schema as TSchema);
+          const description = (schema as any).description ?? "";
+          const optionalStr = isOptional ? " (optional)" : "";
+          this.log.info(
+            `    ${key.padEnd(maxEnvLength)} # ${description}${optionalStr}`,
+          );
+        }
+      }
     } else {
       // general help
       this.log.info(this.description || "Available commands:");
       this.log.info("");
       this.log.info("Commands:");
-      const maxCmdLength = this.getMaxCmdLength(this.commands);
 
-      for (const command of this.commands) {
+      // Get top-level commands (commands that are not children of other commands)
+      const topLevelCommands = this.getTopLevelCommands();
+      const maxCmdLength = this.getMaxCmdLength(topLevelCommands);
+
+      for (const command of topLevelCommands) {
         // skip root command and hooks in list
         if (command.name === "" || command.options.hide) {
           continue;
         }
 
         const cmdStr = [command.name, ...command.aliases].join(", ");
-        const argsUsage = this.generateArgsUsage(command.options.args);
+        const argsUsage = command.hasChildren
+          ? " <command>"
+          : this.generateArgsUsage(command.options.args);
         const fullCmdStr = `${cmdStr}${argsUsage}`;
         this.log.info(
           `    ${cliName} ${fullCmdStr.padEnd(maxCmdLength)} # ${command.options.description ?? ""}`,
@@ -579,7 +826,26 @@ export class CliProvider {
 
       this.log.info("");
       this.log.info("Flags:");
-      const globalFlags = Object.values(this.getAllGlobalFlags());
+
+      // In general help, also show root command flags
+      const rootCommand = this.commands.find((cmd) => cmd.name === "");
+      const rootFlags = rootCommand
+        ? Object.entries(rootCommand.flags.properties).map(([key, value]) => ({
+            key,
+            aliases: [
+              key,
+              ...((value as any).aliases ??
+                ((value as any).alias ? [(value as any).alias] : undefined) ??
+                []),
+            ],
+            description: (value as any).description,
+          }))
+        : [];
+
+      const globalFlags = [
+        ...rootFlags,
+        ...Object.values(this.getAllGlobalFlags()),
+      ];
       const maxFlagLength = this.getMaxFlagLength(globalFlags);
       for (const { aliases, description } of globalFlags) {
         const flagStr = aliases
@@ -593,13 +859,80 @@ export class CliProvider {
     this.log.info(""); // Newline
   }
 
-  private getMaxCmdLength(commands: CommandPrimitive[]): number {
+  /**
+   * Get the full command path (e.g., "deploy vercel" for a child command).
+   */
+  protected getCommandPath(command: CommandPrimitive<any>): string {
+    const path: string[] = [command.name];
+    let current = command;
+
+    // Walk up the tree to find parents
+    while (true) {
+      const parent = this.findParentCommand(current);
+      if (!parent) break;
+      path.unshift(parent.name);
+      current = parent;
+    }
+
+    return path.join(" ");
+  }
+
+  /**
+   * Find the parent command of a given command.
+   */
+  protected findParentCommand(
+    command: CommandPrimitive<any>,
+  ): CommandPrimitive<any> | undefined {
+    for (const cmd of this.commands) {
+      if (cmd.children.includes(command)) {
+        return cmd;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Get top-level commands (commands that are not children of other commands).
+   */
+  protected getTopLevelCommands(): CommandPrimitive<any>[] {
+    const allChildren = new Set<CommandPrimitive<any>>();
+
+    // Collect all children
+    for (const command of this.commands) {
+      for (const child of command.children) {
+        allChildren.add(child);
+      }
+    }
+
+    // Return commands that are not children
+    return this.commands.filter((cmd) => !allChildren.has(cmd));
+  }
+
+  /**
+   * Get max length for child command display.
+   */
+  protected getMaxChildCmdLength(children: CommandPrimitive<any>[]): number {
+    return Math.max(
+      ...children
+        .filter((c) => !c.options.hide)
+        .map((c) => {
+          const cmdStr = [c.name, ...c.aliases].join(", ");
+          const argsUsage = this.generateArgsUsage(c.options.args);
+          return `${cmdStr}${argsUsage}`.length;
+        }),
+      0,
+    );
+  }
+
+  protected getMaxCmdLength(commands: CommandPrimitive[]): number {
     return Math.max(
       ...commands
         .filter((c) => !c.options.hide && c.name !== "")
         .map((c) => {
           const cmdStr = [c.name, ...c.aliases].join(", ");
-          const argsUsage = this.generateArgsUsage(c.options.args);
+          const argsUsage = c.hasChildren
+            ? " <command>"
+            : this.generateArgsUsage(c.options.args);
           return `${cmdStr}${argsUsage}`.length;
         }),
     );

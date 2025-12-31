@@ -977,4 +977,609 @@ describe("$command", () => {
       expect(output).toContain("Usage: `test-cli cmd <arg1> [arg2: number]`");
     });
   });
+
+  describe("Subcommands", () => {
+    test("should execute subcommand with space-separated syntax", async () => {
+      const mockHandlers = {
+        parent: vi.fn(),
+        child: vi.fn(),
+      };
+
+      class TestCommands {
+        child = $command({
+          name: "vercel",
+          description: "Deploy to Vercel",
+          handler: mockHandlers.child,
+        });
+
+        parent = $command({
+          name: "deploy",
+          description: "Deploy the application",
+          children: [this.child],
+          handler: mockHandlers.parent,
+        });
+      }
+
+      await setupTestCommands(["deploy", "vercel"], (a) =>
+        a.with(TestCommands),
+      );
+
+      expect(mockHandlers.child).toHaveBeenCalledOnce();
+      expect(mockHandlers.parent).not.toHaveBeenCalled();
+    });
+
+    test("should execute parent handler when subcommand is not provided", async () => {
+      const mockHandlers = {
+        parent: vi.fn(),
+        child: vi.fn(),
+      };
+
+      class TestCommands {
+        child = $command({
+          name: "vercel",
+          description: "Deploy to Vercel",
+          handler: mockHandlers.child,
+        });
+
+        parent = $command({
+          name: "deploy",
+          description: "Deploy the application",
+          children: [this.child],
+          handler: mockHandlers.parent,
+        });
+      }
+
+      await setupTestCommands(["deploy"], (a) => a.with(TestCommands));
+
+      expect(mockHandlers.parent).toHaveBeenCalledOnce();
+      expect(mockHandlers.child).not.toHaveBeenCalled();
+    });
+
+    test("should provide help() function in handler args", async () => {
+      let helpFn: (() => void) | undefined;
+
+      class TestCommands {
+        child = $command({
+          name: "vercel",
+          description: "Deploy to Vercel",
+          handler: vi.fn(),
+        });
+
+        parent = $command({
+          name: "deploy",
+          description: "Deploy the application",
+          children: [this.child],
+          handler: ({ help }) => {
+            helpFn = help;
+            help();
+          },
+        });
+      }
+
+      const { mockLogger } = await setupTestCommands(["deploy"], (alepha) => {
+        alepha.store.mut(cliOptions, (old) => ({
+          ...old,
+          name: "my-cli",
+        }));
+        alepha.with(TestCommands);
+      });
+
+      expect(helpFn).toBeDefined();
+      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      expect(output).toContain("Usage: `my-cli deploy <command>`");
+      expect(output).toContain("Commands:");
+      expect(output).toContain("vercel");
+    });
+
+    test("should pass flags to subcommand", async () => {
+      const mockHandler = vi.fn();
+
+      class TestCommands {
+        child = $command({
+          name: "vercel",
+          description: "Deploy to Vercel",
+          flags: t.object({
+            prod: t.optional(t.boolean()),
+          }),
+          handler: mockHandler,
+        });
+
+        parent = $command({
+          name: "deploy",
+          description: "Deploy the application",
+          children: [this.child],
+          handler: vi.fn(),
+        });
+      }
+
+      await setupTestCommands(["deploy", "vercel", "--prod"], (a) =>
+        a.with(TestCommands),
+      );
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+      expect(mockHandler.mock.calls[0][0].flags).toEqual({ prod: true });
+    });
+
+    test("should pass arguments to subcommand", async () => {
+      const mockHandler = vi.fn();
+
+      class TestCommands {
+        child = $command({
+          name: "surge",
+          description: "Deploy to Surge",
+          args: t.optional(t.text()),
+          handler: mockHandler,
+        });
+
+        parent = $command({
+          name: "deploy",
+          description: "Deploy the application",
+          children: [this.child],
+          handler: vi.fn(),
+        });
+      }
+
+      await setupTestCommands(["deploy", "surge", "my-domain.surge.sh"], (a) =>
+        a.with(TestCommands),
+      );
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+      expect(mockHandler.mock.calls[0][0].args).toBe("my-domain.surge.sh");
+    });
+
+    test("should show subcommands in help output", async () => {
+      class TestCommands {
+        child1 = $command({
+          name: "vercel",
+          description: "Deploy to Vercel",
+          handler: vi.fn(),
+        });
+
+        child2 = $command({
+          name: "cloudflare",
+          description: "Deploy to Cloudflare",
+          handler: vi.fn(),
+        });
+
+        parent = $command({
+          name: "deploy",
+          description: "Deploy the application",
+          children: [this.child1, this.child2],
+          handler: vi.fn(),
+        });
+      }
+
+      const { mockLogger } = await setupTestCommands(
+        ["deploy", "--help"],
+        (alepha) => {
+          alepha.store.mut(cliOptions, (old) => ({
+            ...old,
+            name: "my-cli",
+          }));
+          alepha.with(TestCommands);
+        },
+      );
+
+      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      expect(output).toContain("Usage: `my-cli deploy <command>`");
+      expect(output).toContain("Commands:");
+      expect(output).toContain("my-cli deploy vercel");
+      expect(output).toContain("my-cli deploy cloudflare");
+      expect(output).toContain("Deploy to Vercel");
+      expect(output).toContain("Deploy to Cloudflare");
+    });
+
+    test("should support colon notation for backwards compatibility", async () => {
+      const mockHandler = vi.fn();
+
+      class TestCommands {
+        legacyCommand = $command({
+          name: "db:migrate",
+          description: "Run database migrations",
+          handler: mockHandler,
+        });
+      }
+
+      await setupTestCommands(["db:migrate"], (a) => a.with(TestCommands));
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+    });
+
+    test("should not show child commands in top-level help", async () => {
+      class TestCommands {
+        child = $command({
+          name: "vercel",
+          description: "Deploy to Vercel",
+          handler: vi.fn(),
+        });
+
+        parent = $command({
+          name: "deploy",
+          description: "Deploy the application",
+          children: [this.child],
+          handler: vi.fn(),
+        });
+      }
+
+      const { mockLogger } = await setupTestCommands(["--help"], (alepha) => {
+        alepha.store.mut(cliOptions, (old) => ({
+          ...old,
+          name: "my-cli",
+        }));
+        alepha.with(TestCommands);
+      });
+
+      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      expect(output).toContain("my-cli deploy <command>");
+      // vercel should not be listed as a top-level command
+      expect(output).not.toMatch(/^\s*my-cli vercel/m);
+    });
+
+    test("should execute subcommand by alias", async () => {
+      const mockHandler = vi.fn();
+
+      class TestCommands {
+        child = $command({
+          name: "vercel",
+          aliases: ["v"],
+          description: "Deploy to Vercel",
+          handler: mockHandler,
+        });
+
+        parent = $command({
+          name: "deploy",
+          description: "Deploy the application",
+          children: [this.child],
+          handler: vi.fn(),
+        });
+      }
+
+      await setupTestCommands(["deploy", "v"], (a) => a.with(TestCommands));
+
+      expect(mockHandler).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("Environment Variables", () => {
+    test("should pass validated env vars to handler", async () => {
+      let receivedEnv: any;
+
+      class TestCommands {
+        cmd = $command({
+          name: "test",
+          env: t.object({
+            MY_TOKEN: t.text({ description: "API token" }),
+          }),
+          handler: ({ env }) => {
+            receivedEnv = env;
+          },
+        });
+      }
+
+      // Set env var before running
+      process.env.MY_TOKEN = "secret123";
+
+      try {
+        await setupTestCommands(["test"], (a) => a.with(TestCommands));
+        expect(receivedEnv).toEqual({ MY_TOKEN: "secret123" });
+      } finally {
+        delete process.env.MY_TOKEN;
+      }
+    });
+
+    test("should throw error for missing required env var", async () => {
+      class TestCommands {
+        cmd = $command({
+          name: "test",
+          env: t.object({
+            REQUIRED_VAR: t.text({ description: "Required variable" }),
+          }),
+          handler: vi.fn(),
+        });
+      }
+
+      // Ensure env var is not set
+      delete process.env.REQUIRED_VAR;
+
+      await expect(
+        setupTestCommands(["test"], (a) => a.with(TestCommands)),
+      ).rejects.toThrow("Missing required environment variable: REQUIRED_VAR");
+    });
+
+    test("should handle optional env vars", async () => {
+      let receivedEnv: any;
+
+      class TestCommands {
+        cmd = $command({
+          name: "test",
+          env: t.object({
+            OPTIONAL_VAR: t.optional(t.text({ description: "Optional" })),
+          }),
+          handler: ({ env }) => {
+            receivedEnv = env;
+          },
+        });
+      }
+
+      // Ensure env var is not set
+      delete process.env.OPTIONAL_VAR;
+
+      await setupTestCommands(["test"], (a) => a.with(TestCommands));
+      expect(receivedEnv).toEqual({});
+    });
+
+    test("should handle optional env vars with defaults", async () => {
+      let receivedEnv: any;
+
+      class TestCommands {
+        cmd = $command({
+          name: "test",
+          env: t.object({
+            MY_VAR: t.optional(t.text({ default: "default_value" })),
+          }),
+          handler: ({ env }) => {
+            receivedEnv = env;
+          },
+        });
+      }
+
+      // Ensure env var is not set
+      delete process.env.MY_VAR;
+
+      await setupTestCommands(["test"], (a) => a.with(TestCommands));
+      expect(receivedEnv).toEqual({ MY_VAR: "default_value" });
+    });
+
+    test("should show env vars in help output", async () => {
+      class TestCommands {
+        cmd = $command({
+          name: "test",
+          env: t.object({
+            API_TOKEN: t.text({ description: "API token for authentication" }),
+            ORG_ID: t.optional(t.text({ description: "Organization ID" })),
+          }),
+          handler: vi.fn(),
+        });
+      }
+
+      const { mockLogger } = await setupTestCommands(
+        ["test", "--help"],
+        (alepha) => {
+          alepha.store.mut(cliOptions, (old) => ({
+            ...old,
+            name: "my-cli",
+          }));
+          alepha.with(TestCommands);
+        },
+      );
+
+      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      expect(output).toContain("Env:");
+      expect(output).toContain("API_TOKEN");
+      expect(output).toContain("API token for authentication");
+      expect(output).toContain("ORG_ID");
+      expect(output).toContain("(optional)");
+    });
+
+    test("should throw error for multiple missing env vars", async () => {
+      class TestCommands {
+        cmd = $command({
+          name: "test",
+          env: t.object({
+            VAR_ONE: t.text(),
+            VAR_TWO: t.text(),
+          }),
+          handler: vi.fn(),
+        });
+      }
+
+      delete process.env.VAR_ONE;
+      delete process.env.VAR_TWO;
+
+      await expect(
+        setupTestCommands(["test"], (a) => a.with(TestCommands)),
+      ).rejects.toThrow(
+        "Missing required environment variables: VAR_ONE, VAR_TWO",
+      );
+    });
+  });
+
+  describe("mode option", () => {
+    test("should pass mode value to handler when --mode flag is used", async () => {
+      const handler = vi.fn();
+
+      class TestCommands {
+        build = $command({
+          name: "build",
+          mode: true,
+          handler,
+        });
+      }
+
+      await setupTestCommands(["build", "--mode", "production"], (a) =>
+        a.with(TestCommands),
+      );
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: "production",
+        }),
+      );
+    });
+
+    test("should pass mode value with -m shorthand", async () => {
+      const handler = vi.fn();
+
+      class TestCommands {
+        build = $command({
+          name: "build",
+          mode: true,
+          handler,
+        });
+      }
+
+      await setupTestCommands(["build", "-m", "staging"], (a) =>
+        a.with(TestCommands),
+      );
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: "staging",
+        }),
+      );
+    });
+
+    test("should pass mode value with --mode=value syntax", async () => {
+      const handler = vi.fn();
+
+      class TestCommands {
+        build = $command({
+          name: "build",
+          mode: true,
+          handler,
+        });
+      }
+
+      await setupTestCommands(["build", "--mode=development"], (a) =>
+        a.with(TestCommands),
+      );
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: "development",
+        }),
+      );
+    });
+
+    test("should pass undefined mode when flag is not provided", async () => {
+      const handler = vi.fn();
+
+      class TestCommands {
+        build = $command({
+          name: "build",
+          mode: true,
+          handler,
+        });
+      }
+
+      await setupTestCommands(["build"], (a) => a.with(TestCommands));
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: undefined,
+        }),
+      );
+    });
+
+    test("should throw error when --mode is used without value", async () => {
+      class TestCommands {
+        build = $command({
+          name: "build",
+          mode: true,
+          handler: vi.fn(),
+        });
+      }
+
+      await expect(
+        setupTestCommands(["build", "--mode"], (a) => a.with(TestCommands)),
+      ).rejects.toThrow("Flag --mode requires a value.");
+    });
+
+    test("should show --mode flag in help when mode option is enabled", async () => {
+      class TestCommands {
+        build = $command({
+          name: "build",
+          description: "Build the project",
+          mode: true,
+          handler: vi.fn(),
+        });
+      }
+
+      const { mockLogger } = await setupTestCommands(["build", "-h"], (a) =>
+        a.with(TestCommands),
+      );
+
+      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      expect(output).toContain("-m, --mode");
+      expect(output).toContain("Environment mode");
+    });
+
+    test("should not show --mode flag when mode option is disabled", async () => {
+      class TestCommands {
+        build = $command({
+          name: "build",
+          description: "Build the project",
+          handler: vi.fn(),
+        });
+      }
+
+      const { mockLogger } = await setupTestCommands(["build", "-h"], (a) =>
+        a.with(TestCommands),
+      );
+
+      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      expect(output).not.toContain("-m, --mode");
+    });
+
+    test("should use string mode as default when no --mode flag provided", async () => {
+      const handler = vi.fn();
+
+      class TestCommands {
+        deploy = $command({
+          name: "deploy",
+          mode: "production",
+          handler,
+        });
+      }
+
+      await setupTestCommands(["deploy"], (a) => a.with(TestCommands));
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: "production",
+        }),
+      );
+    });
+
+    test("should override string default mode when --mode flag provided", async () => {
+      const handler = vi.fn();
+
+      class TestCommands {
+        deploy = $command({
+          name: "deploy",
+          mode: "production",
+          handler,
+        });
+      }
+
+      await setupTestCommands(["deploy", "--mode", "staging"], (a) =>
+        a.with(TestCommands),
+      );
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: "staging",
+        }),
+      );
+    });
+
+    test("should show default mode in help when mode is a string", async () => {
+      class TestCommands {
+        deploy = $command({
+          name: "deploy",
+          description: "Deploy the project",
+          mode: "production",
+          handler: vi.fn(),
+        });
+      }
+
+      const { mockLogger } = await setupTestCommands(["deploy", "-h"], (a) =>
+        a.with(TestCommands),
+      );
+
+      const output = mockLogger.logs.map((l) => l.message).join("\n");
+      expect(output).toContain("-m, --mode");
+      expect(output).toContain("default: production");
+    });
+  });
 });

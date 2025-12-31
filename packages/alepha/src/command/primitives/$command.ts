@@ -19,17 +19,29 @@ import type { RunnerMethod } from "../helpers/Runner.ts";
  * This primitive allows you to define a command, its flags, and its handler
  * within your Alepha application structure.
  */
-export const $command = <T extends TObject, A extends TSchema>(
-  options: CommandPrimitiveOptions<T, A>,
-) => createPrimitive(CommandPrimitive<T, A>, options);
+export const $command = <
+  T extends TObject,
+  A extends TSchema,
+  E extends TObject,
+>(
+  options: CommandPrimitiveOptions<T, A, E>,
+) => createPrimitive(CommandPrimitive<T, A, E>, options);
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface CommandPrimitiveOptions<T extends TObject, A extends TSchema> {
+export interface CommandPrimitiveOptions<
+  T extends TObject,
+  A extends TSchema,
+  E extends TObject = TObject,
+> {
   /**
    * The handler function to execute when the command is matched.
+   *
+   * For parent commands with children, the handler is called when:
+   * - The parent command is invoked without a subcommand
+   * - The parent command is invoked with --help (to show available subcommands)
    */
-  handler: (args: CommandHandlerArgs<T, A>) => Async<void>;
+  handler: (args: CommandHandlerArgs<T, A, E>) => Async<void>;
 
   /**
    * The name of the command. If omitted, the property key is used.
@@ -52,6 +64,28 @@ export interface CommandPrimitiveOptions<T extends TObject, A extends TSchema> {
    * A TypeBox object schema defining the flags for the command.
    */
   flags?: T;
+
+  /**
+   * A TypeBox object schema defining required environment variables.
+   *
+   * Environment variables are validated before the handler runs (fail fast).
+   * They are displayed in the help output under "Env:" section.
+   *
+   * @example
+   * ```ts
+   * $command({
+   *   env: t.object({
+   *     VERCEL_TOKEN: t.text({ description: "Vercel API token" }),
+   *     VERCEL_ORG_ID: t.optional(t.text({ description: "Organization ID" })),
+   *   }),
+   *   handler: async ({ env }) => {
+   *     // env.VERCEL_TOKEN is typed & guaranteed to exist
+   *     console.log(env.VERCEL_TOKEN);
+   *   }
+   * })
+   * ```
+   */
+  env?: E;
 
   /**
    * An optional TypeBox schema defining the arguments for the command.
@@ -137,6 +171,86 @@ export interface CommandPrimitiveOptions<T extends TObject, A extends TSchema> {
    * If true, this command will be hidden from the help output.
    */
   hide?: boolean;
+
+  /**
+   * Adds a `--mode, -m` flag to load environment files.
+   *
+   * When enabled:
+   * - Loads `.env` and `.env.local` by default
+   * - With `--mode production`, also loads `.env.production` and `.env.production.local`
+   * - The mode value is exposed in the handler as `mode: string | undefined`
+   *
+   * Set to `true` to enable with no default, or a string to set a default mode.
+   *
+   * This follows Vite's environment loading convention.
+   * @see https://vite.dev/guide/env-and-mode
+   *
+   * @example
+   * ```ts
+   * // No default mode
+   * build = $command({
+   *   mode: true,
+   *   handler: async ({ mode }) => {
+   *     console.log(`Building for ${mode ?? 'development'}...`);
+   *   }
+   * });
+   *
+   * // Default mode "production"
+   * deploy = $command({
+   *   mode: "production",
+   *   handler: async ({ mode }) => {
+   *     console.log(`Deploying for ${mode}...`); // always defined
+   *   }
+   * });
+   * ```
+   *
+   * Usage:
+   * - `cli build` - loads .env (mode = undefined)
+   * - `cli build --mode production` - loads .env and .env.production
+   * - `cli deploy` - loads .env and .env.production (default mode)
+   * - `cli deploy --mode staging` - loads .env and .env.staging
+   */
+  mode?: boolean | string;
+
+  /**
+   * Child commands (subcommands) for this command.
+   *
+   * When children are defined, the command becomes a parent command that
+   * can be invoked with space-separated subcommands:
+   *
+   * @example
+   * ```ts
+   * class DeployCommands {
+   *   // Subcommands
+   *   vercel = $command({
+   *     description: "Deploy to Vercel",
+   *     handler: async () => { ... }
+   *   });
+   *
+   *   cloudflare = $command({
+   *     description: "Deploy to Cloudflare",
+   *     handler: async () => { ... }
+   *   });
+   *
+   *   // Parent command with children
+   *   deploy = $command({
+   *     description: "Deploy the application",
+   *     children: [this.vercel, this.cloudflare],
+   *     handler: async () => {
+   *       // Called when "deploy" is invoked without subcommand
+   *       console.log("Available: deploy vercel, deploy cloudflare");
+   *     }
+   *   });
+   * }
+   * ```
+   *
+   * This allows CLI usage like:
+   * - `cli deploy vercel` - runs the vercel subcommand
+   * - `cli deploy cloudflare` - runs the cloudflare subcommand
+   * - `cli deploy` - runs the parent handler (shows available subcommands)
+   * - `cli deploy --help` - shows help with all available subcommands
+   */
+  children?: CommandPrimitive<any, any>[];
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -144,8 +258,10 @@ export interface CommandPrimitiveOptions<T extends TObject, A extends TSchema> {
 export class CommandPrimitive<
   T extends TObject = TObject,
   A extends TSchema = TSchema,
-> extends Primitive<CommandPrimitiveOptions<T, A>> {
+  E extends TObject = TObject,
+> extends Primitive<CommandPrimitiveOptions<T, A, E>> {
   public readonly flags = this.options.flags ?? t.object({});
+  public readonly env = this.options.env ?? t.object({});
   public readonly aliases = this.options.aliases ?? [];
 
   protected onInit() {
@@ -166,6 +282,29 @@ export class CommandPrimitive<
     }
     return this.options.name ?? `${this.config.propertyKey}`;
   }
+
+  /**
+   * Get the child commands (subcommands) for this command.
+   */
+  public get children(): CommandPrimitive<any, any>[] {
+    return this.options.children ?? [];
+  }
+
+  /**
+   * Check if this command has child commands (is a parent command).
+   */
+  public get hasChildren(): boolean {
+    return this.children.length > 0;
+  }
+
+  /**
+   * Find a child command by name or alias.
+   */
+  public findChild(name: string): CommandPrimitive<any, any> | undefined {
+    return this.children.find(
+      (child) => child.name === name || child.aliases.includes(name),
+    );
+  }
 }
 
 $command[KIND] = CommandPrimitive;
@@ -175,9 +314,11 @@ $command[KIND] = CommandPrimitive;
 export interface CommandHandlerArgs<
   T extends TObject,
   A extends TSchema = TSchema,
+  E extends TObject = TObject,
 > {
   flags: Static<T>;
   args: A extends TSchema ? Static<A> : Array<string>;
+  env: Static<E>;
   run: RunnerMethod;
   ask: AskMethod;
   glob: typeof glob;
@@ -187,4 +328,29 @@ export interface CommandHandlerArgs<
    * The root directory where the command is executed.
    */
   root: string;
+
+  /**
+   * Display help for the current command.
+   *
+   * Useful for parent commands with children to show available subcommands
+   * when invoked without a specific subcommand.
+   *
+   * @example
+   * ```ts
+   * deploy = $command({
+   *   children: [this.vercel, this.cloudflare],
+   *   handler: async ({ help }) => {
+   *     help(); // Shows available subcommands
+   *   }
+   * });
+   * ```
+   */
+  help: () => void;
+
+  /**
+   * The current execution mode (e.g., "development", "production", "staging").
+   *
+   * Use --mode flag to set this value when running the command.
+   */
+  mode?: string;
 }

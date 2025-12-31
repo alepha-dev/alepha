@@ -101,12 +101,14 @@ describe("Query with Date Encoding", () => {
     expect(rangeEvents.map((e) => e.name)).toContain("Recent Event");
 
     // Test 5: Filter with Dayjs object using between
+    // Note: eventDate is pg.createdAt() so it's the current timestamp
+    // We use a future date as upper bound to include records created today
     const betweenEvents = await app.repository.findMany({
       where: {
         eventDate: {
           between: [
             dt.utc("2024-01-01").toISOString(),
-            dt.utc("2025-12-31").toISOString(),
+            dt.utc("2026-12-31").toISOString(),
           ] as any,
         },
       },

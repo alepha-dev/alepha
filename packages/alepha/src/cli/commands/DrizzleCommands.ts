@@ -3,7 +3,11 @@ import { join } from "node:path";
 import { $inject, AlephaError, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
-import type { DrizzleKitProvider, RepositoryProvider } from "alepha/orm";
+import type {
+  DatabaseProvider,
+  DrizzleKitProvider,
+  RepositoryProvider,
+} from "alepha/orm";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 
 const drizzleCommandFlags = t.object({
@@ -29,7 +33,7 @@ export class DrizzleCommands {
    * Check if database migrations are up to date.
    */
   check = $command({
-    name: "db:check-migrations",
+    name: "check-migrations",
     description: "Check if database migration files are up to date",
     args: t.optional(
       t.text({
@@ -134,7 +138,7 @@ export class DrizzleCommands {
    * - Invokes Drizzle Kit's CLI to generate migration files based on the current schema.
    */
   generate = $command({
-    name: "db:generate",
+    name: "generate",
     description: "Generate migration files based on current database schema",
     summary: false,
     args: t.optional(
@@ -178,7 +182,7 @@ export class DrizzleCommands {
    * - Invokes Drizzle Kit's push command to apply schema changes directly.
    */
   push = $command({
-    name: "db:push",
+    name: "push",
     description: "Push database schema changes directly to the database",
     summary: false,
     args: t.optional(
@@ -210,7 +214,7 @@ export class DrizzleCommands {
    * - Invokes Drizzle Kit's migrate command to apply pending migrations.
    */
   migrate = $command({
-    name: "db:migrate",
+    name: "migrate",
     description: "Apply pending database migrations",
     summary: false,
     args: t.optional(
@@ -242,7 +246,7 @@ export class DrizzleCommands {
    * - Invokes Drizzle Kit's studio command to launch the web-based database browser.
    */
   studio = $command({
-    name: "db:studio",
+    name: "studio",
     description: "Launch Drizzle Studio database browser",
     summary: false,
     args: t.optional(
@@ -262,6 +266,18 @@ export class DrizzleCommands {
         logMessage: (providerName, dialect) =>
           `Launch Studio for '${providerName}' (${dialect}) ...`,
       });
+    },
+  });
+
+  /**
+   * Parent command for database operations.
+   */
+  db = $command({
+    name: "db",
+    description: "Database management commands",
+    children: [this.check, this.generate, this.push, this.migrate, this.studio],
+    handler: async ({ help }) => {
+      help();
     },
   });
 
@@ -289,7 +305,7 @@ export class DrizzleCommands {
       envFiles.push(`.env.${options.env}`);
     }
 
-    await this.utils.loadEnvFile(rootDir, envFiles);
+    await this.utils.loadEnv(rootDir, envFiles);
 
     this.log.debug(`Using project root: ${rootDir}`);
 
@@ -358,7 +374,7 @@ export class DrizzleCommands {
    */
   public async prepareDrizzleConfig(options: {
     kit: any;
-    provider: any;
+    provider: DatabaseProvider;
     providerName: string;
     providerUrl: string;
     dialect: string;
@@ -386,6 +402,10 @@ export class DrizzleCommands {
         url: options.providerUrl,
       },
     };
+
+    if (options.provider.schema) {
+      config.schemaFilter = options.provider.schema;
+    }
 
     if (options.providerName === "d1") {
       config.driver = "d1-http";
