@@ -18,7 +18,7 @@ __metadata:
   dependencies:
     "@azure/storage-blob": "npm:^12.29.1"
     alepha: "npm:0.14.0"
-    tsdown: "npm:^0.18.3"
+    tsdown: "npm:^0.18.4"
     vitest: "npm:^4.0.16"
   peerDependencies:
     alepha: 0.14.0
@@ -32,7 +32,7 @@ __metadata:
     "@aws-sdk/client-s3": "npm:^3.958.0"
     "@biomejs/biome": "npm:^2.3.10"
     alepha: "npm:0.14.0"
-    tsdown: "npm:^0.18.3"
+    tsdown: "npm:^0.18.4"
     typescript: "npm:^5.9.3"
     vitest: "npm:^4.0.16"
   peerDependencies:
@@ -47,7 +47,7 @@ __metadata:
     "@types/node": "npm:^25.0.3"
     "@vercel/blob": "npm:^2.0.0"
     alepha: "npm:0.14.0"
-    tsdown: "npm:^0.18.3"
+    tsdown: "npm:^0.18.4"
     vitest: "npm:^4.0.16"
   peerDependencies:
     alepha: 0.14.0
@@ -67,7 +67,7 @@ __metadata:
     "@xyflow/react": "npm:^12.10.0"
     alepha: "npm:0.14.0"
     react: "npm:^19.2.3"
-    tsdown: "npm:^0.18.3"
+    tsdown: "npm:^0.18.4"
     typescript: "npm:^5.9.3"
     vite: "npm:^7.3.0"
     vitest: "npm:^4.0.16"
@@ -110,32 +110,11 @@ __metadata:
   dependencies:
     alepha: "npm:0.14.0"
     protobufjs: "npm:^8.0.0"
-    tsdown: "npm:^0.18.3"
+    tsdown: "npm:^0.18.4"
     typescript: "npm:^5.9.3"
     vitest: "npm:^4.0.16"
   peerDependencies:
     alepha: 0.14.0
-  languageName: unknown
-  linkType: soft
-
-"@alepha/pulse@workspace:apps/pulse":
-  version: 0.0.0-use.local
-  resolution: "@alepha/pulse@workspace:apps/pulse"
-  dependencies:
-    "@alepha/react": "npm:^0.14.0"
-    "@mantine/charts": "npm:^8.3.10"
-    "@mantine/core": "npm:^8.3.10"
-    "@mantine/hooks": "npm:^8.3.10"
-    "@mantine/modals": "npm:^8.3.10"
-    "@tabler/icons-react": "npm:^3.36.0"
-    "@types/react": "npm:^19.2.7"
-    alepha: "npm:^0.14.0"
-    react: "npm:^19.2.3"
-    react-dom: "npm:^19.2.3"
-    recharts: "npm:^3.6.0"
-    typescript: "npm:^5.9.3"
-    vite: "npm:^7.3.0"
-    vitest: "npm:^4.0.16"
   languageName: unknown
   linkType: soft
 
@@ -7095,9 +7074,9 @@ __metadata:
     postgres: "npm:^3.4.7"
     prom-client: "npm:^15.1.3"
     swagger-ui-dist: "npm:^5.31.0"
-    tsdown: "npm:^0.18.3"
+    tsdown: "npm:^0.18.4"
     tsx: "npm:^4.21.0"
-    typebox: "npm:^1.0.69"
+    typebox: "npm:^1.0.70"
     vite: "npm:^7.3.0"
     vite-bundle-analyzer: "npm:^1.3.2"
     vitest: "npm:^4.0.16"
@@ -7939,7 +7918,7 @@ __metadata:
   dependencies:
     alepha: "npm:0.14.0"
     tar: "npm:^7.5.2"
-    tsdown: "npm:^0.18.3"
+    tsdown: "npm:^0.18.4"
     vitest: "npm:^4.0.16"
   bin:
     create-alepha: ./src/index.ts
@@ -14606,9 +14585,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tsdown@npm:^0.18.3":
-  version: 0.18.3
-  resolution: "tsdown@npm:0.18.3"
+"tsdown@npm:^0.18.4":
+  version: 0.18.4
+  resolution: "tsdown@npm:0.18.4"
   dependencies:
     ansis: "npm:^4.2.0"
     cac: "npm:^6.7.14"
@@ -14648,7 +14627,7 @@ __metadata:
       optional: true
   bin:
     tsdown: dist/run.mjs
-  checksum: 10c0/de1fcf8479c69d20db053b3fadb83f68e9ab398be38f3336728aa8d12084c9ca5b8bd098782234fc9f80c2e23ba789b9b33c69fbdaf0eda3e575ca48a661f8fd
+  checksum: 10c0/ea8896295a5f6c9d81303f74096d8a86676ef3ad05a34e84a1b74542211b2ab83fa83f79e16e483d0a940e82d2caa968859051b96cd528a40ea8f7f9482720da
   languageName: node
   linkType: hard
 
@@ -14709,10 +14688,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typebox@npm:^1.0.69":
-  version: 1.0.69
-  resolution: "typebox@npm:1.0.69"
-  checksum: 10c0/25bc82e3ab769ebd39397ced49d4352828e6c1b4d0403558d0ad503cb71276e26ff764f403c417b5456c5c2a49d9b8214920a092b784abdebd4b35c6d4a33e27
+"typebox@npm:^1.0.70":
+  version: 1.0.70
+  resolution: "typebox@npm:1.0.70"
+  checksum: 10c0/74fda65561a8899de00da30130df420fa9771cd12c38d8a572de6ae9dfe7207a22205f358922f680c7b39a4720ebec70a9707577600abfef0995104b8c56526a
   languageName: node
   linkType: hard
 

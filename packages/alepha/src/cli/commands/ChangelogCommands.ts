@@ -56,9 +56,10 @@ interface ChangelogEntry {
  * Changelog command for generating release notes from git commits.
  *
  * Usage:
- * - `alepha changelog` - Show unreleased changes since latest tag
+ * - `alepha changelog` - Show unreleased changes since latest tag to HEAD
  * - `alepha changelog --from=1.0.0` - Show changes from version to HEAD
- * - `alepha changelog > CHANGELOG.md` - Pipe to file
+ * - `alepha changelog --from=1.0.0 --to=1.1.0` - Show changes between two refs
+ * - `alepha changelog | tee -a CHANGELOG.md` - Append to file
  */
 export class ChangelogCommands {
   protected readonly log = $logger();
@@ -182,16 +183,29 @@ export class ChangelogCommands {
 
   public readonly changelog = $command({
     name: "changelog",
-    description: "Show changelog (outputs to stdout, pipe to file if needed)",
+    description:
+      "Generate changelog from conventional commits (outputs to stdout)",
     flags: t.object({
       /**
-       * Show changes from this version to HEAD.
+       * Show changes from this ref (tag, commit, branch).
+       * Defaults to the latest version tag.
        * Example: --from=1.0.0
        */
       from: t.optional(
         t.string({
           aliases: ["f"],
-          description: "Show changes from this version to HEAD",
+          description: "Starting ref (default: latest tag)",
+        }),
+      ),
+      /**
+       * Show changes up to this ref (tag, commit, branch).
+       * Defaults to HEAD.
+       * Example: --to=main
+       */
+      to: t.optional(
+        t.string({
+          aliases: ["t"],
+          description: "Ending ref (default: HEAD)",
         }),
       ),
     }),
@@ -199,28 +213,32 @@ export class ChangelogCommands {
       const git = (cmd: string) => this.git.exec(cmd, root);
 
       // Determine the starting point
-      let fromVersion: string;
+      let fromRef: string;
 
       if (flags.from) {
-        // User specified a version
-        fromVersion = flags.from;
-        this.log.debug("Using specified version", { from: fromVersion });
+        // User specified a ref
+        fromRef = flags.from;
+        this.log.debug("Using specified from ref", { from: fromRef });
       } else {
         // Use latest tag
         const latestTag = await this.getLatestTag(git);
         if (!latestTag) {
-          console.log("No version tags found in repository");
+          process.stdout.write("No version tags found in repository\n");
           return;
         }
-        fromVersion = latestTag;
-        this.log.debug("Using latest tag", { from: fromVersion });
+        fromRef = latestTag;
+        this.log.debug("Using latest tag", { from: fromRef });
       }
 
-      // Get commits from version to HEAD
-      const commitsOutput = await git(`log ${fromVersion}..HEAD --oneline`);
+      // Determine the ending point
+      const toRef = flags.to || "HEAD";
+      this.log.debug("Using to ref", { to: toRef });
+
+      // Get commits in range
+      const commitsOutput = await git(`log ${fromRef}..${toRef} --oneline`);
 
       if (!commitsOutput.trim()) {
-        console.log(`No changes since ${fromVersion}`);
+        process.stdout.write(`No changes in range ${fromRef}..${toRef}\n`);
         return;
       }
 
@@ -228,13 +246,14 @@ export class ChangelogCommands {
       const entry = this.parseCommits(commitsOutput);
 
       if (!this.hasChanges(entry)) {
-        console.log(`No public changes since ${fromVersion}`);
+        process.stdout.write(
+          `No public changes in range ${fromRef}..${toRef}\n`,
+        );
         return;
       }
 
-      // Output to stdout
-      console.log(`## Changes since ${fromVersion}\n`);
-      console.log(this.formatEntry(entry));
+      // Output the formatted changelog (no header - caller adds it if needed)
+      process.stdout.write(this.formatEntry(entry));
     },
   });
 }

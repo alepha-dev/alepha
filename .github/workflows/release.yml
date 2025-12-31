@@ -59,22 +59,42 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Released version: $VERSION"
 
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          DATE=$(date +%Y-%m-%d)
+          CONTENT=$(yarn alepha changelog)
+
+          # Output for GitHub Release body (no header)
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$CONTENT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          # Output for CHANGELOG.md (with header)
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "## [$VERSION] - $DATE" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "$CONTENT" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Update CHANGELOG.md
+        run: |
+          # Prepend new changelog entry at the beginning
+          echo "${{ steps.release_notes.outputs.changelog }}" > CHANGELOG.tmp
+          cat CHANGELOG.md >> CHANGELOG.tmp
+          mv CHANGELOG.tmp CHANGELOG.md
+
       - name: Commit and Tag Release
         run: |
-          git commit -am "release: ${{ steps.version.outputs.version }}"
+          git add -A
+          git commit -m "release: ${{ steps.version.outputs.version }}"
           git tag -a ${{ steps.version.outputs.version }} -m "release: ${{ steps.version.outputs.version }}"
 
       - name: Push Changes and Tags
         run: |
           git push --follow-tags
-
-      - name: Generate Release Notes
-        id: release_notes
-        run: |
-          NOTES=$(yarn alepha changelog --release --output=-)
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

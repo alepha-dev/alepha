@@ -1,6 +1,18 @@
-# Changelog
+## [0.14.0] - 2025-12-29
 
-All notable changes to this project will be documented in this file.
+### Features
+
+- **cli**: implement changelog generation command (`94559bd1`)
+- **vite**: update logger implementation and enhance server start process (`c759db50`)
+- **mcp**: integrate MCP API key management and context handling (`951d4fe3`)
+- **mcp**: add MCP transport and error handling primitives (`e649f563`)
+- **bucket/s3**: add new bucket provider 's3' (`09678594`)
+- **command**: equal in '--hello=world' is now optional (`296c9c8e`)
+- **vite**: add support of Cloudflare D1 driver + build (`1dbfb6d9`)
+
+### Bug Fixes
+
+- **vite**: precompress files during vite build (`e9712924`)
 
 ## [0.13.8] - 2025-12-19
 
