@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "alepha": "0.14.0",
-    "tsdown": "^0.18.3",
+    "tsdown": "^0.18.4",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
   },
