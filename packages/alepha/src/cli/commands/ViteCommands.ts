@@ -160,7 +160,7 @@ export class ViteCommands {
       );
       const viteAlephaBuildOptions = alephaPlugin?.[OPTIONS] || {};
 
-      await this.utils.loadEnvFile(root, [".env", ".env.production"]);
+      await this.utils.loadEnv(root, [".env", ".env.production"]);
 
       const stats = flags.stats ?? viteAlephaBuildOptions.stats ?? false;
       const hasServer = viteAlephaBuildOptions.serverEntry !== false;
@@ -317,7 +317,24 @@ export class ViteCommands {
   public readonly test = $command({
     name: "test",
     description: "Run tests using Vitest",
-    handler: async ({ root }) => {
+    flags: t.object({
+      config: t.optional(
+        t.string({
+          description: "Path to Vitest config file",
+          alias: "c",
+        }),
+      ),
+    }),
+    env: t.object({
+      VITEST_ARGS: t.optional(
+        t.string({
+          default: "",
+          description:
+            "Additional arguments to pass to Vitest. E.g., --coverage",
+        }),
+      ),
+    }),
+    handler: async ({ root, flags, env }) => {
       await this.utils.ensureConfig(root, {
         tsconfigJson: true,
         viteConfigTs: true,
@@ -326,7 +343,9 @@ export class ViteCommands {
       // Ensure vitest is installed before running
       await this.utils.ensureDependency(root, "vitest");
 
-      await this.utils.exec(`vitest run ${this.env.VITEST_ARGS}`);
+      const config = flags.config ? `--config=${flags.config}` : "";
+
+      await this.utils.exec(`vitest run ${config} ${env.VITEST_ARGS}`);
     },
   });
 }

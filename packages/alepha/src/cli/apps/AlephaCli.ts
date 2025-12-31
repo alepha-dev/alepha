@@ -4,6 +4,7 @@ import { FileSystemProvider } from "alepha/file";
 import { BiomeCommands } from "../commands/BiomeCommands.ts";
 import { ChangelogCommands } from "../commands/ChangelogCommands.ts";
 import { CoreCommands } from "../commands/CoreCommands.ts";
+import { DeployCommands } from "../commands/DeployCommands.ts";
 import { DrizzleCommands } from "../commands/DrizzleCommands.ts";
 import { VerifyCommands } from "../commands/VerifyCommands.ts";
 import { ViteCommands } from "../commands/ViteCommands.ts";
@@ -39,11 +40,12 @@ export const AlephaCli = $module({
   name: "alepha.cli",
   services: [
     AlephaCliExtension,
+    BiomeCommands,
     ChangelogCommands,
     CoreCommands,
+    DeployCommands,
     DrizzleCommands,
     VerifyCommands,
     ViteCommands,
-    BiomeCommands,
   ],
 });

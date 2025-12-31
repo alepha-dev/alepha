@@ -3,8 +3,9 @@
   "type": "module",
   "scripts": {
     "dev": "alepha dev",
-    "build": "alepha build --stats --cloudflare",
-    "deploy": "alepha deploy"
+    "build": "alepha build",
+    "deploy": "alepha deploy --build --migrate --mode=production",
+    "studio": "alepha db studio --mode=production"
   },
   "dependencies": {
     "alepha": "^0.14.0",
