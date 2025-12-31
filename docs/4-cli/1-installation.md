@@ -17,6 +17,8 @@ npx alepha dev
 npx alepha build
 ```
 
+Lost? Run `npx alepha -h` to see every command at your disposal. It's the cheat sheet you didn't know you needed.
+
 ## Why Not Global Install?
 
 Global installation (`npm install -g alepha`) is not recommended. When working on multiple projects, each may require a different Alepha version. Using `npx` or project-local scripts ensures each project uses its own version.
@@ -39,8 +41,6 @@ Run them with your package manager:
 
 ```bash
 npm run dev
-yarn dev
-pnpm dev
 ```
 
 ## Requirements

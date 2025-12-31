@@ -118,6 +118,27 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/pulse@workspace:apps/pulse":
+  version: 0.0.0-use.local
+  resolution: "@alepha/pulse@workspace:apps/pulse"
+  dependencies:
+    "@alepha/react": "npm:^0.14.0"
+    "@mantine/charts": "npm:^8.3.10"
+    "@mantine/core": "npm:^8.3.10"
+    "@mantine/hooks": "npm:^8.3.10"
+    "@mantine/modals": "npm:^8.3.10"
+    "@tabler/icons-react": "npm:^3.36.0"
+    "@types/react": "npm:^19.2.7"
+    alepha: "npm:^0.14.0"
+    react: "npm:^19.2.3"
+    react-dom: "npm:^19.2.3"
+    recharts: "npm:^3.6.0"
+    typescript: "npm:^5.9.3"
+    vite: "npm:^7.3.0"
+    vitest: "npm:^4.0.16"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/react@npm:0.14.0, @alepha/react@npm:^0.14.0, @alepha/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@alepha/react@workspace:packages/react"

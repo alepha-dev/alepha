@@ -702,9 +702,9 @@ class DocsCliApp {
             case "npm":
               return `npx ${rest}`;
             case "yarn":
-              return `yarn dlx ${rest}`;
+              return `yarn ${rest}`;
             case "pnpm":
-              return `pnpm dlx ${rest}`;
+              return `pnpm ${rest}`;
             case "bun":
               return `bunx ${rest}`;
           }
@@ -740,6 +740,22 @@ class DocsCliApp {
           }
         }
 
+        // npm run <script> → yarn/pnpm/bun <script>
+        const runMatch = trimmed.match(/^npm run (.+)$/);
+        if (runMatch) {
+          const script = runMatch[1];
+          switch (target) {
+            case "npm":
+              return `npm run ${script}`;
+            case "yarn":
+              return `yarn ${script}`;
+            case "pnpm":
+              return `pnpm ${script}`;
+            case "bun":
+              return `bun run ${script}`;
+          }
+        }
+
         return line;
       })
       .join("\n");
@@ -750,7 +766,7 @@ class DocsCliApp {
    */
   isPackageManagerCommand(code: string): boolean {
     const trimmed = code.trim();
-    return /^(npm install|npm i |npx )/.test(trimmed);
+    return /^(npm install|npm i |npm run |npx )/.test(trimmed);
   }
 
   /**
