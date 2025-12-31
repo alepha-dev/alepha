@@ -11,7 +11,6 @@ import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.t
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
 import { PglitePostgresProvider } from "./providers/drivers/PglitePostgresProvider.ts";
 import { RepositoryProvider } from "./providers/RepositoryProvider.ts";
-import { PgJsonQueryManager } from "./services/PgJsonQueryManager.ts";
 import { PgRelationManager } from "./services/PgRelationManager.ts";
 import { PostgresModelBuilder } from "./services/PostgresModelBuilder.ts";
 import { QueryManager } from "./services/QueryManager.ts";
@@ -183,7 +182,6 @@ export const AlephaPostgres = $module({
     RepositoryProvider,
     Repository,
     PgRelationManager,
-    PgJsonQueryManager,
     QueryManager,
   ],
   register: (alepha: Alepha) => {

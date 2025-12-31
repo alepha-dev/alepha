@@ -38,10 +38,8 @@ import type {
   PgQueryWhere,
   PgQueryWhereOrSQL,
 } from "../interfaces/PgQueryWhere.ts";
-import { PgJsonQueryManager } from "./PgJsonQueryManager.ts";
 
 export class QueryManager {
-  protected readonly jsonQueryManager = $inject(PgJsonQueryManager);
   protected readonly alepha = $inject(Alepha);
 
   /**
@@ -157,40 +155,16 @@ export class QueryManager {
         }
 
         if (operator) {
-          // Check if this is a JSONB column with nested query
-          // BUT skip primitive arrays - they should use native Drizzle operators
-          if (
-            this.jsonQueryManager.isJsonbColumn(schema, key) &&
-            !this.jsonQueryManager.isPrimitiveArray(schema, key) &&
-            typeof operator === "object" &&
-            !Array.isArray(operator) &&
-            this.jsonQueryManager.hasNestedQuery({ [key]: operator })
-          ) {
-            // Handle JSONB nested queries for objects and arrays of objects
-            const column = col(key);
-            const jsonbSql = this.buildJsonbQuery(
-              column,
-              operator,
-              schema,
-              key,
-              options.dialect,
-            );
-            if (jsonbSql) {
-              conditions.push(jsonbSql);
-            }
-          } else {
-            // Regular column query (including primitive arrays)
-            const column = col(key);
-            const sql = this.mapOperatorToSql(
-              operator,
-              column,
-              schema,
-              key,
-              options.dialect,
-            );
-            if (sql) {
-              conditions.push(sql);
-            }
+          const column = col(key);
+          const sql = this.mapOperatorToSql(
+            operator,
+            column,
+            schema,
+            key,
+            options.dialect,
+          );
+          if (sql) {
+            conditions.push(sql);
           }
         }
       }
@@ -200,95 +174,6 @@ export class QueryManager {
       return conditions[0];
     }
 
-    return and(...conditions);
-  }
-
-  /**
-   * Build a JSONB query for nested object/array queries.
-   */
-  protected buildJsonbQuery(
-    column: PgColumn,
-    nestedQuery: any,
-    schema: TObject,
-    columnName: string,
-    dialect: "postgresql" | "sqlite",
-  ): SQL | undefined {
-    // Parse the nested query to extract paths and operators
-    const queries = this.jsonQueryManager.parseNestedQuery(nestedQuery);
-
-    if (queries.length === 0) {
-      return undefined;
-    }
-
-    // Get the column schema for type inference
-    const columnSchema = schema.properties[columnName];
-
-    // Build conditions for each parsed query
-    const conditions: SQL[] = [];
-
-    for (const { path, operator } of queries) {
-      // Check if the operator is an array operator (arrayContains, arrayContained, arrayOverlaps)
-      const isArrayOperator =
-        operator.arrayContains !== undefined ||
-        operator.arrayContained !== undefined ||
-        operator.arrayOverlaps !== undefined;
-
-      // Check if this is an array property
-      const isArrayProp = this.jsonQueryManager.isArrayProperty(schema, [
-        columnName,
-        ...path,
-      ]);
-
-      if (isArrayProp && isArrayOperator) {
-        // Array operators on JSONB arrays should use buildJsonbCondition
-        // This handles cases like: { metadata: { permissions: { arrayContains: [...] } } }
-        const condition = this.jsonQueryManager.buildJsonbCondition(
-          column,
-          path,
-          operator,
-          dialect,
-          columnSchema,
-        );
-        if (condition) {
-          conditions.push(condition);
-        }
-      } else if (isArrayProp && !isArrayOperator) {
-        // Non-array operators on array properties use buildJsonbArrayCondition
-        // This handles cases like: { addresses: { city: { eq: "Wonderland" } } }
-        const condition = this.jsonQueryManager.buildJsonbArrayCondition(
-          column,
-          path,
-          "",
-          operator,
-          dialect,
-        );
-        if (condition) {
-          conditions.push(condition);
-        }
-      } else {
-        // Handle object queries
-        const condition = this.jsonQueryManager.buildJsonbCondition(
-          column,
-          path,
-          operator,
-          dialect,
-          columnSchema,
-        );
-        if (condition) {
-          conditions.push(condition);
-        }
-      }
-    }
-
-    if (conditions.length === 0) {
-      return undefined;
-    }
-
-    if (conditions.length === 1) {
-      return conditions[0];
-    }
-
-    // Multiple conditions - AND them together
     return and(...conditions);
   }
 

@@ -302,110 +302,6 @@ describe("SQL Injection Security Tests", () => {
       });
     });
 
-    describe("JSONB Query Injection", () => {
-      it("should prevent SQL injection in nested object queries", async ({
-        expect,
-      }) => {
-        const alepha = Alepha.create();
-        const app = alepha.inject(App);
-        await alepha.start();
-
-        await app.users.create({
-          username: "grace",
-          email: "grace@example.com",
-          age: 29,
-          profile: {
-            bio: "Engineer",
-            settings: { theme: "dark", notifications: true },
-          },
-          tags: ["engineer"],
-          metadata: { permissions: ["read", "write"] },
-        });
-
-        for (const payload of sqlInjectionPayloads) {
-          const result = await app.users.findMany({
-            where: {
-              profile: {
-                bio: { eq: payload },
-              },
-            },
-          });
-
-          expect(result).toEqual([]);
-        }
-      });
-
-      it("should prevent SQL injection in deeply nested queries", async ({
-        expect,
-      }) => {
-        const alepha = Alepha.create();
-        const app = alepha.inject(App);
-        await alepha.start();
-
-        await app.users.create({
-          username: "henry",
-          email: "henry@example.com",
-          age: 31,
-          profile: {
-            bio: "Architect",
-            settings: { theme: "light", notifications: false },
-          },
-          tags: ["architect"],
-          metadata: { permissions: ["admin"] },
-        });
-
-        for (const payload of sqlInjectionPayloads) {
-          const result = await app.users.findMany({
-            where: {
-              profile: {
-                settings: {
-                  theme: { eq: payload },
-                },
-              },
-            },
-          });
-
-          expect(result).toEqual([]);
-        }
-      });
-
-      it("should prevent SQL injection in JSONB array queries", async ({
-        expect,
-      }) => {
-        const alepha = Alepha.create();
-        const app = alepha.inject(App);
-        await alepha.start();
-
-        await app.users.create({
-          username: "iris",
-          email: "iris@example.com",
-          age: 27,
-          profile: {
-            bio: "Data Scientist",
-            settings: { theme: "dark", notifications: true },
-          },
-          tags: ["data", "science"],
-          metadata: {
-            permissions: ["read", "write", "execute"],
-            lastLogin: "2024-01-15",
-          },
-        });
-
-        for (const payload of sqlInjectionPayloads) {
-          const result = await app.users.findMany({
-            where: {
-              metadata: {
-                permissions: { arrayContains: [payload] },
-              },
-            },
-          });
-
-          // Should not find the user since the payload doesn't match any actual permission
-          expect(result).toEqual([]);
-        }
-      });
-    });
-
     describe("Array Operator Injection", () => {
       it("should prevent SQL injection in arrayContains", async ({
         expect,
@@ -668,49 +564,6 @@ describe("SQL Injection Security Tests", () => {
       });
     });
 
-    describe("JSONB Query Injection (SQLite)", () => {
-      it("should prevent SQL injection in nested JSON queries", async ({
-        expect,
-      }) => {
-        const alepha = Alepha.create().with({
-          provide: DatabaseProvider,
-          use: NodeSqliteProvider,
-        });
-
-        alepha.store.mut(nodeSqliteOptions, (old) => ({
-          ...old,
-          path: "sqlite://:memory:",
-        }));
-
-        const app = alepha.inject(App);
-        await alepha.start();
-
-        await app.users.create({
-          username: "sqlite_diana",
-          email: "diana@sqlite.com",
-          age: 28,
-          profile: {
-            bio: "JSON expert",
-            settings: { theme: "dark", notifications: true },
-          },
-          tags: ["json"],
-          metadata: { permissions: ["read", "write"] },
-        });
-
-        for (const payload of sqlInjectionPayloads) {
-          const result = await app.users.findMany({
-            where: {
-              profile: {
-                bio: { eq: payload },
-              },
-            },
-          });
-
-          expect(result).toEqual([]);
-        }
-      });
-    });
-
     describe("Raw SQL Injection (SQLite)", () => {
       it("should safely handle parameterized queries", async ({ expect }) => {
         const alepha = Alepha.create().with({
@@ -809,7 +662,7 @@ describe("SQL Injection Security Tests", () => {
       const longString = `${"A".repeat(100)}' OR '1'='1${"B".repeat(100)}`;
 
       const created = await app.users.create({
-        username: "long_test",
+        username: longString,
         email: "long@example.com",
         age: 30,
         profile: {
@@ -822,14 +675,12 @@ describe("SQL Injection Security Tests", () => {
 
       const found = await app.users.findOne({
         where: {
-          profile: {
-            bio: { eq: longString },
-          },
+          username: { eq: longString },
         },
       });
 
       expect(found.id).toBe(created.id);
-      expect(found.profile.bio).toBe(longString);
+      expect(found.username).toBe(longString);
     });
 
     it("should handle empty strings and nulls", async ({ expect }) => {

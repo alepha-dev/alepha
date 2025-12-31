@@ -20,12 +20,7 @@ export type PgQueryWhereOrSQL<
 // ---------------------------------------------------------------------------------------------------------------------
 
 type PgQueryWhereOperators<T extends TObject> = {
-  [Key in keyof Static<T>]?:
-    | FilterOperators<Static<T>[Key]>
-    | Static<T>[Key]
-    | (Static<T>[Key] extends object
-        ? NestedJsonbQuery<Static<T>[Key]>
-        : never);
+  [Key in keyof Static<T>]?: FilterOperators<Static<T>[Key]> | Static<T>[Key];
 };
 
 type PgQueryWhereConditions<
@@ -115,23 +110,3 @@ type PgQueryWhereRelations<
         >;
       }
     : {};
-
-/**
- * Recursively allow nested queries for JSONB object/array types
- */
-type NestedJsonbQuery<T> = T extends object
-  ? T extends Array<infer U>
-    ? // For arrays, allow querying array element properties
-      U extends object
-      ? {
-          [K in keyof U]?: FilterOperators<U[K]> | U[K];
-        }
-      : FilterOperators<U> | U
-    : // For objects, allow nested queries
-      {
-        [K in keyof T]?:
-          | FilterOperators<T[K]>
-          | T[K]
-          | (T[K] extends object ? NestedJsonbQuery<T[K]> : never);
-      }
-  : FilterOperators<T> | T;
