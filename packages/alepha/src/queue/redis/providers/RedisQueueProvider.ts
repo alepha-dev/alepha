@@ -17,15 +17,10 @@ export class RedisQueueProvider implements QueueProvider {
   }
 
   public async push(queue: string, message: string): Promise<void> {
-    await this.redisProvider.publisher.LPUSH(this.prefix(queue), message);
+    await this.redisProvider.lpush(this.prefix(queue), message);
   }
 
   public async pop(queue: string): Promise<string | undefined> {
-    const value = await this.redisProvider.publisher.RPOP(this.prefix(queue));
-    if (value == null) {
-      return undefined;
-    }
-
-    return String(value);
+    return this.redisProvider.rpop(this.prefix(queue));
   }
 }

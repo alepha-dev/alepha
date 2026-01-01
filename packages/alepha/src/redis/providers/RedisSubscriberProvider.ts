@@ -1,56 +1,65 @@
-import { $hook, $inject, Alepha } from "alepha";
-import { $logger } from "alepha/logger";
-import type { RedisClient } from "./RedisProvider.ts";
-import { RedisProvider } from "./RedisProvider.ts";
-
-export class RedisSubscriberProvider {
-  protected readonly log = $logger();
-  protected readonly alepha = $inject(Alepha);
-  protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
-  protected readonly client: RedisClient = this.createClient();
-
-  public get subscriber(): RedisClient {
-    if (!this.client.isReady) {
-      throw new Error("Redis client is not ready");
-    }
-
-    return this.client;
-  }
-
-  protected readonly start = $hook({
-    on: "start",
-    handler: () => this.connect(),
-  });
-
-  protected readonly stop = $hook({
-    on: "stop",
-    handler: () => this.close(),
-  });
-
-  public async connect(): Promise<void> {
-    this.log.debug("Connecting...");
-    await this.client.connect();
-    this.log.info("Connection OK");
-  }
-
-  public async close(): Promise<void> {
-    this.log.debug("Closing connection...");
-    this.subscriber.close();
-    this.log.info("Connection closed");
-  }
+/**
+ * Abstract Redis subscriber provider interface.
+ *
+ * This abstract class defines the common interface for Redis pub/sub subscriptions.
+ * Implementations include:
+ * - {@link NodeRedisSubscriberProvider} - Uses `@redis/client` for Node.js runtime
+ * - {@link BunRedisSubscriberProvider} - Uses Bun's native `RedisClient` for Bun runtime
+ *
+ * Redis requires separate connections for pub/sub operations, so this provider
+ * creates a dedicated connection for subscriptions.
+ *
+ * @example
+ * ```ts
+ * // Inject the abstract provider - runtime selects the implementation
+ * const subscriber = alepha.inject(RedisSubscriberProvider);
+ *
+ * // Subscribe to a channel
+ * await subscriber.subscribe("my-channel", (message, channel) => {
+ *   console.log(`Received: ${message} on ${channel}`);
+ * });
+ * ```
+ */
+export abstract class RedisSubscriberProvider {
+  /**
+   * Whether the Redis subscriber client is ready to accept commands.
+   */
+  public abstract readonly isReady: boolean;
 
   /**
-   * Redis subscriber client factory method.
+   * Connect to the Redis server for subscriptions.
    */
-  protected createClient(): RedisClient {
-    const client = this.redisProvider.duplicate();
+  public abstract connect(): Promise<void>;
 
-    client.on("error", (error) => {
-      if (this.alepha.isStarted()) {
-        this.log.error(error);
-      }
-    });
+  /**
+   * Close the subscriber connection.
+   */
+  public abstract close(): Promise<void>;
 
-    return client;
-  }
+  /**
+   * Subscribe to a channel.
+   *
+   * @param channel The channel name.
+   * @param callback The callback to invoke when a message is received.
+   */
+  public abstract subscribe(
+    channel: string,
+    callback: SubscribeCallback,
+  ): Promise<void>;
+
+  /**
+   * Unsubscribe from a channel.
+   *
+   * @param channel The channel name.
+   * @param callback Optional specific callback to remove.
+   */
+  public abstract unsubscribe(
+    channel: string,
+    callback?: SubscribeCallback,
+  ): Promise<void>;
 }
+
+/**
+ * Callback for subscription messages.
+ */
+export type SubscribeCallback = (message: string, channel: string) => void;

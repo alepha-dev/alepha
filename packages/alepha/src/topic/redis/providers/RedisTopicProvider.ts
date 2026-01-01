@@ -42,7 +42,7 @@ export class RedisTopicProvider extends TopicProvider {
    * Publish a message to a topic.
    */
   public async publish(topic: string, message: string): Promise<void> {
-    await this.redisProvider.publisher.publish(this.prefix(topic), message);
+    await this.redisProvider.publish(this.prefix(topic), message);
   }
 
   /**
@@ -53,7 +53,7 @@ export class RedisTopicProvider extends TopicProvider {
     callback: SubscribeCallback,
   ): Promise<UnSubscribeFn> {
     const topic = this.prefix(name);
-    await this.redisSubscriberProvider.subscriber.subscribe(topic, callback);
+    await this.redisSubscriberProvider.subscribe(topic, callback);
 
     return () => this.unsubscribe(name, callback);
   }
@@ -67,6 +67,6 @@ export class RedisTopicProvider extends TopicProvider {
   ): Promise<void> {
     const topic = this.prefix(name);
 
-    await this.redisSubscriberProvider.subscriber.unsubscribe(topic, callback);
+    await this.redisSubscriberProvider.unsubscribe(topic, callback);
   }
 }

@@ -1,9 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
-import { RedisProvider, RedisSubscriberProvider } from "alepha/redis";
+import {
+  AlephaRedis,
+  RedisProvider,
+  RedisSubscriberProvider,
+} from "alepha/redis";
 import { describe, it } from "vitest";
 
-const alepha = Alepha.create();
+const alepha = Alepha.create().with(AlephaRedis);
 const redis = alepha.inject(RedisProvider);
 const sub = alepha.inject(RedisSubscriberProvider);
 
@@ -17,10 +21,10 @@ describe("Redis", () => {
 
   it("should support pub/sub messaging", async ({ expect }) => {
     const stack: string[] = [];
-    await sub.subscriber.subscribe("test", (message) => {
+    await sub.subscribe("test", (message: string) => {
       stack.push(message);
     });
-    await redis.publisher.publish("test", "hello");
+    await redis.publish("test", "hello");
     await expect.poll(() => stack.length).toBe(1);
     expect(stack).toEqual(["hello"]);
   });
@@ -42,13 +46,13 @@ describe("Redis", () => {
   });
 
   it("should properly clean up connections on stop", async () => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaRedis);
     const redis = alepha.inject(RedisProvider);
     const sub = alepha.inject(RedisSubscriberProvider);
     await alepha.start();
-    sub.subscriber.subscribe("test", (message) => {});
-    redis.publisher.publish("test:a", "a");
-    redis.publisher.LPUSH("test:b", "b");
+    await sub.subscribe("test", (_message: string) => {});
+    await redis.publish("test:a", "a");
+    await redis.lpush("test:b", "b");
     await alepha.stop();
   });
 });
