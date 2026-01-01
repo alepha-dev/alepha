@@ -78,7 +78,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
       token_type: "Bearer",
     };
 
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockResolvedValue(createMockResponse(200, mockResponse));
 
@@ -92,7 +92,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     expect(token).toBe(mockToken);
 
     // Verify fetch was called correctly
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect((global as any).fetch).toHaveBeenCalledWith(
       "https://auth.example.com/token",
       expect.objectContaining({
         method: "POST",
@@ -105,7 +105,9 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
   });
 
   it("should throw error on network failure", async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
+    (global as any).fetch = vi
+      .fn()
+      .mockRejectedValue(new Error("Network error"));
 
     const serviceAccount = createServiceAccount(
       "https://auth.example.com/token",
@@ -124,7 +126,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
       error_description: "Missing parameter",
     };
 
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockResolvedValue(createMockResponse(400, errorBody));
 
@@ -142,7 +144,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
   it("should throw error on HTTP 401 Unauthorized", async () => {
     const errorBody = { error: "invalid_client" };
 
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockResolvedValue(createMockResponse(401, errorBody));
 
@@ -158,7 +160,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
   });
 
   it("should throw error on HTTP 500 Internal Server Error", async () => {
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockResolvedValue(createMockResponse(500, "Internal Server Error"));
 
@@ -174,7 +176,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
   });
 
   it("should throw error when response is not JSON", async () => {
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockResolvedValue(
         createMockResponse(200, "Not a JSON response", { throwOnJson: true }),
@@ -198,7 +200,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
       token_type: "Bearer",
     };
 
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockResolvedValue(createMockResponse(200, invalidResponse));
 
@@ -220,7 +222,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
       token_type: "Bearer",
     };
 
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockResolvedValue(createMockResponse(200, invalidResponse));
 
@@ -241,7 +243,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
       expires_in: 3600,
     };
 
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockResolvedValue(createMockResponse(200, invalidResponse));
 
@@ -262,7 +264,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
       expires_in: 3600,
     };
 
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockResolvedValue(createMockResponse(200, invalidResponse));
 
@@ -288,7 +290,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(createMockResponse(200, mockResponse));
-    global.fetch = fetchMock;
+    (global as any).fetch = fetchMock;
 
     const serviceAccount = createServiceAccount(
       "https://auth.example.com/token",
@@ -314,7 +316,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
       error_description: "The requested scope is invalid",
     };
 
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockResolvedValue(createMockResponse(400, errorBody));
 
@@ -338,7 +340,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     const htmlError =
       "<html><body><h1>500 Internal Server Error</h1></body></html>";
 
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockResolvedValue(
         createMockResponse(500, htmlError, { throwOnJson: true }),
@@ -354,7 +356,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
   });
 
   it("should handle fetch timeout or abort", async () => {
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockRejectedValue(new Error("The operation was aborted"));
 
@@ -370,7 +372,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
   });
 
   it("should handle DNS resolution failure", async () => {
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockRejectedValue(
         new Error("getaddrinfo ENOTFOUND invalid-domain.example"),
@@ -393,7 +395,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
       // Missing top-level access_token
     };
 
-    global.fetch = vi
+    (global as any).fetch = vi
       .fn()
       .mockResolvedValue(createMockResponse(200, weirdResponse));
 
@@ -417,7 +419,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(createMockResponse(200, mockResponse));
-    global.fetch = fetchMock;
+    (global as any).fetch = fetchMock;
 
     const serviceAccount = createServiceAccount(
       "https://auth.example.com/token",

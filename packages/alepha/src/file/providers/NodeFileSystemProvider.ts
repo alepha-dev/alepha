@@ -548,7 +548,9 @@ export class NodeFileSystemProvider implements FileSystemProvider {
     const stream = new PassThrough();
 
     fetch(url)
-      .then((res) => Readable.fromWeb(res.body as NodeWebStream).pipe(stream))
+      .then((res) =>
+        Readable.fromWeb(res.body as unknown as NodeWebStream).pipe(stream),
+      )
       .catch((err) => stream.destroy(err));
 
     return stream;

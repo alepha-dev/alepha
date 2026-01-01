@@ -91,6 +91,7 @@ export async function buildServer(
       minify: true,
       chunkSizeWarningLimit: 10000,
       rollupOptions: {
+        external: ["bun"],
         output: {
           entryFileNames: "[hash].js",
           chunkFileNames: "[hash].js",

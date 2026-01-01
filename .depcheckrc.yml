@@ -18,6 +18,9 @@ ignores:
     - 'wrangler'
     - 'vercel'
     - '@fontsource/jetbrains-mono'
+    - '@types/bun'
+    - 'bun'
+    - 'bun:sqlite'
 ignore-patterns:
     - 'dist'
     - 'assets'

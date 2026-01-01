@@ -32,7 +32,7 @@ if (withMock) {
 
   // Mock fetch to return blob data
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = vi.fn(
+  (globalThis as any).fetch = vi.fn(
     async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();
 

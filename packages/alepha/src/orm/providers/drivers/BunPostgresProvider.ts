@@ -1,11 +1,10 @@
 import { $env, $hook, $inject, AlephaError, type Static, t } from "alepha";
 import { $lock } from "alepha/lock";
 import { $logger } from "alepha/logger";
+import type { SQL as BunSQL } from "bun";
 import { sql } from "drizzle-orm";
-import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import { drizzle } from "drizzle-orm/postgres-js";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
-import postgres from "postgres";
+import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
+import type { PgDatabase } from "drizzle-orm/pg-core";
 import { DbError } from "../../errors/DbError.ts";
 import { DbMigrationError } from "../../errors/DbMigrationError.ts";
 import { PostgresModelBuilder } from "../../services/PostgresModelBuilder.ts";
@@ -28,31 +27,41 @@ const envSchema = t.object({
 
   /**
    * In addition to the DATABASE_URL, you can specify the postgres schema name.
-   *
-   * It will monkey patch drizzle tables.
    */
   POSTGRES_SCHEMA: t.optional(t.text()),
 });
 
-export class NodePostgresProvider extends DatabaseProvider {
-  static readonly SSL_MODES = [
-    "require",
-    "allow",
-    "prefer",
-    "verify-full",
-  ] as const;
-
+/**
+ * Bun PostgreSQL provider using Drizzle ORM with Bun's native SQL client.
+ *
+ * This provider uses Bun's built-in SQL class for PostgreSQL connections,
+ * which provides excellent performance on the Bun runtime.
+ *
+ * @example
+ * ```ts
+ * // Set DATABASE_URL environment variable
+ * // DATABASE_URL=postgres://user:password@localhost:5432/database
+ *
+ * // Or configure programmatically
+ * alepha.with({
+ *   provide: DatabaseProvider,
+ *   use: BunPostgresProvider,
+ * });
+ * ```
+ */
+export class BunPostgresProvider extends DatabaseProvider {
   protected readonly log = $logger();
   protected readonly env = $env(envSchema);
   protected readonly kit = $inject(DrizzleKitProvider);
   protected readonly builder = $inject(PostgresModelBuilder);
-  protected client?: postgres.Sql;
-  protected pg?: PostgresJsDatabase;
+
+  protected client?: BunSQL;
+  protected bunDb?: BunSQLDatabase;
 
   public readonly dialect = "postgresql";
 
   public get name() {
-    return "postgres";
+    return "bun-postgres";
   }
 
   /**
@@ -103,18 +112,19 @@ export class NodePostgresProvider extends DatabaseProvider {
   /**
    * Get the Drizzle Postgres database instance.
    */
-  public override get db(): PostgresJsDatabase {
-    if (!this.pg) {
+  public override get db(): PgDatabase<any> {
+    if (!this.bunDb) {
       throw new AlephaError("Database not initialized");
     }
 
-    return this.pg;
+    return this.bunDb as unknown as PgDatabase<any>;
   }
 
   protected override async executeMigrations(
     migrationsFolder: string,
   ): Promise<void> {
-    await migrate(this.db, { migrationsFolder });
+    const { migrate } = await import("drizzle-orm/bun-sql/migrator");
+    await migrate(this.bunDb!, { migrationsFolder });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -152,7 +162,6 @@ export class NodePostgresProvider extends DatabaseProvider {
         }
 
         this.log.warn(`Deleting test schema '${this.schemaForTesting}' ...`);
-        // Use sql.raw without quotes (Drizzle handles identifier escaping)
         await this.execute(
           sql`DROP SCHEMA IF EXISTS ${sql.raw(this.schemaForTesting)} CASCADE`,
         );
@@ -167,13 +176,25 @@ export class NodePostgresProvider extends DatabaseProvider {
   public async connect(): Promise<void> {
     this.log.debug("Connect ..");
 
-    const client = postgres(this.getClientOptions());
-    await client`SELECT 1`; // test connection
+    // Check if we're running in Bun
+    if (typeof Bun === "undefined") {
+      throw new AlephaError(
+        "BunPostgresProvider requires the Bun runtime. Use NodePostgresProvider for Node.js.",
+      );
+    }
 
-    this.client = client;
-    this.pg = drizzle(client, {
+    const { drizzle } = await import("drizzle-orm/bun-sql");
+    const { SQL } = await import("bun");
+
+    // Create Bun SQL client
+    this.client = new SQL(this.url);
+
+    // Test connection
+    await this.client.unsafe("SELECT 1");
+
+    this.bunDb = drizzle({
+      client: this.client,
       logger: {
-        // forward logs
         logQuery: (query: string, params: unknown[]) => {
           this.log.trace(query, { params });
         },
@@ -187,10 +208,10 @@ export class NodePostgresProvider extends DatabaseProvider {
     if (this.client) {
       this.log.debug("Close...");
 
-      await this.client.end();
+      await this.client.close();
 
       this.client = undefined;
-      this.pg = undefined;
+      this.bunDb = undefined;
 
       this.log.info("Connection closed");
     }
@@ -201,34 +222,4 @@ export class NodePostgresProvider extends DatabaseProvider {
       await this.migrateDatabase();
     },
   });
-
-  /**
-   * Map the DATABASE_URL to postgres client options.
-   */
-  protected getClientOptions(): postgres.Options<any> {
-    const url = new URL(this.url);
-
-    return {
-      host: url.hostname,
-      user: decodeURIComponent(url.username),
-      database: decodeURIComponent(url.pathname.replace("/", "")),
-      password: decodeURIComponent(url.password),
-      port: Number(url.port || 5432),
-      ssl: this.ssl(url),
-      onnotice: () => {
-        // let drizzle handle logs
-      },
-    };
-  }
-
-  protected ssl(
-    url: URL,
-  ): "require" | "allow" | "prefer" | "verify-full" | undefined {
-    const mode = url.searchParams.get("sslmode");
-    for (const it of NodePostgresProvider.SSL_MODES) {
-      if (mode === it) {
-        return it;
-      }
-    }
-  }
 }

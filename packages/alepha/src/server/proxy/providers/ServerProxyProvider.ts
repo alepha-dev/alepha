@@ -116,7 +116,7 @@ export class ServerProxyProvider {
 
     if (req.raw?.node?.req) {
       const nodeReq = req.raw.node.req;
-      return WebStream.from(nodeReq) as ReadableStream;
+      return WebStream.from(nodeReq) as unknown as ReadableStream;
     }
   }
 }

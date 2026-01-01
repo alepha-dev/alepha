@@ -176,4 +176,29 @@ export abstract class DatabaseProvider {
    * MUST be implemented by each provider
    */
   protected abstract executeMigrations(migrationsFolder: string): Promise<void>;
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * For testing purposes, generate a unique schema name.
+   * The schema name will be generated based on the current date and time.
+   * It will be in the format of `test_YYYYMMDD_HHMMSS_randomSuffix`.
+   */
+  protected generateTestSchemaName(): string {
+    const pad = (n: number) => n.toString().padStart(2, "0");
+
+    const now = new Date();
+    const year = now.getUTCFullYear();
+    const month = pad(now.getUTCMonth() + 1);
+    const day = pad(now.getUTCDate());
+    const hours = pad(now.getUTCHours());
+    const minutes = pad(now.getUTCMinutes());
+    const seconds = pad(now.getUTCSeconds());
+
+    const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}`;
+
+    const randomSuffix = Math.random().toString(36).slice(2, 6); // 4 alphanumeric chars
+
+    return `test_${timestamp}_${randomSuffix}`;
+  }
 }

@@ -1016,7 +1016,7 @@ export interface Env {
   /**
    * Optional environment variable that indicates the current environment.
    */
-  NODE_ENV?: "dev" | "test" | "production";
+  NODE_ENV?: string;
 
   /**
    * Optional name of the application.

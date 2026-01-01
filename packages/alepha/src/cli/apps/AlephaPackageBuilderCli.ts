@@ -88,6 +88,9 @@ export class AlephaPackageBuilderCli {
         JSON.parse(tsconfig).compilerOptions.paths,
       );
 
+      external.push("bun");
+      external.push("bun:sqlite");
+
       await run.rm(this.dist);
 
       const build = async (item: Module) => {

@@ -36,7 +36,9 @@ export class ServerBodyParserProvider {
       } else if (request.raw.node?.req) {
         // convert Node.js IncomingMessage to Web ReadableStream
         // TODO: check performance impact, it's better to directly read from Node stream!
-        stream = WebStream.from(request.raw.node.req) as ReadableStream;
+        stream = WebStream.from(
+          request.raw.node.req,
+        ) as unknown as ReadableStream;
       }
 
       if (!stream) {

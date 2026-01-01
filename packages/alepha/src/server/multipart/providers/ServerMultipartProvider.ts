@@ -59,7 +59,9 @@ export class ServerMultipartProvider {
         webRequest = new Request(request.url, {
           method: request.method,
           headers: request.headers,
-          body: WebStream.from(request.raw.node.req) as ReadableStream,
+          body: WebStream.from(
+            request.raw.node.req,
+          ) as unknown as ReadableStream,
           duplex: "half",
         } as RequestInit & { duplex: "half" });
       }

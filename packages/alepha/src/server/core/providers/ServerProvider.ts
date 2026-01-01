@@ -212,10 +212,13 @@ export class ServerProvider {
 
     // if response.body is node stream
     if (response.body instanceof Readable) {
-      ev.res = new Response(Readable.toWeb(response.body) as ReadableStream, {
-        status: response.status,
-        headers: response.headers,
-      });
+      ev.res = new Response(
+        Readable.toWeb(response.body) as unknown as ReadableStream,
+        {
+          status: response.status,
+          headers: response.headers,
+        },
+      );
       return;
     }
 

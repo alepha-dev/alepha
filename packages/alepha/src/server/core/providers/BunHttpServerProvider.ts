@@ -21,9 +21,6 @@ declare module "alepha" {
   interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
-// Type declaration for Bun global (only when running in Bun runtime)
-declare const Bun: any;
-
 export class BunHttpServerProvider extends ServerProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
