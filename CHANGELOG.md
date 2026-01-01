@@ -1,3 +1,14 @@
+## [0.14.1] - 2026-01-01
+
+### Features
+
+- **redis**: add native Bun client support ()
+- **orm**: add native Bun pg/sqlite support ()
+- **orm**: remove all jsonb query features ()
+- **command**: add sub-command support, command env parsing and mode (production, preview, ...) ()
+- **cli**: add deploy command (vercel, cloudflare, surge) ()
+- **react/head**: add SEO options (generate og, twitter meta) ()
+
 ## [0.14.0] - 2025-12-29
 
 ### Features

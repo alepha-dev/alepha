@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@alepha/react": "0.14.0",
+    "@alepha/react": "0.14.1",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@tabler/icons-react": "^3.36.0",
-    "alepha": "^0.14.0",
+    "alepha": "^0.14.1",
     "fuse.js": "^7.1.0",
     "react": "^19.2.3"
   },
@@ -18,7 +18,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19",
     "@xmldom/xmldom": "^0.8.11",
-    "alepha": "^0.14.0",
+    "alepha": "^0.14.1",
     "highlight.js": "^11.11.1",
     "jsdom": "^27.4.0",
     "marked": "^17.0.1",
