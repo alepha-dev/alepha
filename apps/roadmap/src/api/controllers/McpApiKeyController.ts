@@ -1,6 +1,7 @@
-import { $inject, t } from "alepha";
+import { t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { $repository } from "alepha/orm";
 import { CryptoProvider } from "alepha/security";
 import {
   $action,
@@ -8,14 +9,13 @@ import {
   ForbiddenError,
   okSchema,
 } from "alepha/server";
-import type { McpApiKey } from "../entities/mcpApiKeys.ts";
-import { Db } from "../providers/Db.ts";
+import { type McpApiKey, mcpApiKeys } from "../entities/mcpApiKeys.ts";
 
 export class McpApiKeyController {
   protected readonly log = $logger();
-  protected readonly db = $inject(Db);
-  protected readonly crypto = $inject(CryptoProvider);
-  protected readonly dt = $inject(DateTimeProvider);
+  protected readonly mcpApiKeys = $repository(mcpApiKeys);
+  protected readonly crypto = new CryptoProvider();
+  protected readonly dt = new DateTimeProvider();
 
   // -----------------------------------------------------------------------------------------------------------------
 
@@ -43,7 +43,7 @@ export class McpApiKeyController {
     },
     handler: async ({ body, user }) => {
       // Check for duplicate name for this user
-      const existing = await this.db.mcpApiKeys
+      const existing = await this.mcpApiKeys
         .findOne({
           where: {
             userId: { eq: user.id },
@@ -64,7 +64,7 @@ export class McpApiKeyController {
       // Get user's current roles
       const roles = user.roles ?? [];
 
-      const apiKey = await this.db.mcpApiKeys.create({
+      const apiKey = await this.mcpApiKeys.create({
         userId: user.id,
         name: body.name,
         tokenHash,
@@ -103,7 +103,7 @@ export class McpApiKeyController {
       ),
     },
     handler: async ({ user }) => {
-      const keys = await this.db.mcpApiKeys.findMany({
+      const keys = await this.mcpApiKeys.findMany({
         where: { userId: { eq: user.id } },
       });
 
@@ -131,7 +131,7 @@ export class McpApiKeyController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const apiKey = await this.db.mcpApiKeys.findOne({
+      const apiKey = await this.mcpApiKeys.findOne({
         where: { id: { eq: params.id } },
       });
 
@@ -140,7 +140,7 @@ export class McpApiKeyController {
         throw new ForbiddenError("Cannot revoke API key owned by another user");
       }
 
-      await this.db.mcpApiKeys.deleteById(params.id);
+      await this.mcpApiKeys.deleteById(params.id);
 
       return { ok: true };
     },
@@ -159,7 +159,7 @@ export class McpApiKeyController {
   } | null> {
     // Find keys that might match (we need to check all since we can't reverse the hash)
     // This is not ideal for large numbers of keys, but works for now
-    const allKeys = await this.db.mcpApiKeys.findMany({});
+    const allKeys = await this.mcpApiKeys.findMany({});
 
     for (const key of allKeys) {
       const isValid = await this.crypto.verifyPassword(token, key.tokenHash);
@@ -170,7 +170,7 @@ export class McpApiKeyController {
         }
 
         // Update last used timestamp
-        await this.db.mcpApiKeys.updateById(key.id, {
+        await this.mcpApiKeys.updateById(key.id, {
           lastUsedAt: this.dt.nowISOString(),
         });
 

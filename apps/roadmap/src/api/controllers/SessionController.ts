@@ -1,8 +1,8 @@
-import { $inject, type Static, t } from "alepha";
+import { type Static, t } from "alepha";
 import { sessions } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
+import { $repository } from "alepha/orm";
 import { $action, $route } from "alepha/server";
-import { Db } from "../providers/Db.ts";
 
 export const userSession = t.extend(sessions.schema, {
   current: t.boolean(),
@@ -11,8 +11,8 @@ export const userSession = t.extend(sessions.schema, {
 export type UserSession = Static<typeof userSession>;
 
 export class SessionController {
-  db = $inject(Db);
-  dt = $inject(DateTimeProvider);
+  sessions = $repository(sessions);
+  dt = new DateTimeProvider();
 
   cleanup = $route({
     path: "/session/cleanup",
@@ -20,7 +20,7 @@ export class SessionController {
       response: t.string(),
     },
     handler: async () => {
-      await this.db.sessions.deleteMany({
+      await this.sessions.deleteMany({
         expiresAt: { lt: this.dt.nowISOString() },
       });
 
@@ -33,13 +33,13 @@ export class SessionController {
       response: t.array(userSession),
     },
     handler: async ({ user }) => {
-      const sessions = await this.db.sessions.findMany({
+      const userSessions = await this.sessions.findMany({
         where: {
           userId: { eq: user.id },
         },
       });
 
-      return sessions.map((session) => {
+      return userSessions.map((session) => {
         return {
           ...session,
           current: session.id === user.sessionId,
@@ -56,14 +56,14 @@ export class SessionController {
       response: t.void(),
     },
     handler: async ({ params, user }) => {
-      const session = await this.db.sessions.findOne({
+      const session = await this.sessions.findOne({
         where: {
           id: { eq: params.sessionId },
           userId: { eq: user.id },
         },
       });
 
-      await this.db.sessions.deleteById(session.id);
+      await this.sessions.deleteById(session.id);
     },
   });
 
@@ -72,7 +72,7 @@ export class SessionController {
       response: t.void(),
     },
     handler: async ({ user }) => {
-      await this.db.sessions.deleteMany({
+      await this.sessions.deleteMany({
         userId: user.id,
       });
     },

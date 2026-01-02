@@ -97,12 +97,12 @@ export class AppRouter {
 
   home = $page({
     path: "/",
-    lazy: () => import("./components/home/Home.jsx"),
+    lazy: () => import("./components/home/Home.tsx"),
   });
 
   projectCreate = $page({
     path: "/p-new",
-    lazy: () => import("./components/project/ProjectCreate.jsx"),
+    lazy: () => import("./components/project/ProjectCreate.tsx"),
   });
 
   project = $page({
@@ -119,7 +119,7 @@ export class AppRouter {
         projectId: t.integer(),
       }),
     },
-    lazy: () => import("./components/project/ProjectView.jsx"),
+    lazy: () => import("./components/project/ProjectView.tsx"),
     resolve: async ({ params }) => {
       const { character, tasks, ...project } =
         await this.projectApi.getProjectById({
@@ -145,12 +145,12 @@ export class AppRouter {
 
   projectBoard = $page({
     path: "/",
-    lazy: () => import("./components/project/ProjectBoard.jsx"),
+    lazy: () => import("./components/project/ProjectBoard.tsx"),
   });
 
   projectPlayers = $page({
     path: "/players",
-    lazy: () => import("./components/project/ProjectPlayers.jsx"),
+    lazy: () => import("./components/project/ProjectPlayers.tsx"),
     resolve: async ({ params }) => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
@@ -180,7 +180,7 @@ export class AppRouter {
 
   projectAnalytics = $page({
     path: "/analytics",
-    lazy: () => import("./components/project/ProjectStats.jsx"),
+    lazy: () => import("./components/project/ProjectStats.tsx"),
     resolve: async ({ params }) => {
       const stats = await this.projectStatsApi.getProjectStats({
         params: {
@@ -195,7 +195,7 @@ export class AppRouter {
 
   projectSettings = $page({
     path: "/settings",
-    lazy: () => import("./components/project/ProjectSettings.jsx"),
+    lazy: () => import("./components/project/ProjectSettings.tsx"),
     resolve: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
@@ -238,7 +238,7 @@ export class AppRouter {
         };
       }
     },
-    lazy: () => import("./components/project/task/TaskView.jsx"),
+    lazy: () => import("./components/project/task/TaskView.tsx"),
     resolve: async ({ params }) => {
       const task = await this.taskApi.getTaskById({
         params: {

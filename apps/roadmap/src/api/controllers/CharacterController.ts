@@ -1,9 +1,12 @@
-import { $inject, t } from "alepha";
+import { t } from "alepha";
+import { $repository } from "alepha/orm";
 import { $action } from "alepha/server";
-import { Db } from "../providers/Db.ts";
+import { characters } from "../entities/characters.ts";
+import { projects } from "../entities/projects.ts";
 
 export class CharacterController {
-  db = $inject(Db);
+  characters = $repository(characters);
+  projects = $repository(projects);
 
   getMyCharacters = $action({
     schema: {
@@ -21,7 +24,7 @@ export class CharacterController {
       ),
     },
     handler: async ({ user }) => {
-      const userCharacters = await this.db.characters.findMany({
+      const userCharacters = await this.characters.findMany({
         where: { userId: { eq: user.id } },
       });
       const userCharacterIds = userCharacters.map((c) => c.id);
@@ -31,14 +34,16 @@ export class CharacterController {
       }
 
       // Fetch projects for each character
-      const projects = await this.db.projects.findMany({
+      const userProjects = await this.projects.findMany({
         where: { id: { inArray: userCharacters.map((c) => c.projectId) } },
       });
 
       return (
         await Promise.all(
           userCharacters.map(async (character) => {
-            const project = projects.find((p) => p.id === character.projectId);
+            const project = userProjects.find(
+              (p) => p.id === character.projectId,
+            );
             if (!project) {
               return;
             }

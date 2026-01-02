@@ -1,6 +1,9 @@
 import { $inject, t } from "alepha";
 import { $tool } from "alepha/mcp";
-import { Db } from "../../api/providers/Db.ts";
+import { $repository } from "alepha/orm";
+import { characters } from "../../api/entities/characters.ts";
+import { projects } from "../../api/entities/projects.ts";
+import { tasks } from "../../api/entities/tasks.ts";
 import { Security } from "../../api/providers/Security.ts";
 import { McpAuth } from "../McpAuth.ts";
 
@@ -29,8 +32,10 @@ const projectParams = {
  */
 export class ProjectTools {
   protected readonly auth = $inject(McpAuth);
-  protected readonly db = $inject(Db);
-  protected readonly security = $inject(Security);
+  protected readonly projects = $repository(projects);
+  protected readonly characters = $repository(characters);
+  protected readonly tasks = $repository(tasks);
+  protected readonly security = new Security();
 
   /**
    * List all projects (campaigns) the user has access to.
@@ -52,14 +57,14 @@ export class ProjectTools {
       }),
     },
     handler: async ({ context }) => {
-      const auth = await this.auth.authenticate(context);
+      const authContext = await this.auth.authenticate(context);
 
       // Get all projects user has access to
-      const userProjects = await this.auth.getUserProjects(auth);
+      const userProjects = await this.auth.getUserProjects(authContext);
 
       // Get ownership info
-      const ownedProjects = await this.db.projects.findMany({
-        where: { createdBy: { eq: auth.user.id } },
+      const ownedProjects = await this.projects.findMany({
+        where: { createdBy: { eq: authContext.user.id } },
       });
       const ownedIds = new Set(ownedProjects.map((p) => p.id));
 
@@ -109,23 +114,23 @@ export class ProjectTools {
       }),
     },
     handler: async ({ params, context }) => {
-      const auth = await this.auth.authenticate(context);
+      const authContext = await this.auth.authenticate(context);
       const projectId = await this.auth.resolveProject(
-        auth,
+        authContext,
         params.project,
         params.project_name,
       );
 
       const { project } = await this.security.checkOwnership(
         projectId,
-        auth.user,
+        authContext.user,
       );
 
-      const character = await this.db.characters
+      const character = await this.characters
         .findOne({
           where: {
             projectId: { eq: projectId },
-            userId: { eq: auth.user.id },
+            userId: { eq: authContext.user.id },
           },
         })
         .catch((err) => {
@@ -133,11 +138,11 @@ export class ProjectTools {
           throw err;
         });
 
-      const tasks = await this.db.tasks.findMany({
+      const projectTasks = await this.tasks.findMany({
         where: {
           projectId: { eq: projectId },
           completedAt: { isNull: true },
-          acceptedBy: { eq: auth.user.id },
+          acceptedBy: { eq: authContext.user.id },
         },
       });
 
@@ -147,7 +152,7 @@ export class ProjectTools {
         public: project.public ?? false,
         packages: project.packages,
         createdAt: project.createdAt,
-        activeTasks: tasks.map((task) => ({
+        activeTasks: projectTasks.map((task) => ({
           id: task.id,
           title: task.title,
           package: task.package,

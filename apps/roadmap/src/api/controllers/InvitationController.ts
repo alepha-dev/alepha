@@ -1,14 +1,20 @@
-import { $inject, t } from "alepha";
+import { t } from "alepha";
+import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
+import { $repository } from "alepha/orm";
 import { $action, BadRequestError, okSchema } from "alepha/server";
+import { characters } from "../entities/characters.ts";
 import { invitations } from "../entities/invitations.ts";
-import { Db } from "../providers/Db.ts";
+import { projects } from "../entities/projects.ts";
 import { Security } from "../providers/Security.ts";
 
 export class InvitationController {
   log = $logger();
-  db = $inject(Db);
-  security = $inject(Security);
+  invitations = $repository(invitations);
+  users = $repository(users);
+  characters = $repository(characters);
+  projects = $repository(projects);
+  security = new Security();
 
   createInvitation = $action({
     schema: {
@@ -28,7 +34,7 @@ export class InvitationController {
       }
 
       // Check if user is already a member of the project
-      const invitedUser = await this.db.users
+      const invitedUser = await this.users
         .findOne({
           where: {
             email: { eq: body.invitedEmail },
@@ -37,7 +43,7 @@ export class InvitationController {
         .catch(() => null);
 
       if (invitedUser) {
-        const existingCharacter = await this.db.characters
+        const existingCharacter = await this.characters
           .findOne({
             where: {
               projectId: { eq: body.projectId },
@@ -52,7 +58,7 @@ export class InvitationController {
       }
 
       // Check if invitation already exists
-      const existingInvitation = await this.db.invitations
+      const existingInvitation = await this.invitations
         .findOne({
           where: {
             projectId: { eq: body.projectId },
@@ -69,7 +75,7 @@ export class InvitationController {
       }
 
       // Create the invitation
-      return await this.db.invitations.create({
+      return await this.invitations.create({
         projectId: body.projectId,
         invitedBy: user.id,
         invitedEmail: body.invitedEmail,
@@ -96,19 +102,19 @@ export class InvitationController {
       ),
     },
     handler: async ({ user }) => {
-      const userInvitations = await this.db.invitations.findMany({
+      const userInvitations = await this.invitations.findMany({
         where: { invitedEmail: { eq: user.email } },
       });
 
       return await Promise.all(
         userInvitations.map(async (invitation) => {
           const [project, inviter] = await Promise.all([
-            this.db.projects.findOne({
+            this.projects.findOne({
               where: {
                 id: { eq: invitation.projectId },
               },
             }),
-            this.db.users.findOne({
+            this.users.findOne({
               where: {
                 id: { eq: invitation.invitedBy },
               },
@@ -138,7 +144,7 @@ export class InvitationController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const invitation = await this.db.invitations.findOne({
+      const invitation = await this.invitations.findOne({
         where: {
           id: { eq: params.id },
           invitedEmail: { eq: user.email },
@@ -147,7 +153,7 @@ export class InvitationController {
       });
 
       // Check if user is already a member of the project
-      const existingCharacter = await this.db.characters
+      const existingCharacter = await this.characters
         .findOne({
           where: {
             projectId: { eq: invitation.projectId },
@@ -158,7 +164,7 @@ export class InvitationController {
 
       if (existingCharacter) {
         // Update invitation status and return
-        await this.db.invitations.save({
+        await this.invitations.save({
           ...invitation,
           status: "accepted",
         });
@@ -168,7 +174,7 @@ export class InvitationController {
       }
 
       // Create character for the user
-      await this.db.characters.create({
+      await this.characters.create({
         projectId: invitation.projectId,
         userId: user.id,
         xp: 0,
@@ -177,7 +183,7 @@ export class InvitationController {
       });
 
       // Update invitation status
-      await this.db.invitations.save({
+      await this.invitations.save({
         ...invitation,
         status: "accepted",
       });
@@ -196,7 +202,7 @@ export class InvitationController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const invitation = await this.db.invitations.findOne({
+      const invitation = await this.invitations.findOne({
         where: {
           id: { eq: params.id },
           invitedEmail: { eq: user.email },
@@ -205,7 +211,7 @@ export class InvitationController {
       });
 
       // Delete the invitation
-      await this.db.invitations.deleteById(invitation.id);
+      await this.invitations.deleteById(invitation.id);
 
       return {
         ok: true,
@@ -223,7 +229,7 @@ export class InvitationController {
     handler: async ({ params, user }) => {
       await this.security.checkOwnership(params.projectId, user);
 
-      return await this.db.invitations.findMany({
+      return await this.invitations.findMany({
         where: { projectId: { eq: params.projectId } },
       });
     },
