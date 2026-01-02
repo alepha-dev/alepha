@@ -23,15 +23,13 @@ import OmnibarButton from "../buttons/OmnibarButton.tsx";
 import ToggleSidebarButton from "../buttons/ToggleSidebarButton.tsx";
 
 export interface SidebarProps {
-  menu?: SidebarNode[];
-  top?: SidebarNode[];
-  bottom?: SidebarNode[];
+  items?: SidebarNode[];
   onItemClick?: (item: SidebarMenuItem) => void;
   onSearchClick?: () => void;
   theme?: SidebarTheme;
   flexProps?: Partial<FlexProps>;
   collapsed?: boolean;
-  gap?: MantineBreakpoint;
+  gap?: MantineBreakpoint | number;
   hide?: {
     paths?: string[];
   };
@@ -48,7 +46,7 @@ export interface SidebarProps {
 
 export const Sidebar = (props: SidebarProps) => {
   const router = useRouter();
-  const { top = [], bottom = [], onItemClick } = props;
+  const { onItemClick } = props;
 
   const renderNode = (item: SidebarNode, key: number) => {
     if ("type" in item) {
@@ -128,11 +126,11 @@ export const Sidebar = (props: SidebarProps) => {
   };
 
   const getSidebarNodes = (): SidebarNode[] => {
-    if (props.menu) return props.menu;
+    if (props.items) return props.items;
     if (props.autoPopulateMenu) {
       const items = router.concretePages.map((page) => ({
         label: page.label ?? page.name,
-        description: page.description?.slice(0, 32),
+        //description: page.description?.slice(0, 32),
         icon: renderIcon(page.icon),
         href: router.path(page.name),
       })) as SidebarMenuItem[];
@@ -148,7 +146,7 @@ export const Sidebar = (props: SidebarProps) => {
   };
 
   const padding = "md";
-  const gap = props.menu ? props.gap : "xs";
+  const gap = props.items ? props.gap : "xs";
   const menu = useMemo(() => getSidebarNodes(), []);
 
   return (
@@ -160,10 +158,9 @@ export const Sidebar = (props: SidebarProps) => {
       {...props.flexProps}
     >
       <Flex gap={gap} px={padding} direction={"column"}>
-        {top.map((item, index) => renderNode(item, index))}
         {menu
           .filter((it) => it.position === "top")
-          .map((item, index) => renderNode(item, index + top.length))}
+          .map((item, index) => renderNode(item, index))}
       </Flex>
       <Flex
         gap={gap}
@@ -177,10 +174,9 @@ export const Sidebar = (props: SidebarProps) => {
           .map((item, index) => renderNode(item, index))}
       </Flex>
       <Flex gap={gap} px={padding} direction={"column"}>
-        {bottom.map((item, index) => renderNode(item, index))}
         {menu
           .filter((it) => it.position === "bottom")
-          .map((item, index) => renderNode(item, index + bottom.length))}
+          .map((item, index) => renderNode(item, index))}
       </Flex>
     </Flex>
   );

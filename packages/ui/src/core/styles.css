@@ -20,9 +20,7 @@
   --alepha-elevated: var(--alepha-elevated-light);
   --alepha-elevated-hover: var(--alepha-elevated-hover-light);
 
-  --alepha-border-light: var(--mantine-color-gray-3);
-  --alepha-border-dark: var(--mantine-color-dark-4);
-  --alepha-border: var(--alepha-border-light);
+  --alepha-border: var(--mantine-color-default-border);
 
   --alepha-text-light: #000000;
   --alepha-text-dark: #ffffff;
@@ -43,9 +41,7 @@
   --alepha-surface: var(--alepha-surface-dark);
   --alepha-elevated: var(--alepha-elevated-dark);
   --alepha-elevated-hover: var(--alepha-elevated-hover-dark);
-  --alepha-border: var(--alepha-border-dark);
   --alepha-background: var(--alepha-background-dark);
-  --alepha-shadow: var(--alepha-shadow-dark);
   --alepha-text: var(--alepha-text-dark);
 }
 

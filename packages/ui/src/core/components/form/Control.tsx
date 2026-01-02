@@ -48,6 +48,9 @@ export interface ControlProps extends GenericControlProps {
   object?: boolean | Partial<Omit<ControlObjectProps, "input">>; // Nested object editing
   array?: boolean | Partial<Omit<ControlArrayProps, "input">>; // Array of items editing
   custom?: ComponentType<CustomControlProps>;
+
+  slider?: boolean;
+  segmented?: boolean;
 }
 
 /**
@@ -183,6 +186,9 @@ const Control = (_props: ControlProps) => {
   ) {
     const controlNumberProps =
       typeof props.number === "object" ? props.number : {};
+    if (props.slider) {
+      controlNumberProps.sliderProps ??= {};
+    }
     return (
       <ControlNumber
         input={props.input}
@@ -237,6 +243,9 @@ const Control = (_props: ControlProps) => {
 
   if (isEnum || (isArray && !isArrayOfObjects) || props.select) {
     const opts = typeof props.select === "object" ? props.select : {};
+    if (props.segmented) {
+      opts.segmented ??= {};
+    }
     return (
       <ControlSelect
         input={props.input}

@@ -66,7 +66,8 @@ export class AlephaPackageBuilderCli {
       }
 
       if (packageName === "@alepha/ui") {
-        pkgData.exports["./styles"] = "./styles.css";
+        pkgData.exports["./styles"] = "./src/core/styles.css";
+        pkgData.exports["./json/styles"] = "./src/json/styles.css";
       }
 
       await this.fs.writeFile("package.json", JSON.stringify(pkgData, null, 2));

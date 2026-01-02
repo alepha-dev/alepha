@@ -1,5 +1,6 @@
 import { useInject } from "@alepha/react";
-import { JsonViewer, ui } from "@alepha/ui";
+import { ui } from "@alepha/ui";
+import { JsonViewer } from "@alepha/ui/json";
 import {
   ActionIcon,
   Badge,

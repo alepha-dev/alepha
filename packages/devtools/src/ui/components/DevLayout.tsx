@@ -4,9 +4,7 @@ import {
   AdminShell,
   DarkModeButton,
   OmnibarButton,
-  ui,
 } from "@alepha/ui";
-import { Flex } from "@mantine/core";
 import {
   IconApi,
   IconArchive,
@@ -24,23 +22,10 @@ import {
 export const DevLayout = () => {
   return (
     <AdminShell
-      appShellProps={{
-        withBorder: false,
-        bg: ui.colors.background,
-      }}
-      appShellNavbarProps={{
-        bg: ui.colors.transparent,
-      }}
-      appShellHeaderProps={{
-        bg: ui.colors.transparent,
-        style: {
-          backdropFilter: "blur(10px)",
-        },
-      }}
       sidebarProps={{
-        gap: "xs",
+        gap: 4,
         collapsed: true,
-        menu: [
+        items: [
           {
             label: "Dashboard",
             icon: <IconDashboard />,
@@ -123,22 +108,7 @@ export const DevLayout = () => {
         ],
       }}
     >
-      <Flex
-        className={"overflow-auto"}
-        w={"100%"}
-        flex={1}
-        direction={"column"}
-        bd={`1px solid ${ui.colors.border}`}
-        bg={ui.colors.elevated}
-        ml={-16}
-        mr={-16}
-        mt={-16}
-        style={{
-          borderTopLeftRadius: 16,
-        }}
-      >
-        <NestedView />
-      </Flex>
+      <NestedView />
     </AdminShell>
   );
 };

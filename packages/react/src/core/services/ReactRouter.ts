@@ -59,6 +59,14 @@ export class ReactRouter<T extends object> {
     } = {},
   ) {
     const page = this.pageApi.page(name as string);
+    if (!page.lazy && !page.component) {
+      return {
+        ...page,
+        label: page.label ?? page.name,
+        children: undefined,
+      }
+    }
+
     return {
       ...page,
       label: page.label ?? page.name,

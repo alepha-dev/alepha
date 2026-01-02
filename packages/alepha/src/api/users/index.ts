@@ -2,6 +2,8 @@ import { $module } from "alepha";
 import { AlephaApiNotifications } from "alepha/api/notifications";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { AlephaEmail } from "alepha/email";
+import { AlephaServerCompress } from "alepha/server/compress";
+import { AlephaServerHelmet } from "alepha/server/helmet";
 import { IdentityController } from "./controllers/IdentityController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
 import { UserController } from "./controllers/UserController.ts";
@@ -65,6 +67,8 @@ export const AlephaApiUsers = $module({
   services: [
     AlephaApiVerification,
     AlephaApiNotifications,
+    AlephaServerHelmet,
+    AlephaServerCompress,
     AlephaEmail,
     UserRealmProvider,
     SessionService,

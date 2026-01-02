@@ -1,5 +1,6 @@
 import { useInject } from "@alepha/react";
-import { JsonViewer, ui } from "@alepha/ui";
+import { ui } from "@alepha/ui";
+import { JsonViewer } from "@alepha/ui/json";
 import {
   ActionIcon,
   Badge,
@@ -434,12 +435,7 @@ const MessagesTab = ({ topic }: { topic: DevTopicMetadata }) => {
                     borderRadius: 4,
                   }}
                 >
-                  <JsonViewer
-                    data={msg.payload}
-                    maxDepth={3}
-                    size="xs"
-                    copyable={false}
-                  />
+                  <JsonViewer data={msg.payload} maxDepth={3} size="xs" />
                 </Box>
               </Box>
             ))}

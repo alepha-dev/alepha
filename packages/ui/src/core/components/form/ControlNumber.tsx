@@ -50,6 +50,8 @@ const ControlNumber = (props: ControlNumberProps) => {
   const { type, ...inputPropsWithoutType } = props.input.props;
 
   if (props.sliderProps) {
+    const min = props.sliderProps.min ?? inputProps.minimum ?? 0;
+    const max = props.sliderProps.max ?? inputProps.maximum ?? 100;
     return (
       <Input.Wrapper {...inputProps}>
         <div
@@ -65,6 +67,9 @@ const ControlNumber = (props: ControlNumberProps) => {
             {...inputPropsWithoutType}
             {...props.sliderProps}
             value={value}
+            min={min}
+            max={max}
+            label={() => value}
             onChange={(val) => {
               setValue(val);
               props.input.set(val);

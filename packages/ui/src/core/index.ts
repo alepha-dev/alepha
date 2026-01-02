@@ -35,7 +35,6 @@ export { default as LanguageButton } from "./components/buttons/LanguageButton.t
 export { default as OmnibarButton } from "./components/buttons/OmnibarButton.tsx";
 export type { ThemeButtonProps } from "./components/buttons/ThemeButton.tsx";
 export { default as ThemeButton } from "./components/buttons/ThemeButton.tsx";
-export { default as JsonViewer } from "./components/data/JsonViewer.tsx";
 export { default as AlertDialog } from "./components/dialogs/AlertDialog.tsx";
 export { default as ConfirmDialog } from "./components/dialogs/ConfirmDialog.tsx";
 export { default as PromptDialog } from "./components/dialogs/PromptDialog.tsx";
