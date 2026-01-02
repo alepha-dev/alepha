@@ -4,12 +4,16 @@ import {
   type AutocompleteProps,
   Flex,
   Input,
+  NumberInput,
+  type NumberInputProps,
   PasswordInput,
   type PasswordInputProps,
   SegmentedControl,
   type SegmentedControlProps,
   Select,
   type SelectProps,
+  Slider,
+  type SliderProps,
   Switch,
   type SwitchProps,
   Textarea,
@@ -35,6 +39,8 @@ export interface ControlProps {
   password?: boolean | PasswordInputProps;
   switch?: boolean | SwitchProps;
   segmented?: boolean | Partial<SegmentedControlProps>;
+  slider?: boolean | Partial<SliderProps>;
+  number?: boolean | NumberInputProps;
 
   custom?: ComponentType<CustomControlProps>;
 }

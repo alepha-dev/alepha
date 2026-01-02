@@ -1,19 +1,21 @@
-import { $inject, t } from "alepha";
+import { t } from "alepha";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
-import { pageQuerySchema } from "alepha/orm";
+import { $repository, pageQuerySchema } from "alepha/orm";
 import { $action, ForbiddenError, okSchema } from "alepha/server";
 import { type Character, characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
 import { tasks } from "../entities/tasks.ts";
 import type { User } from "../entities/users.ts";
-import { Db } from "../providers/Db.ts";
 import { Security } from "../providers/Security.ts";
 
 export class ProjectController {
   log = $logger();
-  db = $inject(Db);
-  security = $inject(Security);
+  projects = $repository(projects);
+  characters = $repository(characters);
+  tasks = $repository(tasks);
+  users = $repository(users);
+  security = new Security();
 
   createProject = $action({
     schema: {
@@ -23,7 +25,7 @@ export class ProjectController {
     handler: async ({ body, user }) => {
       // TODO: load user + check if they have a free project slot
 
-      const count = await this.db.projects.count({
+      const count = await this.projects.count({
         createdBy: { eq: user.id },
       });
 
@@ -33,12 +35,12 @@ export class ProjectController {
         );
       }
 
-      const project = await this.db.projects.create({
+      const project = await this.projects.create({
         ...body,
         createdBy: user.id,
       });
 
-      await this.db.characters.create({
+      await this.characters.create({
         projectId: project.id,
         userId: user.id,
         xp: 0,
@@ -57,16 +59,16 @@ export class ProjectController {
       response: t.array(projects.schema),
     },
     handler: async ({ user }) => {
-      const characters = await this.db.characters.findMany({
+      const userCharacters = await this.characters.findMany({
         where: { userId: { eq: user.id } },
       });
 
-      const characterProjectIds = characters.map((it) => it.projectId);
+      const characterProjectIds = userCharacters.map((it) => it.projectId);
       if (characterProjectIds.length === 0) {
         return [];
       }
 
-      return await this.db.projects.findMany({
+      return await this.projects.findMany({
         where: { id: { inArray: characterProjectIds } },
         limit: characterProjectIds.length,
       });
@@ -85,13 +87,13 @@ export class ProjectController {
     handler: async ({ params, user }) => {
       await this.security.checkOwnership(params.id, user);
 
-      const characters = await this.db.characters.findMany({
+      const projectCharacters = await this.characters.findMany({
         where: { projectId: { eq: params.id } },
       });
 
-      const userIds = characters.map((it) => it.userId);
+      const userIds = projectCharacters.map((it) => it.userId);
 
-      return await this.db.users.findMany({
+      return await this.users.findMany({
         where: { id: { inArray: userIds } },
         limit: userIds.length,
       });
@@ -117,7 +119,7 @@ export class ProjectController {
         project.public = body.public;
       }
 
-      await this.db.projects.save(project);
+      await this.projects.save(project);
       return project;
     },
   });
@@ -135,7 +137,7 @@ export class ProjectController {
     handler: async ({ params, user }) => {
       const { project } = await this.security.checkOwnership(params.id, user);
 
-      const character = await this.db.characters
+      const character = await this.characters
         .findOne({
           where: {
             projectId: { eq: params.id },
@@ -147,7 +149,7 @@ export class ProjectController {
           throw err;
         });
 
-      const tasks = await this.db.tasks.findMany({
+      const projectTasks = await this.tasks.findMany({
         where: {
           projectId: { eq: params.id },
           completedAt: { isNull: true },
@@ -155,7 +157,7 @@ export class ProjectController {
         },
       });
 
-      return { ...project, tasks, character };
+      return { ...project, tasks: projectTasks, character };
     },
   });
 
@@ -173,11 +175,11 @@ export class ProjectController {
     handler: async ({ params, user }) => {
       await this.security.checkOwnership(params.id, user);
 
-      const projectCharacters = await this.db.characters.findMany({
+      const projectCharacters = await this.characters.findMany({
         where: { projectId: { eq: params.id } },
       });
 
-      const users = await this.db.users.findMany({
+      const projectUsers = await this.users.findMany({
         limit: projectCharacters.length,
         where: {
           id: { inArray: projectCharacters.map((char) => char.userId) },
@@ -191,7 +193,9 @@ export class ProjectController {
       > = [];
 
       for (const character of projectCharacters) {
-        const characterUser = users.find((it) => it.id === character.userId);
+        const characterUser = projectUsers.find(
+          (it) => it.id === character.userId,
+        );
         if (!characterUser) {
           this.log.warn(
             `User with id ${character.userId} not found for character ${character.id}`,
@@ -225,11 +229,11 @@ export class ProjectController {
     handler: async ({ params, user }) => {
       await this.security.checkOwnership(params.id, user);
 
-      await this.db.projects.deleteById(params.id);
-      await this.db.characters.deleteMany({
+      await this.projects.deleteById(params.id);
+      await this.characters.deleteMany({
         projectId: { eq: params.id },
       });
-      await this.db.tasks.deleteMany({
+      await this.tasks.deleteMany({
         projectId: { eq: params.id },
       });
 
@@ -252,7 +256,7 @@ export class ProjectController {
       const { project } = await this.security.checkOwnership(params.id, user);
 
       // Update all tasks with the old package name to the new one
-      const tasksToUpdate = await this.db.tasks.findMany({
+      const tasksToUpdate = await this.tasks.findMany({
         where: {
           projectId: { eq: params.id },
           package: { eq: body.oldZoneName },
@@ -261,7 +265,7 @@ export class ProjectController {
 
       // Update each task's package field
       for (const task of tasksToUpdate) {
-        await this.db.tasks.updateById(task.id, {
+        await this.tasks.updateById(task.id, {
           package: body.newZoneName,
         });
       }
@@ -271,7 +275,7 @@ export class ProjectController {
         pkg === body.oldZoneName ? body.newZoneName : pkg,
       );
 
-      await this.db.projects.updateById(params.id, {
+      await this.projects.updateById(params.id, {
         packages: updatedPackages,
       });
 

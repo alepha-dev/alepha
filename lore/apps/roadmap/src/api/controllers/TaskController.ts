@@ -1,22 +1,26 @@
-import { $inject, t } from "alepha";
+import { t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { pageQuerySchema, pg } from "alepha/orm";
+import { $repository, pageQuerySchema, pg } from "alepha/orm";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 import sanitizeHtml from "sanitize-html";
 import { characters } from "../entities/characters.ts";
+import { projects } from "../entities/projects.ts";
 import { tasks } from "../entities/tasks.ts";
-import { Db } from "../providers/Db.ts";
+import { taskVotes } from "../entities/taskVotes.ts";
 import { Security } from "../providers/Security.ts";
 import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
 
 export class TaskController {
   log = $logger();
-  db = $inject(Db);
-  characterInfo = $inject(CharacterInfo);
-  dt = $inject(DateTimeProvider);
-  security = $inject(Security);
+  tasks = $repository(tasks);
+  taskVotes = $repository(taskVotes);
+  projects = $repository(projects);
+  characters = $repository(characters);
+  characterInfo = new CharacterInfo();
+  dt = new DateTimeProvider();
+  security = new Security();
 
   createTask = $action({
     schema: {
@@ -34,12 +38,12 @@ export class TaskController {
 
       if (body.package && !project.packages.includes(body.package)) {
         project.packages.push(body.package);
-        await this.db.projects.updateById(project.id, {
+        await this.projects.updateById(project.id, {
           packages: project.packages,
         });
       }
 
-      return await this.db.tasks.create({
+      return await this.tasks.create({
         ...body,
         createdBy: user.id,
         history: [],
@@ -61,7 +65,7 @@ export class TaskController {
     handler: async ({ params, query, user }) => {
       await this.security.checkOwnership(params.projectId, user);
 
-      const where = this.db.tasks.createQueryWhere();
+      const where = this.tasks.createQueryWhere();
       where.projectId = { eq: params.projectId };
 
       if (query.search) {
@@ -81,7 +85,7 @@ export class TaskController {
 
       query.sort ??= "-updatedAt";
 
-      return this.db.tasks.paginate(query, {
+      return this.tasks.paginate(query, {
         where,
       });
     },
@@ -95,7 +99,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, user }) => {
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
           acceptedAt: { isNotNull: true },
@@ -113,7 +117,7 @@ export class TaskController {
         action: "unassigned",
       });
 
-      await this.db.tasks.save(task);
+      await this.tasks.save(task);
       return task;
     },
   });
@@ -126,7 +130,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, user }) => {
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
           acceptedAt: { isNull: true },
@@ -144,7 +148,7 @@ export class TaskController {
         action: "assigned",
       });
 
-      await this.db.tasks.save(task);
+      await this.tasks.save(task);
       return task;
     },
   });
@@ -159,8 +163,8 @@ export class TaskController {
       }),
     },
     handler: async ({ params, user }) => {
-      return this.db.tasks.transaction(async (tx) => {
-        const task = await this.db.tasks.findOne(
+      return this.tasks.transaction(async (tx) => {
+        const task = await this.tasks.findOne(
           {
             where: {
               id: { eq: params.id },
@@ -185,7 +189,7 @@ export class TaskController {
           }
         }
 
-        const character = await this.db.characters.findOne(
+        const character = await this.characters.findOne(
           {
             where: {
               projectId: { eq: task.projectId },
@@ -204,8 +208,8 @@ export class TaskController {
         task.completedBy = user.id;
 
         await Promise.all([
-          this.db.characters.save(character, { tx }),
-          this.db.tasks.save(task, { tx }),
+          this.characters.save(character, { tx }),
+          this.tasks.save(task, { tx }),
         ]);
 
         return {
@@ -224,7 +228,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, user }) => {
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
         },
@@ -254,7 +258,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, body, user }) => {
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
           completedAt: { isNull: true },
@@ -270,7 +274,7 @@ export class TaskController {
         body.description = sanitizeHtml(body.description);
       }
 
-      return await this.db.tasks.updateById(params.id, {
+      return await this.tasks.updateById(params.id, {
         ...body,
         history: [
           ...task.history,
@@ -295,7 +299,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, user, body }) => {
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
           completedAt: { isNull: true },
@@ -313,7 +317,7 @@ export class TaskController {
       task.objectives[body.index].completed =
         !task.objectives[body.index].completed;
 
-      return await this.db.tasks.updateById(params.id, {
+      return await this.tasks.updateById(params.id, {
         objectives: task.objectives,
         history: task.objectives[body.index].completed
           ? [
@@ -345,7 +349,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, body, user }) => {
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
           completedAt: { isNull: true },
@@ -356,7 +360,7 @@ export class TaskController {
 
       // TODO: character.can("edit:task", projectId)
 
-      return await this.db.tasks.updateById(params.id, {
+      return await this.tasks.updateById(params.id, {
         objectives: body.objectives,
         history: [
           ...task.history,
@@ -378,7 +382,7 @@ export class TaskController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
         },
@@ -388,7 +392,7 @@ export class TaskController {
 
       // TODO: character.can("delete:task", projectId)
 
-      await this.db.tasks.deleteById(params.id);
+      await this.tasks.deleteById(params.id);
 
       return { ok: true };
     },
@@ -405,7 +409,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, body, user }) => {
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
         },
@@ -414,7 +418,7 @@ export class TaskController {
       await this.security.checkOwnership(task.projectId, user);
 
       // Update the task's package (zone)
-      const updatedTask = await this.db.tasks.updateById(params.id, {
+      const updatedTask = await this.tasks.updateById(params.id, {
         package: body.newZone,
         history: [
           ...task.history,
@@ -427,9 +431,9 @@ export class TaskController {
       });
 
       // Ensure the new zone exists in the project's packages list
-      const project = await this.db.projects.findById(task.projectId);
+      const project = await this.projects.findById(task.projectId);
       if (!project.packages.includes(body.newZone)) {
-        await this.db.projects.updateById(project.id, {
+        await this.projects.updateById(project.id, {
           packages: [...project.packages, body.newZone],
         });
       }
@@ -449,7 +453,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, body, user }) => {
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
         },
@@ -460,7 +464,7 @@ export class TaskController {
       // sanitize HTML content
       const sanitizedNote = sanitizeHtml(body.note);
 
-      return await this.db.tasks.updateById(params.id, {
+      return await this.tasks.updateById(params.id, {
         note: sanitizedNote,
       });
     },
@@ -474,7 +478,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, user }) => {
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
           acceptedAt: { isNotNull: true },
@@ -496,7 +500,7 @@ export class TaskController {
         startedAt: this.dt.nowISOString(),
       });
 
-      return await this.db.tasks.updateById(params.id, {
+      return await this.tasks.updateById(params.id, {
         timerSessions: sessions,
       });
     },
@@ -510,7 +514,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, user }) => {
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
           acceptedAt: { isNotNull: true },
@@ -530,7 +534,7 @@ export class TaskController {
       // Stop the timer
       lastSession.stoppedAt = this.dt.nowISOString();
 
-      return await this.db.tasks.updateById(params.id, {
+      return await this.tasks.updateById(params.id, {
         timerSessions: sessions,
       });
     },
@@ -547,7 +551,7 @@ export class TaskController {
       }),
     },
     handler: async ({ params, user }) => {
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
         },
@@ -556,7 +560,7 @@ export class TaskController {
       await this.security.checkOwnership(task.projectId, user);
 
       // Check if user already voted
-      const [existingVote] = await this.db.taskVotes.findMany({
+      const [existingVote] = await this.taskVotes.findMany({
         where: {
           taskId: { eq: params.id },
           userId: { eq: user.id },
@@ -566,17 +570,17 @@ export class TaskController {
 
       if (existingVote) {
         // Remove vote (toggle off)
-        await this.db.taskVotes.deleteById(existingVote.id);
+        await this.taskVotes.deleteById(existingVote.id);
       } else {
         // Add vote
-        await this.db.taskVotes.create({
+        await this.taskVotes.create({
           taskId: params.id,
           userId: user.id,
         });
       }
 
       // Get updated vote count
-      const voteCount = await this.db.taskVotes.count({
+      const voteCount = await this.taskVotes.count({
         taskId: { eq: params.id },
       });
 
@@ -598,7 +602,7 @@ export class TaskController {
       }),
     },
     handler: async ({ params, user }) => {
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
         },
@@ -607,7 +611,7 @@ export class TaskController {
       await this.security.checkOwnership(task.projectId, user);
 
       // Check if user voted
-      const [existingVote] = await this.db.taskVotes.findMany({
+      const [existingVote] = await this.taskVotes.findMany({
         where: {
           taskId: { eq: params.id },
           userId: { eq: user.id },
@@ -616,7 +620,7 @@ export class TaskController {
       });
 
       // Get vote count
-      const voteCount = await this.db.taskVotes.count({
+      const voteCount = await this.taskVotes.count({
         taskId: { eq: params.id },
       });
 

@@ -1,10 +1,14 @@
 import { $inject, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $tool } from "alepha/mcp";
+import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 import sanitizeHtml from "sanitize-html";
+import { characters } from "../../api/entities/characters.ts";
+import { projects } from "../../api/entities/projects.ts";
 import type { Task } from "../../api/entities/tasks.ts";
-import { Db } from "../../api/providers/Db.ts";
+import { tasks } from "../../api/entities/tasks.ts";
+import { taskVotes } from "../../api/entities/taskVotes.ts";
 import { Security } from "../../api/providers/Security.ts";
 import { CharacterInfo } from "../../api/services/CharacterInfo.ts";
 import { McpAuth } from "../McpAuth.ts";
@@ -34,10 +38,13 @@ const projectParams = {
  */
 export class TaskTools {
   protected readonly auth = $inject(McpAuth);
-  protected readonly db = $inject(Db);
-  protected readonly security = $inject(Security);
-  protected readonly dt = $inject(DateTimeProvider);
-  protected readonly characterInfo = $inject(CharacterInfo);
+  protected readonly tasks = $repository(tasks);
+  protected readonly taskVotes = $repository(taskVotes);
+  protected readonly projects = $repository(projects);
+  protected readonly characters = $repository(characters);
+  protected readonly security = new Security();
+  protected readonly dt = new DateTimeProvider();
+  protected readonly characterInfo = new CharacterInfo();
 
   /**
    * List tasks for a project.
@@ -99,14 +106,14 @@ export class TaskTools {
       }),
     },
     handler: async ({ params, context }) => {
-      const auth = await this.auth.authenticate(context);
+      const authContext = await this.auth.authenticate(context);
       const projectId = await this.auth.resolveProject(
-        auth,
+        authContext,
         params.project,
         params.project_name,
       );
 
-      const where = this.db.tasks.createQueryWhere();
+      const where = this.tasks.createQueryWhere();
       where.projectId = { eq: projectId };
 
       if (params.search) {
@@ -126,7 +133,7 @@ export class TaskTools {
       const size = params.limit ?? 20;
       const page = params.offset ? Math.floor(params.offset / size) : 0;
 
-      const result = await this.db.tasks.paginate(
+      const result = await this.tasks.paginate(
         { page, size, sort: "-updatedAt" },
         { where },
       );
@@ -202,16 +209,16 @@ export class TaskTools {
       }),
     },
     handler: async ({ params, context }) => {
-      const auth = await this.auth.authenticate(context);
+      const authContext = await this.auth.authenticate(context);
       const projectId = await this.auth.resolveProject(
-        auth,
+        authContext,
         params.project,
         params.project_name,
       );
 
       const { project } = await this.security.checkOwnership(
         projectId,
-        auth.user,
+        authContext.user,
       );
 
       // sanitize HTML content
@@ -219,12 +226,12 @@ export class TaskTools {
 
       if (params.package && !project.packages.includes(params.package)) {
         project.packages.push(params.package);
-        await this.db.projects.updateById(project.id, {
+        await this.projects.updateById(project.id, {
           packages: project.packages,
         });
       }
 
-      const task = await this.db.tasks.create({
+      const task = await this.tasks.create({
         title: params.title,
         description,
         package: params.package,
@@ -232,7 +239,7 @@ export class TaskTools {
         complexity: params.complexity,
         objectives: params.objectives ?? [],
         projectId,
-        createdBy: auth.user.id,
+        createdBy: authContext.user.id,
         history: [],
       });
 
@@ -263,9 +270,9 @@ export class TaskTools {
       }),
     },
     handler: async ({ params, context }) => {
-      const auth = await this.auth.authenticate(context);
+      const authContext = await this.auth.authenticate(context);
 
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
           acceptedAt: { isNull: true },
@@ -273,17 +280,17 @@ export class TaskTools {
         },
       });
 
-      await this.security.checkOwnership(task.projectId, auth.user);
+      await this.security.checkOwnership(task.projectId, authContext.user);
 
       task.acceptedAt = this.dt.nowISOString();
-      task.acceptedBy = auth.user.id;
+      task.acceptedBy = authContext.user.id;
       task.history.push({
         at: this.dt.nowISOString(),
-        by: auth.user.id,
+        by: authContext.user.id,
         action: "assigned",
       });
 
-      await this.db.tasks.save(task);
+      await this.tasks.save(task);
 
       return {
         id: task.id,
@@ -314,10 +321,10 @@ export class TaskTools {
       }),
     },
     handler: async ({ params, context }) => {
-      const auth = await this.auth.authenticate(context);
+      const authContext = await this.auth.authenticate(context);
 
-      return this.db.tasks.transaction(async (tx) => {
-        const task = await this.db.tasks.findOne(
+      return this.tasks.transaction(async (tx) => {
+        const task = await this.tasks.findOne(
           {
             where: {
               id: { eq: params.id },
@@ -328,7 +335,7 @@ export class TaskTools {
           { tx },
         );
 
-        await this.security.checkOwnership(task.projectId, auth.user);
+        await this.security.checkOwnership(task.projectId, authContext.user);
 
         // Check if all objectives are completed
         if (task.objectives.length > 0) {
@@ -342,11 +349,11 @@ export class TaskTools {
           }
         }
 
-        const character = await this.db.characters.findOne(
+        const character = await this.characters.findOne(
           {
             where: {
               projectId: { eq: task.projectId },
-              userId: { eq: auth.user.id },
+              userId: { eq: authContext.user.id },
             },
           },
           { tx },
@@ -358,11 +365,11 @@ export class TaskTools {
         character.xp += xp;
         character.balance += money;
         task.completedAt = this.dt.nowISOString();
-        task.completedBy = auth.user.id;
+        task.completedBy = authContext.user.id;
 
         await Promise.all([
-          this.db.characters.save(character, { tx }),
-          this.db.tasks.save(task, { tx }),
+          this.characters.save(character, { tx }),
+          this.tasks.save(task, { tx }),
         ]);
 
         return {
@@ -433,16 +440,16 @@ export class TaskTools {
       }),
     },
     handler: async ({ params, context }) => {
-      const auth = await this.auth.authenticate(context);
+      const authContext = await this.auth.authenticate(context);
 
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
           completedAt: { isNull: true },
         },
       });
 
-      await this.security.checkOwnership(task.projectId, auth.user);
+      await this.security.checkOwnership(task.projectId, authContext.user);
 
       const updates: Partial<Task> = {};
 
@@ -469,12 +476,12 @@ export class TaskTools {
         ...task.history,
         {
           at: this.dt.nowISOString(),
-          by: auth.user.id,
+          by: authContext.user.id,
           action: "updated" as const,
         },
       ];
 
-      const updatedTask = await this.db.tasks.updateById(params.id, updates);
+      const updatedTask = await this.tasks.updateById(params.id, updates);
 
       return {
         id: updatedTask.id,
@@ -503,38 +510,38 @@ export class TaskTools {
       }),
     },
     handler: async ({ params, context }) => {
-      const auth = await this.auth.authenticate(context);
+      const authContext = await this.auth.authenticate(context);
 
-      const task = await this.db.tasks.findOne({
+      const task = await this.tasks.findOne({
         where: {
           id: { eq: params.id },
         },
       });
 
-      await this.security.checkOwnership(task.projectId, auth.user);
+      await this.security.checkOwnership(task.projectId, authContext.user);
 
       // Check if user already voted
-      const [existingVote] = await this.db.taskVotes.findMany({
+      const [existingVote] = await this.taskVotes.findMany({
         where: {
           taskId: { eq: params.id },
-          userId: { eq: auth.user.id },
+          userId: { eq: authContext.user.id },
         },
         limit: 1,
       });
 
       if (existingVote) {
         // Remove vote (toggle off)
-        await this.db.taskVotes.deleteById(existingVote.id);
+        await this.taskVotes.deleteById(existingVote.id);
       } else {
         // Add vote
-        await this.db.taskVotes.create({
+        await this.taskVotes.create({
           taskId: params.id,
-          userId: auth.user.id,
+          userId: authContext.user.id,
         });
       }
 
       // Get updated vote count
-      const voteCount = await this.db.taskVotes.count({
+      const voteCount = await this.taskVotes.count({
         taskId: { eq: params.id },
       });
 
@@ -572,7 +579,7 @@ export class TaskTools {
 
     // Get vote counts for each task
     for (const taskId of taskIds) {
-      const count = await this.db.taskVotes.count({
+      const count = await this.taskVotes.count({
         taskId: { eq: taskId },
       });
       voteCounts.set(taskId, count);

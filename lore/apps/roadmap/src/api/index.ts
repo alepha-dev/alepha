@@ -1,5 +1,4 @@
 import { $module } from "alepha";
-import { AdminController } from "./controllers/AdminController.ts";
 import { CharacterController } from "./controllers/CharacterController.ts";
 import { IdentityController } from "./controllers/IdentityController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
@@ -9,7 +8,6 @@ import { ProjectStatsController } from "./controllers/ProjectStatsController.ts"
 import { SessionController } from "./controllers/SessionController.ts";
 import { TaskController } from "./controllers/TaskController.ts";
 import { UserController } from "./controllers/UserController.ts";
-import { Db } from "./providers/Db.ts";
 import { Security } from "./providers/Security.ts";
 import { CharacterInfo } from "./services/CharacterInfo.ts";
 
@@ -17,7 +15,6 @@ export const RoadmapApi = $module({
   name: "roadmap.api",
   services: [
     Security,
-    Db,
     CharacterInfo,
     TaskController,
     ProjectController,
@@ -27,12 +24,10 @@ export const RoadmapApi = $module({
     IdentityController,
     ProjectStatsController,
     InvitationController,
-    AdminController,
     McpApiKeyController,
   ],
 });
 
-export * from "./controllers/AdminController.ts";
 export * from "./controllers/CharacterController.ts";
 export * from "./controllers/IdentityController.ts";
 export * from "./controllers/InvitationController.ts";
@@ -51,6 +46,5 @@ export * from "./entities/projects.ts";
 export * from "./entities/sessions.ts";
 export * from "./entities/tasks.ts";
 export * from "./entities/users.ts";
-export * from "./providers/Db.ts";
 export * from "./providers/Security.ts";
 export * from "./schemas/taskCreateSchema.ts";

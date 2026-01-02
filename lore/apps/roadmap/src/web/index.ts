@@ -5,6 +5,7 @@ import {
   midnightTheme,
 } from "@alepha/ui";
 import { AlephaUIAuth } from "@alepha/ui/auth";
+import { AlephaUIDemo } from "@alepha/ui/demo";
 import { $module } from "alepha";
 import { CharacterInfo } from "../api/services/CharacterInfo.ts";
 import { AppRouter } from "./AppRouter.ts";
@@ -24,6 +25,10 @@ export const RoadmapWeb = $module({
   name: "roadmap.web",
   services: [Toaster, I18n, AppRouter],
   register(alepha) {
+    if (!alepha.isProduction()) {
+      alepha.with(AlephaUIDemo);
+    }
+
     alepha
       .with(AlephaUI)
       .with(AlephaUIAuth)

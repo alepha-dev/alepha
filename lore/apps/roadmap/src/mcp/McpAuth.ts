@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
 import type { McpContext } from "alepha/mcp";
+import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import {
   BadRequestError,
@@ -8,7 +9,8 @@ import {
   UnauthorizedError,
 } from "alepha/server";
 import { McpApiKeyController } from "../api/controllers/McpApiKeyController.ts";
-import { Db } from "../api/providers/Db.ts";
+import { characters } from "../api/entities/characters.ts";
+import { projects } from "../api/entities/projects.ts";
 
 /**
  * Context data stored in McpContext.data for authenticated MCP requests.
@@ -26,7 +28,8 @@ export interface McpAuthContext {
 export class McpAuth {
   protected readonly log = $logger();
   protected readonly apiKeyController = $inject(McpApiKeyController);
-  protected readonly db = $inject(Db);
+  protected readonly projects = $repository(projects);
+  protected readonly characters = $repository(characters);
 
   /**
    * Extract and validate Bearer token from MCP context.
@@ -83,7 +86,7 @@ export class McpAuth {
   ): Promise<number> {
     if (projectId) {
       // Verify user has access to this project
-      const project = await this.db.projects
+      const project = await this.projects
         .findOne({
           where: { id: { eq: projectId } },
         })
@@ -95,7 +98,7 @@ export class McpAuth {
 
       // Check access: user is owner or has a character in the project
       if (project.createdBy !== auth.user.id) {
-        const character = await this.db.characters
+        const character = await this.characters
           .findOne({
             where: {
               projectId: { eq: projectId },
@@ -138,22 +141,22 @@ export class McpAuth {
     auth: McpAuthContext,
   ): Promise<Array<{ id: number; title: string; public: boolean }>> {
     // Get projects created by user
-    const ownedProjects = await this.db.projects.findMany({
+    const ownedProjects = await this.projects.findMany({
       where: { createdBy: { eq: auth.user.id } },
     });
 
     // Get projects where user has a character
-    const characters = await this.db.characters.findMany({
+    const userCharacters = await this.characters.findMany({
       where: { userId: { eq: auth.user.id } },
     });
 
-    const memberProjectIds = characters
+    const memberProjectIds = userCharacters
       .map((c) => c.projectId)
       .filter((id) => !ownedProjects.some((p) => p.id === id));
 
     const memberProjects =
       memberProjectIds.length > 0
-        ? await this.db.projects.findMany({
+        ? await this.projects.findMany({
             where: { id: { inArray: memberProjectIds } },
           })
         : [];

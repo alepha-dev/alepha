@@ -1,11 +1,12 @@
-import { $inject, AlephaError, t } from "alepha";
+import { AlephaError, t } from "alepha";
+import { identities } from "alepha/api/users";
+import { $repository } from "alepha/orm";
 import { CryptoProvider } from "alepha/security";
 import { $action } from "alepha/server";
-import { Db } from "../providers/Db.ts";
 
 export class IdentityController {
-  db = $inject(Db);
-  crypto = $inject(CryptoProvider);
+  identities = $repository(identities);
+  crypto = new CryptoProvider();
 
   getMyIdentities = $action({
     schema: {
@@ -20,7 +21,7 @@ export class IdentityController {
       ),
     },
     handler: async ({ user }) => {
-      const userIdentities = await this.db.identities.findMany({
+      const userIdentities = await this.identities.findMany({
         where: { userId: { eq: user.id } },
       });
 
@@ -48,7 +49,7 @@ export class IdentityController {
       const { username, password } = body;
 
       // Check if usernamePassword identity already exists
-      const existingIdentity = await this.db.identities
+      const existingIdentity = await this.identities
         .findOne({
           where: {
             provider: { eq: "usernamePassword" },
@@ -62,7 +63,7 @@ export class IdentityController {
       }
 
       // Check if username is already taken
-      const existingUsername = await this.db.identities
+      const existingUsername = await this.identities
         .findOne({
           where: {
             provider: { eq: "usernamePassword" },
@@ -79,7 +80,7 @@ export class IdentityController {
       const hashedPassword = await this.crypto.hashPassword(password);
 
       // Create the identity
-      await this.db.identities.create({
+      await this.identities.create({
         userId: user.id,
         provider: "usernamePassword",
         providerUserId: username,

@@ -1,12 +1,11 @@
 import { $inject, t } from "alepha";
 import { FileService } from "alepha/api/files";
-import { UserRealmProvider } from "alepha/api/users";
+import { UserRealmProvider, users } from "alepha/api/users";
+import { $repository } from "alepha/orm";
 import { $action } from "alepha/server";
-import { users } from "../entities/users.ts";
-import { Db } from "../providers/Db.ts";
 
 export class UserController {
-  db = $inject(Db);
+  users = $repository(users);
   fileService = $inject(FileService);
   realm = $inject(UserRealmProvider);
 
@@ -15,7 +14,7 @@ export class UserController {
       response: users.schema,
     },
     handler: async ({ user }) => {
-      return await this.db.users.findOne({
+      return await this.users.findOne({
         where: {
           id: { eq: user.id },
         },
@@ -38,7 +37,7 @@ export class UserController {
       });
 
       // Update the user's picture field
-      return await this.db.users.updateById(user.id, {
+      return await this.users.updateById(user.id, {
         picture: file.id,
       });
     },

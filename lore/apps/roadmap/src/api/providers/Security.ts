@@ -1,14 +1,20 @@
-import { $inject } from "alepha";
 import { $userRealm } from "alepha/api/users";
+import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { $authCredentials, $authGithub, $authGoogle } from "alepha/server/auth";
-import type { Character } from "../entities/characters.ts";
-import type { Project } from "../entities/projects.ts";
-import { Db } from "./Db.ts";
+import { type Character, characters } from "../entities/characters.ts";
+import { type Project, projects } from "../entities/projects.ts";
 
 export class Security {
-  db = $inject(Db);
+  projects = $repository(projects);
+  characters = $repository(characters);
+
   realm = $userRealm({
+    modules: {
+      jobs: true,
+      audits: true,
+      files: true,
+    },
     settings: {
       usernameRequired: true,
       resetPasswordAllowed: true,
@@ -23,7 +29,7 @@ export class Security {
     projectId: number,
     user: UserAccountToken,
   ): Promise<ProjectGuard> {
-    const project = await this.db.projects.findOne({
+    const project = await this.projects.findOne({
       where: {
         id: { eq: projectId },
       },
@@ -32,7 +38,7 @@ export class Security {
     if (project.createdBy !== user.id && !project.public && user.ownership) {
       return {
         project,
-        character: await this.db.characters.findOne({
+        character: await this.characters.findOne({
           where: {
             projectId: { eq: projectId },
             userId: { eq: user.id },

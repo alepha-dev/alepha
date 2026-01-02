@@ -1,13 +1,18 @@
 import { $inject, t } from "alepha";
 import { FileSystemProvider } from "alepha/file";
-import { sql } from "alepha/orm";
+import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { $action } from "alepha/server";
-import { Db } from "../providers/Db.ts";
+import { characters } from "../entities/characters.ts";
+import { projects } from "../entities/projects.ts";
+import { tasks } from "../entities/tasks.ts";
 import { Security } from "../providers/Security.ts";
 
 export class ProjectStatsController {
-  db = $inject(Db);
-  security = $inject(Security);
+  tasks = $repository(tasks);
+  characters = $repository(characters);
+  projects = $repository(projects);
+  database = $inject(DatabaseProvider);
+  security = new Security();
   fs = $inject(FileSystemProvider);
 
   getProjectStats = $action({
@@ -61,7 +66,7 @@ export class ProjectStatsController {
       await this.security.checkOwnership(params.id, user);
 
       // Get overview stats
-      const overviewQuery = await this.db.query(
+      const overviewQuery = await this.database.run(
         sql`
 				SELECT
 					COUNT(CASE WHEN t.deleted_at IS NULL THEN 1 END) as total_tasks,
@@ -69,8 +74,8 @@ export class ProjectStatsController {
 					COUNT(DISTINCT c.user_id) as active_players,
 					COALESCE(SUM(c.xp), 0) as total_xp,
 					COALESCE(AVG(t.complexity::numeric), 0) as average_task_complexity
-				FROM ${this.db.tasks.table} t
-				LEFT JOIN ${this.db.characters.table} c ON c.project_id = t.project_id
+				FROM ${this.tasks.table} t
+				LEFT JOIN ${this.characters.table} c ON c.project_id = t.project_id
 				WHERE t.project_id = ${params.id}
 			`,
         t.object({
@@ -92,17 +97,17 @@ export class ProjectStatsController {
       };
 
       // Get tasks by priority
-      const priorityQuery = await this.db.query(
+      const priorityQuery = await this.database.run(
         sql`
 				SELECT
-					${this.db.tasks.table.priority},
+					${this.tasks.table.priority},
 					COUNT(*) as count,
-					COUNT(CASE WHEN ${this.db.tasks.table.completedAt} IS NOT NULL THEN 1 END) as completed
-				FROM ${this.db.tasks.table}
-				WHERE ${this.db.tasks.table.projectId} = ${params.id} AND ${this.db.tasks.table.deletedAt} IS NULL
-				GROUP BY ${this.db.tasks.table.priority}
+					COUNT(CASE WHEN ${this.tasks.table.completedAt} IS NOT NULL THEN 1 END) as completed
+				FROM ${this.tasks.table}
+				WHERE ${this.tasks.table.projectId} = ${params.id} AND ${this.tasks.table.deletedAt} IS NULL
+				GROUP BY ${this.tasks.table.priority}
 				ORDER BY
-					CASE ${this.db.tasks.table.priority}
+					CASE ${this.tasks.table.priority}
 						WHEN 'high' THEN 1
 						WHEN 'medium' THEN 2
 						WHEN 'low' THEN 3
@@ -123,22 +128,22 @@ export class ProjectStatsController {
       }));
 
       // Get tasks by complexity
-      const complexityQuery = await this.db.query(
+      const complexityQuery = await this.database.run(
         sql`
 				SELECT
-					${this.db.tasks.table.complexity},
+					${this.tasks.table.complexity},
 					COUNT(*) as count,
 					AVG(
 						CASE
-							WHEN ${this.db.tasks.table.priority} = 'high' THEN ${this.db.tasks.table.complexity} * 150 + 300
-							WHEN ${this.db.tasks.table.priority} = 'medium' THEN ${this.db.tasks.table.complexity} * 150 + 180
-							ELSE ${this.db.tasks.table.complexity} * 150 + 80
+							WHEN ${this.tasks.table.priority} = 'high' THEN ${this.tasks.table.complexity} * 150 + 300
+							WHEN ${this.tasks.table.priority} = 'medium' THEN ${this.tasks.table.complexity} * 150 + 180
+							ELSE ${this.tasks.table.complexity} * 150 + 80
 						END
 					) as average_xp
-				FROM ${this.db.tasks.table}
-				WHERE ${this.db.tasks.table.projectId} = ${params.id} AND ${this.db.tasks.table.deletedAt} IS NULL
-				GROUP BY ${this.db.tasks.table.complexity}
-				ORDER BY ${this.db.tasks.table.complexity}
+				FROM ${this.tasks.table}
+				WHERE ${this.tasks.table.projectId} = ${params.id} AND ${this.tasks.table.deletedAt} IS NULL
+				GROUP BY ${this.tasks.table.complexity}
+				ORDER BY ${this.tasks.table.complexity}
 			`,
         t.object({
           complexity: t.string(),
@@ -154,14 +159,14 @@ export class ProjectStatsController {
       }));
 
       // Get top 6 zones/packages
-      const zonesQuery = await this.db.query(
+      const zonesQuery = await this.database.run(
         sql`
 				SELECT
-					COALESCE(${this.db.tasks.table.package}, 'Unassigned') as zone,
+					COALESCE(${this.tasks.table.package}, 'Unassigned') as zone,
 					COUNT(*) as total_tasks
-				FROM ${this.db.tasks.table}
-				WHERE ${this.db.tasks.table.projectId} = ${params.id} AND ${this.db.tasks.table.deletedAt} IS NULL
-				GROUP BY ${this.db.tasks.table.package}
+				FROM ${this.tasks.table}
+				WHERE ${this.tasks.table.projectId} = ${params.id} AND ${this.tasks.table.deletedAt} IS NULL
+				GROUP BY ${this.tasks.table.package}
 				ORDER BY total_tasks DESC
 				LIMIT 6
 			`,
@@ -177,7 +182,7 @@ export class ProjectStatsController {
       }));
 
       // Get activity timeline (last 365 days with all dates for filtering on frontend)
-      const timelineQuery = await this.db.query(
+      const timelineQuery = await this.database.run(
         sql`
 				WITH date_series AS (
 					SELECT generate_series(
@@ -190,7 +195,7 @@ export class ProjectStatsController {
 					ds.date,
 					COALESCE(COUNT(t.id), 0) as tasks_completed
 				FROM date_series ds
-				LEFT JOIN ${this.db.tasks.table} t ON DATE(t.completed_at) = ds.date
+				LEFT JOIN ${this.tasks.table} t ON DATE(t.completed_at) = ds.date
 					AND t.project_id = ${params.id}
 					AND t.completed_at IS NOT NULL
 				GROUP BY ds.date
@@ -208,26 +213,26 @@ export class ProjectStatsController {
       }));
 
       // Calculate completion rates
-      const weeklyQuery = await this.db.query(
+      const weeklyQuery = await this.database.run(
         sql`
 				SELECT COUNT(*) as completed
-				FROM ${this.db.tasks.table}
-				WHERE ${this.db.tasks.table.projectId} = ${params.id}
-					AND ${this.db.tasks.table.completedAt} IS NOT NULL
-					AND ${this.db.tasks.table.completedAt} >= CURRENT_DATE - INTERVAL '7 days'
+				FROM ${this.tasks.table}
+				WHERE ${this.tasks.table.projectId} = ${params.id}
+					AND ${this.tasks.table.completedAt} IS NOT NULL
+					AND ${this.tasks.table.completedAt} >= CURRENT_DATE - INTERVAL '7 days'
 			`,
         t.object({
           completed: t.string(),
         }),
       );
 
-      const monthlyQuery = await this.db.query(
+      const monthlyQuery = await this.database.run(
         sql`
 				SELECT COUNT(*) as completed
-				FROM ${this.db.tasks.table}
-				WHERE ${this.db.tasks.table.projectId} = ${params.id}
-					AND ${this.db.tasks.table.completedAt} IS NOT NULL
-					AND ${this.db.tasks.table.completedAt} >= CURRENT_DATE - INTERVAL '30 days'
+				FROM ${this.tasks.table}
+				WHERE ${this.tasks.table.projectId} = ${params.id}
+					AND ${this.tasks.table.completedAt} IS NOT NULL
+					AND ${this.tasks.table.completedAt} >= CURRENT_DATE - INTERVAL '30 days'
 			`,
         t.object({
           completed: t.string(),
@@ -268,20 +273,20 @@ export class ProjectStatsController {
     },
     handler: async ({ params, user }) => {
       // Verify project access
-      const project = await this.db.projects.findOne({
+      const project = await this.projects.findOne({
         where: {
           id: { eq: params.id },
         },
       });
 
-      await this.db.characters.findOne({
+      await this.characters.findOne({
         where: {
           userId: { eq: user.id },
           projectId: { eq: project.id },
         },
       });
 
-      const tasks = await this.db.tasks.findMany({
+      const projectTasks = await this.tasks.findMany({
         where: { projectId: { eq: params.id } },
         orderBy: "createdAt",
         limit: 1000,
@@ -299,7 +304,7 @@ export class ProjectStatsController {
       ];
 
       let csvContent = `${fields.join(",")}\n`;
-      for (const task of tasks) {
+      for (const task of projectTasks) {
         const row = fields.map((field) => {
           let value = (task as any)[field] ?? "";
           if (value && typeof value === "object" && "toISOString" in value) {
