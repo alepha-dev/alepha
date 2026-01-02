@@ -30,7 +30,7 @@
     "@mantine/notifications": "^8.3.10",
     "@mantine/nprogress": "^8.3.10",
     "@mantine/spotlight": "^8.3.10",
-    "@tabler/icons-react": "^3.36.0",
+    "@tabler/icons-react": "^3.36.1",
     "alepha": "0.14.1",
     "dayjs": "^1.11.19"
   },
@@ -74,6 +74,17 @@
       "import": "./src/core/index.ts",
       "default": "./src/core/index.ts"
     },
-    "./styles": "./styles.css"
+    "./demo": {
+      "types": "./src/demo/index.ts",
+      "import": "./src/demo/index.ts",
+      "default": "./src/demo/index.ts"
+    },
+    "./json": {
+      "types": "./src/json/index.ts",
+      "import": "./src/json/index.ts",
+      "default": "./src/json/index.ts"
+    },
+    "./styles": "./src/core/styles.css",
+    "./json/styles": "./src/json/styles.css"
   }
 }
