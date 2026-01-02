@@ -62,27 +62,28 @@ jobs:
       - name: Generate Release Notes
         id: release_notes
         run: |
-          VERSION=${{ steps.version.outputs.version }}
-          DATE=$(date +%Y-%m-%d)
-          CONTENT=$(yarn alepha changelog)
+          # Write changelog content directly to file to preserve backticks
+          yarn alepha changelog > /tmp/release_notes.txt
 
-          # Output for GitHub Release body (no header)
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$CONTENT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          # Output for CHANGELOG.md (with header)
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "## [$VERSION] - $DATE" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "$CONTENT" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Output for GitHub Release body (uses file content safely)
+          {
+            echo "notes<<EOF"
+            cat /tmp/release_notes.txt
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Update CHANGELOG.md
         run: |
-          # Prepend new changelog entry at the beginning
-          echo "${{ steps.release_notes.outputs.changelog }}" > CHANGELOG.tmp
+          VERSION=${{ steps.version.outputs.version }}
+          DATE=$(date +%Y-%m-%d)
+
+          # Prepend new changelog entry (use cat to preserve backticks in commit hashes)
+          {
+            echo "## [$VERSION] - $DATE"
+            echo ""
+            cat /tmp/release_notes.txt
+            echo ""
+          } > CHANGELOG.tmp
           cat CHANGELOG.md >> CHANGELOG.tmp
           mv CHANGELOG.tmp CHANGELOG.md
 

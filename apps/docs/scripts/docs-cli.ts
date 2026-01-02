@@ -426,6 +426,12 @@ class DocsCliApp {
         this.log.trace(`Skipping non-src export: ${key} -> ${typesPath}`);
         continue;
       }
+      if (!typesPath.endsWith(".ts") && !typesPath.endsWith(".tsx")) {
+        this.log.trace(
+          `Skipping non-TypeScript export: ${key} -> ${typesPath}`,
+        );
+        continue;
+      }
 
       // Extract module name from export key
       let moduleName: string;

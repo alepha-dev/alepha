@@ -29,7 +29,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/bucket-s3@workspace:packages/bucket-s3"
   dependencies:
-    "@aws-sdk/client-s3": "npm:^3.958.0"
+    "@aws-sdk/client-s3": "npm:^3.962.0"
     "@biomejs/biome": "npm:^2.3.10"
     alepha: "npm:0.14.1"
     tsdown: "npm:^0.18.4"
@@ -54,7 +54,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/devtools@workspace:packages/devtools":
+"@alepha/devtools@npm:^0.14.0, @alepha/devtools@workspace:packages/devtools":
   version: 0.0.0-use.local
   resolution: "@alepha/devtools@workspace:packages/devtools"
   dependencies:
@@ -63,7 +63,7 @@ __metadata:
     "@biomejs/biome": "npm:^2.3.10"
     "@mantine/core": "npm:^8.3.10"
     "@mantine/hooks": "npm:^8.3.10"
-    "@tabler/icons-react": "npm:^3.36.0"
+    "@tabler/icons-react": "npm:^3.36.1"
     "@xyflow/react": "npm:^12.10.0"
     alepha: "npm:0.14.1"
     react: "npm:^19.2.3"
@@ -83,8 +83,8 @@ __metadata:
     "@alepha/react": "npm:0.14.1"
     "@biomejs/biome": "npm:^2.3.10"
     "@fontsource/jetbrains-mono": "npm:^5.2.8"
-    "@playwright/test": "npm:^1.49.1"
-    "@tabler/icons-react": "npm:^3.36.0"
+    "@playwright/test": "npm:^1.57.0"
+    "@tabler/icons-react": "npm:^3.36.1"
     "@testing-library/dom": "npm:^10.4.1"
     "@testing-library/react": "npm:^16.3.1"
     "@types/react": "npm:^19.2.7"
@@ -144,6 +144,7 @@ __metadata:
   resolution: "@alepha/roadmap@workspace:apps/roadmap"
   dependencies:
     "@alepha/bucket-vercel": "npm:^0.14.1"
+    "@alepha/devtools": "npm:^0.14.0"
     "@alepha/react": "npm:^0.14.1"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/utilities": "npm:^3.2.2"
@@ -153,7 +154,7 @@ __metadata:
     "@mantine/modals": "npm:^8.3.10"
     "@mantine/notifications": "npm:^8.3.10"
     "@mantine/tiptap": "npm:^8.3.10"
-    "@tabler/icons-react": "npm:^3.36.0"
+    "@tabler/icons-react": "npm:^3.36.1"
     "@tiptap/core": "npm:^3.14.0"
     "@tiptap/extension-link": "npm:^3.14.0"
     "@tiptap/pm": "npm:^3.14.0"
@@ -173,6 +174,7 @@ __metadata:
     react-dom: "npm:^19.2.3"
     recharts: "npm:^3.6.0"
     sanitize-html: "npm:^2.17.0"
+    typescript: "npm:^5.9.3"
     vercel: "npm:^50.1.3"
     vite: "npm:^7.3.0"
     vitest: "npm:^4.0.16"
@@ -192,7 +194,7 @@ __metadata:
     "@mantine/notifications": "npm:^8.3.10"
     "@mantine/nprogress": "npm:^8.3.10"
     "@mantine/spotlight": "npm:^8.3.10"
-    "@tabler/icons-react": "npm:^3.36.0"
+    "@tabler/icons-react": "npm:^3.36.1"
     alepha: "npm:0.14.1"
     dayjs: "npm:^1.11.19"
     react: "npm:^19.2.3"
@@ -328,15 +330,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/client-s3@npm:^3.958.0":
-  version: 3.958.0
-  resolution: "@aws-sdk/client-s3@npm:3.958.0"
+"@aws-sdk/client-s3@npm:^3.962.0":
+  version: 3.962.0
+  resolution: "@aws-sdk/client-s3@npm:3.962.0"
   dependencies:
     "@aws-crypto/sha1-browser": "npm:5.2.0"
     "@aws-crypto/sha256-browser": "npm:5.2.0"
     "@aws-crypto/sha256-js": "npm:5.2.0"
     "@aws-sdk/core": "npm:3.957.0"
-    "@aws-sdk/credential-provider-node": "npm:3.958.0"
+    "@aws-sdk/credential-provider-node": "npm:3.962.0"
     "@aws-sdk/middleware-bucket-endpoint": "npm:3.957.0"
     "@aws-sdk/middleware-expect-continue": "npm:3.957.0"
     "@aws-sdk/middleware-flexible-checksums": "npm:3.957.0"
@@ -387,7 +389,7 @@ __metadata:
     "@smithy/util-utf8": "npm:^4.2.0"
     "@smithy/util-waiter": "npm:^4.2.7"
     tslib: "npm:^2.6.2"
-  checksum: 10c0/83e6906739d0bc8ab2ddee3dea70b13afb668927dc77cf971b3229e1cf43298c1fc55ada30def063bcd6d0575943144e77031632244cd9f0f1d200d4f4f39106
+  checksum: 10c0/54bb47367c8923973e72b1c9907052bd7a0ffe2665efd6e465e30af340d4cdfd44557aaa2a0096f906a7bba13540fa53ff6d68ab472156040cc843e35ff98fc0
   languageName: node
   linkType: hard
 
@@ -667,14 +669,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/credential-provider-ini@npm:3.958.0":
-  version: 3.958.0
-  resolution: "@aws-sdk/credential-provider-ini@npm:3.958.0"
+"@aws-sdk/credential-provider-ini@npm:3.962.0":
+  version: 3.962.0
+  resolution: "@aws-sdk/credential-provider-ini@npm:3.962.0"
   dependencies:
     "@aws-sdk/core": "npm:3.957.0"
     "@aws-sdk/credential-provider-env": "npm:3.957.0"
     "@aws-sdk/credential-provider-http": "npm:3.957.0"
-    "@aws-sdk/credential-provider-login": "npm:3.958.0"
+    "@aws-sdk/credential-provider-login": "npm:3.962.0"
     "@aws-sdk/credential-provider-process": "npm:3.957.0"
     "@aws-sdk/credential-provider-sso": "npm:3.958.0"
     "@aws-sdk/credential-provider-web-identity": "npm:3.958.0"
@@ -685,7 +687,7 @@ __metadata:
     "@smithy/shared-ini-file-loader": "npm:^4.4.2"
     "@smithy/types": "npm:^4.11.0"
     tslib: "npm:^2.6.2"
-  checksum: 10c0/28da70b704296255ed0391b57844e40c65988146911e1eee4aeb03e4e1945a5828ddec46871cffb4cbb4609bdf2b517ba234a6677b036919db82dca42fee9807
+  checksum: 10c0/8754a071f8ea65dbd9ca3490019e91b109dcfd26a48a47a532735c8f7e16771518bca7b322072de0adc5a55cba2b09c30a5bf1727b3b897cb73020f9e371c527
   languageName: node
   linkType: hard
 
@@ -705,9 +707,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/credential-provider-login@npm:3.958.0":
-  version: 3.958.0
-  resolution: "@aws-sdk/credential-provider-login@npm:3.958.0"
+"@aws-sdk/credential-provider-login@npm:3.962.0":
+  version: 3.962.0
+  resolution: "@aws-sdk/credential-provider-login@npm:3.962.0"
   dependencies:
     "@aws-sdk/core": "npm:3.957.0"
     "@aws-sdk/nested-clients": "npm:3.958.0"
@@ -717,7 +719,7 @@ __metadata:
     "@smithy/shared-ini-file-loader": "npm:^4.4.2"
     "@smithy/types": "npm:^4.11.0"
     tslib: "npm:^2.6.2"
-  checksum: 10c0/3dadfa92bc7537aaf221456837c5c7a5a4dbc6c3b3309ed265e260fe9fa6b8344e793aec49672dc5050b4d8a7848d50c13cadf72f77e10b80232e2e215718334
+  checksum: 10c0/43cef761835bcdb0acb7042542f63800b6f84bc6c31558390bc76b72ef9fa5d9fc12c3445bd83b23bbf67bf41fa006ad2ab37e26900766fd8ec22dd94490076a
   languageName: node
   linkType: hard
 
@@ -741,13 +743,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/credential-provider-node@npm:3.958.0":
-  version: 3.958.0
-  resolution: "@aws-sdk/credential-provider-node@npm:3.958.0"
+"@aws-sdk/credential-provider-node@npm:3.962.0":
+  version: 3.962.0
+  resolution: "@aws-sdk/credential-provider-node@npm:3.962.0"
   dependencies:
     "@aws-sdk/credential-provider-env": "npm:3.957.0"
     "@aws-sdk/credential-provider-http": "npm:3.957.0"
-    "@aws-sdk/credential-provider-ini": "npm:3.958.0"
+    "@aws-sdk/credential-provider-ini": "npm:3.962.0"
     "@aws-sdk/credential-provider-process": "npm:3.957.0"
     "@aws-sdk/credential-provider-sso": "npm:3.958.0"
     "@aws-sdk/credential-provider-web-identity": "npm:3.958.0"
@@ -757,7 +759,7 @@ __metadata:
     "@smithy/shared-ini-file-loader": "npm:^4.4.2"
     "@smithy/types": "npm:^4.11.0"
     tslib: "npm:^2.6.2"
-  checksum: 10c0/354c24813696c4cb621397966ca0014728e7ed39b089ac4197fbb64b5caf160f015b128f0c482d8f86aa2b49ceff97a76e0da266a92c91a213f1dfa780adf8f1
+  checksum: 10c0/47008d09c1b6594a161b343948f1454c5f9ffef9892f2845b03b533462ee9561310f0d8934e4538f87d8853d6b316a0602600aacf949ce9105a99fe6ed4f8840
   languageName: node
   linkType: hard
 
@@ -3849,7 +3851,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@playwright/test@npm:^1.49.1":
+"@playwright/test@npm:^1.57.0":
   version: 1.57.0
   resolution: "@playwright/test@npm:1.57.0"
   dependencies:
@@ -5521,21 +5523,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tabler/icons-react@npm:^3.36.0":
-  version: 3.36.0
-  resolution: "@tabler/icons-react@npm:3.36.0"
+"@tabler/icons-react@npm:^3.36.1":
+  version: 3.36.1
+  resolution: "@tabler/icons-react@npm:3.36.1"
   dependencies:
-    "@tabler/icons": "npm:3.36.0"
+    "@tabler/icons": "npm:"
   peerDependencies:
     react: ">= 16"
-  checksum: 10c0/db567c11ee4f7ab769ab80360509000b986f28ecaec8fdabe33a968731d8cab9018250961857ca1e823fa3dd73f618364224ef3f4e7ad71be792ed857123837b
+  checksum: 10c0/325dd0c7a780ec4713a93790b15517dc176af5778c36c49e1fe586113040d2e71330aa85aa9f5900cbae0fe0b78f69016ba73b4b490783c9b7292215f29c686a
   languageName: node
   linkType: hard
 
-"@tabler/icons@npm:3.36.0":
-  version: 3.36.0
-  resolution: "@tabler/icons@npm:3.36.0"
-  checksum: 10c0/4637add3f1326c3542cf2ebb9fcde162f34b3bfc2a716b103cc7acef666edeeac581504ea9f847946183c3eea81abb1ec5c91389f984064f50e2bad370b3e8dc
+"@tabler/icons@npm:":
+  version: 3.36.1
+  resolution: "@tabler/icons@npm:3.36.1"
+  checksum: 10c0/3201b3ccace5756ba9e840ece3922718165b820f760b7bc01bcab21bf7d6fed5da6e876ea9e1155ed498d8eb008e3ac3308b270c402d744014dafad20d99534c
   languageName: node
   linkType: hard
 
@@ -7086,7 +7088,7 @@ __metadata:
     swagger-ui-dist: "npm:^5.31.0"
     tsdown: "npm:^0.18.4"
     tsx: "npm:^4.21.0"
-    typebox: "npm:^1.0.70"
+    typebox: "npm:^1.0.71"
     vite: "npm:^7.3.0"
     vite-bundle-analyzer: "npm:^1.3.2"
     vitest: "npm:^4.0.16"
@@ -14126,7 +14128,7 @@ __metadata:
     "@alepha/ui": "npm:^0.14.1"
     "@mantine/core": "npm:^8.3.10"
     "@mantine/hooks": "npm:^8.3.10"
-    "@tabler/icons-react": "npm:^3.36.0"
+    "@tabler/icons-react": "npm:^3.36.1"
     "@types/react": "npm:^19.2.7"
     alepha: "npm:^0.14.1"
     react: "npm:^19.2.3"
@@ -14707,10 +14709,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typebox@npm:^1.0.70":
-  version: 1.0.70
-  resolution: "typebox@npm:1.0.70"
-  checksum: 10c0/74fda65561a8899de00da30130df420fa9771cd12c38d8a572de6ae9dfe7207a22205f358922f680c7b39a4720ebec70a9707577600abfef0995104b8c56526a
+"typebox@npm:^1.0.71":
+  version: 1.0.71
+  resolution: "typebox@npm:1.0.71"
+  checksum: 10c0/96ac9dc784c318e55c11b4af551ca69e18ea14350c05bada72308ef5fa36566d5ef9324c54d2d6a57e0d6e6fd1cce582a5f5ca9ea990cd9c8d7b152fba4f3811
   languageName: node
   linkType: hard
 
