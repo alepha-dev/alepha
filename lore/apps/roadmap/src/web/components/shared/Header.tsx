@@ -1,4 +1,5 @@
-import { useEvents, useRouter, useStore } from "@alepha/react";
+import { useEvents, useStore } from "@alepha/react";
+import { useRouter } from "@alepha/react/router";
 import { Burger, Container, Drawer, Flex } from "@mantine/core";
 import { useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";

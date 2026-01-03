@@ -1,6 +1,11 @@
-import { $page, NotFound, ReactRouter, Redirection } from "@alepha/react";
 import { ReactAuth } from "@alepha/react/auth";
 import { $head } from "@alepha/react/head";
+import {
+  $page,
+  NotFound,
+  ReactRouter,
+  Redirection,
+} from "@alepha/react/router";
 import { AuthRouter } from "@alepha/ui/auth";
 import { $hook, $inject, Alepha, t } from "alepha";
 import { HttpError, NotFoundError } from "alepha/server";

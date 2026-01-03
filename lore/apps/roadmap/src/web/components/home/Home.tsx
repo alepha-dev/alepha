@@ -1,5 +1,6 @@
-import { useInject, useRouter, useStore } from "@alepha/react";
+import { useInject, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
+import { useRouter } from "@alepha/react/router";
 import { Card, Container, Flex, SimpleGrid, Stack, Text } from "@mantine/core";
 import {
   IconCircleArrowRight,

@@ -1,4 +1,4 @@
-import { NestedView, useRouter } from "@alepha/react";
+import { NestedView, useRouter } from "@alepha/react/router";
 import { Card, Container, Flex, Stack, Text, Title } from "@mantine/core";
 import { IconDatabase, IconUsers } from "@tabler/icons-react";
 import { theme } from "../../constants/theme.ts";

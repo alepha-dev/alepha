@@ -1,5 +1,6 @@
-import { useClient, useRouter, useStore } from "@alepha/react";
+import { useClient, useStore } from "@alepha/react";
 import { useForm, useFormState } from "@alepha/react/form";
+import { useRouter } from "@alepha/react/router";
 import { Button, Stack } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { IconTag } from "@tabler/icons-react";

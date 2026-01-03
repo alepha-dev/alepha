@@ -1,4 +1,5 @@
-import { useActive, useRouter, useStore } from "@alepha/react";
+import { useStore } from "@alepha/react";
+import { useActive, useRouter } from "@alepha/react/router";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Box, Flex, HoverCard, Text } from "@mantine/core";

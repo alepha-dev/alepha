@@ -1,4 +1,5 @@
-import { useRouter, useRouterState, useStore } from "@alepha/react";
+import { useStore } from "@alepha/react";
+import { useRouter, useRouterState } from "@alepha/react/router";
 import { Flex, Menu } from "@mantine/core";
 import { IconPlus, IconSquare, IconSquareCheck } from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
