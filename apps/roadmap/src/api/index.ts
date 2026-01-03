@@ -8,6 +8,7 @@ import { ProjectStatsController } from "./controllers/ProjectStatsController.ts"
 import { SessionController } from "./controllers/SessionController.ts";
 import { TaskController } from "./controllers/TaskController.ts";
 import { UserController } from "./controllers/UserController.ts";
+import { WhiteboardController } from "./controllers/WhiteboardController.ts";
 import { Security } from "./providers/Security.ts";
 import { CharacterInfo } from "./services/CharacterInfo.ts";
 
@@ -25,6 +26,7 @@ export const RoadmapApi = $module({
     ProjectStatsController,
     InvitationController,
     McpApiKeyController,
+    WhiteboardController,
   ],
 });
 
@@ -37,6 +39,7 @@ export * from "./controllers/ProjectStatsController.ts";
 export * from "./controllers/SessionController.ts";
 export * from "./controllers/TaskController.ts";
 export * from "./controllers/UserController.ts";
+export * from "./controllers/WhiteboardController.ts";
 export * from "./entities/characters.ts";
 export * from "./entities/files.ts";
 export * from "./entities/identities.ts";
@@ -46,5 +49,6 @@ export * from "./entities/projects.ts";
 export * from "./entities/sessions.ts";
 export * from "./entities/tasks.ts";
 export * from "./entities/users.ts";
+export * from "./entities/whiteboards.ts";
 export * from "./providers/Security.ts";
 export * from "./schemas/taskCreateSchema.ts";

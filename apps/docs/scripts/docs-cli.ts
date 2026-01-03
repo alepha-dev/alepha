@@ -1741,8 +1741,23 @@ class DocsCliApp {
       if (parentNode) {
         parentNode.children = parentNode.children || [];
 
-        // Use slug format for all names (lowercase, hyphen-separated)
-        const displayName = this.slug(item.name);
+        // Check if this is inside packages section
+        const parts = item.category.split("/");
+        const packagesIndex = parts.findIndex((p) => p.startsWith("3-"));
+        const isInsidePackages = packagesIndex !== -1;
+
+        let displayName: string;
+        if (isInsidePackages) {
+          // Use original filename to preserve @alepha/ prefix
+          // 7-@alepha-bucket-azure.md → @alepha/bucket-azure
+          const withoutOrder = item.originalName
+            .replace(/^\d+-/, "")
+            .replace(/\.md$/, "");
+          displayName = withoutOrder.replace(/^@alepha-/, "@alepha/");
+        } else {
+          // Use slug format for non-package directories (lowercase, hyphen-separated)
+          displayName = this.slug(item.name);
+        }
 
         parentNode.children.push({
           slug: item.slug,
