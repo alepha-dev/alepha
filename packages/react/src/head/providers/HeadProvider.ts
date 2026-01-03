@@ -1,4 +1,4 @@
-import type { PageRoute, ReactRouterState } from "@alepha/react";
+import type { PageRoute, ReactRouterState } from "@alepha/react/router";
 import { $inject } from "alepha";
 import { SeoExpander } from "../helpers/SeoExpander.ts";
 import type { Head } from "../interfaces/Head.ts";

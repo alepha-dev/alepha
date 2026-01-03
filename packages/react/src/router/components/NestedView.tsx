@@ -1,13 +1,11 @@
 import { memo, type ReactNode, use, useRef, useState } from "react";
-import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
-import type { ErrorHandler, PageAnimation } from "../primitives/$page.ts";
-import { Redirection } from "../errors/Redirection.ts";
-import { useEvents } from "../hooks/useEvents.ts";
-import { useRouterState } from "../hooks/useRouterState.ts";
 import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
-import ErrorBoundary from "./ErrorBoundary.tsx";
+import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
+import { Redirection } from "../errors/Redirection.ts";
+import { useRouterState } from "../hooks/useRouterState.ts";
+import type { PageAnimation } from "../primitives/$page.ts";
 import ErrorViewer from "./ErrorViewer.tsx";
-import { useAlepha } from "../hooks/useAlepha.ts";
+import { ErrorBoundary, useAlepha, useEvents } from "@alepha/react";
 
 export interface NestedViewProps {
   children?: ReactNode;

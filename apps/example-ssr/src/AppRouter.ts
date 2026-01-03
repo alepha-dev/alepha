@@ -1,4 +1,4 @@
-import { $page } from "@alepha/react";
+import { $page } from "@alepha/react/router";
 import { t } from "alepha";
 import { $client } from "alepha/server/links";
 import type { CountApi } from "./CountApi.ts";

@@ -1,8 +1,8 @@
 import { Alepha, t } from "alepha";
 import { renderToString } from "react-dom/server";
 import { test } from "vitest";
-import { NestedView } from "../../src/core/index.ts";
-import { ReactBrowserRouterProvider } from "../../src/core/providers/ReactBrowserRouterProvider.ts";
+import { NestedView } from "../../src/router/index.ts";
+import { ReactBrowserRouterProvider } from "../../src/router/providers/ReactBrowserRouterProvider.ts";
 
 const setup = () => {
   const alepha = Alepha.create();

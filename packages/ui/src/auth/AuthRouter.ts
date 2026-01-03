@@ -1,5 +1,5 @@
-import { $page } from "@alepha/react";
 import { ReactAuth } from "@alepha/react/auth";
+import { $page } from "@alepha/react/router";
 import {
   IconLogin2,
   IconLogout2,

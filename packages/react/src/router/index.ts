@@ -1,0 +1,125 @@
+import { AlephaReact } from "@alepha/react";
+import { $module } from "alepha";
+import { $page, type PageAnimation } from "./primitives/$page.ts";
+import { ReactRouter } from "./services/ReactRouter.ts";
+import { ReactPageProvider, type ReactRouterState } from "./providers/ReactPageProvider.ts";
+import { AlephaServer, type ServerRequest } from "alepha/server";
+import type { ReactNode } from "react";
+import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
+import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
+import { ReactPageServerService } from "./services/ReactPageServerService.ts";
+import { AlephaServerCache } from "alepha/server/cache";
+import { AlephaServerLinks } from "alepha/server/links";
+import { ReactPageService } from "./services/ReactPageService.ts";
+import { AlephaDateTime } from "alepha/datetime";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export * from "./index.shared.ts";
+export * from "./providers/ReactPageProvider.ts";
+export * from "./providers/ReactBrowserProvider.ts";
+export * from "./providers/ReactServerProvider.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "alepha" {
+  interface State {
+    "alepha.react.router.state"?: ReactRouterState;
+  }
+
+  interface Hooks {
+    /**
+     * Fires when the React application is starting to be rendered on the server.
+     */
+    "react:server:render:begin": {
+      request?: ServerRequest;
+      state: ReactRouterState;
+    };
+    /**
+     * Fires when the React application has been rendered on the server.
+     */
+    "react:server:render:end": {
+      request?: ServerRequest;
+      state: ReactRouterState;
+      html: string;
+    };
+    // -----------------------------------------------------------------------------------------------------------------
+    /**
+     * Fires when the React application is being rendered on the browser.
+     */
+    "react:browser:render": {
+      root: HTMLElement;
+      element: ReactNode;
+      state: ReactRouterState;
+      hydration?: ReactHydrationState;
+    };
+    // -----------------------------------------------------------------------------------------------------------------
+    // SPECIFIC: Route transitions
+    /**
+     * Fires when a route transition is starting.
+     */
+    "react:transition:begin": {
+      previous: ReactRouterState;
+      state: ReactRouterState;
+      animation?: PageAnimation;
+    };
+    /**
+     * Fires when a route transition has succeeded.
+     */
+    "react:transition:success": {
+      state: ReactRouterState;
+    };
+    /**
+     * Fires when a route transition has failed.
+     */
+    "react:transition:error": {
+      state: ReactRouterState;
+      error: Error;
+    };
+    /**
+     * Fires when a route transition has completed, regardless of success or failure.
+     */
+    "react:transition:end": {
+      state: ReactRouterState;
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Provides declarative routing with the `$page` primitive for building type-safe React routes.
+ *
+ * This module enables:
+ * - URL pattern matching with parameters (e.g., `/users/:id`)
+ * - Nested routing with parent-child relationships
+ * - Type-safe URL parameter and query string validation
+ * - Server-side data fetching with the `resolve` function
+ * - Lazy loading and code splitting
+ * - Page animations and error handling
+ *
+ * @see {@link $page}
+ * @module alepha.react.router
+ */
+export const AlephaReactRouter = $module({
+  name: "alepha.react.router",
+  primitives: [$page],
+  services: [
+    ReactPageProvider,
+    ReactPageService,
+    ReactRouter, ReactServerProvider, ReactPageServerService],
+  register: (alepha) =>
+    alepha
+      .with(AlephaReact)
+      .with(AlephaDateTime)
+      .with(AlephaServer)
+      .with(AlephaServerCache)
+      .with(AlephaServerLinks)
+      .with({
+        provide: ReactPageService,
+        use: ReactPageServerService,
+      })
+      .with(ReactServerProvider)
+      .with(ReactPageProvider)
+      .with(ReactRouter),
+});

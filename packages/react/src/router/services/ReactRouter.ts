@@ -1,15 +1,28 @@
 import { $inject, Alepha } from "alepha";
-import type { PagePrimitive } from "../primitives/$page.ts";
-import {
-  ReactBrowserProvider,
-  type RouterGoOptions,
-} from "../providers/ReactBrowserProvider.ts";
+import { ReactBrowserProvider } from "../providers/ReactBrowserProvider.ts";
 import {
   type AnchorProps,
   ReactPageProvider,
   type ReactRouterState,
 } from "../providers/ReactPageProvider.ts";
+import type { PagePrimitive } from "../primitives/$page.ts";
 
+export interface RouterGoOptions {
+  replace?: boolean;
+  params?: Record<string, string>;
+  query?: Record<string, string>;
+  meta?: Record<string, any>;
+  /**
+   * Recreate the whole page, ignoring the current state.
+   */
+  force?: boolean;
+}
+
+/**
+ * Friendly browser router API.
+ *
+ * Can be safely used server-side, but most methods will be no-op.
+ */
 export class ReactRouter<T extends object> {
   protected readonly alepha = $inject(Alepha);
   protected readonly pageApi = $inject(ReactPageProvider);

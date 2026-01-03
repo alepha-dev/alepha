@@ -13,7 +13,7 @@ export * from "./providers/ReactAuthProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-declare module "@alepha/react" {
+declare module "@alepha/react/router" {
   interface ReactRouterState {
     user?: UserAccount;
   }

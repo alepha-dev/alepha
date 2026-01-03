@@ -1,4 +1,4 @@
-import { $page } from "@alepha/react";
+import { $page } from "@alepha/react/router";
 import { $hook, Alepha, t } from "alepha";
 import { $entity, $repository, pg } from "alepha/orm";
 import { $action, HttpClient, ServerProvider } from "alepha/server";

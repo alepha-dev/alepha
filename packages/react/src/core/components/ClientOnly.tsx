@@ -19,6 +19,20 @@ export interface ClientOnlyProps {
  * - you have code that relies on browser-specific APIs
  * - you want to avoid server-side rendering for a specific part of your application
  * - you want to prevent pre-rendering of a component
+ *
+ * @example
+ * ```tsx
+ * import { ClientOnly } from "@alepha/react";
+ *
+ * const MyComponent = () => {
+ *   // Avoids SSR issues with Date API
+ *   return (
+ *     <ClientOnly>
+ *       {new Date().toLocaleTimeString()}
+ *     </ClientOnly>
+ *   );
+ * }
+ * ```
  */
 const ClientOnly = (props: PropsWithChildren<ClientOnlyProps>) => {
   const [mounted, setMounted] = useState(false);

@@ -1,4 +1,4 @@
-import { $page } from "@alepha/react";
+import { $page } from "@alepha/react/router";
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 import { $head, AlephaReactHead } from "../../src/head/index.ts";

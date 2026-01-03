@@ -1,4 +1,4 @@
-import { Link } from "@alepha/react";
+import { Link } from "@alepha/react/router";
 import { type CSSProperties, useCallback, useRef, useState } from "react";
 import type { coreFeatures } from "../../config/features.ts";
 import styles from "./PackageChip.module.css";

@@ -7,6 +7,9 @@ import type {
 import { ReactServerProvider } from "../providers/ReactServerProvider.ts";
 import { ReactPageService } from "./ReactPageService.ts";
 
+/**
+ * $page methods for server-side.
+ */
 export class ReactPageServerService extends ReactPageService {
   protected readonly reactServerProvider = $inject(ReactServerProvider);
   protected readonly serverProvider = $inject(ServerProvider);

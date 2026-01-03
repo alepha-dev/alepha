@@ -3,10 +3,10 @@ import {
   useAlepha,
   useClient,
   useInject,
-  useRouter,
   useStore,
 } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
+import { useRouter } from "@alepha/react/router";
 import { Card, Drawer, Flex, Stack, Text, Textarea } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import {

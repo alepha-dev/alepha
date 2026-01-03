@@ -1,5 +1,5 @@
 export const appRouterTs = () => `
-import { $page } from "@alepha/react";
+import { $page } from "@alepha/react/router";
 
 export class AppRouter {
   home = $page({

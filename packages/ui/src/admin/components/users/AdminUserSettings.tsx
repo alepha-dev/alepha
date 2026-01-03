@@ -1,4 +1,5 @@
-import { useClient, useRouter, useRouterState } from "@alepha/react";
+import { useClient } from "@alepha/react";
+import { useRouter, useRouterState } from "@alepha/react/router";
 import { ActionButton, Flex, Text } from "@alepha/ui";
 import { Alert, Card, Group, Loader, Stack } from "@mantine/core";
 import {

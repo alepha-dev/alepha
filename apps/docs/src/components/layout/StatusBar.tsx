@@ -1,5 +1,6 @@
-import { ClientOnly, useRouterState } from "@alepha/react";
+import { ClientOnly } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
+import { useRouterState } from "@alepha/react/router";
 import { IconLockOpen } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 

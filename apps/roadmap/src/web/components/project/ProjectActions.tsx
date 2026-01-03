@@ -1,5 +1,6 @@
-import { useClient, useRouter, useRouterState, useStore } from "@alepha/react";
+import { useClient, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
+import { useRouter, useRouterState } from "@alepha/react/router";
 import {
   Card,
   Center,

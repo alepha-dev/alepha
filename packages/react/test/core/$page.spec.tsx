@@ -1,9 +1,7 @@
+import { $page, PagePrimitive, Redirection, NestedView, type ReactRouterState } from "@alepha/react/router";
 import { Alepha, t } from "alepha";
 import type { FC } from "react";
 import { beforeEach, describe, test, vi } from "vitest";
-import type { ReactRouterState } from "../../src/core/index.ts";
-import { $page, PagePrimitive, Redirection } from "../../src/core/index.ts";
-import NestedView from "../../src/core/components/NestedView.tsx";
 
 describe("$page primitive tests", () => {
   let alepha: Alepha;

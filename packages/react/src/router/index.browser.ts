@@ -1,27 +1,27 @@
 import { $module } from "alepha";
+import { $page } from "./primitives/$page.ts";
+import { ReactRouter } from "./services/ReactRouter.ts";
+import { ReactBrowserRendererProvider } from "./providers/ReactBrowserRendererProvider.ts";
+import { ReactBrowserRouterProvider } from "./providers/ReactBrowserRouterProvider.ts";
+import { ReactPageService } from "./services/ReactPageService.ts";
+import { ReactPageProvider } from "./providers/ReactPageProvider.ts";
+import { ReactBrowserProvider } from "./providers/ReactBrowserProvider.ts";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaServer } from "alepha/server";
 import { AlephaServerLinks } from "alepha/server/links";
-import { $page } from "./primitives/$page.ts";
-import { ReactBrowserProvider } from "./providers/ReactBrowserProvider.ts";
-import { ReactBrowserRendererProvider } from "./providers/ReactBrowserRendererProvider.ts";
-import { ReactBrowserRouterProvider } from "./providers/ReactBrowserRouterProvider.ts";
-import { ReactPageProvider } from "./providers/ReactPageProvider.ts";
-import { ReactPageService } from "./services/ReactPageService.ts";
-import { ReactRouter } from "./services/ReactRouter.ts";
+import { AlephaReact } from "@alepha/react";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./index.shared.ts";
-export * from "./index.shared-router.ts";
-export * from "./providers/ReactBrowserProvider.ts";
-export * from "./providers/ReactBrowserRouterProvider.ts";
-export * from "./providers/ReactPageProvider.ts";
+export * from "./providers/ReactBrowserProvider.ts"
+export * from "./providers/ReactBrowserRouterProvider.ts"
+export * from "./providers/ReactBrowserRendererProvider.ts"
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export const AlephaReact = $module({
-  name: "alepha.react",
+export const AlephaReactRouter = $module({
+  name: "alepha.react.router",
   primitives: [$page],
   services: [
     ReactPageProvider,
@@ -33,6 +33,7 @@ export const AlephaReact = $module({
   ],
   register: (alepha) =>
     alepha
+      .with(AlephaReact)
       .with(AlephaDateTime)
       .with(AlephaServer)
       .with(AlephaServerLinks)
@@ -42,3 +43,4 @@ export const AlephaReact = $module({
       .with(ReactBrowserRendererProvider)
       .with(ReactRouter),
 });
+

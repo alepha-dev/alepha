@@ -1,6 +1,6 @@
-import { useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
 import { useI18n } from "@alepha/react/i18n";
+import { useRouter } from "@alepha/react/router";
 import { DarkModeButton, LanguageButton, ThemeButton } from "@alepha/ui";
 import type { AuthRouter } from "@alepha/ui/auth";
 import { Flex, Menu } from "@mantine/core";

@@ -1,5 +1,6 @@
-import { useClient, useRouter, useRouterState } from "@alepha/react";
+import { useClient } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
+import { useRouter, useRouterState } from "@alepha/react/router";
 import { ActionButton } from "@alepha/ui";
 import { Alert, Card, Flex, Loader, Stack, Text } from "@mantine/core";
 import { IconAlertCircle, IconCheck, IconMailCheck } from "@tabler/icons-react";

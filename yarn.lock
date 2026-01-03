@@ -104,6 +104,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/integration@workspace:apps/integration":
+  version: 0.0.0-use.local
+  resolution: "@alepha/integration@workspace:apps/integration"
+  dependencies:
+    alepha: "npm:^0.14.1"
+    vitest: "npm:^4.0.16"
+  languageName: unknown
+  linkType: soft
+
 "@alepha/protobuf@workspace:packages/protobuf":
   version: 0.0.0-use.local
   resolution: "@alepha/protobuf@workspace:packages/protobuf"
@@ -10674,15 +10683,6 @@ __metadata:
   checksum: 10c0/ec93838d2328b619532e4f1ff05df7909760b6f66d9c9e2ded11e5c1897d6f2f9980c54dd638f88654b00919ce31e827040631eab0a3969e4d1abefa0719516a
   languageName: node
   linkType: hard
-
-"integration-940784@workspace:apps/integration":
-  version: 0.0.0-use.local
-  resolution: "integration-940784@workspace:apps/integration"
-  dependencies:
-    alepha: "npm:^0.14.1"
-    vitest: "npm:^4.0.16"
-  languageName: unknown
-  linkType: soft
 
 "internal-slot@npm:^1.1.0":
   version: 1.1.0

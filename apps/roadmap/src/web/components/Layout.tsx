@@ -1,4 +1,5 @@
-import { NestedView, useInject } from "@alepha/react";
+import { useInject } from "@alepha/react";
+import { NestedView } from "@alepha/react/router";
 import { AlephaMantineProvider } from "@alepha/ui";
 import { Flex } from "@mantine/core";
 import { Analytics } from "@vercel/analytics/react";

@@ -1,4 +1,4 @@
-import { useRouter } from "@alepha/react";
+import { useRouter } from "@alepha/react/router";
 import { ActionButton, AdminShell, AlephaMantineProvider } from "@alepha/ui";
 import { IconArrowLeft } from "@tabler/icons-react";
 import type { DemoRouter } from "../DemoRouter.ts";

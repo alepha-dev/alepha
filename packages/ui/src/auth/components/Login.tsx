@@ -1,7 +1,7 @@
-import { useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
 import { FormValidationError, useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
+import { useRouter } from "@alepha/react/router";
 import { ActionButton, Control, capitalize } from "@alepha/ui";
 import { Card, Flex, Group, Image, Stack, Text, Title } from "@mantine/core";
 import { IconLock, IconUser } from "@tabler/icons-react";

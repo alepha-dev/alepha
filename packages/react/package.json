@@ -64,8 +64,6 @@
     },
     ".": {
       "types": "./src/core/index.ts",
-      "react-native": "./src/core/index.native.ts",
-      "browser": "./src/core/index.browser.ts",
       "import": "./src/core/index.ts",
       "default": "./src/core/index.ts"
     },
@@ -85,6 +83,13 @@
       "types": "./src/i18n/index.ts",
       "import": "./src/i18n/index.ts",
       "default": "./src/i18n/index.ts"
+    },
+    "./router": {
+      "types": "./src/router/index.ts",
+      "react-native": "./src/router/index.browser.ts",
+      "browser": "./src/router/index.browser.ts",
+      "import": "./src/router/index.ts",
+      "default": "./src/router/index.ts"
     },
     "./websocket": {
       "types": "./src/websocket/index.ts",

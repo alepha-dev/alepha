@@ -1,4 +1,5 @@
-import { useEvents, useRouter } from "@alepha/react";
+import { useEvents } from "@alepha/react";
+import { useRouter } from "@alepha/react/router";
 import {
   Flex,
   type FlexProps,

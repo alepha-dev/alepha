@@ -18,6 +18,9 @@ import type {
   ReactRouterState,
   TransitionOptions,
 } from "./ReactPageProvider.ts";
+import type { RouterGoOptions } from "../services/ReactRouter.ts";
+
+export type { RouterGoOptions } from "../services/ReactRouter.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -296,19 +299,6 @@ export class ReactBrowserProvider {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-
-export interface RouterGoOptions {
-  replace?: boolean;
-  match?: TransitionOptions;
-  params?: Record<string, string>;
-  query?: Record<string, string>;
-  meta?: Record<string, any>;
-
-  /**
-   * Recreate the whole page, ignoring the current state.
-   */
-  force?: boolean;
-}
 
 export type ReactHydrationState = {
   layers?: Array<PreviousLayerData>;

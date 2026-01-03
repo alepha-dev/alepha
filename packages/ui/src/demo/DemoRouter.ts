@@ -1,4 +1,4 @@
-import { $page } from "@alepha/react";
+import { $page } from "@alepha/react/router";
 import {
   IconBinaryTree,
   IconBraces,

@@ -1,4 +1,5 @@
-import { NestedView, useEvents, useRouter, useStore } from "@alepha/react";
+import { useEvents, useStore } from "@alepha/react";
+import { NestedView, useRouter } from "@alepha/react/router";
 import {
   AppShell,
   type AppShellFooterProps,

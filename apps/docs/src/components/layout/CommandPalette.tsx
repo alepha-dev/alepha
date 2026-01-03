@@ -1,4 +1,4 @@
-import { useRouter } from "@alepha/react";
+import { useRouter } from "@alepha/react/router";
 import { IconFile } from "@tabler/icons-react";
 import Fuse, { type IFuseOptions } from "fuse.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

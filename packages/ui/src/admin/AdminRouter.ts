@@ -1,5 +1,5 @@
-import { $page, ReactRouter, Redirection } from "@alepha/react";
 import { ReactAuth } from "@alepha/react/auth";
+import { $page, ReactRouter, Redirection } from "@alepha/react/router";
 import type { AdminShellProps } from "@alepha/ui";
 import { AuthRouter } from "@alepha/ui/auth";
 import {

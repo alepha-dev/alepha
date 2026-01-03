@@ -1,6 +1,7 @@
-import { useAlepha, useClient, useRouter, useStore } from "@alepha/react";
+import { useAlepha, useClient, useStore } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
+import { useRouter } from "@alepha/react/router";
 import { Flex, SimpleGrid, Space, Stack } from "@mantine/core";
 import {
   IconDeviceFloppy,

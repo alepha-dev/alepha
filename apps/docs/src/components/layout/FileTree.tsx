@@ -1,4 +1,4 @@
-import { useRouter, useRouterState } from "@alepha/react";
+import { useRouter, useRouterState } from "@alepha/react/router";
 import {
   IconChevronDown,
   IconChevronRight,

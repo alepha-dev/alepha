@@ -1,4 +1,5 @@
-import { useClient, useInject, useRouter, useStore } from "@alepha/react";
+import { useClient, useInject, useStore } from "@alepha/react";
+import { useRouter } from "@alepha/react/router";
 import {
   ActionIcon,
   Badge,

@@ -1,10 +1,10 @@
 import { AlephaError } from "alepha";
-import type {
-  PagePrimitiveRenderOptions,
-  PagePrimitiveRenderResult,
-} from "../primitives/$page.ts";
+import type { PagePrimitiveRenderOptions, PagePrimitiveRenderResult, } from "../../router/primitives/$page.ts";
 
-export class ReactPageService {
+/**
+ * $page methods interface.
+ */
+export abstract class ReactPageService {
   public fetch(
     pathname: string,
     options: PagePrimitiveRenderOptions = {},

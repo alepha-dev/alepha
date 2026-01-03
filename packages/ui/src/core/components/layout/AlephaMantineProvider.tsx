@@ -1,5 +1,6 @@
-import { NestedView, useEvents } from "@alepha/react";
+import { useEvents } from "@alepha/react";
 import { FormValidationError } from "@alepha/react/form";
+import { NestedView } from "@alepha/react/router";
 import {
   ColorSchemeScript,
   type ColorSchemeScriptProps,

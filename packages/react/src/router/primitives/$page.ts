@@ -10,10 +10,10 @@ import {
 import type { ServerRequest } from "alepha/server";
 import type { ServerRouteCache } from "alepha/server/cache";
 import type { FC, ReactNode } from "react";
-import type { ClientOnlyProps } from "../components/ClientOnly.tsx";
 import type { Redirection } from "../errors/Redirection.ts";
 import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
 import { ReactPageService } from "../services/ReactPageService.ts";
+import type { ClientOnlyProps } from "@alepha/react";
 
 /**
  * Main primitive for defining a React route in the application.

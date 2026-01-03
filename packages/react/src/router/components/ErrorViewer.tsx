@@ -47,6 +47,8 @@ const ErrorViewer = ({ error, alepha }: ErrorViewerProps) => {
 
 export default ErrorViewer;
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 /**
  * Parse stack trace string into structured frames
  */

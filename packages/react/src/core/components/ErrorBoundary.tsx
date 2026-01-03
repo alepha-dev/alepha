@@ -29,8 +29,9 @@ interface ErrorBoundaryState {
 }
 
 /**
- * A reusable error boundary for catching rendering errors
- * in any part of the React component tree.
+ * A reusable error boundary for catching rendering errors in any part of the React component tree.
+ *
+ * It's already included in the Alepha React framework when using page or layout components.
  */
 export class ErrorBoundary extends React.Component<
   PropsWithChildren<ErrorBoundaryProps>,

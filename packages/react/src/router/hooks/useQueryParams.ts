@@ -1,10 +1,10 @@
 import type { Alepha, Static, TObject } from "alepha";
 import { useEffect, useState } from "react";
-import { useAlepha } from "./useAlepha.ts";
+import { useAlepha } from "@alepha/react";
 import { useRouter } from "./useRouter.ts";
 
 /**
- * Not well tested. Use with caution.
+ * Hook to manage query parameters in the URL using a defined schema.
  */
 export const useQueryParams = <T extends TObject>(
   schema: T,

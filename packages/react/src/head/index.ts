@@ -1,9 +1,9 @@
-import {
-  AlephaReact,
-  type PageConfigSchema,
-  type TPropsDefault,
-  type TPropsParentDefault,
-} from "@alepha/react";
+import { AlephaReact } from "@alepha/react";
+import type {
+  PageConfigSchema,
+  TPropsDefault,
+  TPropsParentDefault,
+} from "@alepha/react/router";
 import { $module } from "alepha";
 import { $head } from "./primitives/$head.ts";
 import type { Head } from "./interfaces/Head.ts";
@@ -20,7 +20,8 @@ export * from "./providers/ServerHeadProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-declare module "@alepha/react" {
+// Augment PagePrimitiveOptions in router module
+declare module "@alepha/react/router" {
   interface PagePrimitiveOptions<
     TConfig extends PageConfigSchema = PageConfigSchema,
     TProps extends object = TPropsDefault,
@@ -28,7 +29,10 @@ declare module "@alepha/react" {
   > {
     head?: Head | ((props: TProps, previous?: Head) => Head);
   }
+}
 
+// Augment ReactRouterState in router module
+declare module "@alepha/react/router" {
   interface ReactRouterState {
     head: Head;
   }
@@ -38,6 +42,11 @@ declare module "@alepha/react" {
 
 /**
  * Fill `<head>` server & client side.
+ *
+ * Generate SEO-friendly meta tags and titles for your React application using AlephaReactHead module.
+ *
+ * This module provides services and primitives to manage the document head both on the server and client side,
+ * ensuring that your application is optimized for search engines and social media sharing.
  *
  * @see {@link ServerHeadProvider}
  * @module alepha.react.head

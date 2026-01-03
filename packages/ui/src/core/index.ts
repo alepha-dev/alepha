@@ -125,7 +125,7 @@ declare module "alepha" {
   }
 }
 
-declare module "@alepha/react" {
+declare module "@alepha/react/router" {
   interface PagePrimitiveOptions {
     /**
      * Human-readable title for the page.

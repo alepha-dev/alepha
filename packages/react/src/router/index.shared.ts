@@ -1,9 +1,11 @@
-export { default as ClientOnly } from "./components/ClientOnly.tsx";
-export { default as ErrorBoundary } from "./components/ErrorBoundary.tsx";
 export { default as ErrorViewer } from "./components/ErrorViewer.tsx";
+export type * from "./components/ErrorViewer.tsx";
 export { default as Link, type LinkProps } from "./components/Link.tsx";
+export type *  from "./components/Link.tsx";
 export { default as NestedView } from "./components/NestedView.tsx";
+export type *  from "./components/NestedView.tsx";
 export { default as NotFound } from "./components/NotFound.tsx";
+export type * from "./components/NotFound.tsx";
 export * from "./contexts/RouterLayerContext.ts";
 export * from "./primitives/$page.ts";
 export * from "./errors/Redirection.ts";
@@ -11,5 +13,6 @@ export * from "./hooks/useActive.ts";
 export * from "./hooks/useQueryParams.ts";
 export * from "./hooks/useRouter.ts";
 export * from "./hooks/useRouterState.ts";
-export * from "./hooks/useSchema.ts";
 export * from "./services/ReactRouter.ts";
+export * from "./services/ReactPageService.ts"
+export * from "./providers/ReactPageProvider.ts";

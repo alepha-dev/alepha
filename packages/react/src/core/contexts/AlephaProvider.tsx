@@ -10,7 +10,8 @@ export interface AlephaProviderProps {
 
 /**
  * AlephaProvider component to initialize and provide Alepha instance to the app.
- * This isn't recommended for apps using alepha/react/router, as Router will handle this for you.
+ *
+ * This isn't recommended for apps using `@alepha/react/router`, as Router will handle this for you.
  */
 export const AlephaProvider = (props: AlephaProviderProps) => {
   const alepha = useMemo(() => Alepha.create(), []);

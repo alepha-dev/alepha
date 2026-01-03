@@ -1,4 +1,4 @@
-import { $page } from "@alepha/react";
+import { $page } from "@alepha/react/router";
 import { $client } from "alepha/server/links";
 import type { CharacterController } from "../../../api/controllers/CharacterController.ts";
 import type { IdentityController } from "../../../api/controllers/IdentityController.ts";

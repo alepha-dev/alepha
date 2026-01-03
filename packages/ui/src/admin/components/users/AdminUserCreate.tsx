@@ -1,5 +1,6 @@
-import { useClient, useRouter } from "@alepha/react";
+import { useClient } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
+import { useRouter } from "@alepha/react/router";
 import { ActionButton, Control, Flex } from "@alepha/ui";
 import { Card, Stack, Text } from "@mantine/core";
 import { t } from "alepha";

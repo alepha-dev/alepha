@@ -1,4 +1,4 @@
-import { Link } from "@alepha/react";
+import { Link } from "@alepha/react/router";
 import { IconArrowRight, IconPackage } from "@tabler/icons-react";
 import CodeDemo from "./CodeDemo.tsx";
 import ScrollButton from "./ScrollButton.tsx";

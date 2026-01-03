@@ -1,4 +1,4 @@
-import { Link } from "@alepha/react";
+import { Link } from "@alepha/react/router";
 import {
   IconArrowRight,
   IconBrandGithub,

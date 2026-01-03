@@ -1,38 +1,15 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import {
-  $atom,
-  $env,
-  $hook,
-  $inject,
-  $use,
-  Alepha,
-  AlephaError,
-  type Static,
-  t,
-} from "alepha";
+import { $atom, $env, $hook, $inject, $use, Alepha, AlephaError, type Static, t, } from "alepha";
 import { $logger } from "alepha/logger";
-import {
-  type ServerHandler,
-  ServerProvider,
-  ServerRouterProvider,
-  ServerTimingProvider,
-} from "alepha/server";
+import { type ServerHandler, ServerRouterProvider, ServerTimingProvider, } from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
 import { ServerStaticProvider } from "alepha/server/static";
 import { renderToString } from "react-dom/server";
-import {
-  $page,
-  type PagePrimitiveRenderOptions,
-  type PagePrimitiveRenderResult,
-} from "../primitives/$page.ts";
 import { Redirection } from "../errors/Redirection.ts";
+import { $page, type PagePrimitiveRenderOptions, type PagePrimitiveRenderResult, } from "../primitives/$page.ts";
 import type { ReactHydrationState } from "./ReactBrowserProvider.ts";
-import {
-  type PageRoute,
-  ReactPageProvider,
-  type ReactRouterState,
-} from "./ReactPageProvider.ts";
+import { type PageRoute, ReactPageProvider, type ReactRouterState, } from "./ReactPageProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -84,12 +61,16 @@ declare module "alepha" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * React server provider responsible for SSR and static file serving.
+ *
+ * Use `react-dom/server` under the hood.
+ */
 export class ReactServerProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);
   protected readonly pageApi = $inject(ReactPageProvider);
-  protected readonly serverProvider = $inject(ServerProvider);
   protected readonly serverStaticProvider = $inject(ServerStaticProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);

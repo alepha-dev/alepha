@@ -1,4 +1,4 @@
-import { ReactBrowserProvider, Redirection } from "@alepha/react";
+import { ReactBrowserProvider, Redirection } from "@alepha/react/router";
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import type { UserAccountToken } from "alepha/security";

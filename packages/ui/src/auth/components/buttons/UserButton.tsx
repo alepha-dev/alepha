@@ -1,5 +1,5 @@
-import { useRouter } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
+import { useRouter } from "@alepha/react/router";
 import {
   ActionButton,
   type ActionMenuConfig,

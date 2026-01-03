@@ -10,19 +10,18 @@ import {
 } from "alepha";
 import { $logger } from "alepha/logger";
 import { createElement, type ReactNode, StrictMode } from "react";
-import ClientOnly from "../components/ClientOnly.tsx";
+import { AlephaContext, ClientOnly } from "@alepha/react";
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
 import NotFoundPage from "../components/NotFound.tsx";
-import { AlephaContext } from "../contexts/AlephaContext.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
+import { Redirection } from "../errors/Redirection.ts";
 import {
   $page,
   type ErrorHandler,
   type PagePrimitive,
   type PagePrimitiveOptions,
 } from "../primitives/$page.ts";
-import { Redirection } from "../errors/Redirection.ts";
 
 const envSchema = t.object({
   REACT_STRICT_MODE: t.boolean({ default: true }),
@@ -32,6 +31,9 @@ declare module "alepha" {
   export interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
+/**
+ * Handle page routes for React applications. (Browser and Server)
+ */
 export class ReactPageProvider {
   protected readonly log = $logger();
   protected readonly env = $env(envSchema);

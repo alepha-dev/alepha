@@ -16,6 +16,9 @@ export interface BrowserRoute extends Route {
   page: PageRoute;
 }
 
+/**
+ * Implementation of AlephaRouter for React in browser environment.
+ */
 export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);

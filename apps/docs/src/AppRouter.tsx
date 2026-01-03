@@ -1,5 +1,5 @@
-import { $page, NotFound } from "@alepha/react";
 import { $head } from "@alepha/react/head";
+import { $page, NotFound } from "@alepha/react/router";
 import { t } from "alepha";
 import { NotFoundError } from "alepha/server";
 import Docs from "./components/Docs.tsx";
@@ -7,7 +7,7 @@ import Home from "./components/Home.tsx";
 import Layout from "./components/layout/Layout.tsx";
 import { docs } from "./config/docs.ts";
 
-declare module "@alepha/react" {
+declare module "@alepha/react/router" {
   interface PagePrimitiveOptions {
     sidebar?: boolean;
   }

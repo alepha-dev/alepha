@@ -1,8 +1,10 @@
-# State Management in React
+# State Management
 
 You know the drill. You fetch data on the server, pass it through props, and pray it survives hydration. Or you set up Redux with 47 files just to share a user object.
 
 Alepha has a simpler approach: **atoms** for defining state, **useStore** for consuming it in React, and automatic SSR hydration. No providers, no reducers, no boilerplate.
+
+> **Note:** `useStore` is part of `@alepha/react` (core) and works with or without the router.
 
 ## Defining State with `$atom`
 
@@ -108,7 +110,7 @@ const ThemeToggle = () => {
 The real power comes when you combine atoms with `$page` resolution. Load data on the server, put it in an atom, and it's instantly available to all components.
 
 ```typescript
-import { $page } from "@alepha/react";
+import { $page } from "@alepha/react/router";
 import { $inject, Alepha } from "alepha";
 import { $client } from "alepha/server/links";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
@@ -157,7 +159,8 @@ const ProjectHeader = () => {
 When the user creates, updates, or deletes something, update the relevant atoms:
 
 ```tsx
-import { useAlepha, useClient, useRouter, useStore } from "@alepha/react";
+import { useAlepha, useClient, useStore } from "@alepha/react";
+import { useRouter } from "@alepha/react/router";
 import { useForm } from "@alepha/react/form";
 import { userProjectsAtom } from "../atoms/userProjectsAtom.ts";
 import type { ProjectController } from "../api/ProjectController.ts";

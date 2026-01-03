@@ -2,6 +2,9 @@ import { $hook } from "alepha";
 import { $logger } from "alepha/logger";
 import { createRoot, hydrateRoot, type Root } from "react-dom/client";
 
+/**
+ * Browser specific React renderer (react-dom/client interface)
+ */
 export class ReactBrowserRendererProvider {
   protected readonly log = $logger();
   protected root?: Root;

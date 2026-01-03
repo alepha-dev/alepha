@@ -21,7 +21,7 @@ run(Api);
 `,
   react: `
 import { run } from "alepha";
-import { $page } from "@alepha/react";
+import { $page } from "@alepha/react/router";
 
 const HelloComponent = (props: { message: string }) => {
   return <h1>{props.message}</h1>;

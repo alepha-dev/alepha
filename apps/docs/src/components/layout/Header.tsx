@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@alepha/react";
+import { Link, useRouterState } from "@alepha/react/router";
 import {
   IconBrandGithub,
   IconFile,

@@ -1,4 +1,4 @@
-import { $page } from "@alepha/react";
+import { $page } from "@alepha/react/router";
 import { Alepha } from "alepha";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AlephaReactHead } from "../../src/head/index.browser.ts";

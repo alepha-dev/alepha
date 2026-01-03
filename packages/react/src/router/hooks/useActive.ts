@@ -8,11 +8,15 @@ export interface UseActiveOptions {
   startWith?: boolean;
 }
 
+/**
+ * Hook to determine if a given route is active and to provide anchor props for navigation.
+ * This hook refreshes on router state changes.
+ */
 export const useActive = (args: string | UseActiveOptions): UseActiveHook => {
+  useRouterState();
+
   const router = useRouter();
   const [isPending, setPending] = useState(false);
-  const state = useRouterState();
-  const current = state.url.pathname;
 
   const options: UseActiveOptions =
     typeof args === "string" ? { href: args } : { ...args, href: args.href };

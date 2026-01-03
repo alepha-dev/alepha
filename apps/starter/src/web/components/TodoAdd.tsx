@@ -1,6 +1,7 @@
-import { useClient, useRouter } from "@alepha/react";
+import { useClient } from "@alepha/react";
 import { useForm, useFormState } from "@alepha/react/form";
 import { Localize, useI18n } from "@alepha/react/i18n";
+import { useRouter } from "@alepha/react/router";
 import { Flex } from "@alepha/ui";
 import { Alert, Button, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconPlus } from "@tabler/icons-react";

@@ -1,6 +1,7 @@
-import { useClient, useRouter } from "@alepha/react";
+import { useClient } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
+import { useRouter } from "@alepha/react/router";
 import { ActionButton, Control } from "@alepha/ui";
 import {
   Alert,

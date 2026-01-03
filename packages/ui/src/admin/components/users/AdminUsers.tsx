@@ -1,5 +1,6 @@
-import { useClient, useRouter } from "@alepha/react";
+import { useClient } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
+import { useRouter } from "@alepha/react/router";
 import { DataTable, Text } from "@alepha/ui";
 import { Badge, Flex, Group } from "@mantine/core";
 import { IconCheck, IconUsersPlus, IconX } from "@tabler/icons-react";

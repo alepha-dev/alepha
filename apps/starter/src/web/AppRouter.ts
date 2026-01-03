@@ -1,4 +1,4 @@
-import { $page } from "@alepha/react";
+import { $page } from "@alepha/react/router";
 import { MainRouter } from "@alepha/ui/admin";
 import { $client } from "alepha/server/links";
 import type { TaskController } from "../api/controllers/TaskController.ts";

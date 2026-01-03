@@ -1,5 +1,5 @@
-import { Link, NestedView, useRouter } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
+import { Link, NestedView, useRouter } from "@alepha/react/router";
 import { DarkModeButton, Flex, LanguageButton } from "@alepha/ui";
 import {
   AppShell,

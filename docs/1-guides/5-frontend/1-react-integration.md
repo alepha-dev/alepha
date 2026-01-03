@@ -1,10 +1,10 @@
 # React Integration
 
-Alepha isn't just a backend framework. It's a full-stack framework. We treat the frontend as just another part of your application graph.
+Alepha isn't just a backend framework. It's a full-stack framework that treats your frontend as a first-class citizen of your application graph. No more "backend team vs frontend team" drama. Just code.
 
 ## Installation
 
-The `@alepha/react` package is **not bundled** with the main `alepha` package. It's a separate extension that you need to install explicitly.
+The `@alepha/react` package ships separately from the main `alepha` package. Why? Because not everyone needs React. Some people are still writing jQuery. We don't judge.
 
 **Recommended:** Use the CLI to scaffold a React-ready project:
 
@@ -12,28 +12,236 @@ The `@alepha/react` package is **not bundled** with the main `alepha` package. I
 npx alepha init --react
 ```
 
-This is the preferred method because it:
-- Installs `@alepha/react` and its peer dependencies
-- Creates the required `index.html` entry point
-- Sets up `main.browser.ts` for client-side hydration
-- Configures Vite for SSR builds
+This sets up everything:
+- Installs `@alepha/react` and peer dependencies
+- Creates `index.html` entry point
+- Configures `main.browser.ts` for client hydration
+- Sets up Vite for SSR builds
 
-**Alternative:** If you're adding React to an existing Alepha project:
+**Manual installation:**
 
 ```bash
 npm install @alepha/react
 ```
 
-Note: You'll need to manually create `index.html` and configure the browser entry point.
+Note: You'll need to manually create `index.html` and configure the browser entry point. But you knew that.
 
-## The `$page` Primitive
+---
 
-In frameworks like Next.js or Remix, you create files in a `pages/` directory. In Alepha, you define pages as properties on a class, just like API endpoints.
+## Part 1: Core Module
 
-Why? Because it allows Type-Safe linkage between your backend data fetching and your frontend components.
+The core module (`@alepha/react`) provides essential React utilities that work **anywhere**. Next.js, Expo, your weird custom setup - doesn't matter. No router required.
+
+### What's in Core?
 
 ```tsx
-import { $page } from "@alepha/react";
+import {
+  // Hooks
+  useAlepha,       // Access the Alepha instance
+  useInject,       // Dependency injection in React
+  useClient,       // Type-safe HTTP client
+  useStore,        // Global state management
+  useAction,       // Async action handler with loading/error/cancel
+  useEvents,       // Subscribe to Alepha events
+
+  // Components
+  ClientOnly,      // Render only on client (skip SSR)
+  ErrorBoundary,   // Catch and display errors gracefully
+
+  // Module
+  AlephaReact,     // Core module registration
+} from "@alepha/react";
+```
+
+### `useAlepha` - Access the Framework
+
+Need the Alepha instance? Here you go:
+
+```tsx
+const MyComponent = () => {
+  const alepha = useAlepha();
+
+  // Access store, events, services...
+  const user = alepha.store.get("current_user");
+
+  return <div>Hello, {user?.name}</div>;
+};
+```
+
+### `useInject` - Dependency Injection in React
+
+Your services shouldn't live outside React. Inject them:
+
+```tsx
+const Dashboard = () => {
+  const analytics = useInject(AnalyticsService);
+
+  useEffect(() => {
+    analytics.trackPageView("dashboard");
+  }, []);
+
+  return <div>Dashboard</div>;
+};
+```
+
+Same DI container, same services, works in your components.
+
+### `useClient` - Type-Safe API Calls
+
+Call your backend with full type safety:
+
+```tsx
+import { useClient } from "@alepha/react";
+import type { UserController } from "../api/UserController";
+
+const UserProfile = () => {
+  const client = useClient<UserController>();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    client.getUser({ params: { id: "123" } }).then(setUser);
+  }, []);
+
+  return <div>{user?.name}</div>;
+};
+```
+
+No more guessing endpoint URLs or request shapes. TypeScript knows.
+
+### `useStore` - Global State
+
+Read and write global state without Redux boilerplate:
+
+```tsx
+import { useStore } from "@alepha/react";
+import { themeAtom } from "./atoms/theme";
+
+const ThemeToggle = () => {
+  const [theme, setTheme] = useStore(themeAtom);
+
+  return (
+    <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+      Current: {theme}
+    </button>
+  );
+};
+```
+
+See the [State Management guide](./2-state-management.md) for the full story.
+
+### `useAction` - Async Operations Done Right
+
+Handle async operations with loading states, error handling, and cancellation:
+
+```tsx
+import { useAction } from "@alepha/react";
+
+const SaveButton = () => {
+  const [save, { loading, error }] = useAction(async () => {
+    await api.saveDocument(document);
+  });
+
+  return (
+    <button onClick={save} disabled={loading}>
+      {loading ? "Saving..." : "Save"}
+    </button>
+  );
+};
+```
+
+Features:
+- **Single execution**: Prevents double-clicks
+- **Cancellation**: Abort in-flight requests
+- **Error capture**: Catches and exposes errors
+- **Loading state**: Know when it's working
+
+### `ClientOnly` - Skip SSR
+
+Some code should only run in the browser. LocalStorage, window dimensions, that sort of thing:
+
+```tsx
+import { ClientOnly } from "@alepha/react";
+
+const LiveClock = () => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <ClientOnly>
+      <span>{time.toLocaleTimeString()}</span>
+    </ClientOnly>
+  );
+};
+```
+
+No hydration mismatches. No cryptic warnings. Just works.
+
+### `ErrorBoundary` - Graceful Failures
+
+Catch errors before they crash your app:
+
+```tsx
+import { ErrorBoundary } from "@alepha/react";
+
+const App = () => (
+  <ErrorBoundary fallback={<div>Something went wrong</div>}>
+    <Dashboard />
+  </ErrorBoundary>
+);
+```
+
+### Module Registration
+
+If you're using Alepha's DI system without the router, register the core module:
+
+```typescript
+import { Alepha } from "alepha";
+import { AlephaReact } from "@alepha/react";
+
+const alepha = Alepha.create().with(AlephaReact);
+```
+
+---
+
+## Part 2: Router Module
+
+The router module (`@alepha/react/router`) is where the SSR magic happens. It gives you file-system-style routing with the power of TypeScript.
+
+**Is it required?** No. But if you want SSR, you need it. If you're building a SPA, you still probably want it. It's good.
+
+### What's in Router?
+
+```tsx
+import {
+  // Primitives
+  $page,           // Define routes as page primitives
+
+  // Hooks
+  useRouter,       // Navigation and path generation
+  useRouterState,  // Current route state
+  useActive,       // Active link detection
+  useQueryParams,  // Query string access
+
+  // Components
+  Link,            // Client-side navigation link
+  NotFound,        // 404 handling
+  NestedView,      // Nested route rendering
+
+  // Module
+  AlephaReactRouter, // Router module (auto-loads with $page)
+} from "@alepha/react/router";
+```
+
+### The `$page` Primitive
+
+In frameworks like Next.js, you create files in a `pages/` directory. In Alepha, you define pages as class properties. Why? Type-safe linking between your backend and frontend.
+
+```tsx
+import { $page } from "@alepha/react/router";
 import { t } from "alepha";
 
 export class AppRouter {
@@ -49,12 +257,12 @@ export class AppRouter {
         filter: t.optional(t.text())
       })
     },
-    // Server-Side Data Fetching (runs on the server)
+    // Server-Side Data Fetching
     resolve: async ({ query }) => {
       const stats = await db.stats.get(query.filter);
       return { stats };
     },
-    // Props are typed automatically from resolve
+    // Props typed automatically from resolve
     component: ({ stats }) => {
       return <div>Stats: {stats.count}</div>
     }
@@ -73,12 +281,11 @@ export class AppRouter {
 }
 ```
 
-### Schema for Params and Query
+### Schema = Type Safety
 
-If your path has dynamic segments like `:id`, you **must** declare them in `schema.params`. Same for query parameters in `schema.query`. This isn't optional - Alepha uses it for type safety and validation.
+If your path has `:id`, declare it in `schema.params`. Query params go in `schema.query`. This isn't optional - it's how you get type safety.
 
 ```tsx
-// path has :id and :slug -> declare both in params
 postDetail = $page({
   path: "/posts/:id/:slug",
   schema: {
@@ -99,23 +306,21 @@ postDetail = $page({
 });
 ```
 
-Without the schema, `params` and `query` are `unknown` and you lose type safety.
-
-## Routing & Navigation
+Without the schema, `params` and `query` are `unknown`. Nobody wants that.
 
 ### The `useRouter` Hook
 
-Use `useRouter<T>()` with your App class as a type parameter for fully type-safe navigation.
+Type-safe navigation:
 
 ```tsx
-import { useRouter } from "@alepha/react";
+import { useRouter } from "@alepha/react/router";
 
 const Navigation = () => {
   const router = useRouter<AppRouter>();
 
   return (
     <div>
-      {/* Type-safe navigation by page name */}
+      {/* Navigate by page name */}
       <button onClick={() => router.go("home")}>Home</button>
       <button onClick={() => router.go("dashboard")}>Dashboard</button>
 
@@ -124,20 +329,16 @@ const Navigation = () => {
         View User
       </button>
 
-      {/* Or by raw path */}
-      <button onClick={() => router.go("/settings")}>Settings</button>
-
-      {/* History navigation */}
+      {/* History */}
       <button onClick={() => router.back()}>Back</button>
-      <button onClick={() => router.forward()}>Forward</button>
     </div>
   );
 };
 ```
 
-### Generating Paths with `router.path()`
+### Generating Paths
 
-Use `router.path()` to generate type-safe URLs from page names. This is useful for `<a>` tags or any component that needs an href.
+Use `router.path()` for URLs:
 
 ```tsx
 const UserNav = () => {
@@ -145,16 +346,10 @@ const UserNav = () => {
 
   return (
     <nav>
-      {/* Generate path by page name */}
       <a href={router.path("home")}>Home</a>
-      <a href={router.path("dashboard")}>Dashboard</a>
-
-      {/* With params */}
       <a href={router.path("userProfile", { params: { id: "123" } })}>
         View User
       </a>
-
-      {/* With query params */}
       <a href={router.path("dashboard", { query: { filter: "active" } })}>
         Active Users
       </a>
@@ -165,59 +360,26 @@ const UserNav = () => {
 
 ### Anchor Props with `router.anchor()`
 
-Use `router.anchor()` to get both `href` and `onClick` props for client-side navigation without full page reload.
+Get both `href` and `onClick` for client-side navigation:
 
 ```tsx
 const NavLink = ({ page, children }) => {
   const router = useRouter<AppRouter>();
 
-  // Returns { href, onClick } - handles client-side routing
   return (
     <a {...router.anchor(page)}>
       {children}
     </a>
   );
 };
-
-// Usage
-<NavLink page="dashboard">Dashboard</NavLink>
-<NavLink page="userProfile" params={{ id: "123" }}>Profile</NavLink>
-```
-
-### Query Parameters
-
-Access and modify query parameters:
-
-```tsx
-const Filters = () => {
-  const router = useRouter<AppRouter>();
-
-  // Read current query params
-  const { sort, filter } = router.query;
-
-  // Read from URL after redirect
-  const redirect = router.query.redirect || "/";
-
-  // Update query params (doesn't reload the page)
-  const setSort = (value: string) => {
-    router.setQueryParams({ ...router.query, sort: value });
-  };
-
-  return (
-    <select value={sort} onChange={(e) => setSort(e.target.value)}>
-      <option value="name">Name</option>
-      <option value="date">Date</option>
-    </select>
-  );
-};
 ```
 
 ### Active State with `useActive`
 
-Use `useActive` to build navigation links that know their active state and handle transitions properly.
+Build navigation that knows where you are:
 
 ```tsx
-import { useActive } from "@alepha/react";
+import { useActive } from "@alepha/react/router";
 
 const NavLink = ({ href, children }) => {
   const { isActive, isPending, anchorProps } = useActive(href);
@@ -232,11 +394,11 @@ const NavLink = ({ href, children }) => {
   );
 };
 
-// With startWith option for nested routes
+// With startWith for nested routes
 const SidebarLink = ({ href, children }) => {
   const { isActive, anchorProps } = useActive({ href, startWith: true });
 
-  // isActive is true for /users, /users/123, /users/settings, etc.
+  // isActive is true for /users, /users/123, /users/settings...
   return (
     <a {...anchorProps} className={isActive ? "active" : ""}>
       {children}
@@ -245,170 +407,89 @@ const SidebarLink = ({ href, children }) => {
 };
 ```
 
-The `useActive` hook returns:
-*   `isActive`: Whether the current route matches the href.
-*   `isPending`: Whether navigation to this route is in progress.
-*   `anchorProps`: Props (`href`, `onClick`) for the anchor element with proper client-side navigation.
+### Query Parameters
 
-## Head Management
-
-Control the document `<head>` from anywhere in your component tree.
-
-### Global Head with `$head`
-
-Set default head values for your entire app:
+Access and modify query params:
 
 ```tsx
-import { $head } from "@alepha/react/head";
+const Filters = () => {
+  const router = useRouter<AppRouter>();
 
-class App {
-  head = $head({
-    title: "My SaaS",
-    titleSeparator: " | ",
-    description: "The best SaaS platform",
-    og: {
-      image: "/og-image.png",
-      type: "website"
-    }
-  });
-}
-```
+  const { sort, filter } = router.query;
 
-### Dynamic Head with `useHead`
-
-Update the head from any component:
-
-```tsx
-import { useHead } from "@alepha/react/head";
-
-const ProductPage = ({ product }) => {
-  const [head, setHead] = useHead({
-    title: product.name,
-    description: product.description,
-    og: {
-      title: product.name,
-      image: product.image
-    }
-  });
-
-  return <div>{/* ... */}</div>;
-};
-```
-
-The `useHead` hook returns the current head state and a setter function. Changes are applied immediately on the client and rendered correctly during SSR.
-
-## Internationalization (i18n)
-
-Alepha provides SSR-friendly internationalization out of the box.
-
-### Define Dictionaries with `$dictionary`
-
-```tsx
-import { $dictionary } from "@alepha/react/i18n";
-
-class App {
-  // Lazy-loaded translations
-  en = $dictionary({
-    lazy: () => import("./translations/en.ts"),
-  });
-
-  fr = $dictionary({
-    lazy: () => import("./translations/fr.ts"),
-  });
-}
-
-// translations/en.ts
-export default {
-  welcome: "Welcome",
-  greeting: "Hello, {name}!",
-  items: "{count} items",
-};
-
-// translations/fr.ts
-export default {
-  welcome: "Bienvenue",
-  greeting: "Bonjour, {name}!",
-  items: "{count} articles",
-};
-```
-
-### Use Translations with `useI18n`
-
-```tsx
-import { useI18n } from "@alepha/react/i18n";
-
-const Greeting = ({ user }) => {
-  const { tr, lang, setLang } = useI18n<App, "en">();
+  const setSort = (value: string) => {
+    router.setQueryParams({ ...router.query, sort: value });
+  };
 
   return (
-    <div>
-      <p>{tr("welcome")}</p>
-      <p>{tr("greeting", { name: user.name })}</p>
-
-      {/* Language switcher */}
-      <select value={lang} onChange={(e) => setLang(e.target.value)}>
-        <option value="en">English</option>
-        <option value="fr">Français</option>
-      </select>
-    </div>
+    <select value={sort} onChange={(e) => setSort(e.target.value)}>
+      <option value="name">Name</option>
+      <option value="date">Date</option>
+    </select>
   );
 };
 ```
 
-Translations are:
-*   **Lazy-loaded:** Only the current language is loaded, reducing bundle size.
-*   **SSR-friendly:** The correct language is rendered on the server.
-*   **Type-safe:** Translation keys are checked at compile time.
+### SSR - It Just Works
 
-## Forms (Bonus)
+Alepha handles Server-Side Rendering:
 
-Since we share schemas between backend and frontend, building forms is straightforward.
+1. Server matches URL to `$page`
+2. Runs `resolve` function for data
+3. Renders React to HTML
+4. Sends HTML to browser
+5. Hydrates the React app
 
-### The `useForm` Hook
+No Babel config. No Webpack wrestling. `alepha dev` and `alepha build` handle it.
 
-```tsx
+### Auto-Loading
+
+When you use `$page` in your module's primitives, `AlephaReactRouter` loads automatically:
+
+```typescript
+import { $module } from "alepha";
+import { $page } from "@alepha/react/router";
+
+// No manual .with(AlephaReactRouter) needed
+export const MyAppModule = $module({
+  name: "my-app",
+  primitives: [$page], // Router auto-loads
+});
+```
+
+---
+
+## When to Use What
+
+| You want... | Use... |
+|-------------|--------|
+| Just React utilities (hooks, components) | `@alepha/react` |
+| SSR, routing, pages | `@alepha/react/router` |
+| Works with Next.js/Expo | `@alepha/react` (core only) |
+| Full Alepha experience | `@alepha/react/router` |
+
+## Import Cheatsheet
+
+```typescript
+// Core - works everywhere
+import { useAlepha, useClient, useStore, useAction, ClientOnly } from "@alepha/react";
+
+// Router - full SSR experience
+import { $page, useRouter, useActive, Link } from "@alepha/react/router";
+
+// Form - type-safe forms
 import { useForm } from "@alepha/react/form";
 
-const CreateUserForm = () => {
-  const form = useForm({
-    schema: t.object({
-      name: t.text({ minLength: 2 }),
-      email: t.email(),
-      age: t.integer({ minimum: 18 }),
-    }),
-    handler: async (values) => {
-      await api.users.create(values);
-    }
-  });
+// Head - document head management (requires router)
+import { $head, useHead } from "@alepha/react/head";
 
-  return (
-    <form onSubmit={form.submit}>
-      <input {...form.field("name")} placeholder="Name" />
-      {form.errors.name && <span>{form.errors.name}</span>}
+// i18n - internationalization
+import { $dictionary, useI18n } from "@alepha/react/i18n";
 
-      <input {...form.field("email")} placeholder="Email" />
-      {form.errors.email && <span>{form.errors.email}</span>}
-
-      <input {...form.field("age")} type="number" placeholder="Age" />
-      {form.errors.age && <span>{form.errors.age}</span>}
-
-      <button type="submit" disabled={form.loading}>
-        {form.loading ? "Saving..." : "Create User"}
-      </button>
-    </form>
-  );
-};
+// Auth - authentication (requires router)
+import { useAuth } from "@alepha/react/auth";
 ```
 
-The form automatically validates against your TypeBox schema before submission.
+---
 
-## Server-Side Rendering (SSR)
-
-Alepha handles SSR out of the box:
-1.  The server matches the URL to a `$page`.
-2.  It runs the `resolve` function to get data.
-3.  It renders the React component to HTML.
-4.  It sends HTML to the browser.
-5.  It "hydrates" the React app on the client side.
-
-You don't need to configure Babel, Webpack, or Vite manually. `alepha dev` and `alepha build` handle the complexity.
+Next up: [State Management](./2-state-management.md) | [Head Management](./3-head.md) | [Forms](./4-form.md) | [i18n](./5-i18n.md)
