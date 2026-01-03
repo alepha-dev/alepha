@@ -25,10 +25,6 @@ export const RoadmapWeb = $module({
   name: "roadmap.web",
   services: [Toaster, I18n, AppRouter],
   register(alepha) {
-    if (!alepha.isProduction()) {
-      alepha.with(AlephaUIDemo);
-    }
-
     alepha
       .with(AlephaUI)
       .with(AlephaUIAuth)
@@ -43,5 +39,9 @@ export const RoadmapWeb = $module({
           primaryColor: "gray",
         },
       ]);
+
+    if (!alepha.isProduction()) {
+      alepha.with(AlephaUIDemo);
+    }
   },
 });

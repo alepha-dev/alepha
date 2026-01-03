@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { $inject, t } from "alepha";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
 import { $repository, pageQuerySchema } from "alepha/orm";
@@ -15,7 +15,7 @@ export class ProjectController {
   characters = $repository(characters);
   tasks = $repository(tasks);
   users = $repository(users);
-  security = new Security();
+  security = $inject(Security);
 
   createProject = $action({
     schema: {

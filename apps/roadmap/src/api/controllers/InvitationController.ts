@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { $inject, t } from "alepha";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
@@ -14,7 +14,7 @@ export class InvitationController {
   users = $repository(users);
   characters = $repository(characters);
   projects = $repository(projects);
-  security = new Security();
+  security = $inject(Security);
 
   createInvitation = $action({
     schema: {

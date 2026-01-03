@@ -35,7 +35,7 @@ export class ProjectTools {
   protected readonly projects = $repository(projects);
   protected readonly characters = $repository(characters);
   protected readonly tasks = $repository(tasks);
-  protected readonly security = new Security();
+  protected readonly security = $inject(Security);
 
   /**
    * List all projects (campaigns) the user has access to.
