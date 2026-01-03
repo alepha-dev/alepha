@@ -273,7 +273,9 @@ const Control = (_props: ControlProps) => {
           id={id}
           color={"blue"}
           defaultChecked={props.input.props.defaultValue}
-          {...props.input.props}
+          onChange={(event) => {
+            props.input.set(event.currentTarget.checked);
+          }}
           {...switchProps}
         />
       );
