@@ -1,6 +1,6 @@
-import { $head } from "@alepha/react/head";
+import { $head, type Head } from "@alepha/react/head";
 import { $page, NotFound } from "@alepha/react/router";
-import { t } from "alepha";
+import { $env, t } from "alepha";
 import { NotFoundError } from "alepha/server";
 import Docs from "./components/Docs.tsx";
 import Home from "./components/Home.tsx";
@@ -14,26 +14,46 @@ declare module "@alepha/react/router" {
 }
 
 export class AppRouter {
-  head = $head({
-    title: "Alepha",
-    titleSeparator: " | ",
-    description:
-      "Alepha is a TypeScript-first framework with React SSR, schema validation, and modern backend tools. Build production-ready apps in days, not months.",
-    image: "https://alepha.dev/og-image.png",
-    url: "https://alepha.dev/",
-    siteName: "Alepha",
-    locale: "en_US",
-    type: "website",
-    imageWidth: 1200,
-    imageHeight: 630,
-    imageAlt: "Alepha Framework - TypeScript Made Easy",
-    og: {
-      title: "Alepha - TypeScript Framework Made Easy",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: "Alepha - TypeScript Framework Made Easy",
-    },
+  env = $env(
+    t.object({
+      UMAMI_URL: t.optional(t.string()),
+      UMAMI_UUID: t.optional(t.string()),
+    }),
+  );
+
+  head = $head(() => {
+    const head: Head = {
+      title: "Alepha",
+      titleSeparator: " | ",
+      description:
+        "Alepha is a TypeScript-first framework with React SSR, schema validation, and modern backend tools. Build production-ready apps in days, not months.",
+      image: "https://alepha.dev/og-image.png",
+      url: "https://alepha.dev/",
+      siteName: "Alepha",
+      locale: "en_US",
+      type: "website",
+      imageWidth: 1200,
+      imageHeight: 630,
+      imageAlt: "Alepha Framework - TypeScript Made Easy",
+      og: {
+        title: "Alepha - TypeScript Framework Made Easy",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: "Alepha - TypeScript Framework Made Easy",
+      },
+    };
+
+    if (this.env.UMAMI_URL && this.env.UMAMI_UUID) {
+      head.script ??= [];
+      head.script.push({
+        defer: true,
+        src: this.env.UMAMI_URL,
+        "data-website-id": this.env.UMAMI_UUID,
+      });
+    }
+
+    return head;
   });
 
   layout = $page({
