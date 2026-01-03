@@ -68,6 +68,12 @@ export class ServerHeadProvider {
       }
     }
 
+    if (head.script) {
+      for (const script of head.script) {
+        headContent += this.renderScriptTag(script);
+      }
+    }
+
     // Inject into <head>...</head>
     result = result.replace(
       /<head([^>]*)>(.*?)<\/head>/is,
@@ -123,5 +129,19 @@ export class ServerHeadProvider {
       return `<meta name="${this.escapeHtml(meta.name)}" content="${this.escapeHtml(meta.content)}">\n`;
     }
     return "";
+  }
+
+  protected renderScriptTag(script: Record<string, string | boolean>): string {
+    const attrs = Object.entries(script)
+      .filter(([, value]) => value !== false)
+      .map(([key, value]) => {
+        // Boolean attributes - render without value if true
+        if (value === true) {
+          return key;
+        }
+        return `${key}="${this.escapeHtml(String(value))}"`;
+      })
+      .join(" ");
+    return `<script ${attrs}></script>\n`;
   }
 }

@@ -73,7 +73,10 @@ export interface SimpleHead {
   bodyAttributes?: Record<string, string>;
   /** Meta tags - supports both name and property attributes */
   meta?: Array<HeadMeta>;
+  /** Link tags (e.g., stylesheets, preload, canonical) */
   link?: Array<{ rel: string; href: string }>;
+  /** Script tags - any valid script attributes (src, type, async, defer, etc.) */
+  script?: Array<Record<string, string | boolean>>;
 }
 
 export interface HeadMeta {

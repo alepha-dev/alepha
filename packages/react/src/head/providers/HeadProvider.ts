@@ -33,6 +33,7 @@ export class HeadProvider {
       ...head,
       meta: [...(state.head.meta ?? []), ...meta, ...(head.meta ?? [])],
       link: [...(state.head.link ?? []), ...link, ...(head.link ?? [])],
+      script: [...(state.head.script ?? []), ...(head.script ?? [])],
     };
   }
 
@@ -89,6 +90,10 @@ export class HeadProvider {
 
     if (head.link) {
       state.head.link = [...(state.head.link ?? []), ...(head.link ?? [])];
+    }
+
+    if (head.script) {
+      state.head.script = [...(state.head.script ?? []), ...(head.script ?? [])];
     }
   }
 }
