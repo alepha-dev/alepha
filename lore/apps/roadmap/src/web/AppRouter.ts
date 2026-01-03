@@ -15,10 +15,15 @@ import type { InvitationController } from "../api/controllers/InvitationControll
 import type { ProjectController } from "../api/controllers/ProjectController.ts";
 import type { ProjectStatsController } from "../api/controllers/ProjectStatsController.ts";
 import type { TaskController } from "../api/controllers/TaskController.ts";
+import type { WhiteboardController } from "../api/controllers/WhiteboardController.ts";
 import { currentAssignedTasksAtom } from "./atoms/currentAssignedTasksAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectCharacterAtom } from "./atoms/currentProjectCharacterAtom.ts";
 import { currentTaskAtom } from "./atoms/currentTaskAtom.ts";
+import {
+  currentWhiteboardAtom,
+  currentWhiteboardsAtom,
+} from "./atoms/currentWhiteboardsAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { AdminRouter } from "./components/admin/AdminRouter.ts";
 import { MeRouter } from "./components/profile/MeRouter.ts";
@@ -29,6 +34,7 @@ export class AppRouter {
   taskApi = $client<TaskController>();
   projectApi = $client<ProjectController>();
   projectStatsApi = $client<ProjectStatsController>();
+  whiteboardApi = $client<WhiteboardController>();
   invitationApi = $client<InvitationController>();
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
@@ -117,6 +123,7 @@ export class AppRouter {
       this.projectSettings,
       this.projectAnalytics,
       this.projectPlayers,
+      this.projectWhiteboards,
     ],
     path: "/p/:projectId",
     schema: {
@@ -210,6 +217,35 @@ export class AppRouter {
       return {
         project,
       };
+    },
+  });
+
+  projectWhiteboards = $page({
+    path: "/whiteboards",
+    lazy: () => import("./components/project/ProjectWhiteboards.tsx"),
+    resolve: async () => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+
+      const whiteboards = await this.whiteboardApi.getWhiteboards({
+        params: { projectId: project.id },
+      });
+
+      this.alepha.store.set(currentWhiteboardsAtom, whiteboards);
+      if (whiteboards.length > 0) {
+        this.alepha.store.set(currentWhiteboardAtom, whiteboards[0]);
+      }
+
+      return {
+        project,
+        whiteboards,
+      };
+    },
+    onLeave: () => {
+      this.alepha.store.set(currentWhiteboardsAtom, []);
+      this.alepha.store.set(currentWhiteboardAtom, undefined);
     },
   });
 

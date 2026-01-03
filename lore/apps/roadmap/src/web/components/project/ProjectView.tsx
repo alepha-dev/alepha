@@ -1,4 +1,5 @@
-import { NestedView } from "@alepha/react/router";
+import { ClientOnly } from "@alepha/react";
+import { NestedView, useRouterState } from "@alepha/react/router";
 import { Card, Container, Flex, Stack } from "@mantine/core";
 import { theme } from "../../constants/theme.ts";
 import ExperienceBar from "../misc/ExperienceBar.jsx";
@@ -8,6 +9,29 @@ import QuestLog from "./QuestLog.jsx";
 import TaskHistory from "./task/TaskHistory.jsx";
 
 const ProjectView = () => {
+  const routerState = useRouterState();
+  const isWhiteboard = routerState.name === "projectWhiteboards";
+
+  if (isWhiteboard) {
+    return (
+      <Flex direction="column" p={0} gap={0} flex={1} className="overflow-auto">
+        <Card
+          p={0}
+          flex={1}
+          radius={0}
+          bg={theme.colors.panel}
+          withBorder
+          style={{ borderLeft: 0, borderRight: 0 }}
+        >
+          <ClientOnly>
+            <NestedView />
+          </ClientOnly>
+        </Card>
+        <ExperienceBar />
+      </Flex>
+    );
+  }
+
   return (
     <Flex
       direction={"column"}

@@ -30,6 +30,7 @@ export class I18n {
         "project.menu.board": "Board",
         "project.menu.players": "Players",
         "project.menu.analytics": "Analytics",
+        "project.menu.whiteboards": "Draw",
         "project.menu.settings": "Settings",
 
         "task.create.submit": "Add Quest to Campaign",
@@ -115,6 +116,7 @@ export class I18n {
         "project.menu.board": "Tableau",
         "project.menu.players": "Aventuriers",
         "project.menu.analytics": "Chroniques",
+        "project.menu.whiteboards": "Dessiner",
         "project.menu.settings": "Paramètres",
 
         "task.create.submit": "Ajouter la quête à la campagne",

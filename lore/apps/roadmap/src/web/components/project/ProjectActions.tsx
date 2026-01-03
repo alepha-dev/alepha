@@ -11,6 +11,7 @@ import {
   Transition,
 } from "@mantine/core";
 import {
+  IconBrush,
   IconChartLine,
   IconPlus,
   IconSettings,
@@ -30,6 +31,7 @@ type TabValue =
   | "projectBoard"
   | "projectPlayers"
   | "projectAnalytics"
+  | "projectWhiteboards"
   | "projectSettings";
 
 const ProjectActions = () => {
@@ -49,6 +51,15 @@ const ProjectActions = () => {
         <Center style={{ gap: 6 }}>
           <IconTable size={theme.icon.size.sm} />
           <span>{tr("project.menu.board")}</span>
+        </Center>
+      ),
+    },
+    {
+      value: "projectWhiteboards",
+      label: (
+        <Center style={{ gap: 6 }}>
+          <IconBrush size={theme.icon.size.sm} />
+          <span>{tr("project.menu.whiteboards")}</span>
         </Center>
       ),
     },
