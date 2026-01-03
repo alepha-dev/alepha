@@ -94,7 +94,7 @@ interface CanvasImageProps {
   element: WhiteboardElement;
   isSelected: boolean;
   tool: ToolType;
-  onSelect: () => void;
+  onSelect: (e: KonvaEventObject<MouseEvent>) => void;
   onErase: () => void;
   onDragEnd: (e: KonvaEventObject<DragEvent>) => void;
   onTransformEnd: (e: KonvaEventObject<unknown>) => void;
@@ -143,11 +143,11 @@ const CanvasImage = ({
     y: element.y,
     rotation: element.rotation ?? 0,
     draggable: tool === "select",
-    onClick: () => {
+    onClick: (e: KonvaEventObject<MouseEvent>) => {
       if (tool === "eraser") {
         onErase();
       } else {
-        onSelect();
+        onSelect(e);
       }
     },
     onDragEnd,
@@ -194,8 +194,17 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
   const [elements, setElements] = useState<WhiteboardElement[]>(
     whiteboard.data.elements,
   );
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [tool, setTool] = useState<ToolType>("select");
+  // Selection rectangle (marquee) state
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState({ x: 0, y: 0 });
+  const [selectionRect, setSelectionRect] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const [strokeColor, setStrokeColor] = useState("#000000");
   const [fillColor, setFillColor] = useState("#ffffff");
   const [isDrawing, setIsDrawing] = useState(false);
@@ -291,26 +300,34 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedId) {
-          // Check if this is an image element - if so, delete from storage
-          const element = elements.find((el) => el.id === selectedId);
-          if (element?.type === "image" && element.fileId) {
-            try {
-              await whiteboardApi.deleteImage({
-                params: { fileId: element.fileId },
-              });
-            } catch {
-              // Silent fail - file might already be deleted
+        if (selectedIds.length > 0) {
+          // Delete all selected elements, cleanup images from storage
+          for (const id of selectedIds) {
+            const element = elements.find((el) => el.id === id);
+            if (element?.type === "image" && element.fileId) {
+              try {
+                await whiteboardApi.deleteImage({
+                  params: { fileId: element.fileId },
+                });
+              } catch {
+                // Silent fail - file might already be deleted
+              }
             }
           }
-          const newElements = elements.filter((el) => el.id !== selectedId);
+          const newElements = elements.filter(
+            (el) => !selectedIds.includes(el.id),
+          );
           setElements(newElements);
           pushHistory(newElements);
-          setSelectedId(null);
+          setSelectedIds([]);
         }
       } else if (e.key === "Escape") {
-        setSelectedId(null);
+        setSelectedIds([]);
         setTool("select");
+      } else if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
+        // Select all
+        e.preventDefault();
+        setSelectedIds(elements.map((el) => el.id));
       } else if (e.key === "z" && (e.ctrlKey || e.metaKey)) {
         if (e.shiftKey) {
           handleRedo();
@@ -326,7 +343,7 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
-    selectedId,
+    selectedIds,
     elements,
     pushHistory,
     handleUndo,
@@ -338,18 +355,18 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
   // Update transformer on selection change
   useEffect(() => {
     if (transformerRef.current && stageRef.current) {
-      if (selectedId) {
-        const node = stageRef.current.findOne(`#${selectedId}`);
-        if (node) {
-          transformerRef.current.nodes([node]);
-          transformerRef.current.getLayer()?.batchDraw();
-        }
+      if (selectedIds.length > 0) {
+        const nodes = selectedIds
+          .map((id) => stageRef.current?.findOne(`#${id}`))
+          .filter(Boolean);
+        transformerRef.current.nodes(nodes as never[]);
+        transformerRef.current.getLayer()?.batchDraw();
       } else {
         transformerRef.current.nodes([]);
         transformerRef.current.getLayer()?.batchDraw();
       }
     }
-  }, [selectedId]);
+  }, [selectedIds]);
 
   const generateId = () => crypto.randomUUID();
 
@@ -371,7 +388,14 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
 
     if (tool === "select") {
       if (clickedOnEmpty) {
-        setSelectedId(null);
+        // Start selection rectangle (marquee)
+        const pos = getPointerPosition();
+        setIsSelecting(true);
+        setSelectionStart(pos);
+        setSelectionRect({ x: pos.x, y: pos.y, width: 0, height: 0 });
+        if (!e.evt.shiftKey) {
+          setSelectedIds([]);
+        }
       }
       return;
     }
@@ -414,18 +438,128 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
     const newElements = [...elements, newElement];
     setElements(newElements);
     pushHistory(newElements);
-    setSelectedId(newElement.id);
+    setSelectedIds([newElement.id]);
     setTool("select");
   };
 
   const handleMouseMove = () => {
-    if (!isDrawing || tool !== "line") return;
-
     const pos = getPointerPosition();
+
+    // Update selection rectangle
+    if (isSelecting) {
+      const x = Math.min(selectionStart.x, pos.x);
+      const y = Math.min(selectionStart.y, pos.y);
+      const width = Math.abs(pos.x - selectionStart.x);
+      const height = Math.abs(pos.y - selectionStart.y);
+      setSelectionRect({ x, y, width, height });
+      return;
+    }
+
+    // Freehand drawing
+    if (!isDrawing || tool !== "line") return;
     setCurrentLine([...currentLine, pos.x, pos.y]);
   };
 
+  // Calculate element bounds for intersection testing
+  const getElementBounds = (el: WhiteboardElement) => {
+    let x = el.x;
+    let y = el.y;
+    let width: number;
+    let height: number;
+
+    switch (el.type) {
+      case "task":
+        width = el.width ?? 220;
+        height = 48;
+        break;
+      case "image":
+        width = el.width ?? 200;
+        height = el.height ?? 150;
+        break;
+      case "rect":
+        width = el.width ?? 100;
+        height = el.height ?? 60;
+        break;
+      case "circle": {
+        const radius = (el.width ?? 50) / 2;
+        // Circle x,y is center, so adjust
+        x = el.x - radius;
+        y = el.y - radius;
+        width = radius * 2;
+        height = radius * 2;
+        break;
+      }
+      case "arrow":
+      case "line": {
+        // Calculate bounds from points
+        const points = el.points ?? [0, 0, 100, 0];
+        let minX = el.x;
+        let minY = el.y;
+        let maxX = el.x;
+        let maxY = el.y;
+        for (let i = 0; i < points.length; i += 2) {
+          const px = el.x + points[i];
+          const py = el.y + points[i + 1];
+          minX = Math.min(minX, px);
+          minY = Math.min(minY, py);
+          maxX = Math.max(maxX, px);
+          maxY = Math.max(maxY, py);
+        }
+        x = minX;
+        y = minY;
+        width = Math.max(maxX - minX, 10);
+        height = Math.max(maxY - minY, 10);
+        break;
+      }
+      case "text": {
+        // Approximate text size
+        const textLen = (el.text?.length ?? 4) * ((el.fontSize ?? 16) * 0.6);
+        width = Math.max(textLen, 20);
+        height = (el.fontSize ?? 16) * 1.2;
+        break;
+      }
+      default:
+        width = 100;
+        height = 60;
+    }
+
+    return { x, y, width, height };
+  };
+
+  // Get elements intersecting with a rectangle
+  const getElementsInRect = (rect: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => {
+    return elements.filter((el) => {
+      const bounds = getElementBounds(el);
+
+      // Check intersection
+      return !(
+        bounds.x > rect.x + rect.width ||
+        bounds.x + bounds.width < rect.x ||
+        bounds.y > rect.y + rect.height ||
+        bounds.y + bounds.height < rect.y
+      );
+    });
+  };
+
   const handleMouseUp = () => {
+    // Finish selection rectangle
+    if (isSelecting && selectionRect) {
+      if (selectionRect.width > 5 || selectionRect.height > 5) {
+        const elementsInRect = getElementsInRect(selectionRect);
+        const newIds = elementsInRect.map((el) => el.id);
+        setSelectedIds((prev) => [...new Set([...prev, ...newIds])]);
+      }
+      setIsSelecting(false);
+      setSelectionRect(null);
+      return;
+    }
+
+    // Finish freehand drawing
     if (!isDrawing || tool !== "line") return;
 
     setIsDrawing(false);
@@ -575,7 +709,7 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
         const newElements = [...elements, newElement];
         setElements(newElements);
         pushHistory(newElements);
-        setSelectedId(newElement.id);
+        setSelectedIds([newElement.id]);
 
         toast.success({ message: "Image added" });
       } catch (error) {
@@ -654,7 +788,43 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
     setEditingTextValue("");
   };
 
+  // Handle element selection with shift+click support
+  const handleElementSelect = (
+    elementId: string,
+    e: KonvaEventObject<MouseEvent>,
+  ) => {
+    if (tool === "eraser") {
+      handleErase(elementId);
+      return;
+    }
+
+    if (e.evt.shiftKey) {
+      // Toggle selection
+      if (selectedIds.includes(elementId)) {
+        setSelectedIds(selectedIds.filter((id) => id !== elementId));
+      } else {
+        setSelectedIds([...selectedIds, elementId]);
+      }
+    } else {
+      // Single select
+      setSelectedIds([elementId]);
+    }
+  };
+
   const renderElement = (element: WhiteboardElement) => {
+    const handleClick = (e: KonvaEventObject<MouseEvent>) => {
+      handleElementSelect(element.id, e);
+    };
+
+    // For tap events, we don't have shiftKey, so just single-select
+    const handleTap = () => {
+      if (tool === "eraser") {
+        handleErase(element.id);
+      } else {
+        setSelectedIds([element.id]);
+      }
+    };
+
     const commonProps = {
       id: element.id,
       key: element.id,
@@ -662,13 +832,8 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
       y: element.y,
       rotation: element.rotation ?? 0,
       draggable: tool === "select",
-      onClick: () => {
-        if (tool === "eraser") {
-          handleErase(element.id);
-        } else {
-          setSelectedId(element.id);
-        }
-      },
+      onClick: handleClick,
+      onTap: handleTap, // Touch support
       onDragEnd: (e: KonvaEventObject<DragEvent>) =>
         handleDragEnd(element.id, e),
       onTransformEnd: (e: KonvaEventObject<unknown>) =>
@@ -705,6 +870,7 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
             stroke={element.stroke ?? "#000000"}
             fill={element.stroke ?? "#000000"}
             strokeWidth={2}
+            hitStrokeWidth={20}
             pointerLength={10}
             pointerWidth={10}
           />
@@ -727,6 +893,7 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
             points={element.points ?? []}
             stroke={element.stroke ?? "#000000"}
             strokeWidth={element.strokeWidth ?? 2}
+            hitStrokeWidth={20}
             tension={0.5}
             lineCap="round"
             lineJoin="round"
@@ -738,9 +905,9 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
           <CanvasImage
             key={element.id}
             element={element}
-            isSelected={selectedId === element.id}
+            isSelected={selectedIds.includes(element.id)}
             tool={tool}
-            onSelect={() => setSelectedId(element.id)}
+            onSelect={(e) => handleElementSelect(element.id, e)}
             onErase={() => handleErase(element.id)}
             onDragEnd={(e) => handleDragEnd(element.id, e)}
             onTransformEnd={(e) => handleTransformEnd(element.id, e)}
@@ -755,13 +922,20 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
             key={element.id}
             element={element}
             task={task}
-            isSelected={selectedId === element.id}
+            isSelected={selectedIds.includes(element.id)}
             draggable={tool === "select"}
-            onClick={() => {
+            onClick={(e) => {
               if (tool === "eraser") {
                 handleErase(element.id);
               } else {
-                setSelectedId(element.id);
+                handleElementSelect(element.id, e);
+              }
+            }}
+            onTap={() => {
+              if (tool === "eraser") {
+                handleErase(element.id);
+              } else {
+                setSelectedIds([element.id]);
               }
             }}
             onDblClick={() => handleTaskDblClick(task)}
@@ -794,11 +968,11 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
   );
   const availableTasks = acceptedTasks.filter((t) => !tasksOnBoard.has(t.id));
 
-  // Check if selected element is a task (no resize, only move/rotate)
-  const selectedElement = selectedId
-    ? elements.find((el) => el.id === selectedId)
-    : null;
-  const isTaskSelected = selectedElement?.type === "task";
+  // Check if any selected element is a task (no resize for tasks)
+  const hasTaskSelected = selectedIds.some((id) => {
+    const el = elements.find((e) => e.id === id);
+    return el?.type === "task";
+  });
 
   const handleAddTask = (taskId: number, x?: number, y?: number) => {
     // Add task at specified position or center of visible canvas
@@ -1321,11 +1495,25 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
                 />
               )}
 
+              {/* Selection rectangle (marquee) */}
+              {isSelecting && selectionRect && (
+                <Rect
+                  x={selectionRect.x}
+                  y={selectionRect.y}
+                  width={selectionRect.width}
+                  height={selectionRect.height}
+                  fill="rgba(34, 139, 230, 0.1)"
+                  stroke="#228be6"
+                  strokeWidth={1}
+                  dash={[4, 4]}
+                />
+              )}
+
               {/* Transformer */}
               <Transformer
                 ref={transformerRef}
                 enabledAnchors={
-                  isTaskSelected
+                  hasTaskSelected
                     ? [] // No resize for tasks, only move/rotate
                     : [
                         "top-left",
@@ -1595,7 +1783,8 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
         </Text>
         <List size="sm" spacing={4} mb="md">
           <List.Item>
-            <strong>Select</strong> - Click to select, drag to move
+            <strong>Select</strong> - Click to select, Shift+click to
+            multi-select, drag empty space to marquee select
           </List.Item>
           <List.Item>
             <strong>Rectangle/Circle</strong> - Click to place shape
@@ -1610,7 +1799,8 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
             <strong>Draw</strong> - Freehand drawing
           </List.Item>
           <List.Item>
-            <strong>Image</strong> - Upload images or paste from clipboard (Ctrl+V)
+            <strong>Image</strong> - Upload images or paste from clipboard
+            (Ctrl+V)
           </List.Item>
           <List.Item>
             <strong>Eraser</strong> - Click on elements to delete
@@ -1660,6 +1850,9 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
           </List.Item>
           <List.Item>
             <strong>Ctrl+Shift+Z</strong> - Redo
+          </List.Item>
+          <List.Item>
+            <strong>Ctrl+A</strong> - Select all elements
           </List.Item>
           <List.Item>
             <strong>Ctrl++</strong> - Zoom in

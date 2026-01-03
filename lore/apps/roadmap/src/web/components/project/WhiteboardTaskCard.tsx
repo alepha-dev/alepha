@@ -35,7 +35,8 @@ export interface WhiteboardTaskCardProps {
   task: Task;
   isSelected: boolean;
   draggable: boolean;
-  onClick: () => void;
+  onClick: (e: KonvaEventObject<MouseEvent>) => void;
+  onTap: () => void;
   onDblClick: () => void;
   onDragEnd: (e: KonvaEventObject<DragEvent>) => void;
 }
@@ -48,6 +49,7 @@ const WhiteboardTaskCard = ({
   isSelected,
   draggable,
   onClick,
+  onTap,
   onDblClick,
   onDragEnd,
 }: WhiteboardTaskCardProps) => {
@@ -68,7 +70,7 @@ const WhiteboardTaskCard = ({
       rotation={element.rotation ?? 0}
       draggable={draggable}
       onClick={onClick}
-      onTap={onClick}
+      onTap={onTap}
       onDblClick={onDblClick}
       onDblTap={onDblClick}
       onDragEnd={onDragEnd}
