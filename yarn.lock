@@ -174,8 +174,6 @@ __metadata:
     "@types/react": "npm:^19.2.7"
     "@types/react-dom": "npm:^19.2.3"
     "@types/sanitize-html": "npm:^2.16.0"
-    "@vercel/analytics": "npm:^1.6.1"
-    "@vercel/speed-insights": "npm:^1.3.1"
     alepha: "npm:^0.14.1"
     animate.css: "npm:^4.1.1"
     framer-motion: "npm:^12.23.26"
@@ -6311,36 +6309,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/analytics@npm:^1.6.1":
-  version: 1.6.1
-  resolution: "@vercel/analytics@npm:1.6.1"
-  peerDependencies:
-    "@remix-run/react": ^2
-    "@sveltejs/kit": ^1 || ^2
-    next: ">= 13"
-    react: ^18 || ^19 || ^19.0.0-rc
-    svelte: ">= 4"
-    vue: ^3
-    vue-router: ^4
-  peerDependenciesMeta:
-    "@remix-run/react":
-      optional: true
-    "@sveltejs/kit":
-      optional: true
-    next:
-      optional: true
-    react:
-      optional: true
-    svelte:
-      optional: true
-    vue:
-      optional: true
-    vue-router:
-      optional: true
-  checksum: 10c0/df39ec419299b43350ad80a06fe835502f22f71c32d21d58855ac39ef352d3478b8922e44375dbc5b0c02ceae04a9d23b32579eb517a602656f6460c90f5802a
-  languageName: node
-  linkType: hard
-
 "@vercel/backends@npm:0.0.17":
   version: 0.0.17
   resolution: "@vercel/backends@npm:0.0.17"
@@ -6675,33 +6643,6 @@ __metadata:
     "@iarna/toml": "npm:^2.2.5"
     execa: "npm:5"
   checksum: 10c0/3d973e1107f39ef11c2ca459770e8d84d1548c6143f965b329d4c5a7eefae34fb8609e03e739e6e8e948365d690394677e90839cbcd1214c3ac6b51e8df37f1b
-  languageName: node
-  linkType: hard
-
-"@vercel/speed-insights@npm:^1.3.1":
-  version: 1.3.1
-  resolution: "@vercel/speed-insights@npm:1.3.1"
-  peerDependencies:
-    "@sveltejs/kit": ^1 || ^2
-    next: ">= 13"
-    react: ^18 || ^19 || ^19.0.0-rc
-    svelte: ">= 4"
-    vue: ^3
-    vue-router: ^4
-  peerDependenciesMeta:
-    "@sveltejs/kit":
-      optional: true
-    next:
-      optional: true
-    react:
-      optional: true
-    svelte:
-      optional: true
-    vue:
-      optional: true
-    vue-router:
-      optional: true
-  checksum: 10c0/37b943cfd52ec3a62e8ba4bcdce6a9e4251294a6196c5d069b4b1bc79529b0f6765c3142c7bb0c0478efbb83b261c3221180566327d867a58628a713484afb79
   languageName: node
   linkType: hard
 

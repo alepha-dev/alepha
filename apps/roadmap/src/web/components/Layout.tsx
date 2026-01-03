@@ -1,31 +1,21 @@
-import { useInject } from "@alepha/react";
 import { NestedView } from "@alepha/react/router";
 import { AlephaMantineProvider } from "@alepha/ui";
 import { Flex } from "@mantine/core";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/react";
-import { Alepha } from "alepha";
 import { theme } from "../constants/theme.ts";
 import Header from "./shared/Header.jsx";
 
 const Layout = () => {
-  const alepha = useInject(Alepha);
-
   return (
-    <>
-      {alepha.isProduction() && <Analytics />}
-      {alepha.isProduction() && <SpeedInsights />}
-      <AlephaMantineProvider
-        mantine={{
-          theme: theme.mantine,
-        }}
-      >
-        <Flex h={"100vh"} flex={1} direction={"column"}>
-          <Header />
-          <NestedView />
-        </Flex>
-      </AlephaMantineProvider>
-    </>
+    <AlephaMantineProvider
+      mantine={{
+        theme: theme.mantine,
+      }}
+    >
+      <Flex h={"100vh"} flex={1} direction={"column"}>
+        <Header />
+        <NestedView />
+      </Flex>
+    </AlephaMantineProvider>
   );
 };
 
