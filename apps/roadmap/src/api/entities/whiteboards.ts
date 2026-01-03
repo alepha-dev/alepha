@@ -5,7 +5,7 @@ import { projects } from "./projects.ts";
 
 export const whiteboardElementSchema = t.object({
   id: t.string(),
-  type: t.enum(["task", "rect", "circle", "arrow", "text", "line"]),
+  type: t.enum(["task", "rect", "circle", "arrow", "text", "line", "image"]),
   x: t.number(),
   y: t.number(),
   width: t.optional(t.number()),
@@ -18,6 +18,7 @@ export const whiteboardElementSchema = t.object({
   fill: t.optional(t.string()),
   fontSize: t.optional(t.number()),
   strokeWidth: t.optional(t.number()),
+  fileId: t.optional(t.uuid()), // For image elements - references uploaded file
 });
 
 export const whiteboardDataSchema = t.object({
