@@ -1,14 +1,21 @@
-import { Box, Flex, SegmentedControl } from "@mantine/core";
+import { Box, type BoxProps, Flex, SegmentedControl } from "@mantine/core";
 import { type ReactNode, useState } from "react";
 
 export interface MacWindowProps {
   children: ReactNode;
   title?: string;
+  containerProps?: BoxProps;
+  fill?: boolean;
 }
 
 type WindowSize = "25" | "50" | "75" | "100";
 
-const MacWindow = ({ children, title }: MacWindowProps) => {
+const MacWindow = ({
+  children,
+  title,
+  containerProps,
+  fill,
+}: MacWindowProps) => {
   const [size, setSize] = useState<WindowSize>("100");
 
   const getWidth = () => {
@@ -16,10 +23,13 @@ const MacWindow = ({ children, title }: MacWindowProps) => {
   };
 
   return (
-    <Box
+    <Flex
+      direction="column"
+      flex={fill ? 1 : undefined}
+      h={fill ? "100%" : undefined}
+      bdrs={"md"}
       style={{
         width: getWidth(),
-        borderRadius: 8,
         border: "1px solid var(--mantine-color-default-border)",
         overflow: "hidden",
         background: "var(--mantine-color-body)",
@@ -66,20 +76,29 @@ const MacWindow = ({ children, title }: MacWindowProps) => {
           {title}
         </Box>
 
-        <SegmentedControl
-          size="xs"
-          value={size}
-          onChange={(v) => setSize(v as WindowSize)}
-          data={[
-            { label: "25", value: "25" },
-            { label: "50", value: "50" },
-            { label: "75", value: "75" },
-            { label: "100", value: "100" },
-          ]}
-        />
+        {fill ? undefined : (
+          <SegmentedControl
+            size="xs"
+            value={size}
+            onChange={(v) => setSize(v as WindowSize)}
+            data={[
+              { label: "25", value: "25" },
+              { label: "50", value: "50" },
+              { label: "75", value: "75" },
+              { label: "100", value: "100" },
+            ]}
+          />
+        )}
       </Flex>
-      <Box p="md">{children}</Box>
-    </Box>
+      <Flex
+        direction={"column"}
+        flex={fill ? 1 : undefined}
+        p="md"
+        {...containerProps}
+      >
+        {children}
+      </Flex>
+    </Flex>
   );
 };
 

@@ -457,6 +457,11 @@ export class FormModel<T extends TObject> {
     }
 
     if (t.schema.isBoolean(schema)) {
+      // Handle string representations from Select components (Yes/No dropdown)
+      if (input === "true") return true;
+      if (input === "false") return false;
+      if (input === "" || input === null || input === undefined) return undefined;
+      // Handle actual boolean values
       return !!input;
     }
 

@@ -132,6 +132,7 @@ __metadata:
     jsdom: "npm:^27.4.0"
     react: "npm:^19.2.3"
     react-dom: "npm:^19"
+    typescript: "npm:^5.9.3"
     vitest: "npm:^4.0.16"
   peerDependencies:
     alepha: 0.14.1

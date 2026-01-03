@@ -3,7 +3,7 @@ import { TypeForm, ui } from "@alepha/ui";
 import { Box, Card, Flex, Text } from "@mantine/core";
 import type { Static, TObject } from "alepha";
 import { type ReactNode, useState } from "react";
-import MacWindow from "./MacWindow.tsx";
+import MacWindow, { type MacWindowProps } from "./MacWindow.tsx";
 
 export interface ShowcaseProps<T extends TObject> {
   /**
@@ -26,6 +26,10 @@ export interface ShowcaseProps<T extends TObject> {
    * Render function that receives the current props values
    */
   children: (props: Static<T>) => ReactNode;
+  /**
+   * Additional props for the MacWindow container
+   */
+  windowProps?: Partial<MacWindowProps>;
 }
 
 /**
@@ -38,6 +42,7 @@ const Showcase = <T extends TObject>({
   initialValues,
   columns = 3,
   children,
+  windowProps,
 }: ShowcaseProps<T>) => {
   const [values, setValues] = useState<Record<string, any>>(
     initialValues ?? {},
@@ -50,7 +55,10 @@ const Showcase = <T extends TObject>({
       handler: (values) => {
         setValues(values as Record<string, any>);
       },
-      onChange: () => form.submit(),
+      onChange: (key, value) => {
+        console.log("onChange", key, value);
+        form.submit();
+      },
     },
     [schema],
   );
@@ -58,6 +66,7 @@ const Showcase = <T extends TObject>({
   return (
     <Flex flex={1} h={"100%"}>
       <Flex
+        flex={1}
         bg={ui.colors.background}
         h={"100%"}
         p="xl"
@@ -65,7 +74,9 @@ const Showcase = <T extends TObject>({
         align="flex-start"
         style={{ flex: 1, minWidth: 0, overflow: "auto" }}
       >
-        <MacWindow title={title}>{children(values as Static<T>)}</MacWindow>
+        <MacWindow title={title} {...windowProps}>
+          {children(values as Static<T>)}
+        </MacWindow>
       </Flex>
 
       <Box

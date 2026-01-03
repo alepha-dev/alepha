@@ -1,16 +1,6 @@
 import { useRouter } from "@alepha/react";
 import { ActionButton, AdminShell, AlephaMantineProvider } from "@alepha/ui";
-import {
-  IconAppWindow,
-  IconArrowLeft,
-  IconForms,
-  IconLayoutSidebar,
-  IconLogin,
-  IconShield,
-  IconTable,
-  IconUsersPlus,
-  IconWall,
-} from "@tabler/icons-react";
+import { IconArrowLeft } from "@tabler/icons-react";
 import type { DemoRouter } from "../DemoRouter.ts";
 
 const DemoLayout = () => {
@@ -35,27 +25,13 @@ const DemoLayout = () => {
         }}
         sidebarProps={{
           items: [
-            router.node("demoLayout"),
+            router.node("demoHome"),
             {
-              icon: IconWall,
-              label: "Core",
+              ...router.node("demoCore"),
               children: [
-                {
-                  icon: IconTable,
-                  label: "DataTable",
-                },
-                {
-                  icon: IconForms,
-                  label: "Control",
-                },
-                {
-                  icon: IconAppWindow,
-                  label: "TypeForm",
-                },
-                {
-                  icon: IconLayoutSidebar,
-                  label: "Sidebar",
-                },
+                router.node("demoTypeForm"),
+                router.node("demoSidebar"),
+                router.node("demoDataTable"),
               ],
             },
             {
@@ -63,18 +39,8 @@ const DemoLayout = () => {
               children: [router.node("demoJsonViewer")],
             },
             {
-              icon: IconShield,
-              label: "Auth",
-              children: [
-                {
-                  icon: IconLogin,
-                  label: "Login",
-                },
-                {
-                  icon: IconUsersPlus,
-                  label: "Register",
-                },
-              ],
+              ...router.node("demoAuth"),
+              children: [router.node("demoLogin"), router.node("demoRegister")],
             },
           ],
         }}

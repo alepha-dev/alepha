@@ -28,6 +28,7 @@
     "alepha": "0.14.1",
     "jsdom": "^27.4.0",
     "react": "^19.2.3",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.16"
   },
   "peerDependencies": {
