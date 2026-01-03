@@ -1,4 +1,6 @@
 import { $inject, t } from "alepha";
+import { FileService } from "alepha/api/files";
+import { $bucket } from "alepha/bucket";
 import { $repository } from "alepha/orm";
 import { $action, okSchema } from "alepha/server";
 import {
@@ -11,6 +13,13 @@ import { Security } from "../providers/Security.ts";
 export class WhiteboardController {
   whiteboards = $repository(whiteboards);
   security = $inject(Security);
+  fileService = $inject(FileService);
+
+  // Bucket for whiteboard images
+  images = $bucket({
+    maxSize: 10 * 1024 * 1024, // 10 MB
+    mimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
+  });
 
   getWhiteboards = $action({
     schema: {
@@ -103,6 +112,46 @@ export class WhiteboardController {
       await this.security.checkOwnership(whiteboard.projectId, user);
 
       await this.whiteboards.deleteById(params.id);
+      return { ok: true };
+    },
+  });
+
+  // Upload image for whiteboard
+  uploadImage = $action({
+    path: "/whiteboards/images",
+    schema: {
+      body: t.object({
+        file: t.file(),
+      }),
+      response: t.object({
+        fileId: t.uuid(),
+        url: t.string(),
+      }),
+    },
+    handler: async ({ body, user }) => {
+      const file = await this.fileService.uploadFile(body.file, {
+        user,
+        bucket: this.images.name,
+      });
+      return {
+        fileId: file.id,
+        url: `/api/files/${file.id}`,
+      };
+    },
+  });
+
+  // Delete image from whiteboard
+  deleteImage = $action({
+    method: "DELETE",
+    path: "/whiteboards/images/:fileId",
+    schema: {
+      params: t.object({
+        fileId: t.uuid(),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params }) => {
+      await this.fileService.deleteFile(params.fileId);
       return { ok: true };
     },
   });

@@ -6,6 +6,7 @@ import {
   IconCircle,
   IconEraser,
   IconPencil,
+  IconPhoto,
   IconPointer,
   IconSquare,
   IconTypography,
@@ -18,6 +19,7 @@ export type ToolType =
   | "arrow"
   | "text"
   | "line"
+  | "image"
   | "eraser";
 
 export interface WhiteboardToolbarProps {
@@ -31,6 +33,8 @@ export interface WhiteboardToolbarProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  onImageUpload: () => void;
+  isUploadingImage?: boolean;
 }
 
 const tools: Array<{
@@ -43,6 +47,7 @@ const tools: Array<{
   { id: "circle", icon: <IconCircle size={18} />, label: "Circle" },
   { id: "arrow", icon: <IconArrowNarrowRight size={18} />, label: "Arrow" },
   { id: "text", icon: <IconTypography size={18} />, label: "Text" },
+  { id: "image", icon: <IconPhoto size={18} />, label: "Image" },
   { id: "line", icon: <IconPencil size={18} />, label: "Draw" },
   { id: "eraser", icon: <IconEraser size={18} />, label: "Eraser" },
 ];
@@ -58,6 +63,8 @@ const WhiteboardToolbar = ({
   onRedo,
   canUndo,
   canRedo,
+  onImageUpload,
+  isUploadingImage,
 }: WhiteboardToolbarProps) => {
   return (
     <Group gap="xs">
@@ -66,8 +73,15 @@ const WhiteboardToolbar = ({
           <ActionIcon
             variant={tool === t.id ? "filled" : "subtle"}
             color={tool === t.id ? "blue" : "gray"}
-            onClick={() => onToolChange(t.id)}
+            onClick={() => {
+              if (t.id === "image") {
+                onImageUpload();
+              } else {
+                onToolChange(t.id);
+              }
+            }}
             size="md"
+            loading={t.id === "image" && isUploadingImage}
           >
             {t.icon}
           </ActionIcon>
