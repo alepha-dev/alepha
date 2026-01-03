@@ -1,6 +1,7 @@
 import { AlephaBucketVercel } from "@alepha/bucket-vercel";
 import { AlephaDevtools } from "@alepha/devtools";
 import { Alepha, run } from "alepha";
+import { RoadmapAdm } from "./adm/index.ts";
 import { RoadmapApi } from "./api/index.ts";
 import { RoadmapMcp } from "./mcp/index.ts";
 import { RoadmapWeb } from "./web/index.ts";
@@ -21,6 +22,7 @@ if (!alepha.isProduction()) {
 
 alepha.with(RoadmapApi);
 alepha.with(RoadmapWeb);
+alepha.with(RoadmapAdm);
 alepha.with(RoadmapMcp);
 
 run(alepha);

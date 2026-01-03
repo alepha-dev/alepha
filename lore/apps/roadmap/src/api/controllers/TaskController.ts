@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { $inject, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, pageQuerySchema, pg } from "alepha/orm";
@@ -18,9 +18,9 @@ export class TaskController {
   taskVotes = $repository(taskVotes);
   projects = $repository(projects);
   characters = $repository(characters);
-  characterInfo = new CharacterInfo();
-  dt = new DateTimeProvider();
-  security = new Security();
+  characterInfo = $inject(CharacterInfo);
+  dt = $inject(DateTimeProvider);
+  security = $inject(Security);
 
   createTask = $action({
     schema: {

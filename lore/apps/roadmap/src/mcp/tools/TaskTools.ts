@@ -42,9 +42,9 @@ export class TaskTools {
   protected readonly taskVotes = $repository(taskVotes);
   protected readonly projects = $repository(projects);
   protected readonly characters = $repository(characters);
-  protected readonly security = new Security();
-  protected readonly dt = new DateTimeProvider();
-  protected readonly characterInfo = new CharacterInfo();
+  protected readonly security = $inject(Security);
+  protected readonly dt = $inject(DateTimeProvider);
+  protected readonly characterInfo = $inject(CharacterInfo);
 
   /**
    * List tasks for a project.

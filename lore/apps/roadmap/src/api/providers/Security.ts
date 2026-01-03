@@ -1,7 +1,6 @@
 import { $userRealm } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { $authCredentials, $authGithub, $authGoogle } from "alepha/server/auth";
 import { type Character, characters } from "../entities/characters.ts";
 import { type Project, projects } from "../entities/projects.ts";
 
@@ -19,11 +18,12 @@ export class Security {
       usernameRequired: true,
       resetPasswordAllowed: true,
     },
+    identities: {
+      github: true,
+      google: true,
+      credentials: true,
+    },
   });
-
-  credentials = $authCredentials(this.realm);
-  google = $authGoogle(this.realm);
-  github = $authGithub(this.realm);
 
   async checkOwnership(
     projectId: number,

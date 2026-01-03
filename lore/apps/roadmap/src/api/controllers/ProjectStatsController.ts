@@ -12,7 +12,7 @@ export class ProjectStatsController {
   characters = $repository(characters);
   projects = $repository(projects);
   database = $inject(DatabaseProvider);
-  security = new Security();
+  security = $inject(Security);
   fs = $inject(FileSystemProvider);
 
   getProjectStats = $action({

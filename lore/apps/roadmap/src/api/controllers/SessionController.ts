@@ -1,4 +1,4 @@
-import { type Static, t } from "alepha";
+import { $inject, type Static, t } from "alepha";
 import { sessions } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
@@ -12,7 +12,7 @@ export type UserSession = Static<typeof userSession>;
 
 export class SessionController {
   sessions = $repository(sessions);
-  dt = new DateTimeProvider();
+  dt = $inject(DateTimeProvider);
 
   cleanup = $route({
     path: "/session/cleanup",

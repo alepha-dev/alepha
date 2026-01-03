@@ -1,4 +1,4 @@
-import { AlephaError, t } from "alepha";
+import { $inject, AlephaError, t } from "alepha";
 import { identities } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { CryptoProvider } from "alepha/security";
@@ -6,7 +6,7 @@ import { $action } from "alepha/server";
 
 export class IdentityController {
   identities = $repository(identities);
-  crypto = new CryptoProvider();
+  crypto = $inject(CryptoProvider);
 
   getMyIdentities = $action({
     schema: {

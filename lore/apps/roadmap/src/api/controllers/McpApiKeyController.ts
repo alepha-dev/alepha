@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { $inject, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
@@ -14,8 +14,8 @@ import { type McpApiKey, mcpApiKeys } from "../entities/mcpApiKeys.ts";
 export class McpApiKeyController {
   protected readonly log = $logger();
   protected readonly mcpApiKeys = $repository(mcpApiKeys);
-  protected readonly crypto = new CryptoProvider();
-  protected readonly dt = new DateTimeProvider();
+  protected readonly crypto = $inject(CryptoProvider);
+  protected readonly dt = $inject(DateTimeProvider);
 
   // -----------------------------------------------------------------------------------------------------------------
 
