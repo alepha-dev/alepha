@@ -1,7 +1,7 @@
 import { t } from "alepha";
 import { describe, expect, it } from "vitest";
 import { $entity } from "../../src/orm/primitives/$entity.ts";
-import { pg } from "../../src/orm/providers/PostgresTypeProvider.ts";
+import { pg } from "../../src/orm/providers/DatabaseTypeProvider.ts";
 
 describe("ModelBuilder Type Safety", () => {
   it("should enforce type-safe foreign key references", () => {

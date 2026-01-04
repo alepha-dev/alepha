@@ -42,13 +42,13 @@ run(App);
 `,
   db: `
 import { t, run } from "alepha";
-import { $entity, pg, $repository } from "alepha/orm";
+import { $entity, db, $repository } from "alepha/orm";
 
 // define an entity with a schema
 export const userEntity = $entity({
   name: "users",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     name: t.text(),
   })
 });

@@ -35,7 +35,7 @@ import {
 import type { PgAttr } from "../helpers/pgAttr.ts";
 import { pgAttr } from "../helpers/pgAttr.ts";
 
-export class PostgresTypeProvider {
+export class DatabaseTypeProvider {
   public readonly attr = pgAttr;
 
   /**
@@ -239,7 +239,7 @@ export class PostgresTypeProvider {
 
   /**
    * Creates a page schema for a given object schema.
-   * It's used by {@link RepositoryPrimitive#paginate} method.
+   * It's used by {@link Repository#paginate} method.
    */
   public readonly page = <T extends TObject>(
     resource: T,
@@ -249,4 +249,26 @@ export class PostgresTypeProvider {
   };
 }
 
-export const pg = new PostgresTypeProvider();
+/**
+ * Wrapper of TypeProvider (`t`) for database types.
+ *
+ * Use `db` for improve TypeBox schema definitions with database-specific attributes.
+ *
+ * @example
+ * ```ts
+ * import { t } from "alepha";
+ * import { db } from "alepha/orm";
+ *
+ * const userSchema = t.object({
+ *   id: db.primaryKey(t.uuid()),
+ *   email: t.email(),
+ *   createdAt: db.createdAt(),
+ * });
+ * ```
+ */
+export const db = new DatabaseTypeProvider();
+
+/**
+ * @deprecated Use `db` instead.
+ */
+export const pg = db;

@@ -2,7 +2,7 @@ import { Alepha, t } from "alepha";
 import { $entity, $repository } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 import { DbEntityNotFoundError } from "../../src/orm/errors/DbEntityNotFoundError.ts";
-import { pg } from "../../src/orm/providers/PostgresTypeProvider.ts";
+import { pg } from "../../src/orm/providers/DatabaseTypeProvider.ts";
 
 // Test entity
 const userEntity = $entity({

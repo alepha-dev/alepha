@@ -100,12 +100,12 @@ Alepha automatically:
 Your entities and repositories work exactly the same:
 
 ```typescript
-import { $entity, $repository, pg } from "alepha/orm";
+import { $entity, $repository, db } from "alepha/orm";
 
 const userEntity = $entity({
   name: "users",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     email: t.email(),
     name: t.text(),
   }),

@@ -11,22 +11,22 @@ This acts as the source of truth for both your TypeScript types and your Databas
 
 ```typescript
 import { t } from "alepha";
-import { $entity, pg } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 
 // src/entities/User.ts
 export const userEntity = $entity({
   name: "users", // The table name
   schema: t.object({
-    // pg.primaryKey() handles UUID/Integer/BigInt generation automatically
-    id: pg.primaryKey(),
+    // db.primaryKey() handles UUID/Integer/BigInt generation automatically
+    id: db.primaryKey(),
 
     // Standard TypeBox types
     email: t.email(),
     name: t.text(),
 
     // Automatic timestamp management
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
   }),
   // Simple index definition
   indexes: ["email"],

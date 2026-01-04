@@ -2,7 +2,7 @@ import { t } from "alepha";
 import { sql } from "drizzle-orm";
 import { beforeEach, describe, expect, test } from "vitest";
 import { $entity } from "../../src/orm/primitives/$entity.ts";
-import { pg } from "../../src/orm/providers/PostgresTypeProvider.ts";
+import { pg } from "../../src/orm/providers/DatabaseTypeProvider.ts";
 import { PostgresModelBuilder } from "../../src/orm/services/PostgresModelBuilder.ts";
 import { SqliteModelBuilder } from "../../src/orm/services/SqliteModelBuilder.ts";
 

@@ -2,7 +2,7 @@ import { Alepha, t } from "alepha";
 import { $entity, $repository } from "alepha/orm";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { pg } from "../../src/orm/providers/PostgresTypeProvider.ts";
+import { pg } from "../../src/orm/providers/DatabaseTypeProvider.ts";
 
 // Define test entities with all features
 const roleEntity = $entity({

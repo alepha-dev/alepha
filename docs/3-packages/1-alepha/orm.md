@@ -13,21 +13,25 @@ npm install alepha
 Postgres client based on Drizzle ORM, Alepha type-safe friendly.
 
 ```ts
+import { t } from "alepha";
+import { $entity, $repository, db } from "alepha/postgres";
+
 const users = $entity({
   name: "users",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     name: t.text(),
     email: t.text(),
   }),
 });
 
-class Db {
+class App {
   users = $repository(users);
-}
 
-const db = alepha.inject(Db);
-const user = await db.users.one({ name: { eq: "John Doe" } });
+  getUserByName(name: string) {
+    return this.users.findOne({ name: { eq: name } });
+  }
+}
 ```
 
 This is not a full ORM, but rather a set of tools to work with Postgres databases in a type-safe way.

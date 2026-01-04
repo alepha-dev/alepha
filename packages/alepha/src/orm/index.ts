@@ -114,6 +114,7 @@ export * from "./primitives/$entity.ts";
 export * from "./primitives/$repository.ts";
 export * from "./primitives/$sequence.ts";
 export * from "./primitives/$transaction.ts";
+export * from "./providers/DatabaseTypeProvider.ts";
 export * from "./providers/DrizzleKitProvider.ts";
 export * from "./providers/drivers/BunPostgresProvider.ts";
 export * from "./providers/drivers/BunSqliteProvider.ts";
@@ -121,7 +122,6 @@ export * from "./providers/drivers/CloudflareD1Provider.ts";
 export * from "./providers/drivers/DatabaseProvider.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
 export * from "./providers/drivers/NodeSqliteProvider.ts";
-export * from "./providers/PostgresTypeProvider.ts";
 export * from "./providers/RepositoryProvider.ts";
 export * from "./schemas/insertSchema.ts";
 export * from "./schemas/legacyIdSchema.ts";
@@ -135,21 +135,25 @@ export * from "./types/schema.ts";
  * Postgres client based on Drizzle ORM, Alepha type-safe friendly.
  *
  * ```ts
+ * import { t } from "alepha";
+ * import { $entity, $repository, db } from "alepha/postgres";
+ *
  * const users = $entity({
  *   name: "users",
  *   schema: t.object({
- *     id: pg.primaryKey(),
+ *     id: db.primaryKey(),
  *     name: t.text(),
  *     email: t.text(),
  *   }),
  * });
  *
- * class Db {
+ * class App {
  *   users = $repository(users);
- * }
  *
- * const db = alepha.inject(Db);
- * const user = await db.users.one({ name: { eq: "John Doe" } });
+ *   getUserByName(name: string) {
+ *     return this.users.findOne({ name: { eq: name } });
+ *   }
+ * }
  * ```
  *
  * This is not a full ORM, but rather a set of tools to work with Postgres databases in a type-safe way.

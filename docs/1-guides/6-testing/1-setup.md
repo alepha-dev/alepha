@@ -170,12 +170,12 @@ This means:
 ```typescript
 import { describe, it, expect } from "vitest";
 import { Alepha, t } from "alepha";
-import { $entity, $repository, pg } from "alepha/orm";
+import { $entity, $repository, db } from "alepha/orm";
 
 const userEntity = $entity({
   name: "users",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     email: t.email(),
   }),
 });
