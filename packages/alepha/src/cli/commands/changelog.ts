@@ -48,7 +48,7 @@ interface ChangelogEntry {
 }
 
 // =============================================================================
-// CHANGELOG COMMANDS
+// CHANGELOG COMMAND
 // =============================================================================
 
 /**
@@ -60,7 +60,7 @@ interface ChangelogEntry {
  * - `alepha changelog --from=1.0.0 --to=1.1.0` - Show changes between two refs
  * - `alepha changelog | tee -a CHANGELOG.md` - Append to file
  */
-export class ChangelogCommands {
+export class ChangelogCommand {
   protected readonly log = $logger();
   protected readonly git = $inject(GitProvider);
   protected readonly parser = $inject(GitMessageParser);

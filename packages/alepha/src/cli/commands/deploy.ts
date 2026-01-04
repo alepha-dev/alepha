@@ -4,7 +4,7 @@ import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 
-export class DeployCommands {
+export class DeployCommand {
   protected readonly log = $logger();
   protected readonly utils = $inject(AlephaCliUtils);
 

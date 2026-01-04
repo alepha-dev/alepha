@@ -3,7 +3,7 @@ import {
   type ChangelogOptions,
   DEFAULT_IGNORE,
 } from "../atoms/changelogOptions.ts";
-import type { Commit } from "../commands/ChangelogCommands.ts";
+import type { Commit } from "../commands/changelog.ts";
 
 /**
  * Service for parsing git commit messages into structured format.

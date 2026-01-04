@@ -25,14 +25,14 @@ const drizzleCommandFlags = t.object({
   ),
 });
 
-export class DrizzleCommands {
-  log = $logger();
-  utils = $inject(AlephaCliUtils);
+export class DbCommand {
+  protected readonly log = $logger();
+  protected readonly utils = $inject(AlephaCliUtils);
 
   /**
    * Check if database migrations are up to date.
    */
-  check = $command({
+  protected readonly check = $command({
     name: "check-migrations",
     description: "Check if database migration files are up to date",
     args: t.optional(
@@ -74,7 +74,7 @@ export class DrizzleCommands {
         ).catch(() => null);
 
         if (!journalFile) {
-          this.log.info(`No migration journal found.`);
+          this.log.info("No migration journal found.");
           return;
         }
 
@@ -130,14 +130,8 @@ export class DrizzleCommands {
 
   /**
    * Generate database migration files
-   *
-   * - Loads the Alepha instance from the specified entry file.
-   * - Retrieves all repository primitives to gather database models.
-   * - Creates temporary entity definitions based on the current database schema.
-   * - Writes these definitions to a temporary schema file. (node_modules/.db/entities.ts)
-   * - Invokes Drizzle Kit's CLI to generate migration files based on the current schema.
    */
-  generate = $command({
+  protected readonly generate = $command({
     name: "generate",
     description: "Generate migration files based on current database schema",
     summary: false,
@@ -175,13 +169,8 @@ export class DrizzleCommands {
 
   /**
    * Push database schema changes directly to the database
-   *
-   * - Loads the Alepha instance from the specified entry file.
-   * - Retrieves all repository primitives to gather database models.
-   * - Creates temporary entity definitions and Drizzle config.
-   * - Invokes Drizzle Kit's push command to apply schema changes directly.
    */
-  push = $command({
+  protected readonly push = $command({
     name: "push",
     description: "Push database schema changes directly to the database",
     summary: false,
@@ -207,13 +196,8 @@ export class DrizzleCommands {
 
   /**
    * Apply pending database migrations
-   *
-   * - Loads the Alepha instance from the specified entry file.
-   * - Retrieves all repository primitives to gather database models.
-   * - Creates temporary entity definitions and Drizzle config.
-   * - Invokes Drizzle Kit's migrate command to apply pending migrations.
    */
-  migrate = $command({
+  protected readonly migrate = $command({
     name: "migrate",
     description: "Apply pending database migrations",
     summary: false,
@@ -239,13 +223,8 @@ export class DrizzleCommands {
 
   /**
    * Launch Drizzle Studio database browser
-   *
-   * - Loads the Alepha instance from the specified entry file.
-   * - Retrieves all repository primitives to gather database models.
-   * - Creates temporary entity definitions and Drizzle config.
-   * - Invokes Drizzle Kit's studio command to launch the web-based database browser.
    */
-  studio = $command({
+  protected readonly studio = $command({
     name: "studio",
     description: "Launch Drizzle Studio database browser",
     summary: false,
@@ -272,7 +251,7 @@ export class DrizzleCommands {
   /**
    * Parent command for database operations.
    */
-  db = $command({
+  public readonly db = $command({
     name: "db",
     description: "Database management commands",
     children: [this.check, this.generate, this.push, this.migrate, this.studio],
@@ -283,11 +262,6 @@ export class DrizzleCommands {
 
   /**
    * Run a drizzle-kit command for all database providers in an Alepha instance.
-   *
-   * Iterates through all repository providers, prepares Drizzle config for each,
-   * and executes the specified drizzle-kit command.
-   *
-   * @param options - Configuration including command to run, flags, and logging
    */
   public async runDrizzleKitCommand(options: {
     root: string;
@@ -365,12 +339,6 @@ export class DrizzleCommands {
 
   /**
    * Prepare Drizzle configuration files for a database provider.
-   *
-   * Creates temporary entities.js and drizzle.config.js files needed
-   * for Drizzle Kit commands to run properly.
-   *
-   * @param options - Configuration options including kit, provider info, and paths
-   * @returns Path to the generated drizzle.config.js file
    */
   public async prepareDrizzleConfig(options: {
     kit: any;
@@ -473,79 +441,4 @@ export class DrizzleCommands {
       options.rootDir,
     );
   }
-
-  // /**
-  //  * Drop database schema (development only)
-  //  *
-  //  * @experimental
-  //  */
-  // drop = $command({
-  //   name: "db:drop",
-  //   description: "Drop database schema (development only)",
-  //   summary: false,
-  //   args: t.optional(
-  //     t.text({
-  //       title: "path",
-  //       description: "Path to the Alepha server entry file",
-  //     }),
-  //   ),
-  //   flags: drizzleCommandFlags,
-  //   handler: async ({ flags }) => {
-  //     // TODO: Implement db:drop
-  //     this.log.warn("db:drop is not yet implemented");
-  //     if (flags.provider) {
-  //       this.log.info(`Provider filter: ${flags.provider}`);
-  //     }
-  //   },
-  // });
-  //
-  // /**
-  //  * Seed database with initial data
-  //  *
-  //  * @experimental
-  //  */
-  // seed = $command({
-  //   name: "db:seed",
-  //   description: "Seed database with initial data",
-  //   summary: false,
-  //   args: t.optional(
-  //     t.text({
-  //       title: "path",
-  //       description: "Path to the Alepha server entry file",
-  //     }),
-  //   ),
-  //   flags: drizzleCommandFlags,
-  //   handler: async ({ flags }) => {
-  //     // TODO: Implement db:seed
-  //     this.log.warn("db:seed is not yet implemented");
-  //     if (flags.provider) {
-  //       this.log.info(`Provider filter: ${flags.provider}`);
-  //     }
-  //   },
-  // });
-  //
-  // /**
-  //  * Show pending database migrations status
-  //  *
-  //  * @experimental
-  //  */
-  // status = $command({
-  //   name: "db:status",
-  //   description: "Show pending database migrations status",
-  //   summary: false,
-  //   args: t.optional(
-  //     t.text({
-  //       title: "path",
-  //       description: "Path to the Alepha server entry file",
-  //     }),
-  //   ),
-  //   flags: drizzleCommandFlags,
-  //   handler: async ({ flags }) => {
-  //     // TODO: Implement db:status
-  //     this.log.warn("db:status is not yet implemented");
-  //     if (flags.provider) {
-  //       this.log.info(`Provider filter: ${flags.provider}`);
-  //     }
-  //   },
-  // });
 }

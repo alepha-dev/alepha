@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import {
-  ChangelogCommands,
+  ChangelogCommand,
   changelogOptions,
   GitMessageParser,
   GitProvider,
@@ -220,7 +220,7 @@ describe("changelog", () => {
           use: MemoryDestinationProvider,
         })
         .with({ provide: GitProvider, use: MockGitProvider })
-        .with(ChangelogCommands);
+        .with(ChangelogCommand);
 
       alepha.store.mut(cliOptions, (old) => ({
         ...old,
