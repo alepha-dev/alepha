@@ -83,7 +83,9 @@ export class LlmsCommand {
         );
       });
 
-      this.log.debug(`Successfully created: ${outputFileIndex}, ${outputFileFull}`);
+      this.log.debug(
+        `Successfully created: ${outputFileIndex}, ${outputFileFull}`,
+      );
       this.log.debug(`Full docs: ${concatenatedContent.length} characters`);
       this.log.debug(`Index: ${indexContent.length} characters`);
       this.log.debug(`Files processed: ${markdownFiles.length}`);
@@ -93,62 +95,86 @@ export class LlmsCommand {
   protected generateIndex(tree: DocNode[]): string {
     const lines: string[] = [];
 
-    lines.push("# Alepha");
-    lines.push("");
-    lines.push(
-      "> Alepha is a convention-driven TypeScript framework for building robust, end-to-end type-safe full-stack applications.",
-    );
-    lines.push("");
-    lines.push("## Overview");
-    lines.push("");
-    lines.push("**Core Principles:**");
-    lines.push(
-      "- **Primitive Architecture**: Define features using `$`-prefixed primitives (`$action`, `$entity`, `$page`) that auto-register with the framework",
-    );
-    lines.push(
-      "- **Zero-Mapping**: No route files, no config files - code structure IS the configuration",
-    );
-    lines.push(
-      "- **End-to-End Type Safety**: Types flow from database schema → API → React components",
-    );
-    lines.push(
-      "- **Convention over Configuration**: Sensible defaults, minimal boilerplate",
-    );
-    lines.push("");
-    lines.push(
-      "**Built on**: Drizzle (ORM), React (SSR), Vite (bundler), TypeBox (validation)",
-    );
-    lines.push(
-      "**Runs on**: Node.js 22+, Bun, Cloudflare Workers, Vercel, Docker",
-    );
-    lines.push("");
-    lines.push("**Quick Start**: `npx alepha init` - Creates minimal config files to use Alepha in current directory");
-    lines.push("");
-    lines.push("## Quick Reference");
-    lines.push("");
-    lines.push("Core primitives:");
-    lines.push("");
-    lines.push("- `$action` - `import { $action } from \"alepha/server\"`");
-    lines.push("- `$entity` - `import { $entity } from \"alepha/orm\"`");
-    lines.push("- `$repository` - `import { $repository } from \"alepha/orm\"`");
-    lines.push("- `$page` - `import { $page } from \"@alepha/react\"`");
-    lines.push("- `$queue` - `import { $queue } from \"alepha/queue\"`");
-    lines.push("- `$scheduler` - `import { $scheduler } from \"alepha/scheduler\"`");
-    lines.push("- `$cache` - `import { $cache } from \"alepha/cache\"`");
-    lines.push("- `$bucket` - `import { $bucket } from \"alepha/bucket\"`");
-    lines.push("- `$realm` - `import { $realm } from \"alepha/security\"`");
-    lines.push("- `$command` - `import { $command } from \"alepha/command\"`");
-    lines.push("- `$module` - `import { $module } from \"alepha\"`");
-    lines.push("");
-    lines.push("## Docs");
-    lines.push("");
-    lines.push(
-      "- [Full Docs](https://alepha.dev/llms-full.txt): Complete documentation of Alepha with all details.",
-    );
-    lines.push(
-      "- [Examples](https://github.com/feunard/alepha/tree/main/apps): Example applications",
-    );
-    lines.push("");
+    lines.push(`# Alepha
+
+> Alepha is a convention-driven TypeScript framework for building robust, end-to-end type-safe full-stack applications.
+
+## Overview
+
+**Core Principles:**
+- **Primitive Architecture**: Define features using \`$\`-prefixed primitives (\`$action\`, \`$entity\`, \`$page\`) that auto-register with the framework
+- **Zero-Mapping**: No route files, no config files - code structure IS the configuration
+- **End-to-End Type Safety**: Types flow from database schema → API → React components
+- **Convention over Configuration**: Sensible defaults, minimal boilerplate
+
+**Built on**: Drizzle (ORM), React (SSR), Vite (bundler), TypeBox (validation)
+**Runs on**: Node.js 22+, Bun, Cloudflare Workers, Vercel, Docker
+
+**Quick Start**: \`npx alepha init\` - Creates minimal config files to use Alepha in current directory
+
+## Example
+
+\`\`\`typescript
+import { t } from "alepha";
+import { $action } from "alepha/server";
+import { $entity, $repository, db } from "alepha/orm";
+
+const userEntity = $entity({
+  name: "users",
+  schema: t.object({
+    id: db.primaryKey(),
+    email: t.email(),
+    createdAt: db.createdAt(),
+  }),
+});
+
+class UserController {
+  repo = $repository(userEntity);
+
+  getUser = $action({
+    path: "/users/:id",  // → GET /api/users/:id
+    schema: {
+      params: t.object({ id: t.uuid() }),
+      response: userEntity.schema,
+    },
+    handler: async ({ params }) => this.repo.findById(params.id),
+  });
+}
+\`\`\`
+
+## Conventions
+
+- \`$action\` paths auto-prefix with \`/api\`
+- Method: GET default, POST if body schema exists
+- Response schema strips undeclared fields (security)
+- \`t.\` = TypeBox via \`import { t } from "alepha"\`
+- Primitives are class properties, not standalone (except \`$atom\`, \`$entity\`)
+
+## Quick Reference
+
+Core primitives:
+
+- \`$inject\` - \`import { $inject } from "alepha"\`
+- \`$env\` - \`import { $env } from "alepha"\`
+- \`$module\` - \`import { $module } from "alepha"\`
+- \`$atom\` - \`import { $atom } from "alepha"\`
+- \`$logger\` - \`import { $logger } from "alepha/logger"\`
+- \`$action\` - \`import { $action } from "alepha/server"\`
+- \`$entity\` - \`import { $entity } from "alepha/orm"\`
+- \`$repository\` - \`import { $repository } from "alepha/orm"\`
+- \`$page\` - \`import { $page } from "@alepha/react/router"\`
+- \`$queue\` - \`import { $queue } from "alepha/queue"\`
+- \`$scheduler\` - \`import { $scheduler } from "alepha/scheduler"\`
+- \`$cache\` - \`import { $cache } from "alepha/cache"\`
+- \`$bucket\` - \`import { $bucket } from "alepha/bucket"\`
+- \`$realm\` - \`import { $realm } from "alepha/security"\`
+- \`$command\` - \`import { $command } from "alepha/command"\`
+
+## Docs
+
+- [Full Docs](https://alepha.dev/llms-full.txt): Complete documentation of Alepha with all details.
+- [Examples](https://github.com/feunard/alepha/tree/main/apps): Example applications
+`);
 
     for (const node of tree) {
       this.renderNode(node, lines, 0);
