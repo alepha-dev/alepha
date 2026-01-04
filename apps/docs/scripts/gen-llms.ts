@@ -112,8 +112,9 @@ export class LlmsCommand {
 
 **Quick Start**: \`npx alepha init\` - Creates minimal config files to use Alepha in current directory
 
-## Example
+## Examples
 
+### API + Database
 \`\`\`typescript
 import { t } from "alepha";
 import { $action } from "alepha/server";
@@ -142,6 +143,26 @@ class UserController {
 }
 \`\`\`
 
+### React Page with SSR
+\`\`\`typescript
+import { $page } from "@alepha/react/router";
+import { $client } from "alepha/server/links";
+
+class AppRouter {
+  api = $client();
+
+  users = $page({
+    path: "/users",
+    resolve: async () => ({ users: await this.api.listUsers() }),
+    component: ({ users }) => (
+
+        {users.map(u => {u.email})}
+
+    ),
+  });
+}
+\`\`\`
+
 ## Conventions
 
 - \`$action\` paths auto-prefix with \`/api\`
@@ -151,6 +172,11 @@ class UserController {
 - Primitives are class properties, not standalone (except \`$atom\`, \`$entity\`)
 
 ## Quick Reference
+
+Core utilities:
+
+- \`t\` (TypeBox schemas) - \`import { t } from "alepha"\`
+- \`db\` (database column helpers) - \`import { db } from "alepha/orm"\`
 
 Core primitives:
 
@@ -169,6 +195,13 @@ Core primitives:
 - \`$bucket\` - \`import { $bucket } from "alepha/bucket"\`
 - \`$realm\` - \`import { $realm } from "alepha/security"\`
 - \`$command\` - \`import { $command } from "alepha/command"\`
+
+React hooks:
+
+- \`useStore\` - \`import { useStore } from "@alepha/react"\`
+- \`useClient\` - \`import { useClient } from "@alepha/react"\`
+- \`useRouter\` - \`import { useRouter } from "@alepha/react/router"\`
+- \`useForm\` - \`import { useForm } from "@alepha/react/form"\`
 
 ## Docs
 
