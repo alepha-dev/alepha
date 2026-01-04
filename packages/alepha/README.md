@@ -32,7 +32,7 @@ All-in-one tool that takes care of configuration, development, build, deployment
 
 All features are based on a DSL with strong typing and runtime validation which makes development safe, productive, and AI friendly.
 
-For more information, please visit the [documentation](https://feunard.github.io/alepha/).
+For more information, please visit the [documentation](https://alepha.dev).
 
 ## Examples
 
@@ -169,6 +169,6 @@ Open your browser at `http://localhost:5173/` and see your React application in 
 
 ## What's next?
 
-- Dive into the [full docs](https://feunard.github.io/alepha/) for more advanced stuff
+- Dive into the [full docs](https://alepha.dev) for more advanced stuff
 - Browse the GitHub repo for examples and source code
 - Check out the individual packages to see what else you can build
