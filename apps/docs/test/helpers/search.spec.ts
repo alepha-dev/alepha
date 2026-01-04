@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { DocNode } from "../../scripts/docs-cli.ts";
+import type { DocNode } from "../../scripts/interfaces.ts";
 import {
   findMatchedKeyword,
   flattenTree,

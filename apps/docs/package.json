@@ -29,10 +29,9 @@
     "vitest": "^4.0.16"
   },
   "scripts": {
-    "cli": "node scripts/docs-cli.ts",
     "dev": "alepha dev",
+    "copy": "alepha gen:packages && alepha gen:tree",
     "copy&dev": "yarn copy && alepha dev",
-    "copy": "yarn cli readme && yarn cli docs",
     "start": "node dist",
     "lint": "alepha lint",
     "typecheck": "alepha typecheck",

@@ -1,5 +1,5 @@
 import * as generated from "../../node_modules/.docs/index.ts";
-import type { DocNode } from "../../scripts/docs-cli.ts";
+import type { DocNode } from "../../scripts/interfaces.ts";
 
 export const docs = generated.docs;
 

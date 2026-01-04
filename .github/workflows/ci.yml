@@ -115,7 +115,7 @@ jobs:
         run: yarn
 
       - name: Build Documentation
-        run: cd apps/docs && yarn build && yarn cli llms
+        run: cd apps/docs && yarn build && yarn alepha gen:llms
         env:
           UMAMI_URL: ${{ secrets.UMAMI_URL }}
           UMAMI_UUID: ${{ secrets.UMAMI_UUID }}
