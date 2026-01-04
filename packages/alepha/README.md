@@ -130,7 +130,7 @@ Create a file `src/main.tsx`:
 
 ```tsx
 import { Alepha, run, t } from "alepha";
-import { $page } from "@alepha/react";
+import { $page } from "@alepha/react/router";
 import { useState } from "react";
 
 const Hello = (props: { count: number }) => {
