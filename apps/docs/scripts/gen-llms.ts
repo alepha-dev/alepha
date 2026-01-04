@@ -147,17 +147,18 @@ class UserController {
 \`\`\`typescript
 import { $page } from "@alepha/react/router";
 import { $client } from "alepha/server/links";
+import type { UserController } from "./UserController.ts";
 
 class AppRouter {
-  api = $client();
+  api = $client<UserController>(); // infer API client from controller
 
   users = $page({
     path: "/users",
     resolve: async () => ({ users: await this.api.listUsers() }),
     component: ({ users }) => (
-
-        {users.map(u => {u.email})}
-
+      <ul>
+        {users.map(u => <li key={u.id}>{u.email}</li>)}
+      </ul>
     ),
   });
 }
