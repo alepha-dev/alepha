@@ -45,7 +45,6 @@ export interface Commit {
 interface ChangelogEntry {
   features: Commit[];
   fixes: Commit[];
-  breaking: Commit[];
 }
 
 // =============================================================================
@@ -74,9 +73,11 @@ export class ChangelogCommands {
   /**
    * Format a single commit line.
    * Example: `- **cli**: add new command (\`abc1234\`)`
+   * Breaking changes are flagged: `- **cli**: add new command [BREAKING] (\`abc1234\`)`
    */
   protected formatCommit(commit: Commit): string {
-    return `- **${commit.scope}**: ${commit.description} (\`${commit.hash}\`)`;
+    const breaking = commit.breaking ? " [BREAKING]" : "";
+    return `- **${commit.scope}**: ${commit.description}${breaking} (\`${commit.hash}\`)`;
   }
 
   /**
@@ -84,14 +85,6 @@ export class ChangelogCommands {
    */
   protected formatEntry(entry: ChangelogEntry): string {
     const sections: string[] = [];
-
-    if (entry.breaking.length > 0) {
-      sections.push("### Breaking Changes\n");
-      for (const commit of entry.breaking) {
-        sections.push(this.formatCommit(commit));
-      }
-      sections.push("");
-    }
 
     if (entry.features.length > 0) {
       sections.push("### Features\n");
@@ -123,7 +116,6 @@ export class ChangelogCommands {
     const entry: ChangelogEntry = {
       features: [],
       fixes: [],
-      breaking: [],
     };
 
     for (const line of commitsOutput.trim().split("\n")) {
@@ -137,10 +129,7 @@ export class ChangelogCommands {
 
       this.log.trace("Parsed commit", { commit });
 
-      // Categorize commit
-      if (commit.breaking) {
-        entry.breaking.push(commit);
-      }
+      // Categorize commit (breaking flag is preserved on the commit itself)
       if (commit.type === "feat") {
         entry.features.push(commit);
       } else if (commit.type === "fix") {
@@ -155,11 +144,7 @@ export class ChangelogCommands {
    * Check if entry has any public commits.
    */
   protected hasChanges(entry: ChangelogEntry): boolean {
-    return (
-      entry.features.length > 0 ||
-      entry.fixes.length > 0 ||
-      entry.breaking.length > 0
-    );
+    return entry.features.length > 0 || entry.fixes.length > 0;
   }
 
   /**
