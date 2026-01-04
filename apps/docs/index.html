@@ -3,13 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <title>Alepha</title>
+  <script>
+    // Set theme immediately to prevent flash (runs before any rendering)
+    (() => {
+      var stored = localStorage.getItem('alepha-docs-mode');
+      var theme = stored === 'light' || stored === 'dark'
+        ? stored
+        : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <link rel="stylesheet" href="/src/styles.css"/>
-
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="/favicon.png" />
-
-  <!-- PWA -->
   <link rel="manifest" href="/manifest.json" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta name="theme-color" content="#1a1a2e" />

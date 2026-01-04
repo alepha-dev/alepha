@@ -73,31 +73,8 @@ const NavigationProgress = () => {
   );
 };
 
-// Console Easter egg for developers
 const logConsoleEasterEgg = () => {
-  console.log(
-    "%c" +
-      `
-     _    _            _
-    / \\  | | ___ _ __ | |__   __ _
-   / _ \\ | |/ _ \\ '_ \\| '_ \\ / _\` |
-  / ___ \\| |  __/ |_) | | | | (_| |
- /_/   \\_\\_|\\___| .__/|_| |_|\\__,_|
-                |_|
-`,
-    "color: #22c55e; font-family: monospace;",
-  );
-  console.log(
-    "%c Welcome, fellow developer! %c\n" +
-      "%c Try the Konami code for a surprise... %c\n" +
-      "%c ↑ ↑ ↓ ↓ ← → ← → B A %c",
-    "background: #22c55e; color: #0a0a0a; font-weight: bold; padding: 4px 8px; border-radius: 4px;",
-    "",
-    "color: #f59e0b;",
-    "",
-    "color: #06b6d4; font-family: monospace;",
-    "",
-  );
+  console.log("↑ ↑ ↓ ↓ ← → ← → B A");
 };
 
 // =============================================================================
