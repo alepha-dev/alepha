@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@alepha/react/router";
+import { Link, useRouter, useRouterState } from "@alepha/react/router";
 import {
   IconBrandGithub,
   IconFile,
@@ -173,6 +173,7 @@ const SearchButton = () => {
 // =============================================================================
 
 const TabBar = () => {
+  const router = useRouter();
   const state = useRouterState();
   const currentPath = state.url?.pathname || "";
   const currentName =
@@ -197,6 +198,21 @@ const TabBar = () => {
     }
   }, [currentPath, currentName]);
 
+  const handleClose = useCallback(
+    (closedPath: string) => {
+      const isActive = closedPath === currentPath;
+      setTabs((prev) => {
+        const newTabs = prev.filter((t) => t.path !== closedPath);
+        // If closing the active tab, navigate to the next most recent tab
+        if (isActive && newTabs.length > 0) {
+          router.go(newTabs[0].path);
+        }
+        return newTabs;
+      });
+    },
+    [currentPath, router],
+  );
+
   return (
     <div className="flex h-full items-center" style={{ paddingLeft: 12 }}>
       {tabs.map((tab) => (
@@ -205,9 +221,7 @@ const TabBar = () => {
           path={tab.path}
           name={tab.name}
           isActive={tab.path === currentPath}
-          onClose={() =>
-            setTabs((prev) => prev.filter((t) => t.path !== tab.path))
-          }
+          onClose={() => handleClose(tab.path)}
         />
       ))}
     </div>
