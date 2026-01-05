@@ -1,5 +1,4 @@
 import { $inject, t } from "alepha";
-import { db } from "alepha/orm";
 import { $action } from "alepha/server";
 import { auditQuerySchema } from "../schemas/auditQuerySchema.ts";
 import { auditResourceSchema } from "../schemas/auditResourceSchema.ts";

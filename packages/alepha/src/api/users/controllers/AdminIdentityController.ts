@@ -1,5 +1,4 @@
 import { $inject, t } from "alepha";
-import { db } from "alepha/orm";
 import { $action, okSchema } from "alepha/server";
 import { identityQuerySchema } from "../schemas/identityQuerySchema.ts";
 import { identityResourceSchema } from "../schemas/identityResourceSchema.ts";

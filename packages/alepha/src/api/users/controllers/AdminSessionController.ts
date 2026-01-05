@@ -1,5 +1,4 @@
 import { $inject, t } from "alepha";
-import { db } from "alepha/orm";
 import { $action, okSchema } from "alepha/server";
 import { sessionQuerySchema } from "../schemas/sessionQuerySchema.ts";
 import { sessionResourceSchema } from "../schemas/sessionResourceSchema.ts";
