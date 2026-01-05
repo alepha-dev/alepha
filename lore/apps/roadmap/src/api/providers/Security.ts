@@ -9,11 +9,6 @@ export class Security {
   characters = $repository(characters);
 
   realm = $userRealm({
-    modules: {
-      jobs: true,
-      audits: true,
-      files: true,
-    },
     settings: {
       usernameRequired: true,
       resetPasswordAllowed: true,
