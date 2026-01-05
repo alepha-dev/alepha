@@ -20,7 +20,7 @@ export class FileController {
    */
   public readonly findFiles = $action({
     path: this.url,
-    group: this.group,
+    group: `admin:${this.group}`,
     description: "List files with filtering and pagination",
     schema: {
       query: fileQuerySchema,
@@ -36,7 +36,7 @@ export class FileController {
   public readonly deleteFile = $action({
     method: "DELETE",
     path: `${this.url}/:id`,
-    group: this.group,
+    group: `admin:${this.group}`,
     description: "Delete a file",
     schema: {
       params: t.object({
@@ -80,7 +80,7 @@ export class FileController {
   public readonly updateFile = $action({
     method: "PATCH",
     path: `${this.url}/:id`,
-    group: this.group,
+    group: `admin:${this.group}`,
     description: "Update file metadata",
     schema: {
       params: t.object({
