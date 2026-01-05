@@ -5,7 +5,11 @@ import { DataTable, Text } from "@alepha/ui";
 import { Badge, Flex, Group } from "@mantine/core";
 import { IconCheck, IconUsersPlus, IconX } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
-import { type UserController, type UserEntity, users } from "alepha/api/users";
+import {
+  type AdminUserController,
+  type UserEntity,
+  users,
+} from "alepha/api/users";
 import type { AdminRouter } from "../../AdminRouter.ts";
 
 export interface AdminUsersProps {
@@ -13,7 +17,7 @@ export interface AdminUsersProps {
 }
 
 const AdminUsers = (props: AdminUsersProps) => {
-  const client = useClient<UserController>();
+  const client = useClient<AdminUserController>();
   const router = useRouter<AdminRouter>();
   const { l } = useI18n();
 

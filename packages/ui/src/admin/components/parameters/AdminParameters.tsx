@@ -3,7 +3,7 @@ import { Flex, Text } from "@alepha/ui";
 import { Loader, Stack } from "@mantine/core";
 import { IconSettings } from "@tabler/icons-react";
 import type {
-  ConfigController,
+  AdminConfigController,
   ConfigTreeNode,
   Parameter,
 } from "alepha/api/parameters";
@@ -14,7 +14,7 @@ import ParameterTree from "./ParameterTree.tsx";
 import type { ConfigValue } from "./types.ts";
 
 const AdminParameters = () => {
-  const client = useClient<ConfigController>();
+  const client = useClient<AdminConfigController>();
 
   // State
   const [treeData, setTreeData] = useState<ConfigTreeNode[]>([]);

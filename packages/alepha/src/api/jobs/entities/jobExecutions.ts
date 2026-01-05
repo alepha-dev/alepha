@@ -1,14 +1,14 @@
 import { type Static, t } from "alepha";
 import { logEntrySchema } from "alepha/logger";
-import { $entity, pg } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 
 export const jobExecutions = $entity({
   name: "job_executions",
   schema: t.object({
-    id: pg.primaryKey(t.uuid()),
-    version: pg.version(),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
+    id: db.primaryKey(t.uuid()),
+    version: db.version(),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
     finishedAt: t.optional(t.datetime()),
     job: t.string(),
     status: t.enum(["STARTED", "FAILED", "COMPLETED"]),

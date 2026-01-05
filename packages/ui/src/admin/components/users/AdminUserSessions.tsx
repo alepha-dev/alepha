@@ -10,7 +10,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
-import type { SessionController, SessionEntity } from "alepha/api/users";
+import type { AdminSessionController, SessionEntity } from "alepha/api/users";
 import { useState } from "react";
 
 export interface AdminUserSessionsProps {
@@ -19,7 +19,7 @@ export interface AdminUserSessionsProps {
 
 const AdminUserSessions = (props: AdminUserSessionsProps) => {
   const state = useRouterState();
-  const client = useClient<SessionController>();
+  const client = useClient<AdminSessionController>();
   const { l } = useI18n();
   const userId = state.params.userId as string;
   const [refreshKey, setRefreshKey] = useState(0);

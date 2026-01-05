@@ -1,10 +1,10 @@
 import { Alepha } from "alepha";
-import { FileService, StorageStatsController } from "alepha/api/files";
+import { AdminFileStatsController, FileService } from "alepha/api/files";
 import { $bucket } from "alepha/bucket";
 import { FileSystemProvider } from "alepha/file";
 import { describe, expect, it } from "vitest";
 
-describe("StorageStatsController", () => {
+describe("AdminFileStatsController", () => {
   class App {
     images = $bucket({ name: "images" });
     documents = $bucket({ name: "documents" });
@@ -18,7 +18,7 @@ describe("StorageStatsController", () => {
   const setup = async () => {
     const alepha = Alepha.create();
     const app = alepha.inject(App);
-    const ctrl = alepha.inject(StorageStatsController);
+    const ctrl = alepha.inject(AdminFileStatsController);
     const service = alepha.inject(FileService);
     const fs = alepha.inject(FileSystemProvider);
     await alepha.start();

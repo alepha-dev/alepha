@@ -1,13 +1,12 @@
-import { $inject } from "alepha";
-import { pg } from "alepha/orm";
+import { $inject, t } from "alepha";
 import { $action } from "alepha/server";
 import { notifications } from "../entities/notifications.ts";
 import { notificationQuerySchema } from "../schemas/notificationQuerySchema.ts";
 import { NotificationService } from "../services/NotificationService.ts";
 
-export class NotificationController {
+export class AdminNotificationController {
   protected readonly url = "/notifications";
-  protected readonly group = "notifications";
+  protected readonly group = "admin:notifications";
   protected readonly notificationService = $inject(NotificationService);
 
   /**
@@ -19,7 +18,7 @@ export class NotificationController {
     description: "Find notifications with pagination and filtering",
     schema: {
       query: notificationQuerySchema,
-      response: pg.page(notifications.schema),
+      response: t.page(notifications.schema),
     },
     handler: ({ query }) => this.notificationService.findNotifications(query),
   });

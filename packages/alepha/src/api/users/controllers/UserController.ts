@@ -1,15 +1,11 @@
 import { $inject, t } from "alepha";
-import { pg } from "alepha/orm";
 import { $action, okSchema } from "alepha/server";
 import { completePasswordResetRequestSchema } from "../schemas/completePasswordResetRequestSchema.ts";
 import { completeRegistrationRequestSchema } from "../schemas/completeRegistrationRequestSchema.ts";
-import { createUserSchema } from "../schemas/createUserSchema.ts";
 import { passwordResetIntentResponseSchema } from "../schemas/passwordResetIntentResponseSchema.ts";
 import { registerQuerySchema } from "../schemas/registerQuerySchema.ts";
 import { registerRequestSchema } from "../schemas/registerRequestSchema.ts";
 import { registrationIntentResponseSchema } from "../schemas/registrationIntentResponseSchema.ts";
-import { updateUserSchema } from "../schemas/updateUserSchema.ts";
-import { userQuerySchema } from "../schemas/userQuerySchema.ts";
 import { userResourceSchema } from "../schemas/userResourceSchema.ts";
 import { CredentialService } from "../services/CredentialService.ts";
 import { RegistrationService } from "../services/RegistrationService.ts";
@@ -27,6 +23,7 @@ export class UserController {
    * Validates data, creates verification sessions, and stores intent in cache.
    */
   public readonly createRegistrationIntent = $action({
+    group: this.group,
     method: "POST",
     path: `${this.url}/register`,
     secure: false,
@@ -43,68 +40,11 @@ export class UserController {
   });
 
   /**
-   * Find users with pagination and filtering.
-   */
-  public readonly findUsers = $action({
-    path: this.url,
-    group: this.group,
-    description: "Find users with pagination and filtering",
-    schema: {
-      query: t.extend(userQuerySchema, {
-        userRealmName: t.optional(t.string()),
-      }),
-      response: pg.page(userResourceSchema),
-    },
-    handler: ({ query }) => {
-      const { userRealmName, ...q } = query;
-      return this.userService.findUsers(q, userRealmName);
-    },
-  });
-
-  /**
-   * Get a user by ID.
-   */
-  public readonly getUser = $action({
-    path: `${this.url}/:id`,
-    group: this.group,
-    description: "Get a user by ID",
-    schema: {
-      params: t.object({
-        id: t.uuid(),
-      }),
-      query: t.object({
-        userRealmName: t.optional(t.string()),
-      }),
-      response: userResourceSchema,
-    },
-    handler: ({ params, query }) =>
-      this.userService.getUserById(params.id, query.userRealmName),
-  });
-
-  /**
-   * Create a new user.
-   */
-  public readonly createUser = $action({
-    method: "POST",
-    path: this.url,
-    group: this.group,
-    description: "Create a new user",
-    schema: {
-      query: t.object({
-        userRealmName: t.optional(t.string()),
-      }),
-      body: createUserSchema,
-      response: userResourceSchema,
-    },
-    handler: ({ body, query }) =>
-      this.userService.createUser(body, query.userRealmName),
-  });
-
-  /**
    * Phase 2: Complete registration using an intent.
    * Validates verification codes and creates the user.
    */
   public readonly createUserFromIntent = $action({
+    group: this.group,
     method: "POST",
     path: `${this.url}/register/complete`,
     secure: false,
@@ -116,55 +56,11 @@ export class UserController {
   });
 
   /**
-   * Update a user.
-   */
-  public readonly updateUser = $action({
-    method: "PATCH",
-    path: `${this.url}/:id`,
-    group: this.group,
-    description: "Update a user",
-    schema: {
-      params: t.object({
-        id: t.uuid(),
-      }),
-      query: t.object({
-        userRealmName: t.optional(t.string()),
-      }),
-      body: updateUserSchema,
-      response: userResourceSchema,
-    },
-    handler: ({ params, body, query }) =>
-      this.userService.updateUser(params.id, body, query.userRealmName),
-  });
-
-  /**
-   * Delete a user.
-   */
-  public readonly deleteUser = $action({
-    method: "DELETE",
-    path: `${this.url}/:id`,
-    group: this.group,
-    description: "Delete a user",
-    schema: {
-      params: t.object({
-        id: t.uuid(),
-      }),
-      query: t.object({
-        userRealmName: t.optional(t.string()),
-      }),
-      response: okSchema,
-    },
-    handler: async ({ params, query }) => {
-      await this.userService.deleteUser(params.id, query.userRealmName);
-      return { ok: true, id: params.id };
-    },
-  });
-
-  /**
    * Phase 1: Create a password reset intent.
    * Validates email, sends verification code, and stores intent in cache.
    */
   public readonly createPasswordResetIntent = $action({
+    group: this.group,
     method: "POST",
     path: `${this.url}/password-reset`,
     secure: false,
@@ -189,6 +85,7 @@ export class UserController {
    * Validates verification code, updates password, and invalidates sessions.
    */
   public readonly completePasswordReset = $action({
+    group: this.group,
     method: "POST",
     path: `${this.url}/password-reset/complete`,
     secure: false,

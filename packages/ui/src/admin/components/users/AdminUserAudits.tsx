@@ -10,7 +10,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
-import type { AuditController, AuditEntity } from "alepha/api/audits";
+import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 
 export interface AdminUserAuditsProps {
   userRealmName?: string;
@@ -40,7 +40,7 @@ const getSeverityIcon = (severity: string) => {
 
 const AdminUserAudits = (_props: AdminUserAuditsProps) => {
   const state = useRouterState();
-  const client = useClient<AuditController>();
+  const client = useClient<AdminAuditController>();
   const { l } = useI18n();
   const userId = state.params.userId as string;
 

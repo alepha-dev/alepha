@@ -1,7 +1,7 @@
 // Browser exports for api-audits module
 // Only exports types and schemas that are safe for browser usage
 
-export type { AuditController } from "./controllers/AuditController.ts";
+export type { AdminAuditController } from "./controllers/AdminAuditController.ts";
 export * from "./entities/audits.ts";
 export type {
   AuditLogOptions,

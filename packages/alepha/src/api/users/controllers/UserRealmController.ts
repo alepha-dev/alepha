@@ -10,6 +10,7 @@ import { userRealmConfigSchema } from "../schemas/userRealmConfigSchema.ts";
  */
 export class UserRealmController {
   protected readonly url = "/realms";
+  protected readonly group = "realms";
   protected readonly userRealmProvider = $inject(UserRealmProvider);
   protected readonly serverAuthProvider = $inject(ServerAuthProvider);
 
@@ -18,6 +19,7 @@ export class UserRealmController {
    * This endpoint is not exposed in the API documentation.
    */
   public readonly getRealmConfig = $action({
+    group: this.group,
     method: "GET",
     path: `${this.url}/config`,
     secure: false,
@@ -52,6 +54,7 @@ export class UserRealmController {
   });
 
   public readonly checkUsernameAvailability = $action({
+    group: this.group,
     path: `${this.url}/check-username`,
     secure: false,
     schema: {

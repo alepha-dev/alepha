@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import {
+  AdminSessionController,
   AlephaApiUsers,
-  SessionController,
   SessionCrudService,
   UserService,
 } from "alepha/api/users";
@@ -24,12 +24,12 @@ const setup = async () => {
     alepha,
     sessionService: alepha.inject(SessionCrudService),
     userService: alepha.inject(UserService),
-    controller: alepha.inject(SessionController),
+    controller: alepha.inject(AdminSessionController),
     dateTimeProvider: alepha.inject(DateTimeProvider),
   };
 };
 
-describe("alepha/api/users - SessionController", () => {
+describe("alepha/api/users - AdminSessionController", () => {
   it("should get a session by ID", async ({ expect }) => {
     const { sessionService, userService, controller, dateTimeProvider } =
       await setup();

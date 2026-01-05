@@ -6,7 +6,7 @@ import { ActionButton, Control, Flex, Text } from "@alepha/ui";
 import { Card, Group, Loader, Stack } from "@mantine/core";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { t } from "alepha";
-import type { UserController, UserEntity } from "alepha/api/users";
+import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useEffect, useState } from "react";
 
 export interface AdminUserDetailsProps {
@@ -15,7 +15,7 @@ export interface AdminUserDetailsProps {
 
 const AdminUserDetails = (props: AdminUserDetailsProps) => {
   const state = useRouterState();
-  const client = useClient<UserController>();
+  const client = useClient<AdminUserController>();
   const { l } = useI18n();
   const userId = state.params.userId as string;
 

@@ -1,34 +1,23 @@
 import { $inject, t } from "alepha";
 import { $action } from "alepha/server";
 import type { ParameterStatus } from "../entities/parameters.ts";
+import {
+  activateConfigBodySchema,
+  checkScheduledResponseSchema,
+  configCurrentResponseSchema,
+  configHistoryResponseSchema,
+  configNameParamSchema,
+  configNamesResponseSchema,
+  configsByStatusResponseSchema,
+  configTreeNodeSchema,
+  configVersionParamSchema,
+  configVersionResponseSchema,
+  createConfigVersionBodySchema,
+  parameterResponseSchema,
+  rollbackConfigBodySchema,
+  statusParamSchema,
+} from "../schemas/index.ts";
 import { ConfigStore } from "../services/ConfigStore.ts";
-
-// Define response schemas inline to avoid complex entity schema issues
-const parameterResponseSchema = t.object({
-  id: t.uuid(),
-  createdAt: t.datetime(),
-  updatedAt: t.datetime(),
-  name: t.text(),
-  content: t.json(),
-  schemaHash: t.text(),
-  status: t.enum(["expired", "current", "next", "future"]),
-  activationDate: t.datetime(),
-  expiredAt: t.optional(t.datetime()),
-  version: t.integer(),
-  changeDescription: t.optional(t.text()),
-  tags: t.optional(t.array(t.text())),
-  creatorId: t.optional(t.uuid()),
-  creatorName: t.optional(t.text()),
-  previousContent: t.optional(t.json()),
-  migrationLog: t.optional(t.text()),
-});
-
-const treeNodeSchema: any = t.object({
-  name: t.text(),
-  path: t.text(),
-  isLeaf: t.boolean(),
-  children: t.array(t.any()),
-});
 
 /**
  * REST API controller for versioned configuration management.
@@ -41,7 +30,9 @@ const treeNodeSchema: any = t.object({
  * - Rolling back to previous versions
  * - Activating scheduled versions immediately
  */
-export class ConfigController {
+export class AdminConfigController {
+  protected readonly url = "/configs";
+  protected readonly group = "admin:configs";
   protected readonly store = $inject(ConfigStore);
 
   /**
@@ -49,12 +40,13 @@ export class ConfigController {
    * Useful for admin UI navigation.
    */
   getConfigTree = $action({
+    group: this.group,
     description:
       "Get tree structure of all configuration names for navigation.",
     path: "/configs/tree",
     method: "GET",
     schema: {
-      response: t.array(treeNodeSchema),
+      response: t.array(configTreeNodeSchema),
     },
     handler: async () => {
       return this.store.getConfigTree();
@@ -65,13 +57,12 @@ export class ConfigController {
    * List all unique configuration names.
    */
   listConfigNames = $action({
+    group: this.group,
     description: "List all unique configuration names.",
     path: "/configs",
     method: "GET",
     schema: {
-      response: t.object({
-        names: t.array(t.text()),
-      }),
+      response: configNamesResponseSchema,
     },
     handler: async () => {
       const names = await this.store.getConfigNames();
@@ -83,16 +74,13 @@ export class ConfigController {
    * Get configurations by status.
    */
   getByStatus = $action({
+    group: this.group,
     description: "Get all configurations with a specific status.",
     path: "/configs/status/:status",
     method: "GET",
     schema: {
-      params: t.object({
-        status: t.enum(["expired", "current", "next", "future"]),
-      }),
-      response: t.object({
-        configs: t.array(parameterResponseSchema),
-      }),
+      params: statusParamSchema,
+      response: configsByStatusResponseSchema,
     },
     handler: async ({ params }) => {
       const configs = await this.store.getByStatus(
@@ -106,18 +94,13 @@ export class ConfigController {
    * Get version history for a specific configuration.
    */
   getHistory = $action({
+    group: this.group,
     description: "Get all versions of a specific configuration.",
     path: "/configs/:name/history",
     method: "GET",
     schema: {
-      params: t.object({
-        name: t.text({
-          description: "Configuration name (e.g., app.features.flags)",
-        }),
-      }),
-      response: t.object({
-        versions: t.array(parameterResponseSchema),
-      }),
+      params: configNameParamSchema,
+      response: configHistoryResponseSchema,
     },
     handler: async ({ params }) => {
       const versions = await this.store.getHistory(params.name);
@@ -131,22 +114,13 @@ export class ConfigController {
    * even if no versions exist in the database yet.
    */
   getCurrent = $action({
+    group: this.group,
     description: "Get current and next scheduled values for a configuration.",
     path: "/configs/:name",
     method: "GET",
     schema: {
-      params: t.object({
-        name: t.text({
-          description: "Configuration name (e.g., app.features.flags)",
-        }),
-      }),
-      response: t.object({
-        current: t.optional(parameterResponseSchema),
-        next: t.optional(parameterResponseSchema),
-        defaultValue: t.optional(t.json()),
-        currentValue: t.optional(t.json()),
-        schema: t.optional(t.json()),
-      }),
+      params: configNameParamSchema,
+      response: configCurrentResponseSchema,
     },
     handler: async ({ params }) => {
       const result = await this.store.getCurrentWithDefault(params.name);
@@ -164,17 +138,13 @@ export class ConfigController {
    * Get a specific version of a configuration.
    */
   getVersion = $action({
+    group: this.group,
     description: "Get a specific version of a configuration.",
     path: "/configs/:name/versions/:version",
     method: "GET",
     schema: {
-      params: t.object({
-        name: t.text(),
-        version: t.integer(),
-      }),
-      response: t.object({
-        config: t.optional(parameterResponseSchema),
-      }),
+      params: configVersionParamSchema,
+      response: configVersionResponseSchema,
     },
     handler: async ({ params }) => {
       const config = await this.store.getVersion(params.name, params.version);
@@ -186,31 +156,14 @@ export class ConfigController {
    * Create a new configuration version.
    */
   createVersion = $action({
+    group: this.group,
     description:
       "Create a new version of a configuration (immediate or scheduled).",
     path: "/configs/:name",
     method: "POST",
     schema: {
-      params: t.object({
-        name: t.text({
-          description: "Configuration name (e.g., app.features.flags)",
-        }),
-      }),
-      body: t.object({
-        content: t.json({ description: "New configuration content" }),
-        schemaHash: t.text({
-          description: "Hash of the schema for migration detection",
-        }),
-        activationDate: t.optional(
-          t.datetime({ description: "When to activate (default: now)" }),
-        ),
-        changeDescription: t.optional(
-          t.text({ description: "Description of changes" }),
-        ),
-        tags: t.optional(t.array(t.text())),
-        creatorId: t.optional(t.uuid()),
-        creatorName: t.optional(t.text()),
-      }),
+      params: configNameParamSchema,
+      body: createConfigVersionBodySchema,
       response: parameterResponseSchema,
     },
     handler: async ({ params, body }) => {
@@ -230,22 +183,14 @@ export class ConfigController {
    * Rollback to a previous version.
    */
   rollback = $action({
+    group: this.group,
     description:
       "Rollback a configuration to a previous version (creates new version with old content).",
     path: "/configs/:name/rollback",
     method: "POST",
     schema: {
-      params: t.object({
-        name: t.text(),
-      }),
-      body: t.object({
-        targetVersion: t.integer({
-          description: "Version number to rollback to",
-        }),
-        changeDescription: t.optional(t.text()),
-        creatorId: t.optional(t.uuid()),
-        creatorName: t.optional(t.text()),
-      }),
+      params: configNameParamSchema,
+      body: rollbackConfigBodySchema,
       response: parameterResponseSchema,
     },
     handler: async ({ params, body }) => {
@@ -261,18 +206,13 @@ export class ConfigController {
    * Activate a scheduled version immediately.
    */
   activateNow = $action({
+    group: this.group,
     description: "Activate a future/next configuration version immediately.",
     path: "/configs/:name/activate",
     method: "POST",
     schema: {
-      params: t.object({
-        name: t.text(),
-      }),
-      body: t.object({
-        version: t.integer({ description: "Version number to activate" }),
-        creatorId: t.optional(t.uuid()),
-        creatorName: t.optional(t.text()),
-      }),
+      params: configNameParamSchema,
+      body: activateConfigBodySchema,
       response: parameterResponseSchema,
     },
     handler: async ({ params, body }) => {
@@ -307,14 +247,13 @@ export class ConfigController {
    * Normally called by a scheduler, but exposed for manual triggering.
    */
   checkScheduled = $action({
+    group: this.group,
     description:
       "Manually trigger activation check for all scheduled configurations.",
     path: "/configs/activate-scheduled",
     method: "POST",
     schema: {
-      response: t.object({
-        message: t.text(),
-      }),
+      response: checkScheduledResponseSchema,
     },
     handler: async () => {
       await this.store.activateScheduledConfigs();

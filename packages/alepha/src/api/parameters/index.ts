@@ -1,12 +1,12 @@
 import { $module } from "alepha";
-import { ConfigController } from "./controllers/ConfigController.ts";
+import { AdminConfigController } from "./controllers/AdminConfigController.ts";
 import { ConfigActivationScheduler } from "./schedulers/ConfigActivationScheduler.ts";
 import { ConfigStore } from "./services/ConfigStore.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 // Controller exports
-export * from "./controllers/ConfigController.ts";
+export * from "./controllers/AdminConfigController.ts";
 // Entity exports
 export * from "./entities/parameters.ts";
 // Primitive exports
@@ -56,5 +56,5 @@ export * from "./services/ConfigStore.ts";
  */
 export const AlephaApiParameters = $module({
   name: "alepha.api.parameters",
-  services: [ConfigStore, ConfigController, ConfigActivationScheduler],
+  services: [ConfigStore, AdminConfigController, ConfigActivationScheduler],
 });

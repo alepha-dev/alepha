@@ -1,16 +1,16 @@
 import { type Static, t } from "alepha";
-import { $entity, pg } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 
 export const notifications = $entity({
   name: "notifications",
   schema: t.object({
-    id: pg.primaryKey(t.uuid()),
+    id: db.primaryKey(t.uuid()),
 
-    version: pg.version(),
+    version: db.version(),
 
-    createdAt: pg.createdAt(),
+    createdAt: db.createdAt(),
 
-    updatedAt: pg.updatedAt(),
+    updatedAt: db.updatedAt(),
 
     // -----------------------------------------------------------------------------------------------------------------
 

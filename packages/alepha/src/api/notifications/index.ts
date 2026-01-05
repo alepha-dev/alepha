@@ -1,5 +1,5 @@
 import { $module } from "alepha";
-import { NotificationController } from "./controllers/NotificationController.ts";
+import { AdminNotificationController } from "./controllers/AdminNotificationController.ts";
 import { NotificationJobs } from "./jobs/NotificationJobs.ts";
 import { $notification } from "./primitives/$notification.ts";
 import { NotificationQueues } from "./queues/NotificationQueues.ts";
@@ -11,7 +11,7 @@ import {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./controllers/NotificationController.ts";
+export * from "./controllers/AdminNotificationController.ts";
 export * from "./entities/notifications.ts";
 export * from "./jobs/NotificationJobs.ts";
 export * from "./primitives/$notification.ts";
@@ -38,7 +38,7 @@ export const AlephaApiNotifications = $module({
   name: "alepha.api.notifications",
   primitives: [$notification],
   services: [
-    NotificationController,
+    AdminNotificationController,
     NotificationService,
     NotificationSenderService,
     NotificationQueues,
@@ -51,7 +51,7 @@ export const AlephaApiNotifications = $module({
     }
 
     alepha
-      .with(NotificationController)
+      .with(AdminNotificationController)
       .with(NotificationService)
       .with(NotificationSenderService)
       .with(NotificationJobs);

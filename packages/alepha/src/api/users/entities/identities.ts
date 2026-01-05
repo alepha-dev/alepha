@@ -1,15 +1,15 @@
 import { type Static, t } from "alepha";
-import { $entity, pg } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 import { users } from "./users.ts";
 
 export const identities = $entity({
   name: "identities",
   schema: t.object({
-    id: pg.primaryKey(t.uuid()),
-    version: pg.version(),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
-    userId: pg.ref(t.uuid(), () => users.cols.id),
+    id: db.primaryKey(t.uuid()),
+    version: db.version(),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
+    userId: db.ref(t.uuid(), () => users.cols.id),
     password: t.optional(t.text()),
     provider: t.text(),
     providerUserId: t.optional(t.text()),

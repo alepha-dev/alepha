@@ -10,13 +10,13 @@ import {
 } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
 import {
-  type JobController,
+  type AdminJobController,
   type JobExecutionEntity,
   jobExecutions,
 } from "alepha/api/jobs";
 
 const AdminJobs = () => {
-  const client = useClient<JobController>();
+  const client = useClient<AdminJobController>();
   const { l } = useI18n();
 
   const filters = t.object({

@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import {
+  AdminIdentityController,
   AlephaApiUsers,
-  IdentityController,
   IdentityService,
   UserService,
 } from "alepha/api/users";
@@ -23,11 +23,11 @@ const setup = async () => {
     alepha,
     identityService: alepha.inject(IdentityService),
     userService: alepha.inject(UserService),
-    controller: alepha.inject(IdentityController),
+    controller: alepha.inject(AdminIdentityController),
   };
 };
 
-describe("alepha/api/users - IdentityController", () => {
+describe("alepha/api/users - AdminIdentityController", () => {
   it("should get an identity by ID", async ({ expect }) => {
     const { identityService, userService, controller } = await setup();
 

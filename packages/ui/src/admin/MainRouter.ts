@@ -18,6 +18,6 @@ export class MainRouter {
 
   layout = $page({
     component: AlephaMantineProvider,
-    children: () => [this.auth.layout, this.admin.layout],
+    children: () => [this.auth.layout, this.admin.adminLayout],
   });
 }

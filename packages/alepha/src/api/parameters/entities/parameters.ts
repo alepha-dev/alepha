@@ -1,15 +1,8 @@
 import { type Static, t } from "alepha";
-import { $entity, pg } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
+import { parameterStatusSchema } from "../schemas/index.ts";
 
-/**
- * Parameter status values.
- *
- * - EXPIRED: Past version, no longer active
- * - CURRENT: Currently active version
- * - NEXT: Scheduled to become active (closest future date)
- * - FUTURE: Scheduled for activation after NEXT
- */
-export type ParameterStatus = "expired" | "current" | "next" | "future";
+export type { ParameterStatus } from "../schemas/index.ts";
 
 /**
  * Configuration parameter entity for versioned configuration management.
@@ -23,9 +16,9 @@ export type ParameterStatus = "expired" | "current" | "next" | "future";
 export const parameters = $entity({
   name: "parameters",
   schema: t.object({
-    id: pg.primaryKey(t.uuid()),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
+    id: db.primaryKey(t.uuid()),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
 
     /**
      * Configuration name using dot notation for tree hierarchy.
@@ -47,10 +40,7 @@ export const parameters = $entity({
     /**
      * Current status of this parameter version.
      */
-    status: pg.default(
-      t.enum(["expired", "current", "next", "future"]),
-      "future",
-    ),
+    status: db.default(parameterStatusSchema, "future"),
 
     /**
      * When this version should become active.

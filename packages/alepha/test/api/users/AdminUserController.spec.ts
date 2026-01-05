@@ -1,5 +1,9 @@
 import { Alepha } from "alepha";
-import { AlephaApiUsers, UserController, UserService } from "alepha/api/users";
+import {
+  AdminUserController,
+  AlephaApiUsers,
+  UserService,
+} from "alepha/api/users";
 import { DbEntityNotFoundError } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { BadRequestError } from "alepha/server";
@@ -18,11 +22,11 @@ const setup = async () => {
   return {
     alepha,
     userService: alepha.inject(UserService),
-    controller: alepha.inject(UserController),
+    controller: alepha.inject(AdminUserController),
   };
 };
 
-describe("alepha/api/users - UserController CRUD", () => {
+describe("alepha/api/users - AdminUserController CRUD", () => {
   it("should create a new user", async ({ expect }) => {
     const { controller } = await setup();
 

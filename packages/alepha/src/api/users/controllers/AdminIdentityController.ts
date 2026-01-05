@@ -1,13 +1,13 @@
 import { $inject, t } from "alepha";
-import { pg } from "alepha/orm";
+import { db } from "alepha/orm";
 import { $action, okSchema } from "alepha/server";
 import { identityQuerySchema } from "../schemas/identityQuerySchema.ts";
 import { identityResourceSchema } from "../schemas/identityResourceSchema.ts";
 import { IdentityService } from "../services/IdentityService.ts";
 
-export class IdentityController {
+export class AdminIdentityController {
   protected readonly url = "/identities";
-  protected readonly group = "identities";
+  protected readonly group = "admin:identities";
   protected readonly identityService = $inject(IdentityService);
 
   /**
@@ -21,7 +21,7 @@ export class IdentityController {
       query: t.extend(identityQuerySchema, {
         userRealmName: t.optional(t.string()),
       }),
-      response: pg.page(identityResourceSchema),
+      response: db.page(identityResourceSchema),
     },
     handler: ({ query }) => {
       const { userRealmName, ...q } = query;

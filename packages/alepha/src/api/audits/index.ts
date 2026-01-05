@@ -1,10 +1,10 @@
 import { $module } from "alepha";
-import { AuditController } from "./controllers/AuditController.ts";
+import { AdminAuditController } from "./controllers/AdminAuditController.ts";
 import { AuditService } from "./services/AuditService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./controllers/AuditController.ts";
+export * from "./controllers/AdminAuditController.ts";
 export * from "./entities/audits.ts";
 export * from "./primitives/$audit.ts";
 export * from "./schemas/auditQuerySchema.ts";
@@ -54,5 +54,5 @@ export * from "./services/AuditService.ts";
  */
 export const AlephaApiAudits = $module({
   name: "alepha.api.audits",
-  services: [AuditService, AuditController],
+  services: [AuditService, AdminAuditController],
 });

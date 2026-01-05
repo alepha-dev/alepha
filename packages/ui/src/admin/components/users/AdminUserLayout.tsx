@@ -3,7 +3,7 @@ import { NestedView, useRouter, useRouterState } from "@alepha/react/router";
 import { ActionButton, Flex, Text } from "@alepha/ui";
 import { Avatar, Badge, Card, Group, Loader, Stack, Tabs } from "@mantine/core";
 import { IconDevices, IconSettings, IconUser } from "@tabler/icons-react";
-import type { UserController, UserEntity } from "alepha/api/users";
+import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useEffect, useState } from "react";
 import type { AdminRouter } from "../../AdminRouter.ts";
 
@@ -14,7 +14,7 @@ export interface AdminUserLayoutProps {
 const AdminUserLayout = (props: AdminUserLayoutProps) => {
   const router = useRouter<AdminRouter>();
   const state = useRouterState();
-  const client = useClient<UserController>();
+  const client = useClient<AdminUserController>();
   const userId = state.params.userId as string;
 
   const [user, setUser] = useState<UserEntity | null>(null);

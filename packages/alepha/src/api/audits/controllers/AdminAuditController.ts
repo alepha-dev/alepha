@@ -1,5 +1,5 @@
 import { $inject, t } from "alepha";
-import { pg } from "alepha/orm";
+import { db } from "alepha/orm";
 import { $action } from "alepha/server";
 import { auditQuerySchema } from "../schemas/auditQuerySchema.ts";
 import { auditResourceSchema } from "../schemas/auditResourceSchema.ts";
@@ -15,9 +15,9 @@ import { AuditService } from "../services/AuditService.ts";
  * - Getting audit statistics
  * - Viewing registered audit types
  */
-export class AuditController {
+export class AdminAuditController {
   protected readonly url = "/audits";
-  protected readonly group = "audits";
+  protected readonly group = "admin:audits";
   protected readonly auditService = $inject(AuditService);
 
   /**
@@ -29,7 +29,7 @@ export class AuditController {
     description: "Find audit entries with filtering and pagination",
     schema: {
       query: auditQuerySchema,
-      response: pg.page(auditResourceSchema),
+      response: db.page(auditResourceSchema),
     },
     handler: ({ query }) => this.auditService.find(query),
   });
@@ -77,7 +77,7 @@ export class AuditController {
         userId: t.uuid(),
       }),
       query: t.omit(auditQuerySchema, ["userId"]),
-      response: pg.page(auditResourceSchema),
+      response: db.page(auditResourceSchema),
     },
     handler: ({ params, query }) =>
       this.auditService.findByUser(params.userId, query),
@@ -96,7 +96,7 @@ export class AuditController {
         resourceId: t.text(),
       }),
       query: t.omit(auditQuerySchema, ["resourceType", "resourceId"]),
-      response: pg.page(auditResourceSchema),
+      response: db.page(auditResourceSchema),
     },
     handler: ({ params, query }) =>
       this.auditService.findByResource(

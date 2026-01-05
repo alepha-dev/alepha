@@ -1,16 +1,16 @@
 import { type Static, t } from "alepha";
-import { $entity, pg } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 import { users } from "./users.ts";
 
 export const sessions = $entity({
   name: "sessions",
   schema: t.object({
-    id: pg.primaryKey(t.uuid()),
-    version: pg.version(),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
+    id: db.primaryKey(t.uuid()),
+    version: db.version(),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
     refreshToken: t.uuid(),
-    userId: pg.ref(t.uuid(), () => users.cols.id),
+    userId: db.ref(t.uuid(), () => users.cols.id),
     expiresAt: t.datetime(),
     ip: t.optional(t.text()),
     userAgent: t.optional(

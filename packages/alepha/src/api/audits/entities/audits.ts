@@ -1,6 +1,6 @@
 import type { Static } from "alepha";
 import { t } from "alepha";
-import { $entity, pg } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 
 /**
  * Audit severity levels for categorizing events.
@@ -24,8 +24,8 @@ export type AuditSeverity = Static<typeof auditSeveritySchema>;
 export const audits = $entity({
   name: "audits",
   schema: t.object({
-    id: pg.primaryKey(t.bigint()),
-    createdAt: pg.createdAt(),
+    id: db.primaryKey(t.bigint()),
+    createdAt: db.createdAt(),
 
     /**
      * Audit event type (e.g., "auth", "user", "payment", "system").
@@ -45,7 +45,7 @@ export const audits = $entity({
     /**
      * Severity level of the event.
      */
-    severity: pg.default(auditSeveritySchema, "info"),
+    severity: db.default(auditSeveritySchema, "info"),
 
     /**
      * User ID who performed the action (null for system events).
@@ -105,7 +105,7 @@ export const audits = $entity({
     /**
      * Whether the action was successful.
      */
-    success: pg.default(t.boolean(), true),
+    success: db.default(t.boolean(), true),
 
     /**
      * Error message if the action failed.

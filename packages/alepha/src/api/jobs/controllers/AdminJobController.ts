@@ -5,9 +5,9 @@ import { jobExecutionResourceSchema } from "../schemas/jobExecutionResourceSchem
 import { triggerJobSchema } from "../schemas/triggerJobSchema.ts";
 import { JobService } from "../services/JobService.ts";
 
-export class JobController {
+export class AdminJobController {
   protected readonly url: string = "/jobs";
-  protected readonly group: string = "jobs";
+  protected readonly group: string = "admin:jobs";
   protected readonly jobService = $inject(JobService);
 
   public readonly getJobs = $action({

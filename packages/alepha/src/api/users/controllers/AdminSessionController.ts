@@ -1,13 +1,13 @@
 import { $inject, t } from "alepha";
-import { pg } from "alepha/orm";
+import { db } from "alepha/orm";
 import { $action, okSchema } from "alepha/server";
 import { sessionQuerySchema } from "../schemas/sessionQuerySchema.ts";
 import { sessionResourceSchema } from "../schemas/sessionResourceSchema.ts";
 import { SessionCrudService } from "../services/SessionCrudService.ts";
 
-export class SessionController {
+export class AdminSessionController {
   protected readonly url = "/sessions";
-  protected readonly group = "sessions";
+  protected readonly group = "admin:sessions";
   protected readonly sessionService = $inject(SessionCrudService);
 
   /**
@@ -21,7 +21,7 @@ export class SessionController {
       query: t.extend(sessionQuerySchema, {
         userRealmName: t.optional(t.string()),
       }),
-      response: pg.page(sessionResourceSchema),
+      response: db.page(sessionResourceSchema),
     },
     handler: ({ query }) => {
       const { userRealmName, ...q } = query;

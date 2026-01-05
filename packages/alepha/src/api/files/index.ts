@@ -4,15 +4,15 @@ import type { DurationLike } from "alepha/datetime";
 import type { UserAccountToken } from "alepha/security";
 import { AlephaServerCache } from "alepha/server/cache";
 import { AlephaServerMultipart } from "alepha/server/multipart";
+import { AdminFileStatsController } from "./controllers/AdminFileStatsController.ts";
 import { FileController } from "./controllers/FileController.ts";
-import { StorageStatsController } from "./controllers/StorageStatsController.ts";
 import { FileJobs } from "./jobs/FileJobs.ts";
 import { FileService } from "./services/FileService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./controllers/AdminFileStatsController.ts";
 export * from "./controllers/FileController.ts";
-export * from "./controllers/StorageStatsController.ts";
 export * from "./entities/files.ts";
 export * from "./jobs/FileJobs.ts";
 export * from "./schemas/storageStatsSchema.ts";
@@ -58,14 +58,14 @@ declare module "alepha/bucket" {
  */
 export const AlephaApiFiles = $module({
   name: "alepha.api.files",
-  services: [FileController, StorageStatsController, FileJobs, FileService],
+  services: [FileController, AdminFileStatsController, FileJobs, FileService],
   register: (alepha) => {
     alepha
       .with(AlephaBucket)
       .with(AlephaServerCache)
       .with(AlephaServerMultipart)
       .with(FileController)
-      .with(StorageStatsController)
+      .with(AdminFileStatsController)
       .with(FileJobs);
   },
 });

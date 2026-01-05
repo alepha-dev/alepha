@@ -1,18 +1,18 @@
 import type { Static } from "alepha";
 import { t } from "alepha";
-import { $entity, pg } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 import { verificationTypeEnumSchema } from "../schemas/verificationTypeEnumSchema.ts";
 
 export const verifications = $entity({
   name: "verification",
   schema: t.object({
-    id: pg.primaryKey(t.bigint()),
+    id: db.primaryKey(t.bigint()),
 
-    createdAt: pg.createdAt(),
+    createdAt: db.createdAt(),
 
-    updatedAt: pg.updatedAt(),
+    updatedAt: db.updatedAt(),
 
-    version: pg.version(),
+    version: db.version(),
 
     type: verificationTypeEnumSchema,
 
@@ -30,7 +30,7 @@ export const verifications = $entity({
       }),
     ),
 
-    attempts: pg.default(
+    attempts: db.default(
       t.integer({
         description: "Number of failed attempts (to prevent brute-force)",
       }),

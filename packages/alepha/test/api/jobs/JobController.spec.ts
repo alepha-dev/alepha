@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { $job, JobController, JobService } from "alepha/api/jobs";
+import { $job, AdminJobController, JobService } from "alepha/api/jobs";
 import { DateTimeProvider, dayjs } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { describe, expect, it } from "vitest";
@@ -24,7 +24,7 @@ describe("JobController", () => {
   const setup = async () => {
     const alepha = Alepha.create();
     const app = alepha.inject(App);
-    const ctrl = alepha.inject(JobController);
+    const ctrl = alepha.inject(AdminJobController);
     const service = alepha.inject(JobService);
     const dtp = alepha.inject(DateTimeProvider);
     await alepha.start();
@@ -42,7 +42,7 @@ describe("JobController", () => {
 
     it("should return empty array when no jobs exist", async () => {
       const alepha = Alepha.create();
-      const ctrl = alepha.inject(JobController);
+      const ctrl = alepha.inject(AdminJobController);
       await alepha.start();
       const jobs = await ctrl.getJobs();
       expect(jobs).toEqual([]);
@@ -96,7 +96,7 @@ describe("JobController", () => {
 
       const alepha = Alepha.create();
       const testApp = alepha.inject(TestAppWithLogs);
-      const ctrl = alepha.inject(JobController);
+      const ctrl = alepha.inject(AdminJobController);
       await alepha.start();
 
       await testApp.loggingJob.trigger();
@@ -131,7 +131,7 @@ describe("JobController", () => {
 
       const alepha = Alepha.create();
       const failingApp = alepha.inject(FailingApp);
-      const ctrl = alepha.inject(JobController);
+      const ctrl = alepha.inject(AdminJobController);
       await alepha.start();
 
       // Trigger the job (it will fail silently)

@@ -4,7 +4,7 @@ import { useRouter } from "@alepha/react/router";
 import { ActionButton, Control, Flex } from "@alepha/ui";
 import { Card, Stack, Text } from "@mantine/core";
 import { t } from "alepha";
-import type { UserController } from "alepha/api/users";
+import type { AdminUserController } from "alepha/api/users";
 import type { AdminRouter } from "../../AdminRouter.ts";
 
 export interface AdminUserCreateProps {
@@ -12,7 +12,7 @@ export interface AdminUserCreateProps {
 }
 
 const AdminUserCreate = (props: AdminUserCreateProps) => {
-  const client = useClient<UserController>();
+  const client = useClient<AdminUserController>();
   const router = useRouter<AdminRouter>();
 
   const form = useForm({

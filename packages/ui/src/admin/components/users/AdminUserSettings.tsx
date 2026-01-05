@@ -8,7 +8,11 @@ import {
   IconMail,
   IconTrash,
 } from "@tabler/icons-react";
-import type { UserController, UserEntity } from "alepha/api/users";
+import type {
+  AdminUserController,
+  UserController,
+  UserEntity,
+} from "alepha/api/users";
 import { useEffect, useState } from "react";
 import type { AdminRouter } from "../../AdminRouter.ts";
 
@@ -19,7 +23,8 @@ export interface AdminUserSettingsProps {
 const AdminUserSettings = (props: AdminUserSettingsProps) => {
   const router = useRouter<AdminRouter>();
   const state = useRouterState();
-  const client = useClient<UserController>();
+  const adminClient = useClient<AdminUserController>();
+  const userClient = useClient<UserController>();
   const userId = state.params.userId as string;
 
   const [user, setUser] = useState<UserEntity | null>(null);
@@ -31,7 +36,7 @@ const AdminUserSettings = (props: AdminUserSettingsProps) => {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const data = await client.getUser({
+        const data = await adminClient.getUser({
           params: { id: userId },
           query: { userRealmName: props.userRealmName },
         });
@@ -51,7 +56,7 @@ const AdminUserSettings = (props: AdminUserSettingsProps) => {
 
     setDeleteLoading(true);
     try {
-      await client.deleteUser({
+      await adminClient.deleteUser({
         params: { id: userId },
         query: { userRealmName: props.userRealmName },
       });
@@ -67,7 +72,7 @@ const AdminUserSettings = (props: AdminUserSettingsProps) => {
     setVerifyLoading(true);
     setVerifySuccess(false);
     try {
-      await client.requestEmailVerification({
+      await userClient.requestEmailVerification({
         query: {
           userRealmName: props.userRealmName,
           method: "link",

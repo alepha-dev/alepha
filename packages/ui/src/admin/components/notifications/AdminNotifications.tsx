@@ -11,12 +11,12 @@ import {
 } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
 import type {
-  NotificationController,
+  AdminNotificationController,
   NotificationEntity,
 } from "alepha/api/notifications";
 
 const AdminNotifications = () => {
-  const client = useClient<NotificationController>();
+  const client = useClient<AdminNotificationController>();
   const { l } = useI18n();
 
   const filters = t.object({

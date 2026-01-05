@@ -8,9 +8,9 @@ import { FileService } from "../services/FileService.ts";
  * REST API controller for storage analytics and statistics.
  * Provides endpoints for viewing storage usage metrics.
  */
-export class StorageStatsController {
+export class AdminFileStatsController {
   protected readonly url = "/files/stats";
-  protected readonly group = "files";
+  protected readonly group = "admin:files";
   protected readonly fileService = $inject(FileService);
 
   /**

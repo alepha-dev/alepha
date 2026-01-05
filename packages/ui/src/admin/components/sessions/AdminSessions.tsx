@@ -11,7 +11,7 @@ import {
 } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
 import {
-  type SessionController,
+  type AdminSessionController,
   type SessionEntity,
   sessions,
 } from "alepha/api/users";
@@ -23,7 +23,7 @@ export interface AdminSessionsProps {
 }
 
 const AdminSessions = (props: AdminSessionsProps) => {
-  const client = useClient<SessionController>();
+  const client = useClient<AdminSessionController>();
   const router = useRouter<AdminRouter>();
   const { l } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);

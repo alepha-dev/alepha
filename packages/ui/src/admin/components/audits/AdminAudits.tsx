@@ -11,7 +11,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
-import type { AuditController, AuditEntity } from "alepha/api/audits";
+import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import type { AdminRouter } from "../../AdminRouter.ts";
 
 export interface AdminAuditsProps {
@@ -62,7 +62,7 @@ const getTypeColor = (type: string) => {
 };
 
 const AdminAudits = (props: AdminAuditsProps) => {
-  const client = useClient<AuditController>();
+  const client = useClient<AdminAuditController>();
   const router = useRouter<AdminRouter>();
   const { l } = useI18n();
 

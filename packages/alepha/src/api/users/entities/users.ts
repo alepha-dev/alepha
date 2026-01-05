@@ -1,17 +1,17 @@
 import { type Static, t } from "alepha";
-import { $entity, pg } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 
 export const DEFAULT_USER_REALM_NAME = "default";
 
 export const users = $entity({
   name: "users",
   schema: t.object({
-    id: pg.primaryKey(t.uuid()),
-    version: pg.version(),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
+    id: db.primaryKey(t.uuid()),
+    version: db.version(),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
 
-    realm: pg.default(t.text(), DEFAULT_USER_REALM_NAME),
+    realm: db.default(t.text(), DEFAULT_USER_REALM_NAME),
 
     username: t.optional(
       t.shortText({
@@ -25,13 +25,13 @@ export const users = $entity({
 
     phoneNumber: t.optional(t.e164()),
 
-    roles: pg.default(t.array(t.string()), []),
+    roles: db.default(t.array(t.string()), []),
     firstName: t.optional(t.string()),
     lastName: t.optional(t.string()),
     picture: t.optional(t.string()),
-    enabled: pg.default(t.boolean(), true),
+    enabled: db.default(t.boolean(), true),
 
-    emailVerified: pg.default(t.boolean(), false),
+    emailVerified: db.default(t.boolean(), false),
   }),
   indexes: [
     { columns: ["realm", "username"], unique: true },

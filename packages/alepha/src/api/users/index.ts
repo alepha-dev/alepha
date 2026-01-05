@@ -4,8 +4,9 @@ import { AlephaApiVerification } from "alepha/api/verifications";
 import { AlephaEmail } from "alepha/email";
 import { AlephaServerCompress } from "alepha/server/compress";
 import { AlephaServerHelmet } from "alepha/server/helmet";
-import { IdentityController } from "./controllers/IdentityController.ts";
-import { SessionController } from "./controllers/SessionController.ts";
+import { AdminIdentityController } from "./controllers/AdminIdentityController.ts";
+import { AdminSessionController } from "./controllers/AdminSessionController.ts";
+import { AdminUserController } from "./controllers/AdminUserController.ts";
 import { UserController } from "./controllers/UserController.ts";
 import { UserRealmController } from "./controllers/UserRealmController.ts";
 import { UserNotifications } from "./notifications/UserNotifications.ts";
@@ -20,8 +21,9 @@ import { UserService } from "./services/UserService.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./atoms/realmAuthSettingsAtom.ts";
-export * from "./controllers/IdentityController.ts";
-export * from "./controllers/SessionController.ts";
+export * from "./controllers/AdminIdentityController.ts";
+export * from "./controllers/AdminSessionController.ts";
+export * from "./controllers/AdminUserController.ts";
 export * from "./controllers/UserController.ts";
 export * from "./controllers/UserRealmController.ts";
 export * from "./entities/identities.ts";
@@ -78,8 +80,9 @@ export const AlephaApiUsers = $module({
     UserService,
     IdentityService,
     UserController,
-    SessionController,
-    IdentityController,
+    AdminUserController,
+    AdminSessionController,
+    AdminIdentityController,
     UserRealmController,
     UserNotifications,
   ],

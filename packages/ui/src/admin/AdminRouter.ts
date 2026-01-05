@@ -13,23 +13,26 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { $inject } from "alepha";
-import type { AuditController } from "alepha/api/audits";
+import type { AdminAuditController } from "alepha/api/audits";
 import type { FileController } from "alepha/api/files";
-import type { NotificationController } from "alepha/api/notifications";
-import type { ConfigController } from "alepha/api/parameters";
-import type { SessionController, UserController } from "alepha/api/users";
+import type { AdminNotificationController } from "alepha/api/notifications";
+import type { AdminConfigController } from "alepha/api/parameters";
+import type {
+  AdminSessionController,
+  AdminUserController,
+} from "alepha/api/users";
 import { $client } from "alepha/server/links";
 
 export class AdminRouter {
   protected readonly router = $inject(ReactRouter);
   protected readonly authRouter = $inject(AuthRouter);
   protected readonly auth = $inject(ReactAuth);
-  protected readonly userCtrl = $client<UserController>();
-  protected readonly sessionCtrl = $client<SessionController>();
-  protected readonly notificationCtrl = $client<NotificationController>();
+  protected readonly userCtrl = $client<AdminUserController>();
+  protected readonly sessionCtrl = $client<AdminSessionController>();
+  protected readonly notificationCtrl = $client<AdminNotificationController>();
   protected readonly fileCtrl = $client<FileController>();
-  protected readonly configCtrl = $client<ConfigController>();
-  protected readonly auditCtrl = $client<AuditController>();
+  protected readonly configCtrl = $client<AdminConfigController>();
+  protected readonly auditCtrl = $client<AdminAuditController>();
 
   protected adminShellProps(): AdminShellProps {
     return {};
@@ -49,8 +52,7 @@ export class AdminRouter {
   // Layout
   // ─────────────────────────────────────────────────────────────────────────────
 
-  public readonly layout = $page({
-    name: "AdminLayout",
+  public readonly adminLayout = $page({
     path: "/admin",
     label: "Admin",
     lazy: () => import("./components/AdminLayout.tsx"),
@@ -71,7 +73,7 @@ export class AdminRouter {
 
   public readonly adminUsers = $page({
     icon: IconUsers,
-    parent: this.layout,
+    parent: this.adminLayout,
     path: "/users",
     label: "Users",
     description: "Manage application users and their roles.",
@@ -81,7 +83,7 @@ export class AdminRouter {
 
   public readonly adminUserCreate = $page({
     icon: IconPlus,
-    parent: this.layout,
+    parent: this.adminLayout,
     path: "/users/create",
     label: "Create User",
     description: "Create a new user account.",
@@ -91,7 +93,7 @@ export class AdminRouter {
 
   public readonly adminUserLayout = $page({
     icon: IconUser,
-    parent: this.layout,
+    parent: this.adminLayout,
     path: "/users/:userId",
     label: "User",
     lazy: () => import("./components/users/AdminUserLayout.tsx"),
@@ -133,7 +135,7 @@ export class AdminRouter {
 
   public readonly adminAudits = $page({
     icon: IconHistory,
-    parent: this.layout,
+    parent: this.adminLayout,
     path: "/audits",
     label: "Audit Log",
     description: "View system-wide audit trail and activity logs.",
@@ -147,7 +149,7 @@ export class AdminRouter {
 
   public readonly adminSessions = $page({
     icon: IconDevices,
-    parent: this.layout,
+    parent: this.adminLayout,
     path: "/sessions",
     label: "Sessions",
     description: "View and manage all active sessions.",
@@ -161,7 +163,7 @@ export class AdminRouter {
 
   public readonly adminNotifications = $page({
     icon: IconBell,
-    parent: this.layout,
+    parent: this.adminLayout,
     path: "/notifications",
     label: "Notifications",
     description: "View notification history and status.",
@@ -175,7 +177,7 @@ export class AdminRouter {
 
   public readonly adminFiles = $page({
     icon: IconFile,
-    parent: this.layout,
+    parent: this.adminLayout,
     path: "/files",
     label: "Files",
     description: "Manage uploaded files and storage.",
@@ -189,7 +191,7 @@ export class AdminRouter {
 
   public readonly adminParameters = $page({
     icon: IconSettings,
-    parent: this.layout,
+    parent: this.adminLayout,
     path: "/parameters",
     label: "Parameters",
     description: "View and manage application configuration parameters.",

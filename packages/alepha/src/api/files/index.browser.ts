@@ -2,8 +2,8 @@ import { $module } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export type * from "./controllers/AdminFileStatsController.ts";
 export type * from "./controllers/FileController.ts";
-export type * from "./controllers/StorageStatsController.ts";
 export * from "./entities/files.ts";
 export * from "./schemas/fileQuerySchema.ts";
 export * from "./schemas/fileResourceSchema.ts";
