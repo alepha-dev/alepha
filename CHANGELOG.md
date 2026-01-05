@@ -1,3 +1,13 @@
+## [0.14.2] - 2026-01-05
+
+### Features
+
+- **orm**: alias 'pg' to 'db' and deprecate 'pg' (`9360f3f6`)
+- **react/head**: add head.script (`b32b7899`)
+- **react**: move all router code in "@alepha/react/router", now "@alepha/react" can be used in Next.js or Expo [BREAKING] (`606260f6`)
+- **ui/demo**: add AlephaUIDemo as Alepha UI demonstrator (`6eeaae7a`)
+- **ui/json**: add JsonViewer component as standalone module (`10f9fa71`)
+
 ## [0.14.1] - 2026-01-01
 
 ### Features
