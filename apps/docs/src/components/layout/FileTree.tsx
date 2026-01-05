@@ -88,11 +88,12 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
   }, [defaultExpanded]);
 
   // Auto-expand when a child becomes active (but don't collapse)
+  // Skip auto-expand if user explicitly collapsed all (defaultExpanded === false)
   useEffect(() => {
-    if (containsActive && !expanded) {
+    if (containsActive && !expanded && defaultExpanded !== false) {
       setExpanded(true);
     }
-  }, [containsActive]);
+  }, [containsActive, defaultExpanded]);
 
   const handleClick = useCallback(() => {
     if (hasChildren) {
