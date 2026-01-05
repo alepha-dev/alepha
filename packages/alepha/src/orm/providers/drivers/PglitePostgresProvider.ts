@@ -55,7 +55,7 @@ export class PglitePostgresProvider extends DatabaseProvider {
       if (this.alepha.isTest()) {
         path = ":memory:"; // use in-memory database for tests by default
       } else {
-        path = "node_modules/.db"; // default path for dev
+        path = "node_modules/.alepha/pglite"; // default path for dev
       }
     } else {
       if (path.includes(":memory:")) {
