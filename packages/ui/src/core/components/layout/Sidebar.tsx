@@ -129,12 +129,14 @@ export const Sidebar = (props: SidebarProps) => {
   const getSidebarNodes = (): SidebarNode[] => {
     if (props.items) return props.items;
     if (props.autoPopulateMenu) {
-      const items = router.concretePages.map((page) => ({
-        label: page.label ?? page.name,
-        //description: page.description?.slice(0, 32),
-        icon: renderIcon(page.icon),
-        href: router.path(page.name),
-      })) as SidebarMenuItem[];
+      const items = router.concretePages
+        .filter((page) => !page.can || page.can())
+        .map((page) => ({
+          label: page.label ?? page.name,
+          //description: page.description?.slice(0, 32),
+          icon: renderIcon(page.icon),
+          href: router.path(page.name),
+        })) as SidebarMenuItem[];
       if (
         typeof props.autoPopulateMenu === "object" &&
         props.autoPopulateMenu.startsWith
@@ -142,6 +144,7 @@ export const Sidebar = (props: SidebarProps) => {
         const startsWith = props.autoPopulateMenu.startsWith;
         return items.filter((item) => item.href?.startsWith(startsWith));
       }
+      return items;
     }
     return [];
   };
