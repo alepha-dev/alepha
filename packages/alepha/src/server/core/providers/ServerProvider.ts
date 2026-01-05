@@ -203,7 +203,9 @@ export class ServerProvider {
     }
 
     if (Buffer.isBuffer(response.body)) {
-      ev.res = new Response(response.body.buffer as ArrayBuffer, {
+      // Use Uint8Array to avoid Buffer pooling issues where .buffer returns
+      // the entire underlying ArrayBuffer which may be larger than the actual data
+      ev.res = new Response(new Uint8Array(response.body), {
         status: response.status,
         headers: response.headers,
       });

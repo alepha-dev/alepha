@@ -125,11 +125,13 @@ export class ServerCompressProvider {
       this.setHeaders(response, encoding);
       response.headers["content-length"] = compressed.length.toString();
       response.body = compressed;
+      return;
     }
 
     if (typeof body === "object" && body instanceof Readable) {
       this.setHeaders(response, encoding);
       response.body = body.pipe(compressor.stream({ params }));
+      return;
     }
 
     if (typeof body === "object" && body instanceof ReadableStream) {
