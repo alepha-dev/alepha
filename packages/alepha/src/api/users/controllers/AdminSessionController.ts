@@ -21,7 +21,7 @@ export class AdminSessionController {
       query: t.extend(sessionQuerySchema, {
         userRealmName: t.optional(t.string()),
       }),
-      response: db.page(sessionResourceSchema),
+      response: t.page(sessionResourceSchema),
     },
     handler: ({ query }) => {
       const { userRealmName, ...q } = query;

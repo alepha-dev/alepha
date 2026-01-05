@@ -24,6 +24,7 @@
 	},
 	"scripts": {
 		"w": "yarn workspace",
+		"a": "yarn alepha",
 		"v": "yarn alepha verify",
 		"verify": "yarn alepha verify",
 		"postinstall": "yarn copy && yarn lint",

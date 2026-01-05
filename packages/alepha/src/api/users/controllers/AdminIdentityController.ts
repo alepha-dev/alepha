@@ -21,7 +21,7 @@ export class AdminIdentityController {
       query: t.extend(identityQuerySchema, {
         userRealmName: t.optional(t.string()),
       }),
-      response: db.page(identityResourceSchema),
+      response: t.page(identityResourceSchema),
     },
     handler: ({ query }) => {
       const { userRealmName, ...q } = query;

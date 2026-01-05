@@ -29,7 +29,7 @@ export class AdminAuditController {
     description: "Find audit entries with filtering and pagination",
     schema: {
       query: auditQuerySchema,
-      response: db.page(auditResourceSchema),
+      response: t.page(auditResourceSchema),
     },
     handler: ({ query }) => this.auditService.find(query),
   });
@@ -77,7 +77,7 @@ export class AdminAuditController {
         userId: t.uuid(),
       }),
       query: t.omit(auditQuerySchema, ["userId"]),
-      response: db.page(auditResourceSchema),
+      response: t.page(auditResourceSchema),
     },
     handler: ({ params, query }) =>
       this.auditService.findByUser(params.userId, query),
@@ -96,7 +96,7 @@ export class AdminAuditController {
         resourceId: t.text(),
       }),
       query: t.omit(auditQuerySchema, ["resourceType", "resourceId"]),
-      response: db.page(auditResourceSchema),
+      response: t.page(auditResourceSchema),
     },
     handler: ({ params, query }) =>
       this.auditService.findByResource(

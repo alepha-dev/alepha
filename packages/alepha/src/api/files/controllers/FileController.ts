@@ -1,5 +1,4 @@
 import { $inject, t } from "alepha";
-import { db } from "alepha/orm";
 import { $action, okSchema } from "alepha/server";
 import { fileQuerySchema } from "../schemas/fileQuerySchema.ts";
 import { fileResourceSchema } from "../schemas/fileResourceSchema.ts";
@@ -24,7 +23,7 @@ export class FileController {
     description: "List files with filtering and pagination",
     schema: {
       query: fileQuerySchema,
-      response: db.page(fileResourceSchema),
+      response: t.page(fileResourceSchema),
     },
     handler: ({ query }) => this.fileService.findFiles(query),
   });

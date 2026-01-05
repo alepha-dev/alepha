@@ -23,7 +23,7 @@ export class AdminUserController {
       query: t.extend(userQuerySchema, {
         userRealmName: t.optional(t.string()),
       }),
-      response: db.page(userResourceSchema),
+      response: t.page(userResourceSchema),
     },
     handler: ({ query }) => {
       const { userRealmName, ...q } = query;
