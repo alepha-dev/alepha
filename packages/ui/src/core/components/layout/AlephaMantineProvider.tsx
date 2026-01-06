@@ -11,6 +11,7 @@ import { ModalsProvider, type ModalsProviderProps } from "@mantine/modals";
 import { Notifications, type NotificationsProps } from "@mantine/notifications";
 import type { NavigationProgressProps } from "@mantine/nprogress";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
+import { TypeBoxError } from "alepha";
 import type { ReactNode } from "react";
 import { useTheme } from "../../hooks/useTheme.ts";
 import { useToast } from "../../hooks/useToast.ts";
@@ -39,7 +40,10 @@ const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
         nprogress.complete();
       },
       "react:action:error": ({ error }) => {
-        if (error instanceof FormValidationError) {
+        if (
+          error instanceof FormValidationError ||
+          error instanceof TypeBoxError
+        ) {
           // Validation errors are handled by the form component
           return;
         }

@@ -47,7 +47,22 @@ export const $userRealm = (
   const sessionService = alepha.inject(SessionService);
   const securityProvider = alepha.inject(SecurityProvider);
   const userRealmProvider = alepha.inject(UserRealmProvider);
+
   const name = options.realm?.name ?? DEFAULT_USER_REALM_NAME;
+
+  options.settings ??= {};
+
+  if (options.settings.emailRequired) {
+    options.settings.emailEnabled = true;
+  }
+
+  if (options.settings.usernameRequired) {
+    options.settings.usernameEnabled = true;
+  }
+
+  if (options.settings.phoneRequired) {
+    options.settings.phoneEnabled = true;
+  }
 
   const userRealm = userRealmProvider.register(name, options);
 

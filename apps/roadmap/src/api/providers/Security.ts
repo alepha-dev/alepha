@@ -12,6 +12,7 @@ export class Security {
     settings: {
       usernameRequired: true,
       resetPasswordAllowed: true,
+      verifyEmailRequired: true,
     },
     identities: {
       github: true,
