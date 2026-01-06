@@ -69,7 +69,6 @@ export class AppRouter {
 
   layout = $page({
     children: () => [
-      this.authRouter.layout,
       this.home, //
       this.project,
       this.projectCreate,
