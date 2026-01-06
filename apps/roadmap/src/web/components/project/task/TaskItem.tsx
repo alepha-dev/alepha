@@ -1,17 +1,20 @@
-import { useStore } from "@alepha/react";
+import { useAlepha, useClient, useStore } from "@alepha/react";
 import { useActive, useRouter } from "@alepha/react/router";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Box, Flex, HoverCard, Text } from "@mantine/core";
+import { ActionIcon, Box, Flex, HoverCard, Text } from "@mantine/core";
 import {
   IconClock,
   IconExclamationMark,
   IconNotes,
   IconSparkles,
   IconThumbUp,
+  IconTrash,
 } from "@tabler/icons-react";
+import type { TaskController } from "../../../../api/controllers/TaskController.ts";
 import type { Task } from "../../../../api/entities/tasks.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
+import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
 import { getTaskVote, taskVotesAtom } from "../../../atoms/taskVotesAtom.ts";
 import Action from "../../ui/Action.jsx";
 import TaskComplexity from "./TaskComplexity.jsx";
@@ -19,12 +22,29 @@ import TaskComplexity from "./TaskComplexity.jsx";
 const TaskItem = (props: { task: Task; index: number }) => {
   const { task } = props;
 
+  const alepha = useAlepha();
+  const client = useClient<TaskController>();
   const router = useRouter<AppRouter>();
   const { isActive, anchorProps } = useActive(
     router.path("projectTask", { params: { taskId: task.id } }),
   );
   const [taskVotes] = useStore(taskVotesAtom);
   const voteData = getTaskVote(taskVotes, task.id);
+
+  const clearNote = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const updatedTask = await client.updateTaskNote({
+      params: { id: task.id },
+      body: { note: "" },
+    });
+    // Update in assigned tasks atom
+    const currentTasks = alepha.store.get(currentAssignedTasksAtom) || [];
+    const updatedTasks = currentTasks.map((t) =>
+      t.id === updatedTask.id ? updatedTask : t,
+    );
+    alepha.store.set(currentAssignedTasksAtom, updatedTasks);
+  };
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -154,15 +174,28 @@ const TaskItem = (props: { task: Task; index: number }) => {
                     borderColor: "transparent",
                   }}
                 >
-                  <Flex p={"xs"} direction={"column"}>
-                    <Text
-                      fw={"bold"}
-                      size="md"
-                      c={"black"}
-                      style={{ whiteSpace: "pre-wrap" }}
-                    >
-                      {task.note}
-                    </Text>
+                  <Flex p={"xs"} direction={"column"} gap={"xs"}>
+                    <Flex justify={"space-between"} align={"center"} gap={"sm"}>
+                      <Text
+                        fw={"bold"}
+                        size="md"
+                        c={"black"}
+                        style={{ whiteSpace: "pre-wrap" }}
+                      >
+                        {task.note}
+                      </Text>
+                      {client.updateTaskNote.can() && (
+                        <ActionIcon
+                          size="xs"
+                          variant="subtle"
+                          color="dark"
+                          onClick={clearNote}
+                          style={{ flexShrink: 0 }}
+                        >
+                          <IconTrash size={14} />
+                        </ActionIcon>
+                      )}
+                    </Flex>
                   </Flex>
                 </HoverCard.Dropdown>
               </HoverCard>
