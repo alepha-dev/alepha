@@ -9,6 +9,7 @@ import { AlephaUIDemo } from "@alepha/ui/demo";
 import { $module } from "alepha";
 import { CharacterInfo } from "../api/services/CharacterInfo.ts";
 import { AppRouter } from "./AppRouter.ts";
+import { MeRouter } from "./components/profile/MeRouter.ts";
 import { I18n } from "./services/I18n.ts";
 import { Toaster } from "./services/Toaster.ts";
 
@@ -23,7 +24,7 @@ export * from "./services/Toaster.ts";
 
 export const RoadmapWeb = $module({
   name: "roadmap.web",
-  services: [Toaster, I18n, AppRouter],
+  services: [Toaster, I18n, AppRouter, MeRouter],
   register(alepha) {
     alepha
       .with(AlephaUI)
