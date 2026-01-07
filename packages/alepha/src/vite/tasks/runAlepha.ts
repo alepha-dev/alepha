@@ -132,13 +132,19 @@ export class AlephaRunner {
       process.env[key] = env[key];
     }
 
+    let port = 5173;
+    const address = server.httpServer?.address();
+    if (typeof address === "object" && address?.port) {
+      port = address.port;
+    }
+
     process.env.NODE_ENV ??= "development";
     process.env.VITE_ALEPHA_DEV = "true";
     process.env.SERVER_HOST ??=
       typeof server.config.server.host === "string"
         ? server.config.server.host
         : "localhost";
-    process.env.SERVER_PORT ??= String(server.config.server.port || "5173");
+    process.env.SERVER_PORT ??= String(port);
 
     try {
       const now = Date.now();

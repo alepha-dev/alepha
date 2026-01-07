@@ -149,8 +149,10 @@ export async function viteAlephaDev(
 
       // Return a function - it runs AFTER internal middlewares are set up
       // and after buildStart has been called
-      return async () => {
-        await runner.start(server);
+      return () => {
+        server.httpServer?.once("listening", () => {
+          runner.start(server);
+        });
       };
     },
     async closeBundle() {

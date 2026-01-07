@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { $atom, $env, $hook, $inject, $use, Alepha, AlephaError, type Static, t, } from "alepha";
 import { $logger } from "alepha/logger";
-import { type ServerHandler, ServerRouterProvider, ServerTimingProvider, } from "alepha/server";
+import { type ServerHandler, ServerProvider, ServerRouterProvider, ServerTimingProvider, } from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
 import { ServerStaticProvider } from "alepha/server/static";
 import { renderToString } from "react-dom/server";
@@ -216,9 +216,10 @@ export class ReactServerProvider {
       return;
     }
 
-    this.log.info("SSR (dev) OK");
+    const env = this.alepha.store.get("env") ?? {}
+    const url = `http://${env.SERVER_HOST ?? "localhost"}:${env.SERVER_PORT ?? "5173"}`;
 
-    const url = `http://${process.env.SERVER_HOST}:${process.env.SERVER_PORT}`;
+    this.log.info("SSR (dev) OK", { url });
 
     await this.registerPages(() =>
       fetch(`${url}/index.html`)
