@@ -127,6 +127,7 @@ export function useAction<Args extends any[], Result = void>(
   const dateTimeProvider = useInject(DateTimeProvider);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | undefined>();
+  const [result, setResult] = useState<Result | undefined>();
   const isExecutingRef = useRef(false);
   const debounceTimerRef = useRef<Timeout | undefined>(undefined);
   const abortControllerRef = useRef<AbortController | undefined>(undefined);
@@ -189,6 +190,9 @@ export function useAction<Args extends any[], Result = void>(
           signal: abortController.signal,
         } as any);
 
+        // TODO: it should be after onSuccess?
+        setResult(result as Result);
+
         // Only update state if still mounted and not aborted
         if (!isMountedRef.current || abortController.signal.aborted) {
           return;
@@ -202,6 +206,7 @@ export function useAction<Args extends any[], Result = void>(
         if (options.onSuccess) {
           await options.onSuccess(result);
         }
+
 
         return result;
       } catch (err) {
@@ -327,6 +332,7 @@ export function useAction<Args extends any[], Result = void>(
     loading,
     error,
     cancel,
+    result,
   };
 }
 
@@ -467,4 +473,9 @@ export interface UseActionReturn<Args extends any[], Result> {
    * ```
    */
   cancel: () => void;
+
+  /**
+   * The result data from the last successful action execution.
+   */
+  result?: Result;
 }

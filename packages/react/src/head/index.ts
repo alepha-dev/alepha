@@ -9,6 +9,7 @@ import { $head } from "./primitives/$head.ts";
 import type { Head } from "./interfaces/Head.ts";
 import { ServerHeadProvider } from "./providers/ServerHeadProvider.ts";
 import { HeadProvider } from "./providers/HeadProvider.ts";
+import { SeoExpander } from "./helpers/SeoExpander.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -54,5 +55,5 @@ declare module "@alepha/react/router" {
 export const AlephaReactHead = $module({
   name: "alepha.react.head",
   primitives: [$head],
-  services: [AlephaReact, ServerHeadProvider, HeadProvider],
+  services: [AlephaReact, ServerHeadProvider, HeadProvider, SeoExpander],
 });
