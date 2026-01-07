@@ -27,11 +27,8 @@ describe("$module", () => {
     const alepha = Alepha.create().with(ServerModule);
 
     expect(alepha.graph()).toEqual({
-      server: { from: ["Alepha"] },
-      core: { from: ["server"] },
       VeryRandomService: { from: ["RandomService", "core"], module: "core" },
       RandomService: { from: ["core"], module: "core" },
-      database: { from: ["server"] },
       DatabaseService: { from: ["database"], module: "database" },
       ServerProvider: { from: ["server"], module: "server" },
       AlsProvider: {
@@ -61,9 +58,6 @@ describe("$module", () => {
       SchemaValidator: {
         from: ["CodecManager"],
         module: "alepha.core",
-      },
-      "alepha.core": {
-        from: ["Alepha"],
       },
     });
   });

@@ -88,9 +88,6 @@ describe("Alepha#graph", () => {
         from: ["CodecManager"],
         module: "alepha.core",
       },
-      "alepha.core": {
-        from: ["Alepha"],
-      },
     });
   });
 });

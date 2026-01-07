@@ -868,6 +868,15 @@ export class Alepha {
     > = {};
 
     for (const [provide, { parents }] of this.registry.entries()) {
+      if (provide.name === "") {
+        // ignore anonymous classes
+        continue;
+      }
+
+      if (Module.is(provide)) {
+        continue;
+      }
+
       graph[provide.name] = {
         from: parents.filter((it) => !!it).map((it) => it.name),
       };
