@@ -1,3 +1,4 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin, ResolvedConfig } from "vite";
 import { boot } from "../helpers/boot.ts";
 import { createAlephaRunner, isViteInternalPath } from "../tasks/runAlepha.ts";
@@ -102,8 +103,11 @@ export async function viteAlephaDev(
       }
     },
     async configureServer(server) {
-      // Forward vite request to alepha server
-      server.middlewares.use((req, res, next) => {
+      const middleware = (
+        req: IncomingMessage,
+        res: ServerResponse,
+        next: any,
+      ) => {
         if (
           runner.isStarted &&
           runner.app &&
@@ -129,6 +133,12 @@ export async function viteAlephaDev(
             });
         }
         next();
+      };
+
+      // Forward vite request to alepha server
+      server.middlewares.use((req, res, next) => {
+        // TODO: wait if restarting ?
+        middleware(req, res, next);
       });
 
       server.config.logger.info = (msg: string) => {

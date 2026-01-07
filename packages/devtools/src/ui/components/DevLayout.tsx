@@ -1,10 +1,5 @@
-import { NestedView } from "@alepha/react/router";
-import {
-  ActionButton,
-  AdminShell,
-  DarkModeButton,
-  OmnibarButton,
-} from "@alepha/ui";
+import { AdminShell, DarkModeButton, OmnibarButton, ui } from "@alepha/ui";
+import { Flex } from "@mantine/core";
 import {
   IconApi,
   IconArchive,
@@ -14,7 +9,6 @@ import {
   IconLogs,
   IconMessageCircle,
   IconStack2,
-  IconTools,
   IconTopologyRing,
   IconVariable,
 } from "@tabler/icons-react";
@@ -22,6 +16,12 @@ import {
 export const DevLayout = () => {
   return (
     <AdminShell
+      appShellHeaderProps={{
+        bg: ui.colors.background,
+      }}
+      appShellNavbarProps={{
+        bg: "transparent",
+      }}
       sidebarProps={{
         gap: 4,
         collapsed: true,
@@ -87,19 +87,26 @@ export const DevLayout = () => {
           {
             position: "left",
             element: (
-              <ActionButton
-                intent={"none"}
-                icon={IconTools}
-                href={"/"}
-                active={false}
-              >
-                Devtools
-              </ActionButton>
+              <Flex
+                h={"60px"}
+                w={"78px"}
+                style={{
+                  marginLeft: "-32px",
+                  borderRight: "1px solid var(--mantine-color-default-border)",
+                }}
+              />
             ),
           },
           {
-            position: "center",
-            element: <OmnibarButton />,
+            position: "left",
+            element: (
+              <OmnibarButton
+                actionProps={{
+                  variant: "outline",
+                  bd: "1px solid var(--mantine-color-default-border)",
+                }}
+              />
+            ),
           },
           {
             position: "right",
@@ -107,9 +114,7 @@ export const DevLayout = () => {
           },
         ],
       }}
-    >
-      <NestedView />
-    </AdminShell>
+    />
   );
 };
 

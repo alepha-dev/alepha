@@ -1,10 +1,9 @@
-import { useInject } from "@alepha/react";
-import { ui } from "@alepha/ui";
+import { useAction, useInject } from "@alepha/react";
+import { ui, useDialog } from "@alepha/ui";
 import {
   ActionIcon,
   Alert,
   Badge,
-  Box,
   Flex,
   Group,
   Loader,
@@ -35,7 +34,6 @@ import "@xyflow/react/dist/style.css";
 import { HttpClient } from "alepha/server";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { devMetadataSchema } from "../../../api/schemas/DevMetadata.ts";
-import type { DevProviderMetadata } from "../../../api/schemas/DevProviderMetadata.ts";
 import { getModuleColor } from "./constants.ts";
 import { GraphControls } from "./GraphControls.tsx";
 import {
@@ -58,60 +56,8 @@ const nodeTypes = {
   provider: ProviderNode,
 };
 
-const FlowControls = () => {
-  const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const [isLocked, setIsLocked] = useState(false);
-
-  return (
-    <Stack
-      gap={4}
-      style={{
-        position: "absolute",
-        bottom: 16,
-        left: 16,
-        zIndex: 10,
-        backgroundColor: ui.colors.elevated,
-        border: `1px solid ${ui.colors.border}`,
-        borderRadius: 8,
-        padding: 4,
-      }}
-    >
-      <Tooltip label="Zoom in" position="right">
-        <ActionIcon size="sm" variant="subtle" onClick={() => zoomIn()}>
-          <IconPlus size={14} />
-        </ActionIcon>
-      </Tooltip>
-      <Tooltip label="Zoom out" position="right">
-        <ActionIcon size="sm" variant="subtle" onClick={() => zoomOut()}>
-          <IconMinus size={14} />
-        </ActionIcon>
-      </Tooltip>
-      <Tooltip label="Fit view" position="right">
-        <ActionIcon
-          size="sm"
-          variant="subtle"
-          onClick={() => fitView({ padding: 0.2 })}
-        >
-          <IconFocusCentered size={14} />
-        </ActionIcon>
-      </Tooltip>
-      <Tooltip label={isLocked ? "Unlock" : "Lock"} position="right">
-        <ActionIcon
-          size="sm"
-          variant="subtle"
-          onClick={() => setIsLocked(!isLocked)}
-        >
-          {isLocked ? <IconLock size={14} /> : <IconLockOpen size={14} />}
-        </ActionIcon>
-      </Tooltip>
-    </Stack>
-  );
-};
-
 export const DevDependencyGraph = () => {
   const http = useInject(HttpClient);
-  const [providers, setProviders] = useState<DevProviderMetadata[]>([]);
-  const [loading, setLoading] = useState(true);
   const [nodes, setNodes, onNodesChange] = useNodesState<ProviderNodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ProviderEdge>([]);
   const [selectedNode, setSelectedNode] = useState<{
@@ -126,17 +72,18 @@ export const DevDependencyGraph = () => {
     viewMode: "modules",
   });
 
-  // Fetch data
-  useEffect(() => {
-    http
-      .fetch("/devtools/api/metadata", {
-        schema: { response: devMetadataSchema },
-      })
-      .then((res) => {
-        setProviders(res.data.providers);
-        setLoading(false);
-      });
-  }, []);
+  const { loading, result } = useAction(
+    {
+      runOnInit: true,
+      handler: () =>
+        http.fetch("/devtools/api/metadata", {
+          schema: { response: devMetadataSchema },
+        }),
+    },
+    [],
+  );
+
+  const providers = result?.data.providers || [];
 
   // Get unique modules
   const modules = useMemo(() => {
@@ -246,6 +193,8 @@ export const DevDependencyGraph = () => {
     [nodes, handleNodeClick],
   );
 
+  const dialog = useDialog();
+
   // Export as PNG
   const handleExport = useCallback(() => {
     // Get the react-flow viewport element
@@ -253,7 +202,10 @@ export const DevDependencyGraph = () => {
     if (!viewport) return;
 
     // Use html2canvas or similar - for now just alert
-    alert("Export feature requires html2canvas library. Coming soon!");
+    return dialog.alert({
+      title: "Export",
+      message: "Export feature requires html2canvas library. Coming soon!",
+    });
   }, []);
 
   if (loading) {
@@ -265,9 +217,15 @@ export const DevDependencyGraph = () => {
   }
 
   return (
-    <Flex direction="column" gap="md" w="100%" h="100%">
+    <Flex p="xl" direction="column" gap="md" w="100%" h="100%" flex={1} mih={0}>
       <Group justify="space-between" wrap="nowrap">
         <Group gap="sm">
+          <Flex
+            bdrs={"sm"}
+            h={"20px"}
+            w={"4px"}
+            bg={"var(--mantine-primary-color-filled)"}
+          />
           <IconTopologyRing size={24} opacity={0.7} />
           <Text size="lg" fw={500}>
             Dependency Graph
@@ -309,50 +267,111 @@ export const DevDependencyGraph = () => {
         </Alert>
       )}
 
-      <Box
+      <Flex
+        flex={1}
+        h={"100%"}
         style={{
-          flex: 1,
           borderRadius: 8,
           border: `1px solid ${ui.colors.border}`,
-          overflow: "hidden",
           position: "relative",
         }}
       >
-        <ReactFlowProvider>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onNodeClick={handleNodeClick as any}
-            onPaneClick={handlePaneClick}
-            nodeTypes={nodeTypes as any}
-            fitView
-            fitViewOptions={{ padding: 0.2 }}
-            minZoom={0.1}
-            maxZoom={2}
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-            <MiniMap
-              nodeColor={(node) =>
-                getModuleColor((node.data as ProviderNodeData)?.module)
-              }
-              maskColor="rgba(0, 0, 0, 0.5)"
-              style={{ backgroundColor: ui.colors.surface }}
-            />
-            <FlowControls />
-          </ReactFlow>
-        </ReactFlowProvider>
+        <Flex
+          h={"100%"}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
+        >
+          <ReactFlowProvider>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onNodeClick={handleNodeClick as any}
+              onPaneClick={handlePaneClick}
+              nodeTypes={nodeTypes as any}
+              fitView
+              fitViewOptions={{ padding: 0.2 }}
+              minZoom={0.1}
+              maxZoom={2}
+              proOptions={{ hideAttribution: true }}
+            >
+              <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+              <MiniMap
+                nodeColor={(node) =>
+                  getModuleColor((node.data as ProviderNodeData)?.module)
+                }
+                maskColor="rgba(0, 0, 0, 0.5)"
+                style={{ backgroundColor: ui.colors.surface }}
+              />
+              <FlowControls />
+            </ReactFlow>
+          </ReactFlowProvider>
 
-        <NodeDetails
-          node={selectedNode}
-          onClose={() => handlePaneClick()}
-          onNodeClick={handleDetailsNodeClick}
-        />
-      </Box>
+          <NodeDetails
+            node={selectedNode}
+            onClose={() => handlePaneClick()}
+            onNodeClick={handleDetailsNodeClick}
+          />
+        </Flex>
+      </Flex>
     </Flex>
   );
 };
 
 export default DevDependencyGraph;
+
+const FlowControls = () => {
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const [isLocked, setIsLocked] = useState(false);
+
+  return (
+    <Stack
+      gap={4}
+      style={{
+        position: "absolute",
+        bottom: 16,
+        left: 16,
+        zIndex: 10,
+        backgroundColor: ui.colors.elevated,
+        border: `1px solid ${ui.colors.border}`,
+        borderRadius: 8,
+        padding: 4,
+      }}
+    >
+      <Tooltip label="Zoom in" position="right">
+        <ActionIcon size="sm" variant="subtle" onClick={() => zoomIn()}>
+          <IconPlus size={14} />
+        </ActionIcon>
+      </Tooltip>
+      <Tooltip label="Zoom out" position="right">
+        <ActionIcon size="sm" variant="subtle" onClick={() => zoomOut()}>
+          <IconMinus size={14} />
+        </ActionIcon>
+      </Tooltip>
+      <Tooltip label="Fit view" position="right">
+        <ActionIcon
+          size="sm"
+          variant="subtle"
+          onClick={() => fitView({ padding: 0.2 })}
+        >
+          <IconFocusCentered size={14} />
+        </ActionIcon>
+      </Tooltip>
+      <Tooltip label={isLocked ? "Unlock" : "Lock"} position="right">
+        <ActionIcon
+          size="sm"
+          variant="subtle"
+          onClick={() => setIsLocked(!isLocked)}
+        >
+          {isLocked ? <IconLock size={14} /> : <IconLockOpen size={14} />}
+        </ActionIcon>
+      </Tooltip>
+    </Stack>
+  );
+};

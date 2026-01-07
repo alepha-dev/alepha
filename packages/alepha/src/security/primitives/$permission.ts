@@ -58,8 +58,8 @@ export class PermissionPrimitive extends Primitive<PermissionPrimitiveOptions> {
   /**
    * Check if the user has the permission.
    */
-  public can(user: UserAccount): boolean {
-    if (!user.roles) {
+  public can(user?: UserAccount): boolean {
+    if (!user?.roles) {
       return false;
     }
     const check = this.securityProvider.checkPermission(this, ...user.roles);

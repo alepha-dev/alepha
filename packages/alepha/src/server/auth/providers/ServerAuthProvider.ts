@@ -356,8 +356,6 @@ export class ServerAuthProvider {
         );
       }
 
-      console.log("->", body);
-
       let user: UserAccount | undefined;
       try {
         user = await credentials.account(body);

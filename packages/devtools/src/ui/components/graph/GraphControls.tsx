@@ -1,3 +1,4 @@
+import { ui } from "@alepha/ui";
 import {
   ActionIcon,
   Badge,
@@ -45,31 +46,36 @@ export const GraphControls = ({
 
   return (
     <Flex gap="sm" wrap="wrap" align="center">
-      <SegmentedControl
-        size="xs"
-        value={filters.viewMode}
-        onChange={(value) =>
-          onFiltersChange({ ...filters, viewMode: value as ViewMode })
-        }
-        data={[
-          {
-            label: (
-              <Tooltip label="Modules">
-                <IconBoxMultiple size={14} />
-              </Tooltip>
-            ),
-            value: "modules",
-          },
-          {
-            label: (
-              <Tooltip label="Services">
-                <IconBox size={14} />
-              </Tooltip>
-            ),
-            value: "providers",
-          },
-        ]}
-      />
+      <Flex>
+        <SegmentedControl
+          size="xs"
+          value={filters.viewMode}
+          onChange={(value) =>
+            onFiltersChange({ ...filters, viewMode: value as ViewMode })
+          }
+          data={[
+            {
+              label: (
+                <Tooltip label="Modules">
+                  <IconBoxMultiple
+                    size={ui.sizes.icon.sm}
+                    style={{ marginTop: 2 }}
+                  />
+                </Tooltip>
+              ),
+              value: "modules",
+            },
+            {
+              label: (
+                <Tooltip label="Services">
+                  <IconBox size={ui.sizes.icon.sm} style={{ marginTop: 2 }} />
+                </Tooltip>
+              ),
+              value: "providers",
+            },
+          ]}
+        />
+      </Flex>
 
       <TextInput
         placeholder={isModuleView ? "Search modules..." : "Search services..."}
