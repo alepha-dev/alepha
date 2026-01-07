@@ -1,10 +1,10 @@
 import { Alepha, run } from "alepha";
-import { AppRouter } from "./AppRouter.ts";
-import { AppSecurity } from "./AppSecurity.ts";
+import { PlaygroundApi } from "./api/index.ts";
+import { PlaygroundWeb } from "./web/index.ts";
 
 const alepha = Alepha.create();
 
-alepha.with(AppRouter);
-alepha.with(AppSecurity);
+alepha.with(PlaygroundApi);
+alepha.with(PlaygroundWeb);
 
 run(alepha);

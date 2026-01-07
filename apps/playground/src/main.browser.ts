@@ -1,8 +1,8 @@
 import { Alepha, run } from "alepha";
-import { AppRouter } from "./AppRouter.ts";
+import { PlaygroundWeb } from "./web/index.ts";
 
 const alepha = Alepha.create();
 
-alepha.with(AppRouter);
+alepha.with(PlaygroundWeb);
 
 run(alepha);

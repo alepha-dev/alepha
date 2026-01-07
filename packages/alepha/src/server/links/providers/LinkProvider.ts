@@ -1,4 +1,11 @@
-import { $inject, Alepha, AlephaError, type Async, t } from "alepha";
+import {
+  $inject,
+  Alepha,
+  AlephaError,
+  type Async,
+  jsonSchemaToTypeBox,
+  t,
+} from "alepha";
 import { $logger } from "alepha/logger";
 import {
   type ActionPrimitive,
@@ -12,6 +19,7 @@ import {
   type ServerRequest,
   type ServerRequestConfigEntry,
   type ServerResponseBody,
+  type TRequestBody,
   UnauthorizedError,
 } from "alepha/server";
 import type { ServerRouteSecure } from "alepha/server/security";
@@ -26,7 +34,6 @@ import {
 export class LinkProvider {
   static path = {
     apiLinks: "/api/_links",
-    apiSchema: "/api/_links/:name/schema",
   };
 
   protected readonly log = $logger();
@@ -74,6 +81,14 @@ export class LinkProvider {
       this.serverLinks = this.serverLinks.filter((l) => l.name !== link.name);
     }
 
+    if (!link.rawSchema) {
+      link.rawSchema = {};
+      if (link.schema?.body)
+        link.rawSchema.body = JSON.stringify(link.schema.body);
+      if (link.schema?.response)
+        link.rawSchema.response = JSON.stringify(link.schema.response);
+    }
+
     this.serverLinks.push(link);
   }
 
@@ -82,6 +97,7 @@ export class LinkProvider {
     const apiLinks = this.alepha.store.get(
       "alepha.server.request.apiLinks",
     )?.links;
+
     if (apiLinks) {
       if (this.alepha.isBrowser()) {
         return apiLinks;
@@ -223,6 +239,32 @@ export class LinkProvider {
       return this.can(name);
     };
 
+    $.schema = () => {
+      const link = this.links.find((l) => l.name === name);
+      if (!link) {
+        throw new AlephaError(`Link ${name} not found.`);
+      }
+
+      if (link.rawSchema && !link.schema) {
+        link.schema = {};
+        link.schema.body = link.rawSchema?.body
+          ? (jsonSchemaToTypeBox(
+              JSON.parse(link.rawSchema.body),
+            ) as TRequestBody)
+          : undefined;
+        link.schema.response = link.rawSchema?.response
+          ? (jsonSchemaToTypeBox(
+              JSON.parse(link.rawSchema.response),
+            ) as TRequestBody)
+          : undefined;
+      }
+
+      return link.schema as {
+        body: any;
+        response: any;
+      };
+    };
+
     return $;
   }
 
@@ -247,7 +289,7 @@ export class LinkProvider {
     const action = {
       ...link,
       // schema is not used in the client,
-      // we assume that typescript will check
+      // we assume that TypeScript will check
       schema: {
         body: t.any(),
         response: t.any(),
@@ -348,4 +390,8 @@ export interface VirtualAction<T extends RequestConfigSchema>
     opts?: ClientRequestOptions,
   ): Promise<ClientRequestResponse<T>>;
   can: () => boolean;
+  schema: () => {
+    body: T["body"];
+    response: T["response"];
+  };
 }

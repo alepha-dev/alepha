@@ -92,6 +92,7 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
     skipFormElement = false,
     skipSubmitButton = false,
     submitButtonProps,
+    fill = true,
   } = props;
 
   const schema = props.schema || form.options.schema;
@@ -176,7 +177,7 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
     <Flex
       direction={"column"}
       gap={"sm"}
-      flex={props.fill ? 1 : undefined}
+      flex={fill ? 1 : undefined}
       {...props.flexProps}
     >
       <Flex direction={"column"} gap={"sm"} flex={1}>
@@ -212,7 +213,7 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
   return (
     <Flex
       component={"form"}
-      flex={props.fill ? 1 : undefined}
+      flex={fill ? 1 : undefined}
       {...form.props}
       {...props.flexProps}
     >

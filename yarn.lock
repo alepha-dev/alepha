@@ -12395,6 +12395,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "playground-a3fba9@workspace:apps/playground"
   dependencies:
+    "@mantine/core": "npm:^8.3.11"
     alepha: "npm:^0.14.2"
     react: "npm:^19.2.3"
     vite: "npm:^7.3.0"

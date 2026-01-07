@@ -81,59 +81,6 @@ export class ServerLinksProvider {
   });
 
   /**
-   * Second API - Get schema for a specific API link.
-   *
-   * Note: Body/Response schema are not included in `links` API because it's TOO BIG.
-   * I mean for 150+ links, you got 50ms of serialization time.
-   */
-  public readonly schema = $route({
-    path: LinkProvider.path.apiSchema,
-    schema: {
-      params: t.object({
-        name: t.text(),
-      }),
-      response: t.json(),
-    },
-    handler: ({ params, user, headers }) => {
-      return this.getSchemaByName(params.name, {
-        user,
-        authorization: headers.authorization,
-      });
-    },
-  });
-
-  public async getSchemaByName(
-    name: string,
-    options: GetApiLinksOptions = {},
-  ): Promise<RequestConfigSchema> {
-    const authorization = options.authorization;
-    const api = await this.getUserApiLinks({
-      user: options.user,
-      authorization,
-    });
-
-    for (const link of api.links) {
-      if (link.name === name) {
-        if (link.service) {
-          // remote
-          return this.remoteProvider
-            .getRemotes()
-            .find((it) => it.name === link.service)
-            ?.schema({ name: name, authorization });
-        }
-
-        // local
-        return (
-          this.linkProvider.getServerLinks().find((it) => it.name === name)
-            ?.schema ?? {}
-        );
-      }
-    }
-
-    return {};
-  }
-
-  /**
    * Retrieves API links for the user based on their permissions.
    * Will check on local links and remote links.
    */
@@ -200,6 +147,7 @@ export class ServerLinksProvider {
         requestBodyType: link.requestBodyType,
         method: link.method,
         path: link.path,
+        rawSchema: link.rawSchema,
       });
     }
 

@@ -217,7 +217,7 @@ export class ReactServerProvider {
     }
 
     const env = this.alepha.store.get("env") ?? {}
-    const url = `http://${env.SERVER_HOST ?? "localhost"}:${env.SERVER_PORT ?? "5173"}`;
+    const url = `http://localhost:${env.SERVER_PORT ?? "5173"}`;
 
     this.log.info("SSR (dev) OK", { url });
 

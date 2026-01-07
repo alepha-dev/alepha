@@ -43,6 +43,10 @@ describe("LinkProvider", () => {
           group: "App",
           name: "ping",
           path: "/ping",
+          rawSchema: {
+            response:
+              '{"type":"object","required":["pong"],"properties":{"pong":{"type":"boolean"}},"additionalProperties":false}',
+          },
         },
       ],
     });

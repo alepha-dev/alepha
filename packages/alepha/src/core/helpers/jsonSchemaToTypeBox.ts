@@ -196,9 +196,9 @@ function convertString(schema: JsonSchemaObject): TSchema {
     default:
       // For unknown formats, preserve the format in text
       if (schema.format) {
-        return t.text({ ...options, format: schema.format });
+        return t.string({ ...options, format: schema.format });
       }
-      return t.text(options);
+      return t.string(options);
   }
 }
 
