@@ -1,4 +1,5 @@
 import { $context } from "alepha";
+import { AlephaApiAudits } from "alepha/api/audits";
 import { AlephaApiFiles } from "alepha/api/files";
 import type { Repository } from "alepha/orm";
 import {
@@ -67,6 +68,7 @@ export const $userRealm = (
   const userRealm = userRealmProvider.register(name, options);
 
   alepha.with(AlephaApiFiles);
+  alepha.with(AlephaApiAudits);
 
   const realm: UserRealmPrimitive = $realm({
     ...options.realm,
