@@ -14,6 +14,7 @@ import {
   t,
 } from "alepha";
 import { $logger } from "alepha/logger";
+import { ConsoleColorProvider } from "../../logger/providers/ConsoleColorProvider.ts";
 import { CommandError } from "../errors/CommandError.ts";
 import { Asker } from "../helpers/Asker.ts";
 import { EnvUtils } from "../helpers/EnvUtils.ts";
@@ -80,6 +81,7 @@ export class CliProvider {
   protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
+  protected readonly color = $inject(ConsoleColorProvider);
   protected readonly runner = $inject(Runner);
   protected readonly asker = $inject(Asker);
   protected readonly envUtils = $inject(EnvUtils);
@@ -708,17 +710,19 @@ export class CliProvider {
 
   public printHelp(command?: CommandPrimitive<any>): void {
     const cliName = this.name || "cli";
+    const c = this.color;
     this.log.info(""); // Newline
 
     if (command?.name) {
       // Command-specific help
       const hasChildren = command.hasChildren;
       const argsUsage = hasChildren
-        ? " <command>"
-        : this.generateArgsUsage(command.options.args);
+        ? ` ${c.set("CYAN", "<command>")}`
+        : this.generateColoredArgsUsage(command.options.args);
       const commandPath = this.getCommandPath(command);
-      const usage = `${cliName} ${commandPath}${argsUsage}`.trim();
-      this.log.info(`Usage: \`${usage}\``);
+      const usage =
+        `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", commandPath)}${argsUsage}`.trim();
+      this.log.info(`${c.set("WHITE_BOLD", "Usage:")} ${usage}`);
 
       if (command.options.description) {
         this.log.info(``);
@@ -728,7 +732,7 @@ export class CliProvider {
       // Show subcommands if this is a parent command
       if (hasChildren) {
         this.log.info("");
-        this.log.info("Commands:");
+        this.log.info(c.set("WHITE_BOLD", "Commands:"));
         const maxSubCmdLength = this.getMaxChildCmdLength(command.children);
 
         for (const child of command.children) {
@@ -738,14 +742,18 @@ export class CliProvider {
           const childArgsUsage = this.generateArgsUsage(child.options.args);
           const cmdStr = [child.name, ...child.aliases].join(", ");
           const fullCmdStr = `${cmdStr}${childArgsUsage}`;
+          const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", command.name)} ${c.set("CYAN", fullCmdStr)}`;
+          const padding = " ".repeat(
+            Math.max(0, maxSubCmdLength - fullCmdStr.length),
+          );
           this.log.info(
-            `    ${cliName} ${command.name} ${fullCmdStr.padEnd(maxSubCmdLength)} # ${child.options.description ?? ""}`,
+            `    ${coloredCmd}${padding}  ${child.options.description ?? ""}`,
           );
         }
       }
 
       this.log.info("");
-      this.log.info("Flags:");
+      this.log.info(c.set("WHITE_BOLD", "Flags:"));
 
       const flags = [
         ...Object.entries(command.flags.properties).map(([key, value]) => ({
@@ -778,23 +786,27 @@ export class CliProvider {
         const flagStr = (Array.isArray(aliases) ? aliases : [aliases])
           .map((a: string) => (a.length === 1 ? `-${a}` : `--${a}`))
           .join(", ");
-        this.log.info(
-          `    ${flagStr.padEnd(maxFlagLength)} # ${description ?? ""}`,
-        );
+        const coloredFlag = c.set("GREY_LIGHT", flagStr);
+        const padding = " ".repeat(Math.max(0, maxFlagLength - flagStr.length));
+        this.log.info(`    ${coloredFlag}${padding}  ${description ?? ""}`);
       }
 
       // Show environment variables if defined
       const envVars = Object.entries(command.env.properties);
       if (envVars.length > 0) {
         this.log.info("");
-        this.log.info("Env:");
+        this.log.info(c.set("WHITE_BOLD", "Env:"));
         const maxEnvLength = Math.max(...envVars.map(([key]) => key.length));
         for (const [key, schema] of envVars) {
           const isOptional = t.schema.isOptional(schema as TSchema);
           const description = (schema as any).description ?? "";
-          const optionalStr = isOptional ? " (optional)" : "";
+          const optionalStr = isOptional
+            ? c.set("GREY_DARK", " (optional)")
+            : c.set("RED", " (required)");
+          const coloredKey = c.set("CYAN", key);
+          const padding = " ".repeat(Math.max(0, maxEnvLength - key.length));
           this.log.info(
-            `    ${key.padEnd(maxEnvLength)} # ${description}${optionalStr}`,
+            `    ${coloredKey}${padding}  ${description}${optionalStr}`,
           );
         }
       }
@@ -802,30 +814,34 @@ export class CliProvider {
       // general help
       this.log.info(this.description || "Available commands:");
       this.log.info("");
-      this.log.info("Commands:");
+      this.log.info(c.set("WHITE_BOLD", "Commands:"));
 
       // Get top-level commands (commands that are not children of other commands)
       const topLevelCommands = this.getTopLevelCommands();
       const maxCmdLength = this.getMaxCmdLength(topLevelCommands);
 
-      for (const command of topLevelCommands) {
+      for (const cmd of topLevelCommands) {
         // skip root command and hooks in list
-        if (command.name === "" || command.options.hide) {
+        if (cmd.name === "" || cmd.options.hide) {
           continue;
         }
 
-        const cmdStr = [command.name, ...command.aliases].join(", ");
-        const argsUsage = command.hasChildren
+        const cmdStr = [cmd.name, ...cmd.aliases].join(", ");
+        const argsUsage = cmd.hasChildren
           ? " <command>"
-          : this.generateArgsUsage(command.options.args);
+          : this.generateArgsUsage(cmd.options.args);
         const fullCmdStr = `${cmdStr}${argsUsage}`;
+        const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", fullCmdStr)}`;
+        const padding = " ".repeat(
+          Math.max(0, maxCmdLength - fullCmdStr.length),
+        );
         this.log.info(
-          `    ${cliName} ${fullCmdStr.padEnd(maxCmdLength)} # ${command.options.description ?? ""}`,
+          `    ${coloredCmd}${padding}  ${cmd.options.description ?? ""}`,
         );
       }
 
       this.log.info("");
-      this.log.info("Flags:");
+      this.log.info(c.set("WHITE_BOLD", "Flags:"));
 
       // In general help, also show root command flags
       const rootCommand = this.commands.find((cmd) => cmd.name === "");
@@ -851,12 +867,46 @@ export class CliProvider {
         const flagStr = aliases
           .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
           .join(", ");
-        this.log.info(
-          `    ${flagStr.padEnd(maxFlagLength)} # ${description ?? ""}`,
-        );
+        const coloredFlag = c.set("GREY_LIGHT", flagStr);
+        const padding = " ".repeat(Math.max(0, maxFlagLength - flagStr.length));
+        this.log.info(`    ${coloredFlag}${padding}  ${description ?? ""}`);
       }
     }
     this.log.info(""); // Newline
+  }
+
+  /**
+   * Generate colored args usage string for help display.
+   */
+  protected generateColoredArgsUsage(schema?: TSchema): string {
+    if (!schema) {
+      return "";
+    }
+
+    const c = this.color;
+
+    if (t.schema.isOptional(schema)) {
+      const typeName = this.getTypeName(schema);
+      const key = "title" in schema ? (schema as any).title : "arg1";
+      return ` ${c.set("GREY_DARK", `[${key}${typeName}]`)}`;
+    }
+
+    if (t.schema.isTuple(schema) && schema.items) {
+      const items = schema.items;
+      const args = items.map((item, index) => {
+        const argName = `arg${index + 1}`;
+        const typeName = this.getTypeName(item);
+        if (t.schema.isOptional(item)) {
+          return c.set("GREY_DARK", `[${argName}${typeName}]`);
+        }
+        return c.set("CYAN", `<${argName}${typeName}>`);
+      });
+      return ` ${args.join(" ")}`;
+    }
+
+    const typeName = this.getTypeName(schema);
+    const key = "title" in schema ? (schema as any).title : "arg1";
+    return ` ${c.set("CYAN", `<${key}${typeName}>`)}`;
   }
 
   /**

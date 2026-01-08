@@ -46,6 +46,7 @@ describe("$command", () => {
     const alepha = Alepha.create({
       env: {
         LOG_LEVEL: "info",
+        NO_COLOR: "true",
       },
     })
       .with({
@@ -327,7 +328,9 @@ describe("$command", () => {
       expect(errorLog).toBeDefined();
       expect(errorLog?.message).toBe("Unknown command: 'non-existent-command'");
       // It should also print help
-      expect(mockLogger.logs.some((l) => l.message === "Commands:")).toBe(true);
+      expect(mockLogger.logs.some((l) => l.message.includes("Commands:"))).toBe(
+        true,
+      );
     });
 
     test("should throw a CommandError for missing flag values", async () => {
@@ -373,7 +376,7 @@ describe("$command", () => {
       );
 
       const output = mockLogger.logs.map((l) => l.message).join("\n");
-      expect(output).toContain("Usage: `my-cli greet`");
+      expect(output).toContain("Usage: my-cli greet");
       expect(output).toContain("A simple greeting command.");
       expect(output).toContain("Flags:");
       expect(output).toContain("--name");
@@ -926,7 +929,7 @@ describe("$command", () => {
       );
 
       const output = mockLogger.logs.map((l) => l.message).join("\n");
-      expect(output).toContain("Usage: `test-cli cmd <arg1>`");
+      expect(output).toContain("Usage: test-cli cmd <arg1>");
     });
 
     test("should show argument usage in help for optional argument", async () => {
@@ -950,7 +953,7 @@ describe("$command", () => {
       );
 
       const output = mockLogger.logs.map((l) => l.message).join("\n");
-      expect(output).toContain("Usage: `test-cli cmd [arg1]`");
+      expect(output).toContain("Usage: test-cli cmd [arg1]");
     });
 
     test("should show argument usage in help for tuple arguments", async () => {
@@ -974,7 +977,7 @@ describe("$command", () => {
       );
 
       const output = mockLogger.logs.map((l) => l.message).join("\n");
-      expect(output).toContain("Usage: `test-cli cmd <arg1> [arg2: number]`");
+      expect(output).toContain("Usage: test-cli cmd <arg1> [arg2: number]");
     });
   });
 
@@ -1066,7 +1069,7 @@ describe("$command", () => {
 
       expect(helpFn).toBeDefined();
       const output = mockLogger.logs.map((l) => l.message).join("\n");
-      expect(output).toContain("Usage: `my-cli deploy <command>`");
+      expect(output).toContain("Usage: my-cli deploy <command>");
       expect(output).toContain("Commands:");
       expect(output).toContain("vercel");
     });
@@ -1161,7 +1164,7 @@ describe("$command", () => {
       );
 
       const output = mockLogger.logs.map((l) => l.message).join("\n");
-      expect(output).toContain("Usage: `my-cli deploy <command>`");
+      expect(output).toContain("Usage: my-cli deploy <command>");
       expect(output).toContain("Commands:");
       expect(output).toContain("my-cli deploy vercel");
       expect(output).toContain("my-cli deploy cloudflare");
