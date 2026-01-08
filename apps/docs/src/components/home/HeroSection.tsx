@@ -20,22 +20,34 @@ const HeroSection = () => {
       }}
     >
       <div
-        className={"visible-md"}
         style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
           width: "100%",
           height: "100vh",
-          position: "absolute",
+          overflow: "hidden",
           pointerEvents: "none",
         }}
       >
-        <LightPillar
-          bottomColor="#b62525"
-          intensity={0.8}
-          rotationSpeed={0.9}
-          glowAmount={0.001}
-          pillarRotation={150}
-          pillarHeight={1}
-        />
+        <div
+          className={"visible-md"}
+          style={{
+            width: "100%",
+            height: "100%",
+            position: "absolute",
+            pointerEvents: "none",
+          }}
+        >
+          <LightPillar
+            bottomColor="#b62525"
+            intensity={0.8}
+            rotationSpeed={0.15}
+            glowAmount={0.001}
+            pillarRotation={150}
+            pillarHeight={1}
+          />
+        </div>
       </div>
       <div className="intro-grid">
         {/* Left: Hero Text */}

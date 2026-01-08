@@ -22,7 +22,7 @@ const LightPillar: React.FC<LightPillarProps> = ({
                                                    topColor = '#5227FF',
                                                    bottomColor = '#FF9FFC',
                                                    intensity = 1.0,
-                                                   rotationSpeed = 0.05,
+                                                   rotationSpeed = 0.3,
                                                    interactive = false,
                                                    className = '',
                                                    glowAmount = 0.005,
@@ -120,8 +120,10 @@ const LightPillar: React.FC<LightPillarProps> = ({
       uniform float uPillarRotation;
       varying vec2 vUv;
 
-      const float PI = 3.14159265;
-      const float EPSILON = 0.002;
+      const float PI = 3.141592653589793;
+      const float EPSILON = 0.001;
+      const float E = 2.71828182845904523536;
+      const float HALF = 0.5;
 
       mat2 rot(float angle) {
         float s = sin(angle);
@@ -129,12 +131,14 @@ const LightPillar: React.FC<LightPillarProps> = ({
         return mat2(c, -s, s, c);
       }
 
-      // Simplified noise function
+      // Procedural noise function
       float noise(vec2 coord) {
-        return fract(sin(dot(coord, vec2(12.9898, 78.233))) * 43758.5453);
+        float G = E;
+        vec2 r = (G * sin(G * coord));
+        return fract(r.x * r.y * (1.0 + coord.x));
       }
 
-      // Layered wave deformation for aurora/plasma effect
+      // Apply layered wave deformation to position
       vec3 applyWaveDeformation(vec3 pos, float timeOffset) {
         float frequency = 1.0;
         float amplitude = 1.0;
@@ -142,18 +146,24 @@ const LightPillar: React.FC<LightPillarProps> = ({
 
         for(float i = 0.0; i < 4.0; i++) {
           deformed.xz *= rot(0.4);
-          float phase = timeOffset * (i + 1.0) * 0.5;
-          deformed += cos(deformed.zxy * frequency - phase) * amplitude;
+          float phase = timeOffset * i * 2.0;
+          vec3 oscillation = cos(deformed.zxy * frequency - phase);
+          deformed += oscillation * amplitude;
           frequency *= 2.0;
-          amplitude *= 0.5;
+          amplitude *= HALF;
         }
         return deformed;
       }
 
-      // Simplified blend function
+      // Polynomial smooth blending between two values
+      float blendMin(float a, float b, float k) {
+        float scaledK = k * 4.0;
+        float h = max(scaledK - abs(a - b), 0.0);
+        return min(a, b) - h * h * 0.25 / scaledK;
+      }
+
       float blendMax(float a, float b, float k) {
-        float h = clamp(0.5 + 0.5 * (a - b) / k, 0.0, 1.0);
-        return mix(b, a, h) + k * h * (1.0 - h);
+        return -blendMin(-a, -b, k);
       }
 
       void main() {
@@ -167,18 +177,17 @@ const LightPillar: React.FC<LightPillarProps> = ({
         vec3 origin = vec3(0.0, 0.0, -10.0);
         vec3 direction = normalize(vec3(uv, 1.0));
 
-        float maxDepth = 40.0;
+        float maxDepth = 50.0;
         float depth = 0.1;
 
-        mat2 rotX = rot(uTime * 0.15);
+        mat2 rotX = rot(uTime * 0.3);
         if(uInteractive && length(uMouse) > 0.0) {
           rotX = rot(uMouse.x * PI * 2.0);
         }
 
         vec3 color = vec3(0.0);
 
-        // Reduced from 100 to 50 iterations
-        for(float i = 0.0; i < 50.0; i++) {
+        for(float i = 0.0; i < 75.0; i++) {
           vec3 pos = origin + direction * depth;
           pos.xz *= rotX;
 
@@ -197,7 +206,7 @@ const LightPillar: React.FC<LightPillarProps> = ({
           fieldDistance = abs(fieldDistance) * 0.15 + 0.01;
 
           vec3 gradient = mix(uBottomColor, uTopColor, smoothstep(15.0, -15.0, pos.y));
-          color += gradient / fieldDistance;
+          color += gradient * pow(1.0 / fieldDistance, 1.0);
 
           if(fieldDistance < EPSILON || depth > maxDepth) break;
           depth += fieldDistance;
@@ -209,7 +218,7 @@ const LightPillar: React.FC<LightPillarProps> = ({
 
         // Add noise postprocessing
         float rnd = noise(gl_FragCoord.xy);
-        color -= rnd * 0.067 * uNoiseIntensity;
+        color -= rnd / 15.0 * uNoiseIntensity;
 
         gl_FragColor = vec4(color * uIntensity, 1.0);
       }
@@ -273,9 +282,9 @@ const LightPillar: React.FC<LightPillarProps> = ({
     );
     observer.observe(container);
 
-    // Animation loop with fixed timestep
+    // Animation loop with fixed timestep (30fps is fine for slow ambient animation)
     let lastTime = performance.now();
-    const targetFPS = 60;
+    const targetFPS = 30;
     const frameTime = 1000 / targetFPS;
 
     const animate = (currentTime: number) => {
@@ -289,7 +298,7 @@ const LightPillar: React.FC<LightPillarProps> = ({
       const deltaTime = currentTime - lastTime;
 
       if (deltaTime >= frameTime) {
-        timeRef.current += 0.016 * rotationSpeed;
+        timeRef.current += 0.033 * rotationSpeed;
         materialRef.current.uniforms.uTime.value = timeRef.current;
         rendererRef.current.render(sceneRef.current, cameraRef.current);
         lastTime = currentTime - (deltaTime % frameTime);

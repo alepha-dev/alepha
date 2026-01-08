@@ -1,5 +1,6 @@
 import FeaturesSection from "./home/FeaturesSection.tsx";
 import HeroSection from "./home/HeroSection.tsx";
+import LightPillar from "./home/LightPillar.tsx";
 import MoreSection from "./home/MoreSection.tsx";
 import ParticleNetwork from "./home/ParticleNetwork.tsx";
 import StatusBar from "./layout/StatusBar.tsx";
@@ -9,6 +10,28 @@ const Home = () => {
     <div className="terminal-page grid-bg">
       {/* 3D Particle Network Background */}
       <ParticleNetwork />
+
+      {/* Light Pillar Background */}
+      <div
+        className="visible-md"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100vh",
+          pointerEvents: "none",
+        }}
+      >
+        <LightPillar
+          bottomColor="#b62525"
+          intensity={0.8}
+          rotationSpeed={0.05}
+          glowAmount={0.001}
+          pillarRotation={150}
+          pillarHeight={1}
+        />
+      </div>
 
       {/* Main Content */}
       <div className="flex flex-col relative" style={{ paddingBottom: 24 }}>
