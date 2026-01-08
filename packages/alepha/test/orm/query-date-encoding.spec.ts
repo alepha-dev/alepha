@@ -108,7 +108,7 @@ describe("Query with Date Encoding", () => {
         eventDate: {
           between: [
             dt.utc("2024-01-01").toISOString(),
-            dt.utc("2026-12-31").toISOString(),
+            dt.utc("2030-12-31").toISOString(),
           ] as any,
         },
       },

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { $inject } from "alepha";
+import { AuditService } from "alepha/api/audits";
 import type { VerificationController } from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
@@ -45,6 +46,7 @@ export class RegistrationService {
   protected readonly verificationController = $client<VerificationController>();
   protected readonly userNotifications = $inject(UserNotifications);
   protected readonly userRealmProvider = $inject(UserRealmProvider);
+  protected readonly auditService = $inject(AuditService);
 
   protected readonly intentCache = $cache<RegistrationIntent>({
     name: "registration-intents",
@@ -271,6 +273,22 @@ export class RegistrationService {
       userId: user.id,
       email: user.email,
       username: user.username,
+    });
+
+    const realm = this.userRealmProvider.getRealm(userRealmName);
+
+    await this.auditService.recordUser("create", {
+      userId: user.id,
+      userEmail: user.email ?? undefined,
+      userRealm: realm.name,
+      resourceId: user.id,
+      description: "User registered",
+      metadata: {
+        username: user.username,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        registrationMethod: "credentials",
+      },
     });
 
     return user;

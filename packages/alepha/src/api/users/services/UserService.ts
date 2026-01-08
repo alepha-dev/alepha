@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { AuditService } from "alepha/api/audits";
 import type { VerificationController } from "alepha/api/verifications";
 import { $logger } from "alepha/logger";
 import { type Page, parseQueryString } from "alepha/orm";
@@ -16,6 +17,7 @@ export class UserService {
   protected readonly verificationController = $client<VerificationController>();
   protected readonly userNotifications = $inject(UserNotifications);
   protected readonly userRealmProvider = $inject(UserRealmProvider);
+  protected readonly auditService = $inject(AuditService);
 
   public users(userRealmName?: string) {
     return this.userRealmProvider.userRepository(userRealmName);
@@ -153,6 +155,17 @@ export class UserService {
     });
 
     this.log.info("Email verified", { email, userId: user.id, type });
+
+    const realm = this.userRealmProvider.getRealm(userRealmName);
+
+    await this.auditService.recordUser("update", {
+      userId: user.id,
+      userEmail: email,
+      userRealm: realm.name,
+      resourceId: user.id,
+      description: "Email verified",
+      metadata: { email, verificationType: type },
+    });
   }
 
   /**
@@ -301,6 +314,17 @@ export class UserService {
       email: user.email,
     });
 
+    await this.auditService.recordUser("create", {
+      userRealm: realm.name,
+      resourceId: user.id,
+      description: "User created",
+      metadata: {
+        username: user.username,
+        email: user.email,
+        roles: user.roles,
+      },
+    });
+
     return user;
   }
 
@@ -313,10 +337,38 @@ export class UserService {
     userRealmName?: string,
   ): Promise<UserEntity> {
     this.log.trace("Updating user", { id, userRealmName });
-    await this.getUserById(id, userRealmName);
+    const before = await this.getUserById(id, userRealmName);
 
     const user = await this.users(userRealmName).updateById(id, data);
     this.log.debug("User updated", { userId: id });
+
+    const realm = this.userRealmProvider.getRealm(userRealmName);
+
+    // Build changes object showing what was updated
+    const changes: Record<string, { from: unknown; to: unknown }> = {};
+    for (const key of Object.keys(data) as (keyof UpdateUser)[]) {
+      if (data[key] !== undefined && before[key] !== data[key]) {
+        changes[key] = { from: before[key], to: data[key] };
+      }
+    }
+
+    // Detect role changes for special handling
+    const isRoleChange =
+      data.roles !== undefined &&
+      JSON.stringify(before.roles) !== JSON.stringify(data.roles);
+
+    await this.auditService.recordUser(
+      isRoleChange ? "role_change" : "update",
+      {
+        userRealm: realm.name,
+        resourceId: user.id,
+        description: isRoleChange
+          ? "User roles changed"
+          : `User updated: ${Object.keys(changes).join(", ")}`,
+        metadata: { changes },
+      },
+    );
+
     return user;
   }
 
@@ -325,9 +377,22 @@ export class UserService {
    */
   public async deleteUser(id: string, userRealmName?: string): Promise<void> {
     this.log.trace("Deleting user", { id, userRealmName });
-    await this.getUserById(id, userRealmName);
+    const user = await this.getUserById(id, userRealmName);
 
     await this.users(userRealmName).deleteById(id);
     this.log.info("User deleted", { userId: id });
+
+    const realm = this.userRealmProvider.getRealm(userRealmName);
+
+    await this.auditService.recordUser("delete", {
+      userRealm: realm.name,
+      resourceId: id,
+      severity: "warning",
+      description: "User deleted",
+      metadata: {
+        username: user.username,
+        email: user.email,
+      },
+    });
   }
 }

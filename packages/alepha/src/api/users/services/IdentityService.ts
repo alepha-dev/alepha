@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { AuditService } from "alepha/api/audits";
 import { $logger } from "alepha/logger";
 import type { Page } from "alepha/orm";
 import type { IdentityEntity } from "../entities/identities.ts";
@@ -8,6 +9,7 @@ import type { IdentityQuery } from "../schemas/identityQuerySchema.ts";
 export class IdentityService {
   protected readonly log = $logger();
   protected readonly userRealmProvider = $inject(UserRealmProvider);
+  protected readonly auditService = $inject(AuditService);
 
   public identities(userRealmName?: string) {
     return this.userRealmProvider.identityRepository(userRealmName);
@@ -81,6 +83,19 @@ export class IdentityService {
       id,
       provider: identity.provider,
       userId: identity.userId,
+    });
+
+    const realm = this.userRealmProvider.getRealm(userRealmName);
+
+    await this.auditService.recordUser("update", {
+      userRealm: realm.name,
+      resourceId: identity.userId,
+      description: `Identity provider disconnected: ${identity.provider}`,
+      metadata: {
+        identityId: id,
+        provider: identity.provider,
+        userId: identity.userId,
+      },
     });
   }
 }

@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import { $inject, Alepha } from "alepha";
+import { AuditService } from "alepha/api/audits";
 import type { FileController } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { FileSystemProvider } from "alepha/file";
@@ -23,6 +24,7 @@ export class SessionService {
   protected readonly log = $logger();
   protected readonly userRealmProvider = $inject(UserRealmProvider);
   protected readonly fileController = $client<FileController>();
+  protected readonly auditService = $inject(AuditService);
 
   public users(userRealmName?: string) {
     return this.userRealmProvider.userRepository(userRealmName);
@@ -79,6 +81,13 @@ export class SessionService {
           username,
           realm: name,
         });
+
+        await this.auditService.recordAuth("login_failed", {
+          userRealm: name,
+          description: "Invalid login identifier format",
+          metadata: { provider, username },
+        });
+
         throw new InvalidCredentialsError();
       }
 
@@ -89,6 +98,13 @@ export class SessionService {
           username,
           realm: name,
         });
+
+        await this.auditService.recordAuth("login_failed", {
+          userRealm: name,
+          description: "User not found",
+          metadata: { provider, username },
+        });
+
         throw new InvalidCredentialsError();
       }
 
@@ -121,8 +137,25 @@ export class SessionService {
           username,
           realm: name,
         });
+
+        await this.auditService.recordAuth("login_failed", {
+          userRealm: name,
+          resourceId: user.id,
+          description: "Invalid password",
+          metadata: { provider, username },
+        });
+
         throw new InvalidCredentialsError();
       }
+
+      await this.auditService.recordAuth("login", {
+        userId: user.id,
+        userEmail: user.email ?? undefined,
+        userRealm: name,
+        resourceId: user.id,
+        description: `User logged in via ${provider}`,
+        metadata: { provider, username },
+      });
 
       return user;
     } catch (error) {
@@ -204,6 +237,16 @@ export class SessionService {
       userId: session.userId,
     });
 
+    const { name } = this.userRealmProvider.getRealm(userRealmName);
+
+    await this.auditService.recordAuth("token_refresh", {
+      userId: user.id,
+      userEmail: user.email ?? undefined,
+      userRealm: name,
+      sessionId: session.id,
+      description: "Session token refreshed",
+    });
+
     return {
       user,
       expiresIn: expiresAt.unix() - now.unix(),
@@ -213,10 +256,29 @@ export class SessionService {
 
   public async deleteSession(refreshToken: string, userRealmName?: string) {
     this.log.trace("Deleting session");
+
+    // Get session info before deletion for audit
+    const session = await this.sessions(userRealmName)
+      .findOne({
+        where: { refreshToken: { eq: refreshToken } },
+      })
+      .catch(() => undefined);
+
     await this.sessions(userRealmName).deleteOne({
       refreshToken,
     });
     this.log.debug("Session deleted");
+
+    if (session) {
+      const { name } = this.userRealmProvider.getRealm(userRealmName);
+
+      await this.auditService.recordAuth("logout", {
+        userId: session.userId,
+        userRealm: name,
+        sessionId: session.id,
+        description: "User logged out",
+      });
+    }
   }
 
   public async link(
@@ -250,7 +312,19 @@ export class SessionService {
         identityId: identity.id,
         userId: identity.userId,
       });
-      return users.findById(identity.userId);
+
+      const user = await users.findById(identity.userId);
+
+      await this.auditService.recordAuth("login", {
+        userId: user.id,
+        userEmail: user.email ?? undefined,
+        userRealm: realm.name,
+        resourceId: user.id,
+        description: `User logged in via OAuth2 (${provider})`,
+        metadata: { provider, providerUserId: profile.sub },
+      });
+
+      return user;
     }
 
     if (!profile.email) {
@@ -284,6 +358,16 @@ export class SessionService {
         providerUserId: profile.sub,
         userId: existing.id,
       });
+
+      await this.auditService.recordAuth("login", {
+        userId: existing.id,
+        userEmail: existing.email ?? undefined,
+        userRealm: realm.name,
+        resourceId: existing.id,
+        description: `OAuth2 identity linked to existing user (${provider})`,
+        metadata: { provider, providerUserId: profile.sub, linked: true },
+      });
+
       return existing;
     }
 
@@ -336,6 +420,31 @@ export class SessionService {
       userId: user.id,
       email: user.email,
       username: user.username,
+    });
+
+    // Audit: user created via OAuth
+    await this.auditService.recordUser("create", {
+      userId: user.id,
+      userEmail: user.email ?? undefined,
+      userRealm: realm.name,
+      resourceId: user.id,
+      description: `User created via OAuth2 (${provider})`,
+      metadata: {
+        provider,
+        providerUserId: profile.sub,
+        username: user.username,
+        email: user.email,
+      },
+    });
+
+    // Audit: login event
+    await this.auditService.recordAuth("login", {
+      userId: user.id,
+      userEmail: user.email ?? undefined,
+      userRealm: realm.name,
+      resourceId: user.id,
+      description: `First login via OAuth2 (${provider})`,
+      metadata: { provider, providerUserId: profile.sub, firstLogin: true },
     });
 
     return user;

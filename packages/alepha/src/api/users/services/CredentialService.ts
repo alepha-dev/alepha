@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { $inject } from "alepha";
+import { AuditService } from "alepha/api/audits";
 import type { VerificationController } from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
@@ -32,6 +33,7 @@ export class CredentialService {
   protected readonly verificationController = $client<VerificationController>();
   protected readonly userNotifications = $inject(UserNotifications);
   protected readonly userRealmProvider = $inject(UserRealmProvider);
+  protected readonly auditService = $inject(AuditService);
 
   protected readonly intentCache = $cache<PasswordResetIntent>({
     name: "password-reset-intents",
@@ -219,6 +221,28 @@ export class CredentialService {
       userId: intent.userId,
       email: intent.email,
     });
+
+    const realm = this.userRealmProvider.getRealm(intent.realmName);
+
+    // Audit: password reset
+    await this.auditService.recordUser("update", {
+      userId: intent.userId,
+      userEmail: intent.email,
+      userRealm: realm.name,
+      resourceId: intent.userId,
+      description: "Password reset completed",
+      metadata: { email: intent.email },
+    });
+
+    // Audit: sessions invalidated (security event)
+    await this.auditService.record("security", "sessions_invalidated", {
+      userId: intent.userId,
+      userEmail: intent.email,
+      userRealm: realm.name,
+      resourceId: intent.userId,
+      severity: "warning",
+      description: "All sessions invalidated after password reset",
+    });
   }
 
   // Legacy methods kept for backward compatibility
@@ -304,6 +328,28 @@ export class CredentialService {
     // Invalidate all existing sessions for this user
     await this.sessions(userRealmName).deleteMany({
       userId: { eq: user.id },
+    });
+
+    const realm = this.userRealmProvider.getRealm(userRealmName);
+
+    // Audit: password reset (legacy method)
+    await this.auditService.recordUser("update", {
+      userId: user.id,
+      userEmail: email,
+      userRealm: realm.name,
+      resourceId: user.id,
+      description: "Password reset completed (legacy)",
+      metadata: { email },
+    });
+
+    // Audit: sessions invalidated
+    await this.auditService.record("security", "sessions_invalidated", {
+      userId: user.id,
+      userEmail: email,
+      userRealm: realm.name,
+      resourceId: user.id,
+      severity: "warning",
+      description: "All sessions invalidated after password reset",
     });
   }
 }
