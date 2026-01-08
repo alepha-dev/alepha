@@ -55,6 +55,7 @@ export class AdminRouter {
   public readonly adminLayout = $page({
     path: "/admin",
     label: "Admin",
+    can: () => this.userCtrl.findUsers.can(),
     lazy: () => import("./components/AdminLayout.tsx"),
     props: () => ({
       adminShellProps: this.adminShellProps(),

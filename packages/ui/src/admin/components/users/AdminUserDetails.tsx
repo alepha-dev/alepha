@@ -2,16 +2,100 @@ import { useClient } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
 import { useRouterState } from "@alepha/react/router";
-import { ActionButton, Control, Flex, Text } from "@alepha/ui";
-import { Card, Group, Loader, Stack } from "@mantine/core";
-import { IconCheck, IconX } from "@tabler/icons-react";
+import { ActionButton, ClipboardButton, Control } from "@alepha/ui";
+import {
+  Badge,
+  Box,
+  Card,
+  Center,
+  Divider,
+  Grid,
+  Group,
+  Loader,
+  Paper,
+  SimpleGrid,
+  Stack,
+  Text,
+  ThemeIcon,
+} from "@mantine/core";
+import {
+  IconActivity,
+  IconCalendar,
+  IconCheck,
+  IconDevices,
+  IconKey,
+  IconShieldCheck,
+  IconUser,
+  IconX,
+} from "@tabler/icons-react";
 import { t } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 export interface AdminUserDetailsProps {
   userRealmName?: string;
 }
+
+interface DataRowProps {
+  label: string;
+  value: ReactNode;
+  copyValue?: string;
+}
+
+const DataRow = ({ label, value, copyValue }: DataRowProps) => (
+  <Group
+    justify="space-between"
+    py={8}
+    wrap="nowrap"
+    style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}
+  >
+    <Text size="sm" c="dimmed" style={{ flexShrink: 0 }}>
+      {label}
+    </Text>
+    <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+      {typeof value === "string" ? (
+        <Text size="sm" fw={500} truncate style={{ maxWidth: 220 }}>
+          {value || "—"}
+        </Text>
+      ) : (
+        value
+      )}
+      {copyValue && (
+        <ClipboardButton
+          value={copyValue}
+          size="xs"
+          variant="subtle"
+          c="dimmed"
+        />
+      )}
+    </Group>
+  </Group>
+);
+
+interface StatCardProps {
+  icon: ReactNode;
+  label: string;
+  value: string | number;
+  color: string;
+}
+
+const StatCard = ({ icon, label, value, color }: StatCardProps) => (
+  <Paper p="md" radius="md" withBorder>
+    <Group gap="sm">
+      <ThemeIcon size="lg" radius="md" variant="light" color={color}>
+        {icon}
+      </ThemeIcon>
+      <Box>
+        <Text size="xl" fw={700} lh={1}>
+          {value}
+        </Text>
+        <Text size="xs" c="dimmed">
+          {label}
+        </Text>
+      </Box>
+    </Group>
+  </Paper>
+);
 
 const AdminUserDetails = (props: AdminUserDetailsProps) => {
   const state = useRouterState();
@@ -21,6 +105,7 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
 
   const [user, setUser] = useState<UserEntity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -54,6 +139,7 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
         body: data,
       });
       setUser(updated);
+      setEditing(false);
     },
   });
 
@@ -70,111 +156,277 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
 
   if (loading) {
     return (
-      <Flex flex={1} justify="center" align="center">
+      <Center flex={1} py="xl">
         <Loader />
-      </Flex>
+      </Center>
     );
   }
 
   if (!user) {
     return (
-      <Flex flex={1} justify="center" align="center">
-        <Text c="dimmed">User not found</Text>
-      </Flex>
+      <Center flex={1} py="xl">
+        <Stack align="center" gap="xs">
+          <IconUser size={48} opacity={0.3} />
+          <Text c="dimmed">User not found</Text>
+        </Stack>
+      </Center>
     );
   }
 
+  const displayName =
+    user.firstName && user.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user.firstName || user.lastName || null;
+
   return (
-    <Flex flex={1} direction="column" gap="md">
-      <Card withBorder p="lg">
-        <Stack gap="md">
-          <Text size="lg" fw={500}>
-            User Details
-          </Text>
+    <Stack gap="md">
+      {/* Stats Overview */}
+      <SimpleGrid cols={{ base: 2, sm: 4 }}>
+        <StatCard
+          icon={<IconDevices size={18} />}
+          label="Sessions"
+          value={0}
+          color="blue"
+        />
+        <StatCard
+          icon={<IconActivity size={18} />}
+          label="API Calls"
+          value={0}
+          color="green"
+        />
+        <StatCard
+          icon={<IconKey size={18} />}
+          label="Failed Logins"
+          value={0}
+          color="orange"
+        />
+        <StatCard
+          icon={<IconShieldCheck size={18} />}
+          label="Roles"
+          value={user.roles.length}
+          color="violet"
+        />
+      </SimpleGrid>
 
-          <Group gap="xl">
-            <Stack gap={4}>
-              <Text size="xs" c="dimmed">
-                User ID
+      <Grid>
+        {/* Left Column - Account Details */}
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <Card padding={0} radius="md" withBorder h="100%">
+            <Group justify="space-between" p="md" pb={0}>
+              <Text fw={600} size="sm">
+                Account Details
               </Text>
-              <Text size="sm" ff="monospace">
-                {user.id}
-              </Text>
-            </Stack>
+            </Group>
+            <Box px="md" pb="md">
+              <DataRow label="User ID" value={user.id} copyValue={user.id} />
+              <DataRow
+                label="Username"
+                value={user.username || "—"}
+                copyValue={user.username}
+              />
+              <DataRow
+                label="Email"
+                value={
+                  <Group gap={6}>
+                    <Text size="sm" fw={500}>
+                      {user.email || "—"}
+                    </Text>
+                    {user.email && (
+                      <Badge
+                        size="xs"
+                        variant="light"
+                        color={user.emailVerified ? "green" : "orange"}
+                      >
+                        {user.emailVerified ? "verified" : "unverified"}
+                      </Badge>
+                    )}
+                  </Group>
+                }
+                copyValue={user.email}
+              />
+              <DataRow
+                label="Phone"
+                value={user.phoneNumber || "—"}
+                copyValue={user.phoneNumber}
+              />
+              <DataRow label="Realm" value={user.realm} />
+              <DataRow
+                label="Status"
+                value={
+                  <Group gap={4}>
+                    <ThemeIcon
+                      size={16}
+                      radius="xl"
+                      color={user.enabled ? "green" : "red"}
+                      variant="filled"
+                    >
+                      {user.enabled ? (
+                        <IconCheck size={10} />
+                      ) : (
+                        <IconX size={10} />
+                      )}
+                    </ThemeIcon>
+                    <Text size="sm" fw={500}>
+                      {user.enabled ? "Active" : "Disabled"}
+                    </Text>
+                  </Group>
+                }
+              />
+            </Box>
+          </Card>
+        </Grid.Col>
 
-            <Stack gap={4}>
-              <Text size="xs" c="dimmed">
-                Username
+        {/* Right Column - Personal Info */}
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <Card padding={0} radius="md" withBorder h="100%">
+            <Group justify="space-between" p="md" pb={0}>
+              <Text fw={600} size="sm">
+                Personal Information
               </Text>
-              <Text size="sm">{user.username || "-"}</Text>
-            </Stack>
-
-            <Stack gap={4}>
-              <Text size="xs" c="dimmed">
-                Email Verified
-              </Text>
-              {user.emailVerified ? (
-                <Group gap={4}>
-                  <IconCheck size={14} color="var(--mantine-color-green-6)" />
-                  <Text size="sm" c="green">
-                    Verified
-                  </Text>
-                </Group>
-              ) : (
-                <Group gap={4}>
-                  <IconX size={14} color="var(--mantine-color-red-6)" />
-                  <Text size="sm" c="red">
-                    Not Verified
-                  </Text>
-                </Group>
+              {!editing && (
+                <ActionButton
+                  variant="subtle"
+                  size="xs"
+                  onClick={() => setEditing(true)}
+                >
+                  Edit
+                </ActionButton>
               )}
-            </Stack>
+            </Group>
 
-            <Stack gap={4}>
+            {editing ? (
+              <Box p="md">
+                <form {...form.props}>
+                  <Stack gap="sm">
+                    <SimpleGrid cols={2}>
+                      <Control
+                        title="First Name"
+                        input={form.input.firstName}
+                      />
+                      <Control title="Last Name" input={form.input.lastName} />
+                    </SimpleGrid>
+                    <SimpleGrid cols={2}>
+                      <Control title="Email" input={form.input.email} />
+                      <Control title="Phone" input={form.input.phoneNumber} />
+                    </SimpleGrid>
+                    <Control title="Roles" input={form.input.roles} />
+                    <Divider />
+                    <Group justify="flex-end" gap="xs">
+                      <ActionButton
+                        variant="subtle"
+                        size="xs"
+                        onClick={() => setEditing(false)}
+                      >
+                        Cancel
+                      </ActionButton>
+                      <ActionButton size="xs" form={form}>
+                        Save
+                      </ActionButton>
+                    </Group>
+                  </Stack>
+                </form>
+              </Box>
+            ) : (
+              <Box px="md" pb="md">
+                <DataRow label="First Name" value={user.firstName || "—"} />
+                <DataRow label="Last Name" value={user.lastName || "—"} />
+                <DataRow label="Display Name" value={displayName || "—"} />
+                <DataRow
+                  label="Roles"
+                  value={
+                    user.roles.length > 0 ? (
+                      <Group gap={4}>
+                        {user.roles.map((role) => (
+                          <Badge key={role} size="xs" variant="light">
+                            {role}
+                          </Badge>
+                        ))}
+                      </Group>
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        No roles
+                      </Text>
+                    )
+                  }
+                />
+              </Box>
+            )}
+          </Card>
+        </Grid.Col>
+      </Grid>
+
+      {/* Timeline */}
+      <Card padding={0} radius="md" withBorder>
+        <Group justify="space-between" p="md" pb={0}>
+          <Text fw={600} size="sm">
+            Activity Timeline
+          </Text>
+        </Group>
+        <SimpleGrid cols={{ base: 2, sm: 4 }} p="md">
+          <Box>
+            <Group gap={6} mb={4}>
+              <IconCalendar size={14} style={{ opacity: 0.5 }} />
               <Text size="xs" c="dimmed">
                 Created
               </Text>
-              <Text size="sm">{l(user.createdAt, { date: "medium" })}</Text>
-            </Stack>
-
-            <Stack gap={4}>
+            </Group>
+            <Text size="sm" fw={500}>
+              {l(user.createdAt, { date: "ll" })}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {l(user.createdAt, { date: "fromNow" })}
+            </Text>
+          </Box>
+          <Box>
+            <Group gap={6} mb={4}>
+              <IconCalendar size={14} style={{ opacity: 0.5 }} />
               <Text size="xs" c="dimmed">
                 Updated
               </Text>
-              <Text size="sm">{l(user.updatedAt, { date: "medium" })}</Text>
-            </Stack>
-          </Group>
-        </Stack>
-      </Card>
-
-      <Card withBorder p="lg">
-        <form {...form.props}>
-          <Stack gap="md">
-            <Text size="lg" fw={500}>
-              Edit User
+            </Group>
+            <Text size="sm" fw={500}>
+              {l(user.updatedAt, { date: "ll" })}
             </Text>
-
-            <Group grow>
-              <Control title="Email" input={form.input.email} />
-              <Control title="Phone Number" input={form.input.phoneNumber} />
+            <Text size="xs" c="dimmed">
+              {l(user.updatedAt, { date: "fromNow" })}
+            </Text>
+          </Box>
+          <Box>
+            <Group gap={6} mb={4}>
+              <IconDevices size={14} style={{ opacity: 0.5 }} />
+              <Text size="xs" c="dimmed">
+                Last Login
+              </Text>
             </Group>
-
-            <Group grow>
-              <Control title="First Name" input={form.input.firstName} />
-              <Control title="Last Name" input={form.input.lastName} />
+            <Text size="sm" c="dimmed">
+              —
+            </Text>
+          </Box>
+          <Box>
+            <Group gap={6} mb={4}>
+              <IconCheck size={14} style={{ opacity: 0.5 }} />
+              <Text size="xs" c="dimmed">
+                Email Verified
+              </Text>
             </Group>
-
-            <Control title="Roles" input={form.input.roles} />
-
-            <Control title="Enabled" input={form.input.enabled} />
-
-            <Group>
-              <ActionButton form={form}>Save Changes</ActionButton>
-            </Group>
-          </Stack>
-        </form>
+            {user.emailVerified ? (
+              <>
+                <Text size="sm" fw={500}>
+                  {l(user.updatedAt, { date: "ll" })}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {l(user.updatedAt, { date: "fromNow" })}
+                </Text>
+              </>
+            ) : (
+              <Text size="sm" c="dimmed">
+                Not verified
+              </Text>
+            )}
+          </Box>
+        </SimpleGrid>
       </Card>
-    </Flex>
+    </Stack>
   );
 };
 
