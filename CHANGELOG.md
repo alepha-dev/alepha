@@ -1,3 +1,16 @@
+## [0.14.3] - 2026-01-08
+
+### Features
+
+- **cli**: add openapi extractor (`5e87f93e`)
+- **server/links**: expose link schemas in browser by default (`bd531100`)
+
+### Bug Fixes
+
+- **vite**: use correctly vite server port (`084ee1b6`)
+- **server/compress**: fix crash with compress+bun (`24f1ae4f`)
+- **ui**: <Sidebar> filter pages based on permissions before populating menu (`eae4bb11`)
+
 ## [0.14.2] - 2026-01-05
 
 ### Features

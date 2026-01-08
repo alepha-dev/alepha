@@ -9,12 +9,12 @@
     "build": "alepha build"
   },
   "dependencies": {
-    "@alepha/react": "^0.14.2",
-    "@alepha/ui": "^0.14.2",
+    "@alepha/react": "^0.14.3",
+    "@alepha/ui": "^0.14.3",
     "@mantine/core": "^8.3.11",
     "@mantine/hooks": "^8.3.11",
     "@tabler/icons-react": "^3.36.1",
-    "alepha": "^0.14.2",
+    "alepha": "^0.14.3",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },

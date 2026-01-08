@@ -8,7 +8,7 @@
     "studio": "alepha db studio --mode=production"
   },
   "dependencies": {
-    "alepha": "^0.14.2",
+    "alepha": "^0.14.3",
     "react": "^19.2.3"
   },
   "devDependencies": {
