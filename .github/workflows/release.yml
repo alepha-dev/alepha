@@ -63,7 +63,7 @@ jobs:
         id: release_notes
         run: |
           # Write changelog content directly to file to preserve backticks
-          yarn alepha changelog > /tmp/release_notes.txt
+          yarn alepha gen changelog > /tmp/release_notes.txt
 
           # Output for GitHub Release body (uses file content safely)
           {

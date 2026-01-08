@@ -3,15 +3,15 @@ import { promisify } from "node:util";
 import { $inject, $use, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
-import { changelogOptions } from "../atoms/changelogOptions.ts";
-import { GitMessageParser } from "../services/GitMessageParser.ts";
+import { changelogOptions } from "../../atoms/changelogOptions.ts";
+import { GitMessageParser } from "../../services/GitMessageParser.ts";
 
 export {
   type ChangelogOptions,
   changelogOptions,
   DEFAULT_IGNORE,
-} from "../atoms/changelogOptions.ts";
-export { GitMessageParser } from "../services/GitMessageParser.ts";
+} from "../../atoms/changelogOptions.ts";
+export { GitMessageParser } from "../../services/GitMessageParser.ts";
 
 const execAsync = promisify(exec);
 
@@ -55,10 +55,10 @@ interface ChangelogEntry {
  * Changelog command for generating release notes from git commits.
  *
  * Usage:
- * - `alepha changelog` - Show unreleased changes since latest tag to HEAD
- * - `alepha changelog --from=1.0.0` - Show changes from version to HEAD
- * - `alepha changelog --from=1.0.0 --to=1.1.0` - Show changes between two refs
- * - `alepha changelog | tee -a CHANGELOG.md` - Append to file
+ * - `alepha gen changelog` - Show unreleased changes since latest tag to HEAD
+ * - `alepha gen changelog --from=1.0.0` - Show changes from version to HEAD
+ * - `alepha gen changelog --from=1.0.0 --to=1.1.0` - Show changes between two refs
+ * - `alepha gen changelog | tee -a CHANGELOG.md` - Append to file
  */
 export class ChangelogCommand {
   protected readonly log = $logger();
@@ -166,7 +166,7 @@ export class ChangelogCommand {
   // COMMAND
   // ---------------------------------------------------------------------------
 
-  public readonly changelog = $command({
+  public readonly command = $command({
     name: "changelog",
     description:
       "Generate changelog from conventional commits (outputs to stdout)",

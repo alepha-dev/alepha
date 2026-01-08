@@ -223,6 +223,14 @@ export interface LsOptions {
  */
 export abstract class FileSystemProvider {
   /**
+   * Joins multiple path segments into a single path.
+   *
+   * @param paths - The path segments to join
+   * @returns The joined path
+   */
+  abstract join(...paths: string[]): string;
+
+  /**
    * Creates a FileLike object from various sources.
    *
    * @param options - Options for creating the file

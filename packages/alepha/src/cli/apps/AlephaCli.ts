@@ -2,12 +2,13 @@ import { join } from "node:path";
 import { $hook, $inject, $module, Alepha } from "alepha";
 import { FileSystemProvider } from "alepha/file";
 import { BuildCommand } from "../commands/build.ts";
-import { ChangelogCommand, GitProvider } from "../commands/changelog.ts";
 import { CleanCommand } from "../commands/clean.ts";
 import { DbCommand } from "../commands/db.ts";
 import { DeployCommand } from "../commands/deploy.ts";
 import { DevCommand } from "../commands/dev.ts";
 import { FormatCommand } from "../commands/format.ts";
+import { GitProvider } from "../commands/gen/changelog.ts";
+import { GenCommand } from "../commands/gen.ts";
 import { InitCommand } from "../commands/init.ts";
 import { LintCommand } from "../commands/lint.ts";
 import { RootCommand } from "../commands/root.ts";
@@ -49,7 +50,6 @@ export const AlephaCli = $module({
     AlephaCliExtension,
     // Commands (one per file)
     BuildCommand,
-    ChangelogCommand,
     CleanCommand,
     DbCommand,
     DeployCommand,
@@ -62,6 +62,7 @@ export const AlephaCli = $module({
     TestCommand,
     TypecheckCommand,
     VerifyCommand,
+    GenCommand,
     // Support services
     GitProvider,
   ],

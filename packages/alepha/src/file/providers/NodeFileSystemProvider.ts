@@ -58,6 +58,11 @@ import type {
  */
 export class NodeFileSystemProvider implements FileSystemProvider {
   protected detector = $inject(FileDetector);
+
+  public join(...paths: string[]): string {
+    return join(...paths);
+  }
+
   /**
    * Creates a FileLike object from various sources.
    *

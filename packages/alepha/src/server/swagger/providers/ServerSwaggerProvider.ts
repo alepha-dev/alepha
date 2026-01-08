@@ -79,17 +79,15 @@ export class ServerSwaggerProvider {
         return;
       }
 
-      this.json = await this.createSwagger(options);
+      this.json = await this.setupSwaggerPlugin(options);
+
+      if (this.json) {
+        this.log.info("Swagger documentation generated successfully.");
+      }
     },
   });
 
-  public async createSwagger(
-    options: SwaggerPrimitiveOptions,
-  ): Promise<OpenApiDocument | undefined> {
-    if (options.disabled) {
-      return;
-    }
-
+  public generateSwaggerDoc(options: SwaggerPrimitiveOptions): OpenApiDocument {
     const json = this.configureOpenApi(
       this.alepha.primitives($action),
       options,
@@ -98,6 +96,18 @@ export class ServerSwaggerProvider {
     if (options.rewrite) {
       options.rewrite(json);
     }
+
+    return json;
+  }
+
+  protected async setupSwaggerPlugin(
+    options: SwaggerPrimitiveOptions,
+  ): Promise<OpenApiDocument | undefined> {
+    if (options.disabled) {
+      return;
+    }
+
+    const json = this.generateSwaggerDoc(options);
 
     const prefix = options.prefix ?? "/docs";
 

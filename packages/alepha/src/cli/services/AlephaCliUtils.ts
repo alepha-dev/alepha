@@ -6,7 +6,6 @@ import { EnvUtils, type RunnerMethod } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { boot } from "alepha/vite";
-import { tsImport } from "tsx/esm/api";
 import { appRouterTs } from "../assets/appRouterTs.ts";
 import { biomeJson } from "../assets/biomeJson.ts";
 import { dummySpecTs } from "../assets/dummySpecTs.ts";
@@ -465,9 +464,10 @@ export class AlephaCliUtils {
     process.env.ALEPHA_CLI_IMPORT = "true";
 
     const entry = await boot.getServerEntry(rootDir, explicitEntry);
-    const mod = await tsImport(entry, {
-      parentURL: import.meta.url,
-    });
+
+    delete (global as any).__alepha;
+
+    const mod = await import(entry);
 
     this.log.debug(`Load entry: ${entry}`);
 

@@ -10,7 +10,7 @@ import {
   changelogOptions,
   GitMessageParser,
   GitProvider,
-} from "../index.ts";
+} from "./changelog.ts";
 
 // =============================================================================
 // MOCK GIT PROVIDER
