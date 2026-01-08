@@ -32,6 +32,7 @@ export class AlephaCliUtils {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly envUtils = $inject(EnvUtils);
+  protected readonly alepha = $inject(Alepha);
 
   /**
    * Execute a command using npx with inherited stdio.
@@ -142,6 +143,40 @@ export class AlephaCliUtils {
   // Package Manager & Project Setup
   // ===================================================================================================================
 
+  public async removeFiles(root: string, files: string[]): Promise<void> {
+    await Promise.all(
+      files.map((file) =>
+        this.fs.rm(join(root, file), { force: true, recursive: true }),
+      ),
+    );
+  }
+
+  public async removeYarn(root: string): Promise<void> {
+    await this.removeFiles(root, [".yarn", ".yarnrc.yml", ".yarn"]);
+  }
+
+  public async removePnpm(root: string): Promise<void> {
+    await this.removeFiles(root, ["pnpm-lock.yaml", "pnpm-workspace.yaml"]);
+  }
+
+  public async removeNpm(root: string): Promise<void> {
+    await this.removeFiles(root, ["package-lock.json"]);
+  }
+
+  public async removeBun(root: string): Promise<void> {
+    await this.removeFiles(root, ["bun.lockb"]);
+  }
+
+  public async removeAllPmFilesExcept(
+    root: string,
+    except: string,
+  ): Promise<void> {
+    if (except !== "yarn") await this.removeYarn(root);
+    if (except !== "pnpm") await this.removePnpm(root);
+    if (except !== "npm") await this.removeNpm(root);
+    if (except !== "bun") await this.removeBun(root);
+  }
+
   /**
    * Ensure Yarn is configured in the project directory.
    *
@@ -157,25 +192,19 @@ export class AlephaCliUtils {
       false,
     );
 
-    // remove lock files from other package managers
-    await this.fs.rm(join(root, "package-lock.json"), { force: true });
-    await this.fs.rm(join(root, "pnpm-lock.yaml"), { force: true });
+    await this.removeAllPmFilesExcept(root, "yarn");
+  }
+
+  public async ensureBun(root: string): Promise<void> {
+    await this.removeAllPmFilesExcept(root, "bun");
   }
 
   public async ensurePnpm(root: string): Promise<void> {
-    // remove lock files from other package managers
-    await this.fs.rm(join(root, "package-lock.json"), { force: true });
-    await this.fs.rm(join(root, "yarn.lock"), { force: true });
-    await this.fs.rm(join(root, ".yarn"), { force: true, recursive: true });
-    await this.fs.rm(join(root, ".yarnrc.yml"), { force: true });
+    await this.removeAllPmFilesExcept(root, "pnpm");
   }
 
   public async ensureNpm(root: string): Promise<void> {
-    // remove lock files from other package managers
-    await this.fs.rm(join(root, "pnpm-lock.yaml"), { force: true });
-    await this.fs.rm(join(root, "yarn.lock"), { force: true });
-    await this.fs.rm(join(root, ".yarn"), { force: true, recursive: true });
-    await this.fs.rm(join(root, ".yarnrc.yml"), { force: true });
+    await this.removeAllPmFilesExcept(root, "npm");
   }
 
   /**
@@ -523,6 +552,9 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
     if (flags?.bun) {
       return "bun";
     }
+    if (this.alepha.isBun()) {
+      return "bun";
+    }
     if (await this.checkFileExists(root, "yarn.lock", true)) {
       return "yarn";
     }
@@ -659,6 +691,27 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
     return this.hasDependency(root, "expo");
   }
 
+  async getInstallCommand(root: string, packageName: string, dev = true) {
+    const pm = await this.getPackageManager(root);
+    let cmd: string;
+
+    switch (pm) {
+      case "yarn":
+        cmd = `yarn add ${dev ? "-D" : ""} ${packageName}`;
+        break;
+      case "pnpm":
+        cmd = `pnpm add ${dev ? "-D" : ""} ${packageName}`;
+        break;
+      case "bun":
+        cmd = `bun add ${dev ? "-d" : ""} ${packageName}`;
+        break;
+      default:
+        cmd = `npm install ${dev ? "--save-dev" : ""} ${packageName}`;
+    }
+
+    return cmd.replace(/\s+/g, " ").trim();
+  }
+
   /**
    * Install a dependency if it's missing from the project.
    *
@@ -677,21 +730,7 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       return;
     }
 
-    const pm = await this.getPackageManager(root);
-    let cmd: string;
-
-    switch (pm) {
-      case "yarn":
-        cmd = `yarn add ${dev ? "-D" : ""} ${packageName}`;
-        break;
-      case "pnpm":
-        cmd = `pnpm add ${dev ? "-D" : ""} ${packageName}`;
-        break;
-      default:
-        cmd = `npm install ${dev ? "--save-dev" : ""} ${packageName}`;
-    }
-
-    cmd = cmd.replace(/\s+/g, " ").trim();
+    const cmd = await this.getInstallCommand(root, packageName, dev);
 
     if (options.run) {
       // if it's during a Runner flow, just use the runner's run method

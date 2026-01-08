@@ -1,6 +1,6 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
-import { $inject, t } from "alepha";
+import { $inject, Alepha, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { boot } from "alepha/vite";
@@ -9,6 +9,7 @@ import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 export class DevCommand {
   protected readonly log = $logger();
   protected readonly utils = $inject(AlephaCliUtils);
+  protected readonly alepha = $inject(Alepha);
 
   /**
    * Will run the project in watch mode.
@@ -36,16 +37,18 @@ export class DevCommand {
       const entry = await boot.getServerEntry(root, args);
       this.log.trace("Entry file found", { entry });
 
-      try {
-        await access(join(root, "index.html"));
-      } catch {
-        this.log.trace("No index.html found, running entry file with tsx");
-        let cmd = "tsx --watch";
+      const isFullstack = await this.isFullstackProject(root);
+
+      if (!isFullstack) {
+        const exe = this.alepha.isBun() ? "bun" : "tsx";
+        let cmd = `${exe} --watch`;
         if (await this.utils.exists(root, ".env")) {
           cmd += " --env-file=./.env";
         }
         cmd += ` ${entry}`;
-        await this.utils.exec(cmd);
+        await this.utils.exec(cmd, {
+          global: exe === "bun",
+        });
         return;
       }
 
@@ -54,4 +57,13 @@ export class DevCommand {
       await this.utils.exec("vite");
     },
   });
+
+  protected async isFullstackProject(root: string): Promise<boolean> {
+    try {
+      await access(join(root, "index.html"));
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }

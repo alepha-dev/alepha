@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import "tsx";
 import { Alepha, run } from "alepha";
 import { AlephaCli, version } from "alepha/cli";
 

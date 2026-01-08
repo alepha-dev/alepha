@@ -61,6 +61,8 @@ export class InitCommand {
       if (pm === "yarn") {
         await this.utils.ensureYarn(root);
         await run("yarn set version stable");
+      } else if (pm === "bun") {
+        await this.utils.ensureBun(root);
       } else if (pm === "pnpm") {
         await this.utils.ensurePnpm(root);
       } else {
