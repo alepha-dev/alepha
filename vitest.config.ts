@@ -50,15 +50,19 @@ export default defineConfig({
 				test: {
 					name: { label: 'node', color: 'green' },
           environment: 'node',
-          include: ['**/test/**/*.spec.{ts,tsx}'],
-					exclude: ['**/test/**/*.browser.spec.{ts,tsx}', 'node_modules'],
+          include: [
+						'packages/*/src/**/*.spec.{ts,tsx}',
+					],
+					exclude: ['**/*.browser.spec.{ts,tsx}', 'node_modules'],
 				}
 			},
 			{
 				// browser tests
 				extends: true,
 				test: {
-					include: ['**/test/**/*.browser.spec.{ts,tsx}'],
+					include: [
+						'packages/*/src/**/*.browser.spec.{ts,tsx}',
+					],
 					name: { label: 'jsdom', color: 'cyan' },
 					environment: 'jsdom'
 				},
