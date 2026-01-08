@@ -17,6 +17,25 @@ import { TestCommand } from "../commands/test.ts";
 import { TypecheckCommand } from "../commands/typecheck.ts";
 import { VerifyCommand } from "../commands/verify.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Register `tsx` when running in Node.js, ignore for Bun.
+ *
+ * It's required to have a full TypeScript support. (mostly .tsx files)
+ */
+
+if (typeof Bun === "undefined") {
+  const { register } = await import("tsx/esm/api");
+  register();
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Allow to extend Alepha CLI via `alepha.config.ts` file located in the project root.
+ */
+
 class AlephaCliExtension {
   protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
@@ -43,6 +62,8 @@ class AlephaCliExtension {
     },
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export const AlephaCli = $module({
   name: "alepha.cli",
