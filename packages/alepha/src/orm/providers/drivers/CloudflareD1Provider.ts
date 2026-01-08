@@ -125,7 +125,7 @@ export class CloudflareD1Provider extends DatabaseProvider {
 
       this.drizzleDb = drizzle(this.d1) as DrizzleD1Database;
 
-      await this.migrateDatabase();
+      await this.migrate();
 
       this.log.info("Using Cloudflare D1 database");
     },

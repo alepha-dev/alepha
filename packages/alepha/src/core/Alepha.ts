@@ -482,9 +482,17 @@ export class Alepha {
 
     const target = this.store.get("alepha.target");
     if (target) {
+      this.modules = [];
       this.registry = new Map();
       this.primitiveRegistry = new Map();
+      this.pendingInstantiations = [];
+      this.substitutions = new Map();
+      this.events.clear();
+      delete (target as any)[MODULE];
       this.with(target);
+      for (const [key] of this.substitutions.entries()) {
+        this.inject(key);
+      }
     }
 
     this.locked = true;
@@ -1058,6 +1066,34 @@ export interface State {
 
   /**
    * If defined, the Alepha container will only register this service and its dependencies.
+   *
+   * @example
+   * ```ts
+   * class MigrateCmd {
+   *   db = $inject(DatabaseProvider);
+   *   alepha = $inject(Alepha);
+   *   env = $env(
+   *     t.object({
+   *       MIGRATE: t.optional(t.boolean()),
+   *     }),
+   *   );
+   *
+   *   constructor() {
+   *     if (this.env.MIGRATE) {
+   *       this.alepha.set("alepha.target", MigrateCmd);
+   *     }
+   *   }
+   *
+   *   ready = $hook({
+   *     on: "ready",
+   *     handler: async () => {
+   *       if (this.env.MIGRATE) {
+   *         await this.db.migrate();
+   *       }
+   *     },
+   *   });
+   * }
+   * ```
    */
   "alepha.target"?: Service;
 

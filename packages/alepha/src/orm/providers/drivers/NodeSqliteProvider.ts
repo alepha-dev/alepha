@@ -157,7 +157,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
 
       this.sqlite = new DatabaseSync(filepath);
 
-      await this.migrateDatabase();
+      await this.migrate();
 
       this.log.info(`Using SQLite database at ${filepath}`);
     },

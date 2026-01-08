@@ -154,7 +154,7 @@ export class BunSqliteProvider extends DatabaseProvider {
         },
       });
 
-      await this.migrateDatabase();
+      await this.migrate();
 
       this.log.info(`Using Bun SQLite database at ${filepath}`);
     },

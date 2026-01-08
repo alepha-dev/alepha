@@ -137,7 +137,7 @@ export class BunPostgresProvider extends DatabaseProvider {
       // never migrate in serverless mode (vercel, netlify, ...)
       if (!this.alepha.isServerless()) {
         try {
-          await this.migrate.run();
+          await this.migrateLock.run();
         } catch (error) {
           throw new DbMigrationError(error);
         }
@@ -217,9 +217,9 @@ export class BunPostgresProvider extends DatabaseProvider {
     }
   }
 
-  protected migrate = $lock({
+  protected migrateLock = $lock({
     handler: async () => {
-      await this.migrateDatabase();
+      await this.migrate();
     },
   });
 }

@@ -9,7 +9,7 @@ export class DevToolsDatabaseProvider extends NodeSqliteProvider {
     path: ":memory:",
   };
 
-  protected override async migrateDatabase(): Promise<void> {
+  public override async migrate(): Promise<void> {
     this.sqlite.exec(`
         CREATE TABLE IF NOT EXISTS logs (
           id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -112,7 +112,7 @@ export class PglitePostgresProvider extends DatabaseProvider {
         client: this.client,
       });
 
-      await this.migrateDatabase();
+      await this.migrate();
 
       this.log.info(`Using PGlite database at ${path}`);
     },

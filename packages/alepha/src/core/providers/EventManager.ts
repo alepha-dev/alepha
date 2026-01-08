@@ -19,6 +19,10 @@ export class EventManager {
     return this.logFn?.();
   }
 
+  public clear(): void {
+    this.events = {};
+  }
+
   /**
    * Registers a hook for the specified event.
    */

@@ -95,7 +95,7 @@ export abstract class DatabaseProvider {
   /**
    * Base migration orchestration - handles environment logic
    */
-  protected async migrateDatabase(): Promise<void> {
+  public async migrate(): Promise<void> {
     const migrationsFolder = this.getMigrationsFolder();
 
     // Handle different environments
