@@ -62,7 +62,7 @@ export class LlmsCommand {
       let indexContent = "";
 
       await run("generate index", async () => {
-        const indexModule = await import("../node_modules/.docs/index.ts");
+        const indexModule = await import("../node_modules/.docs/index.js");
         const tree = indexModule.tree as DocNode[];
         indexContent = this.generateIndex(tree);
         this.log.debug(`Generated index: ${indexContent.length} chars`);

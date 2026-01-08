@@ -859,12 +859,16 @@ export class TreeCommand {
 				export const docs = ${JSON.stringify(result, jsonReplacer, 2)};
 				export const tree = ${JSON.stringify(treeData, jsonReplacer, 2)};
 				export const snippets = ${JSON.stringify(mutableSnippets, null, 2)};
-				`.trim();
+				`
+          .trim()
+          .replace(new RegExp(`"?${TAG}"?`, "g"), "");
 
+        await writeFile(outputFilepath, outputFileContent);
         await writeFile(
-          outputFilepath,
-          outputFileContent.replace(new RegExp(`"?${TAG}"?`, "g"), ""),
+          outputFilepath.replace(".ts", ".js"),
+          outputFileContent,
         );
+
         this.log.debug(`Wrote index file: ${outputFilepath}`);
       });
 
