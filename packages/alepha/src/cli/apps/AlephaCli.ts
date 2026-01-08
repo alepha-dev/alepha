@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import { $hook, $inject, $module, Alepha } from "alepha";
 import { FileSystemProvider } from "alepha/file";
 import { BuildCommand } from "../commands/build.ts";
@@ -44,7 +43,7 @@ class AlephaCliExtension {
     on: "configure",
     handler: async () => {
       const root = process.cwd();
-      const extensionPath = join(root, "alepha.config.ts");
+      const extensionPath = this.fs.join(root, "alepha.config.ts");
       const hasExtension = await this.fs.exists(extensionPath);
       if (!hasExtension) {
         return;
