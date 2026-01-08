@@ -17,3 +17,4 @@ test-results
 playwright-report
 .playwright-mcp
 pulse
+.gen

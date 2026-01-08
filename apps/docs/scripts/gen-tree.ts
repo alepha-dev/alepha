@@ -773,7 +773,7 @@ export class TreeCommand {
     handler: async ({ run }) => {
       this.log.debug("Starting website documentation generation");
       const rootDir = join(import.meta.dirname, "../../..");
-      const outputDir = join(import.meta.dirname, "../node_modules/.docs");
+      const outputDir = join(import.meta.dirname, "../.gen");
       const docsDir = join(rootDir, "docs");
 
       this.log.debug(`Root directory: ${rootDir}`);
@@ -864,10 +864,6 @@ export class TreeCommand {
           .replace(new RegExp(`"?${TAG}"?`, "g"), "");
 
         await writeFile(outputFilepath, outputFileContent);
-        await writeFile(
-          outputFilepath.replace(".ts", ".js"),
-          outputFileContent,
-        );
 
         this.log.debug(`Wrote index file: ${outputFilepath}`);
       });

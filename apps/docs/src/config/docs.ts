@@ -1,4 +1,4 @@
-import * as generated from "../../node_modules/.docs/index.ts";
+import * as generated from "../../.gen/index.ts";
 import type { DocNode } from "../../scripts/interfaces.ts";
 
 export const docs = generated.docs;
