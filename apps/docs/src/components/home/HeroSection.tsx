@@ -1,6 +1,7 @@
 import { Link } from "@alepha/react/router";
 import { IconArrowRight, IconPackage } from "@tabler/icons-react";
 import CodeDemo from "./CodeDemo.tsx";
+import LightPillar from "./LightPillar.tsx";
 import ScrollButton from "./ScrollButton.tsx";
 
 const HeroSection = () => {
@@ -18,6 +19,24 @@ const HeroSection = () => {
         paddingBottom: 40,
       }}
     >
+      <div
+        className={"visible-md"}
+        style={{
+          width: "100%",
+          height: "100vh",
+          position: "absolute",
+          pointerEvents: "none",
+        }}
+      >
+        <LightPillar
+          bottomColor="#b62525"
+          intensity={0.8}
+          rotationSpeed={0.9}
+          glowAmount={0.001}
+          pillarRotation={150}
+          pillarHeight={1}
+        />
+      </div>
       <div className="intro-grid">
         {/* Left: Hero Text */}
         <div className="flex flex-col gap-6 intro-hero">
