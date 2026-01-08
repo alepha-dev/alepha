@@ -50,6 +50,7 @@ export default (alepha: Alepha) => {
         await run(`yarn check-dependencies`);
         await run(`yarn build`);
         await run(`yarn e2e`);
+        await run(`cd apps/docs && yarn alepha gen:llms`);
         await run(`yarn clean`);
       },
     }),

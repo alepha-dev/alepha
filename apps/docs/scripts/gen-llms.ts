@@ -15,7 +15,7 @@ export class LlmsCommand {
     description: "Generate llms.txt index and llms-full.txt from documentation",
     handler: async ({ run }) => {
       this.log.debug("Starting llms generation");
-      const docsDir = join(import.meta.dirname, "../node_modules/.docs");
+      const docsDir = join(import.meta.dirname, "../.gen");
       const outputDir = join(import.meta.dirname, "../dist/public");
       const outputFileFull = join(outputDir, "llms-full.txt");
       const outputFileIndex = join(outputDir, "llms.txt");
