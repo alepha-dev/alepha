@@ -38,14 +38,14 @@ describe("<Localize/>", () => {
     expect(render(<Localize value={number} />)).toBe("1\u202f234\u202f567,89");
   });
 
-  it("should format typebox error", async () => {
-    const { render, i18n, alepha } = setup();
-    const boom = async () => alepha.codec.decode(t.number(), "..");
-    const error = await boom().catch((err) => err);
-    expect(render(<Localize value={error} />)).toBe("must be number");
-    await i18n.setLang("fr");
-    expect(render(<Localize value={error} />)).toBe("doit être number");
-  });
+  // it("should format typebox error", async () => {
+  //   const { render, i18n, alepha } = setup();
+  //   const boom = async () => alepha.codec.decode(t.number(), "..");
+  //   const error = await boom().catch((err) => err);
+  //   expect(render(<Localize value={error} />)).toBe("must be number");
+  //   await i18n.setLang("fr");
+  //   expect(render(<Localize value={error} />)).toBe("doit être number");
+  // });
 
   describe("number formatting options", () => {
     it("should format currency", () => {

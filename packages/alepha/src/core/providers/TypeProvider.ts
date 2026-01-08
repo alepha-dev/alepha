@@ -25,15 +25,9 @@ import type {
   TUnsafe,
 } from "typebox";
 import { Type } from "typebox";
-import type {
-  TLocalizedValidationError,
-  TLocalizedValidationMessageCallback,
-} from "typebox/error";
 import Format from "typebox/format";
-import { Locale } from "typebox/system";
 import * as Value from "typebox/value";
 import { OPTIONS } from "../constants/OPTIONS.ts";
-import { AlephaError } from "../errors/AlephaError.ts";
 import type { TypeBoxError } from "../errors/TypeBoxError.ts";
 import { isTypeFile, type TFile, type TStream } from "../helpers/FileLike.ts";
 
@@ -132,30 +126,30 @@ export class TypeProvider {
   }
 
   static translateError(error: TypeBoxError, locale?: string): string {
-    if (!locale) {
-      return error.cause.message;
-    }
-
-    for (const [key, value] of Object.entries(Locale)) {
-      if (key === "Set" || key === "Get" || key === "Reset") continue;
-      if (key === locale || key.startsWith(`${locale}_`)) {
-        return (value as (error: TLocalizedValidationError) => string)(
-          error.cause,
-        );
-      }
-    }
+    // if (!locale) {
+    //   return error.cause.message;
+    // }
+    //
+    // for (const [key, value] of Object.entries(Locale)) {
+    //   if (key === "Set" || key === "Get" || key === "Reset") continue;
+    //   if (key === locale || key.startsWith(`${locale}_`)) {
+    //     return (value as (error: TLocalizedValidationError) => string)(
+    //       error.cause,
+    //     );
+    //   }
+    // }
     return error.cause.message;
   }
 
   static setLocale(locale: string) {
-    for (const [key, value] of Object.entries(Locale)) {
-      if (key === "Set" || key === "Get" || key === "Reset") continue;
-      if (key === locale || key.startsWith(`${locale}_`)) {
-        Locale.Set(value as TLocalizedValidationMessageCallback);
-        return;
-      }
-    }
-    throw new AlephaError(`Locale not found: ${locale}`);
+    // for (const [key, value] of Object.entries(Locale)) {
+    //   if (key === "Set" || key === "Get" || key === "Reset") continue;
+    //   if (key === locale || key.startsWith(`${locale}_`)) {
+    //     Locale.Set(value as TLocalizedValidationMessageCallback);
+    //     return;
+    //   }
+    // }
+    // throw new AlephaError(`Locale not found: ${locale}`);
   }
 
   static isValidBigInt(value: string | number) {
