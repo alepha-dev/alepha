@@ -40,9 +40,10 @@ const HeroSection = () => {
           }}
         >
           <LightPillar
-            bottomColor="#b62525"
-            intensity={0.8}
-            rotationSpeed={0.15}
+            bottomColor="#c2255c"
+            intensity={1}
+            noiseIntensity={0.7}
+            rotationSpeed={0.1}
             glowAmount={0.001}
             pillarRotation={150}
             pillarHeight={1}
