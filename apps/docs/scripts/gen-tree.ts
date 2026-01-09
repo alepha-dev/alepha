@@ -73,7 +73,7 @@ export class TreeCommand {
             case "pnpm":
               return `pnpm ${rest}`;
             case "bun":
-              return `bunx ${rest}`;
+              return `bunx --bun ${rest}`;
           }
         }
 
@@ -138,6 +138,8 @@ export class TreeCommand {
 
   /**
    * Renders a code block with package manager switcher
+   * Selection syncs across all blocks on the page via localStorage
+   * The sync logic is handled by HtmlContent.tsx component
    */
   renderPackageManagerBlock(text: string): string {
     const managers = ["npm", "yarn", "pnpm", "bun"] as const;
@@ -174,7 +176,7 @@ export class TreeCommand {
 <div class="code-block code-block-pm">
   <div class="code-block-header">
     <div class="pm-tabs">
-      ${managers.map((pm, i) => `<button type="button" class="pm-tab${i === 0 ? " pm-tab-active" : ""}" data-pm="${pm}" onclick="(function(btn){var block=btn.closest('.code-block-pm');block.querySelectorAll('.pm-tab').forEach(function(t){t.classList.remove('pm-tab-active')});btn.classList.add('pm-tab-active');var code=block.querySelector('code');code.innerHTML=code.getAttribute('data-html-'+btn.dataset.pm);var copy=block.querySelector('.code-block-copy');copy.setAttribute('data-code',copy.getAttribute('data-code-'+btn.dataset.pm))})(this)">${pm}</button>`).join("")}
+      ${managers.map((pm, i) => `<button type="button" class="pm-tab${i === 0 ? " pm-tab-active" : ""}" data-pm="${pm}">${pm}</button>`).join("")}
     </div>
     <button class="code-block-copy" data-code="${base64.npm}" ${codeAttrs} onclick="(function(btn){var code=atob(btn.getAttribute('data-code'));navigator.clipboard.writeText(code);btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy'},2000)})(this)">Copy</button>
   </div>
