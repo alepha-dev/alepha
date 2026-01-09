@@ -35,13 +35,13 @@ You define your logic where it belongs: in your code.
 ```typescript
 import { t } from "alepha";
 import { $action } from "alepha/server";
-import { $entity } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 
 // 1. Define your Database Schema
 const product = $entity({
   name: "products",
   schema: t.object({
-    id: t.uuid(),
+    id: db.primaryKey(t.uuid()),
     price: t.number(),
     name: t.text()
   })

@@ -1,25 +1,32 @@
 export const snippets = {
-  server: `
+  server: {
+    filename: "Build type-safe HTTP APIs with automatic validation and OpenAPI",
+    content: `
 import { run } from "alepha";
 import { $action } from "alepha/server";
 
 class Api {
-  // define a type-safe API action
   // accessible via HTTP GET /api/greet?name=John
   greet = $action({
     schema: {
       query: t.object({ name: t.text() }),
       response: t.object({ greeting: t.string() }),
     },
-    handler: async ({ query }) => ({
-      greeting: \`Hello, \${query.name}!\`,
-    }),
+    handler: async ({ query }) => {
+      return {
+        greeting: \`Hello, \${query.name}!\`,
+      };
+    },
   });
 }
 
 run(Api);
 `,
-  react: `
+  },
+  react: {
+    filename:
+      "Create React apps with built-in Server-Side Rendering and data fetching",
+    content: `
 import { run } from "alepha";
 import { $page } from "@alepha/react/router";
 
@@ -40,7 +47,11 @@ class App {
 
 run(App);
 `,
-  db: `
+  },
+  db: {
+    filename:
+      "Define database entities with Drizzle ORM and type-safe repositories",
+    content: `
 import { t, run } from "alepha";
 import { $entity, db, $repository } from "alepha/orm";
 
@@ -50,6 +61,7 @@ export const userEntity = $entity({
   schema: t.object({
     id: db.primaryKey(),
     name: t.text(),
+    email: t.email(),
   })
 });
 
@@ -60,7 +72,10 @@ class App {
 
 run(App);
 `,
-  queue: `
+  },
+  queue: {
+    filename: "Process background jobs with automatic retries, scheduling",
+    content: `
 import { t, run } from "alepha";
 import { $queue } from "alepha/queue";
 import { EmailProvider } from "alepha/email";
@@ -81,7 +96,10 @@ class App {
 
 run(App);
 `,
-  command: `
+  },
+  command: {
+    filename: "Create powerful CLI commands with beautiful terminal output",
+    content: `
 import { t, run } from "alepha";
 import { $command } from "alepha/command";
 
@@ -92,8 +110,8 @@ class App {
     	env: t.enum(["staging", "prod"]),
     }),
     handler: async ({ run, flags }) => {
+      await run("npx alepha test");
       await run("npx alepha build");
-
       const prod = flags.env === "prod" ? " --prod" : "";
       await run(\`cd dist && npx vercel$\{prod}\`);
     }
@@ -102,4 +120,5 @@ class App {
 
 run(App);
 `,
+  },
 };

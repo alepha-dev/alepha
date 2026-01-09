@@ -69,9 +69,9 @@ export class TreeCommand {
             case "npm":
               return `npx ${rest}`;
             case "yarn":
-              return `yarn ${rest}`;
+              return `yarn dlx ${rest}`;
             case "pnpm":
-              return `pnpm ${rest}`;
+              return `pnpm dlx ${rest}`;
             case "bun":
               return `bunx --bun ${rest}`;
           }
@@ -115,9 +115,9 @@ export class TreeCommand {
             case "npm":
               return `npm run ${script}`;
             case "yarn":
-              return `yarn ${script}`;
+              return `yarn run ${script}`;
             case "pnpm":
-              return `pnpm ${script}`;
+              return `pnpm run ${script}`;
             case "bun":
               return `bun run ${script}`;
           }
@@ -915,13 +915,13 @@ export class TreeCommand {
         }
         this.log.debug(`Wrote ${result.length} doc files`);
 
-        const mutableSnippets = { ...snippets };
-        for (const key of Object.keys(mutableSnippets) as Array<
+        const renderedSnippets: Record<string, string> = {};
+        for (const key of Object.keys(snippets) as Array<
           keyof typeof snippets
         >) {
           this.log.trace(`Rendering snippet: ${key}`);
-          mutableSnippets[key] = (await this.renderContent(
-            `\`\`\`tsx nolines\n${mutableSnippets[key].trim()}\n\`\`\``,
+          renderedSnippets[key] = (await this.renderContent(
+            `\`\`\`tsx filename="${snippets[key].filename}"\n${snippets[key].content.trim()}\n\`\`\``,
           )) as string;
         }
 
@@ -946,7 +946,7 @@ export class TreeCommand {
         const outputFileContent = `
 				export const docs = ${JSON.stringify(result, jsonReplacer, 2)};
 				export const tree = ${JSON.stringify(treeData, jsonReplacer, 2)};
-				export const snippets = ${JSON.stringify(mutableSnippets, null, 2)};
+				export const snippets = ${JSON.stringify(renderedSnippets, null, 2)};
 				export const changelog = ${JSON.stringify(changelog, null, 2)};
 				`
           .trim()

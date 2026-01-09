@@ -30,6 +30,7 @@ const CodeDemo = () => {
           border: "1px solid var(--color-border)",
           borderRadius: 10,
           overflow: "hidden",
+          boxShadow: "0px 0px 0px 4px #ffffff14",
         }}
       >
         {/* Title bar */}

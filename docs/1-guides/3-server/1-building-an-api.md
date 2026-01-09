@@ -12,23 +12,28 @@ An `$action` is a type-safe HTTP endpoint. It bundles everything together:
 2. **Validation Schema** — What goes in (body, query, params) and what comes out (response)
 3. **Handler** — The function that runs
 
-```typescript filename="src/controllers/UserController.ts"
+```typescript filename="src/api/controllers/UserController.ts"
 import { t } from "alepha";
-import { $action } from "alepha/server";
+import { $action, NotFoundError } from "alepha/server";
 
 class UserController {
+  users = [{ name: "John Doe", id: 1 }]
+
   getUser = $action({
     path: "/users/:id",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: t.object({ id: t.integer() }),
       response: t.object({
-        id: t.uuid(),
+        id: t.integer(),
         name: t.text(),
-        email: t.email(),
       }),
     },
     handler: async ({ params }) => {
-      return await db.users.findById(params.id);
+      const user = this.users.find(u => u.id === params.id);
+      if (!user) {
+        throw new NotFoundError("User not found");
+      }
+      return user;
     },
   });
 }
@@ -36,7 +41,8 @@ class UserController {
 
 > **The `/api` Prefix**
 >
-> All `$action` paths are automatically prefixed with `/api`. So `path: "/users"` becomes `/api/users`. This keeps your API cleanly separated from pages and static files. Configure it via `SERVER_API_PREFIX` environment variable if needed.
+> All `$action` paths are automatically prefixed with `/api`. So `path: "/users"` becomes `/api/users`.
+> This keeps your API cleanly separated from pages and static files. Configure it via `SERVER_API_PREFIX` environment variable if needed.
 
 ## The Schema Object
 
@@ -52,7 +58,7 @@ Your schema tells Alepha:
 
 When your URL has `:something`, that's a param.
 
-```typescript filename="src/controllers/UserController.ts"
+```typescript filename="src/api/controllers/UserController.ts"
 getUser = $action({
   path: "/users/:id",
   schema: {
@@ -66,7 +72,7 @@ getUser = $action({
 });
 ```
 
-```typescript filename="src/controllers/PostController.ts"
+```typescript filename="src/api/controllers/PostController.ts"
 // Multiple params work too
 getComment = $action({
   path: "/posts/:postId/comments/:commentId",
@@ -86,7 +92,7 @@ getComment = $action({
 
 The stuff after the `?`. Perfect for filtering, pagination, sorting.
 
-```typescript filename="src/controllers/UserController.ts"
+```typescript filename="src/api/controllers/UserController.ts"
 listUsers = $action({
   path: "/users",
   schema: {
@@ -123,7 +129,7 @@ The payload. When you define a body schema, Alepha:
 - Validates it against the schema
 - Throws `400 Bad Request` if validation fails — before your handler even runs
 
-```typescript filename="src/controllers/UserController.ts"
+```typescript filename="src/api/controllers/UserController.ts"
 createUser = $action({
   path: "/users",
   // method: "POST" is implicit when body is defined
@@ -155,7 +161,7 @@ createUser = $action({
 
 Sometimes you need to read custom headers.
 
-```typescript filename="src/controllers/WebhookController.ts"
+```typescript filename="src/api/controllers/WebhookController.ts"
 webhookHandler = $action({
   path: "/webhooks/stripe",
   method: "POST",
@@ -178,7 +184,7 @@ Here's where developers often cut corners. Don't.
 
 The response schema isn't just documentation. It's **active serialization**.
 
-```typescript filename="src/controllers/UserController.ts"
+```typescript filename="src/api/controllers/UserController.ts"
 getUser = $action({
   schema: {
     params: t.object({ id: t.uuid() }),
@@ -223,7 +229,7 @@ Of course, if you *want* clean RESTful URLs, you can have them. But you're not f
 
 If you don't specify a path, Alepha generates one from the property name:
 
-```typescript filename="src/controllers/UserController.ts"
+```typescript filename="src/api/controllers/UserController.ts"
 class UserController {
   // path: "/getUser" → GET /api/getUser
   getUser = $action({
@@ -240,7 +246,7 @@ class UserController {
 
 Even better — if you have a `params` schema, the path auto-appends them:
 
-```typescript filename="src/controllers/UserController.ts"
+```typescript filename="src/api/controllers/UserController.ts"
 class UserController {
   // Auto-generates path: "/getUser/:id"
   getUser = $action({
@@ -263,7 +269,7 @@ Alepha infers the HTTP method:
 - **No body schema** → `GET`
 - **Has body schema** → `POST`
 
-```typescript filename="src/controllers/UserController.ts"
+```typescript filename="src/api/controllers/UserController.ts"
 // GET /api/users
 listUsers = $action({
   path: "/users",
@@ -305,7 +311,7 @@ deleteUser = $action({
 
 The `group` property organizes related actions together.
 
-```typescript filename="src/controllers/OrderController.ts"
+```typescript filename="src/api/controllers/OrderController.ts"
 class OrderController {
   group = "orders";
 

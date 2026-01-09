@@ -11,7 +11,7 @@ import { useCallback, useState } from "react";
 const MoreSection = () => {
   const [copied, setCopied] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
-  const command = "npx alepha init";
+  const command = "npx alepha@latest init";
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(command);
