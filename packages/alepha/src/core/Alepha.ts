@@ -908,6 +908,27 @@ export class Alepha {
     return graph;
   }
 
+  public dump(): AlephaDump {
+    const env: Record<string, AlephaDumpEnvVariable> = {};
+    for (const [schema] of this.cacheEnv.entries()) {
+      const ref = schema as any;
+      for (const [key, value] of Object.entries(ref.properties)) {
+        const prop = value as any;
+        env[key] = {
+          description: prop.description,
+          default: prop.default,
+          required: ref.required?.includes(key) ?? undefined,
+          enum: prop.enum ? ([...prop.enum] as Array<string>) : undefined,
+        };
+      }
+    }
+
+    return {
+      env,
+      providers: this.graph(),
+    };
+  }
+
   public services<T extends object>(base: Service<T>): Array<T> {
     const list: Array<T> = [];
     for (const [key, value] of this.registry.entries()) {
@@ -1008,6 +1029,20 @@ export interface Hook<T extends keyof Hooks = any> {
   caller?: Service;
   priority?: "first" | "last";
   callback: (payload: Hooks[T]) => Async<void>;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface AlephaDump {
+  env: Record<string, AlephaDumpEnvVariable>;
+  providers: Record<string, { from: string[]; as?: string[]; module?: string }>;
+}
+
+export interface AlephaDumpEnvVariable {
+  description: string;
+  default?: string;
+  required?: boolean;
+  enum?: Array<string>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -43,10 +43,6 @@ export const AlephaDevtools = $module({
     LogRepository,
   ],
   register: (alepha) => {
-    if (!alepha.isViteDev()) {
-      return;
-    }
-
     alepha.with(DevToolsProvider);
     alepha.with(DevToolsDatabaseProvider);
     alepha.with(DevToolsMetadataProvider);

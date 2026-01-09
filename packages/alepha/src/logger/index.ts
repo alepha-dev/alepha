@@ -199,16 +199,28 @@ const envSchema = t.object({
    * LOG_LEVEL=my.module.name:debug,info # Set debug level for my.module.name and info for all other modules
    * LOG_LEVEL=alepha:trace, info # Set trace level for all alepha modules and info for all other modules
    */
-  LOG_LEVEL: t.optional(t.text({ lowercase: true })),
+  LOG_LEVEL: t.optional(
+    t.text({
+      description: `Application log level on startup.
+Levels are: trace, debug, info, warn, error, silent
+Level can be set for a specific module:
+"my.module.name:debug,info" -> Set debug level for my.module.name and info for all other modules
+"alepha:trace,info" -> Set trace level for all alepha modules and info for all other modules`,
+      lowercase: true,
+    }),
+  ),
 
   /**
    * Built-in log formats.
    * - "json" - JSON format, useful for structured logging and log aggregation. {@link JsonFormatterProvider}
    * - "pretty" - Simple text format, human-readable, with colors. {@link PrettyFormatterProvider}
-   * - "raw" - Raw format, no formatting, just the message.  {@link RawFormatterProvider}
+   * - "raw" - Raw format, no formatting, just the message. {@link RawFormatterProvider}
    */
   LOG_FORMAT: t.optional(
-    t.enum(["json", "pretty", "raw"], { lowercase: true }),
+    t.enum(["json", "pretty", "raw"], {
+      description: "Default log format for the application.",
+      lowercase: true,
+    }),
   ),
 });
 

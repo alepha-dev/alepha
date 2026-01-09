@@ -64,7 +64,7 @@ export class OpenApiCommand {
           return;
         }
 
-        this.log.error(`OpenAPI generation failed - ${message}`, { err });
+        this.log.error(`OpenAPI generation failed - ${message}`, err);
       }
     },
   });
