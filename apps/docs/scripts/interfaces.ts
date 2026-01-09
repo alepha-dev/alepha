@@ -35,3 +35,16 @@ export interface ModuleInfo {
   exportKey: string; // ".", "./server/swagger", "./api/files", etc.
   sourcePath: string; // Path to the module's source directory
 }
+
+export interface ChangelogChange {
+  scope: string; // e.g., "cli", "server", "vite"
+  message: string; // The change description
+  commit?: string; // Optional commit hash
+}
+
+export interface ChangelogEntry {
+  version: string; // e.g., "0.14.3"
+  date: string; // e.g., "2026-01-08"
+  features: ChangelogChange[];
+  fixes: ChangelogChange[];
+}

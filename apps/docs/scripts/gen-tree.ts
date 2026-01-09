@@ -4,7 +4,12 @@ import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import hljs from "highlight.js";
 import { Marked, type Tokens } from "marked";
-import type { DocItem, DocNode } from "./interfaces.ts";
+import type {
+  ChangelogChange,
+  ChangelogEntry,
+  DocItem,
+  DocNode,
+} from "./interfaces.ts";
 import { snippets } from "./snippets.ts";
 
 /**
@@ -767,6 +772,81 @@ export class TreeCommand {
     return this.marked.parse(content);
   }
 
+  /**
+   * Parse CHANGELOG.md and extract structured changelog entries
+   */
+  parseChangelog(content: string): ChangelogEntry[] {
+    this.log.debug("Parsing CHANGELOG.md");
+    const entries: ChangelogEntry[] = [];
+
+    // Split by version headers: ## [0.14.3] - 2026-01-08
+    const versionRegex = /^## \[([^\]]+)\] - (\d{4}-\d{2}-\d{2})/gm;
+    const sections = content.split(versionRegex);
+
+    // sections[0] is content before first version (if any)
+    // Then triplets: [version, date, content]
+    for (let i = 1; i < sections.length; i += 3) {
+      const version = sections[i];
+      const date = sections[i + 1];
+      const sectionContent = sections[i + 2] || "";
+
+      const features: ChangelogChange[] = [];
+      const fixes: ChangelogChange[] = [];
+
+      // Parse Features section
+      const featuresMatch = sectionContent.match(
+        /### Features\s*\n([\s\S]*?)(?=### |$)/,
+      );
+      if (featuresMatch) {
+        const featureLines = featuresMatch[1].trim().split("\n");
+        for (const line of featureLines) {
+          const change = this.parseChangelogLine(line);
+          if (change) features.push(change);
+        }
+      }
+
+      // Parse Bug Fixes section
+      const fixesMatch = sectionContent.match(
+        /### Bug Fixes\s*\n([\s\S]*?)(?=### |$)/,
+      );
+      if (fixesMatch) {
+        const fixLines = fixesMatch[1].trim().split("\n");
+        for (const line of fixLines) {
+          const change = this.parseChangelogLine(line);
+          if (change) fixes.push(change);
+        }
+      }
+
+      if (features.length > 0 || fixes.length > 0) {
+        entries.push({ version, date, features, fixes });
+        this.log.trace(
+          `Parsed version ${version}: ${features.length} features, ${fixes.length} fixes`,
+        );
+      }
+    }
+
+    this.log.debug(`Parsed ${entries.length} changelog entries`);
+    return entries;
+  }
+
+  /**
+   * Parse a single changelog line like:
+   * - **cli**: add openapi extractor (`5e87f93e`)
+   */
+  parseChangelogLine(line: string): ChangelogChange | null {
+    // Match: - **scope**: message (`commit`)
+    const match = line.match(
+      /^- \*\*([^*]+)\*\*:\s*(.+?)(?:\s*\(`([^`]+)`\))?$/,
+    );
+    if (!match) return null;
+
+    return {
+      scope: match[1].trim(),
+      message: match[2].trim(),
+      commit: match[3]?.trim(),
+    };
+  }
+
   tree = $command({
     name: "gen:tree",
     description: "Generate documentation for the website",
@@ -846,6 +926,12 @@ export class TreeCommand {
         const treeData = this.buildTree(items);
         this.log.debug("Built navigation tree");
 
+        // Parse changelog
+        const changelogPath = join(rootDir, "CHANGELOG.md");
+        const changelogContent = await readFile(changelogPath, "utf-8");
+        const changelog = this.parseChangelog(changelogContent);
+        this.log.debug(`Parsed ${changelog.length} changelog entries`);
+
         // Custom JSON replacer to handle POSITIVE_INFINITY
         const jsonReplacer = (_key: string, value: any) => {
           if (value === Number.POSITIVE_INFINITY) {
@@ -859,6 +945,7 @@ export class TreeCommand {
 				export const docs = ${JSON.stringify(result, jsonReplacer, 2)};
 				export const tree = ${JSON.stringify(treeData, jsonReplacer, 2)};
 				export const snippets = ${JSON.stringify(mutableSnippets, null, 2)};
+				export const changelog = ${JSON.stringify(changelog, null, 2)};
 				`
           .trim()
           .replace(new RegExp(`"?${TAG}"?`, "g"), "");

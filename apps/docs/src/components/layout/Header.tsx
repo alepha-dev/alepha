@@ -74,14 +74,20 @@ const Header = (props: HeaderProps) => {
           </span>
         </Link>
 
-        {/* Version - Hidden on mobile */}
-        <div
-          className="hidden-mobile flex items-center gap-2 px-4 h-full border-r"
-          style={{ color: "var(--color-text-muted)", fontSize: 12 }}
+        {/* Version - Links to Changelog */}
+        <Link
+          href="/changelog"
+          className="version-btn hidden-mobile flex items-center gap-2 px-4 h-full border-r"
+          style={{
+            color: "var(--color-text-muted)",
+            fontSize: 12,
+            textDecoration: "none",
+          }}
+          title="View Changelog"
         >
           <IconGitBranch size={14} />
           <span>v{import.meta.env.VITE_VERSION || "0.0.0"}</span>
-        </div>
+        </Link>
 
         {/* Tabs - Only shown on docs pages, hidden on mobile */}
         {showTabs && (

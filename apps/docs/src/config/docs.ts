@@ -1,7 +1,8 @@
 import * as generated from "../../.gen/index.ts";
-import type { DocNode } from "../../scripts/interfaces.ts";
+import type { ChangelogEntry, DocNode } from "../../scripts/interfaces.ts";
 
 export const docs = generated.docs;
+export const changelog: ChangelogEntry[] = generated.changelog;
 
 // Add LLM folder to the tree
 const llmFolder: DocNode = {
@@ -34,4 +35,4 @@ export const repository = {
   name: "feunard/alepha",
 };
 
-export type { DocNode };
+export type { ChangelogEntry, DocNode };

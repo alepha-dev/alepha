@@ -2,10 +2,11 @@ import { $head, type Head } from "@alepha/react/head";
 import { $page, NotFound } from "@alepha/react/router";
 import { $env, t } from "alepha";
 import { NotFoundError } from "alepha/server";
+import Changelog from "./components/Changelog.tsx";
 import Docs from "./components/Docs.tsx";
 import Home from "./components/Home.tsx";
 import Layout from "./components/layout/Layout.tsx";
-import { docs } from "./config/docs.ts";
+import { changelog, docs } from "./config/docs.ts";
 
 declare module "@alepha/react/router" {
   interface PagePrimitiveOptions {
@@ -58,7 +59,13 @@ export class AppRouter {
 
   layout = $page({
     component: Layout,
-    children: () => [this.home, this.m, this.github404, this.notFound],
+    children: () => [
+      this.home,
+      this.changelog,
+      this.m,
+      this.github404,
+      this.notFound,
+    ],
   });
 
   home = $page({
@@ -66,6 +73,17 @@ export class AppRouter {
     component: Home,
     label: "Home",
     static: true,
+  });
+
+  changelog = $page({
+    path: "/changelog",
+    component: () => <Changelog entries={changelog} />,
+    label: "Changelog",
+    static: true,
+    head: () => ({
+      title: "Changelog",
+      description: "All notable changes to Alepha are documented here.",
+    }),
   });
 
   m = $page({

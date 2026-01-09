@@ -3,7 +3,7 @@ import { snippets } from "../../config/docs.ts";
 
 const CODE_TABS = [
   { key: "server", label: "Server" },
-  { key: "react", label: "SSR" },
+  { key: "react", label: "React" },
   { key: "db", label: "ORM" },
   { key: "queue", label: "Queue" },
   { key: "command", label: "CLI" },

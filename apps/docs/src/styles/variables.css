@@ -214,7 +214,7 @@
   /* Interactive surfaces */
   --color-surface-hover: rgba(0, 0, 0, 0.04);
   --color-surface-active: rgba(0, 0, 0, 0.08);
-  --color-surface-subtle: rgba(0, 0, 0, 0.02);
+  --color-surface-subtle: rgba(0, 0, 0, 0.05);
 
   /* Text */
   --color-text: #24292f;

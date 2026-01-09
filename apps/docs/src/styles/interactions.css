@@ -11,15 +11,19 @@
   background: var(--color-accent-bg) !important;
 }
 
-.logo-btn {
+.logo-btn,
+.version-btn {
   transition: all 0.15s ease;
 }
 
-.logo-btn:hover {
+.logo-btn:hover,
+.version-btn:hover {
   background: var(--color-surface-hover);
+  color: var(--color-text) !important;
 }
 
-.logo-btn:active {
+.logo-btn:active,
+.version-btn:active {
   background: var(--color-surface-active);
 }
 
