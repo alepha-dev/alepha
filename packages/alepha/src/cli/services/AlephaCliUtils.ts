@@ -142,6 +142,33 @@ export class AlephaCliUtils {
   // Package Manager & Project Setup
   // ===================================================================================================================
 
+  public async editFile(
+    root: string,
+    name: string,
+    editFn: (content: string) => string | Promise<string>,
+  ): Promise<void> {
+    const filePath = join(root, name);
+    try {
+      const content = await readFile(filePath, "utf8");
+      const newContent = await editFn(content);
+      await writeFile(filePath, newContent);
+    } catch (error) {
+      this.log.debug("Could not edit file", error);
+    }
+  }
+
+  public async editJsonFile(
+    root: string,
+    name: string,
+    editFn: (obj: any) => any | Promise<any>,
+  ): Promise<void> {
+    return await this.editFile(root, name, async (content) => {
+      const obj = JSON.parse(content);
+      const newObj = await editFn(obj);
+      return JSON.stringify(newObj, null, 2);
+    });
+  }
+
   public async removeFiles(root: string, files: string[]): Promise<void> {
     await Promise.all(
       files.map((file) =>
@@ -151,11 +178,17 @@ export class AlephaCliUtils {
   }
 
   public async removeYarn(root: string): Promise<void> {
-    await this.removeFiles(root, [".yarn", ".yarnrc.yml", ".yarn"]);
+    await this.removeFiles(root, [".yarn", ".yarnrc.yml", "yarn.lock"]);
+    await this.editJsonFile(root, "package.json", (pkg) => {
+      delete pkg.packageManager;
+    });
   }
 
   public async removePnpm(root: string): Promise<void> {
     await this.removeFiles(root, ["pnpm-lock.yaml", "pnpm-workspace.yaml"]);
+    await this.editJsonFile(root, "package.json", (pkg) => {
+      delete pkg.packageManager;
+    });
   }
 
   public async removeNpm(root: string): Promise<void> {
@@ -163,7 +196,7 @@ export class AlephaCliUtils {
   }
 
   public async removeBun(root: string): Promise<void> {
-    await this.removeFiles(root, ["bun.lockb"]);
+    await this.removeFiles(root, ["bun.lockb", "bun.lock"]);
   }
 
   public async removeAllPmFilesExcept(

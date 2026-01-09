@@ -40,7 +40,7 @@ export class DevCommand {
       const isFullstack = await this.isFullstackProject(root);
 
       if (!isFullstack) {
-        const exe = this.alepha.isBun() ? "bun" : "tsx";
+        const exe = (await this.isBunProject(root)) ? "bun" : "tsx";
         let cmd = `${exe} --watch`;
         if (await this.utils.exists(root, ".env")) {
           cmd += " --env-file=./.env";
@@ -57,6 +57,18 @@ export class DevCommand {
       await this.utils.exec("vite");
     },
   });
+
+  protected async isBunProject(root: string): Promise<boolean> {
+    if (this.alepha.isBun()) {
+      return true;
+    }
+    try {
+      await access(join(root, "bun.lock"));
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   protected async isFullstackProject(root: string): Promise<boolean> {
     try {
