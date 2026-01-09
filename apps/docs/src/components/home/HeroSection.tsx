@@ -19,36 +19,16 @@ const HeroSection = () => {
         paddingBottom: 40,
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          width: "100%",
-          height: "100vh",
-          overflow: "hidden",
-          pointerEvents: "none",
-        }}
-      >
-        <div
-          className={"visible-md"}
-          style={{
-            width: "100%",
-            height: "100%",
-            position: "absolute",
-            pointerEvents: "none",
-          }}
-        >
-          <LightPillar
-            bottomColor="#c2255c"
-            intensity={1}
-            noiseIntensity={0.7}
-            rotationSpeed={0.1}
-            glowAmount={0.001}
-            pillarRotation={150}
-            pillarHeight={1}
-          />
-        </div>
+      <div className={"light-pillar"}>
+        <LightPillar
+          bottomColor="#c2255c"
+          intensity={1}
+          noiseIntensity={0.7}
+          rotationSpeed={0.1}
+          glowAmount={0.001}
+          pillarRotation={150}
+          pillarHeight={1}
+        />
       </div>
       <div className="intro-grid">
         {/* Left: Hero Text */}

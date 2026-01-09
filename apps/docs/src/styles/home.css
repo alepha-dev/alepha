@@ -135,6 +135,10 @@
     flex: 1;
     max-width: 550px;
   }
+
+  .light-pillar {
+    display: block !important;
+  }
 }
 
 /* -----------------------------------------------------------------------------
@@ -203,4 +207,15 @@
   .home-footer > div:first-child {
     justify-content: center;
   }
+}
+
+.light-pillar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  pointer-events: none;
+  display: none;
 }
