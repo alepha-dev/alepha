@@ -136,6 +136,16 @@ export class ServerStaticProvider {
       const { headers, reply } = request;
       let path = filepath;
 
+      // 01/26 - when calling "/directory", redirect to "/directory/"
+      if (
+        options.path &&
+        options.path === request.url.pathname &&
+        !options.path.endsWith("/")
+      ) {
+        reply.redirect(`${options.path}/`);
+        return;
+      }
+
       const encoding = headers["accept-encoding"];
       if (encoding) {
         if (hasBr && encoding.includes("br")) {

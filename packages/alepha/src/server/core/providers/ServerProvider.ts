@@ -27,6 +27,9 @@ export class ServerProvider {
   protected readonly internalServerErrorMessage = "Internal Server Error";
 
   public get hostname(): string {
+    if (this.alepha.isViteDev()) {
+      return `http://localhost:${this.alepha.env.SERVER_PORT}`;
+    }
     return ""; // no hostname in serverless mode
   }
 

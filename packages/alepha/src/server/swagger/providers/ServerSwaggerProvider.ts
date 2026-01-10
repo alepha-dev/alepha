@@ -80,10 +80,6 @@ export class ServerSwaggerProvider {
       }
 
       this.json = await this.setupSwaggerPlugin(options);
-
-      if (this.json) {
-        this.log.info("Swagger documentation generated successfully.");
-      }
     },
   });
 
@@ -115,6 +111,8 @@ export class ServerSwaggerProvider {
 
     if (options.ui !== false) {
       await this.configureSwaggerUi(prefix, options);
+    } else {
+      this.log.info(`Swagger API available at ${prefix}/json`);
     }
 
     return json;
@@ -362,7 +360,6 @@ export class ServerSwaggerProvider {
       },
       handler: () => json,
     });
-    this.log.info(`Swagger API available at ${prefix}/json`);
   }
 
   protected async configureSwaggerUi(
@@ -428,9 +425,9 @@ window.onload = function() {
       },
     });
 
-    this.log.info(
-      `Swagger UI available at ${this.serverProvider.hostname}${prefix}/`,
-    );
+    this.log.info("SwaggerUI OK", {
+      url: `${this.serverProvider.hostname}${prefix}`,
+    });
   }
 
   protected async getAssetPath(

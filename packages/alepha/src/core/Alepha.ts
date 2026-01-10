@@ -165,6 +165,13 @@ export class Alepha {
         ...state.env,
         ...process.env,
       };
+
+      // remove empty env variables
+      for (const key in state.env) {
+        if (state.env[key] === "") {
+          delete (state.env as any)[key];
+        }
+      }
     }
 
     // force production mode when building with vite

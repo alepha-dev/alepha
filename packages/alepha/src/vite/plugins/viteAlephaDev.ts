@@ -1,5 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { Plugin, ResolvedConfig } from "vite";
+import {
+  loadEnv,
+  type Plugin,
+  type ResolvedConfig,
+  type UserConfig,
+} from "vite";
 import { boot } from "../helpers/boot.ts";
 import { createAlephaRunner, isViteInternalPath } from "../tasks/runAlepha.ts";
 
@@ -44,9 +49,19 @@ export async function viteAlephaDev(
     debug: options.debug,
   });
 
+  const env = loadEnv("development", process.cwd(), "SERVER");
+
+  const config: UserConfig = {};
+  if (env.SERVER_PORT) {
+    config.server = {
+      port: parseInt(env.SERVER_PORT, 10),
+    };
+  }
+
   return {
     name: "alepha-dev",
     apply: "serve",
+    config: () => config,
     configResolved(resolvedConfig: ResolvedConfig) {
       runner.setConfig(resolvedConfig);
     },
@@ -103,6 +118,9 @@ export async function viteAlephaDev(
       }
     },
     async configureServer(server) {
+      if (env.SERVER_PORT) {
+        server.config.server.port = parseInt(env.SERVER_PORT, 10);
+      }
       const middleware = (
         req: IncomingMessage,
         res: ServerResponse,
