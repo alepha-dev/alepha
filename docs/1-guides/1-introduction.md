@@ -68,8 +68,7 @@ class ProductService {
 
 Because Alepha understands what these Primitives are, it gives you superpowers for free:
 1.  **Automatic OpenAPI/Swagger** documentation.
-2.  **Automatic Admin Panel** (yes, really) generated from your `$entity` definitions.
-3.  **End-to-End Type Safety** without code generation steps.
+2.  **End-to-End Type Safety** without code generation steps.
 
 ## The "Zero-Mapping" Philosophy
 

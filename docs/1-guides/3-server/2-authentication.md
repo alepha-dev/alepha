@@ -24,7 +24,7 @@ class AppSecurity {
     REALM_SECRET: t.string({ default: "***********" }),
   }))
 
-  // Internal realm: you control the secret
+  // Internal realm: you control the secret, you can forge tokens
   internal = $realm({
     name: "app",
     secret: this.env.REALM_SECRET,
@@ -38,11 +38,12 @@ class AppSecurity {
     }
   });
 
-  // External realm: validate tokens from Keycloak, Auth0, etc.
+  // External realm (delegation): validate tokens from Keycloak, Auth0, etc. You can't forge tokens here.
   external = $realm({
     name: "keycloak",
     jwks: () => "https://auth.example.com/realms/myrealm/protocol/openid-connect/certs",
     roles: [{
+      // Map role "user" to all permissions
       name: "user",
       permissions: [{ name: "*" }],
     }],
@@ -62,12 +63,18 @@ Use `$realm` directly when:
 
 ### `$auth`: Login Flows
 
-The `$auth` primitive handles *how* users authenticate. It supports three strategies:
+The `$auth` primitive handles *how* users authenticate. It supports multiple strategies:
 
 ```typescript
 import { $auth } from "alepha/server/auth";
 
 class AuthProviders {
+  env = $env(t.object({
+    GITHUB_CLIENT_ID: t.string(),
+    GITHUB_CLIENT_SECRET: t.string(),
+    KEYCLOAK_URL: t.string(),
+  }));
+
   // 1. Credentials: username/password
   credentials = $auth({
     realm: this.security.internal,
@@ -78,11 +85,6 @@ class AuthProviders {
       }
     }
   });
-
-  env = $env(t.object({
-    GITHUB_CLIENT_ID: t.string(),
-    GITHUB_CLIENT_SECRET: t.string(),
-  }));
 
   // 2. OAuth2: external provider (manual config)
   github = $auth({
@@ -99,8 +101,20 @@ class AuthProviders {
       },
     }
   });
+
+  // 3. OIDC: OpenID Connect (Keycloak, Auth0, Okta, etc.)
+  keycloak = $auth({
+    oidc: {
+      issuer: `${this.env.KEYCLOAK_URL}/realms/customers`,
+      clientId: "my-app",
+    },
+    fallback: () => generateAnonymousToken(), // Optional: return anonymous token if not authenticated
+  });
 }
 ```
+
+The `oidc` strategy auto-discovers endpoints from the issuer's `.well-known/openid-configuration`.
+No manual URL wiring needed—just point it at your identity provider and go.
 
 ## The High-Level Way (Recommended)
 
@@ -112,15 +126,9 @@ For most SaaS applications, you don't want to wire all this yourself. Alepha pro
 
 ```typescript
 import { $userRealm } from "alepha/api/users";
-import { $env, t } from "alepha";
 
 class AppSecurity {
-  env = $env(t.object({
-    APP_SECRET: t.string(),
-  }));
-
   realm = $userRealm({
-    secret: this.env.APP_SECRET,
     settings: {
       registrationAllowed: true,
       emailRequired: true,
@@ -141,16 +149,16 @@ import { $authGoogle, $authGithub, $authCredentials } from "alepha/server/auth";
 
 class AuthProviders {
   // Username/password with your $userRealm
-  credentials = $authCredentials(this.authSystem.realm);
+  credentials = $authCredentials(this.realm);
 
   // Google OAuth2 (auto-configured)
-  google = $authGoogle(this.authSystem.realm, {
+  google = $authGoogle(this.realm, {
     clientId: "...",
     clientSecret: "...",
   });
 
   // GitHub OAuth2 (auto-configured)
-  github = $authGithub(this.authSystem.realm, {
+  github = $authGithub(this.realm, {
     clientId: "...",
     clientSecret: "...",
   });
@@ -187,19 +195,65 @@ On the client (React), you don't need to manage tokens manually. Alepha handles 
 
 ```tsx
 import { useAuth } from "@alepha/react/auth";
+import type { AuthProviders } from "./AuthProviders";
 
-const LoginButton = () => {
-  const auth = useAuth();
+const LoginPage = () => {
+  // Type parameter gives you autocomplete for provider names
+  const auth = useAuth<AuthProviders>();
 
   if (auth.user) {
-    return <div>Welcome, {auth.user.name}</div>;
+    return (
+      <div>
+        <p>Welcome, {auth.user.name}</p>
+        <button onClick={() => auth.logout()}>Logout</button>
+      </div>
+    );
   }
 
   return (
-    <button onClick={() => auth.login("google")}>
-      Sign in with Google
-    </button>
+    <div>
+      {/* OAuth/OIDC: redirects to provider */}
+      <button onClick={() => auth.login("keycloak")}>
+        Sign in with Keycloak
+      </button>
+      <button onClick={() => auth.login("github")}>
+        Sign in with GitHub
+      </button>
+
+      {/* Credentials: pass username/password directly */}
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        auth.login("credentials", {
+          username: email,
+          password: password,
+        });
+      }}>
+        <input type="email" placeholder="Email" />
+        <input type="password" placeholder="Password" />
+        <button type="submit">Sign in</button>
+      </form>
+    </div>
   );
+};
+```
+
+The generic type `useAuth<AuthProviders>()` gives you autocomplete for provider names—no more typos.
+OAuth providers redirect to the identity provider; credentials submit directly.
+
+### Permission Checking
+
+The `can()` helper checks if the current user has permission to call an action:
+
+```tsx
+const AdminPanel = () => {
+  const auth = useAuth<AuthProviders>();
+
+  // Check permission before showing UI
+  if (!auth.can("deleteUser")) {
+    return <p>Access denied</p>;
+  }
+
+  return <button>Delete User</button>;
 };
 ```
 

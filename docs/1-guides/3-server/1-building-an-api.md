@@ -12,6 +12,8 @@ An `$action` is a type-safe HTTP endpoint. It bundles everything together:
 2. **Validation Schema** — What goes in (body, query, params) and what comes out (response)
 3. **Handler** — The function that runs
 
+It uses `$route` under the hood.
+
 ```typescript filename="src/api/controllers/UserController.ts"
 import { t } from "alepha";
 import { $action, NotFoundError } from "alepha/server";
@@ -346,17 +348,6 @@ class OrderController {
 If you don't set `group`, it defaults to the class name (`OrderController`).
 
 ## Other Options
-
-### `name`
-
-Override the action name (used for path generation and logging):
-
-```typescript
-list = $action({
-  name: "listAllUsers",  // Instead of "list"
-  handler: async () => [],
-});
-```
 
 ### `description`
 

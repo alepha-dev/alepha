@@ -17,14 +17,15 @@ AlephaError (base)
 │   ├── NotFoundError (404)
 │   ├── ConflictError (409)
 │   └── ValidationError (400)
-├── DbError (database errors)
+├── DbError (500)
 │   ├── DbEntityNotFoundError (404)
 │   ├── DbConflictError (409)
 │   └── DbVersionMismatchError (409)
-└── TypeBoxError (schema validation)
+└── TypeBoxError (400)
 ```
 
-**If you see an error that doesn't extend `AlephaError`, that's a bug.** Either in your code or in the framework. All framework modules use this hierarchy consistently.
+**If you see an error that doesn't extend `AlephaError`, that's a bug.**
+Either in your code or in the framework. All framework modules use this hierarchy consistently.
 
 ## HTTP Errors
 
@@ -81,6 +82,32 @@ The client receives a clean JSON error:
 }
 ```
 
+### The Error Response Schema
+
+All HTTP errors follow a consistent schema. This isn't just convention—it's enforced:
+
+```typescript
+{
+  error: string;      // Error class name ("NotFoundError", "ValidationError", etc.)
+  status: number;     // HTTP status code
+  message: string;    // Human-readable description
+  details?: string;   // Optional detailed explanation
+  requestId?: string; // Request tracking ID (when enabled)
+  cause?: {           // Original error (development only)
+    name: string;
+    message: string;
+  };
+}
+```
+
+Need the schema or type in your code? Import it:
+
+```typescript
+import { errorSchema, type ErrorSchema } from "alepha/server";
+```
+
+This schema is used for OpenAPI documentation, client-side type inference, and response serialization. Your frontend can rely on this shape for every error, every time.
+
 ### Available Error Classes
 
 | Class | Status | Default Message |
@@ -122,7 +149,12 @@ throw new Error("User not found");
 
 // Good: This is a proper 404
 throw new NotFoundError("User not found");
+
+// Even better: Domain-specific error
+throw new ProductNotFoundError(productId);
 ```
+
+Domain-specific errors are more expressive. `ProductNotFoundError` tells you exactly what's missing. `EmptyStockError` tells you why the order failed. Generic `NotFoundError` makes you dig through logs. Name your errors after business concepts, not HTTP codes.
 
 ## Checking Error Types with `HttpError.is()`
 
@@ -226,11 +258,11 @@ If someone sends `{ email: "not-an-email", age: 15 }`, they get a 400:
 {
   "error": "ValidationError",
   "status": 400,
-  "message": "Validation has failed",
-  "details": [
-    { "path": "/email", "message": "Expected email format" },
-    { "path": "/age", "message": "Expected integer >= 18" }
-  ]
+  "message": "Invalid request body",
+  "cause": {
+    "name": "TypeBoxError",
+    "message": "Invalid email format at /email"
+  }
 }
 ```
 
@@ -260,24 +292,6 @@ BadRequestError: Payment failed
   └── cause: StripeError: Card declined
         └── cause: NetworkError: Connection timeout
 ```
-
-In development, you see the full chain. In production, only the top-level message is exposed to clients.
-
-## Stack Traces: Dev vs Production
-
-**In development**, Alepha shows full stack traces for debugging:
-
-- API errors include the stack trace in the response
-- React pages show detailed error overlays
-- Console logs include the full error chain
-
-**In production**, stack traces are hidden:
-
-- Clients only see the error message and status
-- Stack traces are logged server-side (for your logs/Sentry)
-- No internal details leak to users
-
-This happens automatically based on `NODE_ENV`.
 
 ## Global Error Handling
 
@@ -313,105 +327,26 @@ class ErrorHandler {
 Use the event system:
 
 ```typescript
-// In your app initialization
-alepha.events.on("react:action:error", ({ error, type }) => {
-  // Show a toast for every failed action
-  toast.error(error.message);
+class ErrorHandler {
+  log = $logger();
 
-  // Log to analytics
-  analytics.track("error", {
-    message: error.message,
-    action: type,
+  onError = $hook({
+    // catch all action errors in React (from useAction, useForm and router)
+    on: "react:action:error",
+    handler: async ({ error, request }) => {
+      // Log to analytics
+      analytics.track("error", {
+        message: error.message,
+        action: type,
+      });
+    },
   });
-});
+}
 ```
 
 One listener. Every error. No try/catch everywhere.
 
-## Error Boundaries in React
-
-For component-level errors, use the `errorHandler` in `$page`:
-
-```typescript
-class AppRouter {
-  userProfile = $page({
-    path: "/users/:id",
-    resolve: async ({ params }) => {
-      const user = await this.api.getUser(params.id);
-      return { user };
-    },
-    errorHandler: (error) => {
-      // Render custom UI for specific errors
-      if (HttpError.is(error, 404)) {
-        return <UserNotFound />;
-      }
-      if (HttpError.is(error, 403)) {
-        return <AccessDenied />;
-      }
-      // Return undefined to let error bubble up
-    },
-    component: ({ user }) => <Profile user={user} />,
-  });
-}
-```
-
-## Custom Error Classes
-
-For domain-specific errors, extend `AlephaError` and include a `status`:
-
-```typescript
-import { AlephaError } from "alepha";
-
-export class InsufficientFundsError extends AlephaError {
-  readonly status = 402; // Payment Required
-
-  constructor(
-    public required: number,
-    public available: number,
-    cause?: unknown
-  ) {
-    super(`Need ${required}, only have ${available}`, { cause });
-  }
-}
-
-// Usage
-class PaymentService {
-  async charge(userId: string, amount: number) {
-    const balance = await this.getBalance(userId);
-
-    if (balance < amount) {
-      throw new InsufficientFundsError(amount, balance);
-    }
-
-    // Process payment...
-  }
-}
-```
-
 ## Error Handling Patterns
-
-### The "Let It Crash" Pattern
-
-Don't catch errors you can't handle meaningfully:
-
-```typescript
-class UserService {
-  // Bad: Hiding errors
-  async getUser(id: string) {
-    try {
-      return await this.db.users.findById(id);
-    } catch (e) {
-      return null; // Swallowed the real error!
-    }
-  }
-
-  // Good: Let it bubble
-  async getUser(id: string) {
-    return await this.db.users.findById(id);
-    // If not found, DbEntityNotFoundError propagates as 404
-  }
-}
-```
 
 ### Transform at Boundaries
 
@@ -444,7 +379,7 @@ class UserController {
   getUser = $action({
     path: "/users/:id",
     handler: async ({ params }) => {
-      const user = await this.db.users.findById(params.id);
+      const user = await this.users.findById(params.id);
 
       // Recommendations are nice to have, not critical
       let recommendations = [];
@@ -472,12 +407,9 @@ class UserController {
 | Business rule violation | Custom error extending `AlephaError` with `status` |
 | Check error type | `HttpError.is(error, 404)` |
 | Global logging | `$hook({ on: "server:onError" })` |
-| React error UI | `errorHandler` in `$page` |
-| Client-side toast | `alepha.events.on("react:action:error")` |
 
 **Remember:**
 - All errors should extend `AlephaError`
 - All errors should have a `status` field
 - 500 errors mean something is wrong with your error handling
 - Use `cause` to chain errors for debugging
-- Stack traces are hidden in production
