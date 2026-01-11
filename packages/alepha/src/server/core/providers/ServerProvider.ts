@@ -119,9 +119,16 @@ export class ServerProvider {
     // if response.body is web stream
     if (response.body instanceof ReadableStream) {
       res.writeHead(response.status, response.headers);
+      // Flush headers immediately and disable Nagle's algorithm for streaming
+      res.flushHeaders();
+      res.socket?.setNoDelay(true);
       try {
         for await (const chunk of response.body) {
-          res.write(chunk);
+          const canContinue = res.write(chunk);
+          // If the internal buffer is full, wait for it to drain
+          if (!canContinue) {
+            await new Promise<void>((resolve) => res.once("drain", resolve));
+          }
         }
       } catch (error) {
         this.log.error("Error piping proxy response stream", error);
