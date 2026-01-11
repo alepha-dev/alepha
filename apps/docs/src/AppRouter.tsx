@@ -101,7 +101,7 @@ export class AppRouter {
         label: it.name,
       })),
     },
-    resolve: async ({ params }) => {
+    loader: async ({ params }) => {
       for (const pkg of docs) {
         if (pkg.slug === params.slug) {
           return { ...pkg, content: await pkg.content() };

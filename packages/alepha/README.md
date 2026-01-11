@@ -146,7 +146,7 @@ class AppRouter {
       })
     },
     component: Hello,
-    resolve: (req) => {
+    loader: (req) => {
       return { count: req.query.start };
     },
   });

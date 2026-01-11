@@ -215,7 +215,7 @@ export class AppRouter {
   home = $page({
     path: "/",
     lazy: () => import("./components/Home.tsx"),
-    resolve: async () => {
+    loader: async () => {
       // Server-side data fetching
       const data = await fetchHomeData();
       return { data };
@@ -315,7 +315,7 @@ class UserProfile {
     home = $page({
         path: "/",
         lazy: () => import("./Home.tsx"),
-        resolve: async () => {
+        loader: async () => {
             return {
                 user: await this.userApi.getMyUserProfile(data)
             };

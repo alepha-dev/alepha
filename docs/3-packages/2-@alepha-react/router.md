@@ -14,7 +14,7 @@ This module enables:
 - URL pattern matching with parameters (e.g., `/users/:id`)
 - Nested routing with parent-child relationships
 - Type-safe URL parameter and query string validation
-- Server-side data fetching with the `resolve` function
+- Server-side data fetching with the `loader` function
 - Lazy loading and code splitting
 - Page animations and error handling
 
@@ -39,7 +39,7 @@ It provides a declarative way to define pages with powerful features:
 - Type-safe URL parameter and query string validation
 
 **Data Loading**
-- Server-side data fetching with the `resolve` function
+- Server-side data fetching with the `loader` function
 - Automatic serialization and hydration for SSR
 - Access to request context, URL params, and parent data
 
@@ -75,7 +75,7 @@ const userProfile = $page({
     params: t.object({ id: t.integer() }),
     query: t.object({ tab: t.optional(t.text()) })
   },
-  resolve: async ({ params }) => {
+  loader: async ({ params }) => {
     const user = await userApi.getUser(params.id);
     return { user };
   },
@@ -87,7 +87,7 @@ const userProfile = $page({
 const projectSection = $page({
   path: "/projects/:id",
   children: () => [projectBoard, projectSettings],
-  resolve: async ({ params }) => {
+  loader: async ({ params }) => {
     const project = await projectApi.get(params.id);
     return { project };
   },
@@ -105,7 +105,7 @@ const blogPost = $page({
   static: {
     entries: posts.map(p => ({ params: { slug: p.slug } }))
   },
-  resolve: async ({ params }) => {
+  loader: async ({ params }) => {
     const post = await loadPost(params.slug);
     return { post };
   }

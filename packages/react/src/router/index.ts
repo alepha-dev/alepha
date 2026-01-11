@@ -101,7 +101,7 @@ declare module "alepha" {
  * - URL pattern matching with parameters (e.g., `/users/:id`)
  * - Nested routing with parent-child relationships
  * - Type-safe URL parameter and query string validation
- * - Server-side data fetching with the `resolve` function
+ * - Server-side data fetching with the `loader` function
  * - Lazy loading and code splitting
  * - Page animations and error handling
  *

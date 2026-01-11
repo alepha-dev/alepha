@@ -47,7 +47,7 @@ export class AuthRouter {
     },
     can: () => !this.auth.user,
     lazy: () => import("./components/Login.tsx"),
-    resolve: async ({ query }) => {
+    loader: async ({ query }) => {
       return {
         realmConfig: await this.loadRealmConfig(query.realm),
       };
@@ -64,7 +64,7 @@ export class AuthRouter {
     },
     can: () => !this.auth.user,
     lazy: () => import("./components/Register.tsx"),
-    resolve: async ({ query }) => {
+    loader: async ({ query }) => {
       return {
         realmConfig: await this.loadRealmConfig(query.realm),
       };
@@ -81,7 +81,7 @@ export class AuthRouter {
     },
     can: () => !this.auth.user,
     lazy: () => import("./components/ResetPassword.tsx"),
-    resolve: async ({ query }) => {
+    loader: async ({ query }) => {
       return {
         realmConfig: await this.loadRealmConfig(query.realm),
       };
@@ -109,7 +109,7 @@ export class AuthRouter {
     can: () => !!this.auth.user,
     path: "/logout",
     component: () => null,
-    resolve: () => {
+    loader: () => {
       this.auth.logout();
       return {};
     },

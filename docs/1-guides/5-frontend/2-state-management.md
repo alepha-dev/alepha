@@ -105,9 +105,9 @@ const ThemeToggle = () => {
 };
 ```
 
-## Setting State from Page Resolution
+## Setting State from Page Loading
 
-The real power comes when you combine atoms with `$page` resolution. Load data on the server, put it in an atom, and it's instantly available to all components.
+The real power comes when you combine atoms with `$page` loading. Load data on the server, put it in an atom, and it's instantly available to all components.
 
 ```typescript
 import { $page } from "@alepha/react/router";
@@ -123,7 +123,7 @@ class AppRouter {
   project = $page({
     path: "/p/:projectId",
     lazy: () => import("./components/ProjectView.tsx"),
-    resolve: async ({ params }) => {
+    loader: async ({ params }) => {
       // Fetch on server (or client on navigation)
       const project = await this.projectApi.getProjectById({
         params: { id: params.projectId },
@@ -284,7 +284,7 @@ export const currentTaskAtom = $atom({
 | Scenario | Solution |
 |----------|----------|
 | Data shared across many components | `$atom` + `useStore` |
-| Current page/route data | `$atom` set in `resolve()` |
+| Current page/route data | `$atom` set in `loader()` |
 | User preferences, theme | `$atom` with default value |
 | Authentication state | `$atom` (Alepha handles this internally) |
 | Form input | `useForm` hook |

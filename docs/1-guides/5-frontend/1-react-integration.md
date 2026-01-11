@@ -258,7 +258,7 @@ export class AppRouter {
       })
     },
     // Server-Side Data Fetching
-    resolve: async ({ query }) => {
+    loader: async ({ query }) => {
       const stats = await db.stats.get(query.filter);
       return { stats };
     },
@@ -273,7 +273,7 @@ export class AppRouter {
     schema: {
       params: t.object({ id: t.text() })
     },
-    resolve: async ({ params }) => {
+    loader: async ({ params }) => {
       return { user: await db.users.findById(params.id) };
     },
     component: ({ user }) => <UserCard user={user} />
@@ -297,7 +297,7 @@ postDetail = $page({
       tab: t.optional(t.enum(["comments", "related"])),
     }),
   },
-  resolve: async ({ params, query }) => {
+  loader: async ({ params, query }) => {
     // params.id is string (validated as UUID)
     // params.slug is string
     // query.tab is "comments" | "related" | undefined
@@ -435,7 +435,7 @@ const Filters = () => {
 Alepha handles Server-Side Rendering:
 
 1. Server matches URL to `$page`
-2. Runs `resolve` function for data
+2. Runs `loader` function for data
 3. Renders React to HTML
 4. Sends HTML to browser
 5. Hydrates the React app

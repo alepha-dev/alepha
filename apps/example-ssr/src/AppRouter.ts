@@ -15,7 +15,7 @@ export class AppRouter {
         name: t.text({ default: "Alepha" }),
       }),
     },
-    resolve: async ({ query }) => {
+    loader: async ({ query }) => {
       return {
         greeting: `Hello, ${query.name} SSR!`,
         count: await this.countApi.inc().then((result) => result.count),

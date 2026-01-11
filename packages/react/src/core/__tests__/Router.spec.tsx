@@ -74,7 +74,7 @@ test("Router - NestedView", async ({ expect }) => {
             name: t.text(),
           }),
         },
-        resolve: ({ params }) => params,
+        loader: ({ params }) => params,
         component: (props) => `Hello, ${props.name}!`,
       },
     ],
@@ -125,18 +125,18 @@ test("Router - All routes", async ({ expect }) => {
           {
             path: ":id",
             schema: { params: t.object({ id: t.text() }) },
-            resolve: ({ params }) => {
+            loader: ({ params }) => {
               if (params.id === "boom") throw new Error("boom");
               return params;
             },
             children: [
               {
-                resolve: ({ params }) => params,
+                loader: ({ params }) => params,
                 component: ({ id }) => `hey ${id}`,
               },
               {
                 path: "profile",
-                resolve: ({ params }) => params,
+                loader: ({ params }) => params,
                 component: ({ id }) => `profile of ${id}`,
               },
             ],

@@ -60,7 +60,7 @@ export class AdminRouter {
     props: () => ({
       adminShellProps: this.adminShellProps(),
     }),
-    resolve: ({ user, url }) => {
+    loader: ({ user, url }) => {
       if (!user) {
         throw this.onNotAuthorized(url);
       }

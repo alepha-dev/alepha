@@ -38,7 +38,7 @@ class App {
   home = $page({
     path: '/',
     // fetch data before rendering the page
-    resolve: async () => ({
+    loader: async () => ({
       message: "Welcome to Alepha!"
     }),
     component: HelloComponent,

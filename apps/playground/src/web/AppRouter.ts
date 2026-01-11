@@ -17,7 +17,7 @@ export class AppRouter {
         hack: t.optional(t.string()),
       }),
     },
-    resolve: ({ query }) => {
+    loader: ({ query }) => {
       return query;
     },
   });

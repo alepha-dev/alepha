@@ -116,7 +116,7 @@ import { $page } from "@alepha/react/router";
 class AppRouter {
   blog = $page({
     path: "/blog/:slug",
-    resolve: async ({ params }) => {
+    loader: async ({ params }) => {
       const post = await db.posts.findBySlug(params.slug);
       return { post };
     },
@@ -131,7 +131,7 @@ class AppRouter {
   // Dynamic head based on resolved data
   product = $page({
     path: "/products/:id",
-    resolve: async ({ params }) => {
+    loader: async ({ params }) => {
       const product = await db.products.findById(params.id);
       return { product };
     },

@@ -89,7 +89,7 @@ describe("$page browser tests", () => {
               id: t.text(),
             }),
           },
-          resolve: ({ params }) => ({
+          loader: ({ params }) => ({
             userId: params.id,
             userName: `User ${params.id}`,
           }),
@@ -132,7 +132,7 @@ describe("$page browser tests", () => {
       class App {
         async = $page({
           path: "/async",
-          resolve: async () => {
+          loader: async () => {
             await new Promise((resolve) => setTimeout(resolve, 10));
             return { message: "Loaded async data" };
           },
@@ -174,7 +174,7 @@ describe("$page browser tests", () => {
 
         protected = $page({
           path: "/protected",
-          resolve: () => {
+          loader: () => {
             if (!isAuthenticated) {
               throw new Error("Unauthorized");
             }
@@ -227,7 +227,7 @@ describe("$page browser tests", () => {
       class App {
         errorPage = $page({
           path: "/error",
-          resolve: () => {
+          loader: () => {
             throw new Error("Something went wrong");
           },
           errorHandler: (error) => (
@@ -259,7 +259,7 @@ describe("$page browser tests", () => {
       class App {
         layout = $page({
           path: "/",
-          resolve: () => ({ appName: "My App" }),
+          loader: () => ({ appName: "My App" }),
           component: ({ appName }: { appName: string }) => (
             <div data-testid="layout">
               <header data-testid="header">{appName}</header>
@@ -316,7 +316,7 @@ describe("$page browser tests", () => {
       class App {
         layout = $page({
           path: "/",
-          resolve: () => ({ theme: "dark" }),
+          loader: () => ({ theme: "dark" }),
           component: ({ theme }: { theme: string }) => (
             <div data-testid="layout" data-theme={theme}>
               <NestedView />
@@ -328,7 +328,7 @@ describe("$page browser tests", () => {
         page = $page({
           path: "/page",
           parent: this.layout,
-          resolve: ({ theme }) => ({
+          loader: ({ theme }) => ({
             message: `Theme is ${theme}`,
           }),
           component: ({ message }: { message: string }) => (
@@ -362,7 +362,7 @@ describe("$page browser tests", () => {
       class App {
         root = $page({
           path: "/",
-          resolve: () => ({ level: "root" }),
+          loader: () => ({ level: "root" }),
           component: ({ level }: { level: string }) => (
             <div data-testid="root">
               {level}
@@ -374,7 +374,7 @@ describe("$page browser tests", () => {
         section = $page({
           path: "/section",
           parent: this.root,
-          resolve: ({ level }) => ({ level: `${level} > section` }),
+          loader: ({ level }) => ({ level: `${level} > section` }),
           component: ({ level }: { level: string }) => (
             <div data-testid="section">
               {level}
@@ -386,7 +386,7 @@ describe("$page browser tests", () => {
         page = $page({
           path: "/page",
           parent: this.section,
-          resolve: ({ level }) => ({ level: `${level} > page` }),
+          loader: ({ level }) => ({ level: `${level} > page` }),
           component: ({ level }: { level: string }) => (
             <div data-testid="page">{level}</div>
           ),
@@ -469,7 +469,7 @@ describe("$page browser tests", () => {
               id: t.text(),
             }),
           },
-          resolve: ({ params }) => ({
+          loader: ({ params }) => ({
             userId: params.id,
           }),
           component: ({ userId }: { userId: string }) => (
@@ -504,7 +504,7 @@ describe("$page browser tests", () => {
               page: t.number({ default: 1 }),
             }),
           },
-          resolve: ({ query }) => ({
+          loader: ({ query }) => ({
             searchQuery: query.q,
             currentPage: query.page,
           }),
@@ -553,7 +553,7 @@ describe("$page browser tests", () => {
               page: t.number({ default: 1 }),
             }),
           },
-          resolve: ({ query }) => ({
+          loader: ({ query }) => ({
             searchQuery: query.q,
             currentPage: query.page,
           }),
@@ -605,7 +605,7 @@ describe("$page browser tests", () => {
               limit: t.number({ default: 10 }),
             }),
           },
-          resolve: ({ params, query }) => ({
+          loader: ({ params, query }) => ({
             userId: params.userId,
             sortBy: query.sort,
             limit: query.limit,
@@ -660,7 +660,7 @@ describe("$page browser tests", () => {
               page: t.number({ default: 1 }),
             }),
           },
-          resolve: ({ query }) => ({
+          loader: ({ query }) => ({
             searchQuery: query.q,
             currentPage: query.page,
           }),

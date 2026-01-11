@@ -154,7 +154,7 @@ class AppRouter {
 
   users = $page({
     path: "/users",
-    resolve: async () => ({ users: await this.api.listUsers() }),
+    loader: async () => ({ users: await this.api.listUsers() }),
     component: ({ users }) => (
       <ul>
         {users.map(u => <li key={u.id}>{u.email}</li>)}

@@ -61,7 +61,7 @@ describe("$page primitive tests", () => {
             sort: t.optional(t.text()),
           }),
         },
-        resolve: ({ params, query }) => ({ params, query }),
+        loader: ({ params, query }) => ({ params, query }),
         component: ({ params, query }) =>
           `User ${params.id} - Tab: ${query.tab}`,
       });
@@ -72,7 +72,7 @@ describe("$page primitive tests", () => {
 
     expect(app.user.options.schema?.params).toBeDefined();
     expect(app.user.options.schema?.query).toBeDefined();
-    expect(app.user.options.resolve).toBeDefined();
+    expect(app.user.options.loader).toBeDefined();
     expect(app.user.options.component).toBeDefined();
 
     const rendered = await app.user.render({
@@ -89,7 +89,7 @@ describe("$page primitive tests", () => {
     class App {
       lazy = $page({
         path: "/lazy",
-        resolve: () => ({ message: "loaded" }),
+        loader: () => ({ message: "loaded" }),
         lazy: async () => ({ default: LazyComponent }),
       });
     }
@@ -141,7 +141,7 @@ describe("$page primitive tests", () => {
             id: t.text(),
           }),
         },
-        resolve: async ({ params }) => {
+        loader: async ({ params }) => {
           await new Promise((resolve) => setTimeout(resolve, 10));
           return { data: `Data for ${params.id}`, timestamp: Date.now() };
         },
@@ -152,8 +152,8 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.async.options.resolve).toBeDefined();
-    expect(typeof app.async.options.resolve).toBe("function");
+    expect(app.async.options.loader).toBeDefined();
+    expect(typeof app.async.options.loader).toBe("function");
 
     const mockContext = {
       params: { id: "test" },
@@ -161,7 +161,7 @@ describe("$page primitive tests", () => {
       pathname: "/async/test",
       search: "",
     };
-    const result = await app.async.options.resolve!(mockContext as any);
+    const result = await app.async.options.loader!(mockContext as any);
     expect(result.data).toBe("Data for test");
     expect(typeof result.timestamp).toBe("number");
 
@@ -173,14 +173,14 @@ describe("$page primitive tests", () => {
     class App {
       parent = $page({
         path: "/parent",
-        resolve: () => ({ parentData: "from parent" }),
+        loader: () => ({ parentData: "from parent" }),
         children: [],
       });
 
       child = $page({
         path: "/child",
         parent: this.parent,
-        resolve: ({ parentData }) => ({
+        loader: ({ parentData }) => ({
           childData: `child with ${parentData}`,
         }),
         component: ({ childData }) => childData,
@@ -261,7 +261,7 @@ describe("$page primitive tests", () => {
     class App {
       errorPage = $page({
         path: "/error",
-        resolve: () => {
+        loader: () => {
           throw new Error("Test error");
         },
         errorHandler: (error) => `Error: ${error.message}`,
@@ -289,7 +289,7 @@ describe("$page primitive tests", () => {
     class App {
       errorPage = $page({
         path: "/error",
-        resolve: () => {
+        loader: () => {
           throw new Error("unauthorized");
         },
         errorHandler: (error) => {
@@ -342,7 +342,7 @@ describe("$page primitive tests", () => {
         static: {
           entries: [{ params: { id: "1" } }, { params: { id: "2" } }],
         },
-        resolve: ({ params }) => ({ id: params.id }),
+        loader: ({ params }) => ({ id: params.id }),
         component: ({ id }) => `Static page ${id}`,
       });
     }
@@ -566,7 +566,7 @@ describe("$page primitive tests", () => {
             limit: t.number({ default: 10 }),
           }),
         },
-        resolve: ({ params, query }) => ({
+        loader: ({ params, query }) => ({
           user: { id: params.userId },
           pagination: { page: query.page, limit: query.limit },
           filters: query.filters,
@@ -582,7 +582,7 @@ describe("$page primitive tests", () => {
 
     expect(app.complex.options.schema?.params).toBeDefined();
     expect(app.complex.options.schema?.query).toBeDefined();
-    expect(app.complex.options.resolve).toBeDefined();
+    expect(app.complex.options.loader).toBeDefined();
 
     const rendered = await app.complex.render({
       params: { userId: "123" },
@@ -608,7 +608,7 @@ describe("$page primitive tests", () => {
 
       child = $page({
         path: "/child",
-        resolve: () => {
+        loader: () => {
           throw new Error("Child error");
         },
         errorHandler: (error) => {
@@ -648,13 +648,13 @@ describe("$page primitive tests", () => {
   test("$page - resolve function receives parent props", async ({ expect }) => {
     class App {
       parent = $page({
-        resolve: () => ({ parentValue: "from parent" }),
+        loader: () => ({ parentValue: "from parent" }),
       });
 
       child = $page({
         path: "/child",
         parent: this.parent,
-        resolve: ({ parentValue }) => ({
+        loader: ({ parentValue }) => ({
           childData: `Child received: ${parentValue}`,
         }),
         component: ({ childData, parentValue }) =>
@@ -665,7 +665,7 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.child.options.resolve).toBeDefined();
+    expect(app.child.options.loader).toBeDefined();
 
     const rendered = await app.child.fetch();
     expect(rendered.html).toBe("Child received: from parent and from parent");

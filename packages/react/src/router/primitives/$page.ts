@@ -30,7 +30,7 @@ import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
  * - Type-safe URL parameter and query string validation
  *
  * **Data Loading**
- * - Server-side data fetching with the `resolve` function
+ * - Server-side data fetching with the `loader` function
  * - Automatic serialization and hydration for SSR
  * - Access to request context, URL params, and parent data
  *
@@ -67,7 +67,7 @@ import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
  *     params: t.object({ id: t.integer() }),
  *     query: t.object({ tab: t.optional(t.text()) })
  *   },
- *   resolve: async ({ params }) => {
+ *   loader: async ({ params }) => {
  *     const user = await userApi.getUser(params.id);
  *     return { user };
  *   },
@@ -80,7 +80,7 @@ import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
  * const projectSection = $page({
  *   path: "/projects/:id",
  *   children: () => [projectBoard, projectSettings],
- *   resolve: async ({ params }) => {
+ *   loader: async ({ params }) => {
  *     const project = await projectApi.get(params.id);
  *     return { project };
  *   },
@@ -99,7 +99,7 @@ import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
  *   static: {
  *     entries: posts.map(p => ({ params: { slug: p.slug } }))
  *   },
- *   resolve: async ({ params }) => {
+ *   loader: async ({ params }) => {
  *     const post = await loadPost(params.slug);
  *     return { post };
  *   }
@@ -158,12 +158,12 @@ export interface PagePrimitiveOptions<
    *
    * > In SSR, the returned data will be serialized and sent to the client, then reused during the client-side hydration.
    *
-   * Resolve can be stopped by throwing an error, which will be handled by the `errorHandler` function.
+   * Loader can be stopped by throwing an error, which will be handled by the `errorHandler` function.
    * It's common to throw a `NotFoundError` to display a 404 page.
    *
    * RedirectError can be thrown to redirect the user to another page.
    */
-  resolve?: (context: PageResolve<TConfig, TPropsParent>) => Async<TProps>;
+  loader?: (context: PageLoader<TConfig, TPropsParent>) => Async<TProps>;
 
   /**
    * Default props to pass to the component when rendering the page.
@@ -208,7 +208,7 @@ export interface PagePrimitiveOptions<
   can?: () => boolean;
 
   /**
-   * Catch any error from the `resolve` function or during `rendering`.
+   * Catch any error from the `loader` function or during `rendering`.
    *
    * Expected to return one of the following:
    * - a ReactNode to render an error page
@@ -220,7 +220,7 @@ export interface PagePrimitiveOptions<
    *
    * @example Catch a 404 from API and render a custom not found component:
    * ```ts
-   * resolve: async ({ params, query }) => {
+   * loader: async ({ params, query }) => {
    *    api.fetch("/api/resource", { params, query });
    * },
    * errorHandler: (error, context) => {
@@ -232,7 +232,7 @@ export interface PagePrimitiveOptions<
    *
    * @example Catch an 401 error and redirect the user to the login page:
    * ```ts
-   * resolve: async ({ params, query }) => {
+   * loader: async ({ params, query }) => {
    *   // but the user is not authenticated
    *   api.fetch("/api/resource", { params, query });
    * },
@@ -458,7 +458,7 @@ export interface PageRequestConfig<
     : Record<string, string>;
 }
 
-export type PageResolve<
+export type PageLoader<
   TConfig extends PageConfigSchema = PageConfigSchema,
   TPropsParent extends object = TPropsParentDefault,
 > = PageRequestConfig<TConfig> &

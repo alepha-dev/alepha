@@ -24,7 +24,7 @@ export class MeRouter {
     parent: this.me,
     path: "/characters",
     lazy: () => import("./MyCharacters.jsx"),
-    resolve: async () => {
+    loader: async () => {
       return {
         characters: await this.characterApi.getMyCharacters(),
       };
@@ -35,7 +35,7 @@ export class MeRouter {
     parent: this.me,
     path: "/identities",
     lazy: () => import("./MyIdentities.jsx"),
-    resolve: async () => {
+    loader: async () => {
       return {
         identities: await this.identityApi.getMyIdentities(),
       };
@@ -46,7 +46,7 @@ export class MeRouter {
     parent: this.me,
     path: "/invitations",
     lazy: () => import("./MyInvitations.jsx"),
-    resolve: async () => {
+    loader: async () => {
       return {
         invitations: await this.invitationApi.getMyInvitations(),
       };
@@ -57,7 +57,7 @@ export class MeRouter {
     parent: this.me,
     path: "/",
     lazy: () => import("./MyProfile.jsx"),
-    resolve: async () => {
+    loader: async () => {
       const [user, characters, identities] = await Promise.all([
         this.userApi.me(),
         this.characterApi.getMyCharacters(),
@@ -75,7 +75,7 @@ export class MeRouter {
     parent: this.me,
     path: "/sessions",
     lazy: () => import("./MySessions.jsx"),
-    resolve: async () => {
+    loader: async () => {
       return {
         sessions: await this.sessionApi.getMySessions(),
       };
@@ -86,7 +86,7 @@ export class MeRouter {
     parent: this.me,
     path: "/api-keys",
     lazy: () => import("./MyApiKeys.jsx"),
-    resolve: async () => {
+    loader: async () => {
       return {
         apiKeys: await this.mcpApiKeyApi.listApiKeys(),
       };

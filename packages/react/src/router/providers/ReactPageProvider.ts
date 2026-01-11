@@ -252,15 +252,15 @@ export class ReactPageProvider {
         forceRefresh = true;
       }
 
-      // no resolve, render a basic view by default
-      if (!route.resolve) {
+      // no loader, render a basic view by default
+      if (!route.loader) {
         continue;
       }
 
       try {
         const args = Object.create(state);
         Object.assign(args, config, context);
-        const props = (await route.resolve?.(args)) ?? {};
+        const props = (await route.loader?.(args)) ?? {};
 
         // save props
         it.props = {
@@ -280,7 +280,7 @@ export class ReactPageProvider {
           };
         }
 
-        this.log.error("Page resolver has failed", e);
+        this.log.error("Page loader has failed", e);
 
         it.error = e as Error;
         break;

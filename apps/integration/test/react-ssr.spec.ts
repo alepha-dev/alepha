@@ -42,7 +42,7 @@ describe("React SSR Integration", () => {
     api = $client<Api>();
     home = $page({
       path: "/tasks",
-      resolve: async () => ({
+      loader: async () => ({
         tasks: await this.api.tasks(),
       }),
       component: ({ tasks }) => {

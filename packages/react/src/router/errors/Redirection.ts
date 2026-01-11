@@ -10,7 +10,7 @@ import { AlephaError } from "alepha";
  * import { Redirection } from "@alepha/react";
  *
  * const MyPage = $page({
- *   resolve: async () => {
+ *   loader: async () => {
  *    if (needRedirect) {
  *      throw new Redirection("/new-path");
  *    }
