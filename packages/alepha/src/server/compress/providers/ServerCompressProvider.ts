@@ -136,10 +136,69 @@ export class ServerCompressProvider {
 
     if (typeof body === "object" && body instanceof ReadableStream) {
       this.setHeaders(response, encoding);
-      response.body = Readable.fromWeb(body).pipe(
-        compressor.stream({ params }),
+      // For streaming responses, use flush mode to avoid buffering
+      response.body = this.createFlushingCompressStream(
+        body,
+        compressor.stream,
+        encoding,
+        params,
       );
     }
+  }
+
+  /**
+   * Create a compressed stream that flushes after each chunk.
+   * This is essential for streaming SSR - ensures each chunk is sent immediately.
+   */
+  protected createFlushingCompressStream(
+    input: ReadableStream,
+    createCompressor: (options?: any) => Transform,
+    encoding: string,
+    params: Record<number, any>,
+  ): ReadableStream<Uint8Array> {
+    const compressor = createCompressor({
+      params,
+      flush: zlib.constants.Z_SYNC_FLUSH,
+    });
+    const reader = Readable.fromWeb(input);
+
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        compressor.on("data", (chunk: Buffer) => {
+          controller.enqueue(new Uint8Array(chunk));
+        });
+
+        compressor.on("end", () => {
+          controller.close();
+        });
+
+        compressor.on("error", (err) => {
+          controller.error(err);
+        });
+
+        reader.on("data", (chunk: Buffer) => {
+          compressor.write(chunk);
+          // Force flush after each chunk for streaming
+          // Cast to any because flush() exists on zlib streams but not in Transform type
+          const zlibStream = compressor as any;
+          if (encoding === "gzip") {
+            zlibStream.flush(zlib.constants.Z_SYNC_FLUSH);
+          } else if (encoding === "br") {
+            zlibStream.flush(zlib.constants.BROTLI_OPERATION_FLUSH);
+          } else if (encoding === "zstd") {
+            zlibStream.flush();
+          }
+        });
+
+        reader.on("end", () => {
+          compressor.end();
+        });
+
+        reader.on("error", (err) => {
+          controller.error(err);
+        });
+      },
+    });
   }
 
   protected getParams(
