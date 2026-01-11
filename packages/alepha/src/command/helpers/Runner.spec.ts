@@ -109,7 +109,7 @@ describe("Runner", () => {
     await runner.run(`echo "Task 1"`);
     await runner.run("A slightly longer task name", () => {});
 
-    runner.summary();
+    runner.end();
 
     const logs = mockLogger.logs
       .slice(4)
@@ -118,7 +118,7 @@ describe("Runner", () => {
   });
 
   test("summary() should not print a table if no tasks were run", () => {
-    runner.summary();
+    runner.end();
 
     const logs = mockLogger.logs.map((l) => l.message);
     expect(logs.length).toBe(0);

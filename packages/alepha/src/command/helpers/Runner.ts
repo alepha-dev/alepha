@@ -179,7 +179,7 @@ export class Runner {
   /**
    * Prints a summary of all executed tasks and their durations.
    */
-  public summary(): void {
+  public end(): void {
     if (this.useDynamicLogger && this.firstTaskStarted) {
       this.prettyPrint.endCommand();
       return;

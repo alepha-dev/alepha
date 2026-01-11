@@ -106,12 +106,6 @@ export interface CommandPrimitiveOptions<
   args?: A;
 
   /**
-   * If false, skip summary message at the end of the command execution.
-   * Summary will display only if ({ run }) method calls were made.
-   */
-  summary?: boolean;
-
-  /**
    * Marks this command as the root command.
    * Equivalent to setting name to an empty string "".
    */

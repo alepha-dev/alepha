@@ -237,9 +237,7 @@ export class CliProvider {
         await hook.options.handler(args as CommandHandlerArgs<TObject>);
       }
 
-      if (command.options.summary !== false) {
-        runner.summary();
-      }
+      runner.end();
 
       this.log.debug(`Command '${command.name}' executed successfully.`);
     });
