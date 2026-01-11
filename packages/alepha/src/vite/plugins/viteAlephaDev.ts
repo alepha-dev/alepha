@@ -1,11 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import {
-  loadEnv,
-  type Plugin,
-  type ResolvedConfig,
-  type UserConfig,
-} from "vite";
+import type { Plugin, ResolvedConfig, UserConfig } from "vite";
 import { boot } from "../helpers/boot.ts";
+import { importVite } from "../helpers/importVite.ts";
 import { createAlephaRunner, isViteInternalPath } from "../tasks/runAlepha.ts";
 
 export interface ViteAlephaDevOptions {
@@ -49,6 +45,7 @@ export async function viteAlephaDev(
     debug: options.debug,
   });
 
+  const { loadEnv } = await importVite();
   const env = loadEnv("development", process.cwd(), "SERVER");
 
   const config: UserConfig = {};
