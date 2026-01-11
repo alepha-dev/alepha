@@ -1,7 +1,6 @@
 import { access, readFile, unlink, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { join } from "node:path";
-import { $inject, OPTIONS, t } from "alepha";
+import { $inject, $use, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import {
@@ -15,15 +14,17 @@ import {
   generateVercel,
   prerenderPages,
 } from "alepha/vite";
-import type * as Vite from "vite";
+import { buildOptions } from "../atoms/buildOptions.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 
 export class BuildCommand {
   protected readonly log = $logger();
   protected readonly utils = $inject(AlephaCliUtils);
+  protected readonly options = $use(buildOptions);
 
   public readonly build = $command({
     name: "build",
+    mode: "production",
     description: "Build the project for production",
     args: t.optional(
       t.text({ title: "path", description: "Filepath to build" }),
@@ -61,13 +62,11 @@ export class BuildCommand {
       process.env.NODE_ENV = "production";
 
       if (await this.utils.hasExpo(root)) {
-        // will coming soon
-        // 1. ensure "expo prebuild" is run
+        // will come soon
         return;
       }
 
       await this.utils.ensureConfig(root, {
-        viteConfigTs: true,
         tsconfigJson: true,
       });
 
@@ -77,25 +76,13 @@ export class BuildCommand {
       const distDir = "dist";
       const clientDir = "public";
 
-      await this.utils.ensureDependency(root, "vite", {
-        run,
-      });
+      await this.utils.ensureDependency(root, "vite", { run });
+      await run.rm("dist", { alias: "clean dist" });
 
-      await run.rm("dist", {
-        alias: "clean dist",
-      });
-
-      const vite: typeof Vite = createRequire(import.meta.url)("vite");
-      const config = await vite.resolveConfig({}, "build", "production");
-      const alephaPlugin: any = config.plugins.find(
-        (it) => it.name === "alepha:build",
-      );
-      const viteAlephaBuildOptions = alephaPlugin?.[OPTIONS] || {};
-
+      const options = this.options;
       await this.utils.loadEnv(root, [".env", ".env.production"]);
 
-      const stats = flags.stats ?? viteAlephaBuildOptions.stats ?? false;
-      const hasServer = viteAlephaBuildOptions.serverEntry !== false;
+      const stats = flags.stats ?? options.stats ?? false;
 
       let hasClient = false;
       try {
@@ -105,13 +92,7 @@ export class BuildCommand {
         // No index.html
       }
 
-      // Extract client options
-      const clientOptions =
-        typeof viteAlephaBuildOptions.client === "object"
-          ? viteAlephaBuildOptions.client
-          : {};
-
-      // Build client
+      // Build client (precompress always enabled)
       if (hasClient) {
         await run({
           name: "vite build client",
@@ -120,7 +101,7 @@ export class BuildCommand {
               silent: true,
               dist: `${distDir}/${clientDir}`,
               stats,
-              precompress: clientOptions.precompress,
+              precompress: true,
             }),
         });
       }
@@ -129,7 +110,6 @@ export class BuildCommand {
       await run({
         name: "vite build server",
         handler: async () => {
-          // Check if client template exists
           let clientBuilt = false;
           try {
             await readFile(`${distDir}/${clientDir}/index.html`, "utf-8");
@@ -147,7 +127,7 @@ export class BuildCommand {
           });
 
           // Server will handle index.html if both client & server are built
-          if (clientBuilt && hasServer) {
+          if (clientBuilt) {
             await unlink(`${distDir}/${clientDir}/index.html`);
           }
         },
@@ -163,9 +143,8 @@ export class BuildCommand {
 
       if (hasClient) {
         // Generate sitemap
-        const sitemapBaseUrl = flags.sitemap ?? clientOptions.sitemap?.hostname;
-
-        if (sitemapBaseUrl) {
+        const sitemapHostname = flags.sitemap ?? options.sitemap?.hostname;
+        if (sitemapHostname) {
           await run({
             name: "add sitemap",
             handler: async () => {
@@ -173,73 +152,57 @@ export class BuildCommand {
                 `${distDir}/${clientDir}/sitemap.xml`,
                 await generateSitemap({
                   entry: `${distDir}/index.js`,
-                  baseUrl: sitemapBaseUrl,
+                  baseUrl: sitemapHostname,
                 }),
               );
             },
           });
         }
 
-        // Pre-render static pages
-        const shouldPrerender = clientOptions.prerender;
-
-        if (shouldPrerender) {
-          await run({
-            name: "pre-render pages",
-            handler: async () => {
-              await prerenderPages({
-                dist: `${distDir}/${clientDir}`,
-                entry: `${distDir}/index.js`,
-                compress: clientOptions.precompress,
-              });
-            },
-          });
-        }
+        // Pre-render static pages (always enabled)
+        await run({
+          name: "pre-render pages",
+          handler: async () => {
+            await prerenderPages({
+              dist: `${distDir}/${clientDir}`,
+              entry: `${distDir}/index.js`,
+              compress: true,
+            });
+          },
+        });
       }
 
       // Generate deployment configurations
-      if (flags.vercel || viteAlephaBuildOptions.vercel) {
-        const config =
-          typeof viteAlephaBuildOptions.vercel === "object"
-            ? viteAlephaBuildOptions.vercel
-            : {};
+      if (flags.vercel || options.vercel) {
         await run({
           name: "add Vercel config",
           handler: () =>
             generateVercel({
               distDir,
               clientDir,
-              config,
+              config: options.vercel,
             }),
         });
       }
 
-      if (flags.cloudflare || viteAlephaBuildOptions.cloudflare) {
-        const config =
-          typeof viteAlephaBuildOptions.cloudflare === "boolean"
-            ? {}
-            : viteAlephaBuildOptions.cloudflare;
+      if (flags.cloudflare || options.cloudflare) {
         await run({
           name: "add Cloudflare config",
           handler: () =>
             generateCloudflare({
               distDir,
-              config,
+              config: options.cloudflare?.config,
             }),
         });
       }
 
-      if (flags.docker || viteAlephaBuildOptions.docker) {
-        const dockerConfig =
-          typeof viteAlephaBuildOptions.docker === "object"
-            ? viteAlephaBuildOptions.docker
-            : {};
+      if (flags.docker || options.docker) {
         await run({
           name: "add Docker config",
           handler: () =>
             generateDocker({
               distDir,
-              ...dockerConfig,
+              ...options.docker,
             }),
         });
       }

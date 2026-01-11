@@ -28,7 +28,6 @@ export class TestCommand {
     handler: async ({ root, flags, env }) => {
       await this.utils.ensureConfig(root, {
         tsconfigJson: true,
-        viteConfigTs: true,
       });
 
       // Ensure vitest is installed before running

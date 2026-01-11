@@ -43,7 +43,6 @@ export class InitCommand {
             tsconfigJson: true,
             packageJson: flags,
             biomeJson: true,
-            viteConfigTs: !isExpo,
             editorconfig: true,
             indexHtml: !!flags.react && !isExpo,
           });

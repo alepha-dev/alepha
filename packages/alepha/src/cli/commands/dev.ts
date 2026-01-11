@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { $inject, Alepha, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
-import { boot } from "alepha/vite";
+import { boot, devServer } from "alepha/vite";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 
 export class DevCommand {
@@ -25,7 +25,6 @@ export class DevCommand {
       const expo = await this.utils.hasExpo(root);
 
       await this.utils.ensureConfig(root, {
-        viteConfigTs: !expo,
         tsconfigJson: true,
       });
 
@@ -54,7 +53,8 @@ export class DevCommand {
 
       // Ensure vite is installed before running
       await this.utils.ensureDependency(root, "vite");
-      await this.utils.exec("vite");
+
+      await devServer();
     },
   });
 

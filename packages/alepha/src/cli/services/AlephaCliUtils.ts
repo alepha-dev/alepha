@@ -14,7 +14,6 @@ import { indexHtml } from "../assets/indexHtml.ts";
 import { mainBrowserTs } from "../assets/mainBrowserTs.ts";
 import { mainTs } from "../assets/mainTs.ts";
 import { tsconfigJson } from "../assets/tsconfigJson.ts";
-import { viteConfigTs } from "../assets/viteConfigTs.ts";
 import { version } from "../version.ts";
 
 /**
@@ -333,7 +332,6 @@ export class AlephaCliUtils {
     opts: {
       packageJson?: boolean | DependencyModes;
       tsconfigJson?: boolean;
-      viteConfigTs?: boolean;
       indexHtml?: boolean;
       biomeJson?: boolean;
       editorconfig?: boolean;
@@ -351,9 +349,6 @@ export class AlephaCliUtils {
     }
     if (opts.tsconfigJson) {
       tasks.push(this.ensureTsConfig(root));
-    }
-    if (opts.viteConfigTs) {
-      tasks.push(this.ensureViteConfig(root));
     }
     if (opts.indexHtml) {
       tasks.push(this.ensureIndexHtml(root));
@@ -377,23 +372,6 @@ export class AlephaCliUtils {
    */
   public async ensureTsConfig(root: string): Promise<void> {
     await this.ensureFileExists(root, "tsconfig.json", tsconfigJson, true);
-  }
-
-  /**
-   * Ensure vite.config.ts exists in the project.
-   *
-   * Creates a standard Alepha vite.config.ts if none exists.
-   */
-  public async ensureViteConfig(
-    root: string,
-    serverEntry?: string,
-  ): Promise<void> {
-    await this.ensureFileExists(
-      root,
-      "vite.config.ts",
-      viteConfigTs(serverEntry),
-      false,
-    );
   }
 
   protected async checkFileExists(
@@ -690,7 +668,7 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
   async readPackageJson(root: string): Promise<Record<string, any>> {
     const packageJson = await this.fs
       .createFile({
-        path: join(root, "package.json"),
+        path: this.fs.join(root, "package.json"),
       })
       .text();
     return JSON.parse(packageJson);
