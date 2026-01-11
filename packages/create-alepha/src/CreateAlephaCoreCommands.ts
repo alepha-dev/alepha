@@ -1,107 +1,43 @@
-import { access, mkdir } from "node:fs/promises";
-import { join } from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import { $inject, AlephaError, t } from "alepha";
+import { $inject, t } from "alepha";
 import { $command, CliProvider } from "alepha/command";
+import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
-import * as tar from "tar";
 
 export class CreateAlephaCoreCommands {
   protected readonly log = $logger();
   protected readonly cli = $inject(CliProvider);
-
-  protected detectPackageManager(): "npm" | "yarn" | "pnpm" | "bun" {
-    const ua = process.env.npm_config_user_agent || "";
-    if (ua.startsWith("yarn")) return "yarn";
-    if (ua.startsWith("pnpm")) return "pnpm";
-    if (ua.startsWith("bun")) return "bun";
-    return "npm";
-  }
+  protected readonly fs = $inject(FileSystemProvider);
 
   /**
-   * Download Alepha starter project from GitHub.
-   */
-  public async downloadSampleProject(targetDir: string): Promise<void> {
-    const url = "https://api.github.com/repos/feunard/alepha/tarball/main";
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Alepha-CLI",
-      },
-    });
-
-    if (!response.ok) {
-      throw new AlephaError(`Failed to download: ${response.statusText}`);
-    }
-
-    const tarStream = Readable.fromWeb(response.body as any);
-    await pipeline(
-      tarStream,
-      tar.extract({
-        cwd: targetDir,
-        strip: 3, // Remove feunard-alepha-<hash>/apps/starter prefix
-        filter: (path) => {
-          const parts = path.split("/");
-          return (
-            parts.length >= 3 && parts[1] === "apps" && parts[2] === "starter"
-          );
-        },
-      }),
-    );
-  }
-
-  /**
-   * Called when no command is provided - shows help or creates a new project
+   * Called when no command is provided - delegates to alepha init
    */
   public readonly root = $command({
     root: true,
     description: "Create a new Alepha project",
-    args: t.optional(
-      t.text({
-        title: "name",
-      }),
-    ),
-    summary: false,
-    handler: async ({ run, args, root }) => {
-      const name = args ?? "my-app";
-      const dest = join(root, name);
+    args: t.text({
+      title: "name",
+    }),
+    handler: async ({ run, args }) => {
+      const name = args;
 
-      try {
-        await access(dest);
-        this.log.error(
-          `Directory "${name}" already exists. Please choose a different project name.`,
-        );
-        return;
-      } catch {
-        // Directory does not exist, proceed
-      }
+      // create directory
+      await this.fs.mkdir(name);
 
-      const pm = this.detectPackageManager();
-
-      await mkdir(dest, { recursive: true }).catch(() => null);
-
-      await run("downloading sample project", () =>
-        this.downloadSampleProject(dest),
-      );
-
-      await run(`cd ${name} && ${pm} install`, {
-        alias: "installing dependencies",
+      // Delegate to alepha init command
+      await run(`cd ${name} && npx alepha@latest init ${name}`, {
+        alias: "creating project",
       });
 
-      await run(`cd ${name} && ${pm} run lint`, {
-        alias: "linting code",
+      await run(`cd ${name} && npx alepha lint`, {
+        alias: "alepha lint",
       });
 
-      await run(`cd ${name} && ${pm} run typecheck`, {
-        alias: "type checking",
+      await run(`cd ${name} && npx alepha typecheck`, {
+        alias: "alepha typecheck",
       });
 
-      await run(`cd ${name} && ${pm} run test`, {
-        alias: "running tests",
-      });
-
-      await run(`cd ${name} && ${pm} run build`, {
-        alias: "building project",
+      await run(`cd ${name} && npx alepha build`, {
+        alias: "alepha build",
       });
     },
   });
