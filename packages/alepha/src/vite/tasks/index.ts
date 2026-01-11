@@ -2,7 +2,7 @@
  * Build tasks for Alepha applications.
  *
  * These tasks can be used by:
- * - Vite plugins (viteAlephaDev, viteAlephaBuild)
+ * - Vite plugins (viteAlephaDev, viteAlephaSsrPreload)
  * - CLI commands (alepha build, alepha dev)
  *
  * Each task is a standalone async function with explicit inputs and outputs.
@@ -13,6 +13,7 @@
 export * from "./buildClient.ts";
 export * from "./buildServer.ts";
 export * from "./copyAssets.ts";
+export * from "./devServer.ts";
 export * from "./generateCloudflare.ts";
 export * from "./generateDocker.ts";
 export * from "./generateExternals.ts";

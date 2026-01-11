@@ -2,6 +2,8 @@ import type { UserConfig } from "vite";
 import { analyzer as viteAnalyzer } from "vite-bundle-analyzer";
 import { createBufferedLogger } from "../helpers/createBufferedLogger.ts";
 import { importVite } from "../helpers/importVite.ts";
+import { importViteReact } from "../helpers/importViteReact.ts";
+import { viteAlephaSsrPreload } from "../plugins/viteAlephaSsrPreload.ts";
 import {
   type ViteCompressOptions,
   viteCompress,
@@ -61,6 +63,12 @@ export interface BuildClientOptions {
 export async function buildClient(opts: BuildClientOptions): Promise<void> {
   const { build: viteBuild, mergeConfig } = await importVite();
   const plugins: any[] = [];
+
+  const viteReact = await importViteReact();
+  if (viteReact) plugins.push(viteReact());
+
+  // Add preload plugin for SSR module preloading
+  plugins.push(viteAlephaSsrPreload());
 
   const compress: ViteCompressOptions | undefined = opts.precompress
     ? typeof opts.precompress === "object"

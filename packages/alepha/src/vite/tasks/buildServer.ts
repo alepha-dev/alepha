@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AlephaError } from "alepha";
 import type * as vite from "vite";
@@ -6,6 +6,8 @@ import type { UserConfig } from "vite";
 import { analyzer as viteAnalyzer } from "vite-bundle-analyzer";
 import { createBufferedLogger } from "../helpers/createBufferedLogger.ts";
 import { importVite } from "../helpers/importVite.ts";
+import { importViteReact } from "../helpers/importViteReact.ts";
+import { viteAlephaSsrPreload } from "../plugins/viteAlephaSsrPreload.ts";
 import { generateExternals } from "./generateExternals.ts";
 
 export interface BuildServerOptions {
@@ -63,6 +65,13 @@ export async function buildServer(
   const { build: viteBuild, mergeConfig } = await importVite();
   const plugins: any[] = [];
 
+  const viteReact = await importViteReact();
+  if (viteReact && opts.clientDir) {
+    plugins.push(viteReact());
+  }
+
+  plugins.push(viteAlephaSsrPreload());
+
   if (opts.stats) {
     plugins.push(
       viteAnalyzer({
@@ -85,7 +94,7 @@ export async function buildServer(
       noExternal: true,
     },
     build: {
-      sourcemap: true, // or "hidden" if you don't want to expose source maps
+      sourcemap: true,
       ssr: opts.entry,
       outDir: `${opts.distDir}/server`,
       minify: true,
@@ -138,6 +147,29 @@ export async function buildServer(
     template = `__alepha.set("alepha.react.server.template", \`${index.replace(/>\s*</g, "><").trim()}\`);\n`;
   }
 
+  // Embed SSR manifests if client was built
+  // This bundles all manifest data into index.js for serverless deployments
+  let manifest = "";
+  if (opts.clientDir) {
+    const viteDir = `${opts.distDir}/${opts.clientDir}/.vite`;
+    const ssrManifest = await loadJsonFile(`${viteDir}/ssr-manifest.json`);
+    const clientManifest = await loadJsonFile(`${viteDir}/manifest.json`);
+    const preloadManifest = await loadJsonFile(
+      `${viteDir}/preload-manifest.json`,
+    );
+
+    const combined = {
+      ssr: ssrManifest,
+      client: clientManifest,
+      preload: preloadManifest,
+    };
+
+    manifest = `__alepha.set("alepha.react.ssr.manifest", ${JSON.stringify(combined)});\n`;
+
+    // Remove .vite directory - no longer needed at runtime
+    await rm(viteDir, { recursive: true, force: true });
+  }
+
   const warning =
     "// This file was automatically generated. DO NOT MODIFY." +
     "\n" +
@@ -145,10 +177,22 @@ export async function buildServer(
 
   await writeFile(
     `${opts.distDir}/index.js`,
-    `${warning}\nimport './server/${entryFile}';\n\n${template}`.trim(),
+    `${warning}\n${template}${manifest}import './server/${entryFile}';\n`.trim(),
   );
 
   return { entryFile };
+}
+
+/**
+ * Load a JSON file, returning undefined if it doesn't exist.
+ */
+async function loadJsonFile(path: string): Promise<any> {
+  try {
+    const content = await readFile(path, "utf-8");
+    return JSON.parse(content);
+  } catch {
+    return undefined;
+  }
 }
 
 /**

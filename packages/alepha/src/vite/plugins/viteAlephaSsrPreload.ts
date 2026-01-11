@@ -1,15 +1,29 @@
-import { dirname, relative, resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import type { Plugin } from "vite";
 
 /**
- * Vite plugin that transforms $page lazy imports to include source paths.
+ * Preload manifest mapping short keys to source paths.
+ * Generated at build time, consumed by SSRManifestProvider at runtime.
+ */
+export interface PreloadManifest {
+  [key: string]: string;
+}
+
+/**
+ * Vite plugin that generates a preload manifest for SSR module preloading.
  *
- * This enables SSR module preloading by adding a Symbol-keyed property to $page
- * definitions that contain lazy imports. The value is the resolved source path
- * that can be looked up in Vite's client manifest for chunk resolution.
+ * Instead of injecting source paths directly into $page definitions (which would
+ * leak component paths in the browser bundle), this plugin:
  *
- * Uses `Symbol.for("alepha.page.preload")` to keep the property hidden from
- * normal object inspection (Object.keys, JSON.stringify, etc.).
+ * 1. Collects all lazy import paths from $page definitions during transform
+ * 2. Generates a manifest file mapping short keys to resolved source paths
+ * 3. Injects only the short key into $page definitions
+ *
+ * The manifest is written to `.vite/preload-manifest.json` alongside Vite's
+ * other manifests. The CLI build command moves all manifests to
+ * `dist/server/.ssr/` where SSRManifestProvider loads them at runtime.
  *
  * Before:
  * ```typescript
@@ -24,12 +38,28 @@ import type { Plugin } from "vite";
  * $page({
  *   path: '/users/:id',
  *   lazy: () => import('./UserDetail.tsx'),
- *   [Symbol.for("alepha.page.preload")]: 'src/pages/UserDetail.tsx',
+ *   [Symbol.for("alepha.page.preload")]: "a1b2c3",
  * })
  * ```
+ *
+ * Manifest (.alepha/preload-manifest.json):
+ * ```json
+ * {
+ *   "a1b2c3": "src/pages/UserDetail.tsx"
+ * }
+ * ```
  */
-export function viteAlephaPreload(): Plugin {
+export function viteAlephaSsrPreload(): Plugin {
   let root = "";
+  const preloadMap = new Map<string, string>(); // key -> sourcePath
+
+  /**
+   * Generate a short hash key for a source path.
+   * Uses first 8 chars of MD5 hash for brevity while avoiding collisions.
+   */
+  function generateKey(sourcePath: string): string {
+    return createHash("md5").update(sourcePath).digest("hex").slice(0, 8);
+  }
 
   return {
     name: "alepha-preload",
@@ -133,11 +163,16 @@ export function viteAlephaPreload(): Plugin {
           relativePath = relativePath.replace(/\.js$/, ".ts");
         }
 
+        // Generate short key and store mapping
+        const key = generateKey(relativePath);
+        preloadMap.set(key, relativePath);
+
         // Check if we need a comma (look at character before closing brace)
         const beforeBrace = code.slice(0, objectEndIndex).trimEnd();
         const needsComma = !beforeBrace.endsWith(",");
         // Use Symbol.for() so it can be looked up at runtime without importing
-        const preloadProperty = `${needsComma ? "," : ""} [Symbol.for("alepha.page.preload")]: "${relativePath}"`;
+        // Only inject the short key, not the full path
+        const preloadProperty = `${needsComma ? "," : ""} [Symbol.for("alepha.page.preload")]: "${key}"`;
 
         insertions.push({ position: objectEndIndex, text: preloadProperty });
 
@@ -159,6 +194,29 @@ export function viteAlephaPreload(): Plugin {
         code: result,
         map: null,
       };
+    },
+    writeBundle(options) {
+      // Only process client build (outputs to dist/public or similar)
+      // Skip server build which outputs to dist/server
+      const outDir = options.dir || "";
+      if (outDir.includes("server")) {
+        return;
+      }
+
+      // Write the preload manifest to the same .vite directory Vite uses
+      // The CLI build command will move all manifests to dist/server/.ssr/
+      if (preloadMap.size > 0) {
+        const viteDir = join(outDir, ".vite");
+
+        // Ensure .vite directory exists
+        if (!existsSync(viteDir)) {
+          mkdirSync(viteDir, { recursive: true });
+        }
+
+        const manifest: PreloadManifest = Object.fromEntries(preloadMap);
+        const manifestPath = join(viteDir, "preload-manifest.json");
+        writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+      }
     },
   };
 }
