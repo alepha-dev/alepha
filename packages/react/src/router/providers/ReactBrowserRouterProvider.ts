@@ -2,6 +2,7 @@ import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { type Route, RouterProvider } from "alepha/router";
 import { createElement, type ReactNode } from "react";
+import { BrowserHeadProvider } from "@alepha/react/head";
 import NotFoundPage from "../components/NotFound.tsx";
 import {
   isPageRoute,
@@ -23,6 +24,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly pageApi = $inject(ReactPageProvider);
+  protected readonly browserHeadProvider = $inject(BrowserHeadProvider);
 
   public add(entry: PageRouteEntry) {
     this.pageApi.add(entry);
@@ -147,6 +149,9 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
     await this.alepha.events.emit("react:transition:end", {
       state,
     });
+
+    // Fill and render head from route configurations
+    this.browserHeadProvider.fillAndRenderHead(state);
   }
 
   public root(state: ReactRouterState): ReactNode {

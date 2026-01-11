@@ -1,4 +1,5 @@
 import { Alepha, t } from "alepha";
+import { $logger } from "alepha/logger";
 import { describe, expect, test, vi } from "vitest";
 import {
   $consumer,
@@ -12,6 +13,16 @@ const payloadSchema = t.object({
   id: t.text(),
   count: t.integer(),
 });
+
+class TestWorkerProvider extends WorkerProvider {
+  public readonly log = $logger();
+  public workersRunning = 0;
+  public workerIntervals: Record<number, number> = {};
+  public abortController = new AbortController();
+  public waitForNextMessage(n: number): Promise<void> {
+    return super.waitForNextMessage(n);
+  }
+}
 
 describe("WorkerProvider", () => {
   const createTestApp = async (
@@ -27,6 +38,11 @@ describe("WorkerProvider", () => {
         QUEUE_WORKER_INTERVAL: options.workerInterval ?? 10,
         QUEUE_WORKER_MAX_INTERVAL: options.workerMaxInterval ?? 1000,
       },
+    });
+
+    app.with({
+      provide: WorkerProvider,
+      use: TestWorkerProvider,
     });
 
     app.with({
@@ -52,16 +68,16 @@ describe("WorkerProvider", () => {
       const app = await createTestApp();
       app.with(TestService);
 
-      const workerProvider = app.inject(WorkerProvider);
-      const logSpy = vi.spyOn(workerProvider["log"], "debug");
+      const workerProvider = app.inject(TestWorkerProvider);
+      const logSpy = vi.spyOn(workerProvider.log, "debug");
 
       await app.start();
 
       expect(logSpy).toHaveBeenCalledWith("Starting worker n-0");
-      expect(workerProvider["workersRunning"]).toBe(1);
+      expect(workerProvider.workersRunning).toBe(1);
 
       await app.stop();
-      expect(workerProvider["workersRunning"]).toBe(0);
+      expect(workerProvider.workersRunning).toBe(0);
     });
 
     test("should start multiple workers with concurrency", async () => {
@@ -76,32 +92,32 @@ describe("WorkerProvider", () => {
       const app = await createTestApp({ workerConcurrency: 3 });
       app.with(TestService);
 
-      const workerProvider = app.inject(WorkerProvider);
-      const logSpy = vi.spyOn(workerProvider["log"], "debug");
+      const workerProvider = app.inject(TestWorkerProvider);
+      const logSpy = vi.spyOn(workerProvider.log, "debug");
 
       await app.start();
 
       expect(logSpy).toHaveBeenCalledWith("Starting worker n-0");
       expect(logSpy).toHaveBeenCalledWith("Starting worker n-1");
       expect(logSpy).toHaveBeenCalledWith("Starting worker n-2");
-      expect(workerProvider["workersRunning"]).toBe(3);
+      expect(workerProvider.workersRunning).toBe(3);
 
       await app.stop();
-      expect(workerProvider["workersRunning"]).toBe(0);
+      expect(workerProvider.workersRunning).toBe(0);
     });
 
     test("should not start workers when no consumers", async () => {
       const app = await createTestApp();
 
-      const workerProvider = app.inject(WorkerProvider);
-      const logSpy = vi.spyOn(workerProvider["log"], "debug");
+      const workerProvider = app.inject(TestWorkerProvider);
+      const logSpy = vi.spyOn(workerProvider.log, "debug");
 
       await app.start();
 
       expect(logSpy).not.toHaveBeenCalledWith(
         expect.stringMatching(/Starting worker/),
       );
-      expect(workerProvider["workersRunning"]).toBe(0);
+      expect(workerProvider.workersRunning).toBe(0);
 
       await app.stop();
     });
@@ -120,20 +136,20 @@ describe("WorkerProvider", () => {
       const app = await createTestApp({ workerConcurrency: 2 });
       app.with(TestService);
 
-      const workerProvider = app.inject(WorkerProvider);
-      const debugSpy = vi.spyOn(workerProvider["log"], "debug");
+      const workerProvider = app.inject(TestWorkerProvider);
+      const debugSpy = vi.spyOn(workerProvider.log, "debug");
 
       await app.start();
-      expect(workerProvider["workersRunning"]).toBe(2);
+      expect(workerProvider.workersRunning).toBe(2);
 
       // Simulate worker crash by manually decrementing counter
-      workerProvider["workersRunning"] = 1;
+      workerProvider.workersRunning = 1;
 
       // Call wakeUp - should detect missing worker and restart it
       workerProvider.wakeUp();
 
       expect(debugSpy).toHaveBeenCalledWith("Waking up workers...");
-      expect(workerProvider["workersRunning"]).toBe(2);
+      expect(workerProvider.workersRunning).toBe(2);
 
       await app.stop();
     });
@@ -150,16 +166,16 @@ describe("WorkerProvider", () => {
       const app = await createTestApp();
       app.with(TestService);
 
-      const workerProvider = app.inject(WorkerProvider);
+      const workerProvider = app.inject(TestWorkerProvider);
 
       await app.start();
 
-      const oldController = workerProvider["abortController"];
+      const oldController = workerProvider.abortController;
       expect(oldController.signal.aborted).toBe(false);
 
       workerProvider.wakeUp();
 
-      const newController = workerProvider["abortController"];
+      const newController = workerProvider.abortController;
       expect(oldController.signal.aborted).toBe(true);
       expect(newController.signal.aborted).toBe(false);
       expect(newController).not.toBe(oldController);
@@ -217,8 +233,8 @@ describe("WorkerProvider", () => {
       const app = await createTestApp();
       app.with(TestService);
 
-      const workerProvider = app.inject(WorkerProvider);
-      const errorSpy = vi.spyOn(workerProvider["log"], "error");
+      const workerProvider = app.inject(TestWorkerProvider);
+      const errorSpy = vi.spyOn(workerProvider.log, "error");
 
       await app.start();
 
@@ -230,7 +246,7 @@ describe("WorkerProvider", () => {
         .toBeTruthy();
 
       // Worker should still be running after processing error
-      expect(workerProvider["workersRunning"]).toBe(1);
+      expect(workerProvider.workersRunning).toBe(1);
 
       await app.stop();
     });
@@ -282,9 +298,9 @@ describe("WorkerProvider", () => {
       const app = await createTestApp();
       app.with(TestService);
 
-      const workerProvider = app.inject(WorkerProvider);
+      const workerProvider = app.inject(TestWorkerProvider);
       const queueProvider = app.inject(QueueProvider);
-      const errorSpy = vi.spyOn(workerProvider["log"], "error");
+      const errorSpy = vi.spyOn(workerProvider.log, "error");
 
       await app.start();
 
@@ -301,7 +317,7 @@ describe("WorkerProvider", () => {
       );
 
       // Worker should still be running
-      expect(workerProvider["workersRunning"]).toBe(1);
+      expect(workerProvider.workersRunning).toBe(1);
 
       await app.stop();
     });
@@ -318,9 +334,9 @@ describe("WorkerProvider", () => {
       const app = await createTestApp();
       app.with(TestService);
 
-      const workerProvider = app.inject(WorkerProvider);
+      const workerProvider = app.inject(TestWorkerProvider);
       const queueProvider = app.inject(QueueProvider);
-      const errorSpy = vi.spyOn(workerProvider["log"], "error");
+      const errorSpy = vi.spyOn(workerProvider.log, "error");
 
       await app.start();
 
@@ -342,7 +358,7 @@ describe("WorkerProvider", () => {
       );
 
       // Worker should still be running
-      expect(workerProvider["workersRunning"]).toBe(1);
+      expect(workerProvider.workersRunning).toBe(1);
 
       await app.stop();
     });
@@ -359,16 +375,16 @@ describe("WorkerProvider", () => {
       const app = await createTestApp({ workerInterval: 5000 });
       app.with(TestService);
 
-      const workerProvider = app.inject(WorkerProvider);
-      const warnSpy = vi.spyOn(workerProvider["log"], "warn");
+      const workerProvider = app.inject(TestWorkerProvider);
+      const warnSpy = vi.spyOn(workerProvider.log, "warn");
 
       await app.start();
 
       // Abort the controller to simulate abort during wait
-      workerProvider["abortController"].abort();
+      workerProvider.abortController.abort();
 
       // This should detect the abort and return early
-      await workerProvider["waitForNextMessage"](0);
+      await workerProvider.waitForNextMessage(0);
 
       expect(warnSpy).toHaveBeenCalledWith("Worker n-0 aborted.");
 

@@ -121,6 +121,6 @@ export class StdioMcpTransport {
    */
   protected send(message: object): void {
     const json = JSON.stringify(message);
-    process.stdout.write(json + "\n");
+    process.stdout.write(`${json}\n`);
   }
 }

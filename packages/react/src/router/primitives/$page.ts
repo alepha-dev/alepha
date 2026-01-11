@@ -14,6 +14,9 @@ import type { Redirection } from "../errors/Redirection.ts";
 import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
 import { ReactPageService } from "../services/ReactPageService.ts";
 import type { ClientOnlyProps } from "@alepha/react";
+import type { Head } from "@alepha/react/head";
+import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
+
 
 /**
  * Main primitive for defining a React route in the application.
@@ -318,6 +321,39 @@ export interface PagePrimitiveOptions<
    * ```
    */
   animation?: PageAnimation;
+
+  /**
+   * Head configuration for the page (title, meta tags, etc.).
+   *
+   * Can be a static object or a function that receives resolved props.
+   *
+   * @example Static head
+   * ```ts
+   * head: {
+   *   title: "My Page",
+   *   description: "Page description",
+   * }
+   * ```
+   *
+   * @example Dynamic head based on props
+   * ```ts
+   * head: (props) => ({
+   *   title: props.user.name,
+   *   description: `Profile of ${props.user.name}`,
+   * })
+   * ```
+   */
+  head?: Head | ((props: TProps, previous?: Head) => Head);
+
+  /**
+   * Source path for SSR module preloading.
+   *
+   * This is automatically injected by the viteAlephaPreload plugin.
+   * It maps to the source file path used in Vite's SSR manifest.
+   *
+   * @internal
+   */
+  [PAGE_PRELOAD_KEY]?: string;
 }
 
 export type ErrorHandler = (

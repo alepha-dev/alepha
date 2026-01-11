@@ -6,6 +6,7 @@ export { default as NestedView } from "./components/NestedView.tsx";
 export type *  from "./components/NestedView.tsx";
 export { default as NotFound } from "./components/NotFound.tsx";
 export type * from "./components/NotFound.tsx";
+export * from "./constants/PAGE_PRELOAD_KEY.ts";
 export * from "./contexts/RouterLayerContext.ts";
 export * from "./primitives/$page.ts";
 export * from "./errors/Redirection.ts";

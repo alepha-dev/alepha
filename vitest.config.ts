@@ -51,7 +51,7 @@ export default defineConfig({
 					name: { label: 'node', color: 'green' },
           environment: 'node',
           include: [
-						'packages/*/src/**/*.spec.{ts,tsx}',
+						'packages/**/*.spec.{ts,tsx}',
 					],
 					exclude: ['**/*.browser.spec.{ts,tsx}', 'node_modules'],
 				}

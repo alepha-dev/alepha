@@ -6,10 +6,13 @@ import { type ServerHandler, ServerRouterProvider, ServerTimingProvider, } from 
 import { ServerLinksProvider } from "alepha/server/links";
 import { ServerStaticProvider } from "alepha/server/static";
 import { renderToReadableStream, renderToString } from "react-dom/server";
+import { ServerHeadProvider } from "@alepha/react/head";
 import { Redirection } from "../errors/Redirection.ts";
 import { $page, type PagePrimitiveRenderOptions, type PagePrimitiveRenderResult, } from "../primitives/$page.ts";
 import type { ReactHydrationState } from "./ReactBrowserProvider.ts";
 import { type PageRoute, ReactPageProvider, type ReactRouterState, } from "./ReactPageProvider.ts";
+import { SSRManifestProvider } from "./SSRManifestProvider.ts";
+import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -96,9 +99,11 @@ export class ReactServerProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);
   protected readonly pageApi = $inject(ReactPageProvider);
+  protected readonly serverHeadProvider = $inject(ServerHeadProvider);
   protected readonly serverStaticProvider = $inject(ServerStaticProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
+  protected readonly ssrManifestProvider = $inject(SSRManifestProvider);
 
   public readonly ROOT_DIV_REGEX = new RegExp(
     `<div([^>]*)\\s+id=["']${this.env.REACT_ROOT_ID}["']([^>]*)>(.*?)<\\/div>`,
@@ -322,20 +327,27 @@ export class ReactServerProvider {
     }
 
     const template = this.template ?? "";
-    const html = this.renderToHtml(template, state, options.hydration);
+    let html = this.renderToHtml(template, state, options.hydration);
 
     if (html instanceof Redirection) {
       return { state, html: "", redirect };
     }
 
-    const result = {
+    // Fill head state from route configurations and render into HTML
+    this.serverHeadProvider.fillHead(state);
+    if (state.head && Object.keys(state.head).length > 0) {
+      html = this.serverHeadProvider.renderHead(html, state.head);
+    }
+
+    await this.alepha.events.emit("react:server:render:end", {
+      state,
+      html,
+    });
+
+    return {
       state,
       html,
     };
-
-    await this.alepha.events.emit("react:server:render:end", result);
-
-    return result;
   }
 
   protected createHandler(
@@ -427,7 +439,27 @@ export class ReactServerProvider {
       );
 
       if (streamingEnabled) {
-        const result = await this.renderToStream(template, state);
+        // Pre-compute head from route config before streaming starts
+        // (useHead() during render won't be captured - only route-defined head)
+        this.serverHeadProvider.fillHead(state);
+
+        // Collect and inject modulepreload links for lazy-loaded route chunks
+        const preloadLinks = this.collectPreloadLinks(route);
+        if (preloadLinks.length > 0) {
+          state.head ??= {};
+          state.head.link = [...(state.head.link ?? []), ...preloadLinks];
+        }
+
+        // Inject head into template if head data exists
+        let streamTemplate = template;
+        if (state.head && Object.keys(state.head).length > 0) {
+          streamTemplate = this.serverHeadProvider.renderHead(
+            template,
+            state.head,
+          );
+        }
+
+        const result = await this.renderToStream(streamTemplate, state);
 
         if (result instanceof Redirection) {
           reply.redirect(
@@ -449,7 +481,7 @@ export class ReactServerProvider {
       }
 
       // Sync render path (default)
-      const html = this.renderToHtml(template, state);
+      let html = this.renderToHtml(template, state);
       if (html instanceof Redirection) {
         reply.redirect(
           html.redirect
@@ -462,13 +494,19 @@ export class ReactServerProvider {
 
       this.log.trace("Page rendered to HTML successfully");
 
-      const event = {
+      // Fill head state from route configurations and render into HTML
+      this.serverTimingProvider.beginTiming("renderHead");
+      this.serverHeadProvider.fillHead(state);
+      if (state.head && Object.keys(state.head).length > 0) {
+        html = this.serverHeadProvider.renderHead(html, state.head);
+      }
+      this.serverTimingProvider.endTiming("renderHead");
+
+      await this.alepha.events.emit("react:server:render:end", {
         request: serverRequest,
         state,
         html,
-      };
-
-      await this.alepha.events.emit("react:server:render:end", event);
+      });
 
       route.onServerResponse?.(serverRequest);
 
@@ -476,7 +514,7 @@ export class ReactServerProvider {
         name: route.name,
       });
 
-      return event.html;
+      return html;
     };
   }
 
@@ -526,15 +564,12 @@ export class ReactServerProvider {
    * Render React element to a Web Stream for progressive HTML delivery.
    *
    * Benefits over renderToString:
-   * - Faster TTFB: Initial HTML sent immediately
+   * - Faster TTFB: Initial HTML (<head>) sent BEFORE React renders
    * - Progressive rendering: Content appears as it's rendered
    * - Lower memory: Chunks are GC'd as they're sent
    *
-   * Optimizations applied:
-   * - Pre-encoded template bytes (zero-copy for static parts)
-   * - Shared TextEncoder instance
-   * - TransformStream for efficient piping
-   * - Pre-encoded hydration script prefix/suffix
+   * Key insight: We send <head> BEFORE calling renderToReadableStream,
+   * so browser can start downloading JS/CSS while React is still rendering.
    *
    * @param template - HTML template to inject React content into
    * @param state - React router state with layers and params
@@ -551,103 +586,109 @@ export class ReactServerProvider {
     // Attach react router state to the http request context
     this.alepha.store.set("alepha.react.router.state", state);
 
-    // Ensure template is preprocessed and bytes are cached
-    if (!this.preprocessedTemplate) {
-      this.preprocessedTemplate = this.preprocessTemplate(template);
-      this.preprocessedTemplateBytes = {
-        beforeApp: this.encoder.encode(this.preprocessedTemplate.beforeApp),
-        afterApp: this.encoder.encode(this.preprocessedTemplate.afterApp),
-        afterScript: this.encoder.encode(this.preprocessedTemplate.afterScript),
-      };
-    }
+    // Determine template bytes to use
+    let templateBytes: PreprocessedTemplateBytes;
 
-    // Use pre-encoded bytes for zero-copy streaming
-    const templateBytes = this.preprocessedTemplateBytes!;
+    const hasHeadData = state.head && Object.keys(state.head).length > 0;
+
+    if (hasHeadData) {
+      const preprocessed = this.preprocessTemplate(template);
+      templateBytes = {
+        beforeApp: this.encoder.encode(preprocessed.beforeApp),
+        afterApp: this.encoder.encode(preprocessed.afterApp),
+        afterScript: this.encoder.encode(preprocessed.afterScript),
+      };
+    } else {
+      if (!this.preprocessedTemplate) {
+        this.preprocessedTemplate = this.preprocessTemplate(template);
+        this.preprocessedTemplateBytes = {
+          beforeApp: this.encoder.encode(this.preprocessedTemplate.beforeApp),
+          afterApp: this.encoder.encode(this.preprocessedTemplate.afterApp),
+          afterScript: this.encoder.encode(this.preprocessedTemplate.afterScript),
+        };
+      }
+      templateBytes = this.preprocessedTemplateBytes!;
+    }
 
     this.serverTimingProvider.beginTiming("renderToStream");
 
-    // Create React readable stream
-    // Note: renderToReadableStream rejects if shell fails to render
-    // onError is called for errors during streaming (after shell is ready)
-    let reactStream: ReadableStream<Uint8Array>;
-    try {
-      reactStream = await renderToReadableStream(element, {
-        onError: (error: unknown) => {
-          // Error during streaming - content already sent, log only
-          if (error instanceof Redirection) {
-            // Late redirect during streaming - we can't change response now
-            this.log.warn("Redirect during streaming ignored", {
-              redirect: error.redirect,
-            });
-          } else {
-            this.log.error("Streaming render error", error);
-          }
-        },
-      });
-    } catch (error) {
-      this.serverTimingProvider.endTiming("renderToStream");
-      // Shell failed to render - handle error or redirect
-      if (error instanceof Redirection) {
-        return error;
-      }
+    // Create a custom ReadableStream that sends <head> IMMEDIATELY,
+    // then waits for React to render, then streams React content.
+    // This ensures browser starts downloading assets before React finishes.
+    const encoder = this.encoder;
+    const log = this.log;
+    const timing = this.serverTimingProvider;
+    const buildHydrationData = () => this.buildHydrationData(state);
+    const safeJsonSerialize = (data: unknown) => this.safeJsonSerialize(data);
+    const HYDRATION_SCRIPT_PREFIX = this.HYDRATION_SCRIPT_PREFIX;
+    const HYDRATION_SCRIPT_SUFFIX = this.HYDRATION_SCRIPT_SUFFIX;
 
-      // Try error handler fallback
-      const fallbackElement = state.onError(error as Error, state);
-      if (fallbackElement instanceof Redirection) {
-        return fallbackElement;
-      }
-
-      // Fallback to sync render for error page
-      this.log.warn("Streaming failed, falling back to sync render for error");
-      const html = this.renderToHtml(template, state, hydration);
-      if (typeof html === "string") {
-        return new ReadableStream({
-          start: (controller) => {
-            controller.enqueue(this.encoder.encode(html));
-            controller.close();
-          },
-        });
-      }
-      return html;
-    }
-
-    // Use TransformStream for efficient piping with prepend/append
-    const transform = new TransformStream<Uint8Array, Uint8Array>({
-      start: (controller) => {
-        // 1. Immediately send beforeApp (fast TTFB)
-        //    This includes: <!DOCTYPE html><html><head>...</head><body><div id="root">
+    return new ReadableStream<Uint8Array>({
+      async start(controller) {
+        // 1. IMMEDIATELY send beforeApp (<head> with JS/CSS links)
+        //    Browser can start downloading assets NOW, before React renders
         controller.enqueue(templateBytes.beforeApp);
-      },
-      transform: (chunk, controller) => {
-        // 2. Pass through React stream chunks as-is
-        controller.enqueue(chunk);
-      },
-      flush: (controller) => {
-        // 3. Send closing div tag
-        controller.enqueue(templateBytes.afterApp);
 
-        // 4. Inject hydration script with state (using pre-encoded prefix/suffix)
-        if (hydration) {
-          controller.enqueue(this.HYDRATION_SCRIPT_PREFIX);
-          controller.enqueue(
-            this.encoder.encode(this.safeJsonSerialize(this.buildHydrationData(state))),
-          );
-          controller.enqueue(this.HYDRATION_SCRIPT_SUFFIX);
+        try {
+          await new Promise((r) => setTimeout(r, 0)); // yield to ensure head is sent
+
+          // 2. Wait for React to render the shell
+          //    Note: This blocks until shell is ready, but <head> is already sent!
+          const reactStream = await renderToReadableStream(element, {
+            onError: (error: unknown) => {
+              if (error instanceof Redirection) {
+                log.warn("Redirect during streaming ignored", {
+                  redirect: error.redirect,
+                });
+              } else {
+                log.error("Streaming render error", error);
+              }
+            },
+          });
+
+          // 3. Stream React content as it becomes available
+          const reader = reactStream.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+
+          // 4. Send closing div tag
+          controller.enqueue(templateBytes.afterApp);
+
+          // 5. Inject hydration script
+          if (hydration) {
+            controller.enqueue(HYDRATION_SCRIPT_PREFIX);
+            controller.enqueue(encoder.encode(safeJsonSerialize(buildHydrationData())));
+            controller.enqueue(HYDRATION_SCRIPT_SUFFIX);
+          }
+
+          // 6. Send closing tags
+          controller.enqueue(templateBytes.afterScript);
+
+          timing.endTiming("renderToStream");
+          controller.close();
+        } catch (error) {
+          timing.endTiming("renderToStream");
+
+          if (error instanceof Redirection) {
+            // Can't redirect after we've started streaming - close with what we have
+            log.warn("Redirect during shell render - stream already started");
+            controller.enqueue(templateBytes.afterApp);
+            controller.enqueue(templateBytes.afterScript);
+            controller.close();
+          } else {
+            log.error("Shell render failed", error);
+            // Send error message in the stream
+            controller.enqueue(encoder.encode(`<p>Render error</p>`));
+            controller.enqueue(templateBytes.afterApp);
+            controller.enqueue(templateBytes.afterScript);
+            controller.close();
+          }
         }
-
-        // 5. Send afterScript (closing body/html tags)
-        controller.enqueue(templateBytes.afterScript);
-
-        this.serverTimingProvider.endTiming("renderToStream");
       },
     });
-
-    // Pipe React stream through transform (handles errors internally)
-    reactStream.pipeTo(transform.writable).catch((error) => {
-      this.log.error("Stream pipe error", error);
-    });
-
-    return transform.readable;
   }
 
   /**
@@ -695,6 +736,50 @@ export class ReactServerProvider {
   protected buildHydrationScript(state: ReactRouterState): string {
     const hydrationData = this.buildHydrationData(state);
     return `<script>window.__ssr=${this.safeJsonSerialize(hydrationData)}</script>`;
+  }
+
+  /**
+   * Collect modulepreload links for a route and its parent chain.
+   *
+   * Walks up the route tree and collects preload links for all lazy-loaded
+   * components using the SSR manifest.
+   *
+   * @param route - The page route to collect preloads for
+   * @returns Array of link objects for head injection
+   */
+  protected collectPreloadLinks(
+    route: PageRoute,
+  ): Array<{ rel: string; href: string; as?: string }> {
+    if (!this.ssrManifestProvider.isAvailable()) {
+      return [];
+    }
+
+    const preloadPaths: string[] = [];
+    let current: PageRoute | undefined = route;
+
+    // Walk up the route chain and collect all preload paths
+    while (current) {
+      const preloadPath = current[PAGE_PRELOAD_KEY];
+      if (preloadPath) {
+        preloadPaths.push(preloadPath);
+      }
+      current = current.parent;
+    }
+
+    if (preloadPaths.length === 0) {
+      return [];
+    }
+
+    // Get all chunks for these paths (deduplicated)
+    const chunks = this.ssrManifestProvider.getChunksForMultiple(preloadPaths);
+
+    // Convert to link objects
+    return chunks.map((href) => {
+      if (href.endsWith(".css")) {
+        return { rel: "preload", href, as: "style" };
+      }
+      return { rel: "modulepreload", href };
+    });
   }
 
   protected preprocessTemplate(template: string): PreprocessedTemplate {

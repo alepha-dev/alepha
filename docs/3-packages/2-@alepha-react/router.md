@@ -197,3 +197,40 @@ declare module "alepha" {
 React server provider responsible for SSR and static file serving.
 
 Use `react-dom/server` under the hood.
+
+#### SSRManifestProvider
+
+SSR Manifest structure from Vite.
+
+Maps source file paths to their required chunks/assets.
+/
+export type SSRManifest = Record<string, string[]>;
+
+/**
+Client manifest structure from Vite.
+
+Maps source files to their output information.
+/
+export interface ClientManifest {
+  [key: string]: {
+    file: string;
+    src?: string;
+    isEntry?: boolean;
+    isDynamicEntry?: boolean;
+    imports?: string[];
+    dynamicImports?: string[];
+    css?: string[];
+    assets?: string[];
+  };
+}
+
+
+/**
+Provider for loading and managing Vite's SSR manifest.
+
+The SSR manifest maps source files to their required chunks,
+enabling module preloading during SSR streaming.
+
+Manifest files are generated during `vite build` when:
+- `build.manifest: true` (generates .vite/manifest.json)
+- `build.ssrManifest: true` (generates .vite/ssr-manifest.json)

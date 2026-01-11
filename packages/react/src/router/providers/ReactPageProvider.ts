@@ -22,6 +22,7 @@ import {
   type PagePrimitive,
   type PagePrimitiveOptions,
 } from "../primitives/$page.ts";
+import type { Head } from "@alepha/react/head";
 
 const envSchema = t.object({
   REACT_STRICT_MODE: t.boolean({ default: true }),
@@ -695,6 +696,12 @@ export interface ReactRouterState {
    * Optional meta information associated with the current page.
    */
   meta: Record<string, any>;
+
+  /**
+   * Head configuration for the current page (title, meta tags, etc.).
+   * Populated by HeadProvider during SSR.
+   */
+  head: Head;
 
   //
   name?: string;

@@ -6,10 +6,19 @@ import {
   viteAlephaBuild,
 } from "./viteAlephaBuild.ts";
 import { type ViteAlephaDevOptions, viteAlephaDev } from "./viteAlephaDev.ts";
+import { viteAlephaPreload } from "./viteAlephaPreload.ts";
 
 export type ViteAlephaOptions = ViteAlephaDevOptions &
   ViteAlephaBuildOptions & {
     react?: false;
+    /**
+     * Enable SSR module preloading.
+     * When enabled, $page lazy imports are analyzed and modulepreload
+     * links are injected during SSR streaming.
+     *
+     * @default true
+     */
+    preload?: boolean;
   };
 
 export function viteAlepha(
@@ -28,6 +37,11 @@ export function viteAlepha(
       );
       plugins.push(viteReact());
     } catch (e) {}
+  }
+
+  // Add preload plugin for SSR module preloading (enabled by default)
+  if (options.preload !== false) {
+    plugins.push(viteAlephaPreload());
   }
 
   plugins.push(viteAlephaDev(options), viteAlephaBuild(options));

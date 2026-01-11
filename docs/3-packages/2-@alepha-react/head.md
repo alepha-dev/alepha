@@ -48,3 +48,30 @@ const App = () => {
   );
 }
 ```
+
+### Providers
+
+Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
+
+For more details, see the [Providers documentation](/docs/concepts-providers).
+
+#### BrowserHeadProvider
+
+Browser-side head provider that manages document head elements.
+
+Used by ReactBrowserProvider and ReactBrowserRouterProvider to update
+document title, meta tags, and other head elements during client-side
+navigation.
+
+#### HeadProvider
+
+Provides methods to fill and merge head information into the application state.
+
+Used both on server and client side to manage document head.
+
+#### ServerHeadProvider
+
+Server-side head provider that renders head content into HTML templates.
+
+Used by ReactServerProvider to inject title, meta tags, and other head
+elements into the HTML response during SSR.

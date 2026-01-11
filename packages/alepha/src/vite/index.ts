@@ -7,6 +7,7 @@ export * from "./helpers/createBufferedLogger.ts";
 export * from "./plugins/viteAlepha.ts";
 export * from "./plugins/viteAlephaBuild.ts";
 export * from "./plugins/viteAlephaDev.ts";
+export * from "./plugins/viteAlephaPreload.ts";
 export * from "./plugins/viteCompress.ts";
 // Tasks (for CLI integration)
 export * from "./tasks/index.ts";

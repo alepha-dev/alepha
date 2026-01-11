@@ -7,6 +7,7 @@ import { AlephaServer, type ServerRequest } from "alepha/server";
 import type { ReactNode } from "react";
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
 import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
+import { SSRManifestProvider } from "./providers/SSRManifestProvider.ts";
 import { ReactPageServerService } from "./services/ReactPageServerService.ts";
 import { AlephaServerCache } from "alepha/server/cache";
 import { AlephaServerLinks } from "alepha/server/links";
@@ -19,6 +20,7 @@ export * from "./index.shared.ts";
 export * from "./providers/ReactPageProvider.ts";
 export * from "./providers/ReactBrowserProvider.ts";
 export * from "./providers/ReactServerProvider.ts";
+export * from "./providers/SSRManifestProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -46,6 +48,9 @@ declare module "alepha" {
     // -----------------------------------------------------------------------------------------------------------------
     /**
      * Fires when the React application is being rendered on the browser.
+     *
+     * Note: this one is not really necessary, it's a hack because we need to isolate renderer from server code in order
+     * to avoid including react-dom/client in server bundles.
      */
     "react:browser:render": {
       root: HTMLElement;
@@ -107,7 +112,11 @@ export const AlephaReactRouter = $module({
   services: [
     ReactPageProvider,
     ReactPageService,
-    ReactRouter, ReactServerProvider, ReactPageServerService],
+    ReactRouter,
+    ReactServerProvider,
+    SSRManifestProvider,
+    ReactPageServerService,
+  ],
   register: (alepha) =>
     alepha
       .with(AlephaReact)
@@ -119,6 +128,7 @@ export const AlephaReactRouter = $module({
         provide: ReactPageService,
         use: ReactPageServerService,
       })
+      .with(SSRManifestProvider)
       .with(ReactServerProvider)
       .with(ReactPageProvider)
       .with(ReactRouter),

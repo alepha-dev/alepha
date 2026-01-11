@@ -12,6 +12,7 @@ import {
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { LinkProvider } from "alepha/server/links";
+import { BrowserHeadProvider } from "@alepha/react/head";
 import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
 import type {
   PreviousLayerData,
@@ -64,6 +65,7 @@ export class ReactBrowserProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly router = $inject(ReactBrowserRouterProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly browserHeadProvider = $inject(BrowserHeadProvider);
 
   protected readonly options = $use(reactBrowserOptions);
 
@@ -280,6 +282,9 @@ export class ReactBrowserProvider {
         hydration,
         state: this.state,
       });
+
+      // Fill and render head from route configurations
+      this.browserHeadProvider.fillAndRenderHead(this.state);
 
       window.addEventListener("popstate", () => {
         // when you update silently queryParams or hash, skip rendering

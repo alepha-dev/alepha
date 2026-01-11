@@ -6,7 +6,7 @@
     "build": "alepha build",
     "db:generate": "alepha db:generate",
     "start": "alepha build && node dist",
-    "start:bun": "alepha build && bun dist"
+    "start:bun": "bun dist"
   },
   "dependencies": {
     "@mantine/core": "^8.3.11",

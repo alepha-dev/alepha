@@ -1,7 +1,7 @@
-import { $page } from "@alepha/react/router";
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
-import { $head, AlephaReactHead } from "../index.ts";
+import { $head, AlephaReactHead } from "@alepha/react/head";
+import { $page } from "../index.ts";
 
 class App {
   head = $head({
