@@ -76,7 +76,7 @@ export class AppRouter {
       this.notFound,
     ],
     lazy: () => import("./components/Layout.tsx"),
-    resolve: async ({ user }) => {
+    loader: async ({ user }) => {
       if (user) {
         this.alepha.store.set(
           userProjectsAtom,
@@ -150,7 +150,7 @@ export class AppRouter {
       }),
     },
     lazy: () => import("./components/project/ProjectView.tsx"),
-    resolve: async ({ params }) => {
+    loader: async ({ params }) => {
       const { character, tasks, ...project } =
         await this.projectApi.getProjectById({
           params: {
@@ -181,7 +181,7 @@ export class AppRouter {
   projectPlayers = $page({
     path: "/players",
     lazy: () => import("./components/project/ProjectPlayers.tsx"),
-    resolve: async ({ params }) => {
+    loader: async ({ params }) => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
         throw new NotFoundError("Project not found");
@@ -211,7 +211,7 @@ export class AppRouter {
   projectAnalytics = $page({
     path: "/analytics",
     lazy: () => import("./components/project/ProjectStats.tsx"),
-    resolve: async ({ params }) => {
+    loader: async ({ params }) => {
       const stats = await this.projectStatsApi.getProjectStats({
         params: {
           id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
@@ -226,7 +226,7 @@ export class AppRouter {
   projectSettings = $page({
     path: "/settings",
     lazy: () => import("./components/project/ProjectSettings.tsx"),
-    resolve: async () => {
+    loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
         throw new NotFoundError("Project not found");
@@ -241,7 +241,7 @@ export class AppRouter {
   projectWhiteboards = $page({
     path: "/whiteboards",
     lazy: () => import("./components/project/ProjectWhiteboards.tsx"),
-    resolve: async () => {
+    loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
         throw new NotFoundError("Project not found");
@@ -298,7 +298,7 @@ export class AppRouter {
       }
     },
     lazy: () => import("./components/project/task/TaskView.tsx"),
-    resolve: async ({ params }) => {
+    loader: async ({ params }) => {
       const task = await this.taskApi.getTaskById({
         params: {
           id: params.taskId,
