@@ -134,7 +134,6 @@ export class DbCommand {
   protected readonly generate = $command({
     name: "generate",
     description: "Generate migration files based on current database schema",
-    summary: false,
     args: t.optional(
       t.text({
         title: "path",
@@ -173,7 +172,6 @@ export class DbCommand {
   protected readonly push = $command({
     name: "push",
     description: "Push database schema changes directly to the database",
-    summary: false,
     args: t.optional(
       t.text({
         title: "path",
@@ -200,7 +198,6 @@ export class DbCommand {
   protected readonly migrate = $command({
     name: "migrate",
     description: "Apply pending database migrations",
-    summary: false,
     args: t.optional(
       t.text({
         title: "path",
@@ -227,7 +224,6 @@ export class DbCommand {
   protected readonly studio = $command({
     name: "studio",
     description: "Launch Drizzle Studio database browser",
-    summary: false,
     args: t.optional(
       t.text({
         title: "path",

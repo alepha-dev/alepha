@@ -13,22 +13,3 @@ export * from "./tasks/index.ts";
 declare global {
   var __cli_alepha: Alepha;
 }
-
-/**
- * Vite plugins and tasks for Alepha framework.
- *
- * This module provides Vite plugins and configurations to integrate Alepha applications with Vite's build and development processes.
- *
- * @example
- * ```ts
- * import { defineConfig } from "vite";
- * import { viteAlephaDev } from "alepha/vite";
- *
- * export default defineConfig({
- *   plugins: [viteAlephaDev()],
- *   // other Vite configurations...
- * });
- * ```
- *
- * @module alepha.vite
- */

@@ -12,7 +12,6 @@ export * from "./commands/gen/openapi.ts";
 export * from "./commands/init.ts";
 export * from "./commands/lint.ts";
 export * from "./commands/root.ts";
-export * from "./commands/run.ts";
 export * from "./commands/test.ts";
 export * from "./commands/typecheck.ts";
 export * from "./commands/verify.ts";

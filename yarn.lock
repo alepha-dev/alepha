@@ -191,7 +191,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/ui@npm:0.14.3, @alepha/ui@npm:^0.14.3, @alepha/ui@workspace:packages/ui":
+"@alepha/ui@npm:0.14.3, @alepha/ui@workspace:packages/ui":
   version: 0.0.0-use.local
   resolution: "@alepha/ui@workspace:packages/ui"
   dependencies:
@@ -7920,7 +7920,6 @@ __metadata:
   resolution: "create-alepha@workspace:packages/create-alepha"
   dependencies:
     alepha: "npm:0.14.3"
-    tar: "npm:^7.5.2"
     tsdown: "npm:^0.19.0-beta.5"
     vitest: "npm:^4.0.16"
   bin:
@@ -14139,24 +14138,6 @@ __metadata:
   checksum: 10c0/89a1416668f950236dd5ac9f9a6b2588e1b9b62b1b6ad8dff1bfc5d1a15dbf0aafc9b52d2226d00c28dffff212da464eaeebfc6b7578b9d180cef3e3782c5983
   languageName: node
   linkType: hard
-
-"starter-6b2739@workspace:apps/starter":
-  version: 0.0.0-use.local
-  resolution: "starter-6b2739@workspace:apps/starter"
-  dependencies:
-    "@alepha/react": "npm:^0.14.3"
-    "@alepha/ui": "npm:^0.14.3"
-    "@mantine/core": "npm:^8.3.11"
-    "@mantine/hooks": "npm:^8.3.11"
-    "@tabler/icons-react": "npm:^3.36.1"
-    "@types/react": "npm:^19.2.7"
-    alepha: "npm:^0.14.3"
-    react: "npm:^19.2.3"
-    react-dom: "npm:^19.2.3"
-    vite: "npm:^7.3.1"
-    vitest: "npm:^4.0.16"
-  languageName: unknown
-  linkType: soft
 
 "stat-mode@npm:0.3.0":
   version: 0.3.0

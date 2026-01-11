@@ -11,7 +11,6 @@ import { GenCommand } from "../commands/gen.ts";
 import { InitCommand } from "../commands/init.ts";
 import { LintCommand } from "../commands/lint.ts";
 import { RootCommand } from "../commands/root.ts";
-import { RunCommand } from "../commands/run.ts";
 import { TestCommand } from "../commands/test.ts";
 import { TypecheckCommand } from "../commands/typecheck.ts";
 import { VerifyCommand } from "../commands/verify.ts";
@@ -78,7 +77,6 @@ export const AlephaCli = $module({
     InitCommand,
     LintCommand,
     RootCommand,
-    RunCommand,
     TestCommand,
     TypecheckCommand,
     VerifyCommand,
