@@ -5,8 +5,6 @@ import { $entity } from "./primitives/$entity.ts";
 import { $repository } from "./primitives/$repository.ts";
 import { $sequence } from "./primitives/$sequence.ts";
 import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
-import { BunPostgresProvider } from "./providers/drivers/BunPostgresProvider.ts";
-import { BunSqliteProvider } from "./providers/drivers/BunSqliteProvider.ts";
 import { CloudflareD1Provider } from "./providers/drivers/CloudflareD1Provider.ts";
 import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
@@ -116,8 +114,6 @@ export * from "./primitives/$sequence.ts";
 export * from "./primitives/$transaction.ts";
 export * from "./providers/DatabaseTypeProvider.ts";
 export * from "./providers/DrizzleKitProvider.ts";
-export * from "./providers/drivers/BunPostgresProvider.ts";
-export * from "./providers/drivers/BunSqliteProvider.ts";
 export * from "./providers/drivers/CloudflareD1Provider.ts";
 export * from "./providers/drivers/DatabaseProvider.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
@@ -183,8 +179,6 @@ export const AlephaPostgres = $module({
     NodePostgresProvider,
     PglitePostgresProvider,
     NodeSqliteProvider,
-    BunPostgresProvider,
-    BunSqliteProvider,
     CloudflareD1Provider,
     SqliteModelBuilder,
     PostgresModelBuilder,
@@ -233,7 +227,7 @@ export const AlephaPostgres = $module({
       alepha.with({
         optional: true,
         provide: DatabaseProvider,
-        use: alepha.isBun() ? BunPostgresProvider : NodePostgresProvider,
+        use: NodePostgresProvider,
       });
       return;
     }
@@ -241,7 +235,7 @@ export const AlephaPostgres = $module({
     alepha.with({
       optional: true,
       provide: DatabaseProvider,
-      use: alepha.isBun() ? BunSqliteProvider : NodeSqliteProvider,
+      use: NodeSqliteProvider,
     });
   },
 });
