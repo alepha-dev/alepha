@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
-import { SeoExpander } from "../helpers/SeoExpander.ts";
+import { SeoExpander } from "./SeoExpander.ts";
 
 describe("SeoExpander", () => {
   it("should expand basic SEO configuration", ({ expect }) => {

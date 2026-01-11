@@ -1,7 +1,5 @@
-import { $page } from "@alepha/react/router";
 import { Alepha } from "alepha";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { AlephaReactHead } from "../index.browser.ts";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { Head } from "../interfaces/Head.ts";
 import { BrowserHeadProvider } from "./BrowserHeadProvider.ts";
 
@@ -193,79 +191,6 @@ describe("BrowserHeadProvider", () => {
         "Complete test page",
       );
       expect(authorMeta?.getAttribute("content")).toBe("Test Author");
-    });
-  });
-
-  describe("$page integration", () => {
-    class TestApp {
-      simplePage = $page({
-        path: "/",
-        head: {
-          title: "Simple Page",
-          bodyAttributes: { class: "simple-page" },
-        },
-        component: () => "Simple content",
-      });
-
-      complexPage = $page({
-        path: "/complex",
-        head: {
-          title: "Complex Page",
-          htmlAttributes: {
-            lang: "en",
-            "data-theme": "dark",
-          },
-          bodyAttributes: {
-            class: "complex-page",
-            style: "background: black;",
-          },
-          meta: [
-            { name: "description", content: "Complex test page" },
-            {
-              name: "viewport",
-              content: "width=device-width, initial-scale=1",
-            },
-          ],
-        },
-        component: () => "Complex content",
-      });
-    }
-
-    afterEach(() => {
-      document.body.querySelector("#root")?.remove();
-    });
-
-    it("should render simple page head configuration", async () => {
-      const alepha = Alepha.create().with(AlephaReactHead).with(TestApp);
-      await alepha.start();
-
-      expect(document.title).toBe("Simple Page");
-      expect(document.body.getAttribute("class")).toBe("simple-page");
-    });
-
-    it("should get current head state and match page configuration", async () => {
-      const alepha = Alepha.create().with(AlephaReactHead);
-      const app = alepha.inject(TestApp);
-      await alepha.start();
-
-      // Apply complex page head
-      const headConfig = app.complexPage.options.head as Head;
-      provider.renderHead(document, headConfig);
-
-      // Get current head state
-      const currentHead = provider.getHead(document);
-
-      expect(currentHead.title).toBe(headConfig.title);
-      expect(currentHead.htmlAttributes?.lang).toBe(
-        headConfig.htmlAttributes?.lang,
-      );
-      expect(currentHead.bodyAttributes?.class).toBe(
-        headConfig.bodyAttributes?.class,
-      );
-      expect(currentHead.meta).toContainEqual({
-        name: "description",
-        content: "Complex test page",
-      });
     });
   });
 });

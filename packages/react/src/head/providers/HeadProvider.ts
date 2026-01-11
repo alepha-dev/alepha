@@ -1,14 +1,22 @@
-import type { PageRoute, ReactRouterState } from "@alepha/react/router";
 import { $inject } from "alepha";
 import { SeoExpander } from "../helpers/SeoExpander.ts";
 import type { Head } from "../interfaces/Head.ts";
 
+/**
+ * Provides methods to fill and merge head information into the application state.
+ *
+ * Used both on server and client side to manage document head.
+ *
+ * @see {@link SeoExpander}
+ * @see {@link ServerHeadProvider}
+ * @see {@link BrowserHeadProvider}
+ */
 export class HeadProvider {
   protected readonly seoExpander = $inject(SeoExpander);
 
   public global?: Array<Head | (() => Head)> = [];
 
-  public fillHead(state: ReactRouterState) {
+  public fillHead(state: HeadState) {
     state.head = {
       ...state.head,
     };
@@ -25,7 +33,7 @@ export class HeadProvider {
     }
   }
 
-  protected mergeHead(state: ReactRouterState, head: Head): void {
+  protected mergeHead(state: HeadState, head: Head): void {
     // Expand SEO fields into meta tags
     const { meta, link } = this.seoExpander.expand(head);
     state.head = {
@@ -38,8 +46,8 @@ export class HeadProvider {
   }
 
   protected fillHeadByPage(
-    page: PageRoute,
-    state: ReactRouterState,
+    page: HeadRoute,
+    state: HeadState,
     props: Record<string, any>,
   ): void {
     if (!page.head) {
@@ -96,4 +104,27 @@ export class HeadProvider {
       state.head.script = [...(state.head.script ?? []), ...(head.script ?? [])];
     }
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Minimal route interface for head processing.
+ * Avoids circular dependency with @alepha/react/router.
+ */
+interface HeadRoute {
+  head?: Head | ((props: Record<string, any>, previous?: Head) => Head);
+}
+
+/**
+ * Minimal state interface for head processing.
+ * Avoids circular dependency with @alepha/react/router.
+ */
+interface HeadState {
+  head: Head;
+  layers: Array<{
+    route?: HeadRoute;
+    props?: Record<string, any>;
+    error?: Error;
+  }>;
 }

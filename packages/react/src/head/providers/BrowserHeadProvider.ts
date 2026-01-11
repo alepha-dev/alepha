@@ -1,33 +1,39 @@
-import { $hook, $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import type { Head, HeadMeta } from "../interfaces/Head.ts";
 import { HeadProvider } from "./HeadProvider.ts";
 
+/**
+ * Browser-side head provider that manages document head elements.
+ *
+ * Used by ReactBrowserProvider and ReactBrowserRouterProvider to update
+ * document title, meta tags, and other head elements during client-side
+ * navigation.
+ */
 export class BrowserHeadProvider {
+  protected readonly alepha = $inject(Alepha);
   protected readonly headProvider = $inject(HeadProvider);
 
   protected get document(): Document {
     return window.document;
   }
 
-  protected readonly onBrowserRender = $hook({
-    on: "react:browser:render",
-    handler: async ({ state }) => {
-      this.headProvider.fillHead(state);
-      if (state.head) {
-        this.renderHead(this.document, state.head);
-      }
-    },
-  });
+  /**
+   * Fill head state from route configurations and render to document.
+   * Combines fillHead from HeadProvider with renderHead to the DOM.
+   *
+   * Only runs in browser environment - no-op on server.
+   */
+  public fillAndRenderHead(state: { head: Head; layers: Array<any> }): void {
+    // Skip on server-side
+    if (!this.alepha.isBrowser()) {
+      return;
+    }
 
-  protected readonly onTransitionEnd = $hook({
-    on: "react:transition:end",
-    handler: async ({ state }) => {
-      this.headProvider.fillHead(state);
-      if (state.head) {
-        this.renderHead(this.document, state.head);
-      }
-    },
-  });
+    this.headProvider.fillHead(state as any);
+    if (state.head) {
+      this.renderHead(this.document, state.head);
+    }
+  }
 
   public getHead(document: Document): Head {
     return {

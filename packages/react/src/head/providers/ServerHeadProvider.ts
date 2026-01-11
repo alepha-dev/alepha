@@ -1,24 +1,28 @@
-import { $hook, $inject } from "alepha";
-import { ServerTimingProvider } from "alepha/server";
+import { $inject } from "alepha";
 import type { HeadMeta, SimpleHead } from "../interfaces/Head.ts";
 import { HeadProvider } from "./HeadProvider.ts";
 
+/**
+ * Server-side head provider that renders head content into HTML templates.
+ *
+ * Used by ReactServerProvider to inject title, meta tags, and other head
+ * elements into the HTML response during SSR.
+ */
 export class ServerHeadProvider {
   protected readonly headProvider = $inject(HeadProvider);
-  protected readonly serverTimingProvider = $inject(ServerTimingProvider);
 
-  protected readonly onServerRenderEnd = $hook({
-    on: "react:server:render:end",
-    handler: async (ev) => {
-      this.serverTimingProvider.beginTiming("renderHead");
-      this.headProvider.fillHead(ev.state);
-      if (ev.state.head) {
-        ev.html = this.renderHead(ev.html, ev.state.head);
-      }
-      this.serverTimingProvider.endTiming("renderHead");
-    },
-  });
+  /**
+   * Fill head state from route configurations.
+   * Delegates to HeadProvider to merge head data from all route layers.
+   */
+  public fillHead(state: { head: SimpleHead; layers: Array<any> }): void {
+    this.headProvider.fillHead(state as any);
+  }
 
+  /**
+   * Render head data into an HTML template string.
+   * Injects title, meta tags, link tags, scripts, and html/body attributes.
+   */
   public renderHead(template: string, head: SimpleHead): string {
     let result = template;
 

@@ -1,15 +1,10 @@
 import { AlephaReact } from "@alepha/react";
-import type {
-  PageConfigSchema,
-  TPropsDefault,
-  TPropsParentDefault,
-} from "@alepha/react/router";
 import { $module } from "alepha";
 import { $head } from "./primitives/$head.ts";
-import type { Head } from "./interfaces/Head.ts";
-import { ServerHeadProvider } from "./providers/ServerHeadProvider.ts";
+import { BrowserHeadProvider } from "./providers/BrowserHeadProvider.ts";
 import { HeadProvider } from "./providers/HeadProvider.ts";
 import { SeoExpander } from "./helpers/SeoExpander.ts";
+import { ServerHeadProvider } from "./providers/ServerHeadProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -18,26 +13,7 @@ export * from "./hooks/useHead.ts";
 export * from "./interfaces/Head.ts";
 export * from "./helpers/SeoExpander.ts";
 export * from "./providers/ServerHeadProvider.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-// Augment PagePrimitiveOptions in router module
-declare module "@alepha/react/router" {
-  interface PagePrimitiveOptions<
-    TConfig extends PageConfigSchema = PageConfigSchema,
-    TProps extends object = TPropsDefault,
-    TPropsParent extends object = TPropsParentDefault,
-  > {
-    head?: Head | ((props: TProps, previous?: Head) => Head);
-  }
-}
-
-// Augment ReactRouterState in router module
-declare module "@alepha/react/router" {
-  interface ReactRouterState {
-    head: Head;
-  }
-}
+export * from "./providers/BrowserHeadProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -55,5 +31,11 @@ declare module "@alepha/react/router" {
 export const AlephaReactHead = $module({
   name: "alepha.react.head",
   primitives: [$head],
-  services: [AlephaReact, ServerHeadProvider, HeadProvider, SeoExpander],
+  services: [
+    AlephaReact,
+    BrowserHeadProvider,
+    HeadProvider,
+    SeoExpander,
+    ServerHeadProvider,
+  ],
 });
