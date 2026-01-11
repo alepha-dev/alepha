@@ -865,6 +865,189 @@ describe("ServerCacheProvider", () => {
     });
   });
 
+  describe("Stream caching support", () => {
+    test("should cache ReadableStream responses via tee", async ({
+      expect,
+    }) => {
+      // Create a simple ReadableStream that emits chunks
+      const chunks = ["Hello", " ", "World"];
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const encoder = new TextEncoder();
+          for (const chunk of chunks) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      });
+
+      // Access the protected method via type assertion
+      const provider = cacheProvider as any;
+      const key = "test-stream-key";
+
+      // Collect the stream for cache
+      const hash = await provider.collectStreamForCache(
+        stream,
+        key,
+        200,
+        "text/html",
+        true,
+      );
+
+      expect(hash).toBeDefined();
+      expect(hash).toMatch(/^"[a-f0-9]+"$/); // ETag format
+
+      // Verify the cache contains the collected content
+      const cached = await provider.cache.get(key);
+      expect(cached).toBeDefined();
+      expect(cached.body).toBe("Hello World");
+      expect(cached.status).toBe(200);
+      expect(cached.contentType).toBe("text/html");
+    });
+
+    test("should tee stream so client and cache both receive data", async ({
+      expect,
+    }) => {
+      const encoder = new TextEncoder();
+      const chunks = ["<html>", "<body>", "Content", "</body>", "</html>"];
+
+      const originalStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      });
+
+      // Tee the stream like ServerCacheProvider does
+      const [clientStream, cacheStream] = originalStream.tee();
+
+      // Read from client stream (simulates client receiving data)
+      const clientReader = clientStream.getReader();
+      const clientChunks: string[] = [];
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await clientReader.read();
+        if (done) break;
+        clientChunks.push(decoder.decode(value, { stream: true }));
+      }
+      clientChunks.push(decoder.decode()); // flush
+
+      // Read from cache stream (simulates cache collection)
+      const cacheReader = cacheStream.getReader();
+      const cacheChunks: string[] = [];
+      const cacheDecoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await cacheReader.read();
+        if (done) break;
+        cacheChunks.push(cacheDecoder.decode(value, { stream: true }));
+      }
+      cacheChunks.push(cacheDecoder.decode()); // flush
+
+      // Both should receive the same data
+      const clientData = clientChunks.join("");
+      const cacheData = cacheChunks.join("");
+
+      expect(clientData).toBe("<html><body>Content</body></html>");
+      expect(cacheData).toBe("<html><body>Content</body></html>");
+      expect(clientData).toBe(cacheData);
+    });
+
+    test("should handle empty stream gracefully", async ({ expect }) => {
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.close();
+        },
+      });
+
+      const provider = cacheProvider as any;
+      const key = "empty-stream-key";
+
+      const hash = await provider.collectStreamForCache(
+        stream,
+        key,
+        200,
+        "text/html",
+        true,
+      );
+
+      expect(hash).toBeDefined();
+
+      const cached = await provider.cache.get(key);
+      expect(cached).toBeDefined();
+      expect(cached.body).toBe("");
+    });
+
+    test("should handle large stream with multiple chunks", async ({
+      expect,
+    }) => {
+      const encoder = new TextEncoder();
+      const chunkCount = 100;
+      const chunkContent = "x".repeat(1000);
+
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (let i = 0; i < chunkCount; i++) {
+            controller.enqueue(encoder.encode(chunkContent));
+          }
+          controller.close();
+        },
+      });
+
+      const provider = cacheProvider as any;
+      const key = "large-stream-key";
+
+      const hash = await provider.collectStreamForCache(
+        stream,
+        key,
+        200,
+        "text/html",
+        false,
+      );
+
+      // hash should be undefined when generateEtag is false
+      expect(hash).toBeUndefined();
+
+      const cached = await provider.cache.get(key);
+      expect(cached).toBeDefined();
+      expect(cached.body.length).toBe(chunkCount * chunkContent.length);
+    });
+
+    test("should generate correct ETag for streamed content", async ({
+      expect,
+    }) => {
+      const content = "Test content for ETag";
+      const encoder = new TextEncoder();
+
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode(content));
+          controller.close();
+        },
+      });
+
+      const provider = cacheProvider as any;
+
+      // Generate ETag from stream
+      const streamHash = await provider.collectStreamForCache(
+        stream,
+        "etag-test-key",
+        200,
+        "text/html",
+        true,
+      );
+
+      // Generate ETag from string directly
+      const stringHash = cacheProvider.generateETag(content);
+
+      // Both should produce the same ETag
+      expect(streamHash).toBe(stringHash);
+    });
+  });
+
   describe("Error response caching", () => {
     test("should NOT cache 500 error responses", async ({ expect }) => {
       const response1 = await app.errorAction.fetch();

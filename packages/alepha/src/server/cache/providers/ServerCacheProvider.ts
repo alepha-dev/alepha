@@ -261,23 +261,54 @@ export class ServerCacheProvider {
         return;
       }
 
-      // Only process string responses (text, html, json, etc.)
-      // Buffer is not supported by alepha/cache for now
-      if (typeof response.body !== "string") {
-        return;
-      }
-
       // Don't cache error responses (status >= 400)
       if (response.status && response.status >= 400) {
         return;
       }
 
-      const key = this.createCacheKey(route, request);
-      const generatedEtag = this.generateETag(response.body);
-      const lastModified = this.time.toISOString();
-
       // Initialize headers if not present
       response.headers ??= {};
+
+      const key = this.createCacheKey(route, request);
+
+      // Handle ReadableStream responses (e.g., SSR streaming)
+      if (response.body instanceof ReadableStream && shouldStore) {
+        // Tee the stream: one for client, one for cache collection
+        const [clientStream, cacheStream] = (
+          response.body as ReadableStream<Uint8Array>
+        ).tee();
+
+        // Replace response body with client stream (continues streaming to client)
+        response.body = clientStream as typeof response.body;
+
+        // Collect cache stream in background (non-blocking)
+        this.collectStreamForCache(
+          cacheStream,
+          key,
+          response.status,
+          response.headers?.["content-type"],
+          shouldUseEtag,
+        )
+          .then((hash) => {
+            if (shouldUseEtag && hash) {
+              // Note: headers already sent for streaming, etag only useful for future requests
+              this.log.trace("Stream cached with hash", { key, hash });
+            }
+          })
+          .catch((err) => {
+            this.log.warn("Failed to cache stream", { key, error: err });
+          });
+
+        return;
+      }
+
+      // Only process string responses (text, html, json, etc.)
+      if (typeof response.body !== "string") {
+        return;
+      }
+
+      const generatedEtag = this.generateETag(response.body);
+      const lastModified = this.time.toISOString();
 
       // Store response if storing is enabled
       if (shouldStore) {
@@ -403,6 +434,60 @@ export class ServerCacheProvider {
     }
 
     return `${route.method}:${route.path.replaceAll(":", "")}:${params.join(",").replaceAll(":", "")}`;
+  }
+
+  /**
+   * Collect a ReadableStream into a string and store it in the cache.
+   * This runs in the background while the original stream is sent to the client.
+   *
+   * @param stream - The stream to collect
+   * @param key - Cache key
+   * @param status - HTTP status code
+   * @param contentType - Content-Type header
+   * @param generateEtag - Whether to generate and return an ETag
+   * @returns The generated ETag hash, or undefined
+   */
+  protected async collectStreamForCache(
+    stream: ReadableStream<Uint8Array>,
+    key: string,
+    status: number | undefined,
+    contentType: string | undefined,
+    generateEtag: boolean,
+  ): Promise<string | undefined> {
+    const chunks: Uint8Array[] = [];
+    const reader = stream.getReader();
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+
+      // Combine chunks into a single string
+      const decoder = new TextDecoder();
+      const body =
+        chunks
+          .map((chunk) => decoder.decode(chunk, { stream: true }))
+          .join("") + decoder.decode(); // Flush remaining
+
+      const hash = this.generateETag(body);
+      const lastModified = this.time.toISOString();
+
+      this.log.trace("Storing streamed response", { key });
+
+      await this.cache.set(key, {
+        body,
+        status,
+        contentType,
+        lastModified,
+        hash,
+      });
+
+      return generateEtag ? hash : undefined;
+    } finally {
+      reader.releaseLock();
+    }
   }
 }
 
