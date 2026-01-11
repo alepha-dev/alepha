@@ -71,7 +71,7 @@ Used both on server and client side to manage document head.
 
 #### ServerHeadProvider
 
-Server-side head provider that renders head content into HTML templates.
+Server-side head provider that fills head content from route configurations.
 
-Used by ReactServerProvider to inject title, meta tags, and other head
-elements into the HTML response during SSR.
+Used by ReactServerProvider to collect title, meta tags, and other head
+elements which are then rendered by ReactServerTemplateProvider.
