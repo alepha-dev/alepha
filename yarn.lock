@@ -9653,6 +9653,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "example-ssr-fb4dc1@workspace:apps/example-ssr"
   dependencies:
+    "@playwright/test": "npm:^1.57.0"
     alepha: "npm:^0.14.3"
     react: "npm:^19.2.3"
     vite: "npm:^7.3.1"

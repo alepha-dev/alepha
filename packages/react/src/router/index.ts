@@ -7,6 +7,7 @@ import { AlephaServer, type ServerRequest } from "alepha/server";
 import type { ReactNode } from "react";
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
 import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
+import { ReactServerTemplateProvider } from "./providers/ReactServerTemplateProvider.ts";
 import { SSRManifestProvider } from "./providers/SSRManifestProvider.ts";
 import { ReactPageServerService } from "./services/ReactPageServerService.ts";
 import { AlephaServerCache } from "alepha/server/cache";
@@ -20,6 +21,7 @@ export * from "./index.shared.ts";
 export * from "./providers/ReactPageProvider.ts";
 export * from "./providers/ReactBrowserProvider.ts";
 export * from "./providers/ReactServerProvider.ts";
+export * from "./providers/ReactServerTemplateProvider.ts";
 export * from "./providers/SSRManifestProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -114,6 +116,7 @@ export const AlephaReactRouter = $module({
     ReactPageService,
     ReactRouter,
     ReactServerProvider,
+    ReactServerTemplateProvider,
     SSRManifestProvider,
     ReactPageServerService,
   ],
@@ -129,6 +132,7 @@ export const AlephaReactRouter = $module({
         use: ReactPageServerService,
       })
       .with(SSRManifestProvider)
+      .with(ReactServerTemplateProvider)
       .with(ReactServerProvider)
       .with(ReactPageProvider)
       .with(ReactRouter),

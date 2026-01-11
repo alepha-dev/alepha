@@ -1,12 +1,12 @@
 import { $inject } from "alepha";
-import type { HeadMeta, SimpleHead } from "../interfaces/Head.ts";
+import type { SimpleHead } from "../interfaces/Head.ts";
 import { HeadProvider } from "./HeadProvider.ts";
 
 /**
- * Server-side head provider that renders head content into HTML templates.
+ * Server-side head provider that fills head content from route configurations.
  *
- * Used by ReactServerProvider to inject title, meta tags, and other head
- * elements into the HTML response during SSR.
+ * Used by ReactServerProvider to collect title, meta tags, and other head
+ * elements which are then rendered by ReactServerTemplateProvider.
  */
 export class ServerHeadProvider {
   protected readonly headProvider = $inject(HeadProvider);
@@ -17,135 +17,5 @@ export class ServerHeadProvider {
    */
   public fillHead(state: { head: SimpleHead; layers: Array<any> }): void {
     this.headProvider.fillHead(state as any);
-  }
-
-  /**
-   * Render head data into an HTML template string.
-   * Injects title, meta tags, link tags, scripts, and html/body attributes.
-   */
-  public renderHead(template: string, head: SimpleHead): string {
-    let result = template;
-
-    // Inject htmlAttributes
-    const htmlAttributes = head.htmlAttributes;
-    if (htmlAttributes) {
-      result = result.replace(
-        /<html([^>]*)>/i,
-        (_, existingAttrs) =>
-          `<html${this.mergeAttributes(existingAttrs, htmlAttributes)}>`,
-      );
-    }
-
-    // Inject bodyAttributes
-    const bodyAttributes = head.bodyAttributes;
-    if (bodyAttributes) {
-      result = result.replace(
-        /<body([^>]*)>/i,
-        (_, existingAttrs) =>
-          `<body${this.mergeAttributes(existingAttrs, bodyAttributes)}>`,
-      );
-    }
-
-    // Build head content
-    let headContent = "";
-    const title = head.title;
-    if (title) {
-      if (template.includes("<title>")) {
-        result = result.replace(
-          /<title>(.*?)<\/title>/i,
-          () => `<title>${this.escapeHtml(title)}</title>`,
-        );
-      } else {
-        headContent += `<title>${this.escapeHtml(title)}</title>\n`;
-      }
-    }
-
-    if (head.meta) {
-      for (const meta of head.meta) {
-        headContent += this.renderMetaTag(meta);
-      }
-    }
-
-    if (head.link) {
-      for (const link of head.link) {
-        headContent += `<link rel="${this.escapeHtml(link.rel)}" href="${this.escapeHtml(link.href)}">\n`;
-      }
-    }
-
-    if (head.script) {
-      for (const script of head.script) {
-        headContent += this.renderScriptTag(script);
-      }
-    }
-
-    // Inject into <head>...</head>
-    result = result.replace(
-      /<head([^>]*)>(.*?)<\/head>/is,
-      (_, existingAttrs, existingHead) =>
-        `<head${existingAttrs}>${existingHead}${headContent}</head>`,
-    );
-
-    return result.trim();
-  }
-
-  protected mergeAttributes(
-    existing: string,
-    attrs: Record<string, string>,
-  ): string {
-    const existingAttrs = this.parseAttributes(existing);
-    const merged = { ...existingAttrs, ...attrs };
-    return Object.entries(merged)
-      .map(([k, v]) => ` ${k}="${this.escapeHtml(v)}"`)
-      .join("");
-  }
-
-  protected parseAttributes(attrStr: string): Record<string, string> {
-    attrStr = attrStr.replaceAll("'", '"');
-
-    const attrs: Record<string, string> = {};
-    const attrRegex = /([^\s=]+)(?:="([^"]*)")?/g;
-    let match: RegExpExecArray | null = attrRegex.exec(attrStr);
-
-    while (match) {
-      attrs[match[1]] = match[2] ?? "";
-      match = attrRegex.exec(attrStr);
-    }
-
-    return attrs;
-  }
-
-  protected escapeHtml(str: string): string {
-    return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
-
-  protected renderMetaTag(meta: HeadMeta): string {
-    // OpenGraph tags use property attribute
-    if (meta.property) {
-      return `<meta property="${this.escapeHtml(meta.property)}" content="${this.escapeHtml(meta.content)}">\n`;
-    }
-    // Standard meta tags use name attribute
-    if (meta.name) {
-      return `<meta name="${this.escapeHtml(meta.name)}" content="${this.escapeHtml(meta.content)}">\n`;
-    }
-    return "";
-  }
-
-  protected renderScriptTag(script: Record<string, string | boolean>): string {
-    const attrs = Object.entries(script)
-      .filter(([, value]) => value !== false)
-      .map(([key, value]) => {
-        // Boolean attributes - render without value if true
-        if (value === true) {
-          return key;
-        }
-        return `${key}="${this.escapeHtml(String(value))}"`;
-      })
-      .join(" ");
-    return `<script ${attrs}></script>\n`;
   }
 }

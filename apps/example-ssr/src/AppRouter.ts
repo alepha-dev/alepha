@@ -7,6 +7,9 @@ export class AppRouter {
   countApi = $client<CountApi>();
 
   home = $page({
+    head: {
+      title: "Home",
+    },
     schema: {
       query: t.object({
         name: t.text({ default: "Alepha" }),
@@ -19,5 +22,13 @@ export class AppRouter {
       };
     },
     lazy: () => import("./Home.tsx"),
+  });
+
+  about = $page({
+    head: {
+      title: "About",
+    },
+    path: "/about",
+    lazy: () => import("./About.tsx"),
   });
 }

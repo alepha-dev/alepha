@@ -5,6 +5,7 @@ import type {
   PagePrimitiveRenderResult,
 } from "../primitives/$page.ts";
 import { ReactServerProvider } from "../providers/ReactServerProvider.ts";
+import { ReactServerTemplateProvider } from "../providers/ReactServerTemplateProvider.ts";
 import { ReactPageService } from "./ReactPageService.ts";
 
 /**
@@ -12,6 +13,7 @@ import { ReactPageService } from "./ReactPageService.ts";
  */
 export class ReactPageServerService extends ReactPageService {
   protected readonly reactServerProvider = $inject(ReactServerProvider);
+  protected readonly templateProvider = $inject(ReactServerTemplateProvider);
   protected readonly serverProvider = $inject(ServerProvider);
 
   public async render(
@@ -36,9 +38,9 @@ export class ReactPageServerService extends ReactPageService {
     }
 
     // take only text inside the root div
-    const match = html.match(this.reactServerProvider.ROOT_DIV_REGEX);
-    if (match) {
-      return { html: match[3], response };
+    const rootContent = this.templateProvider.extractRootContent(html);
+    if (rootContent !== undefined) {
+      return { html: rootContent, response };
     }
 
     throw new AlephaError("Invalid HTML response");
