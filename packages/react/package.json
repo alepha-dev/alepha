@@ -37,7 +37,7 @@
   },
   "scripts": {
     "lint": "alepha lint",
-    "check": "alepha typecheck",
+    "typecheck": "alepha typecheck",
     "test": "vitest run",
     "build": "node scripts/build.ts"
   },

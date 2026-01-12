@@ -3,6 +3,9 @@ import {
   ssrManifestAtom,
   type SsrManifestAtomSchema,
 } from "../atoms/ssrManifestAtom.ts";
+import type { PagePrimitiveRenderOptions, PagePrimitiveRenderResult } from "../primitives/$page.ts";
+import type { PageRoute, ReactRouterState } from "./ReactPageProvider.ts";
+import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
 
 /**
  * SSR Manifest structure from Vite.
@@ -212,30 +215,41 @@ export class SSRManifestProvider {
   }
 
   /**
-   * Get modulepreload links for a source file.
-   *
-   * @param sourcePath - Source file path
-   * @returns Array of objects with rel and href for link tags
+   * Collect modulepreload links for a route and its parent chain.
    */
-  public getPreloadLinks(
-    sourcePath: string,
+  public collectPreloadLinks(
+    route: PageRoute,
   ): Array<{ rel: string; href: string; as?: string; crossorigin?: string }> {
-    const chunks = this.getChunks(sourcePath);
+    if (!this.isAvailable()) {
+      return [];
+    }
+
+    const preloadPaths: string[] = [];
+    let current: PageRoute | undefined = route;
+
+    while (current) {
+      const preloadKey = current[PAGE_PRELOAD_KEY];
+      if (preloadKey) {
+        const sourcePath =
+          this.resolvePreloadKey(preloadKey);
+        if (sourcePath) {
+          preloadPaths.push(sourcePath);
+        }
+      }
+      current = current.parent;
+    }
+
+    if (preloadPaths.length === 0) {
+      return [];
+    }
+
+    const chunks = this.getChunksForMultiple(preloadPaths);
 
     return chunks.map((href) => {
-      // Determine if it's JS or CSS
       if (href.endsWith(".css")) {
-        return {
-          rel: "preload",
-          href,
-          as: "style",
-        };
+        return { rel: "preload", href, as: "style", crossorigin: "" };
       }
-
-      return {
-        rel: "modulepreload",
-        href,
-      };
+      return { rel: "modulepreload", href };
     });
   }
 

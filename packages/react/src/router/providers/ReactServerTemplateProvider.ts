@@ -404,10 +404,14 @@ export class ReactServerTemplateProvider {
     rel: string;
     href: string;
     as?: string;
+    crossorigin?: string;
   }): string {
     let tag = `<link rel="${this.escapeHtml(link.rel)}" href="${this.escapeHtml(link.href)}"`;
     if (link.as) {
       tag += ` as="${this.escapeHtml(link.as)}"`;
+    }
+    if (link.crossorigin != null) {
+      tag += ' crossorigin=""';
     }
     tag += ">\n";
     return tag;
@@ -527,10 +531,9 @@ export class ReactServerTemplateProvider {
     const slots = this.getSlots();
     const head = state.head;
     const encoder = this.encoder;
-    const self = this;
 
     return new ReadableStream<Uint8Array>({
-      async start(controller) {
+       start: async (controller) => {
         try {
           // 1. DOCTYPE
           controller.enqueue(slots.doctype);
@@ -538,19 +541,19 @@ export class ReactServerTemplateProvider {
           // 2. <html ...>
           controller.enqueue(slots.htmlOpen);
           controller.enqueue(
-            encoder.encode(self.renderMergedHtmlAttrs(head?.htmlAttributes)),
+            encoder.encode(this.renderMergedHtmlAttrs(head?.htmlAttributes)),
           );
           controller.enqueue(slots.htmlClose);
 
           // 3. <head>...</head>
           controller.enqueue(slots.headOpen);
-          controller.enqueue(encoder.encode(self.renderHeadContent(head)));
+          controller.enqueue(encoder.encode(this.renderHeadContent(head)));
           controller.enqueue(slots.headClose);
 
           // 4. <body ...>
           controller.enqueue(slots.bodyOpen);
           controller.enqueue(
-            encoder.encode(self.renderMergedBodyAttrs(head?.bodyAttributes)),
+            encoder.encode(this.renderMergedBodyAttrs(head?.bodyAttributes)),
           );
           controller.enqueue(slots.bodyClose);
 
@@ -584,12 +587,12 @@ export class ReactServerTemplateProvider {
 
           // 10. Hydration script
           if (hydration) {
-            const hydrationData = self.buildHydrationData(state);
-            controller.enqueue(self.ENCODED.HYDRATION_PREFIX);
+            const hydrationData = this.buildHydrationData(state);
+            controller.enqueue(this.ENCODED.HYDRATION_PREFIX);
             controller.enqueue(
-              encoder.encode(self.safeJsonSerialize(hydrationData)),
+              encoder.encode(this.safeJsonSerialize(hydrationData)),
             );
-            controller.enqueue(self.ENCODED.HYDRATION_SUFFIX);
+            controller.enqueue(this.ENCODED.HYDRATION_SUFFIX);
           }
 
           // 11. </body></html>

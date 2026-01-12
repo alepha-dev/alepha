@@ -363,7 +363,7 @@ export class ReactServerProvider {
       this.serverHeadProvider.fillHead(state);
 
       // Collect and inject modulepreload links
-      const preloadLinks = this.collectPreloadLinks(route);
+      const preloadLinks = this.ssrManifestProvider.collectPreloadLinks(route);
       if (preloadLinks.length > 0) {
         state.head ??= {};
         state.head.link = [...(state.head.link ?? []), ...preloadLinks];
@@ -419,45 +419,6 @@ export class ReactServerProvider {
         throw error;
       }
     };
-  }
-
-  /**
-   * Collect modulepreload links for a route and its parent chain.
-   */
-  protected collectPreloadLinks(
-    route: PageRoute,
-  ): Array<{ rel: string; href: string; as?: string }> {
-    if (!this.ssrManifestProvider.isAvailable()) {
-      return [];
-    }
-
-    const preloadPaths: string[] = [];
-    let current: PageRoute | undefined = route;
-
-    while (current) {
-      const preloadKey = current[PAGE_PRELOAD_KEY];
-      if (preloadKey) {
-        const sourcePath =
-          this.ssrManifestProvider.resolvePreloadKey(preloadKey);
-        if (sourcePath) {
-          preloadPaths.push(sourcePath);
-        }
-      }
-      current = current.parent;
-    }
-
-    if (preloadPaths.length === 0) {
-      return [];
-    }
-
-    const chunks = this.ssrManifestProvider.getChunksForMultiple(preloadPaths);
-
-    return chunks.map((href) => {
-      if (href.endsWith(".css")) {
-        return { rel: "preload", href, as: "style" };
-      }
-      return { rel: "modulepreload", href };
-    });
   }
 
   // ---------------------------------------------------------------------------
