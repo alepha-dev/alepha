@@ -18,6 +18,41 @@ interface LightPillarProps {
 }
 
 // ============================================================================
+// Performance Detection
+// ============================================================================
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function isIntegratedGPU(gl: WebGLRenderingContext): boolean {
+  const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+  if (!debugInfo) return false;
+
+  const renderer = gl
+    .getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
+    ?.toLowerCase();
+  if (!renderer) return false;
+
+  const integratedPatterns = [
+    "intel",
+    "integrated",
+    "mesa",
+    "llvmpipe",
+    "swiftshader",
+    "software",
+    "microsoft basic",
+    "mali-4",
+    "mali-t",
+    "adreno 3",
+    "adreno 4",
+    "powervr sgx",
+  ];
+
+  return integratedPatterns.some((pattern) => renderer.includes(pattern));
+}
+
+// ============================================================================
 // WebGL Utilities
 // ============================================================================
 
@@ -181,7 +216,7 @@ const FRAGMENT_SHADER = /* glsl */ `
 
     vec3 color = vec3(0.0);
 
-    for (float i = 0.0; i < 75.0; i++) {
+    for (float i = 0.0; i < 50.0; i++) {
       vec3 pos = origin + direction * depth;
       pos.xz *= rotX;
 
@@ -281,10 +316,17 @@ const LightPillar: React.FC<LightPillarProps> = ({
   const timeRef = useRef(0);
   const isVisibleRef = useRef(true);
   const [webGLSupported, setWebGLSupported] = useState(true);
+  const [performanceDisabled, setPerformanceDisabled] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    // Check for reduced motion preference
+    if (prefersReducedMotion()) {
+      setPerformanceDisabled(true);
+      return;
+    }
 
     // Create canvas
     const canvas = document.createElement("canvas");
@@ -304,6 +346,13 @@ const LightPillar: React.FC<LightPillarProps> = ({
     if (!gl) {
       console.warn("WebGL is not supported");
       setWebGLSupported(false);
+      return;
+    }
+
+    // Check for integrated GPU
+    if (isIntegratedGPU(gl)) {
+      setPerformanceDisabled(true);
+      canvas.remove();
       return;
     }
 
@@ -487,15 +536,8 @@ const LightPillar: React.FC<LightPillarProps> = ({
     pillarRotation,
   ]);
 
-  if (!webGLSupported) {
-    return (
-      <div
-        className={`light-pillar-fallback ${className}`}
-        style={{ mixBlendMode }}
-      >
-        WebGL not supported
-      </div>
-    );
+  if (!webGLSupported || performanceDisabled) {
+    return null;
   }
 
   return (
