@@ -9,7 +9,7 @@
     "deploy": "alepha deploy --build --mode=production",
     "typecheck": "alepha typecheck",
     "studio": "alepha db studio",
-    "start": "node --env-file=.env dist"
+    "start": "alepha build && node --env-file=.env dist"
   },
   "dependencies": {
     "@alepha/bucket-vercel": "^0.14.3",
