@@ -144,6 +144,45 @@ test.describe("Build Artifacts", () => {
         expect(existsSync(`${htmlFile}.br`)).toBe(true);
       }
     });
+
+    test("index.html contains entry script with hash", async () => {
+      const indexPath = join(distDir, "index.html");
+      const content = readFileSync(indexPath, "utf-8");
+
+      // Should have entry.<hash>.js script tag
+      const entryScriptMatch = content.match(
+        /<script[^>]*src="[^"]*\/entry\.[a-zA-Z0-9]+\.js"[^>]*>/,
+      );
+      expect(entryScriptMatch).not.toBeNull();
+    });
+
+    test("index.html contains CSS stylesheet with hash", async () => {
+      const indexPath = join(distDir, "index.html");
+      const content = readFileSync(indexPath, "utf-8");
+
+      // Should have asset.<hash>.css link tag
+      const cssLinkMatch = content.match(
+        /<link[^>]*href="[^"]*\/asset\.[a-zA-Z0-9]+\.css"[^>]*>/,
+      );
+      expect(cssLinkMatch).not.toBeNull();
+    });
+
+    test("404.html contains entry assets", async () => {
+      const notFoundPath = join(distDir, "404.html");
+      const content = readFileSync(notFoundPath, "utf-8");
+
+      // Should have entry.<hash>.js script tag
+      const entryScriptMatch = content.match(
+        /<script[^>]*src="[^"]*\/entry\.[a-zA-Z0-9]+\.js"[^>]*>/,
+      );
+      expect(entryScriptMatch).not.toBeNull();
+
+      // Should have asset.<hash>.css link tag
+      const cssLinkMatch = content.match(
+        /<link[^>]*href="[^"]*\/asset\.[a-zA-Z0-9]+\.css"[^>]*>/,
+      );
+      expect(cssLinkMatch).not.toBeNull();
+    });
   });
 });
 

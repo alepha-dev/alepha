@@ -25,7 +25,7 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function isIntegratedGPU(gl: WebGLRenderingContext): boolean {
+function isWeakGPU(gl: WebGLRenderingContext): boolean {
   const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
   if (!debugInfo) return false;
 
@@ -34,22 +34,42 @@ function isIntegratedGPU(gl: WebGLRenderingContext): boolean {
     ?.toLowerCase();
   if (!renderer) return false;
 
-  const integratedPatterns = [
-    "intel",
-    "integrated",
-    "mesa",
-    "llvmpipe",
-    "swiftshader",
-    "software",
-    "microsoft basic",
-    "mali-4",
-    "mali-t",
-    "adreno 3",
-    "adreno 4",
-    "powervr sgx",
+  // Known capable Intel GPUs - allow these
+  const capableIntelPatterns = [
+    "iris xe",        // Tiger Lake, Alder Lake - very capable
+    "iris plus",      // Ice Lake - decent
+    "intel arc",      // Discrete GPU - very capable
+    "uhd graphics 6", // UHD 600 series (e.g., 620, 630)
+    "uhd graphics 7", // UHD 700 series (e.g., 730, 770)
   ];
 
-  return integratedPatterns.some((pattern) => renderer.includes(pattern));
+  if (renderer.includes("intel")) {
+    // Check if it's a capable Intel GPU
+    const isCapableIntel = capableIntelPatterns.some((pattern) =>
+      renderer.includes(pattern),
+    );
+    if (isCapableIntel) {
+      return false; // Allow capable Intel GPUs
+    }
+    // Block other Intel GPUs (HD 4000 and below, old integrated)
+    return true;
+  }
+
+  // Block known weak/software GPUs
+  const weakPatterns = [
+    "llvmpipe",       // Software renderer
+    "swiftshader",    // Software renderer
+    "software",       // Generic software
+    "microsoft basic",// Windows fallback
+    "mali-4",         // Old Mali
+    "mali-t6",        // Mali-T600 series - weak
+    "adreno 3",       // Old Adreno
+    "adreno 4",       // Older Adreno (4xx series)
+    "powervr sgx",    // Old PowerVR
+    "videocore",      // Raspberry Pi
+  ];
+
+  return weakPatterns.some((pattern) => renderer.includes(pattern));
 }
 
 // ============================================================================
@@ -349,8 +369,8 @@ const LightPillar: React.FC<LightPillarProps> = ({
       return;
     }
 
-    // Check for integrated GPU
-    if (isIntegratedGPU(gl)) {
+    // Check for weak GPU
+    if (isWeakGPU(gl)) {
       setPerformanceDisabled(true);
       canvas.remove();
       return;
