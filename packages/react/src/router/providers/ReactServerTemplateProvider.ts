@@ -475,6 +475,10 @@ export class ReactServerTemplateProvider {
 
           // 3. <head>...</head>
           controller.enqueue(slots.headOpen);
+          // Include early head content (entry.js, CSS) if set
+          if (this.earlyHeadContent) {
+            controller.enqueue(encoder.encode(this.earlyHeadContent));
+          }
           controller.enqueue(encoder.encode(this.renderHeadContent(head)));
           controller.enqueue(slots.headClose);
 

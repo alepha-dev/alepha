@@ -335,51 +335,15 @@ export class ReactServerProvider {
         globalHead,
         async () => {
           // === ASYNC WORK (runs while early head is being sent) ===
+          const result = await this.renderPage(route, state);
 
-          // Resolve page layers
-          this.serverTimingProvider.beginTiming("createLayers");
-          const { redirect } = await this.pageApi.createLayers(route, state);
-          this.serverTimingProvider.endTiming("createLayers");
-
-          if (redirect) {
-            this.log.debug("Resolver resulted in redirection", { redirect });
+          if (result.redirect) {
             // Note: redirect happens after early head is sent, handled by stream
-            reply.redirect(redirect);
+            reply.redirect(result.redirect);
             return null;
           }
 
-          // Fill head from route config
-          this.serverHeadProvider.fillHead(state);
-
-          // Collect and inject modulepreload links for page-specific chunks
-          const preloadLinks =
-            this.ssrManifestProvider.collectPreloadLinks(route);
-          if (preloadLinks.length > 0) {
-            state.head ??= {};
-            state.head.link = [...(state.head.link ?? []), ...preloadLinks];
-          }
-
-          // Render React to stream
-          this.serverTimingProvider.beginTiming("renderToStream");
-
-          const element = this.pageApi.root(state);
-          this.alepha.store.set("alepha.react.router.state", state);
-
-          const reactStream = await renderToReadableStream(element, {
-            onError: (error: unknown) => {
-              if (error instanceof Redirection) {
-                this.log.warn("Redirect during streaming ignored", {
-                  redirect: error.redirect,
-                });
-              } else {
-                this.log.error("Streaming render error", error);
-              }
-            },
-          });
-
-          this.serverTimingProvider.endTiming("renderToStream");
-
-          return { state, reactStream };
+          return { state, reactStream: result.reactStream! };
         },
         {
           hydration: true,
@@ -400,6 +364,71 @@ export class ReactServerProvider {
       route.onServerResponse?.(serverRequest);
       reply.body = htmlStream;
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Core rendering logic - shared between SSR handler and static prerendering
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Core page rendering logic shared between SSR handler and static prerendering.
+   *
+   * Handles:
+   * - Layer resolution (loaders)
+   * - Redirect detection
+   * - Head content filling
+   * - Preload link collection
+   * - React stream rendering
+   *
+   * @param route - The page route to render
+   * @param state - The router state
+   * @returns Render result with redirect or React stream
+   */
+  protected async renderPage(
+    route: PageRoute,
+    state: ReactRouterState,
+  ): Promise<{ redirect?: string; reactStream?: ReadableStream<Uint8Array> }> {
+    // Resolve page layers (loaders)
+    this.serverTimingProvider.beginTiming("createLayers");
+    const { redirect } = await this.pageApi.createLayers(route, state);
+    this.serverTimingProvider.endTiming("createLayers");
+
+    if (redirect) {
+      this.log.debug("Resolver resulted in redirection", { redirect });
+      return { redirect };
+    }
+
+    // Fill head from route config
+    this.serverHeadProvider.fillHead(state);
+
+    // Collect and inject modulepreload links for page-specific chunks
+    const preloadLinks = this.ssrManifestProvider.collectPreloadLinks(route);
+    if (preloadLinks.length > 0) {
+      state.head ??= {};
+      state.head.link = [...(state.head.link ?? []), ...preloadLinks];
+    }
+
+    // Render React to stream
+    this.serverTimingProvider.beginTiming("renderToStream");
+
+    const element = this.pageApi.root(state);
+    this.alepha.store.set("alepha.react.router.state", state);
+
+    const reactStream = await renderToReadableStream(element, {
+      onError: (error: unknown) => {
+        if (error instanceof Redirection) {
+          this.log.warn("Redirect during streaming ignored", {
+            redirect: error.redirect,
+          });
+        } else {
+          this.log.error("Streaming render error", error);
+        }
+      },
+    });
+
+    this.serverTimingProvider.endTiming("renderToStream");
+
+    return { reactStream };
   }
 
   // ---------------------------------------------------------------------------
@@ -433,35 +462,20 @@ export class ReactServerProvider {
 
     await this.alepha.events.emit("react:server:render:begin", { state });
 
-    const { redirect } = await this.pageApi.createLayers(page, state);
-
-    if (redirect) {
-      return { state, html: "", redirect };
-    }
-
-    // Fill head from route config
-    this.serverHeadProvider.fillHead(state);
-
-    // Ensure template is parsed
+    // Ensure template is parsed with early head content (entry.js, CSS)
     if (!this.templateProvider.isReady()) {
       this.templateProvider.parseTemplate(this.template);
+      this.setupEarlyHeadContent();
     }
 
-    // Render React to stream (same code path as production)
-    this.alepha.store.set("alepha.react.router.state", state);
-    const element = this.pageApi.root(state);
+    // Use shared rendering logic
+    const result = await this.renderPage(page, state);
 
-    const reactStream = await renderToReadableStream(element, {
-      onError: (error: unknown) => {
-        if (error instanceof Redirection) {
-          this.log.warn("Redirect during streaming ignored", {
-            redirect: error.redirect,
-          });
-        } else {
-          this.log.error("Streaming render error", error);
-        }
-      },
-    });
+    if (result.redirect) {
+      return { state, html: "", redirect: result.redirect };
+    }
+
+    const reactStream = result.reactStream!;
 
     // If full HTML page not requested, collect just the React content
     if (!options.html) {
