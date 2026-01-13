@@ -1,3 +1,12 @@
+## [0.14.4] - 2026-01-13
+
+### Features
+
+- **react/router**: rename page 'resolve' to 'loader' as it's more friendly term [BREAKING] (`5fbfb81c`)
+- **server/cache**: add stream support (`e6b13604`)
+- **vite**: configure alepha build via alepha.config.ts instead of vite.config.ts (`f34590d5`)
+- **cli**: add 'alepha gen env' - dump env variables of current app (`a86dd07f`)
+
 ## [0.14.3] - 2026-01-08
 
 ### Features

@@ -36,9 +36,9 @@ function isWeakGPU(gl: WebGLRenderingContext): boolean {
 
   // Known capable Intel GPUs - allow these
   const capableIntelPatterns = [
-    "iris xe",        // Tiger Lake, Alder Lake - very capable
-    "iris plus",      // Ice Lake - decent
-    "intel arc",      // Discrete GPU - very capable
+    "iris xe", // Tiger Lake, Alder Lake - very capable
+    "iris plus", // Ice Lake - decent
+    "intel arc", // Discrete GPU - very capable
     "uhd graphics 6", // UHD 600 series (e.g., 620, 630)
     "uhd graphics 7", // UHD 700 series (e.g., 730, 770)
   ];
@@ -57,16 +57,16 @@ function isWeakGPU(gl: WebGLRenderingContext): boolean {
 
   // Block known weak/software GPUs
   const weakPatterns = [
-    "llvmpipe",       // Software renderer
-    "swiftshader",    // Software renderer
-    "software",       // Generic software
-    "microsoft basic",// Windows fallback
-    "mali-4",         // Old Mali
-    "mali-t6",        // Mali-T600 series - weak
-    "adreno 3",       // Old Adreno
-    "adreno 4",       // Older Adreno (4xx series)
-    "powervr sgx",    // Old PowerVR
-    "videocore",      // Raspberry Pi
+    "llvmpipe", // Software renderer
+    "swiftshader", // Software renderer
+    "software", // Generic software
+    "microsoft basic", // Windows fallback
+    "mali-4", // Old Mali
+    "mali-t6", // Mali-T600 series - weak
+    "adreno 3", // Old Adreno
+    "adreno 4", // Older Adreno (4xx series)
+    "powervr sgx", // Old PowerVR
+    "videocore", // Raspberry Pi
   ];
 
   return weakPatterns.some((pattern) => renderer.includes(pattern));

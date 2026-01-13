@@ -2,7 +2,7 @@
   "name": "@alepha/protobuf",
   "description": "Protocol Buffers (Protobuf) codec support for Alepha framework.",
   "author": "Nicolas Foures",
-  "version": "0.14.3",
+  "version": "0.14.4",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -18,13 +18,13 @@
     "protobufjs": "^8.0.0"
   },
   "devDependencies": {
-    "alepha": "0.14.3",
+    "alepha": "0.14.4",
     "tsdown": "^0.19.0-beta.5",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
   },
   "peerDependencies": {
-    "alepha": "0.14.3"
+    "alepha": "0.14.4"
   },
   "scripts": {
     "lint": "alepha lint",

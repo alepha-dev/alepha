@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@mantine/core": "^8.3.11",
-    "alepha": "^0.14.3",
+    "alepha": "^0.14.4",
     "react": "^19.2.3"
   },
   "devDependencies": {
