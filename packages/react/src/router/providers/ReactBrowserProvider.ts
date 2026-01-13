@@ -1,37 +1,14 @@
-import {
-  $atom,
-  $env,
-  $hook,
-  $inject,
-  $use,
-  Alepha,
-  type State,
-  type Static,
-  t,
-} from "alepha";
+import { $atom, $env, $hook, $inject, $use, Alepha, type State, type Static, t, } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { LinkProvider } from "alepha/server/links";
 import { BrowserHeadProvider } from "@alepha/react/head";
 import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
-import type {
-  PreviousLayerData,
-  ReactRouterState,
-  TransitionOptions,
-} from "./ReactPageProvider.ts";
+import type { PreviousLayerData, ReactRouterState, } from "./ReactPageProvider.ts";
 import type { RouterGoOptions } from "../services/ReactRouter.ts";
 
 export type { RouterGoOptions } from "../services/ReactRouter.ts";
 
-// ---------------------------------------------------------------------------------------------------------------------
-
-const envSchema = t.object({
-  REACT_ROOT_ID: t.text({ default: "root" }),
-});
-
-declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
-}
 
 /**
  * React browser renderer configuration atom
@@ -39,7 +16,7 @@ declare module "alepha" {
 export const reactBrowserOptions = $atom({
   name: "alepha.react.browser.options",
   schema: t.object({
-    scrollRestoration: t.enum(["top", "manual"]),
+    scrollRestoration: t.enum(["top", "manual"]), // TODO: must be per page?
   }),
   default: {
     scrollRestoration: "top" as const,
@@ -59,7 +36,6 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class ReactBrowserProvider {
-  protected readonly env = $env(envSchema);
   protected readonly log = $logger();
   protected readonly client = $inject(LinkProvider);
   protected readonly alepha = $inject(Alepha);
@@ -69,14 +45,18 @@ export class ReactBrowserProvider {
 
   protected readonly options = $use(reactBrowserOptions);
 
+  public get rootId() {
+    return "root";
+  }
+
   protected getRootElement() {
-    const root = this.document.getElementById(this.env.REACT_ROOT_ID);
+    const root = this.document.getElementById(this.rootId);
     if (root) {
       return root;
     }
 
     const div = this.document.createElement("div");
-    div.id = this.env.REACT_ROOT_ID;
+    div.id = this.rootId;
 
     this.document.body.prepend(div);
 

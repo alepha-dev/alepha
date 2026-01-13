@@ -1,89 +1,17 @@
 import { join } from "node:path";
-import {
-  $atom,
-  $env,
-  $hook,
-  $inject,
-  $use,
-  Alepha,
-  AlephaError,
-  type Static,
-  t,
-} from "alepha";
+import { $atom, $env, $hook, $inject, $use, Alepha, AlephaError, type Static, t, } from "alepha";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
-import {
-  type ServerHandler,
-  ServerRouterProvider,
-  ServerTimingProvider,
-} from "alepha/server";
+import { type ServerHandler, ServerRouterProvider, ServerTimingProvider, } from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
 import { ServerStaticProvider } from "alepha/server/static";
 import { renderToReadableStream } from "react-dom/server";
 import { ServerHeadProvider } from "@alepha/react/head";
-import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
 import { Redirection } from "../errors/Redirection.ts";
-import {
-  $page,
-  type PagePrimitiveRenderOptions,
-  type PagePrimitiveRenderResult,
-} from "../primitives/$page.ts";
-import {
-  type PageRoute,
-  ReactPageProvider,
-  type ReactRouterState,
-} from "./ReactPageProvider.ts";
+import { $page, type PagePrimitiveRenderOptions, type PagePrimitiveRenderResult, } from "../primitives/$page.ts";
+import { type PageRoute, ReactPageProvider, type ReactRouterState, } from "./ReactPageProvider.ts";
 import { ReactServerTemplateProvider } from "./ReactServerTemplateProvider.ts";
 import { SSRManifestProvider } from "./SSRManifestProvider.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-const envSchema = t.object({
-  REACT_SSR_ENABLED: t.optional(t.boolean()),
-});
-
-declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
-  interface State {
-    "alepha.react.server.ssr"?: boolean;
-    "alepha.react.server.template"?: string;
-  }
-}
-
-/**
- * React server provider configuration atom
- */
-export const reactServerOptions = $atom({
-  name: "alepha.react.server.options",
-  schema: t.object({
-    publicDir: t.string(),
-    staticServer: t.object({
-      disabled: t.boolean(),
-      path: t.string({
-        description: "URL path where static files will be served.",
-      }),
-    }),
-  }),
-  default: {
-    publicDir: "public",
-    staticServer: {
-      disabled: false,
-      path: "/",
-    },
-  },
-});
-
-export type ReactServerProviderOptions = Static<
-  typeof reactServerOptions.schema
->;
-
-declare module "alepha" {
-  interface State {
-    [reactServerOptions.key]: ReactServerProviderOptions;
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * React server provider responsible for SSR and static file serving.
@@ -213,6 +141,9 @@ export class ReactServerProvider {
       this.templateProvider.parseTemplate(template);
     }
 
+    // Set up early head content (entry assets preloads)
+    this.setupEarlyHeadContent();
+
     // Cache ServerLinksProvider check at startup
     this.hasServerLinksProvider = this.alepha.has(ServerLinksProvider);
 
@@ -228,6 +159,52 @@ export class ReactServerProvider {
           handler: this.createHandler(page, templateLoader),
         });
       }
+    }
+  }
+
+  /**
+   * Set up early head content with entry assets.
+   *
+   * This content is sent immediately when streaming starts, before page loaders run,
+   * allowing the browser to start downloading entry.js and CSS files early.
+   *
+   * Uses <script type="module"> instead of <link rel="modulepreload"> for JS
+   * because the script needs to execute anyway - this way the browser starts
+   * downloading, parsing, AND will execute as soon as ready.
+   *
+   * Also strips these assets from the original template head to avoid duplicates.
+   */
+  protected setupEarlyHeadContent(): void {
+    const assets = this.ssrManifestProvider.getEntryAssets();
+    if (!assets) {
+      return;
+    }
+
+    const parts: string[] = [];
+
+    // Add CSS stylesheets (critical for rendering)
+    for (const css of assets.css) {
+      parts.push(`<link rel="stylesheet" href="${css}" crossorigin="">`);
+    }
+
+    // Add entry JS as script module (not just modulepreload)
+    // This starts download, parse, AND execution immediately
+    if (assets.js) {
+      parts.push(
+        `<script type="module" crossorigin="" src="${assets.js}"></script>`,
+      );
+    }
+
+    if (parts.length > 0) {
+      // Pass assets so they get stripped from original head content
+      this.templateProvider.setEarlyHeadContent(
+        parts.join("\n") + "\n",
+        assets,
+      );
+      this.log.debug("Early head content set", {
+        css: assets.css.length,
+        js: assets.js ? 1 : 0,
+      });
     }
   }
 
@@ -300,6 +277,7 @@ export class ReactServerProvider {
           throw new AlephaError("Missing template for SSR rendering");
         }
         this.templateProvider.parseTemplate(template);
+        this.setupEarlyHeadContent();
       }
 
       this.log.trace("Rendering page", { name: route.name });
@@ -346,78 +324,81 @@ export class ReactServerProvider {
         state,
       });
 
-      // Resolve page layers
-      this.serverTimingProvider.beginTiming("createLayers");
-      const { redirect } = await this.pageApi.createLayers(route, state);
-      this.serverTimingProvider.endTiming("createLayers");
-
-      if (redirect) {
-        this.log.debug("Resolver resulted in redirection", { redirect });
-        return reply.redirect(redirect);
-      }
-
-      // Apply SSR headers
+      // Apply SSR headers early
       Object.assign(reply.headers, this.SSR_HEADERS);
 
-      // Fill head from route config
-      this.serverHeadProvider.fillHead(state);
+      // Resolve global head for early streaming (htmlAttributes only)
+      const globalHead = this.serverHeadProvider.resolveGlobalHead();
 
-      // Collect and inject modulepreload links
-      const preloadLinks = this.ssrManifestProvider.collectPreloadLinks(route);
-      if (preloadLinks.length > 0) {
-        state.head ??= {};
-        state.head.link = [...(state.head.link ?? []), ...preloadLinks];
-      }
+      // Create optimized HTML stream with early head
+      const htmlStream = this.templateProvider.createEarlyHtmlStream(
+        globalHead,
+        async () => {
+          // === ASYNC WORK (runs while early head is being sent) ===
 
-      // Render React to stream
-      this.serverTimingProvider.beginTiming("renderToStream");
+          // Resolve page layers
+          this.serverTimingProvider.beginTiming("createLayers");
+          const { redirect } = await this.pageApi.createLayers(route, state);
+          this.serverTimingProvider.endTiming("createLayers");
 
-      const element = this.pageApi.root(state);
-      this.alepha.store.set("alepha.react.router.state", state);
+          if (redirect) {
+            this.log.debug("Resolver resulted in redirection", { redirect });
+            // Note: redirect happens after early head is sent, handled by stream
+            reply.redirect(redirect);
+            return null;
+          }
 
-      try {
-        const reactStream = await renderToReadableStream(element, {
-          onError: (error: unknown) => {
+          // Fill head from route config
+          this.serverHeadProvider.fillHead(state);
+
+          // Collect and inject modulepreload links for page-specific chunks
+          const preloadLinks =
+            this.ssrManifestProvider.collectPreloadLinks(route);
+          if (preloadLinks.length > 0) {
+            state.head ??= {};
+            state.head.link = [...(state.head.link ?? []), ...preloadLinks];
+          }
+
+          // Render React to stream
+          this.serverTimingProvider.beginTiming("renderToStream");
+
+          const element = this.pageApi.root(state);
+          this.alepha.store.set("alepha.react.router.state", state);
+
+          const reactStream = await renderToReadableStream(element, {
+            onError: (error: unknown) => {
+              if (error instanceof Redirection) {
+                this.log.warn("Redirect during streaming ignored", {
+                  redirect: error.redirect,
+                });
+              } else {
+                this.log.error("Streaming render error", error);
+              }
+            },
+          });
+
+          this.serverTimingProvider.endTiming("renderToStream");
+
+          return { state, reactStream };
+        },
+        {
+          hydration: true,
+          onError: (error) => {
             if (error instanceof Redirection) {
-              this.log.warn("Redirect during streaming ignored", {
+              this.log.debug("Streaming resulted in redirection", {
                 redirect: error.redirect,
               });
+              // Can't do redirect after streaming started - already handled above
             } else {
-              this.log.error("Streaming render error", error);
+              this.log.error("HTML stream error", error);
             }
           },
-        });
+        },
+      );
 
-        // Create HTML stream with template provider
-        const htmlStream = this.templateProvider.createHtmlStream(
-          reactStream,
-          state,
-          {
-            hydration: true,
-            onError: (error) => {
-              this.serverTimingProvider.endTiming("renderToStream");
-              this.log.error("HTML stream error", error);
-            },
-          },
-        );
-
-        this.serverTimingProvider.endTiming("renderToStream");
-        this.log.trace("Page streaming started");
-
-        route.onServerResponse?.(serverRequest);
-        reply.body = htmlStream;
-      } catch (error) {
-        this.serverTimingProvider.endTiming("renderToStream");
-
-        if (error instanceof Redirection) {
-          this.log.debug("Streaming resulted in redirection", {
-            redirect: error.redirect,
-          });
-          return reply.redirect(error.redirect);
-        }
-
-        throw error;
-      }
+      this.log.trace("Page streaming started (early head optimization)");
+      route.onServerResponse?.(serverRequest);
+      reply.body = htmlStream;
     };
   }
 
@@ -530,3 +511,51 @@ export class ReactServerProvider {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type TemplateLoader = () => Promise<string | undefined>;
+
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+const envSchema = t.object({
+  REACT_SSR_ENABLED: t.optional(t.boolean()),
+});
+
+declare module "alepha" {
+  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface State {
+    "alepha.react.server.ssr"?: boolean;
+    "alepha.react.server.template"?: string;
+  }
+}
+
+/**
+ * React server provider configuration atom
+ */
+export const reactServerOptions = $atom({
+  name: "alepha.react.server.options",
+  schema: t.object({
+    publicDir: t.string(),
+    staticServer: t.object({
+      disabled: t.boolean(),
+      path: t.string({
+        description: "URL path where static files will be served.",
+      }),
+    }),
+  }),
+  default: {
+    publicDir: "public",
+    staticServer: {
+      disabled: false,
+      path: "/",
+    },
+  },
+});
+
+export type ReactServerProviderOptions = Static<
+  typeof reactServerOptions.schema
+>;
+
+declare module "alepha" {
+  interface State {
+    [reactServerOptions.key]: ReactServerProviderOptions;
+  }
+}

@@ -1,75 +1,7 @@
-import { $atom, $inject, $use, Alepha, t, type Static } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import type { SimpleHead } from "@alepha/react/head";
 import type { ReactRouterState } from "./ReactPageProvider.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Template slots - the template split into logical parts for efficient streaming.
- *
- * Static parts are pre-encoded as Uint8Array for zero-copy streaming.
- * Dynamic parts (attributes, head content) are kept as strings/objects for merging.
- */
-export interface TemplateSlots {
-  // Pre-encoded static parts
-  doctype: Uint8Array;
-  htmlOpen: Uint8Array; // "<html"
-  htmlClose: Uint8Array; // ">"
-  headOpen: Uint8Array; // "<head>"
-  headClose: Uint8Array; // "</head>"
-  bodyOpen: Uint8Array; // "<body"
-  bodyClose: Uint8Array; // ">"
-  rootOpen: Uint8Array; // '<div id="root">'
-  rootClose: Uint8Array; // "</div>"
-  scriptClose: Uint8Array; // "</body></html>"
-
-  // Original content (kept for merging)
-  htmlOriginalAttrs: Record<string, string>;
-  bodyOriginalAttrs: Record<string, string>;
-  headOriginalContent: string;
-  beforeRoot: string; // content between <body> and root div
-  afterRoot: string; // content between root div and </body>
-}
-
-/**
- * Hydration state that gets serialized to window.__ssr
- */
-export interface HydrationData {
-  layers: Array<{
-    data?: unknown;
-    error?: {
-      name: string;
-      message: string;
-      stack?: string;
-    };
-  }>;
-  [key: string]: unknown;
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-const templateOptionsAtom = $atom({
-  name: "alepha.react.server.template.options",
-  schema: t.object({
-    rootId: t.string(),
-  }),
-  default: {
-    rootId: "root",
-  },
-});
-
-export type ReactServerTemplateOptions = Static<
-  typeof templateOptionsAtom.schema
->;
-
-declare module "alepha" {
-  interface State {
-    [templateOptionsAtom.key]: ReactServerTemplateOptions;
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * Handles HTML template parsing, preprocessing, and streaming for SSR.
@@ -107,16 +39,12 @@ export class ReactServerTemplateProvider {
    */
   protected slots: TemplateSlots | null = null;
 
-  /**
-   * Template options
-   */
-  protected readonly options = $use(templateOptionsAtom);
 
   /**
    * Root element ID for React mounting.
    */
   public get rootId(): string {
-    return this.options.rootId;
+    return "root";
   }
 
   /**
@@ -153,7 +81,7 @@ export class ReactServerTemplateProvider {
    */
   public getSlots(): TemplateSlots {
     if (!this.slots) {
-      throw new Error(
+      throw new AlephaError(
         "Template not parsed. Call parseTemplate() during configuration.",
       );
     }
@@ -171,7 +99,7 @@ export class ReactServerTemplateProvider {
   public parseTemplate(template: string): TemplateSlots {
     this.log.debug("Parsing template into slots");
 
-    const rootId = this.options.rootId;
+    const rootId = this.rootId;
 
     // Extract doctype
     const doctypeMatch = template.match(/<!DOCTYPE[^>]*>/i);
@@ -533,7 +461,7 @@ export class ReactServerTemplateProvider {
     const encoder = this.encoder;
 
     return new ReadableStream<Uint8Array>({
-       start: async (controller) => {
+      start: async (controller) => {
         try {
           // 1. DOCTYPE
           controller.enqueue(slots.doctype);
@@ -606,4 +534,238 @@ export class ReactServerTemplateProvider {
       },
     });
   }
+
+  /**
+   * Early head content for preloading.
+   *
+   * Contains entry assets (JS + CSS) that are always required and can be
+   * sent before page loaders run.
+   */
+  protected earlyHeadContent: string = "";
+
+  /**
+   * Set the early head content (entry script + CSS).
+   *
+   * Also strips these assets from the original head content to avoid duplicates,
+   * since we're moving them to the early phase.
+   *
+   * @param content - HTML string with entry assets
+   * @param entryAssets - Entry asset paths to strip from original head
+   */
+  public setEarlyHeadContent(
+    content: string,
+    entryAssets?: { js?: string; css: string[] },
+  ): void {
+    this.earlyHeadContent = content;
+
+    // Strip entry assets from original head content to avoid duplicates
+    if (entryAssets && this.slots) {
+      let headContent = this.slots.headOriginalContent;
+
+      // Remove entry script tag
+      if (entryAssets.js) {
+        // Match script tag with this src (handles various attribute orders)
+        const scriptPattern = new RegExp(
+          `<script[^>]*\\ssrc=["']${this.escapeRegExp(entryAssets.js)}["'][^>]*>\\s*</script>\\s*`,
+          "gi",
+        );
+        headContent = headContent.replace(scriptPattern, "");
+      }
+
+      // Remove entry CSS link tags
+      for (const css of entryAssets.css) {
+        const linkPattern = new RegExp(
+          `<link[^>]*\\shref=["']${this.escapeRegExp(css)}["'][^>]*>\\s*`,
+          "gi",
+        );
+        headContent = headContent.replace(linkPattern, "");
+      }
+
+      this.slots.headOriginalContent = headContent.trim();
+    }
+  }
+
+  /**
+   * Escape special regex characters in a string.
+   */
+  protected escapeRegExp(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  /**
+   * Create an optimized HTML stream with early head streaming.
+   *
+   * This version sends critical assets (entry.js, CSS) BEFORE page loaders run,
+   * allowing the browser to start downloading them immediately.
+   *
+   * Flow:
+   * 1. Send DOCTYPE, <html>, <head> open, entry preloads (IMMEDIATE)
+   * 2. Run async work (createLayers, etc.)
+   * 3. Send rest of head, body, React content, hydration
+   *
+   * @param globalHead - Global head with htmlAttributes (from $head primitives)
+   * @param asyncWork - Async function to run between early head and rest of stream
+   * @param options - Streaming options
+   */
+  public createEarlyHtmlStream(
+    globalHead: SimpleHead,
+    asyncWork: () => Promise<{
+      state: ReactRouterState;
+      reactStream: ReadableStream<Uint8Array>;
+    } | null>,
+    options: {
+      hydration?: boolean;
+      onError?: (error: unknown) => void;
+      onRedirect?: (url: string) => void;
+    } = {},
+  ): ReadableStream<Uint8Array> {
+    const { hydration = true, onError, onRedirect } = options;
+    const slots = this.getSlots();
+    const encoder = this.encoder;
+
+    return new ReadableStream<Uint8Array>({
+      start: async (controller) => {
+        try {
+          // === EARLY PHASE (before async work) ===
+
+          // 1. DOCTYPE
+          controller.enqueue(slots.doctype);
+
+          // 2. <html ...> with global htmlAttributes only
+          controller.enqueue(slots.htmlOpen);
+          controller.enqueue(
+            encoder.encode(
+              this.renderMergedHtmlAttrs(globalHead?.htmlAttributes),
+            ),
+          );
+          controller.enqueue(slots.htmlClose);
+
+          // 3. <head> open + entry preloads
+          controller.enqueue(slots.headOpen);
+          if (this.earlyHeadContent) {
+            controller.enqueue(encoder.encode(this.earlyHeadContent));
+          }
+
+          // === ASYNC WORK (createLayers, etc.) ===
+          const result = await asyncWork();
+
+          // Handle redirect - can't undo what we've sent, but caller handles it
+          if (!result) {
+            // Redirect happened - close with minimal valid HTML
+            controller.enqueue(slots.headClose);
+            controller.enqueue(encoder.encode("<body></body></html>"));
+            controller.close();
+            return;
+          }
+
+          const { state, reactStream } = result;
+          const head = state.head;
+
+          // === LATE PHASE (after async work) ===
+
+          // 4. Rest of head content (title, meta, links from loaders)
+          controller.enqueue(encoder.encode(this.renderHeadContent(head)));
+          controller.enqueue(slots.headClose);
+
+          // 5. <body ...> with merged bodyAttributes
+          controller.enqueue(slots.bodyOpen);
+          controller.enqueue(
+            encoder.encode(this.renderMergedBodyAttrs(head?.bodyAttributes)),
+          );
+          controller.enqueue(slots.bodyClose);
+
+          // 6. Content before root (if any)
+          if (slots.beforeRoot) {
+            controller.enqueue(encoder.encode(slots.beforeRoot));
+          }
+
+          // 7. <div id="root">
+          controller.enqueue(slots.rootOpen);
+
+          // 8. Stream React content
+          const reader = reactStream.getReader();
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              controller.enqueue(value);
+            }
+          } finally {
+            reader.releaseLock();
+          }
+
+          // 9. </div>
+          controller.enqueue(slots.rootClose);
+
+          // 10. Content after root (if any)
+          if (slots.afterRoot) {
+            controller.enqueue(encoder.encode(slots.afterRoot));
+          }
+
+          // 11. Hydration script
+          if (hydration) {
+            const hydrationData = this.buildHydrationData(state);
+            controller.enqueue(this.ENCODED.HYDRATION_PREFIX);
+            controller.enqueue(
+              encoder.encode(this.safeJsonSerialize(hydrationData)),
+            );
+            controller.enqueue(this.ENCODED.HYDRATION_SUFFIX);
+          }
+
+          // 12. </body></html>
+          controller.enqueue(slots.scriptClose);
+
+          controller.close();
+        } catch (error) {
+          onError?.(error);
+          controller.error(error);
+        }
+      },
+    });
+  }
+}
+
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Template slots - the template split into logical parts for efficient streaming.
+ *
+ * Static parts are pre-encoded as Uint8Array for zero-copy streaming.
+ * Dynamic parts (attributes, head content) are kept as strings/objects for merging.
+ */
+export interface TemplateSlots {
+  // Pre-encoded static parts
+  doctype: Uint8Array;
+  htmlOpen: Uint8Array; // "<html"
+  htmlClose: Uint8Array; // ">"
+  headOpen: Uint8Array; // "<head>"
+  headClose: Uint8Array; // "</head>"
+  bodyOpen: Uint8Array; // "<body"
+  bodyClose: Uint8Array; // ">"
+  rootOpen: Uint8Array; // '<div id="root">'
+  rootClose: Uint8Array; // "</div>"
+  scriptClose: Uint8Array; // "</body></html>"
+
+  // Original content (kept for merging)
+  htmlOriginalAttrs: Record<string, string>;
+  bodyOriginalAttrs: Record<string, string>;
+  headOriginalContent: string;
+  beforeRoot: string; // content between <body> and root div
+  afterRoot: string; // content between root div and </body>
+}
+
+/**
+ * Hydration state that gets serialized to window.__ssr
+ */
+export interface HydrationData {
+  layers: Array<{
+    data?: unknown;
+    error?: {
+      name: string;
+      message: string;
+      stack?: string;
+    };
+  }>;
+  [key: string]: unknown;
 }

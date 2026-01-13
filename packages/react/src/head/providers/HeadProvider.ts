@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { $logger } from "alepha/logger";
 import { SeoExpander } from "../helpers/SeoExpander.ts";
 import type { Head } from "../interfaces/Head.ts";
 
@@ -12,9 +13,40 @@ import type { Head } from "../interfaces/Head.ts";
  * @see {@link BrowserHeadProvider}
  */
 export class HeadProvider {
+  protected readonly log = $logger();
   protected readonly seoExpander = $inject(SeoExpander);
 
   public global?: Array<Head | (() => Head)> = [];
+
+  /**
+   * Track if we've warned about page-level htmlAttributes to avoid spam.
+   */
+  protected warnedAboutHtmlAttributes = false;
+
+  /**
+   * Resolve global head configuration (from $head primitives only).
+   *
+   * This is used to get htmlAttributes early, before page loaders run.
+   * Only htmlAttributes from global $head are allowed; page-level htmlAttributes
+   * are ignored for early streaming optimization.
+   *
+   * @returns Merged global head with htmlAttributes
+   */
+  public resolveGlobalHead(): Head {
+    const head: Head = {};
+
+    for (const h of this.global ?? []) {
+      const resolved = typeof h === "function" ? h() : h;
+      if (resolved.htmlAttributes) {
+        head.htmlAttributes = {
+          ...head.htmlAttributes,
+          ...resolved.htmlAttributes,
+        };
+      }
+    }
+
+    return head;
+  }
 
   public fillHead(state: HeadState) {
     state.head = {
@@ -78,11 +110,14 @@ export class HeadProvider {
       state.head.titleSeparator = head.titleSeparator;
     }
 
-    if (head.htmlAttributes) {
-      state.head.htmlAttributes = {
-        ...state.head.htmlAttributes,
-        ...head.htmlAttributes,
-      };
+    // htmlAttributes from pages are ignored for early streaming optimization.
+    // Only global $head can set htmlAttributes.
+    if (head.htmlAttributes && !this.warnedAboutHtmlAttributes) {
+      this.warnedAboutHtmlAttributes = true;
+      this.log.warn(
+        "Page-level htmlAttributes are ignored. Use global $head() for htmlAttributes instead, " +
+          "as they are sent before page loaders run for early streaming optimization.",
+      );
     }
 
     if (head.bodyAttributes) {

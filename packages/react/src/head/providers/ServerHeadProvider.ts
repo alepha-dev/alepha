@@ -1,5 +1,5 @@
 import { $inject } from "alepha";
-import type { SimpleHead } from "../interfaces/Head.ts";
+import type { Head, SimpleHead } from "../interfaces/Head.ts";
 import { HeadProvider } from "./HeadProvider.ts";
 
 /**
@@ -10,6 +10,16 @@ import { HeadProvider } from "./HeadProvider.ts";
  */
 export class ServerHeadProvider {
   protected readonly headProvider = $inject(HeadProvider);
+
+  /**
+   * Resolve global head configuration (htmlAttributes only).
+   *
+   * Used for early streaming optimization - htmlAttributes can be sent
+   * before page loaders run since they come from global $head only.
+   */
+  public resolveGlobalHead(): Head {
+    return this.headProvider.resolveGlobalHead();
+  }
 
   /**
    * Fill head state from route configurations.
