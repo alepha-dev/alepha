@@ -16,6 +16,9 @@ The security module enables building secure applications using primitives like `
 on class properties. It offers JWT-based authentication, fine-grained permissions, service accounts, and seamless
 integration with various authentication providers and user management systems.
 
+When used with `AlephaServer`, this module automatically registers `ServerSecurityProvider` and `ServerBasicAuthProvider`
+to protect HTTP routes and actions with JWT and Basic Auth.
+
 ## API Reference
 
 ### Primitives
@@ -23,6 +26,11 @@ integration with various authentication providers and user management systems.
 Primitives are functions that define and configure various aspects of your application. They follow the convention of starting with ` $ ` and return configured primitive instances.
 
 For more details, see the [Primitives documentation](/docs/concepts-primitives).
+
+#### $basicAuth()
+
+Declares HTTP Basic Authentication for server routes.
+This primitive provides methods to protect routes with username/password authentication.
 
 #### $issuer()
 

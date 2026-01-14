@@ -1,7 +1,7 @@
 import { access, readdir, readFile } from "node:fs/promises";
 import * as os from "node:os";
 import { join } from "node:path";
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import type { InlineConfig } from "tsdown";
@@ -261,7 +261,9 @@ function detectCircularDependencies(modules: Module[]): void {
   for (const module of modules) {
     const cycle = hasCycle(module.name);
     if (cycle) {
-      throw new Error(`Circular dependency detected: ${cycle.join(" -> ")}`);
+      throw new AlephaError(
+        `Circular dependency detected: ${cycle.join(" -> ")}`,
+      );
     }
   }
 }

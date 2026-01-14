@@ -316,13 +316,6 @@
       "import": "./src/server/rate-limit/index.ts",
       "default": "./src/server/rate-limit/index.ts"
     },
-    "./server/security": {
-      "types": "./src/server/security/index.ts",
-      "react-native": "./src/server/security/index.browser.ts",
-      "browser": "./src/server/security/index.browser.ts",
-      "import": "./src/server/security/index.ts",
-      "default": "./src/server/security/index.ts"
-    },
     "./server/static": {
       "types": "./src/server/static/index.ts",
       "import": "./src/server/static/index.ts",

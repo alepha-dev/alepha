@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
-import { $issuer, AlephaSecurity } from "alepha/security";
 import {
   $action,
   AlephaServer,
@@ -10,6 +9,7 @@ import {
   UnauthorizedError,
 } from "alepha/server";
 import { describe, expect, it } from "vitest";
+import { $issuer, AlephaSecurity } from "../index.ts";
 
 describe("ServerSecurityProvider", () => {
   it("should protect action from unauthorized users", async () => {
