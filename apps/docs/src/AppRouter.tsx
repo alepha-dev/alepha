@@ -1,7 +1,7 @@
 import { $head, type Head } from "@alepha/react/head";
 import { $page, NotFound } from "@alepha/react/router";
 import { $env, t } from "alepha";
-import { NotFoundError } from "alepha/server";
+import { HttpError, NotFoundError } from "alepha/server";
 import Changelog from "./components/Changelog.tsx";
 import Docs from "./components/Docs.tsx";
 import Home from "./components/Home.tsx";
@@ -107,12 +107,17 @@ export class AppRouter {
           return { ...pkg, content: await pkg.content() };
         }
       }
-      throw new NotFoundError();
+      throw new NotFoundError("Document not found");
     },
     head: ({ name }) => {
       return {
         title: name,
       };
+    },
+    errorHandler: (error) => {
+      if (HttpError.is(error, 404)) {
+        return <NotFound />;
+      }
     },
   });
 

@@ -16,11 +16,14 @@ export class LlmsCommand {
     handler: async ({ run }) => {
       this.log.debug("Starting llms generation");
       const docsDir = join(import.meta.dirname, "../.gen");
+      const publicDir = join(import.meta.dirname, "../public");
       const outputDir = join(import.meta.dirname, "../dist/public");
+      const llmsIndexFile = join(publicDir, "llms-index.md");
       const outputFileFull = join(outputDir, "llms-full.txt");
       const outputFileIndex = join(outputDir, "llms.txt");
 
       this.log.debug(`Docs directory: ${docsDir}`);
+      this.log.debug(`Public directory: ${publicDir}`);
       this.log.debug(`Output files: ${outputFileIndex}, ${outputFileFull}`);
 
       await run("scan markdown files", async () => {
@@ -60,11 +63,27 @@ export class LlmsCommand {
       });
 
       let indexContent = "";
+      let baseContent = "";
+
+      await run("read llms-index.md", async () => {
+        try {
+          baseContent = await fs.readFile(llmsIndexFile, "utf-8");
+          this.log.debug(`Read llms-index.md: ${baseContent.length} chars`);
+        } catch {
+          this.log.warn(
+            `llms-index.md not found at ${llmsIndexFile}, using empty base`,
+          );
+        }
+      });
 
       await run("generate index", async () => {
+        // Generate doc tree links
         const indexModule = await import("../.gen/index.ts");
         const tree = indexModule.tree as DocNode[];
-        indexContent = this.generateIndex(tree);
+        const docLinks = this.generateDocLinks(tree);
+
+        // Combine base content with generated doc links
+        indexContent = `${baseContent}\n${docLinks}`;
         this.log.debug(`Generated index: ${indexContent.length} chars`);
       });
 
@@ -72,9 +91,10 @@ export class LlmsCommand {
         await fs.mkdir(outputDir, { recursive: true });
         this.log.trace(`Created/verified output directory: ${outputDir}`);
 
-        await fs.writeFile(outputFileFull, concatenatedContent, "utf-8");
+        const fullContent = `${baseContent}\n\n---\n\n${concatenatedContent}`;
+        await fs.writeFile(outputFileFull, fullContent, "utf-8");
         this.log.debug(
-          `Wrote ${concatenatedContent.length} chars to ${outputFileFull}`,
+          `Wrote ${fullContent.length} chars to ${outputFileFull}`,
         );
 
         await fs.writeFile(outputFileIndex, indexContent, "utf-8");
@@ -86,129 +106,16 @@ export class LlmsCommand {
       this.log.debug(
         `Successfully created: ${outputFileIndex}, ${outputFileFull}`,
       );
-      this.log.debug(`Full docs: ${concatenatedContent.length} characters`);
+      this.log.debug(
+        `Full docs: ${baseContent.length + concatenatedContent.length} characters`,
+      );
       this.log.debug(`Index: ${indexContent.length} characters`);
       this.log.debug(`Files processed: ${markdownFiles.length}`);
     },
   });
 
-  protected generateIndex(tree: DocNode[]): string {
+  protected generateDocLinks(tree: DocNode[]): string {
     const lines: string[] = [];
-
-    lines.push(`# Alepha
-
-> Alepha is a convention-driven TypeScript framework for building robust, end-to-end type-safe full-stack applications.
-
-## Overview
-
-**Core Principles:**
-- **Primitive Architecture**: Define features using \`$\`-prefixed primitives (\`$action\`, \`$entity\`, \`$page\`) that auto-register with the framework
-- **Zero-Mapping**: No route files, no config files - code structure IS the configuration
-- **End-to-End Type Safety**: Types flow from database schema → API → React components
-- **Convention over Configuration**: Sensible defaults, minimal boilerplate
-
-**Built on**: Drizzle (ORM), React (SSR), Vite (bundler), TypeBox (validation)
-**Runs on**: Node.js 22+, Bun, Cloudflare Workers, Vercel, Docker
-
-**Quick Start**: \`npx alepha init\` - Creates minimal config files to use Alepha in current directory
-
-## Examples
-
-### API + Database
-\`\`\`typescript
-import { t } from "alepha";
-import { $action } from "alepha/server";
-import { $entity, $repository, db } from "alepha/orm";
-
-const userEntity = $entity({
-  name: "users",
-  schema: t.object({
-    id: db.primaryKey(),
-    email: t.email(),
-    createdAt: db.createdAt(),
-  }),
-});
-
-class UserController {
-  repo = $repository(userEntity);
-
-  getUser = $action({
-    path: "/users/:id",  // → GET /api/users/:id
-    schema: {
-      params: t.object({ id: t.uuid() }),
-      response: userEntity.schema,
-    },
-    handler: async ({ params }) => this.repo.findById(params.id),
-  });
-}
-\`\`\`
-
-### React Page with SSR
-\`\`\`typescript
-import { $page } from "@alepha/react/router";
-import { $client } from "alepha/server/links";
-import type { UserController } from "./UserController.ts";
-
-class AppRouter {
-  api = $client<UserController>(); // infer API client from controller
-
-  users = $page({
-    path: "/users",
-    loader: async () => ({ users: await this.api.listUsers() }),
-    component: ({ users }) => (
-      <ul>
-        {users.map(u => <li key={u.id}>{u.email}</li>)}
-      </ul>
-    ),
-  });
-}
-\`\`\`
-
-## Conventions
-
-- \`$action\` paths auto-prefix with \`/api\`
-- Method: GET default, POST if body schema exists
-- Response schema strips undeclared fields (security)
-- \`t.\` = TypeBox via \`import { t } from "alepha"\`
-- Primitives are class properties, not standalone (except \`$atom\`, \`$entity\`)
-
-## Quick Reference
-
-Core utilities:
-
-- \`t\` (TypeBox schemas) - \`import { t } from "alepha"\`
-- \`db\` (database column helpers) - \`import { db } from "alepha/orm"\`
-
-Core primitives:
-
-- \`$inject\` - \`import { $inject } from "alepha"\`
-- \`$env\` - \`import { $env } from "alepha"\`
-- \`$module\` - \`import { $module } from "alepha"\`
-- \`$atom\` - \`import { $atom } from "alepha"\`
-- \`$logger\` - \`import { $logger } from "alepha/logger"\`
-- \`$action\` - \`import { $action } from "alepha/server"\`
-- \`$entity\` - \`import { $entity } from "alepha/orm"\`
-- \`$repository\` - \`import { $repository } from "alepha/orm"\`
-- \`$page\` - \`import { $page } from "@alepha/react/router"\`
-- \`$queue\` - \`import { $queue } from "alepha/queue"\`
-- \`$scheduler\` - \`import { $scheduler } from "alepha/scheduler"\`
-- \`$cache\` - \`import { $cache } from "alepha/cache"\`
-- \`$bucket\` - \`import { $bucket } from "alepha/bucket"\`
-- \`$realm\` - \`import { $realm } from "alepha/security"\`
-- \`$command\` - \`import { $command } from "alepha/command"\`
-
-React hooks:
-
-- \`useStore\` - \`import { useStore } from "@alepha/react"\`
-- \`useClient\` - \`import { useClient } from "@alepha/react"\`
-- \`useRouter\` - \`import { useRouter } from "@alepha/react/router"\`
-- \`useForm\` - \`import { useForm } from "@alepha/react/form"\`
-
-## Docs
-
-- [Full Docs](https://alepha.dev/llms-full.txt): Complete documentation of Alepha with all details.
-- [Examples](https://github.com/feunard/alepha/tree/main/apps): Example applications
-`);
 
     for (const node of tree) {
       this.renderNode(node, lines, 0);
