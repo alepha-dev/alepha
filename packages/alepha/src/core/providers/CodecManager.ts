@@ -2,6 +2,7 @@ import type { StaticEncode, TSchema } from "typebox";
 import { AlephaError } from "../errors/AlephaError.ts";
 import { $inject } from "../primitives/$inject.ts";
 import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
+import { KeylessJsonSchemaCodec } from "./KeylessJsonSchemaCodec.ts";
 import type { SchemaCodec } from "./SchemaCodec.ts";
 import { SchemaValidator, type ValidateOptions } from "./SchemaValidator.ts";
 import type { Static } from "./TypeProvider.ts";
@@ -61,23 +62,34 @@ export interface DecodeOptions {
 export class CodecManager {
   protected readonly codecs: Map<string, SchemaCodec> = new Map();
   protected readonly jsonCodec = $inject(JsonSchemaCodec);
+  protected readonly keylessCodec = $inject(KeylessJsonSchemaCodec);
   protected readonly schemaValidator = $inject(SchemaValidator);
 
   public default = "json";
 
   constructor() {
     // Register default JSON codec
-    this.register(this.default, this.jsonCodec);
+    this.register({
+      name: "json",
+      codec: this.jsonCodec,
+      default: true,
+    });
+
+    // Register keyless JSON codec (smaller, faster decoding)
+    this.register({
+      name: "keyless",
+      codec: this.keylessCodec,
+    });
   }
 
   /**
    * Register a new codec format.
-   *
-   * @param name - The name of the codec (e.g., 'json', 'protobuf')
-   * @param codec - The codec implementation
    */
-  public register(name: string, codec: SchemaCodec): void {
-    this.codecs.set(name, codec);
+  public register(opts: CodecRegisterOptions): void {
+    this.codecs.set(opts.name, opts.codec);
+    if (opts.default) {
+      this.default = opts.name;
+    }
   }
 
   /**
@@ -163,4 +175,12 @@ export class CodecManager {
   ): Static<T> {
     return this.schemaValidator.validate(schema, value, options);
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface CodecRegisterOptions {
+  name: string;
+  codec: SchemaCodec;
+  default?: boolean;
 }

@@ -80,6 +80,10 @@ describe("Alepha#graph", () => {
         from: ["StateManager", "CodecManager"],
         module: "alepha.core",
       },
+      KeylessJsonSchemaCodec: {
+        from: ["CodecManager"],
+        module: "alepha.core",
+      },
       CodecManager: {
         from: ["Alepha"],
         module: "alepha.core",

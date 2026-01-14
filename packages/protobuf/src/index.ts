@@ -10,6 +10,9 @@ export const AlephaProtobuf = $module({
   services: [ProtobufProvider, ProtobufSchemaCodec],
   register: (alepha) => {
     alepha.with(ProtobufProvider);
-    alepha.codec.register("protobuf", alepha.inject(ProtobufSchemaCodec));
+    alepha.codec.register({
+      name: "protobuf",
+      codec: alepha.inject(ProtobufSchemaCodec),
+    });
   },
 });

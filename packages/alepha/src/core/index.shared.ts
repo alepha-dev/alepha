@@ -28,6 +28,7 @@ export * from "./providers/AlsProvider.ts";
 export * from "./providers/CodecManager.ts";
 export * from "./providers/EventManager.ts";
 export * from "./providers/JsonSchemaCodec.ts";
+export * from "./providers/KeylessJsonSchemaCodec.ts";
 export * from "./providers/SchemaCodec.ts";
 export * from "./providers/StateManager.ts";
 export * from "./providers/TypeProvider.ts";

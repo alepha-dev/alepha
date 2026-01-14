@@ -44,7 +44,10 @@ describe("CodecManager", () => {
       const codecManager = alepha.codec;
       const customCodec = new CustomCodec();
 
-      codecManager.register("custom", customCodec);
+      codecManager.register({
+        name: "custom",
+        codec: customCodec,
+      });
 
       const retrieved = codecManager.getCodec("custom");
       expect(retrieved).toBe(customCodec);
@@ -74,10 +77,13 @@ describe("CodecManager", () => {
 
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
-      codecManager.register("mock", new MockCodec());
+      codecManager.register({
+        name: "mock",
+        codec: new MockCodec(),
+      });
 
       expect(() => codecManager.getCodec("missing")).toThrow(
-        'Codec "missing" not found. Available codecs: json, mock',
+        'Codec "missing" not found. Available codecs: json, keyless, mock',
       );
     });
   });
@@ -298,7 +304,7 @@ describe("CodecManager", () => {
 
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
-      codecManager.register("custom", new CustomCodec());
+      codecManager.register({ name: "custom", codec: new CustomCodec() });
 
       const schema = t.object({ value: t.text() });
       const result = codecManager.encode(
@@ -513,7 +519,7 @@ describe("CodecManager", () => {
 
       const alepha = Alepha.create();
       const codecManager = alepha.codec;
-      codecManager.register("custom", new CustomCodec());
+      codecManager.register({ name: "custom", codec: new CustomCodec() });
 
       const schema = t.object({ value: t.text() });
       const result = codecManager.decode(
@@ -631,7 +637,7 @@ describe("CodecManager", () => {
         codec = $inject(CodecManager);
 
         constructor() {
-          this.codec.register("custom", new CustomCodec());
+          this.codec.register({ name: "custom", codec: new CustomCodec() });
         }
       }
 
