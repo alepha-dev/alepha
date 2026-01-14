@@ -23,13 +23,13 @@
   ],
   "dependencies": {
     "@alepha/react": "0.14.4",
-    "@mantine/core": "^8.3.11",
-    "@mantine/dates": "^8.3.11",
-    "@mantine/hooks": "^8.3.11",
-    "@mantine/modals": "^8.3.11",
-    "@mantine/notifications": "^8.3.11",
-    "@mantine/nprogress": "^8.3.11",
-    "@mantine/spotlight": "^8.3.11",
+    "@mantine/core": "^8.3.12",
+    "@mantine/dates": "^8.3.12",
+    "@mantine/hooks": "^8.3.12",
+    "@mantine/modals": "^8.3.12",
+    "@mantine/notifications": "^8.3.12",
+    "@mantine/nprogress": "^8.3.12",
+    "@mantine/spotlight": "^8.3.12",
     "@tabler/icons-react": "^3.36.1",
     "alepha": "0.14.4",
     "dayjs": "^1.11.19"
@@ -40,7 +40,7 @@
     "react-dom": "^19.2.3",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.17"
   },
   "peerDependencies": {
     "react": "*",

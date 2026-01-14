@@ -109,7 +109,6 @@ export class AlephaPackageBuilderCli {
           external,
           dts: {
             sourcemap: true,
-            resolve: false,
           },
         });
 
