@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
-import { $realm } from "alepha/security";
+import { $issuer } from "alepha/security";
 import {
   $action,
   ForbiddenError,
@@ -62,7 +62,7 @@ describe("ServerSecurityProvider", () => {
         group: "read",
         handler: () => "USER",
       });
-      realm = $realm({
+      issuer = $issuer({
         secret: "test",
         roles: [
           {

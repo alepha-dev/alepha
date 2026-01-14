@@ -17,7 +17,7 @@ import {
 } from "alepha/orm";
 import { $queue } from "alepha/queue";
 import { $scheduler } from "alepha/scheduler";
-import { $realm } from "alepha/security";
+import { $issuer } from "alepha/security";
 import { $action } from "alepha/server";
 import { $topic } from "alepha/topic";
 import type { DevActionMetadata } from "../schemas/DevActionMetadata.ts";
@@ -122,7 +122,7 @@ export class DevToolsMetadataProvider {
   }
 
   public getRealms(): DevRealmMetadata[] {
-    const realmPrimitives = this.alepha.primitives($realm);
+    const realmPrimitives = this.alepha.primitives($issuer);
 
     return realmPrimitives.map((realm) => ({
       name: realm.name,

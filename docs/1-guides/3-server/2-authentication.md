@@ -7,27 +7,27 @@ In most frameworks, adding authentication involves:
 4.  Manually hashing passwords.
 5.  Praying you didn't leave a hole.
 
-In Alepha, authentication is built on two low-level primitives: `$realm` and `$auth`. You can use them directly for full control, or use the higher-level presets for common scenarios.
+In Alepha, authentication is built on two low-level primitives: `$issuer` and `$auth`. You can use them directly for full control, or use the higher-level presets for common scenarios.
 
 ## The Low-Level Primitives
 
-### `$realm`: Token Management
+### `$issuer`: Token Management
 
-A **Realm** is a security boundary. It handles JWT token creation, verification, and role management. It doesn't care *how* users authenticate—it just issues and validates tokens.
+An **Issuer** is a JWT token provider. It handles JWT token creation, verification, and role management. It doesn't care *how* users authenticate—it just issues and validates tokens.
 
 ```typescript
-import { $realm } from "alepha/security";
+import { $issuer } from "alepha/security";
 import { $env, t } from "alepha";
 
 class AppSecurity {
   env = $env(t.object({
-    REALM_SECRET: t.string({ default: "***********" }),
+    ISSUER_SECRET: t.string({ default: "***********" }),
   }))
 
-  // Internal realm: you control the secret, you can forge tokens
-  internal = $realm({
+  // Internal issuer: you control the secret, you can forge tokens
+  internal = $issuer({
     name: "app",
-    secret: this.env.REALM_SECRET,
+    secret: this.env.ISSUER_SECRET,
     roles: [{
       name: "user",
       permissions: [{ name: "*" }],
@@ -38,8 +38,8 @@ class AppSecurity {
     }
   });
 
-  // External realm (delegation): validate tokens from Keycloak, Auth0, etc. You can't forge tokens here.
-  external = $realm({
+  // External issuer (delegation): validate tokens from Keycloak, Auth0, etc. You can't forge tokens here.
+  external = $issuer({
     name: "keycloak",
     jwks: () => "https://auth.example.com/realms/myrealm/protocol/openid-connect/certs",
     roles: [{
@@ -51,12 +51,12 @@ class AppSecurity {
 }
 ```
 
-- Including a `$realm` in your app automatically enables security check.
+- Including an `$issuer` in your app automatically enables security check.
 - System is permission based by default. You can define roles and permissions as needed.
 - Alepha generates permissions automatically for each action (e.g., `module:action`).
-- `$realm` is considered low-level. You usually want to use high-level `$userRealm` for full user management.
+- `$issuer` is considered low-level. You usually want to use high-level `$realm` for full user management.
 
-Use `$realm` directly when:
+Use `$issuer` directly when:
 *   You're integrating with an external identity provider (Keycloak, Auth0, Okta).
 *   You need fine-grained control over token lifetimes and claims.
 *   You're building a custom authentication flow.
@@ -77,7 +77,7 @@ class AuthProviders {
 
   // 1. Credentials: username/password
   credentials = $auth({
-    realm: this.security.internal,
+    issuer: this.security.internal,
     credentials: {
       account: async ({ username, password }) => {
         // Your validation logic here
@@ -88,7 +88,7 @@ class AuthProviders {
 
   // 2. OAuth2: external provider (manual config)
   github = $auth({
-    realm: this.security.internal,
+    issuer: this.security.internal,
     oauth: {
       clientId: this.env.GITHUB_CLIENT_ID,
       clientSecret: this.env.GITHUB_CLIENT_SECRET,
@@ -118,17 +118,17 @@ No manual URL wiring needed—just point it at your identity provider and go.
 
 ## The High-Level Way (Recommended)
 
-For most SaaS applications, you don't want to wire all this yourself. Alepha provides `$userRealm`—an extension of `$realm` that includes:
+For most SaaS applications, you don't want to wire all this yourself. Alepha provides `$realm`—an extension of `$issuer` that includes:
 *   User accounts stored in your database
 *   Password hashing (Scrypt)
 *   Session management
 *   Email verification hooks
 
 ```typescript
-import { $userRealm } from "alepha/api/users";
+import { $realm } from "alepha/api/users";
 
 class AppSecurity {
-  realm = $userRealm({
+  realm = $realm({
     settings: {
       registrationAllowed: true,
       emailRequired: true,
@@ -148,7 +148,7 @@ Similarly, instead of configuring OAuth2 manually, use the presets:
 import { $authGoogle, $authGithub, $authCredentials } from "alepha/server/auth";
 
 class AuthProviders {
-  // Username/password with your $userRealm
+  // Username/password with your $realm
   credentials = $authCredentials(this.realm);
 
   // Google OAuth2 (auto-configured)

@@ -2,10 +2,10 @@ import { type Static, t } from "alepha";
 import { authenticationProviderSchema } from "alepha/server/auth";
 import { realmAuthSettingsAtom } from "../atoms/realmAuthSettingsAtom.ts";
 
-export const userRealmConfigSchema = t.object({
+export const realmConfigSchema = t.object({
   settings: realmAuthSettingsAtom.schema,
   realmName: t.string(),
   authenticationMethods: t.array(authenticationProviderSchema),
 });
 
-export type UserRealmConfig = Static<typeof userRealmConfigSchema>;
+export type RealmConfig = Static<typeof realmConfigSchema>;

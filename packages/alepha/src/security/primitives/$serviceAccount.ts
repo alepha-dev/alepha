@@ -1,7 +1,7 @@
 import { $context } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
-import type { AccessTokenResponse, RealmPrimitive } from "./$realm.ts";
+import type { AccessTokenResponse, IssuerPrimitive } from "./$issuer.ts";
 
 /**
  * Allow to get an access token for a service account.
@@ -138,7 +138,7 @@ export const $serviceAccount = (
         return tokenFromCache;
       }
 
-      const token = await options.realm.createToken(options.user);
+      const token = await options.issuer.createToken(options.user);
 
       cacheToken({
         ...token,
@@ -157,7 +157,7 @@ export type ServiceAccountPrimitiveOptions = {
       oauth2: Oauth2ServiceAccountPrimitiveOptions;
     }
   | {
-      realm: RealmPrimitive;
+      issuer: IssuerPrimitive;
       user: UserAccount;
     }
 );

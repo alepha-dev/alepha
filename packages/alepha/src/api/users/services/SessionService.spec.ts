@@ -7,8 +7,8 @@ import {
 import { describe, it } from "vitest";
 import {
   AlephaApiUsers,
+  RealmProvider,
   SessionService,
-  UserRealmProvider,
   UserService,
 } from "../index.ts";
 
@@ -26,8 +26,8 @@ const setup = async (options?: { usernameEnabled?: boolean }) => {
 
   // Configure realm settings if provided
   if (options?.usernameEnabled) {
-    const userRealmProvider = alepha.inject(UserRealmProvider);
-    userRealmProvider.register("default", {
+    const realmProvider = alepha.inject(RealmProvider);
+    realmProvider.register("default", {
       settings: {
         usernameEnabled: true,
       } as never,

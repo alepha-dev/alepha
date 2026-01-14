@@ -10,7 +10,7 @@ import { BadRequestError, ConflictError, HttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import type { UserEntity } from "../entities/users.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
-import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
+import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { CompleteRegistrationRequest } from "../schemas/completeRegistrationRequestSchema.ts";
 import type { RegisterRequest } from "../schemas/registerRequestSchema.ts";
 import type { RegistrationIntentResponse } from "../schemas/registrationIntentResponseSchema.ts";
@@ -45,7 +45,7 @@ export class RegistrationService {
   protected readonly cryptoProvider = $inject(CryptoProvider);
   protected readonly verificationController = $client<VerificationController>();
   protected readonly userNotifications = $inject(UserNotifications);
-  protected readonly userRealmProvider = $inject(UserRealmProvider);
+  protected readonly realmProvider = $inject(RealmProvider);
   protected readonly auditService = $inject(AuditService);
 
   protected readonly intentCache = $cache<RegistrationIntent>({
@@ -69,9 +69,8 @@ export class RegistrationService {
       userRealmName,
     });
 
-    const realmSettings =
-      this.userRealmProvider.getRealm(userRealmName).settings;
-    const userRepository = this.userRealmProvider.userRepository(userRealmName);
+    const realmSettings = this.realmProvider.getRealm(userRealmName).settings;
+    const userRepository = this.realmProvider.userRepository(userRealmName);
 
     // Check if registration is allowed
     if (realmSettings?.registrationAllowed === false) {
@@ -189,9 +188,9 @@ export class RegistrationService {
     }
 
     const userRealmName = intent.realmName;
-    const userRepository = this.userRealmProvider.userRepository(userRealmName);
+    const userRepository = this.realmProvider.userRepository(userRealmName);
     const identityRepository =
-      this.userRealmProvider.identityRepository(userRealmName);
+      this.realmProvider.identityRepository(userRealmName);
 
     // Validate email verification if required
     if (intent.requirements.email) {
@@ -275,7 +274,7 @@ export class RegistrationService {
       username: user.username,
     });
 
-    const realm = this.userRealmProvider.getRealm(userRealmName);
+    const realm = this.realmProvider.getRealm(userRealmName);
 
     await this.auditService.recordUser("create", {
       userId: user.id,
@@ -301,7 +300,7 @@ export class RegistrationService {
     body: Pick<RegisterRequest, "username" | "email" | "phoneNumber">,
     userRealmName?: string,
   ): Promise<void> {
-    const userRepository = this.userRealmProvider.userRepository(userRealmName);
+    const userRepository = this.realmProvider.userRepository(userRealmName);
 
     if (body.username) {
       const existingUser = await userRepository

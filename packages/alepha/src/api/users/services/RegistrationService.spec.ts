@@ -7,9 +7,9 @@ import { BadRequestError, ConflictError, HttpError } from "alepha/server";
 import { describe, it } from "vitest";
 import {
   AlephaApiUsers,
+  RealmProvider,
   RegistrationService,
   SessionService,
-  UserRealmProvider,
   UserService,
 } from "../index.ts";
 
@@ -26,11 +26,11 @@ const setup = async (realmSettings?: Record<string, unknown>) => {
   const emailProvider = alepha.inject(MemoryEmailProvider);
   emailProvider.records = [];
 
-  const userRealmProvider = alepha.inject(UserRealmProvider);
+  const realmProvider = alepha.inject(RealmProvider);
 
   // Configure realm settings if provided (applies to default realm)
   if (realmSettings) {
-    userRealmProvider.register("default", {
+    realmProvider.register("default", {
       settings: realmSettings as never,
     });
   }
@@ -43,7 +43,7 @@ const setup = async (realmSettings?: Record<string, unknown>) => {
     cryptoProvider: alepha.inject(CryptoProvider),
     dateTimeProvider: alepha.inject(DateTimeProvider),
     emailProvider,
-    userRealmProvider,
+    realmProvider,
   };
 };
 
@@ -79,11 +79,11 @@ describe("alepha/api/users - RegistrationService", () => {
     it("should create intent with email verification required when configured", async ({
       expect,
     }) => {
-      const { registrationService, emailProvider, userRealmProvider } =
+      const { registrationService, emailProvider, realmProvider } =
         await setup();
 
       // Register realm with email verification required
-      userRealmProvider.register("verify-email-realm", {
+      realmProvider.register("verify-email-realm", {
         settings: {
           verifyEmailRequired: true,
         } as never,
@@ -113,9 +113,9 @@ describe("alepha/api/users - RegistrationService", () => {
     it("should reject registration when disabled in realm settings", async ({
       expect,
     }) => {
-      const { registrationService, userRealmProvider } = await setup();
+      const { registrationService, realmProvider } = await setup();
 
-      userRealmProvider.register("no-registration-realm", {
+      realmProvider.register("no-registration-realm", {
         settings: {
           registrationAllowed: false,
         } as never,
@@ -135,9 +135,9 @@ describe("alepha/api/users - RegistrationService", () => {
     it("should reject when required username is missing", async ({
       expect,
     }) => {
-      const { registrationService, userRealmProvider } = await setup();
+      const { registrationService, realmProvider } = await setup();
 
-      userRealmProvider.register("username-required-realm", {
+      realmProvider.register("username-required-realm", {
         settings: {
           usernameRequired: true,
         } as never,
@@ -169,9 +169,9 @@ describe("alepha/api/users - RegistrationService", () => {
     });
 
     it("should reject when required phone is missing", async ({ expect }) => {
-      const { registrationService, userRealmProvider } = await setup();
+      const { registrationService, realmProvider } = await setup();
 
-      userRealmProvider.register("phone-required-realm", {
+      realmProvider.register("phone-required-realm", {
         settings: {
           phoneRequired: true,
           emailRequired: false,
@@ -229,10 +229,9 @@ describe("alepha/api/users - RegistrationService", () => {
     });
 
     it("should reject duplicate phone number", async ({ expect }) => {
-      const { registrationService, userService, userRealmProvider } =
-        await setup();
+      const { registrationService, userService, realmProvider } = await setup();
 
-      userRealmProvider.register("phone-realm", {
+      realmProvider.register("phone-realm", {
         settings: {
           phoneEnabled: true,
           emailRequired: false,
@@ -312,10 +311,10 @@ describe("alepha/api/users - RegistrationService", () => {
     it("should complete registration with valid email verification code", async ({
       expect,
     }) => {
-      const { registrationService, emailProvider, userRealmProvider } =
+      const { registrationService, emailProvider, realmProvider } =
         await setup();
 
-      userRealmProvider.register("email-verify-realm", {
+      realmProvider.register("email-verify-realm", {
         settings: {
           verifyEmailRequired: true,
         } as never,
@@ -379,9 +378,9 @@ describe("alepha/api/users - RegistrationService", () => {
     it("should reject when email code is required but not provided", async ({
       expect,
     }) => {
-      const { registrationService, userRealmProvider } = await setup();
+      const { registrationService, realmProvider } = await setup();
 
-      userRealmProvider.register("email-required-realm", {
+      realmProvider.register("email-required-realm", {
         settings: {
           verifyEmailRequired: true,
         } as never,
@@ -404,9 +403,9 @@ describe("alepha/api/users - RegistrationService", () => {
     });
 
     it("should reject invalid email verification code", async ({ expect }) => {
-      const { registrationService, userRealmProvider } = await setup();
+      const { registrationService, realmProvider } = await setup();
 
-      userRealmProvider.register("email-verify-realm", {
+      realmProvider.register("email-verify-realm", {
         settings: {
           verifyEmailRequired: true,
         } as never,
@@ -454,10 +453,9 @@ describe("alepha/api/users - RegistrationService", () => {
     it("should detect race condition when email is taken during verification", async ({
       expect,
     }) => {
-      const { registrationService, userService, userRealmProvider } =
-        await setup();
+      const { registrationService, userService, realmProvider } = await setup();
 
-      userRealmProvider.register("race-realm", {
+      realmProvider.register("race-realm", {
         settings: {
           verifyEmailRequired: false,
         } as never,
@@ -490,7 +488,7 @@ describe("alepha/api/users - RegistrationService", () => {
     it("should create credentials identity with hashed password", async ({
       expect,
     }) => {
-      const { registrationService, sessionService, userRealmProvider } =
+      const { registrationService, sessionService, realmProvider } =
         await setup();
 
       const intent = await registrationService.createRegistrationIntent({
@@ -584,10 +582,10 @@ describe("alepha/api/users - RegistrationService", () => {
         registrationService,
         sessionService,
         emailProvider,
-        userRealmProvider,
+        realmProvider,
       } = await setup();
 
-      userRealmProvider.register("full-verify-realm", {
+      realmProvider.register("full-verify-realm", {
         settings: {
           verifyEmailRequired: true,
         } as never,

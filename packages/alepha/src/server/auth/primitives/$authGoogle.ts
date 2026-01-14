@@ -1,5 +1,5 @@
 import { $context, AlephaError, t } from "alepha";
-import type { RealmPrimitive } from "alepha/security";
+import type { IssuerPrimitive } from "alepha/security";
 import {
   $auth,
   type LinkAccountFn,
@@ -18,7 +18,7 @@ import {
  * - `GOOGLE_CLIENT_SECRET`: The client secret obtained from the Google Developer Console.
  */
 export const $authGoogle = (
-  realm: RealmPrimitive & WithLinkFn,
+  realm: IssuerPrimitive & WithLinkFn,
   options: Partial<OidcOptions> = {},
 ) => {
   const { alepha } = $context();
@@ -44,7 +44,7 @@ export const $authGoogle = (
   }
 
   return $auth({
-    realm,
+    issuer: realm,
     name,
     oidc: {
       issuer: "https://accounts.google.com",

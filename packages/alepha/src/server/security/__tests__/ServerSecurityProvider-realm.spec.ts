@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
-import { $realm } from "alepha/security";
+import { $issuer } from "alepha/security";
 import { $action, $route, ForbiddenError, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { AlephaServerSecurity } from "../index.ts";
@@ -8,7 +8,7 @@ import { AlephaServerSecurity } from "../index.ts";
 describe("ServerSecurityProvider - Realm Protection", () => {
   it("should allow access when user belongs to the required realm", async () => {
     class TestApp {
-      realmA = $realm({
+      realmA = $issuer({
         secret: "test-realm-a",
         roles: [
           {
@@ -18,7 +18,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
         ],
       });
 
-      realmB = $realm({
+      realmB = $issuer({
         secret: "test-realm-b",
         roles: [
           {
@@ -85,7 +85,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
 
   it("should deny access when user does not belong to the required realm", async () => {
     class TestApp {
-      realmA = $realm({
+      realmA = $issuer({
         secret: "test-realm-a",
         roles: [
           {
@@ -95,7 +95,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
         ],
       });
 
-      realmB = $realm({
+      realmB = $issuer({
         secret: "test-realm-b",
         roles: [
           {
@@ -172,7 +172,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
 
   it("should work with actions when user has no realm attribute", async () => {
     class TestApp {
-      realmA = $realm({
+      realmA = $issuer({
         secret: "test-realm-a",
         roles: [
           {
@@ -215,7 +215,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
 
   it("should combine realm and permission checks", async () => {
     class TestApp {
-      realmA = $realm({
+      realmA = $issuer({
         secret: "test-realm-a",
         roles: [
           {
@@ -229,7 +229,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
         ],
       });
 
-      realmB = $realm({
+      realmB = $issuer({
         secret: "test-realm-b",
       });
 
@@ -336,7 +336,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
 
   it("should work with fetch requests when realm is valid", async () => {
     class TestApp {
-      realmA = $realm({
+      realmA = $issuer({
         secret: "test-realm-a",
         roles: [
           {

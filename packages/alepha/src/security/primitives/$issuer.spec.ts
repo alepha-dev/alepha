@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, test } from "vitest";
-import { $realm } from "../index.ts";
+import { $issuer } from "../index.ts";
 
-describe("$realm", () => {
+describe("$issuer", () => {
   const roles = [
     {
       name: "admin",
@@ -18,7 +18,7 @@ describe("$realm", () => {
 
   test("should create token (access & refresh)", async ({ expect }) => {
     class App {
-      realm = $realm({
+      issuer = $issuer({
         secret: "test",
         roles,
       });
@@ -37,15 +37,15 @@ describe("$realm", () => {
 
     const now = dt.pause();
 
-    const token = await app.realm.createToken(user);
+    const token = await app.issuer.createToken(user);
 
     expect(token).toEqual({
       access_token: expect.any(String),
-      expires_in: app.realm.accessTokenExpiration.asSeconds(),
+      expires_in: app.issuer.accessTokenExpiration.asSeconds(),
       refresh_token: expect.any(String),
       token_type: "Bearer",
       issued_at: now.unix(),
-      refresh_token_expires_in: app.realm.refreshTokenExpiration.asSeconds(),
+      refresh_token_expires_in: app.issuer.refreshTokenExpiration.asSeconds(),
     });
 
     expect(
@@ -54,9 +54,9 @@ describe("$realm", () => {
       ),
     ).toEqual({
       sub: user.id,
-      aud: app.realm.name,
+      aud: app.issuer.name,
       iat: now.unix(),
-      exp: now.unix() + app.realm.accessTokenExpiration.asSeconds(),
+      exp: now.unix() + app.issuer.accessTokenExpiration.asSeconds(),
       name: user.name,
       roles: ["admin", "user"],
       sid: expect.any(String),
@@ -71,9 +71,9 @@ describe("$realm", () => {
       ),
     ).toEqual({
       sub: user.id,
-      aud: app.realm.name,
+      aud: app.issuer.name,
       iat: now.unix(),
-      exp: now.unix() + app.realm.refreshTokenExpiration.asSeconds(),
+      exp: now.unix() + app.issuer.refreshTokenExpiration.asSeconds(),
     });
 
     expect(
@@ -88,7 +88,7 @@ describe("$realm", () => {
       typ: "refresh",
     });
 
-    const newToken = await app.realm.createToken(user, token);
+    const newToken = await app.issuer.createToken(user, token);
     expect(newToken).toEqual({
       access_token: expect.any(String),
       issued_at: now.unix(),

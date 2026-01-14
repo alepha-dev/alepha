@@ -13,43 +13,46 @@ import type { Role } from "../schemas/roleSchema.ts";
 import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
 
 /**
- * Create a new realm.
+ * Create a new issuer.
+ *
+ * An issuer is responsible for creating and verifying JWT tokens.
+ * It can be internal (with a secret) or external (with a JWKS).
  */
-export const $realm = (options: RealmPrimitiveOptions): RealmPrimitive => {
-  return createPrimitive(RealmPrimitive, options);
+export const $issuer = (options: IssuerPrimitiveOptions): IssuerPrimitive => {
+  return createPrimitive(IssuerPrimitive, options);
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export type RealmPrimitiveOptions = {
+export type IssuerPrimitiveOptions = {
   /**
-   * Define the realm name.
+   * Define the issuer name.
    * If not provided, it will use the property key.
    */
   name?: string;
 
   /**
-   * Short description about the realm.
+   * Short description about the issuer.
    */
   description?: string;
 
   /**
-   * All roles available in the realm. Role is a string (role name) or a Role object (embedded role).
+   * All roles available in the issuer. Role is a string (role name) or a Role object (embedded role).
    */
   roles?: Array<string | Role>;
 
   /**
-   * Realm settings.
+   * Issuer settings.
    */
-  settings?: RealmSettings;
+  settings?: IssuerSettings;
 
   /**
    * Parse the JWT payload to create a user account info.
    */
   profile?: (jwtPayload: Record<string, any>) => UserAccount;
-} & (RealmInternal | RealmExternal);
+} & (IssuerInternal | IssuerExternal);
 
-export interface RealmSettings {
+export interface IssuerSettings {
   accessToken?: {
     /**
      * Lifetime of the access token.
@@ -87,14 +90,14 @@ export interface RealmSettings {
   onDeleteSession?: (refreshToken: string) => Promise<void>;
 }
 
-export type RealmInternal = {
+export type IssuerInternal = {
   /**
    * Internal secret to sign JWT tokens and verify them.
    */
   secret: string;
 };
 
-export interface RealmExternal {
+export interface IssuerExternal {
   /**
    * URL to the JWKS (JSON Web Key Set) to verify JWT tokens from external providers.
    */
@@ -103,7 +106,7 @@ export interface RealmExternal {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class RealmPrimitive extends Primitive<RealmPrimitiveOptions> {
+export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
   protected readonly securityProvider = $inject(SecurityProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly jwt = $inject(JwtProvider);
@@ -148,14 +151,14 @@ export class RealmPrimitive extends Primitive<RealmPrimitiveOptions> {
   }
 
   /**
-   * Get all roles in the realm.
+   * Get all roles in the issuer.
    */
   public getRoles(): Role[] {
     return this.securityProvider.getRoles(this.name);
   }
 
   /**
-   * Set all roles in the realm.
+   * Set all roles in the issuer.
    */
   public async setRoles(roles: Role[]): Promise<void> {
     await this.securityProvider.updateRealm(this.name, roles);
@@ -336,7 +339,7 @@ export class RealmPrimitive extends Primitive<RealmPrimitiveOptions> {
   }
 }
 
-$realm[KIND] = RealmPrimitive;
+$issuer[KIND] = IssuerPrimitive;
 
 // ---------------------------------------------------------------------------------------------------------------------
 

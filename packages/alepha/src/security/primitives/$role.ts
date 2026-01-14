@@ -1,7 +1,7 @@
 import { $inject, createPrimitive, KIND, Primitive } from "alepha";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";
+import type { IssuerPrimitive } from "./$issuer.ts";
 import type { PermissionPrimitive } from "./$permission.ts";
-import type { RealmPrimitive } from "./$realm.ts";
 
 /**
  * Create a new role.
@@ -23,7 +23,7 @@ export interface RolePrimitiveOptions {
    */
   description?: string;
 
-  realm?: string | RealmPrimitive;
+  issuer?: string | IssuerPrimitive;
 
   permissions?: Array<
     | string
@@ -60,10 +60,10 @@ export class RolePrimitive extends Primitive<RolePrimitiveOptions> {
   }
 
   /**
-   * Get the realm of the role.
+   * Get the issuer of the role.
    */
-  public get realm(): string | RealmPrimitive | undefined {
-    return this.options.realm;
+  public get issuer(): string | IssuerPrimitive | undefined {
+    return this.options.issuer;
   }
 
   public can(permission: string | PermissionPrimitive): boolean {

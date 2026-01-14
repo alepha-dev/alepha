@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
-import { $realm, $serviceAccount } from "../index.ts";
+import { $issuer, $serviceAccount } from "../index.ts";
 
 class App {
   oauth2 = $serviceAccount({
@@ -16,12 +16,12 @@ class App {
     expiresIn: 300, // 5 minutes
   };
 
-  realm = $realm({
-    secret: "your-realm-secret",
+  issuer = $issuer({
+    secret: "your-issuer-secret",
   });
 
   jwt = $serviceAccount({
-    realm: this.realm,
+    issuer: this.issuer,
     user: {
       id: "service-account",
     },
@@ -42,7 +42,7 @@ describe("$serviceAccount", () => {
     );
     expect(payload).toEqual({
       sub: expect.any(String),
-      aud: "realm",
+      aud: "issuer",
       iat: expect.any(Number),
       exp: expect.any(Number),
       sid: expect.any(String),

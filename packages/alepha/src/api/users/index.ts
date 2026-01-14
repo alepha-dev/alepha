@@ -7,10 +7,10 @@ import { AlephaServerHelmet } from "alepha/server/helmet";
 import { AdminIdentityController } from "./controllers/AdminIdentityController.ts";
 import { AdminSessionController } from "./controllers/AdminSessionController.ts";
 import { AdminUserController } from "./controllers/AdminUserController.ts";
+import { RealmController } from "./controllers/RealmController.ts";
 import { UserController } from "./controllers/UserController.ts";
-import { UserRealmController } from "./controllers/UserRealmController.ts";
 import { UserNotifications } from "./notifications/UserNotifications.ts";
-import { UserRealmProvider } from "./providers/UserRealmProvider.ts";
+import { RealmProvider } from "./providers/RealmProvider.ts";
 import { CredentialService } from "./services/CredentialService.ts";
 import { IdentityService } from "./services/IdentityService.ts";
 import { RegistrationService } from "./services/RegistrationService.ts";
@@ -24,13 +24,13 @@ export * from "./atoms/realmAuthSettingsAtom.ts";
 export * from "./controllers/AdminIdentityController.ts";
 export * from "./controllers/AdminSessionController.ts";
 export * from "./controllers/AdminUserController.ts";
+export * from "./controllers/RealmController.ts";
 export * from "./controllers/UserController.ts";
-export * from "./controllers/UserRealmController.ts";
 export * from "./entities/identities.ts";
 export * from "./entities/sessions.ts";
 export * from "./entities/users.ts";
-export * from "./primitives/$userRealm.ts";
-export * from "./providers/UserRealmProvider.ts";
+export * from "./primitives/$realm.ts";
+export * from "./providers/RealmProvider.ts";
 export * from "./schemas/completePasswordResetRequestSchema.ts";
 export * from "./schemas/completeRegistrationRequestSchema.ts";
 export * from "./schemas/createUserSchema.ts";
@@ -38,6 +38,7 @@ export * from "./schemas/identityQuerySchema.ts";
 export * from "./schemas/identityResourceSchema.ts";
 export * from "./schemas/loginSchema.ts";
 export * from "./schemas/passwordResetIntentResponseSchema.ts";
+export * from "./schemas/realmConfigSchema.ts";
 export * from "./schemas/registerSchema.ts";
 export * from "./schemas/registrationIntentResponseSchema.ts";
 export * from "./schemas/resetPasswordSchema.ts";
@@ -45,7 +46,6 @@ export * from "./schemas/sessionQuerySchema.ts";
 export * from "./schemas/sessionResourceSchema.ts";
 export * from "./schemas/updateUserSchema.ts";
 export * from "./schemas/userQuerySchema.ts";
-export * from "./schemas/userRealmConfigSchema.ts";
 export * from "./schemas/userResourceSchema.ts";
 export * from "./services/CredentialService.ts";
 export * from "./services/IdentityService.ts";
@@ -72,7 +72,7 @@ export const AlephaApiUsers = $module({
     AlephaServerHelmet,
     AlephaServerCompress,
     AlephaEmail,
-    UserRealmProvider,
+    RealmProvider,
     SessionService,
     SessionCrudService,
     CredentialService,
@@ -83,7 +83,7 @@ export const AlephaApiUsers = $module({
     AdminUserController,
     AdminSessionController,
     AdminIdentityController,
-    UserRealmController,
+    RealmController,
     UserNotifications,
   ],
 });

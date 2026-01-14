@@ -1,4 +1,4 @@
-import { $userRealm } from "alepha/api/users";
+import { $realm } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { type Character, characters } from "../entities/characters.ts";
@@ -8,7 +8,7 @@ export class Security {
   projects = $repository(projects);
   characters = $repository(characters);
 
-  realm = $userRealm({
+  realm = $realm({
     settings: {
       usernameRequired: true,
       resetPasswordAllowed: true,

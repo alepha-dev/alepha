@@ -137,15 +137,15 @@ No Postman. No curl. Just click and test. Perfect for quick debugging or demoing
 If your API uses authentication (via `alepha/server/security`), Swagger UI shows a lock icon. Click "Authorize" to add your token, and all subsequent requests include it.
 
 ```typescript
-import { $realm } from "alepha/security";
+import { $issuer } from "alepha/security";
 
-const apiRealm = $realm({
+const apiIssuer = $issuer({
   name: "api",
   // ...
 });
 ```
 
-Protected endpoints show which realm they require. Swagger handles the rest.
+Protected endpoints show which issuer they require. Swagger handles the rest.
 
 ## OpenAPI JSON
 

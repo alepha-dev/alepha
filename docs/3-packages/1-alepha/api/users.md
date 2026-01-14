@@ -23,7 +23,7 @@ Primitives are functions that define and configure various aspects of your appli
 
 For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
-#### $userRealm()
+#### $realm()
 
 Already configured realm for user management.
 

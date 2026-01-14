@@ -1,17 +1,17 @@
 import { $inject, t } from "alepha";
 import { $action } from "alepha/server";
 import { ServerAuthProvider } from "alepha/server/auth";
-import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
-import { userRealmConfigSchema } from "../schemas/userRealmConfigSchema.ts";
+import { RealmProvider } from "../providers/RealmProvider.ts";
+import { realmConfigSchema } from "../schemas/realmConfigSchema.ts";
 
 /**
  * Controller for exposing realm configuration.
  * Uses $route instead of $action to keep endpoints hidden from API documentation.
  */
-export class UserRealmController {
+export class RealmController {
   protected readonly url = "/realms";
   protected readonly group = "realms";
-  protected readonly userRealmProvider = $inject(UserRealmProvider);
+  protected readonly realmProvider = $inject(RealmProvider);
   protected readonly serverAuthProvider = $inject(ServerAuthProvider);
 
   /**
@@ -31,13 +31,13 @@ export class UserRealmController {
     },
     schema: {
       query: t.object({
-        userRealmName: t.optional(t.string()),
+        realmName: t.optional(t.string()),
       }),
-      response: userRealmConfigSchema,
+      response: realmConfigSchema,
     },
     handler: ({ query }) => {
-      const { name: realmName, settings } = this.userRealmProvider.getRealm(
-        query.userRealmName,
+      const { name: realmName, settings } = this.realmProvider.getRealm(
+        query.realmName,
       );
 
       const authenticationMethods =
@@ -59,7 +59,7 @@ export class UserRealmController {
     secure: false,
     schema: {
       query: t.object({
-        userRealmName: t.optional(t.text()),
+        realmName: t.optional(t.text()),
       }),
       body: t.object({
         username: t.text(),
@@ -69,8 +69,8 @@ export class UserRealmController {
       }),
     },
     handler: async ({ query, body }) => {
-      const realmName = query.userRealmName;
-      const userRepository = this.userRealmProvider.userRepository(realmName);
+      const realmName = query.realmName;
+      const userRepository = this.realmProvider.userRepository(realmName);
 
       const existingUser = await userRepository
         .findOne({ where: { username: { eq: body.username } } })

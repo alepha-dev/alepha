@@ -1,5 +1,5 @@
 import { AlephaError } from "alepha";
-import type { RealmPrimitive } from "alepha/security";
+import type { IssuerPrimitive } from "alepha/security";
 import {
   $auth,
   type CredentialsFn,
@@ -13,7 +13,7 @@ import {
  * Uses username and password to authenticate users.
  */
 export const $authCredentials = (
-  realm: RealmPrimitive & WithLoginFn,
+  realm: IssuerPrimitive & WithLoginFn,
   options: Partial<CredentialsOptions> = {},
 ) => {
   const name = "credentials";
@@ -29,7 +29,7 @@ export const $authCredentials = (
   }
 
   return $auth({
-    realm,
+    issuer: realm,
     name,
     credentials: {
       account,

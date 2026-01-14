@@ -11,7 +11,7 @@ Vercel is the easiest path to production. Push to Git, get a URL. Alepha generat
 >
 > **Memory providers are not recommended.** Each serverless invocation runs in isolation, so in-memory state (like `MemoryCacheProvider`) won't persist between requests. Use **Vercel KV** (Redis) or external Redis for caching and state.
 >
-> All other modules work perfectly: `$action`, `$page`, `$entity`, `$repository`, `$cache` (with Redis), `$bucket`, `$realm`, and more.
+> All other modules work perfectly: `$action`, `$page`, `$entity`, `$repository`, `$cache` (with Redis), `$bucket`, `$issuer`, `$realm`, and more.
 >
 > For background jobs on Vercel, use [Vercel Cron Jobs](#cron-jobs) instead.
 

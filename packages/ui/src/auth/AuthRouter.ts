@@ -8,7 +8,7 @@ import {
   IconUserPlus,
 } from "@tabler/icons-react";
 import { $inject, AlephaError, t } from "alepha";
-import type { UserRealmController } from "alepha/api/users";
+import type { RealmController } from "alepha/api/users";
 import { $client } from "alepha/server/links";
 
 /**
@@ -22,7 +22,7 @@ const realmQuerySchema = t.object({
 });
 
 export class AuthRouter {
-  protected readonly userRealmClient = $client<UserRealmController>();
+  protected readonly realmClient = $client<RealmController>();
   protected readonly auth = $inject(ReactAuth);
 
   layout = $page({
@@ -115,15 +115,15 @@ export class AuthRouter {
     },
   });
 
-  protected async loadRealmConfig(userRealmName?: string) {
+  protected async loadRealmConfig(realmName?: string) {
     try {
-      return await this.userRealmClient.getRealmConfig({
-        query: { userRealmName },
+      return await this.realmClient.getRealmConfig({
+        query: { realmName },
       });
     } catch (e) {
       if (e instanceof AlephaError) {
         throw new AlephaError(
-          "Missing User-Realm Configuration - Did you forget to add '$userRealm()' to your application?",
+          "Missing Realm Configuration - Did you forget to add '$realm()' to your application?",
           e,
         );
       }

@@ -7,7 +7,7 @@ import { BadRequestError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import type { UserEntity } from "../entities/users.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
-import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
+import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { CreateUser } from "../schemas/createUserSchema.ts";
 import type { UpdateUser } from "../schemas/updateUserSchema.ts";
 import type { UserQuery } from "../schemas/userQuerySchema.ts";
@@ -16,11 +16,11 @@ export class UserService {
   protected readonly log = $logger();
   protected readonly verificationController = $client<VerificationController>();
   protected readonly userNotifications = $inject(UserNotifications);
-  protected readonly userRealmProvider = $inject(UserRealmProvider);
+  protected readonly realmProvider = $inject(RealmProvider);
   protected readonly auditService = $inject(AuditService);
 
   public users(userRealmName?: string) {
-    return this.userRealmProvider.userRepository(userRealmName);
+    return this.realmProvider.userRepository(userRealmName);
   }
 
   /**
@@ -156,7 +156,7 @@ export class UserService {
 
     this.log.info("Email verified", { email, userId: user.id, type });
 
-    const realm = this.userRealmProvider.getRealm(userRealmName);
+    const realm = this.realmProvider.getRealm(userRealmName);
 
     await this.auditService.recordUser("update", {
       userId: user.id,
@@ -256,7 +256,7 @@ export class UserService {
       userRealmName,
     });
 
-    const realm = this.userRealmProvider.getRealm(userRealmName);
+    const realm = this.realmProvider.getRealm(userRealmName);
 
     // TODO: one query instead of 3
 
@@ -342,7 +342,7 @@ export class UserService {
     const user = await this.users(userRealmName).updateById(id, data);
     this.log.debug("User updated", { userId: id });
 
-    const realm = this.userRealmProvider.getRealm(userRealmName);
+    const realm = this.realmProvider.getRealm(userRealmName);
 
     // Build changes object showing what was updated
     const changes: Record<string, { from: unknown; to: unknown }> = {};
@@ -382,7 +382,7 @@ export class UserService {
     await this.users(userRealmName).deleteById(id);
     this.log.info("User deleted", { userId: id });
 
-    const realm = this.userRealmProvider.getRealm(userRealmName);
+    const realm = this.realmProvider.getRealm(userRealmName);
 
     await this.auditService.recordUser("delete", {
       userRealm: realm.name,

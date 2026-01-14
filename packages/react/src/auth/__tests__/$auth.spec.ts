@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $realm } from "alepha/security";
+import { $issuer } from "alepha/security";
 import { HttpClient, ServerProvider } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { AlephaServerSecurity } from "alepha/server/security";
@@ -25,7 +25,7 @@ describe("$auth", () => {
     };
 
     class App {
-      realm = $realm({
+      issuer = $issuer({
         secret: "my-secret-key",
         roles: [
           {
@@ -36,7 +36,7 @@ describe("$auth", () => {
       });
 
       auth = $auth({
-        realm: this.realm,
+        issuer: this.issuer,
         credentials: {
           account: () => user,
         },
@@ -182,7 +182,7 @@ describe("$auth", () => {
       await alepha.inject(DateTimeProvider).travel(40, "days");
 
       await expect(refresh(alepha, tokens)).rejects.toThrowError(
-        "Failed to refresh access token using the refresh token (realm)",
+        "Failed to refresh access token using the refresh token (issuer)",
       );
     });
 });

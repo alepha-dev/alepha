@@ -67,10 +67,6 @@ export class ReactServerProvider {
 
       this.alepha.store.set("alepha.react.server.ssr", ssrEnabled);
 
-      if (ssrEnabled) {
-        this.log.info("SSR streaming enabled");
-      }
-
       // development mode
       if (this.alepha.isViteDev()) {
         await this.configureVite(ssrEnabled);

@@ -6,7 +6,7 @@ import { ActionButton, Control, capitalize } from "@alepha/ui";
 import { Card, Flex, Group, Image, Stack, Text, Title } from "@mantine/core";
 import { IconLock, IconUser } from "@tabler/icons-react";
 import { AlephaError, t } from "alepha";
-import type { UserRealmConfig } from "alepha/api/users";
+import type { RealmConfig } from "alepha/api/users";
 import { HttpError } from "alepha/server";
 import { useMemo } from "react";
 import type { AuthI18n } from "../AuthI18n.ts";
@@ -15,7 +15,7 @@ import IconGithub from "./icons/IconGithub.tsx";
 import IconGoogle from "./icons/IconGoogle.tsx";
 
 export interface LoginProps {
-  realmConfig: UserRealmConfig;
+  realmConfig: RealmConfig;
 }
 
 const Login = (props: LoginProps) => {

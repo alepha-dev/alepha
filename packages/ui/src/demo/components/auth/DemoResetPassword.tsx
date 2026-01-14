@@ -1,5 +1,5 @@
 import { t } from "alepha";
-import type { UserRealmConfig } from "alepha/api/users";
+import type { RealmConfig } from "alepha/api/users";
 import ResetPassword from "../../../auth/components/ResetPassword.tsx";
 import Showcase from "../shared/Showcase.tsx";
 
@@ -19,7 +19,7 @@ const showcaseSchema = t.object({
 const buildRealmConfig = (props: {
   resetPasswordAllowed: boolean;
   showBranding: boolean;
-}): UserRealmConfig => {
+}): RealmConfig => {
   return {
     realmName: "demo",
     authenticationMethods: [{ name: "credentials", type: "CREDENTIALS" }],

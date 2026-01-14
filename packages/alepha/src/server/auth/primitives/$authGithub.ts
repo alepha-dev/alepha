@@ -1,5 +1,5 @@
 import { $context, AlephaError, t } from "alepha";
-import type { RealmPrimitive } from "alepha/security";
+import type { IssuerPrimitive } from "alepha/security";
 import type { OAuth2Profile } from "../providers/ServerAuthProvider.ts";
 import {
   $auth,
@@ -19,7 +19,7 @@ import {
  * - `GITHUB_CLIENT_SECRET`: The client secret obtained from the GitHub Developer Settings.
  */
 export const $authGithub = (
-  realm: RealmPrimitive & WithLinkFn,
+  realm: IssuerPrimitive & WithLinkFn,
   options: Partial<OidcOptions> = {},
 ) => {
   const { alepha } = $context();
@@ -45,7 +45,7 @@ export const $authGithub = (
   }
 
   return $auth({
-    realm,
+    issuer: realm,
     name,
     oauth: {
       clientId: env.GITHUB_CLIENT_ID!,

@@ -2,15 +2,15 @@ import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
 import type { Page } from "alepha/orm";
 import type { SessionEntity } from "../entities/sessions.ts";
-import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
+import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { SessionQuery } from "../schemas/sessionQuerySchema.ts";
 
 export class SessionCrudService {
   protected readonly log = $logger();
-  protected readonly userRealmProvider = $inject(UserRealmProvider);
+  protected readonly realmProvider = $inject(RealmProvider);
 
   public sessions(userRealmName?: string) {
-    return this.userRealmProvider.sessionRepository(userRealmName);
+    return this.realmProvider.sessionRepository(userRealmName);
   }
 
   /**

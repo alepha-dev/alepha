@@ -8,28 +8,28 @@ import {
 import { identities } from "../entities/identities.ts";
 import { sessions } from "../entities/sessions.ts";
 import { DEFAULT_USER_REALM_NAME, users } from "../entities/users.ts";
-import type { UserRealmOptions } from "../primitives/$userRealm.ts";
+import type { RealmOptions } from "../primitives/$realm.ts";
 
-export interface UserRealmRepositories {
+export interface RealmRepositories {
   identities: Repository<typeof identities.schema>;
   sessions: Repository<typeof sessions.schema>;
   users: Repository<typeof users.schema>;
 }
 
-export interface UserRealm {
+export interface Realm {
   name: string;
-  repositories: UserRealmRepositories;
+  repositories: RealmRepositories;
   settings: RealmAuthSettings;
 }
 
-export class UserRealmProvider {
+export class RealmProvider {
   protected readonly alepha = $inject(Alepha);
   // Default repositories using $repository() for eager initialization
   protected readonly defaultIdentities = $repository(identities);
   protected readonly defaultSessions = $repository(sessions);
   protected readonly defaultUsers = $repository(users);
 
-  protected realms = new Map<string, UserRealm>();
+  protected realms = new Map<string, Realm>();
 
   public avatars = $bucket({
     maxSize: 5 * 1024 * 1024, // 5 MB
@@ -47,48 +47,44 @@ export class UserRealmProvider {
     },
   });
 
-  public register(
-    userRealmName: string,
-    userRealmOptions: UserRealmOptions = {},
-  ) {
-    this.realms.set(userRealmName, {
-      name: userRealmName,
+  public register(realmName: string, realmOptions: RealmOptions = {}) {
+    this.realms.set(realmName, {
+      name: realmName,
       repositories: {
-        identities:
-          userRealmOptions.entities?.identities ?? this.defaultIdentities,
-        sessions: userRealmOptions.entities?.sessions ?? this.defaultSessions,
-        users: userRealmOptions.entities?.users ?? this.defaultUsers,
+        identities: realmOptions.entities?.identities ?? this.defaultIdentities,
+        sessions: realmOptions.entities?.sessions ?? this.defaultSessions,
+        users: realmOptions.entities?.users ?? this.defaultUsers,
       },
       // TODO: Remove deep merge when alepha supports it natively
       settings: {
         ...realmAuthSettingsAtom.options.default,
-        ...userRealmOptions.settings,
+        ...realmOptions.settings,
         passwordPolicy: {
           ...realmAuthSettingsAtom.options.default.passwordPolicy,
-          ...userRealmOptions.settings?.passwordPolicy,
+          ...realmOptions.settings?.passwordPolicy,
         },
       },
     });
-    return this.getRealm(userRealmName);
+    return this.getRealm(realmName);
   }
 
   /**
    * Gets a registered realm by name, auto-creating default if needed.
    */
-  public getRealm(userRealmName = DEFAULT_USER_REALM_NAME): UserRealm {
-    let realm = this.realms.get(userRealmName);
+  public getRealm(realmName = DEFAULT_USER_REALM_NAME): Realm {
+    let realm = this.realms.get(realmName);
 
     if (!realm) {
       // Auto-register default realm for backward compatibility
       const realms = Array.from(this.realms.values());
       const firstRealm = realms[0];
-      if (userRealmName === DEFAULT_USER_REALM_NAME && firstRealm) {
+      if (realmName === DEFAULT_USER_REALM_NAME && firstRealm) {
         realm = firstRealm;
       } else if (this.alepha.isTest()) {
-        realm = this.register(userRealmName); // Auto-create default realm in tests
+        realm = this.register(realmName); // Auto-create default realm in tests
       } else {
         throw new AlephaError(
-          `Missing user realm '${userRealmName}', please declare $userRealm in your application.`,
+          `Missing realm '${realmName}', please declare $realm in your application.`,
         );
       }
     }
@@ -97,20 +93,20 @@ export class UserRealmProvider {
   }
 
   public identityRepository(
-    userRealmName = DEFAULT_USER_REALM_NAME,
+    realmName = DEFAULT_USER_REALM_NAME,
   ): Repository<typeof identities.schema> {
-    return this.getRealm(userRealmName).repositories.identities;
+    return this.getRealm(realmName).repositories.identities;
   }
 
   public sessionRepository(
-    userRealmName = DEFAULT_USER_REALM_NAME,
+    realmName = DEFAULT_USER_REALM_NAME,
   ): Repository<typeof sessions.schema> {
-    return this.getRealm(userRealmName).repositories.sessions;
+    return this.getRealm(realmName).repositories.sessions;
   }
 
   public userRepository(
-    userRealmName = DEFAULT_USER_REALM_NAME,
+    realmName = DEFAULT_USER_REALM_NAME,
   ): Repository<typeof users.schema> {
-    return this.getRealm(userRealmName).repositories.users;
+    return this.getRealm(realmName).repositories.users;
   }
 }

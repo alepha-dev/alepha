@@ -3,9 +3,9 @@ import { AlephaApiAudits } from "alepha/api/audits";
 import { AlephaApiFiles } from "alepha/api/files";
 import type { Repository } from "alepha/orm";
 import {
-  $realm,
-  type RealmPrimitive,
-  type RealmPrimitiveOptions,
+  $issuer,
+  type IssuerPrimitive,
+  type IssuerPrimitiveOptions,
   SecurityProvider,
 } from "alepha/security";
 import {
@@ -22,10 +22,10 @@ import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
 import type { identities } from "../entities/identities.ts";
 import type { sessions } from "../entities/sessions.ts";
 import { DEFAULT_USER_REALM_NAME, type users } from "../entities/users.ts";
-import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
+import { RealmProvider } from "../providers/RealmProvider.ts";
 import { SessionService } from "../services/SessionService.ts";
 
-export type UserRealmPrimitive = RealmPrimitive & WithLinkFn & WithLoginFn;
+export type RealmPrimitive = IssuerPrimitive & WithLinkFn & WithLoginFn;
 
 /**
  * Already configured realm for user management.
@@ -41,15 +41,13 @@ export type UserRealmPrimitive = RealmPrimitive & WithLinkFn & WithLoginFn;
  * - `APP_SECRET`: Secret key for signing tokens (if not provided in options).
  */
 
-export const $userRealm = (
-  options: UserRealmOptions = {},
-): UserRealmPrimitive => {
+export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   const { alepha } = $context();
   const sessionService = alepha.inject(SessionService);
   const securityProvider = alepha.inject(SecurityProvider);
-  const userRealmProvider = alepha.inject(UserRealmProvider);
+  const realmProvider = alepha.inject(RealmProvider);
 
-  const name = options.realm?.name ?? DEFAULT_USER_REALM_NAME;
+  const name = options.issuer?.name ?? DEFAULT_USER_REALM_NAME;
 
   options.settings ??= {};
 
@@ -65,16 +63,16 @@ export const $userRealm = (
     options.settings.phoneEnabled = true;
   }
 
-  const userRealm = userRealmProvider.register(name, options);
+  const realmRegistration = realmProvider.register(name, options);
 
   alepha.with(AlephaApiFiles);
   alepha.with(AlephaApiAudits);
 
-  const realm: UserRealmPrimitive = $realm({
-    ...options.realm,
+  const realm: RealmPrimitive = $issuer({
+    ...options.issuer,
     name,
     secret: options.secret ?? securityProvider.secretKey,
-    roles: options.realm?.roles ?? [
+    roles: options.issuer?.roles ?? [
       {
         name: "admin",
         permissions: [
@@ -110,7 +108,7 @@ export const $userRealm = (
       onDeleteSession: async (refreshToken) => {
         await sessionService.deleteSession(refreshToken);
       },
-      ...options.realm?.settings,
+      ...options.issuer?.settings,
     },
   });
 
@@ -140,7 +138,7 @@ export const $userRealm = (
       auth.credentials = $authCredentials(realm);
     } else {
       // if credentials auth is disabled, disable registration as well
-      userRealm.settings.registrationAllowed = false;
+      realmRegistration.settings.registrationAllowed = false;
     }
 
     if (identities.google) {
@@ -159,7 +157,7 @@ export const $userRealm = (
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface UserRealmOptions {
+export interface RealmOptions {
   /**
    * Secret key for signing tokens.
    *
@@ -168,11 +166,11 @@ export interface UserRealmOptions {
   secret?: string;
 
   /**
-   * Realm configuration options.
+   * Issuer configuration options.
    *
    * It's already pre-configured for user management with admin and user roles.
    */
-  realm?: Partial<RealmPrimitiveOptions>;
+  issuer?: Partial<IssuerPrimitiveOptions>;
 
   /**
    * Override entities.

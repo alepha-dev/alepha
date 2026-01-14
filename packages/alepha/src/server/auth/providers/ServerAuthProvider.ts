@@ -71,8 +71,8 @@ export class ServerAuthProvider {
 
     for (const identity of this.identities) {
       if (filters.realmName) {
-        const realm = "realm" in identity.options && identity.options.realm;
-        if (!realm || realm.name !== filters.realmName) {
+        const issuer = identity.issuer;
+        if (!issuer || issuer.name !== filters.realmName) {
           continue;
         }
       }
@@ -145,7 +145,7 @@ export class ServerAuthProvider {
       // [feature] support for auth providers with fallback
       if (!request.headers.authorization) {
         for (const provider of this.identities) {
-          if (!("realm" in provider.options) && !!provider.options.fallback) {
+          if ("fallback" in provider.options && !!provider.options.fallback) {
             const token = await provider.options.fallback();
             if (token) {
               request.headers.authorization = `Bearer ${token}`;
@@ -340,8 +340,8 @@ export class ServerAuthProvider {
         realm: query.realm,
       });
 
-      const realm = "realm" in provider.options && provider.options.realm;
-      if (!realm) {
+      const issuer = provider.issuer;
+      if (!issuer) {
         throw new SecurityError(
           `Auth provider '${query.provider}' does not support password grant`,
         );
@@ -373,7 +373,7 @@ export class ServerAuthProvider {
 
       const tokens = {
         provider: query.provider,
-        ...(await realm.createToken(user)),
+        ...(await issuer.createToken(user)),
       };
 
       // for web applications, we store tokens in cookies
@@ -519,10 +519,10 @@ export class ServerAuthProvider {
 
       this.authorizationCode.del({ cookies });
 
-      const realm = "realm" in provider.options && provider.options.realm;
+      const issuer = provider.issuer;
 
       // external, full OIDC System (e.g. Keycloak, Auth0)
-      if (!realm) {
+      if (!issuer) {
         this.setTokens(externalTokens, cookies);
         reply.redirect(redirectUri);
         return;
@@ -531,7 +531,7 @@ export class ServerAuthProvider {
       // internal, we need to create our own tokens
 
       const user = await provider.user(externalTokens);
-      const tokens = await realm.createToken(user);
+      const tokens = await issuer.createToken(user);
 
       this.setTokens(
         {
@@ -570,9 +570,9 @@ export class ServerAuthProvider {
       this.tokens.del({ cookies });
 
       // for internal providers, we can delete the session - if available
-      if ("realm" in provider.options && tokens.refresh_token) {
+      if (provider.issuer && tokens.refresh_token) {
         const onDeleteSession =
-          provider.options.realm.options.settings?.onDeleteSession;
+          provider.issuer.options.settings?.onDeleteSession;
         if (onDeleteSession) {
           try {
             await onDeleteSession(tokens.refresh_token);
@@ -635,8 +635,8 @@ export class ServerAuthProvider {
         return false;
       }
 
-      // If realm filter is specified, match against provider's realm
-      if (realmName && identity.realm?.name !== realmName) {
+      // If realm filter is specified, match against provider's issuer
+      if (realmName && identity.issuer?.name !== realmName) {
         return false;
       }
 

@@ -1,7 +1,7 @@
 import { $module } from "alepha";
 import {
+  $issuer,
   $permission,
-  $realm,
   $role,
   AlephaSecurity,
   type UserAccount,
@@ -84,7 +84,7 @@ declare module "alepha/server" {
  */
 export const AlephaServerSecurity = $module({
   name: "alepha.server.security",
-  primitives: [$realm, $role, $permission, $basicAuth],
+  primitives: [$issuer, $role, $permission, $basicAuth],
   services: [
     AlephaServer,
     AlephaSecurity,

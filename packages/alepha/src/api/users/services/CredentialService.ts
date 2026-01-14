@@ -9,7 +9,7 @@ import { CryptoProvider } from "alepha/security";
 import { BadRequestError, HttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
-import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
+import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { CompletePasswordResetRequest } from "../schemas/completePasswordResetRequestSchema.ts";
 import type { PasswordResetIntentResponse } from "../schemas/passwordResetIntentResponseSchema.ts";
 
@@ -32,7 +32,7 @@ export class CredentialService {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly verificationController = $client<VerificationController>();
   protected readonly userNotifications = $inject(UserNotifications);
-  protected readonly userRealmProvider = $inject(UserRealmProvider);
+  protected readonly realmProvider = $inject(RealmProvider);
   protected readonly auditService = $inject(AuditService);
 
   protected readonly intentCache = $cache<PasswordResetIntent>({
@@ -41,15 +41,15 @@ export class CredentialService {
   });
 
   public users(userRealmName?: string) {
-    return this.userRealmProvider.userRepository(userRealmName);
+    return this.realmProvider.userRepository(userRealmName);
   }
 
   public sessions(userRealmName?: string) {
-    return this.userRealmProvider.sessionRepository(userRealmName);
+    return this.realmProvider.sessionRepository(userRealmName);
   }
 
   public identities(userRealmName?: string) {
-    return this.userRealmProvider.identityRepository(userRealmName);
+    return this.realmProvider.identityRepository(userRealmName);
   }
 
   /**
@@ -222,7 +222,7 @@ export class CredentialService {
       email: intent.email,
     });
 
-    const realm = this.userRealmProvider.getRealm(intent.realmName);
+    const realm = this.realmProvider.getRealm(intent.realmName);
 
     // Audit: password reset
     await this.auditService.recordUser("update", {
@@ -330,7 +330,7 @@ export class CredentialService {
       userId: { eq: user.id },
     });
 
-    const realm = this.userRealmProvider.getRealm(userRealmName);
+    const realm = this.realmProvider.getRealm(userRealmName);
 
     // Audit: password reset (legacy method)
     await this.auditService.recordUser("update", {

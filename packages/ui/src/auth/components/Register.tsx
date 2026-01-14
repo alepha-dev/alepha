@@ -24,9 +24,9 @@ import {
 } from "@tabler/icons-react";
 import { TypeBoxError, t } from "alepha";
 import type {
+  RealmConfig,
   RegistrationIntentResponse,
   UserController,
-  UserRealmConfig,
 } from "alepha/api/users";
 import { useMemo, useState } from "react";
 import type { AuthI18n } from "../AuthI18n.ts";
@@ -35,7 +35,7 @@ import IconGithub from "./icons/IconGithub.tsx";
 import IconGoogle from "./icons/IconGoogle.tsx";
 
 export interface RegisterProps {
-  realmConfig: UserRealmConfig;
+  realmConfig: RealmConfig;
 }
 
 type RegistrationPhase = "form" | "verification";

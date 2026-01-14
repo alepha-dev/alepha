@@ -3,16 +3,16 @@ import { AuditService } from "alepha/api/audits";
 import { $logger } from "alepha/logger";
 import type { Page } from "alepha/orm";
 import type { IdentityEntity } from "../entities/identities.ts";
-import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
+import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { IdentityQuery } from "../schemas/identityQuerySchema.ts";
 
 export class IdentityService {
   protected readonly log = $logger();
-  protected readonly userRealmProvider = $inject(UserRealmProvider);
+  protected readonly realmProvider = $inject(RealmProvider);
   protected readonly auditService = $inject(AuditService);
 
   public identities(userRealmName?: string) {
-    return this.userRealmProvider.identityRepository(userRealmName);
+    return this.realmProvider.identityRepository(userRealmName);
   }
 
   /**
@@ -85,7 +85,7 @@ export class IdentityService {
       userId: identity.userId,
     });
 
-    const realm = this.userRealmProvider.getRealm(userRealmName);
+    const realm = this.realmProvider.getRealm(userRealmName);
 
     await this.auditService.recordUser("update", {
       userRealm: realm.name,

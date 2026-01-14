@@ -9,7 +9,7 @@ import {
 import { DateTimeProvider } from "alepha/datetime";
 import {
   type AccessTokenResponse,
-  type RealmPrimitive,
+  type IssuerPrimitive,
   SecurityError,
   SecurityProvider,
   type UserAccount,
@@ -105,10 +105,10 @@ export type AuthExternal = {
  * When using your own authentication system, e.g. using a database to store user accounts.
  * This is usually used with a custom login form.
  *
- * This relies on the `realm`, which is used to create/verify the access token.
+ * This relies on the `issuer`, which is used to create/verify the access token.
  */
 export type AuthInternal = {
-  realm: RealmPrimitive;
+  issuer: IssuerPrimitive;
 } & (
   | {
       /**
@@ -261,9 +261,9 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
     return this.options.name ?? this.config.propertyKey;
   }
 
-  public get realm(): RealmPrimitive | undefined {
-    if ("realm" in this.options) {
-      return this.options.realm;
+  public get issuer(): IssuerPrimitive | undefined {
+    if ("issuer" in this.options) {
+      return this.options.issuer;
     }
     return undefined;
   }
@@ -308,13 +308,13 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
     refreshToken: string,
     accessToken?: string,
   ): Promise<AccessTokenResponse> {
-    if ("realm" in this.options) {
-      return this.options.realm
+    if ("issuer" in this.options) {
+      return this.options.issuer
         .refreshToken(refreshToken, accessToken)
         .then((it) => it.tokens)
         .catch((error) => {
           throw new SecurityError(
-            "Failed to refresh access token using the refresh token (realm)",
+            "Failed to refresh access token using the refresh token (issuer)",
             {
               cause: error,
             },
@@ -337,7 +337,7 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
     }
 
     throw new AlephaError(
-      "No realm or OAuth2 configuration available for refreshing the access token",
+      "No issuer or OAuth2 configuration available for refreshing the access token",
     );
   }
 

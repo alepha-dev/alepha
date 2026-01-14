@@ -1,5 +1,5 @@
 import { t } from "alepha";
-import type { UserRealmConfig } from "alepha/api/users";
+import type { RealmConfig } from "alepha/api/users";
 import Login from "../../../auth/components/Login.tsx";
 import Showcase from "../shared/Showcase.tsx";
 
@@ -61,8 +61,8 @@ const buildRealmConfig = (props: {
   registrationAllowed: boolean;
   resetPasswordAllowed: boolean;
   showBranding: boolean;
-}): UserRealmConfig => {
-  const authMethods: UserRealmConfig["authenticationMethods"] = [];
+}): RealmConfig => {
+  const authMethods: RealmConfig["authenticationMethods"] = [];
 
   if (props.showCredentials) {
     authMethods.push({ name: "credentials", type: "CREDENTIALS" });

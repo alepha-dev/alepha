@@ -14,7 +14,7 @@ import { type ServerRequest, UnauthorizedError } from "alepha/server";
 import type { OAuth2Profile } from "alepha/server/auth";
 import { $client } from "alepha/server/links";
 import type { UserEntity } from "../entities/users.ts";
-import { UserRealmProvider } from "../providers/UserRealmProvider.ts";
+import { RealmProvider } from "../providers/RealmProvider.ts";
 
 export class SessionService {
   protected readonly alepha = $inject(Alepha);
@@ -22,20 +22,20 @@ export class SessionService {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly cryptoProvider = $inject(CryptoProvider);
   protected readonly log = $logger();
-  protected readonly userRealmProvider = $inject(UserRealmProvider);
+  protected readonly realmProvider = $inject(RealmProvider);
   protected readonly fileController = $client<FileController>();
   protected readonly auditService = $inject(AuditService);
 
   public users(userRealmName?: string) {
-    return this.userRealmProvider.userRepository(userRealmName);
+    return this.realmProvider.userRepository(userRealmName);
   }
 
   public sessions(userRealmName?: string) {
-    return this.userRealmProvider.sessionRepository(userRealmName);
+    return this.realmProvider.sessionRepository(userRealmName);
   }
 
   public identities(userRealmName?: string) {
-    return this.userRealmProvider.identityRepository(userRealmName);
+    return this.realmProvider.identityRepository(userRealmName);
   }
 
   /**
@@ -55,7 +55,7 @@ export class SessionService {
     password: string,
     userRealmName?: string,
   ): Promise<UserEntity> {
-    const { settings, name } = this.userRealmProvider.getRealm(userRealmName);
+    const { settings, name } = this.realmProvider.getRealm(userRealmName);
     const isEmail = username.includes("@");
     const isPhone = /^[+\d][\d\s()-]+$/.test(username);
     const isUsername = !isEmail && !isPhone;
@@ -237,7 +237,7 @@ export class SessionService {
       userId: session.userId,
     });
 
-    const { name } = this.userRealmProvider.getRealm(userRealmName);
+    const { name } = this.realmProvider.getRealm(userRealmName);
 
     await this.auditService.recordAuth("token_refresh", {
       userId: user.id,
@@ -270,7 +270,7 @@ export class SessionService {
     this.log.debug("Session deleted");
 
     if (session) {
-      const { name } = this.userRealmProvider.getRealm(userRealmName);
+      const { name } = this.realmProvider.getRealm(userRealmName);
 
       await this.auditService.recordAuth("logout", {
         userId: session.userId,
@@ -292,7 +292,7 @@ export class SessionService {
       email: profile.email,
     });
 
-    const realm = this.userRealmProvider.getRealm(userRealmName);
+    const realm = this.realmProvider.getRealm(userRealmName);
     const identities = this.identities(userRealmName);
     const users = this.users(userRealmName);
 

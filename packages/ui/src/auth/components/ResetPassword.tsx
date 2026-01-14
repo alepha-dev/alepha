@@ -23,8 +23,8 @@ import {
 import { AlephaError, t } from "alepha";
 import type {
   PasswordResetIntentResponse,
+  RealmConfig,
   UserController,
-  UserRealmConfig,
 } from "alepha/api/users";
 import { resetPasswordRequestSchema } from "alepha/api/users";
 import { useState } from "react";
@@ -32,7 +32,7 @@ import type { AuthI18n } from "../AuthI18n.ts";
 import type { AuthRouter } from "../AuthRouter.ts";
 
 export interface ResetPasswordProps {
-  realmConfig: UserRealmConfig;
+  realmConfig: RealmConfig;
 }
 
 type Step = "email" | "code" | "password" | "success";

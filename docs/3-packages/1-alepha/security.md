@@ -12,7 +12,7 @@ npm install alepha
 
 Provides comprehensive authentication and authorization capabilities with JWT tokens, role-based access control, and user management.
 
-The security module enables building secure applications using primitives like `$realm`, `$role`, and `$permission`
+The security module enables building secure applications using primitives like `$issuer`, `$role`, and `$permission`
 on class properties. It offers JWT-based authentication, fine-grained permissions, service accounts, and seamless
 integration with various authentication providers and user management systems.
 
@@ -24,13 +24,16 @@ Primitives are functions that define and configure various aspects of your appli
 
 For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
+#### $issuer()
+
+Create a new issuer.
+
+An issuer is responsible for creating and verifying JWT tokens.
+It can be internal (with a secret) or external (with a JWKS).
+
 #### $permission()
 
 Create a new permission.
-
-#### $realm()
-
-Create a new realm.
 
 #### $role()
 
