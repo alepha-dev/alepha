@@ -1,13 +1,13 @@
 import { $inject, t } from "alepha";
 import { FileService } from "alepha/api/files";
-import { UserRealmProvider, users } from "alepha/api/users";
+import { RealmProvider, users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { $action } from "alepha/server";
 
 export class UserController {
   users = $repository(users);
   fileService = $inject(FileService);
-  realm = $inject(UserRealmProvider);
+  realmProvider = $inject(RealmProvider);
 
   me = $action({
     schema: {
@@ -33,7 +33,7 @@ export class UserController {
       // Store the file in the avatars bucket
       const file = await this.fileService.uploadFile(body.file, {
         user,
-        bucket: this.realm.avatars.name,
+        bucket: this.realmProvider.avatars.name,
       });
 
       // Update the user's picture field
