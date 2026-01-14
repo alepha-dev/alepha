@@ -1,4 +1,4 @@
-import "alepha/server/security";
+import "alepha/security";
 import { $module } from "alepha";
 import { AlephaServer, type RequestConfigSchema } from "alepha/server";
 import { AlephaServerCache } from "alepha/server/cache";

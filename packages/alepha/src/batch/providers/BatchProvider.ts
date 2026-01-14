@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { $inject, type Alepha } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -188,7 +187,7 @@ export class BatchProvider {
     item: TItem,
   ): string {
     // 1. Generate unique ID
-    const id = randomUUID();
+    const id = crypto.randomUUID();
 
     // 2. Determine the partition key (with error handling)
     let partitionKey: string;

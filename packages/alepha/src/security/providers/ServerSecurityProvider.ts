@@ -2,18 +2,16 @@ import { randomUUID } from "node:crypto";
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import {
-  JwtProvider,
-  type Permission,
-  SecurityProvider,
-  type UserAccountToken,
-  userAccountInfoSchema,
-} from "alepha/security";
-import {
   $action,
   ForbiddenError,
   type ServerRequest,
   UnauthorizedError,
 } from "alepha/server";
+import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
+import type { Permission } from "../schemas/permissionSchema.ts";
+import { userAccountInfoSchema } from "../schemas/userAccountInfoSchema.ts";
+import { JwtProvider } from "./JwtProvider.ts";
+import { SecurityProvider } from "./SecurityProvider.ts";
 import {
   type BasicAuthOptions,
   isBasicAuth,

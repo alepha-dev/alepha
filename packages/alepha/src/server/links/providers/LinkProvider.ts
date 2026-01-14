@@ -7,6 +7,7 @@ import {
   t,
 } from "alepha";
 import { $logger } from "alepha/logger";
+import type { ServerRouteSecure } from "alepha/security";
 import {
   type ActionPrimitive,
   type ClientRequestEntry,
@@ -22,7 +23,6 @@ import {
   type TRequestBody,
   UnauthorizedError,
 } from "alepha/server";
-import type { ServerRouteSecure } from "alepha/server/security";
 import {
   type ApiLink,
   apiLinksResponseSchema,

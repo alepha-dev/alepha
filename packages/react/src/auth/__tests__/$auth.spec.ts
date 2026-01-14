@@ -1,10 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $issuer } from "alepha/security";
-import { HttpClient, ServerProvider } from "alepha/server";
+import { $issuer, AlephaSecurity } from "alepha/security";
+import { AlephaServer, HttpClient, ServerProvider } from "alepha/server";
 import { $client } from "alepha/server/links";
-import { AlephaServerSecurity } from "alepha/server/security";
 import { describe, test } from "vitest";
 import {
   $auth,
@@ -94,7 +93,7 @@ describe("$auth", () => {
         );
 
     test("should login with credentials", async ({ expect }) => {
-      const alepha = Alepha.create().with(App).with(AlephaServerSecurity);
+      const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity).with(App);
       const auth = alepha.inject(ReactAuth);
       await alepha.start();
 
@@ -113,7 +112,7 @@ describe("$auth", () => {
     });
 
     test("should get userinfo", async ({ expect }) => {
-      const alepha = Alepha.create().with(App).with(AlephaServerSecurity);
+      const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity).with(App);
       await alepha.start();
 
       const { data: tokens } = await login(alepha);
@@ -134,7 +133,7 @@ describe("$auth", () => {
     });
 
     test("should reject expired token", async ({ expect }) => {
-      const alepha = Alepha.create().with(App);
+      const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity).with(App);
       await alepha.start();
 
       const { data: tokens } = await login(alepha);
@@ -150,7 +149,7 @@ describe("$auth", () => {
     });
 
     test("should refresh expired token", async ({ expect }) => {
-      const alepha = Alepha.create().with(App);
+      const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity).with(App);
       await alepha.start();
 
       const { data: tokens } = await login(alepha);
@@ -174,7 +173,7 @@ describe("$auth", () => {
     });
 
     test("should reject expired refresh token", async ({ expect }) => {
-      const alepha = Alepha.create().with(App);
+      const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity).with(App);
       await alepha.start();
 
       const { data: tokens } = await login(alepha);

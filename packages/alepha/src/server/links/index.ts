@@ -1,4 +1,4 @@
-import "alepha/server/security";
+import "alepha/security";
 import { $module } from "alepha";
 import { AlephaServer } from "alepha/server";
 import { $client } from "./primitives/$client.ts";

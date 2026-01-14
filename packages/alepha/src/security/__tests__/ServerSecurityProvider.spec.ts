@@ -1,15 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
-import { $issuer } from "alepha/security";
+import { $issuer, AlephaSecurity } from "alepha/security";
 import {
   $action,
+  AlephaServer,
   ForbiddenError,
   HttpError,
   ServerProvider,
   UnauthorizedError,
 } from "alepha/server";
 import { describe, expect, it } from "vitest";
-import { AlephaServerSecurity } from "../index.ts";
 
 describe("ServerSecurityProvider", () => {
   it("should protect action from unauthorized users", async () => {
@@ -19,7 +19,7 @@ describe("ServerSecurityProvider", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaServerSecurity);
+    const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity);
     const app = alepha.inject(TestApp);
     await alepha.start();
 
@@ -77,7 +77,7 @@ describe("ServerSecurityProvider", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaServerSecurity);
+    const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity);
     const app = alepha.inject(TestApp);
     await alepha.start();
 

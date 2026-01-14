@@ -1,9 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
-import { $issuer } from "alepha/security";
-import { $action, $route, ForbiddenError, ServerProvider } from "alepha/server";
+import { $issuer, AlephaSecurity } from "alepha/security";
+import {
+  $action,
+  $route,
+  AlephaServer,
+  ForbiddenError,
+  ServerProvider,
+} from "alepha/server";
 import { describe, expect, it } from "vitest";
-import { AlephaServerSecurity } from "../index.ts";
 
 describe("ServerSecurityProvider - Realm Protection", () => {
   it("should allow access when user belongs to the required realm", async () => {
@@ -43,7 +48,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaServerSecurity);
+    const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity);
     const app = alepha.inject(TestApp);
     await alepha.start();
 
@@ -120,7 +125,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaServerSecurity);
+    const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity);
     const app = alepha.inject(TestApp);
     await alepha.start();
 
@@ -188,7 +193,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaServerSecurity);
+    const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity);
     const app = alepha.inject(TestApp);
     await alepha.start();
 
@@ -248,7 +253,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaServerSecurity);
+    const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity);
     const app = alepha.inject(TestApp);
     await alepha.start();
 
@@ -352,7 +357,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaServerSecurity);
+    const alepha = Alepha.create().with(AlephaServer).with(AlephaSecurity);
     const app = alepha.inject(TestApp);
     await alepha.start();
 

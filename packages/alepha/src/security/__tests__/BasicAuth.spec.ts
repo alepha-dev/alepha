@@ -1,11 +1,11 @@
 import { Alepha } from "alepha";
-import { $action, AlephaServer } from "alepha/server";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   $basicAuth,
-  AlephaServerSecurity,
+  AlephaSecurity,
   ServerBasicAuthProvider,
-} from "../index.ts";
+} from "alepha/security";
+import { $action, AlephaServer } from "alepha/server";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("Basic Authentication", () => {
   let alepha: Alepha;
@@ -58,7 +58,7 @@ describe("Basic Authentication", () => {
   beforeEach(async () => {
     alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaServerSecurity)
+      .with(AlephaSecurity)
       .with(TestApp);
 
     await alepha.start();
@@ -269,7 +269,7 @@ describe("Basic Authentication", () => {
 
       const edgeAlepha = Alepha.create()
         .with(AlephaServer)
-        .with(AlephaServerSecurity)
+        .with(AlephaSecurity)
         .with(EdgeCaseApp);
 
       await edgeAlepha.start();
@@ -301,7 +301,7 @@ describe("Basic Authentication", () => {
 
       const emptyAlepha = Alepha.create()
         .with(AlephaServer)
-        .with(AlephaServerSecurity)
+        .with(AlephaSecurity)
         .with(EmptyPasswordApp);
 
       await emptyAlepha.start();
@@ -333,7 +333,7 @@ describe("Basic Authentication", () => {
 
       const specialAlepha = Alepha.create()
         .with(AlephaServer)
-        .with(AlephaServerSecurity)
+        .with(AlephaSecurity)
         .with(SpecialCharsApp);
 
       await specialAlepha.start();
@@ -365,7 +365,7 @@ describe("Basic Authentication", () => {
 
       const unicodeAlepha = Alepha.create()
         .with(AlephaServer)
-        .with(AlephaServerSecurity)
+        .with(AlephaSecurity)
         .with(UnicodeApp);
 
       await unicodeAlepha.start();
@@ -397,7 +397,7 @@ describe("Basic Authentication", () => {
 
       const unicodeAlepha = Alepha.create()
         .with(AlephaServer)
-        .with(AlephaServerSecurity)
+        .with(AlephaSecurity)
         .with(UnicodeApp);
 
       await unicodeAlepha.start();
@@ -434,7 +434,7 @@ describe("Basic Authentication", () => {
 
       const longAlepha = Alepha.create()
         .with(AlephaServer)
-        .with(AlephaServerSecurity)
+        .with(AlephaSecurity)
         .with(LongCredsApp);
 
       await longAlepha.start();
@@ -466,7 +466,7 @@ describe("Basic Authentication", () => {
 
       const emptyUserAlepha = Alepha.create()
         .with(AlephaServer)
-        .with(AlephaServerSecurity)
+        .with(AlephaSecurity)
         .with(EmptyUsernameApp);
 
       await emptyUserAlepha.start();
@@ -549,7 +549,7 @@ describe("Basic Authentication", () => {
 
       const wsAlepha = Alepha.create()
         .with(AlephaServer)
-        .with(AlephaServerSecurity)
+        .with(AlephaSecurity)
         .with(WhitespaceApp);
 
       await wsAlepha.start();
@@ -582,7 +582,7 @@ describe("Basic Authentication", () => {
 
       const wsAlepha = Alepha.create()
         .with(AlephaServer)
-        .with(AlephaServerSecurity)
+        .with(AlephaSecurity)
         .with(WhitespaceApp);
 
       await wsAlepha.start();

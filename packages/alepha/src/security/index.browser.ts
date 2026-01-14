@@ -11,3 +11,8 @@ export * from "./schemas/userAccountInfoSchema.ts";
 export const AlephaSecurity = $module({
   name: "alepha.security",
 });
+
+/**
+ * @deprecated Use `AlephaSecurity` instead. Server security providers are automatically registered when `AlephaServer` is available.
+ */
+export const AlephaServerSecurity = AlephaSecurity;

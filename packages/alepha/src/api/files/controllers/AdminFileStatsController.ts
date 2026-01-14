@@ -1,4 +1,3 @@
-import "alepha/server/security";
 import { $inject } from "alepha";
 import { $action } from "alepha/server";
 import { storageStatsSchema } from "../schemas/storageStatsSchema.ts";
