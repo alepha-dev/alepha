@@ -385,10 +385,7 @@ export class ReactServerProvider {
     state: ReactRouterState,
   ): Promise<{ redirect?: string; reactStream?: ReadableStream<Uint8Array> }> {
     // Resolve page layers (loaders)
-    this.serverTimingProvider.beginTiming("createLayers");
     const { redirect } = await this.pageApi.createLayers(route, state);
-    this.serverTimingProvider.endTiming("createLayers");
-
     if (redirect) {
       this.log.debug("Resolver resulted in redirection", { redirect });
       return { redirect };
@@ -405,7 +402,6 @@ export class ReactServerProvider {
     }
 
     // Render React to stream
-    this.serverTimingProvider.beginTiming("renderToStream");
 
     const element = this.pageApi.root(state);
     this.alepha.store.set("alepha.react.router.state", state);
@@ -421,8 +417,6 @@ export class ReactServerProvider {
         }
       },
     });
-
-    this.serverTimingProvider.endTiming("renderToStream");
 
     return { reactStream };
   }

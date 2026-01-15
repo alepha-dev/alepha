@@ -204,7 +204,7 @@ export class ServerCacheProvider {
 
   protected readonly onSend = $hook({
     on: "server:onSend",
-    handler: async ({ route, request }) => {
+    handler: ({ route, request }) => {
       // before sending the response, check if the ETag matches
       // and if so, return a 304 Not Modified response
       // -> this is only relevant for etag-only routes, not cached routes <-

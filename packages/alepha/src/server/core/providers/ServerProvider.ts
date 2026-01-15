@@ -11,6 +11,21 @@ import type {
 } from "../interfaces/ServerRequest.ts";
 import { ServerRouterProvider } from "./ServerRouterProvider.ts";
 
+// ============================================================================
+// Performance Constants
+// ============================================================================
+
+// Note: We cannot use frozen/shared empty objects here because downstream code
+// may mutate params/query (e.g., validation, React page rendering)
+
+// Header constants for fast property access
+const HEADER_X_FORWARDED_PROTO = "x-forwarded-proto";
+const HEADER_HOST = "host";
+
+// Protocol prefixes
+const PROTO_HTTPS = "https://";
+const PROTO_HTTP = "http://";
+
 /**
  * Base server provider to handle incoming requests and route them.
  *
@@ -25,6 +40,113 @@ export class ServerProvider {
   protected readonly router = $inject(ServerRouterProvider);
 
   protected readonly internalServerErrorMessage = "Internal Server Error";
+
+  // Pre-allocated error response to avoid object creation per failed request
+  protected readonly internalErrorResponse = Object.freeze({
+    status: 500,
+    headers: Object.freeze({ "content-type": "text/plain" }),
+    body: this.internalServerErrorMessage,
+  });
+
+  // Pre-bound error handler to avoid function allocation per request
+  protected readonly handleInternalError = () => this.internalErrorResponse;
+
+  // ============================================================================
+  // P1: URL Base Cache - cache protocol+host per unique host header
+  // Avoids string concatenation on every request
+  // ============================================================================
+  protected readonly urlBaseCache = new Map<string, string>();
+
+  /**
+   * Get cached URL base (protocol + host) for a given host header.
+   * Caches the result to avoid repeated string concatenation.
+   */
+  protected getUrlBase(headers: Record<string, string>): string {
+    const host = headers[HEADER_HOST];
+    let base = this.urlBaseCache.get(host);
+    if (!base) {
+      const proto =
+        headers[HEADER_X_FORWARDED_PROTO] === "https"
+          ? PROTO_HTTPS
+          : PROTO_HTTP;
+      base = proto + host;
+      // Limit cache size to prevent memory leaks from many unique hosts
+      if (this.urlBaseCache.size < 100) {
+        this.urlBaseCache.set(host, base);
+      }
+    }
+    return base;
+  }
+
+  // ============================================================================
+  // P0: Manual Query String Parser - faster than URLSearchParams
+  // Parses query string without creating URL object
+  // ============================================================================
+
+  /**
+   * Parse query string manually - faster than new URL() + URLSearchParams.
+   * Returns empty object if no query string.
+   */
+  protected parseQueryString(rawUrl: string): Record<string, string> {
+    const qIndex = rawUrl.indexOf("?");
+    if (qIndex === -1) {
+      return {};
+    }
+
+    const qs = rawUrl.slice(qIndex + 1);
+    if (!qs) {
+      return {};
+    }
+
+    const query: Record<string, string> = {};
+    let start = 0;
+    let eqIdx = -1;
+
+    for (let i = 0; i <= qs.length; i++) {
+      const char = i < qs.length ? qs.charCodeAt(i) : 38; // '&' at end
+
+      if (char === 61) {
+        // '='
+        eqIdx = i;
+      } else if (char === 38) {
+        // '&'
+        if (eqIdx !== -1 && eqIdx > start) {
+          const key = qs.slice(start, eqIdx);
+          const value = qs.slice(eqIdx + 1, i);
+          // Only decode if necessary (contains % or +)
+          query[this.fastDecode(key)] = this.fastDecode(value);
+        }
+        start = i + 1;
+        eqIdx = -1;
+      }
+    }
+
+    return query;
+  }
+
+  /**
+   * Fast decode - only calls decodeURIComponent if needed.
+   */
+  protected fastDecode(str: string): string {
+    // Fast path: no encoding needed
+    if (str.indexOf("%") === -1 && str.indexOf("+") === -1) {
+      return str;
+    }
+    // Replace + with space before decoding
+    try {
+      return decodeURIComponent(str.replace(/\+/g, " "));
+    } catch {
+      return str;
+    }
+  }
+
+  /**
+   * Extract pathname from URL without creating URL object.
+   */
+  protected getPathname(rawUrl: string): string {
+    const qIndex = rawUrl.indexOf("?");
+    return qIndex === -1 ? rawUrl : rawUrl.slice(0, qIndex);
+  }
 
   public get hostname(): string {
     if (this.alepha.isViteDev()) {
@@ -54,15 +176,16 @@ export class ServerProvider {
   /**
    * Handle Node.js HTTP request event.
    *
-   * Technically, we just convert Node.js request to Web Standard Request.
+   * Optimized to avoid expensive URL parsing when possible.
    */
   public async handleNodeRequest(
     nodeRequestEvent: NodeRequestEvent,
   ): Promise<void> {
     const { req, res } = nodeRequestEvent;
-    const { route, params } = this.router.match(`/${req.method}${req.url}`);
+    const rawUrl = req.url!;
+    const { route, params } = this.router.match(`/${req.method}${rawUrl}`);
 
-    if (this.isViteNotFound(req.url, route, params)) {
+    if (this.isViteNotFound(rawUrl, route, params)) {
       return;
     }
 
@@ -75,10 +198,15 @@ export class ServerProvider {
     }
 
     const headers = (req.headers ?? {}) as Record<string, string>;
-    const proto = headers["x-forwarded-proto"] === "https" ? "https" : "http";
-    const url = new URL(`${proto}://${headers.host}${req.url}`);
-    const query = Object.fromEntries(url.searchParams.entries());
     const method = (req.method?.toUpperCase() ?? "GET") as RouteMethod;
+
+    // P0: Use manual query parsing - much faster than new URL() + URLSearchParams
+    const query = this.parseQueryString(rawUrl);
+
+    // P1: Use cached URL base - avoids string concat on every request
+    // Create URL object (still needed for downstream code that uses url.pathname, etc.)
+    const urlBase = this.getUrlBase(headers);
+    const url = new URL(rawUrl, urlBase);
 
     const request: ServerRequestData = {
       method,
@@ -89,13 +217,9 @@ export class ServerProvider {
       raw: { node: nodeRequestEvent },
     };
 
-    const response = await route.handler(request).catch(() => {
-      return {
-        status: 500,
-        headers: { "content-type": "text/plain" },
-        body: this.internalServerErrorMessage,
-      };
-    });
+    const response = await route
+      .handler(request)
+      .catch(this.handleInternalError);
 
     // empty body - just send status & headers
     if (!response.body) {
@@ -175,7 +299,10 @@ export class ServerProvider {
       headers[key] = value;
     });
 
-    const query = Object.fromEntries(url.searchParams.entries());
+    // Optimize: only parse query params if there are any
+    const query = url.search
+      ? Object.fromEntries(url.searchParams.entries())
+      : {};
     const method = (req.method.toUpperCase() ?? "GET") as RouteMethod;
     const request: ServerRequestData = {
       method,
@@ -186,13 +313,9 @@ export class ServerProvider {
       raw: { web: ev },
     };
 
-    const response = await route.handler(request).catch(() => {
-      return {
-        status: 500,
-        headers: { "content-type": "text/plain" },
-        body: this.internalServerErrorMessage,
-      };
-    });
+    const response = await route
+      .handler(request)
+      .catch(this.handleInternalError);
 
     // empty body - just send status & headers
     if (!response.body) {

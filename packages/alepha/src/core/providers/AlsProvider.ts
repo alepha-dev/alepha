@@ -25,7 +25,7 @@ export class AlsProvider {
     data.registry ??= new Map();
     data.context ??= this.createContextId();
 
-    return this.als.run(data, callback);
+    return this.als.run({ ...data }, callback);
   }
 
   public exists(): boolean {

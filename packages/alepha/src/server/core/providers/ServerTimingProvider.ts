@@ -18,7 +18,7 @@ export class ServerTimingProvider {
   public readonly onRequest = $hook({
     priority: "first",
     on: "server:onRequest",
-    handler: async ({ request }) => {
+    handler: ({ request }) => {
       if (this.options.disabled) {
         return;
       }
@@ -31,7 +31,7 @@ export class ServerTimingProvider {
   public readonly onResponse = $hook({
     priority: "last",
     on: "server:onResponse",
-    handler: async ({ request }) => {
+    handler: ({ request }) => {
       if (this.options.disabled) {
         return;
       }

@@ -209,12 +209,16 @@ describe("StateManager", () => {
     });
 
     it("should set values in ALS when context exists", async () => {
-      const store: any = { context: "test-context" };
-      alepha.context.run(() => {
-        stateManager.set("name", "ALS Value");
-      }, store);
+      // Note: AlsProvider spreads the store object, so we check values inside the callback
+      const result = alepha.context.run(
+        () => {
+          stateManager.set("name", "ALS Value");
+          return stateManager.get("name");
+        },
+        { context: "test-context" },
+      );
 
-      expect(store.name).toBe("ALS Value");
+      expect(result).toBe("ALS Value");
     });
 
     it("should set values in local store when no ALS context", () => {
@@ -267,14 +271,16 @@ describe("StateManager", () => {
       stateManager.set("name", "Local Value");
 
       // In ALS context, ALS values should take priority
-      const store: any = { context: "test-context" };
-      const result = alepha.context.run(() => {
-        stateManager.set("name", "ALS Priority");
-        return stateManager.get("name");
-      }, store);
+      // Note: AlsProvider spreads the store object, so we check values inside the callback
+      const result = alepha.context.run(
+        () => {
+          stateManager.set("name", "ALS Priority");
+          return stateManager.get("name");
+        },
+        { context: "test-context" },
+      );
 
       expect(result).toBe("ALS Priority");
-      expect(store.name).toBe("ALS Priority");
     });
 
     it("should not skip event emission when values are the same", async () => {
@@ -291,12 +297,17 @@ describe("StateManager", () => {
     });
 
     it("should delete values from ALS when context exists", async () => {
-      const store = { name: "To Delete", context: "test-context" };
-      alepha.context.run(() => {
-        stateManager.del("name");
-      }, store);
+      // Note: AlsProvider spreads the store object, so we check values inside the callback
+      const result = alepha.context.run(
+        () => {
+          stateManager.set("name", "To Delete");
+          stateManager.del("name");
+          return stateManager.get("name");
+        },
+        { context: "test-context" },
+      );
 
-      expect(store.name).toBeUndefined();
+      expect(result).toBeUndefined();
     });
 
     it("should clear only local store, not ALS", async () => {

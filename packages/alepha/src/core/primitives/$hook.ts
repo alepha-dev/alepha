@@ -82,12 +82,16 @@ export class HookPrimitive<T extends keyof Hooks> extends Primitive<
   public called = 0;
 
   protected onInit() {
+    // Store reference to handler to avoid property access in hot path
+    const handler = this.options.handler;
+
     this.alepha.events.on(this.options.on, {
       caller: this.config.service,
       priority: this.options.priority,
-      callback: async (args: any) => {
+      // Return handler result directly - EventManager checks if it's a promise
+      callback: (args: any) => {
         this.called += 1;
-        await this.options.handler(args);
+        return handler(args);
       },
     });
   }

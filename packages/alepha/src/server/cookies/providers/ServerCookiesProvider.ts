@@ -48,7 +48,7 @@ export class ServerCookiesProvider {
 
   public readonly onRequest = $hook({
     on: "server:onRequest",
-    handler: async ({ request }) => {
+    handler: ({ request }) => {
       request.cookies = {
         req: this.cookieParser.parseRequestCookies(
           request.headers.cookie ?? "",
@@ -60,7 +60,7 @@ export class ServerCookiesProvider {
 
   public readonly onAction = $hook({
     on: "action:onRequest",
-    handler: async ({ request }) => {
+    handler: ({ request }) => {
       request.cookies = {
         req: this.cookieParser.parseRequestCookies(
           request.headers.cookie ?? "",
@@ -72,7 +72,7 @@ export class ServerCookiesProvider {
 
   public readonly onSend = $hook({
     on: "server:onSend",
-    handler: async ({ request }) => {
+    handler: ({ request }) => {
       if (request.cookies && Object.keys(request.cookies.res).length > 0) {
         const setCookieHeaders = this.cookieParser.serializeResponseCookies(
           request.cookies.res,

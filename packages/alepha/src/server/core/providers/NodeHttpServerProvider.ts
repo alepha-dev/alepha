@@ -44,13 +44,32 @@ export class NodeHttpServerProvider extends ServerProvider {
     return `http://${this.env.SERVER_HOST}:${this.env.SERVER_PORT}`;
   }
 
+  // Pre-bound error handler to avoid function allocation per request
+  protected readonly handleRequestError = (
+    res: import("node:http").ServerResponse,
+    err: Error,
+  ) => {
+    this.log.error("Error handling request", err);
+    res.statusCode = 500;
+    res.end("Internal Server Error");
+  };
+
+  // P3: Pre-allocated event object to avoid { req, res } allocation per request
+  // Safe because handleNodeRequest completes before the next request reuses this object
+  protected readonly nodeRequestEvent = {
+    req: null as unknown as IncomingMessage,
+    res: null as unknown as ServerResponse,
+  };
+
   public readonly server = this.createHttpServer((req, res) => {
-    this.log.trace(`Incoming Node.js message -> ${req.url}`);
-    this.handleNodeRequest({ req, res }).catch((err) => {
-      this.log.error("Error handling request", err);
-      res.statusCode = 500;
-      res.end("Internal Server Error");
-    });
+    // Reuse pre-allocated event object instead of creating { req, res } per request
+    const ev = this.nodeRequestEvent;
+    ev.req = req;
+    ev.res = res;
+    // Note: handleNodeRequest returns a promise that resolves after response is sent
+    this.handleNodeRequest(ev).catch((err) =>
+      this.handleRequestError(res, err),
+    );
   });
 
   public readonly start = $hook({

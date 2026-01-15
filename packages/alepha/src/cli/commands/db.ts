@@ -295,6 +295,10 @@ export class DbCommand {
       const providerName = provider.name;
       const dialect = provider.dialect;
 
+      if (providerName === "") {
+        continue;
+      }
+
       if (accepted.has(providerName)) {
         continue;
       }
@@ -316,6 +320,7 @@ export class DbCommand {
         provider,
         providerName,
         providerUrl: provider.url,
+        providerDriver: provider.driver,
         dialect,
         entry,
         rootDir,
@@ -341,6 +346,7 @@ export class DbCommand {
     provider: DatabaseProvider;
     providerName: string;
     providerUrl: string;
+    providerDriver: string;
     dialect: string;
     entry: string;
     rootDir: string;
@@ -371,16 +377,16 @@ export class DbCommand {
       config.schemaFilter = options.provider.schema;
     }
 
-    if (options.providerName === "d1") {
+    if (options.providerDriver === "d1") {
       config.driver = "d1-http";
     }
 
-    if (options.providerName === "pglite") {
+    if (options.providerDriver === "pglite") {
       config.driver = "pglite";
     }
 
     if (options.dialect === "sqlite") {
-      if (options.providerName === "d1") {
+      if (options.providerDriver === "d1") {
         const token = process.env.CLOUDFLARE_API_TOKEN;
         if (!token) {
           throw new AlephaError(

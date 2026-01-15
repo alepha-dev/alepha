@@ -9,24 +9,26 @@ export class ServerLoggerProvider {
     on: "server:onRequest",
     priority: "first",
     handler: ({ route, request }) => {
-      if (!route.silent) {
-        request.metadata.now = Date.now();
-
-        const data: Record<string, string> = {
-          method: request.method,
-          path: request.url.pathname,
-        };
-
-        if (this.alepha.isProduction()) {
-          data.agent = request.headers["user-agent"];
-          const ip = request.ip;
-          if (ip) {
-            data.ip = ip;
-          }
-        }
-
-        this.log.info("Incoming request", data);
+      if (route.silent) {
+        return;
       }
+
+      request.metadata.now = Date.now();
+
+      const data: Record<string, string> = {
+        method: request.method,
+        path: request.url.pathname,
+      };
+
+      if (this.alepha.isProduction()) {
+        data.agent = request.headers["user-agent"];
+        const ip = request.ip;
+        if (ip) {
+          data.ip = ip;
+        }
+      }
+
+      this.log.info("Incoming request", data);
     },
   });
 
@@ -42,10 +44,12 @@ export class ServerLoggerProvider {
     on: "server:onResponse",
     priority: "last",
     handler: ({ route, request, response }) => {
-      if (!route.silent) {
-        const ms = Date.now() - request.metadata.now;
-        this.log.info("Request completed", { status: response.status, ms });
+      if (route.silent) {
+        return;
       }
+
+      const ms = Date.now() - request.metadata.now;
+      this.log.info("Request completed", { status: response.status, ms });
     },
   });
 }

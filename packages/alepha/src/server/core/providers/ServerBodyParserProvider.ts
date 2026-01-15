@@ -24,7 +24,7 @@ export class ServerBodyParserProvider {
 
   public readonly onRequest = $hook({
     on: "server:onRequest",
-    handler: async ({ route, request }) => {
+    handler: ({ route, request }) => {
       if (request.body) {
         return; // already parsed
       }
@@ -46,28 +46,24 @@ export class ServerBodyParserProvider {
       }
 
       if (route.schema?.body) {
-        try {
-          const body = await this.parse(
-            stream,
-            request.headers,
-            route.schema.body,
-          );
-          if (body) {
-            request.body = body;
-          }
-        } catch (error) {
-          if (error instanceof HttpError) {
-            throw error;
-          }
-
-          throw new HttpError(
-            {
-              status: 400,
-              message: "Failed to parse request body",
-            },
-            error,
-          );
-        }
+        return this.parse(stream, request.headers, route.schema.body)
+          .then((body) => {
+            if (body) {
+              request.body = body;
+            }
+          })
+          .catch((error) => {
+            if (error instanceof HttpError) {
+              throw error;
+            }
+            throw new HttpError(
+              {
+                status: 400,
+                message: "Failed to parse request body",
+              },
+              error,
+            );
+          });
       }
     },
   });

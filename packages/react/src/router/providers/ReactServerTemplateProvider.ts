@@ -392,26 +392,31 @@ export class ReactServerTemplateProvider {
     const { request, context, ...store } =
       this.alepha.context.als?.getStore() ?? {};
 
-    return {
-      ...store,
-      "alepha.react.router.state": undefined,
-      layers: state.layers.map((layer) => ({
-        ...layer,
-        error: layer.error
-          ? {
-              ...layer.error,
-              name: layer.error.name,
-              message: layer.error.message,
-              stack: !this.alepha.isProduction() ? layer.error.stack : undefined,
-            }
-          : undefined,
-        // Remove non-serializable properties
-        index: undefined,
-        path: undefined,
-        element: undefined,
-        route: undefined,
-      })),
-    };
+    const layers = state.layers.map((layer) => ({
+      name: layer.name,
+      props: layer.props,
+      config: layer.config,
+      error: layer.error
+        ? {
+          ...layer.error,
+          name: layer.error.name,
+          message: layer.error.message,
+          stack: !this.alepha.isProduction() ? layer.error.stack : undefined,
+        }
+        : undefined,
+    }));
+
+    const hydrationData: HydrationData = {
+      layers,
+    }
+
+    for (const [key, value] of Object.entries(store)) {
+      if (key.charAt(0) !== "_" && key !== "alepha.react.router.state") {
+        hydrationData[key] = value;
+      }
+    }
+
+    return hydrationData;
   }
 
   /**
@@ -520,6 +525,7 @@ export class ReactServerTemplateProvider {
           // 10. Hydration script
           if (hydration) {
             const hydrationData = this.buildHydrationData(state);
+            console.log("hydrationData!!!", hydrationData);
             controller.enqueue(this.ENCODED.HYDRATION_PREFIX);
             controller.enqueue(
               encoder.encode(this.safeJsonSerialize(hydrationData)),
