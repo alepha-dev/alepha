@@ -5,11 +5,12 @@
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build",
+    "db:generate": "alepha db generate",
     "build:docker": "alepha build --docker && cd dist && docker build -t alepha/roadmap .",
     "deploy": "alepha deploy --build --mode=production",
     "typecheck": "alepha typecheck",
     "studio": "alepha db studio",
-    "start": "alepha build && node --env-file=.env dist"
+    "start": "LOG_FORMAT=pretty node dist"
   },
   "dependencies": {
     "@alepha/bucket-vercel": "^0.14.4",
