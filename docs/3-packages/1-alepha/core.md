@@ -381,3 +381,15 @@ for encoding and decoding data with different formats.
 Mimics the JSON global object with stringify and parse methods.
 
 Used across the codebase via dependency injection.
+
+#### KeylessJsonSchemaCodec
+
+KeylessJsonSchemaCodec provides schema-driven JSON encoding without keys.
+
+It uses the schema to determine field order, allowing the encoded output
+to be a simple JSON array instead of an object with keys.
+
+Performance characteristics:
+- Encode: 0.94-1.53x vs JSON.stringify (faster for complex objects)
+- Decode: 1.76-2.00x vs JSON.parse
+- Size: 50-56% smaller than JSON

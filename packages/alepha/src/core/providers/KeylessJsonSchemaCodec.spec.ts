@@ -586,7 +586,9 @@ describe("KeylessJsonSchemaCodec", () => {
           },
         },
         contacts: [],
-        socialProfiles: [{ platform: "instagram", username: "janedoe", verified: false }],
+        socialProfiles: [
+          { platform: "instagram", username: "janedoe", verified: false },
+        ],
         // address is omitted (optional)
         company: null, // nullable field set to null
       };
