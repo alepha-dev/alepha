@@ -73,6 +73,10 @@ export class CloudflareD1Provider extends DatabaseProvider {
   protected drizzleDb?: DrizzleD1Database;
 
   public get name() {
+    return "sqlite";
+  }
+
+  public get driver() {
     return "d1";
   }
 

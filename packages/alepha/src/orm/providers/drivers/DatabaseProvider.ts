@@ -41,6 +41,10 @@ export abstract class DatabaseProvider {
     return "default";
   }
 
+  public get driver(): string {
+    return this.dialect;
+  }
+
   public get schema() {
     return "public";
   }

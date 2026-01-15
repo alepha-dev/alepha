@@ -2,7 +2,7 @@ import { NodeSqliteProvider } from "alepha/orm";
 
 export class DevToolsDatabaseProvider extends NodeSqliteProvider {
   public get name() {
-    return "devtools";
+    return "";
   }
 
   protected readonly options = {

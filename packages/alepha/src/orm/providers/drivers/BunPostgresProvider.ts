@@ -61,7 +61,7 @@ export class BunPostgresProvider extends DatabaseProvider {
   public readonly dialect = "postgresql";
 
   public get name() {
-    return "bun-postgres";
+    return "postgres";
   }
 
   /**

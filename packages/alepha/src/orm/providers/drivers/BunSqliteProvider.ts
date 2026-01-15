@@ -84,7 +84,7 @@ export class BunSqliteProvider extends DatabaseProvider {
   protected bunDb?: BunSQLiteDatabase;
 
   public get name() {
-    return "bun-sqlite";
+    return "sqlite";
   }
 
   public override readonly dialect = "sqlite";

@@ -43,6 +43,10 @@ export class PglitePostgresProvider extends DatabaseProvider {
   protected pglite?: PgliteDatabase;
 
   public get name() {
+    return "postgres";
+  }
+
+  public get driver() {
     return "pglite";
   }
 

@@ -22,9 +22,9 @@ export class DevToolsProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: () => {
-      this.log.info(
-        `Devtools available at ${this.serverProvider.hostname}/devtools/`,
-      );
+      this.log.info("Devtools OK", {
+        url: `${this.serverProvider.hostname}/devtools/`,
+      });
     },
   });
 
