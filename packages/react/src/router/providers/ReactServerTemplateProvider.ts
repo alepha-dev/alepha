@@ -525,7 +525,6 @@ export class ReactServerTemplateProvider {
           // 10. Hydration script
           if (hydration) {
             const hydrationData = this.buildHydrationData(state);
-            console.log("hydrationData!!!", hydrationData);
             controller.enqueue(this.ENCODED.HYDRATION_PREFIX);
             controller.enqueue(
               encoder.encode(this.safeJsonSerialize(hydrationData)),

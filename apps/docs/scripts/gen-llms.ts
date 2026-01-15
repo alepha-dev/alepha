@@ -4,6 +4,11 @@ import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import type { DocNode } from "./interfaces.ts";
 
+interface DocItem {
+  slug: string;
+  path: string;
+}
+
 /**
  * Command for generating llms.txt and llms-full.txt files from documentation
  */
@@ -103,6 +108,36 @@ export class LlmsCommand {
         );
       });
 
+      await run("copy markdown files to dist", async () => {
+        // Import docs metadata to get slug → path mapping
+        const indexModule = await import("../.gen/index.ts");
+        const docs = indexModule.docs as DocItem[];
+        const rootDir = join(import.meta.dirname, "../../..");
+        const docsOutputDir = join(outputDir, "docs");
+
+        await fs.mkdir(docsOutputDir, { recursive: true });
+        this.log.trace(`Created docs output directory: ${docsOutputDir}`);
+
+        let copiedCount = 0;
+        for (const doc of docs) {
+          const sourcePath = join(rootDir, doc.path);
+          const destPath = join(docsOutputDir, `${doc.slug}.md`);
+
+          try {
+            const content = await fs.readFile(sourcePath, "utf-8");
+            await fs.writeFile(destPath, content, "utf-8");
+            copiedCount++;
+            this.log.trace(`Copied: ${doc.slug}.md`);
+          } catch (error) {
+            this.log.warn(`Failed to copy ${doc.slug}: ${error}`);
+          }
+        }
+
+        this.log.debug(
+          `Copied ${copiedCount} markdown files to ${docsOutputDir}`,
+        );
+      });
+
       this.log.debug(
         `Successfully created: ${outputFileIndex}, ${outputFileFull}`,
       );
@@ -157,10 +192,10 @@ export class LlmsCommand {
         lines.push("");
       }
     } else if (node.href) {
-      // Leaf node - render as list item
+      // Leaf node - render as list item with .md extension for markdown files
       const title = this.formatTitle(node.name);
       const displayTitle = parentName ? `${parentName} - ${title}` : title;
-      const url = `https://alepha.dev${node.href}`;
+      const url = `https://alepha.dev${node.href}.md`;
       const description = node.description ? `: ${node.description}` : "";
       lines.push(`- [${displayTitle}](${url})${description}`);
     }
