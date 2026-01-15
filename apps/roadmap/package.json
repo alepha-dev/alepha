@@ -34,7 +34,7 @@
     "animate.css": "^4.1.1",
     "framer-motion": "^12.26.2",
     "highlight.js": "^11.11.1",
-    "konva": "^10.1.0",
+    "konva": "^10.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-konva": "^19.2.1",
@@ -42,12 +42,12 @@
     "sanitize-html": "^2.17.0"
   },
   "devDependencies": {
-    "@types/node": "^25.0.8",
-    "@types/react": "^19.2.7",
+    "@types/node": "^25.0.9",
+    "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "@types/sanitize-html": "^2.16.0",
     "typescript": "^5.9.3",
-    "vercel": "^50.3.2",
+    "vercel": "^50.4.2",
     "vite": "^7.3.1",
     "vitest": "^4.0.17"
   }
