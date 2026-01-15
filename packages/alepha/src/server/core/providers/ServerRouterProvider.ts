@@ -20,49 +20,13 @@ import type {
 import { ServerRequestParser } from "../services/ServerRequestParser.ts";
 import { ServerTimingProvider } from "./ServerTimingProvider.ts";
 
-// Pre-allocated encode options for response serialization
-const ENCODE_OPTIONS_STRING = Object.freeze({
-  as: "string" as const,
-});
-
-// Benchmark mode: skip all event emissions for performance testing
-// Set ALEPHA_BENCH_NO_EVENTS=1 to enable
-const BENCH_NO_EVENTS = process.env.ALEPHA_BENCH_NO_EVENTS === "1";
-
-// ============================================================================
-// String Constants - Pre-allocated to reduce string creation overhead
-// ============================================================================
-
-// HTTP Headers
-const HEADER_CONTENT_TYPE = "content-type";
-const HEADER_CONTENT_DISPOSITION = "content-disposition";
-const HEADER_REQUEST_ID = "x-request-id";
-const HEADER_CORRELATION_ID = "x-correlation-id";
-
-// Content Types
-const CONTENT_TYPE_JSON = "application/json";
-const CONTENT_TYPE_TEXT = "text/plain";
-const CONTENT_TYPE_HTML = "text/html; charset=UTF-8";
-const CONTENT_TYPE_OCTET = "application/octet-stream";
-
-// Timing Keys
-const TIMING_VALIDATE = "validateRequest";
-const TIMING_HANDLER = "runHandler";
-const TIMING_SERIALIZE = "serializeResponse";
-
-// Context Keys
-const CTX_REQUEST = "request";
-
-// Error Messages
-const ERROR_INTERNAL = "InternalServerError";
-const ERROR_NOT_FILE = "Invalid response body - not a file";
-
 /**
- * Main router for all routes on the server side.
+ * Main router for all routes server side.
  *
+ * Reminder:
  * - $route => generic route
  * - $action => action route (for API calls)
- * - $page => React route (for SSR)
+ * - $page => React route (for React SSR)
  */
 export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   protected readonly log = $logger();
@@ -81,10 +45,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   >;
   protected compiledOnError?: CompiledEventExecutor<Hooks["server:onError"]>;
 
-  // ============================================================================
-  // Pre-allocated objects to reduce GC pressure on hot paths
-  // ============================================================================
-
   // Reusable context.run options object - mutated per request
   // Includes slots for request data to avoid closure allocation in context.run
   protected readonly contextRunOptions = {
@@ -102,7 +62,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     return this.processRequest(opts._request, opts._route, opts._responseKind);
   };
 
-  // P4: Cache query schema keys to avoid property enumeration on every request
+  // Cache query schema keys to avoid property enumeration on every request
   // WeakMap allows GC of schemas that are no longer referenced
   protected readonly queryKeysCache = new WeakMap<object, string[]>();
 
@@ -155,6 +115,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     return this.routes;
   }
 
+  /**
+   * Create a new server route.
+   */
   public createRoute<TConfig extends RequestConfigSchema = RequestConfigSchema>(
     route: ServerRoute<TConfig>,
   ): void {
@@ -188,6 +151,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     });
   }
 
+  /**
+   * Get or generate a context ID from request headers.
+   */
   protected getContextId(headers: Record<string, string>): string {
     // Use constant header names to reduce string allocation
     const contextId =
@@ -199,6 +165,14 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     return randomUUID();
   }
 
+  /**
+   * Process an incoming request through the full lifecycle:
+   * - onRequest hooks
+   * - route handler
+   * - onSend hooks
+   * - response serialization
+   * - onResponse hooks
+   */
   protected async processRequest(
     request: ServerRequest,
     route: ServerRoute,
@@ -216,15 +190,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     // Local reference to reduce property lookups
     const reply = request.reply;
-
-    // Skip event emissions in benchmark mode
-    if (BENCH_NO_EVENTS) {
-      return {
-        status: reply.status ?? (reply.body ? 200 : 204),
-        headers: reply.headers,
-        body: reply.body as any,
-      };
-    }
 
     // Create payload per request to avoid race conditions with concurrent requests
     // (async hooks may hold references while other requests modify shared payloads)
@@ -250,6 +215,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     return response;
   }
 
+  /**
+   * Run the route handler with request validation and response serialization.
+   */
   protected async runRouteHandler(
     route: ServerRoute,
     request: ServerRequest,
@@ -263,33 +231,30 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     // Local reference for timing provider
     const timing = this.serverTimingProvider;
 
-    // Skip event emission in benchmark mode
-    if (!BENCH_NO_EVENTS) {
-      // Create payload per request to avoid race conditions with concurrent requests
-      const payload = { request, route };
+    // Create payload per request to avoid race conditions with concurrent requests
+    const payload = { request, route };
 
-      // Use compiled executor - only await if returns promise
-      const onRequestResult = this.compiledOnRequest!(payload);
-      if (onRequestResult) await onRequestResult;
+    // Use compiled executor - only await if returns promise
+    const onRequestResult = this.compiledOnRequest!(payload);
+    if (onRequestResult) await onRequestResult;
 
-      // Local reference to reduce property lookups
-      const reply = request.reply;
-      if (reply.body || (reply.status && reply.status >= 200)) {
-        // if the body is already set, we can skip the handler
-        // this is useful for middlewares that set the body
-        return;
-      }
+    // Local reference to reduce property lookups
+    const reply = request.reply;
+    if (reply.body || (reply.status && reply.status >= 200)) {
+      // if the body is already set, we can skip the handler
+      // this is useful for middlewares that set the body
+      return;
+    }
 
-      // request is ready to be used -> inject to context
-      this.alepha.context.set<ServerRequest>(CTX_REQUEST, request);
+    // request is ready to be used -> inject to context
+    this.alepha.context.set<ServerRequest>(CTX_REQUEST, request);
 
-      // validate request
-      timing.beginTiming(TIMING_VALIDATE);
-      try {
-        this.validateRequest(route, request);
-      } finally {
-        timing.endTiming(TIMING_VALIDATE);
-      }
+    // validate request
+    timing.beginTiming(TIMING_VALIDATE);
+    try {
+      this.validateRequest(route, request);
+    } finally {
+      timing.endTiming(TIMING_VALIDATE);
     }
 
     // call the handler only if the body is not set yet
@@ -312,6 +277,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     }
   }
 
+  /**
+   * Transform reply body based on response kind and route schema.
+   */
   public serializeResponse(
     route: ServerRoute,
     reply: ServerReply,
@@ -383,6 +351,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     return;
   }
 
+  /**
+   * Determine response type based on route schema.
+   */
   protected getResponseType(schema?: RequestConfigSchema): ResponseKind {
     if (schema?.response) {
       if (
@@ -414,6 +385,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     return "any";
   }
 
+  /**
+   * When an error occurs during request processing, this method is called.
+   */
   protected async errorHandler(
     route: ServerRoute,
     request: ServerRequest,
@@ -424,15 +398,14 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     const headers = reply.headers;
     const requestId = request.requestId;
 
-    // reset body, which is probably invalid,
-    // it can be filled by server:onError hook or by the default handler below
+    // Reset body, which is probably invalid!
+    // It can be filled by server:onError hook or by the default handler below
     reply.body = null;
 
-    // Skip event emission in benchmark mode
-    if (!BENCH_NO_EVENTS) {
-      // Use compiled executor - only await if returns promise
-      const onErrorResult = this.compiledOnError!({ request, route, error });
-      if (onErrorResult) await onErrorResult;
+    // Use compiled executor - only await if returns promise
+    const onErrorResult = this.compiledOnError!({ request, route, error });
+    if (onErrorResult) {
+      await onErrorResult;
     }
 
     if (!reply.body && !reply.status) {
@@ -473,10 +446,14 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     }
   }
 
+  /**
+   * Validate incoming request against route schema.
+   */
   public validateRequest(
     route: { schema?: RequestConfigSchema },
     request: ServerRequestConfig,
   ) {
+    // Validate params (path parameters)
     if (route.schema?.params) {
       try {
         request.params = this.alepha.codec.validate(
@@ -488,12 +465,14 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       }
     }
 
+    // Validate query parameters (?key=value&key2=value2)
     if (route.schema?.query) {
       try {
-        // P4: Use cached keys instead of for...in enumeration
+        // Use cached keys instead of for...in enumeration
         const schemaQuery = route.schema.query;
         const keys = this.getQuerySchemaKeys(schemaQuery);
         const query: Record<string, any> = {};
+
         // Use indexed loop for better performance than for...of
         for (let i = 0; i < keys.length; i++) {
           const key = keys[i];
@@ -504,12 +483,14 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
             );
           }
         }
+
         request.query = query;
       } catch (error) {
         throw new ValidationError("Invalid request query", error);
       }
     }
 
+    // Validate headers
     if (route.schema?.headers) {
       try {
         request.headers = this.alepha.codec.validate(
@@ -521,6 +502,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       }
     }
 
+    // Validate body
     if (route.schema?.body) {
       if (t.schema.isString(route.schema.body)) {
         if (typeof request.body !== "string") {
@@ -539,3 +521,34 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     }
   }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+// Pre-allocated encode options for response serialization
+const ENCODE_OPTIONS_STRING = Object.freeze({
+  as: "string" as const,
+});
+
+// HTTP Headers
+const HEADER_CONTENT_TYPE = "content-type";
+const HEADER_CONTENT_DISPOSITION = "content-disposition";
+const HEADER_REQUEST_ID = "x-request-id";
+const HEADER_CORRELATION_ID = "x-correlation-id";
+
+// Content Types
+const CONTENT_TYPE_JSON = "application/json";
+const CONTENT_TYPE_TEXT = "text/plain";
+const CONTENT_TYPE_HTML = "text/html; charset=UTF-8";
+const CONTENT_TYPE_OCTET = "application/octet-stream";
+
+// Timing Keys
+const TIMING_VALIDATE = "validateRequest";
+const TIMING_HANDLER = "runHandler";
+const TIMING_SERIALIZE = "serializeResponse";
+
+// Context Keys
+const CTX_REQUEST = "request";
+
+// Error Messages
+const ERROR_INTERNAL = "InternalServerError";
+const ERROR_NOT_FILE = "Invalid response body - not a file";
