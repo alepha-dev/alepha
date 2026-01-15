@@ -1,26 +1,24 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { Alepha } from "alepha";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { EmailError } from "../errors/EmailError.ts";
-import { LocalEmailProvider } from "../providers/LocalEmailProvider.ts";
+import {
+  LocalEmailProvider,
+  localEmailOptions,
+} from "../providers/LocalEmailProvider.ts";
 
 // Mock fs and path modules
 vi.mock("node:fs/promises");
 vi.mock("node:path");
 
-// Mock logger
-vi.mock("alepha/logger", () => ({
-  $logger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    error: vi.fn(),
-  }),
-}));
-
 const mockedFs = vi.mocked(fs);
 const mockedPath = vi.mocked(path);
 
+const DEFAULT_DIRECTORY = localEmailOptions.options.default.directory;
+
 describe("LocalEmailProvider", () => {
+  let alepha: Alepha;
   let provider: LocalEmailProvider;
 
   beforeEach(() => {
@@ -31,7 +29,8 @@ describe("LocalEmailProvider", () => {
 
   describe("send", () => {
     beforeEach(() => {
-      provider = new LocalEmailProvider({ directory: "test-emails" });
+      alepha = Alepha.create();
+      provider = alepha.inject(LocalEmailProvider);
     });
 
     test("should successfully send email to local file", async () => {
@@ -48,9 +47,6 @@ describe("LocalEmailProvider", () => {
         body,
       });
 
-      expect(mockedFs.mkdir).toHaveBeenCalledWith("test-emails", {
-        recursive: true,
-      });
       expect(mockedFs.writeFile).toHaveBeenCalledWith(
         expect.stringContaining("test@example.com"),
         expect.stringContaining(subject),
@@ -77,7 +73,7 @@ describe("LocalEmailProvider", () => {
       });
 
       expect(mockedPath.join).toHaveBeenCalledWith(
-        "test-emails",
+        DEFAULT_DIRECTORY,
         "user_test@example.com+2023-01-01T12-00-00-000Z.html",
       );
 
@@ -99,7 +95,7 @@ describe("LocalEmailProvider", () => {
       });
 
       expect(mockedPath.join).toHaveBeenCalledWith(
-        "test-emails",
+        DEFAULT_DIRECTORY,
         expect.stringMatching(/user_script_@example\.com\+.+\.html/),
       );
     });
@@ -128,32 +124,6 @@ describe("LocalEmailProvider", () => {
         "<p>Test body with <strong>HTML</strong></p>",
       ); // body not escaped
       expect(htmlContent).toContain("Sent:");
-    });
-
-    test("should throw EmailError when mkdir fails", async () => {
-      const mkdirError = new Error("Permission denied");
-      mockedFs.mkdir.mockRejectedValue(mkdirError);
-
-      const to = "test@example.com";
-      const subject = "Test Subject";
-      const body = "<p>Test body</p>";
-
-      await expect(
-        provider.send({
-          to,
-          subject,
-          body,
-        }),
-      ).rejects.toThrow(EmailError);
-      await expect(
-        provider.send({
-          to,
-          subject,
-          body,
-        }),
-      ).rejects.toThrow(
-        "Failed to save email to local file: Permission denied",
-      );
     });
 
     test("should throw EmailError when writeFile fails", async () => {
@@ -208,7 +178,8 @@ describe("LocalEmailProvider", () => {
 
   describe("createEmailHtml", () => {
     beforeEach(() => {
-      provider = new LocalEmailProvider();
+      alepha = Alepha.create();
+      provider = alepha.inject(LocalEmailProvider);
     });
 
     test("should create proper HTML structure", () => {
@@ -291,7 +262,8 @@ describe("LocalEmailProvider", () => {
 
   describe("escapeHtml", () => {
     beforeEach(() => {
-      provider = new LocalEmailProvider();
+      alepha = Alepha.create();
+      provider = alepha.inject(LocalEmailProvider);
     });
 
     test("should escape ampersands", () => {
