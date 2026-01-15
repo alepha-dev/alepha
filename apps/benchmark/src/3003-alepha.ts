@@ -3,6 +3,7 @@ import { $route, ServerProvider } from "alepha/server";
 
 class App {
   ping = $route({
+    silent: true,
     path: "/ping",
     handler: () => "pong",
   });
@@ -10,7 +11,6 @@ class App {
 
 const alepha = Alepha.create({
   env: {
-    NODE_ENV: "production",
     LOG_LEVEL: "error",
     SERVER_PORT: 3003,
   },

@@ -6,12 +6,17 @@ const targets = [
   { name: "Fastify", url: "http://localhost:3002/ping" },
   { name: "Alepha", url: "http://localhost:3003/ping" },
   { name: "Alepha-Bun", url: "http://localhost:3005/ping" },
-  { name: "Raw", url: "http://localhost:3004/ping" },
+  { name: "Raw Node", url: "http://localhost:3004/ping" },
+  { name: "Raw Bun", url: "http://localhost:3006/ping" },
 ];
 
 const p = spawn("npm run concurrent", {
   shell: true,
   stdio: "inherit",
+  env: {
+    ...process.env,
+    NODE_ENV: "production",
+  },
 });
 
 await new Promise((resolve) => {
