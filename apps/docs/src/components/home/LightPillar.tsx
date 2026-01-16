@@ -35,12 +35,11 @@ function isWeakGPU(gl: WebGLRenderingContext): boolean {
   if (!renderer) return false;
 
   // Known capable Intel GPUs - allow these
+  // Because Lorenzo told me IRIS GPU can be good
   const capableIntelPatterns = [
     "iris xe", // Tiger Lake, Alder Lake - very capable
     "iris plus", // Ice Lake - decent
     "intel arc", // Discrete GPU - very capable
-    "uhd graphics 6", // UHD 600 series (e.g., 620, 630)
-    "uhd graphics 7", // UHD 700 series (e.g., 730, 770)
   ];
 
   if (renderer.includes("intel")) {
