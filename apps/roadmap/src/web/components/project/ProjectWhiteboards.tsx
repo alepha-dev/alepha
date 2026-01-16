@@ -10,7 +10,7 @@ import {
   currentWhiteboardAtom,
   currentWhiteboardsAtom,
 } from "../../atoms/currentWhiteboardsAtom.ts";
-import type { WhiteboardCanvasProps } from "./WhiteboardCanvas.tsx";
+import type { WhiteboardCanvasProps } from "./whiteboard/types.ts";
 
 export interface ProjectWhiteboardsProps {
   project: Project;
@@ -30,7 +30,7 @@ const ProjectWhiteboards = (props: ProjectWhiteboardsProps) => {
 
   // Dynamically import canvas only on client side (Konva requires browser APIs)
   useEffect(() => {
-    import("./WhiteboardCanvas.tsx").then((mod) => {
+    import("./whiteboard/WhiteboardCanvas.tsx").then((mod) => {
       setCanvasComponent(() => mod.default);
     });
   }, []);

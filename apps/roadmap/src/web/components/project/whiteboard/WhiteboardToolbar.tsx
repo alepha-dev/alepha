@@ -11,16 +11,7 @@ import {
   IconSquare,
   IconTypography,
 } from "@tabler/icons-react";
-
-export type ToolType =
-  | "select"
-  | "rect"
-  | "circle"
-  | "arrow"
-  | "text"
-  | "line"
-  | "image"
-  | "eraser";
+import type { ToolType } from "./types.ts";
 
 export interface WhiteboardToolbarProps {
   tool: ToolType;
