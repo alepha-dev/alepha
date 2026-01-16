@@ -1,20 +1,7 @@
 import { Group, Line, Rect, Text } from "react-konva";
-import type { Task } from "../../../api/entities/tasks.ts";
-import type { WhiteboardElement } from "../../../api/entities/whiteboards.ts";
-
-interface KonvaEventObject<T> {
-  target: {
-    getStage: () => unknown;
-    x: () => number;
-    y: () => number;
-    scaleX: () => number;
-    scaleY: () => number;
-    rotation: () => number;
-    width: () => number;
-    height: () => number;
-  };
-  evt: T;
-}
+import type { Task } from "../../../../api/entities/tasks.ts";
+import type { WhiteboardElement } from "../../../../api/entities/whiteboards.ts";
+import type { KonvaEventObject } from "./types.ts";
 
 const RANK_LABELS = ["F", "C", "B", "A", "S"];
 
@@ -162,7 +149,7 @@ const WhiteboardTaskCard = ({
         </>
       )}
 
-      {/* Priority icon - Optional (sparkle ✦) */}
+      {/* Priority icon - Optional (sparkle) */}
       {task.priority === "optional" && (
         <Text x={width - 24} y={16} text="✦" fontSize={16} fill="#868e96" />
       )}
