@@ -798,6 +798,11 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
       return;
     }
 
+    // Only allow selection in select mode
+    if (tool !== "select") {
+      return;
+    }
+
     if (e.evt.shiftKey) {
       // Toggle selection
       if (selectedIds.includes(elementId)) {
@@ -820,7 +825,7 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
     const handleTap = () => {
       if (tool === "eraser") {
         handleErase(element.id);
-      } else {
+      } else if (tool === "select") {
         setSelectedIds([element.id]);
       }
     };
