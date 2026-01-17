@@ -65,5 +65,7 @@ export async function devServer(opts: DevServerOptions = {}): Promise<void> {
   const server = await createServer(mergeConfig(config, {}));
   await server.listen();
 
-  // server.printUrls();
+  console.log(""); // blank line
+  server.printUrls();
+  server.bindCLIShortcuts({ print: true });
 }
