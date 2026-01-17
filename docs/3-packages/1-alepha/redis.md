@@ -47,10 +47,8 @@ This provider uses Bun's built-in `RedisClient` class for Redis connections,
 which provides excellent performance (7.9x faster than ioredis) on the Bun runtime.
 
 ```ts
-// Set REDIS_URL environment variable
-// REDIS_URL=redis://localhost:6379
-
-// Or configure via REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
+// Set REDIS_URL environment variable (default: redis://localhost:6379)
+// REDIS_URL=redis://:password@myredis.example.com:6379
 
 // Or configure programmatically
 alepha.with({
@@ -80,10 +78,8 @@ Node.js Redis client provider using `@redis/client`.
 This provider uses the official Redis client for Node.js runtime.
 
 ```ts
-// Set REDIS_URL environment variable
-// REDIS_URL=redis://localhost:6379
-
-// Or configure via REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
+// Set REDIS_URL environment variable (default: redis://localhost:6379)
+// REDIS_URL=redis://:password@myredis.example.com:6379
 
 // Or configure programmatically
 alepha.with({
@@ -112,7 +108,4 @@ Environment variables used to configure this module. These can be set in your `.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `REDIS_HOST` | text | localhost |  |
-| `REDIS_PASSWORD` | text | - |  |
-| `REDIS_PORT` | integer | 6379 |  |
-| `REDIS_URL` | text | - |  |
+| `REDIS_URL` | text | redis://localhost:6379 | Redis connection URL |

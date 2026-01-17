@@ -32,8 +32,6 @@ Environment variables used to configure this module. These can be set in your `.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `IO` | unknown | **Required** |  |
-| `R2` | unknown | **Required** |  |
 | `S3_ACCESS_KEY_ID` | string | **Required** |  |
 | `S3_ENDPOINT` | string | - |  |
 | `S3_FORCE_PATH_STYLE` | string | - |  |

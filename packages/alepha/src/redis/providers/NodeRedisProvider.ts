@@ -4,19 +4,23 @@ import {
   type RedisClientType,
   type SetOptions,
 } from "@redis/client";
-import { $env, $hook, $inject, Alepha, type Static, t } from "alepha";
+import {
+  $env,
+  $hook,
+  $inject,
+  Alepha,
+  AlephaError,
+  type Static,
+  t,
+} from "alepha";
 import { $logger } from "alepha/logger";
 import { RedisProvider, type RedisSetOptions } from "./RedisProvider.ts";
 
 const envSchema = t.object({
-  REDIS_URL: t.optional(t.text()),
-  REDIS_PORT: t.integer({
-    default: "6379",
+  REDIS_URL: t.text({
+    default: "redis://localhost:6379",
+    description: "Redis connection URL",
   }),
-  REDIS_HOST: t.text({
-    default: "localhost",
-  }),
-  REDIS_PASSWORD: t.optional(t.text()),
 });
 
 declare module "alepha" {
@@ -39,10 +43,8 @@ export type NodeRedisClientOptions = Parameters<typeof createClient>[0];
  *
  * @example
  * ```ts
- * // Set REDIS_URL environment variable
- * // REDIS_URL=redis://localhost:6379
- *
- * // Or configure via REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
+ * // Set REDIS_URL environment variable (default: redis://localhost:6379)
+ * // REDIS_URL=redis://:password@myredis.example.com:6379
  *
  * // Or configure programmatically
  * alepha.with({
@@ -59,7 +61,7 @@ export class NodeRedisProvider extends RedisProvider {
 
   public get publisher(): NodeRedisClient {
     if (!this.client.isReady) {
-      throw new Error("Redis client is not ready");
+      throw new AlephaError("Redis client is not ready");
     }
 
     return this.client;
@@ -235,27 +237,7 @@ export class NodeRedisProvider extends RedisProvider {
    * Get the Redis connection URL.
    */
   protected getUrl(): string {
-    // Prefer REDIS_URL if set
-    if (this.env.REDIS_URL) {
-      return this.env.REDIS_URL;
-    }
-
-    // Build URL from components
-    const url = new URL("redis://127.0.0.1:6379");
-
-    if (this.env.REDIS_PASSWORD) {
-      url.password = this.env.REDIS_PASSWORD;
-    }
-
-    if (this.env.REDIS_HOST) {
-      url.hostname = this.env.REDIS_HOST;
-    }
-
-    if (this.env.REDIS_PORT) {
-      url.port = String(this.env.REDIS_PORT);
-    }
-
-    return url.toString();
+    return this.env.REDIS_URL;
   }
 
   /**

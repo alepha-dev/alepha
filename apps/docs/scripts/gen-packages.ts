@@ -248,7 +248,10 @@ export class PackagesCommand {
             (nextFieldMatch.index ?? schemaContent.length)
           : schemaContent.length;
 
-        const fieldContent = schemaContent.slice(fieldStartIndex, fieldEndIndex);
+        const fieldContent = schemaContent.slice(
+          fieldStartIndex,
+          fieldEndIndex,
+        );
 
         // Check if field is optional
         const isOptional = fieldContent.includes("t.optional(");
@@ -257,7 +260,12 @@ export class PackagesCommand {
         const typeMatch = isOptional
           ? fieldContent.match(/t\.optional\(\s*t\.(\w+)/)
           : fieldContent.match(/:\s*t\.(\w+)/);
-        const type = typeMatch ? typeMatch[1] : "unknown";
+        const type = typeMatch ? typeMatch[1] : null;
+
+        // Skip if we couldn't determine the type
+        if (!type) {
+          continue;
+        }
 
         // Extract description
         const descMatch = fieldContent.match(/description:\s*["']([^"']+)["']/);
