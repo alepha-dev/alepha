@@ -16,13 +16,6 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
 
-  azurite:
-    restart: always
-    pull_policy: "always"
-    image: mcr.microsoft.com/azure-storage/azurite
-    ports:
-      - "10000:10000"
-
   s3mock:
     restart: always
     image: adobe/s3mock:latest
