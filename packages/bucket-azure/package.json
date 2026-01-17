@@ -23,7 +23,7 @@
     "src"
   ],
   "dependencies": {
-    "@azure/storage-blob": "^12.29.1"
+    "@azure/storage-blob": "^12.30.0"
   },
   "devDependencies": {
     "alepha": "0.14.4",
