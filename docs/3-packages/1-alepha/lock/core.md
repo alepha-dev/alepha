@@ -81,3 +81,11 @@ For more details, see the [Providers documentation](/docs/concepts-providers).
 #### MemoryLockProvider
 
 A simple in-memory store provider.
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `LOCK_PREFIX_KEY` | text | lock |  |

@@ -2,7 +2,7 @@ import { type Dirent, promises as fs } from "node:fs";
 import { join } from "node:path";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
-import type { ModuleInfo, PrimitiveInfo } from "./interfaces.ts";
+import type { EnvVarInfo, ModuleInfo, PrimitiveInfo } from "./interfaces.ts";
 
 /**
  * Command for generating package documentation and READMEs
@@ -195,6 +195,149 @@ export class PackagesCommand {
       this.log.error(`Error parsing provider file ${filePath}:`, error);
       return null;
     }
+  }
+
+  /**
+   * Extracts environment variable schema from a file that uses $env().
+   * Looks for patterns like `const envSchema = t.object({...})` followed by `$env(envSchema)`.
+   */
+  async extractEnvInfo(filePath: string): Promise<EnvVarInfo[]> {
+    this.log.trace(`Extracting env info from: ${filePath}`);
+    try {
+      const content = await fs.readFile(filePath, "utf-8");
+
+      // Check if file uses $env
+      if (!content.includes("$env(")) {
+        return [];
+      }
+
+      // Find the schema definition - look for t.object({ with env var patterns
+      // Match: const envSchema = t.object({ ... });
+      const schemaMatch = content.match(
+        /const\s+envSchema\s*=\s*t\.object\(\{([\s\S]*?)\}\);/,
+      );
+
+      if (!schemaMatch) {
+        this.log.trace(`No envSchema found in ${filePath}`);
+        return [];
+      }
+
+      const schemaContent = schemaMatch[1];
+      const envVars: EnvVarInfo[] = [];
+
+      // Match field definitions using a simpler approach:
+      // 1. Find field names that look like ENV_VAR_NAMES (uppercase with underscores)
+      // 2. Extract their type, description, and default from the surrounding context
+      const fieldNameRegex = /([A-Z][A-Z0-9_]+):/g;
+      const fieldNames = Array.from(schemaContent.matchAll(fieldNameRegex)).map(
+        (m) => m[1],
+      );
+
+      for (const name of fieldNames) {
+        // Find the content after this field name up to the next field or end
+        const fieldStartIndex = schemaContent.indexOf(`${name}:`);
+        if (fieldStartIndex === -1) continue;
+
+        // Find the next field or end of schema
+        const nextFieldMatch = schemaContent
+          .slice(fieldStartIndex + name.length)
+          .match(/[A-Z][A-Z0-9_]+:/);
+        const fieldEndIndex = nextFieldMatch
+          ? fieldStartIndex +
+            name.length +
+            (nextFieldMatch.index ?? schemaContent.length)
+          : schemaContent.length;
+
+        const fieldContent = schemaContent.slice(fieldStartIndex, fieldEndIndex);
+
+        // Check if field is optional
+        const isOptional = fieldContent.includes("t.optional(");
+
+        // Extract type (text, number, boolean, integer, etc.)
+        const typeMatch = isOptional
+          ? fieldContent.match(/t\.optional\(\s*t\.(\w+)/)
+          : fieldContent.match(/:\s*t\.(\w+)/);
+        const type = typeMatch ? typeMatch[1] : "unknown";
+
+        // Extract description
+        const descMatch = fieldContent.match(/description:\s*["']([^"']+)["']/);
+        const description = descMatch ? descMatch[1] : undefined;
+
+        // Extract default value
+        const defaultMatch = fieldContent.match(/default:\s*([^,\n}]+)/);
+        let defaultValue = defaultMatch ? defaultMatch[1].trim() : undefined;
+        if (defaultValue) {
+          defaultValue = defaultValue.replace(/^["']|["']$/g, "");
+        }
+
+        envVars.push({
+          name,
+          type,
+          description,
+          default: defaultValue,
+          optional: isOptional || defaultValue !== undefined,
+        });
+      }
+
+      if (envVars.length > 0) {
+        this.log.debug(`Extracted ${envVars.length} env vars from ${filePath}`);
+      }
+
+      return envVars;
+    } catch (error) {
+      this.log.error(`Error extracting env info from ${filePath}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Recursively finds all TypeScript files in a directory and extracts env vars.
+   */
+  async getEnvInfo(packagePath: string): Promise<EnvVarInfo[]> {
+    this.log.debug(`Getting env info from: ${packagePath}`);
+    const allEnvVars: EnvVarInfo[] = [];
+    const seenNames = new Set<string>();
+
+    const processDir = async (dirPath: string) => {
+      try {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+          const fullPath = join(dirPath, entry.name);
+
+          if (entry.isDirectory() && !entry.name.startsWith("__")) {
+            await processDir(fullPath);
+          } else if (
+            entry.isFile() &&
+            entry.name.endsWith(".ts") &&
+            !entry.name.endsWith(".spec.ts")
+          ) {
+            const envVars = await this.extractEnvInfo(fullPath);
+            for (const envVar of envVars) {
+              // Deduplicate by name (same env var may be used in multiple files)
+              if (!seenNames.has(envVar.name)) {
+                seenNames.add(envVar.name);
+                allEnvVars.push(envVar);
+              }
+            }
+          }
+        }
+      } catch (error: any) {
+        if (error.code !== "ENOENT") {
+          this.log.error(`Error reading directory ${dirPath}:`, error);
+        }
+      }
+    };
+
+    await processDir(packagePath);
+
+    // Sort by name for consistent output
+    allEnvVars.sort((a, b) => a.name.localeCompare(b.name));
+
+    this.log.debug(
+      `Found ${allEnvVars.length} unique env vars in ${packagePath}`,
+    );
+    return allEnvVars;
   }
 
   /**
@@ -406,9 +549,10 @@ export class PackagesCommand {
     const primitives = await this.getPrimitivesInfo(sourcePath);
     const hooks = await this.getPrimitivesInfo(sourcePath, "hooks");
     const providers = await this.getProvidersInfo(sourcePath);
+    const envVars = await this.getEnvInfo(sourcePath);
 
     this.log.debug(
-      `Found ${primitives.length} primitives, ${hooks.length} hooks, ${providers.length} providers`,
+      `Found ${primitives.length} primitives, ${hooks.length} hooks, ${providers.length} providers, ${envVars.length} env vars`,
     );
 
     // Build the markdown content
@@ -448,7 +592,12 @@ export class PackagesCommand {
       content += `## Overview\n\n${moduleDescription}\n\n`;
     }
 
-    if (primitives.length > 0 || providers.length > 0 || hooks.length > 0) {
+    if (
+      primitives.length > 0 ||
+      providers.length > 0 ||
+      hooks.length > 0 ||
+      envVars.length > 0
+    ) {
       content += `## API Reference\n`;
     }
 
@@ -470,6 +619,17 @@ export class PackagesCommand {
       content += `\n### Providers\n\nProviders are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.\n\nFor more details, see the [Providers documentation](/docs/concepts-providers).\n`;
       for (const provider of providers) {
         content += `\n#### ${provider.name}\n\n${provider.description}\n`;
+      }
+    }
+
+    if (envVars.length > 0) {
+      content += `\n### Environment Variables\n\nEnvironment variables used to configure this module. These can be set in your \`.env\` file or through your deployment configuration.\n`;
+      content += `\n| Variable | Type | Default | Description |\n|----------|------|---------|-------------|\n`;
+      for (const env of envVars) {
+        const required = env.optional ? "" : "**Required**";
+        const defaultVal = env.default ?? (env.optional ? "-" : required);
+        const desc = env.description ?? "";
+        content += `| \`${env.name}\` | ${env.type} | ${defaultVal} | ${desc} |\n`;
       }
     }
 
@@ -519,9 +679,10 @@ export class PackagesCommand {
       "hooks",
     );
     const providers = await this.getProvidersInfo(join(packagePath, "src"));
+    const envVars = await this.getEnvInfo(join(packagePath, "src"));
 
     this.log.debug(
-      `Found ${primitives.length} primitives, ${hooks.length} hooks, ${providers.length} providers`,
+      `Found ${primitives.length} primitives, ${hooks.length} hooks, ${providers.length} providers, ${envVars.length} env vars`,
     );
 
     // Build the README content
@@ -543,7 +704,12 @@ export class PackagesCommand {
       content += `## Module\n\n${moduleDescription}\n\n`;
     }
 
-    if (primitives.length > 0 || providers.length > 0 || hooks.length > 0) {
+    if (
+      primitives.length > 0 ||
+      providers.length > 0 ||
+      hooks.length > 0 ||
+      envVars.length > 0
+    ) {
       content += `## API Reference\n`;
     }
 
@@ -565,6 +731,17 @@ export class PackagesCommand {
       content += `\n### Providers\n\nProviders are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.\n\nFor more details, see the [Providers documentation](https://feunard.github.io/alepha/).\n`;
       for (const provider of providers) {
         content += `\n#### ${provider.name}\n\n${provider.description}\n`;
+      }
+    }
+
+    if (envVars.length > 0) {
+      content += `\n### Environment Variables\n\nEnvironment variables used to configure this package.\n`;
+      content += `\n| Variable | Type | Default | Description |\n|----------|------|---------|-------------|\n`;
+      for (const env of envVars) {
+        const required = env.optional ? "" : "**Required**";
+        const defaultVal = env.default ?? (env.optional ? "-" : required);
+        const desc = env.description ?? "";
+        content += `| \`${env.name}\` | ${env.type} | ${defaultVal} | ${desc} |\n`;
       }
     }
 

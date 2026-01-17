@@ -170,3 +170,14 @@ class ChatController {
   }
 }
 ```
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `WEBSOCKET_MAX_RECONNECT_ATTEMPTS` | integer | 10 | Maximum number of reconnection attempts. Set to -1 for infinite. |
+| `WEBSOCKET_PATH` | text | /ws | Base path for WebSocket endpoints |
+| `WEBSOCKET_RECONNECT_INTERVAL` | integer | 3000 | Reconnection interval in milliseconds |
+| `WEBSOCKET_URL` | text |  | WebSocket server URL (e.g., ws://localhost:3001). Leave empty to auto-detect. |

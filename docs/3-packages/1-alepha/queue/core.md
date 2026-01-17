@@ -181,3 +181,13 @@ const taskQueue = $queue({
   }
 });
 ```
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `QUEUE_WORKER_CONCURRENCY` | integer | 1 |  |
+| `QUEUE_WORKER_INTERVAL` | integer | 1000 |  |
+| `QUEUE_WORKER_MAX_INTERVAL` | integer | 32000 |  |

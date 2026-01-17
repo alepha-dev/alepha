@@ -95,3 +95,12 @@ for optimistic locking scenarios with automatic retry on version mismatches.
 - Pass `{ tx }` option to all repository operations within the transaction
 - Transactions are automatically rolled back on any unhandled error
 - Use appropriate isolation levels based on your consistency requirements
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `DATABASE_URL` | text | - |  |
+| `POSTGRES_SCHEMA` | text | - |  |

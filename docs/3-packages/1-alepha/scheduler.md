@@ -23,3 +23,11 @@ For more details, see the [Primitives documentation](/docs/concepts-primitives).
 #### $scheduler()
 
 Scheduler primitive.
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `SCHEDULER_PREFIX` | text | - | Prefix store key |

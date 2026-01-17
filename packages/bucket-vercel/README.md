@@ -25,3 +25,11 @@ For more details, see the [Providers documentation](https://feunard.github.io/al
 #### VercelFileStorageProvider
 
 Vercel Blob Storage implementation of File Storage Provider.
+
+### Environment Variables
+
+Environment variables used to configure this package.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `BLOB_READ_WRITE_TOKEN` | text | **Required** |  |

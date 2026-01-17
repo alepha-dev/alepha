@@ -84,3 +84,11 @@ For more details, see the [Providers documentation](/docs/concepts-providers).
 #### JwtProvider
 
 Provides utilities for working with JSON Web Tokens (JWT).
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `APP_SECRET` | text | DEFAULT_APP_SECRET |  |

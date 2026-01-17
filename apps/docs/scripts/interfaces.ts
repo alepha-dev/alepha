@@ -36,6 +36,14 @@ export interface ModuleInfo {
   sourcePath: string; // Path to the module's source directory
 }
 
+export interface EnvVarInfo {
+  name: string; // e.g., "SERVER_PORT"
+  type: string; // e.g., "integer", "text", "boolean"
+  description?: string;
+  default?: string;
+  optional: boolean;
+}
+
 export interface ChangelogChange {
   scope: string; // e.g., "cli", "server", "vite"
   message: string; // The change description

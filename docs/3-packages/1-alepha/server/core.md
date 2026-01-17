@@ -134,3 +134,15 @@ Reminder:
 - $route => generic route
 - $action => action route (for API calls)
 - $page => React route (for React SSR)
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `SERVER_API_PREFIX` | text | /api | Prefix for all API routes (e.g. $action). |
+| `SERVER_BODY_PARSER_INFLATE` | boolean | true | Enable decompression of request body. |
+| `SERVER_BODY_PARSER_LIMIT` | integer | 100_000 | Maximum size of request body in bytes. |
+| `SERVER_HOST` | text | localhost | Set 0.0.0.0 to listen on all interfaces. |
+| `SERVER_PORT` | integer | 3000 | Set 0 to listen on a random port. |

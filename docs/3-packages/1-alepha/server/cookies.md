@@ -57,3 +57,11 @@ class ClientCookies {
 Declares a type-safe, configurable HTTP cookie.
 This primitive provides methods to get, set, and delete the cookie
 within the server request/response cycle.
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `APP_SECRET` | text | DEFAULT_APP_SECRET |  |

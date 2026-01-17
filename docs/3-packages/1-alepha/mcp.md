@@ -183,3 +183,11 @@ and routes incoming JSON-RPC requests to the appropriate handlers.
 
 It is transport-agnostic - actual communication is handled by
 transport providers like StdioMcpTransport or SseMcpTransport.
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `MCP_SSE_PATH` | text | /mcp | Path for MCP SSE endpoint |

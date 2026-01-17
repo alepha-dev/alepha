@@ -195,3 +195,12 @@ Manifest files are generated during `vite build`:
 - manifest.json (client manifest)
 - ssr-manifest.json (SSR manifest)
 - preload-manifest.json (from viteAlephaSsrPreload plugin)
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `REACT_SSR_ENABLED` | boolean | - |  |
+| `REACT_STRICT_MODE` | boolean | true |  |

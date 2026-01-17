@@ -105,3 +105,14 @@ await subscriber.subscribe("channel", (message, channel) => {
   console.log(`Received: ${message} on ${channel}`);
 });
 ```
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `REDIS_HOST` | text | localhost |  |
+| `REDIS_PASSWORD` | text | - |  |
+| `REDIS_PORT` | integer | 6379 |  |
+| `REDIS_URL` | text | - |  |
