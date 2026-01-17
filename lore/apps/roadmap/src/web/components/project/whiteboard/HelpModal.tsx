@@ -13,8 +13,8 @@ const HelpModal = ({ opened, onClose }: HelpModalProps) => {
       </Text>
       <List size="sm" spacing={4} mb="md">
         <List.Item>
-          <strong>Select</strong> - Click to select, Shift+click to multi-select,
-          drag empty space to marquee select
+          <strong>Select</strong> - Click to select, Shift+click to
+          multi-select, drag empty space to marquee select
         </List.Item>
         <List.Item>
           <strong>Rectangle/Circle</strong> - Click to place shape
@@ -29,7 +29,8 @@ const HelpModal = ({ opened, onClose }: HelpModalProps) => {
           <strong>Draw</strong> - Freehand drawing
         </List.Item>
         <List.Item>
-          <strong>Image</strong> - Upload images or paste from clipboard (Ctrl+V)
+          <strong>Image</strong> - Upload images or paste from clipboard
+          (Ctrl+V)
         </List.Item>
         <List.Item>
           <strong>Eraser</strong> - Click on elements to delete

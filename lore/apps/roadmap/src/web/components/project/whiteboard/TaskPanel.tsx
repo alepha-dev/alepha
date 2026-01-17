@@ -6,7 +6,11 @@ import {
   ScrollArea,
   Text,
 } from "@mantine/core";
-import { IconChevronDown, IconChevronUp, IconGripHorizontal } from "@tabler/icons-react";
+import {
+  IconChevronDown,
+  IconChevronUp,
+  IconGripHorizontal,
+} from "@tabler/icons-react";
 import { useCallback, useState } from "react";
 import type { Task } from "../../../../api/entities/tasks.ts";
 import TaskComplexity from "../task/TaskComplexity.tsx";
