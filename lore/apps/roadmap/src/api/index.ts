@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { SseMcpTransport } from "alepha/mcp";
 import { CharacterController } from "./controllers/CharacterController.ts";
 import { IdentityController } from "./controllers/IdentityController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
@@ -9,14 +10,19 @@ import { SessionController } from "./controllers/SessionController.ts";
 import { TaskController } from "./controllers/TaskController.ts";
 import { UserController } from "./controllers/UserController.ts";
 import { WhiteboardController } from "./controllers/WhiteboardController.ts";
-import { Security } from "./providers/Security.ts";
+import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
+import { McpAuthProvider } from "./providers/McpAuthProvider.ts";
+import { ProjectResources } from "./resources/ProjectResources.ts";
 import { CharacterInfo } from "./services/CharacterInfo.ts";
+import { ProjectTools } from "./tools/ProjectTools.ts";
+import { TaskTools } from "./tools/TaskTools.ts";
 
 export const RoadmapApi = $module({
   name: "roadmap.api",
   services: [
-    Security,
+    AppSecurityProvider,
     CharacterInfo,
+    // Controllers
     TaskController,
     ProjectController,
     UserController,
@@ -27,6 +33,12 @@ export const RoadmapApi = $module({
     InvitationController,
     McpApiKeyController,
     WhiteboardController,
+    // MCP
+    SseMcpTransport,
+    McpAuthProvider,
+    TaskTools,
+    ProjectTools,
+    ProjectResources,
   ],
 });
 
@@ -50,5 +62,5 @@ export * from "./entities/sessions.ts";
 export * from "./entities/tasks.ts";
 export * from "./entities/users.ts";
 export * from "./entities/whiteboards.ts";
-export * from "./providers/Security.ts";
+export * from "./providers/AppSecurityProvider.ts";
 export * from "./schemas/taskCreateSchema.ts";

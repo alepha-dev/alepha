@@ -7,7 +7,7 @@ import { type Character, characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
 import { tasks } from "../entities/tasks.ts";
 import type { User } from "../entities/users.ts";
-import { Security } from "../providers/Security.ts";
+import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 
 export class ProjectController {
   log = $logger();
@@ -15,7 +15,7 @@ export class ProjectController {
   characters = $repository(characters);
   tasks = $repository(tasks);
   users = $repository(users);
-  security = $inject(Security);
+  security = $inject(AppSecurityProvider);
 
   createProject = $action({
     schema: {

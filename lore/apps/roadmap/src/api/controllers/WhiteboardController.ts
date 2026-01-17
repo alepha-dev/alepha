@@ -8,11 +8,11 @@ import {
   whiteboardDataSchema,
   whiteboards,
 } from "../entities/whiteboards.ts";
-import { Security } from "../providers/Security.ts";
+import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 
 export class WhiteboardController {
   whiteboards = $repository(whiteboards);
-  security = $inject(Security);
+  security = $inject(AppSecurityProvider);
   fileService = $inject(FileService);
 
   // Bucket for whiteboard images

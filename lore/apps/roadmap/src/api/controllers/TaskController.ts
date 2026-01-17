@@ -8,7 +8,7 @@ import { characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
 import { tasks } from "../entities/tasks.ts";
 import { taskVotes } from "../entities/taskVotes.ts";
-import { Security } from "../providers/Security.ts";
+import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
 
@@ -20,7 +20,7 @@ export class TaskController {
   characters = $repository(characters);
   characterInfo = $inject(CharacterInfo);
   dt = $inject(DateTimeProvider);
-  security = $inject(Security);
+  security = $inject(AppSecurityProvider);
 
   createTask = $action({
     schema: {

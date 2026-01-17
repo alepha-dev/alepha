@@ -6,7 +6,7 @@ import { $action, BadRequestError, okSchema } from "alepha/server";
 import { characters } from "../entities/characters.ts";
 import { invitations } from "../entities/invitations.ts";
 import { projects } from "../entities/projects.ts";
-import { Security } from "../providers/Security.ts";
+import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 
 export class InvitationController {
   log = $logger();
@@ -14,7 +14,7 @@ export class InvitationController {
   users = $repository(users);
   characters = $repository(characters);
   projects = $repository(projects);
-  security = $inject(Security);
+  security = $inject(AppSecurityProvider);
 
   createInvitation = $action({
     schema: {
