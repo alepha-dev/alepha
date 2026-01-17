@@ -203,6 +203,7 @@
       "types": "./src/orm/index.ts",
       "react-native": "./src/orm/index.browser.ts",
       "browser": "./src/orm/index.browser.ts",
+      "bun": "./src/orm/index.bun.ts",
       "import": "./src/orm/index.ts",
       "default": "./src/orm/index.ts"
     },
@@ -218,6 +219,7 @@
     },
     "./redis": {
       "types": "./src/redis/index.ts",
+      "bun": "./src/redis/index.bun.ts",
       "import": "./src/redis/index.ts",
       "default": "./src/redis/index.ts"
     },

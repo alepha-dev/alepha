@@ -1,10 +1,10 @@
 import { $module, type Alepha, t } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
-import * as drizzle from "drizzle-orm";
 import { $entity } from "./primitives/$entity.ts";
-import { $repository } from "./primitives/$repository.ts";
 import { $sequence } from "./primitives/$sequence.ts";
 import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
+import { BunPostgresProvider } from "./providers/drivers/BunPostgresProvider.ts";
+import { BunSqliteProvider } from "./providers/drivers/BunSqliteProvider.ts";
 import { CloudflareD1Provider } from "./providers/drivers/CloudflareD1Provider.ts";
 import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
 import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
@@ -88,47 +88,20 @@ declare module "alepha" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export { drizzle };
-export {
-  type Page,
-  type PageQuery,
-  pageQuerySchema,
-  pageSchema,
-} from "alepha";
-export { sql } from "drizzle-orm";
-export * from "drizzle-orm/pg-core";
-export * from "./constants/PG_SYMBOLS.ts";
-export * from "./errors/DbConflictError.ts";
-export * from "./errors/DbEntityNotFoundError.ts";
-export * from "./errors/DbError.ts";
-export * from "./errors/DbMigrationError.ts";
-export * from "./errors/DbVersionMismatchError.ts";
-export * from "./helpers/parseQueryString.ts";
-export * from "./helpers/pgAttr.ts";
-export * from "./interfaces/FilterOperators.ts";
-export * from "./interfaces/PgQuery.ts";
-export * from "./interfaces/PgQueryWhere.ts";
-export * from "./primitives/$entity.ts";
-export * from "./primitives/$repository.ts";
-export * from "./primitives/$sequence.ts";
-export * from "./primitives/$transaction.ts";
-export * from "./providers/DatabaseTypeProvider.ts";
-export * from "./providers/DrizzleKitProvider.ts";
-export * from "./providers/drivers/CloudflareD1Provider.ts";
-export * from "./providers/drivers/DatabaseProvider.ts";
+export * from "./index.shared-server.ts";
+export * from "./providers/drivers/BunPostgresProvider.ts";
+export * from "./providers/drivers/BunSqliteProvider.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
 export * from "./providers/drivers/NodeSqliteProvider.ts";
-export * from "./providers/RepositoryProvider.ts";
-export * from "./schemas/insertSchema.ts";
-export * from "./schemas/legacyIdSchema.ts";
-export * from "./schemas/updateSchema.ts";
-export * from "./services/Repository.ts";
-export * from "./types/schema.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * Postgres client based on Drizzle ORM, Alepha type-safe friendly.
+ *
+ * Automatically selects the appropriate provider based on runtime:
+ * - Bun: Uses `BunPostgresProvider` or `BunSqliteProvider`
+ * - Node.js: Uses `NodePostgresProvider` or `NodeSqliteProvider`
  *
  * ```ts
  * import { t } from "alepha";
@@ -168,6 +141,10 @@ export * from "./types/schema.ts";
  * @see {@link $sequence}
  * @see {@link $repository}
  * @see {@link $transaction}
+ * @see {@link NodePostgresProvider} - Node.js Postgres implementation
+ * @see {@link NodeSqliteProvider} - Node.js SQLite implementation
+ * @see {@link BunPostgresProvider} - Bun Postgres implementation
+ * @see {@link BunSqliteProvider} - Bun SQLite implementation
  * @module alepha.postgres
  */
 export const AlephaPostgres = $module({
@@ -177,8 +154,10 @@ export const AlephaPostgres = $module({
     AlephaDateTime,
     DatabaseProvider,
     NodePostgresProvider,
-    PglitePostgresProvider,
     NodeSqliteProvider,
+    BunPostgresProvider,
+    BunSqliteProvider,
+    PglitePostgresProvider,
     CloudflareD1Provider,
     SqliteModelBuilder,
     PostgresModelBuilder,
@@ -204,6 +183,7 @@ export const AlephaPostgres = $module({
     const isSqlite = url?.startsWith("sqlite:");
     const isMemory = url?.includes(":memory:");
     const isFile = !!url && !isPostgres && !isMemory;
+    const isBun = alepha.isBun();
 
     if (url?.startsWith("cloudflare-d1:")) {
       alepha.with({
@@ -227,7 +207,7 @@ export const AlephaPostgres = $module({
       alepha.with({
         optional: true,
         provide: DatabaseProvider,
-        use: NodePostgresProvider,
+        use: isBun ? BunPostgresProvider : NodePostgresProvider,
       });
       return;
     }
@@ -235,7 +215,7 @@ export const AlephaPostgres = $module({
     alepha.with({
       optional: true,
       provide: DatabaseProvider,
-      use: NodeSqliteProvider,
+      use: isBun ? BunSqliteProvider : NodeSqliteProvider,
     });
   },
 });

@@ -1,7 +1,6 @@
 import { $env, $hook, $inject, AlephaError, type Static, t } from "alepha";
 import { $lock } from "alepha/lock";
 import { $logger } from "alepha/logger";
-import type { SQL as BunSQL } from "bun";
 import { sql } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type { PgDatabase } from "drizzle-orm/pg-core";
@@ -55,7 +54,7 @@ export class BunPostgresProvider extends DatabaseProvider {
   protected readonly kit = $inject(DrizzleKitProvider);
   protected readonly builder = $inject(PostgresModelBuilder);
 
-  protected client?: BunSQL;
+  protected client?: Bun.SQL;
   protected bunDb?: BunSQLDatabase;
 
   public readonly dialect = "postgresql";
@@ -184,10 +183,9 @@ export class BunPostgresProvider extends DatabaseProvider {
     }
 
     const { drizzle } = await import("drizzle-orm/bun-sql");
-    const { SQL } = await import("bun");
 
     // Create Bun SQL client
-    this.client = new SQL(this.url);
+    this.client = new Bun.SQL(this.url);
 
     // Test connection
     await this.client.unsafe("SELECT 1");

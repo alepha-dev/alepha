@@ -12,6 +12,10 @@ npm install alepha
 
 Postgres client based on Drizzle ORM, Alepha type-safe friendly.
 
+Automatically selects the appropriate provider based on runtime:
+- Bun: Uses `BunPostgresProvider` or `BunSqliteProvider`
+- Node.js: Uses `NodePostgresProvider` or `NodeSqliteProvider`
+
 ```ts
 import { t } from "alepha";
 import { $entity, $repository, db } from "alepha/postgres";

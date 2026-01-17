@@ -43,6 +43,14 @@ export interface BuildServerOptions {
    * @default false
    */
   silent?: boolean;
+
+  /**
+   * If true, resolve package exports using the "bun" condition.
+   * This allows using Bun-optimized entry points (index.bun.ts) during build.
+   *
+   * @default false
+   */
+  bun?: boolean;
 }
 
 export interface BuildServerResult {
@@ -83,6 +91,11 @@ export async function buildServer(
   // Create buffered logger for silent mode
   const logger = opts.silent ? createBufferedLogger() : undefined;
 
+  const conditions = ["node", "import", "module", "default"];
+  if (opts.bun) {
+    conditions.unshift("bun");
+  }
+
   const viteBuildServerConfig: UserConfig = {
     mode: "production",
     logLevel: opts.silent ? "silent" : undefined,
@@ -92,6 +105,7 @@ export async function buildServer(
     publicDir: false,
     ssr: {
       noExternal: true,
+      resolve: { conditions },
     },
     build: {
       sourcemap: true,

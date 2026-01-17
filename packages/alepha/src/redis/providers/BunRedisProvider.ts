@@ -8,7 +8,6 @@ import {
   t,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import type { RedisClient as BunRedisClient } from "bun";
 import { RedisProvider, type RedisSetOptions } from "./RedisProvider.ts";
 
 const envSchema = t.object({
@@ -44,9 +43,9 @@ export class BunRedisProvider extends RedisProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);
-  protected client?: BunRedisClient;
+  protected client?: Bun.RedisClient;
 
-  public get publisher(): BunRedisClient {
+  public get publisher(): Bun.RedisClient {
     if (!this.client?.connected) {
       throw new AlephaError("Redis client is not ready");
     }
@@ -73,7 +72,7 @@ export class BunRedisProvider extends RedisProvider {
    */
   public override async connect(): Promise<void> {
     // Check if we're running in Bun
-    if (typeof Bun === "undefined") {
+    if (!this.alepha.isBun()) {
       throw new AlephaError(
         "BunRedisProvider requires the Bun runtime. Use NodeRedisProvider for Node.js.",
       );
@@ -81,9 +80,7 @@ export class BunRedisProvider extends RedisProvider {
 
     this.log.debug("Connecting...");
 
-    const { RedisClient } = await import("bun");
-
-    this.client = new RedisClient(this.getUrl(), {
+    this.client = new Bun.RedisClient(this.getUrl(), {
       autoReconnect: true,
       enableAutoPipelining: true,
     });
@@ -118,14 +115,12 @@ export class BunRedisProvider extends RedisProvider {
   /**
    * Create a duplicate connection for pub/sub or other isolated operations.
    */
-  public async duplicate(): Promise<BunRedisClient> {
+  public async duplicate(): Promise<Bun.RedisClient> {
     if (typeof Bun === "undefined") {
       throw new AlephaError("BunRedisProvider requires the Bun runtime.");
     }
 
-    const { RedisClient } = await import("bun");
-
-    const client = new RedisClient(this.getUrl(), {
+    const client = new Bun.RedisClient(this.getUrl(), {
       autoReconnect: true,
       enableAutoPipelining: true,
     });

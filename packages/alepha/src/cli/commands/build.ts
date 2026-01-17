@@ -55,6 +55,11 @@ export class BuildCommand {
           description: "Generate sitemap.xml with base URL",
         }),
       ),
+      bun: t.optional(
+        t.boolean({
+          description: "Prioritize .bun.ts entry files for Bun runtime",
+        }),
+      ),
     }),
     handler: async ({ flags, args, run, root }) => {
       // Tell viteAlephaBuild plugin to skip - CLI handles all tasks
@@ -118,12 +123,19 @@ export class BuildCommand {
             // No client build
           }
 
+          // workaround for now, force bun when building for cloudflare (even it's not bun runtime)
+          // but we avoid most of Node.js deps
+          if (options.cloudflare) {
+            flags.bun = true;
+          }
+
           await buildServer({
             silent: true,
             entry,
             distDir,
             clientDir: clientBuilt ? clientDir : undefined,
             stats,
+            bun: flags.bun,
           });
 
           // Server will handle index.html if both client & server are built

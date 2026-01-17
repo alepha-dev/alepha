@@ -1,6 +1,5 @@
 import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
-import type { RedisClient as BunRedisClient } from "bun";
 import { BunRedisProvider } from "./BunRedisProvider.ts";
 import {
   RedisSubscriberProvider,
@@ -25,9 +24,9 @@ export class BunRedisSubscriberProvider extends RedisSubscriberProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly redisProvider = $inject(BunRedisProvider);
-  protected client?: BunRedisClient;
+  protected client?: Bun.RedisClient;
 
-  public get subscriber(): BunRedisClient {
+  public get subscriber(): Bun.RedisClient {
     if (!this.client?.connected) {
       throw new AlephaError("Redis subscriber client is not ready");
     }

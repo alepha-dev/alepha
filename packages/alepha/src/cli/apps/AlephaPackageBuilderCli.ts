@@ -11,6 +11,7 @@ interface Module {
   dependencies: string[];
   native?: boolean;
   browser?: boolean;
+  bun?: boolean;
   node?: boolean;
 }
 
@@ -54,6 +55,10 @@ export class AlephaPackageBuilderCli {
 
         if (item.browser) {
           pkgData.exports[path].browser = `./src/${item.name}/index.browser.ts`;
+        }
+
+        if (item.bun) {
+          pkgData.exports[path].bun = `./src/${item.name}/index.bun.ts`;
         }
 
         pkgData.exports[path].import = `./src/${item.name}/index.ts`;
@@ -129,6 +134,18 @@ export class AlephaPackageBuilderCli {
             outDir: dest,
             platform: "browser",
             sourcemap: true,
+            dts: false,
+            external,
+          });
+        }
+
+        if (item.bun) {
+          entries.push({
+            entry: join(src, "index.bun.ts"),
+            outDir: dest,
+            platform: "node",
+            sourcemap: true,
+            fixedExtension: false,
             dts: false,
             external,
           });
@@ -288,13 +305,14 @@ export async function analyzeModules(
           // This is a module
           const dependencies = new Set<string>();
 
-          // Check for browser/node entry points
+          // Check for browser/node/bun entry points
           const hasBrowser = await fileExists(
             join(modulePath, "index.browser.ts"),
           );
           const hasNative = await fileExists(
             join(modulePath, "index.native.ts"),
           );
+          const hasBun = await fileExists(join(modulePath, "index.bun.ts"));
           const hasNode = await fileExists(join(modulePath, "index.node.ts"));
 
           // Get all .ts/.tsx files in this module
@@ -329,6 +347,7 @@ export async function analyzeModules(
 
           if (hasNative) module.native = true;
           if (hasBrowser) module.browser = true;
+          if (hasBun) module.bun = true;
           if (hasNode) module.node = true;
 
           modules.push(module);

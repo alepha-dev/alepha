@@ -45,6 +45,13 @@ export async function generateCloudflare(
     main: "./main.cloudflare.js",
     compatibility_flags: ["nodejs_compat"],
     compatibility_date: "2025-11-17",
+    no_bundle: true,
+    rules: [
+      {
+        type: "ESModule",
+        globs: ["index.js", "server/*.js"],
+      },
+    ],
     ...opts.config,
   };
 
