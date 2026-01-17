@@ -220,7 +220,43 @@ const MyApiKeys = (props: MyApiKeysProps) => {
           </Group>
           <Card withBorder p="sm" bg={theme.colors.panel}>
             <Text size="xs" fw={500} mb="xs">
-              MCP Configuration
+              Claude Code
+            </Text>
+            <Group gap="xs" wrap="nowrap">
+              <Code
+                block
+                style={{
+                  flex: 1,
+                  wordBreak: "break-all",
+                  fontSize: "11px",
+                }}
+              >
+                {`claude mcp add roadmap ${typeof window !== "undefined" ? window.location.origin : ""}/mcp -t http -H "Authorization: Bearer ${newToken}"`}
+              </Code>
+              <CopyButton
+                value={`claude mcp add roadmap ${typeof window !== "undefined" ? window.location.origin : ""}/mcp -t http -H "Authorization: Bearer ${newToken}"`}
+              >
+                {({ copied, copy }) => (
+                  <Tooltip label={copied ? "Copied!" : "Copy"}>
+                    <ActionIcon
+                      variant="subtle"
+                      color={copied ? "green" : "gray"}
+                      onClick={copy}
+                    >
+                      {copied ? (
+                        <IconCheck size={16} />
+                      ) : (
+                        <IconClipboard size={16} />
+                      )}
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+              </CopyButton>
+            </Group>
+          </Card>
+          <Card withBorder p="sm" bg={theme.colors.panel}>
+            <Text size="xs" fw={500} mb="xs">
+              MCP Configuration (JSON)
             </Text>
             <Code block style={{ wordBreak: "break-all" }}>
               {JSON.stringify(
