@@ -10,7 +10,10 @@
     "deploy": "alepha deploy --build --mode=production",
     "typecheck": "alepha typecheck",
     "studio": "alepha db studio",
-    "start": "LOG_FORMAT=pretty node dist"
+    "start": "SERVER_PORT=3002 LOG_FORMAT=pretty LOG_LEVEL=trace node dist",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "@alepha/bucket-vercel": "^0.14.4",
@@ -42,6 +45,7 @@
     "sanitize-html": "^2.17.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.50.1",
     "@types/node": "^25.0.9",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
