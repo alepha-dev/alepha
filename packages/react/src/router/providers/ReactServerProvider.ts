@@ -334,9 +334,9 @@ export class ReactServerProvider {
           const result = await this.renderPage(route, state);
 
           if (result.redirect) {
-            // Note: redirect happens after early head is sent, handled by stream
-            reply.redirect(result.redirect);
-            return null;
+            // Return redirect URL - template provider will inject meta refresh
+            // since HTTP headers have already been sent
+            return { redirect: result.redirect };
           }
 
           return { state, reactStream: result.reactStream! };

@@ -411,7 +411,7 @@ export class ReactServerTemplateProvider {
     }
 
     for (const [key, value] of Object.entries(store)) {
-      if (key.charAt(0) !== "_" && key !== "alepha.react.router.state") {
+      if (key.charAt(0) !== "_" && key !== "alepha.react.router.state" && key !== "registry") {
         hydrationData[key] = value;
       }
     }
@@ -618,17 +618,20 @@ export class ReactServerTemplateProvider {
    */
   public createEarlyHtmlStream(
     globalHead: SimpleHead,
-    asyncWork: () => Promise<{
-      state: ReactRouterState;
-      reactStream: ReadableStream<Uint8Array>;
-    } | null>,
+    asyncWork: () => Promise<
+      | {
+          state: ReactRouterState;
+          reactStream: ReadableStream<Uint8Array>;
+        }
+      | { redirect: string }
+      | null
+    >,
     options: {
       hydration?: boolean;
       onError?: (error: unknown) => void;
-      onRedirect?: (url: string) => void;
     } = {},
   ): ReadableStream<Uint8Array> {
-    const { hydration = true, onError, onRedirect } = options;
+    const { hydration = true, onError } = options;
     const slots = this.getSlots();
     const encoder = this.encoder;
 
@@ -658,9 +661,19 @@ export class ReactServerTemplateProvider {
           // === ASYNC WORK (createLayers, etc.) ===
           const result = await asyncWork();
 
-          // Handle redirect - can't undo what we've sent, but caller handles it
-          if (!result) {
-            // Redirect happened - close with minimal valid HTML
+          // Handle redirect - inject meta refresh since headers already sent
+          if (!result || "redirect" in result) {
+            if (result && "redirect" in result) {
+              this.log.debug(
+                "Loader redirect detected after streaming started, using meta refresh",
+                { redirect: result.redirect },
+              );
+              controller.enqueue(
+                encoder.encode(
+                  `<meta http-equiv="refresh" content="0; url=${this.escapeHtml(result.redirect)}">\n`,
+                ),
+              );
+            }
             controller.enqueue(slots.headClose);
             controller.enqueue(encoder.encode("<body></body></html>"));
             controller.close();
