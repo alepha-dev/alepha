@@ -136,35 +136,61 @@ export class PackagesCommand {
 
   /**
    * Reads a provider file and extracts the JSDoc comment block
-   * for the main exported provider function.
+   * for the main exported provider class.
+   *
+   * Prefers the class whose name matches the filename (e.g., ReactServerProvider
+   * from ReactServerProvider.ts), otherwise returns the first non-internal class.
    */
   async extractProviderInfo(filePath: string): Promise<PrimitiveInfo | null> {
     this.log.debug(`Extracting provider info from: ${filePath}`);
     try {
       const content = await fs.readFile(filePath, "utf-8");
-      const regex = /\/\*\*\s*\n([\s\S]*?)\s*\*\/\s*\nexport class (\w+)/;
+      // Use negative lookahead (?!\/\*\*) to prevent matching across JSDoc blocks.
+      // This ensures we only capture the JSDoc immediately preceding export class.
+      const regex =
+        /\/\*\*\s*\n((?:(?!\/\*\*)[\s\S])*?)\s*\*\/\s+export class (\w+)/g;
 
-      const matches = Array.from(
-        content.matchAll(new RegExp(regex.source, "g")),
-      );
+      const matches = Array.from(content.matchAll(regex));
       this.log.trace(`Found ${matches.length} potential providers`);
 
+      // Extract filename without extension to match against class names
+      const fileName =
+        filePath
+          .split("/")
+          .pop()
+          ?.replace(/\.tsx?$/, "") ?? "";
+
+      // Collect all valid (non-internal) providers
+      const providers: PrimitiveInfo[] = [];
       for (const match of matches) {
         if (match[1].includes("@internal")) {
           this.log.trace(`Skipping @internal provider: ${match[2]}`);
           continue;
         }
 
-        const info = {
+        providers.push({
           name: match[2],
           description: this.cleanJsDoc(match[1]),
-        };
-        this.log.debug(`Extracted provider: ${info.name}`);
-        return info;
+        });
       }
 
-      this.log.trace("No providers found");
-      return null;
+      if (providers.length === 0) {
+        this.log.trace("No providers found");
+        return null;
+      }
+
+      // Prefer provider whose name matches the filename
+      const matchingProvider = providers.find((p) => p.name === fileName);
+      if (matchingProvider) {
+        this.log.debug(
+          `Extracted provider (matched filename): ${matchingProvider.name}`,
+        );
+        return matchingProvider;
+      }
+
+      // Fall back to first provider
+      this.log.debug(`Extracted provider (first found): ${providers[0].name}`);
+      return providers[0];
     } catch (error) {
       this.log.error(`Error parsing provider file ${filePath}:`, error);
       return null;

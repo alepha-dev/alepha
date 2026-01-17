@@ -328,51 +328,6 @@ For more details, see the [Providers documentation](/docs/concepts-providers).
 
 #### CodecManager
 
-The output encoding format:
-  - 'string': Returns JSON string
-  - 'binary': Returns Uint8Array (for protobuf, msgpack, etc.)
-  
-  @default "string"
-  /
-  as?: T;
-
-  /**
-  The encoder to use (e.g., 'json', 'protobuf', 'msgpack')
-  
-  @default "json"
-  /
-  encoder?: string;
-
-  /**
-  Validation options to apply before encoding.
-  /
-  validation?: ValidateOptions | false;
-}
-
-export type EncodeResult<
-  T extends TSchema,
-  E extends Encoding,
-> = E extends "string"
-  ? string
-  : E extends "binary"
-    ? Uint8Array
-    : StaticEncode<T>;
-
-export interface DecodeOptions {
-  /**
-  The encoder to use (e.g., 'json', 'protobuf', 'msgpack')
-  
-  @default "json"
-  /
-  encoder?: string;
-
-  /**
-  Validation options to apply before encoding.
-  /
-  validation?: ValidateOptions | false;
-}
-
-/**
 CodecManager manages multiple codec formats and provides a unified interface
 for encoding and decoding data with different formats.
 

@@ -1,117 +1,102 @@
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
+import { Alepha } from "alepha";
+import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/file";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { SmsError } from "../errors/SmsError.ts";
-import { LocalSmsProvider } from "../providers/LocalSmsProvider.ts";
+import { LocalSmsProvider } from "./LocalSmsProvider.ts";
 
-// Mock fs and path modules
-vi.mock("node:fs/promises");
-vi.mock("node:path");
-
-// Mock logger
-vi.mock("alepha/logger", () => ({
-  $logger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    error: vi.fn(),
-  }),
-}));
-
-const mockedFs = vi.mocked(fs);
-const mockedPath = vi.mocked(path);
+// ---------------------------------------------------------------------------------------------------------------------
 
 describe("LocalSmsProvider", () => {
-  let provider: LocalSmsProvider;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    // Setup default path.join mock
-    mockedPath.join.mockImplementation((...args) => args.join("/"));
-  });
-
   describe("send", () => {
-    beforeEach(() => {
-      provider = new LocalSmsProvider({ directory: "test-sms" });
-    });
-
     test("should successfully send SMS to local file", async () => {
-      mockedFs.mkdir.mockResolvedValue(undefined);
-      mockedFs.writeFile.mockResolvedValue();
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
 
-      const to = "+1234567890";
-      const message = "Test message";
+      const provider = alepha.inject(LocalSmsProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
 
       await provider.send({
-        to,
-        message,
+        to: "+1234567890",
+        message: "Test message",
       });
 
-      expect(mockedFs.mkdir).toHaveBeenCalledWith("test-sms", {
-        recursive: true,
-      });
-      expect(mockedFs.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining("+1234567890"),
-        expect.stringContaining(message),
-        "utf8",
-      );
+      expect(memoryFs.mkdirCalls).toHaveLength(1);
+      expect(memoryFs.mkdirCalls[0].path).toBe("node_modules/.alepha/sms");
+      expect(memoryFs.mkdirCalls[0].options).toEqual({ recursive: true });
+
+      expect(memoryFs.writeFileCalls).toHaveLength(1);
+      expect(memoryFs.writeFileCalls[0].path).toContain("+1234567890");
+      expect(memoryFs.writeFileCalls[0].data).toContain("Test message");
     });
 
     test("should create proper filename with sanitized phone and timestamp", async () => {
-      mockedFs.mkdir.mockResolvedValue(undefined);
-      mockedFs.writeFile.mockResolvedValue();
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
 
-      const to = "+1 (234) 567-8900";
-      const message = "Test message";
+      const provider = alepha.inject(LocalSmsProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
 
       // Mock Date to have predictable timestamp
       const mockDate = new Date("2023-01-01T12:00:00.000Z");
       vi.setSystemTime(mockDate);
 
       await provider.send({
-        to,
-        message,
+        to: "+1 (234) 567-8900",
+        message: "Test message",
       });
 
-      expect(mockedPath.join).toHaveBeenCalledWith(
-        "test-sms",
+      expect(memoryFs.joinCalls).toHaveLength(1);
+      expect(memoryFs.joinCalls[0]).toEqual([
+        "node_modules/.alepha/sms",
         "+1__234__567_8900+2023-01-01T12-00-00-000Z.txt",
-      );
+      ]);
 
       vi.useRealTimers();
     });
 
     test("should sanitize special characters in phone number", async () => {
-      mockedFs.mkdir.mockResolvedValue(undefined);
-      mockedFs.writeFile.mockResolvedValue();
-
-      const to = "+1-234-567-8900 ext. 123";
-      const message = "Test message";
-
-      await provider.send({
-        to,
-        message,
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
       });
 
-      expect(mockedPath.join).toHaveBeenCalledWith(
-        "test-sms",
-        expect.stringMatching(/\+1_234_567_8900______123\+.+\.txt/),
+      const provider = alepha.inject(LocalSmsProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
+
+      await provider.send({
+        to: "+1-234-567-8900 ext. 123",
+        message: "Test message",
+      });
+
+      expect(memoryFs.joinCalls).toHaveLength(1);
+      expect(memoryFs.joinCalls[0][1]).toMatch(
+        /\+1_234_567_8900______123\+.+\.txt/,
       );
     });
 
     test("should create proper text content", async () => {
-      mockedFs.mkdir.mockResolvedValue(undefined);
-      mockedFs.writeFile.mockResolvedValue();
-
-      const to = "+1234567890";
-      const message = "Test message with content";
-
-      await provider.send({
-        to,
-        message,
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
       });
 
-      const writeCall = mockedFs.writeFile.mock.calls[0];
-      const textContent = writeCall[1] as string;
+      const provider = alepha.inject(LocalSmsProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
+
+      await provider.send({
+        to: "+1234567890",
+        message: "Test message with content",
+      });
+
+      const textContent = memoryFs.writeFileCalls[0].data;
 
       expect(textContent).toContain("SMS Message");
       expect(textContent).toContain("+1234567890");
@@ -120,85 +105,145 @@ describe("LocalSmsProvider", () => {
     });
 
     test("should throw SmsError when mkdir fails", async () => {
-      const mkdirError = new Error("Permission denied");
-      mockedFs.mkdir.mockRejectedValue(mkdirError);
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
 
-      const to = "+1234567890";
-      const message = "Test message";
+      const provider = alepha.inject(LocalSmsProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
+
+      memoryFs.mkdirError = new Error("Permission denied");
 
       await expect(
         provider.send({
-          to,
-          message,
+          to: "+1234567890",
+          message: "Test message",
         }),
       ).rejects.toThrow(SmsError);
+
       await expect(
         provider.send({
-          to,
-          message,
+          to: "+1234567890",
+          message: "Test message",
         }),
       ).rejects.toThrow("Failed to save SMS to local file: Permission denied");
     });
 
     test("should throw SmsError when writeFile fails", async () => {
-      mockedFs.mkdir.mockResolvedValue(undefined);
-      const writeError = new Error("Disk full");
-      mockedFs.writeFile.mockRejectedValue(writeError);
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
 
-      const to = "+1234567890";
-      const message = "Test message";
+      const provider = alepha.inject(LocalSmsProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
+
+      memoryFs.writeFileError = new Error("Disk full");
 
       await expect(
         provider.send({
-          to,
-          message,
+          to: "+1234567890",
+          message: "Test message",
         }),
       ).rejects.toThrow(SmsError);
+
       await expect(
         provider.send({
-          to,
-          message,
+          to: "+1234567890",
+          message: "Test message",
         }),
       ).rejects.toThrow("Failed to save SMS to local file: Disk full");
     });
 
     test("should handle non-Error exceptions", async () => {
-      mockedFs.mkdir.mockResolvedValue(undefined);
-      mockedFs.writeFile.mockRejectedValue("String error");
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
 
-      const to = "+1234567890";
-      const message = "Test message";
+      const provider = alepha.inject(LocalSmsProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
+
+      // Simulate non-Error throw
+      memoryFs.writeFileError = "String error" as unknown as Error;
 
       await expect(
         provider.send({
-          to,
-          message,
+          to: "+1234567890",
+          message: "Test message",
         }),
       ).rejects.toThrow(SmsError);
-      await expect(
-        provider.send({
-          to,
-          message,
-        }),
-      ).rejects.toThrow("Failed to save SMS to local file: String error");
+    });
+
+    test("should handle multiple recipients", async () => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+
+      const provider = alepha.inject(LocalSmsProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
+
+      await provider.send({
+        to: ["+1111111111", "+2222222222"],
+        message: "Broadcast message",
+      });
+
+      expect(memoryFs.writeFileCalls).toHaveLength(2);
+      expect(memoryFs.writeFileCalls[0].path).toContain("+1111111111");
+      expect(memoryFs.writeFileCalls[1].path).toContain("+2222222222");
+    });
+
+    test("should use custom directory when provided", async () => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+
+      class CustomLocalSmsProvider extends LocalSmsProvider {
+        constructor() {
+          super({ directory: "custom-sms-dir" });
+        }
+      }
+
+      const provider = alepha.inject(CustomLocalSmsProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
+
+      await provider.send({
+        to: "+1234567890",
+        message: "Test",
+      });
+
+      expect(memoryFs.mkdirCalls[0].path).toBe("custom-sms-dir");
+      expect(memoryFs.joinCalls[0][0]).toBe("custom-sms-dir");
     });
   });
 
   describe("createSmsText", () => {
-    beforeEach(() => {
-      provider = new LocalSmsProvider();
+    let provider: LocalSmsProvider;
+
+    beforeEach(async () => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+      provider = alepha.inject(LocalSmsProvider);
+      await alepha.start();
     });
 
     test("should create proper text structure", () => {
       const mockDate = new Date("2023-01-01T12:00:00.000Z");
       vi.setSystemTime(mockDate);
 
-      const to = "+1234567890";
-      const message = "Test message";
-
       const text = provider.createSmsText({
-        to,
-        message,
+        to: "+1234567890",
+        message: "Test message",
       });
 
       expect(text).toContain("SMS Message");
@@ -210,12 +255,9 @@ describe("LocalSmsProvider", () => {
     });
 
     test("should handle multiline messages", () => {
-      const to = "+1234567890";
-      const message = "Line 1\nLine 2\nLine 3";
-
       const text = provider.createSmsText({
-        to,
-        message,
+        to: "+1234567890",
+        message: "Line 1\nLine 2\nLine 3",
       });
 
       expect(text).toContain("Line 1\nLine 2\nLine 3");

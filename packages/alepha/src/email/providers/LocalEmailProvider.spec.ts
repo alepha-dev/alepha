@@ -1,6 +1,5 @@
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
 import { Alepha } from "alepha";
+import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/file";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { EmailError } from "../errors/EmailError.ts";
 import {
@@ -8,34 +7,21 @@ import {
   localEmailOptions,
 } from "../providers/LocalEmailProvider.ts";
 
-// Mock fs and path modules
-vi.mock("node:fs/promises");
-vi.mock("node:path");
-
-const mockedFs = vi.mocked(fs);
-const mockedPath = vi.mocked(path);
+// ---------------------------------------------------------------------------------------------------------------------
 
 const DEFAULT_DIRECTORY = localEmailOptions.options.default.directory;
 
 describe("LocalEmailProvider", () => {
-  let alepha: Alepha;
-  let provider: LocalEmailProvider;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    // Setup default path.join mock
-    mockedPath.join.mockImplementation((...args) => args.join("/"));
-  });
-
   describe("send", () => {
-    beforeEach(() => {
-      alepha = Alepha.create();
-      provider = alepha.inject(LocalEmailProvider);
-    });
-
     test("should successfully send email to local file", async () => {
-      mockedFs.mkdir.mockResolvedValue(undefined);
-      mockedFs.writeFile.mockResolvedValue();
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+
+      const provider = alepha.inject(LocalEmailProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
 
       const to = "test@example.com";
       const subject = "Test Subject";
@@ -47,16 +33,20 @@ describe("LocalEmailProvider", () => {
         body,
       });
 
-      expect(mockedFs.writeFile).toHaveBeenCalledWith(
-        expect.stringContaining("test@example.com"),
-        expect.stringContaining(subject),
-        "utf8",
-      );
+      expect(memoryFs.writeFileCalls).toHaveLength(1);
+      expect(memoryFs.writeFileCalls[0].path).toContain("test@example.com");
+      expect(memoryFs.writeFileCalls[0].data).toContain(subject);
     });
 
     test("should create proper filename with sanitized email and timestamp", async () => {
-      mockedFs.mkdir.mockResolvedValue(undefined);
-      mockedFs.writeFile.mockResolvedValue();
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+
+      const provider = alepha.inject(LocalEmailProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
 
       const to = "user+test@example.com";
       const subject = "Test Subject";
@@ -72,17 +62,24 @@ describe("LocalEmailProvider", () => {
         body,
       });
 
-      expect(mockedPath.join).toHaveBeenCalledWith(
+      expect(memoryFs.joinCalls).toHaveLength(1);
+      expect(memoryFs.joinCalls[0]).toEqual([
         DEFAULT_DIRECTORY,
         "user_test@example.com+2023-01-01T12-00-00-000Z.html",
-      );
+      ]);
 
       vi.useRealTimers();
     });
 
     test("should sanitize special characters in email address", async () => {
-      mockedFs.mkdir.mockResolvedValue(undefined);
-      mockedFs.writeFile.mockResolvedValue();
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+
+      const provider = alepha.inject(LocalEmailProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
 
       const to = "user<script>@example.com";
       const subject = "Test Subject";
@@ -94,15 +91,21 @@ describe("LocalEmailProvider", () => {
         body,
       });
 
-      expect(mockedPath.join).toHaveBeenCalledWith(
-        DEFAULT_DIRECTORY,
-        expect.stringMatching(/user_script_@example\.com\+.+\.html/),
+      expect(memoryFs.joinCalls).toHaveLength(1);
+      expect(memoryFs.joinCalls[0][1]).toMatch(
+        /user_script_@example\.com\+.+\.html/,
       );
     });
 
     test("should create proper HTML content", async () => {
-      mockedFs.mkdir.mockResolvedValue(undefined);
-      mockedFs.writeFile.mockResolvedValue();
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+
+      const provider = alepha.inject(LocalEmailProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
 
       const to = "test@example.com";
       const subject = "Test <Subject>";
@@ -114,8 +117,7 @@ describe("LocalEmailProvider", () => {
         body,
       });
 
-      const writeCall = mockedFs.writeFile.mock.calls[0];
-      const htmlContent = writeCall[1] as string;
+      const htmlContent = memoryFs.writeFileCalls[0].data;
 
       expect(htmlContent).toContain("<!DOCTYPE html>");
       expect(htmlContent).toContain("Test &lt;Subject&gt;"); // escaped subject
@@ -127,9 +129,16 @@ describe("LocalEmailProvider", () => {
     });
 
     test("should throw EmailError when writeFile fails", async () => {
-      mockedFs.mkdir.mockResolvedValue(undefined);
-      const writeError = new Error("Disk full");
-      mockedFs.writeFile.mockRejectedValue(writeError);
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+
+      const provider = alepha.inject(LocalEmailProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
+
+      memoryFs.writeFileError = new Error("Disk full");
 
       const to = "test@example.com";
       const subject = "Test Subject";
@@ -142,6 +151,7 @@ describe("LocalEmailProvider", () => {
           body,
         }),
       ).rejects.toThrow(EmailError);
+
       await expect(
         provider.send({
           to,
@@ -152,8 +162,16 @@ describe("LocalEmailProvider", () => {
     });
 
     test("should handle non-Error exceptions", async () => {
-      mockedFs.mkdir.mockResolvedValue(undefined);
-      mockedFs.writeFile.mockRejectedValue("String error");
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+
+      const provider = alepha.inject(LocalEmailProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
+
+      memoryFs.writeFileError = "String error" as unknown as Error;
 
       const to = "test@example.com";
       const subject = "Test Subject";
@@ -166,6 +184,7 @@ describe("LocalEmailProvider", () => {
           body,
         }),
       ).rejects.toThrow(EmailError);
+
       await expect(
         provider.send({
           to,
@@ -174,12 +193,39 @@ describe("LocalEmailProvider", () => {
         }),
       ).rejects.toThrow("Failed to save email to local file: String error");
     });
+
+    test("should handle multiple recipients", async () => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+
+      const provider = alepha.inject(LocalEmailProvider);
+      const memoryFs = alepha.inject(MemoryFileSystemProvider);
+      await alepha.start();
+
+      await provider.send({
+        to: ["user1@example.com", "user2@example.com"],
+        subject: "Broadcast",
+        body: "<p>Hello all</p>",
+      });
+
+      expect(memoryFs.writeFileCalls).toHaveLength(2);
+      expect(memoryFs.writeFileCalls[0].path).toContain("user1@example.com");
+      expect(memoryFs.writeFileCalls[1].path).toContain("user2@example.com");
+    });
   });
 
   describe("createEmailHtml", () => {
-    beforeEach(() => {
-      alepha = Alepha.create();
+    let provider: LocalEmailProvider;
+
+    beforeEach(async () => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
       provider = alepha.inject(LocalEmailProvider);
+      await alepha.start();
     });
 
     test("should create proper HTML structure", () => {
@@ -261,9 +307,15 @@ describe("LocalEmailProvider", () => {
   });
 
   describe("escapeHtml", () => {
-    beforeEach(() => {
-      alepha = Alepha.create();
+    let provider: LocalEmailProvider;
+
+    beforeEach(async () => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
       provider = alepha.inject(LocalEmailProvider);
+      await alepha.start();
     });
 
     test("should escape ampersands", () => {

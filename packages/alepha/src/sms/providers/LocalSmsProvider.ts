@@ -1,5 +1,5 @@
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
+import { $inject } from "alepha";
+import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { SmsError } from "../errors/SmsError.ts";
 import type { SmsProvider, SmsSendOptions } from "./SmsProvider.ts";
@@ -7,17 +7,18 @@ import type { SmsProvider, SmsSendOptions } from "./SmsProvider.ts";
 export interface LocalSmsProviderOptions {
   /**
    * Directory to save SMS files.
-   * @default "node_modules/.sms" (relative to project root)
+   * @default "node_modules/.alepha/sms" (relative to project root)
    */
   directory?: string;
 }
 
 export class LocalSmsProvider implements SmsProvider {
   protected readonly log = $logger();
+  protected readonly fs = $inject(FileSystemProvider);
   protected readonly directory: string;
 
   constructor(options: LocalSmsProviderOptions = {}) {
-    this.directory = options.directory ?? "node_modules/.sms";
+    this.directory = options.directory ?? "node_modules/.alepha/sms";
   }
 
   public async send(options: SmsSendOptions): Promise<void> {
@@ -31,14 +32,14 @@ export class LocalSmsProvider implements SmsProvider {
 
     try {
       // Ensure directory exists
-      await fs.mkdir(this.directory, { recursive: true });
+      await this.fs.mkdir(this.directory, { recursive: true });
 
       // Create filename: phone+date
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       for (const recipient of Array.isArray(to) ? to : [to]) {
         const sanitizedPhone = recipient.replace(/[^0-9+]/g, "_");
         const filename = `${sanitizedPhone}+${timestamp}.txt`;
-        const filepath = path.join(this.directory, filename);
+        const filepath = this.fs.join(this.directory, filename);
 
         // Create text content
         const textContent = this.createSmsText({
@@ -47,7 +48,7 @@ export class LocalSmsProvider implements SmsProvider {
         });
 
         // Write to file
-        await fs.writeFile(filepath, textContent, "utf8");
+        await this.fs.writeFile(filepath, textContent);
 
         this.log.info("SMS saved to local file", { filepath, to });
       }

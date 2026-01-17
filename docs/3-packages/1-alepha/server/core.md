@@ -128,8 +128,9 @@ ServerProvider supports both Node.js HTTP requests and Web (Fetch API) requests.
 
 #### ServerRouterProvider
 
-Main router for all routes on the server side.
+Main router for all routes server side.
 
+Reminder:
 - $route => generic route
 - $action => action route (for API calls)
-- $page => React route (for SSR)
+- $page => React route (for React SSR)

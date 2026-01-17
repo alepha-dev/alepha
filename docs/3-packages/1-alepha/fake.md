@@ -27,18 +27,6 @@ For more details, see the [Providers documentation](/docs/concepts-providers).
 
 #### FakeProvider
 
-Faker locale to use for generating fake data.
-  @default "en"
-  /
-  locale?: string;
-
-  /**
-  Seed for deterministic fake data generation.
-  /
-  seed?: number;
-}
-
-/**
 Generate fake data from TypeBox schemas using faker.js.
 
 ```ts

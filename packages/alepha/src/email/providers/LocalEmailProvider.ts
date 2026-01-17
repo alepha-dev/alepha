@@ -1,6 +1,5 @@
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
-import { $atom, $hook, $use, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $use, type Static, t } from "alepha";
+import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { EmailError } from "../errors/EmailError.ts";
 import type { EmailProvider, EmailSendOptions } from "./EmailProvider.ts";
@@ -34,6 +33,7 @@ declare module "alepha" {
 
 export class LocalEmailProvider implements EmailProvider {
   protected readonly log = $logger();
+  protected readonly fs = $inject(FileSystemProvider);
   protected readonly options = $use(localEmailOptions);
 
   protected get directory(): string {
@@ -44,7 +44,7 @@ export class LocalEmailProvider implements EmailProvider {
     on: "start",
     handler: async () => {
       try {
-        await fs.mkdir(this.directory, { recursive: true });
+        await this.fs.mkdir(this.directory, { recursive: true });
         this.log.info("Email directory OK", {
           directory: this.directory,
         });
@@ -74,7 +74,7 @@ export class LocalEmailProvider implements EmailProvider {
       for (const recipient of Array.isArray(to) ? to : [to]) {
         const sanitizedEmail = recipient.replace(/[^a-zA-Z0-9@.-]/g, "_");
         const filename = `${sanitizedEmail}+${timestamp}.html`;
-        const filepath = path.join(this.directory, filename);
+        const filepath = this.fs.join(this.directory, filename);
 
         // Create HTML content
         const htmlContent = this.createEmailHtml({
@@ -84,7 +84,7 @@ export class LocalEmailProvider implements EmailProvider {
         });
 
         // Write to file
-        await fs.writeFile(filepath, htmlContent, "utf8");
+        await this.fs.writeFile(filepath, htmlContent);
 
         this.log.info("Email saved to local file", { filepath, to, subject });
       }
