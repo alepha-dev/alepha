@@ -13,6 +13,7 @@ export class AppSecurityProvider {
       usernameRequired: true,
       resetPasswordAllowed: true,
       verifyEmailRequired: true,
+      usernameRegExp: "^[a-zA-Z0-9_@.]{3,30}$",
     },
     identities: {
       github: true,

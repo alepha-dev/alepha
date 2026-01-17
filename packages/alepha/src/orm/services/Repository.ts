@@ -11,6 +11,7 @@ import {
   t,
 } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 import { asc, desc, isSQLWrapper, type SQL } from "drizzle-orm";
 import type {
   LockConfig,
@@ -62,6 +63,7 @@ export abstract class Repository<T extends TObject> {
   public readonly entity: EntityPrimitive<T>;
   public readonly provider: DatabaseProvider;
 
+  protected readonly log = $logger();
   protected readonly relationManager = $inject(PgRelationManager);
   protected readonly queryManager = $inject(QueryManager);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
@@ -200,6 +202,12 @@ export abstract class Repository<T extends TObject> {
     ) => Promise<T>,
     config?: PgTransactionConfig,
   ): Promise<T> {
+    if (this.provider.driver === "pglite") {
+      this.log.warn("Transactions are not supported with pglite driver");
+      return await transaction(null as any);
+    }
+
+    this.log.debug(`Starting transaction on table ${this.tableName}`);
     return await this.db.transaction(transaction, config);
   }
 

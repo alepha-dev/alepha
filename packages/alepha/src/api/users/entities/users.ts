@@ -17,7 +17,7 @@ export const users = $entity({
       t.shortText({
         minLength: 3,
         maxLength: 50,
-        pattern: "^[a-zA-Z0-9._-]+$",
+        // pattern is handled at the realm settings level
       }),
     ),
 

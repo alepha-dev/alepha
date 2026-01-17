@@ -70,6 +70,25 @@ export class SessionService {
       where.realm = name;
 
       if (settings.usernameEnabled !== false && isUsername) {
+        // validate username format if regex is provided
+        if (settings.usernameRegExp) {
+          const regex = new RegExp(settings.usernameRegExp);
+          if (!regex.test(username)) {
+            this.log.warn("Username does not match required format", {
+              provider,
+              username,
+              realm: name,
+            });
+
+            await this.auditService.recordAuth("login_failed", {
+              userRealm: name,
+              description: "Username does not match required format",
+              metadata: { provider, username },
+            });
+
+            throw new InvalidCredentialsError();
+          }
+        }
         where.username = username;
       } else if (settings.emailEnabled !== false && isEmail) {
         where.email = username;

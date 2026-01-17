@@ -98,6 +98,7 @@ const buildRealmConfig = (props: {
       emailRequired: props.emailRequired,
       usernameEnabled: props.usernameEnabled,
       usernameRequired: props.usernameRequired,
+      usernameRegExp: "^[a-zA-Z0-9_]{3,30}$",
       phoneEnabled: props.phoneEnabled,
       phoneRequired: props.phoneRequired,
       verifyEmailRequired: false,

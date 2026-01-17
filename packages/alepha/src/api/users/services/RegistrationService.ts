@@ -70,7 +70,6 @@ export class RegistrationService {
     });
 
     const realmSettings = this.realmProvider.getRealm(userRealmName).settings;
-    const userRepository = this.realmProvider.userRepository(userRealmName);
 
     // Check if registration is allowed
     if (realmSettings?.registrationAllowed === false) {
@@ -84,6 +83,22 @@ export class RegistrationService {
         userRealmName,
       });
       throw new BadRequestError("Username is required");
+    }
+
+    if (body.username) {
+      const usernameRegExp = realmSettings?.usernameRegExp;
+      if (usernameRegExp) {
+        const regex = new RegExp(usernameRegExp);
+        if (!regex.test(body.username)) {
+          this.log.debug("Registration rejected: username regex mismatch", {
+            userRealmName,
+            username: body.username,
+          });
+          throw new BadRequestError(
+            "Username does not meet the required format",
+          );
+        }
+      }
     }
 
     if (realmSettings?.emailRequired !== false && !body.email) {
@@ -340,26 +355,23 @@ export class RegistrationService {
    */
   protected async sendEmailVerification(email: string): Promise<void> {
     this.log.debug("Sending email verification code", { email });
-    try {
-      const verification =
-        await this.verificationController.requestVerificationCode({
-          params: { type: "code" },
-          body: { target: email },
-        });
 
-      await this.userNotifications.emailVerification.push({
-        contact: email,
-        variables: {
-          email,
-          code: verification.token,
-          expiresInMinutes: Math.floor(verification.codeExpiration / 60),
-        },
+    const verification =
+      await this.verificationController.requestVerificationCode({
+        params: { type: "code" },
+        body: { target: email },
       });
-      this.log.debug("Email verification code sent", { email });
-    } catch (error) {
-      // Silent fail - verification service may have rate limiting
-      this.log.warn("Failed to send email verification code", error);
-    }
+
+    await this.userNotifications.emailVerification.push({
+      contact: email,
+      variables: {
+        email,
+        code: verification.token,
+        expiresInMinutes: Math.floor(verification.codeExpiration / 60),
+      },
+    });
+
+    this.log.debug("Email verification code sent", { email });
   }
 
   /**

@@ -77,7 +77,12 @@ const Register = (props: RegisterProps) => {
 
   const registerSchema = useMemo(() => {
     const registerSchema = t.object({
-      username: t.optional(t.text()),
+      username: t.optional(
+        t.text({
+          trim: true,
+          pattern: settings.usernameRegExp,
+        }),
+      ),
       email: t.optional(t.email()),
       phoneNumber: t.optional(t.e164()),
       password: t.string({ minLength: 8 }),

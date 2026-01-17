@@ -37,6 +37,10 @@ export const realmAuthSettingsAtom = $atom({
     usernameRequired: t.boolean({
       description: "Require username for user accounts",
     }),
+    usernameRegExp: t.string({
+      description:
+        "Regular expression that usernames must match (if username is enabled)",
+    }),
     phoneEnabled: t.boolean({
       description: "Enable phone number as a login/registration credential",
     }),
@@ -85,6 +89,7 @@ export const realmAuthSettingsAtom = $atom({
     emailRequired: true,
     usernameEnabled: false,
     usernameRequired: false,
+    usernameRegExp: "^[a-zA-Z0-9_]{3,30}$",
     phoneEnabled: false,
     phoneRequired: false,
     verifyEmailRequired: false,
