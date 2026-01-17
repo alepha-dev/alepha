@@ -45,12 +45,9 @@ export interface BuildServerOptions {
   silent?: boolean;
 
   /**
-   * If true, resolve package exports using the "bun" condition.
-   * This allows using Bun-optimized entry points (index.bun.ts) during build.
-   *
-   * @default false
+   * Add more entry point conditions for SSR module resolution (e.g., "bun").
    */
-  bun?: boolean;
+  conditions?: string[];
 }
 
 export interface BuildServerResult {
@@ -92,8 +89,8 @@ export async function buildServer(
   const logger = opts.silent ? createBufferedLogger() : undefined;
 
   const conditions = ["node", "import", "module", "default"];
-  if (opts.bun) {
-    conditions.unshift("bun");
+  if (opts.conditions) {
+    conditions.unshift(...opts.conditions);
   }
 
   const viteBuildServerConfig: UserConfig = {
@@ -114,7 +111,7 @@ export async function buildServer(
       minify: true,
       chunkSizeWarningLimit: 10000,
       rollupOptions: {
-        external: ["bun"],
+        external: [/^bun(:|$)/, /^cloudflare:/],
         output: {
           entryFileNames: "[hash].js",
           chunkFileNames: "[hash].js",

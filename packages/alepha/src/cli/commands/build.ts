@@ -123,10 +123,13 @@ export class BuildCommand {
             // No client build
           }
 
-          // workaround for now, force bun when building for cloudflare (even it's not bun runtime)
-          // but we avoid most of Node.js deps
+          const conditions: string[] = [];
+          if (flags.bun) {
+            conditions.push("bun");
+          }
+
           if (options.cloudflare) {
-            flags.bun = true;
+            conditions.push("workerd");
           }
 
           await buildServer({
@@ -135,7 +138,7 @@ export class BuildCommand {
             distDir,
             clientDir: clientBuilt ? clientDir : undefined,
             stats,
-            bun: flags.bun,
+            conditions,
           });
 
           // Server will handle index.html if both client & server are built
