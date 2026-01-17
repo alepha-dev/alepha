@@ -5,14 +5,14 @@ import { $action } from "alepha/server";
 import { characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
 import { tasks } from "../entities/tasks.ts";
-import { Security } from "../providers/Security.ts";
+import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 
 export class ProjectStatsController {
   tasks = $repository(tasks);
   characters = $repository(characters);
   projects = $repository(projects);
   database = $inject(DatabaseProvider);
-  security = $inject(Security);
+  security = $inject(AppSecurityProvider);
   fs = $inject(FileSystemProvider);
 
   getProjectStats = $action({
