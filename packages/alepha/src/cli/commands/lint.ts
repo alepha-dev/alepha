@@ -17,7 +17,7 @@ export class LintCommand {
       await this.pm.ensureDependency(root, "@biomejs/biome", {
         exec: (cmd, opts) => this.utils.exec(cmd, opts),
       });
-      await this.utils.exec("biome check --formatter-enabled=false --fix");
+      await this.utils.exec("biome check --fix");
     },
   });
 }

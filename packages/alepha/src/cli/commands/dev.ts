@@ -1,4 +1,4 @@
-import { $inject, Alepha, t } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
@@ -24,8 +24,7 @@ export class DevCommand {
   public readonly dev = $command({
     name: "dev",
     description: "Run the project in development mode",
-    args: t.optional(t.text({ title: "path", description: "Filepath to run" })),
-    handler: async ({ args, root }) => {
+    handler: async ({ root }) => {
       const expo = await this.pm.hasExpo(root);
 
       await this.scaffolder.ensureConfig(root, {
@@ -37,7 +36,7 @@ export class DevCommand {
         return;
       }
 
-      const entry = await boot.getServerEntry(root, args);
+      const entry = await boot.getServerEntry(root);
       this.log.trace("Entry file found", { entry });
 
       const isFullstack = await this.isFullstackProject(root);

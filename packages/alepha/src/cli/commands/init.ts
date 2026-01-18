@@ -38,22 +38,28 @@ export class InitCommand {
       npm: t.optional(t.boolean({ description: "Use npm package manager" })),
       bun: t.optional(t.boolean({ description: "Use Bun package manager" })),
       // choose which dependencies to add
-      web: t.optional(
+      react: t.optional(
         t.boolean({
           aliases: ["r"],
           description: "Include Alepha React dependencies",
         }),
       ),
-      admin: t.optional(
+      ui: t.optional(
         t.boolean({ description: "Include Alepha UI dependencies" }),
       ),
       test: t.optional(
         t.boolean({ description: "Include Vitest and create test directory" }),
       ),
+      force: t.optional(
+        t.boolean({
+          aliases: ["f"],
+          description: "Override existing files",
+        }),
+      ),
     }),
     handler: async ({ run, flags, root, args }) => {
-      if (flags.admin) {
-        flags.web = true;
+      if (flags.react) {
+        flags.ui = true;
       }
 
       if (args) {
@@ -63,23 +69,26 @@ export class InitCommand {
 
       const isExpo = await this.pm.hasExpo(root);
 
+      const force = !!flags.force;
+
       await run({
         name: "ensuring configuration files",
         handler: async () => {
           await this.scaffolder.ensureConfig(root, {
+            force,
             tsconfigJson: true,
             packageJson: flags,
             biomeJson: true,
             editorconfig: true,
-            indexHtml: !!flags.web && !isExpo,
+            indexHtml: !!flags.react && !isExpo,
             claudeMd: flags.agent
-              ? { react: !!flags.web, ui: !!flags.admin }
+              ? { react: !!flags.react, ui: !!flags.ui }
               : false,
           });
 
           // Create API project structure if not React
-          if (!flags.web) {
-            await this.scaffolder.ensureApiProject(root);
+          if (!flags.react) {
+            await this.scaffolder.ensureApiProject(root, { force });
           }
         },
       });

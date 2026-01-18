@@ -30,9 +30,6 @@ export class BuildCommand {
     name: "build",
     mode: "production",
     description: "Build the project for production",
-    args: t.optional(
-      t.text({ title: "path", description: "Filepath to build" }),
-    ),
     flags: t.object({
       stats: t.optional(
         t.boolean({
@@ -65,7 +62,7 @@ export class BuildCommand {
         }),
       ),
     }),
-    handler: async ({ flags, args, run, root }) => {
+    handler: async ({ flags, run, root }) => {
       // Tell viteAlephaBuild plugin to skip - CLI handles all tasks
       process.env.ALEPHA_BUILD_MODE = "cli";
       process.env.NODE_ENV = "production";
@@ -79,7 +76,7 @@ export class BuildCommand {
         tsconfigJson: true,
       });
 
-      const entry = await boot.getServerEntry(root, args);
+      const entry = await boot.getServerEntry(root);
       this.log.trace("Entry file found", { entry });
 
       const distDir = "dist";

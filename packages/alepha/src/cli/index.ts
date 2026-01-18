@@ -6,7 +6,6 @@ export * from "./commands/clean.ts";
 export * from "./commands/db.ts";
 export * from "./commands/deploy.ts";
 export * from "./commands/dev.ts";
-export * from "./commands/format.ts";
 export * from "./commands/gen/changelog.ts";
 export * from "./commands/gen/openapi.ts";
 export * from "./commands/init.ts";

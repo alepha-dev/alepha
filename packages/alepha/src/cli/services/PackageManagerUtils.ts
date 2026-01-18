@@ -261,12 +261,12 @@ export class PackageManagerUtils {
       verify: "alepha verify",
     };
 
-    if (modes.admin) {
+    if (modes.ui) {
       dependencies["@alepha/ui"] = `^${version}`;
-      modes.web = true;
+      modes.react = true;
     }
 
-    if (modes.web) {
+    if (modes.react) {
       dependencies["@alepha/react"] = `^${version}`;
       dependencies.react = "^19.2.0";
       dependencies["react-dom"] = "^19.2.0";
@@ -295,7 +295,7 @@ export class PackageManagerUtils {
 }
 
 export interface DependencyModes {
-  web?: boolean;
-  admin?: boolean;
+  react?: boolean;
+  ui?: boolean;
   expo?: boolean;
 }

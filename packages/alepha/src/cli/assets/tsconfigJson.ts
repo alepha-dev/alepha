@@ -1,4 +1,4 @@
-export const tsconfigJson = `
+export const tsconfigJson = () => `
 {
   "extends": "alepha/tsconfig.base"
 }

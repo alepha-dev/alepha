@@ -1,4 +1,4 @@
-export const biomeJson = `
+export const biomeJson = () => `
 {
   "$schema": "https://biomejs.dev/schemas/latest/schema.json",
   "vcs": {

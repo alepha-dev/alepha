@@ -69,7 +69,8 @@ ${projectName}/
 │   │   ├── AppRouter.ts  # Routes with $page
 │   │   └── index.ts      # Web module definition with $module
 │   ├── main.server.ts    # Server entry
-│   └── main.browser.ts   # Browser entry (React only)
+│   ├── main.browser.ts   # Browser entry (React only)
+│   └── main.css          # CSS entry (React only)
 ├── index.html            # (React only)
 ├── package.json
 └── tsconfig.json
@@ -117,6 +118,7 @@ This is an **Alepha** project - a convention-driven TypeScript framework for typ
 - Use \`protected\` instead of \`private\` for class members
 - Import with file extensions: \`import { User } from "./User.ts"\`
 - Use \`t\` from Alepha for schemas (not Zod)
+- Prefer \`t.text()\` over \`t.string()\` for user input (has default max length, auto-trim, supports lowercase option)
 
 ## Project Structure
 ${projectStructure}

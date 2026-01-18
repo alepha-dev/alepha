@@ -10,6 +10,7 @@ import { dummySpecTs } from "../assets/dummySpecTs.ts";
 import { editorconfig } from "../assets/editorconfig.ts";
 import { indexHtml } from "../assets/indexHtml.ts";
 import { mainBrowserTs } from "../assets/mainBrowserTs.ts";
+import { mainCss } from "../assets/mainCss.ts";
 import { mainServerTs } from "../assets/mainServerTs.ts";
 import { tsconfigJson } from "../assets/tsconfigJson.ts";
 import { webAppRouterTs } from "../assets/webAppRouterTs.ts";
@@ -54,6 +55,7 @@ export class ProjectScaffolder {
   public async ensureConfig(
     root: string,
     opts: {
+      force?: boolean;
       packageJson?: boolean | DependencyModes;
       tsconfigJson?: boolean;
       indexHtml?: boolean;
@@ -63,6 +65,7 @@ export class ProjectScaffolder {
     },
   ): Promise<void> {
     const tasks: Promise<void>[] = [];
+    const force = opts.force ?? false;
 
     if (opts.packageJson) {
       tasks.push(
@@ -75,22 +78,24 @@ export class ProjectScaffolder {
       );
     }
     if (opts.tsconfigJson) {
-      tasks.push(this.ensureTsConfig(root));
+      tasks.push(this.ensureTsConfig(root, { force }));
     }
     if (opts.indexHtml) {
-      tasks.push(this.ensureReactProject(root));
+      tasks.push(this.ensureReactProject(root, { force }));
     }
     if (opts.biomeJson) {
-      tasks.push(this.ensureBiomeConfig(root));
+      tasks.push(this.ensureBiomeConfig(root, { force }));
     }
     if (opts.editorconfig) {
-      tasks.push(this.ensureEditorConfig(root));
+      tasks.push(this.ensureEditorConfig(root, { force }));
     }
     if (opts.claudeMd) {
       tasks.push(
         this.ensureClaudeMd(
           root,
-          typeof opts.claudeMd === "boolean" ? {} : opts.claudeMd,
+          typeof opts.claudeMd === "boolean"
+            ? { force }
+            : { ...opts.claudeMd, force },
         ),
       );
     }
@@ -102,30 +107,39 @@ export class ProjectScaffolder {
   // Config Files
   // ===========================================
 
-  public async ensureTsConfig(root: string): Promise<void> {
+  public async ensureTsConfig(
+    root: string,
+    opts: { force?: boolean } = {},
+  ): Promise<void> {
     // Check if tsconfig.json exists in current or parent directories
-    if (await this.existsInParents(root, "tsconfig.json")) {
+    if (!opts.force && (await this.existsInParents(root, "tsconfig.json"))) {
       return;
     }
-    await this.fs.writeFile(this.fs.join(root, "tsconfig.json"), tsconfigJson);
+    await this.fs.writeFile(
+      this.fs.join(root, "tsconfig.json"),
+      tsconfigJson(),
+    );
   }
 
-  public async ensureBiomeConfig(root: string): Promise<void> {
-    await this.ensureFileIfNotExists(root, "biome.json", biomeJson);
+  public async ensureBiomeConfig(
+    root: string,
+    opts: { force?: boolean } = {},
+  ): Promise<void> {
+    await this.ensureFile(root, "biome.json", biomeJson(), opts.force);
   }
 
-  public async ensureEditorConfig(root: string): Promise<void> {
-    await this.ensureFileIfNotExists(root, ".editorconfig", editorconfig);
+  public async ensureEditorConfig(
+    root: string,
+    opts: { force?: boolean } = {},
+  ): Promise<void> {
+    await this.ensureFile(root, ".editorconfig", editorconfig(), opts.force);
   }
 
   public async ensureClaudeMd(
     root: string,
-    options: ClaudeMdOptions = {},
+    options: ClaudeMdOptions & { force?: boolean } = {},
   ): Promise<void> {
-    const path = this.fs.join(root, "CLAUDE.md");
-    if (!(await this.fs.exists(path))) {
-      await this.fs.writeFile(path, claudeMd(options));
-    }
+    await this.ensureFile(root, "CLAUDE.md", claudeMd(options), options.force);
   }
 
   // ===========================================
@@ -140,11 +154,14 @@ export class ProjectScaffolder {
    * - src/api/index.ts (API module)
    * - src/api/controllers/HelloController.ts (example controller)
    */
-  public async ensureApiProject(root: string): Promise<void> {
+  public async ensureApiProject(
+    root: string,
+    opts: { force?: boolean } = {},
+  ): Promise<void> {
     const srcDir = this.fs.join(root, "src");
 
-    // Don't overwrite existing content
-    if (await this.fs.exists(srcDir)) {
+    // Don't overwrite existing content unless force is set
+    if (!opts.force && (await this.fs.exists(srcDir))) {
       const files = await this.fs.ls(srcDir);
       if (files.length > 0) return;
     }
@@ -157,17 +174,18 @@ export class ProjectScaffolder {
     });
 
     // Create files
-    await this.fs.writeFile(
-      this.fs.join(srcDir, "main.server.ts"),
-      mainServerTs(),
-    );
-    await this.fs.writeFile(
-      this.fs.join(srcDir, "api/index.ts"),
+    await this.ensureFile(srcDir, "main.server.ts", mainServerTs(), opts.force);
+    await this.ensureFile(
+      srcDir,
+      "api/index.ts",
       apiIndexTs({ appName }),
+      opts.force,
     );
-    await this.fs.writeFile(
-      this.fs.join(srcDir, "api/controllers/HelloController.ts"),
+    await this.ensureFile(
+      srcDir,
+      "api/controllers/HelloController.ts",
       apiHelloControllerTs(),
+      opts.force,
     );
   }
 
@@ -184,8 +202,14 @@ export class ProjectScaffolder {
    * - src/api/index.ts, src/api/controllers/HelloController.ts
    * - src/web/index.ts, src/web/AppRouter.ts, src/web/components/Hello.tsx
    */
-  public async ensureReactProject(root: string): Promise<void> {
-    if (await this.fs.exists(this.fs.join(root, "index.html"))) {
+  public async ensureReactProject(
+    root: string,
+    opts: { force?: boolean } = {},
+  ): Promise<void> {
+    if (
+      !opts.force &&
+      (await this.fs.exists(this.fs.join(root, "index.html")))
+    ) {
       return;
     }
 
@@ -200,48 +224,60 @@ export class ProjectScaffolder {
     });
 
     // index.html
-    await this.fs.writeFile(
-      this.fs.join(root, "index.html"),
+    await this.ensureFile(
+      root,
+      "index.html",
       indexHtml("src/main.browser.ts"),
+      opts.force,
     );
 
+    // src/main.css
+    await this.ensureFile(root, "src/main.css", mainCss(), opts.force);
+
     // API structure
-    await this.ensureFileIfNotExists(
+    await this.ensureFile(
       root,
       "src/api/index.ts",
       apiIndexTs({ appName }),
+      opts.force,
     );
-    await this.ensureFileIfNotExists(
+    await this.ensureFile(
       root,
       "src/api/controllers/HelloController.ts",
       apiHelloControllerTs(),
+      opts.force,
     );
-    await this.ensureFileIfNotExists(
+    await this.ensureFile(
       root,
       "src/main.server.ts",
       mainServerTs({ react: true }),
+      opts.force,
     );
 
     // Web structure
-    await this.ensureFileIfNotExists(
+    await this.ensureFile(
       root,
       "src/web/index.ts",
       webIndexTs({ appName }),
+      opts.force,
     );
-    await this.ensureFileIfNotExists(
+    await this.ensureFile(
       root,
       "src/web/AppRouter.ts",
       webAppRouterTs(),
+      opts.force,
     );
-    await this.ensureFileIfNotExists(
+    await this.ensureFile(
       root,
       "src/web/components/Hello.tsx",
       webHelloComponentTsx(),
+      opts.force,
     );
-    await this.ensureFileIfNotExists(
+    await this.ensureFile(
       root,
       "src/main.browser.ts",
       mainBrowserTs(),
+      opts.force,
     );
   }
 
@@ -272,13 +308,17 @@ export class ProjectScaffolder {
   // Helpers
   // ===========================================
 
-  protected async ensureFileIfNotExists(
+  /**
+   * Write a file, optionally overriding if it exists.
+   */
+  protected async ensureFile(
     root: string,
     relativePath: string,
     content: string,
+    force?: boolean,
   ): Promise<void> {
     const fullPath = this.fs.join(root, relativePath);
-    if (!(await this.fs.exists(fullPath))) {
+    if (force || !(await this.fs.exists(fullPath))) {
       await this.fs.writeFile(fullPath, content);
     }
   }
