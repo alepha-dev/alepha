@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AlephaError } from "alepha";
 
@@ -7,6 +7,17 @@ import { AlephaError } from "alepha";
  * At first, functions was inside alepha/vite package, but it's now used in alepha too.
  * For avoiding cli -> vite, all code moved here.
  */
+
+/**
+ * Server entry files in priority order.
+ * main.server.ts is preferred over main.ts for consistency.
+ */
+const SERVER_ENTRIES = [
+  "main.server.ts",
+  "main.server.tsx",
+  "main.ts",
+  "main.tsx",
+] as const;
 
 /**
  * Find browser/client entry file path.
@@ -25,6 +36,8 @@ const getClientEntry = async (
 
 /**
  * Find server entry file path.
+ *
+ * Optimized to use a single readdir() call instead of multiple access() calls.
  */
 const getServerEntry = async (
   root = process.cwd(),
@@ -42,32 +55,30 @@ const getServerEntry = async (
     }
   }
 
-  const maybeEntry = [
-    "src/main.server.ts",
-    "src/server-entry.ts",
-    "src/main.server.tsx",
-    "src/server-entry.tsx",
-    "src/main.ts",
-    "src/main.tsx",
-  ];
+  // Single IO: read src/ directory listing
+  const srcDir = join(root, "src");
+  try {
+    const files = new Set(await readdir(srcDir));
 
-  for (const entry of maybeEntry) {
-    try {
-      const path = join(root, entry).replace(/\\/g, "/");
-      await access(path);
-      return path;
-    } catch {
-      // continue to next entry
+    // Find first matching entry in priority order
+    for (const entry of SERVER_ENTRIES) {
+      if (files.has(entry)) {
+        return join(srcDir, entry).replace(/\\/g, "/");
+      }
     }
+  } catch {
+    // src/ directory doesn't exist, fall through to client entry
   }
 
+  // Fallback: try client entry from index.html
   const clientEntry = await getClientEntry(root);
   if (clientEntry) {
     return clientEntry;
   }
 
+  const fullPaths = SERVER_ENTRIES.map((e) => `src/${e}`);
   throw new AlephaError(
-    `Could not find a server entry file. List of supported entry file: ${maybeEntry.join(", ")}`,
+    `Could not find a server entry file. Supported entries: ${fullPaths.join(", ")}`,
   );
 };
 

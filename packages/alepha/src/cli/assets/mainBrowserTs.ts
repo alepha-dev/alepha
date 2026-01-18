@@ -1,10 +1,10 @@
 export const mainBrowserTs = () => `
 import { Alepha, run } from "alepha";
-import { AppRouter } from "./AppRouter.ts";
+import { WebModule } from "./web/index.ts";
 
 const alepha = Alepha.create();
 
-alepha.with(AppRouter);
+alepha.with(WebModule);
 
 run(alepha);
 `.trim();

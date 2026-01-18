@@ -28,6 +28,11 @@ export class InitCommand {
       test: t.optional(
         t.boolean({ description: "Include Vitest and create test directory" }),
       ),
+      agent: t.optional(
+        t.boolean({
+          description: "Add CLAUDE.md for Claude Code AI assistant",
+        }),
+      ),
     }),
     handler: async ({ run, flags, root }) => {
       if (flags.ui) {
@@ -45,6 +50,9 @@ export class InitCommand {
             biomeJson: true,
             editorconfig: true,
             indexHtml: !!flags.react && !isExpo,
+            claudeMd: flags.agent
+              ? { react: !!flags.react, ui: !!flags.ui }
+              : false,
           });
 
           // Create src/main.ts if src directory is empty or doesn't exist

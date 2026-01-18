@@ -1,19 +1,24 @@
 import { spawn } from "node:child_process";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { $inject, Alepha, AlephaError } from "alepha";
 import { EnvUtils, type RunnerMethod } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { boot } from "alepha/vite";
-import { appRouterTs } from "../assets/appRouterTs.ts";
+import { apiHelloControllerTs } from "../assets/apiHelloControllerTs.ts";
+import { apiIndexTs } from "../assets/apiIndexTs.ts";
 import { biomeJson } from "../assets/biomeJson.ts";
+import { type ClaudeMdOptions, claudeMd } from "../assets/claudeMd.ts";
 import { dummySpecTs } from "../assets/dummySpecTs.ts";
 import { editorconfig } from "../assets/editorconfig.ts";
 import { indexHtml } from "../assets/indexHtml.ts";
 import { mainBrowserTs } from "../assets/mainBrowserTs.ts";
-import { mainTs } from "../assets/mainTs.ts";
+import { mainServerTs } from "../assets/mainServerTs.ts";
 import { tsconfigJson } from "../assets/tsconfigJson.ts";
+import { webAppRouterTs } from "../assets/webAppRouterTs.ts";
+import { webHelloComponentTsx } from "../assets/webHelloComponentTsx.ts";
+import { webIndexTs } from "../assets/webIndexTs.ts";
 import { version } from "../version.ts";
 
 /**
@@ -335,6 +340,7 @@ export class AlephaCliUtils {
       indexHtml?: boolean;
       biomeJson?: boolean;
       editorconfig?: boolean;
+      claudeMd?: boolean | ClaudeMdOptions;
     },
   ): Promise<Array<void | object>> {
     const tasks: Promise<void | object>[] = [];
@@ -358,6 +364,14 @@ export class AlephaCliUtils {
     }
     if (opts.editorconfig) {
       tasks.push(this.ensureEditorConfig(root));
+    }
+    if (opts.claudeMd) {
+      tasks.push(
+        this.ensureClaudeMd(
+          root,
+          typeof opts.claudeMd === "boolean" ? {} : opts.claudeMd,
+        ),
+      );
     }
 
     return await Promise.all(tasks);
@@ -448,6 +462,21 @@ export class AlephaCliUtils {
    */
   public async ensureEditorConfig(root: string): Promise<void> {
     await this.ensureFileExists(root, ".editorconfig", editorconfig, true);
+  }
+
+  /**
+   * Ensure CLAUDE.md exists in the project.
+   *
+   * Creates a CLAUDE.md file with Alepha-specific guidance for Claude Code.
+   *
+   * @param root - The root directory of the project
+   * @param options - Options for customizing the CLAUDE.md content
+   */
+  public async ensureClaudeMd(
+    root: string,
+    options: ClaudeMdOptions = {},
+  ): Promise<void> {
+    await this.ensureFileExists(root, "CLAUDE.md", claudeMd(options), false);
   }
 
   // ===================================================================================================================
@@ -575,31 +604,79 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
     return "npm";
   }
 
+  /**
+   * Get the app name from the directory name.
+   *
+   * Converts the directory name to a valid module name:
+   * - Converts to lowercase
+   * - Replaces spaces, dashes, underscores with nothing
+   * - Falls back to "app" if empty
+   */
+  public getAppName(root: string): string {
+    const dirName = basename(root);
+    const appName = dirName.toLowerCase().replace(/[\s\-_]/g, "");
+    return appName || "app";
+  }
+
   public async ensureIndexHtml(root: string) {
     if (await this.fs.exists(join(root, "index.html"))) {
       return;
     }
 
-    const serverEntry = "src/main.server.ts";
+    const appName = this.getAppName(root);
     const browserEntry = "src/main.browser.ts";
-    const appRouter = "src/AppRouter.ts";
 
     await this.fs.writeFile(join(root, "index.html"), indexHtml(browserEntry));
 
-    try {
-      await this.fs.mkdir(join(root, "src"), { recursive: true });
-    } catch {}
+    // Create directories
+    await this.fs.mkdir(join(root, "src/api/controllers"), { recursive: true });
+    await this.fs.mkdir(join(root, "src/web/components"), { recursive: true });
 
-    if (!(await this.fs.exists(join(root, browserEntry)))) {
-      await this.fs.writeFile(join(root, browserEntry), mainBrowserTs());
+    // API structure
+    const apiIndex = "src/api/index.ts";
+    const helloController = "src/api/controllers/HelloController.ts";
+    const serverEntry = "src/main.server.ts";
+
+    if (!(await this.fs.exists(join(root, apiIndex)))) {
+      await this.fs.writeFile(join(root, apiIndex), apiIndexTs({ appName }));
+    }
+
+    if (!(await this.fs.exists(join(root, helloController)))) {
+      await this.fs.writeFile(
+        join(root, helloController),
+        apiHelloControllerTs(),
+      );
     }
 
     if (!(await this.fs.exists(join(root, serverEntry)))) {
-      await this.fs.writeFile(join(root, serverEntry), mainBrowserTs());
+      await this.fs.writeFile(
+        join(root, serverEntry),
+        mainServerTs({ react: true }),
+      );
+    }
+
+    // Web structure
+    const webIndex = "src/web/index.ts";
+    const appRouter = "src/web/AppRouter.ts";
+    const helloComponent = "src/web/components/Hello.tsx";
+
+    if (!(await this.fs.exists(join(root, webIndex)))) {
+      await this.fs.writeFile(join(root, webIndex), webIndexTs({ appName }));
     }
 
     if (!(await this.fs.exists(join(root, appRouter)))) {
-      await this.fs.writeFile(join(root, appRouter), appRouterTs());
+      await this.fs.writeFile(join(root, appRouter), webAppRouterTs());
+    }
+
+    if (!(await this.fs.exists(join(root, helloComponent)))) {
+      await this.fs.writeFile(
+        join(root, helloComponent),
+        webHelloComponentTsx(),
+      );
+    }
+
+    if (!(await this.fs.exists(join(root, browserEntry)))) {
+      await this.fs.writeFile(join(root, browserEntry), mainBrowserTs());
     }
   }
 
@@ -608,32 +685,43 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
   }
 
   /**
-   * Ensure src/main.ts exists with a minimal Alepha bootstrap.
+   * Ensure src/main.server.ts exists with full API structure.
    *
-   * Creates the src directory and main.ts file if the src directory
-   * doesn't exist or is empty.
+   * Creates the src directory with:
+   * - src/main.server.ts (entry point)
+   * - src/api/index.ts (API module)
+   * - src/api/controllers/HelloController.ts (example controller)
    *
    * @param root - The root directory of the project
    */
   public async ensureSrcMain(root: string): Promise<void> {
     const srcDir = join(root, "src");
-    const mainPath = join(srcDir, "main.ts");
 
-    // Check if src directory exists
+    // Check if src directory exists and has content
     const srcExists = await this.fs.exists(srcDir);
-
-    if (!srcExists) {
-      // Create src directory and main.ts
-      await this.fs.mkdir(srcDir, { recursive: true });
-      await this.fs.writeFile(mainPath, mainTs());
-      return;
+    if (srcExists) {
+      const files = await this.fs.ls(srcDir);
+      if (files.length > 0) {
+        return; // Don't overwrite existing content
+      }
     }
 
-    // Check if src directory is empty
-    const files = await this.fs.ls(srcDir);
-    if (files.length === 0) {
-      await this.fs.writeFile(mainPath, mainTs());
-    }
+    const appName = this.getAppName(root);
+
+    // Create directories
+    await this.fs.mkdir(join(root, "src/api/controllers"), { recursive: true });
+
+    // Create files
+    const mainPath = join(srcDir, "main.server.ts");
+    const apiIndexPath = join(srcDir, "api/index.ts");
+    const helloControllerPath = join(
+      srcDir,
+      "api/controllers/HelloController.ts",
+    );
+
+    await this.fs.writeFile(mainPath, mainServerTs());
+    await this.fs.writeFile(apiIndexPath, apiIndexTs({ appName }));
+    await this.fs.writeFile(helloControllerPath, apiHelloControllerTs());
   }
 
   /**
