@@ -320,3 +320,7 @@ class MyService {
 ```
 
 State management without the ceremony. Define your shape, use it everywhere, let Alepha handle the plumbing.
+
+---
+
+Previous: [Routing](./2-routing.md) | Next: [Head & SEO](./4-head-and-seo.md)
