@@ -5,7 +5,6 @@ import { CleanCommand } from "../commands/clean.ts";
 import { DbCommand } from "../commands/db.ts";
 import { DeployCommand } from "../commands/deploy.ts";
 import { DevCommand } from "../commands/dev.ts";
-import { FormatCommand } from "../commands/format.ts";
 import { GitProvider } from "../commands/gen/changelog.ts";
 import { GenCommand } from "../commands/gen.ts";
 import { InitCommand } from "../commands/init.ts";
@@ -73,7 +72,6 @@ export const AlephaCli = $module({
     DbCommand,
     DeployCommand,
     DevCommand,
-    FormatCommand,
     InitCommand,
     LintCommand,
     RootCommand,
