@@ -8,7 +8,7 @@ Alepha provides health endpoints out of the box.
 
 ```typescript
 import { Alepha } from "alepha";
-import { AlephaServerHealth } from "alepha/server-health";
+import { AlephaServerHealth } from "alepha/server/health";
 
 const alepha = Alepha.create()
   .with(AlephaServerHealth);

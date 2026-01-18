@@ -31,10 +31,10 @@
 		"clean": "yarn alepha clean",
 		"copy": "yarn workspaces foreach -Apt run copy",
 		"convert": "node scripts/convert.ts",
-		"lint": "biome check --fix",
-		"typecheck": "yarn tsc --noEmit",
+		"lint": "yarn alepha lint",
+		"typecheck": "yarn alepha typecheck",
+		"test": "yarn alepha test",
 		"check-dependencies": "yarn workspaces foreach -Apt exec depcheck .",
-		"test": "vitest run",
 		"build": "yarn workspaces foreach -Apt run build",
 		"e2e": "yarn workspaces foreach -Apt run e2e"
 	}

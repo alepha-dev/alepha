@@ -2,24 +2,23 @@
 
 The fastest database query is the one you don't make.
 
-Caching in most frameworks involves Redis setup, serialization headaches, and cache invalidation bugs that haunt you at 3 AM. Alepha tries to make it boring.
+Caching in most frameworks involves Redis setup, serialization headaches, and cache invalidation bugs that haunt you at 3 AM. Alepha makes it boring — in a good way.
 
-## Basic Caching with `$cache`
+## The `$cache` Primitive
 
-The simplest use: cache a function's result.
+Cache a function's result. That's it.
 
 ```typescript
 import { $cache } from "alepha/cache";
 
 class ProductService {
-  // cache expensive computation for 10 minutes
   getPopularProducts = $cache({
     name: "popular-products",
     ttl: [10, "minutes"],
     handler: async () => {
-      // this runs only once per 10 minutes
-      return await this.db.products.findMany({
-        orderBy: { sales: "desc" },
+      // This runs once per 10 minutes
+      return await this.repo.findMany({
+        orderBy: "-sales",
         limit: 100,
       });
     },
@@ -28,11 +27,15 @@ class ProductService {
 ```
 
 First call: runs the handler, stores result, returns it.
-Next calls (within 10 min): returns cached result instantly.
+Next calls (within TTL): returns cached result instantly. No database hit.
+
+> **Module-level primitive**
+>
+> Like `$entity`, `$cache` is typically defined at module level or as a class property. The cache name should be unique across your app.
 
 ## Caching with Arguments
 
-Most caches depend on input parameters:
+Most caches depend on input. No problem — arguments become part of the cache key automatically.
 
 ```typescript
 class UserService {
@@ -40,25 +43,39 @@ class UserService {
     name: "user-profile",
     ttl: [5, "minutes"],
     handler: async (userId: string) => {
-      return await this.db.users.findById(userId);
+      return await this.repo.findById(userId);
     },
   });
 }
 
-// usage
+// Usage
 const profile = await this.getUserProfile("user-123");
-// cached separately for each userId
+const other = await this.getUserProfile("user-456");
+// Cached separately — different keys
 ```
 
-The cache key automatically includes the arguments. `getUserProfile("a")` and `getUserProfile("b")` are cached independently.
+> **Cache Key Generation**
+>
+> Alepha serializes your arguments to build the cache key. Works with strings, numbers, objects — anything JSON-serializable.
 
-## Manual Cache Operations
+## TTL Syntax
 
-Sometimes you need direct control:
+Human-readable durations. No more mental math with milliseconds.
+
+```typescript
+ttl: [30, "seconds"]
+ttl: [5, "minutes"]
+ttl: [1, "hour"]
+ttl: [7, "days"]
+```
+
+## Manual Cache Control
+
+Sometimes you don't want a handler. You just want a typed key-value store.
 
 ```typescript
 class SessionService {
-  // define cache without handler
+  // Define cache without handler
   sessions = $cache<UserSession>({
     name: "sessions",
     ttl: [1, "hour"],
@@ -68,45 +85,45 @@ class SessionService {
     const sessionId = crypto.randomUUID();
     const session = { userId, createdAt: Date.now() };
 
-    // manually set
     await this.sessions.set(sessionId, session);
-
     return sessionId;
   }
 
   async getSession(sessionId: string): Promise<UserSession | null> {
-    // manually get
     return await this.sessions.get(sessionId);
   }
 
   async destroySession(sessionId: string): Promise<void> {
-    // manually delete
     await this.sessions.delete(sessionId);
   }
 }
 ```
 
+> **Type Safety**
+>
+> The generic `$cache<UserSession>` gives you full type safety on `get`, `set`, and `delete`. No `any` types leaking through.
+
 ## Cache Invalidation
 
-The two hardest problems in computer science: cache invalidation and naming things.
+The hardest problem in computer science. But not that hard.
 
 ### Invalidate by Key
 
 ```typescript
-// delete specific entry
+// User updated their profile? Clear their cache.
 await this.getUserProfile.invalidate("user-123");
 ```
 
 ### Invalidate by Pattern
 
 ```typescript
-// delete all entries matching pattern
+// Clear all sessions for a user
 await this.sessions.invalidate("user:*:sessions");
 ```
 
-### Invalidate on Events
+### Invalidate on Write
 
-Common pattern: invalidate cache when data changes.
+The most common pattern: clear cache when data changes.
 
 ```typescript
 class UserService {
@@ -114,71 +131,73 @@ class UserService {
     name: "user-profile",
     ttl: [5, "minutes"],
     handler: async (userId: string) => {
-      return await this.db.users.findById(userId);
+      return await this.repo.findById(userId);
     },
   });
 
   async updateProfile(userId: string, data: UpdateData) {
-    await this.db.users.update(userId, data);
+    await this.repo.updateById(userId, data);
 
-    // clear the cache for this user
+    // Don't forget this part
     await this.getUserProfile.invalidate(userId);
   }
 }
 ```
 
+> **Invalidation is Explicit**
+>
+> Alepha doesn't auto-invalidate. You control when cache clears. This is intentional — implicit invalidation leads to surprising behavior.
+
 ## HTTP Response Caching
 
-For API responses, use the `cache` option on actions:
+For API responses, use the `cache` option on actions. This sets proper HTTP headers (`Cache-Control`, `ETag`) so browsers and CDNs can cache too.
 
 ```typescript
 class ProductApi {
-  // cache the entire HTTP response
+  // Cache the entire HTTP response
   listProducts = $action({
     path: "/products",
-    cache: true, // uses default settings
+    cache: true,
     handler: async () => {
-      return await this.db.products.findMany();
+      return await this.repo.findMany();
     },
   });
 
-  // with custom TTL
+  // Custom TTL
   getProduct = $action({
     path: "/products/:id",
     cache: { ttl: [30, "seconds"] },
     handler: async ({ params }) => {
-      return await this.db.products.findById(params.id);
+      return await this.repo.findById(params.id);
     },
   });
 }
 ```
 
-This sets proper HTTP headers (`Cache-Control`, `ETag`) so browsers and CDNs can cache too.
-
 ### ETag Support
 
-Alepha automatically generates ETags for cached responses:
+Alepha automatically generates ETags. You write zero code for this.
 
-```typescript
-// first request
+```
+# First request
 GET /products/123
--> 200 OK
--> ETag: "abc123"
+→ 200 OK
+→ ETag: "abc123"
 
-// second request with ETag
+# Second request with ETag
 GET /products/123
 If-None-Match: "abc123"
--> 304 Not Modified (no body, saves bandwidth)
+→ 304 Not Modified (no body, saves bandwidth)
 ```
-
-You don't write any code for this. It just works.
 
 ## Storage Backends
 
 ### Memory (Default)
 
+Stored in process memory. Lost on restart. Perfect for development.
+
 ```typescript
-// stored in process memory, lost on restart
+// Just works, no config
 const cache = $cache({
   name: "my-cache",
   ttl: [10, "minutes"],
@@ -190,22 +209,36 @@ Good for: development, single-instance apps, short-lived data.
 
 ### Redis
 
+For production. Survives restarts. Shared across instances.
+
 ```typescript
-import { RedisCacheProvider } from "alepha/cache/redis";
+// src/main.server.ts
+import { run } from "alepha";
+import { AlephaCacheRedis } from "alepha/cache/redis";
+import { ApiModule } from "./api/index.ts";
 
-const alepha = Alepha.create()
-  .with({ provide: CacheProvider, use: RedisCacheProvider });
+const alepha = Alepha.create();
 
-// set REDIS_URL in your environment
+alepha.with(AlephaCacheRedis);
+
+run(ApiModule);
 ```
 
-Good for: production, multi-instance apps, persistent cache.
+Set `REDIS_URL` in your environment:
 
-Your cache code stays the same. Only the provider changes.
+```bash
+REDIS_URL=redis://localhost:6379
+```
+
+Your cache code stays exactly the same. Only the storage backend changes.
+
+> **Zero Code Changes**
+>
+> Switch from memory to Redis without touching your cache logic. That's the point of the provider abstraction.
 
 ## Cache Warming
 
-Pre-populate cache on startup:
+Pre-populate cache on startup. First users don't wait for cold cache.
 
 ```typescript
 class CacheWarmer {
@@ -214,10 +247,9 @@ class CacheWarmer {
   warmup = $hook({
     on: "ready",
     handler: async () => {
-      // pre-fetch popular products into cache
+      // Pre-fetch into cache
       await this.products.getPopularProducts();
 
-      // pre-fetch top categories
       for (const cat of ["electronics", "clothing", "home"]) {
         await this.products.getByCategory(cat);
       }
@@ -226,124 +258,94 @@ class CacheWarmer {
 }
 ```
 
-First users don't wait for cold cache.
+## Stampede Prevention
+
+When cache expires, you don't want 1000 requests all hitting the database simultaneously. Alepha handles this automatically.
+
+```typescript
+getExpensiveData = $cache({
+  name: "expensive",
+  ttl: [1, "minute"],
+  handler: async () => {
+    // Only runs ONCE even if 1000 requests hit at the same time
+    // Others wait for the first one to finish
+    return await this.heavyComputation();
+  },
+});
+```
+
+> **Built-in Locking**
+>
+> While one request computes the value, others wait. No thundering herd problem.
 
 ## Common Patterns
 
-### Cache Aside
+### Cache Aside (Default)
 
-The default pattern. Check cache, if miss, compute and store.
+Check cache → miss → compute → store → return.
+
+This is what `$cache` does internally. You don't need to implement it yourself.
 
 ```typescript
-// this is what $cache does internally
+// This is verbose and error-prone
 async getUser(id: string) {
   const cached = await cache.get(id);
   if (cached) return cached;
 
-  const user = await this.db.users.findById(id);
+  const user = await this.repo.findById(id);
   await cache.set(id, user);
   return user;
 }
 
-// with $cache, just:
+// Just use $cache instead
 getUser = $cache({
   name: "users",
   ttl: [5, "minutes"],
-  handler: (id) => this.db.users.findById(id),
+  handler: (id) => this.repo.findById(id),
 });
 ```
 
 ### Write Through
 
-Update cache when writing:
+Update cache immediately when writing. Keeps cache fresh.
 
 ```typescript
 async updateUser(id: string, data: UpdateData) {
-  const user = await this.db.users.update(id, data);
+  const user = await this.repo.updateById(id, data);
 
-  // update cache with fresh data
+  // Update cache with fresh data instead of invalidating
   await this.userCache.set(id, user);
 
   return user;
 }
 ```
 
-### Cache Stampede Prevention
+## When NOT to Cache
 
-When cache expires, you don't want 1000 requests all hitting the database. Alepha handles this:
+Not everything benefits from caching.
 
-```typescript
-// only one request computes, others wait
-getExpensiveData = $cache({
-  name: "expensive",
-  ttl: [1, "minute"],
-  // implicit: lock while computing
-  handler: async () => {
-    // only runs once even if 1000 requests hit simultaneously
-    return await this.heavyComputation();
-  },
-});
-```
-
-## Comparison: Redis Direct vs Alepha
-
-**Redis directly:**
-```typescript
-const redis = new Redis();
-
-async function getUser(id: string) {
-  const cached = await redis.get(`user:${id}`);
-  if (cached) return JSON.parse(cached);
-
-  const user = await db.users.findById(id);
-  await redis.setex(`user:${id}`, 300, JSON.stringify(user));
-  return user;
-}
-
-// don't forget to invalidate...
-async function updateUser(id: string, data: any) {
-  await db.users.update(id, data);
-  await redis.del(`user:${id}`);  // easy to forget
-}
-```
-
-**Alepha:**
-```typescript
-getUser = $cache({
-  name: "users",
-  ttl: [5, "minutes"],
-  handler: (id) => this.db.users.findById(id),
-});
-
-// invalidation is explicit, hard to miss
-await this.getUser.invalidate(id);
-```
-
-Less boilerplate. Serialization handled. TTL is readable.
-
-## When Not To Cache
-
-- **Highly personalized data** - Cache hit rate will be low
-- **Frequently changing data** - You'll invalidate more than you cache
-- **Security-sensitive data** - Stale auth state is dangerous
-- **Write-heavy operations** - Cache invalidation overhead
+- **Highly personalized data** — Cache hit rate will be terrible
+- **Frequently changing data** — You'll invalidate more than you cache
+- **Security-sensitive data** — Stale auth state is dangerous
+- **Write-heavy workloads** — Invalidation overhead exceeds benefits
 
 ## Tips
 
-1. **Start without caching** - Add it when you have performance data
-2. **Cache at the right layer** - Database results, not API responses
-3. **Use short TTLs initially** - Increase when confident
-4. **Log cache hits/misses** - Monitor effectiveness
-5. **Test invalidation** - Stale data causes subtle bugs
+1. **Start without caching** — Add it when you have actual performance data
+2. **Cache at the right layer** — Usually database results, not API responses
+3. **Use short TTLs initially** — Increase when you're confident
+4. **Monitor hit rates** — A cache that never hits is just overhead
+5. **Test invalidation** — Stale data causes subtle, maddening bugs
 
-## Summary
+## Quick Reference
 
 | Need | Solution |
 |------|----------|
 | Cache function results | `$cache({ handler })` |
 | Manual cache control | `$cache()` + `set/get/delete` |
 | HTTP response caching | `$action({ cache: true })` |
-| Pattern-based invalidation | `cache.invalidate("pattern:*")` |
-| Production caching | Swap to `RedisCacheProvider` |
+| Invalidate specific key | `cache.invalidate(key)` |
+| Invalidate by pattern | `cache.invalidate("pattern:*")` |
+| Production (Redis) | `alepha.with(AlephaCacheRedis)` |
 
-Caching doesn't have to be complicated. Define TTL, define handler, forget about it until you need to invalidate.
+Caching doesn't have to be complicated. Define TTL, define handler, move on with your life.

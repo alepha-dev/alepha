@@ -6,7 +6,7 @@ For serious monitoring, you need metrics. Alepha integrates with Prometheus out 
 
 ```typescript
 import { Alepha } from "alepha";
-import { AlephaServerMetrics } from "alepha/server-metrics";
+import { AlephaServerMetrics } from "alepha/server/metrics";
 
 const alepha = Alepha.create()
   .with(AlephaServerMetrics);
