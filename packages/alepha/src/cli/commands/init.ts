@@ -1,9 +1,13 @@
 import { $inject, t } from "alepha";
 import { $command } from "alepha/command";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
+import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
+import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
 export class InitCommand {
   protected readonly utils = $inject(AlephaCliUtils);
+  protected readonly pm = $inject(PackageManagerUtils);
+  protected readonly scaffolder = $inject(ProjectScaffolder);
 
   /**
    * Ensure the project has the necessary Alepha configuration files.
@@ -39,12 +43,12 @@ export class InitCommand {
         flags.react = true;
       }
 
-      const isExpo = await this.utils.hasExpo(root);
+      const isExpo = await this.pm.hasExpo(root);
 
       await run({
         name: "ensuring configuration files",
         handler: async () => {
-          await this.utils.ensureConfig(root, {
+          await this.scaffolder.ensureConfig(root, {
             tsconfigJson: true,
             packageJson: flags,
             biomeJson: true,
@@ -55,43 +59,52 @@ export class InitCommand {
               : false,
           });
 
-          // Create src/main.ts if src directory is empty or doesn't exist
+          // Create API project structure if not React
           if (!flags.react) {
-            await this.utils.ensureSrcMain(root);
+            await this.scaffolder.ensureApiProject(root);
           }
         },
       });
 
       // TODO: check if all alepha dependencies are same version
 
-      const pm = await this.utils.getPackageManager(root, flags);
-      if (pm === "yarn") {
-        await this.utils.ensureYarn(root);
+      const pmName = await this.pm.getPackageManager(root, flags);
+      if (pmName === "yarn") {
+        await this.pm.ensureYarn(root);
         await run("yarn set version stable");
-      } else if (pm === "bun") {
-        await this.utils.ensureBun(root);
-      } else if (pm === "pnpm") {
-        await this.utils.ensurePnpm(root);
+      } else if (pmName === "bun") {
+        await this.pm.ensureBun(root);
+      } else if (pmName === "pnpm") {
+        await this.pm.ensurePnpm(root);
       } else {
-        await this.utils.ensureNpm(root);
+        await this.pm.ensureNpm(root);
       }
 
-      await run(`${pm} install`, {
-        alias: `installing dependencies with ${pm}`,
+      await run(`${pmName} install`, {
+        alias: `installing dependencies with ${pmName}`,
       });
 
       if (!isExpo) {
-        await this.utils.ensureDependency(root, "vite", { run });
+        await this.pm.ensureDependency(root, "vite", {
+          run,
+          exec: (cmd, opts) => this.utils.exec(cmd, opts),
+        });
       }
 
-      await this.utils.ensureDependency(root, "@biomejs/biome", { run });
+      await this.pm.ensureDependency(root, "@biomejs/biome", {
+        run,
+        exec: (cmd, opts) => this.utils.exec(cmd, opts),
+      });
 
       // Install vitest and create test directory if --test flag is set
       if (flags.test) {
-        await this.utils.ensureTestDir(root);
-        await run(`${pm} ${pm === "yarn" ? "add" : "install"} -D vitest`, {
-          alias: "setup testing with Vitest",
-        });
+        await this.scaffolder.ensureTestDir(root);
+        await run(
+          `${pmName} ${pmName === "yarn" ? "add" : "install"} -D vitest`,
+          {
+            alias: "setup testing with Vitest",
+          },
+        );
       }
     },
   });

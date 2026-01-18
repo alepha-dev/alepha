@@ -1,9 +1,11 @@
 import { $inject } from "alepha";
 import { $command } from "alepha/command";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
+import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 
 export class VerifyCommand {
   protected readonly utils = $inject(AlephaCliUtils);
+  protected readonly pm = $inject(PackageManagerUtils);
 
   /**
    * Run a series of verification commands to ensure code quality and correctness.
@@ -28,7 +30,7 @@ export class VerifyCommand {
 
       await run("alepha typecheck");
 
-      const pkg = await this.utils.readPackageJson(root);
+      const pkg = await this.pm.readPackageJson(root);
       if (pkg.devDependencies?.vitest) {
         await run("alepha test");
       }
@@ -37,7 +39,7 @@ export class VerifyCommand {
         await run("alepha db check-migrations");
       }
 
-      const isExpo = await this.utils.hasExpo(root);
+      const isExpo = await this.pm.hasExpo(root);
       if (!isExpo) {
         await run("alepha build");
       }

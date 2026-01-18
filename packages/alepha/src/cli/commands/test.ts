@@ -1,9 +1,13 @@
 import { $inject, t } from "alepha";
 import { $command } from "alepha/command";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
+import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
+import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
 export class TestCommand {
   protected readonly utils = $inject(AlephaCliUtils);
+  protected readonly pm = $inject(PackageManagerUtils);
+  protected readonly scaffolder = $inject(ProjectScaffolder);
 
   public readonly test = $command({
     name: "test",
@@ -26,12 +30,14 @@ export class TestCommand {
       ),
     }),
     handler: async ({ root, flags, env }) => {
-      await this.utils.ensureConfig(root, {
+      await this.scaffolder.ensureConfig(root, {
         tsconfigJson: true,
       });
 
       // Ensure vitest is installed before running
-      await this.utils.ensureDependency(root, "vitest");
+      await this.pm.ensureDependency(root, "vitest", {
+        exec: (cmd, opts) => this.utils.exec(cmd, opts),
+      });
 
       const config = flags.config ? `--config=${flags.config}` : "";
 

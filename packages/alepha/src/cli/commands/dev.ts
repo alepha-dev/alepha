@@ -1,14 +1,18 @@
-import { access } from "node:fs/promises";
-import { join } from "node:path";
 import { $inject, Alepha, t } from "alepha";
 import { $command } from "alepha/command";
+import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { boot, devServer } from "alepha/vite";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
+import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
+import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
 export class DevCommand {
   protected readonly log = $logger();
+  protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
+  protected readonly pm = $inject(PackageManagerUtils);
+  protected readonly scaffolder = $inject(ProjectScaffolder);
   protected readonly alepha = $inject(Alepha);
 
   /**
@@ -22,9 +26,9 @@ export class DevCommand {
     description: "Run the project in development mode",
     args: t.optional(t.text({ title: "path", description: "Filepath to run" })),
     handler: async ({ args, root }) => {
-      const expo = await this.utils.hasExpo(root);
+      const expo = await this.pm.hasExpo(root);
 
-      await this.utils.ensureConfig(root, {
+      await this.scaffolder.ensureConfig(root, {
         tsconfigJson: true,
       });
 
@@ -52,7 +56,9 @@ export class DevCommand {
       }
 
       // Ensure vite is installed before running
-      await this.utils.ensureDependency(root, "vite");
+      await this.pm.ensureDependency(root, "vite", {
+        exec: (cmd, opts) => this.utils.exec(cmd, opts),
+      });
 
       await devServer();
     },
@@ -62,20 +68,10 @@ export class DevCommand {
     if (this.alepha.isBun()) {
       return true;
     }
-    try {
-      await access(join(root, "bun.lock"));
-      return true;
-    } catch {
-      return false;
-    }
+    return this.fs.exists(this.fs.join(root, "bun.lock"));
   }
 
   protected async isFullstackProject(root: string): Promise<boolean> {
-    try {
-      await access(join(root, "index.html"));
-      return true;
-    } catch {
-      return false;
-    }
+    return this.fs.exists(this.fs.join(root, "index.html"));
   }
 }

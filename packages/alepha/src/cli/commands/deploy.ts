@@ -1,12 +1,15 @@
-import { join } from "node:path";
 import { $inject, AlephaError, t } from "alepha";
 import { $command } from "alepha/command";
+import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
+import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 
 export class DeployCommand {
   protected readonly log = $logger();
+  protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
+  protected readonly pm = $inject(PackageManagerUtils);
 
   /**
    * Deploy the project to a hosting platform (e.g., Vercel, Cloudflare, Surge)
@@ -79,7 +82,10 @@ export class DeployCommand {
           this.log.debug("Running database migrations before deployment...");
           await this.utils.exec(`alepha db migrate --mode=${mode}`);
         }
-        await this.utils.ensureDependency(root, "vercel", { dev: true });
+        await this.pm.ensureDependency(root, "vercel", {
+          dev: true,
+          exec: (cmd, opts) => this.utils.exec(cmd, opts),
+        });
         const command =
           `vercel . --cwd=dist ${mode === "production" ? "--prod" : ""}`.trim();
         this.log.debug(`Deploying to Vercel with command: ${command}`);
@@ -93,7 +99,10 @@ export class DeployCommand {
           this.log.debug("Running database migrations before deployment...");
           await this.utils.exec(`alepha db migrate --mode=${mode}`);
         }
-        await this.utils.ensureDependency(root, "wrangler", { dev: true });
+        await this.pm.ensureDependency(root, "wrangler", {
+          dev: true,
+          exec: (cmd, opts) => this.utils.exec(cmd, opts),
+        });
         const command =
           `wrangler deploy ${mode === "production" ? "" : "--env preview"} --config=dist/wrangler.jsonc`.trim();
         this.log.info(`Deploying to Cloudflare with command: ${command}`);
@@ -103,8 +112,11 @@ export class DeployCommand {
 
       // Surge deployment
       if (await this.utils.exists(root, "dist/public/404.html")) {
-        await this.utils.ensureDependency(root, "surge", { dev: true });
-        const distPath = join(root, "dist/public");
+        await this.pm.ensureDependency(root, "surge", {
+          dev: true,
+          exec: (cmd, opts) => this.utils.exec(cmd, opts),
+        });
+        const distPath = this.fs.join(root, "dist/public");
         this.log.debug(`Deploying to Surge from directory: ${distPath}`);
         await this.utils.exec(`surge ${distPath}`);
         return;

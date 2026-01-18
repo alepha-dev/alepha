@@ -25,13 +25,13 @@ export class AlephaPackageBuilderCli {
     handler: async ({ run, root }) => {
       const modules: Array<Module> = [];
 
-      const pkg = await readFile("package.json", "utf-8");
-      const pkgData = JSON.parse(pkg);
+      const pkgBuffer = await this.fs.readFile("package.json");
+      const pkgData = JSON.parse(pkgBuffer.toString("utf-8"));
       const packageName = pkgData.name as string;
 
       await run("analyze modules", async () => {
         modules.push(
-          ...(await analyzeModules(join(root, this.src), packageName)),
+          ...(await analyzeModules(this.fs.join(root, this.src), packageName)),
         );
       });
 
@@ -77,21 +77,20 @@ export class AlephaPackageBuilderCli {
 
       await this.fs.writeFile("package.json", JSON.stringify(pkgData, null, 2));
 
-      const tmpDir = join(root, "node_modules/.alepha");
+      const tmpDir = this.fs.join(root, "node_modules/.alepha");
       await this.fs.mkdir(tmpDir, { recursive: true }).catch(() => {});
 
       await this.fs.writeFile(
-        join(tmpDir, "module-dependencies.json"),
+        this.fs.join(tmpDir, "module-dependencies.json"),
         JSON.stringify(modules, null, 2),
       );
 
-      const tsconfig = await readFile(
-        join(root, "../../tsconfig.json"),
-        "utf-8",
+      const tsconfigBuffer = await this.fs.readFile(
+        this.fs.join(root, "../../tsconfig.json"),
       );
 
       const external: string[] = Object.keys(
-        JSON.parse(tsconfig).compilerOptions.paths,
+        JSON.parse(tsconfigBuffer.toString("utf-8")).compilerOptions.paths,
       );
 
       external.push("bun");
@@ -101,11 +100,11 @@ export class AlephaPackageBuilderCli {
 
       const build = async (item: Module) => {
         const entries: InlineConfig[] = [];
-        const src = join(root, this.src, item.name);
-        const dest = join(root, this.dist, item.name);
+        const src = this.fs.join(root, this.src, item.name);
+        const dest = this.fs.join(root, this.dist, item.name);
 
         entries.push({
-          entry: join(src, "index.ts"),
+          entry: this.fs.join(src, "index.ts"),
           outDir: dest,
           format: ["esm"],
           sourcemap: true,
@@ -119,7 +118,7 @@ export class AlephaPackageBuilderCli {
 
         if (item.native) {
           entries.push({
-            entry: join(src, "index.native.ts"),
+            entry: this.fs.join(src, "index.native.ts"),
             outDir: dest,
             platform: "neutral",
             sourcemap: true,
@@ -130,7 +129,7 @@ export class AlephaPackageBuilderCli {
 
         if (item.browser) {
           entries.push({
-            entry: join(src, "index.browser.ts"),
+            entry: this.fs.join(src, "index.browser.ts"),
             outDir: dest,
             platform: "browser",
             sourcemap: true,
@@ -141,7 +140,7 @@ export class AlephaPackageBuilderCli {
 
         if (item.bun) {
           entries.push({
-            entry: join(src, "index.bun.ts"),
+            entry: this.fs.join(src, "index.bun.ts"),
             outDir: dest,
             platform: "node",
             sourcemap: true,
@@ -151,7 +150,7 @@ export class AlephaPackageBuilderCli {
           });
         }
 
-        const config = join(
+        const config = this.fs.join(
           tmpDir,
           `tsdown-${item.name.replace("/", "-")}.config.js`,
         );

@@ -1,7 +1,6 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { $inject, AlephaError, t } from "alepha";
 import { $command } from "alepha/command";
+import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import type {
   DatabaseProvider,
@@ -27,6 +26,7 @@ const drizzleCommandFlags = t.object({
 
 export class DbCommand {
   protected readonly log = $logger();
+  protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
 
   /**
@@ -66,26 +66,23 @@ export class DbCommand {
 
         accepted.add(providerName);
 
-        const migrationDir = join(rootDir, "migrations", providerName);
+        const migrationDir = this.fs.join(rootDir, "migrations", providerName);
 
-        const journalFile = await readFile(
-          `${migrationDir}/meta/_journal.json`,
-          "utf-8",
-        ).catch(() => null);
+        const journalBuffer = await this.fs
+          .readFile(`${migrationDir}/meta/_journal.json`)
+          .catch(() => null);
 
-        if (!journalFile) {
+        if (!journalBuffer) {
           this.log.info("No migration journal found.");
           return;
         }
 
-        const journal = JSON.parse(journalFile);
+        const journal = JSON.parse(journalBuffer.toString("utf-8"));
         const lastMigration = journal.entries[journal.entries.length - 1];
-        const lastSnapshot = JSON.parse(
-          await readFile(
-            `${migrationDir}/meta/${String(lastMigration.idx).padStart(4, "0")}_snapshot.json`,
-            "utf-8",
-          ),
+        const snapshotBuffer = await this.fs.readFile(
+          `${migrationDir}/meta/${String(lastMigration.idx).padStart(4, "0")}_snapshot.json`,
         );
+        const lastSnapshot = JSON.parse(snapshotBuffer.toString("utf-8"));
 
         const models = drizzleKitProvider.getModels(provider);
         const kit = drizzleKitProvider.importDrizzleKit();
@@ -427,7 +424,7 @@ export class DbCommand {
       } else {
         let url = options.providerUrl;
         url = url.replace("sqlite://", "").replace("file://", "");
-        url = join(options.rootDir, url);
+        url = this.fs.join(options.rootDir, url);
 
         config.dbCredentials = {
           url,

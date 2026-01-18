@@ -1,7 +1,6 @@
-import { access, readFile, unlink, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { $inject, $use, t } from "alepha";
 import { $command } from "alepha/command";
+import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import {
   boot,
@@ -16,10 +15,15 @@ import {
 } from "alepha/vite";
 import { buildOptions } from "../atoms/buildOptions.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
+import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
+import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
 export class BuildCommand {
   protected readonly log = $logger();
+  protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
+  protected readonly pm = $inject(PackageManagerUtils);
+  protected readonly scaffolder = $inject(ProjectScaffolder);
   protected readonly options = $use(buildOptions);
 
   public readonly build = $command({
@@ -66,12 +70,12 @@ export class BuildCommand {
       process.env.ALEPHA_BUILD_MODE = "cli";
       process.env.NODE_ENV = "production";
 
-      if (await this.utils.hasExpo(root)) {
+      if (await this.pm.hasExpo(root)) {
         // will come soon
         return;
       }
 
-      await this.utils.ensureConfig(root, {
+      await this.scaffolder.ensureConfig(root, {
         tsconfigJson: true,
       });
 
@@ -81,21 +85,17 @@ export class BuildCommand {
       const distDir = "dist";
       const clientDir = "public";
 
-      await this.utils.ensureDependency(root, "vite", { run });
+      await this.pm.ensureDependency(root, "vite", {
+        run,
+        exec: (cmd, opts) => this.utils.exec(cmd, opts),
+      });
       await run.rm("dist", { alias: "clean dist" });
 
       const options = this.options;
       await this.utils.loadEnv(root, [".env", ".env.production"]);
 
       const stats = flags.stats ?? options.stats ?? false;
-
-      let hasClient = false;
-      try {
-        await access(join(root, "index.html"));
-        hasClient = true;
-      } catch {
-        // No index.html
-      }
+      const hasClient = await this.fs.exists(this.fs.join(root, "index.html"));
 
       // Build client (precompress always enabled)
       if (hasClient) {
@@ -115,19 +115,24 @@ export class BuildCommand {
       await run({
         name: "vite build server",
         handler: async () => {
-          let clientBuilt = false;
-          try {
-            await readFile(`${distDir}/${clientDir}/index.html`, "utf-8");
-            clientBuilt = true;
-          } catch {
-            // No client build
-          }
+          const clientIndexPath = `${distDir}/${clientDir}/index.html`;
+          const clientBuilt = await this.fs.exists(clientIndexPath);
 
           const conditions: string[] = [];
+
+          // bun:
+          // - alepha
+          // - react-dom
+
           if (flags.bun) {
             conditions.push("bun");
           }
 
+          // workerd:
+          // - react-dom
+          // - postgres
+
+          // TODO: investigate if we have more conditions like 'edge' to add here
           if (options.cloudflare) {
             conditions.push("workerd");
           }
@@ -143,7 +148,7 @@ export class BuildCommand {
 
           // Server will handle index.html if both client & server are built
           if (clientBuilt) {
-            await unlink(`${distDir}/${clientDir}/index.html`);
+            await this.fs.rm(clientIndexPath);
           }
         },
       });
@@ -163,7 +168,7 @@ export class BuildCommand {
           await run({
             name: "add sitemap",
             handler: async () => {
-              await writeFile(
+              await this.fs.writeFile(
                 `${distDir}/${clientDir}/sitemap.xml`,
                 await generateSitemap({
                   entry: `${distDir}/index.js`,
