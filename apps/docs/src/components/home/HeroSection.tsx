@@ -21,7 +21,6 @@ const HeroSection = () => {
     >
       <div className={"light-pillar"}>
         <LightPillar
-          bottomColor="#c2255c"
           intensity={1}
           noiseIntensity={0.7}
           rotationSpeed={0.1}

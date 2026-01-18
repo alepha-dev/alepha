@@ -30,6 +30,7 @@ export class PackageManagerUtils {
     if (flags?.npm) return "npm";
     if (flags?.bun) return "bun";
     if (this.alepha.isBun()) return "bun";
+    if (await this.fs.exists(this.fs.join(root, "bun.lock"))) return "bun";
     if (await this.fs.exists(this.fs.join(root, "yarn.lock"))) return "yarn";
     if (await this.fs.exists(this.fs.join(root, "pnpm-lock.yaml")))
       return "pnpm";
@@ -97,7 +98,10 @@ export class PackageManagerUtils {
     options: {
       dev?: boolean;
       run?: RunnerMethod;
-      exec?: (cmd: string, opts?: { global?: boolean }) => Promise<void>;
+      exec?: (
+        cmd: string,
+        opts?: { global?: boolean; root?: string },
+      ) => Promise<void>;
     } = {},
   ): Promise<void> {
     const { dev = true } = options;
@@ -110,10 +114,10 @@ export class PackageManagerUtils {
     const cmd = await this.getInstallCommand(root, packageName, dev);
 
     if (options.run) {
-      await options.run(cmd, { alias: `installing ${packageName}` });
+      await options.run(cmd, { alias: `installing ${packageName}`, root });
     } else if (options.exec) {
       this.log.debug(`Installing ${packageName}`);
-      await options.exec(cmd, { global: true });
+      await options.exec(cmd, { global: true, root });
     }
   }
 
@@ -257,12 +261,12 @@ export class PackageManagerUtils {
       verify: "alepha verify",
     };
 
-    if (modes.ui) {
+    if (modes.admin) {
       dependencies["@alepha/ui"] = `^${version}`;
-      modes.react = true;
+      modes.web = true;
     }
 
-    if (modes.react) {
+    if (modes.web) {
       dependencies["@alepha/react"] = `^${version}`;
       dependencies.react = "^19.2.0";
       dependencies["react-dom"] = "^19.2.0";
@@ -291,7 +295,7 @@ export class PackageManagerUtils {
 }
 
 export interface DependencyModes {
-  react?: boolean;
-  ui?: boolean;
+  web?: boolean;
+  admin?: boolean;
   expo?: boolean;
 }

@@ -7,9 +7,7 @@
     // Set theme immediately to prevent flash (runs before any rendering)
     (() => {
       var stored = localStorage.getItem('alepha-docs-mode');
-      var theme = stored === 'light' || stored === 'dark'
-        ? stored
-        : (window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      var theme = stored === 'light' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>

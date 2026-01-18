@@ -29,11 +29,12 @@ export class AlephaCliUtils {
   public async exec(
     command: string,
     options: {
+      root?: string;
       env?: Record<string, string>;
       global?: boolean;
     } = {},
   ): Promise<void> {
-    const root = process.cwd();
+    const root = options.root ?? process.cwd();
     this.log.debug(`Executing command: ${command}`, { cwd: root });
 
     const runExec = async (app: string, args: string[]) => {

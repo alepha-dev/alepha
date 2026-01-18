@@ -64,14 +64,8 @@ const Header = (props: HeaderProps) => {
           <img
             src="/favicon.png"
             alt="Alepha"
-            style={{ width: 20, height: 20 }}
+            style={{ width: 32, height: 32, margin: "-8px" }}
           />
-          <span
-            className="font-semibold hidden-mobile"
-            style={{ fontSize: 14 }}
-          >
-            alepha
-          </span>
         </Link>
 
         {/* Version - Links to Changelog */}

@@ -20,6 +20,11 @@ export interface RunOptions {
    * Rename the command for logging purposes.
    */
   alias?: string;
+
+  /**
+   * Root directory to execute the command in.
+   */
+  root?: string;
 }
 
 export interface RunnerMethod {
@@ -73,11 +78,14 @@ export class Runner {
 
       this.firstTaskStarted = true;
 
+      const root =
+        typeof options === "object" && options.root ? options.root : undefined;
+
       if (Array.isArray(cmd)) {
         return await this.execute(
           cmd.map((it) =>
             typeof it === "string"
-              ? { name: it, handler: () => this.exec(it) }
+              ? { name: it, handler: () => this.exec(it, { root }) }
               : it,
           ),
         );
@@ -89,7 +97,7 @@ export class Runner {
         typeof options === "function"
           ? options
           : typeof cmd === "string"
-            ? () => this.exec(cmd)
+            ? () => this.exec(cmd, { root })
             : cmd.handler;
 
       return await this.execute({
@@ -140,11 +148,15 @@ export class Runner {
     return runFn;
   }
 
-  protected async exec(cmd: string): Promise<string> {
+  protected async exec(
+    cmd: string,
+    opts: { root?: string } = {},
+  ): Promise<string> {
     return await new Promise<string>((resolve, reject) => {
       exec(
         cmd,
         {
+          cwd: opts.root,
           env: {
             ...process.env,
             LOG_FORMAT: "pretty",
