@@ -41,26 +41,3 @@ export const RoadmapApi = $module({
     ProjectResources,
   ],
 });
-
-export * from "./controllers/CharacterController.ts";
-export * from "./controllers/IdentityController.ts";
-export * from "./controllers/InvitationController.ts";
-export * from "./controllers/McpApiKeyController.ts";
-export * from "./controllers/ProjectController.ts";
-export * from "./controllers/ProjectStatsController.ts";
-export * from "./controllers/SessionController.ts";
-export * from "./controllers/TaskController.ts";
-export * from "./controllers/UserController.ts";
-export * from "./controllers/WhiteboardController.ts";
-export * from "./entities/characters.ts";
-export * from "./entities/files.ts";
-export * from "./entities/identities.ts";
-export * from "./entities/invitations.ts";
-export * from "./entities/mcpApiKeys.ts";
-export * from "./entities/projects.ts";
-export * from "./entities/sessions.ts";
-export * from "./entities/tasks.ts";
-export * from "./entities/users.ts";
-export * from "./entities/whiteboards.ts";
-export * from "./providers/AppSecurityProvider.ts";
-export * from "./schemas/taskCreateSchema.ts";

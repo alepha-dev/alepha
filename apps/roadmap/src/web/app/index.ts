@@ -13,15 +13,6 @@ import { MeRouter } from "./components/profile/MeRouter.ts";
 import { I18n } from "./services/I18n.ts";
 import { Toaster } from "./services/Toaster.ts";
 
-export * from "./AppRouter.ts";
-export * from "./atoms/currentAssignedTasksAtom.ts";
-export * from "./atoms/currentProjectAtom.ts";
-export * from "./atoms/currentProjectCharacterAtom.ts";
-export * from "./atoms/currentTaskAtom.ts";
-export * from "./atoms/userProjectsAtom.ts";
-export * from "./services/I18n.ts";
-export * from "./services/Toaster.ts";
-
 export const RoadmapWebApp = $module({
   name: "roadmap.web.app",
   services: [Toaster, I18n, AppRouter, MeRouter],

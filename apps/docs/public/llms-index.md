@@ -38,21 +38,25 @@
 ```
 my-app/
 ├── src/
-│   ├── api/              # Backend services
+│   ├── api/              # Backend (always use src/api/)
 │   │   ├── controllers/  # API controllers with $action
 │   │   ├── services/     # Business logic
 │   │   ├── entities/     # Entities with $entity
-│   │   └── providers/    # External service providers
-│   ├── web/              # Frontend (if full-stack)
+│   │   ├── providers/    # External service providers
+│   │   └── index.ts      # API module definition with $module
+│   ├── web/              # Frontend (React/full-stack only)
 │   │   ├── components/   # React components
-│   │   └── AppRouter.ts  # Router definition with $page
+│   │   ├── AppRouter.ts  # Router definition with $page
+│   │   └── index.ts      # Web module definition with $module (React only)
 │   ├── shared/           # Shared types/schemas
-│   ├── main.server.ts    # Server entry point
-│   └── main.browser.ts   # Browser entry point (if full-stack)
+│   ├── main.server.ts    # Server entry (always use main.server.ts)
+│   └── main.browser.ts   # Browser entry (React/full-stack only)
 ├── package.json
 ├── tsconfig.json
-└── index.html            # If using full-stack features
+└── index.html            # (React/full-stack only)
 ```
+
+Note: Always use `src/api/` and `main.server.ts` even for API-only projects. The `src/web/`, `main.browser.ts`, and `index.html` are only for React/full-stack apps. Each directory should have an `index.ts` that exports a `$module` grouping its services.
 
 ## Examples
 
@@ -125,13 +129,20 @@ class AppRouter {
 ### Entry Point
 ```typescript
 // src/main.server.ts
-import { Alepha, run } from "alepha";
-import { UserController } from "./api/controllers/UserController.ts";
+import { run } from "alepha";
+import { ApiModule } from "./api/index.ts";
+import { WebModule } from "./web/index.ts"; // React only
 
-const alepha = Alepha.create()
-  .with(UserController);
+run(ApiModule, WebModule);
 
-run(alepha);
+// src/api/index.ts
+import { $module } from "alepha";
+import { UserController } from "./controllers/UserController.ts";
+
+export const ApiModule = $module({
+  name: "app.api",
+  services: [UserController],
+});
 ```
 
 ### Service Communication
