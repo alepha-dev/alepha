@@ -69,6 +69,17 @@ export abstract class Repository<T extends TObject> {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
 
+  static of<T extends TObject>(
+    entity: EntityPrimitive<T>,
+    provider = DatabaseProvider,
+  ) {
+    return class extends Repository<T> {
+      constructor() {
+        super(entity, provider);
+      }
+    };
+  }
+
   constructor(entity: EntityPrimitive<T>, provider = DatabaseProvider) {
     this.entity = entity;
     this.provider = this.alepha.inject(provider);
