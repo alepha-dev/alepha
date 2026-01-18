@@ -1,7 +1,7 @@
 <div align="center">
 <h1 >
 <img
-	src="https://raw.githubusercontent.com/feunard/alepha/main/assets/logo.png"
+	src="https://raw.githubusercontent.com/feunard/alepha/main/apps/docs/public/icon-512.png"
 	width="128"
 	height="128"
 	alt="Logo"
@@ -18,9 +18,6 @@ Easy mode for building TypeScript applications.
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/dt/alepha.svg" alt="npm"/></a>
 <a href="https://github.com/feunard/alepha"><img src="https://img.shields.io/github/stars/feunard/alepha.svg?style=social" alt="GitHub stars"/></a>
 </div>
-
-> [!WARNING]
-> **Early Development** — Alepha is under active development. The API is stabilizing but may change. First stable release planned for early 2026. Follow the repo to stay updated.
 
 ## What is this?
 

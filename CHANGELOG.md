@@ -1,3 +1,17 @@
+## [0.15.0] - 2026-01-18
+
+### Features
+
+- **cli**: allow "alepha build --bun" for building only with alepha bun-only deps (`bb75c247`)
+- **server**: greatly improve http server performance (`232b7a95`)
+- **orm**: add db provider "driver" - for specify sqlite driver (default, d1, ...) or postgres (`6dd0fd06`)
+- **security**: move all server/security code into security [BREAKING] (`f0eaefd8`)
+- **security**: rename $realm -> $issuer and $userReal -> $realm [BREAKING] (`b9230720`)
+
+### Bug Fixes
+
+- **react/router**: fix redirect in SSR streaming mode (`c8657629`)
+
 ## [0.14.4] - 2026-01-13
 
 ### Features
