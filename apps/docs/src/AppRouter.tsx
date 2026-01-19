@@ -109,9 +109,17 @@ export class AppRouter {
       }
       throw new NotFoundError("Document not found");
     },
-    head: ({ name }) => {
+    head: (args) => {
+      if (args.slug.startsWith("packages")) {
+        return {
+          title: args.slug
+            .replace("packages-alepha-", "")
+            .replaceAll("-", "/")
+            .replace("/core", ""),
+        };
+      }
       return {
-        title: name,
+        title: args.name,
       };
     },
     errorHandler: (error) => {

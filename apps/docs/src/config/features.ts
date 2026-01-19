@@ -36,7 +36,7 @@ export const coreFeatures = [
     title: "Server",
     module: "alepha/server",
     description: "HTTP server with type-safe REST APIs.",
-    slug: "packages-alepha-server",
+    slug: "packages-alepha-server-core",
   },
   {
     icon: IconApi,
@@ -74,13 +74,13 @@ export const coreFeatures = [
     title: "Cache",
     module: "alepha/cache",
     description: "In-memory or Redis caching.",
-    slug: "packages-alepha-cache",
+    slug: "packages-alepha-cache-core",
   },
   {
     icon: IconBucket,
     title: "Bucket",
     module: "alepha/bucket",
-    description: "File storage for local, Azure, or Vercel.",
+    description: "File storage for local, S3, etc.",
     slug: "packages-alepha-bucket",
   },
 
@@ -90,7 +90,7 @@ export const coreFeatures = [
     title: "Queue",
     module: "alepha/queue",
     description: "Background job processing with retries.",
-    slug: "packages-alepha-queue",
+    slug: "packages-alepha-queue-core",
   },
   {
     icon: IconClock,
@@ -106,14 +106,14 @@ export const coreFeatures = [
     title: "React",
     module: "@alepha/react",
     description: "SSR, CSR, or SSG with routing.",
-    slug: "packages-react-core",
+    slug: "packages-alepha-react-core",
   },
   {
     icon: IconSeo,
     title: "Head",
     module: "@alepha/react/head",
     description: "Document head and SEO metadata.",
-    slug: "packages-react-head",
+    slug: "packages-alepha-react-head",
   },
 
   // Communication
@@ -136,7 +136,7 @@ export const coreFeatures = [
     title: "Topic",
     module: "alepha/topic",
     description: "Pub/sub messaging.",
-    slug: "packages-alepha-topic",
+    slug: "packages-alepha-topic-core",
   },
   {
     icon: IconPlugConnected,
@@ -159,7 +159,7 @@ export const coreFeatures = [
     title: "Lock",
     module: "alepha/lock",
     description: "Distributed locking.",
-    slug: "packages-alepha-lock",
+    slug: "packages-alepha-lock-core",
   },
   {
     icon: IconRepeat,
@@ -196,14 +196,14 @@ export const coreFeatures = [
     title: "DevTools",
     module: "@alepha/devtools",
     description: "Inspect actions, queues, logs.",
-    slug: "packages-devtools",
+    slug: "packages-alepha-devtools",
   },
   {
     icon: IconCloud,
     title: "Deploy",
     module: null,
     description: "Docker, Vercel, and more.",
-    slug: "guides-operations-deployment",
+    slug: "guides-production-overview",
   },
 ];
 
@@ -220,7 +220,7 @@ export const apiFeatures = [
     title: "Auth UI",
     module: "@alepha/ui/auth",
     description: "Ready-to-use authentication components.",
-    slug: "packages-react-auth",
+    slug: "packages-alepha-ui-auth",
   },
   {
     icon: IconFileText,
@@ -241,6 +241,6 @@ export const apiFeatures = [
     title: "Admin UI",
     module: "@alepha/ui/admin",
     description: "Auto-generated admin panel.",
-    slug: "packages-ui-admin",
+    slug: "packages-alepha-ui-admin",
   },
 ];
