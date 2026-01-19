@@ -120,14 +120,18 @@ export class AppRouter {
             .replace("/core", "")
         : args.name;
 
+      const keywords = args.keywords ? args.keywords.join(",") : undefined;
+
       return {
         title,
-        meta: [
-          {
-            name: "keywords",
-            content: args.keywords.join(","),
-          },
-        ],
+        meta: keywords
+          ? [
+              {
+                name: "keywords",
+                content: keywords,
+              },
+            ]
+          : undefined,
       };
     },
     errorHandler: (error) => {
