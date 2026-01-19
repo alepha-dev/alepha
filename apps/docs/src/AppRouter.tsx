@@ -73,6 +73,9 @@ export class AppRouter {
     component: Home,
     label: "Home",
     static: true,
+    head: () => ({
+      title: "TypeScript Framework Made Easy",
+    }),
   });
 
   changelog = $page({
@@ -110,16 +113,21 @@ export class AppRouter {
       throw new NotFoundError("Document not found");
     },
     head: (args) => {
-      if (args.slug.startsWith("packages")) {
-        return {
-          title: args.slug
+      const title = args.slug.startsWith("packages")
+        ? args.slug
             .replace("packages-alepha-", "")
             .replaceAll("-", "/")
-            .replace("/core", ""),
-        };
-      }
+            .replace("/core", "")
+        : args.name;
+
       return {
-        title: args.name,
+        title,
+        meta: [
+          {
+            name: "keywords",
+            content: args.keywords.join(","),
+          },
+        ],
       };
     },
     errorHandler: (error) => {
