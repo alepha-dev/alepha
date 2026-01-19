@@ -148,17 +148,23 @@ const SidebarResizer = (props: {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={styles.resizer}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize sidebar"
+      aria-valuenow={undefined}
+      tabIndex={0}
     >
       {/* Subtle grip dots - only visible on hover */}
       <div
         className={`${styles.resizerGrip} ${isActive ? styles.resizerGripActive : ""}`}
+        aria-hidden="true"
       >
         {[0, 1, 2].map((i) => (
           <div key={i} className={styles.resizerDot} />
         ))}
       </div>
       {/* Hover hitbox extension */}
-      <div className={styles.resizerHitbox} />
+      <div className={styles.resizerHitbox} aria-hidden="true" />
     </div>
   );
 };
@@ -372,9 +378,9 @@ const LayoutContent = () => {
         </div>
 
         {/* Content */}
-        <div className="flex-1">
+        <main id="main-content" className="flex-1" role="main">
           <NestedView />
-        </div>
+        </main>
 
         {/* Command Palette available everywhere */}
         <CommandPalette />
@@ -398,9 +404,15 @@ const LayoutContent = () => {
       {showHackerNotification && (
         <div
           className={`${styles.notification} ${styles.hackerNotification} ${hackerMode ? styles.hackerNotificationActive : styles.hackerNotificationInactive}`}
+          role="status"
+          aria-live="polite"
         >
           <span className="flex items-center gap-2">
-            {hackerMode ? <IconLockOpen size={14} /> : <IconLock size={14} />}
+            {hackerMode ? (
+              <IconLockOpen size={14} aria-hidden="true" />
+            ) : (
+              <IconLock size={14} aria-hidden="true" />
+            )}
             {hackerMode ? "HACKER MODE ACTIVATED" : "HACKER MODE DEACTIVATED"}
           </span>
         </div>
@@ -408,7 +420,11 @@ const LayoutContent = () => {
 
       {/* Focus Mode Notification */}
       {focusMode && (
-        <div className={`${styles.notification} ${styles.focusNotification}`}>
+        <div
+          className={`${styles.notification} ${styles.focusNotification}`}
+          role="status"
+          aria-live="polite"
+        >
           Focus mode • Press <kbd className={styles.focusKey}>f</kbd> or{" "}
           <kbd className={styles.focusKey}>Esc</kbd> to exit
         </div>
@@ -416,11 +432,17 @@ const LayoutContent = () => {
 
       {/* Mobile Sidebar Drawer */}
       {mobileSidebarOpen && (
-        <div className={`visible-mobile fixed inset-0 ${styles.mobileOverlay}`}>
+        <div
+          className={`visible-mobile fixed inset-0 ${styles.mobileOverlay}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+        >
           {/* Backdrop */}
           <div
             className={`absolute inset-0 ${styles.mobileBackdrop}`}
             onClick={() => setMobileSidebarOpen(false)}
+            aria-hidden="true"
           />
           {/* Drawer */}
           <div
@@ -450,9 +472,14 @@ const LayoutContent = () => {
           )}
 
           {/* Content */}
-          <div ref={contentRef} className={`flex-1 ${styles.contentArea}`}>
+          <main
+            ref={contentRef}
+            id="main-content"
+            className={`flex-1 ${styles.contentArea}`}
+            role="main"
+          >
             <NestedView />
-          </div>
+          </main>
         </div>
 
         {/* Status Bar */}

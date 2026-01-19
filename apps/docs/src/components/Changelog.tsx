@@ -77,8 +77,9 @@ const ChangeItem = ({
           rel="noopener noreferrer"
           className={styles.commit}
           title={`View commit ${change.commit}`}
+          aria-label={`View commit ${change.commit.slice(0, 7)} on GitHub (opens in new window)`}
         >
-          <IconGitCommit size={12} />
+          <IconGitCommit size={12} aria-hidden="true" />
           <span>{change.commit.slice(0, 7)}</span>
         </a>
       )}
@@ -106,30 +107,36 @@ const Changelog = ({ entries }: ChangelogProps) => {
       <div className={styles.container}>
         {/* Header */}
         <header className={styles.header}>
-          <Link href="/" className={styles.back}>
-            <IconArrowLeft size={16} />
+          <Link href="/" className={styles.back} aria-label="Back to Home">
+            <IconArrowLeft size={16} aria-hidden="true" />
             <span>Back to Home</span>
           </Link>
           <h1 className={styles.title}>
             Changelog
-            <small>.md</small>
+            <small aria-hidden="true">.md</small>
           </h1>
         </header>
 
         {/* Timeline */}
-        <div className={styles.timeline}>
+        <div
+          className={styles.timeline}
+          role="feed"
+          aria-label="Changelog entries"
+        >
           {entries.map((entry, index) => (
             <article
               key={entry.version}
               className={`${styles.entry} ${index === 0 ? styles.entryLatest : ""}`}
+              aria-labelledby={`version-${entry.version}`}
             >
-              <div className={styles.entryCircle} />
+              <div className={styles.entryCircle} aria-hidden="true" />
               <div
                 className={`${styles.entryCircle} ${styles.entryCircleRight}`}
+                aria-hidden="true"
               />
 
               {/* Timeline node */}
-              <div className={styles.node}>
+              <div className={styles.node} aria-hidden="true">
                 <div className={styles.nodeDot} />
                 <div className={styles.nodeLine} />
               </div>
@@ -138,7 +145,12 @@ const Changelog = ({ entries }: ChangelogProps) => {
               <div className={styles.content}>
                 {/* Version header */}
                 <div className={styles.versionHeader}>
-                  <span className={styles.version}>v{entry.version}</span>
+                  <h2
+                    className={styles.version}
+                    id={`version-${entry.version}`}
+                  >
+                    v{entry.version}
+                  </h2>
                   <time className={styles.date} dateTime={entry.date}>
                     {formatDate(entry.date)}
                   </time>
@@ -200,7 +212,7 @@ const Changelog = ({ entries }: ChangelogProps) => {
           ))}
 
           {/* Timeline end */}
-          <div className={styles.end}>
+          <div className={styles.end} aria-hidden="true">
             <div className={styles.endDot} />
             <span className={styles.endText}>The Beginning</span>
           </div>

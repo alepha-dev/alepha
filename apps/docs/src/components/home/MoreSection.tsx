@@ -158,6 +158,9 @@ const MoreSection = () => {
           <button
             type="button"
             onClick={handleCopy}
+            aria-label={
+              copied ? "Copied to clipboard" : "Copy command to clipboard"
+            }
             className="copy-btn"
             style={{
               border: "none",
@@ -170,7 +173,11 @@ const MoreSection = () => {
               marginLeft: 8,
             }}
           >
-            {copied ? <IconCheck size={18} /> : <IconCopy size={18} />}
+            {copied ? (
+              <IconCheck size={18} aria-hidden="true" />
+            ) : (
+              <IconCopy size={18} aria-hidden="true" />
+            )}
           </button>
         </div>
 
@@ -183,6 +190,7 @@ const MoreSection = () => {
             href="https://github.com/feunard/alepha"
             target="_blank"
             rel="noopener noreferrer"
+            aria-label="GitHub repository (opens in new window)"
             className="footer-link flex items-center gap-2"
             style={{
               color: "var(--color-text-muted)",
@@ -190,13 +198,14 @@ const MoreSection = () => {
               fontSize: 14,
             }}
           >
-            <IconBrandGithub size={18} />
+            <IconBrandGithub size={18} aria-hidden="true" />
             <span>GitHub</span>
           </a>
           <a
             href="https://www.npmjs.com/package/alepha"
             target="_blank"
             rel="noopener noreferrer"
+            aria-label="npm package (opens in new window)"
             className="footer-link flex items-center gap-2"
             style={{
               color: "var(--color-text-muted)",
@@ -204,7 +213,7 @@ const MoreSection = () => {
               fontSize: 14,
             }}
           >
-            <IconBrandNpm size={18} />
+            <IconBrandNpm size={18} aria-hidden="true" />
             <span>npm</span>
           </a>
         </div>
@@ -306,27 +315,35 @@ const MoreSection = () => {
           {/* Left: License + Links */}
           <div className="flex items-center gap-2 flex-wrap">
             <span>MIT License</span>
-            <span style={{ opacity: 0.4 }}>·</span>
+            <span style={{ opacity: 0.4 }} aria-hidden="true">
+              ·
+            </span>
             <a
               href="https://github.com/feunard/alepha"
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="GitHub (opens in new window)"
               className="footer-link"
               style={{ color: "inherit", textDecoration: "none" }}
             >
               GitHub
             </a>
-            <span style={{ opacity: 0.4 }}>·</span>
+            <span style={{ opacity: 0.4 }} aria-hidden="true">
+              ·
+            </span>
             <a
               href="https://www.npmjs.com/package/alepha"
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="npm (opens in new window)"
               className="footer-link"
               style={{ color: "inherit", textDecoration: "none" }}
             >
               npm
             </a>
-            <span style={{ opacity: 0.4 }}>·</span>
+            <span style={{ opacity: 0.4 }} aria-hidden="true">
+              ·
+            </span>
             <a
               href="mailto:contact@alepha.dev"
               className="footer-link"
@@ -343,6 +360,8 @@ const MoreSection = () => {
           >
             <span>Made in Paris, France</span>
             <span
+              aria-label="French flag"
+              role="img"
               style={{
                 display: "inline-flex",
                 width: 96,
@@ -351,9 +370,18 @@ const MoreSection = () => {
                 overflow: "hidden",
               }}
             >
-              <span style={{ flex: 1, background: "#002395" }} />
-              <span style={{ flex: 1, background: "#ffffff" }} />
-              <span style={{ flex: 1, background: "#ED2939" }} />
+              <span
+                style={{ flex: 1, background: "#002395" }}
+                aria-hidden="true"
+              />
+              <span
+                style={{ flex: 1, background: "#ffffff" }}
+                aria-hidden="true"
+              />
+              <span
+                style={{ flex: 1, background: "#ED2939" }}
+                aria-hidden="true"
+              />
             </span>
           </div>
         </div>

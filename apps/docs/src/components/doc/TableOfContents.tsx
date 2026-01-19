@@ -26,14 +26,23 @@ const TableOfContents = (props: TableOfContentsProps) => {
   }, [props.name, router]);
 
   return (
-    <div className={`visible-xl ${styles.container}`}>
+    <nav
+      className={`visible-xl ${styles.container}`}
+      aria-label="Table of contents"
+    >
       <div className={styles.sticky}>
-        <div className={styles.header}>On This Page</div>
-        <div className={`scroll-area ${styles.scrollArea}`}>
+        <div className={styles.header} id="toc-heading">
+          On This Page
+        </div>
+        <div
+          className={`scroll-area ${styles.scrollArea}`}
+          role="list"
+          aria-labelledby="toc-heading"
+        >
           <TocItems key={props.name} />
         </div>
       </div>
-    </div>
+    </nav>
   );
 };
 
@@ -176,7 +185,7 @@ const TocItems = () => {
         } as CSSProperties
       }
     >
-      <div className={styles.indicator} />
+      <div className={styles.indicator} aria-hidden="true" />
 
       {headings.map((heading) => {
         const isActive = activeId === heading.id;
@@ -190,7 +199,9 @@ const TocItems = () => {
               if (el) itemRefs.current.set(heading.id, el);
             }}
             type="button"
+            role="listitem"
             onClick={() => handleClick(heading.id)}
+            aria-current={isActive ? "location" : undefined}
             className={`${styles.item} ${depthClass} ${isActive ? styles.itemActive : ""}`}
             style={{ "--item-indent": `${20 + indent}px` } as CSSProperties}
           >

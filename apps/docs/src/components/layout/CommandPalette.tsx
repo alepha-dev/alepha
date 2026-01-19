@@ -157,10 +157,13 @@ const CommandPalette = () => {
       {...dialogProps}
       className={styles.container}
       overlayPadding="80px 16px 20px"
+      ariaLabel="Search documentation"
     >
       {/* Input */}
       <div className={styles.inputSection}>
-        <span className={styles.prompt}>{">"}</span>
+        <span className={styles.prompt} aria-hidden="true">
+          {">"}
+        </span>
         <input
           ref={inputRef}
           type="text"
@@ -168,40 +171,69 @@ const CommandPalette = () => {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleInputKeyDown}
           placeholder="Type to search documentation..."
+          aria-label="Search documentation"
+          aria-autocomplete="list"
+          aria-controls="command-palette-results"
+          aria-activedescendant={
+            results[selectedIndex] ? `result-${selectedIndex}` : undefined
+          }
+          role="combobox"
+          aria-expanded={results.length > 0}
+          aria-haspopup="listbox"
           className={styles.input}
         />
-        <span className={`kbd ${styles.escBadge}`}>ESC</span>
+        <span className={`kbd ${styles.escBadge}`} aria-hidden="true">
+          ESC
+        </span>
       </div>
 
       {/* Results */}
-      <div ref={resultsRef} className={styles.results}>
+      <div
+        ref={resultsRef}
+        id="command-palette-results"
+        role="listbox"
+        aria-label="Search results"
+        className={styles.results}
+      >
         {results.map((result, index) => (
           <button
             type="button"
             key={result.doc.href}
+            id={`result-${index}`}
+            role="option"
+            aria-selected={index === selectedIndex}
             onClick={() => handleSelect(result.doc.href)}
             onMouseEnter={() => setSelectedIndex(index)}
             className={`${styles.item} ${index === selectedIndex ? styles.itemSelected : ""}`}
           >
-            <IconFile size={16} className={styles.itemIcon} />
+            <IconFile
+              size={16}
+              className={styles.itemIcon}
+              aria-hidden="true"
+            />
             <span className="truncate">{result.doc.name}</span>
             {result.matchedKeyword && (
               <span className={styles.matchedKeyword}>
                 {result.matchedKeyword}
               </span>
             )}
-            <span className={styles.itemPath}>
+            <span
+              className={styles.itemPath}
+              aria-label={`Path: ${result.doc.href.replace("/docs/", "")}`}
+            >
               {result.doc.href.replace("/docs/", "")}
             </span>
           </button>
         ))}
         {results.length === 0 && query && (
-          <div className={styles.noResults}>No results found</div>
+          <div className={styles.noResults} role="status" aria-live="polite">
+            No results found
+          </div>
         )}
       </div>
 
       {/* Footer */}
-      <div className={styles.footer}>
+      <div className={styles.footer} aria-hidden="true">
         <span>
           <span className="kbd">↑↓</span> Navigate
         </span>

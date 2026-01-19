@@ -26,10 +26,11 @@ const Sidebar = (props: SidebarProps) => {
   };
 
   return (
-    <div
+    <nav
       className={
         isMobileDrawer ? "flex flex-col" : "sidebar-container flex flex-col"
       }
+      aria-label="Documentation explorer"
       style={{
         width,
         minWidth: width,
@@ -56,12 +57,17 @@ const Sidebar = (props: SidebarProps) => {
         <div className="flex-1" />
 
         {/* Action buttons */}
-        <div className="flex items-center gap-1">
+        <div
+          className="flex items-center gap-1"
+          role="group"
+          aria-label="Explorer actions"
+        >
           <button
             type="button"
             onClick={handleExpandAll}
             className="btn-reset flex items-center justify-center explorer-action"
             title="Expand All"
+            aria-label="Expand all folders"
             style={{
               width: 20,
               height: 20,
@@ -77,6 +83,7 @@ const Sidebar = (props: SidebarProps) => {
             onClick={handleCollapseAll}
             className="btn-reset flex items-center justify-center explorer-action"
             title="Collapse All"
+            aria-label="Collapse all folders"
             style={{
               width: 20,
               height: 20,
@@ -102,7 +109,7 @@ const Sidebar = (props: SidebarProps) => {
           defaultExpanded={defaultExpanded}
         />
       </div>
-    </div>
+    </nav>
   );
 };
 

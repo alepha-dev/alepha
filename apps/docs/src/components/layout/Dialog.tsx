@@ -31,6 +31,12 @@ export interface DialogProps {
   closeOnEscape?: boolean;
   /** Whether to close on overlay click (default: true) */
   closeOnOverlayClick?: boolean;
+  /** Accessible label for the dialog */
+  ariaLabel?: string;
+  /** ID of element that labels the dialog */
+  ariaLabelledBy?: string;
+  /** ID of element that describes the dialog */
+  ariaDescribedBy?: string;
 }
 
 const Dialog = (props: DialogProps) => {
@@ -44,6 +50,9 @@ const Dialog = (props: DialogProps) => {
     overlayPadding = "80px 16px 20px",
     closeOnEscape = true,
     closeOnOverlayClick = true,
+    ariaLabel,
+    ariaLabelledBy,
+    ariaDescribedBy,
   } = props;
 
   const [closing, setClosing] = useState(false);
@@ -94,11 +103,17 @@ const Dialog = (props: DialogProps) => {
       className={overlayClasses}
       style={{ padding: overlayPadding }}
       onClick={closeOnOverlayClick ? handleClose : undefined}
+      role="presentation"
     >
       <div
         className={containerClasses}
         style={style}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
       >
         {children}
       </div>

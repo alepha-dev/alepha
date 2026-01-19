@@ -28,12 +28,17 @@ export const FileTree = (props: FileTreeProps) => {
   const guideLeft = BASE + (depth - 1) * INDENT + COL / 2;
 
   return (
-    <div className={styles.container}>
+    <div
+      className={styles.container}
+      role={depth === 0 ? "tree" : "group"}
+      aria-label={depth === 0 ? "Documentation files" : undefined}
+    >
       {/* Vertical indent guide */}
       {depth > 0 && (
         <div
           className={styles.indentGuide}
           style={{ "--guide-left": `${guideLeft}px` } as CSSProperties}
+          aria-hidden="true"
         />
       )}
       {props.nodes.map((node) => (
@@ -136,20 +141,32 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
     .filter(Boolean)
     .join(" ");
 
+  const itemLabel = hasChildren
+    ? `${node.name} folder${expanded ? ", expanded" : ", collapsed"}`
+    : `${node.name}.${node.asset || "md"}`;
+
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      role="treeitem"
+      aria-expanded={hasChildren ? expanded : undefined}
+    >
       <Element
         href={node.href}
         type={node.href ? undefined : "button"}
         onClick={handleClickWithEvent}
         className={rowClasses}
         style={{ "--indent": `${rowPaddingLeft}px` } as React.CSSProperties}
+        aria-current={isActive ? "page" : undefined}
+        aria-label={itemLabel}
       >
         {/* Active indicator bar */}
-        {isActive && <div className={styles.activeIndicator} />}
+        {isActive && (
+          <div className={styles.activeIndicator} aria-hidden="true" />
+        )}
 
         {/* Chevron column */}
-        <span className={styles.iconCol}>
+        <span className={styles.iconCol} aria-hidden="true">
           {hasChildren &&
             (expanded ? (
               <IconChevronDown size={14} />
@@ -161,6 +178,7 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
         {/* Icon column */}
         <span
           className={`${styles.iconCol} ${hasChildren ? styles.iconFolder : styles.iconFile}`}
+          aria-hidden="true"
         >
           {hasChildren ? (
             expanded ? (
@@ -174,7 +192,7 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
         </span>
 
         {/* Name */}
-        <span className={styles.name}>
+        <span className={styles.name} aria-hidden="true">
           {node.name.toLowerCase()}
           {!hasChildren && (
             <span className={styles.extension}>.{node.asset || "md"}</span>
@@ -182,7 +200,11 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
         </span>
 
         {/* Hover arrow indicator for files */}
-        {!hasChildren && <span className={styles.hoverArrow}>→</span>}
+        {!hasChildren && (
+          <span className={styles.hoverArrow} aria-hidden="true">
+            →
+          </span>
+        )}
       </Element>
 
       {/* Children */}

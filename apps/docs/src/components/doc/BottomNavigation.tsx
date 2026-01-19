@@ -28,8 +28,9 @@ const BottomNavigation = (props: BottomNavigationProps) => {
   }, [props.name]);
 
   return (
-    <div
+    <nav
       className="mt-6 pt-6 pb-6 bottom-nav"
+      aria-label="Document navigation"
       style={{
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
@@ -54,7 +55,7 @@ const BottomNavigation = (props: BottomNavigationProps) => {
           />
         )}
       </div>
-    </div>
+    </nav>
   );
 };
 
@@ -75,10 +76,17 @@ const NavButton = (props: NavButtonProps) => {
   const { isPending } = useActive(href);
   const router = useRouter();
 
+  const label =
+    direction === "prev"
+      ? `Go to previous page: ${name}`
+      : `Go to next page: ${name}`;
+
   return (
     <button
       type="button"
       onClick={() => router.go(href)}
+      aria-label={label}
+      aria-busy={isPending}
       className="btn-reset nav-button flex items-center gap-3 cursor-pointer w-full"
       style={{
         padding: "12px 16px",
@@ -96,6 +104,7 @@ const NavButton = (props: NavButtonProps) => {
           size={16}
           className="nav-arrow nav-arrow-prev"
           style={{ color: "var(--color-text-muted)" }}
+          aria-hidden="true"
         />
       )}
       <div
@@ -104,7 +113,7 @@ const NavButton = (props: NavButtonProps) => {
           alignItems: direction === "next" ? "flex-end" : "flex-start",
         }}
       >
-        <span className="text-xs text-muted">
+        <span className="text-xs text-muted" aria-hidden="true">
           {direction === "prev" ? "Previous" : "Next"}
         </span>
         <span className="text-sm" style={{ color: "var(--color-text-bright)" }}>
@@ -116,6 +125,7 @@ const NavButton = (props: NavButtonProps) => {
           size={16}
           className="nav-arrow nav-arrow-next"
           style={{ color: "var(--color-text-muted)" }}
+          aria-hidden="true"
         />
       )}
     </button>

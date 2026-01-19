@@ -43,6 +43,8 @@ const Header = (props: HeaderProps) => {
             onClick={() =>
               window.dispatchEvent(new CustomEvent("toggle-mobile-sidebar"))
             }
+            aria-label="Toggle sidebar menu"
+            aria-expanded={false}
             style={{
               width: 44,
               background: "transparent",
@@ -150,6 +152,7 @@ const SearchButton = () => {
       type="button"
       onClick={openSearch}
       title="Search"
+      aria-label={`Search documentation (${isMac ? "⌘" : "Ctrl+"}K)`}
       className="header-btn flex items-center gap-2 rounded transition-colors"
       style={{
         padding: "4px 8px",
@@ -161,7 +164,7 @@ const SearchButton = () => {
       }}
     >
       <IconSearch size={14} />
-      <span style={{ fontSize: 11, opacity: 0.7 }}>
+      <span aria-hidden="true" style={{ fontSize: 11, opacity: 0.7 }}>
         {isMac ? "⌘" : "Ctrl+"}K
       </span>
     </button>
@@ -214,7 +217,12 @@ const TabBar = () => {
   );
 
   return (
-    <div className="flex h-full items-center" style={{ paddingLeft: 12 }}>
+    <div
+      className="flex h-full items-center"
+      style={{ paddingLeft: 12 }}
+      role="tablist"
+      aria-label="Open documents"
+    >
       {tabs.map((tab) => (
         <Tab
           key={tab.path}
@@ -243,6 +251,8 @@ const Tab = (props: {
   return (
     <div
       className={`pill-tab ${isActive ? "" : "tab-inactive"}`}
+      role="tab"
+      aria-selected={isActive}
       style={{
         display: "flex",
         alignItems: "center",
@@ -264,6 +274,7 @@ const Tab = (props: {
       <Link
         href={path}
         className="flex items-center gap-2"
+        aria-current={isActive ? "page" : undefined}
         style={{
           textDecoration: "none",
           color: "inherit",
@@ -295,6 +306,7 @@ const Tab = (props: {
           e.stopPropagation();
           onClose();
         }}
+        aria-label={`Close ${name} tab`}
         className="btn-reset tab-close flex items-center justify-center"
         style={{
           width: 16,
@@ -324,13 +336,20 @@ const HeaderButton = (props: {
   onClick?: () => void;
 }) => {
   const Component = props.href ? "a" : "button";
+  const isExternal = props.target === "_blank";
+  const ariaLabel =
+    isExternal && props.title
+      ? `${props.title} (opens in new window)`
+      : props.title;
 
   return (
     <Component
       href={props.href}
       target={props.target}
+      rel={isExternal ? "noopener noreferrer" : undefined}
       onClick={props.onClick}
       title={props.title}
+      aria-label={ariaLabel}
       className="header-btn flex items-center gap-1 rounded transition-colors"
       style={{
         padding: "4px 8px",
