@@ -72,8 +72,8 @@ export abstract class Repository<T extends TObject> {
   static of<T extends TObject>(
     entity: EntityPrimitive<T>,
     provider = DatabaseProvider,
-  ) {
-    return class extends Repository<T> {
+  ): new () => Repository<T> {
+    return class InlineRepository extends Repository<T> {
       constructor() {
         super(entity, provider);
       }

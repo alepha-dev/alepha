@@ -58,4 +58,4 @@ run(alepha);
 
 > **Work in Progress**
 >
-> This guide is just getting started. We'll be adding more examples, storage provider configuration, and best practices soon. In the meantime, check out the [package reference](/docs/packages/alepha/bucket) for the full API.
+> This guide is just getting started. We'll be adding more examples, storage provider configuration, and best practices soon. In the meantime, check out the [package reference](/docs/packages-alepha-bucket) for the full API.
