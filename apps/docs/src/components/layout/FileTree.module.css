@@ -31,7 +31,6 @@
     var(--color-border) 90%,
     transparent 100%
   );
-  opacity: 0.4;
 }
 
 /* -----------------------------------------------------------------------------
@@ -133,7 +132,7 @@
 }
 
 .extension {
-  opacity: 0.5;
+  color: var(--color-text-muted);
 }
 
 /* -----------------------------------------------------------------------------
@@ -148,5 +147,6 @@
 }
 
 .row:hover .hoverArrow {
-  opacity: 0.5;
+  opacity: 1;
+  color: var(--color-text-muted);
 }

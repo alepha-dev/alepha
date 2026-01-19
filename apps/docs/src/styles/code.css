@@ -165,7 +165,6 @@
   padding-left: 1em;
   text-align: right;
   color: var(--color-text-muted);
-  opacity: 0.5;
   user-select: none;
   margin-right: 1em;
 }
@@ -184,7 +183,7 @@
 }
 
 .code-line-highlighted .code-line-number {
-  opacity: 0.8;
+  color: var(--color-text);
 }
 
 .code-comment {

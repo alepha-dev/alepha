@@ -164,7 +164,10 @@ const SearchButton = () => {
       }}
     >
       <IconSearch size={14} />
-      <span aria-hidden="true" style={{ fontSize: 11, opacity: 0.7 }}>
+      <span
+        aria-hidden="true"
+        style={{ fontSize: 11, color: "var(--color-text-muted)" }}
+      >
         {isMac ? "⌘" : "Ctrl+"}K
       </span>
     </button>
@@ -313,7 +316,7 @@ const Tab = (props: {
           height: 16,
           borderRadius: 4,
           color: "var(--color-text-muted)",
-          opacity: isActive ? 0.6 : 0,
+          visibility: isActive ? "visible" : "hidden",
           transition: "all 0.15s ease",
         }}
       >

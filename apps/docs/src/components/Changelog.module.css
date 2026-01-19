@@ -266,7 +266,6 @@
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   transition: all var(--duration-normal) ease;
-  overflow: hidden;
   max-width: 100%;
 }
 
@@ -348,7 +347,7 @@
     visibility var(--duration-fast) ease;
   pointer-events: none;
   margin-bottom: 4px;
-  z-index: 10;
+  z-index: 100000;
 }
 
 .breaking:hover::after {

@@ -87,15 +87,16 @@ const NavButton = (props: NavButtonProps) => {
       onClick={() => router.go(href)}
       aria-label={label}
       aria-busy={isPending}
+      disabled={isPending}
       className="btn-reset nav-button flex items-center gap-3 cursor-pointer w-full"
       style={{
         padding: "12px 16px",
         background: "transparent",
         border: "1px solid var(--color-border)",
         borderRadius: 8,
-        color: "var(--color-text)",
+        color: isPending ? "var(--color-text-muted)" : "var(--color-text)",
         justifyContent: direction === "next" ? "flex-end" : "flex-start",
-        opacity: isPending ? 0.5 : 1,
+        cursor: isPending ? "wait" : "pointer",
         transition: "all 0.15s ease",
       }}
     >
