@@ -1,20 +1,28 @@
 import { $module } from "alepha";
+import { $mcpAuth } from "./primitives/$mcpAuth.ts";
 import { $prompt } from "./primitives/$prompt.ts";
 import { $resource } from "./primitives/$resource.ts";
 import { $tool } from "./primitives/$tool.ts";
+import { McpAuthProvider } from "./providers/McpAuthProvider.ts";
 import { McpServerProvider } from "./providers/McpServerProvider.ts";
+import { OAuthClientService } from "./services/OAuthClientService.ts";
 import { SseMcpTransport } from "./transports/SseMcpTransport.ts";
 import { StdioMcpTransport } from "./transports/StdioMcpTransport.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export type { OAuthClientEntity } from "./entities/oauthClients.ts";
+export { oauthClients } from "./entities/oauthClients.ts";
 export {
   McpError,
+  McpErrorCodes,
+  McpForbiddenError,
   McpInvalidParamsError,
   McpMethodNotFoundError,
   McpPromptNotFoundError,
   McpResourceNotFoundError,
   McpToolNotFoundError,
+  McpUnauthorizedError,
 } from "./errors/McpError.ts";
 export {
   createErrorResponse,
@@ -77,13 +85,21 @@ export type {
   // Handler types
   ToolPrimitiveSchema,
 } from "./interfaces/McpTypes.ts";
+export type {
+  McpAuthContext,
+  McpAuthPrimitiveOptions,
+} from "./primitives/$mcpAuth.ts";
+export { $mcpAuth, McpAuthPrimitive } from "./primitives/$mcpAuth.ts";
 export type { PromptPrimitiveOptions } from "./primitives/$prompt.ts";
 export { $prompt, PromptPrimitive } from "./primitives/$prompt.ts";
 export type { ResourcePrimitiveOptions } from "./primitives/$resource.ts";
 export { $resource, ResourcePrimitive } from "./primitives/$resource.ts";
 export type { ToolPrimitiveOptions } from "./primitives/$tool.ts";
 export { $tool, ToolPrimitive } from "./primitives/$tool.ts";
+export type { McpAuthProviderConfig } from "./providers/McpAuthProvider.ts";
+export { McpAuthProvider } from "./providers/McpAuthProvider.ts";
 export { McpServerProvider } from "./providers/McpServerProvider.ts";
+export { OAuthClientService } from "./services/OAuthClientService.ts";
 export { SseMcpTransport } from "./transports/SseMcpTransport.ts";
 export { StdioMcpTransport } from "./transports/StdioMcpTransport.ts";
 
@@ -124,9 +140,17 @@ export { StdioMcpTransport } from "./transports/StdioMcpTransport.ts";
  */
 export const AlephaMcp = $module({
   name: "alepha.mcp",
-  primitives: [$tool, $resource, $prompt],
-  services: [McpServerProvider, SseMcpTransport, StdioMcpTransport],
+  primitives: [$tool, $resource, $prompt, $mcpAuth],
+  services: [
+    McpAuthProvider,
+    McpServerProvider,
+    OAuthClientService,
+    SseMcpTransport,
+    StdioMcpTransport,
+  ],
   register: (alepha) => {
+    alepha.with(McpAuthProvider);
     alepha.with(McpServerProvider);
+    alepha.with(OAuthClientService);
   },
 });

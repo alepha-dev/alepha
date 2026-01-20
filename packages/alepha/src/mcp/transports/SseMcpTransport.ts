@@ -1,6 +1,7 @@
 import { $env, $inject, t } from "alepha";
 import { $logger } from "alepha/logger";
 import { $route } from "alepha/server";
+import { McpUnauthorizedError } from "../errors/McpError.ts";
 import {
   createErrorResponse,
   createNotification,
@@ -9,7 +10,12 @@ import {
   parseMessage,
 } from "../helpers/jsonrpc.ts";
 import type { McpContext } from "../interfaces/McpTypes.ts";
+import type {
+  McpAuthContext,
+  McpAuthPrimitive,
+} from "../primitives/$mcpAuth.ts";
 import { McpServerProvider } from "../providers/McpServerProvider.ts";
+import { OAuthClientService } from "../services/OAuthClientService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -55,6 +61,13 @@ export class SseMcpTransport {
   protected readonly log = $logger();
   protected readonly env = $env(envSchema);
   protected readonly mcpServer = $inject(McpServerProvider);
+  protected readonly oauthClientService = $inject(OAuthClientService);
+
+  /**
+   * Optional MCP auth primitive for authentication.
+   * Set this to enable authentication for MCP requests.
+   */
+  public mcpAuth?: McpAuthPrimitive;
 
   /**
    * SSE endpoint for server-to-client messages.
@@ -107,6 +120,75 @@ export class SseMcpTransport {
   });
 
   /**
+   * OAuth2 token endpoint for client credentials grant.
+   */
+  token = $route({
+    method: "POST",
+    path: `${this.env.MCP_SSE_PATH}/oauth/token`,
+    secure: false,
+    schema: {
+      body: t.object({
+        grant_type: t.text(),
+        client_id: t.text(),
+        client_secret: t.text(),
+      }),
+    },
+    handler: async (request) => {
+      try {
+        const { grant_type, client_id, client_secret } = request.body;
+
+        if (grant_type !== "client_credentials") {
+          request.reply.status = 400;
+          request.reply.headers["content-type"] = "application/json";
+          request.reply.body = JSON.stringify({
+            error: "unsupported_grant_type",
+            error_description:
+              "Only client_credentials grant type is supported",
+          });
+          return;
+        }
+
+        if (!this.mcpAuth) {
+          request.reply.status = 501;
+          request.reply.headers["content-type"] = "application/json";
+          request.reply.body = JSON.stringify({
+            error: "server_error",
+            error_description: "MCP authentication is not configured",
+          });
+          return;
+        }
+
+        const tokenResponse = await this.mcpAuth.createClientToken(
+          client_id,
+          client_secret,
+        );
+
+        request.reply.status = 200;
+        request.reply.headers["content-type"] = "application/json";
+        request.reply.headers["cache-control"] = "no-store";
+        request.reply.body = JSON.stringify(tokenResponse);
+      } catch (error) {
+        if (error instanceof McpUnauthorizedError) {
+          request.reply.status = 401;
+          request.reply.headers["content-type"] = "application/json";
+          request.reply.body = JSON.stringify({
+            error: "invalid_client",
+            error_description: error.message,
+          });
+        } else {
+          this.log.error("Failed to issue token", error);
+          request.reply.status = 500;
+          request.reply.headers["content-type"] = "application/json";
+          request.reply.body = JSON.stringify({
+            error: "server_error",
+            error_description: (error as Error).message,
+          });
+        }
+      }
+    },
+  });
+
+  /**
    * POST endpoint for client-to-server JSON-RPC messages.
    */
   message = $route({
@@ -131,12 +213,34 @@ export class SseMcpTransport {
         const rpcRequest = parseMessage(body);
 
         // Build context from request headers
-        const context: McpContext = {
+        const context: McpContext<McpAuthContext> = {
           headers: request.headers as Record<
             string,
             string | string[] | undefined
           >,
         };
+
+        // Authenticate if mcpAuth is configured
+        if (this.mcpAuth) {
+          try {
+            const authContext = await this.mcpAuth.authenticate(context);
+            context.data = authContext;
+          } catch (error) {
+            if (error instanceof McpUnauthorizedError) {
+              request.reply.status = 401;
+              request.reply.headers["content-type"] = "application/json";
+              request.reply.headers["www-authenticate"] = "Bearer";
+              request.reply.body = JSON.stringify(
+                createErrorResponse(rpcRequest.id ?? 0, {
+                  code: -32001,
+                  message: error.message,
+                }),
+              );
+              return;
+            }
+            throw error;
+          }
+        }
 
         const response = await this.mcpServer.handleMessage(
           rpcRequest,

@@ -2,6 +2,16 @@ import { JsonRpcErrorCodes } from "../helpers/jsonrpc.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * MCP-specific error codes (application-specific codes in the -32000 to -32099 range).
+ */
+export const McpErrorCodes = {
+  UNAUTHORIZED: -32001,
+  FORBIDDEN: -32003,
+} as const;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export class McpError extends Error {
   name = "McpError";
   code: number;
@@ -68,5 +78,25 @@ export class McpInvalidParamsError extends McpError {
 
   constructor(message: string) {
     super(message, JsonRpcErrorCodes.INVALID_PARAMS);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class McpUnauthorizedError extends McpError {
+  name = "McpUnauthorizedError";
+
+  constructor(message = "Unauthorized") {
+    super(message, McpErrorCodes.UNAUTHORIZED);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class McpForbiddenError extends McpError {
+  name = "McpForbiddenError";
+
+  constructor(message = "Forbidden") {
+    super(message, McpErrorCodes.FORBIDDEN);
   }
 }
