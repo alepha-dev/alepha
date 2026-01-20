@@ -7,6 +7,7 @@ import {
   IconDeviceFloppy,
   IconFileText,
   IconListCheck,
+  IconPaperclip,
   IconPlus,
   IconTag,
   IconTent,
@@ -23,6 +24,7 @@ import type { I18n } from "../../../services/I18n.ts";
 import TextEditor from "../../shared/TextEditor.tsx";
 import Action from "../../ui/Action.tsx";
 import Control from "../../ui/Control.tsx";
+import TaskAttachments from "./TaskAttachments.tsx";
 import TaskCreateObjectives from "./TaskCreateObjectives.tsx";
 
 export interface TaskCreateProps {
@@ -196,6 +198,14 @@ const TaskCreate = (props: TaskCreateProps) => {
           custom={TaskCreateObjectives}
           input={form.input.objectives}
           icon={<IconListCheck />}
+        />
+
+        <Control
+          title={tr("task.create.attachments")}
+          description={tr("task.create.attachments.helper")}
+          custom={TaskAttachments}
+          input={form.input.attachments}
+          icon={<IconPaperclip />}
         />
 
         <Space />

@@ -16,4 +16,5 @@ export const taskCreateSchema = t.object({
       { default: [] },
     ),
   ),
+  attachments: t.optional(t.array(t.uuid(), { default: [] })),
 });

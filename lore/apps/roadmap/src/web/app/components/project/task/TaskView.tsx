@@ -7,7 +7,15 @@ import {
 } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
 import { useRouter } from "@alepha/react/router";
-import { Card, Drawer, Flex, Stack, Text, Textarea } from "@mantine/core";
+import {
+  Card,
+  Drawer,
+  Flex,
+  Stack,
+  Text,
+  Textarea,
+  Tooltip,
+} from "@mantine/core";
 import { modals } from "@mantine/modals";
 import {
   IconCircleFilled,
@@ -16,6 +24,7 @@ import {
   IconEdit,
   IconFileText,
   IconNotes,
+  IconPaperclip,
   IconPigMoney,
   IconPlayerPause,
   IconPlayerPlay,
@@ -43,6 +52,7 @@ import {
 import { theme } from "../../../constants/theme.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import Action from "../../ui/Action.tsx";
+import AttachmentBadge from "./AttachmentBadge.tsx";
 import TaskCreate from "./TaskCreate.tsx";
 import TaskDescription from "./TaskDescription.tsx";
 import TaskViewObjectives from "./TaskViewObjectives.tsx";
@@ -231,6 +241,30 @@ const TaskView = (props: TaskViewProps) => {
               }}
             />
 
+            {task.attachments && task.attachments.length > 0 && (
+              <>
+                <Flex gap={"xs"} align="center" justify="center">
+                  <IconPaperclip size={theme.icon.size.lg} />
+                  <Text className={"cinzel-400"} size="lg" fw={"bold"}>
+                    {tr("task.view.attachments")}
+                  </Text>
+                  <Flex
+                    w={"100%"}
+                    style={{
+                      opacity: 0.1,
+                      height: 1,
+                      backgroundColor: "var(--alepha-text)",
+                    }}
+                  />
+                </Flex>
+                <Flex gap="xs" wrap="wrap">
+                  {task.attachments.map((fileId) => (
+                    <AttachmentBadge key={fileId} fileId={fileId} disabled />
+                  ))}
+                </Flex>
+              </>
+            )}
+
             <Flex gap={"xs"} align="center" justify="center">
               <IconPigMoney size={theme.icon.size.lg} />
               <Text className={"cinzel-400"} size="lg" fw={"bold"}>
@@ -380,15 +414,17 @@ const EditTaskButton = (props: {
 
   return (
     <Flex>
-      <Action
-        px={"xs"}
-        variant={"subtle"}
-        onClick={() => {
-          setShowDialog(true);
-        }}
-      >
-        <IconEdit size={theme.icon.size.md} />
-      </Action>
+      <Tooltip label="Edit">
+        <Action
+          px={"xs"}
+          variant={"subtle"}
+          onClick={() => {
+            setShowDialog(true);
+          }}
+        >
+          <IconEdit size={theme.icon.size.md} />
+        </Action>
+      </Tooltip>
       <Drawer
         title={"Update Quest"}
         size={"xl"}
@@ -444,16 +480,18 @@ const NoteButton = (props: { task: Task; onUpdate: (task: Task) => void }) => {
 
   return (
     <Flex>
-      <Action
-        px={"xs"}
-        variant={"subtle"}
-        onClick={() => {
-          setNoteText(props.task.note || "");
-          setShowDialog(true);
-        }}
-      >
-        <IconNotes size={theme.icon.size.md} />
-      </Action>
+      <Tooltip label="Notes">
+        <Action
+          px={"xs"}
+          variant={"subtle"}
+          onClick={() => {
+            setNoteText(props.task.note || "");
+            setShowDialog(true);
+          }}
+        >
+          <IconNotes size={theme.icon.size.md} />
+        </Action>
+      </Tooltip>
       <Drawer
         title={"Quest Notes"}
         size={"xl"}
@@ -520,15 +558,17 @@ const DuplicateTaskButton = (props: { task: Task }) => {
 
   return (
     <Flex>
-      <Action
-        px={"xs"}
-        variant={"subtle"}
-        onClick={() => {
-          setShowDialog(true);
-        }}
-      >
-        <IconCopy size={theme.icon.size.md} />
-      </Action>
+      <Tooltip label="Duplicate">
+        <Action
+          px={"xs"}
+          variant={"subtle"}
+          onClick={() => {
+            setShowDialog(true);
+          }}
+        >
+          <IconCopy size={theme.icon.size.md} />
+        </Action>
+      </Tooltip>
       <Drawer
         title={"Duplicate Quest"}
         size={"xl"}
@@ -603,18 +643,20 @@ const VoteButton = (props: { task: Task }) => {
 
   return (
     <Flex align="center" gap={4}>
-      <Action
-        px={"xs"}
-        variant={"subtle"}
-        onClick={handleVote}
-        disabled={isLoading}
-        c={voteData?.voted ? "blue" : undefined}
-      >
-        <IconThumbUp
-          size={theme.icon.size.md}
-          fill={voteData?.voted ? "currentColor" : "none"}
-        />
-      </Action>
+      <Tooltip label={voteData?.voted ? "Remove vote" : "Upvote"}>
+        <Action
+          px={"xs"}
+          variant={"subtle"}
+          onClick={handleVote}
+          disabled={isLoading}
+          c={voteData?.voted ? "blue" : undefined}
+        >
+          <IconThumbUp
+            size={theme.icon.size.md}
+            fill={voteData?.voted ? "currentColor" : "none"}
+          />
+        </Action>
+      </Tooltip>
       {voteData && voteData.voteCount > 0 && (
         <Text size="sm" c="dimmed">
           {voteData.voteCount}
@@ -740,18 +782,20 @@ const TaskTimer = (props: { task: Task; onUpdate: (task: Task) => void }) => {
             {formatTime(currentTime)}
           </Text>
         </ClientOnly>
-        <Action
-          px={"xs"}
-          variant={"subtle"}
-          onClick={toggleTimer}
-          disabled={!client.startTimer.can() && !client.stopTimer.can()}
-        >
-          {running ? (
-            <IconPlayerPause size={theme.icon.size.md} />
-          ) : (
-            <IconPlayerPlay size={theme.icon.size.md} />
-          )}
-        </Action>
+        <Tooltip label={running ? "Pause timer" : "Start timer"}>
+          <Action
+            px={"xs"}
+            variant={"subtle"}
+            onClick={toggleTimer}
+            disabled={!client.startTimer.can() && !client.stopTimer.can()}
+          >
+            {running ? (
+              <IconPlayerPause size={theme.icon.size.md} />
+            ) : (
+              <IconPlayerPlay size={theme.icon.size.md} />
+            )}
+          </Action>
+        </Tooltip>
       </Flex>
 
       <Flex

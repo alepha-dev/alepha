@@ -61,6 +61,7 @@ export const tasks = $entity({
       ),
       [],
     ),
+    attachments: pg.default(t.array(t.uuid()), []),
   }),
   indexes: [
     {
