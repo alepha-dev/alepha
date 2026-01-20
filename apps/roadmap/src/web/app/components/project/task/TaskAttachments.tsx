@@ -1,0 +1,116 @@
+import { useClient } from "@alepha/react";
+import { Flex, Loader, Stack } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { IconUpload } from "@tabler/icons-react";
+import { type ChangeEvent, useRef, useState } from "react";
+import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
+import Action from "../../ui/Action.tsx";
+import type { CustomControlProps } from "../../ui/Control.tsx";
+import AttachmentBadge from "./AttachmentBadge.tsx";
+
+const ACCEPTED_TYPES =
+  "image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain,.doc,.docx";
+
+interface TaskAttachmentsProps extends CustomControlProps {
+  disabled?: boolean;
+}
+
+const TaskAttachments = (props: TaskAttachmentsProps) => {
+  const { defaultValue, onChange, disabled } = props;
+  const attachments: string[] = defaultValue || [];
+  const taskApi = useClient<TaskController>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [localAttachments, setLocalAttachments] =
+    useState<string[]>(attachments);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const result = await taskApi.uploadAttachment({
+          body: { file },
+        });
+        return result.fileId;
+      });
+
+      const newFileIds = await Promise.all(uploadPromises);
+      const updated = [...localAttachments, ...newFileIds];
+      setLocalAttachments(updated);
+      onChange(updated);
+
+      notifications.show({
+        title: "Success",
+        message: `${files.length} file(s) uploaded successfully`,
+        color: "green",
+      });
+    } catch (error) {
+      notifications.show({
+        title: "Upload Failed",
+        message: (error as Error)?.message || "Failed to upload file(s)",
+        color: "red",
+      });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemove = (fileId: string) => {
+    const updated = localAttachments.filter((id) => id !== fileId);
+    setLocalAttachments(updated);
+    onChange(updated);
+  };
+
+  return (
+    <Stack gap="xs" w="100%">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept={ACCEPTED_TYPES}
+        multiple
+        style={{ display: "none" }}
+        disabled={disabled}
+      />
+
+      {localAttachments.length > 0 && (
+        <Flex gap="xs" wrap="wrap">
+          {localAttachments.map((fileId) => (
+            <AttachmentBadge
+              key={fileId}
+              fileId={fileId}
+              onRemove={disabled ? undefined : handleRemove}
+              disabled={disabled}
+            />
+          ))}
+        </Flex>
+      )}
+
+      {!disabled && (
+        <Action
+          variant="light"
+          size="sm"
+          leftSection={
+            uploading ? <Loader size={16} /> : <IconUpload size={16} />
+          }
+          onClick={handleUploadClick}
+          disabled={uploading}
+        >
+          {uploading ? "Uploading..." : "Attach Files"}
+        </Action>
+      )}
+    </Stack>
+  );
+};
+
+export default TaskAttachments;

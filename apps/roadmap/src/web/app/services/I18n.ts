@@ -47,6 +47,8 @@ export class I18n {
         "task.create.title.helper": "Short and descriptive name",
         "task.create.objectives": "Objectives",
         "task.create.objectives.helper": "List of objectives for this quest",
+        "task.create.attachments": "Attachments",
+        "task.create.attachments.helper": "Attach files to this quest",
 
         "priority.high": "High",
         "priority.medium": "Normal",
@@ -76,6 +78,7 @@ export class I18n {
         "task.view.actions.abandon": "Abandon Quest",
         "task.view.noObjectives": "No objectives defined.",
         "task.view.objectives": "Objectives",
+        "task.view.attachments": "Attachments",
 
         "task.view.actions.accept": "Sign and Accept the Quest",
 
@@ -135,6 +138,8 @@ export class I18n {
         "task.create.title.helper": "Un nom court et héroïque",
         "task.create.objectives": "Objectifs",
         "task.create.objectives.helper": "Liste des objectifs pour cette quête",
+        "task.create.attachments": "Pièces jointes",
+        "task.create.attachments.helper": "Joindre des fichiers à cette quête",
 
         "priority.high": "Urgente",
         "priority.medium": "Normal",
@@ -163,6 +168,7 @@ export class I18n {
         "task.view.actions.abandon": "Abandonner la quête",
         "task.view.noObjectives": "Aucun objectif défini.",
         "task.view.objectives": "Objectifs",
+        "task.view.attachments": "Pièces jointes",
 
         "task.view.actions.accept": "Signer et accepter la quête",
 

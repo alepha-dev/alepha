@@ -197,6 +197,11 @@ export class SseMcpTransport {
     secure: false,
     schema: {
       body: t.json(),
+      query: t.object({
+        token: t.optional(
+          t.text({ description: "API token for authentication" }),
+        ),
+      }),
     },
     handler: async (request) => {
       try {
@@ -213,12 +218,17 @@ export class SseMcpTransport {
         const rpcRequest = parseMessage(body);
 
         // Build context from request headers
-        const context: McpContext<McpAuthContext> = {
-          headers: request.headers as Record<
-            string,
-            string | string[] | undefined
-          >,
-        };
+        const headers = { ...request.headers } as Record<
+          string,
+          string | string[] | undefined
+        >;
+
+        // Support token as query parameter (for clients that can't set headers)
+        if (request.query.token && !headers.authorization) {
+          headers.authorization = `Bearer ${request.query.token}`;
+        }
+
+        const context: McpContext<McpAuthContext> = { headers };
 
         // Authenticate if mcpAuth is configured
         if (this.mcpAuth) {

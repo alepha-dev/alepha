@@ -77,6 +77,21 @@ export class AlephaCliUtils {
       );
     }
 
+    // check if parent folder (monorepo) has the executable (check 3 times)
+    if (!execPath) {
+      let parentDir = this.fs.join(root, "..");
+      for (let i = 0; i < 3; i++) {
+        execPath = await this.checkFileExists(
+          parentDir,
+          `node_modules/.bin/${app}${suffix}`,
+        );
+        if (execPath) {
+          break;
+        }
+        parentDir = this.fs.join(parentDir, "..");
+      }
+    }
+
     if (!execPath) {
       throw new AlephaError(
         `Could not find executable for command '${app}'. Make sure the package is installed.`,

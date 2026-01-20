@@ -1,4 +1,6 @@
 import { $inject, t } from "alepha";
+import { FileService } from "alepha/api/files";
+import { $bucket } from "alepha/bucket";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, pageQuerySchema, pg } from "alepha/orm";
@@ -21,6 +23,21 @@ export class TaskController {
   characterInfo = $inject(CharacterInfo);
   dt = $inject(DateTimeProvider);
   security = $inject(AppSecurityProvider);
+  fileService = $inject(FileService);
+
+  attachments = $bucket({
+    maxSize: 10 * 1024 * 1024, // 10 MB
+    mimeTypes: [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "application/pdf",
+      "text/plain",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ],
+  });
 
   createTask = $action({
     schema: {
@@ -45,8 +62,95 @@ export class TaskController {
 
       return await this.tasks.create({
         ...body,
+        attachments: body.attachments ?? [],
         createdBy: user.id,
         history: [],
+      });
+    },
+  });
+
+  uploadAttachment = $action({
+    path: "/tasks/attachments",
+    schema: {
+      body: t.object({
+        file: t.file(),
+      }),
+      response: t.object({
+        fileId: t.uuid(),
+        url: t.string(),
+      }),
+    },
+    handler: async ({ body, user }) => {
+      const file = await this.fileService.uploadFile(body.file, {
+        user,
+        bucket: this.attachments.name,
+      });
+      return {
+        fileId: file.id,
+        url: `/api/files/${file.id}`,
+      };
+    },
+  });
+
+  addAttachment = $action({
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      body: t.object({
+        fileId: t.uuid(),
+      }),
+      response: tasks.schema,
+    },
+    handler: async ({ params, body, user }) => {
+      const task = await this.tasks.findOne({
+        where: {
+          id: { eq: params.id },
+          completedAt: { isNull: true },
+        },
+      });
+
+      await this.security.checkOwnership(task.projectId, user);
+
+      if (task.attachments.includes(body.fileId)) {
+        return task;
+      }
+
+      return await this.tasks.updateById(params.id, {
+        attachments: [...task.attachments, body.fileId],
+      });
+    },
+  });
+
+  removeAttachment = $action({
+    schema: {
+      params: t.object({
+        id: t.integer(),
+        fileId: t.uuid(),
+      }),
+      response: tasks.schema,
+    },
+    handler: async ({ params, user }) => {
+      const task = await this.tasks.findOne({
+        where: {
+          id: { eq: params.id },
+          completedAt: { isNull: true },
+        },
+      });
+
+      await this.security.checkOwnership(task.projectId, user);
+
+      const updatedAttachments = task.attachments.filter(
+        (id) => id !== params.fileId,
+      );
+
+      // Delete the file from storage
+      await this.fileService.deleteFile(params.fileId).catch(() => {
+        // File may not exist or already deleted
+      });
+
+      return await this.tasks.updateById(params.id, {
+        attachments: updatedAttachments,
       });
     },
   });
@@ -253,6 +357,7 @@ export class TaskController {
           "complexity",
           "priority",
           "objectives",
+          "attachments",
         ]),
       ),
       response: tasks.schema,
