@@ -44,7 +44,6 @@ export class ReactServerProvider {
   protected readonly serverHeadProvider = $inject(ServerHeadProvider);
   protected readonly serverStaticProvider = $inject(ServerStaticProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
-  protected readonly serverTimingProvider = $inject(ServerTimingProvider);
   protected readonly ssrManifestProvider = $inject(SSRManifestProvider);
 
   /**

@@ -393,9 +393,10 @@ export class ReactServerTemplateProvider {
       this.alepha.context.als?.getStore() ?? {};
 
     const layers = state.layers.map((layer) => ({
-      name: layer.name,
-      props: layer.props,
-      config: layer.config,
+      part: layer.part, // mandatory for previous-checking
+      name: layer.name, // mandatory for previous-checking
+      config: layer.config, // mandatory for previous-checking (contains 'query' & 'params')
+      props: layer.props, // our not-so-secret data cache
       error: layer.error
         ? {
           ...layer.error,
@@ -420,24 +421,65 @@ export class ReactServerTemplateProvider {
   }
 
   /**
-   * Encode a string to Uint8Array using the shared encoder.
+   * Stream the body content: body tag, root div, React content, hydration, and closing tags.
    */
-  public encode(str: string): Uint8Array {
-    return this.encoder.encode(str);
-  }
+  protected async streamBodyContent(
+    controller: ReadableStreamDefaultController<Uint8Array>,
+    reactStream: ReadableStream<Uint8Array>,
+    state: ReactRouterState,
+    hydration: boolean,
+  ): Promise<void> {
+    const slots = this.getSlots();
+    const encoder = this.encoder;
+    const head = state.head;
 
-  /**
-   * Get the pre-encoded hydration script prefix.
-   */
-  public get hydrationPrefix(): Uint8Array {
-    return this.ENCODED.HYDRATION_PREFIX;
-  }
+    // <body ...>
+    controller.enqueue(slots.bodyOpen);
+    controller.enqueue(
+      encoder.encode(this.renderMergedBodyAttrs(head?.bodyAttributes)),
+    );
+    controller.enqueue(slots.bodyClose);
 
-  /**
-   * Get the pre-encoded hydration script suffix.
-   */
-  public get hydrationSuffix(): Uint8Array {
-    return this.ENCODED.HYDRATION_SUFFIX;
+    // Content before root (if any)
+    if (slots.beforeRoot) {
+      controller.enqueue(encoder.encode(slots.beforeRoot));
+    }
+
+    // <div id="root">
+    controller.enqueue(slots.rootOpen);
+
+    // Stream React content
+    const reader = reactStream.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        controller.enqueue(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    // </div>
+    controller.enqueue(slots.rootClose);
+
+    // Content after root (if any)
+    if (slots.afterRoot) {
+      controller.enqueue(encoder.encode(slots.afterRoot));
+    }
+
+    // Hydration script
+    if (hydration) {
+      const hydrationData = this.buildHydrationData(state);
+      controller.enqueue(this.ENCODED.HYDRATION_PREFIX);
+      controller.enqueue(
+        encoder.encode(this.safeJsonSerialize(hydrationData)),
+      );
+      controller.enqueue(this.ENCODED.HYDRATION_SUFFIX);
+    }
+
+    // </body></html>
+    controller.enqueue(slots.scriptClose);
   }
 
   /**
@@ -468,72 +510,26 @@ export class ReactServerTemplateProvider {
     return new ReadableStream<Uint8Array>({
       start: async (controller) => {
         try {
-          // 1. DOCTYPE
+          // DOCTYPE
           controller.enqueue(slots.doctype);
 
-          // 2. <html ...>
+          // <html ...>
           controller.enqueue(slots.htmlOpen);
           controller.enqueue(
             encoder.encode(this.renderMergedHtmlAttrs(head?.htmlAttributes)),
           );
           controller.enqueue(slots.htmlClose);
 
-          // 3. <head>...</head>
+          // <head>...</head>
           controller.enqueue(slots.headOpen);
-          // Include early head content (entry.js, CSS) if set
           if (this.earlyHeadContent) {
             controller.enqueue(encoder.encode(this.earlyHeadContent));
           }
           controller.enqueue(encoder.encode(this.renderHeadContent(head)));
           controller.enqueue(slots.headClose);
 
-          // 4. <body ...>
-          controller.enqueue(slots.bodyOpen);
-          controller.enqueue(
-            encoder.encode(this.renderMergedBodyAttrs(head?.bodyAttributes)),
-          );
-          controller.enqueue(slots.bodyClose);
-
-          // 5. Content before root (if any)
-          if (slots.beforeRoot) {
-            controller.enqueue(encoder.encode(slots.beforeRoot));
-          }
-
-          // 6. <div id="root">
-          controller.enqueue(slots.rootOpen);
-
-          // 7. Stream React content
-          const reader = reactStream.getReader();
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              controller.enqueue(value);
-            }
-          } finally {
-            reader.releaseLock();
-          }
-
-          // 8. </div>
-          controller.enqueue(slots.rootClose);
-
-          // 9. Content after root (if any)
-          if (slots.afterRoot) {
-            controller.enqueue(encoder.encode(slots.afterRoot));
-          }
-
-          // 10. Hydration script
-          if (hydration) {
-            const hydrationData = this.buildHydrationData(state);
-            controller.enqueue(this.ENCODED.HYDRATION_PREFIX);
-            controller.enqueue(
-              encoder.encode(this.safeJsonSerialize(hydrationData)),
-            );
-            controller.enqueue(this.ENCODED.HYDRATION_SUFFIX);
-          }
-
-          // 11. </body></html>
-          controller.enqueue(slots.scriptClose);
+          // Body content (body, root, React, hydration, closing tags)
+          await this.streamBodyContent(controller, reactStream, state, hydration);
 
           controller.close();
         } catch (error) {
@@ -640,10 +636,10 @@ export class ReactServerTemplateProvider {
         try {
           // === EARLY PHASE (before async work) ===
 
-          // 1. DOCTYPE
+          // DOCTYPE
           controller.enqueue(slots.doctype);
 
-          // 2. <html ...> with global htmlAttributes only
+          // <html ...> with global htmlAttributes only
           controller.enqueue(slots.htmlOpen);
           controller.enqueue(
             encoder.encode(
@@ -652,7 +648,7 @@ export class ReactServerTemplateProvider {
           );
           controller.enqueue(slots.htmlClose);
 
-          // 3. <head> open + entry preloads
+          // <head> open + entry preloads
           controller.enqueue(slots.headOpen);
           if (this.earlyHeadContent) {
             controller.enqueue(encoder.encode(this.earlyHeadContent));
@@ -681,61 +677,15 @@ export class ReactServerTemplateProvider {
           }
 
           const { state, reactStream } = result;
-          const head = state.head;
 
           // === LATE PHASE (after async work) ===
 
-          // 4. Rest of head content (title, meta, links from loaders)
-          controller.enqueue(encoder.encode(this.renderHeadContent(head)));
+          // Rest of head content (title, meta, links from loaders)
+          controller.enqueue(encoder.encode(this.renderHeadContent(state.head)));
           controller.enqueue(slots.headClose);
 
-          // 5. <body ...> with merged bodyAttributes
-          controller.enqueue(slots.bodyOpen);
-          controller.enqueue(
-            encoder.encode(this.renderMergedBodyAttrs(head?.bodyAttributes)),
-          );
-          controller.enqueue(slots.bodyClose);
-
-          // 6. Content before root (if any)
-          if (slots.beforeRoot) {
-            controller.enqueue(encoder.encode(slots.beforeRoot));
-          }
-
-          // 7. <div id="root">
-          controller.enqueue(slots.rootOpen);
-
-          // 8. Stream React content
-          const reader = reactStream.getReader();
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              controller.enqueue(value);
-            }
-          } finally {
-            reader.releaseLock();
-          }
-
-          // 9. </div>
-          controller.enqueue(slots.rootClose);
-
-          // 10. Content after root (if any)
-          if (slots.afterRoot) {
-            controller.enqueue(encoder.encode(slots.afterRoot));
-          }
-
-          // 11. Hydration script
-          if (hydration) {
-            const hydrationData = this.buildHydrationData(state);
-            controller.enqueue(this.ENCODED.HYDRATION_PREFIX);
-            controller.enqueue(
-              encoder.encode(this.safeJsonSerialize(hydrationData)),
-            );
-            controller.enqueue(this.ENCODED.HYDRATION_SUFFIX);
-          }
-
-          // 12. </body></html>
-          controller.enqueue(slots.scriptClose);
+          // Body content (body, root, React, hydration, closing tags)
+          await this.streamBodyContent(controller, reactStream, state, hydration);
 
           controller.close();
         } catch (error) {
