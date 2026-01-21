@@ -1,6 +1,7 @@
 {
   "private": true,
   "type": "module",
+  "name": "example-ssr",
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build",

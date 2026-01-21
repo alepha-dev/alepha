@@ -4,6 +4,14 @@ export default defineConfig((env) => {
   return {
     plugins: [
       {
+        /**
+         * Test plugin to ensure that 'perf_hooks' is not imported
+         * in the server build. If it is, the build will fail
+         * with an error message indicating where it was imported from.
+         *
+         * We do this to double-check that we build server as "workerd" so
+         * "postgres" module does not try to pull in "perf_hooks".
+         */
         name: "debug-resolve",
         enforce: "pre", // Run before other plugins
         resolveId(id, importer) {

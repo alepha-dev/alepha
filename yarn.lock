@@ -8977,9 +8977,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"example-ssr-fb4dc1@workspace:apps/example-ssr":
+"example-ssr@workspace:apps/example-ssr":
   version: 0.0.0-use.local
-  resolution: "example-ssr-fb4dc1@workspace:apps/example-ssr"
+  resolution: "example-ssr@workspace:apps/example-ssr"
   dependencies:
     "@playwright/test": "npm:^1.57.0"
     alepha: "npm:^0.15.0"

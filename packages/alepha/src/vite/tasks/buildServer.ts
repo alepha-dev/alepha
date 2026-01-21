@@ -28,11 +28,6 @@ export interface BuildServerOptions {
   clientDir?: string;
 
   /**
-   * Override Vite config options.
-   */
-  config?: UserConfig;
-
-  /**
    * If true, generate build stats report.
    */
   stats?: boolean;
@@ -67,7 +62,7 @@ export interface BuildServerResult {
 export async function buildServer(
   opts: BuildServerOptions,
 ): Promise<BuildServerResult> {
-  const { build: viteBuild, mergeConfig } = await importVite();
+  const { build: viteBuild, resolveConfig } = await importVite();
   const plugins: any[] = [];
 
   const viteReact = await importViteReact();
@@ -93,6 +88,7 @@ export async function buildServer(
     conditions.unshift(...opts.conditions);
   }
 
+  // note: we still can override this config via config file (vite.config.ts)
   const viteBuildServerConfig: UserConfig = {
     mode: "production",
     logLevel: opts.silent ? "silent" : undefined,
@@ -121,24 +117,32 @@ export async function buildServer(
       },
     },
     esbuild: { legalComments: "none", keepNames: true },
-    customLogger: logger,
+    customLogger: logger, // mock logger to avoid noisy output
     plugins,
   };
 
+  // create inline config by merging alepha built-in + extended config
+
   let result: vite.Rollup.RollupOutput | vite.Rollup.RollupOutput[];
   try {
-    result = (await viteBuild(
-      mergeConfig(viteBuildServerConfig, opts.config || {}),
-    )) as vite.Rollup.RollupOutput | vite.Rollup.RollupOutput[];
+    result = (await viteBuild(viteBuildServerConfig)) as
+      | vite.Rollup.RollupOutput
+      | vite.Rollup.RollupOutput[];
   } catch (error) {
-    // Flush buffered logs on failure so user can see what happened
+    // flush buffered logs on failure so user can see what happened
     logger?.flush();
     throw error;
   }
 
-  // Extract resolved config to get externals
-  const resolvedConfig = (result as any).resolvedConfig;
-  const externals: string[] = resolvedConfig?.ssr?.external ?? [];
+  // resolve final config to read externals
+  const resolvedConfig = await resolveConfig(viteBuildServerConfig, "build");
+
+  // extract resolved config to get externals
+  const externals: string[] = [];
+
+  if (Array.isArray(resolvedConfig?.ssr?.external)) {
+    externals.push(...resolvedConfig.ssr.external);
+  }
 
   // Generate package.json with externals
   await generateExternals({

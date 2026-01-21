@@ -37,7 +37,7 @@ export class GenEnvCommand {
           if (value.enum) {
             dotEnvFile += `# Possible values: ${value.enum.join(", ")}\n`;
           }
-          dotEnvFile += `${key}=${value.default || ""}\n\n`;
+          dotEnvFile += `#${key}=${value.default || ""}\n\n`;
         }
 
         if (flags.out) {
