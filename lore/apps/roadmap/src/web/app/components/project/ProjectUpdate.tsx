@@ -1,6 +1,7 @@
 import { useAlepha, useClient } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
+import { ActionButton } from "@alepha/ui";
 import { Card, Flex } from "@mantine/core";
 import { IconDeviceFloppy, IconTag } from "@tabler/icons-react";
 import { t } from "alepha";
@@ -10,7 +11,6 @@ import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Action from "../ui/Action.tsx";
 import Control from "../ui/Control.tsx";
 
 export interface ProjectUpdateProps {
@@ -63,9 +63,9 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
           description={tr("project.create.public.helper")}
         />
         <Flex>
-          <Action leftSection={<IconDeviceFloppy />} form={form}>
+          <ActionButton leftSection={<IconDeviceFloppy />} form={form}>
             {tr("project.update.submit")}
-          </Action>
+          </ActionButton>
         </Flex>
       </Flex>
     </Card>

@@ -1,6 +1,7 @@
 import { useAlepha, useClient, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
 import { useRouter } from "@alepha/react/router";
+import { ActionButton } from "@alepha/ui";
 import {
   Button,
   Card,
@@ -20,7 +21,6 @@ import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Action from "../ui/Action.tsx";
 import ProjectUpdate from "./ProjectUpdate.tsx";
 
 export interface ProjectSettingsProps {
@@ -81,7 +81,7 @@ const ProjectSettings = (props: ProjectSettingsProps) => {
               </Text>
             </Stack>
             <Flex justify={"end"} align={"center"}>
-              <Action
+              <ActionButton
                 flex={{
                   base: 1,
                   xs: "unset",
@@ -110,7 +110,7 @@ const ProjectSettings = (props: ProjectSettingsProps) => {
                 }}
               >
                 {tr("project.settings.actions.delete")}
-              </Action>
+              </ActionButton>
             </Flex>
           </SimpleGrid>
         </Card>

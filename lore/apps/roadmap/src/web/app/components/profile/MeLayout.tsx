@@ -1,5 +1,6 @@
 import { useAuth } from "@alepha/react/auth";
 import { NestedView, useRouter } from "@alepha/react/router";
+import { ActionButton, type ActionProps } from "@alepha/ui";
 import { Card, Container, Flex, Stack, Text } from "@mantine/core";
 import {
   IconAntenna,
@@ -10,7 +11,6 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 import { theme } from "../../constants/theme.ts";
-import Action, { type ActionProps } from "../ui/Action.tsx";
 import type { MeRouter } from "./MeRouter.ts";
 
 const MeLayout = () => {
@@ -128,14 +128,14 @@ const MeMenu = () => {
 
 const ActionNavLink = (props: ActionProps & { href: string }) => {
   return (
-    <Action
+    <ActionButton
       size={"xs"}
       textVisibleFrom={"sm"}
       justify={"flex-start"}
-      variant={"minimal"}
+      variant={"subtle"}
       {...props}
     >
       {props.children}
-    </Action>
+    </ActionButton>
   );
 };

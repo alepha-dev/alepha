@@ -1,6 +1,7 @@
 import { useClient, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
 import { useRouter, useRouterState } from "@alepha/react/router";
+import { ActionButton } from "@alepha/ui";
 import {
   Card,
   Center,
@@ -24,7 +25,6 @@ import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Action from "../ui/Action.tsx";
 import TaskCreate from "./task/TaskCreate.tsx";
 
 type TabValue =
@@ -138,7 +138,7 @@ const CreateTaskButton = () => {
 
   return (
     <Flex>
-      <Action
+      <ActionButton
         textVisibleFrom={"sm"}
         variant={"filled"}
         color={"green"}
@@ -147,7 +147,7 @@ const CreateTaskButton = () => {
         onClick={() => setShowDialog(true)}
       >
         {tr("project.menu.create-task")}
-      </Action>
+      </ActionButton>
       <Drawer
         title={tr("project.menu.create-task")}
         size={"xl"}

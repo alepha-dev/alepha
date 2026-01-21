@@ -7,15 +7,8 @@ import {
 } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
 import { useRouter } from "@alepha/react/router";
-import {
-  Card,
-  Drawer,
-  Flex,
-  Stack,
-  Text,
-  Textarea,
-  Tooltip,
-} from "@mantine/core";
+import { ActionButton } from "@alepha/ui";
+import { Card, Drawer, Flex, Stack, Text, Textarea } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import {
   IconCircleFilled,
@@ -31,7 +24,6 @@ import {
   IconSignature,
   IconSwords,
   IconTag,
-  IconThumbUp,
   IconTrash,
   IconX,
 } from "@tabler/icons-react";
@@ -44,14 +36,8 @@ import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAto
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentProjectCharacterAtom } from "../../../atoms/currentProjectCharacterAtom.ts";
 import { currentTaskAtom } from "../../../atoms/currentTaskAtom.ts";
-import {
-  getTaskVote,
-  taskVotesAtom,
-  updateTaskVote,
-} from "../../../atoms/taskVotesAtom.ts";
 import { theme } from "../../../constants/theme.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import Action from "../../ui/Action.tsx";
 import AttachmentBadge from "./AttachmentBadge.tsx";
 import TaskCreate from "./TaskCreate.tsx";
 import TaskDescription from "./TaskDescription.tsx";
@@ -175,7 +161,6 @@ const TaskView = (props: TaskViewProps) => {
                     }}
                   />
                   <DuplicateTaskButton task={task} />
-                  <VoteButton task={task} />
                 </>
               )}
               <Flex
@@ -199,14 +184,14 @@ const TaskView = (props: TaskViewProps) => {
                   );
                 }}
               />
-              <Action
+              <ActionButton
                 px={"xs"}
                 href={router.path("projectBoard", {
                   params: { projectId: String(project.id) },
                 })}
               >
                 <IconX size={theme.icon.size.md} />
-              </Action>
+              </ActionButton>
             </Flex>
             <Text size={"sm"}>
               {tr("task.view.summary", {
@@ -318,7 +303,7 @@ const TaskView = (props: TaskViewProps) => {
             >
               {!task.acceptedAt && (
                 <Flex justify={"center"} flex={1}>
-                  <Action
+                  <ActionButton
                     w={"100%"}
                     c={"blue"}
                     variant={"subtle"}
@@ -337,13 +322,13 @@ const TaskView = (props: TaskViewProps) => {
                     }}
                   >
                     {tr("task.view.actions.accept")}
-                  </Action>
+                  </ActionButton>
                 </Flex>
               )}
               {task.acceptedAt && (
                 <Flex justify={"space-between"} gap={"xs"}>
                   <Flex>
-                    <Action
+                    <ActionButton
                       px={"sm"}
                       textVisibleFrom={"sm"}
                       c={"red"}
@@ -352,9 +337,9 @@ const TaskView = (props: TaskViewProps) => {
                       {...abandonTask}
                     >
                       {tr("task.view.actions.abandon")}
-                    </Action>
+                    </ActionButton>
                   </Flex>
-                  <Action
+                  <ActionButton
                     c={"green"}
                     variant={"subtle"}
                     leftSection={<IconSwords size={theme.icon.size.md} />}
@@ -381,7 +366,7 @@ const TaskView = (props: TaskViewProps) => {
                     }}
                   >
                     {tr("task.view.actions.complete")}
-                  </Action>
+                  </ActionButton>
                 </Flex>
               )}
             </Card>
@@ -414,17 +399,16 @@ const EditTaskButton = (props: {
 
   return (
     <Flex>
-      <Tooltip label="Edit">
-        <Action
-          px={"xs"}
-          variant={"subtle"}
-          onClick={() => {
-            setShowDialog(true);
-          }}
-        >
-          <IconEdit size={theme.icon.size.md} />
-        </Action>
-      </Tooltip>
+      <ActionButton
+        px={"xs"}
+        variant={"subtle"}
+        tooltip="Edit"
+        onClick={() => {
+          setShowDialog(true);
+        }}
+      >
+        <IconEdit size={theme.icon.size.md} />
+      </ActionButton>
       <Drawer
         title={"Update Quest"}
         size={"xl"}
@@ -480,18 +464,17 @@ const NoteButton = (props: { task: Task; onUpdate: (task: Task) => void }) => {
 
   return (
     <Flex>
-      <Tooltip label="Notes">
-        <Action
-          px={"xs"}
-          variant={"subtle"}
-          onClick={() => {
-            setNoteText(props.task.note || "");
-            setShowDialog(true);
-          }}
-        >
-          <IconNotes size={theme.icon.size.md} />
-        </Action>
-      </Tooltip>
+      <ActionButton
+        px={"xs"}
+        variant={"subtle"}
+        tooltip="Notes"
+        onClick={() => {
+          setNoteText(props.task.note || "");
+          setShowDialog(true);
+        }}
+      >
+        <IconNotes size={theme.icon.size.md} />
+      </ActionButton>
       <Drawer
         title={"Quest Notes"}
         size={"xl"}
@@ -516,12 +499,15 @@ const NoteButton = (props: { task: Task; onUpdate: (task: Task) => void }) => {
               autosize
             />
             <Flex justify={"flex-end"} gap={"sm"}>
-              <Action variant={"subtle"} onClick={() => setShowDialog(false)}>
+              <ActionButton
+                variant={"subtle"}
+                onClick={() => setShowDialog(false)}
+              >
                 Cancel
-              </Action>
-              <Action variant={"filled"} onClick={handleSave}>
+              </ActionButton>
+              <ActionButton variant={"filled"} onClick={handleSave}>
                 Save
-              </Action>
+              </ActionButton>
             </Flex>
           </Stack>
         </Card>
@@ -558,17 +544,16 @@ const DuplicateTaskButton = (props: { task: Task }) => {
 
   return (
     <Flex>
-      <Tooltip label="Duplicate">
-        <Action
-          px={"xs"}
-          variant={"subtle"}
-          onClick={() => {
-            setShowDialog(true);
-          }}
-        >
-          <IconCopy size={theme.icon.size.md} />
-        </Action>
-      </Tooltip>
+      <ActionButton
+        px={"xs"}
+        variant={"subtle"}
+        tooltip="Duplicate"
+        onClick={() => {
+          setShowDialog(true);
+        }}
+      >
+        <IconCopy size={theme.icon.size.md} />
+      </ActionButton>
       <Drawer
         title={"Duplicate Quest"}
         size={"xl"}
@@ -592,76 +577,6 @@ const DuplicateTaskButton = (props: { task: Task }) => {
           />
         </Card>
       </Drawer>
-    </Flex>
-  );
-};
-
-const VoteButton = (props: { task: Task }) => {
-  const client = useClient<TaskController>();
-  const [taskVotes, setTaskVotes] = useStore(taskVotesAtom);
-  const voteData = getTaskVote(taskVotes, props.task.id);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Load initial vote data
-  useEffect(() => {
-    if (!voteData && client.getTaskVotes.can()) {
-      client
-        .getTaskVotes({
-          params: { id: props.task.id },
-        })
-        .then((result) => {
-          setTaskVotes(
-            updateTaskVote(taskVotes, props.task.id, {
-              voted: result.voted,
-              voteCount: result.voteCount,
-            }),
-          );
-        });
-    }
-  }, [props.task.id]);
-
-  if (!client.upvoteTask.can()) {
-    return null;
-  }
-
-  const handleVote = async () => {
-    setIsLoading(true);
-    try {
-      const result = await client.upvoteTask({
-        params: { id: props.task.id },
-      });
-      setTaskVotes(
-        updateTaskVote(taskVotes, props.task.id, {
-          voted: result.voted,
-          voteCount: result.voteCount,
-        }),
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <Flex align="center" gap={4}>
-      <Tooltip label={voteData?.voted ? "Remove vote" : "Upvote"}>
-        <Action
-          px={"xs"}
-          variant={"subtle"}
-          onClick={handleVote}
-          disabled={isLoading}
-          c={voteData?.voted ? "blue" : undefined}
-        >
-          <IconThumbUp
-            size={theme.icon.size.md}
-            fill={voteData?.voted ? "currentColor" : "none"}
-          />
-        </Action>
-      </Tooltip>
-      {voteData && voteData.voteCount > 0 && (
-        <Text size="sm" c="dimmed">
-          {voteData.voteCount}
-        </Text>
-      )}
     </Flex>
   );
 };
@@ -782,20 +697,19 @@ const TaskTimer = (props: { task: Task; onUpdate: (task: Task) => void }) => {
             {formatTime(currentTime)}
           </Text>
         </ClientOnly>
-        <Tooltip label={running ? "Pause timer" : "Start timer"}>
-          <Action
-            px={"xs"}
-            variant={"subtle"}
-            onClick={toggleTimer}
-            disabled={!client.startTimer.can() && !client.stopTimer.can()}
-          >
-            {running ? (
-              <IconPlayerPause size={theme.icon.size.md} />
-            ) : (
-              <IconPlayerPlay size={theme.icon.size.md} />
-            )}
-          </Action>
-        </Tooltip>
+        <ActionButton
+          px={"xs"}
+          variant={"subtle"}
+          tooltip={running ? "Pause timer" : "Start timer"}
+          onClick={toggleTimer}
+          disabled={!client.startTimer.can() && !client.stopTimer.can()}
+        >
+          {running ? (
+            <IconPlayerPause size={theme.icon.size.md} />
+          ) : (
+            <IconPlayerPlay size={theme.icon.size.md} />
+          )}
+        </ActionButton>
       </Flex>
 
       <Flex

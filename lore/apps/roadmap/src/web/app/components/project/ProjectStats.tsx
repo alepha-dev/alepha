@@ -1,4 +1,5 @@
 import { useAlepha, useClient } from "@alepha/react";
+import { ActionButton } from "@alepha/ui";
 import { AreaChart, BarChart } from "@mantine/charts";
 import {
   Card,
@@ -24,7 +25,6 @@ import {
 import { useState } from "react";
 import type { ProjectStatsController } from "../../../../api/controllers/ProjectStatsController.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
-import Action from "../ui/Action.tsx";
 
 export interface ProjectStatsProps {
   stats: {
@@ -251,14 +251,14 @@ const ProjectStats = (props: ProjectStatsProps) => {
             <IconChartBar size={24} />
             <Title order={2}>Project Analytics</Title>
           </Group>
-          <Action
+          <ActionButton
             variant="light"
             leftSection={<IconDownload size={16} />}
             onClick={handleExportCsv}
             size="sm"
           >
             Export CSV
-          </Action>
+          </ActionButton>
         </Group>
 
         <Text c="dimmed" size="sm">

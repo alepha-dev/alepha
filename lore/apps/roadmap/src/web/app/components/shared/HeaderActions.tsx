@@ -1,7 +1,12 @@
 import { useAuth } from "@alepha/react/auth";
 import { useI18n } from "@alepha/react/i18n";
 import { useRouter } from "@alepha/react/router";
-import { DarkModeButton, LanguageButton, ThemeButton } from "@alepha/ui";
+import {
+  ActionButton,
+  DarkModeButton,
+  LanguageButton,
+  ThemeButton,
+} from "@alepha/ui";
 import type { AuthRouter } from "@alepha/ui/auth";
 import { Flex, Menu } from "@mantine/core";
 import { IconLogout, IconSettings, IconUser } from "@tabler/icons-react";
@@ -9,7 +14,6 @@ import type { AppSecurityProvider } from "../../../../api/providers/AppSecurityP
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import type { MeRouter } from "../profile/MeRouter.ts";
-import Action from "../ui/Action.tsx";
 
 const HeaderActions = () => {
   return (
@@ -40,7 +44,7 @@ const AuthButton = () => {
         withArrow
       >
         <Menu.Target>
-          <Action
+          <ActionButton
             ta={"left"}
             variant={"subtle"}
             leftSection={
@@ -60,7 +64,7 @@ const AuthButton = () => {
             }
           >
             {auth.user.username}
-          </Action>
+          </ActionButton>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{auth.user.email}</Menu.Label>
@@ -85,7 +89,7 @@ const AuthButton = () => {
   }
 
   return (
-    <Action
+    <ActionButton
       style={{ textWrap: "nowrap" }}
       variant={"subtle"}
       leftSection={<IconUser />}
@@ -96,6 +100,6 @@ const AuthButton = () => {
       })}
     >
       {tr("header.actions.login")}
-    </Action>
+    </ActionButton>
   );
 };

@@ -1,6 +1,7 @@
 import { useInject, useStore } from "@alepha/react";
 import { useI18n } from "@alepha/react/i18n";
 import { useRouter } from "@alepha/react/router";
+import { ActionButton } from "@alepha/ui";
 import { Card, Container, Flex, SimpleGrid, Stack, Text } from "@mantine/core";
 import {
   IconCircleArrowRight,
@@ -13,7 +14,6 @@ import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Action from "../ui/Action.tsx";
 
 export interface HomeProps {
   projects: Project[];
@@ -81,14 +81,14 @@ const Home = () => {
                     radius={"md"}
                     bg={"var(--alepha-elevated)"}
                   >
-                    <Action
+                    <ActionButton
                       size={"md"}
                       variant={"subtle"}
                       leftSection={<IconCubePlus size={16} />}
                       href={router.path("projectCreate")}
                     >
                       {tr("home.create-campaign")}
-                    </Action>
+                    </ActionButton>
                   </Card>
                 </Flex>
               </Flex>
@@ -118,7 +118,7 @@ const Home = () => {
                           radius={"md"}
                           className={"shadow"}
                         >
-                          <Action
+                          <ActionButton
                             flex={1}
                             justify={"space-between"}
                             rightSection={<IconCircleArrowRight size={20} />}
@@ -141,7 +141,7 @@ const Home = () => {
                                 </Text>
                               </Flex>
                             </Flex>
-                          </Action>
+                          </ActionButton>
                         </Card>
                       ))}
                   </Flex>
