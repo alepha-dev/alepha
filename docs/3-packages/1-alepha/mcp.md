@@ -47,32 +47,6 @@ Primitives are functions that define and configure various aspects of your appli
 
 For more details, see the [Primitives documentation](/docs/concepts-primitives).
 
-#### $mcpAuth()
-
-Create an MCP authentication primitive.
-
-This primitive provides OAuth2 client credentials authentication
-for MCP tools, resources, and prompts.
-
-```ts
-class MyMcpServer {
-  auth = $mcpAuth({
-    name: "mcp",
-    secret: "your-secret-key",
-  });
-
-  protectedTool = $tool({
-    description: "A protected tool",
-    scopes: ["mcp:tools:protected"],
-    handler: async ({ context }) => {
-      const auth = context?.data as McpAuthContext;
-      if (!auth.client) throw new Error("Unauthorized");
-      return "success";
-    },
-  });
-}
-```
-
 #### $prompt()
 
 Creates an MCP prompt primitive for defining reusable prompt templates.
@@ -199,15 +173,6 @@ class CalculatorTools {
 Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
 
 For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### McpAuthProvider
-
-Provider that handles MCP OAuth2 authentication logic.
-
-This provider is responsible for:
-- Creating access tokens for OAuth2 clients
-- Validating bearer tokens from MCP requests
-- Scope-based authorization
 
 #### McpServerProvider
 
