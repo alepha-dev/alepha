@@ -9,7 +9,6 @@ import sanitizeHtml from "sanitize-html";
 import { characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
 import { tasks } from "../entities/tasks.ts";
-import { taskVotes } from "../entities/taskVotes.ts";
 import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
@@ -17,7 +16,6 @@ import { CharacterInfo } from "../services/CharacterInfo.ts";
 export class TaskController {
   log = $logger();
   tasks = $repository(tasks);
-  taskVotes = $repository(taskVotes);
   projects = $repository(projects);
   characters = $repository(characters);
   characterInfo = $inject(CharacterInfo);
@@ -642,97 +640,6 @@ export class TaskController {
       return await this.tasks.updateById(params.id, {
         timerSessions: sessions,
       });
-    },
-  });
-
-  upvoteTask = $action({
-    schema: {
-      params: t.object({
-        id: t.integer(),
-      }),
-      response: t.object({
-        voted: t.boolean(),
-        voteCount: t.integer(),
-      }),
-    },
-    handler: async ({ params, user }) => {
-      const task = await this.tasks.findOne({
-        where: {
-          id: { eq: params.id },
-        },
-      });
-
-      await this.security.checkOwnership(task.projectId, user);
-
-      // Check if user already voted
-      const [existingVote] = await this.taskVotes.findMany({
-        where: {
-          taskId: { eq: params.id },
-          userId: { eq: user.id },
-        },
-        limit: 1,
-      });
-
-      if (existingVote) {
-        // Remove vote (toggle off)
-        await this.taskVotes.deleteById(existingVote.id);
-      } else {
-        // Add vote
-        await this.taskVotes.create({
-          taskId: params.id,
-          userId: user.id,
-        });
-      }
-
-      // Get updated vote count
-      const voteCount = await this.taskVotes.count({
-        taskId: { eq: params.id },
-      });
-
-      return {
-        voted: !existingVote,
-        voteCount,
-      };
-    },
-  });
-
-  getTaskVotes = $action({
-    schema: {
-      params: t.object({
-        id: t.integer(),
-      }),
-      response: t.object({
-        voted: t.boolean(),
-        voteCount: t.integer(),
-      }),
-    },
-    handler: async ({ params, user }) => {
-      const task = await this.tasks.findOne({
-        where: {
-          id: { eq: params.id },
-        },
-      });
-
-      await this.security.checkOwnership(task.projectId, user);
-
-      // Check if user voted
-      const [existingVote] = await this.taskVotes.findMany({
-        where: {
-          taskId: { eq: params.id },
-          userId: { eq: user.id },
-        },
-        limit: 1,
-      });
-
-      // Get vote count
-      const voteCount = await this.taskVotes.count({
-        taskId: { eq: params.id },
-      });
-
-      return {
-        voted: !!existingVote,
-        voteCount,
-      };
     },
   });
 }

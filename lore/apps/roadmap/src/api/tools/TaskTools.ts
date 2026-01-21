@@ -8,7 +8,6 @@ import { characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
 import type { Task } from "../entities/tasks.ts";
 import { tasks } from "../entities/tasks.ts";
-import { taskVotes } from "../entities/taskVotes.ts";
 import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { McpAuthProvider } from "../providers/McpAuthProvider.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
@@ -39,7 +38,6 @@ const projectParams = {
 export class TaskTools {
   protected readonly auth = $inject(McpAuthProvider);
   protected readonly tasks = $repository(tasks);
-  protected readonly taskVotes = $repository(taskVotes);
   protected readonly projects = $repository(projects);
   protected readonly characters = $repository(characters);
   protected readonly security = $inject(AppSecurityProvider);
@@ -98,7 +96,6 @@ export class TaskTools {
             createdAt: t.datetime(),
             acceptedAt: t.optional(t.datetime()),
             completedAt: t.optional(t.datetime()),
-            voteCount: t.integer(),
           }),
         ),
         total: t.integer(),
@@ -140,10 +137,6 @@ export class TaskTools {
 
       const totalElements = result.page.totalElements ?? 0;
 
-      // Get vote counts for all tasks
-      const taskIds = result.content.map((task) => task.id);
-      const voteCounts = await this.getVoteCountsForTasks(taskIds);
-
       return {
         tasks: result.content.map((task) => ({
           id: task.id,
@@ -157,7 +150,6 @@ export class TaskTools {
           createdAt: task.createdAt,
           acceptedAt: task.acceptedAt,
           completedAt: task.completedAt,
-          voteCount: voteCounts.get(task.id) ?? 0,
         })),
         total: totalElements,
         hasMore: !result.page.isLast,
@@ -492,68 +484,6 @@ export class TaskTools {
   });
 
   /**
-   * Upvote or remove upvote from a task.
-   */
-  task_upvote = $tool({
-    description:
-      "Toggle upvote on a task. If already voted, removes the vote. Returns the new vote status and count.",
-    schema: {
-      params: t.object({
-        id: t.integer({
-          description: "Task ID to upvote/unvote",
-        }),
-      }),
-      result: t.object({
-        id: t.integer(),
-        voted: t.boolean(),
-        voteCount: t.integer(),
-      }),
-    },
-    handler: async ({ params, context }) => {
-      const authContext = await this.auth.authenticate(context);
-
-      const task = await this.tasks.findOne({
-        where: {
-          id: { eq: params.id },
-        },
-      });
-
-      await this.security.checkOwnership(task.projectId, authContext.user);
-
-      // Check if user already voted
-      const [existingVote] = await this.taskVotes.findMany({
-        where: {
-          taskId: { eq: params.id },
-          userId: { eq: authContext.user.id },
-        },
-        limit: 1,
-      });
-
-      if (existingVote) {
-        // Remove vote (toggle off)
-        await this.taskVotes.deleteById(existingVote.id);
-      } else {
-        // Add vote
-        await this.taskVotes.create({
-          taskId: params.id,
-          userId: authContext.user.id,
-        });
-      }
-
-      // Get updated vote count
-      const voteCount = await this.taskVotes.count({
-        taskId: { eq: params.id },
-      });
-
-      return {
-        id: params.id,
-        voted: !existingVote,
-        voteCount,
-      };
-    },
-  });
-
-  /**
    * Get task status from task data.
    */
   protected getTaskStatus(task: {
@@ -563,28 +493,5 @@ export class TaskTools {
     if (task.completedAt) return "completed";
     if (task.acceptedAt) return "accepted";
     return "new";
-  }
-
-  /**
-   * Get vote counts for multiple tasks efficiently.
-   */
-  protected async getVoteCountsForTasks(
-    taskIds: number[],
-  ): Promise<Map<number, number>> {
-    if (taskIds.length === 0) {
-      return new Map();
-    }
-
-    const voteCounts = new Map<number, number>();
-
-    // Get vote counts for each task
-    for (const taskId of taskIds) {
-      const count = await this.taskVotes.count({
-        taskId: { eq: taskId },
-      });
-      voteCounts.set(taskId, count);
-    }
-
-    return voteCounts;
   }
 }
