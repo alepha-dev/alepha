@@ -3,6 +3,7 @@ import { useAuth } from "@alepha/react/auth";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
 import { useRouter } from "@alepha/react/router";
+import { ActionButton } from "@alepha/ui";
 import { Card, Container, Flex, Stack, Text } from "@mantine/core";
 import { IconHammer, IconTag } from "@tabler/icons-react";
 import { t } from "alepha";
@@ -13,7 +14,6 @@ import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { Toaster } from "../../services/Toaster.ts";
-import Action from "../ui/Action.tsx";
 import Control from "../ui/Control.tsx";
 
 const ProjectCreate = () => {
@@ -119,14 +119,14 @@ const ProjectCreate = () => {
                   description={tr("project.create.public.helper")}
                 />
                 <Flex>
-                  <Action
+                  <ActionButton
                     leftSection={<IconHammer />}
                     form={form}
                     variant={"filled"}
                     color={"green"}
                   >
                     {tr("project.create.submit")}
-                  </Action>
+                  </ActionButton>
                 </Flex>
               </Stack>
             </Card>

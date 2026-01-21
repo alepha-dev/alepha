@@ -1,5 +1,6 @@
 import { useEvents, useStore } from "@alepha/react";
 import { useRouter } from "@alepha/react/router";
+import { ActionButton } from "@alepha/ui";
 import { Burger, Container, Drawer, Flex } from "@mantine/core";
 import { useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
@@ -7,7 +8,6 @@ import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import ProjectActions from "../project/ProjectActions.tsx";
 import QuestLog from "../project/QuestLog.tsx";
-import Action from "../ui/Action.tsx";
 import HeaderActions from "./HeaderActions.tsx";
 import HeaderProject from "./HeaderProject.tsx";
 import RoadmapLogo from "./RoadmapLogo.tsx";
@@ -30,7 +30,7 @@ const Header = () => {
           <Flex align="center" justify="center" gap={"xs"}>
             <MobileQuestLog />
             <Flex>
-              <Action
+              <ActionButton
                 variant={"subtle"}
                 href={router.path("home")}
                 active={false}

@@ -1,11 +1,11 @@
 import { useStore } from "@alepha/react";
 import { useRouter, useRouterState } from "@alepha/react/router";
+import { ActionButton } from "@alepha/ui";
 import { Flex, Menu } from "@mantine/core";
 import { IconPlus, IconSquare, IconSquareCheck } from "@tabler/icons-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
-import Action from "../ui/Action.tsx";
 
 const HeaderProject = () => {
   const [project] = useStore(currentProjectAtom);
@@ -39,7 +39,7 @@ const HeaderProject = () => {
     <Flex visibleFrom={"sm"} gap={"xs"} align="center" justify="center">
       <Menu withArrow arrowSize={12} trigger="hover" position="bottom">
         <Menu.Target>
-          <Action variant={"subtle"}>{project.title}</Action>
+          <ActionButton variant={"subtle"}>{project.title}</ActionButton>
         </Menu.Target>
         <Menu.Dropdown>
           {projects.map((p) => menuItem(p.id, p.title))}

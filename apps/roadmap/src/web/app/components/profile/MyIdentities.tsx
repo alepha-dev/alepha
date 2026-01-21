@@ -1,5 +1,6 @@
 import { useClient } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
+import { ActionButton } from "@alepha/ui";
 import {
   Badge,
   Card,
@@ -22,7 +23,6 @@ import {
 import { t } from "alepha";
 import { useState } from "react";
 import type { IdentityController } from "../../../../api/controllers/IdentityController.ts";
-import Action from "../ui/Action.tsx";
 import Control from "../ui/Control.tsx";
 
 export interface MyIdentitiesProps {
@@ -136,13 +136,13 @@ const MyIdentities = (props: MyIdentitiesProps) => {
         <Group justify="space-between">
           <Title order={2}>My Identities</Title>
           {!hasPasswordIdentity && (
-            <Action
+            <ActionButton
               variant="light"
               leftSection={<IconLock size={16} />}
               onClick={open}
             >
               Set Password
-            </Action>
+            </ActionButton>
           )}
         </Group>
 
@@ -243,10 +243,10 @@ const MyIdentities = (props: MyIdentitiesProps) => {
               />
 
               <Group justify="flex-end" gap="sm">
-                <Action variant="subtle" onClick={close}>
+                <ActionButton variant="subtle" onClick={close}>
                   Cancel
-                </Action>
-                <Action form={passwordForm}>Set Password</Action>
+                </ActionButton>
+                <ActionButton form={passwordForm}>Set Password</ActionButton>
               </Group>
             </Stack>
           </form>

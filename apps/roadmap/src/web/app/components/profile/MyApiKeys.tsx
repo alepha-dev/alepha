@@ -1,5 +1,6 @@
 import { useClient, useInject } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
+import { ActionButton } from "@alepha/ui";
 import {
   ActionIcon,
   Badge,
@@ -26,7 +27,6 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useState } from "react";
 import type { McpApiKeyController } from "../../../../api/controllers/McpApiKeyController.ts";
 import { theme } from "../../constants/theme.ts";
-import Action from "../ui/Action.tsx";
 import Control from "../ui/Control.tsx";
 
 interface ApiKey {
@@ -92,9 +92,9 @@ const MyApiKeys = (props: MyApiKeysProps) => {
         </Flex>
 
         <Flex align="center" justify="center">
-          <Action leftSection={<IconPlus size={16} />} onClick={open}>
+          <ActionButton leftSection={<IconPlus size={16} />} onClick={open}>
             Create Key
-          </Action>
+          </ActionButton>
         </Flex>
       </Group>
 
@@ -171,10 +171,10 @@ const MyApiKeys = (props: MyApiKeysProps) => {
               text={{ placeholder: "e.g., Claude Desktop" }}
             />
             <Group justify="flex-end">
-              <Action variant="subtle" onClick={close}>
+              <ActionButton variant="subtle" onClick={close}>
                 Cancel
-              </Action>
-              <Action form={form}>Create</Action>
+              </ActionButton>
+              <ActionButton form={form}>Create</ActionButton>
             </Group>
           </Stack>
         </form>
@@ -278,7 +278,7 @@ const MyApiKeys = (props: MyApiKeysProps) => {
             tools.
           </Text>
           <Group justify="flex-end">
-            <Action onClick={() => setNewToken(null)}>Done</Action>
+            <ActionButton onClick={() => setNewToken(null)}>Done</ActionButton>
           </Group>
         </Stack>
       </Modal>

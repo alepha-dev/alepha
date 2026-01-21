@@ -1,3 +1,4 @@
+import { ActionButton } from "@alepha/ui";
 import { Button, Flex, Text } from "@mantine/core";
 import {
   IconArrowLeft,
@@ -5,7 +6,6 @@ import {
   IconHome,
   IconReload,
 } from "@tabler/icons-react";
-import Action from "../ui/Action.tsx";
 
 const ErrorPage = () => {
   return (
@@ -25,26 +25,26 @@ const ErrorPage = () => {
         </Flex>
         <Flex>
           <Button.Group>
-            <Action
+            <ActionButton
               leftSection={<IconArrowLeft />}
               onClick={() => window.history.back()}
             >
               Back
-            </Action>
-            <Action
+            </ActionButton>
+            <ActionButton
               leftSection={<IconReload />}
               onClick={() => window.location.reload()}
             >
               Reload App
-            </Action>
-            <Action
+            </ActionButton>
+            <ActionButton
               leftSection={<IconHome />}
               onClick={() => {
                 window.location.href = "/";
               }}
             >
               Home
-            </Action>
+            </ActionButton>
           </Button.Group>
         </Flex>
       </Flex>

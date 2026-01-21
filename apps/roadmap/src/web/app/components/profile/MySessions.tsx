@@ -1,5 +1,6 @@
 import { useClient, useInject } from "@alepha/react";
 import { useAuth } from "@alepha/react/auth";
+import { ActionButton } from "@alepha/ui";
 import { Card, Flex, Group, Stack, Text } from "@mantine/core";
 import {
   IconCircleFilled,
@@ -13,7 +14,6 @@ import type {
   UserSession,
 } from "../../../../api/controllers/SessionController.ts";
 import { theme } from "../../constants/theme.ts";
-import Action from "../ui/Action.tsx";
 
 export interface MySessionsProps {
   sessions: Array<UserSession>;
@@ -35,7 +35,7 @@ const MySessions = (props: MySessionsProps) => {
         </Flex>
 
         <Flex align="center" justify="center">
-          <Action
+          <ActionButton
             c={"red"}
             variant={"subtle"}
             onClick={async () => {
@@ -44,7 +44,7 @@ const MySessions = (props: MySessionsProps) => {
             }}
           >
             Revoke All
-          </Action>
+          </ActionButton>
         </Flex>
       </Group>
 
@@ -89,7 +89,7 @@ const MySessions = (props: MySessionsProps) => {
                 <Flex flex={1} />
 
                 <Flex align="center" justify="center" visibleFrom={"sm"}>
-                  <Action
+                  <ActionButton
                     variant={"subtle"}
                     onClick={async () => {
                       if (session.current) {
@@ -107,7 +107,7 @@ const MySessions = (props: MySessionsProps) => {
                     }}
                   >
                     {session.current ? "Sign out" : "Revoke"}
-                  </Action>
+                  </ActionButton>
                 </Flex>
               </Group>
             </Card>

@@ -1,10 +1,10 @@
 import { useClient } from "@alepha/react";
+import { ActionButton } from "@alepha/ui";
 import { Flex, Loader, Stack } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconUpload } from "@tabler/icons-react";
 import { type ChangeEvent, useRef, useState } from "react";
 import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
-import Action from "../../ui/Action.tsx";
 import type { CustomControlProps } from "../../ui/Control.tsx";
 import AttachmentBadge from "./AttachmentBadge.tsx";
 
@@ -97,7 +97,7 @@ const TaskAttachments = (props: TaskAttachmentsProps) => {
       )}
 
       {!disabled && (
-        <Action
+        <ActionButton
           variant="light"
           size="sm"
           leftSection={
@@ -107,7 +107,7 @@ const TaskAttachments = (props: TaskAttachmentsProps) => {
           disabled={uploading}
         >
           {uploading ? "Uploading..." : "Attach Files"}
-        </Action>
+        </ActionButton>
       )}
     </Stack>
   );

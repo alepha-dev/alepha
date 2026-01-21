@@ -1,5 +1,6 @@
 import { useClient, useInject, useStore } from "@alepha/react";
 import { useRouter } from "@alepha/react/router";
+import { ActionButton } from "@alepha/ui";
 import {
   ActionIcon,
   Badge,
@@ -33,7 +34,6 @@ import type { User } from "../../../../api/entities/users.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { theme } from "../../constants/theme.ts";
-import Action from "../ui/Action.tsx";
 import TaskComplexity from "./task/TaskComplexity.tsx";
 
 type TaskStatus = "new" | "accepted" | "completed";
@@ -292,7 +292,7 @@ const ProjectBoard = () => {
                 <Table.Tr>
                   {status === "accepted" && (
                     <Table.Th>
-                      <Action
+                      <ActionButton
                         h={"auto"}
                         p={"xs"}
                         {...actions.sortBy("assignedAt")}
@@ -301,27 +301,35 @@ const ProjectBoard = () => {
                           <Text size="sm">Assigned</Text>
                           {getSortIcon("assignedAt")}
                         </Flex>
-                      </Action>
+                      </ActionButton>
                     </Table.Th>
                   )}
                   <Table.Th>
-                    <Action h={"auto"} p={"xs"} {...actions.sortBy("title")}>
+                    <ActionButton
+                      h={"auto"}
+                      p={"xs"}
+                      {...actions.sortBy("title")}
+                    >
                       <Flex align="center" gap={4}>
                         <Text size="sm">Quest</Text>
                         {getSortIcon("title")}
                       </Flex>
-                    </Action>
+                    </ActionButton>
                   </Table.Th>
                   <Table.Th>
-                    <Action h={"auto"} p={"xs"} {...actions.sortBy("priority")}>
+                    <ActionButton
+                      h={"auto"}
+                      p={"xs"}
+                      {...actions.sortBy("priority")}
+                    >
                       <Flex align="center" gap={4}>
                         <Text size="sm">Priority</Text>
                         {getSortIcon("priority")}
                       </Flex>
-                    </Action>
+                    </ActionButton>
                   </Table.Th>
                   <Table.Th>
-                    <Action
+                    <ActionButton
                       h={"auto"}
                       p={"xs"}
                       {...actions.sortBy("complexity")}
@@ -330,18 +338,22 @@ const ProjectBoard = () => {
                         <Text size="sm">Rank</Text>
                         {getSortIcon("complexity")}
                       </Flex>
-                    </Action>
+                    </ActionButton>
                   </Table.Th>
                   <Table.Th>
-                    <Action h={"auto"} p={"xs"} {...actions.sortBy("package")}>
+                    <ActionButton
+                      h={"auto"}
+                      p={"xs"}
+                      {...actions.sortBy("package")}
+                    >
                       <Flex align="center" gap={4}>
                         <Text size="sm">Zone</Text>
                         {getSortIcon("package")}
                       </Flex>
-                    </Action>
+                    </ActionButton>
                   </Table.Th>
                   <Table.Th>
-                    <Action
+                    <ActionButton
                       h={"auto"}
                       p={"xs"}
                       {...actions.sortBy(
@@ -356,7 +368,7 @@ const ProjectBoard = () => {
                           status === "completed" ? "completedAt" : "createdAt",
                         )}
                       </Flex>
-                    </Action>
+                    </ActionButton>
                   </Table.Th>
                   <Table.Th></Table.Th>
                 </Table.Tr>
@@ -370,7 +382,7 @@ const ProjectBoard = () => {
                       </Table.Td>
                     )}
                     <Table.Td maw={"254px"}>
-                      <Action
+                      <ActionButton
                         w={"100%"}
                         px={"xs"}
                         justify={"start"}
@@ -411,7 +423,7 @@ const ProjectBoard = () => {
                             </Text>
                           )}
                         </Flex>
-                      </Action>
+                      </ActionButton>
                     </Table.Td>
                     <Table.Td>
                       <Badge
@@ -447,9 +459,9 @@ const ProjectBoard = () => {
                         }}
                       >
                         <Menu.Target>
-                          <Action px={"xs"} variant="subtle" size="xs">
+                          <ActionButton px={"xs"} variant="subtle" size="xs">
                             <IconDots size={theme.icon.size.sm} />
-                          </Action>
+                          </ActionButton>
                         </Menu.Target>
                         <Menu.Dropdown>
                           {!task.acceptedAt && (
@@ -482,9 +494,9 @@ const ProjectBoard = () => {
             </Table>
             {next && (
               <Flex p={"md"} justify={"center"} align={"center"}>
-                <Action variant="subtle" size="xs" {...actions.more}>
+                <ActionButton variant="subtle" size="xs" {...actions.more}>
                   Load More
-                </Action>
+                </ActionButton>
               </Flex>
             )}
           </Card>

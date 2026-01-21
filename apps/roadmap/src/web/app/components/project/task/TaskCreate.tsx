@@ -2,6 +2,7 @@ import { useAlepha, useClient, useStore } from "@alepha/react";
 import { useForm } from "@alepha/react/form";
 import { useI18n } from "@alepha/react/i18n";
 import { useRouter } from "@alepha/react/router";
+import { ActionButton } from "@alepha/ui";
 import { Flex, SimpleGrid, Space, Stack } from "@mantine/core";
 import {
   IconDeviceFloppy,
@@ -22,7 +23,6 @@ import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAto
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TextEditor from "../../shared/TextEditor.tsx";
-import Action from "../../ui/Action.tsx";
 import Control from "../../ui/Control.tsx";
 import TaskAttachments from "./TaskAttachments.tsx";
 import TaskCreateObjectives from "./TaskCreateObjectives.tsx";
@@ -212,23 +212,23 @@ const TaskCreate = (props: TaskCreateProps) => {
 
         <Flex>
           {update ? (
-            <Action
+            <ActionButton
               variant={"filled"}
               color={"blue"}
               form={form}
               leftSection={<IconDeviceFloppy />}
             >
               Update Quest
-            </Action>
+            </ActionButton>
           ) : (
-            <Action
+            <ActionButton
               variant={"filled"}
               color={"green"}
               form={form}
               leftSection={<IconPlus />}
             >
               {tr("task.create.submit")}
-            </Action>
+            </ActionButton>
           )}
         </Flex>
       </Stack>
