@@ -1,4 +1,8 @@
-import { AlephaReactHead, BrowserHeadProvider, type Head } from "@alepha/react/head";
+import {
+  AlephaReactHead,
+  BrowserHeadProvider,
+  type Head,
+} from "@alepha/react/head";
 import { Alepha } from "alepha";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { $page } from "../index.browser.ts";

@@ -1,9 +1,8 @@
-import { $command } from "alepha/command";
-import { $context, Alepha } from "alepha";
+import type { Alepha } from "alepha";
 import { changelogOptions } from "alepha/cli";
+import { $command } from "alepha/command";
 
 export default (alepha: Alepha) => {
-
   // Type-safe changelog configuration
   alepha.set(changelogOptions, {
     ignore: [
@@ -13,7 +12,7 @@ export default (alepha: Alepha) => {
       "release",
       "task",
       "roadmap",
-      "roadmap/api"
+      "roadmap/api",
     ],
   });
 

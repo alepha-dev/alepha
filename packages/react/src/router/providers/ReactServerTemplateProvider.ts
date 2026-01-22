@@ -1,6 +1,6 @@
+import type { SimpleHead } from "@alepha/react/head";
 import { $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
-import type { SimpleHead } from "@alepha/react/head";
 import type { ReactRouterState } from "./ReactPageProvider.ts";
 
 /**
@@ -38,7 +38,6 @@ export class ReactServerTemplateProvider {
    * Cached template slots - parsed once, reused for all requests.
    */
   protected slots: TemplateSlots | null = null;
-
 
   /**
    * Root element ID for React mounting.
@@ -168,7 +167,7 @@ export class ReactServerTemplateProvider {
 
     this.slots = {
       // Pre-encoded static parts
-      doctype: this.encoder.encode(doctype + "\n"),
+      doctype: this.encoder.encode(`${doctype}\n`),
       htmlOpen: this.encoder.encode("<html"),
       htmlClose: this.encoder.encode(">\n"),
       headOpen: this.encoder.encode("<head>"),
@@ -209,9 +208,8 @@ export class ReactServerTemplateProvider {
 
     // Match: key="value", key='value', key=value, or just key (boolean)
     const attrRegex = /([^\s=]+)(?:=(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
-    let match: RegExpExecArray | null;
 
-    while ((match = attrRegex.exec(attrStr))) {
+    for (const match of attrStr.matchAll(attrRegex)) {
       const key = match[1];
       const value = match[2] ?? match[3] ?? match[4] ?? "";
       attrs[key] = value;
@@ -399,21 +397,38 @@ export class ReactServerTemplateProvider {
       props: layer.props, // our not-so-secret data cache
       error: layer.error
         ? {
-          ...layer.error,
-          name: layer.error.name,
-          message: layer.error.message,
-          stack: !this.alepha.isProduction() ? layer.error.stack : undefined,
-        }
+            ...layer.error,
+            name: layer.error.name,
+            message: layer.error.message,
+            stack: !this.alepha.isProduction() ? layer.error.stack : undefined,
+          }
         : undefined,
     }));
 
     const hydrationData: HydrationData = {
       layers,
-    }
+    };
 
+    const atoms = this.alepha.store.getAtoms();
     for (const [key, value] of Object.entries(store)) {
-      if (key.charAt(0) !== "_" && key !== "alepha.react.router.state" && key !== "registry") {
-        hydrationData[key] = value;
+      if (
+        key.charAt(0) !== "_" &&
+        key !== "alepha.react.router.state" &&
+        key !== "registry"
+      ) {
+        const atom = atoms.find((it) => it.atom.key === key);
+        if (atom) {
+          hydrationData[key] = this.alepha.codec.encode(
+            atom.atom.schema,
+            value,
+            {
+              encoder: "keyless",
+              as: "string",
+            },
+          );
+        } else {
+          hydrationData[key] = value;
+        }
       }
     }
 
@@ -472,9 +487,7 @@ export class ReactServerTemplateProvider {
     if (hydration) {
       const hydrationData = this.buildHydrationData(state);
       controller.enqueue(this.ENCODED.HYDRATION_PREFIX);
-      controller.enqueue(
-        encoder.encode(this.safeJsonSerialize(hydrationData)),
-      );
+      controller.enqueue(encoder.encode(this.safeJsonSerialize(hydrationData)));
       controller.enqueue(this.ENCODED.HYDRATION_SUFFIX);
     }
 
@@ -529,7 +542,12 @@ export class ReactServerTemplateProvider {
           controller.enqueue(slots.headClose);
 
           // Body content (body, root, React, hydration, closing tags)
-          await this.streamBodyContent(controller, reactStream, state, hydration);
+          await this.streamBodyContent(
+            controller,
+            reactStream,
+            state,
+            hydration,
+          );
 
           controller.close();
         } catch (error) {
@@ -681,11 +699,18 @@ export class ReactServerTemplateProvider {
           // === LATE PHASE (after async work) ===
 
           // Rest of head content (title, meta, links from loaders)
-          controller.enqueue(encoder.encode(this.renderHeadContent(state.head)));
+          controller.enqueue(
+            encoder.encode(this.renderHeadContent(state.head)),
+          );
           controller.enqueue(slots.headClose);
 
           // Body content (body, root, React, hydration, closing tags)
-          await this.streamBodyContent(controller, reactStream, state, hydration);
+          await this.streamBodyContent(
+            controller,
+            reactStream,
+            state,
+            hydration,
+          );
 
           controller.close();
         } catch (error) {
@@ -696,7 +721,6 @@ export class ReactServerTemplateProvider {
     });
   }
 }
-
 
 // ---------------------------------------------------------------------------------------------------------------------
 

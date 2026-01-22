@@ -1,6 +1,6 @@
+import { useStore } from "@alepha/react";
 import { AlephaError } from "alepha";
 import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
-import { useStore } from "@alepha/react";
 
 export const useRouterState = (): ReactRouterState => {
   const [state] = useStore("alepha.react.router.state");

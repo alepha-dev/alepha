@@ -45,10 +45,7 @@ export class NodeHttpServerProvider extends ServerProvider {
   }
 
   // Pre-bound error handler to avoid function allocation per request
-  protected readonly handleRequestError = (
-    res: import("node:http").ServerResponse,
-    err: Error,
-  ) => {
+  protected readonly handleRequestError = (res: ServerResponse, err: Error) => {
     this.log.error("Error handling request", err);
     res.statusCode = 500;
     res.end("Internal Server Error");
@@ -115,7 +112,7 @@ export class NodeHttpServerProvider extends ServerProvider {
 
     await new Promise<void>((resolve, reject) => {
       this.server?.listen(port, this.env.SERVER_HOST, () => {
-        this.log.info(`Server listening on ${this.hostname}`);
+        this.log.info(`Server listening on ${this.hostname}/`);
         resolve();
       });
 

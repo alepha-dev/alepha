@@ -1,11 +1,11 @@
+import { ErrorBoundary, useAlepha, useEvents } from "@alepha/react";
 import { memo, type ReactNode, use, useRef, useState } from "react";
-import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import { Redirection } from "../errors/Redirection.ts";
 import { useRouterState } from "../hooks/useRouterState.ts";
 import type { PageAnimation } from "../primitives/$page.ts";
+import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
 import ErrorViewer from "./ErrorViewer.tsx";
-import { ErrorBoundary, useAlepha, useEvents } from "@alepha/react";
 
 export interface NestedViewProps {
   children?: ReactNode;
@@ -152,18 +152,16 @@ const NestedView = (props: NestedViewProps) => {
   }
 
   const fallback = (error: Error) => {
-    const result = onError?.(error, state) ?? <ErrorViewer error={error} alepha={alepha}/>;
+    const result = onError?.(error, state) ?? (
+      <ErrorViewer error={error} alepha={alepha} />
+    );
     if (result instanceof Redirection) {
       return "Redirection inside ErrorBoundary is not allowed.";
     }
     return result as ReactNode;
-  }
+  };
 
-  return (
-    <ErrorBoundary fallback={fallback}>
-      {element}
-    </ErrorBoundary>
-  );
+  return <ErrorBoundary fallback={fallback}>{element}</ErrorBoundary>;
 };
 
 export default memo(NestedView);

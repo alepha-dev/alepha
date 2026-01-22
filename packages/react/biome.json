@@ -1,13 +1,13 @@
 {
-	"root": false,
-	"extends": "//",
-	"linter": {
-		"rules": {
-			"a11y": {
-				"useFocusableInteractive": "off",
-				"useKeyWithClickEvents": "off",
-				"noStaticElementInteractions": "off"
-			}
-		}
-	}
+  "root": false,
+  "extends": "//",
+  "linter": {
+    "rules": {
+      "a11y": {
+        "useFocusableInteractive": "off",
+        "useKeyWithClickEvents": "off",
+        "noStaticElementInteractions": "off"
+      }
+    }
+  }
 }

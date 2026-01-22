@@ -2,17 +2,17 @@ import { $module } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export { default as ClientOnly } from "./components/ClientOnly.tsx";
 export type * from "./components/ClientOnly.tsx";
-export { default as ErrorBoundary } from "./components/ErrorBoundary.tsx";
+export { default as ClientOnly } from "./components/ClientOnly.tsx";
 export type * from "./components/ErrorBoundary.tsx";
-export * from "./contexts/AlephaProvider.tsx";
+export { default as ErrorBoundary } from "./components/ErrorBoundary.tsx";
 export * from "./contexts/AlephaContext.ts";
+export * from "./contexts/AlephaProvider.tsx";
 export * from "./hooks/useAction.ts";
 export * from "./hooks/useAlepha.ts";
+export * from "./hooks/useClient.ts";
 export * from "./hooks/useEvents.ts";
 export * from "./hooks/useInject.ts";
-export * from "./hooks/useClient.ts";
 export * from "./hooks/useStore.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

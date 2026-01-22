@@ -1,11 +1,11 @@
 import { $inject, Alepha } from "alepha";
+import type { PagePrimitive } from "../primitives/$page.ts";
 import { ReactBrowserProvider } from "../providers/ReactBrowserProvider.ts";
 import {
-  type AnchorProps, type PageRoute,
+  type AnchorProps,
   ReactPageProvider,
   type ReactRouterState,
 } from "../providers/ReactPageProvider.ts";
-import type { PagePrimitive, PagePrimitiveOptions } from "../primitives/$page.ts";
 
 export interface RouterGoOptions {
   replace?: boolean;
@@ -70,14 +70,15 @@ export class ReactRouter<T extends object> {
       params?: Record<string, any>;
       query?: Record<string, any>;
     } = {},
-  ): any { // TODO: improve typing (or just remove this method)
+  ): any {
+    // TODO: improve typing (or just remove this method)
     const page = this.pageApi.page(name as string);
     if (!page.lazy && !page.component) {
       return {
         ...page,
         label: page.label ?? page.name,
         children: undefined,
-      }
+      };
     }
 
     return {
@@ -85,7 +86,7 @@ export class ReactRouter<T extends object> {
       label: page.label ?? page.name,
       href: this.path(name, config),
       children: undefined,
-    }
+    };
   }
 
   public path(

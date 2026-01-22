@@ -1,4 +1,5 @@
-export const mainCss = () => `
+export const mainCss = () =>
+  `
 * {
   box-sizing: border-box;
   margin: 0;

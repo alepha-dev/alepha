@@ -1,9 +1,14 @@
 import { AlephaReact } from "@alepha/react";
-import { $page, NestedView, Redirection, ReactRouter } from "../index.browser.ts";
 import { waitFor } from "@testing-library/dom";
 import { Alepha, t } from "alepha";
 import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  $page,
+  NestedView,
+  ReactRouter,
+  Redirection,
+} from "../index.browser.ts";
 
 describe("$page browser tests", () => {
   let alepha: Alepha;

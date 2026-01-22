@@ -6,10 +6,16 @@
       "alepha/api/audits": ["./packages/alepha/src/api/audits/index.ts"],
       "alepha/api/files": ["./packages/alepha/src/api/files/index.ts"],
       "alepha/api/jobs": ["./packages/alepha/src/api/jobs/index.ts"],
-      "alepha/api/notifications": ["./packages/alepha/src/api/notifications/index.ts"],
-      "alepha/api/parameters": ["./packages/alepha/src/api/parameters/index.ts"],
+      "alepha/api/notifications": [
+        "./packages/alepha/src/api/notifications/index.ts"
+      ],
+      "alepha/api/parameters": [
+        "./packages/alepha/src/api/parameters/index.ts"
+      ],
       "alepha/api/users": ["./packages/alepha/src/api/users/index.ts"],
-      "alepha/api/verifications": ["./packages/alepha/src/api/verifications/index.ts"],
+      "alepha/api/verifications": [
+        "./packages/alepha/src/api/verifications/index.ts"
+      ],
       "alepha/batch": ["./packages/alepha/src/batch/index.ts"],
       "alepha/bin": ["./packages/alepha/src/bin/index.ts"],
       "alepha/bucket": ["./packages/alepha/src/bucket/index.ts"],
@@ -36,19 +42,33 @@
       "alepha/server": ["./packages/alepha/src/server/core/index.ts"],
       "alepha/server/auth": ["./packages/alepha/src/server/auth/index.ts"],
       "alepha/server/cache": ["./packages/alepha/src/server/cache/index.ts"],
-      "alepha/server/compress": ["./packages/alepha/src/server/compress/index.ts"],
-      "alepha/server/cookies": ["./packages/alepha/src/server/cookies/index.ts"],
+      "alepha/server/compress": [
+        "./packages/alepha/src/server/compress/index.ts"
+      ],
+      "alepha/server/cookies": [
+        "./packages/alepha/src/server/cookies/index.ts"
+      ],
       "alepha/server/cors": ["./packages/alepha/src/server/cors/index.ts"],
       "alepha/server/health": ["./packages/alepha/src/server/health/index.ts"],
       "alepha/server/helmet": ["./packages/alepha/src/server/helmet/index.ts"],
       "alepha/server/links": ["./packages/alepha/src/server/links/index.ts"],
-      "alepha/server/metrics": ["./packages/alepha/src/server/metrics/index.ts"],
-      "alepha/server/multipart": ["./packages/alepha/src/server/multipart/index.ts"],
+      "alepha/server/metrics": [
+        "./packages/alepha/src/server/metrics/index.ts"
+      ],
+      "alepha/server/multipart": [
+        "./packages/alepha/src/server/multipart/index.ts"
+      ],
       "alepha/server/proxy": ["./packages/alepha/src/server/proxy/index.ts"],
-      "alepha/server/rate-limit": ["./packages/alepha/src/server/rate-limit/index.ts"],
-      "alepha/server/security": ["./packages/alepha/src/server/security/index.ts"],
+      "alepha/server/rate-limit": [
+        "./packages/alepha/src/server/rate-limit/index.ts"
+      ],
+      "alepha/server/security": [
+        "./packages/alepha/src/server/security/index.ts"
+      ],
       "alepha/server/static": ["./packages/alepha/src/server/static/index.ts"],
-      "alepha/server/swagger": ["./packages/alepha/src/server/swagger/index.ts"],
+      "alepha/server/swagger": [
+        "./packages/alepha/src/server/swagger/index.ts"
+      ],
       "alepha/sms": ["./packages/alepha/src/sms/index.ts"],
       "alepha/thread": ["./packages/alepha/src/thread/index.ts"],
       "alepha/topic": ["./packages/alepha/src/topic/core/index.ts"],

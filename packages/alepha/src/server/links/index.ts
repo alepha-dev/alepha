@@ -1,6 +1,7 @@
 import "alepha/security";
 import { $module } from "alepha";
 import { AlephaServer } from "alepha/server";
+import { apiLinksAtom } from "./atoms/apiLinksAtom.ts";
 import { $client } from "./primitives/$client.ts";
 import { $remote } from "./primitives/$remote.ts";
 import { LinkProvider } from "./providers/LinkProvider.ts";
@@ -46,6 +47,7 @@ declare module "alepha" {
  */
 export const AlephaServerLinks = $module({
   name: "alepha.server.links",
+  atoms: [apiLinksAtom],
   primitives: [$remote, $client],
   services: [
     AlephaServer,

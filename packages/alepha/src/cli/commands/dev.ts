@@ -2,7 +2,8 @@ import { $inject, Alepha } from "alepha";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
-import { boot, devServer } from "alepha/vite";
+import { boot } from "alepha/vite";
+import { ViteDevServerProvider } from "../providers/ViteDevServerProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
@@ -14,6 +15,7 @@ export class DevCommand {
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly scaffolder = $inject(ProjectScaffolder);
   protected readonly alepha = $inject(Alepha);
+  protected readonly viteDevServer = $inject(ViteDevServerProvider);
 
   /**
    * Will run the project in watch mode.
@@ -59,7 +61,7 @@ export class DevCommand {
         exec: (cmd, opts) => this.utils.exec(cmd, opts),
       });
 
-      await devServer();
+      await this.viteDevServer.start({ root, entry });
     },
   });
 

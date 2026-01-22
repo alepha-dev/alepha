@@ -1,4 +1,5 @@
-export const mainBrowserTs = () => `
+export const mainBrowserTs = () =>
+  `
 import { Alepha, run } from "alepha";
 import { WebModule } from "./web/index.ts";
 

@@ -113,7 +113,8 @@ export class SeoExpander {
       meta.push({
         name: "twitter:card",
         content:
-          head.twitter?.card ?? (twitterImage ? "summary_large_image" : "summary"),
+          head.twitter?.card ??
+          (twitterImage ? "summary_large_image" : "summary"),
       });
     }
     if (head.url) {

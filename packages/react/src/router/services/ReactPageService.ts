@@ -1,5 +1,8 @@
 import { AlephaError } from "alepha";
-import type { PagePrimitiveRenderOptions, PagePrimitiveRenderResult, } from "../../router/primitives/$page.ts";
+import type {
+  PagePrimitiveRenderOptions,
+  PagePrimitiveRenderResult,
+} from "../../router/primitives/$page.ts";
 
 /**
  * $page methods interface.

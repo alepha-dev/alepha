@@ -9,7 +9,7 @@ export class ServerLoggerProvider {
     on: "server:onRequest",
     priority: "first",
     handler: ({ route, request }) => {
-      if (route.silent) {
+      if (route.silent || request.metadata.vite) {
         return;
       }
 
@@ -44,7 +44,7 @@ export class ServerLoggerProvider {
     on: "server:onResponse",
     priority: "last",
     handler: ({ route, request, response }) => {
-      if (route.silent) {
+      if (route.silent || request.metadata.vite) {
         return;
       }
 

@@ -47,9 +47,7 @@ export class DrizzleKitProvider {
       await this.saveDevMigrations(provider, snapshot, entry);
     }
 
-    this.log.info(
-      `Db '${provider.name}' synchronization OK [${Date.now() - now}ms]`,
-    );
+    this.log.info(`Sync with '${provider.name}' OK [${Date.now() - now}ms]`);
   }
 
   /**
@@ -81,8 +79,8 @@ export class DrizzleKitProvider {
         };
       }
 
-      const prev = prevSnapshot ?? (await kit.generateDrizzleJson({}));
-      const curr = await kit.generateDrizzleJson(models);
+      const prev = prevSnapshot ?? kit.generateDrizzleJson({});
+      const curr = kit.generateDrizzleJson(models);
       return {
         models,
         statements: await kit.generateMigration(prev, curr),

@@ -1,4 +1,5 @@
-export const webHelloComponentTsx = () => `
+export const webHelloComponentTsx = () =>
+  `
 interface Props {
   message: string;
 }

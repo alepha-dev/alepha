@@ -141,7 +141,7 @@ export const AlephaServer = $module({
     ServerRouterProvider,
   ],
   register: (alepha: Alepha) => {
-    if (!alepha.isServerless() && !alepha.isViteDev()) {
+    if (!alepha.isServerless()) {
       if (alepha.isBun()) {
         alepha.with({
           optional: true,

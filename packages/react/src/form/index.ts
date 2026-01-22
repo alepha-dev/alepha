@@ -3,10 +3,10 @@ import { $module } from "alepha";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export { default as FormState } from "./components/FormState.tsx";
+export * from "./errors/FormValidationError.ts";
 export * from "./hooks/useForm.ts";
 export * from "./hooks/useFormState.ts";
 export * from "./services/FormModel.ts";
-export * from "./errors/FormValidationError.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

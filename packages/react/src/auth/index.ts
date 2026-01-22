@@ -1,10 +1,10 @@
 import { AlephaReact } from "@alepha/react";
 import { $module } from "alepha";
 import type { UserAccount } from "alepha/security";
-import { ReactAuthProvider } from "./providers/ReactAuthProvider.ts";
-import { ReactAuth } from "./services/ReactAuth.ts";
 import { $auth, AlephaServerAuth } from "alepha/server/auth";
 import { AlephaServerLinks } from "alepha/server/links";
+import { ReactAuthProvider } from "./providers/ReactAuthProvider.ts";
+import { ReactAuth } from "./services/ReactAuth.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -30,5 +30,11 @@ declare module "@alepha/react/router" {
 export const AlephaReactAuth = $module({
   name: "alepha.react.auth",
   primitives: [$auth],
-  services: [AlephaReact, AlephaServerLinks, AlephaServerAuth, ReactAuthProvider, ReactAuth],
+  services: [
+    AlephaReact,
+    AlephaServerLinks,
+    AlephaServerAuth,
+    ReactAuthProvider,
+    ReactAuth,
+  ],
 });

@@ -1,6 +1,5 @@
-export const indexHtml = (
-  browserEntry: string,
-) => `
+export const indexHtml = (browserEntry: string) =>
+  `
 <!DOCTYPE html>
 <html lang="en">
 <head>

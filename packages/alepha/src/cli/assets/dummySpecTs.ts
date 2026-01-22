@@ -1,4 +1,5 @@
-export const dummySpecTs = () => `
+export const dummySpecTs = () =>
+  `
 import { test, expect } from "vitest";
 
 test("dummy test", () => {

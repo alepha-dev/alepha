@@ -248,9 +248,13 @@ ${reactSection}
 | \`$cache\` | \`alepha/cache\` | Cached computations |
 | \`$bucket\` | \`alepha/bucket\` | File storage |
 | \`$issuer\` | \`alepha/security\` | JWT tokens |
-| \`$command\` | \`alepha/command\` | CLI commands |${react ? `
+| \`$command\` | \`alepha/command\` | CLI commands |${
+    react
+      ? `
 | \`$page\` | \`@alepha/react/router\` | React pages with SSR |
-| \`$atom\` | \`alepha\` | Global state |` : ""}
+| \`$atom\` | \`alepha\` | Global state |`
+      : ""
+  }
 
 ## Testing
 

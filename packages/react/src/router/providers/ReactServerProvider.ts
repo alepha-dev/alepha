@@ -1,15 +1,33 @@
 import { join } from "node:path";
-import { $atom, $env, $hook, $inject, $use, Alepha, AlephaError, type Static, t, } from "alepha";
+import { ServerHeadProvider } from "@alepha/react/head";
+import {
+  $atom,
+  $env,
+  $hook,
+  $inject,
+  $use,
+  Alepha,
+  AlephaError,
+  type Static,
+  t,
+} from "alepha";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
-import { type ServerHandler, ServerRouterProvider, ServerTimingProvider, } from "alepha/server";
+import { type ServerHandler, ServerRouterProvider } from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
 import { ServerStaticProvider } from "alepha/server/static";
 import { renderToReadableStream } from "react-dom/server";
-import { ServerHeadProvider } from "@alepha/react/head";
 import { Redirection } from "../errors/Redirection.ts";
-import { $page, type PagePrimitiveRenderOptions, type PagePrimitiveRenderResult, } from "../primitives/$page.ts";
-import { type PageRoute, ReactPageProvider, type ReactRouterState, } from "./ReactPageProvider.ts";
+import {
+  $page,
+  type PagePrimitiveRenderOptions,
+  type PagePrimitiveRenderResult,
+} from "../primitives/$page.ts";
+import {
+  type PageRoute,
+  ReactPageProvider,
+  type ReactRouterState,
+} from "./ReactPageProvider.ts";
 import { ReactServerTemplateProvider } from "./ReactServerTemplateProvider.ts";
 import { SSRManifestProvider } from "./SSRManifestProvider.ts";
 
@@ -65,12 +83,6 @@ export class ReactServerProvider {
         pages.length > 0 && this.env.REACT_SSR_ENABLED !== false;
 
       this.alepha.store.set("alepha.react.server.ssr", ssrEnabled);
-
-      // development mode
-      if (this.alepha.isViteDev()) {
-        await this.configureVite(ssrEnabled);
-        return;
-      }
 
       // production mode
       let root = "";
@@ -193,7 +205,7 @@ export class ReactServerProvider {
     if (parts.length > 0) {
       // Pass assets so they get stripped from original head content
       this.templateProvider.setEarlyHeadContent(
-        parts.join("\n") + "\n",
+        `${parts.join("\n")}\n`,
         assets,
       );
       this.log.debug("Early head content set", {
@@ -514,7 +526,6 @@ export class ReactServerProvider {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type TemplateLoader = () => Promise<string | undefined>;
-
 
 // ---------------------------------------------------------------------------------------------------------------------
 

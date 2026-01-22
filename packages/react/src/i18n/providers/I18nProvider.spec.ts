@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { describe, test } from "vitest";
-import { $dictionary } from "../primitives/$dictionary.ts";
 import { AlephaReactI18n } from "../index.ts";
+import { $dictionary } from "../primitives/$dictionary.ts";
 import { I18nProvider } from "./I18nProvider.ts";
 
 describe("I18nProvider", () => {

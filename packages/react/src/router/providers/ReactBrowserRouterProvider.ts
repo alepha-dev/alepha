@@ -1,8 +1,8 @@
+import { BrowserHeadProvider } from "@alepha/react/head";
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { type Route, RouterProvider } from "alepha/router";
 import { createElement, type ReactNode } from "react";
-import { BrowserHeadProvider } from "@alepha/react/head";
 import NotFoundPage from "../components/NotFound.tsx";
 import {
   isPageRoute,

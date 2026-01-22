@@ -1,22 +1,21 @@
+import type { ClientOnlyProps } from "@alepha/react";
+import type { Head } from "@alepha/react/head";
 import {
   $inject,
   type Async,
   createPrimitive,
-  Primitive,
   KIND,
+  Primitive,
   type Static,
   type TSchema,
 } from "alepha";
 import type { ServerRequest } from "alepha/server";
 import type { ServerRouteCache } from "alepha/server/cache";
 import type { FC, ReactNode } from "react";
+import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
 import type { Redirection } from "../errors/Redirection.ts";
 import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
 import { ReactPageService } from "../services/ReactPageService.ts";
-import type { ClientOnlyProps } from "@alepha/react";
-import type { Head } from "@alepha/react/head";
-import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
-
 
 /**
  * Main primitive for defining a React route in the application.
@@ -113,10 +112,7 @@ export const $page = <
 >(
   options: PagePrimitiveOptions<TConfig, TProps, TPropsParent>,
 ): PagePrimitive<TConfig, TProps, TPropsParent> => {
-  return createPrimitive(
-    PagePrimitive<TConfig, TProps, TPropsParent>,
-    options,
-  );
+  return createPrimitive(PagePrimitive<TConfig, TProps, TPropsParent>, options);
 };
 
 // ---------------------------------------------------------------------------------------------------------------------

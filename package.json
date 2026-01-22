@@ -1,41 +1,41 @@
 {
-	"private": true,
-	"name": "alepha-monorepo",
-	"description": "Alepha framework monorepo workspace",
-	"type": "module",
-	"packageManager": "yarn@4.12.0",
-	"workspaces": {
-		"packages": [
-			"apps/*",
-			"packages/*",
-			"!apps/*/dist"
-		]
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.3.11",
-		"@types/bun": "^1.3.6",
-		"@types/node": "^25.0.9",
-		"@vitest/coverage-v8": "^4.0.17",
-		"@vitest/ui": "^4.0.17",
-		"alepha": "^0.15.0",
-		"depcheck": "^1.4.7",
-		"typescript": "^5.9.3",
-		"vitest": "^4.0.17"
-	},
-	"scripts": {
-		"w": "yarn workspace",
-		"a": "yarn alepha",
-		"v": "yarn alepha verify",
-		"verify": "yarn alepha verify",
-		"postinstall": "yarn copy && yarn lint",
-		"clean": "yarn alepha clean",
-		"copy": "yarn workspaces foreach -Apt run copy",
-		"convert": "node scripts/convert.ts",
-		"lint": "yarn alepha lint",
-		"typecheck": "yarn alepha typecheck",
-		"test": "yarn alepha test",
-		"check-dependencies": "yarn workspaces foreach -Apt exec depcheck .",
-		"build": "yarn workspaces foreach -Apt run build",
-		"e2e": "yarn workspaces foreach -Apt run e2e"
-	}
+  "private": true,
+  "name": "alepha-monorepo",
+  "description": "Alepha framework monorepo workspace",
+  "type": "module",
+  "packageManager": "yarn@4.12.0",
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*",
+      "!apps/*/dist"
+    ]
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.11",
+    "@types/bun": "^1.3.6",
+    "@types/node": "^25.0.9",
+    "@vitest/coverage-v8": "^4.0.17",
+    "@vitest/ui": "^4.0.17",
+    "alepha": "^0.15.0",
+    "depcheck": "^1.4.7",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17"
+  },
+  "scripts": {
+    "w": "yarn workspace",
+    "a": "yarn alepha",
+    "v": "yarn alepha verify",
+    "verify": "yarn alepha verify",
+    "postinstall": "yarn copy && yarn lint",
+    "clean": "yarn alepha clean",
+    "copy": "yarn workspaces foreach -Apt run copy",
+    "convert": "node scripts/convert.ts",
+    "lint": "yarn alepha lint",
+    "typecheck": "yarn alepha typecheck",
+    "test": "yarn alepha test",
+    "check-dependencies": "yarn workspaces foreach -Apt exec depcheck .",
+    "build": "yarn workspaces foreach -Apt run build",
+    "e2e": "yarn workspaces foreach -Apt run e2e"
+  }
 }

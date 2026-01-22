@@ -1,14 +1,25 @@
-import { $atom, $env, $hook, $inject, $use, Alepha, type State, type Static, t, } from "alepha";
+import { BrowserHeadProvider } from "@alepha/react/head";
+import {
+  $atom,
+  $hook,
+  $inject,
+  $use,
+  Alepha,
+  type State,
+  type Static,
+  t,
+} from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { LinkProvider } from "alepha/server/links";
-import { BrowserHeadProvider } from "@alepha/react/head";
-import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
-import type { PreviousLayerData, ReactRouterState, } from "./ReactPageProvider.ts";
 import type { RouterGoOptions } from "../services/ReactRouter.ts";
+import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
+import type {
+  PreviousLayerData,
+  ReactRouterState,
+} from "./ReactPageProvider.ts";
 
 export type { RouterGoOptions } from "../services/ReactRouter.ts";
-
 
 /**
  * React browser renderer configuration atom
@@ -243,11 +254,32 @@ export class ReactBrowserProvider {
       const hydration = this.getHydrationState();
       const previous = hydration?.layers ?? [];
 
+      const atoms = this.alepha.store.getAtoms();
+
       if (hydration) {
         // low budget, but works for now
         for (const [key, value] of Object.entries(hydration)) {
-          if (key !== "layers") {
-            this.alepha.set(key as keyof State, value);
+          const atom = atoms.find((it) => it.atom.key === key);
+          if (atom) {
+            try {
+              const decoded = this.alepha.codec.decode(
+                atom.atom.schema,
+                value,
+                {
+                  encoder: "keyless",
+                },
+              );
+              this.alepha.set(key as keyof State, decoded);
+            } catch (e) {
+              this.log.error(
+                `Failed to decode hydration state for '${key}'`,
+                e,
+              );
+            }
+          } else {
+            if (key !== "layers") {
+              this.alepha.set(key as keyof State, value);
+            }
           }
         }
       }

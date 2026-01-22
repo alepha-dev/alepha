@@ -1,10 +1,10 @@
 import { $inject, Alepha, type Static } from "alepha";
 import {
-  ssrManifestAtom,
   type SsrManifestAtomSchema,
+  ssrManifestAtom,
 } from "../atoms/ssrManifestAtom.ts";
-import type { PageRoute } from "./ReactPageProvider.ts";
 import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
+import type { PageRoute } from "./ReactPageProvider.ts";
 
 /**
  * Provider for SSR manifest data used for module preloading.
@@ -26,7 +26,11 @@ export class SSRManifestProvider {
    * This ensures the manifest is available even when set after module load.
    */
   protected get manifest(): Static<SsrManifestAtomSchema> {
-    return (this.alepha.store.get(ssrManifestAtom) as Static<SsrManifestAtomSchema>) ?? {};
+    return (
+      (this.alepha.store.get(
+        ssrManifestAtom,
+      ) as Static<SsrManifestAtomSchema>) ?? {}
+    );
   }
 
   /**
@@ -134,13 +138,13 @@ export class SSRManifestProvider {
 
     // Add main chunk file (with leading slash for URL)
     if (entry.file) {
-      chunks.add("/" + entry.file);
+      chunks.add(`/${entry.file}`);
     }
 
     // Add CSS files
     if (entry.css) {
       for (const css of entry.css) {
-        chunks.add("/" + css);
+        chunks.add(`/${css}`);
       }
     }
 
@@ -200,8 +204,7 @@ export class SSRManifestProvider {
     while (current) {
       const preloadKey = current[PAGE_PRELOAD_KEY];
       if (preloadKey) {
-        const sourcePath =
-          this.resolvePreloadKey(preloadKey);
+        const sourcePath = this.resolvePreloadKey(preloadKey);
         if (sourcePath) {
           preloadPaths.push(sourcePath);
         }
@@ -275,8 +278,8 @@ export class SSRManifestProvider {
     for (const [key, entry] of Object.entries(this.clientManifest)) {
       if (entry.isEntry) {
         this.cachedEntryAssets = {
-          js: "/" + entry.file,
-          css: entry.css?.map((css) => "/" + css) ?? [],
+          js: `/${entry.file}`,
+          css: entry.css?.map((css) => `/${css}`) ?? [],
         };
         return this.cachedEntryAssets;
       }
@@ -323,7 +326,6 @@ export class SSRManifestProvider {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-
 
 /**
  * Entry assets structure containing the main entry JS and associated CSS files.

@@ -3,7 +3,12 @@ import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import type { UserAccountToken } from "alepha/security";
 import { HttpClient } from "alepha/server";
-import { alephaServerAuthRoutes, tokenResponseSchema, type Tokens, userinfoResponseSchema } from "alepha/server/auth";
+import {
+  alephaServerAuthRoutes,
+  type Tokens,
+  tokenResponseSchema,
+  userinfoResponseSchema,
+} from "alepha/server/auth";
 import { LinkProvider } from "alepha/server/links";
 
 /**
@@ -46,9 +51,12 @@ export class ReactAuth {
   }
 
   public async ping() {
-    const { data } = await this.httpClient.fetch(alephaServerAuthRoutes.userinfo, {
-      schema: { response: userinfoResponseSchema },
-    });
+    const { data } = await this.httpClient.fetch(
+      alephaServerAuthRoutes.userinfo,
+      {
+        schema: { response: userinfoResponseSchema },
+      },
+    );
 
     this.alepha.store.set("alepha.server.request.apiLinks", data.api);
     this.alepha.store.set("alepha.server.request.user", data.user);
@@ -75,7 +83,9 @@ export class ReactAuth {
       [extra: string]: any;
     },
   ): Promise<Tokens> {
-    const realmParam = options.realm ? `&realm=${encodeURIComponent(options.realm)}` : "";
+    const realmParam = options.realm
+      ? `&realm=${encodeURIComponent(options.realm)}`
+      : "";
 
     if (options.username || options.password) {
       const { data } = await this.httpClient.fetch(

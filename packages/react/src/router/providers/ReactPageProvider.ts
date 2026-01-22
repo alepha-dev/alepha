@@ -1,3 +1,5 @@
+import { AlephaContext, ClientOnly } from "@alepha/react";
+import type { Head } from "@alepha/react/head";
 import {
   $env,
   $hook,
@@ -10,7 +12,6 @@ import {
 } from "alepha";
 import { $logger } from "alepha/logger";
 import { createElement, type ReactNode, StrictMode } from "react";
-import { AlephaContext, ClientOnly } from "@alepha/react";
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
 import NotFoundPage from "../components/NotFound.tsx";
@@ -22,7 +23,6 @@ import {
   type PagePrimitive,
   type PagePrimitiveOptions,
 } from "../primitives/$page.ts";
-import type { Head } from "@alepha/react/head";
 
 const envSchema = t.object({
   REACT_STRICT_MODE: t.boolean({ default: true }),
@@ -476,7 +476,8 @@ export class ReactPageProvider {
         value: {
           index,
           path,
-          onError: this.getErrorHandler(page) ?? ((error) => this.renderError(error)),
+          onError:
+            this.getErrorHandler(page) ?? ((error) => this.renderError(error)),
         },
       },
       element,

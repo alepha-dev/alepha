@@ -1,19 +1,7 @@
 {
   "$schema": "https://biomejs.dev/schemas/latest/schema.json",
   "files": {
-    "ignoreUnknown": true,
-    "includes": [
-      "scripts/*.ts",
-      "apps/**",
-      "packages/**",
-      "!node_modules",
-      "!.idea",
-      "!.yarn",
-      "!**/node_modules",
-      "!**/dist",
-      "!**/coverage",
-      "!**/assets"
-    ]
+    "ignoreUnknown": true
   },
   "formatter": {
     "enabled": true,

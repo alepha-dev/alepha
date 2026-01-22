@@ -1,22 +1,22 @@
+import { AlephaReact } from "@alepha/react";
 import { $module } from "alepha";
-import { $page } from "./primitives/$page.ts";
-import { ReactRouter } from "./services/ReactRouter.ts";
-import { ReactBrowserRendererProvider } from "./providers/ReactBrowserRendererProvider.ts";
-import { ReactBrowserRouterProvider } from "./providers/ReactBrowserRouterProvider.ts";
-import { ReactPageService } from "./services/ReactPageService.ts";
-import { ReactPageProvider } from "./providers/ReactPageProvider.ts";
-import { ReactBrowserProvider } from "./providers/ReactBrowserProvider.ts";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaServer } from "alepha/server";
 import { AlephaServerLinks } from "alepha/server/links";
-import { AlephaReact } from "@alepha/react";
+import { $page } from "./primitives/$page.ts";
+import { ReactBrowserProvider } from "./providers/ReactBrowserProvider.ts";
+import { ReactBrowserRendererProvider } from "./providers/ReactBrowserRendererProvider.ts";
+import { ReactBrowserRouterProvider } from "./providers/ReactBrowserRouterProvider.ts";
+import { ReactPageProvider } from "./providers/ReactPageProvider.ts";
+import { ReactPageService } from "./services/ReactPageService.ts";
+import { ReactRouter } from "./services/ReactRouter.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./index.shared.ts";
-export * from "./providers/ReactBrowserProvider.ts"
-export * from "./providers/ReactBrowserRouterProvider.ts"
-export * from "./providers/ReactBrowserRendererProvider.ts"
+export * from "./providers/ReactBrowserProvider.ts";
+export * from "./providers/ReactBrowserRendererProvider.ts";
+export * from "./providers/ReactBrowserRouterProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -43,4 +43,3 @@ export const AlephaReactRouter = $module({
       .with(ReactBrowserRendererProvider)
       .with(ReactRouter),
 });
-

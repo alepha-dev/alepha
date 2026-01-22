@@ -140,14 +140,6 @@ export class ServerProvider {
     }
   }
 
-  /**
-   * Extract pathname from URL without creating URL object.
-   */
-  protected getPathname(rawUrl: string): string {
-    const qIndex = rawUrl.indexOf("?");
-    return qIndex === -1 ? rawUrl : rawUrl.slice(0, qIndex);
-  }
-
   public get hostname(): string {
     if (this.alepha.isViteDev()) {
       return `http://localhost:${this.alepha.env.SERVER_PORT}`;
@@ -185,11 +177,11 @@ export class ServerProvider {
     const rawUrl = req.url!;
     const { route, params } = this.router.match(`/${req.method}${rawUrl}`);
 
-    if (this.isViteNotFound(rawUrl, route, params)) {
-      return;
-    }
-
     if (!route) {
+      // Skip if response was already sent (e.g., by Vite middleware)
+      if (res.headersSent) {
+        return;
+      }
       // if no route is found, return basic 404
       // note: you should not use this in production, use a custom 404 page instead by adding a route /*
       res.writeHead(404, { "content-type": "text/plain" });
@@ -220,6 +212,11 @@ export class ServerProvider {
     const response = await route
       .handler(request)
       .catch(this.handleInternalError);
+
+    // Skip if response was already sent (e.g., by Vite middleware)
+    if (res.headersSent) {
+      return;
+    }
 
     // empty body - just send status & headers
     if (!response.body) {

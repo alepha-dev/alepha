@@ -1,4 +1,5 @@
-export const webAppRouterTs = () => `
+export const webAppRouterTs = () =>
+  `
 import { $page } from "@alepha/react/router";
 import { $client } from "alepha/server/links";
 import type { HelloController } from "../api/controllers/HelloController.ts";

@@ -1,5 +1,5 @@
-import { ReactRouter } from "../services/ReactRouter.ts";
 import { useInject } from "@alepha/react";
+import { ReactRouter } from "../services/ReactRouter.ts";
 
 /**
  * Use this hook to access the React Router instance.

@@ -1,3 +1,4 @@
+import type { Async } from "alepha";
 import {
   DateTimeProvider,
   type DurationLike,
@@ -13,7 +14,6 @@ import {
 } from "react";
 import { useAlepha } from "./useAlepha.ts";
 import { useInject } from "./useInject.ts";
-import type { Async } from "alepha";
 
 /**
  * Hook for handling async actions with automatic error handling and event emission.
@@ -206,7 +206,6 @@ export function useAction<Args extends any[], Result = void>(
         if (options.onSuccess) {
           await options.onSuccess(result);
         }
-
 
         return result;
       } catch (err) {

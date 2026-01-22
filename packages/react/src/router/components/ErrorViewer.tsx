@@ -95,7 +95,13 @@ function parseStackLine(line: string): StackFrame | null {
     };
   }
 
-  return { fn: "", file: line.replace(/^at\s+/, ""), line: "", col: "", raw: line };
+  return {
+    fn: "",
+    file: line.replace(/^at\s+/, ""),
+    line: "",
+    col: "",
+    raw: line,
+  };
 }
 
 /**
@@ -189,11 +195,7 @@ function StackFrameRow({ frame, index }: { frame: StackFrame; index: number }) {
     >
       <div style={styles.frameIndex}>{index + 1}</div>
       <div style={styles.frameContent}>
-        {frame.fn && (
-          <div style={styles.fnName}>
-            {frame.fn}
-          </div>
-        )}
+        {frame.fn && <div style={styles.fnName}>{frame.fn}</div>}
         <div style={styles.filePath}>
           <span style={styles.dirPath}>{dirPath}</span>
           <span style={styles.fileName}>{fileName}</span>

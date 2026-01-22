@@ -1,4 +1,5 @@
-export const apiHelloControllerTs = () => `
+export const apiHelloControllerTs = () =>
+  `
 import { t } from "alepha";
 import { $action } from "alepha/server";
 

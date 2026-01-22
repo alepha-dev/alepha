@@ -1,10 +1,10 @@
 import { AlephaContext } from "@alepha/react";
-import type { Head } from "../index.ts";
-import { useHead } from "../index.ts";
 import { render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { act, type ReactNode } from "react";
 import { beforeEach, describe, it, vi } from "vitest";
+import type { Head } from "../index.ts";
+import { useHead } from "../index.ts";
 
 /**
  * @vitest-environment jsdom

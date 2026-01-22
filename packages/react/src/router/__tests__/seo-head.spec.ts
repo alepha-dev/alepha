@@ -1,6 +1,6 @@
+import { $head, AlephaReactHead } from "@alepha/react/head";
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
-import { $head, AlephaReactHead } from "@alepha/react/head";
 import { $page } from "../index.ts";
 
 class App {
@@ -49,7 +49,9 @@ describe("SEO Head", () => {
     expect(result.html).toContain(
       '<meta property="og:url" content="https://alepha.dev/">',
     );
-    expect(result.html).toContain('<meta property="og:type" content="website">');
+    expect(result.html).toContain(
+      '<meta property="og:type" content="website">',
+    );
     expect(result.html).toContain(
       '<meta property="og:site_name" content="Alepha">',
     );
@@ -113,7 +115,9 @@ describe("SEO Head on Page", () => {
     expect(result.html).toContain(
       '<meta name="description" content="Read our latest articles">',
     );
-    expect(result.html).toContain('<meta property="og:type" content="article">');
+    expect(result.html).toContain(
+      '<meta property="og:type" content="article">',
+    );
     expect(result.html).toContain(
       '<meta property="og:image" content="https://example.com/blog-og.png">',
     );

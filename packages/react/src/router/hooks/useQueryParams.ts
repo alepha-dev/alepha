@@ -1,6 +1,6 @@
+import { useAlepha } from "@alepha/react";
 import type { Alepha, Static, TObject } from "alepha";
 import { useEffect, useState } from "react";
-import { useAlepha } from "@alepha/react";
 import { useRouter } from "./useRouter.ts";
 
 /**

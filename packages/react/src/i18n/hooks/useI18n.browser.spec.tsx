@@ -4,10 +4,10 @@ import { Alepha } from "alepha";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { describe, test } from "vitest";
-import { $dictionary } from "../primitives/$dictionary.ts";
-import { useI18n } from "./useI18n.ts";
 import { AlephaReactI18n } from "../index.ts";
+import { $dictionary } from "../primitives/$dictionary.ts";
 import { I18nProvider } from "../providers/I18nProvider.ts";
+import { useI18n } from "./useI18n.ts";
 
 describe("useI18n hook", () => {
   const renderWithAlepha = (alepha: Alepha, element: ReactNode) => {

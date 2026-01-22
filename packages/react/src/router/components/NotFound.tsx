@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 /**
  * Default 404 Not Found page component.
  */
- const NotFound = (props: { style?: CSSProperties }) => (
+const NotFound = (props: { style?: CSSProperties }) => (
   <div
     style={{
       width: "100%",
@@ -25,6 +25,6 @@ import type { CSSProperties } from "react";
       Page not found
     </div>
   </div>
-)
+);
 
 export default NotFound;

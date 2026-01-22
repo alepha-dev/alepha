@@ -14,8 +14,10 @@ const Link = (props: LinkProps) => {
   const router = useRouter();
 
   return createElement(
-    "a", { ...props, ...router.anchor(props.href) }, props.children
-  )
+    "a",
+    { ...props, ...router.anchor(props.href) },
+    props.children,
+  );
 };
 
 export default Link;

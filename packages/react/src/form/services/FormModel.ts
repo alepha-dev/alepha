@@ -1,5 +1,12 @@
 import type { TArray } from "alepha";
-import { $inject, Alepha, type Static, t, type TObject, type TSchema, } from "alepha";
+import {
+  $inject,
+  Alepha,
+  type Static,
+  type TObject,
+  type TSchema,
+  t,
+} from "alepha";
 import { $logger } from "alepha/logger";
 import type { ChangeEvent, InputHTMLAttributes } from "react";
 
@@ -217,7 +224,6 @@ export class FormModel<T extends TObject> {
         }
 
         if (prop in schema.properties) {
-
           // // it's a nested object, create another proxy
           // if (t.schema.isObject(schema.properties[prop])) {
           //   return this.createProxyFromSchema(
@@ -284,13 +290,17 @@ export class FormModel<T extends TObject> {
         options.onChange(key, typedValue, context.store);
       }
 
-      this.alepha.events.emit("form:change", {
-        id: this.id,
-        path: path,
-        value: typedValue,
-      }, {
-        catch: true
-      });
+      this.alepha.events.emit(
+        "form:change",
+        {
+          id: this.id,
+          path: path,
+          value: typedValue,
+        },
+        {
+          catch: true,
+        },
+      );
 
       if (sync) {
         const inputElement = window.document.querySelector(
@@ -408,14 +418,10 @@ export class FormModel<T extends TObject> {
         set,
         form: this,
         required,
-        items: this.createProxyFromSchema(
-          options,
-          field,
-          {
-            parent: key,
-            store: context.store,
-          },
-        )
+        items: this.createProxyFromSchema(options, field, {
+          parent: key,
+          store: context.store,
+        }),
       } as ObjectInputField<any>;
     }
 
@@ -460,7 +466,8 @@ export class FormModel<T extends TObject> {
       // Handle string representations from Select components (Yes/No dropdown)
       if (input === "true") return true;
       if (input === "false") return false;
-      if (input === "" || input === null || input === undefined) return undefined;
+      if (input === "" || input === null || input === undefined)
+        return undefined;
       // Handle actual boolean values
       return !!input;
     }
@@ -520,12 +527,11 @@ export interface FormEventLike {
   stopPropagation?: () => void;
 }
 
-export type InputField<T extends TSchema> =
-  T extends TObject
-    ? ObjectInputField<T>
-    : T extends TArray<infer U>
-      ? ArrayInputField<U>
-      : BaseInputField;
+export type InputField<T extends TSchema> = T extends TObject
+  ? ObjectInputField<T>
+  : T extends TArray<infer U>
+    ? ArrayInputField<U>
+    : BaseInputField;
 
 export interface BaseInputField {
   path: string;
@@ -542,7 +548,7 @@ export interface ObjectInputField<T extends TObject> extends BaseInputField {
 }
 
 export interface ArrayInputField<T extends TSchema> extends BaseInputField {
-  items: Array<InputField<T>>
+  items: Array<InputField<T>>;
 }
 
 export type InputHTMLAttributesLike = Pick<

@@ -4,6 +4,7 @@ import { MODULE } from "../constants/MODULE.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
 import type { PrimitiveFactoryLike } from "../helpers/primitive.ts";
 import type { Service } from "../interfaces/Service.ts";
+import type { Atom } from "./$atom.ts";
 
 /**
  * Wrap Services and Primitives into a Module.
@@ -69,6 +70,12 @@ export const $module = <T extends object = {}>(
     options = options;
 
     register(alepha: Alepha): void {
+      if (options.atoms) {
+        for (const atom of options.atoms) {
+          alepha.store.register(atom);
+        }
+      }
+
       if (typeof options.register === "function") {
         options.register(alepha);
         return;
@@ -134,6 +141,11 @@ export interface ModulePrimitiveOptions {
    * Again, if you declare 'register', you must handle the registration of ALL services manually.
    */
   register?: (alepha: Alepha) => void;
+
+  /**
+   * List of atoms to register in the module.
+   */
+  atoms?: Array<Atom<any>>;
 }
 
 /**

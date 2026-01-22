@@ -107,7 +107,7 @@ export class BunHttpServerProvider extends ServerProvider {
         },
       });
 
-      this.log.info(`Server listening on ${this.hostname}`);
+      this.log.info(`Server listening on ${this.hostname}/`);
     } catch (err) {
       this.log.error("Failed to start Bun server", err);
       throw err;

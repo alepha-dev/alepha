@@ -136,7 +136,10 @@ export class HeadProvider {
     }
 
     if (head.script) {
-      state.head.script = [...(state.head.script ?? []), ...(head.script ?? [])];
+      state.head.script = [
+        ...(state.head.script ?? []),
+        ...(head.script ?? []),
+      ];
     }
   }
 }

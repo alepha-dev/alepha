@@ -1,10 +1,10 @@
 import { AlephaContext } from "@alepha/react";
-import { I18nProvider, Localize } from "../index.ts";
-import { Alepha, t } from "alepha";
+import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import type { ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { I18nProvider, Localize } from "../index.ts";
 
 describe("<Localize/>", () => {
   const setup = () => {
