@@ -1,20 +1,20 @@
 import { type Static, t } from "alepha";
-import { $entity, pg } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 
 export const projects = $entity({
   name: "projects",
   schema: t.object({
-    id: pg.primaryKey(t.integer()),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
-    deletedAt: pg.deletedAt(),
+    id: db.primaryKey(t.integer()),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
+    deletedAt: db.deletedAt(),
     title: t.string({
       minLength: 3,
       maxLength: 24,
     }),
     createdBy: t.uuid(),
     public: t.optional(t.boolean()),
-    packages: pg.default(t.array(t.string()), []),
+    packages: db.default(t.array(t.string()), []),
   }),
 });
 
