@@ -50,6 +50,7 @@ export class AppRouter {
   head = $head(() => {
     const head: Head = {
       title: "Roadmap",
+      titleSeparator: " - ",
       description: "Roadmap - Gamified project management",
     };
 
@@ -127,6 +128,9 @@ export class AppRouter {
   home = $page({
     path: "/",
     lazy: () => import("./components/home/Home.tsx"),
+    head: {
+      title: "Home",
+    },
   });
 
   projectCreate = $page({
