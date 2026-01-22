@@ -1,12 +1,21 @@
 import { $realm } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
+import { $swagger } from "alepha/server/swagger";
 import { type Character, characters } from "../entities/characters.ts";
 import { type Project, projects } from "../entities/projects.ts";
 
 export class AppSecurityProvider {
   projects = $repository(projects);
   characters = $repository(characters);
+
+  docs = $swagger({
+    info: {
+      title: "Roadmap API",
+      description: "API documentation for the Roadmap application.",
+      version: "1.0.0",
+    },
+  });
 
   realm = $realm({
     settings: {
