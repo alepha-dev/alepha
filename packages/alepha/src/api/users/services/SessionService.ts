@@ -256,16 +256,6 @@ export class SessionService {
       userId: session.userId,
     });
 
-    const { name } = this.realmProvider.getRealm(userRealmName);
-
-    await this.auditService.recordAuth("token_refresh", {
-      userId: user.id,
-      userEmail: user.email ?? undefined,
-      userRealm: name,
-      sessionId: session.id,
-      description: "Session token refreshed",
-    });
-
     return {
       user,
       expiresIn: expiresAt.unix() - now.unix(),
