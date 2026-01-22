@@ -13,7 +13,6 @@
 export * from "./buildClient.ts";
 export * from "./buildServer.ts";
 export * from "./copyAssets.ts";
-export * from "./devServer.ts";
 export * from "./generateCloudflare.ts";
 export * from "./generateDocker.ts";
 export * from "./generateExternals.ts";
