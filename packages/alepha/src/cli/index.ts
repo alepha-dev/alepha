@@ -1,5 +1,6 @@
 export * from "./apps/AlephaCli.ts";
 export * from "./apps/AlephaPackageBuilderCli.ts";
+export { default as AlephaPackageBuilderCli } from "./apps/AlephaPackageBuilderCli.ts";
 export * from "./atoms/changelogOptions.ts";
 export * from "./commands/build.ts";
 export * from "./commands/clean.ts";

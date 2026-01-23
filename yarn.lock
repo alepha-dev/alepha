@@ -16,7 +16,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/bucket-s3@workspace:packages/bucket-s3"
   dependencies:
-    "@aws-sdk/client-s3": "npm:^3.974.0"
+    "@aws-sdk/client-s3": "npm:^3.975.0"
     "@biomejs/biome": "npm:^2.3.12"
     alepha: "npm:0.15.0"
     tsdown: "npm:^0.20.1"
@@ -328,7 +328,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/client-s3@npm:^3.974.0":
+"@aws-sdk/client-s3@npm:^3.975.0":
   version: 3.975.0
   resolution: "@aws-sdk/client-s3@npm:3.975.0"
   dependencies:

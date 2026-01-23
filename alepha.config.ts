@@ -42,6 +42,10 @@ export default (alepha: Alepha) => {
       aliases: ["v"],
       description: "Run linter, checker and tests.",
       handler: async ({ run }) => {
+        // force CI environment
+        // tsdown has different behavior when run in CI :-------------)
+
+        process.env.CI = "true";
         await run(`yarn clean`);
         await run(`yarn lint`);
         await run(`yarn typecheck`);

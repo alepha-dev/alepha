@@ -95,11 +95,6 @@ export class AlephaPackageBuilderCli {
 
       external.push("bun");
       external.push("bun:sqlite");
-      external.push("vite");
-      external.push("rolldown-vite");
-      external.push("vite-bundle-analyzer");
-      external.push("tsdown");
-      external.push("vitest");
 
       await run.rm(this.dist);
 
@@ -115,6 +110,7 @@ export class AlephaPackageBuilderCli {
           sourcemap: true,
           fixedExtension: false,
           platform: "node", // TODO: node must be enabled only if index.node.ts exists
+          inlineOnly: false,
           external,
           dts: {
             sourcemap: true,
@@ -128,6 +124,7 @@ export class AlephaPackageBuilderCli {
             platform: "neutral",
             sourcemap: true,
             dts: false,
+            inlineOnly: false,
             external,
           });
         }
@@ -139,6 +136,7 @@ export class AlephaPackageBuilderCli {
             platform: "browser",
             sourcemap: true,
             dts: false,
+            inlineOnly: false,
             external,
           });
         }
@@ -151,6 +149,7 @@ export class AlephaPackageBuilderCli {
             sourcemap: true,
             fixedExtension: false,
             dts: false,
+            inlineOnly: false,
             external,
           });
         }
@@ -163,8 +162,10 @@ export class AlephaPackageBuilderCli {
           config,
           `export default ${JSON.stringify(entries, null, 2)};`,
         );
+
+        // /!\ Warning /!\
+        // avoid to call tsdown programmatically, when we spawn 8 processes at once it 'JavaScript heap out of memory' :---)
         await run(`npx tsdown -c=${config}`);
-        //await this.fs.rm(config);
       };
 
       const concurrency = Math.ceil(os.cpus().length / 2);
@@ -187,6 +188,8 @@ export class AlephaPackageBuilderCli {
     },
   });
 }
+
+export default AlephaPackageBuilderCli;
 
 async function getAllFiles(dir: string): Promise<string[]> {
   const files: string[] = [];
