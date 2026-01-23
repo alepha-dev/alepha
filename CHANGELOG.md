@@ -1,3 +1,15 @@
+## [0.15.1] - 2026-01-23
+
+### Features
+
+- **cli**: make index.html optional (`c5476432`)
+- **mcp**: add mcp auth provider (`e3b58b19`)
+- **orm**: allow to extend Repository.of(entity) (`27210847`)
+
+### Bug Fixes
+
+- **react/router**: fix hydration layer cache (missing part) (`2d5bb481`)
+
 ## [0.15.0] - 2026-01-18
 
 ### Features
