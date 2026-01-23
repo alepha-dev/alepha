@@ -620,484 +620,259 @@ describe("KeylessJsonSchemaCodec", () => {
     });
   });
 
-  describe("Security", () => {
-    describe("Prototype Pollution Protection", () => {
-      // Note: __proto__ is automatically protected by JavaScript/TypeBox
-      // (Object.keys doesn't return __proto__), so we test constructor/prototype
+  describe("Safe Mode (Interpreted)", () => {
+    test("should work correctly in safe mode", async ({ expect }) => {
+      const alepha = Alepha.create();
+      const codec = alepha.inject(KeylessJsonSchemaCodec);
 
-      test("should reject schemas with constructor key", async ({ expect }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
+      // Force safe mode (no Function compilation)
+      codec.configure({ useFunctionCompilation: false });
 
-        const maliciousSchema = t.object({
-          constructor: t.text(),
-          name: t.text(),
-        });
-
-        const data = {
-          constructor: "malicious",
-          name: "test",
-        };
-
-        expect(() => codec.encodeToString(maliciousSchema, data)).toThrowError(
-          /Unsafe schema key "constructor" detected/,
-        );
+      const schema = t.object({
+        name: t.text(),
+        age: t.integer(),
+        active: t.boolean(),
       });
 
-      test("should reject schemas with prototype key", async ({ expect }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
+      const data = {
+        name: "Alice",
+        age: 30,
+        active: true,
+      };
 
-        const maliciousSchema = t.object({
-          prototype: t.text(),
-          name: t.text(),
-        });
+      const encoded = codec.encodeToString(schema, data);
+      expect(encoded).toBe('["Alice",30,true]');
 
-        const data = {
-          prototype: "malicious",
-          name: "test",
-        };
-
-        expect(() => codec.encodeToString(maliciousSchema, data)).toThrowError(
-          /Unsafe schema key "prototype" detected/,
-        );
-      });
-
-      test("should reject nested schemas with unsafe keys", async ({
-        expect,
-      }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
-
-        // Use 'constructor' instead of __proto__ which is auto-protected
-        const maliciousSchema = t.object({
-          user: t.object({
-            constructor: t.text(),
-            name: t.text(),
-          }),
-        });
-
-        const data = {
-          user: {
-            constructor: "malicious",
-            name: "test",
-          },
-        };
-
-        expect(() => codec.encodeToString(maliciousSchema, data)).toThrowError(
-          /Unsafe schema key "constructor" detected/,
-        );
-      });
-
-      test("should create decoded objects without prototype chain", async ({
-        expect,
-      }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
-
-        codec.configure({ useFunctionCompilation: false });
-
-        const schema = t.object({
-          name: t.text(),
-        });
-
-        const data = { name: "Alice" };
-        const encoded = codec.encodeToString(schema, data);
-        const decoded = codec.decode<{ name: string }>(schema, encoded);
-
-        // Verify the object is created with Object.create(null)
-        expect(decoded.name).toBe("Alice");
-        // The decoded object should not have inherited properties
-        expect(Object.getPrototypeOf(decoded)).toBeNull();
-      });
+      const decoded = codec.decode(schema, encoded);
+      expect(decoded).toEqual(data);
     });
 
-    describe("Size Limits", () => {
-      test("should reject strings exceeding max length in safe mode", async ({
-        expect,
-      }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
+    test("should handle nested objects in safe mode", async ({ expect }) => {
+      const alepha = Alepha.create();
+      const codec = alepha.inject(KeylessJsonSchemaCodec);
 
-        // Configure with a small max string length and safe mode
-        codec.configure({
-          maxStringLength: 100,
-          useFunctionCompilation: false,
-        });
+      codec.configure({ useFunctionCompilation: false });
 
-        const schema = t.object({
+      const schema = t.object({
+        user: t.object({
           name: t.text(),
-        });
-
-        const longString = "a".repeat(200);
-        const data = { name: longString };
-
-        // Should reject during encoding
-        expect(() => codec.encodeToString(schema, data)).toThrowError(
-          /String length \(200\) exceeds maximum allowed \(100\)/,
-        );
-      });
-
-      test("should reject strings exceeding max length during decode", async ({
-        expect,
-      }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
-
-        // Configure with a small max string length
-        codec.configure({ maxStringLength: 100 });
-
-        const schema = t.object({
-          name: t.text(),
-        });
-
-        // The encoded string itself is longer than 100 characters
-        const longString = "a".repeat(200);
-        const encoded = `["${longString}"]`;
-
-        // Should reject the entire encoded string length
-        expect(() => codec.decode(schema, encoded)).toThrowError(
-          /String length .* exceeds maximum allowed \(100\)/,
-        );
-      });
-
-      test("should reject arrays exceeding max length in safe mode", async ({
-        expect,
-      }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
-
-        // Configure with a small max array length and safe mode
-        codec.configure({ maxArrayLength: 5, useFunctionCompilation: false });
-
-        const schema = t.object({
-          items: t.array(t.integer()),
-        });
-
-        // This array has 10 items, exceeding the limit of 5
-        const data = {
-          items: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-        };
-
-        expect(() => codec.encodeToString(schema, data)).toThrowError(
-          /Array length \(10\) exceeds maximum allowed \(5\)/,
-        );
-      });
-
-      test("should reject arrays exceeding max length during decode", async ({
-        expect,
-      }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
-
-        // Configure with a small max array length
-        codec.configure({ maxArrayLength: 5, useFunctionCompilation: false });
-
-        const schema = t.object({
-          items: t.array(t.integer()),
-        });
-
-        // Encoded array with 10 items
-        const encoded = "[[1,2,3,4,5,6,7,8,9,10]]";
-
-        expect(() => codec.decode(schema, encoded)).toThrowError(
-          /Array length \(10\) exceeds maximum allowed \(5\)/,
-        );
-      });
-
-      test("should reject deeply nested objects exceeding max depth", async ({
-        expect,
-      }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
-
-        // Configure with a small max depth for testing
-        codec.configure({ maxDepth: 3 });
-
-        // Create a deeply nested schema (depth > 3)
-        // level1 = depth 1, level2 = depth 2, level3 = depth 3, level4 = depth 4 (exceeds)
-        const deepSchema = t.object({
-          level1: t.object({
-            level2: t.object({
-              level3: t.object({
-                level4: t.text(),
-              }),
-            }),
+          profile: t.object({
+            bio: t.text(),
+            age: t.integer(),
           }),
-        });
-
-        const data = {
-          level1: {
-            level2: {
-              level3: {
-                level4: "deep",
-              },
-            },
-          },
-        };
-
-        expect(() => codec.encodeToString(deepSchema, data)).toThrowError(
-          /depth exceeds maximum allowed/,
-        );
+        }),
       });
-    });
 
-    describe("Safe Mode (Interpreted)", () => {
-      test("should work correctly in safe mode", async ({ expect }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
-
-        // Force safe mode (no Function compilation)
-        codec.configure({ useFunctionCompilation: false });
-
-        const schema = t.object({
-          name: t.text(),
-          age: t.integer(),
-          active: t.boolean(),
-        });
-
-        const data = {
+      const data = {
+        user: {
           name: "Alice",
-          age: 30,
-          active: true,
-        };
-
-        const encoded = codec.encodeToString(schema, data);
-        expect(encoded).toBe('["Alice",30,true]');
-
-        const decoded = codec.decode(schema, encoded);
-        expect(decoded).toEqual(data);
-      });
-
-      test("should handle nested objects in safe mode", async ({ expect }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
-
-        codec.configure({ useFunctionCompilation: false });
-
-        const schema = t.object({
-          user: t.object({
-            name: t.text(),
-            profile: t.object({
-              bio: t.text(),
-              age: t.integer(),
-            }),
-          }),
-        });
-
-        const data = {
-          user: {
-            name: "Alice",
-            profile: {
-              bio: "Developer",
-              age: 30,
-            },
+          profile: {
+            bio: "Developer",
+            age: 30,
           },
-        };
+        },
+      };
 
-        const encoded = codec.encodeToString(schema, data);
-        expect(encoded).toBe('[["Alice",["Developer",30]]]');
+      const encoded = codec.encodeToString(schema, data);
+      expect(encoded).toBe('[["Alice",["Developer",30]]]');
 
-        const decoded = codec.decode(schema, encoded);
-        expect(decoded).toEqual(data);
-      });
-
-      test("should handle arrays of objects in safe mode", async ({
-        expect,
-      }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
-
-        codec.configure({ useFunctionCompilation: false });
-
-        const schema = t.object({
-          users: t.array(
-            t.object({
-              name: t.text(),
-              age: t.integer(),
-            }),
-          ),
-        });
-
-        const data = {
-          users: [
-            { name: "Alice", age: 30 },
-            { name: "Bob", age: 25 },
-          ],
-        };
-
-        const encoded = codec.encodeToString(schema, data);
-        const decoded = codec.decode(schema, encoded);
-        expect(decoded).toEqual(data);
-      });
-
-      test("should handle optional fields in safe mode", async ({ expect }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
-
-        codec.configure({ useFunctionCompilation: false });
-
-        const schema = t.object({
-          name: t.text(),
-          bio: t.optional(t.text()),
-        });
-
-        // With optional field
-        const dataWithBio = { name: "Alice", bio: "Developer" };
-        const encodedWith = codec.encodeToString(schema, dataWithBio);
-        const decodedWith = codec.decode(schema, encodedWith);
-        expect(decodedWith).toEqual(dataWithBio);
-
-        // Without optional field
-        const dataWithoutBio = { name: "Bob" };
-        const encodedWithout = codec.encodeToString(schema, dataWithoutBio);
-        const decodedWithout = codec.decode<{ name: string; bio?: string }>(
-          schema,
-          encodedWithout,
-        );
-        expect(decodedWithout.name).toBe("Bob");
-        expect(decodedWithout.bio).toBeUndefined();
-      });
-
-      test("should handle nullable fields in safe mode", async ({ expect }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
-
-        codec.configure({ useFunctionCompilation: false });
-
-        const schema = t.object({
-          name: t.text(),
-          deletedAt: t.nullable(t.datetime()),
-        });
-
-        // With null value
-        const dataNull = { name: "Alice", deletedAt: null };
-        const encodedNull = codec.encodeToString(schema, dataNull);
-        const decodedNull = codec.decode<{
-          name: string;
-          deletedAt: string | null;
-        }>(schema, encodedNull);
-        expect(decodedNull.deletedAt).toBeNull();
-
-        // With non-null value
-        const dataValue = { name: "Bob", deletedAt: "2024-01-15T10:00:00Z" };
-        const encodedValue = codec.encodeToString(schema, dataValue);
-        const decodedValue = codec.decode(schema, encodedValue);
-        expect(decodedValue).toEqual(dataValue);
-      });
+      const decoded = codec.decode(schema, encoded);
+      expect(decoded).toEqual(data);
     });
 
-    describe("Compiled Mode (Function)", () => {
-      test("should work correctly in compiled mode", async ({ expect }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
+    test("should handle arrays of objects in safe mode", async ({ expect }) => {
+      const alepha = Alepha.create();
+      const codec = alepha.inject(KeylessJsonSchemaCodec);
 
-        // Force compiled mode
-        codec.configure({ useFunctionCompilation: true });
+      codec.configure({ useFunctionCompilation: false });
 
-        const schema = t.object({
-          name: t.text(),
-          age: t.integer(),
-          active: t.boolean(),
-        });
-
-        const data = {
-          name: "Alice",
-          age: 30,
-          active: true,
-        };
-
-        const encoded = codec.encodeToString(schema, data);
-        expect(encoded).toBe('["Alice",30,true]');
-
-        const decoded = codec.decode(schema, encoded);
-        expect(decoded).toEqual(data);
-      });
-
-      test("should produce same results as safe mode", async ({ expect }) => {
-        const alepha = Alepha.create();
-
-        const codecSafe = alepha.inject(KeylessJsonSchemaCodec);
-        codecSafe.configure({ useFunctionCompilation: false });
-
-        // Create a second Alepha instance for the compiled codec
-        const alepha2 = Alepha.create();
-        const codecCompiled = alepha2.inject(KeylessJsonSchemaCodec);
-        codecCompiled.configure({ useFunctionCompilation: true });
-
-        const schema = t.object({
-          user: t.object({
+      const schema = t.object({
+        users: t.array(
+          t.object({
             name: t.text(),
             age: t.integer(),
           }),
-          tags: t.array(t.text()),
-          active: t.boolean(),
-        });
-
-        const data = {
-          user: { name: "Alice", age: 30 },
-          tags: ["dev", "typescript"],
-          active: true,
-        };
-
-        const encodedSafe = codecSafe.encodeToString(schema, data);
-        const encodedCompiled = codecCompiled.encodeToString(schema, data);
-
-        // Both modes should produce the same output
-        expect(encodedSafe).toBe(encodedCompiled);
-
-        const decodedSafe = codecSafe.decode(schema, encodedSafe);
-        const decodedCompiled = codecCompiled.decode(schema, encodedCompiled);
-
-        // Both modes should decode to the same result
-        expect(decodedSafe).toEqual(data);
-        expect(decodedCompiled).toEqual(data);
+        ),
       });
+
+      const data = {
+        users: [
+          { name: "Alice", age: 30 },
+          { name: "Bob", age: 25 },
+        ],
+      };
+
+      const encoded = codec.encodeToString(schema, data);
+      const decoded = codec.decode(schema, encoded);
+      expect(decoded).toEqual(data);
     });
 
-    describe("Configuration", () => {
-      test("should allow configuring options", async ({ expect }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
+    test("should handle optional fields in safe mode", async ({ expect }) => {
+      const alepha = Alepha.create();
+      const codec = alepha.inject(KeylessJsonSchemaCodec);
 
-        // Configure all options
-        codec.configure({
-          useFunctionCompilation: false,
-          maxArrayLength: 100,
-          maxStringLength: 1000,
-          maxDepth: 10,
-        });
+      codec.configure({ useFunctionCompilation: false });
 
-        // Test that configuration works by encoding/decoding
-        const schema = t.object({ name: t.text() });
-        const data = { name: "test" };
-
-        const encoded = codec.encodeToString(schema, data);
-        const decoded = codec.decode(schema, encoded);
-
-        expect(decoded).toEqual(data);
+      const schema = t.object({
+        name: t.text(),
+        bio: t.optional(t.text()),
       });
 
-      test("should clear cache when compilation mode changes", async ({
-        expect,
-      }) => {
-        const alepha = Alepha.create();
-        const codec = alepha.inject(KeylessJsonSchemaCodec);
+      // With optional field
+      const dataWithBio = { name: "Alice", bio: "Developer" };
+      const encodedWith = codec.encodeToString(schema, dataWithBio);
+      const decodedWith = codec.decode(schema, encodedWith);
+      expect(decodedWith).toEqual(dataWithBio);
 
-        const schema = t.object({ name: t.text() });
-        const data = { name: "test" };
+      // Without optional field
+      const dataWithoutBio = { name: "Bob" };
+      const encodedWithout = codec.encodeToString(schema, dataWithoutBio);
+      const decodedWithout = codec.decode<{ name: string; bio?: string }>(
+        schema,
+        encodedWithout,
+      );
+      expect(decodedWithout.name).toBe("Bob");
+      expect(decodedWithout.bio).toBeUndefined();
+    });
 
-        // Use compiled mode first
-        codec.configure({ useFunctionCompilation: true });
-        const encoded1 = codec.encodeToString(schema, data);
+    test("should handle nullable fields in safe mode", async ({ expect }) => {
+      const alepha = Alepha.create();
+      const codec = alepha.inject(KeylessJsonSchemaCodec);
 
-        // Switch to safe mode (cache should be cleared)
-        codec.configure({ useFunctionCompilation: false });
-        const encoded2 = codec.encodeToString(schema, data);
+      codec.configure({ useFunctionCompilation: false });
 
-        // Both should produce the same result
-        expect(encoded1).toBe(encoded2);
+      const schema = t.object({
+        name: t.text(),
+        deletedAt: t.nullable(t.datetime()),
       });
+
+      // With null value
+      const dataNull = { name: "Alice", deletedAt: null };
+      const encodedNull = codec.encodeToString(schema, dataNull);
+      const decodedNull = codec.decode<{
+        name: string;
+        deletedAt: string | null;
+      }>(schema, encodedNull);
+      expect(decodedNull.deletedAt).toBeNull();
+
+      // With non-null value
+      const dataValue = { name: "Bob", deletedAt: "2024-01-15T10:00:00Z" };
+      const encodedValue = codec.encodeToString(schema, dataValue);
+      const decodedValue = codec.decode(schema, encodedValue);
+      expect(decodedValue).toEqual(dataValue);
+    });
+  });
+
+  describe("Compiled Mode (Function)", () => {
+    test("should work correctly in compiled mode", async ({ expect }) => {
+      const alepha = Alepha.create();
+      const codec = alepha.inject(KeylessJsonSchemaCodec);
+
+      // Force compiled mode
+      codec.configure({ useFunctionCompilation: true });
+
+      const schema = t.object({
+        name: t.text(),
+        age: t.integer(),
+        active: t.boolean(),
+      });
+
+      const data = {
+        name: "Alice",
+        age: 30,
+        active: true,
+      };
+
+      const encoded = codec.encodeToString(schema, data);
+      expect(encoded).toBe('["Alice",30,true]');
+
+      const decoded = codec.decode(schema, encoded);
+      expect(decoded).toEqual(data);
+    });
+
+    test("should produce same results as safe mode", async ({ expect }) => {
+      const alepha = Alepha.create();
+
+      const codecSafe = alepha.inject(KeylessJsonSchemaCodec);
+      codecSafe.configure({ useFunctionCompilation: false });
+
+      // Create a second Alepha instance for the compiled codec
+      const alepha2 = Alepha.create();
+      const codecCompiled = alepha2.inject(KeylessJsonSchemaCodec);
+      codecCompiled.configure({ useFunctionCompilation: true });
+
+      const schema = t.object({
+        user: t.object({
+          name: t.text(),
+          age: t.integer(),
+        }),
+        tags: t.array(t.text()),
+        active: t.boolean(),
+      });
+
+      const data = {
+        user: { name: "Alice", age: 30 },
+        tags: ["dev", "typescript"],
+        active: true,
+      };
+
+      const encodedSafe = codecSafe.encodeToString(schema, data);
+      const encodedCompiled = codecCompiled.encodeToString(schema, data);
+
+      // Both modes should produce the same output
+      expect(encodedSafe).toBe(encodedCompiled);
+
+      const decodedSafe = codecSafe.decode(schema, encodedSafe);
+      const decodedCompiled = codecCompiled.decode(schema, encodedCompiled);
+
+      // Both modes should decode to the same result
+      expect(decodedSafe).toEqual(data);
+      expect(decodedCompiled).toEqual(data);
+    });
+  });
+
+  describe("Configuration", () => {
+    test("should allow configuring options", async ({ expect }) => {
+      const alepha = Alepha.create();
+      const codec = alepha.inject(KeylessJsonSchemaCodec);
+
+      // Configure all options
+      codec.configure({
+        useFunctionCompilation: false,
+        maxArrayLength: 100,
+        maxStringLength: 1000,
+        maxDepth: 10,
+      });
+
+      // Test that configuration works by encoding/decoding
+      const schema = t.object({ name: t.text() });
+      const data = { name: "test" };
+
+      const encoded = codec.encodeToString(schema, data);
+      const decoded = codec.decode(schema, encoded);
+
+      expect(decoded).toEqual(data);
+    });
+
+    test("should clear cache when compilation mode changes", async ({
+      expect,
+    }) => {
+      const alepha = Alepha.create();
+      const codec = alepha.inject(KeylessJsonSchemaCodec);
+
+      const schema = t.object({ name: t.text() });
+      const data = { name: "test" };
+
+      // Use compiled mode first
+      codec.configure({ useFunctionCompilation: true });
+      const encoded1 = codec.encodeToString(schema, data);
+
+      // Switch to safe mode (cache should be cleared)
+      codec.configure({ useFunctionCompilation: false });
+      const encoded2 = codec.encodeToString(schema, data);
+
+      // Both should produce the same result
+      expect(encoded1).toBe(encoded2);
     });
   });
 });

@@ -60,35 +60,64 @@ const john = {
   ],
 };
 
+const N = 50000;
+const WARMUP = 5000;
+
+// Warmup phase - let JIT optimize
+for (let i = 0; i < WARMUP; i++) {
+  alepha.codec.encode(userSchema, john, { as: "string", validation: false });
+  alepha.codec.encode(userSchema, john, {
+    encoder: "keyless",
+    as: "string",
+    validation: false,
+  });
+}
+
+// Benchmark encode
 console.time("encode-standard");
-for (let i = 0; i < 10000; i++) {
-  alepha.codec.encode(userSchema, john, { as: "string" });
+for (let i = 0; i < N; i++) {
+  alepha.codec.encode(userSchema, john, { as: "string", validation: false });
 }
 console.timeEnd("encode-standard");
 
 console.time("encode-keyless");
-for (let i = 0; i < 10000; i++) {
-  alepha.codec.encode(userSchema, john, { encoder: "keyless", as: "string" });
+for (let i = 0; i < N; i++) {
+  alepha.codec.encode(userSchema, john, {
+    encoder: "keyless",
+    as: "string",
+    validation: false,
+  });
 }
 console.timeEnd("encode-keyless");
 
-const a = alepha.codec.encode(userSchema, john, { as: "string" });
+const a = alepha.codec.encode(userSchema, john, {
+  as: "string",
+  validation: false,
+});
 const b = alepha.codec.encode(userSchema, john, {
   encoder: "keyless",
   as: "string",
+  validation: false,
 });
 
 console.log("Standard size:", a.length);
 console.log("Keyless size:", b.length);
 
+// Warmup decode
+for (let i = 0; i < WARMUP; i++) {
+  alepha.codec.decode(userSchema, a, { validation: false });
+  alepha.codec.decode(userSchema, b, { encoder: "keyless", validation: false });
+}
+
+// Benchmark decode
 console.time("decode-standard");
-for (let i = 0; i < 10000; i++) {
-  alepha.codec.decode(userSchema, a);
+for (let i = 0; i < N; i++) {
+  alepha.codec.decode(userSchema, a, { validation: false });
 }
 console.timeEnd("decode-standard");
 
 console.time("decode-keyless");
-for (let i = 0; i < 10000; i++) {
-  alepha.codec.decode(userSchema, b, { encoder: "keyless" });
+for (let i = 0; i < N; i++) {
+  alepha.codec.decode(userSchema, b, { encoder: "keyless", validation: false });
 }
 console.timeEnd("decode-keyless");

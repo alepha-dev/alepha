@@ -118,7 +118,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     schema: T,
     value: Static<T>,
   ): string {
-    this.validateSchemaKeys(schema);
     return this.getCodec(schema).encode(value);
   }
 
@@ -136,22 +135,18 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
    * Decode keyless JSON string or binary to value.
    */
   public decode<T>(schema: TSchema, value: unknown): T {
-    this.validateSchemaKeys(schema);
-
     if (value instanceof Uint8Array) {
       const text = this.textDecoder.decode(value);
       return this.getCodec(schema).decode(text) as T;
     }
 
     if (typeof value === "string") {
-      this.validateStringLength(value);
       return this.getCodec(schema).decode(value) as T;
     }
 
     // If already an array (parsed JSON), reconstruct object
     if (Array.isArray(value)) {
-      this.validateArrayLength(value);
-      return this.reconstructObject(schema, value, 0) as T;
+      return this.reconstructObject(schema, value) as T;
     }
 
     return value as T;
@@ -294,17 +289,11 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
 
     return {
       encode(value: any): string {
-        const arr = self.interpretEncode(schema, value, 0);
-        return JSON.stringify(arr);
+        return JSON.stringify(self.interpretEncode(schema, value));
       },
       decode(str: string): any {
-        self.validateStringLength(str);
-        const arr = JSON.parse(str);
-        if (Array.isArray(arr)) {
-          self.validateArrayLength(arr);
-        }
-        const ctx = { arr, i: 0 };
-        return self.interpretDecode(schema, ctx, 0);
+        const ctx = { arr: JSON.parse(str), i: 0 };
+        return self.interpretDecode(schema, ctx);
       },
     };
   }
@@ -313,13 +302,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   // Interpreter-based Encoding (Safe Mode)
   // ===========================================================================
 
-  protected interpretEncode(schema: TSchema, value: any, depth: number): any {
-    if (depth > this.maxDepth) {
-      throw new AlephaError(
-        `Encoding depth exceeds maximum allowed (${this.maxDepth})`,
-      );
-    }
-
+  protected interpretEncode(schema: TSchema, value: any): any {
     if (
       t.schema.isString(schema) ||
       t.schema.isNumber(schema) ||
@@ -327,9 +310,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       t.schema.isBoolean(schema) ||
       this.isEnum(schema)
     ) {
-      if (typeof value === "string") {
-        this.validateStringLength(value);
-      }
       return value;
     }
 
@@ -340,7 +320,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     if (t.schema.isArray(schema)) {
       const arrSchema = schema as TArray;
       if (!Array.isArray(value)) return value;
-      this.validateArrayLength(value);
 
       if (
         t.schema.isString(arrSchema.items) ||
@@ -350,9 +329,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       ) {
         return value;
       }
-      return value.map((e) =>
-        this.interpretEncode(arrSchema.items, e, depth + 1),
-      );
+      return value.map((e) => this.interpretEncode(arrSchema.items, e));
     }
 
     if (t.schema.isObject(schema)) {
@@ -370,15 +347,11 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
         const v = value[k];
 
         if (isOpt) {
-          result.push(
-            v !== undefined ? this.interpretEncode(inner, v, depth + 1) : null,
-          );
+          result.push(v !== undefined ? this.interpretEncode(inner, v) : null);
         } else if (isNullable) {
-          result.push(
-            v !== null ? this.interpretEncode(inner, v, depth + 1) : null,
-          );
+          result.push(v !== null ? this.interpretEncode(inner, v) : null);
         } else {
-          result.push(this.interpretEncode(inner, v, depth + 1));
+          result.push(this.interpretEncode(inner, v));
         }
       }
       return result;
@@ -387,13 +360,9 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     if (t.schema.isOptional(schema) || t.schema.isUnion(schema)) {
       const inner = this.unwrap(schema);
       if (this.isNullable(schema)) {
-        return value !== null
-          ? this.interpretEncode(inner, value, depth + 1)
-          : null;
+        return value !== null ? this.interpretEncode(inner, value) : null;
       }
-      return value !== undefined
-        ? this.interpretEncode(inner, value, depth + 1)
-        : null;
+      return value !== undefined ? this.interpretEncode(inner, value) : null;
     }
 
     return value;
@@ -406,14 +375,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   protected interpretDecode(
     schema: TSchema,
     ctx: { arr: any[]; i: number },
-    depth: number,
   ): any {
-    if (depth > this.maxDepth) {
-      throw new AlephaError(
-        `Decoding depth exceeds maximum allowed (${this.maxDepth})`,
-      );
-    }
-
     if (
       t.schema.isString(schema) ||
       t.schema.isNumber(schema) ||
@@ -421,27 +383,21 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       t.schema.isBoolean(schema) ||
       this.isEnum(schema)
     ) {
-      const val = ctx.arr[ctx.i++];
-      if (typeof val === "string") {
-        this.validateStringLength(val);
-      }
-      return val;
+      return ctx.arr[ctx.i++];
     }
 
     if (t.schema.isBigInt(schema)) {
-      const val = ctx.arr[ctx.i++];
-      return BigInt(val.slice(0, -1));
+      return BigInt(ctx.arr[ctx.i++].slice(0, -1));
     }
 
     if (t.schema.isArray(schema)) {
       const arrSchema = schema as TArray;
       const arr = ctx.arr[ctx.i++];
       if (!Array.isArray(arr)) return arr;
-      this.validateArrayLength(arr);
 
       if (t.schema.isObject(arrSchema.items)) {
         return arr.map((e) =>
-          this.interpretDecodeFromValue(arrSchema.items, e, depth + 1),
+          this.interpretDecodeFromValue(arrSchema.items, e),
         );
       }
       return arr;
@@ -453,7 +409,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       const keys = Object.keys(props);
       const req = new Set((objSchema.required as string[]) || []);
 
-      const result: Record<string, any> = Object.create(null); // Prototype pollution safe
+      const result: Record<string, any> = {};
 
       for (const k of keys) {
         const ps = props[k];
@@ -464,15 +420,13 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
 
         if (isOpt) {
           if (val !== null) {
-            result[k] = this.interpretDecodeFromValue(inner, val, depth + 1);
+            result[k] = this.interpretDecodeFromValue(inner, val);
           }
         } else if (isNullable) {
           result[k] =
-            val === null
-              ? null
-              : this.interpretDecodeFromValue(inner, val, depth + 1);
+            val === null ? null : this.interpretDecodeFromValue(inner, val);
         } else {
-          result[k] = this.interpretDecodeFromValue(inner, val, depth + 1);
+          result[k] = this.interpretDecodeFromValue(inner, val);
         }
       }
 
@@ -482,15 +436,13 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     if (t.schema.isOptional(schema) || t.schema.isUnion(schema)) {
       const inner = this.unwrap(schema);
       const val = ctx.arr[ctx.i++];
-      const nullVal = this.isNullable(schema) ? null : undefined;
 
       if (val === null) {
-        return nullVal;
+        return this.isNullable(schema) ? null : undefined;
       }
 
-      // For complex types, we need to create a temporary context
       if (t.schema.isObject(inner) || t.schema.isArray(inner)) {
-        return this.interpretDecodeFromValue(inner, val, depth + 1);
+        return this.interpretDecodeFromValue(inner, val);
       }
 
       return val;
@@ -499,17 +451,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     return ctx.arr[ctx.i++];
   }
 
-  protected interpretDecodeFromValue(
-    schema: TSchema,
-    value: any,
-    depth: number,
-  ): any {
-    if (depth > this.maxDepth) {
-      throw new AlephaError(
-        `Decoding depth exceeds maximum allowed (${this.maxDepth})`,
-      );
-    }
-
+  protected interpretDecodeFromValue(schema: TSchema, value: any): any {
     if (
       t.schema.isString(schema) ||
       t.schema.isNumber(schema) ||
@@ -517,9 +459,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       t.schema.isBoolean(schema) ||
       this.isEnum(schema)
     ) {
-      if (typeof value === "string") {
-        this.validateStringLength(value);
-      }
       return value;
     }
 
@@ -529,13 +468,10 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
 
     if (t.schema.isArray(schema)) {
       if (!Array.isArray(value)) return value;
-      this.validateArrayLength(value);
-
       const arrSchema = schema as TArray;
-      // Transform array items if they're objects
       if (t.schema.isObject(arrSchema.items)) {
         return value.map((e) =>
-          this.interpretDecodeFromValue(arrSchema.items, e, depth + 1),
+          this.interpretDecodeFromValue(arrSchema.items, e),
         );
       }
       return value;
@@ -545,8 +481,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       const objSchema = schema as TObject;
       const props = objSchema.properties as Record<string, TSchema>;
       const keys = Object.keys(props);
-
-      const result: Record<string, any> = Object.create(null); // Prototype pollution safe
+      const result: Record<string, any> = {};
 
       for (let idx = 0; idx < keys.length; idx++) {
         const k = keys[idx];
@@ -554,7 +489,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
         const v = value[idx];
 
         if (t.schema.isObject(inner)) {
-          result[k] = this.interpretDecodeFromValue(inner, v, depth + 1);
+          result[k] = this.interpretDecodeFromValue(inner, v);
         } else if (t.schema.isBigInt(inner)) {
           result[k] = BigInt(v.slice(0, -1));
         } else {
@@ -813,21 +748,13 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   /**
    * Reconstruct an object from a parsed array (for when input is already parsed).
    */
-  protected reconstructObject(schema: TSchema, arr: any[], depth = 0): any {
-    if (depth > this.maxDepth) {
-      throw new AlephaError(
-        `Reconstruction depth exceeds maximum allowed (${this.maxDepth})`,
-      );
-    }
-
-    if (!t.schema.isObject(schema)) {
-      return arr;
-    }
+  protected reconstructObject(schema: TSchema, arr: any[]): any {
+    if (!t.schema.isObject(schema)) return arr;
 
     const objSchema = schema as TObject;
     const props = objSchema.properties as Record<string, TSchema>;
     const keys = Object.keys(props);
-    const result: Record<string, any> = Object.create(null); // Prototype pollution safe
+    const result: Record<string, any> = {};
     let i = 0;
 
     for (const k of keys) {
@@ -840,7 +767,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       if (isOpt) {
         if (val !== null) {
           result[k] = t.schema.isObject(inner)
-            ? this.reconstructObject(inner, val, depth + 1)
+            ? this.reconstructObject(inner, val)
             : val;
         }
       } else if (isNullable) {
@@ -848,11 +775,11 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
           val === null
             ? null
             : t.schema.isObject(inner)
-              ? this.reconstructObject(inner, val, depth + 1)
+              ? this.reconstructObject(inner, val)
               : val;
       } else {
         result[k] = t.schema.isObject(inner)
-          ? this.reconstructObject(inner, val, depth + 1)
+          ? this.reconstructObject(inner, val)
           : val;
       }
     }
