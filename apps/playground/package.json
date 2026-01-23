@@ -9,7 +9,7 @@
     "start:bun": "bun dist"
   },
   "dependencies": {
-    "@mantine/core": "^8.3.12",
+    "@mantine/core": "^8.3.13",
     "alepha": "^0.15.0",
     "react": "^19.2.3"
   },

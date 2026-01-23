@@ -23,13 +23,13 @@
     "src"
   ],
   "dependencies": {
-    "@vercel/blob": "^2.0.0"
+    "@vercel/blob": "^2.0.1"
   },
   "devDependencies": {
-    "@types/node": "^25.0.9",
+    "@types/node": "^25.0.10",
     "alepha": "0.15.0",
-    "tsdown": "^0.20.0-beta.3",
-    "vitest": "^4.0.17"
+    "tsdown": "^0.20.1",
+    "vitest": "^4.0.18"
   },
   "peerDependencies": {
     "alepha": "0.15.0"

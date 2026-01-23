@@ -18,17 +18,17 @@
   "devDependencies": {
     "@alepha/react": "0.15.0",
     "@alepha/ui": "0.15.0",
-    "@biomejs/biome": "^2.3.11",
-    "@mantine/core": "^8.3.12",
-    "@mantine/hooks": "^8.3.12",
+    "@biomejs/biome": "^2.3.12",
+    "@mantine/core": "^8.3.13",
+    "@mantine/hooks": "^8.3.13",
     "@tabler/icons-react": "^3.36.1",
     "@xyflow/react": "^12.10.0",
     "alepha": "0.15.0",
     "react": "^19.2.3",
-    "tsdown": "^0.20.0-beta.3",
+    "tsdown": "^0.20.1",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
-    "vitest": "^4.0.17"
+    "vitest": "^4.0.18"
   },
   "peerDependencies": {
     "alepha": "0.15.0"
