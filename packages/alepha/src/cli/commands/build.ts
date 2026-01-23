@@ -3,7 +3,6 @@ import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import {
-  boot,
   buildClient,
   buildServer,
   copyAssets,
@@ -14,6 +13,7 @@ import {
   prerenderPages,
 } from "alepha/vite";
 import { buildOptions } from "../atoms/buildOptions.ts";
+import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
@@ -24,6 +24,7 @@ export class BuildCommand {
   protected readonly utils = $inject(AlephaCliUtils);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly scaffolder = $inject(ProjectScaffolder);
+  protected readonly boot = $inject(AppEntryProvider);
   protected readonly options = $use(buildOptions);
 
   public readonly build = $command({
@@ -76,8 +77,8 @@ export class BuildCommand {
         tsconfigJson: true,
       });
 
-      const entry = await boot.getServerEntry(root);
-      this.log.trace("Entry file found", { entry });
+      const appEntry = await this.boot.getAppEntry(root);
+      this.log.trace("Entry file found", { entry: appEntry.server });
 
       const distDir = "dist";
       const clientDir = "public";
@@ -136,7 +137,7 @@ export class BuildCommand {
 
           await buildServer({
             silent: true,
-            entry,
+            entry: appEntry.server,
             distDir,
             clientDir: clientBuilt ? clientDir : undefined,
             stats,

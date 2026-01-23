@@ -90,6 +90,13 @@ export class PackageManagerUtils {
   }
 
   /**
+   * Check if React is present in the project.
+   */
+  public async hasReact(root: string): Promise<boolean> {
+    return this.hasDependency(root, "react");
+  }
+
+  /**
    * Install a dependency if it's missing from the project.
    */
   public async ensureDependency(

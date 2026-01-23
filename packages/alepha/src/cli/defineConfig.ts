@@ -1,8 +1,13 @@
 import type { Alepha } from "alepha";
 import type { CommandPrimitive } from "alepha/command";
+import {
+  type AppEntryOptions,
+  appEntryOptions,
+} from "./atoms/appEntryOptions.ts";
 import { type BuildOptions, buildOptions } from "./atoms/buildOptions.ts";
 
 export interface AlephaCliConfig {
+  entry?: AppEntryOptions;
   /**
    * Add custom commands to the Alepha CLI.
    *
@@ -52,6 +57,10 @@ export const defineConfig = (
 
     if (config.build) {
       alepha.set(buildOptions, config.build);
+    }
+
+    if (config.entry) {
+      alepha.set(appEntryOptions, config.entry);
     }
 
     return {

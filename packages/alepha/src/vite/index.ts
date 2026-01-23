@@ -1,12 +1,10 @@
 import type { Alepha } from "alepha";
 
 // Helpers (for advanced use)
-export * from "./helpers/boot.ts";
 export * from "./helpers/createBufferedLogger.ts";
 export * from "./helpers/importVite.ts";
 export * from "./helpers/importViteReact.ts";
 // Plugins (public API)
-export * from "./plugins/viteAlephaDev.ts";
 export * from "./plugins/viteAlephaSsrPreload.ts";
 export * from "./plugins/viteCompress.ts";
 // Tasks (for CLI integration)

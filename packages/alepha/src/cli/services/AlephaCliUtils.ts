@@ -3,7 +3,7 @@ import { $inject, Alepha, AlephaError } from "alepha";
 import { EnvUtils } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
-import { boot } from "alepha/vite";
+import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 
 /**
  * Core utility service for CLI commands.
@@ -18,6 +18,7 @@ export class AlephaCliUtils {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly envUtils = $inject(EnvUtils);
+  protected readonly boot = $inject(AppEntryProvider);
 
   // ===========================================
   // Command Execution
@@ -133,7 +134,22 @@ export class AlephaCliUtils {
   }> {
     process.env.ALEPHA_CLI_IMPORT = "true";
 
-    const entry = await boot.getServerEntry(rootDir, explicitEntry);
+    const root = rootDir ?? process.cwd();
+    let entry: string;
+
+    if (explicitEntry) {
+      // Explicit entry provided
+      entry = this.fs.join(root, explicitEntry);
+      if (!(await this.fs.exists(entry))) {
+        throw new AlephaError(
+          `Explicit server entry file "${explicitEntry}" not found.`,
+        );
+      }
+    } else {
+      // Auto-discover entry
+      const appEntry = await this.boot.getAppEntry(root);
+      entry = this.fs.join(root, appEntry.server);
+    }
 
     delete (global as any).__alepha;
 

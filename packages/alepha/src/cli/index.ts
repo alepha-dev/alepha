@@ -15,6 +15,7 @@ export * from "./commands/test.ts";
 export * from "./commands/typecheck.ts";
 export * from "./commands/verify.ts";
 export * from "./defineConfig.ts";
+export * from "./providers/AppEntryProvider.ts";
 export * from "./services/AlephaCliUtils.ts";
 export * from "./services/GitMessageParser.ts";
 export * from "./version.ts";

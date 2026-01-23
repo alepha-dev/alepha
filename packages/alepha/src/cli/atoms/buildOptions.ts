@@ -8,7 +8,7 @@ import { $atom } from "../../core/primitives/$atom.ts";
  * Options can be overridden via vite.config.ts or CLI flags.
  */
 export const buildOptions = $atom({
-  name: "alepha.build.options",
+  name: "alepha.cli.build.options",
   description: "Build configuration options",
   schema: t.object({
     /**

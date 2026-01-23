@@ -13,6 +13,7 @@ import { RootCommand } from "../commands/root.ts";
 import { TestCommand } from "../commands/test.ts";
 import { TypecheckCommand } from "../commands/typecheck.ts";
 import { VerifyCommand } from "../commands/verify.ts";
+import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -80,6 +81,7 @@ export const AlephaCli = $module({
     VerifyCommand,
     GenCommand,
     // Support services
+    AppEntryProvider,
     GitProvider,
   ],
 });

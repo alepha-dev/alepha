@@ -4,6 +4,7 @@ import {
   type Server,
   type ServerResponse,
 } from "node:http";
+import type { Socket } from "node:net";
 import { $env, $hook, $inject, Alepha, type Static, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -33,6 +34,24 @@ export class NodeHttpServerProvider extends ServerProvider {
   protected readonly log = $logger();
   protected readonly env = $env(envSchema);
   protected readonly router = $inject(ServerRouterProvider);
+
+  /** Track active connections for fast shutdown */
+  protected readonly connections = new Set<Socket>();
+
+  /** Get number of active connections */
+  public getConnectionsCount(): number {
+    return this.connections.size;
+  }
+
+  /** Server options */
+  public readonly options = {
+    /**
+     * Graceful shutdown timeout in ms.
+     * After this, remaining connections are forcefully closed.
+     * @default 30000
+     */
+    shutdownTimeout: 10000,
+  };
 
   public get hostname(): string {
     if (this.server.listening) {
@@ -80,25 +99,27 @@ export class NodeHttpServerProvider extends ServerProvider {
   protected createHttpServer(
     func: (req: IncomingMessage, res: ServerResponse) => void,
   ): Server {
-    return createServer(
+    const server = createServer(
       {
         // nov 25 - keep connections alive for better performance, cuz we http/1.1 by default
         keepAlive: this.alepha.isProduction(),
       },
       func,
     );
+
+    // Track connections for fast shutdown
+    server.on("connection", (socket) => {
+      this.connections.add(socket);
+      socket.on("close", () => this.connections.delete(socket));
+    });
+
+    return server;
   }
 
   protected readonly stop = $hook({
     on: "stop",
     handler: async () => {
-      if (this.alepha.isProduction()) {
-        await this.close();
-        return;
-      }
-
-      // do not await in development & test
-      this.close().catch(() => {});
+      await this.close();
     },
   });
 
@@ -123,18 +144,49 @@ export class NodeHttpServerProvider extends ServerProvider {
   }
 
   protected async close() {
-    const promise = new Promise<void>((resolve, reject) => {
-      this.server?.close((err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
+    // Dev/Test: instant shutdown (destroy connections immediately)
+    // Production: graceful shutdown (wait for requests to complete, then close)
+    if (!this.alepha.isProduction()) {
+      this.destroyAllConnections();
+    }
+
+    // Stop accepting new connections
+    const closePromise = new Promise<void>((resolve, reject) => {
+      this.server?.close((err) => (err ? reject(err) : resolve()));
     });
 
-    await Promise.race([this.dateTimeProvider.wait(2000), promise]);
+    if (this.alepha.isProduction() && this.connections.size > 0) {
+      // In production, wait for connections with timeout
+      const timeout = this.options.shutdownTimeout;
+
+      // Set up timeout to force-close connections
+      const timeoutId = setTimeout(() => {
+        if (this.connections.size > 0) {
+          this.log.warn(
+            `Shutdown timeout (${timeout}ms) reached, forcing ${this.connections.size} connections to close`,
+          );
+          // Destroy sockets - this triggers 'close' events which eventually resolves closePromise
+          for (const socket of this.connections) {
+            socket.destroy();
+          }
+        }
+      }, timeout);
+
+      // Wait for server to fully close (all connections closed)
+      await closePromise;
+      clearTimeout(timeoutId);
+      this.connections.clear();
+    } else {
+      await closePromise;
+    }
 
     this.log.info("Server closed");
+  }
+
+  protected destroyAllConnections() {
+    for (const socket of this.connections) {
+      socket.destroy();
+    }
+    this.connections.clear();
   }
 }

@@ -2,7 +2,7 @@ import { $inject, Alepha } from "alepha";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
-import { boot } from "alepha/vite";
+import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { ViteDevServerProvider } from "../providers/ViteDevServerProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
@@ -16,6 +16,7 @@ export class DevCommand {
   protected readonly scaffolder = $inject(ProjectScaffolder);
   protected readonly alepha = $inject(Alepha);
   protected readonly viteDevServer = $inject(ViteDevServerProvider);
+  protected readonly boot = $inject(AppEntryProvider);
 
   /**
    * Will run the project in watch mode.
@@ -27,7 +28,10 @@ export class DevCommand {
     name: "dev",
     description: "Run the project in development mode",
     handler: async ({ root }) => {
-      const expo = await this.pm.hasExpo(root);
+      const [expo, react] = await Promise.all([
+        this.pm.hasExpo(root),
+        this.pm.hasReact(root),
+      ]);
 
       await this.scaffolder.ensureConfig(root, {
         tsconfigJson: true,
@@ -38,30 +42,19 @@ export class DevCommand {
         return;
       }
 
-      const entry = await boot.getServerEntry(root);
-      this.log.trace("Entry file found", { entry });
+      const entry = await this.boot.getAppEntry(root);
+      this.log.debug("Entry file found", { entry });
 
-      const isFullstack = await this.isFullstackProject(root);
-
-      if (!isFullstack) {
-        const exe = (await this.isBunProject(root)) ? "bun" : "tsx";
-        let cmd = `${exe} --watch`;
-        if (await this.utils.exists(root, ".env")) {
-          cmd += " --env-file=./.env";
-        }
-        cmd += ` ${entry}`;
-        await this.utils.exec(cmd, {
-          global: exe === "bun",
-        });
-        return;
-      }
+      // -> here, we assume we use Vite as runner (api or fullstack)
+      // but it's planned to support Bun runner in the future as well
 
       // Ensure vite is installed before running
       await this.pm.ensureDependency(root, "vite", {
         exec: (cmd, opts) => this.utils.exec(cmd, opts),
       });
 
-      await this.viteDevServer.start({ root, entry });
+      await this.viteDevServer.init({ root, entry });
+      await this.viteDevServer.start();
     },
   });
 

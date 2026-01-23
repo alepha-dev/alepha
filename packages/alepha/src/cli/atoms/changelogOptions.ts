@@ -29,7 +29,7 @@ export const DEFAULT_IGNORE = [
  * ```
  */
 export const changelogOptions = $atom({
-  name: "alepha.changelog",
+  name: "alepha.cli.changelog.options",
   schema: t.object({
     /**
      * Scopes to ignore (e.g., "project", "release", "chore").

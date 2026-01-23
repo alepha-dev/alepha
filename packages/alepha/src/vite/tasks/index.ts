@@ -19,4 +19,3 @@ export * from "./generateExternals.ts";
 export * from "./generateSitemap.ts";
 export * from "./generateVercel.ts";
 export * from "./prerenderPages.ts";
-export * from "./runAlepha.ts";

@@ -1,4 +1,5 @@
-import { $inject, type Alepha } from "alepha";
+import { $inject, type Alepha, AlephaError } from "alepha";
+import type { AppEntry } from "alepha/cli";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { importVite, importViteReact, viteAlephaSsrPreload } from "alepha/vite";
@@ -13,7 +14,7 @@ export interface ViteDevServerOptions {
   /**
    * Path to the server entry file.
    */
-  entry: string;
+  entry: AppEntry;
 
   /**
    * Port to run the dev server on.
@@ -53,13 +54,14 @@ export class ViteDevServerProvider {
   protected hasError = false;
   protected changedFiles = new Set<string>();
 
-  /**
-   * Start the dev server with the given options.
-   */
-  public async start(options: ViteDevServerOptions): Promise<void> {
+  public async init(options: ViteDevServerOptions): Promise<Alepha> {
     this.options = options;
     await this.createViteServer();
-    await this.loadAlepha(true);
+    return await this.loadAlepha(true);
+  }
+
+  public async start(): Promise<void> {
+    await this.alepha?.start();
   }
 
   /**
@@ -96,6 +98,7 @@ export class ViteDevServerProvider {
       try {
         this.hasError = true; // Force full invalidation for env changes
         await this.loadAlepha(false);
+        await this.alepha?.start();
         this.log.debug(`Env reloaded in ${Date.now() - startTime}ms`);
         this.sendBrowserReload();
       } catch (err) {
@@ -129,6 +132,7 @@ export class ViteDevServerProvider {
         try {
           this.changedFiles.add(ctx.file);
           await this.loadAlepha(false);
+          await this.alepha?.start();
           this.log.debug(`Reloaded in ${Date.now() - startTime}ms`);
 
           // Server-only: full browser reload
@@ -184,19 +188,42 @@ export class ViteDevServerProvider {
     }
   }
 
+  protected generateIndexHtml(): string {
+    const style = this.options.entry.style;
+    const browser = this.options.entry.browser ?? this.options.entry.server;
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="/${browser}"></script>
+</body>
+</html>
+`;
+  }
+
   /**
    * Load and transform index.html template via Vite.
    */
   protected async loadTemplate(): Promise<string> {
     const indexPath = this.fs.join(this.options.root, "index.html");
-    const rawHtml = await this.fs.readFile(indexPath);
-    return this.server.transformIndexHtml("/", rawHtml.toString("utf-8"));
+    const template = (await this.fs.exists(indexPath))
+      ? (await this.fs.readFile(indexPath)).toString("utf-8")
+      : this.generateIndexHtml();
+
+    return this.server.transformIndexHtml("/", template);
   }
 
   /**
    * Load or reload the Alepha instance.
    */
-  protected async loadAlepha(isInitialLoad = false): Promise<void> {
+  protected async loadAlepha(isInitialLoad = false): Promise<Alepha> {
     if (this.alepha) {
       await this.alepha
         .stop()
@@ -215,26 +242,43 @@ export class ViteDevServerProvider {
     const envSnapshot = { ...process.env };
     await this.setupEnvironment();
 
-    await this.server.ssrLoadModule(this.options.entry);
+    await this.server.ssrLoadModule(this.options.entry.server);
 
     const alepha: Alepha = (globalThis as any).__alepha;
     if (!alepha) {
-      throw new Error("Alepha instance not found after loading entry module");
+      throw new AlephaError(
+        "Alepha instance not found after loading entry module",
+      );
     }
 
     await this.setupAlepha(alepha);
-    await alepha.start();
 
     this.alepha = alepha;
     this.hasError = false;
     process.env = envSnapshot;
+
+    return alepha;
+  }
+
+  protected hasReact(alepha: Alepha): boolean {
+    try {
+      alepha.inject("ReactServerProvider");
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
    * Setup Alepha instance with Vite middleware and template.
    */
   protected async setupAlepha(alepha: Alepha): Promise<void> {
+    if (!this.hasReact(alepha)) {
+      return;
+    }
+
     const template = await this.loadTemplate();
+
     alepha.store.set("alepha.react.server.template", template);
 
     alepha.events.on("server:onRequest", {
