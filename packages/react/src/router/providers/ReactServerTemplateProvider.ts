@@ -432,26 +432,13 @@ export class ReactServerTemplateProvider {
       layers,
     };
 
-    const atoms = this.alepha.store.getAtoms();
     for (const [key, value] of Object.entries(store)) {
       if (
         key.charAt(0) !== "_" &&
         key !== "alepha.react.router.state" &&
         key !== "registry"
       ) {
-        const atom = atoms.find((it) => it.atom.key === key);
-        if (atom) {
-          hydrationData[key] = this.alepha.codec.encode(
-            atom.atom.schema,
-            value,
-            {
-              encoder: "keyless",
-              as: "string",
-            },
-          );
-        } else {
-          hydrationData[key] = value;
-        }
+        hydrationData[key] = value;
       }
     }
 

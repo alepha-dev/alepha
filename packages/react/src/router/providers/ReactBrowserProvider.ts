@@ -254,32 +254,11 @@ export class ReactBrowserProvider {
       const hydration = this.getHydrationState();
       const previous = hydration?.layers ?? [];
 
-      const atoms = this.alepha.store.getAtoms();
-
       if (hydration) {
         // low budget, but works for now
         for (const [key, value] of Object.entries(hydration)) {
-          const atom = atoms.find((it) => it.atom.key === key);
-          if (atom) {
-            try {
-              const decoded = this.alepha.codec.decode(
-                atom.atom.schema,
-                value,
-                {
-                  encoder: "keyless",
-                },
-              );
-              this.alepha.set(key as keyof State, decoded);
-            } catch (e) {
-              this.log.error(
-                `Failed to decode hydration state for '${key}'`,
-                e,
-              );
-            }
-          } else {
-            if (key !== "layers") {
-              this.alepha.set(key as keyof State, value);
-            }
+          if (key !== "layers") {
+            this.alepha.set(key as keyof State, value);
           }
         }
       }
