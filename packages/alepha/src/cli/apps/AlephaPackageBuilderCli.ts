@@ -95,6 +95,11 @@ export class AlephaPackageBuilderCli {
 
       external.push("bun");
       external.push("bun:sqlite");
+      external.push("vite");
+      external.push("rolldown-vite");
+      external.push("vite-bundle-analyzer");
+      external.push("tsdown");
+      external.push("vitest");
 
       await run.rm(this.dist);
 
