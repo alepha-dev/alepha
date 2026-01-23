@@ -71,7 +71,6 @@ ${projectName}/
 │   ├── main.server.ts    # Server entry
 │   ├── main.browser.ts   # Browser entry (React only)
 │   └── main.css          # CSS entry (React only)
-├── index.html            # (React only)
 ├── package.json
 └── tsconfig.json
 \`\`\`

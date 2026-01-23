@@ -88,7 +88,7 @@ export class ReactServerProvider {
       let root = "";
 
       // non-serverless mode only -> serve static files
-      if (!this.alepha.isServerless()) {
+      if (!this.alepha.isServerless() && !this.alepha.isViteDev()) {
         root = await this.getPublicDirectory();
         if (!root) {
           this.log.warn(
@@ -248,26 +248,6 @@ export class ReactServerProvider {
   }
 
   /**
-   * Configure Vite for SSR in development mode.
-   */
-  protected async configureVite(ssrEnabled: boolean) {
-    if (!ssrEnabled) {
-      // do nothing, vite will handle everything for us
-      return;
-    }
-
-    const url = `http://localhost:${this.alepha.env.SERVER_PORT ?? "5173"}`;
-
-    this.log.info("SSR (dev) OK", { url });
-
-    await this.registerPages(() =>
-      fetch(`${url}/index.html`)
-        .then((it) => it.text())
-        .catch(() => undefined),
-    );
-  }
-
-  /**
    * Create the request handler for a page route.
    */
   protected createHandler(
@@ -361,7 +341,8 @@ export class ReactServerProvider {
               });
               // Can't do redirect after streaming started - already handled above
             } else {
-              this.log.error("HTML stream error", error);
+              // disable logging here, it's noisy and duplicate
+              // this.log.error("HTML stream error", error);
             }
           },
         },
@@ -424,7 +405,8 @@ export class ReactServerProvider {
             redirect: error.redirect,
           });
         } else {
-          this.log.error("Streaming render error", error);
+          // disable logging here, it's noisy and duplicate
+          // this.log.error("Streaming render error", error);
         }
       },
     });

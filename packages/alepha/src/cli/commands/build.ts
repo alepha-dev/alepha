@@ -1,4 +1,4 @@
-import { $inject, $use, t } from "alepha";
+import { $inject, $use, type Alepha, AlephaError, t } from "alepha";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
@@ -14,6 +14,7 @@ import {
 } from "alepha/vite";
 import { buildOptions } from "../atoms/buildOptions.ts";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
+import { ViteBuildProvider } from "../providers/ViteBuildProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
@@ -25,6 +26,7 @@ export class BuildCommand {
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly scaffolder = $inject(ProjectScaffolder);
   protected readonly boot = $inject(AppEntryProvider);
+  protected readonly viteBuildProvider = $inject(ViteBuildProvider);
   protected readonly options = $use(buildOptions);
 
   public readonly build = $command({
@@ -64,8 +66,6 @@ export class BuildCommand {
       ),
     }),
     handler: async ({ flags, run, root }) => {
-      // Tell viteAlephaBuild plugin to skip - CLI handles all tasks
-      process.env.ALEPHA_BUILD_MODE = "cli";
       process.env.NODE_ENV = "production";
 
       if (await this.pm.hasExpo(root)) {
@@ -77,11 +77,11 @@ export class BuildCommand {
         tsconfigJson: true,
       });
 
-      const appEntry = await this.boot.getAppEntry(root);
-      this.log.trace("Entry file found", { entry: appEntry.server });
+      const entry = await this.boot.getAppEntry(root);
+      this.log.trace("Entry file found", { entry });
 
       const distDir = "dist";
-      const clientDir = "public";
+      const publicDir = "public";
 
       await this.pm.ensureDependency(root, "vite", {
         run,
@@ -93,27 +93,55 @@ export class BuildCommand {
       await this.utils.loadEnv(root, [".env", ".env.production"]);
 
       const stats = flags.stats ?? options.stats ?? false;
-      const hasClient = await this.fs.exists(this.fs.join(root, "index.html"));
+      let template = "";
+      let hasClient = false;
+      let alepha: Alepha | undefined;
+
+      await run({
+        name: "analyze app",
+        handler: async () => {
+          alepha = await this.viteBuildProvider.init({ entry });
+          hasClient = this.viteBuildProvider.hasClient();
+          if (hasClient) {
+            template = this.viteBuildProvider.generateIndexHtml();
+          }
+        },
+      });
+
+      if (!alepha) {
+        throw new AlephaError("Alepha instance not found");
+      }
 
       // Build client (precompress always enabled)
       if (hasClient) {
-        await run({
-          name: "vite build client",
-          handler: () =>
-            buildClient({
-              silent: true,
-              dist: `${distDir}/${clientDir}`,
-              stats,
-              precompress: true,
-            }),
-        });
+        // TODO: find a way to avoid writing index.html to disk
+        const indexHtmlPath = this.fs.join(root, "index.html");
+        await this.fs.writeFile(indexHtmlPath, template);
+        try {
+          await run({
+            name: "vite build client",
+            handler: () =>
+              buildClient({
+                silent: true,
+                dist: `${distDir}/${publicDir}`,
+                stats,
+                precompress: true,
+              }),
+          });
+        } finally {
+          await this.fs.rm(indexHtmlPath);
+        }
       }
 
       // Build server
       await run({
         name: "vite build server",
         handler: async () => {
-          const clientIndexPath = `${distDir}/${clientDir}/index.html`;
+          if (!alepha) {
+            throw new AlephaError("Alepha instance not found");
+          }
+
+          const clientIndexPath = `${distDir}/${publicDir}/index.html`;
           const clientBuilt = await this.fs.exists(clientIndexPath);
 
           const conditions: string[] = [];
@@ -129,19 +157,18 @@ export class BuildCommand {
           // workerd:
           // - react-dom
           // - postgres
-
-          // TODO: investigate if we have more conditions like 'edge' to add here
           if (options.cloudflare) {
             conditions.push("workerd");
           }
 
           await buildServer({
             silent: true,
-            entry: appEntry.server,
+            entry: entry.server,
             distDir,
-            clientDir: clientBuilt ? clientDir : undefined,
+            clientDir: clientBuilt ? publicDir : undefined,
             stats,
             conditions,
+            alepha,
           });
 
           // Server will handle index.html if both client & server are built
@@ -153,6 +180,7 @@ export class BuildCommand {
 
       // Copy assets
       await copyAssets({
+        alepha,
         root,
         entry: `${distDir}/index.js`,
         distDir,
@@ -163,30 +191,20 @@ export class BuildCommand {
         // Generate sitemap
         const sitemapHostname = flags.sitemap ?? options.sitemap?.hostname;
         if (sitemapHostname) {
-          await run({
-            name: "add sitemap",
-            handler: async () => {
-              await this.fs.writeFile(
-                `${distDir}/${clientDir}/sitemap.xml`,
-                await generateSitemap({
-                  entry: `${distDir}/index.js`,
-                  baseUrl: sitemapHostname,
-                }),
-              );
-            },
+          await generateSitemap({
+            alepha,
+            baseUrl: sitemapHostname,
+            output: `${distDir}/${publicDir}/sitemap.xml`,
+            run,
           });
         }
 
         // Pre-render static pages (always enabled)
-        await run({
-          name: "pre-render pages",
-          handler: async () => {
-            await prerenderPages({
-              dist: `${distDir}/${clientDir}`,
-              entry: `${distDir}/index.js`,
-              compress: true,
-            });
-          },
+        await prerenderPages({
+          alepha,
+          dist: `${distDir}/${publicDir}`,
+          compress: true,
+          run,
         });
       }
 
@@ -197,7 +215,7 @@ export class BuildCommand {
           handler: () =>
             generateVercel({
               distDir,
-              clientDir,
+              clientDir: publicDir,
               config: options.vercel,
             }),
         });

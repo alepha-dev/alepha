@@ -8,7 +8,6 @@ import { biomeJson } from "../assets/biomeJson.ts";
 import { type ClaudeMdOptions, claudeMd } from "../assets/claudeMd.ts";
 import { dummySpecTs } from "../assets/dummySpecTs.ts";
 import { editorconfig } from "../assets/editorconfig.ts";
-import { indexHtml } from "../assets/indexHtml.ts";
 import { mainBrowserTs } from "../assets/mainBrowserTs.ts";
 import { mainCss } from "../assets/mainCss.ts";
 import { mainServerTs } from "../assets/mainServerTs.ts";
@@ -197,7 +196,6 @@ export class ProjectScaffolder {
    * Ensure full React project structure exists.
    *
    * Creates:
-   * - index.html
    * - src/main.server.ts, src/main.browser.ts
    * - src/api/index.ts, src/api/controllers/HelloController.ts
    * - src/web/index.ts, src/web/AppRouter.ts, src/web/components/Hello.tsx
@@ -206,13 +204,6 @@ export class ProjectScaffolder {
     root: string,
     opts: { force?: boolean } = {},
   ): Promise<void> {
-    if (
-      !opts.force &&
-      (await this.fs.exists(this.fs.join(root, "index.html")))
-    ) {
-      return;
-    }
-
     const appName = this.getAppName(root);
 
     // Create directories
@@ -222,14 +213,6 @@ export class ProjectScaffolder {
     await this.fs.mkdir(this.fs.join(root, "src/web/components"), {
       recursive: true,
     });
-
-    // index.html
-    await this.ensureFile(
-      root,
-      "index.html",
-      indexHtml("src/main.browser.ts"),
-      opts.force,
-    );
 
     // src/main.css
     await this.ensureFile(root, "src/main.css", mainCss(), opts.force);

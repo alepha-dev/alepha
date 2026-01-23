@@ -23,6 +23,7 @@ export class AppRouter {
   );
 
   head = $head(() => {
+    const ogTitle = "Alepha Framework - TypeScript Made Easy";
     const head: Head = {
       title: "Alepha",
       titleSeparator: " | ",
@@ -35,14 +36,42 @@ export class AppRouter {
       type: "website",
       imageWidth: 1200,
       imageHeight: 630,
-      imageAlt: "Alepha Framework - TypeScript Made Easy",
+      imageAlt: ogTitle,
       og: {
-        title: "Alepha - TypeScript Framework Made Easy",
+        title: ogTitle,
       },
       twitter: {
         card: "summary_large_image",
-        title: "Alepha - TypeScript Framework Made Easy",
+        title: ogTitle,
       },
+      script: [
+        `
+          var stored = localStorage.getItem('alepha-docs-mode');
+          var theme = stored === 'light' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', theme);
+        `.trim(),
+      ],
+      link: [
+        {
+          rel: "icon",
+          type: "image/png",
+          href: "/favicon.png",
+        },
+        {
+          rel: "manifest",
+          href: "/manifest.json",
+        },
+        {
+          rel: "apple-touch-icon",
+          href: "/apple-touch-icon.png",
+        },
+      ],
+      meta: [
+        {
+          name: "theme-color",
+          content: "#1a1a2e",
+        },
+      ],
     };
 
     if (this.env.UMAMI_URL && this.env.UMAMI_UUID) {

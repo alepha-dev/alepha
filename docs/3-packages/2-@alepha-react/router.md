@@ -193,7 +193,6 @@ reads at runtime, making it optimal for serverless deployments.
 
 Manifest files are generated during `vite build`:
 - manifest.json (client manifest)
-- ssr-manifest.json (SSR manifest)
 - preload-manifest.json (from viteAlephaSsrPreload plugin)
 
 ### Environment Variables

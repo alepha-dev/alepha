@@ -76,7 +76,6 @@ alepha init --react
 Sets up a full-stack application with server-side rendering.
 
 **Additional files:**
-- `index.html` — The HTML shell for your app
 - `src/main.browser.ts` — Browser entry point
 - `src/main.server.ts` — Server entry point
 - `src/AppRouter.ts` — Your route definitions
@@ -173,7 +172,6 @@ Your package.json gets these scripts:
 If your project has Expo installed, `init` adapts automatically:
 
 - Skips `vite.config.ts` (Expo has its own bundler)
-- Skips `index.html` (Expo handles this)
 - Works with Expo's toolchain
 
 > **Expo Detection**

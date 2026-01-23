@@ -1,6 +1,6 @@
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { AlephaError } from "alepha";
+import { type Alepha, AlephaError } from "alepha";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
 import { analyzer as viteAnalyzer } from "vite-bundle-analyzer";
@@ -43,6 +43,11 @@ export interface BuildServerOptions {
    * Add more entry point conditions for SSR module resolution (e.g., "bun").
    */
   conditions?: string[];
+
+  /**
+   * Alepha instance to set SSR manifest for pre-rendering.
+   */
+  alepha: Alepha;
 }
 
 export interface BuildServerResult {
@@ -50,6 +55,15 @@ export interface BuildServerResult {
    * The filename of the built server entry (e.g., "abc123.js").
    */
   entryFile: string;
+
+  /**
+   * SSR manifest data for module preloading.
+   * Can be used to set in alepha store for pre-rendering.
+   */
+  manifest?: {
+    client?: Record<string, any>;
+    preload?: Record<string, string>;
+  };
 }
 
 /**
@@ -165,21 +179,29 @@ export async function buildServer(
   // Embed SSR manifests if client was built
   // This bundles all manifest data into index.js for serverless deployments
   let manifest = "";
+  let manifestData:
+    | { client?: Record<string, any>; preload?: Record<string, string> }
+    | undefined;
+
   if (opts.clientDir) {
     const viteDir = `${opts.distDir}/${opts.clientDir}/.vite`;
-    const ssrManifest = await loadJsonFile(`${viteDir}/ssr-manifest.json`);
     const clientManifest = await loadJsonFile(`${viteDir}/manifest.json`);
     const preloadManifest = await loadJsonFile(
       `${viteDir}/preload-manifest.json`,
     );
 
-    const combined = {
-      ssr: ssrManifest,
-      client: clientManifest,
+    // Strip unused fields from client manifest to reduce bundle size
+    const strippedClientManifest = stripClientManifest(clientManifest);
+
+    manifestData = {
+      client: strippedClientManifest,
       preload: preloadManifest,
     };
 
-    manifest = `__alepha.set("alepha.react.ssr.manifest", ${JSON.stringify(combined)});\n`;
+    manifest = `__alepha.set("alepha.react.ssr.manifest", ${JSON.stringify(manifestData)});\n`;
+
+    // Set manifest in alepha store for pre-rendering
+    opts.alepha.store.set("alepha.react.ssr.manifest" as any, manifestData);
 
     // Remove .vite directory - no longer needed at runtime
     await rm(viteDir, { recursive: true, force: true });
@@ -195,7 +217,7 @@ export async function buildServer(
     `${warning}\n${template}${manifest}import './server/${entryFile}';\n`.trim(),
   );
 
-  return { entryFile };
+  return { entryFile, manifest: manifestData };
 }
 
 /**
@@ -208,6 +230,27 @@ async function loadJsonFile(path: string): Promise<any> {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Strip unused fields from client manifest to reduce bundle size.
+ * Only keeps: file, isEntry, imports, css
+ */
+function stripClientManifest(
+  manifest: Record<string, any> | undefined,
+): Record<string, any> | undefined {
+  if (!manifest) return undefined;
+
+  const stripped: Record<string, any> = {};
+  for (const [key, entry] of Object.entries(manifest)) {
+    stripped[key] = {
+      file: entry.file,
+      ...(entry.isEntry && { isEntry: entry.isEntry }),
+      ...(entry.imports?.length && { imports: entry.imports }),
+      ...(entry.css?.length && { css: entry.css }),
+    };
+  }
+  return stripped;
 }
 
 /**

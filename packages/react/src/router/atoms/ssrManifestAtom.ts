@@ -11,25 +11,17 @@ export const ssrManifestAtomSchema = t.object({
   preload: t.optional(t.record(t.string(), t.string())),
 
   /**
-   * SSR manifest mapping source files to their required chunks.
-   */
-  ssr: t.optional(t.record(t.string(), t.array(t.string()))),
-
-  /**
    * Client manifest mapping source files to their output information.
+   * Only includes fields actually used for preloading.
    */
   client: t.optional(
     t.record(
       t.string(),
       t.object({
         file: t.string(),
-        src: t.optional(t.string()),
         isEntry: t.optional(t.boolean()),
-        isDynamicEntry: t.optional(t.boolean()),
         imports: t.optional(t.array(t.string())),
-        dynamicImports: t.optional(t.array(t.string())),
         css: t.optional(t.array(t.string())),
-        assets: t.optional(t.array(t.string())),
       }),
     ),
   ),
@@ -49,8 +41,7 @@ export type SsrManifestAtomSchema = typeof ssrManifestAtomSchema;
  *
  * The manifest includes:
  * - preload: Maps short hash keys to source paths (from viteAlephaSsrPreload)
- * - ssr: Maps source files to their required chunks
- * - client: Maps source files to their output info including imports/css
+ * - client: Maps source files to their output info (file, imports, css)
  */
 export const ssrManifestAtom = $atom({
   name: "alepha.react.ssr.manifest",

@@ -103,7 +103,6 @@ export async function buildClient(opts: BuildClientOptions): Promise<void> {
       outDir: opts.dist,
       // Generate manifest for SSR module preloading
       manifest: true,
-      ssrManifest: true,
       rollupOptions: {
         output: {
           entryFileNames: "entry.[hash].js",

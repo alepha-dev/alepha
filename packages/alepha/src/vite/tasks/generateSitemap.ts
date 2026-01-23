@@ -1,11 +1,11 @@
+import { writeFile } from "node:fs/promises";
 import type { Alepha } from "alepha";
-import { importAlepha } from "../helpers/importAlepha.ts";
 
 export interface GenerateSitemapOptions {
   /**
-   * Entry point for the built Alepha application.
+   * Alepha instance to use for generating the sitemap.
    */
-  entry: string;
+  alepha: Alepha;
 
   /**
    * Base URL for the sitemap (e.g., "https://example.com").
@@ -13,52 +13,93 @@ export interface GenerateSitemapOptions {
   baseUrl: string;
 
   /**
-   * Optional HTML template (for React SSR).
+   * Output file path for the sitemap. If provided, writes the sitemap to disk.
    */
-  template?: string;
+  output?: string;
+
+  /**
+   * Add Runner for logging (@see Alepha CLI)
+   */
+  run?: (opts: {
+    name: string;
+    handler: () => Promise<void>;
+  }) => Promise<string>;
 }
 
 /**
  * Generate sitemap.xml from Alepha page primitives.
  *
- * This task loads the built Alepha application,
- * queries all page primitives, and generates a sitemap.xml
+ * Queries all page primitives and generates a sitemap.xml
  * containing URLs for all accessible pages.
  */
 export async function generateSitemap(
   opts: GenerateSitemapOptions,
 ): Promise<string> {
-  const alepha = await importAlepha(opts.entry);
+  const pages = getSitemapPages(opts.alepha);
 
-  if (opts.template) {
-    alepha.set("alepha.react.server.template", opts.template);
+  // Nothing to generate
+  if (pages.length === 0) {
+    return "";
   }
 
-  if (!alepha.isConfigured()) {
-    await alepha.events.emit("configure", alepha);
-    (alepha as any).configured = true;
+  let result = "";
+
+  const fn = async () => {
+    result = generateSitemapFromPages(pages, opts.baseUrl);
+    if (opts.output) {
+      await writeFile(opts.output, result);
+    }
+  };
+
+  if (opts.run) {
+    await opts.run({
+      name: "generate sitemap",
+      handler: fn,
+    });
+  } else {
+    await fn();
   }
 
-  return generateSitemapFromAlepha(alepha, opts.baseUrl);
+  return result;
 }
 
-function generateSitemapFromAlepha(alepha: Alepha, baseUrl: string): string {
+/**
+ * Get all pages that should be included in the sitemap.
+ */
+function getSitemapPages(alepha: Alepha): any[] {
   const pages = alepha.primitives("page") as any[];
+  return pages.filter((page) => {
+    const options = page.options;
+    // Skip pages with children (parent pages that can't be rendered directly)
+    if (options.children) {
+      return false;
+    }
+    // Include pages without parameters or static pages with entries
+    if (!options.schema?.params) {
+      return true;
+    }
+    if (
+      options.static &&
+      typeof options.static === "object" &&
+      options.static.entries
+    ) {
+      return true;
+    }
+    return false;
+  });
+}
+
+function generateSitemapFromPages(pages: any[], baseUrl: string): string {
   const urls: string[] = [];
+  const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
 
   for (const page of pages) {
     const options = page.options;
 
-    // Skip pages with children (parent pages that can't be rendered directly)
-    if (options.children) {
-      continue;
-    }
-
-    // Only include static pages or pages without parameters
     if (!options.schema?.params) {
       // Simple page without parameters
       const path = options.path || "";
-      const url = `${baseUrl.replace(/\/$/, "")}${path === "" ? "/" : path}`;
+      const url = `${normalizedBaseUrl}${path === "" ? "/" : path}`;
       urls.push(url);
     } else if (
       options.static &&
@@ -71,7 +112,7 @@ function generateSitemapFromAlepha(alepha: Alepha, baseUrl: string): string {
           options.path || "",
           entry.params || {},
         );
-        const url = `${baseUrl.replace(/\/$/, "")}${path}`;
+        const url = `${normalizedBaseUrl}${path}`;
         urls.push(url);
       }
     }

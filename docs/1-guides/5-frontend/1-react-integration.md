@@ -16,16 +16,13 @@ npx alepha init --react
 
 This sets up everything:
 - Installs `@alepha/react` and peer dependencies
-- Creates `index.html` entry point
 - Configures `main.browser.ts` for client hydration
 
 **Manual installation:**
 
 ```bash
-npm install @alepha/react
+npm install @alepha/react react @types/react
 ```
-
-Note: You'll need to manually create `index.html` and configure the browser entry point. But you knew that.
 
 ---
 

@@ -121,7 +121,7 @@ export class PackageManagerUtils {
     const cmd = await this.getInstallCommand(root, packageName, dev);
 
     if (options.run) {
-      await options.run(cmd, { alias: `installing ${packageName}`, root });
+      await options.run(cmd, { alias: `add ${packageName}`, root });
     } else if (options.exec) {
       this.log.debug(`Installing ${packageName}`);
       await options.exec(cmd, { global: true, root });

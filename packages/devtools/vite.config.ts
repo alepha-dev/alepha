@@ -4,7 +4,7 @@ export default defineConfig({
   base: "/devtools",
   server: {
     proxy: {
-      "/devtools/api": "http://localhost:5173",
+      "/devtools/api": "http://localhost:3000",
     },
   },
 });

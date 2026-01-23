@@ -29,10 +29,10 @@
     "vitest": "^4.0.17"
   },
   "scripts": {
-    "dev": "alepha dev",
+    "dev": "LOG_LEVEL=trace alepha dev",
     "copy": "alepha gen:packages && alepha gen:tree",
     "copy&dev": "yarn copy && alepha dev",
-    "start": "node dist",
+    "start": "SERVER_PORT=3000 node dist",
     "lint": "alepha lint",
     "typecheck": "alepha typecheck",
     "build": "alepha build",

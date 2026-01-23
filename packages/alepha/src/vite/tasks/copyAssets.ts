@@ -1,9 +1,10 @@
 import { cp, mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
-import { importAlepha } from "../helpers/importAlepha.ts";
+import type { Alepha } from "alepha";
 
 export interface CopyAssetsOptions {
+  alepha: Alepha;
   /**
    * Entry point for the built Alepha application.
    */
@@ -17,7 +18,7 @@ export interface CopyAssetsOptions {
   /**
    * @default process.cwd()
    */
-  root?: string;
+  root: string;
 
   /**
    * Add Runner for logging (@see Alepha CLI)
@@ -38,8 +39,8 @@ export interface CopyAssetsOptions {
  * Used by modules like AlephaServerSwagger to distribute UI files.
  */
 export async function copyAssets(opts: CopyAssetsOptions): Promise<void> {
-  const root = opts.root ?? process.cwd();
-  const alepha = await importAlepha(opts.entry);
+  const root = opts.root;
+  const alepha = opts.alepha;
   const assets = alepha.store.get("alepha.build.assets");
 
   if (!assets || assets.length === 0) {

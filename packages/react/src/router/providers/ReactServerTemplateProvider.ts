@@ -1,6 +1,11 @@
+import { AlephaContext } from "@alepha/react";
 import type { SimpleHead } from "@alepha/react/head";
 import { $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
+import { createElement, type ReactNode } from "react";
+import { renderToString } from "react-dom/server";
+import ErrorViewer from "../components/ErrorViewer.tsx";
+import { Redirection } from "../errors/Redirection.ts";
 import type { ReactRouterState } from "./ReactPageProvider.ts";
 
 /**
@@ -92,8 +97,6 @@ export class ReactServerTemplateProvider {
    *
    * This should be called once during server startup/configuration.
    * The parsed slots are cached and reused for all requests.
-   *
-   * @param template - The HTML template string (typically index.html)
    */
   public parseTemplate(template: string): TemplateSlots {
     this.log.debug("Parsing template into slots");
@@ -329,10 +332,14 @@ export class ReactServerTemplateProvider {
   protected renderLinkTag(link: {
     rel: string;
     href: string;
+    type?: string;
     as?: string;
     crossorigin?: string;
   }): string {
     let tag = `<link rel="${this.escapeHtml(link.rel)}" href="${this.escapeHtml(link.href)}"`;
+    if (link.type) {
+      tag += ` type="${this.escapeHtml(link.type)}"`;
+    }
     if (link.as) {
       tag += ` as="${this.escapeHtml(link.as)}"`;
     }
@@ -346,14 +353,30 @@ export class ReactServerTemplateProvider {
   /**
    * Render a script tag.
    */
-  protected renderScriptTag(script: Record<string, string | boolean>): string {
-    const attrs = Object.entries(script)
-      .filter(([, value]) => value !== false)
+  protected renderScriptTag(
+    script:
+      | string
+      | (Record<string, string | boolean | undefined> & { content?: string }),
+  ): string {
+    // Handle plain string as inline script
+    if (typeof script === "string") {
+      return `<script>${script}</script>\n`;
+    }
+
+    const { content, ...rest } = script;
+    const attrs = Object.entries(rest)
+      .filter(([, value]) => value !== false && value !== undefined)
       .map(([key, value]) => {
         if (value === true) return key;
         return `${key}="${this.escapeHtml(String(value))}"`;
       })
       .join(" ");
+
+    if (content) {
+      return attrs
+        ? `<script ${attrs}>${content}</script>\n`
+        : `<script>${content}</script>\n`;
+    }
     return `<script ${attrs}></script>\n`;
   }
 
@@ -437,6 +460,9 @@ export class ReactServerTemplateProvider {
 
   /**
    * Stream the body content: body tag, root div, React content, hydration, and closing tags.
+   *
+   * If an error occurs during React streaming, it injects error HTML instead of aborting,
+   * ensuring users see an error message rather than a white screen.
    */
   protected async streamBodyContent(
     controller: ReadableStreamDefaultController<Uint8Array>,
@@ -463,16 +489,32 @@ export class ReactServerTemplateProvider {
     // <div id="root">
     controller.enqueue(slots.rootOpen);
 
-    // Stream React content
+    // Stream React content - catch errors from the React stream
     const reader = reactStream.getReader();
+    let streamError: unknown = null;
+
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         controller.enqueue(value);
       }
+    } catch (error) {
+      // React stream errored - save for error HTML injection
+      streamError = error;
+      this.log.error("Error during React stream reading", error);
     } finally {
       reader.releaseLock();
+    }
+
+    // If React stream errored, inject error HTML inside the root div
+    if (streamError) {
+      this.injectErrorHtml(controller, encoder, slots, streamError, state, {
+        headClosed: true,
+        bodyStarted: true,
+      });
+      // injectErrorHtml already closes the document, so return early
+      return;
     }
 
     // </div>
@@ -649,6 +691,11 @@ export class ReactServerTemplateProvider {
     const slots = this.getSlots();
     const encoder = this.encoder;
 
+    // Track streaming state for error recovery
+    let headClosed = false;
+    let bodyStarted = false;
+    let routerState: ReactRouterState | undefined;
+
     return new ReadableStream<Uint8Array>({
       start: async (controller) => {
         try {
@@ -695,6 +742,7 @@ export class ReactServerTemplateProvider {
           }
 
           const { state, reactStream } = result;
+          routerState = state;
 
           // === LATE PHASE (after async work) ===
 
@@ -703,8 +751,10 @@ export class ReactServerTemplateProvider {
             encoder.encode(this.renderHeadContent(state.head)),
           );
           controller.enqueue(slots.headClose);
+          headClosed = true;
 
           // Body content (body, root, React, hydration, closing tags)
+          bodyStarted = true;
           await this.streamBodyContent(
             controller,
             reactStream,
@@ -715,10 +765,162 @@ export class ReactServerTemplateProvider {
           controller.close();
         } catch (error) {
           onError?.(error);
-          controller.error(error);
+
+          // Instead of aborting the stream, inject error HTML so user sees
+          // an error message instead of white screen.
+          // React 19 streaming SSR doesn't reliably trigger ErrorBoundary,
+          // so we must handle it at the stream level.
+          try {
+            this.injectErrorHtml(
+              controller,
+              encoder,
+              slots,
+              error,
+              routerState,
+              { headClosed, bodyStarted },
+            );
+            controller.close();
+          } catch {
+            // If error injection fails, abort as last resort
+            controller.error(error);
+          }
         }
       },
     });
+  }
+
+  /**
+   * Inject error HTML into the stream when an error occurs during streaming.
+   *
+   * Uses the router state's onError handler to render the error component,
+   * falling back to ErrorViewer if no custom handler is defined.
+   * Renders using renderToString to produce static HTML.
+   *
+   * Since we may have already sent partial HTML (DOCTYPE, <html>, <head>),
+   * we need to complete the document with an error message instead of aborting.
+   *
+   * Handles different states:
+   * - headClosed=false, bodyStarted=false: Need to add head content, close head, open body, add error, close all
+   * - headClosed=true, bodyStarted=false: Need to open body, add error, close all
+   * - headClosed=true, bodyStarted=true: Already inside root div, add error, close all
+   */
+  protected injectErrorHtml(
+    controller: ReadableStreamDefaultController<Uint8Array>,
+    encoder: TextEncoder,
+    slots: TemplateSlots,
+    error: unknown,
+    routerState: ReactRouterState | undefined,
+    streamState: { headClosed: boolean; bodyStarted: boolean },
+  ): void {
+    // If head not closed, add remaining head content first
+    if (!streamState.headClosed) {
+      // Include original head content (CSS, scripts) and any head from router state
+      const headContent = this.renderHeadContent(routerState?.head);
+      if (headContent) {
+        controller.enqueue(encoder.encode(headContent));
+      }
+      controller.enqueue(slots.headClose);
+    }
+
+    // If body hasn't started, we need to open body and root div
+    if (!streamState.bodyStarted) {
+      // Open body with any body attributes from state
+      controller.enqueue(slots.bodyOpen);
+      controller.enqueue(
+        encoder.encode(
+          this.renderMergedBodyAttrs(routerState?.head?.bodyAttributes),
+        ),
+      );
+      controller.enqueue(slots.bodyClose);
+
+      // Content before root (if any)
+      if (slots.beforeRoot) {
+        controller.enqueue(encoder.encode(slots.beforeRoot));
+      }
+
+      controller.enqueue(slots.rootOpen);
+    }
+
+    // Try to render error using router state's error handler
+    const errorHtml = this.renderErrorToString(
+      error instanceof Error ? error : new Error(String(error)),
+      routerState,
+    );
+
+    controller.enqueue(encoder.encode(errorHtml));
+
+    // Close root div
+    controller.enqueue(slots.rootClose);
+
+    // Content after root (if any)
+    if (!streamState.bodyStarted && slots.afterRoot) {
+      controller.enqueue(encoder.encode(slots.afterRoot));
+    }
+
+    // Close document
+    controller.enqueue(slots.scriptClose);
+  }
+
+  /**
+   * Render an error to HTML string using the router's error handler.
+   *
+   * Falls back to ErrorViewer if:
+   * - No router state is available
+   * - The error handler returns null/undefined
+   * - The error handler itself throws
+   */
+  protected renderErrorToString(
+    error: Error,
+    routerState: ReactRouterState | undefined,
+  ): string {
+    // Log the error with stack trace for debugging
+    this.log.error("SSR rendering error", error);
+
+    let errorElement: ReactNode;
+
+    // Try to use the router state's error handler
+    if (routerState?.onError) {
+      try {
+        const result = routerState.onError(error, routerState);
+
+        // If handler returns a Redirection, we can't handle it (headers already sent)
+        // Log and fall through to default error viewer
+        if (result instanceof Redirection) {
+          this.log.warn(
+            "Error handler returned Redirection but headers already sent",
+            { redirect: result.redirect },
+          );
+        } else if (result !== null && result !== undefined) {
+          errorElement = result;
+        }
+      } catch (handlerError) {
+        this.log.error("Error handler threw an exception", handlerError);
+        // Fall through to default error viewer
+      }
+    }
+
+    // Fall back to ErrorViewer if no element was produced
+    if (!errorElement) {
+      errorElement = createElement(ErrorViewer, {
+        error,
+        alepha: this.alepha,
+      });
+    }
+
+    // Wrap in AlephaContext.Provider so any components that need it can access it
+    const wrappedElement = createElement(
+      AlephaContext.Provider,
+      { value: this.alepha },
+      errorElement,
+    );
+
+    try {
+      return renderToString(wrappedElement);
+    } catch (renderError) {
+      // If renderToString fails, return minimal fallback HTML
+      this.log.error("Failed to render error component", renderError);
+      return error.message;
+    }
   }
 }
 

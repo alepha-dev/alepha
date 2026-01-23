@@ -1,9 +1,10 @@
 import { $inject, type Alepha, AlephaError } from "alepha";
-import type { AppEntry } from "alepha/cli";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { importVite, importViteReact, viteAlephaSsrPreload } from "alepha/vite";
 import type { InlineConfig, Plugin, ViteDevServer } from "vite";
+import type { AppEntry } from "./AppEntryProvider.ts";
+import { ViteTemplateProvider } from "./ViteTemplateProvider.ts";
 
 export interface ViteDevServerOptions {
   /**
@@ -48,6 +49,7 @@ export interface ViteDevServerOptions {
 export class ViteDevServerProvider {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly templateProvider = $inject(ViteTemplateProvider);
   protected server!: ViteDevServer;
   protected options!: ViteDevServerOptions;
   protected alepha: Alepha | null = null;
@@ -179,45 +181,13 @@ export class ViteDevServerProvider {
     process.env.SERVER_HOST ??= this.options.host?.toString() ?? "localhost";
     process.env.SERVER_PORT ??= String(
       this.options.port ??
-        (process.env.SERVER_PORT ? Number(process.env.SERVER_PORT) : 5173),
+        (process.env.SERVER_PORT ? Number(process.env.SERVER_PORT) : 3000),
     );
 
     // Merge into process.env (only set if not already defined)
     for (const [key, value] of Object.entries(env)) {
       process.env[key] ??= value;
     }
-  }
-
-  protected generateIndexHtml(): string {
-    const style = this.options.entry.style;
-    const browser = this.options.entry.browser ?? this.options.entry.server;
-    return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>App</title>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
-</head>
-<body>
-<div id="root"></div>
-<script type="module" src="/${browser}"></script>
-</body>
-</html>
-`;
-  }
-
-  /**
-   * Load and transform index.html template via Vite.
-   */
-  protected async loadTemplate(): Promise<string> {
-    const indexPath = this.fs.join(this.options.root, "index.html");
-    const template = (await this.fs.exists(indexPath))
-      ? (await this.fs.readFile(indexPath)).toString("utf-8")
-      : this.generateIndexHtml();
-
-    return this.server.transformIndexHtml("/", template);
   }
 
   /**
@@ -251,18 +221,18 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
       );
     }
 
-    await this.setupAlepha(alepha);
-
     this.alepha = alepha;
+    await this.setupAlepha();
+
     this.hasError = false;
     process.env = envSnapshot;
 
     return alepha;
   }
 
-  protected hasReact(alepha: Alepha): boolean {
+  public hasReact(): boolean {
     try {
-      alepha.inject("ReactServerProvider");
+      this.alepha?.inject("ReactServerProvider");
       return true;
     } catch {
       return false;
@@ -272,16 +242,19 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
   /**
    * Setup Alepha instance with Vite middleware and template.
    */
-  protected async setupAlepha(alepha: Alepha): Promise<void> {
-    if (!this.hasReact(alepha)) {
+  protected async setupAlepha(): Promise<void> {
+    if (!this.alepha || !this.hasReact()) {
       return;
     }
 
-    const template = await this.loadTemplate();
+    const template = await this.server.transformIndexHtml(
+      "/",
+      this.templateProvider.generateIndexHtml(this.options.entry),
+    );
 
-    alepha.store.set("alepha.react.server.template", template);
+    this.alepha.store.set("alepha.react.server.template", template);
 
-    alepha.events.on("server:onRequest", {
+    this.alepha.events.on("server:onRequest", {
       priority: "first",
       callback: async ({ request }) => {
         const node = request.raw.node;

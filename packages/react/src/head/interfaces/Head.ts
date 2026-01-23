@@ -74,9 +74,21 @@ export interface SimpleHead {
   /** Meta tags - supports both name and property attributes */
   meta?: Array<HeadMeta>;
   /** Link tags (e.g., stylesheets, preload, canonical) */
-  link?: Array<{ rel: string; href: string }>;
-  /** Script tags - any valid script attributes (src, type, async, defer, etc.) */
-  script?: Array<Record<string, string | boolean>>;
+  link?: Array<{
+    rel: string;
+    href: string;
+    type?: string;
+    as?: string;
+    crossorigin?: string;
+  }>;
+  /** Script tags - string for inline code, or object with attributes */
+  script?: Array<
+    | string
+    | (Record<string, string | boolean | undefined> & {
+        /** Inline JavaScript code */
+        content?: string;
+      })
+  >;
 }
 
 export interface HeadMeta {

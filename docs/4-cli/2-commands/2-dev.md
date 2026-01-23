@@ -14,14 +14,13 @@ That's it. Your app is running. Make changes and watch them appear instantly.
 
 The `dev` command is smart about what kind of project you're running:
 
-### Full-Stack App (with index.html)
+### Full-Stack App (with @alepha/react)
 
-If you have an `index.html` in your project root, Alepha knows you're building a web application:
+If you have `@alepha/react` installed, Alepha knows you're building a web application:
 
 ```bash
 alepha dev
-# → Starts Vite dev server with HMR
-# → Opens http://localhost:5173
+# → http://localhost:3000
 ```
 
 You get:
@@ -30,9 +29,9 @@ You get:
 - **SSR in development** — Same rendering behavior as production
 - **Source maps** — Debug your actual TypeScript code
 
-### Backend Only (no index.html)
+### Backend Only
 
-No `index.html`? Alepha assumes you're building a server, CLI tool, or worker:
+No React? Alepha assumes you're building a server, CLI tool, or worker:
 
 ```bash
 alepha dev

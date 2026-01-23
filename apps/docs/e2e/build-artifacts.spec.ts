@@ -151,7 +151,7 @@ test.describe("Build Artifacts", () => {
 
       // Should have entry.<hash>.js script tag
       const entryScriptMatch = content.match(
-        /<script[^>]*src="[^"]*\/entry\.[a-zA-Z0-9-]+\.js"[^>]*>/,
+        /<script[^>]*src="[^"]*\/entry\.[a-zA-Z0-9-_]+\.js"[^>]*>/,
       );
       expect(entryScriptMatch).not.toBeNull();
     });
@@ -162,7 +162,7 @@ test.describe("Build Artifacts", () => {
 
       // Should have asset.<hash>.css link tag
       const cssLinkMatch = content.match(
-        /<link[^>]*href="[^"]*\/asset\.[a-zA-Z0-9-]+\.css"[^>]*>/,
+        /<link[^>]*href="[^"]*\/asset\.[a-zA-Z0-9-_]+\.css"[^>]*>/,
       );
       expect(cssLinkMatch).not.toBeNull();
     });
@@ -173,13 +173,13 @@ test.describe("Build Artifacts", () => {
 
       // Should have entry.<hash>.js script tag
       const entryScriptMatch = content.match(
-        /<script[^>]*src="[^"]*\/entry\.[a-zA-Z0-9-]+\.js"[^>]*>/,
+        /<script[^>]*src="[^"]*\/entry\.[a-zA-Z0-9-_]+\.js"[^>]*>/,
       );
       expect(entryScriptMatch).not.toBeNull();
 
       // Should have asset.<hash>.css link tag
       const cssLinkMatch = content.match(
-        /<link[^>]*href="[^"]*\/asset\.[a-zA-Z0-9-]+\.css"[^>]*>/,
+        /<link[^>]*href="[^"]*\/asset\.[a-zA-Z0-9-_]+\.css"[^>]*>/,
       );
       expect(cssLinkMatch).not.toBeNull();
     });

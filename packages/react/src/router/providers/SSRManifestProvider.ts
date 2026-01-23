@@ -15,7 +15,6 @@ import type { PageRoute } from "./ReactPageProvider.ts";
  *
  * Manifest files are generated during `vite build`:
  * - manifest.json (client manifest)
- * - ssr-manifest.json (SSR manifest)
  * - preload-manifest.json (from viteAlephaSsrPreload plugin)
  */
 export class SSRManifestProvider {
@@ -41,13 +40,6 @@ export class SSRManifestProvider {
   }
 
   /**
-   * Get the SSR manifest.
-   */
-  protected get ssrManifest(): SSRManifest | undefined {
-    return this.manifest.ssr;
-  }
-
-  /**
    * Get the client manifest.
    */
   protected get clientManifest(): ClientManifest | undefined {
@@ -70,16 +62,14 @@ export class SSRManifestProvider {
   /**
    * Get all chunks required for a source file, including transitive dependencies.
    *
-   * Uses the client manifest to recursively resolve all imported chunks,
-   * not just the direct chunks from the SSR manifest.
+   * Uses the client manifest to recursively resolve all imported chunks.
    *
    * @param sourcePath - Source file path (e.g., "src/pages/Home.tsx")
    * @returns Array of chunk URLs to preload, or empty array if not found
    */
   public getChunks(sourcePath: string): string[] {
     if (!this.clientManifest) {
-      // Fallback to SSR manifest if client manifest not available
-      return this.getChunksFromSSRManifest(sourcePath);
+      return [];
     }
 
     // Find entry in client manifest
@@ -164,31 +154,6 @@ export class SSRManifestProvider {
   }
 
   /**
-   * Fallback to SSR manifest for chunk lookup.
-   */
-  protected getChunksFromSSRManifest(sourcePath: string): string[] {
-    if (!this.ssrManifest) {
-      return [];
-    }
-
-    // Try exact match
-    if (this.ssrManifest[sourcePath]) {
-      return this.ssrManifest[sourcePath];
-    }
-
-    // Try with different extensions
-    const basePath = sourcePath.replace(/\.[^.]+$/, "");
-    for (const ext of [".tsx", ".ts", ".jsx", ".js"]) {
-      const pathWithExt = basePath + ext;
-      if (this.ssrManifest[pathWithExt]) {
-        return this.ssrManifest[pathWithExt];
-      }
-    }
-
-    return [];
-  }
-
-  /**
    * Collect modulepreload links for a route and its parent chain.
    */
   public collectPreloadLinks(
@@ -246,10 +211,10 @@ export class SSRManifestProvider {
   }
 
   /**
-   * Check if manifests are loaded and available.
+   * Check if manifest is loaded and available.
    */
   public isAvailable(): boolean {
-    return this.clientManifest !== undefined || this.ssrManifest !== undefined;
+    return this.clientManifest !== undefined;
   }
 
   /**
@@ -338,25 +303,15 @@ export interface EntryAssets {
 }
 
 /**
- * SSR Manifest structure from Vite.
- * Maps source file paths to their required chunks/assets.
- */
-export type SSRManifest = Record<string, string[]>;
-
-/**
  * Client manifest structure from Vite.
- * Maps source files to their output information.
+ * Only includes fields actually used for preloading.
  */
 export interface ClientManifest {
   [key: string]: {
     file: string;
-    src?: string;
     isEntry?: boolean;
-    isDynamicEntry?: boolean;
     imports?: string[];
-    dynamicImports?: string[];
     css?: string[];
-    assets?: string[];
   };
 }
 

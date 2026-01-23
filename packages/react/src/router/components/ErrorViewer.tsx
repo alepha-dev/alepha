@@ -1,5 +1,5 @@
 import type { Alepha } from "alepha";
-import { type CSSProperties, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 interface ErrorViewerProps {
   error: Error;
@@ -12,34 +12,169 @@ interface StackFrame {
   line: string;
   col: string;
   raw: string;
+  isNodeModules: boolean;
 }
 
+const isBrowser = typeof window !== "undefined";
+
 /**
- * Error viewer component that displays error details in development mode
+ * Error viewer component - Terminal/brutalist aesthetic
  */
 const ErrorViewer = ({ error, alepha }: ErrorViewerProps) => {
   const [expanded, setExpanded] = useState(false);
+  const [showNodeModules, setShowNodeModules] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const isProduction = alepha.isProduction();
+
+  // Animate in on mount
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(true), 10);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!isBrowser) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "c" && !e.metaKey && !e.ctrlKey) {
+        copyToClipboard(error.stack || error.message);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [error]);
 
   if (isProduction) {
     return <ErrorViewerProduction />;
   }
 
   const frames = parseStackTrace(error.stack);
-  const visibleFrames = expanded ? frames : frames.slice(0, 6);
-  const hiddenCount = frames.length - 6;
+  const appFrames = frames.filter((f) => !f.isNodeModules);
+  const nodeModulesFrames = frames.filter((f) => f.isNodeModules);
+  const visibleAppFrames = expanded ? appFrames : appFrames.slice(0, 5);
+  const hiddenAppCount = appFrames.length - 5;
+  const timestamp = new Date().toLocaleTimeString("en-US", {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
   return (
-    <div style={styles.overlay}>
-      <div style={styles.container}>
+    <div
+      ref={containerRef}
+      style={{
+        ...styles.overlay,
+        opacity: visible ? 1 : 0,
+      }}
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="error-viewer-title"
+    >
+      {/* Scan lines effect */}
+      <div style={styles.scanlines} aria-hidden="true" />
+
+      <div
+        style={{
+          ...styles.container,
+          transform: visible ? "translateY(0)" : "translateY(-20px)",
+          opacity: visible ? 1 : 0,
+        }}
+      >
+        {/* Terminal header bar */}
+        <div style={styles.terminalBar}>
+          <div style={styles.terminalDots}>
+            <span style={{ ...styles.dot, backgroundColor: "#ff5f57" }} />
+            <span style={{ ...styles.dot, backgroundColor: "#febc2e" }} />
+            <span style={{ ...styles.dot, backgroundColor: "#28c840" }} />
+          </div>
+          <div style={styles.terminalTitle}>
+            <span style={styles.terminalTitleText}>error — {timestamp}</span>
+          </div>
+          <div style={styles.terminalActions}>
+            <kbd style={styles.kbd}>C</kbd>
+            <span style={styles.kbdLabel}>copy</span>
+          </div>
+        </div>
+
+        {/* Error header */}
         <Header error={error} />
-        <StackTraceSection
-          frames={frames}
-          visibleFrames={visibleFrames}
-          expanded={expanded}
-          hiddenCount={hiddenCount}
-          onToggle={() => setExpanded(!expanded)}
-        />
+
+        {/* Stack trace */}
+        <div style={styles.stackSection}>
+          <div style={styles.stackHeader}>
+            <span style={styles.stackHeaderText}>STACK TRACE</span>
+            <span style={styles.stackCount}>
+              {appFrames.length} frames
+              {nodeModulesFrames.length > 0 &&
+                ` · ${nodeModulesFrames.length} in node_modules`}
+            </span>
+          </div>
+
+          <div style={styles.frameList}>
+            {visibleAppFrames.map((frame, i) => (
+              <StackFrameRow
+                key={`${frame.raw}-${i}`}
+                frame={frame}
+                index={i}
+              />
+            ))}
+
+            {hiddenAppCount > 0 && !expanded && (
+              <ExpandButton
+                onClick={() => setExpanded(true)}
+                label={`Show ${hiddenAppCount} more frames`}
+              />
+            )}
+
+            {expanded && hiddenAppCount > 0 && (
+              <ExpandButton
+                onClick={() => setExpanded(false)}
+                label="Collapse"
+              />
+            )}
+
+            {nodeModulesFrames.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowNodeModules(!showNodeModules)}
+                  style={styles.nodeModulesToggle}
+                >
+                  <span style={styles.nodeModulesIcon}>
+                    {showNodeModules ? "▼" : "▶"}
+                  </span>
+                  <span style={styles.nodeModulesLabel}>node_modules</span>
+                  <span style={styles.nodeModulesCount}>
+                    {nodeModulesFrames.length}
+                  </span>
+                </button>
+
+                {showNodeModules && (
+                  <div style={styles.nodeModulesFrames}>
+                    {nodeModulesFrames.map((frame, i) => (
+                      <StackFrameRow
+                        key={`nm-${frame.raw}-${i}`}
+                        frame={frame}
+                        index={appFrames.length + i}
+                        dimmed
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={styles.footer}>
+          <span style={styles.footerText}>
+            Press <kbd style={styles.kbdInline}>C</kbd> to copy stack trace
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -49,9 +184,6 @@ export default ErrorViewer;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-/**
- * Parse stack trace string into structured frames
- */
 function parseStackTrace(stack?: string): StackFrame[] {
   if (!stack) return [];
 
@@ -69,10 +201,9 @@ function parseStackTrace(stack?: string): StackFrame[] {
   return frames;
 }
 
-/**
- * Parse a single stack trace line into a structured frame
- */
 function parseStackLine(line: string): StackFrame | null {
+  const isNodeModules = line.includes("node_modules") || line.includes("node:");
+
   const withFn = line.match(/^at\s+(.+?)\s+\((.+):(\d+):(\d+)\)$/);
   if (withFn) {
     return {
@@ -81,6 +212,7 @@ function parseStackLine(line: string): StackFrame | null {
       line: withFn[3],
       col: withFn[4],
       raw: line,
+      isNodeModules,
     };
   }
 
@@ -92,6 +224,7 @@ function parseStackLine(line: string): StackFrame | null {
       line: withoutFn[2],
       col: withoutFn[3],
       raw: line,
+      isNodeModules,
     };
   }
 
@@ -101,79 +234,64 @@ function parseStackLine(line: string): StackFrame | null {
     line: "",
     col: "",
     raw: line,
+    isNodeModules,
   };
 }
 
-/**
- * Copy text to clipboard
- */
-function copyToClipboard(text: string): void {
-  navigator.clipboard.writeText(text).catch((err) => {
-    console.error("Clipboard error:", err);
-  });
+function copyToClipboard(text: string): Promise<boolean> {
+  if (!isBrowser || !navigator.clipboard) {
+    return Promise.resolve(false);
+  }
+  return navigator.clipboard
+    .writeText(text)
+    .then(() => true)
+    .catch(() => false);
 }
 
 /**
- * Header section with error type and message
+ * Header with error badge and message
  */
 function Header({ error }: { error: Error }) {
   const [copied, setCopied] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
-  const handleCopy = () => {
-    copyToClipboard(error.stack || error.message);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  const handleCopy = async () => {
+    const success = await copyToClipboard(error.stack || error.message);
+    if (success) setCopied(true);
   };
 
   return (
     <div style={styles.header}>
-      <div style={styles.headerTop}>
-        <div style={styles.badge}>{error.name}</div>
-        <button type="button" onClick={handleCopy} style={styles.copyBtn}>
-          {copied ? "Copied" : "Copy Stack"}
+      <div style={styles.headerRow}>
+        {/* Glowing error indicator */}
+        <div style={styles.errorIndicator}>
+          <div style={styles.errorGlow} />
+          <div style={styles.errorBadge}>{error.name}</div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleCopy}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          style={{
+            ...styles.copyBtn,
+            ...(hovered ? styles.copyBtnHover : {}),
+          }}
+        >
+          {copied ? "✓ Copied" : "Copy"}
         </button>
       </div>
-      <h1 style={styles.message}>{error.message}</h1>
-    </div>
-  );
-}
 
-/**
- * Stack trace section with expandable frames
- */
-function StackTraceSection({
-  frames,
-  visibleFrames,
-  expanded,
-  hiddenCount,
-  onToggle,
-}: {
-  frames: StackFrame[];
-  visibleFrames: StackFrame[];
-  expanded: boolean;
-  hiddenCount: number;
-  onToggle: () => void;
-}) {
-  if (frames.length === 0) return null;
-
-  return (
-    <div style={styles.stackSection}>
-      <div style={styles.stackHeader}>Call Stack</div>
-      <div style={styles.frameList}>
-        {visibleFrames.map((frame, i) => (
-          <StackFrameRow key={i} frame={frame} index={i} />
-        ))}
-        {!expanded && hiddenCount > 0 && (
-          <button type="button" onClick={onToggle} style={styles.expandBtn}>
-            Show {hiddenCount} more frames
-          </button>
-        )}
-        {expanded && hiddenCount > 0 && (
-          <button type="button" onClick={onToggle} style={styles.expandBtn}>
-            Show less
-          </button>
-        )}
-      </div>
+      <h1 id="error-viewer-title" style={styles.message}>
+        {error.message}
+      </h1>
     </div>
   );
 }
@@ -181,235 +299,574 @@ function StackTraceSection({
 /**
  * Single stack frame row
  */
-function StackFrameRow({ frame, index }: { frame: StackFrame; index: number }) {
-  const isFirst = index === 0;
+function StackFrameRow({
+  frame,
+  index,
+  dimmed = false,
+}: {
+  frame: StackFrame;
+  index: number;
+  dimmed?: boolean;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const isFirst = index === 0 && !dimmed;
   const fileName = frame.file.split("/").pop() || frame.file;
   const dirPath = frame.file.substring(0, frame.file.length - fileName.length);
 
-  return (
-    <div
-      style={{
-        ...styles.frame,
-        ...(isFirst ? styles.frameFirst : {}),
-      }}
-    >
-      <div style={styles.frameIndex}>{index + 1}</div>
+  // Build vscode:// link for clickable paths
+  const vsCodeLink =
+    frame.file && frame.line
+      ? `vscode://file${frame.file}:${frame.line}:${frame.col || 1}`
+      : null;
+
+  const content = (
+    <>
+      <div
+        style={{
+          ...styles.frameIndex,
+          color: isFirst ? "#ff6b6b" : dimmed ? "#555" : "#666",
+        }}
+      >
+        {String(index + 1).padStart(2, "0")}
+      </div>
       <div style={styles.frameContent}>
-        {frame.fn && <div style={styles.fnName}>{frame.fn}</div>}
+        {frame.fn && (
+          <div
+            style={{
+              ...styles.fnName,
+              color: dimmed ? "#888" : "#f0f0f0",
+            }}
+          >
+            {formatFunctionName(frame.fn)}
+          </div>
+        )}
         <div style={styles.filePath}>
-          <span style={styles.dirPath}>{dirPath}</span>
-          <span style={styles.fileName}>{fileName}</span>
+          <span style={{ ...styles.dirPath, opacity: dimmed ? 0.6 : 0.8 }}>
+            {dirPath}
+          </span>
+          <span
+            style={{
+              ...styles.fileName,
+              color: dimmed ? "#5a9aba" : "#7cc4eb",
+            }}
+          >
+            {fileName}
+          </span>
           {frame.line && (
-            <span style={styles.lineCol}>
-              :{frame.line}:{frame.col}
+            <span
+              style={{
+                ...styles.lineCol,
+                color: dimmed ? "#9a8a40" : "#e5b83a",
+              }}
+            >
+              :{frame.line}
+              {frame.col && `:${frame.col}`}
             </span>
           )}
         </div>
       </div>
-    </div>
+    </>
+  );
+
+  const rowStyles: CSSProperties = {
+    ...styles.frame,
+    ...(isFirst ? styles.frameFirst : {}),
+    backgroundColor: hovered ? "rgba(255,255,255,0.03)" : "transparent",
+  };
+
+  if (vsCodeLink && isBrowser) {
+    return (
+      <a
+        href={vsCodeLink}
+        style={{ ...rowStyles, textDecoration: "none" }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return <div style={rowStyles}>{content}</div>;
+}
+
+/**
+ * Format function name with syntax highlighting
+ */
+function formatFunctionName(fn: string): React.ReactNode {
+  // Highlight async/Object/Class prefixes
+  const asyncMatch = fn.match(/^(async\s+)?(.+)$/);
+  if (asyncMatch?.[1]) {
+    return (
+      <>
+        <span style={{ color: "#c678dd" }}>async </span>
+        <span>{asyncMatch[2]}</span>
+      </>
+    );
+  }
+
+  // Highlight method calls like Object.method
+  const methodMatch = fn.match(/^(.+)\.([^.]+)$/);
+  if (methodMatch) {
+    return (
+      <>
+        <span style={{ color: "#e5c07b" }}>{methodMatch[1]}</span>
+        <span style={{ color: "#666" }}>.</span>
+        <span>{methodMatch[2]}</span>
+      </>
+    );
+  }
+
+  return fn;
+}
+
+/**
+ * Expand/collapse button
+ */
+function ExpandButton({
+  onClick,
+  label,
+}: {
+  onClick: () => void;
+  label: string;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        ...styles.expandBtn,
+        backgroundColor: hovered ? "rgba(255,255,255,0.05)" : "transparent",
+        color: hovered ? "#aaa" : "#777",
+      }}
+    >
+      {label}
+    </button>
   );
 }
 
 /**
- * Production error view - minimal information
+ * Production error view - minimal, user-friendly
  */
 function ErrorViewerProduction() {
+  const [hovered, setHovered] = useState(false);
+
+  const handleReload = () => {
+    if (isBrowser) window.location.reload();
+  };
+
   return (
-    <div style={styles.overlay}>
+    <div style={styles.overlay} role="alertdialog" aria-modal="true">
       <div style={styles.prodContainer}>
-        <div style={styles.prodIcon}>!</div>
-        <h1 style={styles.prodTitle}>Application Error</h1>
+        <div style={styles.prodIcon}>
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </div>
+        <h1 style={styles.prodTitle}>Something went wrong</h1>
         <p style={styles.prodMessage}>
-          An unexpected error occurred. Please try again later.
+          We encountered an unexpected error. Please try again.
         </p>
         <button
           type="button"
-          onClick={() => window.location.reload()}
-          style={styles.prodButton}
+          onClick={handleReload}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          style={{
+            ...styles.prodButton,
+            backgroundColor: hovered ? "#333" : "#222",
+            borderColor: hovered ? "#555" : "#444",
+          }}
         >
-          Reload Page
+          Reload page
         </button>
       </div>
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------------------------------------------------
+
+const MONO_FONT =
+  'ui-monospace, "JetBrains Mono", "Fira Code", SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+
 const styles: Record<string, CSSProperties> = {
   overlay: {
     position: "fixed",
     inset: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    backgroundColor: "rgba(0, 0, 0, 0.92)",
     display: "flex",
     alignItems: "flex-start",
     justifyContent: "center",
     padding: "40px 20px",
     overflow: "auto",
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    fontFamily: MONO_FONT,
+    fontSize: "13px",
     zIndex: 99999,
+    transition: "opacity 0.2s ease-out",
   },
+
+  scanlines: {
+    position: "fixed",
+    inset: 0,
+    background:
+      "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)",
+    pointerEvents: "none",
+    zIndex: 100000,
+  },
+
   container: {
     width: "100%",
-    maxWidth: "960px",
-    backgroundColor: "#1a1a1a",
-    borderRadius: "12px",
+    maxWidth: "900px",
+    backgroundColor: "#0d0d0d",
+    borderRadius: "8px",
     overflow: "hidden",
-    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+    boxShadow: "0 0 0 1px #333, 0 25px 80px -12px rgba(0, 0, 0, 0.8)",
+    transition: "transform 0.3s ease-out, opacity 0.3s ease-out",
   },
-  header: {
-    padding: "24px 28px",
+
+  // Terminal bar
+  terminalBar: {
+    display: "flex",
+    alignItems: "center",
+    padding: "12px 16px",
+    backgroundColor: "#1a1a1a",
     borderBottom: "1px solid #333",
-    background: "linear-gradient(to bottom, #1f1f1f, #1a1a1a)",
   },
-  headerTop: {
+
+  terminalDots: {
+    display: "flex",
+    gap: "8px",
+  },
+
+  dot: {
+    width: "12px",
+    height: "12px",
+    borderRadius: "50%",
+  },
+
+  terminalTitle: {
+    flex: 1,
+    textAlign: "center",
+  },
+
+  terminalTitleText: {
+    color: "#777",
+    fontSize: "12px",
+    letterSpacing: "0.5px",
+  },
+
+  terminalActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+  },
+
+  kbd: {
+    display: "inline-block",
+    padding: "2px 6px",
+    backgroundColor: "#2a2a2a",
+    borderRadius: "4px",
+    fontSize: "11px",
+    color: "#aaa",
+    border: "1px solid #444",
+  },
+
+  kbdInline: {
+    display: "inline-block",
+    padding: "1px 5px",
+    backgroundColor: "#222",
+    borderRadius: "3px",
+    fontSize: "11px",
+    color: "#888",
+    border: "1px solid #444",
+    marginLeft: "4px",
+    marginRight: "4px",
+  },
+
+  kbdLabel: {
+    color: "#777",
+    fontSize: "11px",
+  },
+
+  // Header
+  header: {
+    padding: "24px",
+    borderBottom: "1px solid #333",
+  },
+
+  headerRow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: "16px",
   },
-  badge: {
+
+  errorIndicator: {
+    position: "relative",
+    display: "inline-flex",
+  },
+
+  errorGlow: {
+    position: "absolute",
+    inset: "-4px",
+    background:
+      "radial-gradient(ellipse at center, rgba(255,80,80,0.3) 0%, transparent 70%)",
+    borderRadius: "12px",
+    filter: "blur(8px)",
+  },
+
+  errorBadge: {
+    position: "relative",
     display: "inline-block",
-    padding: "6px 12px",
-    backgroundColor: "#dc2626",
-    color: "#fff",
+    padding: "6px 14px",
+    backgroundColor: "#3d1a1a",
+    color: "#ff7b7b",
     fontSize: "12px",
     fontWeight: 600,
     borderRadius: "6px",
-    letterSpacing: "0.025em",
+    border: "1px solid #5a2828",
+    letterSpacing: "0.5px",
   },
+
   copyBtn: {
-    padding: "8px 16px",
+    padding: "8px 14px",
     backgroundColor: "transparent",
     color: "#888",
-    fontSize: "13px",
+    fontSize: "12px",
     fontWeight: 500,
-    border: "1px solid #444",
+    borderWidth: "1px",
+    borderStyle: "solid",
+    borderColor: "#444",
     borderRadius: "6px",
     cursor: "pointer",
     transition: "all 0.15s",
+    fontFamily: MONO_FONT,
   },
+
+  copyBtnHover: {
+    backgroundColor: "#252525",
+    color: "#bbb",
+    borderColor: "#555",
+  },
+
   message: {
     margin: 0,
-    fontSize: "20px",
-    fontWeight: 500,
-    color: "#fff",
-    lineHeight: 1.5,
+    fontSize: "18px",
+    fontWeight: 400,
+    color: "#e8e8e8",
+    lineHeight: 1.6,
     wordBreak: "break-word",
+    fontFamily: MONO_FONT,
   },
+
+  // Stack section
   stackSection: {
-    padding: "0",
+    borderTop: "1px solid #2a2a2a",
   },
+
   stackHeader: {
-    padding: "16px 28px",
-    fontSize: "11px",
-    fontWeight: 600,
-    color: "#666",
-    textTransform: "uppercase",
-    letterSpacing: "0.1em",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "14px 24px",
     borderBottom: "1px solid #2a2a2a",
   },
+
+  stackHeaderText: {
+    fontSize: "10px",
+    fontWeight: 600,
+    color: "#666",
+    letterSpacing: "1.5px",
+  },
+
+  stackCount: {
+    fontSize: "11px",
+    color: "#555",
+  },
+
   frameList: {
     display: "flex",
     flexDirection: "column",
   },
+
   frame: {
     display: "flex",
     alignItems: "flex-start",
-    padding: "14px 28px",
-    borderBottom: "1px solid #252525",
-    transition: "background-color 0.15s",
+    padding: "12px 24px",
+    borderBottom: "1px solid #222",
+    transition: "background-color 0.1s",
+    cursor: "pointer",
   },
+
   frameFirst: {
-    backgroundColor: "rgba(220, 38, 38, 0.1)",
+    backgroundColor: "rgba(255, 80, 80, 0.08)",
+    borderLeft: "2px solid #ff6b6b",
   },
+
   frameIndex: {
     width: "28px",
     flexShrink: 0,
-    fontSize: "12px",
+    fontSize: "11px",
     fontWeight: 500,
-    color: "#555",
-    fontFamily: "monospace",
+    fontFamily: MONO_FONT,
   },
+
   frameContent: {
     flex: 1,
     minWidth: 0,
   },
+
   fnName: {
-    fontSize: "14px",
-    fontWeight: 500,
-    color: "#e5e5e5",
-    marginBottom: "4px",
-    fontFamily:
-      'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
-  },
-  filePath: {
     fontSize: "13px",
+    fontWeight: 500,
+    marginBottom: "4px",
+    fontFamily: MONO_FONT,
+  },
+
+  filePath: {
+    fontSize: "12px",
     color: "#888",
-    fontFamily:
-      'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+    fontFamily: MONO_FONT,
     wordBreak: "break-all",
   },
+
   dirPath: {
-    color: "#555",
-  },
-  fileName: {
-    color: "#0ea5e9",
-  },
-  lineCol: {
-    color: "#eab308",
-  },
-  expandBtn: {
-    padding: "16px 28px",
-    backgroundColor: "transparent",
     color: "#666",
-    fontSize: "13px",
+  },
+
+  fileName: {
+    color: "#7cc4eb",
+  },
+
+  lineCol: {
+    color: "#e5b83a",
+  },
+
+  expandBtn: {
+    width: "100%",
+    padding: "14px 24px",
+    backgroundColor: "transparent",
+    color: "#777",
+    fontSize: "12px",
     fontWeight: 500,
     border: "none",
-    borderTop: "1px solid #252525",
+    borderTop: "1px solid #2a2a2a",
     cursor: "pointer",
     textAlign: "left",
     transition: "all 0.15s",
+    fontFamily: MONO_FONT,
   },
+
+  nodeModulesToggle: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    width: "100%",
+    padding: "12px 24px",
+    backgroundColor: "#0a0a0a",
+    color: "#666",
+    fontSize: "11px",
+    fontWeight: 500,
+    border: "none",
+    borderTop: "1px solid #2a2a2a",
+    cursor: "pointer",
+    textAlign: "left",
+    fontFamily: MONO_FONT,
+  },
+
+  nodeModulesIcon: {
+    fontSize: "8px",
+    color: "#555",
+  },
+
+  nodeModulesLabel: {
+    flex: 1,
+    letterSpacing: "0.5px",
+  },
+
+  nodeModulesCount: {
+    color: "#555",
+  },
+
+  nodeModulesFrames: {
+    backgroundColor: "#080808",
+  },
+
+  footer: {
+    padding: "14px 24px",
+    borderTop: "1px solid #2a2a2a",
+    backgroundColor: "#0a0a0a",
+  },
+
+  footerText: {
+    fontSize: "11px",
+    color: "#555",
+  },
+
+  // Production styles
   prodContainer: {
     textAlign: "center",
     padding: "60px 40px",
-    backgroundColor: "#1a1a1a",
-    borderRadius: "12px",
+    backgroundColor: "#0d0d0d",
+    borderRadius: "8px",
     maxWidth: "400px",
+    border: "1px solid #333",
   },
+
   prodIcon: {
     width: "64px",
     height: "64px",
     margin: "0 auto 24px",
-    backgroundColor: "#dc2626",
-    borderRadius: "50%",
+    color: "#666",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: "32px",
-    fontWeight: 700,
-    color: "#fff",
   },
+
   prodTitle: {
     margin: "0 0 12px",
-    fontSize: "24px",
-    fontWeight: 600,
-    color: "#fff",
+    fontSize: "18px",
+    fontWeight: 500,
+    color: "#f0f0f0",
+    fontFamily: MONO_FONT,
   },
+
   prodMessage: {
     margin: "0 0 28px",
-    fontSize: "15px",
+    fontSize: "13px",
     color: "#888",
     lineHeight: 1.6,
+    fontFamily: MONO_FONT,
   },
+
   prodButton: {
     padding: "12px 24px",
-    backgroundColor: "#fff",
-    color: "#000",
-    fontSize: "14px",
-    fontWeight: 600,
-    border: "none",
-    borderRadius: "8px",
+    backgroundColor: "#222",
+    color: "#bbb",
+    fontSize: "13px",
+    fontWeight: 500,
+    borderWidth: "1px",
+    borderStyle: "solid",
+    borderColor: "#444",
+    borderRadius: "6px",
     cursor: "pointer",
+    transition: "all 0.15s",
+    fontFamily: MONO_FONT,
   },
 };

@@ -52,11 +52,10 @@ my-app/
 │   ├── main.server.ts    # Server entry (always use main.server.ts)
 │   └── main.browser.ts   # Browser entry (React/full-stack only)
 ├── package.json
-├── tsconfig.json
-└── index.html            # (React/full-stack only)
+└── tsconfig.json
 ```
 
-Note: Always use `src/api/` and `main.server.ts` even for API-only projects. The `src/web/`, `main.browser.ts`, and `index.html` are only for React/full-stack apps. Each directory should have an `index.ts` that exports a `$module` grouping its services.
+Note: Always use `src/api/` and `main.server.ts` even for API-only projects. The `src/web/`, `main.browser.ts` are only for React/full-stack apps. Each directory should have an `index.ts` that exports a `$module` grouping its services.
 
 ## Examples
 

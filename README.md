@@ -21,151 +21,96 @@ Easy mode for building TypeScript applications.
 
 ## What is this?
 
-Build API endpoints (Docker or Serverless), React applications (SSR, CSR or SSG), and more!
+A full-stack TypeScript framework for building APIs, React apps with SSR, CLI tools, and more.
 
-Relies only on very few runtime dependencies. Alepha is a "one decision" framework, meaning you don't have to choose between dozens of libraries and tools.
+- **Runs on Node.js and Bun** — switch runtimes without changing code
+- **Zero config** — sensible defaults, override when needed
+- **Type-safe everything** — schemas validate at runtime, TypeScript catches the rest
+- **Single bundle deploy** — no `node_modules` in production
 
-All-in-one tool that takes care of configuration, development, build, deployment, testing, etc. Convention over configuration.
+Check out the [documentation](https://alepha.dev) for the full picture.
 
-All features are based on a DSL with strong typing and runtime validation which makes development safe, productive, and AI friendly.
+## Quick Start
 
-For more information, please visit the [documentation](https://alepha.dev).
+**Requirements:** [Node.js](https://nodejs.org/) v22+ or [Bun](https://bun.sh/)
 
-## Examples
-
-**Requirements**
-
-- [Node.js](https://nodejs.org/) v22 or higher
-
-### API endpoint
-
-Write API endpoints with automatic OpenAPI documentation.
+### API Server
 
 ```bash
-# Add required config files in the current folder
-$ npx alepha init
+npx alepha init my-api
+cd my-api
 ```
 
-Create a new file `src/main.ts`:
+Edit `src/api/controllers/HelloController.ts`:
 
 ```ts
-import { run, t, Alepha } from "alepha";
+import { t } from "alepha";
 import { $action } from "alepha/server";
 import { $swagger } from "alepha/server/swagger";
 
-class Api {
-
-  // Functions starting with $ are "primitives".
-  // Like React hooks, they must be called inside Alepha context.
+export class HelloController {
   docs = $swagger();
 
-  sayHello = $action({
-    path: "/hello/:name",
-    // Every feature inside Alepha is strongly typed with runtime validation.
-    // Schema is based on TypeBox library.
+  hello = $action({
+    path: "/hello",
     schema: {
-      params: t.object({
-        // Alepha provides many built-in types.
-        // For example `t.text()` = `t.string()` + specific maxLength, auto-trim, etc.
-        name: t.text()
+      query: t.object({
+        name: t.optional(t.text()),
       }),
       response: t.object({
         message: t.text(),
-      })
+      }),
     },
-    handler: async ({ params }) => {
-      return { message: `Hello ${params.name} !` };
-    }
+    handler: ({ query }) => ({
+      message: `Hello, ${query.name || "World"}!`,
+    }),
   });
 }
-
-// Creating Alepha instance is like creating a new context.
-const alepha = Alepha.create();
-
-// And you add features by registering classes.
-alepha.with(Api);
-
-// `run` will take care of Alepha lifecycle (startup, graceful shutdown, etc.)
-run(alepha);
 ```
-
-Run the development server:
 
 ```bash
-$ npx alepha dev
+npm run dev
+# Open http://localhost:3000/docs/ for auto-generated API docs
 ```
 
-Command `alepha dev` comes with hot-reload and full TypeScript support but you can also run:
+Build and run in production:
 
 ```bash
-$ node ./src/main.ts
-$ bun ./src/main.ts
+npm run build
+node dist  # or: bun dist
 ```
 
-Then, open your browser at `http://localhost:3000/docs/` and enjoy your automatically generated documentation.
+### Full-Stack React
 
-#### Production build
-
-Once you are done, build the application for production:
+In same directory, re-initialize with React support:
 
 ```bash
-$ npx alepha build
+npx alepha init --react
 ```
 
-Application will be built in the `dist/` folder, ready to be deployed on any platform (Docker, Serverless, etc.).
-Bonus, no need to "npm install" on the server, Alepha bundles everything together.
+Your `src/main.server.ts` wires everything together:
 
-### React Application
-
-Build full-stack React applications, with server-side rendering.
-
-```bash
-$ npx alepha init --react
-```
-
-Create a file `src/main.tsx`:
-
-```tsx
-import { Alepha, run, t } from "alepha";
-import { $page } from "@alepha/react/router";
-import { useState } from "react";
-
-const Hello = (props: { count: number }) => {
-  const [ count, setCount ] = useState(props.count);
-  return <button onClick={() => setCount(count + 1)}>Clicked: {count}</button>
-}
-
-class AppRouter {
-  index = $page({
-    schema: {
-      query: t.object({
-        start: t.number({ default: 0 }),
-      })
-    },
-    component: Hello,
-    loader: (req) => {
-      return { count: req.query.start };
-    },
-  });
-}
+```ts
+import { Alepha, run } from "alepha";
+import { ApiModule } from "./api/index.ts";
+import { WebModule } from "./web/index.ts";
 
 const alepha = Alepha.create();
 
-alepha.with(AppRouter);
+alepha.with(ApiModule);  // API endpoints
+alepha.with(WebModule);  // React pages
 
 run(alepha);
 ```
 
-Run the development server:
+Start development server:
 
 ```bash
-$ npx alepha dev
+npm run dev
+# Open http://localhost:3000/
 ```
 
-Open your browser at `http://localhost:5173/` and see your React application in action.
+## Learn More
 
-## What's next?
-
-- Dive into the [full docs](https://alepha.dev) for more advanced stuff
-- Browse the GitHub repo for examples and source code
-- Check out the individual packages to see what else you can build
+- [Documentation](https://alepha.dev) — guides, concepts, API reference
+- [GitHub](https://github.com/feunard/alepha) — source code and issues

@@ -57,15 +57,4 @@ export class DevCommand {
       await this.viteDevServer.start();
     },
   });
-
-  protected async isBunProject(root: string): Promise<boolean> {
-    if (this.alepha.isBun()) {
-      return true;
-    }
-    return this.fs.exists(this.fs.join(root, "bun.lock"));
-  }
-
-  protected async isFullstackProject(root: string): Promise<boolean> {
-    return this.fs.exists(this.fs.join(root, "index.html"));
-  }
 }

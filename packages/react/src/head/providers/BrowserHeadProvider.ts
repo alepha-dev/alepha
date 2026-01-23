@@ -116,10 +116,65 @@ export class BrowserHeadProvider {
           link = document.createElement("link");
           link.setAttribute("rel", rel);
           link.setAttribute("href", href);
+          if (it.type) {
+            link.setAttribute("type", it.type);
+          }
+          if (it.as) {
+            link.setAttribute("as", it.as);
+          }
+          if (it.crossorigin != null) {
+            link.setAttribute("crossorigin", "");
+          }
           document.head.appendChild(link);
         }
       }
     }
+
+    if (head.script) {
+      for (const it of head.script) {
+        this.renderScriptTag(document, it);
+      }
+    }
+  }
+
+  protected renderScriptTag(
+    document: Document,
+    script:
+      | string
+      | (Record<string, string | boolean | undefined> & { content?: string }),
+  ): void {
+    const el = document.createElement("script");
+
+    // Handle plain string as inline script
+    if (typeof script === "string") {
+      el.textContent = script;
+      document.head.appendChild(el);
+      return;
+    }
+
+    const { content, ...attrs } = script;
+
+    // For scripts with src, check if already exists
+    if (attrs.src) {
+      const existing = document.querySelector(`script[src="${attrs.src}"]`);
+      if (existing) {
+        return;
+      }
+    }
+
+    for (const [key, value] of Object.entries(attrs)) {
+      if (value === true) {
+        el.setAttribute(key, "");
+      } else if (value !== undefined && value !== false) {
+        el.setAttribute(key, String(value));
+      }
+    }
+
+    if (content) {
+      el.textContent = content;
+    }
+
+    document.head.appendChild(el);
   }
 
   protected renderMetaTag(document: Document, meta: HeadMeta): void {

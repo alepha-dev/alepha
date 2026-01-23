@@ -1,6 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import type { Alepha } from "alepha";
-import { importAlepha } from "../helpers/importAlepha.ts";
 import {
   compressFile,
   type ViteCompressOptions,
@@ -8,9 +7,9 @@ import {
 
 export interface PrerenderPagesOptions {
   /**
-   * Entry point for the built Alepha application.
+   * Alepha instance to use for pre-rendering.
    */
-  entry: string;
+  alepha: Alepha;
 
   /**
    * Client dist directory for output files.
@@ -21,6 +20,14 @@ export interface PrerenderPagesOptions {
    * Optional compression options.
    */
   compress?: ViteCompressOptions | boolean;
+
+  /**
+   * Add Runner for logging (@see Alepha CLI)
+   */
+  run?: (opts: {
+    name: string;
+    handler: () => Promise<void>;
+  }) => Promise<string>;
 }
 
 export interface PrerenderPagesResult {
@@ -33,45 +40,63 @@ export interface PrerenderPagesResult {
 /**
  * Pre-render static pages defined in the Alepha application.
  *
- * This task loads the built Alepha application, queries all page
- * primitives with `static: true`, and generates static HTML files
- * for each page. Supports pages with parameterized routes via
- * `static.entries` configuration.
+ * Queries all page primitives with `static: true` and generates
+ * static HTML files for each page. Supports pages with parameterized
+ * routes via `static.entries` configuration.
  */
 export async function prerenderPages(
   opts: PrerenderPagesOptions,
 ): Promise<PrerenderPagesResult> {
-  const alepha = await importAlepha(opts.entry);
+  const alepha = opts.alepha;
+  const pages = getStaticPages(alepha);
 
-  const now = Date.now();
-
-  if (!alepha.isConfigured()) {
-    await alepha.events.emit("configure", alepha);
-    (alepha as any).configured = true;
+  // Nothing to pre-render
+  if (pages.length === 0) {
+    return { count: 0 };
   }
 
-  return await prerenderFromAlepha(alepha, opts.dist, opts.compress);
+  let result: PrerenderPagesResult = { count: 0 };
+
+  const fn = async () => {
+    // TODO: running configure here is a temporary workaround
+    if (!alepha.isConfigured()) {
+      await alepha.events.emit("configure", alepha);
+    }
+    result = await prerenderFromAlepha(pages, opts.dist, opts.compress);
+  };
+
+  if (opts.run) {
+    await opts.run({
+      name: "pre-render pages",
+      handler: fn,
+    });
+  } else {
+    await fn();
+  }
+
+  return result;
+}
+
+/**
+ * Get all static pages from the Alepha instance.
+ */
+function getStaticPages(alepha: Alepha): any[] {
+  const pages = alepha.primitives("page") as any[];
+  return pages.filter((page) => {
+    const options = page.options;
+    return options.static && !options.children;
+  });
 }
 
 async function prerenderFromAlepha(
-  alepha: Alepha,
+  pages: any[],
   dist: string,
   compress?: ViteCompressOptions | boolean,
 ): Promise<PrerenderPagesResult> {
   let count = 0;
-  const pages = alepha.primitives("page") as any[];
 
   for (const page of pages) {
     const options = page.options;
-
-    if (options.children) {
-      continue;
-    }
-
-    if (!options.static) {
-      continue;
-    }
-
     const config = typeof options.static === "object" ? options.static : {};
 
     if (!options.schema?.params) {

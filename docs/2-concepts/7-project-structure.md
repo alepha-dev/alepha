@@ -51,12 +51,11 @@ my-app/
 │   ├── main.server.ts         # Server entry point
 │   └── main.browser.ts        # Browser entry point (React only)
 │
-├── index.html                 # HTML template (React only)
 ├── package.json
 └── tsconfig.json
 ```
 
-The `src/web/`, `main.browser.ts`, and `index.html` are only needed when using `@alepha/react` for the frontend.
+The `src/web/` and `main.browser.ts` are only needed when using `@alepha/react` for the frontend.
 
 ## Scaling with Modules
 
@@ -143,7 +142,6 @@ export const WebModule = $module({
 |------|---------|-------------|
 | `main.server.ts` | Server entry point | Always |
 | `main.browser.ts` | Browser entry point | React/full-stack only |
-| `index.html` | HTML template | React/full-stack only |
 
 The `main.server.ts` file bootstraps your Alepha application using modules:
 
