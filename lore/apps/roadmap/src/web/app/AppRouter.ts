@@ -54,6 +54,19 @@ export class AppRouter {
       description: "Roadmap - Gamified project management",
     };
 
+    head.link = [
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "manifest", href: "/manifest.json" },
+    ];
+
+    head.meta = [
+      { name: "theme-color", content: "#010409" },
+      {
+        name: "keywords",
+        content: "Alepha, Roadmap, open-source, applications, platform",
+      },
+    ];
+
     if (this.env.UMAMI_URL && this.env.UMAMI_UUID) {
       if (this.env.UMAMI_URL && this.env.UMAMI_UUID) {
         head.script ??= [];
