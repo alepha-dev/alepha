@@ -76,7 +76,7 @@ const AdminUserSettings = (props: AdminUserSettingsProps) => {
         query: {
           userRealmName: props.userRealmName,
           method: "link",
-          verifyUrl: `${window.location.origin}/verify-email`,
+          verifyUrl: `${window.location.origin}/auth/verify-email`,
         },
         body: { email: user.email },
       });
