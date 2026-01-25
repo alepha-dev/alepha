@@ -616,7 +616,7 @@ export abstract class Repository<T extends TObject> {
    */
   public async updateOne(
     where: PgQueryWhereOrSQL<T>,
-    data: Partial<Static<TObjectUpdate<T>>>,
+    data: WithSQL<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
   ): Promise<Static<T>> {
     await this.alepha.events.emit("repository:update:before", {
@@ -767,7 +767,7 @@ export abstract class Repository<T extends TObject> {
    */
   public async updateById(
     id: string | number,
-    data: Partial<Static<TObjectUpdate<T>>>,
+    data: WithSQL<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
   ): Promise<Static<T>> {
     return await this.updateOne(this.getWhereId(id), data, opts);
@@ -778,7 +778,7 @@ export abstract class Repository<T extends TObject> {
    */
   public async updateMany(
     where: PgQueryWhereOrSQL<T>,
-    data: Partial<Static<TObjectUpdate<T>>>,
+    data: WithSQL<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
   ): Promise<Array<number | string>> {
     await this.alepha.events.emit("repository:update:before", {
@@ -1177,3 +1177,7 @@ export interface StatementOptions {
    */
   now?: DateTime | string;
 }
+
+type WithSQL<T> = {
+  [P in keyof T]?: T[P] | SQL;
+};
