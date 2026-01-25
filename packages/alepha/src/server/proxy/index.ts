@@ -11,9 +11,15 @@ export * from "./providers/ServerProxyProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Plugin for Alepha that provides a proxy server functionality.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | stable |
  *
- * @see {@link $proxy}
+ * Reverse proxy routing.
+ *
+ * **Features:**
+ * - Proxy configuration and routing
+ *
  * @module alepha.server.proxy
  */
 export const AlephaServerProxy = $module({

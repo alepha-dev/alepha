@@ -9,10 +9,17 @@ export * from "./providers/ServerMetricsProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * This module provides prometheus metrics for the Alepha server.
- * Metrics are exposed at the `/metrics` endpoint.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | devops | standard | stable |
  *
- * @see {@link ServerMetricsProvider}
+ * Prometheus-style metrics collection.
+ *
+ * **Features:**
+ * - Prometheus-style metrics
+ * - Custom metric registration
+ * - Metric exposition endpoint
+ *
  * @module alepha.server.metrics
  */
 export const AlephaServerMetrics = $module({

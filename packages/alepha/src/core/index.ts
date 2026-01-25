@@ -22,6 +22,26 @@ export * from "./index.shared.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | tooling | epic | stable |
+ *
+ * Foundation of the entire framework with dependency injection and lifecycle management.
+ *
+ * **Features:**
+ * - Dependency injection for services
+ * - Service substitution/mocking
+ * - Type-safe environment variable loading with TypeBox schemas
+ * - Lifecycle hooks (start, stop, log, etc.)
+ * - Module definitions and composition
+ * - Request-scoped context access via Async Local Storage (ALS)
+ * - Reactive state management with atoms
+ * - Cluster mode with automatic worker forking
+ * - Full TypeScript generics and type inference
+ *
+ * @module alepha.core
+ */
 export const AlephaCore = $module({
   name: "alepha.core",
   services: [

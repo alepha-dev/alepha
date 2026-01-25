@@ -10,11 +10,20 @@ npm install alepha
 
 ## Overview
 
-Provides file storage capabilities through declarative bucket primitives with support for multiple storage backends.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | rare | stable |
 
-The bucket module enables unified file operations across different storage systems using the `$bucket` primitive
-on class properties. It abstracts storage provider differences, offering consistent APIs for local filesystem,
-cloud storage, or in-memory storage for testing environments.
+Unified file storage abstraction across multiple backends.
+
+**Features:**
+- File storage buckets with constraints
+- Unified API across all storage backends
+- MIME type validation
+- File size limits
+- Upload/download/delete operations
+- TTL-based file expiration
+- Providers: Memory (testing), Local filesystem, AWS S3 / Cloudflare R2 / MinIO, Azure Blob Storage, Vercel Blob
 
 ## API Reference
 

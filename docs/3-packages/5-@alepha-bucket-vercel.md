@@ -8,7 +8,15 @@ npm install @alepha/bucket-vercel
 
 ## Overview
 
-Plugin for Alepha Bucket that provides Vercel Blob Storage capabilities.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | stable |
+
+Vercel Blob Storage provider.
+
+**Features:**
+- Serverless-optimized storage
+- Vercel deployment integration
 
 ## API Reference
 

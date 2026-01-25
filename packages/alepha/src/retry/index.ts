@@ -12,9 +12,18 @@ export * from "./providers/RetryProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Retry mechanism provider for Alepha applications.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | stable |
  *
- * @see {@link RetryProvider}
+ * Automatic retry with backoff.
+ *
+ * **Features:**
+ * - Retry configuration
+ * - Exponential backoff
+ * - Max retry limits
+ * - Custom retry predicates
+ *
  * @module alepha.retry
  */
 export const AlephaRetry = $module({

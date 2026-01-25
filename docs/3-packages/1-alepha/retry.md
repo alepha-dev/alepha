@@ -10,7 +10,17 @@ npm install alepha
 
 ## Overview
 
-Retry mechanism provider for Alepha applications.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | stable |
+
+Automatic retry with backoff.
+
+**Features:**
+- Retry configuration
+- Exponential backoff
+- Max retry limits
+- Custom retry predicates
 
 ## API Reference
 

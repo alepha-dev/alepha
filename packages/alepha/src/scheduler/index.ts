@@ -35,9 +35,18 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Generic interface for scheduling tasks.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | rare | stable |
  *
- * @see {@link $scheduler}
+ * Cron and interval-based task execution.
+ *
+ * **Features:**
+ * - Scheduled tasks with cron expressions (e.g., `0 0 * * *`)
+ * - Interval-based scheduling
+ * - Distributed locking to prevent duplicate execution
+ * - Lifecycle hooks: `begin`, `success`, `error`, `end`
+ *
  * @module alepha.scheduler
  */
 export const AlephaScheduler = $module({

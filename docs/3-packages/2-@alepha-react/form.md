@@ -8,12 +8,18 @@ npm install @alepha/react
 
 ## Overview
 
-React hooks for managing forms in Alepha applications.
+| type | quality | stability |
+|------|---------|-----------|
+| frontend | rare | stable |
 
-This module provides a set of hooks to simplify form handling, validation, and submission in React applications built with Alepha.
+Type-safe forms with validation.
 
-It includes:
-- `useForm`: A hook for managing form state, validation, and submission.
+**Features:**
+- Form state management
+- TypeBox schema validation
+- Field-level error handling
+- Submit handling with loading state
+- Form reset
 
 ## API Reference
 

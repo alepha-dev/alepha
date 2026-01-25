@@ -12,126 +12,22 @@ npm install alepha
 
 ## Overview
 
-Core container of the Alepha framework.
+| type | quality | stability |
+|------|---------|-----------|
+| tooling | epic | stable |
 
-It is responsible for managing the lifecycle of services,
-handling dependency injection,
-and providing a unified interface for the application.
+Foundation of the entire framework with dependency injection and lifecycle management.
 
-```ts
-import { Alepha, run } from "alepha";
-
-class MyService {
-  // business logic here
-}
-
-const alepha = Alepha.create({
-  // state, env, and other properties
-})
-
-alepha.with(MyService);
-
-run(alepha); // trigger .start (and .stop) automatically
-```
-
-### Alepha Factory
-
-Alepha.create() is an enhanced version of new Alepha().
-- It merges `process.env` with the provided state.env when available.
-- It populates the test hooks for Vitest or Jest environments when available.
-
-new Alepha() is fine if you don't need these helpers.
-
-### Platforms & Environments
-
-Alepha is designed to work in various environments:
-- **Browser**: Runs in the browser, using the global `window` object.
-- **Serverless**: Runs in serverless environments like Vercel or Vite.
-- **Test**: Runs in test environments like Jest or Vitest.
-- **Production**: Runs in production environments, typically with NODE_ENV set to "production".
-* You can check the current environment using the following methods:
-
-- `isBrowser()`: Returns true if the App is running in a browser environment.
-- `isServerless()`: Returns true if the App is running in a serverless environment.
-- `isTest()`: Returns true if the App is running in a test environment.
-- `isProduction()`: Returns true if the App is running in a production environment.
-
-### State & Environment
-
-The state of the Alepha container is stored in the `store` property.
-Most important property is `store.env`, which contains the environment variables.
-
-```ts
-const alepha = Alepha.create({ env: { MY_VAR: "value" } });
-
-// You can access the environment variables using alepha.env
-console.log(alepha.env.MY_VAR); // "value"
-
-// But you should use $env() primitive to get typed values from the environment.
-class App {
-  env = $env(
-    t.object({
- 	   MY_VAR: t.text(),
-    })
-  );
-}
-```
-
-### Modules
-
-Modules are a way to group services together.
-You can register a module using the `$module` primitive.
-
-```ts
-import { $module } from "alepha";
-
-class MyLib {}
-
-const myModule = $module({
-  name: "my.project.module",
-  services: [MyLib],
-});
-```
-
-Do not use modules for small applications.
-
-### Hooks
-
-Hooks are a way to run async functions from all registered providers/services.
-You can register a hook using the `$hook` primitive.
-
-```ts
-import { $hook } from "alepha";
-
-class App {
-	 log = $logger();
-	 onCustomerHook = $hook({
-			on: "my:custom:hook",
-			handler: () => {
-		 	  this.log?.info("App is being configured");
-	 		},
-	  });
-	}
-
-Alepha.create()
-	 .with(App)
-	 .start()
-	 .then(alepha => alepha.events.emit("my:custom:hook"));
-```
-
-	Hooks are fully typed. You can create your own hooks by using module augmentation:
-
-	```ts
-	declare module "alepha" {
-		interface Hooks {
-		  "my:custom:hook": {
-				arg1: string;
-		  }
-		}
-	}
-	```
-
-	@module alepha
+**Features:**
+- Dependency injection for services
+- Service substitution/mocking
+- Type-safe environment variable loading with TypeBox schemas
+- Lifecycle hooks (start, stop, log, etc.)
+- Module definitions and composition
+- Request-scoped context access via Async Local Storage (ALS)
+- Reactive state management with atoms
+- Cluster mode with automatic worker forking
+- Full TypeScript generics and type inference
 
 ## API Reference
 

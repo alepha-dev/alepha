@@ -93,35 +93,18 @@ export { StdioMcpTransport } from "./transports/StdioMcpTransport.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Core MCP module with primitives and server provider.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | stable |
  *
- * This module registers the $tool, $resource, and $prompt primitives
- * and the McpServerProvider. You need to add a transport module
- * (AlephaMcpStdio or AlephaMcpSse) for actual communication.
+ * Model Context Protocol for AI tool integration.
  *
- * @example
- * ```ts
- * import { Alepha, run } from "alepha";
- * import { AlephaMcp, AlephaMcpStdio, $tool, t } from "alepha/mcp";
- *
- * class MyMcpServer {
- *   add = $tool({
- *     description: "Add two numbers",
- *     schema: {
- *       params: t.object({ a: t.number(), b: t.number() }),
- *       result: t.number(),
- *     },
- *     handler: async ({ params }) => params.a + params.b,
- *   });
- * }
- *
- * run(
- *   Alepha.create()
- *     .with(AlephaMcp)
- *     .with(AlephaMcpStdio)
- *     .with(MyMcpServer)
- * );
- * ```
+ * **Features:**
+ * - MCP resource definitions
+ * - MCP tool definitions
+ * - MCP prompt definitions
+ * - JSON-RPC protocol
+ * - SSE and Stdio transports
  *
  * @module alepha.mcp
  */

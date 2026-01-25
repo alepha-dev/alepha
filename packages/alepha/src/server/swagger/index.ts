@@ -30,11 +30,16 @@ declare module "alepha/server" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Plugin for Alepha Server that provides Swagger documentation capabilities.
- * It generates OpenAPI v3 documentation for the server's endpoints ($action).
- * It also provides a Swagger UI for interactive API documentation.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | stable |
  *
- * @see {@link ServerSwaggerProvider}
+ * Automatic API documentation generation.
+ *
+ * **Features:**
+ * - Swagger/OpenAPI configuration
+ * - Routes: `GET /swagger/ui`, `GET /swagger.json`
+ *
  * @module alepha.server.swagger
  */
 export const AlephaServerSwagger = $module({

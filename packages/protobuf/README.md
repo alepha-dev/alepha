@@ -10,6 +10,19 @@ This package is part of the Alepha framework and can be installed via the all-in
 npm install alepha
 ```
 
+## Module
+
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | stable |
+
+Protocol Buffers support.
+
+**Features:**
+- Message serialization/deserialization
+- TypeBox integration
+- Compression support
+
 ## API Reference
 
 ### Providers

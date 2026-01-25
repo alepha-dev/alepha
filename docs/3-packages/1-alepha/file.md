@@ -10,10 +10,16 @@ npm install alepha
 
 ## Overview
 
-Provides file system capabilities for Alepha applications with support for multiple file sources and operations.
+| type | quality | stability |
+|------|---------|-----------|
+| tooling | standard | stable |
 
-The file module enables working with files from various sources (URLs, buffers, streams) and provides
-utilities for file type detection, content type determination, and common file system operations.
+File operations and type detection.
+
+**Features:**
+- File type detection
+- MIME type utilities
+- Path operations
 
 ## API Reference
 

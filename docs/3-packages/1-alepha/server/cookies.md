@@ -10,11 +10,14 @@ npm install alepha
 
 ## Overview
 
-Provides HTTP cookie management capabilities for server requests and responses with type-safe cookie primitives.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | stable |
 
-The server-cookies module enables declarative cookie handling using the `$cookie` primitive on class properties.
-It offers automatic cookie parsing, secure cookie configuration, and seamless integration with server routes
-for managing user sessions, preferences, and authentication tokens.
+Server and browser-safe cookie handling.
+
+**Features:**
+- Cookie management on server and browser
 
 ## API Reference
 

@@ -58,13 +58,31 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Provides full-stack React development with declarative routing, server-side rendering, and client-side hydration.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | frontend | epic | stable |
  *
- * The React module enables building modern React applications using the `$page` primitive on class properties.
- * It delivers seamless server-side rendering, automatic code splitting, and client-side navigation with full
- * type safety and schema validation for route parameters and data.
+ * Full-stack React framework with server-side rendering.
  *
- * @see {@link $page}
+ * **Features:**
+ * - React page routes with type-safe params
+ * - Async action handler with loading/error/cancel states
+ * - Type-safe HTTP client access
+ * - Dependency injection in components
+ * - Global state management
+ * - Router navigation methods
+ * - Current route state access
+ * - Check if path is active
+ * - URL query parameters
+ * - Access route schema
+ * - Subscribe to Alepha events
+ * - Type-safe form handling with validation
+ * - Error handling wrapper component
+ * - Client-side only rendering component
+ * - Server-side rendering with hydration
+ * - Automatic code splitting
+ * - Event system for action tracking
+ *
  * @module alepha.react
  */
 export const AlephaReact = $module({

@@ -114,14 +114,24 @@ export * from "./services/UserAgentParser.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Provides high-performance HTTP server capabilities with declarative routing and action primitives.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | epic | stable |
  *
- * The server module enables building REST APIs and web applications using `$route` and `$action` primitives
- * on class properties. It provides automatic request/response handling, schema validation, middleware support,
- * and seamless integration with other Alepha modules for a complete backend solution.
+ * Convention-driven HTTP server with automatic validation and type inference.
  *
- * @see {@link $route}
- * @see {@link $action}
+ * **Features:**
+ * - Type-safe API endpoints with schema validation
+ * - Lower-level HTTP route definitions
+ * - Automatic request/response validation via TypeBox
+ * - Convention-based URL generation (`/api/{ActionName}`)
+ * - Direct invocation (`run()`) or HTTP (`fetch()`)
+ * - Built-in authentication integration
+ * - Multipart file upload handling
+ * - Content-type auto-negotiation (JSON, form-data, text)
+ * - HTTP methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
+ * - Error handling: BadRequestError, ValidationError, ForbiddenError, UnauthorizedError, ConflictError, NotFoundError
+ *
  * @module alepha.server
  */
 export const AlephaServer = $module({

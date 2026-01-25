@@ -9,31 +9,16 @@ export * from "./providers/ServerCacheProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Plugin for Alepha Server that provides server-side caching capabilities.
- * It uses the Alepha Cache module to cache responses from server actions ($action).
- * It also provides a ETag-based cache invalidation mechanism.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | stable |
  *
- * @example
- * ```ts
- * import { Alepha } from "alepha";
- * import { $action } from "alepha/server";
- * import { AlephaServerCache } from "alepha/server/cache";
+ * ETag-based response caching.
  *
- * class ApiServer {
- *   hello = $action({
- *     cache: true,
- *     handler: () => "Hello, World!",
- *   });
- * }
+ * **Features:**
+ * - ETag generation and validation
+ * - Conditional request handling
  *
- * const alepha = Alepha.create()
- *   .with(AlephaServerCache)
- *   .with(ApiServer);
- *
- * run(alepha);
- * ```
- *
- * @see {@link ServerCacheProvider}
  * @module alepha.server.cache
  */
 export const AlephaServerCache = $module({

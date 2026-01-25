@@ -22,9 +22,17 @@ declare module "@alepha/react/router" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * The ReactAuthModule provides authentication services for React applications.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | frontend | rare | stable |
  *
- * @see {@link ReactAuthProvider}
+ * Auth-related React components and hooks.
+ *
+ * **Features:**
+ * - Login/logout components
+ * - Protected route wrappers
+ * - Auth state hooks
+ *
  * @module alepha.react.auth
  */
 export const AlephaReactAuth = $module({

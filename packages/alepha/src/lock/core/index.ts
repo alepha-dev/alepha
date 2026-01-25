@@ -15,12 +15,19 @@ export * from "./providers/MemoryLockProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Lock a resource for a certain period of time.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | rare | stable |
  *
- * This module provides a memory implementation of the lock provider.
- * You probably want to use an implementation like RedisLockProvider for distributed systems.
+ * Resource locking for distributed systems.
  *
- * @see {@link $lock}
+ * **Features:**
+ * - Distributed locks with timeout
+ * - Time-based lock expiration
+ * - Automatic release on scope exit
+ * - Distributed coordination via Redis
+ * - Providers: Memory (dev), Redis (production)
+ *
  * @module alepha.lock
  */
 export const AlephaLock = $module({

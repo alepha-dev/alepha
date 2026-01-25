@@ -9,9 +9,16 @@ export * from "./providers/VercelFileStorageProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Plugin for Alepha Bucket that provides Vercel Blob Storage capabilities.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | stable |
  *
- * @see {@link VercelFileStorageProvider}
+ * Vercel Blob Storage provider.
+ *
+ * **Features:**
+ * - Serverless-optimized storage
+ * - Vercel deployment integration
+ *
  * @module alepha.bucket.vercel
  */
 export const AlephaBucketVercel = $module({

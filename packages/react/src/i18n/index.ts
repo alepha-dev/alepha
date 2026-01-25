@@ -21,9 +21,16 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Add i18n support to your Alepha React application. SSR and CSR compatible.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | frontend | standard | stable |
  *
- * It supports lazy loading of translations and provides a context to access the current language.
+ * Multi-language support.
+ *
+ * **Features:**
+ * - Translation loading
+ * - Locale detection
+ * - Pluralization
  *
  * @module alepha.react.i18n
  */

@@ -8,5 +8,14 @@ npm install @alepha/react
 
 ## Overview
 
-The ReactAuthModule provides authentication services for React applications.
+| type | quality | stability |
+|------|---------|-----------|
+| frontend | rare | stable |
+
+Auth-related React components and hooks.
+
+**Features:**
+- Login/logout components
+- Protected route wrappers
+- Auth state hooks
 

@@ -8,5 +8,15 @@ npm install @alepha/ui
 
 ## Overview
 
-Demo UI Module - Component showcase and documentation
+| type | quality | stability |
+|------|---------|-----------|
+| frontend | standard | experimental |
+
+Component showcase and documentation.
+
+**Features:**
+- DemoLayout for demo pages
+- DemoHome landing page
+- MacWindow component for showcases
+- Showcase component for component demos
 

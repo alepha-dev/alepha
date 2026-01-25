@@ -11,9 +11,15 @@ export * from "./providers/ServerStaticProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Create static file server with `$static()`.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | stable |
  *
- * @see {@link ServerStaticProvider}
+ * Static file serving.
+ *
+ * **Features:**
+ * - Serve static files from directory
+ *
  * @module alepha.server.static
  */
 export const AlephaServerStatic = $module({

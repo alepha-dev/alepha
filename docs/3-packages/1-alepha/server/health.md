@@ -10,7 +10,14 @@ npm install alepha
 
 ## Overview
 
-Plugin for Alepha Server that provides health-check endpoints.
+| type | quality | stability |
+|------|---------|-----------|
+| devops | standard | stable |
+
+Application health monitoring endpoints.
+
+**Features:**
+- `GET /health` endpoint
 
 ## API Reference
 

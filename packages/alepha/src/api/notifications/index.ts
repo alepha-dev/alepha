@@ -25,12 +25,18 @@ export * from "./services/NotificationService.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Provides notification management API endpoints for Alepha applications.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | stable |
  *
- * This module includes notification sending, retrieval, status tracking,
- * and user notification preferences management.
+ * User notification management.
  *
- * Requires `AlephaSms` module to be loaded for SMS notifications.
+ * **Features:**
+ * - Notification definitions
+ * - Email/SMS notification sending
+ * - Status tracking
+ * - User preferences
+ * - Queue integration
  *
  * @module alepha.api.notifications
  */

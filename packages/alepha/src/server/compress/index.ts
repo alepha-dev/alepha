@@ -9,9 +9,17 @@ export * from "./providers/ServerCompressProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Plugin for Alepha Server that provides server-side compression capabilities.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | stable |
  *
- * Compresses responses using gzip, brotli, or zstd based on the `Accept-Encoding` header.
+ * Response compression.
+ *
+ * **Features:**
+ * - Gzip compression
+ * - Brotli compression
+ *
+ * @module alepha.server.compress
  */
 export const AlephaServerCompress = $module({
   name: "alepha.server.compress",

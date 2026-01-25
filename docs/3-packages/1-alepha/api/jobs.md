@@ -10,10 +10,17 @@ npm install alepha
 
 ## Overview
 
-Provides job management API endpoints for Alepha applications.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | stable |
 
-This module includes job queue operations, job status monitoring,
-and background task management capabilities.
+Job execution monitoring.
+
+**Features:**
+- Job definitions for tracking
+- Job status tracking
+- Execution history
+- Retry management
 
 ## API Reference
 

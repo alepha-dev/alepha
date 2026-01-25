@@ -88,19 +88,23 @@ declare module "alepha/server" {
 }
 
 /**
- * Provides comprehensive authentication and authorization capabilities with JWT tokens, role-based access control, and user management.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | epic | stable |
  *
- * The security module enables building secure applications using primitives like `$issuer`, `$role`, and `$permission`
- * on class properties. It offers JWT-based authentication, fine-grained permissions, service accounts, and seamless
- * integration with various authentication providers and user management systems.
+ * Complete authentication and authorization system with JWT, RBAC, and multi-issuer support.
  *
- * When used with `AlephaServer`, this module automatically registers `ServerSecurityProvider` and `ServerBasicAuthProvider`
- * to protect HTTP routes and actions with JWT and Basic Auth.
+ * **Features:**
+ * - JWT token issuer with role definitions
+ * - Role-based access control (RBAC)
+ * - Fine-grained permissions
+ * - HTTP Basic Authentication
+ * - Service-to-service authentication
+ * - Multi-issuer support for federated auth
+ * - JWKS (JSON Web Key Set) for external issuers
+ * - Token refresh logic
+ * - User profile extraction from JWT
  *
- * @see {@link $issuer}
- * @see {@link $role}
- * @see {@link $permission}
- * @see {@link $basicAuth}
  * @module alepha.security
  */
 export const AlephaSecurity = $module({

@@ -25,30 +25,16 @@ declare module "alepha/server" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Plugin for configuring CORS on the Alepha server.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | stable |
  *
- * @example
- * ```ts
- * import { Alepha, $route } from "alepha";
- * import { AlephaServerCors, $cors } from "alepha/server-cors";
+ * Cross-Origin Resource Sharing configuration.
  *
- * class ApiService {
- *   // Global CORS is applied via corsOptions atom
+ * **Features:**
+ * - CORS policy definition
  *
- *   // Path-specific CORS for API routes
- *   apiCors = $cors({
- *     paths: ["/api/*"],
- *     origin: "https://app.example.com",
- *     credentials: true,
- *   });
- *
- *   route = $route({
- *     path: "/api/data",
- *     method: "POST",
- *     handler: () => ({ data: "hello" }),
- *   });
- * }
- * ```
+ * @module alepha.server.cors
  */
 export const AlephaServerCors = $module({
   name: "alepha.server.cors",

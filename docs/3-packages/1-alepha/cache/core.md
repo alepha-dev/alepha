@@ -10,11 +10,18 @@ npm install alepha
 
 ## Overview
 
-Provides high-performance caching capabilities for Alepha applications with configurable TTL and multiple storage backends.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | rare | stable |
 
-The cache module enables declarative caching through the `$cache` primitive, allowing you to cache method results,
-API responses, or computed values with automatic invalidation and type safety. It supports both in-memory and
-persistent storage backends for different performance and durability requirements.
+Type-safe caching with TTL support.
+
+**Features:**
+- Cached computations with type-safe keys and values
+- Configurable TTL
+- Cache invalidation
+- Automatic cache population
+- Providers: Memory (default), Redis
 
 ## API Reference
 

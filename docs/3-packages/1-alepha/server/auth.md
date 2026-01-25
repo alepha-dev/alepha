@@ -10,13 +10,20 @@ npm install alepha
 
 ## Overview
 
-Allow authentication services for server applications.
-It provides login and logout functionalities.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | rare | stable |
 
-There are multiple authentication providers available (e.g., Google, GitHub).
-You can also delegate authentication to your own OIDC/OAuth2, for example using Keycloak or Auth0.
+OAuth2/OIDC authentication with social login providers.
 
-It's cookie-based and SSR friendly.
+**Features:**
+- OAuth authentication provider
+- Username/password authentication
+- Google OAuth integration
+- GitHub OAuth integration
+- Apple OAuth integration
+- Cookie-based, SSR-friendly authentication
+- Token management and refresh
 
 ## API Reference
 

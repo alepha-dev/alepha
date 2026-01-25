@@ -22,9 +22,18 @@ Alepha.prototype.isWorkerThread = function (this: Alepha): boolean {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Simple interface for managing worker threads in Alepha.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | experimental |
  *
- * @see {@link $thread}
+ * Multi-threading support.
+ *
+ * **Features:**
+ * - Worker thread definitions
+ * - Worker thread management
+ * - Message passing
+ * - Worker pools
+ *
  * @module alepha.thread
  */
 export const AlephaThread = $module({

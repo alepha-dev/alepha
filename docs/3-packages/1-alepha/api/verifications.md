@@ -10,9 +10,15 @@ npm install alepha
 
 ## Overview
 
-Provides email/phone verification management API endpoints for Alepha applications.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | stable |
 
-This module includes verification code generation, validation,
-and related functionalities. Notifications are handled by the consuming module
-(e.g., api-users) for context-specific messaging.
+Email and phone verification workflows.
+
+**Features:**
+- Verification token generation
+- Verification code sending
+- Verification completion tracking
+- Resend functionality
 

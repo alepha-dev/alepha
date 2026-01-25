@@ -9,10 +9,16 @@ export * from "./providers/ServerMultipartProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * This module provides support for handling multipart/form-data requests.
- * It allows to parse body data containing t.file().
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | stable |
  *
- * @see {@link ServerMultipartProvider}
+ * Multipart form data handling for file uploads.
+ *
+ * **Features:**
+ * - File upload parsing
+ * - Form field extraction
+ *
  * @module alepha.server.multipart
  */
 export const AlephaServerMultipart = $module({

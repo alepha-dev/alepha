@@ -16,14 +16,22 @@ export * from "./providers/WorkerProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Provides asynchronous message queuing and processing capabilities through declarative queue descriptors.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | epic | stable |
  *
- * The queue module enables reliable background job processing and message passing using the `$queue` descriptor
- * on class properties. It supports schema validation, automatic retries, and multiple queue backends for
- * building scalable, decoupled applications with robust error handling.
+ * Asynchronous message processing with automatic worker management.
  *
- * @see {@link $queue}
- * @see {@link $consumer}
+ * **Features:**
+ * - Background job queues with type-safe payloads
+ * - Queue consumer handlers
+ * - Automatic worker threads for non-blocking processing
+ * - Retry mechanisms with exponential backoff
+ * - Dead letter queues for failed messages
+ * - Batch processing support
+ * - Configurable concurrency and worker pools
+ * - Providers: Memory (dev), Redis (production)
+ *
  * @module alepha.queue
  */
 export const AlephaQueue = $module({

@@ -10,8 +10,15 @@ npm install alepha
 
 ## Overview
 
-Provides file management API endpoints for Alepha applications.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | stable |
 
-This module includes file upload, download, storage management,
-and file metadata operations.
+File management endpoints.
+
+**Features:**
+- Upload/download endpoints
+- File metadata storage
+- TTL-based expiration
+- Storage statistics
 

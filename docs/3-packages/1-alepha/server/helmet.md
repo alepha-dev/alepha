@@ -10,8 +10,17 @@ npm install alepha
 
 ## Overview
 
-Automatically adds important HTTP security headers to every response
-to help protect your application from common web vulnerabilities.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | stable |
+
+HTTP security headers.
+
+**Features:**
+- X-Frame-Options
+- X-Content-Type-Options
+- Content-Security-Policy
+- Other security headers
 
 ## API Reference
 

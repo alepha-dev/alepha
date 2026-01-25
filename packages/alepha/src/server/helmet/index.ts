@@ -9,10 +9,18 @@ export * from "./providers/ServerHelmetProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Automatically adds important HTTP security headers to every response
- * to help protect your application from common web vulnerabilities.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | stable |
  *
- * @see {@link ServerHelmetProvider}
+ * HTTP security headers.
+ *
+ * **Features:**
+ * - X-Frame-Options
+ * - X-Content-Type-Options
+ * - Content-Security-Policy
+ * - Other security headers
+ *
  * @module alepha.server.helmet
  */
 export const AlephaServerHelmet = $module({

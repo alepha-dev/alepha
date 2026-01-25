@@ -10,7 +10,17 @@ npm install alepha
 
 ## Overview
 
-Simple interface for managing worker threads in Alepha.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | experimental |
+
+Multi-threading support.
+
+**Features:**
+- Worker thread definitions
+- Worker thread management
+- Message passing
+- Worker pools
 
 ## API Reference
 

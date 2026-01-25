@@ -57,10 +57,21 @@ export * from "./services/UserService.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Provides user management API endpoints for Alepha applications.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | epic | stable |
  *
- * This module includes user CRUD operations, authentication endpoints,
- * password reset functionality, and user profile management capabilities.
+ * Complete user management with multi-realm support for multi-tenant applications.
+ *
+ * **Features:**
+ * - User registration, login, and profile management
+ * - Password reset workflows
+ * - Email verification
+ * - Session management with multiple devices
+ * - Identity management (social logins, SSO)
+ * - Multi-realm support for tenant isolation
+ * - Credential management
+ * - Entities: `users`, `identities`, `sessions`
  *
  * @module alepha.api.users
  */

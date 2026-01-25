@@ -10,6 +10,14 @@ npm install alepha
 
 ## Overview
 
-This module provides prometheus metrics for the Alepha server.
-Metrics are exposed at the `/metrics` endpoint.
+| type | quality | stability |
+|------|---------|-----------|
+| devops | standard | stable |
+
+Prometheus-style metrics collection.
+
+**Features:**
+- Prometheus-style metrics
+- Custom metric registration
+- Metric exposition endpoint
 

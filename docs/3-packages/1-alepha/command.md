@@ -10,10 +10,19 @@ npm install alepha
 
 ## Overview
 
-This module provides a powerful way to build command-line interfaces
-directly within your Alepha application, using declarative primitives.
+| type | quality | stability |
+|------|---------|-----------|
+| tooling | rare | stable |
 
-It allows you to define commands using the `$command` primitive.
+Declarative CLI command framework.
+
+**Features:**
+- CLI command definitions
+- Interactive CLI prompts
+- Command execution
+- Formatted colored output
+- Environment variable utilities
+- Schema validation for CLI arguments
 
 ## API Reference
 
@@ -29,6 +38,53 @@ Declares a CLI command.
 
 This primitive allows you to define a command, its flags, and its handler
 within your Alepha application structure.
+
+### Providers
+
+Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
+
+For more details, see the [Providers documentation](/docs/concepts-providers).
+
+#### MemoryShellProvider
+
+In-memory implementation of ShellProvider for testing.
+
+Records all commands that would be executed without actually running them.
+Can be configured to return specific outputs or throw errors for testing.
+
+```typescript
+// In tests, substitute the real ShellProvider with MemoryShellProvider
+const alepha = Alepha.create().with({
+  provide: ShellProvider,
+  use: MemoryShellProvider,
+});
+
+// Configure mock behavior
+const shell = alepha.inject(MemoryShellProvider);
+shell.configure({
+  outputs: { "echo hello": "hello\n" },
+  errors: { "failing-cmd": "Command failed" },
+});
+
+// Or use the fluent API
+shell.outputs.set("another-cmd", "output");
+shell.errors.set("another-error", "Error message");
+
+// Run code that uses ShellProvider
+const service = alepha.inject(MyService);
+await service.doSomething();
+
+// Verify commands were called
+expect(shell.calls).toHaveLength(2);
+expect(shell.calls[0].command).toBe("yarn install");
+```
+
+#### NodeShellProvider
+
+Node.js implementation of ShellProvider.
+
+Executes shell commands using Node.js child_process module.
+Supports binary resolution from node_modules/.bin for local packages.
 
 ### Environment Variables
 

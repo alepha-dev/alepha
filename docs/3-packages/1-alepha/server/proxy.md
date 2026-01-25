@@ -10,7 +10,14 @@ npm install alepha
 
 ## Overview
 
-Plugin for Alepha that provides a proxy server functionality.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | stable |
+
+Reverse proxy routing.
+
+**Features:**
+- Proxy configuration and routing
 
 ## API Reference
 

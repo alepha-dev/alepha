@@ -10,12 +10,16 @@ npm install alepha
 
 ## Overview
 
-Provides fake data generation capabilities for Alepha applications using faker.js and TypeBox schemas.
+| type | quality | stability |
+|------|---------|-----------|
+| tooling | rare | stable |
 
-The fake module enables declarative fake data generation from TypeBox schemas, making it easy to create
-realistic test data, seed databases, or generate mock responses. It intelligently uses property key names
-to generate contextually appropriate data (e.g., "email" generates an email address, "firstName" generates
-a first name).
+Test data generation with Faker.js.
+
+**Features:**
+- TypeBox schema-based generation
+- Context-aware field generation (email field -> email address)
+- Test data seeding
 
 ## API Reference
 

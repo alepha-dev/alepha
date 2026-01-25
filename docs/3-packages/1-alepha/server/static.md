@@ -10,7 +10,14 @@ npm install alepha
 
 ## Overview
 
-Create static file server with `$static()`.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | stable |
+
+Static file serving.
+
+**Features:**
+- Serve static files from directory
 
 ## API Reference
 

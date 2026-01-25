@@ -36,13 +36,18 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Provides email sending capabilities for Alepha applications with multiple provider backends.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | rare | stable |
  *
- * The email module enables declarative email sending through the `$email` primitive, allowing you to send
- * emails through different providers: memory (for testing), local file system, or SMTP via Nodemailer.
- * It supports HTML email content and automatic provider selection based on environment configuration.
+ * Email delivery with template support.
  *
- * @see {@link EmailProvider}
+ * **Features:**
+ * - Send emails with templates
+ * - Multiple recipients
+ * - SMTP via Nodemailer
+ * - Local file provider for development
+ *
  * @module alepha.email
  */
 export const AlephaEmail = $module({

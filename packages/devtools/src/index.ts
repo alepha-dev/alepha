@@ -25,12 +25,21 @@ export * from "./api/schemas/DevTopicMetadata.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Developer tools module for monitoring and debugging Alepha applications.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | tooling | rare | experimental |
  *
- * This module provides comprehensive data collection capabilities for tracking application behavior,
- * performance metrics, and debugging information in real-time.
+ * Runtime inspection and debugging UI.
  *
- * @see {@link DevToolsMetadataProvider}
+ * **Features:**
+ * - DevTools UI at `GET /devtools`
+ * - Application metadata at `GET /devtools/metadata`
+ * - Last 10,000 logs at `GET /devtools/logs`
+ * - Runtime inspection of actions, queues, schedulers, topics, buckets
+ * - Log viewer with filtering
+ * - React Flow visualization
+ * - Provider and module browsing
+ *
  * @module alepha.devtools
  */
 export const AlephaDevtools = $module({

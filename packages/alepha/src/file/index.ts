@@ -15,14 +15,17 @@ export * from "./services/FileDetector.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Provides file system capabilities for Alepha applications with support for multiple file sources and operations.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | tooling | standard | stable |
  *
- * The file module enables working with files from various sources (URLs, buffers, streams) and provides
- * utilities for file type detection, content type determination, and common file system operations.
+ * File operations and type detection.
  *
- * @see {@link FileDetector}
- * @see {@link FileSystemProvider}
- * @see {@link NodeFileSystemProvider}
+ * **Features:**
+ * - File type detection
+ * - MIME type utilities
+ * - Path operations
+ *
  * @module alepha.file
  */
 export const AlephaFile = $module({

@@ -58,17 +58,21 @@ export * from "./providers/NodeWebSocketServerProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Provides real-time bidirectional communication using WebSockets.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | rare | experimental |
  *
- * The WebSockets module enables building real-time applications using the `$websocket` primitive
- * on class properties. It provides automatic connection management, message routing, type-safe
- * message handling, and seamless integration with other Alepha modules.
+ * Real-time bidirectional communication.
  *
- * On the server side (Node.js), it uses the 'ws' library to create a WebSocket server.
- * On the client side (browser), it uses the native WebSocket API.
+ * **Features:**
+ * - WebSocket server definition
+ * - Named communication channels
+ * - Type-safe message handling
+ * - Connection lifecycle management
+ * - Room/channel grouping
+ * - Browser compatibility
  *
- * @see {@link $websocket}
- * @module alepha.websockets
+ * @module alepha.websocket
  */
 export const AlephaWebSocket = $module({
   name: "alepha.websocket",

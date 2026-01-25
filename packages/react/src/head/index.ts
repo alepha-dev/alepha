@@ -18,14 +18,17 @@ export * from "./providers/ServerHeadProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Fill `<head>` server & client side.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | frontend | standard | stable |
  *
- * Generate SEO-friendly meta tags and titles for your React application using AlephaReactHead module.
+ * HTML head element management.
  *
- * This module provides services and primitives to manage the document head both on the server and client side,
- * ensuring that your application is optimized for search engines and social media sharing.
+ * **Features:**
+ * - Title, meta tags, and links
+ * - SEO optimization
+ * - Social media tags
  *
- * @see {@link ServerHeadProvider}
  * @module alepha.react.head
  */
 export const AlephaReactHead = $module({

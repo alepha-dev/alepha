@@ -8,9 +8,18 @@ npm install @alepha/bucket-s3
 
 ## Overview
 
-Plugin for Alepha Bucket that provides S3-compatible storage capabilities.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | stable |
 
-Works with AWS S3, Cloudflare R2, MinIO, DigitalOcean Spaces, and other S3-compatible services.
+S3-compatible file storage provider.
+
+**Features:**
+- AWS S3 compatibility
+- Cloudflare R2 compatibility
+- MinIO compatibility
+- DigitalOcean Spaces compatibility
+- Any S3-compatible backend
 
 ## API Reference
 

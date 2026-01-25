@@ -15,12 +15,19 @@ export * from "./providers/TopicProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Generic interface for pub/sub messaging.
- * Gives you the ability to create topics and subscribers.
- * This module provides only a memory implementation of the topic provider.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | rare | stable |
  *
- * @see {@link $topic}
- * @see {@link $subscriber}
+ * Publish/subscribe messaging for event-driven architectures.
+ *
+ * **Features:**
+ * - Pub/sub topics with type-safe messages
+ * - Topic subscription handlers
+ * - Multiple subscriber support
+ * - Message filtering and routing
+ * - Providers: Memory (dev), Redis (production)
+ *
  * @module alepha.topic
  */
 export const AlephaTopic = $module({

@@ -152,7 +152,25 @@ declare module "@alepha/react/router" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Mantine
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | frontend | rare | experimental |
+ *
+ * Core UI components based on Mantine UI v8.
+ *
+ * **Features:**
+ * - Mantine integration with theme support
+ * - ActionButton, BurgerButton, ClipboardButton, DarkModeButton, LanguageButton, ThemeButton
+ * - AlertDialog, ConfirmDialog, PromptDialog
+ * - Form controls: Control, ControlArray, ControlDate, ControlNumber, ControlObject, ControlSelect, ControlQueryBuilder
+ * - TypeForm for automatic form generation from TypeBox schemas
+ * - AdminShell layout component
+ * - AppBar with configurable elements
+ * - Sidebar navigation with sections and menu items
+ * - Omnibar for command palette / search
+ * - DataTable with filtering, sorting, pagination
+ * - Toast notifications
+ * - Theme system with dark mode
  *
  * @module alepha.ui
  */

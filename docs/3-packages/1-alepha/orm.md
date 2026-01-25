@@ -10,45 +10,25 @@ npm install alepha
 
 ## Overview
 
-Postgres client based on Drizzle ORM, Alepha type-safe friendly.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | epic | stable |
 
-Automatically selects the appropriate provider based on runtime:
-- Bun: Uses `BunPostgresProvider` or `BunSqliteProvider`
-- Node.js: Uses `NodePostgresProvider` or `NodeSqliteProvider`
+Full-featured database abstraction built on Drizzle ORM with complete type safety.
 
-```ts
-import { t } from "alepha";
-import { $entity, $repository, db } from "alepha/postgres";
-
-const users = $entity({
-  name: "users",
-  schema: t.object({
-    id: db.primaryKey(),
-    name: t.text(),
-    email: t.text(),
-  }),
-});
-
-class App {
-  users = $repository(users);
-
-  getUserByName(name: string) {
-    return this.users.findOne({ name: { eq: name } });
-  }
-}
-```
-
-This is not a full ORM, but rather a set of tools to work with Postgres databases in a type-safe way.
-
-It provides:
-- A type-safe way to define entities and repositories. (via `$entity` and `$repository`)
-- Custom query builders and filters.
-- Built-in special columns like `createdAt`, `updatedAt`, `deletedAt`, `version`.
-- Automatic JSONB support.
-- Automatic synchronization of entities with the database schema (for testing and development).
-- Fallback to raw SQL via Drizzle ORM `sql` function.
-
-Migrations are supported via Drizzle ORM, you need to use the `drizzle-kit` CLI tool to generate and run migrations.
+**Features:**
+- Define database entities with TypeBox schemas
+- Automatic timestamps, soft deletes, and versioning columns
+- Type-safe CRUD operations with filtering, pagination, sorting, and relationships
+- Database transaction support with automatic rollback
+- Auto-incrementing sequences for IDs
+- PostgreSQL support (Node.js, Bun, Cloudflare Workers via pglite)
+- SQLite support (Node.js, Bun, Cloudflare D1)
+- Automatic schema sync for development/testing
+- Drizzle Kit migrations for production
+- Type-safe filters: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `nin`, `like`, `between`
+- JSONB column support
+- Relationship joins
 
 ## API Reference
 

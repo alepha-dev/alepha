@@ -10,8 +10,15 @@ npm install alepha
 
 ## Overview
 
-This module provides support for handling multipart/form-data requests.
-It allows to parse body data containing t.file().
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | stable |
+
+Multipart form data handling for file uploads.
+
+**Features:**
+- File upload parsing
+- Form field extraction
 
 ## API Reference
 

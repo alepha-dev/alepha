@@ -10,9 +10,15 @@ export * from "./schemas/healthSchema.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Plugin for Alepha Server that provides health-check endpoints.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | devops | standard | stable |
  *
- * @see {@link ServerHealthProvider}
+ * Application health monitoring endpoints.
+ *
+ * **Features:**
+ * - `GET /health` endpoint
+ *
  * @module alepha.server.health
  */
 export const AlephaServerHealth = $module({

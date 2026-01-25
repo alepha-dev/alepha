@@ -10,26 +10,17 @@ npm install alepha
 
 ## Overview
 
-Redis client provider for Alepha applications.
+| type | quality | stability |
+|------|---------|-----------|
+| backend | standard | stable |
 
-Automatically selects the appropriate provider based on runtime:
-- Bun: Uses `BunRedisProvider` with Bun's native Redis client (7.9x faster than ioredis)
-- Node.js: Uses `NodeRedisProvider` with `@redis/client`
+Redis client wrapper.
 
-```ts
-// Inject the abstract provider - runtime selects the implementation
-const redis = alepha.inject(RedisProvider);
-
-// Use common operations
-await redis.set("key", "value");
-const value = await redis.get("key");
-
-// For pub/sub
-const subscriber = alepha.inject(RedisSubscriberProvider);
-await subscriber.subscribe("channel", (message, channel) => {
-  console.log(`Received: ${message} on ${channel}`);
-});
-```
+**Features:**
+- Connection pooling
+- Automatic reconnection
+- Command pipelining
+- Pub/sub support
 
 ## API Reference
 

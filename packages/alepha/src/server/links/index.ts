@@ -35,14 +35,19 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Provides server-side link management and remote capabilities for client-server interactions.
+ * | type | quality | stability |
+ * |------|---------|-----------|
+ * | backend | standard | stable |
  *
- * The server-links module enables declarative link definitions using `$remote` and `$client` primitives,
- * facilitating seamless API endpoint management and client-server communication. It integrates with server
- * security features to ensure safe and controlled access to resources.
+ * Type-safe API client with request deduplication.
  *
- * @see {@link $remote}
- * @see {@link $client}
+ * **Features:**
+ * - Virtual HTTP client for type-safe API calls
+ * - Remote action definitions
+ * - Type inference from action schemas
+ * - Request deduplication
+ * - Automatic error handling
+ *
  * @module alepha.server.links
  */
 export const AlephaServerLinks = $module({
