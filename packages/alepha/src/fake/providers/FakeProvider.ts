@@ -24,6 +24,37 @@ export interface FakeOptions {
    * Seed for deterministic fake data generation.
    */
   seed?: number;
+
+  /**
+   * Probability (0-1) that an optional field will be undefined.
+   * @default 0.3
+   */
+  optionalProbability?: number;
+
+  /**
+   * Probability (0-1) that a nullable field will be null.
+   * @default 0.2
+   */
+  nullableProbability?: number;
+
+  /**
+   * Default number of items to generate for arrays when maxItems is not specified.
+   * @default 5
+   */
+  defaultArrayLength?: number;
+
+  /**
+   * Maximum number of items to generate for arrays.
+   * Set to Infinity to respect schema's maxItems without cap.
+   * @default 20
+   */
+  maxArrayLength?: number;
+
+  /**
+   * Default number of entries to generate for record types.
+   * @default { min: 2, max: 5 }
+   */
+  defaultRecordEntries?: { min: number; max: number };
 }
 
 /**
@@ -38,27 +69,98 @@ export interface FakeOptions {
  *   email: t.email(),
  * });
  * const fakeUser = fake.generate(userSchema);
+ *
+ * // Configure options
+ * fake.configure({ seed: 99999, optionalProbability: 0.5 });
  * ```
  */
 export class FakeProvider {
-  protected readonly faker: typeof faker;
-  protected readonly guard: TypeGuard;
+  protected readonly faker = faker;
+  protected readonly guard = new TypeGuard();
+  protected options: Required<FakeOptions> = {
+    locale: "en",
+    seed: 12345,
+    optionalProbability: 0.3,
+    nullableProbability: 0.2,
+    defaultArrayLength: 5,
+    maxArrayLength: 20,
+    defaultRecordEntries: { min: 2, max: 5 },
+  };
 
-  constructor(options?: FakeOptions) {
-    // Set seed for deterministic generation FIRST
-    if (options?.seed !== undefined) {
-      faker.seed(options.seed);
+  constructor() {
+    this.faker.seed(this.options.seed);
+  }
+
+  /**
+   * Configure generation options.
+   * If a seed is provided, the faker instance is reseeded.
+   */
+  public configure(options: Partial<FakeOptions>): this {
+    const oldSeed = this.options.seed;
+
+    this.options = {
+      ...this.options,
+      ...options,
+      // Merge defaultRecordEntries if provided
+      defaultRecordEntries: options.defaultRecordEntries
+        ? {
+            ...this.options.defaultRecordEntries,
+            ...options.defaultRecordEntries,
+          }
+        : this.options.defaultRecordEntries,
+    };
+
+    // Reseed faker if seed is provided (allows resetting to same seed)
+    if (options.seed !== undefined) {
+      this.faker.seed(options.seed);
     }
 
-    // Note: faker.js v9 doesn't have setLocale anymore, locales are set differently
-    // For now, we'll just use the default locale
-    this.faker = faker;
-
-    this.guard = new TypeGuard();
+    return this;
   }
 
   /**
    * Generate fake data matching the given TypeBox schema.
+   *
+   * For object schemas, property names are used to generate contextually
+   * appropriate values. The following field name patterns are recognized
+   * (case-insensitive, underscores and hyphens are ignored):
+   *
+   * **String fields:**
+   * - `email` → email address
+   * - `firstName`, `first` → first name
+   * - `lastName`, `last` → last name
+   * - `fullName`, `name` → full name
+   * - `username` → username
+   * - `phone`, `mobile` → phone number
+   * - `address` → street address
+   * - `city` → city name
+   * - `country` → country name
+   * - `state`, `province` → state/province
+   * - `zip`, `postal` → postal code
+   * - `company`, `organization` → company name
+   * - `job`, `title`, `position` → job title
+   * - `url`, `website` → URL
+   * - `avatar`, `image`, `photo` → avatar URL
+   * - `color`, `colour` → color name
+   * - `bio`, `about`, `description` → bio text
+   *
+   * **Number/Integer fields:**
+   * - `age` → 18-99
+   * - `year` → past year
+   * - `month` → 1-12
+   * - `day` → 1-31
+   * - `price`, `amount`, `cost` → monetary value
+   *
+   * @example
+   * ```ts
+   * const fake = new FakeProvider();
+   * const schema = t.object({
+   *   user_name: t.string(),  // generates username
+   *   firstName: t.string(),  // generates first name
+   *   "e-mail": t.string(),   // generates email
+   * });
+   * const result = fake.generate(schema);
+   * ```
    */
   public generate<T extends TSchema>(schema: T): StaticDecode<T> {
     return this.generateValue(schema) as StaticDecode<T>;
@@ -78,7 +180,11 @@ export class FakeProvider {
     // Handle optional
     if (this.guard.isOptional(schema)) {
       // 30% chance of being undefined
-      if (this.faker.datatype.boolean({ probability: 0.3 })) {
+      if (
+        this.faker.datatype.boolean({
+          probability: this.options.optionalProbability,
+        })
+      ) {
         return undefined;
       }
       // Generate the inner schema
@@ -92,7 +198,11 @@ export class FakeProvider {
       const hasNull = union.anyOf.some((s) => this.guard.isNull(s));
       if (hasNull) {
         // 20% chance of being null
-        if (this.faker.datatype.boolean({ probability: 0.2 })) {
+        if (
+          this.faker.datatype.boolean({
+            probability: this.options.nullableProbability,
+          })
+        ) {
           return null;
         }
         // Pick a non-null option
@@ -354,7 +464,10 @@ export class FakeProvider {
   protected generateArray(schema: TArray): unknown[] {
     const schemaAny = schema as any;
     const minItems = schemaAny.minItems ?? 0;
-    const maxItems = Math.min(schemaAny.maxItems ?? 5, 5); // Cap at 5 by default
+    const maxItems = Math.min(
+      schemaAny.maxItems ?? this.options.defaultArrayLength,
+      this.options.maxArrayLength,
+    );
     const length = this.faker.number.int({ min: minItems, max: maxItems });
 
     return Array.from({ length }, () => this.generateValue(schema.items));
@@ -383,8 +496,9 @@ export class FakeProvider {
       return this.generateValue(schema);
     }
 
-    // Normalize key name to lowercase for matching
-    const normalizedKey = keyName.toLowerCase();
+    // Normalize key name: lowercase and remove underscores/hyphens
+    // This allows matching "user_name", "user-name", "userName" etc.
+    const normalizedKey = keyName.toLowerCase().replace(/[_-]/g, "");
 
     // Check if this is a string type that could benefit from context
     if (this.guard.isString(schema)) {
@@ -509,7 +623,7 @@ export class FakeProvider {
       : record.additionalProperties;
 
     // Generate 2-5 random key-value pairs
-    const count = this.faker.number.int({ min: 2, max: 5 });
+    const count = this.faker.number.int(this.options.defaultRecordEntries);
     const result: Record<string, unknown> = {};
 
     for (let i = 0; i < count; i++) {

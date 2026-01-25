@@ -4,7 +4,7 @@ import { FakeProvider } from "../providers/FakeProvider.ts";
 
 describe("FakeProvider - Key Name Intelligence", () => {
   test("generates contextual data based on key names", ({ expect }) => {
-    const fake = new FakeProvider({ seed: 12345 });
+    const fake = new FakeProvider();
     const schema = t.object({
       firstName: t.text(),
       lastName: t.text(),
@@ -39,7 +39,7 @@ describe("FakeProvider - Key Name Intelligence", () => {
   });
 
   test("format takes precedence over key name", ({ expect }) => {
-    const fake = new FakeProvider({ seed: 12345 });
+    const fake = new FakeProvider();
     const schema = t.object({
       // Even though key is "email", format: uuid should generate UUID
       email: t.uuid(),
@@ -59,7 +59,7 @@ describe("FakeProvider - Key Name Intelligence", () => {
   });
 
   test("enum values ignore key name context", ({ expect }) => {
-    const fake = new FakeProvider({ seed: 12345 });
+    const fake = new FakeProvider();
     const schema = t.object({
       // Even though key is "email", enum should pick from values
       email: t.enum(["user1", "user2", "user3"]),
@@ -73,7 +73,7 @@ describe("FakeProvider - Key Name Intelligence", () => {
   });
 
   test("generates realistic user profiles", ({ expect }) => {
-    const fake = new FakeProvider({ seed: 67890 });
+    const fake = new FakeProvider().configure({ seed: 67890 });
     const userSchema = t.object({
       firstName: t.shortText(),
       lastName: t.shortText(),
@@ -121,7 +121,7 @@ describe("FakeProvider - Key Name Intelligence", () => {
   });
 
   test("numeric key names influence generation", ({ expect }) => {
-    const fake = new FakeProvider({ seed: 12345 });
+    const fake = new FakeProvider();
     const schema = t.object({
       age: t.integer(),
       year: t.integer(),

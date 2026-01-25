@@ -2,7 +2,7 @@ import { t } from "alepha";
 import { FakeProvider } from "../providers/FakeProvider.ts";
 
 // Example showing how key names influence generated data
-const fake = new FakeProvider({ seed: 12345 });
+const fake = new FakeProvider();
 
 const userSchema = t.object({
   id: t.uuid(),
