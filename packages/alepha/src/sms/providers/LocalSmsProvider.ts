@@ -1,6 +1,6 @@
 import { $inject } from "alepha";
-import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
+import { FileSystemProvider } from "alepha/system";
 import { SmsError } from "../errors/SmsError.ts";
 import type { SmsProvider, SmsSendOptions } from "./SmsProvider.ts";
 

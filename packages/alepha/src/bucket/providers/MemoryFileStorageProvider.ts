@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { $inject, type FileLike } from "alepha";
-import { FileDetector, FileSystemProvider } from "alepha/file";
+import { FileDetector, FileSystemProvider } from "alepha/system";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 

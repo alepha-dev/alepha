@@ -1,7 +1,7 @@
 import { basename, dirname } from "node:path";
 import { $inject } from "alepha";
-import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
+import { FileSystemProvider } from "alepha/system";
 import {
   type AgentMdOptions,
   type AgentMdType,

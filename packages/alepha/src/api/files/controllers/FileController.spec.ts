@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { $bucket } from "alepha/bucket";
 import { DateTimeProvider } from "alepha/datetime";
-import { FileSystemProvider } from "alepha/file";
+import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 import { FileController, FileService } from "../index.ts";
 

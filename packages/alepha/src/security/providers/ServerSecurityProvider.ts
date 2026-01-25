@@ -23,6 +23,8 @@ export class ServerSecurityProvider {
   protected readonly jwtProvider = $inject(JwtProvider);
   protected readonly alepha = $inject(Alepha);
 
+  protected readonly resolvers: Array<ServerSecurityUserResolver> = [];
+
   protected readonly onConfigure = $hook({
     on: "configure",
     handler: async () => {
@@ -295,3 +297,7 @@ export type ServerRouteSecure = {
   realm?: string;
   basic?: BasicAuthOptions;
 };
+
+export type ServerSecurityUserResolver = (
+  request: ServerRequest,
+) => Promise<UserAccountToken | undefined>;

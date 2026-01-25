@@ -1,0 +1,74 @@
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface ShellRunOptions {
+  /**
+   * Working directory for the command.
+   */
+  root?: string;
+
+  /**
+   * Additional environment variables.
+   */
+  env?: Record<string, string>;
+
+  /**
+   * Resolve the executable from node_modules/.bin.
+   * Supports local project, pnpm nested, and monorepo structures.
+   * @default false
+   */
+  resolve?: boolean;
+
+  /**
+   * Capture stdout instead of inheriting stdio.
+   * When true, returns stdout as string.
+   * When false, streams output to terminal.
+   * @default false
+   */
+  capture?: boolean;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Abstract provider for executing shell commands and binaries.
+ *
+ * Implementations:
+ * - `NodeShellProvider` - Real shell execution using Node.js child_process
+ * - `MemoryShellProvider` - In-memory mock for testing
+ *
+ * @example
+ * ```typescript
+ * class MyService {
+ *   protected readonly shell = $inject(ShellProvider);
+ *
+ *   async build() {
+ *     // Run shell command directly
+ *     await this.shell.run("yarn install");
+ *
+ *     // Run local binary with resolution
+ *     await this.shell.run("vite build", { resolve: true });
+ *
+ *     // Capture output
+ *     const output = await this.shell.run("echo hello", { capture: true });
+ *   }
+ * }
+ * ```
+ */
+export abstract class ShellProvider {
+  /**
+   * Run a shell command or binary.
+   *
+   * @param command - The command to run
+   * @param options - Execution options
+   * @returns stdout if capture is true, empty string otherwise
+   */
+  abstract run(command: string, options?: ShellRunOptions): Promise<string>;
+
+  /**
+   * Check if a command is installed and available in the system PATH.
+   *
+   * @param command - The command name to check
+   * @returns true if the command is available
+   */
+  abstract isInstalled(command: string): Promise<boolean>;
+}

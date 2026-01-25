@@ -1,5 +1,5 @@
 import { Alepha, t } from "alepha";
-import { FileSystemProvider } from "alepha/file";
+import { FileSystemProvider } from "alepha/system";
 import { describe, test } from "vitest";
 import { $action } from "../index.ts";
 

@@ -1,7 +1,7 @@
 import { $inject, Alepha } from "alepha";
 import type { RunnerMethod } from "alepha/command";
-import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
+import { FileSystemProvider } from "alepha/system";
 import { version } from "../version.ts";
 
 /**

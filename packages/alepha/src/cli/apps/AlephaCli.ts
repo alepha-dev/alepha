@@ -1,5 +1,5 @@
 import { $hook, $inject, $module, Alepha } from "alepha";
-import { FileSystemProvider } from "alepha/file";
+import { FileSystemProvider } from "alepha/system";
 import { BuildCommand } from "../commands/build.ts";
 import { CleanCommand } from "../commands/clean.ts";
 import { DbCommand } from "../commands/db.ts";

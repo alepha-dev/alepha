@@ -1,6 +1,6 @@
 import { $inject, t } from "alepha";
 import { $command } from "alepha/command";
-import { FileSystemProvider } from "alepha/file";
+import { FileSystemProvider } from "alepha/system";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";

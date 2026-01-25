@@ -4,9 +4,9 @@ import { basename, isAbsolute, join } from "node:path";
 import type { Readable as NodeStream } from "node:stream";
 import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { FileDetector } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { type ServerHandler, ServerRouterProvider } from "alepha/server";
+import { FileDetector } from "alepha/system";
 import { $serve, type ServePrimitiveOptions } from "../primitives/$serve.ts";
 
 export class ServerStaticProvider {

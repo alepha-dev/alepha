@@ -1,8 +1,8 @@
-# Alepha - File
+# Alepha - System
 
 ## Installation
 
-Part of the `alepha` package. Import from `alepha/file`.
+Part of the `alepha` package. Import from `alepha/system`.
 
 ```bash
 npm install alepha
@@ -14,12 +14,13 @@ npm install alepha
 |------|---------|-----------|
 | tooling | standard | stable |
 
-File operations and type detection.
+System-level abstractions for portable code across runtimes.
 
 **Features:**
-- File type detection
-- MIME type utilities
-- Path operations
+- File system operations (read, write, exists, etc.)
+- Shell command execution
+- File type detection and MIME utilities
+- Memory implementations for testing
 
 ## API Reference
 
@@ -52,6 +53,40 @@ const memoryFs = alepha.inject(MemoryFileSystemProvider);
 expect(memoryFs.files.get("test.txt")?.toString()).toBe("Hello World");
 ```
 
+#### MemoryShellProvider
+
+In-memory implementation of ShellProvider for testing.
+
+Records all commands that would be executed without actually running them.
+Can be configured to return specific outputs or throw errors for testing.
+
+```typescript
+// In tests, substitute the real ShellProvider with MemoryShellProvider
+const alepha = Alepha.create().with({
+  provide: ShellProvider,
+  use: MemoryShellProvider,
+});
+
+// Configure mock behavior
+const shell = alepha.inject(MemoryShellProvider);
+shell.configure({
+  outputs: { "echo hello": "hello\n" },
+  errors: { "failing-cmd": "Command failed" },
+});
+
+// Or use the fluent API
+shell.outputs.set("another-cmd", "output");
+shell.errors.set("another-error", "Error message");
+
+// Run code that uses ShellProvider
+const service = alepha.inject(MyService);
+await service.doSomething();
+
+// Verify commands were called
+expect(shell.calls).toHaveLength(2);
+expect(shell.calls[0].command).toBe("yarn install");
+```
+
 #### NodeFileSystemProvider
 
 Node.js implementation of FileSystem interface.
@@ -75,3 +110,10 @@ await fs.mv("/old/path.txt", "/new/path.txt");
 const files = await fs.ls("/tmp");
 await fs.rm("/tmp/file.txt");
 ```
+
+#### NodeShellProvider
+
+Node.js implementation of ShellProvider.
+
+Executes shell commands using Node.js child_process module.
+Supports binary resolution from node_modules/.bin for local packages.

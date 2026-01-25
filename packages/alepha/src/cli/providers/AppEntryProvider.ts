@@ -1,5 +1,5 @@
 import { $inject, $use, AlephaError } from "alepha";
-import { FileSystemProvider } from "alepha/file";
+import { FileSystemProvider } from "alepha/system";
 import { appEntryOptions } from "../atoms/appEntryOptions.ts";
 
 /**

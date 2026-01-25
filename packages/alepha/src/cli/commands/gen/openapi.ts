@@ -1,8 +1,8 @@
 import { $inject, t } from "alepha";
 import { $command } from "alepha/command";
-import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { ServerSwaggerProvider } from "alepha/server/swagger";
+import { FileSystemProvider } from "alepha/system";
 import { AlephaCliUtils } from "../../services/AlephaCliUtils.ts";
 
 export class OpenApiCommand {

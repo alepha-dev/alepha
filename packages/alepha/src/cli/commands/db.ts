@@ -1,12 +1,12 @@
 import { $inject, AlephaError, t } from "alepha";
 import { $command } from "alepha/command";
-import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import type {
   DatabaseProvider,
   DrizzleKitProvider,
   RepositoryProvider,
 } from "alepha/orm";
+import { FileSystemProvider } from "alepha/system";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 
 const drizzleCommandFlags = t.object({

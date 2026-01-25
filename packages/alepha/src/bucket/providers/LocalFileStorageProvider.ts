@@ -15,8 +15,8 @@ import {
   type Static,
   t,
 } from "alepha";
-import { FileDetector, FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
+import { FileDetector, FileSystemProvider } from "alepha/system";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import { $bucket } from "../primitives/$bucket.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";

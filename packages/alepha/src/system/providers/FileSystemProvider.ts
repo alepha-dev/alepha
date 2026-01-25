@@ -306,4 +306,20 @@ export abstract class FileSystemProvider {
     path: string,
     data: Uint8Array | Buffer | string | FileLike,
   ): Promise<void>;
+
+  /**
+   * Reads the content of a file as a string.
+   *
+   * @param path - The file path to read
+   * @returns The file content as a string
+   */
+  abstract readTextFile(path: string): Promise<string>;
+
+  /**
+   * Reads the content of a file as JSON.
+   *
+   * @param path - The file path to read
+   * @returns The parsed JSON content
+   */
+  abstract readJsonFile<T = unknown>(path: string): Promise<T>;
 }

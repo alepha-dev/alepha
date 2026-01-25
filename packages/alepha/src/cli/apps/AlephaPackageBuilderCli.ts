@@ -3,7 +3,7 @@ import * as os from "node:os";
 import { join } from "node:path";
 import { $inject, AlephaError } from "alepha";
 import { $command } from "alepha/command";
-import { FileSystemProvider } from "alepha/file";
+import { FileSystemProvider } from "alepha/system";
 import type { InlineConfig } from "tsdown";
 
 interface Module {

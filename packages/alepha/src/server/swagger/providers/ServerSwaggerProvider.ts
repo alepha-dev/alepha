@@ -12,7 +12,6 @@ import {
   type TSchema,
   t,
 } from "alepha";
-import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { AlephaSecurity } from "alepha/security";
 import {
@@ -23,6 +22,7 @@ import {
   ServerRouterProvider,
 } from "alepha/server";
 import { ServerStaticProvider } from "alepha/server/static";
+import { FileSystemProvider } from "alepha/system";
 import {
   $swagger,
   type OpenApiDocument,

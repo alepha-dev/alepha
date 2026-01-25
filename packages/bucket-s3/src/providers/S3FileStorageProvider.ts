@@ -24,8 +24,8 @@ import {
   FileNotFoundError,
   type FileStorageProvider,
 } from "alepha/bucket";
-import { FileDetector, FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
+import { FileDetector, FileSystemProvider } from "alepha/system";
 
 const envSchema = t.object({
   /**

@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/file";
+import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { SmsError } from "../errors/SmsError.ts";
 import { LocalSmsProvider } from "./LocalSmsProvider.ts";

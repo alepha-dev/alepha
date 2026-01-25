@@ -6,7 +6,7 @@ import {
   Primitive,
   type Service,
 } from "alepha";
-import { FileSystemProvider } from "alepha/file";
+import { FileSystemProvider } from "alepha/system";
 import { InvalidFileError } from "../errors/InvalidFileError.ts";
 import { FileStorageProvider } from "../providers/FileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "../providers/MemoryFileStorageProvider.ts";

@@ -1,7 +1,7 @@
 import { $inject, Alepha } from "alepha";
 import { $command } from "alepha/command";
-import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
+import { FileSystemProvider } from "alepha/system";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { ViteDevServerProvider } from "../providers/ViteDevServerProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";

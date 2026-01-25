@@ -1,5 +1,5 @@
 import { $inject } from "alepha";
-import { FileSystemProvider } from "alepha/file";
+import { FileSystemProvider } from "alepha/system";
 import type { AppEntry } from "./AppEntryProvider.ts";
 
 export class ViteTemplateProvider {

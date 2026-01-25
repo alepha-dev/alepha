@@ -1,14 +1,14 @@
 import { Readable } from "node:stream";
 import { Alepha } from "alepha";
 import { beforeEach, describe, it } from "vitest";
-import { AlephaFile } from "../index.ts";
+import { AlephaSystem } from "../index.ts";
 import { NodeFileSystemProvider } from "../providers/NodeFileSystemProvider.ts";
 
 describe("NodeFileSystem", () => {
   let fs: NodeFileSystemProvider;
 
   beforeEach(() => {
-    const alepha = Alepha.create().with(AlephaFile);
+    const alepha = Alepha.create().with(AlephaSystem);
     fs = alepha.inject(NodeFileSystemProvider);
   });
 

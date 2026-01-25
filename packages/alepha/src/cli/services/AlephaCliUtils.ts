@@ -1,8 +1,7 @@
-import { spawn } from "node:child_process";
 import { $inject, Alepha, AlephaError } from "alepha";
 import { EnvUtils } from "alepha/command";
-import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
+import { FileSystemProvider, ShellProvider } from "alepha/system";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 
 /**
@@ -19,6 +18,7 @@ export class AlephaCliUtils {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly boot = $inject(AppEntryProvider);
+  protected readonly shell = $inject(ShellProvider);
 
   // ===========================================
   // Command Execution
@@ -26,6 +26,11 @@ export class AlephaCliUtils {
 
   /**
    * Execute a command with inherited stdio.
+   *
+   * @param command - The command to execute
+   * @param options.root - Working directory
+   * @param options.env - Additional environment variables
+   * @param options.global - If true, run command directly without resolving from node_modules
    */
   public async exec(
     command: string,
@@ -35,71 +40,12 @@ export class AlephaCliUtils {
       global?: boolean;
     } = {},
   ): Promise<void> {
-    const root = options.root ?? process.cwd();
-    this.log.debug(`Executing command: ${command}`, { cwd: root });
-
-    const runExec = async (app: string, args: string[]) => {
-      const prog = spawn(app, args, {
-        stdio: "inherit",
-        cwd: root,
-        env: {
-          ...process.env,
-          ...options.env,
-        },
-      });
-
-      await new Promise<void>((resolve) =>
-        prog.on("exit", () => {
-          resolve();
-        }),
-      );
-    };
-
-    if (options.global) {
-      const [app, ...args] = command.split(" ");
-      await runExec(app, args);
-      return;
-    }
-
-    const suffix = process.platform === "win32" ? ".cmd" : "";
-    const [app, ...args] = command.split(" ");
-
-    // find executable inside project node_modules
-    let execPath = await this.checkFileExists(
-      root,
-      `node_modules/.bin/${app}${suffix}`,
-    );
-
-    // or, find executable inside alepha package node_modules (pnpm style)
-    if (!execPath) {
-      execPath = await this.checkFileExists(
-        root,
-        `node_modules/alepha/node_modules/.bin/${app}${suffix}`,
-      );
-    }
-
-    // check if parent folder (monorepo) has the executable (check 3 times)
-    if (!execPath) {
-      let parentDir = this.fs.join(root, "..");
-      for (let i = 0; i < 3; i++) {
-        execPath = await this.checkFileExists(
-          parentDir,
-          `node_modules/.bin/${app}${suffix}`,
-        );
-        if (execPath) {
-          break;
-        }
-        parentDir = this.fs.join(parentDir, "..");
-      }
-    }
-
-    if (!execPath) {
-      throw new AlephaError(
-        `Could not find executable for command '${app}'. Make sure the package is installed.`,
-      );
-    }
-
-    await runExec(execPath, args);
+    await this.shell.run(command, {
+      root: options.root,
+      env: options.env,
+      resolve: !options.global,
+      capture: false,
+    });
   }
 
   /**
@@ -221,13 +167,10 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
     return this.fs.exists(this.fs.join(root, path));
   }
 
-  protected async checkFileExists(
-    root: string,
-    name: string,
-  ): Promise<string | undefined> {
-    const configPath = this.fs.join(root, name);
-    if (await this.fs.exists(configPath)) {
-      return configPath;
-    }
+  /**
+   * Check if a command is installed and available in the system PATH.
+   */
+  public isInstalledAsync(cmd: string): Promise<boolean> {
+    return this.shell.isInstalled(cmd);
   }
 }

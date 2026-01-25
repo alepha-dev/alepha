@@ -1,4 +1,4 @@
-import type { FileLike } from "alepha";
+import { $inject, type FileLike, Json } from "alepha";
 import type {
   CpOptions,
   CreateFileOptions,
@@ -51,6 +51,8 @@ export interface MemoryFileSystemProviderOptions {
  * ```
  */
 export class MemoryFileSystemProvider implements FileSystemProvider {
+  protected json = $inject(Json);
+
   /**
    * In-memory storage for files (path -> content)
    */
@@ -70,6 +72,16 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * Track writeFile calls for test assertions
    */
   public writeFileCalls: Array<{ path: string; data: string }> = [];
+
+  /**
+   * Track readFile calls for test assertions
+   */
+  public readFileCalls: Array<string> = [];
+
+  /**
+   * Track rm calls for test assertions
+   */
+  public rmCalls: Array<{ path: string; options?: RmOptions }> = [];
 
   /**
    * Track join calls for test assertions
@@ -110,6 +122,31 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * Create a FileLike object from various sources.
    */
   public createFile(options: CreateFileOptions): FileLike {
+    if ("path" in options) {
+      const filePath = options.path;
+      const buffer = this.files.get(filePath);
+      if (buffer === undefined) {
+        throw new Error(
+          `ENOENT: no such file or directory, open '${filePath}'`,
+        );
+      }
+      return {
+        name: options.name ?? filePath.split("/").pop() ?? "file",
+        type: options.type ?? "application/octet-stream",
+        size: buffer.byteLength,
+        lastModified: Date.now(),
+        stream: () => {
+          throw new Error("Stream not implemented in MemoryFileSystemProvider");
+        },
+        arrayBuffer: async (): Promise<ArrayBuffer> =>
+          buffer.buffer.slice(
+            buffer.byteOffset,
+            buffer.byteOffset + buffer.byteLength,
+          ) as ArrayBuffer,
+        text: async () => buffer.toString("utf-8"),
+      };
+    }
+
     if ("buffer" in options) {
       const buffer = options.buffer;
       return {
@@ -157,6 +194,8 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * Remove a file or directory from memory.
    */
   public async rm(path: string, options?: RmOptions): Promise<void> {
+    this.rmCalls.push({ path, options });
+
     const exists = this.files.has(path) || this.directories.has(path);
 
     if (!exists && !options?.force) {
@@ -327,6 +366,8 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * Read a file from memory.
    */
   public async readFile(path: string): Promise<Buffer> {
+    this.readFileCalls.push(path);
+
     if (this.readFileError) {
       throw this.readFileError;
     }
@@ -336,6 +377,22 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
       throw new Error(`ENOENT: no such file or directory, open '${path}'`);
     }
     return content;
+  }
+
+  /**
+   * Read a file from memory as text.
+   */
+  public async readTextFile(path: string): Promise<string> {
+    const buffer = await this.readFile(path);
+    return buffer.toString("utf-8");
+  }
+
+  /**
+   * Read a file from memory as JSON.
+   */
+  public async readJsonFile<T = unknown>(path: string): Promise<T> {
+    const text = await this.readTextFile(path);
+    return this.json.parse(text) as T;
   }
 
   /**
@@ -378,10 +435,65 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     this.directories.clear();
     this.mkdirCalls = [];
     this.writeFileCalls = [];
+    this.readFileCalls = [];
+    this.rmCalls = [];
     this.joinCalls = [];
     this.mkdirError = null;
     this.writeFileError = null;
     this.readFileError = null;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Test assertion helpers
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Check if a file was written during the test.
+   *
+   * @example
+   * ```typescript
+   * expect(fs.wasWritten("/project/tsconfig.json")).toBe(true);
+   * ```
+   */
+  public wasWritten(path: string): boolean {
+    return this.writeFileCalls.some((call) => call.path === path);
+  }
+
+  /**
+   * Check if a file was written with content matching a pattern.
+   *
+   * @example
+   * ```typescript
+   * expect(fs.wasWrittenMatching("/project/tsconfig.json", /extends/)).toBe(true);
+   * ```
+   */
+  public wasWrittenMatching(path: string, pattern: RegExp): boolean {
+    const call = this.writeFileCalls.find((c) => c.path === path);
+    return call ? pattern.test(call.data) : false;
+  }
+
+  /**
+   * Check if a file was read during the test.
+   *
+   * @example
+   * ```typescript
+   * expect(fs.wasRead("/project/package.json")).toBe(true);
+   * ```
+   */
+  public wasRead(path: string): boolean {
+    return this.readFileCalls.includes(path);
+  }
+
+  /**
+   * Check if a file was deleted during the test.
+   *
+   * @example
+   * ```typescript
+   * expect(fs.wasDeleted("/project/old-file.txt")).toBe(true);
+   * ```
+   */
+  public wasDeleted(path: string): boolean {
+    return this.rmCalls.some((call) => call.path === path);
   }
 
   /**

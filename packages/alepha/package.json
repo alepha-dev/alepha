@@ -174,11 +174,6 @@
       "import": "./src/fake/index.ts",
       "default": "./src/fake/index.ts"
     },
-    "./file": {
-      "types": "./src/file/index.ts",
-      "import": "./src/file/index.ts",
-      "default": "./src/file/index.ts"
-    },
     "./lock": {
       "types": "./src/lock/core/index.ts",
       "import": "./src/lock/core/index.ts",
@@ -332,6 +327,13 @@
       "types": "./src/sms/index.ts",
       "import": "./src/sms/index.ts",
       "default": "./src/sms/index.ts"
+    },
+    "./system": {
+      "types": "./src/system/index.ts",
+      "react-native": "./src/system/index.browser.ts",
+      "browser": "./src/system/index.browser.ts",
+      "import": "./src/system/index.ts",
+      "default": "./src/system/index.ts"
     },
     "./thread": {
       "types": "./src/thread/index.ts",

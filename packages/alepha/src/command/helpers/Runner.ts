@@ -1,7 +1,7 @@
-import { exec } from "node:child_process";
 import { cp, glob, rm } from "node:fs/promises";
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
+import { ShellProvider } from "alepha/system";
 import { CommandError } from "../errors/CommandError.ts";
 import { PrettyPrint } from "./PrettyPrint.ts";
 
@@ -42,6 +42,7 @@ export class Runner {
   protected readonly startTime: number = Date.now();
   protected readonly prettyPrint = $inject(PrettyPrint);
   protected readonly alepha = $inject(Alepha);
+  protected readonly shell = $inject(ShellProvider);
   public readonly run: RunnerMethod;
   protected cliName = "";
   protected commandName = "";
@@ -152,26 +153,7 @@ export class Runner {
     cmd: string,
     opts: { root?: string } = {},
   ): Promise<string> {
-    return await new Promise<string>((resolve, reject) => {
-      exec(
-        cmd,
-        {
-          cwd: opts.root,
-          env: {
-            ...process.env,
-            LOG_FORMAT: "pretty",
-          },
-        },
-        (err, stdout) => {
-          if (err) {
-            err.stdout = stdout;
-            reject(err);
-          } else {
-            resolve(stdout);
-          }
-        },
-      );
-    });
+    return this.shell.run(cmd, { root: opts.root, capture: true });
   }
 
   /**

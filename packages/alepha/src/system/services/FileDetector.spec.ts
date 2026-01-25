@@ -1,7 +1,7 @@
 import { Readable } from "node:stream";
 import { Alepha } from "alepha";
 import { beforeEach, describe, expect, it } from "vitest";
-import { AlephaFile } from "../index.ts";
+import { AlephaSystem } from "../index.ts";
 import { FileDetector } from "../services/FileDetector.ts";
 
 /**
@@ -26,7 +26,7 @@ describe("FileDetector", () => {
   let detector: FileDetector;
 
   beforeEach(() => {
-    const alepha = Alepha.create().with(AlephaFile);
+    const alepha = Alepha.create().with(AlephaSystem);
     detector = alepha.inject(FileDetector);
   });
 

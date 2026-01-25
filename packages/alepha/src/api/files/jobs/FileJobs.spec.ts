@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { FileSystemProvider } from "alepha/file";
+import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 import { FileJobs, FileService } from "../index.ts";
 

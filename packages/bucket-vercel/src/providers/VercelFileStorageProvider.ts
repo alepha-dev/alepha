@@ -15,8 +15,8 @@ import {
   type FileStorageProvider,
 } from "alepha/bucket";
 import { DateTimeProvider } from "alepha/datetime";
-import { FileDetector, FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
+import { FileDetector, FileSystemProvider } from "alepha/system";
 import { VercelBlobApi } from "./VercelBlobProvider.ts";
 
 const envSchema = t.object({

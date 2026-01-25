@@ -20,6 +20,7 @@ import {
   AlephaError,
   type FileLike,
   isFileLike,
+  Json,
   type StreamLike,
 } from "alepha";
 import { FileDetector } from "../services/FileDetector.ts";
@@ -58,6 +59,7 @@ import type {
  */
 export class NodeFileSystemProvider implements FileSystemProvider {
   protected detector = $inject(FileDetector);
+  protected json = $inject(Json);
 
   public join(...paths: string[]): string {
     return join(...paths);
@@ -416,6 +418,40 @@ export class NodeFileSystemProvider implements FileSystemProvider {
       return;
     }
     await fsWriteFile(path, data);
+  }
+
+  /**
+   * Reads the content of a file as a string.
+   *
+   * @param path - The file path to read
+   * @returns The file content as a string
+   *
+   * @example
+   * ```typescript
+   * const fs = alepha.inject(NodeFileSystemProvider);
+   * const content = await fs.readTextFile("/tmp/file.txt");
+   * ```
+   */
+  async readTextFile(path: string): Promise<string> {
+    const buffer = await this.readFile(path);
+    return buffer.toString("utf-8");
+  }
+
+  /**
+   * Reads the content of a file as JSON.
+   *
+   * @param path - The file path to read
+   * @returns The parsed JSON content
+   *
+   * @example
+   * ```typescript
+   * const fs = alepha.inject(NodeFileSystemProvider);
+   * const config = await fs.readJsonFile<{ name: string }>("/tmp/config.json");
+   * ```
+   */
+  async readJsonFile<T = unknown>(path: string): Promise<T> {
+    const text = await this.readTextFile(path);
+    return this.json.parse(text) as T;
   }
 
   /**

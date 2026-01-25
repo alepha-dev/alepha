@@ -1,6 +1,6 @@
 import { $inject, type Alepha, AlephaError } from "alepha";
-import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
+import { FileSystemProvider } from "alepha/system";
 import { importVite, importViteReact, viteAlephaSsrPreload } from "alepha/vite";
 import type { InlineConfig, Plugin, ViteDevServer } from "vite";
 import type { AppEntry } from "./AppEntryProvider.ts";

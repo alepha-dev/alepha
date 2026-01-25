@@ -1,7 +1,7 @@
 import { $inject, t } from "alepha";
 import { $command, CliProvider } from "alepha/command";
-import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
+import { FileSystemProvider } from "alepha/system";
 
 export class CreateAlephaCoreCommands {
   protected readonly log = $logger();

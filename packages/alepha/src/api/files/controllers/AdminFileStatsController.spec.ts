@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { $bucket } from "alepha/bucket";
-import { FileSystemProvider } from "alepha/file";
+import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 import { AdminFileStatsController, FileService } from "../index.ts";
 

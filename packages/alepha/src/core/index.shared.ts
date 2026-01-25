@@ -27,6 +27,7 @@ export * from "./primitives/$use.ts";
 export * from "./providers/AlsProvider.ts";
 export * from "./providers/CodecManager.ts";
 export * from "./providers/EventManager.ts";
+export * from "./providers/Json.ts";
 export * from "./providers/JsonSchemaCodec.ts";
 export * from "./providers/KeylessJsonSchemaCodec.ts";
 export * from "./providers/SchemaCodec.ts";

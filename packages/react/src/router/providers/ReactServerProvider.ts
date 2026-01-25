@@ -11,11 +11,11 @@ import {
   type Static,
   t,
 } from "alepha";
-import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
 import { type ServerHandler, ServerRouterProvider } from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
 import { ServerStaticProvider } from "alepha/server/static";
+import { FileSystemProvider } from "alepha/system";
 import { renderToReadableStream } from "react-dom/server";
 import { Redirection } from "../errors/Redirection.ts";
 import {

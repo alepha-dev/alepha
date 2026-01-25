@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { FileSystemProvider } from "alepha/file";
+import { FileSystemProvider } from "alepha/system";
 import { expect } from "vitest";
 import {
   $bucket,

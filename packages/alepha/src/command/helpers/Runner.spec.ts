@@ -3,11 +3,13 @@ import {
   LogDestinationProvider,
   MemoryDestinationProvider,
 } from "alepha/logger";
+import { MemoryShellProvider } from "alepha/system";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { Runner } from "../index.ts";
 
 describe("Runner", () => {
   let mockLogger: MemoryDestinationProvider;
+  let mockShell: MemoryShellProvider;
   let runner: Runner;
 
   beforeEach(async () => {
@@ -22,6 +24,7 @@ describe("Runner", () => {
     // Create a new MockLogger and Runner for each test to ensure isolation
     runner = alepha.inject(Runner);
     mockLogger = alepha.inject(MemoryDestinationProvider);
+    mockShell = alepha.inject(MemoryShellProvider);
   });
 
   afterEach(() => {
@@ -91,6 +94,7 @@ describe("Runner", () => {
   });
 
   test("should throw and log an error for a failing shell command", async () => {
+    mockShell.errors.set("exit 1", "Command failed with exit code 1");
     await expect(runner.run(`exit 1`)).rejects.toThrow("Task 'exit 1' failed");
   });
 

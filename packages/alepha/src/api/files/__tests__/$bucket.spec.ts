@@ -7,7 +7,7 @@ import {
   LocalFileStorageProvider,
   MemoryFileStorageProvider,
 } from "alepha/bucket";
-import { FileSystemProvider } from "alepha/file";
+import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 import { AlephaApiFiles } from "../index.ts";
 

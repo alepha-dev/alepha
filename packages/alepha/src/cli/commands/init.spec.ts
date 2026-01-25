@@ -1,0 +1,356 @@
+import { Alepha, Json } from "alepha";
+import { CliProvider } from "alepha/command";
+import {
+  FileSystemProvider,
+  MemoryFileSystemProvider,
+  MemoryShellProvider,
+  ShellProvider,
+} from "alepha/system";
+import { describe, expect, it } from "vitest";
+import { InitCommand } from "./init.ts";
+
+describe("alepha init", () => {
+  const createTestEnv = () => {
+    const alepha = Alepha.create()
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .with({ provide: ShellProvider, use: MemoryShellProvider });
+
+    const fs = alepha.inject(MemoryFileSystemProvider);
+    const shell = alepha.inject(MemoryShellProvider);
+    const cli = alepha.inject(CliProvider);
+    const cmd = alepha.inject(InitCommand);
+    const json = alepha.inject(Json);
+
+    return { alepha, fs, shell, cli, cmd, json };
+  };
+
+  const setupProject = async (
+    fs: MemoryFileSystemProvider,
+    json: Json,
+    name = "test-app",
+  ) => {
+    await fs.writeFile("/project/package.json", json.stringify({ name }));
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Configuration Files
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("configuration files", () => {
+    it("should create tsconfig.json with alepha base", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/tsconfig.json")).toBe(true);
+      const tsconfig = await fs.readJsonFile<{ extends: string }>(
+        "/project/tsconfig.json",
+      );
+      expect(tsconfig.extends).toBe("alepha/tsconfig.base");
+    });
+
+    it("should create biome.json", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/biome.json")).toBe(true);
+      expect(fs.wasWrittenMatching("/project/biome.json", /biomejs\.dev/)).toBe(
+        true,
+      );
+    });
+
+    it("should create .editorconfig", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/.editorconfig")).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/.editorconfig", /root\s*=\s*true/),
+      ).toBe(true);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Agent Files (--agent flag)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("--agent flag", () => {
+    it("should create CLAUDE.md when claude CLI is installed", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      shell.installedCommands.add("claude");
+
+      await cli.run(cmd.init, { argv: "--agent", root: "/project" });
+
+      expect(fs.wasWritten("/project/CLAUDE.md")).toBe(true);
+      expect(fs.wasWritten("/project/AGENTS.md")).toBe(false);
+    });
+
+    it("should create AGENTS.md when claude CLI is not installed", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--agent", root: "/project" });
+
+      expect(fs.wasWritten("/project/AGENTS.md")).toBe(true);
+      expect(fs.wasWritten("/project/CLAUDE.md")).toBe(false);
+    });
+
+    it("should include Alepha instructions in agent file", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--agent", root: "/project" });
+
+      expect(fs.wasWrittenMatching("/project/AGENTS.md", /Alepha/)).toBe(true);
+      expect(fs.wasWrittenMatching("/project/AGENTS.md", /alepha lint/)).toBe(
+        true,
+      );
+    });
+
+    it("should not create agent files without --agent flag", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/CLAUDE.md")).toBe(false);
+      expect(fs.wasWritten("/project/AGENTS.md")).toBe(false);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Package Manager Detection
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("package manager detection", () => {
+    it("should use yarn when yarn.lock exists", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/yarn.lock", "");
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(shell.wasCalled("yarn install")).toBe(true);
+      expect(shell.wasCalled("yarn set version stable")).toBe(true);
+    });
+
+    it("should use npm when package-lock.json exists", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/package-lock.json", "{}");
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(shell.wasCalled("npm install")).toBe(true);
+    });
+
+    it("should use pnpm when pnpm-lock.yaml exists", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/pnpm-lock.yaml", "");
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(shell.wasCalled("pnpm install")).toBe(true);
+    });
+
+    it("should use bun when bun.lock exists", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/bun.lock", "");
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(shell.wasCalled("bun install")).toBe(true);
+    });
+
+    it("should respect --pm flag over lockfile detection", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/yarn.lock", ""); // yarn lockfile exists
+
+      await cli.run(cmd.init, { argv: "--pm=npm", root: "/project" });
+
+      expect(shell.wasCalled("npm install")).toBe(true);
+      expect(shell.wasCalled("yarn install")).toBe(false);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // API Project Structure (default, no --react)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("API project structure", () => {
+    it("should create src/main.server.ts", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/src/main.server.ts")).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/src/main.server.ts", /Alepha\.create/),
+      ).toBe(true);
+    });
+
+    it("should create src/api/index.ts with app name from directory", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json, "my-cool-app");
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/src/api/index.ts", /\$module/),
+      ).toBe(true);
+    });
+
+    it("should create example HelloController", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(
+        fs.wasWritten("/project/src/api/controllers/HelloController.ts"),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/src/api/controllers/HelloController.ts",
+          /\$action/,
+        ),
+      ).toBe(true);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // React Project Structure (--react flag)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("--react flag", () => {
+    it("should create web directory structure", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--react", root: "/project" });
+
+      expect(fs.wasWritten("/project/src/web/index.ts")).toBe(true);
+      expect(fs.wasWritten("/project/src/web/AppRouter.ts")).toBe(true);
+      expect(fs.wasWritten("/project/src/web/components/Hello.tsx")).toBe(true);
+    });
+
+    it("should create main.browser.ts for client-side entry", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--react", root: "/project" });
+
+      expect(fs.wasWritten("/project/src/main.browser.ts")).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/src/main.browser.ts", /WebModule/),
+      ).toBe(true);
+    });
+
+    it("should create main.css", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--react", root: "/project" });
+
+      expect(fs.wasWritten("/project/src/main.css")).toBe(true);
+    });
+
+    it("should imply --ui flag", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      shell.installedCommands.add("claude");
+
+      await cli.run(cmd.init, { argv: "--react --agent", root: "/project" });
+
+      // Agent file should mention UI since --react implies --ui
+      expect(fs.wasWrittenMatching("/project/CLAUDE.md", /ui/i)).toBe(true);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Test Setup (--test flag)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("--test flag", () => {
+    it("should create test directory with dummy.spec.ts", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--test", root: "/project" });
+
+      expect(fs.wasWritten("/project/test/dummy.spec.ts")).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/test/dummy.spec.ts",
+          /describe|test|it/,
+        ),
+      ).toBe(true);
+    });
+
+    it("should install vitest as dev dependency", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/yarn.lock", "");
+
+      await cli.run(cmd.init, { argv: "--test", root: "/project" });
+
+      expect(shell.wasCalled("yarn add -D vitest")).toBe(true);
+    });
+
+    it("should use correct install command for npm", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/package-lock.json", "{}");
+
+      await cli.run(cmd.init, { argv: "--test", root: "/project" });
+
+      expect(shell.wasCalled("npm install -D vitest")).toBe(true);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Path Argument
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("path argument", () => {
+    it("should create project in subdirectory when path provided", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await fs.writeFile(
+        "/project/subdir/package.json",
+        json.stringify({ name: "subdir-app" }),
+      );
+
+      await cli.run(cmd.init, { argv: "subdir", root: "/project" });
+
+      expect(fs.wasWritten("/project/subdir/tsconfig.json")).toBe(true);
+      expect(fs.wasWritten("/project/subdir/biome.json")).toBe(true);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Linter Execution
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("post-install tasks", () => {
+    it("should run linter after install", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/yarn.lock", "");
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(shell.wasCalled("yarn run lint")).toBe(true);
+    });
+  });
+});

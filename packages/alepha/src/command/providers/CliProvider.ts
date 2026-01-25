@@ -77,7 +77,37 @@ declare module "alepha" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * CLI provider for parsing and executing commands.
+ *
+ * Handles:
+ * - Command resolution (simple, nested, colon-notation)
+ * - Flag and argument parsing
+ * - Environment variable validation
+ * - Help generation
+ * - Pre/post command hooks
+ *
+ * @example
+ * ```typescript
+ * // Define a command
+ * class MyCommands {
+ *   build = $command({
+ *     name: "build",
+ *     description: "Build the project",
+ *     flags: t.object({ watch: t.optional(t.boolean()) }),
+ *     handler: async ({ flags }) => { ... }
+ *   });
+ * }
+ *
+ * // CLI automatically discovers and executes commands
+ * const alepha = Alepha.create().with(MyCommands);
+ * ```
+ */
 export class CliProvider {
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Dependencies
+  // ─────────────────────────────────────────────────────────────────────────────
+
   protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
@@ -85,8 +115,11 @@ export class CliProvider {
   protected readonly runner = $inject(Runner);
   protected readonly asker = $inject(Asker);
   protected readonly envUtils = $inject(EnvUtils);
-
   protected readonly options = $use(cliOptions);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Configuration
+  // ─────────────────────────────────────────────────────────────────────────────
 
   protected get name(): string {
     return this.options.name || this.env.CLI_NAME;
@@ -103,6 +136,7 @@ export class CliProvider {
     );
   }
 
+  /** Global flags available to all commands */
   protected readonly globalFlags = {
     help: {
       aliases: ["h", "help"],
@@ -111,6 +145,14 @@ export class CliProvider {
     },
   };
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Lifecycle
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Main entry point - resolves and executes the command from process.argv.
+   * This is the production execution path with full lifecycle support.
+   */
   protected readonly onReady = $hook({
     on: "ready",
     handler: async () => {
@@ -119,7 +161,7 @@ export class CliProvider {
       // Extract positional arguments (potential command path)
       const positionalArgs = argv.filter((arg) => !arg.startsWith("-"));
 
-      // Resolve command using the new resolution logic
+      // Resolve command using space-separated or colon-notation
       const { command, consumedArgs } = this.resolveCommand(positionalArgs);
 
       const globalFlags = this.parseFlags(
@@ -166,7 +208,15 @@ export class CliProvider {
   });
 
   /**
-   * Execute a command with the given argv.
+   * Execute a command with full lifecycle support.
+   *
+   * This is the production execution path that includes:
+   * - Mode-based .env file loading
+   * - Pre/post command hooks
+   * - Runner session for pretty CLI output
+   * - Alepha context wrapper for proper scoping
+   *
+   * @see run() for a lightweight test-only alternative
    */
   protected async executeCommand(
     command: CommandPrimitive<TObject>,
@@ -243,9 +293,7 @@ export class CliProvider {
     });
   }
 
-  /**
-   * Remove consumed command path arguments from argv.
-   */
+  /** Remove consumed command path arguments from argv (keeps flags and remaining args) */
   protected removeConsumedArgs(
     argv: string[],
     consumedArgs: string[],
@@ -327,33 +375,111 @@ export class CliProvider {
     return { command: currentCommand, consumedArgs };
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Public API
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Get all registered commands in the application.
+   */
   public get commands(): CommandPrimitive<any>[] {
     return this.alepha.primitives($command);
   }
 
+  /**
+   * Execute a command handler with given arguments.
+   *
+   * This is a **lightweight test helper** that directly invokes the command handler
+   * without the full production lifecycle. It intentionally skips:
+   * - Pre/post command hooks
+   * - Runner session (pretty CLI output)
+   * - Alepha context wrapper
+   * - .env.{mode} file loading
+   *
+   * For production execution, the `onReady` hook uses `executeCommand()` which
+   * provides the full lifecycle. Merging them would either make this method too
+   * heavy for simple testing or require many optional parameters to toggle behaviors.
+   *
+   * @example
+   * ```typescript
+   * // In tests
+   * const cli = alepha.inject(CliProvider);
+   * const cmd = alepha.inject(InitCommand);
+   *
+   * await cli.run(cmd.init, "--agent --pm=yarn");
+   * await cli.run(cmd.init, { argv: "--agent", root: "/project" });
+   * ```
+   */
+  public async run<T extends TObject, A extends TSchema>(
+    command: CommandPrimitive<T, A>,
+    options:
+      | string
+      | string[]
+      | { argv?: string | string[]; root?: string } = {},
+  ): Promise<void> {
+    const opts =
+      typeof options === "string" || Array.isArray(options)
+        ? { argv: options }
+        : options;
+    const args =
+      typeof opts.argv === "string"
+        ? opts.argv.split(" ").filter(Boolean)
+        : (opts.argv ?? []);
+    const root = opts.root ?? process.cwd();
+
+    const commandFlags = this.parseCommandFlags(args, command.flags);
+    const commandArgs = this.parseCommandArgs(
+      args,
+      command.options.args,
+      true,
+      command.flags,
+    );
+    const commandEnv = this.parseCommandEnv(command.env, command.name);
+
+    let modeValue: string | undefined;
+    if (command.options.mode) {
+      modeValue = this.parseModeFlag(args);
+      if (modeValue === undefined && typeof command.options.mode === "string") {
+        modeValue = command.options.mode;
+      }
+    }
+
+    await command.options.handler({
+      flags: commandFlags,
+      args: commandArgs,
+      env: commandEnv,
+      run: this.runner.run,
+      ask: this.asker.ask,
+      fs,
+      glob,
+      root,
+      help: () => this.printHelp(command),
+      mode: modeValue,
+    } as CommandHandlerArgs<T, A>);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Command Resolution
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /** Find a command by name or alias */
   protected findCommand(name: string): CommandPrimitive<TObject> | undefined {
     return this.commands.findLast(
       (command) => command.name === name || command.aliases.includes(name),
     );
   }
 
-  /**
-   * Find all pre-hooks for a command.
-   */
+  /** Find all pre-hooks for a command (commands named `pre{commandName}`) */
   protected findPreHooks(commandName: string): CommandPrimitive<TObject>[] {
     return this.commands.filter((cmd) => cmd.name === `pre${commandName}`);
   }
 
-  /**
-   * Find all post-hooks for a command.
-   */
+  /** Find all post-hooks for a command (commands named `post{commandName}`) */
   protected findPostHooks(commandName: string): CommandPrimitive<TObject>[] {
     return this.commands.filter((cmd) => cmd.name === `post${commandName}`);
   }
 
-  /**
-   * Get global flags (help only, root command flags are NOT global).
-   */
+  /** Get global flags (help only, root command flags are NOT global) */
   protected getAllGlobalFlags(): Record<
     string,
     { aliases: string[]; description?: string; schema: TSchema }
@@ -361,6 +487,11 @@ export class CliProvider {
     return { ...this.globalFlags };
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Parsing (Flags, Args, Env)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /** Parse command flags from argv using the command's flag schema */
   protected parseCommandFlags(
     argv: string[],
     schema: TObject,
@@ -401,6 +532,7 @@ export class CliProvider {
     }
   }
 
+  /** Parse and validate environment variables using the command's env schema */
   protected parseCommandEnv(
     schema: TObject,
     commandName: string,
@@ -442,9 +574,7 @@ export class CliProvider {
     }
   }
 
-  /**
-   * Parse --mode or -m flag from argv.
-   */
+  /** Parse --mode or -m flag from argv for environment file loading */
   protected parseModeFlag(argv: string[]): string | undefined {
     for (let i = 0; i < argv.length; i++) {
       const arg = argv[i];
@@ -467,9 +597,7 @@ export class CliProvider {
     return undefined;
   }
 
-  /**
-   * Load environment files based on mode.
-   */
+  /** Load .env and .env.{mode} files into process.env */
   protected async loadModeEnv(
     root: string,
     mode: string | undefined,
@@ -482,6 +610,7 @@ export class CliProvider {
     await this.envUtils.loadEnv(root, envFiles);
   }
 
+  /** Low-level flag parser - extracts flag values from argv based on definitions */
   protected parseFlags(
     argv: string[],
     flagDefs: { key: string; aliases: string[]; schema: TSchema }[],
@@ -534,9 +663,7 @@ export class CliProvider {
     return result;
   }
 
-  /**
-   * Get indices of argv elements that are consumed by flags (including space-separated values).
-   */
+  /** Get indices of argv elements consumed by flags (for separating args from flags) */
   protected getFlagConsumedIndices(
     argv: string[],
     flagDefs: { key: string; aliases: string[]; schema: TSchema }[],
@@ -638,6 +765,7 @@ export class CliProvider {
     }
   }
 
+  /** Convert a string argument value to the appropriate type based on schema */
   protected parseArgumentValue(value: string, schema: TSchema): any {
     if (t.schema.isString(schema)) {
       return value;
@@ -665,6 +793,11 @@ export class CliProvider {
     return value;
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Help Generation
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /** Generate usage string for command arguments (e.g., "<path>" or "[path]") */
   protected generateArgsUsage(schema?: TSchema): string {
     if (!schema) {
       return "";
@@ -694,6 +827,7 @@ export class CliProvider {
     return ` <${key}${typeName}>`;
   }
 
+  /** Get display type name for a schema (e.g., ": number", ": boolean") */
   protected getTypeName(schema: TSchema): string {
     if (!schema) return "";
 
@@ -706,6 +840,12 @@ export class CliProvider {
     return "";
   }
 
+  /**
+   * Print help for a specific command or general CLI help.
+   *
+   * @param command - If provided, shows help for this specific command.
+   *                  If omitted, shows general CLI help with all commands.
+   */
   public printHelp(command?: CommandPrimitive<any>): void {
     const cliName = this.name || "cli";
     const c = this.color;
@@ -873,9 +1013,7 @@ export class CliProvider {
     this.log.info(""); // Newline
   }
 
-  /**
-   * Generate colored args usage string for help display.
-   */
+  /** Generate colored usage string for command arguments (for help display) */
   protected generateColoredArgsUsage(schema?: TSchema): string {
     if (!schema) {
       return "";
@@ -907,9 +1045,7 @@ export class CliProvider {
     return ` ${c.set("CYAN", `<${key}${typeName}>`)}`;
   }
 
-  /**
-   * Get the full command path (e.g., "deploy vercel" for a child command).
-   */
+  /** Get the full command path (e.g., "deploy vercel" for a nested command) */
   protected getCommandPath(command: CommandPrimitive<any>): string {
     const path: string[] = [command.name];
     let current = command;
@@ -925,9 +1061,7 @@ export class CliProvider {
     return path.join(" ");
   }
 
-  /**
-   * Find the parent command of a given command.
-   */
+  /** Find the parent command of a nested command */
   protected findParentCommand(
     command: CommandPrimitive<any>,
   ): CommandPrimitive<any> | undefined {
@@ -939,9 +1073,7 @@ export class CliProvider {
     return undefined;
   }
 
-  /**
-   * Get top-level commands (commands that are not children of other commands).
-   */
+  /** Get top-level commands (commands that are not children of other commands) */
   protected getTopLevelCommands(): CommandPrimitive<any>[] {
     const allChildren = new Set<CommandPrimitive<any>>();
 
@@ -956,9 +1088,7 @@ export class CliProvider {
     return this.commands.filter((cmd) => !allChildren.has(cmd));
   }
 
-  /**
-   * Get max length for child command display.
-   */
+  /** Calculate max display length for child commands (for help alignment) */
   protected getMaxChildCmdLength(children: CommandPrimitive<any>[]): number {
     return Math.max(
       ...children
@@ -972,6 +1102,7 @@ export class CliProvider {
     );
   }
 
+  /** Calculate max display length for commands (for help alignment) */
   protected getMaxCmdLength(commands: CommandPrimitive[]): number {
     return Math.max(
       ...commands
@@ -986,7 +1117,8 @@ export class CliProvider {
     );
   }
 
-  private getMaxFlagLength(flags: { aliases: string[] }[]): number {
+  /** Calculate max display length for flags (for help alignment) */
+  protected getMaxFlagLength(flags: { aliases: string[] }[]): number {
     return Math.max(
       ...flags.map((f) => {
         const aliases = Array.isArray(f.aliases) ? f.aliases : [f.aliases];
