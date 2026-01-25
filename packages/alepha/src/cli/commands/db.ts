@@ -7,6 +7,7 @@ import type {
   RepositoryProvider,
 } from "alepha/orm";
 import { FileSystemProvider } from "alepha/system";
+import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 
 const drizzleCommandFlags = t.object({
@@ -28,6 +29,7 @@ export class DbCommand {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
+  protected readonly entryProvider = $inject(AppEntryProvider);
 
   /**
    * Check if database migrations are up to date.
@@ -46,10 +48,11 @@ export class DbCommand {
       const rootDir = root;
       this.log.debug(`Using project root: ${rootDir}`);
 
-      const { alepha } = await this.utils.loadAlephaFromServerEntryFile(
-        rootDir,
-        args,
-      );
+      const entry = await this.entryProvider.getAppEntry(root);
+      const alepha = await this.utils.loadAlephaFromServerEntryFile({
+        mode: "development",
+        entry,
+      });
 
       const repositoryProvider =
         alepha.inject<RepositoryProvider>("RepositoryProvider");
@@ -276,10 +279,11 @@ export class DbCommand {
 
     this.log.debug(`Using project root: ${rootDir}`);
 
-    const { alepha, entry } = await this.utils.loadAlephaFromServerEntryFile(
-      rootDir,
-      options.args,
-    );
+    const entry = await this.entryProvider.getAppEntry(rootDir);
+    const alepha = await this.utils.loadAlephaFromServerEntryFile({
+      mode: "development",
+      entry,
+    });
 
     const drizzleKitProvider =
       alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
@@ -319,7 +323,7 @@ export class DbCommand {
         providerUrl: provider.url,
         providerDriver: provider.driver,
         dialect,
-        entry,
+        entry: this.fs.join(rootDir, entry.server),
         rootDir,
       });
 
@@ -328,7 +332,9 @@ export class DbCommand {
         `drizzle-kit ${options.command} --config=${drizzleConfigJsPath}${flags}`,
         {
           env: {
-            NODE_OPTIONS: "--import tsx",
+            NODE_OPTIONS: [process.env.NODE_OPTIONS, "--import tsx"]
+              .filter(Boolean)
+              .join(" "),
           },
         },
       );

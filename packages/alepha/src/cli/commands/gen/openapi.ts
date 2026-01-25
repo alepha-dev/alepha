@@ -22,7 +22,10 @@ export class OpenApiCommand {
       ),
     }),
     handler: async ({ root, flags }) => {
-      const { alepha } = await this.utils.loadAlephaFromServerEntryFile(root);
+      const alepha = await this.utils.loadAlephaFromServerEntryFile({
+        root,
+        mode: "development",
+      });
 
       try {
         const openapiProvider = alepha.inject(

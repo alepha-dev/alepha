@@ -18,19 +18,6 @@ import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Register `tsx` when running in Node.js, ignore for Bun.
- *
- * It's required to have a full TypeScript support. (mostly .tsx files)
- */
-
-if (typeof Bun === "undefined") {
-  const { register } = await import("tsx/esm/api");
-  register();
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
  * Allow to extend Alepha CLI via `alepha.config.ts` file located in the project root.
  */
 

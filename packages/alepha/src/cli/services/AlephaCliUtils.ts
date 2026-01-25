@@ -1,8 +1,12 @@
-import { $inject, Alepha, AlephaError } from "alepha";
+import { $inject, type Alepha } from "alepha";
 import { EnvUtils } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
-import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
+import {
+  type AppEntry,
+  AppEntryProvider,
+} from "../providers/AppEntryProvider.ts";
+import { ViteUtils } from "./ViteUtils.ts";
 
 /**
  * Core utility service for CLI commands.
@@ -19,6 +23,7 @@ export class AlephaCliUtils {
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly boot = $inject(AppEntryProvider);
   protected readonly shell = $inject(ShellProvider);
+  protected readonly viteUtils = $inject(ViteUtils);
 
   // ===========================================
   // Command Execution
@@ -68,55 +73,22 @@ export class AlephaCliUtils {
     return path;
   }
 
-  /**
-   * Load Alepha instance from a server entry file.
-   */
   public async loadAlephaFromServerEntryFile(
-    rootDir?: string,
-    explicitEntry?: string,
-  ): Promise<{
-    alepha: Alepha;
-    entry: string;
-  }> {
-    process.env.ALEPHA_CLI_IMPORT = "true";
-
-    const root = rootDir ?? process.cwd();
-    let entry: string;
-
-    if (explicitEntry) {
-      // Explicit entry provided
-      entry = this.fs.join(root, explicitEntry);
-      if (!(await this.fs.exists(entry))) {
-        throw new AlephaError(
-          `Explicit server entry file "${explicitEntry}" not found.`,
-        );
-      }
+    opts: {
+      mode: "production" | "development";
+    } & ({ entry: AppEntry } | { root: string }),
+  ): Promise<Alepha> {
+    let entry: AppEntry;
+    if ("root" in opts) {
+      entry = await this.boot.getAppEntry(opts.root);
     } else {
-      // Auto-discover entry
-      const appEntry = await this.boot.getAppEntry(root);
-      entry = this.fs.join(root, appEntry.server);
+      entry = opts.entry;
     }
 
-    delete (global as any).__alepha;
-
-    const mod = await import(entry);
-
-    this.log.debug(`Load entry: ${entry}`);
-
-    // check if alepha is correctly exported
-    if (mod.default instanceof Alepha) {
-      return { alepha: mod.default, entry };
-    }
-
-    // else, try with global variable
-    const g: any = global;
-    if (g.__alepha) {
-      return { alepha: g.__alepha, entry };
-    }
-
-    throw new AlephaError(
-      `Could not find Alepha instance in entry file: ${entry}`,
-    );
+    return await this.viteUtils.runAlepha({
+      entry,
+      mode: opts.mode,
+    });
   }
 
   // ===========================================

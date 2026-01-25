@@ -3,8 +3,8 @@ import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import { importVite, importViteReact, viteAlephaSsrPreload } from "alepha/vite";
 import type { InlineConfig, Plugin, ViteDevServer } from "vite";
+import { ViteUtils } from "../services/ViteUtils.ts";
 import type { AppEntry } from "./AppEntryProvider.ts";
-import { ViteTemplateProvider } from "./ViteTemplateProvider.ts";
 
 export interface ViteDevServerOptions {
   /**
@@ -49,7 +49,7 @@ export interface ViteDevServerOptions {
 export class ViteDevServerProvider {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
-  protected readonly templateProvider = $inject(ViteTemplateProvider);
+  protected readonly templateProvider = $inject(ViteUtils);
   protected server!: ViteDevServer;
   protected options!: ViteDevServerOptions;
   protected alepha: Alepha | null = null;
