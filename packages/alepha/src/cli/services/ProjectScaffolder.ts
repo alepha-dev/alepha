@@ -2,10 +2,14 @@ import { basename, dirname } from "node:path";
 import { $inject } from "alepha";
 import { FileSystemProvider } from "alepha/file";
 import { $logger } from "alepha/logger";
+import {
+  type AgentMdOptions,
+  type AgentMdType,
+  agentMd,
+} from "../assets/agentMd.ts";
 import { apiHelloControllerTs } from "../assets/apiHelloControllerTs.ts";
 import { apiIndexTs } from "../assets/apiIndexTs.ts";
 import { biomeJson } from "../assets/biomeJson.ts";
-import { type ClaudeMdOptions, claudeMd } from "../assets/claudeMd.ts";
 import { dummySpecTs } from "../assets/dummySpecTs.ts";
 import { editorconfig } from "../assets/editorconfig.ts";
 import { mainBrowserTs } from "../assets/mainBrowserTs.ts";
@@ -60,7 +64,7 @@ export class ProjectScaffolder {
       indexHtml?: boolean;
       biomeJson?: boolean;
       editorconfig?: boolean;
-      claudeMd?: boolean | ClaudeMdOptions;
+      agentMd?: false | (AgentMdOptions & { type: AgentMdType });
     },
   ): Promise<void> {
     const tasks: Promise<void>[] = [];
@@ -88,15 +92,8 @@ export class ProjectScaffolder {
     if (opts.editorconfig) {
       tasks.push(this.ensureEditorConfig(root, { force }));
     }
-    if (opts.claudeMd) {
-      tasks.push(
-        this.ensureClaudeMd(
-          root,
-          typeof opts.claudeMd === "boolean"
-            ? { force }
-            : { ...opts.claudeMd, force },
-        ),
-      );
+    if (opts.agentMd) {
+      tasks.push(this.ensureAgentMd(root, { ...opts.agentMd, force }));
     }
 
     await Promise.all(tasks);
@@ -134,11 +131,17 @@ export class ProjectScaffolder {
     await this.ensureFile(root, ".editorconfig", editorconfig(), opts.force);
   }
 
-  public async ensureClaudeMd(
+  public async ensureAgentMd(
     root: string,
-    options: ClaudeMdOptions & { force?: boolean } = {},
+    options: AgentMdOptions & { type: AgentMdType; force?: boolean },
   ): Promise<void> {
-    await this.ensureFile(root, "CLAUDE.md", claudeMd(options), options.force);
+    const filename = options.type === "claude" ? "CLAUDE.md" : "AGENTS.md";
+    await this.ensureFile(
+      root,
+      filename,
+      agentMd(options.type, options),
+      options.force,
+    );
   }
 
   // ===========================================

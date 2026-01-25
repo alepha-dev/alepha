@@ -29,14 +29,15 @@ export class InitCommand {
       agent: t.optional(
         t.boolean({
           aliases: ["a"],
-          description: "Add CLAUDE.md for Claude Code AI assistant",
+          description:
+            "Add AI agent instructions (CLAUDE.md if claude CLI installed, else AGENTS.md)",
         }),
       ),
-      // choose package manager
-      yarn: t.optional(t.boolean({ description: "Use Yarn package manager" })),
-      pnpm: t.optional(t.boolean({ description: "Use pnpm package manager" })),
-      npm: t.optional(t.boolean({ description: "Use npm package manager" })),
-      bun: t.optional(t.boolean({ description: "Use Bun package manager" })),
+      pm: t.optional(
+        t.enum(["yarn", "npm", "pnpm", "bun"], {
+          description: "Package manager to use",
+        }),
+      ),
       // choose which dependencies to add
       react: t.optional(
         t.boolean({
@@ -67,6 +68,13 @@ export class InitCommand {
         await this.fs.mkdir(root);
       }
 
+      // Detect agent type: claude CLI → CLAUDE.md, else → AGENTS.md
+      let agentType: "claude" | "agents" | false = false;
+      if (flags.agent) {
+        const hasClaudeCli = await this.utils.isInstalledAsync("claude");
+        agentType = hasClaudeCli ? "claude" : "agents";
+      }
+
       const isExpo = await this.pm.hasExpo(root);
 
       const force = !!flags.force;
@@ -81,8 +89,8 @@ export class InitCommand {
             biomeJson: true,
             editorconfig: true,
             indexHtml: !!flags.react && !isExpo,
-            claudeMd: flags.agent
-              ? { react: !!flags.react, ui: !!flags.ui }
+            agentMd: agentType
+              ? { type: agentType, react: !!flags.react, ui: !!flags.ui }
               : false,
           });
 
@@ -95,7 +103,7 @@ export class InitCommand {
 
       // TODO: check if all alepha dependencies are same version
 
-      const pmName = await this.pm.getPackageManager(root, flags);
+      const pmName = await this.pm.getPackageManager(root, flags.pm);
       if (pmName === "yarn") {
         await this.pm.ensureYarn(root);
         await run("yarn set version stable", { root });

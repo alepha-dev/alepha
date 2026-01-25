@@ -1,11 +1,25 @@
-export interface ClaudeMdOptions {
+export interface AgentMdOptions {
   react?: boolean;
   ui?: boolean;
   projectName?: string;
 }
 
-export const claudeMd = (options: ClaudeMdOptions = {}) => {
+export type AgentMdType = "claude" | "agents";
+
+export const agentMd = (
+  type: AgentMdType,
+  options: AgentMdOptions = {},
+): string => {
   const { react = false, projectName = "my-app" } = options;
+
+  const header =
+    type === "claude"
+      ? `# CLAUDE.md
+
+This file provides guidance to Claude Code when working with this Alepha project.`
+      : `# AGENTS.md
+
+This file provides guidance to AI coding assistants when working with this Alepha project.`;
 
   const reactSection = react
     ? `
@@ -91,9 +105,7 @@ ${projectName}/
 \`\`\`
 `;
 
-  return `# CLAUDE.md
-
-This file provides guidance to Claude Code when working with this Alepha project.
+  return `${header}
 
 ## Overview
 

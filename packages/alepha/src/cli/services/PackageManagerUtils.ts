@@ -23,12 +23,9 @@ export class PackageManagerUtils {
    */
   public async getPackageManager(
     root: string,
-    flags?: { yarn?: boolean; pnpm?: boolean; npm?: boolean; bun?: boolean },
+    pm?: "yarn" | "pnpm" | "npm" | "bun",
   ): Promise<"yarn" | "pnpm" | "npm" | "bun"> {
-    if (flags?.yarn) return "yarn";
-    if (flags?.pnpm) return "pnpm";
-    if (flags?.npm) return "npm";
-    if (flags?.bun) return "bun";
+    if (pm) return pm;
     if (this.alepha.isBun()) return "bun";
     if (await this.fs.exists(this.fs.join(root, "bun.lock"))) return "bun";
     if (await this.fs.exists(this.fs.join(root, "yarn.lock"))) return "yarn";
