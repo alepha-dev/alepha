@@ -20,6 +20,7 @@ import type {
   ServerRequest,
   ServerResponseBody,
   ServerRoute,
+  TRequestBody,
 } from "../interfaces/ServerRequest.ts";
 import { ServerProvider } from "../providers/ServerProvider.ts";
 import { ServerRouterProvider } from "../providers/ServerRouterProvider.ts";
@@ -445,7 +446,9 @@ export type ClientRequestEntry<
 };
 
 export type ClientRequestEntryContainer<TConfig extends RequestConfigSchema> = {
-  body: TConfig["body"] extends TObject ? Static<TConfig["body"]> : undefined;
+  body: TConfig["body"] extends TRequestBody
+    ? Static<TConfig["body"]>
+    : undefined;
 
   params: TConfig["params"] extends TObject
     ? Static<TConfig["params"]>
@@ -453,11 +456,11 @@ export type ClientRequestEntryContainer<TConfig extends RequestConfigSchema> = {
 
   headers?: TConfig["headers"] extends TObject
     ? Static<TConfig["headers"]>
-    : undefined;
+    : Record<string, string>;
 
   query?: TConfig["query"] extends TObject
     ? Partial<Static<TConfig["query"]>>
-    : undefined;
+    : Record<string, string>;
 };
 
 export interface ClientRequestOptions extends FetchOptions {
@@ -465,6 +468,8 @@ export interface ClientRequestOptions extends FetchOptions {
    * Standard request fetch options.
    */
   request?: RequestInit;
+
+  query?: Record<string, string | number | boolean>;
 }
 
 export type ClientRequestResponse<TConfig extends RequestConfigSchema> =
