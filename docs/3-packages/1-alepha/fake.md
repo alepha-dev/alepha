@@ -41,4 +41,7 @@ const userSchema = t.object({
   email: t.email(),
 });
 const fakeUser = fake.generate(userSchema);
+
+// Configure options
+fake.configure({ seed: 99999, optionalProbability: 0.5 });
 ```

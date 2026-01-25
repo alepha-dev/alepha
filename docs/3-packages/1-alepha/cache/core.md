@@ -79,6 +79,37 @@ class DataService {
 }
 ```
 
+### Providers
+
+Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
+
+For more details, see the [Providers documentation](/docs/concepts-providers).
+
+#### MemoryCacheProvider
+
+In-memory implementation of CacheProvider for testing.
+
+This provider stores all cache entries in memory, making it ideal for
+unit tests that need to verify cache operations without touching Redis or other backends.
+
+```typescript
+// In tests, substitute the real CacheProvider with MemoryCacheProvider
+const alepha = Alepha.create().with({
+  provide: CacheProvider,
+  use: MemoryCacheProvider,
+});
+
+// Run code that uses caching
+const service = alepha.inject(MyService);
+await service.fetchWithCache("key");
+
+// Verify cache behavior
+const cache = alepha.inject(MemoryCacheProvider);
+expect(cache.stats().misses).toBe(1);
+await service.fetchWithCache("key");
+expect(cache.stats().hits).toBe(1);
+```
+
 ### Environment Variables
 
 Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.

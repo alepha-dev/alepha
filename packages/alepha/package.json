@@ -89,6 +89,11 @@
       "import": "./src/api/jobs/index.ts",
       "default": "./src/api/jobs/index.ts"
     },
+    "./api/keys": {
+      "types": "./src/api/keys/index.ts",
+      "import": "./src/api/keys/index.ts",
+      "default": "./src/api/keys/index.ts"
+    },
     "./api/notifications": {
       "types": "./src/api/notifications/index.ts",
       "react-native": "./src/api/notifications/index.browser.ts",
