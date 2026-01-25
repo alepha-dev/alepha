@@ -289,8 +289,6 @@ export class ApiKeyService {
    */
   protected async updateUsage(id: string): Promise<void> {
     const request = this.alepha.context.get<ServerRequest>("request");
-    const now = this.dateTimeProvider.now().toISOString();
-    const ip = request?.ip;
 
     await this.repo.updateById(id, {
       lastUsedAt: this.dateTimeProvider.now().toISOString(),
