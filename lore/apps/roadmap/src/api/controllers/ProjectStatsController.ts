@@ -1,7 +1,7 @@
 import { $inject, t } from "alepha";
-import { FileSystemProvider } from "alepha/file";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { $action } from "alepha/server";
+import { FileSystemProvider } from "alepha/system";
 import { characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
 import { tasks } from "../entities/tasks.ts";
