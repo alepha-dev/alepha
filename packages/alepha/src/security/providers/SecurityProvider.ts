@@ -15,6 +15,7 @@ import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";
 import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 import { RealmNotFoundError } from "../errors/RealmNotFoundError.ts";
 import { SecurityError } from "../errors/SecurityError.ts";
+import type { IssuerResolver, UserInfo } from "../interfaces/IssuerResolver.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import type { Permission } from "../schemas/permissionSchema.ts";
 import type { Role } from "../schemas/roleSchema.ts";
@@ -90,9 +91,45 @@ export class SecurityProvider {
             typeof realm.secret === "function" ? realm.secret() : realm.secret;
           this.jwt.setKeyLoader(realm.name, secret);
         }
+
+        // Register default JWT resolver for realms without resolvers
+        if (!realm.resolvers || realm.resolvers.length === 0) {
+          this.registerResolver(
+            this.createDefaultJwtResolver(realm.name),
+            realm.name,
+          );
+        }
       }
     },
   });
+
+  /**
+   * Creates a default JWT resolver for a realm.
+   */
+  protected createDefaultJwtResolver(realmName: string): IssuerResolver {
+    return {
+      priority: 100,
+      onRequest: async (req) => {
+        const auth = req.headers.authorization;
+        if (!auth?.startsWith("Bearer ")) {
+          return null;
+        }
+
+        const token = auth.slice(7);
+
+        // Check if it looks like a JWT (has dots)
+        if (!token.includes(".")) {
+          return null;
+        }
+
+        // Parse and validate JWT
+        const { result } = await this.jwt.parse(token, realmName);
+
+        // Extract user info from JWT payload
+        return this.createUserFromPayload(result.payload, realmName);
+      },
+    };
+  }
 
   /**
    * Adds a role to one or more realms.
@@ -303,6 +340,143 @@ export class SecurityProvider {
       organizations,
       sessionId,
     };
+  }
+
+  /**
+   * Generic user creation from any source (JWT, API key, etc.).
+   * Handles permission checking, ownership, default roles.
+   */
+  public createUser(
+    userInfo: UserInfo,
+    options: {
+      realm?: string;
+      permission?: Permission | string;
+    } = {},
+  ): UserAccountToken {
+    const realmRoles = this.getRoles(options.realm).filter((it) => it.default);
+    const roles = [...(userInfo.roles ?? [])];
+
+    // Add default roles
+    for (const role of realmRoles) {
+      if (!roles.includes(role.name)) {
+        roles.push(role.name);
+      }
+    }
+
+    let ownership: string | boolean | undefined;
+
+    // Permission check
+    if (options.permission) {
+      const check = this.checkPermission(options.permission, ...roles);
+      if (!check.isAuthorized) {
+        throw new SecurityError(
+          `User is not allowed to access '${this.permissionToString(options.permission)}'`,
+        );
+      }
+      ownership = check.ownership;
+    }
+
+    return {
+      ...userInfo,
+      roles,
+      ownership,
+      realm: options.realm,
+    };
+  }
+
+  /**
+   * Register a resolver to a realm.
+   * Resolvers are sorted by priority (lower = first).
+   */
+  public registerResolver(resolver: IssuerResolver, realmName?: string): void {
+    const realm = this.getRealm(realmName);
+    if (!realm.resolvers) {
+      realm.resolvers = [];
+    }
+
+    realm.resolvers.push(resolver);
+    realm.resolvers.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+  }
+
+  /**
+   * Get a realm by name.
+   * Throws if realm not found.
+   */
+  public getRealm(realmName?: string): Realm {
+    const realm = realmName
+      ? this.realms.find((it) => it.name === realmName)
+      : this.realms[0];
+
+    if (!realm) {
+      throw new RealmNotFoundError(realmName ?? "default");
+    }
+
+    return realm;
+  }
+
+  /**
+   * Resolve user from request using registered resolvers.
+   * Returns undefined if no resolver could authenticate (no auth provided).
+   * Throws UnauthorizedError if auth was provided but invalid.
+   *
+   * Note: This method tries resolvers from ALL realms to find a match,
+   * regardless of the `realm` option. The `realm` option is only used for
+   * permission checking after the user is resolved.
+   */
+  public async resolveUserFromServerRequest(
+    req: { url: URL | string; headers: { authorization?: string } },
+    options: {
+      realm?: string;
+      permission?: Permission | string;
+    } = {},
+  ): Promise<UserAccountToken | undefined> {
+    // Collect all resolvers from all realms with their realm name
+    const allResolvers: Array<{
+      resolver: IssuerResolver;
+      realmName: string;
+    }> = [];
+
+    for (const realm of this.realms) {
+      for (const resolver of realm.resolvers ?? []) {
+        allResolvers.push({ resolver, realmName: realm.name });
+      }
+    }
+
+    // Sort by priority
+    allResolvers.sort(
+      (a, b) => (a.resolver.priority ?? 100) - (b.resolver.priority ?? 100),
+    );
+
+    // Try resolvers in priority order
+    for (const { resolver, realmName } of allResolvers) {
+      let userInfo: UserInfo | null;
+
+      try {
+        userInfo = await resolver.onRequest(req as any);
+      } catch {
+        // Resolver failed (e.g., wrong key), try next
+        continue;
+      }
+
+      if (userInfo) {
+        // User was resolved - now create user and check permissions
+        // (errors from createUser should propagate, not be caught)
+        const user = this.createUser(userInfo, {
+          realm: realmName,
+          permission: options.permission,
+        });
+
+        await this.alepha.events.emit("security:user:created", {
+          realm: realmName,
+          user,
+        });
+
+        return user;
+      }
+    }
+
+    // No resolver matched = no auth provided
+    return undefined;
   }
 
   /**
@@ -783,6 +957,11 @@ export interface Realm {
    * By default, SecurityProvider has his own implementation, but this method allow to override it.
    */
   profile?: (raw: Record<string, any>) => UserAccount;
+
+  /**
+   * Custom resolvers for this realm (sorted by priority).
+   */
+  resolvers?: IssuerResolver[];
 }
 
 export interface SecurityCheckResult {

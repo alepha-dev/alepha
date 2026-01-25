@@ -5,8 +5,10 @@ import {
   type DurationLike,
 } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import type { ServerRequest } from "alepha/server";
 import type { JSONWebKeySet, JWTPayload } from "jose";
 import { SecurityError } from "../errors/SecurityError.ts";
+import type { IssuerResolver } from "../interfaces/IssuerResolver.ts";
 import { JwtProvider } from "../providers/JwtProvider.ts";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";
 import type { Role } from "../schemas/roleSchema.ts";
@@ -50,6 +52,11 @@ export type IssuerPrimitiveOptions = {
    * Parse the JWT payload to create a user account info.
    */
   profile?: (jwtPayload: Record<string, any>) => UserAccount;
+
+  /**
+   * Custom resolvers (in addition to default JWT resolver).
+   */
+  resolvers?: IssuerResolver[];
 } & (IssuerInternal | IssuerExternal);
 
 export interface IssuerSettings {
@@ -147,7 +154,55 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
       profile: this.options.profile,
       secret: "jwks" in this.options ? this.options.jwks : this.options.secret,
       roles,
+      resolvers: [],
     });
+
+    // Register custom resolvers first (they usually have lower priority)
+    for (const resolver of this.options.resolvers ?? []) {
+      this.registerResolver(resolver);
+    }
+
+    // Register default JWT resolver (priority 100)
+    this.registerResolver(this.createJwtResolver());
+  }
+
+  /**
+   * Creates the default JWT resolver.
+   */
+  protected createJwtResolver(): IssuerResolver {
+    return {
+      priority: 100,
+      onRequest: async (req: ServerRequest) => {
+        const auth = req.headers.authorization;
+        if (!auth?.startsWith("Bearer ")) {
+          return null;
+        }
+
+        const token = auth.slice(7);
+
+        // Check if it looks like a JWT (has dots)
+        if (!token.includes(".")) {
+          return null;
+        }
+
+        // Parse and validate JWT
+        const { result } = await this.jwt.parse(token, this.name);
+
+        // Extract user info from JWT payload
+        return this.securityProvider.createUserFromPayload(
+          result.payload,
+          this.name,
+        );
+      },
+    };
+  }
+
+  /**
+   * Register a resolver to this issuer.
+   * Resolvers are sorted by priority (lower = first).
+   */
+  public registerResolver(resolver: IssuerResolver): void {
+    this.securityProvider.registerResolver(resolver, this.name);
   }
 
   /**

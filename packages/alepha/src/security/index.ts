@@ -15,6 +15,7 @@ import type { UserAccount } from "./schemas/userAccountInfoSchema.ts";
 export * from "./errors/InvalidCredentialsError.ts";
 export * from "./errors/InvalidPermissionError.ts";
 export * from "./errors/SecurityError.ts";
+export * from "./interfaces/IssuerResolver.ts";
 export * from "./interfaces/UserAccountToken.ts";
 export * from "./primitives/$basicAuth.ts";
 export * from "./primitives/$issuer.ts";

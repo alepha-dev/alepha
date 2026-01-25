@@ -7,6 +7,7 @@ import {
   type ServerRequest,
   UnauthorizedError,
 } from "alepha/server";
+import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import type { Permission } from "../schemas/permissionSchema.ts";
 import { userAccountInfoSchema } from "../schemas/userAccountInfoSchema.ts";
@@ -121,19 +122,34 @@ export class ServerSecurityProvider {
         .getPermissions()
         .find((it) => it.path === route.path && it.method === route.method);
 
-      if (!request.headers.authorization && !route.secure && !permission) {
-        this.log.trace(
-          "Skipping security check for route - no authorization header and not secure",
-        );
-        return;
-      }
+      const realm =
+        typeof route.secure === "object" ? route.secure.realm : undefined;
 
       try {
-        // set user to request
-        request.user = await this.securityProvider.createUserFromToken(
-          request.headers.authorization,
-          { permission },
+        // Try to resolve user (JWT, API key, etc.)
+        request.user = await this.securityProvider.resolveUserFromServerRequest(
+          request,
+          { permission, realm },
         );
+
+        // No user resolved?
+        if (!request.user) {
+          // Route requires auth → throw
+          if (route.secure || permission) {
+            // Provide a more specific error message when no auth header was provided
+            if (!request.headers.authorization) {
+              throw new InvalidTokenError(
+                "Invalid authorization header, maybe token is missing ?",
+              );
+            }
+            throw new UnauthorizedError("Authentication required");
+          }
+          // Route is public → skip
+          this.log.trace(
+            "Skipping security check for route - no auth provided and not required",
+          );
+          return;
+        }
 
         if (typeof route.secure === "object") {
           this.check(request.user, route.secure);
@@ -145,7 +161,7 @@ export class ServerSecurityProvider {
           this.alepha.codec.decode(userAccountInfoSchema, request.user),
         );
 
-        this.log.trace("User set from request token", {
+        this.log.trace("User set from request", {
           user: request.user,
           permission,
         });
@@ -266,7 +282,8 @@ export class ServerSecurityProvider {
       }
 
       // skip helper if user is explicitly set to undefined
-      if ("user" in options && options.user === undefined) {
+      //if ("user" in options && options.user === undefined) {
+      if (!options.user) {
         return;
       }
 

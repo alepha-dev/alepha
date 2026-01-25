@@ -32,7 +32,18 @@ describe("ServerSecurityProvider", () => {
     );
 
     // .fetch() will also generates a dummy user in testing environment
-    expect(await app.ok.fetch({}).then((it) => it.data)).toBe("OK");
+    expect(
+      await app.ok
+        .fetch(
+          {},
+          {
+            user: {
+              id: randomUUID(),
+            },
+          },
+        )
+        .then((it) => it.data),
+    ).toBe("OK");
 
     // but you can also force empty user
     await expect(app.ok.fetch({}, { user: undefined })).rejects.toThrowError(
