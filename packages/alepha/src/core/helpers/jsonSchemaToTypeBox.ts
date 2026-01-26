@@ -32,8 +32,11 @@ export interface JsonSchemaObject {
   minItems?: number;
   maxItems?: number;
   uniqueItems?: boolean;
-  // TypeBox internal markers (pass through)
-  "~kind"?: string;
+  // Alepha text options (trim, lowercase)
+  "~options"?: {
+    trim?: boolean;
+    lowercase?: boolean;
+  };
   // Not supported
   oneOf?: JsonSchemaObject[];
   anyOf?: JsonSchemaObject[];
@@ -55,11 +58,13 @@ export interface JsonSchemaObject {
  * - Nested objects with required/optional properties
  * - Arrays with item schemas
  * - Common validation options: minLength, maxLength, minimum, maximum, pattern
+ * - anyOf/oneOf/allOf with nullable patterns (e.g., `anyOf: [type, null]` → `t.nullable(type)`)
+ * - Alepha ~options (trim, lowercase) pass-through
  *
  * **Not supported:**
- * - oneOf, anyOf, allOf, not (composition schemas)
  * - $ref (references)
  * - additionalProperties, patternProperties
+ * - Complex composition schemas (multiple non-null types in anyOf/oneOf/allOf)
  *
  * @param schema - JSON Schema object to convert
  * @returns TypeBox TSchema
@@ -85,12 +90,7 @@ export interface JsonSchemaObject {
  * // })
  * ```
  */
-export function jsonSchemaToTypeBox(schema: JsonSchemaObject): TSchema {
-  // If it already has TypeBox marker, return as-is
-  if (schema["~kind"]) {
-    return schema as unknown as TSchema;
-  }
-
+export function jsonSchemaToTypeBox(schema: JsonSchemaObject): any {
   // Handle const (literal)
   if (schema.const !== undefined) {
     return t.const(schema.const as string | number | boolean);
@@ -113,6 +113,53 @@ export function jsonSchemaToTypeBox(schema: JsonSchemaObject): TSchema {
     return t.union(
       schema.enum.map((v) => t.const(v as string | number | boolean)),
     );
+  }
+
+  // Handle anyOf (typically used for nullable types: anyOf: [type, null])
+  if (schema.anyOf && Array.isArray(schema.anyOf)) {
+    const nullSchema = schema.anyOf.find((s) => s.type === "null");
+    const nonNullSchemas = schema.anyOf.filter((s) => s.type !== "null");
+
+    // If anyOf is [someType, null], convert to t.nullable(someType)
+    if (nullSchema && nonNullSchemas.length === 1) {
+      const converted = jsonSchemaToTypeBox(nonNullSchemas[0]);
+      return t.nullable(converted);
+    }
+
+    // For other anyOf cases, create a union
+    return t.union(schema.anyOf.map((s) => jsonSchemaToTypeBox(s)));
+  }
+
+  // Handle allOf (merge schemas)
+  if (schema.allOf && Array.isArray(schema.allOf)) {
+    const nullSchema = schema.allOf.find((s) => s.type === "null");
+    const nonNullSchemas = schema.allOf.filter((s) => s.type !== "null");
+
+    // If allOf includes null, convert to nullable
+    if (nullSchema && nonNullSchemas.length === 1) {
+      const converted = jsonSchemaToTypeBox(nonNullSchemas[0]);
+      return t.nullable(converted);
+    }
+
+    // For other allOf cases, merge the first non-null schema (simplified)
+    if (nonNullSchemas.length > 0) {
+      return jsonSchemaToTypeBox(nonNullSchemas[0]);
+    }
+  }
+
+  // Handle oneOf (similar to anyOf)
+  if (schema.oneOf && Array.isArray(schema.oneOf)) {
+    const nullSchema = schema.oneOf.find((s) => s.type === "null");
+    const nonNullSchemas = schema.oneOf.filter((s) => s.type !== "null");
+
+    // If oneOf is [someType, null], convert to t.nullable(someType)
+    if (nullSchema && nonNullSchemas.length === 1) {
+      const converted = jsonSchemaToTypeBox(nonNullSchemas[0]);
+      return t.nullable(converted);
+    }
+
+    // For other oneOf cases, create a union
+    return t.union(schema.oneOf.map((s) => jsonSchemaToTypeBox(s)));
   }
 
   // Handle type
@@ -158,7 +205,7 @@ function filterUndefined<T extends Record<string, unknown>>(
  * Convert JSON Schema string type to TypeBox.
  */
 function convertString(schema: JsonSchemaObject): TSchema {
-  const options: TStringOptions = filterUndefined({
+  const baseOptions: TStringOptions = filterUndefined({
     title: schema.title,
     description: schema.description,
     default: schema.default as string,
@@ -166,6 +213,11 @@ function convertString(schema: JsonSchemaObject): TSchema {
     maxLength: schema.maxLength,
     pattern: schema.pattern,
   });
+
+  // Preserve ~options if present (for t.text() compatibility)
+  const options: TStringOptions = schema["~options"]
+    ? { ...baseOptions, "~options": schema["~options"] }
+    : baseOptions;
 
   switch (schema.format) {
     case "email":
