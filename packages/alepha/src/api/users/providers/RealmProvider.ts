@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { $bucket } from "alepha/bucket";
 import { $repository, type Repository } from "alepha/orm";
 import {
@@ -34,17 +34,6 @@ export class RealmProvider {
   public avatars = $bucket({
     maxSize: 5 * 1024 * 1024, // 5 MB
     mimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
-  });
-
-  protected readonly onConfigure = $hook({
-    on: "configure",
-    handler: () => {
-      this.alepha.store.set("alepha.server.security.system.user", {
-        id: "00000000-0000-0000-0000-000000000000",
-        name: "system",
-        roles: ["admin"], // TODO: use realm config
-      });
-    },
   });
 
   public register(realmName: string, realmOptions: RealmOptions = {}) {

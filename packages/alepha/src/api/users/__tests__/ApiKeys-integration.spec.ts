@@ -117,7 +117,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user = userResponse.data;
 
     // Create API key via controller (authenticated as the user)
-    const response = await apiKeyController.create.fetch(
+    const response = await apiKeyController.createApiKey.fetch(
       {
         body: {
           name: "My API Key",
@@ -151,17 +151,17 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user = userResponse.data;
 
     // Create multiple API keys
-    await apiKeyController.create.fetch(
+    await apiKeyController.createApiKey.fetch(
       { body: { name: "Key 1" } },
       { user: { id: user.id, roles: user.roles } },
     );
-    await apiKeyController.create.fetch(
+    await apiKeyController.createApiKey.fetch(
       { body: { name: "Key 2" } },
       { user: { id: user.id, roles: user.roles } },
     );
 
     // List keys via controller
-    const response = await apiKeyController.list.fetch(
+    const response = await apiKeyController.listApiKeys.fetch(
       {},
       { user: { id: user.id, roles: user.roles } },
     );
@@ -189,7 +189,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user = userResponse.data;
 
     // Create an API key
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "My Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -203,7 +203,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     expect(beforeRevoke.data.userId).toBe(user.id);
 
     // Revoke the key
-    const revokeResponse = await apiKeyController.revoke.fetch(
+    const revokeResponse = await apiKeyController.revokeApiKey.fetch(
       { params: { id } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -245,7 +245,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user2 = user2Response.data;
 
     // User1 creates an API key
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "User1 Key" } },
       { user: { id: user1.id, roles: user1.roles } },
     );
@@ -253,7 +253,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
 
     // User2 tries to revoke User1's key - should fail with 403
     await expect(
-      apiKeyController.revoke.fetch(
+      apiKeyController.revokeApiKey.fetch(
         { params: { id } },
         { user: { id: user2.id, roles: user2.roles } },
       ),
@@ -284,7 +284,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
 
     // Create API key with 1 hour expiration
     const expiresAt = dateTimeProvider.now().add(1, "hour").toISOString();
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "Expiring Key", expiresAt } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -345,11 +345,11 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user2 = user2Response.data;
 
     // Each user creates an API key
-    await apiKeyController.create.fetch(
+    await apiKeyController.createApiKey.fetch(
       { body: { name: "User1 Key" } },
       { user: { id: user1.id, roles: user1.roles } },
     );
-    await apiKeyController.create.fetch(
+    await apiKeyController.createApiKey.fetch(
       { body: { name: "User2 Key" } },
       { user: { id: user2.id, roles: user2.roles } },
     );
@@ -398,11 +398,11 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user2 = user2Response.data;
 
     // Create keys for both users
-    await apiKeyController.create.fetch(
+    await apiKeyController.createApiKey.fetch(
       { body: { name: "User1 Key" } },
       { user: { id: user1.id, roles: user1.roles } },
     );
-    await apiKeyController.create.fetch(
+    await apiKeyController.createApiKey.fetch(
       { body: { name: "User2 Key" } },
       { user: { id: user2.id, roles: user2.roles } },
     );
@@ -439,7 +439,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     );
     const user = userResponse.data;
 
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "My Key", description: "Test description" } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -480,7 +480,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     );
     const user = userResponse.data;
 
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "My Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -531,17 +531,17 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user = userResponse.data;
 
     // Create and revoke a key
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "Revoked Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
-    await apiKeyController.revoke.fetch(
+    await apiKeyController.revokeApiKey.fetch(
       { params: { id: createResponse.data.id } },
       { user: { id: user.id, roles: user.roles } },
     );
 
     // Create an active key
-    await apiKeyController.create.fetch(
+    await apiKeyController.createApiKey.fetch(
       { body: { name: "Active Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -585,7 +585,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
 
     // Create 5 API keys
     for (let i = 1; i <= 5; i++) {
-      await apiKeyController.create.fetch(
+      await apiKeyController.createApiKey.fetch(
         { body: { name: `Key ${i}` } },
         { user: { id: user.id, roles: user.roles } },
       );
@@ -629,7 +629,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     );
     const user = userResponse.data;
 
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "My Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -662,7 +662,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     );
     const user = userResponse.data;
 
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "My Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -704,14 +704,14 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     );
     const user = userResponse.data;
 
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "My Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
     const { id, token } = createResponse.data;
 
     // Revoke the key
-    await apiKeyController.revoke.fetch(
+    await apiKeyController.revokeApiKey.fetch(
       { params: { id } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -746,7 +746,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user = userResponse.data;
 
     // Create API key with admin role
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "Admin Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -783,7 +783,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user = userResponse.data;
 
     // Create API key with user role
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "User Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -815,7 +815,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user = userResponse.data;
 
     // Create API key
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "User Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -848,7 +848,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user = userResponse.data;
 
     // Create API key (snapshots current roles: ["user"])
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "My Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -895,7 +895,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user = userResponse.data;
 
     // Create API key
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "Power Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -942,7 +942,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
 
     // Try to revoke non-existent key
     await expect(
-      apiKeyController.revoke.fetch(
+      apiKeyController.revokeApiKey.fetch(
         { params: { id: "00000000-0000-0000-0000-000000000000" } },
         { user: { id: user.id, roles: user.roles } },
       ),
@@ -981,7 +981,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user = userResponse.data;
 
     // List should return empty array
-    const response = await apiKeyController.list.fetch(
+    const response = await apiKeyController.listApiKeys.fetch(
       {},
       { user: { id: user.id, roles: user.roles } },
     );
@@ -1008,23 +1008,23 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const user = userResponse.data;
 
     // Create and revoke a key
-    const createResponse = await apiKeyController.create.fetch(
+    const createResponse = await apiKeyController.createApiKey.fetch(
       { body: { name: "Revoked Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
-    await apiKeyController.revoke.fetch(
+    await apiKeyController.revokeApiKey.fetch(
       { params: { id: createResponse.data.id } },
       { user: { id: user.id, roles: user.roles } },
     );
 
     // Create an active key
-    await apiKeyController.create.fetch(
+    await apiKeyController.createApiKey.fetch(
       { body: { name: "Active Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
 
     // List should only show active key
-    const response = await apiKeyController.list.fetch(
+    const response = await apiKeyController.listApiKeys.fetch(
       {},
       { user: { id: user.id, roles: user.roles } },
     );

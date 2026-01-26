@@ -23,9 +23,9 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { t } from "alepha";
+import type { ApiKeyController } from "alepha/api/keys";
 import { DateTimeProvider } from "alepha/datetime";
 import { useState } from "react";
-import type { McpApiKeyController } from "../../../../api/controllers/McpApiKeyController.ts";
 import { theme } from "../../constants/theme.ts";
 import Control from "../ui/Control.tsx";
 
@@ -44,7 +44,7 @@ export interface MyApiKeysProps {
 
 const MyApiKeys = (props: MyApiKeysProps) => {
   const dt = useInject(DateTimeProvider);
-  const apiKeyApi = useClient<McpApiKeyController>();
+  const apiKeyApi = useClient<ApiKeyController>();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>(props.apiKeys);
   const [opened, { open, close }] = useDisclosure(false);
   const [newToken, setNewToken] = useState<string | null>(null);

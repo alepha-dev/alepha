@@ -176,6 +176,11 @@ export class ViteDevServerProvider {
     const mode = process.env.NODE_ENV || "development";
     const env = loadEnv(mode, this.options.root, "");
 
+    // Merge into process.env (only set if not already defined)
+    for (const [key, value] of Object.entries(env)) {
+      process.env[key] ??= value;
+    }
+
     process.env.NODE_ENV ??= "development";
     process.env.VITE_ALEPHA_DEV = "true";
     process.env.SERVER_HOST ??= this.options.host?.toString() ?? "localhost";
@@ -183,11 +188,6 @@ export class ViteDevServerProvider {
       this.options.port ??
         (process.env.SERVER_PORT ? Number(process.env.SERVER_PORT) : 3000),
     );
-
-    // Merge into process.env (only set if not already defined)
-    for (const [key, value] of Object.entries(env)) {
-      process.env[key] ??= value;
-    }
   }
 
   /**

@@ -112,14 +112,8 @@ export class SseMcpTransport {
   message = $route({
     method: "POST",
     path: this.env.MCP_SSE_PATH,
-    secure: false,
     schema: {
       body: t.json(),
-      query: t.object({
-        token: t.optional(
-          t.text({ description: "API token for authentication" }),
-        ),
-      }),
     },
     handler: async (request) => {
       try {
@@ -140,11 +134,6 @@ export class SseMcpTransport {
           string,
           string | string[] | undefined
         >;
-
-        // Support token as query parameter (for clients that can't set headers)
-        if (request.query.token && !headers.authorization) {
-          headers.authorization = `Bearer ${request.query.token}`;
-        }
 
         const context: McpContext = { headers };
 

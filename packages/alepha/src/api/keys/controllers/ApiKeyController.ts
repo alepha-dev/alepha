@@ -20,7 +20,7 @@ export class ApiKeyController {
    * Create a new API key for the authenticated user.
    * The token is only returned once upon creation.
    */
-  public readonly create = $action({
+  public readonly createApiKey = $action({
     method: "POST",
     path: this.url,
     group: this.group,
@@ -57,7 +57,7 @@ export class ApiKeyController {
    * List all active API keys for the authenticated user.
    * Does not return the actual tokens.
    */
-  public readonly list = $action({
+  public readonly listApiKeys = $action({
     path: this.url,
     group: this.group,
     description: "List your API keys",
@@ -85,7 +85,7 @@ export class ApiKeyController {
   /**
    * Revoke an API key. Only the owner can revoke their own keys.
    */
-  public readonly revoke = $action({
+  public readonly revokeApiKey = $action({
     method: "DELETE",
     path: `${this.url}/:id`,
     group: this.group,

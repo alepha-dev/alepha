@@ -24,6 +24,7 @@ describe("Basic Authentication", () => {
 
     // Action without basic auth
     publicAction = $action({
+      secure: false,
       handler: () => "public success",
     });
 
@@ -48,6 +49,7 @@ describe("Basic Authentication", () => {
     });
 
     customAuthAction = $action({
+      secure: false,
       handler: async (request) => {
         this.customAuth.check(request);
         return "custom auth success";

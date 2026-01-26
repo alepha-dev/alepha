@@ -1,6 +1,6 @@
 import { $inject } from "alepha";
 import { $resource } from "alepha/mcp";
-import { McpAuthProvider } from "../providers/McpAuthProvider.ts";
+import { ProjectController } from "../../api/controllers/ProjectController.ts";
 
 /**
  * MCP resources for project data.
@@ -12,7 +12,7 @@ import { McpAuthProvider } from "../providers/McpAuthProvider.ts";
  * then use project_info and task_list tools for project-specific data.
  */
 export class ProjectResources {
-  protected readonly auth = $inject(McpAuthProvider);
+  protected readonly projectController = $inject(ProjectController);
 
   /**
    * List of all projects the user has access to.
@@ -23,15 +23,14 @@ export class ProjectResources {
     description:
       "List of all projects (campaigns) the user has access to. Use project_list tool for more details, or use project ID/title in other tools.",
     mimeType: "application/json",
-    handler: async ({ context }) => {
-      const auth = await this.auth.authenticate(context);
-      const projects = await this.auth.getUserProjects(auth);
+    handler: async () => {
+      const projects = await this.projectController.getMyProjects();
 
       const data = {
         projects: projects.map((p) => ({
           id: p.id,
           title: p.title,
-          public: p.public,
+          public: p.public ?? false,
         })),
         hint: "Use project ID or title (project_name) in tools like task_list, project_info to access project data.",
       };

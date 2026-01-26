@@ -23,10 +23,7 @@ describe("ServerSecurityProvider", () => {
     const app = alepha.inject(TestApp);
     await alepha.start();
 
-    // in testing environment, .run() a dummy user is created
-    expect(await app.ok.run({})).toBe("OK");
-
-    // but you can force empty user
+    await expect(app.ok.run({})).rejects.toThrowError(UnauthorizedError);
     await expect(app.ok.run({}, { user: undefined })).rejects.toThrowError(
       UnauthorizedError,
     );

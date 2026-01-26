@@ -227,19 +227,10 @@ export class ServerSecurityProvider {
     }
 
     if (!user) {
-      // in testing mode, we create a test user
-      if (this.alepha.isTest() && !("user" in options)) {
-        return this.createTestUser();
-      }
-
       throw new UnauthorizedError("User is required for calling this action");
     }
 
-    const roles =
-      user.roles ??
-      (this.alepha.isTest()
-        ? this.securityProvider.getRoles().map((role) => role.name)
-        : []);
+    const roles = user.roles ?? [];
     let ownership: boolean | string | undefined;
 
     if (permission) {
