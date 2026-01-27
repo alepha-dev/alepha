@@ -321,6 +321,36 @@ export const testSimpleKeyMappingHandler = async (
   expect(await app.run("C")).toBe("C=3");
 };
 
+export const testCacheIncr = async (
+  env: Env = {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  const app = Alepha.create({
+    env,
+  }).with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+
+  const provider = app.inject(CacheProvider);
+  await app.start();
+
+  const name = "test-incr";
+  const key = `counter:${randomUUID()}`;
+
+  // First increment creates the key
+  const val1 = await provider.incr(name, key, 1);
+  expect(val1).toBe(1);
+
+  // Subsequent increments add to existing value
+  const val2 = await provider.incr(name, key, 5);
+  expect(val2).toBe(6);
+
+  // Negative amounts work (decrement)
+  const val3 = await provider.incr(name, key, -2);
+  expect(val3).toBe(4);
+};
+
 export const testCacheProviderClear = async (
   env: Env = {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,

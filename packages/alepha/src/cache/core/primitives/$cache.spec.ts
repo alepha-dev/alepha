@@ -7,6 +7,7 @@ import {
   testCacheBasic,
   testCacheClear,
   testCacheDisabled,
+  testCacheIncr,
   testCacheInvalidateAll,
   testCacheInvalidateByArgs,
   testCacheInvalidateByKey,
@@ -107,5 +108,9 @@ describe("$cache", () => {
 
   it("should clear provider cache", async () => {
     await testCacheProviderClear();
+  });
+
+  it("should increment values atomically", async () => {
+    await testCacheIncr();
   });
 });

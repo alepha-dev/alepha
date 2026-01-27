@@ -99,6 +99,15 @@ export class RedisCacheProvider implements CacheProvider {
     await this.redisProvider.del(keys);
   }
 
+  public async incr(
+    name: string,
+    key: string,
+    amount: number,
+  ): Promise<number> {
+    const keyWithPrefix = this.prefix(name, key);
+    return this.redisProvider.incr(keyWithPrefix, amount);
+  }
+
   protected prefix(...path: string[]): string {
     const parts = ["cache", ...path];
 

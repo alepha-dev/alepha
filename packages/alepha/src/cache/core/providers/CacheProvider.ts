@@ -51,4 +51,21 @@ export abstract class CacheProvider {
    * Remove all keys from all cache names.
    */
   public abstract clear(): Promise<void>;
+
+  /**
+   * Increment the integer value of a key by the given amount.
+   *
+   * If the key does not exist, it is set to 0 before performing the operation.
+   * This operation is atomic when using Redis.
+   *
+   * @param name Cache name, used to group keys.
+   * @param key The key to increment.
+   * @param amount The amount to increment by.
+   * @returns The new value after incrementing.
+   */
+  public abstract incr(
+    name: string,
+    key: string,
+    amount: number,
+  ): Promise<number>;
 }

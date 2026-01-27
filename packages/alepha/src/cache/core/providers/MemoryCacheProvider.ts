@@ -267,6 +267,30 @@ export class MemoryCacheProvider implements CacheProvider {
     this.store = {};
   }
 
+  public async incr(
+    name: string,
+    key: string,
+    amount: number,
+  ): Promise<number> {
+    if (this.store[name] == null) {
+      this.store[name] = {};
+    }
+
+    const existing = this.store[name][key]?.data;
+    let current = 0;
+
+    if (existing) {
+      const str = new TextDecoder().decode(existing);
+      current = Number.parseInt(str, 10) || 0;
+    }
+
+    const newValue = current + amount;
+    this.store[name][key] ??= {};
+    this.store[name][key].data = new TextEncoder().encode(String(newValue));
+
+    return newValue;
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Test utilities
   // ─────────────────────────────────────────────────────────────────────────────

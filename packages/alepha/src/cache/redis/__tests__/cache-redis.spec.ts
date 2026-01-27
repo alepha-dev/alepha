@@ -4,6 +4,7 @@ import {
   testCacheBasic,
   testCacheClear,
   testCacheDisabled,
+  testCacheIncr,
   testCacheInvalidateAll,
   testCacheInvalidateByArgs,
   testCacheInvalidateByKey,
@@ -66,5 +67,9 @@ describe("$cache - redis", () => {
 
   it("should clear provider cache", async () => {
     await testCacheProviderClear(env(), provider);
+  });
+
+  it("should increment values atomically", async () => {
+    await testCacheIncr(env(), provider);
   });
 });
