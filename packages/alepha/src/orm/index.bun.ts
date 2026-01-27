@@ -15,12 +15,14 @@ import { QueryManager } from "./services/QueryManager.ts";
 import { Repository } from "./services/Repository.ts";
 import { SqliteModelBuilder } from "./services/SqliteModelBuilder.ts";
 
+export const SqliteProvider = BunSqliteProvider;
+
 export * from "./index.shared-server.ts";
 export * from "./providers/drivers/BunPostgresProvider.ts";
 export * from "./providers/drivers/BunSqliteProvider.ts";
 
-export const AlephaPostgres = $module({
-  name: "alepha.postgres",
+export const AlephaOrm = $module({
+  name: "alepha.orm",
   primitives: [$sequence, $entity],
   services: [
     AlephaDateTime,

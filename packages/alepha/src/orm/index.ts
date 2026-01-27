@@ -94,6 +94,8 @@ export * from "./providers/drivers/BunSqliteProvider.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
 export * from "./providers/drivers/NodeSqliteProvider.ts";
 
+export const SqliteProvider = NodeSqliteProvider;
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
@@ -119,8 +121,8 @@ export * from "./providers/drivers/NodeSqliteProvider.ts";
  *
  * @module alepha.postgres
  */
-export const AlephaPostgres = $module({
-  name: "alepha.postgres",
+export const AlephaOrm = $module({
+  name: "alepha.orm",
   primitives: [$sequence, $entity],
   services: [
     AlephaDateTime,

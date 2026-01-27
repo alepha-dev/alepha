@@ -162,6 +162,7 @@ export class BunSqliteProvider extends DatabaseProvider {
 
   protected readonly onStop = $hook({
     on: "stop",
+    priority: "last",
     handler: async () => {
       if (this.sqlite) {
         this.log.debug("Closing Bun SQLite connection...");

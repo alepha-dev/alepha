@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $repository, AlephaPostgres } from "../index.ts";
+import { $repository, AlephaOrm } from "../index.ts";
 import { userEntity } from "./fixtures/userEntitySchema.ts";
 
 describe("PostgresProvider", () => {
@@ -9,7 +9,7 @@ describe("PostgresProvider", () => {
       users = $repository(userEntity);
     }
 
-    const alepha = Alepha.create().with(AlephaPostgres);
+    const alepha = Alepha.create().with(AlephaOrm);
 
     const userService = alepha.inject(UserService);
 
