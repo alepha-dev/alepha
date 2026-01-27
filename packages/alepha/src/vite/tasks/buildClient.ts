@@ -37,11 +37,6 @@ export interface BuildClientOptions {
   };
 
   /**
-   * Override Vite config options.
-   */
-  config?: UserConfig;
-
-  /**
    * If true, generate build stats report.
    */
   stats?: boolean;
@@ -61,7 +56,7 @@ export interface BuildClientOptions {
  * including code splitting, minification, and optional compression.
  */
 export async function buildClient(opts: BuildClientOptions): Promise<void> {
-  const { build: viteBuild, mergeConfig } = await importVite();
+  const { build: viteBuild } = await importVite();
   const plugins: any[] = [];
 
   const viteReact = await importViteReact();
@@ -117,7 +112,7 @@ export async function buildClient(opts: BuildClientOptions): Promise<void> {
   };
 
   try {
-    await viteBuild(mergeConfig(viteBuildClientConfig, opts.config ?? {}));
+    await viteBuild(viteBuildClientConfig);
   } catch (error) {
     // Flush buffered logs on failure so user can see what happened
     logger?.flush();

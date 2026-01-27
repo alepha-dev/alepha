@@ -61,6 +61,7 @@ export interface BuildServerResult {
    * Can be used to set in alepha store for pre-rendering.
    */
   manifest?: {
+    base?: string;
     client?: Record<string, any>;
     preload?: Record<string, string>;
   };
@@ -180,7 +181,11 @@ export async function buildServer(
   // This bundles all manifest data into index.js for serverless deployments
   let manifest = "";
   let manifestData:
-    | { client?: Record<string, any>; preload?: Record<string, string> }
+    | {
+        base?: string;
+        client?: Record<string, any>;
+        preload?: Record<string, string>;
+      }
     | undefined;
 
   if (opts.clientDir) {
@@ -193,7 +198,18 @@ export async function buildServer(
     // Strip unused fields from client manifest to reduce bundle size
     const strippedClientManifest = stripClientManifest(clientManifest);
 
+    // Get base path from resolved config (defaults to "/" if not set)
+    // Normalize: ensure it starts with "/" and doesn't end with "/" (unless it's just "/")
+    let base = resolvedConfig.base || "/";
+    if (!base.startsWith("/")) {
+      base = `/${base}`;
+    }
+    if (base.length > 1 && base.endsWith("/")) {
+      base = base.slice(0, -1);
+    }
+
     manifestData = {
+      base: base !== "/" ? base : undefined, // Only include if not default
       client: strippedClientManifest,
       preload: preloadManifest,
     };

@@ -33,6 +33,14 @@ export class SSRManifestProvider {
   }
 
   /**
+   * Get the base path for assets (from Vite's base config).
+   * Returns empty string if base is "/" (default), otherwise returns the base path.
+   */
+  protected get base(): string {
+    return this.manifest.base ?? "";
+  }
+
+  /**
    * Get the preload manifest.
    */
   protected get preloadManifest(): PreloadManifest | undefined {
@@ -126,15 +134,17 @@ export class SSRManifestProvider {
     const entry = this.clientManifest[key];
     if (!entry) return;
 
-    // Add main chunk file (with leading slash for URL)
+    const base = this.base;
+
+    // Add main chunk file (with base path for URL)
     if (entry.file) {
-      chunks.add(`/${entry.file}`);
+      chunks.add(`${base}/${entry.file}`);
     }
 
     // Add CSS files
     if (entry.css) {
       for (const css of entry.css) {
-        chunks.add(`/${css}`);
+        chunks.add(`${base}/${css}`);
       }
     }
 
@@ -239,12 +249,14 @@ export class SSRManifestProvider {
       return null;
     }
 
+    const base = this.base;
+
     // Find the entry point in the client manifest
     for (const [key, entry] of Object.entries(this.clientManifest)) {
       if (entry.isEntry) {
         this.cachedEntryAssets = {
-          js: `/${entry.file}`,
-          css: entry.css?.map((css) => `/${css}`) ?? [],
+          js: `${base}/${entry.file}`,
+          css: entry.css?.map((css) => `${base}/${css}`) ?? [],
         };
         return this.cachedEntryAssets;
       }
