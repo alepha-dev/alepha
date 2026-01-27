@@ -190,13 +190,6 @@ export class EventManager {
     payload: Hooks[T],
     options: {
       /**
-       * If true, the hooks will be executed in reverse order.
-       * This is useful for "stop" hooks that should be executed in reverse order.
-       *
-       * @default false
-       */
-      reverse?: boolean;
-      /**
        * If true, the hooks will be logged with their execution time.
        *
        * @default false
@@ -216,8 +209,8 @@ export class EventManager {
       return;
     }
 
-    // Fast path: single listener, no logging, no reverse
-    if (events.length === 1 && !options.log && !options.reverse) {
+    // Fast path: single listener, no logging
+    if (events.length === 1 && !options.log) {
       const hook = events[0];
       try {
         const result = hook.callback(payload);
@@ -244,12 +237,7 @@ export class EventManager {
       this.log?.trace(`${String(func)} ...`);
     }
 
-    let eventList = events;
-    if (options.reverse) {
-      eventList = events.toReversed();
-    }
-
-    for (const hook of eventList) {
+    for (const hook of events) {
       const name = hook.caller?.name ?? "unknown";
       if (options.log) {
         ctx.now2 = performance.now();

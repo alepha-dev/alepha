@@ -535,7 +535,7 @@ export class Alepha {
     }
 
     this.log?.info("Stopping App...");
-    await this.events.emit("stop", this, { reverse: true, log: true });
+    await this.events.emit("stop", this, { log: true });
     this.log?.info("App is now off");
 
     this.started = false;

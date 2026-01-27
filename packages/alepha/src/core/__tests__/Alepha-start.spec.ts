@@ -41,9 +41,9 @@ describe("Alepha#start", () => {
    *
    * - B should be configured after A.
    * - B should be started after A.
+   * - A should be stopped before B (registration order).
    *
-   * But also:
-   * - B should be stopped before A.
+   * To control stop order, use `priority: "first"` on hooks.
    */
   it("should execute hooks in correct order", async () => {
     const stack: string[] = [];
@@ -110,8 +110,8 @@ describe("Alepha#start", () => {
       "B.configure",
       "A.start",
       "B.start",
-      "B.stop",
       "A.stop",
+      "B.stop",
     ]);
 
     await app.stop();
@@ -121,8 +121,8 @@ describe("Alepha#start", () => {
       "B.configure",
       "A.start",
       "B.start",
-      "B.stop",
       "A.stop",
+      "B.stop",
     ]);
   });
 
