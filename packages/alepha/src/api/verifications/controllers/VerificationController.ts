@@ -15,6 +15,7 @@ export class VerificationController {
     path: `${this.url}/:type`,
     group: this.group,
     method: "POST",
+    secure: false,
     schema: {
       params: t.object({
         type: verificationTypeEnumSchema,
@@ -36,6 +37,7 @@ export class VerificationController {
     path: `${this.url}/:type/validate`,
     group: this.group,
     method: "POST",
+    secure: false,
     schema: {
       params: t.object({
         type: verificationTypeEnumSchema,
