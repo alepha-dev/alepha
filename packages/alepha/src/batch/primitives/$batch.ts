@@ -159,14 +159,6 @@ export class BatchPrimitive<
       await this.batchProvider.markReady(this.context);
     },
   });
-
-  protected readonly dispose = $hook({
-    on: "stop",
-    priority: "first",
-    handler: async () => {
-      await this.batchProvider.shutdown(this.context);
-    },
-  });
 }
 
 $batch[KIND] = BatchPrimitive;

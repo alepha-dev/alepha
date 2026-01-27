@@ -1,4 +1,4 @@
-import { $inject, type Alepha } from "alepha";
+import { $hook, $inject, type Alepha } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { type RetryBackoffOptions, RetryProvider } from "alepha/retry";
@@ -131,13 +131,18 @@ export class BatchProvider {
   protected readonly retryProvider = $inject(RetryProvider);
 
   /**
+   * All active batch contexts managed by this provider.
+   */
+  protected readonly contexts = new Set<BatchContext<any, any>>();
+
+  /**
    * Creates a new batch context with the given options.
    */
   createContext<TItem, TResponse>(
     alepha: Alepha,
     options: BatchOptions<TItem, TResponse>,
   ): BatchContext<TItem, TResponse> {
-    return {
+    const context: BatchContext<TItem, TResponse> = {
       options,
       itemStates: new Map(),
       partitions: new Map(),
@@ -146,7 +151,29 @@ export class BatchProvider {
       isReady: false,
       alepha,
     };
+    this.contexts.add(context);
+    return context;
   }
+
+  /**
+   * Shutdown hook - flushes all batch contexts on application stop.
+   */
+  protected readonly onStop = $hook({
+    on: "stop",
+    priority: "first",
+    handler: async () => {
+      if (this.contexts.size === 0) {
+        return;
+      }
+      this.log.debug(`Shutting down ${this.contexts.size} batch context(s)...`);
+      const promises: Promise<void>[] = [];
+      for (const context of this.contexts) {
+        promises.push(this.shutdown(context));
+      }
+      await Promise.all(promises);
+      this.log.debug("All batch contexts shut down");
+    },
+  });
 
   /**
    * Get the effective maxSize for a context.
