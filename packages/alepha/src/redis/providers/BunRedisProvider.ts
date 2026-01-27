@@ -264,6 +264,15 @@ export class BunRedisProvider extends RedisProvider {
     await this.publisher.publish(channel, message);
   }
 
+  // ---------------------------------------------------------
+  // Counter operations
+  // ---------------------------------------------------------
+
+  public override async incr(key: string, amount: number): Promise<number> {
+    const result = await this.publisher.send("INCRBY", [key, String(amount)]);
+    return Number(result);
+  }
+
   /**
    * Get the Redis connection URL.
    */

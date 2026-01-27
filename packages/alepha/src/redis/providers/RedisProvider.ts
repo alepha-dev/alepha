@@ -108,6 +108,22 @@ export abstract class RedisProvider {
    * @param message The message to publish.
    */
   public abstract publish(channel: string, message: string): Promise<void>;
+
+  // ---------------------------------------------------------
+  // Counter operations
+  // ---------------------------------------------------------
+
+  /**
+   * Increment the integer value of a key by the given amount.
+   *
+   * If the key does not exist, it is set to 0 before performing the operation.
+   * This operation is atomic.
+   *
+   * @param key The key to increment.
+   * @param amount The amount to increment by.
+   * @returns The new value after incrementing.
+   */
+  public abstract incr(key: string, amount: number): Promise<number>;
 }
 
 /**

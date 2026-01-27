@@ -233,6 +233,14 @@ export class NodeRedisProvider extends RedisProvider {
     await this.publisher.publish(channel, message);
   }
 
+  // ---------------------------------------------------------
+  // Counter operations
+  // ---------------------------------------------------------
+
+  public override async incr(key: string, amount: number): Promise<number> {
+    return this.publisher.INCRBY(key, amount);
+  }
+
   /**
    * Get the Redis connection URL.
    */

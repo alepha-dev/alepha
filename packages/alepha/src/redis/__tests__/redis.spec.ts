@@ -55,4 +55,17 @@ describe("Redis", () => {
     await redis.lpush("test:b", "b");
     await alepha.stop();
   });
+
+  it("should increment values atomically", async ({ expect }) => {
+    const key = `test:incr:${randomUUID()}`;
+
+    const val1 = await redis.incr(key, 1);
+    expect(val1).toBe(1);
+
+    const val2 = await redis.incr(key, 5);
+    expect(val2).toBe(6);
+
+    const val3 = await redis.incr(key, -2);
+    expect(val3).toBe(4);
+  });
 });
