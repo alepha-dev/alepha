@@ -83,7 +83,7 @@ export interface ServerRequest<
 
   /**
    * Client IP address.
-   * Will parse `X-Forwarded-For` header if present.
+   * Uses `X-Forwarded-For` header when `TRUST_PROXY=true`.
    */
   ip?: string;
 
@@ -99,6 +99,42 @@ export interface ServerRequest<
    * @see {@link UserAgentParser}
    */
   userAgent: UserAgentInfo;
+
+  /**
+   * Geolocation information derived from proxy headers.
+   * Available when behind Cloudflare, Vercel, or similar CDNs.
+   */
+  geo: RequestGeo;
+
+  /**
+   * Whether the request appears to be from a bot/crawler.
+   * Based on user-agent analysis.
+   */
+  isBot: boolean;
+
+  /**
+   * Whether the request is from a mobile device.
+   * Based on user-agent analysis.
+   */
+  isMobile: boolean;
+
+  /**
+   * Request protocol (http or https).
+   * Uses `X-Forwarded-Proto` header when behind a proxy.
+   */
+  protocol: "http" | "https";
+
+  /**
+   * Preferred language from `Accept-Language` header.
+   * Returns the first/most preferred language code (e.g., "en", "fr", "en-US").
+   */
+  language?: string;
+
+  /**
+   * Parsed referer information.
+   * Undefined if no Referer header or invalid URL.
+   */
+  referer?: RequestReferer;
 
   /**
    * Arbitrary metadata attached to the request. Can be used by middlewares to store information.
@@ -207,4 +243,34 @@ export interface NodeRequestEvent {
 export interface WebRequestEvent {
   req: Request;
   res?: Response;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Geolocation information from proxy headers (Cloudflare, Vercel, etc.)
+ */
+export interface RequestGeo {
+  /** ISO 3166-1 alpha-2 country code (e.g., "US", "FR", "JP") */
+  country?: string;
+  /** City name (e.g., "San Francisco", "Paris") */
+  city?: string;
+  /** Region/state (e.g., "California", "Île-de-France") */
+  region?: string;
+  /** Latitude (if available) */
+  latitude?: string;
+  /** Longitude (if available) */
+  longitude?: string;
+}
+
+/**
+ * Parsed referer information
+ */
+export interface RequestReferer {
+  /** Full referer URL */
+  url: string;
+  /** Hostname of the referer (e.g., "google.com") */
+  hostname: string;
+  /** Path of the referer URL */
+  pathname: string;
 }
