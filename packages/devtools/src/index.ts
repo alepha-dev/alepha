@@ -1,4 +1,4 @@
-import { $module } from "alepha";
+import { $context, $module } from "alepha";
 import { DevToolsProvider } from "./api/DevToolsProvider.ts";
 import { DevToolsDatabaseProvider } from "./api/providers/DevToolsDatabaseProvider.ts";
 import { DevToolsMetadataProvider } from "./api/providers/DevToolsMetadataProvider.ts";
@@ -58,3 +58,8 @@ export const AlephaDevtools = $module({
     alepha.store.push("alepha.build.assets", "@alepha/devtools");
   },
 });
+
+export const $devtools = () => {
+  $context().alepha.with(AlephaDevtools);
+  return {};
+};
