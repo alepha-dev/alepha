@@ -68,6 +68,9 @@ export class InitCommand {
         await this.fs.mkdir(root);
       }
 
+      // Detect workspace context (are we inside packages/ or apps/ of a monorepo?)
+      const workspace = await this.pm.getWorkspaceContext(root);
+
       // Detect agent type: claude CLI → CLAUDE.md, else → AGENTS.md
       let agentType: "claude" | "agents" | false = false;
       if (flags.agent) {
@@ -84,10 +87,11 @@ export class InitCommand {
         handler: async () => {
           await this.scaffolder.ensureConfig(root, {
             force,
-            tsconfigJson: true,
+            tsconfigJson: !workspace.config.tsconfigJson,
             packageJson: flags,
-            biomeJson: true,
-            editorconfig: true,
+            // Skip workspace-level configs if they exist at workspace root
+            biomeJson: !workspace.config.biomeJson,
+            editorconfig: !workspace.config.editorconfig,
             indexHtml: !!flags.react && !isExpo,
             agentMd: agentType
               ? { type: agentType, react: !!flags.react, ui: !!flags.ui }
@@ -103,34 +107,48 @@ export class InitCommand {
 
       // TODO: check if all alepha dependencies are same version
 
-      const pmName = await this.pm.getPackageManager(root, flags.pm);
-      if (pmName === "yarn") {
-        await this.pm.ensureYarn(root);
-        await run("yarn set version stable", { root });
-      } else if (pmName === "bun") {
-        await this.pm.ensureBun(root);
-      } else if (pmName === "pnpm") {
-        await this.pm.ensurePnpm(root);
-      } else {
-        await this.pm.ensureNpm(root);
+      // Use workspace PM if detected, otherwise detect from current root
+      const pmName = await this.pm.getPackageManager(
+        workspace.workspaceRoot ?? root,
+        flags.pm ?? workspace.packageManager ?? undefined,
+      );
+
+      // Only setup PM files if not in a workspace package
+      if (!workspace.isPackage) {
+        if (pmName === "yarn") {
+          await this.pm.ensureYarn(root);
+          await run("yarn set version stable", { root });
+        } else if (pmName === "bun") {
+          await this.pm.ensureBun(root);
+        } else if (pmName === "pnpm") {
+          await this.pm.ensurePnpm(root);
+        } else {
+          await this.pm.ensureNpm(root);
+        }
       }
 
+      // Run install from workspace root if in a package, otherwise from current root
+      const installRoot = workspace.workspaceRoot ?? root;
       await run(`${pmName} install`, {
         alias: `installing dependencies with ${pmName}`,
-        root,
+        root: installRoot,
       });
 
-      if (!isExpo) {
-        await this.pm.ensureDependency(root, "vite", {
+      // Only add vite/biome as dependencies if not in a workspace package
+      // (workspace root should already have them)
+      if (!workspace.isPackage) {
+        if (!isExpo) {
+          await this.pm.ensureDependency(root, "vite", {
+            run,
+            exec: (cmd, opts) => this.utils.exec(cmd, opts),
+          });
+        }
+
+        await this.pm.ensureDependency(root, "@biomejs/biome", {
           run,
           exec: (cmd, opts) => this.utils.exec(cmd, opts),
         });
       }
-
-      await this.pm.ensureDependency(root, "@biomejs/biome", {
-        run,
-        exec: (cmd, opts) => this.utils.exec(cmd, opts),
-      });
 
       // Install vitest and create test directory if --test flag is set
       if (flags.test) {
@@ -139,13 +157,14 @@ export class InitCommand {
           `${pmName} ${pmName === "yarn" ? "add" : "install"} -D vitest`,
           {
             alias: "setup testing with Vitest",
+            root: installRoot,
           },
         );
       }
 
       await run(`${pmName} run lint`, {
         alias: "running linter",
-        root,
+        root: installRoot,
       });
     },
   });

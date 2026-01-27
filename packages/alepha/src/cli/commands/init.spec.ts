@@ -353,4 +353,124 @@ describe("alepha init", () => {
       expect(shell.wasCalled("yarn run lint")).toBe(true);
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Workspace Package Detection
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("workspace package detection", () => {
+    const setupWorkspace = async (
+      fs: MemoryFileSystemProvider,
+      json: Json,
+      pm: "yarn" | "npm" | "pnpm" | "bun" = "yarn",
+    ) => {
+      // Setup workspace root at /workspace
+      await fs.writeFile(
+        "/workspace/package.json",
+        json.stringify({ name: "monorepo", workspaces: ["packages/*"] }),
+      );
+      await fs.writeFile("/workspace/biome.json", "{}");
+      await fs.writeFile("/workspace/.editorconfig", "root=true");
+      await fs.writeFile("/workspace/tsconfig.json", "{}");
+
+      // Setup lockfile based on PM
+      const lockfiles: Record<string, string> = {
+        yarn: "yarn.lock",
+        npm: "package-lock.json",
+        pnpm: "pnpm-lock.yaml",
+        bun: "bun.lock",
+      };
+      await fs.writeFile(`/workspace/${lockfiles[pm]}`, "");
+
+      // Setup package inside workspace (2 levels down)
+      await fs.writeFile(
+        "/workspace/packages/my-pkg/package.json",
+        json.stringify({ name: "my-pkg" }),
+      );
+    };
+
+    it("should skip biome.json when workspace root has it", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupWorkspace(fs, json);
+
+      await cli.run(cmd.init, { root: "/workspace/packages/my-pkg" });
+
+      expect(fs.wasWritten("/workspace/packages/my-pkg/biome.json")).toBe(
+        false,
+      );
+    });
+
+    it("should skip .editorconfig when workspace root has it", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupWorkspace(fs, json);
+
+      await cli.run(cmd.init, { root: "/workspace/packages/my-pkg" });
+
+      expect(fs.wasWritten("/workspace/packages/my-pkg/.editorconfig")).toBe(
+        false,
+      );
+    });
+
+    it("should skip tsconfig.json when workspace root has it", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupWorkspace(fs, json);
+
+      await cli.run(cmd.init, { root: "/workspace/packages/my-pkg" });
+
+      expect(fs.wasWritten("/workspace/packages/my-pkg/tsconfig.json")).toBe(
+        false,
+      );
+    });
+
+    it("should detect yarn from workspace root lockfile", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupWorkspace(fs, json, "yarn");
+
+      await cli.run(cmd.init, { root: "/workspace/packages/my-pkg" });
+
+      expect(shell.wasCalled("yarn install")).toBe(true);
+    });
+
+    it("should detect pnpm from workspace root lockfile", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupWorkspace(fs, json, "pnpm");
+
+      await cli.run(cmd.init, { root: "/workspace/packages/my-pkg" });
+
+      expect(shell.wasCalled("pnpm install")).toBe(true);
+    });
+
+    it("should run install from workspace root when in package", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupWorkspace(fs, json, "yarn");
+
+      await cli.run(cmd.init, { root: "/workspace/packages/my-pkg" });
+
+      // Install should be run with workspace root
+      const installCalls = shell.getCallsMatching(/yarn install/);
+      expect(installCalls.length).toBeGreaterThan(0);
+      expect(installCalls[0].options.root).toBe("/workspace");
+    });
+
+    it("should not setup PM files when in workspace package", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupWorkspace(fs, json, "yarn");
+
+      await cli.run(cmd.init, { root: "/workspace/packages/my-pkg" });
+
+      // Should not run yarn set version stable in package
+      expect(shell.wasCalled("yarn set version stable")).toBe(false);
+    });
+
+    it("should still create package.json in the package", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupWorkspace(fs, json);
+
+      await cli.run(cmd.init, { root: "/workspace/packages/my-pkg" });
+
+      expect(fs.wasWritten("/workspace/packages/my-pkg/package.json")).toBe(
+        true,
+      );
+    });
+  });
 });

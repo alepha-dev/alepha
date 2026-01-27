@@ -5,6 +5,25 @@ import { FileSystemProvider } from "alepha/system";
 import { version } from "../version.ts";
 
 /**
+ * Context information about a workspace root.
+ * Used when initializing a package inside a monorepo.
+ */
+export interface WorkspaceContext {
+  /** Whether we're inside a workspace package */
+  isPackage: boolean;
+  /** The workspace root directory (e.g., ../.. from packages/my-pkg) */
+  workspaceRoot: string | null;
+  /** Package manager detected at workspace root */
+  packageManager: "yarn" | "pnpm" | "npm" | "bun" | null;
+  /** Config files present at workspace root */
+  config: {
+    biomeJson: boolean;
+    editorconfig: boolean;
+    tsconfigJson: boolean;
+  };
+}
+
+/**
  * Utility service for package manager operations.
  *
  * Handles detection, installation, and cleanup for:
@@ -32,6 +51,60 @@ export class PackageManagerUtils {
     if (await this.fs.exists(this.fs.join(root, "pnpm-lock.yaml")))
       return "pnpm";
     return "npm";
+  }
+
+  /**
+   * Detect workspace context when inside a monorepo package.
+   *
+   * Checks if we're inside a workspace package (e.g., packages/my-pkg or apps/my-app)
+   * by looking 2 levels up for workspace indicators like lockfiles and config files.
+   *
+   * @param root - The current package directory
+   * @returns Workspace context with root path, PM, and config presence
+   */
+  public async getWorkspaceContext(root: string): Promise<WorkspaceContext> {
+    // Workspace root is 2 levels up (e.g., packages/my-pkg → ..)
+    const workspaceRoot = this.fs.join(root, "..", "..");
+
+    // Check for lockfiles to detect PM
+    const [hasYarnLock, hasPnpmLock, hasNpmLock, hasBunLock] =
+      await Promise.all([
+        this.fs.exists(this.fs.join(workspaceRoot, "yarn.lock")),
+        this.fs.exists(this.fs.join(workspaceRoot, "pnpm-lock.yaml")),
+        this.fs.exists(this.fs.join(workspaceRoot, "package-lock.json")),
+        this.fs.exists(this.fs.join(workspaceRoot, "bun.lock")),
+      ]);
+
+    // Check for config files
+    const [hasBiome, hasEditorConfig, hasTsConfig, hasWorkspacePackageJson] =
+      await Promise.all([
+        this.fs.exists(this.fs.join(workspaceRoot, "biome.json")),
+        this.fs.exists(this.fs.join(workspaceRoot, ".editorconfig")),
+        this.fs.exists(this.fs.join(workspaceRoot, "tsconfig.json")),
+        this.fs.exists(this.fs.join(workspaceRoot, "package.json")),
+      ]);
+
+    // Determine if this looks like a workspace root
+    const hasLockfile = hasYarnLock || hasPnpmLock || hasNpmLock || hasBunLock;
+    const isPackage = hasLockfile && hasWorkspacePackageJson;
+
+    // Detect package manager from lockfile
+    let packageManager: "yarn" | "pnpm" | "npm" | "bun" | null = null;
+    if (hasYarnLock) packageManager = "yarn";
+    else if (hasPnpmLock) packageManager = "pnpm";
+    else if (hasBunLock) packageManager = "bun";
+    else if (hasNpmLock) packageManager = "npm";
+
+    return {
+      isPackage,
+      workspaceRoot: isPackage ? workspaceRoot : null,
+      packageManager,
+      config: {
+        biomeJson: hasBiome,
+        editorconfig: hasEditorConfig,
+        tsconfigJson: hasTsConfig,
+      },
+    };
   }
 
   /**

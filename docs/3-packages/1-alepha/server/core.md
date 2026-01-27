@@ -158,3 +158,4 @@ Environment variables used to configure this module. These can be set in your `.
 | `SERVER_BODY_PARSER_LIMIT` | integer | 100_000 | Maximum size of request body in bytes. |
 | `SERVER_HOST` | text | localhost | Set 0.0.0.0 to listen on all interfaces. |
 | `SERVER_PORT` | integer | 3000 | Set 0 to listen on a random port. |
+| `TRUST_PROXY` | boolean | true | Trust proxy headers for client IP |
