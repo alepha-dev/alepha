@@ -1,4 +1,6 @@
+import { ClientOnly } from "@alepha/react";
 import { Flex, Kbd, Text } from "@mantine/core";
+import { useOs } from "@mantine/hooks";
 import { spotlight } from "@mantine/spotlight";
 import { IconSearch } from "@tabler/icons-react";
 import ActionButton, { type ActionProps } from "./ActionButton.tsx";
@@ -9,6 +11,10 @@ export interface OmnibarButtonProps {
 }
 
 const OmnibarButton = (props: OmnibarButtonProps) => {
+  const os = useOs();
+  const isMac = os === "macos" || os === "ios";
+  const shortcut = isMac ? "⌘" : "Ctrl";
+
   return (
     <ActionButton
       variant={"default"}
@@ -16,7 +22,7 @@ const OmnibarButton = (props: OmnibarButtonProps) => {
       justify={"space-between"}
       rightSection={
         <Kbd visibleFrom={"sm"} size={"sm"}>
-          ⌘+K
+          <ClientOnly>{shortcut}</ClientOnly>+K
         </Kbd>
       }
       radius={"md"}
