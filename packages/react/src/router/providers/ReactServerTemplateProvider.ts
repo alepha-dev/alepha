@@ -601,14 +601,37 @@ export class ReactServerTemplateProvider {
    * Also strips these assets from the original head content to avoid duplicates,
    * since we're moving them to the early phase.
    *
+   * Automatically prepends critical meta tags (charset, viewport) if not present
+   * in $head configuration, ensuring they're sent as early as possible.
+   *
    * @param content - HTML string with entry assets
+   * @param globalHead - Global head configuration from $head primitives
    * @param entryAssets - Entry asset paths to strip from original head
    */
   public setEarlyHeadContent(
     content: string,
+    globalHead?: SimpleHead,
     entryAssets?: { js?: string; css: string[] },
   ): void {
-    this.earlyHeadContent = content;
+    // Build early content with critical meta tags first
+    const criticalMeta: string[] = [];
+
+    // Add charset - use custom value from $head or default to UTF-8
+    const charset = globalHead?.charset ?? "UTF-8";
+    criticalMeta.push(`<meta charset="${this.escapeHtml(charset)}">`);
+
+    // Add viewport - use custom value from $head or default
+    const viewport =
+      globalHead?.viewport ?? "width=device-width, initial-scale=1";
+    criticalMeta.push(
+      `<meta name="viewport" content="${this.escapeHtml(viewport)}">`,
+    );
+
+    // Prepend critical meta tags before entry assets
+    this.earlyHeadContent =
+      criticalMeta.length > 0
+        ? `${criticalMeta.join("\n")}\n${content}`
+        : content;
 
     // Strip entry assets from original head content to avoid duplicates
     if (entryAssets && this.slots) {

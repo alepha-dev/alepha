@@ -69,6 +69,10 @@ export interface Seo {
 export interface SimpleHead {
   title?: string;
   titleSeparator?: string;
+  /** Document charset - defaults to "UTF-8" if not specified */
+  charset?: string;
+  /** Viewport content - defaults to "width=device-width, initial-scale=1" if not specified */
+  viewport?: string;
   htmlAttributes?: Record<string, string>;
   bodyAttributes?: Record<string, string>;
   /** Meta tags - supports both name and property attributes */

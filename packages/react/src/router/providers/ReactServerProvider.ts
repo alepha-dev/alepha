@@ -179,40 +179,41 @@ export class ReactServerProvider {
    * because the script needs to execute anyway - this way the browser starts
    * downloading, parsing, AND will execute as soon as ready.
    *
-   * Also strips these assets from the original template head to avoid duplicates.
+   * Also injects critical meta tags (charset, viewport) if not specified in $head,
+   * and strips these assets from the original template head to avoid duplicates.
    */
   protected setupEarlyHeadContent(): void {
     const assets = this.ssrManifestProvider.getEntryAssets();
-    if (!assets) {
-      return;
-    }
+    const globalHead = this.serverHeadProvider.resolveGlobalHead();
 
     const parts: string[] = [];
 
-    // Add CSS stylesheets (critical for rendering)
-    for (const css of assets.css) {
-      parts.push(`<link rel="stylesheet" href="${css}" crossorigin="">`);
+    if (assets) {
+      // Add CSS stylesheets (critical for rendering)
+      for (const css of assets.css) {
+        parts.push(`<link rel="stylesheet" href="${css}" crossorigin="">`);
+      }
+
+      // Add entry JS as script module (not just modulepreload)
+      // This starts download, parse, AND execution immediately
+      if (assets.js) {
+        parts.push(
+          `<script type="module" crossorigin="" src="${assets.js}"></script>`,
+        );
+      }
     }
 
-    // Add entry JS as script module (not just modulepreload)
-    // This starts download, parse, AND execution immediately
-    if (assets.js) {
-      parts.push(
-        `<script type="module" crossorigin="" src="${assets.js}"></script>`,
-      );
-    }
+    // Pass global head so critical meta tags can be injected if missing
+    this.templateProvider.setEarlyHeadContent(
+      parts.length > 0 ? `${parts.join("\n")}\n` : "",
+      globalHead,
+      assets ?? undefined,
+    );
 
-    if (parts.length > 0) {
-      // Pass assets so they get stripped from original head content
-      this.templateProvider.setEarlyHeadContent(
-        `${parts.join("\n")}\n`,
-        assets,
-      );
-      this.log.debug("Early head content set", {
-        css: assets.css.length,
-        js: assets.js ? 1 : 0,
-      });
-    }
+    this.log.debug("Early head content set", {
+      css: assets?.css.length ?? 0,
+      js: assets?.js ? 1 : 0,
+    });
   }
 
   /**
