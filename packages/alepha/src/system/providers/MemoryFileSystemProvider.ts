@@ -1,3 +1,4 @@
+import { join as nodeJoin } from "node:path";
 import { $inject, type FileLike, Json } from "alepha";
 import type {
   CpOptions,
@@ -111,11 +112,11 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
 
   /**
    * Join path segments using forward slashes.
+   * Uses Node's path.join for proper normalization (handles .. and .)
    */
   public join(...paths: string[]): string {
     this.joinCalls.push(paths);
-    // Simple path join - normalize and join with /
-    return paths.filter(Boolean).join("/").replace(/\/+/g, "/");
+    return nodeJoin(...paths);
   }
 
   /**

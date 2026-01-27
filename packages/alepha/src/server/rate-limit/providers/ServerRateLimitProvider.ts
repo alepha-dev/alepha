@@ -1,5 +1,5 @@
 import { $atom, $env, $hook, $inject, $use, type Static, t } from "alepha";
-import { $cache } from "alepha/cache";
+import { CacheProvider } from "alepha/cache";
 import { $logger } from "alepha/logger";
 import {
   HttpError,
@@ -74,13 +74,10 @@ export class ServerRateLimitProvider {
   protected readonly log = $logger();
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly env = $env(envSchema);
-
-  protected readonly cache = $cache<RateLimitData>({
-    name: "server-rate-limit",
-    ttl: [this.env.RATE_LIMIT_WINDOW_MS, "milliseconds"],
-  });
-
+  protected readonly cacheProvider = $inject(CacheProvider);
   protected readonly globalOptions = $use(rateLimitOptions);
+
+  protected static readonly CACHE_NAME = "rate-limit";
 
   /**
    * Registered rate limit configurations with their path patterns
@@ -210,42 +207,30 @@ export class ServerRateLimitProvider {
   ): Promise<RateLimitResult> {
     const windowMs = options.windowMs ?? this.env.RATE_LIMIT_WINDOW_MS;
     const max = options.max ?? this.env.RATE_LIMIT_MAX_REQUESTS;
-    const key = this.generateKey(req);
+    const baseKey = this.generateKey(req);
 
     const now = Date.now();
-    const windowStart = now - windowMs;
+    // Fixed window: round down to nearest window boundary
+    const windowStart = Math.floor(now / windowMs) * windowMs;
+    const resetTime = windowStart + windowMs;
 
-    // Get current rate limit data
-    const currentData = (await this.cache.get(key)) || {
-      count: 0,
-      windowStart: now,
-      hits: [],
-    };
+    // Include window timestamp in key for automatic expiration of old windows
+    const key = `${baseKey}:${windowStart}`;
 
-    // Clean old hits outside the current window
-    const validHits = currentData.hits.filter(
-      (hit: number) => hit >= windowStart,
+    // Atomic increment - returns the new count after incrementing
+    const count = await this.cacheProvider.incr(
+      ServerRateLimitProvider.CACHE_NAME,
+      key,
+      1,
     );
 
-    // Check if limit exceeded
-    const allowed = validHits.length < max;
-    const remaining = Math.max(0, max - validHits.length);
-    const resetTime = Math.max(...validHits, windowStart) + windowMs;
-
-    // If allowed, record this request
-    if (allowed) {
-      validHits.push(now);
-      await this.cache.set(key, {
-        count: validHits.length,
-        windowStart: Math.min(currentData.windowStart, windowStart),
-        hits: validHits,
-      });
-    }
+    const allowed = count <= max;
+    const remaining = Math.max(0, max - count);
 
     const result: RateLimitResult = {
       allowed,
       limit: max,
-      remaining: allowed ? remaining - 1 : remaining,
+      remaining,
       resetTime,
     };
 
@@ -257,26 +242,7 @@ export class ServerRateLimitProvider {
   }
 
   protected generateKey(req: ServerRequest): string {
-    // Default to IP-based rate limiting
-    const ip = this.getClientIP(req);
-    return `ip:${ip}`;
+    // Use req.ip which is resolved by ServerRequestParser with proper trust proxy handling
+    return `ip:${req.ip || "unknown"}`;
   }
-
-  protected getClientIP(req: ServerRequest): string {
-    // Check x-forwarded-for header first (for proxies/load balancers)
-    const forwarded = req.headers?.["x-forwarded-for"];
-    if (forwarded) {
-      // x-forwarded-for can contain multiple IPs, get the first one (original client)
-      const firstIp = forwarded.split(",")[0].trim();
-      if (firstIp) return firstIp;
-    }
-
-    return req.ip || "unknown";
-  }
-}
-
-interface RateLimitData {
-  count: number;
-  windowStart: number;
-  hits: number[];
 }

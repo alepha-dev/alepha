@@ -83,29 +83,53 @@ describe("ServerRateLimitProvider", () => {
     expect(result2.allowed).toBe(true);
   });
 
-  it("should extract IP from x-forwarded-for header", async () => {
+  it("should use req.ip for rate limiting (trust proxy handled by ServerRequestParser)", async () => {
     const options = { max: 1, windowMs: 60000 };
 
-    // First request with x-forwarded-for: 203.0.113.1
-    const req1 = createMockRequest("127.0.0.1");
-    req1.headers["x-forwarded-for"] = "203.0.113.1, 192.168.1.1";
-
+    // Rate limit uses req.ip which is resolved by ServerRequestParser
+    // Trust proxy configuration is at server level via TRUST_PROXY env var
+    const req1 = createMockRequest("192.168.1.100");
     const result1 = await provider.checkLimit(req1, options);
     expect(result1.allowed).toBe(true);
 
-    // Second request with same x-forwarded-for should be blocked
-    const req2 = createMockRequest("127.0.0.1");
-    req2.headers["x-forwarded-for"] = "203.0.113.1, 192.168.1.1";
-
+    // Same IP should be blocked
+    const req2 = createMockRequest("192.168.1.100");
     const result2 = await provider.checkLimit(req2, options);
     expect(result2.allowed).toBe(false);
+  });
 
-    // Request with different x-forwarded-for should be allowed
-    const req3 = createMockRequest("127.0.0.1");
-    req3.headers["x-forwarded-for"] = "198.51.100.1, 192.168.1.1";
+  it("should handle truly concurrent requests atomically", async () => {
+    const options = { max: 3, windowMs: 60000 };
 
-    const result3 = await provider.checkLimit(req3, options);
-    expect(result3.allowed).toBe(true);
+    // Fire 5 requests concurrently from the same IP
+    const requests = Array.from({ length: 5 }, () =>
+      createMockRequest("10.0.0.1"),
+    );
+    const results = await Promise.all(
+      requests.map((req) => provider.checkLimit(req, options)),
+    );
+
+    // Exactly 3 should be allowed, 2 should be blocked
+    const allowed = results.filter((r) => r.allowed).length;
+    const blocked = results.filter((r) => !r.allowed).length;
+
+    expect(allowed).toBe(3);
+    expect(blocked).toBe(2);
+  });
+
+  it("should return correct resetTime within the fixed window", async () => {
+    const windowMs = 60000;
+    const options = { max: 10, windowMs };
+    const req = createMockRequest();
+
+    const result = await provider.checkLimit(req, options);
+
+    // resetTime should be at the end of the current window
+    const now = Date.now();
+    const windowStart = Math.floor(now / windowMs) * windowMs;
+    const expectedResetTime = windowStart + windowMs;
+
+    expect(result.resetTime).toBe(expectedResetTime);
   });
 });
 
