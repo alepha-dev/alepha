@@ -55,7 +55,7 @@ export default () => ({
       await run("npx alepha build --cloudflare");
 
       // Run database migrations
-      await run("npx alepha db:migrate --mode=production");
+      await run("npx alepha db :migrate --mode=production");
 
       // Load Cloudflare credentials from .env.production
       Object.assign(process.env, loadEnv("production", root, "CLOUDFLARE"));
