@@ -316,5 +316,12 @@ alepha build     # Build the project
 
 - Full docs: https://alepha.dev/llms.txt
 - Detailed docs: https://alepha.dev/llms-full.txt
+
+## Source Code Access
+
+Full Alepha framework source is available at \`node_modules/alepha/src/\`.
+When unsure about a primitive's behavior, read the source directly:
+- Primitives: \`node_modules/alepha/src/*/primitives/$*.ts\`
+- Tests (usage examples): \`node_modules/alepha/src/**/*.spec.ts\`
 `.trim();
 };
