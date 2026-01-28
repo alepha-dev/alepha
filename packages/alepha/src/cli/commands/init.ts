@@ -38,11 +38,16 @@ export class InitCommand {
           description: "Package manager to use",
         }),
       ),
-      // choose which dependencies to add
+      // choose which modules to scaffold
+      api: t.optional(
+        t.boolean({
+          description: "Include API module structure (src/api/)",
+        }),
+      ),
       react: t.optional(
         t.boolean({
           aliases: ["r"],
-          description: "Include Alepha React dependencies",
+          description: "Include React dependencies and web module (src/web/)",
         }),
       ),
       ui: t.optional(
@@ -59,7 +64,9 @@ export class InitCommand {
       ),
     }),
     handler: async ({ run, flags, root, args }) => {
+      // React implies API and UI
       if (flags.react) {
+        flags.api = true;
         flags.ui = true;
       }
 
@@ -98,14 +105,17 @@ export class InitCommand {
               : false,
           });
 
-          // Create API project structure if not React
+          // Create project structure based on flags
+          // Note: React project is created via indexHtml option above
           if (!flags.react) {
-            await this.scaffolder.ensureApiProject(root, { force });
+            if (flags.api) {
+              await this.scaffolder.ensureApiProject(root, { force });
+            } else {
+              await this.scaffolder.ensureMinimalProject(root, { force });
+            }
           }
         },
       });
-
-      // TODO: check if all alepha dependencies are same version
 
       // Use workspace PM if detected, otherwise detect from current root
       const pmName = await this.pm.getPackageManager(
@@ -166,6 +176,19 @@ export class InitCommand {
         alias: "running linter",
         root: installRoot,
       });
+
+      // Initialize git repository if not in a workspace package
+      if (!workspace.isPackage) {
+        const gitInitialized = await this.scaffolder.ensureGitRepo(root, {
+          force,
+        });
+        if (gitInitialized) {
+          await run("git add .", {
+            alias: "staging generated files",
+            root,
+          });
+        }
+      }
     },
   });
 }

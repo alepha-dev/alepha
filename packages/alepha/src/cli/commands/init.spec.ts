@@ -183,10 +183,10 @@ describe("alepha init", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // API Project Structure (default, no --react)
+  // Minimal Project Structure (default, no flags)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  describe("API project structure", () => {
+  describe("minimal project structure (default)", () => {
     it("should create src/main.server.ts", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
@@ -199,11 +199,41 @@ describe("alepha init", () => {
       ).toBe(true);
     });
 
+    it("should not create api structure without --api flag", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(false);
+      expect(
+        fs.wasWritten("/project/src/api/controllers/HelloController.ts"),
+      ).toBe(false);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // API Project Structure (--api flag)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("--api flag", () => {
+    it("should create src/main.server.ts with ApiModule import", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--api", root: "/project" });
+
+      expect(fs.wasWritten("/project/src/main.server.ts")).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/src/main.server.ts", /ApiModule/),
+      ).toBe(true);
+    });
+
     it("should create src/api/index.ts with app name from directory", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json, "my-cool-app");
 
-      await cli.run(cmd.init, { root: "/project" });
+      await cli.run(cmd.init, { argv: "--api", root: "/project" });
 
       expect(fs.wasWritten("/project/src/api/index.ts")).toBe(true);
       expect(
@@ -215,7 +245,7 @@ describe("alepha init", () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { root: "/project" });
+      await cli.run(cmd.init, { argv: "--api", root: "/project" });
 
       expect(
         fs.wasWritten("/project/src/api/controllers/HelloController.ts"),

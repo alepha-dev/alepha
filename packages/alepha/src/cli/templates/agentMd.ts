@@ -119,10 +119,10 @@ This is an **Alepha** project - a convention-driven TypeScript framework for typ
 
 ## Rules
 
-- Use TypeScript strict mode
+- Use TypeScript strict mode, always check types (\`alepha typecheck\`)
 - Use Biome for formatting (\`alepha lint\`)
-- Use Vitest for testing
-- One file = one class
+- Use Vitest for testing (\`alepha test\`)
+- One file = one class, multiple interfaces/types allowed
 - Primitives are class properties (except \`$entity\`, \`$atom\`)
 - No decorators, no Express/Fastify patterns
 - No manual instantiation - use dependency injection
@@ -130,6 +130,7 @@ This is an **Alepha** project - a convention-driven TypeScript framework for typ
 - Import with file extensions: \`import { User } from "./User.ts"\`
 - Use \`t\` from Alepha for schemas (not Zod)
 - Prefer \`t.text()\` over \`t.string()\` for user input (has default max length, auto-trim, supports lowercase option)
+- One file = one schema (schemas/createUserSchema.ts)
 
 ## Project Structure
 ${projectStructure}
@@ -172,17 +173,12 @@ export const userEntity = $entity({
     id: db.primaryKey(),
     email: t.email(),
     createdAt: db.createdAt(),
-    updatedAt: db.updatedAt(),
   }),
   indexes: [{ column: "email", unique: true }],
 });
 
 class UserService {
-  repo = $repository(userEntity);
-
-  async findById(id: string) {
-    return this.repo.findById(id);
-  }
+  userRepository = $repository(userEntity);
 }
 \`\`\`
 
@@ -192,11 +188,6 @@ import { $inject } from "alepha";
 
 class OrderService {
   userService = $inject(UserService);  // Within same module
-
-  async createOrder(userId: string) {
-    const user = await this.userService.findById(userId);
-    // ...
-  }
 }
 
 // Cross-module: use $client instead of $inject
@@ -319,9 +310,7 @@ alepha build     # Build the project
 
 ## Source Code Access
 
-Full Alepha framework source is available at \`node_modules/alepha/src/\`.
-When unsure about a primitive's behavior, read the source directly:
-- Primitives: \`node_modules/alepha/src/*/primitives/$*.ts\`
-- Tests (usage examples): \`node_modules/alepha/src/**/*.spec.ts\`
+Full framework source available at \`node_modules/alepha/src/\`.
+Read primitives directly when you need implementation details.
 `.trim();
 };

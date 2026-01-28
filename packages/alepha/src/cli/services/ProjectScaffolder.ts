@@ -6,19 +6,21 @@ import {
   type AgentMdOptions,
   type AgentMdType,
   agentMd,
-} from "../assets/agentMd.ts";
-import { apiHelloControllerTs } from "../assets/apiHelloControllerTs.ts";
-import { apiIndexTs } from "../assets/apiIndexTs.ts";
-import { biomeJson } from "../assets/biomeJson.ts";
-import { dummySpecTs } from "../assets/dummySpecTs.ts";
-import { editorconfig } from "../assets/editorconfig.ts";
-import { mainBrowserTs } from "../assets/mainBrowserTs.ts";
-import { mainCss } from "../assets/mainCss.ts";
-import { mainServerTs } from "../assets/mainServerTs.ts";
-import { tsconfigJson } from "../assets/tsconfigJson.ts";
-import { webAppRouterTs } from "../assets/webAppRouterTs.ts";
-import { webHelloComponentTsx } from "../assets/webHelloComponentTsx.ts";
-import { webIndexTs } from "../assets/webIndexTs.ts";
+} from "../templates/agentMd.ts";
+import { apiHelloControllerTs } from "../templates/apiHelloControllerTs.ts";
+import { apiIndexTs } from "../templates/apiIndexTs.ts";
+import { biomeJson } from "../templates/biomeJson.ts";
+import { dummySpecTs } from "../templates/dummySpecTs.ts";
+import { editorconfig } from "../templates/editorconfig.ts";
+import { gitignore } from "../templates/gitignore.ts";
+import { mainBrowserTs } from "../templates/mainBrowserTs.ts";
+import { mainCss } from "../templates/mainCss.ts";
+import { mainServerTs } from "../templates/mainServerTs.ts";
+import { tsconfigJson } from "../templates/tsconfigJson.ts";
+import { webAppRouterTs } from "../templates/webAppRouterTs.ts";
+import { webHelloComponentTsx } from "../templates/webHelloComponentTsx.ts";
+import { webIndexTs } from "../templates/webIndexTs.ts";
+import { AlephaCliUtils } from "./AlephaCliUtils.ts";
 import {
   type DependencyModes,
   PackageManagerUtils,
@@ -37,6 +39,7 @@ export class ProjectScaffolder {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly pm = $inject(PackageManagerUtils);
+  protected readonly utils = $inject(AlephaCliUtils);
 
   /**
    * Get the app name from the directory name.
@@ -131,6 +134,37 @@ export class ProjectScaffolder {
     await this.ensureFile(root, ".editorconfig", editorconfig(), opts.force);
   }
 
+  /**
+   * Ensure git repository is initialized with .gitignore.
+   *
+   * @returns true if git was initialized, false if already exists or git unavailable
+   */
+  public async ensureGitRepo(
+    root: string,
+    opts: { force?: boolean } = {},
+  ): Promise<boolean> {
+    const gitDir = this.fs.join(root, ".git");
+
+    // Skip if .git already exists
+    if (!opts.force && (await this.fs.exists(gitDir))) {
+      return false;
+    }
+
+    // Check if git is available
+    const hasGit = await this.utils.isInstalledAsync("git");
+    if (!hasGit) {
+      return false;
+    }
+
+    // Initialize git repository
+    await this.utils.exec("git init", { root, global: true });
+
+    // Write .gitignore
+    await this.ensureFile(root, ".gitignore", gitignore(), opts.force);
+
+    return true;
+  }
+
   public async ensureAgentMd(
     root: string,
     options: AgentMdOptions & { type: AgentMdType; force?: boolean },
@@ -142,6 +176,29 @@ export class ProjectScaffolder {
       agentMd(options.type, options),
       options.force,
     );
+  }
+
+  // ===========================================
+  // Minimal Project Structure
+  // ===========================================
+
+  /**
+   * Ensure minimal project with just src/main.server.ts.
+   */
+  public async ensureMinimalProject(
+    root: string,
+    opts: { force?: boolean } = {},
+  ): Promise<void> {
+    const srcDir = this.fs.join(root, "src");
+
+    // Don't overwrite existing content unless force is set
+    if (!opts.force && (await this.fs.exists(srcDir))) {
+      const files = await this.fs.ls(srcDir);
+      if (files.length > 0) return;
+    }
+
+    await this.fs.mkdir(srcDir, { recursive: true });
+    await this.ensureFile(srcDir, "main.server.ts", mainServerTs(), opts.force);
   }
 
   // ===========================================
@@ -176,7 +233,12 @@ export class ProjectScaffolder {
     });
 
     // Create files
-    await this.ensureFile(srcDir, "main.server.ts", mainServerTs(), opts.force);
+    await this.ensureFile(
+      srcDir,
+      "main.server.ts",
+      mainServerTs({ api: true }),
+      opts.force,
+    );
     await this.ensureFile(
       srcDir,
       "api/index.ts",
@@ -236,7 +298,7 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/main.server.ts",
-      mainServerTs({ react: true }),
+      mainServerTs({ api: true, react: true }),
       opts.force,
     );
 
