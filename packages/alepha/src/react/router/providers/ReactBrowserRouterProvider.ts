@@ -141,6 +141,14 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
       }
     }
 
+    // [feature]: local hook for entering a page
+    for (let i = 0; i < state.layers.length; i++) {
+      const layer = state.layers[i];
+      if (previous?.[i]?.name !== layer.name) {
+        this.pageApi.page(layer.name)?.onEnter?.();
+      }
+    }
+
     this.alepha.store.set("alepha.react.router.state", state);
 
     await this.alepha.events.emit("react:action:end", {

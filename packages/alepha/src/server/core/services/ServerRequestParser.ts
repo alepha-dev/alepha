@@ -338,7 +338,7 @@ export class ServerRequestParser {
   // ─────────────────────────────────────────────────────────────────────────────
 
   public getReferer(request: ServerRequestData): RequestReferer | undefined {
-    const referer = request.headers["referer"] || request.headers["referrer"];
+    const referer = request.headers.referer || request.headers.referrer;
     if (!referer) return undefined;
 
     try {
