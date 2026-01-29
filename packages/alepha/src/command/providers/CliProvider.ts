@@ -170,6 +170,7 @@ export class CliProvider {
           key,
           ...value,
         })),
+        { strict: false }, // Don't throw for command-specific flags
       );
 
       if (globalFlags.help) {
@@ -236,7 +237,9 @@ export class CliProvider {
       await this.loadModeEnv(root, modeValue);
     }
 
-    const commandFlags = this.parseCommandFlags(argv, command.flags);
+    const commandFlags = this.parseCommandFlags(argv, command.flags, {
+      modeEnabled: !!command.options.mode,
+    });
     const commandArgs = this.parseCommandArgs(
       argv,
       command.options.args,
@@ -427,7 +430,9 @@ export class CliProvider {
         : (opts.argv ?? []);
     const root = opts.root ?? process.cwd();
 
-    const commandFlags = this.parseCommandFlags(args, command.flags);
+    const commandFlags = this.parseCommandFlags(args, command.flags, {
+      modeEnabled: !!command.options.mode,
+    });
     const commandArgs = this.parseCommandArgs(
       args,
       command.options.args,
@@ -495,7 +500,9 @@ export class CliProvider {
   protected parseCommandFlags(
     argv: string[],
     schema: TObject,
+    options: { modeEnabled?: boolean } = {},
   ): Record<string, any> {
+    const { modeEnabled = false } = options;
     const flagDefs = Object.entries(schema.properties).map(([key, value]) => ({
       key,
       aliases: [
@@ -508,7 +515,20 @@ export class CliProvider {
       schema: value,
     }));
 
+    // Add mode flags if mode is enabled (they're parsed elsewhere by parseModeFlag)
+    if (modeEnabled) {
+      flagDefs.push({
+        key: "__mode__",
+        aliases: ["mode", "m"],
+        description: undefined,
+        schema: t.string(),
+      });
+    }
+
     const parsed = this.parseFlags(argv, flagDefs);
+
+    // Remove the mode flag from parsed result (it's handled separately)
+    delete parsed.__mode__;
 
     // apply manually defaults for optional properties that have defaults
     for (const [key, value] of Object.entries(schema.properties)) {
@@ -614,7 +634,9 @@ export class CliProvider {
   protected parseFlags(
     argv: string[],
     flagDefs: { key: string; aliases: string[]; schema: TSchema }[],
+    options: { strict?: boolean } = {},
   ): Record<string, any> {
+    const { strict = true } = options;
     const result: Record<string, any> = {};
 
     for (let i = 0; i < argv.length; i++) {
@@ -625,7 +647,12 @@ export class CliProvider {
       let value = valueParts.join("=");
 
       const def = flagDefs.find((d) => d.aliases.includes(rawKey));
-      if (!def) continue;
+      if (!def) {
+        if (strict) {
+          throw new CommandError(`Unknown flag: --${rawKey}`);
+        }
+        continue;
+      }
 
       if (t.schema.isBoolean(def.schema)) {
         result[def.key] = true;

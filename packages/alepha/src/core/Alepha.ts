@@ -760,7 +760,7 @@ export class Alepha {
       if (this.started) {
         const mod = (service as WithModule)[MODULE]?.name;
         throw new ContainerLockedError(
-          `Container is locked. No more services can be added. Attempted to inject '${service.name}' from '${parent?.name}'. ${mod ? `Maybe register module '${mod}' in Alepha.` : ""}`,
+          `Container is locked. No more services can be added. Attempted to inject '${service.name}' from '${parent?.name}'. ${mod ? `Module '${mod}' is not registered ?` : ""}`,
         );
       }
     }

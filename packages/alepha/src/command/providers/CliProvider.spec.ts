@@ -100,15 +100,15 @@ describe("CliProvider", () => {
       expect(result.items).toEqual(["a", "b"]);
     });
 
-    it("should ignore unknown flags", () => {
+    it("should throw on unknown flags", () => {
       const cli = createTestCli();
       const flagDefs = [
         { key: "known", aliases: ["known"], schema: t.boolean() },
       ];
 
-      const result = cli.testParseFlags(["--unknown", "--known"], flagDefs);
-      expect(result.known).toBe(true);
-      expect(result.unknown).toBeUndefined();
+      expect(() =>
+        cli.testParseFlags(["--unknown", "--known"], flagDefs),
+      ).toThrow("Unknown flag: --unknown");
     });
 
     it("should throw on missing required value", () => {
