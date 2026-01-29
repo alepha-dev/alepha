@@ -37,7 +37,7 @@ export interface AdminShellProps {
    * Enable drag-to-resize for the sidebar.
    * Width and constraints are configured in alephaSidebarAtom.
    */
-  resizable?: boolean;
+  sidebarResizable?: boolean;
 
   noSidebarWhen?: {
     /**
@@ -79,7 +79,7 @@ const AdminShell = (props: AdminShellProps) => {
 
   const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
-      if (!props.resizable) return;
+      if (!props.sidebarResizable) return;
       e.preventDefault();
 
       // If collapsed and hovering, un-collapse first and start from defaultWidth
@@ -98,7 +98,7 @@ const AdminShell = (props: AdminShellProps) => {
         };
       }
     },
-    [props.resizable, collapsed, sidebar, setSidebar, defaultWidth],
+    [props.sidebarResizable, collapsed, sidebar, setSidebar, defaultWidth],
   );
 
   useEffect(() => {
@@ -229,14 +229,13 @@ const AdminShell = (props: AdminShellProps) => {
   const isExpandedByHover = collapsed && isHovering;
   const effectiveCollapsed = collapsed && !isHovering;
   const hoverWidth = Math.max(defaultWidth, collapsedWidth);
+  // When hovering, keep main content at collapsed width (sidebar overlays)
   const sidebarWidth = hasSidebar
-    ? effectiveCollapsed
+    ? effectiveCollapsed || isExpandedByHover
       ? collapsedWidth
-      : isExpandedByHover
-        ? hoverWidth
-        : expandedWidth
+      : expandedWidth
     : 0;
-  const canResize = props.resizable && !collapsed;
+  const canResize = props.sidebarResizable && !collapsed;
 
   return (
     <AppShell
@@ -247,10 +246,10 @@ const AdminShell = (props: AdminShellProps) => {
       navbar={
         hasSidebar
           ? {
-              width: effectiveCollapsed
-                ? { base: collapsedWidth }
-                : isExpandedByHover
-                  ? { base: hoverWidth }
+              // When hovering, keep collapsed width to avoid pushing content
+              width:
+                effectiveCollapsed || isExpandedByHover
+                  ? { base: collapsedWidth }
                   : { base: expandedWidth },
               breakpoint: "sm",
               collapsed: { mobile: !opened },
@@ -271,6 +270,7 @@ const AdminShell = (props: AdminShellProps) => {
           bg={ui.colors.surface}
           className="alepha-sidebar-navbar"
           data-resizing={isResizing}
+          data-hover-expanded={isExpandedByHover}
           onMouseEnter={handleNavbarMouseEnter}
           onMouseLeave={handleNavbarMouseLeave}
           style={{
@@ -278,6 +278,12 @@ const AdminShell = (props: AdminShellProps) => {
               ? `translateX(${collapseEffect.offset}px)`
               : undefined,
             opacity: collapseEffect.opacity,
+            // When hovering, expand width visually as overlay
+            ...(isExpandedByHover && {
+              width: hoverWidth,
+              zIndex: 200,
+              boxShadow: "var(--mantine-shadow-xl)",
+            }),
           }}
           {...props.appShellNavbarProps}
         >
@@ -288,10 +294,10 @@ const AdminShell = (props: AdminShellProps) => {
           {(canResize || isExpandedByHover) && (
             <Flex
               pos="absolute"
-              right={-2}
+              right={-6}
               top={0}
               bottom={0}
-              w={4}
+              w={12}
               style={{
                 cursor: "col-resize",
                 userSelect: "none",
