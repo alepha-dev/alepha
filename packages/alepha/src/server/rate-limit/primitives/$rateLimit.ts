@@ -41,9 +41,13 @@ export const $rateLimit = (
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface RateLimitPrimitiveOptions extends RateLimitOptions {
-  /** Name identifier for this rate limit (default: property key) */
+  /**
+   * Name identifier for this rate limit (default: property key).
+   */
   name?: string;
-  /** Path patterns to match (supports wildcards like /api/*) */
+  /**
+   * Path patterns to match (supports wildcards like /api/*).
+   */
   paths?: string[];
 }
 

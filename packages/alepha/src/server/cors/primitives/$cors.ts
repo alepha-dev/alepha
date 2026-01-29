@@ -25,9 +25,13 @@ export const $cors = (options: CorsPrimitiveConfig): AbstractCorsPrimitive => {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface CorsPrimitiveConfig extends Partial<CorsOptions> {
-  /** Name identifier for this CORS config (default: property key) */
+  /**
+   * Name identifier for this CORS config (default: property key).
+   */
   name?: string;
-  /** Path patterns to match (supports wildcards like /api/*) */
+  /**
+   * Path patterns to match (supports wildcards like /api/*).
+   */
   paths?: string[];
 }
 

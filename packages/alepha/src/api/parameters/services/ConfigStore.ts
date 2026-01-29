@@ -36,13 +36,19 @@ export class ConfigStore {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly repo = $repository(parameters);
 
-  /** Unique identifier for this instance (to avoid self-updates) */
+  /**
+   * Unique identifier for this instance (to avoid self-updates).
+   */
   protected readonly instanceId = crypto.randomUUID();
 
-  /** In-memory cache of registered configs */
+  /**
+   * In-memory cache of registered configs.
+   */
   protected readonly configs = new Map<string, ConfigPrimitive<any>>();
 
-  /** Topic for cross-instance synchronization */
+  /**
+   * Topic for cross-instance synchronization.
+   */
   public readonly syncTopic = $topic({
     name: "config:sync",
     schema: {

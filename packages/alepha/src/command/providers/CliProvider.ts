@@ -136,7 +136,9 @@ export class CliProvider {
     );
   }
 
-  /** Global flags available to all commands */
+  /**
+   * Global flags available to all commands.
+   */
   protected readonly globalFlags = {
     help: {
       aliases: ["h", "help"],
@@ -296,7 +298,9 @@ export class CliProvider {
     });
   }
 
-  /** Remove consumed command path arguments from argv (keeps flags and remaining args) */
+  /**
+   * Remove consumed command path arguments from argv (keeps flags and remaining args).
+   */
   protected removeConsumedArgs(
     argv: string[],
     consumedArgs: string[],

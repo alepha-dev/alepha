@@ -84,16 +84,24 @@ export class ConfigPrimitive<T extends TObject> extends Primitive<
   protected readonly log = $logger();
   protected readonly store = $inject(ConfigStore);
 
-  /** Internal atom key for state management */
+  /**
+   * Internal atom key for state management.
+   */
   protected atomKey!: string;
 
-  /** Schema hash for migration detection */
+  /**
+   * Schema hash for migration detection.
+   */
   protected schemaHash!: string;
 
-  /** Whether we're currently syncing (to avoid loops) */
+  /**
+   * Whether we're currently syncing (to avoid loops).
+   */
   protected syncing = false;
 
-  /** Whether initial load has completed */
+  /**
+   * Whether initial load has completed.
+   */
   protected loaded = false;
 
   /**

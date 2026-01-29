@@ -251,26 +251,42 @@ export interface WebRequestEvent {
  * Geolocation information from proxy headers (Cloudflare, Vercel, etc.)
  */
 export interface RequestGeo {
-  /** ISO 3166-1 alpha-2 country code (e.g., "US", "FR", "JP") */
+  /**
+   * ISO 3166-1 alpha-2 country code (e.g., "US", "FR", "JP").
+   */
   country?: string;
-  /** City name (e.g., "San Francisco", "Paris") */
+  /**
+   * City name (e.g., "San Francisco", "Paris").
+   */
   city?: string;
-  /** Region/state (e.g., "California", "Île-de-France") */
+  /**
+   * Region/state (e.g., "California", "Île-de-France").
+   */
   region?: string;
-  /** Latitude (if available) */
+  /**
+   * Latitude (if available).
+   */
   latitude?: string;
-  /** Longitude (if available) */
+  /**
+   * Longitude (if available).
+   */
   longitude?: string;
 }
 
 /**
- * Parsed referer information
+ * Parsed referer information.
  */
 export interface RequestReferer {
-  /** Full referer URL */
+  /**
+   * Full referer URL.
+   */
   url: string;
-  /** Hostname of the referer (e.g., "google.com") */
+  /**
+   * Hostname of the referer (e.g., "google.com").
+   */
   hostname: string;
-  /** Path of the referer URL */
+  /**
+   * Path of the referer URL.
+   */
   pathname: string;
 }

@@ -31,15 +31,25 @@ declare module "alepha/server" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface RateLimitOptions {
-  /** Maximum number of requests per window (default: 100) */
+  /**
+   * Maximum number of requests per window (default: 100).
+   */
   max?: number;
-  /** Window duration in milliseconds (default: 15 minutes) */
+  /**
+   * Window duration in milliseconds (default: 15 minutes).
+   */
   windowMs?: number;
-  /** Custom key generator function */
+  /**
+   * Custom key generator function.
+   */
   keyGenerator?: (req: any) => string;
-  /** Skip rate limiting for failed requests */
+  /**
+   * Skip rate limiting for failed requests.
+   */
   skipFailedRequests?: boolean;
-  /** Skip rate limiting for successful requests */
+  /**
+   * Skip rate limiting for successful requests.
+   */
   skipSuccessfulRequests?: boolean;
 }
 

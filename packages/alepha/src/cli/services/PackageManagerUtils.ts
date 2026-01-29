@@ -10,13 +10,21 @@ import { version } from "../version.ts";
  * Used when initializing a package inside a monorepo.
  */
 export interface WorkspaceContext {
-  /** Whether we're inside a workspace package */
+  /**
+   * Whether we're inside a workspace package.
+   */
   isPackage: boolean;
-  /** The workspace root directory (e.g., ../.. from packages/my-pkg) */
+  /**
+   * The workspace root directory (e.g., ../.. from packages/my-pkg).
+   */
   workspaceRoot: string | null;
-  /** Package manager detected at workspace root */
+  /**
+   * Package manager detected at workspace root.
+   */
   packageManager: "yarn" | "pnpm" | "npm" | "bun" | null;
-  /** Config files present at workspace root */
+  /**
+   * Config files present at workspace root.
+   */
   config: {
     biomeJson: boolean;
     editorconfig: boolean;
@@ -409,6 +417,8 @@ export interface DependencyModes {
   ui?: boolean;
   expo?: boolean;
   test?: boolean;
-  /** Skip biome/vitest when inside a workspace package (they're at root) */
+  /**
+   * Skip biome/vitest when inside a workspace package (they're at root).
+   */
   isPackage?: boolean;
 }

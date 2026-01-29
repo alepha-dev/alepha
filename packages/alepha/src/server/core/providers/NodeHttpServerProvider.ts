@@ -35,15 +35,21 @@ export class NodeHttpServerProvider extends ServerProvider {
   protected readonly env = $env(envSchema);
   protected readonly router = $inject(ServerRouterProvider);
 
-  /** Track active connections for fast shutdown */
+  /**
+   * Track active connections for fast shutdown.
+   */
   protected readonly connections = new Set<Socket>();
 
-  /** Get number of active connections */
+  /**
+   * Get number of active connections.
+   */
   public getConnectionsCount(): number {
     return this.connections.size;
   }
 
-  /** Server options */
+  /**
+   * Server options.
+   */
   public readonly options = {
     /**
      * Graceful shutdown timeout in ms.

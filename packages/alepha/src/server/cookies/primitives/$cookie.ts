@@ -23,37 +23,59 @@ export const $cookie = <T extends TSchema>(
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface CookiePrimitiveOptions<T extends TSchema> {
-  /** The schema for the cookie's value, used for validation and type safety. */
+  /**
+   * The schema for the cookie's value, used for validation and type safety.
+   */
   schema: T;
 
-  /** The name of the cookie. */
+  /**
+   * The name of the cookie.
+   */
   name?: string;
 
-  /** The cookie's path. Defaults to "/". */
+  /**
+   * The cookie's path. Defaults to "/".
+   */
   path?: string;
 
-  /** Time-to-live for the cookie. Maps to `Max-Age`. */
+  /**
+   * Time-to-live for the cookie. Maps to `Max-Age`.
+   */
   ttl?: DurationLike;
 
-  /** If true, the cookie is only sent over HTTPS. Defaults to true in production. */
+  /**
+   * If true, the cookie is only sent over HTTPS. Defaults to true in production.
+   */
   secure?: boolean;
 
-  /** If true, the cookie cannot be accessed by client-side scripts. */
+  /**
+   * If true, the cookie cannot be accessed by client-side scripts.
+   */
   httpOnly?: boolean;
 
-  /** SameSite policy for the cookie. Defaults to "lax". */
+  /**
+   * SameSite policy for the cookie. Defaults to "lax".
+   */
   sameSite?: "strict" | "lax" | "none";
 
-  /** The domain for the cookie. */
+  /**
+   * The domain for the cookie.
+   */
   domain?: string;
 
-  /** If true, the cookie value will be compressed using zlib. */
+  /**
+   * If true, the cookie value will be compressed using zlib.
+   */
   compress?: boolean;
 
-  /** If true, the cookie value will be encrypted. Requires `COOKIE_SECRET` env var. */
+  /**
+   * If true, the cookie value will be encrypted. Requires `COOKIE_SECRET` env var.
+   */
   encrypt?: boolean;
 
-  /** If true, the cookie will be signed to prevent tampering. Requires `COOKIE_SECRET` env var. */
+  /**
+   * If true, the cookie will be signed to prevent tampering. Requires `COOKIE_SECRET` env var.
+   */
   sign?: boolean;
 }
 

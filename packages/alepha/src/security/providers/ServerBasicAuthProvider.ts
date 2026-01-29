@@ -15,9 +15,13 @@ export interface BasicAuthOptions {
 }
 
 export interface BasicAuthPrimitiveConfig extends BasicAuthOptions {
-  /** Name identifier for this basic auth (default: property key) */
+  /**
+   * Name identifier for this basic auth (default: property key).
+   */
   name?: string;
-  /** Path patterns to match (supports wildcards like /devtools/*) */
+  /**
+   * Path patterns to match (supports wildcards like /devtools/*).
+   */
   paths?: string[];
 }
 
