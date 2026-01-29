@@ -1,25 +1,28 @@
 
+# Alepha Logs
 
+3 modules across different locations:
 
+## `alepha/api/logs` - AlephaApiLogs (Server)
 
-2 modules:
+Module for handling logs collected from various sources.
 
-AlephaApiLogs - Module for handling logs collected from various sources.
+- 1-2 days retention policy for logs (configurable)
+- Independent SQLite storage for logs with querying capabilities
+- Output can be sent to Postgres (TimescaleDB) if big data storage is needed
 
-- 1-2 days retention policy for logs. (more can be configured)
-- Independent Sqlite storage for logs with querying capabilities.
-- Output can be sent to Postgres (TimeScaleDB) if big data storage is needed.
+## `alepha/api/logs-client` - AlephaApiLogsClient (Client)
 
-AlephaApiLogsClient - Client module for interacting with the AlephaApiLogs module automatically.
+Client module for interacting with AlephaApiLogs automatically.
 
-- use Alepha micro-services features to collect logs from different services.
+- Uses Alepha micro-services features to collect logs from different services
 - Keyless Codec, Batching, ...
 
-1 external module: (@alepha/ui)
+## `@alepha/ui/logs` - AlephaUiLogs (UI)
 
-- UI of current devtools
+UI components for displaying and managing logs within the Alepha framework.
 
-AlephaApiLogsUI - UI components for displaying and managing logs within the Alepha framework.
+- Devtools UI for log visualization and querying
 
 --- CLIENT ----
 

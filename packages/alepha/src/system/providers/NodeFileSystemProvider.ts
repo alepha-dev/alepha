@@ -291,8 +291,17 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    * await fs.mkdir("/tmp/mydir", { mode: 0o755 });
    * ```
    */
-  async mkdir(path: string, options?: MkdirOptions): Promise<void> {
-    await fsMkdir(path, options);
+  async mkdir(path: string, options: MkdirOptions = {}): Promise<void> {
+    const p = fsMkdir(path, {
+      recursive: options.recursive ?? true,
+      mode: options.mode,
+    });
+
+    if (options.force === false) {
+      await p;
+    } else {
+      await p.catch(() => {});
+    }
   }
 
   /**

@@ -196,8 +196,16 @@ export interface CpOptions {
 export interface MkdirOptions {
   /**
    * If true, creates parent directories as needed
+   *
+   * @default true
    */
   recursive?: boolean;
+  /**
+   * If true, does not throw an error if the directory already exists
+   *
+   * @default true
+   */
+  force?: boolean;
   /**
    * File mode (permission and sticky bits)
    */

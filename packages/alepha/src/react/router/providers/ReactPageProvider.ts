@@ -101,7 +101,7 @@ export class ReactPageProvider {
   ) {
     const page = this.page(name);
     if (!page) {
-      throw new Error(`Page ${name} not found`);
+      throw new AlephaError(`Page ${name} not found`);
     }
 
     let url = page.path ?? "";

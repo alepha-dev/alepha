@@ -69,7 +69,7 @@ export class InitCommand {
     handler: async ({ run, flags, root, args }) => {
       if (args) {
         root = this.fs.join(root, args);
-        await this.fs.mkdir(root);
+        await this.fs.mkdir(root, { force: true });
       }
 
       if (flags.ui) {
