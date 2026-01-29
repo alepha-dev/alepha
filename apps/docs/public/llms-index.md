@@ -106,7 +106,7 @@ class UserController {
 
 ### React Page with SSR
 ```tsx
-import { $page } from "@alepha/react/router";
+import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 import type { UserController } from "./UserController.ts";
 
@@ -224,7 +224,7 @@ Core primitives:
 - `$route` - `import { $route } from "alepha/server"`
 - `$entity` - `import { $entity } from "alepha/orm"`
 - `$repository` - `import { $repository } from "alepha/orm"`
-- `$page` - `import { $page } from "@alepha/react/router"`
+- `$page` - `import { $page } from "alepha/react/router"`
 - `$queue` - `import { $queue } from "alepha/queue"`
 - `$scheduler` - `import { $scheduler } from "alepha/scheduler"`
 - `$cache` - `import { $cache } from "alepha/cache"`
@@ -235,13 +235,13 @@ Core primitives:
 
 React hooks:
 
-- `useStore` - `import { useStore } from "@alepha/react"`
-- `useClient` - `import { useClient } from "@alepha/react"`
-- `useInject` - `import { useInject } from "@alepha/react"`
-- `useRouter` - `import { useRouter } from "@alepha/react/router"`
-- `useForm` - `import { useForm } from "@alepha/react/form"`
-- `useAuth` - `import { useAuth } from "@alepha/react/auth"`
-- `useI18n` - `import { useI18n } from "@alepha/react/i18n"`
+- `useStore` - `import { useStore } from "alepha/react"`
+- `useClient` - `import { useClient } from "alepha/react"`
+- `useInject` - `import { useInject } from "alepha/react"`
+- `useRouter` - `import { useRouter } from "alepha/react/router"`
+- `useForm` - `import { useForm } from "alepha/react/form"`
+- `useAuth` - `import { useAuth } from "alepha/react/auth"`
+- `useI18n` - `import { useI18n } from "alepha/react/i18n"`
 
 ## Docs
 

@@ -1,10 +1,10 @@
-import { useAlepha, useClient } from "@alepha/react";
-import { useForm } from "@alepha/react/form";
-import { useI18n } from "@alepha/react/i18n";
 import { ActionButton } from "@alepha/ui";
 import { Card, Flex } from "@mantine/core";
 import { IconDeviceFloppy, IconTag } from "@tabler/icons-react";
 import { t } from "alepha";
+import { useAlepha, useClient } from "alepha/react";
+import { useForm } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
 import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
 import type { Project } from "../../../../api/entities/projects.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";

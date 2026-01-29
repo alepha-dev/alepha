@@ -1,5 +1,3 @@
-import { ReactAuth } from "@alepha/react/auth";
-import { $page } from "@alepha/react/router";
 import {
   IconLogin2,
   IconLogout2,
@@ -9,6 +7,8 @@ import {
 } from "@tabler/icons-react";
 import { $inject, AlephaError, t } from "alepha";
 import type { RealmController } from "alepha/api/users";
+import { ReactAuth } from "alepha/react/auth";
+import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 
 /**

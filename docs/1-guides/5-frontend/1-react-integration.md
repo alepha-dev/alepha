@@ -2,7 +2,7 @@
 
 Alepha isn't just a backend framework pretending it doesn't know about frontends. It's a full-stack framework that treats your React code as a first-class citizen. No more "backend team vs frontend team" drama. Just code.
 
-The `@alepha/react` package gives you hooks for dependency injection, type-safe API calls, global state, and async operations. Use it with Alepha's router, or plug it into your existing Next.js/Expo/whatever setup.
+The `alepha/react` package gives you hooks for dependency injection, type-safe API calls, global state, and async operations. Use it with Alepha's router, or plug it into your existing Next.js/Expo/whatever setup.
 
 ## Installation
 
@@ -15,13 +15,13 @@ npx alepha init --react
 ```
 
 This sets up everything:
-- Installs `@alepha/react` and peer dependencies
+- Installs `alepha/react` and peer dependencies
 - Configures `main.browser.ts` for client hydration
 
 **Manual installation:**
 
 ```bash
-npm install @alepha/react react @types/react
+npm install alepha/react react @types/react
 ```
 
 ---
@@ -41,7 +41,7 @@ import {
   // Components
   ClientOnly,       // Skip SSR for browser-only code
   AlephaProvider,   // Context provider for non-router setups
-} from "@alepha/react";
+} from "alepha/react";
 ```
 
 These work **anywhere**. With Alepha's router, with Next.js, with Expo, with your weird custom setup. No router required.
@@ -109,7 +109,7 @@ const alepha = Alepha.create()
 Call your backend with full type safety:
 
 ```tsx
-import { useClient } from "@alepha/react";
+import { useClient } from "alepha/react";
 import type { UserController } from "../api/UserController";
 
 const UserProfile = () => {
@@ -164,7 +164,7 @@ const user = await client.getUser({ params: { id: "..." } });
 Read and write global state without Redux boilerplate:
 
 ```tsx
-import { useStore } from "@alepha/react";
+import { useStore } from "alepha/react";
 import { themeAtom } from "./atoms/theme";
 
 const ThemeToggle = () => {
@@ -201,7 +201,7 @@ For the full story, see the [State Management guide](./3-state-management.md).
 Handle async operations with loading states, error handling, and cancellation:
 
 ```tsx
-import { useAction } from "@alepha/react";
+import { useAction } from "alepha/react";
 
 const SaveButton = () => {
   const [save, { loading, error, data }] = useAction({
@@ -268,7 +268,7 @@ const [search, { loading }] = useAction({
 React to framework events:
 
 ```tsx
-import { useEvents } from "@alepha/react";
+import { useEvents } from "alepha/react";
 
 const GlobalErrorHandler = () => {
   useEvents({
@@ -335,7 +335,7 @@ useEvents({
 Some code should only run in the browser. LocalStorage, window dimensions, that sort of thing:
 
 ```tsx
-import { ClientOnly } from "@alepha/react";
+import { ClientOnly } from "alepha/react";
 
 const LiveClock = () => {
   const [time, setTime] = useState(new Date());
@@ -386,7 +386,7 @@ The `fallback` renders during SSR and initial hydration. Once the client takes o
 Using Alepha hooks in Next.js, Expo, or your own React setup? You need to wrap your app with `AlephaProvider`:
 
 ```tsx
-import { AlephaProvider } from "@alepha/react";
+import { AlephaProvider } from "alepha/react";
 
 const App = () => {
   return (
@@ -411,11 +411,11 @@ Once started, all the hooks (`useAlepha`, `useInject`, `useClient`, etc.) just w
 
 ### When You Don't Need It
 
-If you're using `@alepha/react/router`, the router handles all of this for you. The provider is only for when you want Alepha's hooks without Alepha's routing.
+If you're using `alepha/react/router`, the router handles all of this for you. The provider is only for when you want Alepha's hooks without Alepha's routing.
 
 ```tsx
 // With router - no provider needed
-import { $page } from "@alepha/react/router";
+import { $page } from "alepha/react/router";
 
 class AppRouter {
   home = $page({
@@ -428,7 +428,7 @@ class AppRouter {
 }
 
 // Without router - wrap with provider
-import { AlephaProvider } from "@alepha/react";
+import { AlephaProvider } from "alepha/react";
 
 // In your Next.js _app.tsx or similar
 export default function App({ Component, pageProps }) {
@@ -451,33 +451,33 @@ Alepha React is split into focused modules:
 
 | Module | Import | Purpose |
 |--------|--------|---------|
-| Core | `@alepha/react` | Hooks, components (this guide) |
-| Router | `@alepha/react/router` | SSR, pages, navigation |
-| Form | `@alepha/react/form` | Type-safe forms |
-| Head | `@alepha/react/head` | Document head, SEO |
-| Auth | `@alepha/react/auth` | Authentication hooks |
-| i18n | `@alepha/react/i18n` | Internationalization |
+| Core | `alepha/react` | Hooks, components (this guide) |
+| Router | `alepha/react/router` | SSR, pages, navigation |
+| Form | `alepha/react/form` | Type-safe forms |
+| Head | `alepha/react/head` | Document head, SEO |
+| Auth | `alepha/react/auth` | Authentication hooks |
+| i18n | `alepha/react/i18n` | Internationalization |
 
 Import what you need. Tree-shaking handles the rest.
 
 ```typescript
 // Just core stuff
-import { useClient, useStore, useAction } from "@alepha/react";
+import { useClient, useStore, useAction } from "alepha/react";
 
 // With routing
-import { $page, useRouter, Link } from "@alepha/react/router";
+import { $page, useRouter, Link } from "alepha/react/router";
 
 // With forms
-import { useForm } from "@alepha/react/form";
+import { useForm } from "alepha/react/form";
 
 // With SEO
-import { $head, useHead } from "@alepha/react/head";
+import { $head, useHead } from "alepha/react/head";
 
 // With auth
-import { useAuth } from "@alepha/react/auth";
+import { useAuth } from "alepha/react/auth";
 
 // With i18n
-import { $dictionary, useI18n } from "@alepha/react/i18n";
+import { $dictionary, useI18n } from "alepha/react/i18n";
 ```
 
 ---

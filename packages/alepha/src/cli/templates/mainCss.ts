@@ -1,5 +1,13 @@
-export const mainCss = () =>
-  `
+export interface MainCssOptions {
+  ui?: boolean;
+}
+
+export const mainCss = (options: MainCssOptions = {}) => {
+  if (options.ui) {
+    return `@import "@alepha/ui/styles";`;
+  }
+
+  return `
 * {
   box-sizing: border-box;
   margin: 0;
@@ -22,3 +30,4 @@ body {
   height: 100%;
 }
 `.trim();
+};

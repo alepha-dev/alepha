@@ -1,5 +1,5 @@
-import { useInject } from "@alepha/react";
 import { Card, Text } from "@mantine/core";
+import { useInject } from "alepha/react";
 import { CharacterInfo } from "../../../../../api/services/CharacterInfo.ts";
 import { theme } from "../../../constants/theme.ts";
 

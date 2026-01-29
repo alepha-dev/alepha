@@ -1,9 +1,9 @@
-import { useStore } from "@alepha/react";
 import { Flex } from "@mantine/core";
 import {
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarRightCollapse,
 } from "@tabler/icons-react";
+import { useStore } from "alepha/react";
 import ActionButton from "./ActionButton.tsx";
 
 const ToggleSidebarButton = () => {

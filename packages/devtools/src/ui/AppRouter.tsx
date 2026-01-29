@@ -1,4 +1,3 @@
-import { $page } from "@alepha/react/router";
 import { RootRouter } from "@alepha/ui";
 import {
   IconApi,
@@ -12,6 +11,7 @@ import {
   IconTopologyRing,
   IconVariable,
 } from "@tabler/icons-react";
+import { $page } from "alepha/react/router";
 
 export class AppRouter extends RootRouter {
   layout = $page({

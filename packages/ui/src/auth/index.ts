@@ -1,7 +1,7 @@
-import { AlephaReactAuth } from "@alepha/react/auth";
-import { AlephaReactI18n } from "@alepha/react/i18n";
 import { AlephaUI } from "@alepha/ui";
 import { $module } from "alepha";
+import { AlephaReactAuth } from "alepha/react/auth";
+import { AlephaReactI18n } from "alepha/react/i18n";
 import { AuthI18n } from "./AuthI18n.ts";
 import { AuthRouter } from "./AuthRouter.ts";
 

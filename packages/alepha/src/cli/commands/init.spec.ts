@@ -287,24 +287,58 @@ describe("alepha init", () => {
       ).toBe(true);
     });
 
-    it("should create main.css", async () => {
+    it("should create main.css with base styles", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
       await cli.run(cmd.init, { argv: "--react", root: "/project" });
 
       expect(fs.wasWritten("/project/src/main.css")).toBe(true);
+      expect(fs.wasWrittenMatching("/project/src/main.css", /box-sizing/)).toBe(
+        true,
+      );
     });
 
-    it("should imply --ui flag", async () => {
-      const { fs, shell, cli, cmd, json } = createTestEnv();
+    it("should create main.css with @alepha/ui import when --ui", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
-      shell.installedCommands.add("claude");
 
-      await cli.run(cmd.init, { argv: "--react --agent", root: "/project" });
+      await cli.run(cmd.init, { argv: "--react --ui", root: "/project" });
 
-      // Agent file should mention UI since --react implies --ui
-      expect(fs.wasWrittenMatching("/project/CLAUDE.md", /ui/i)).toBe(true);
+      expect(fs.wasWritten("/project/src/main.css")).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/src/main.css", /@alepha\/ui\/styles/),
+      ).toBe(true);
+    });
+
+    it("should not create api structure without --api flag", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--react", root: "/project" });
+
+      // React alone should not create API structure
+      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(false);
+      expect(
+        fs.wasWritten("/project/src/api/controllers/HelloController.ts"),
+      ).toBe(false);
+    });
+
+    it("should create both api and web with --api --react", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--api --react", root: "/project" });
+
+      // Both structures should be created
+      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(true);
+      expect(fs.wasWritten("/project/src/web/index.ts")).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/src/main.server.ts", /ApiModule/),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/src/main.server.ts", /WebModule/),
+      ).toBe(true);
     });
   });
 
@@ -328,24 +362,28 @@ describe("alepha init", () => {
       ).toBe(true);
     });
 
-    it("should install vitest as dev dependency", async () => {
-      const { fs, shell, cli, cmd, json } = createTestEnv();
+    it("should add vitest to package.json devDependencies", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
-      await fs.writeFile("/project/yarn.lock", "");
 
       await cli.run(cmd.init, { argv: "--test", root: "/project" });
 
-      expect(shell.wasCalled("yarn add -D vitest")).toBe(true);
+      const pkg = await fs.readJsonFile<{
+        devDependencies?: Record<string, string>;
+      }>("/project/package.json");
+      expect(pkg.devDependencies?.vitest).toBeDefined();
     });
 
-    it("should use correct install command for npm", async () => {
-      const { fs, shell, cli, cmd, json } = createTestEnv();
+    it("should add test script to package.json", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
-      await fs.writeFile("/project/package-lock.json", "{}");
 
       await cli.run(cmd.init, { argv: "--test", root: "/project" });
 
-      expect(shell.wasCalled("npm install -D vitest")).toBe(true);
+      const pkg = await fs.readJsonFile<{ scripts?: Record<string, string> }>(
+        "/project/package.json",
+      );
+      expect(pkg.scripts?.test).toBe("vitest run");
     });
   });
 

@@ -1,5 +1,3 @@
-import { useStore } from "@alepha/react";
-import { useI18n } from "@alepha/react/i18n";
 import { ActionIcon, Card, Flex, Menu, Text, TextInput } from "@mantine/core";
 import {
   IconBook2,
@@ -10,6 +8,8 @@ import {
   IconSortAZ,
   IconX,
 } from "@tabler/icons-react";
+import { useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { useMemo, useState } from "react";
 import { currentAssignedTasksAtom } from "../../atoms/currentAssignedTasksAtom.ts";
 import { theme } from "../../constants/theme.ts";

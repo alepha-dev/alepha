@@ -9,7 +9,7 @@ Alepha's `useForm` hook makes forms almost bearable.
 ## Basic Usage
 
 ```tsx
-import { useForm } from "@alepha/react/form";
+import { useForm } from "alepha/react/form";
 import { t } from "alepha";
 
 const LoginForm = () => {
@@ -90,7 +90,7 @@ const form = useForm({
 Sometimes the server tells you something's wrong with a specific field. Use `FormValidationError`:
 
 ```typescript
-import { FormValidationError } from "@alepha/react/form";
+import { FormValidationError } from "alepha/react/form";
 import { HttpError } from "alepha/server";
 
 const form = useForm({
@@ -150,8 +150,8 @@ You can add your own props after spreading:
 Need to know if the form is submitting? If it's been modified? Use `useFormState`:
 
 ```typescript
-import { useForm } from "@alepha/react/form";
-import { useFormState } from "@alepha/react/form";
+import { useForm } from "alepha/react/form";
+import { useFormState } from "alepha/react/form";
 
 const MyForm = () => {
   const form = useForm({
@@ -200,8 +200,8 @@ const { loading, dirty, error, values } = useFormState(form, ["loading", "dirty"
 Here's a login form with all the bells and whistles:
 
 ```typescript
-import { useForm, useFormState, FormValidationError } from "@alepha/react/form";
-import { useRouter } from "@alepha/react/router";
+import { useForm, useFormState, FormValidationError } from "alepha/react/form";
+import { useRouter } from "alepha/react/router";
 import { t } from "alepha";
 import { HttpError } from "alepha/server";
 
@@ -260,7 +260,7 @@ const LoginPage = () => {
 If you're using the UI kit, forms get even cleaner:
 
 ```typescript
-import { useForm } from "@alepha/react/form";
+import { useForm } from "alepha/react/form";
 import { ActionButton, Control } from "@alepha/ui";
 import { IconUser, IconLock } from "@tabler/icons-react";
 import { t } from "alepha";
@@ -304,7 +304,7 @@ The `Control` component handles labels, icons, and error display. The `ActionBut
 Don't want to write any JSX for your form fields? `TypeForm` renders everything automatically from your schema:
 
 ```tsx
-import { useForm } from "@alepha/react/form";
+import { useForm } from "alepha/react/form";
 import { TypeForm } from "@alepha/ui";
 import { t } from "alepha";
 

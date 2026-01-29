@@ -1,7 +1,7 @@
-import { useStore } from "@alepha/react";
-import { useRouter } from "@alepha/react/router";
 import { Spotlight, type SpotlightActionData } from "@mantine/spotlight";
 import { IconSearch } from "@tabler/icons-react";
+import { useStore } from "alepha/react";
+import { useRouter } from "alepha/react/router";
 import { type ReactNode, useMemo } from "react";
 import { ui } from "../../constants/ui.ts";
 import { renderIcon } from "../../helpers/renderIcon.tsx";

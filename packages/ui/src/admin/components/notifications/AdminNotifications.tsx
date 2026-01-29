@@ -1,5 +1,3 @@
-import { useClient } from "@alepha/react";
-import { useI18n } from "@alepha/react/i18n";
 import { DataTable, Flex, Text } from "@alepha/ui";
 import { Badge, Tooltip } from "@mantine/core";
 import {
@@ -14,6 +12,8 @@ import type {
   AdminNotificationController,
   NotificationEntity,
 } from "alepha/api/notifications";
+import { useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 
 const AdminNotifications = () => {
   const client = useClient<AdminNotificationController>();

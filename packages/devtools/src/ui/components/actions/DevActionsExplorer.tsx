@@ -1,4 +1,3 @@
-import { useInject } from "@alepha/react";
 import {
   Badge,
   Flex,
@@ -11,6 +10,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconApi, IconSearch } from "@tabler/icons-react";
+import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useEffect, useMemo, useState } from "react";
 import type { DevActionMetadata } from "../../../api/schemas/DevActionMetadata.ts";

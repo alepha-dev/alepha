@@ -1,7 +1,7 @@
-import { useInject, useStore } from "@alepha/react";
-import { useI18n } from "@alepha/react/i18n";
 import { Card, Flex, Stack, Text } from "@mantine/core";
 import { IconCircleFilled, IconMoneybag } from "@tabler/icons-react";
+import { useInject, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { CharacterInfo } from "../../../../api/services/CharacterInfo.ts";
 import { currentProjectCharacterAtom } from "../../atoms/currentProjectCharacterAtom.ts";
 import { theme } from "../../constants/theme.ts";

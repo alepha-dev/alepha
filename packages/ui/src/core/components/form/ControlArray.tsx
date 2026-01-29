@@ -1,5 +1,3 @@
-import { useEvents } from "@alepha/react";
-import type { BaseInputField } from "@alepha/react/form";
 import {
   ActionIcon,
   Fieldset,
@@ -11,6 +9,8 @@ import {
 } from "@mantine/core";
 import { IconGripVertical, IconPlus, IconTrash } from "@tabler/icons-react";
 import type { TObject, TSchema } from "alepha";
+import { useEvents } from "alepha/react";
+import type { BaseInputField } from "alepha/react/form";
 import { useRef, useState } from "react";
 import { ui } from "../../constants/ui.ts";
 import {

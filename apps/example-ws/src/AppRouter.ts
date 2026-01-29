@@ -1,4 +1,4 @@
-import { $page } from "@alepha/react/router";
+import { $page } from "alepha/react/router";
 import { Chat } from "./components/Chat.tsx";
 
 export class AppRouter {

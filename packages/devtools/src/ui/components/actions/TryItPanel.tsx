@@ -1,4 +1,3 @@
-import { useInject } from "@alepha/react";
 import {
   ActionIcon,
   Box,
@@ -14,6 +13,7 @@ import {
   Text,
 } from "@mantine/core";
 import { IconCheck, IconCopy, IconPlayerPlay } from "@tabler/icons-react";
+import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useCallback, useState } from "react";
 import type { DevActionMetadata } from "../../../api/schemas/DevActionMetadata.ts";

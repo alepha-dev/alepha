@@ -16,7 +16,6 @@
     "assets"
   ],
   "devDependencies": {
-    "@alepha/react": "0.15.1",
     "@alepha/ui": "0.15.1",
     "@biomejs/biome": "^2.3.12",
     "@mantine/core": "^8.3.13",

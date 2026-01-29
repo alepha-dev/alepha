@@ -1,5 +1,3 @@
-import { useInject } from "@alepha/react";
-import { Localize, useI18n } from "@alepha/react/i18n";
 import {
   Badge,
   Card,
@@ -11,6 +9,8 @@ import {
   Title,
 } from "@mantine/core";
 import { IconCircleFilled, IconCrown } from "@tabler/icons-react";
+import { useInject } from "alepha/react";
+import { Localize, useI18n } from "alepha/react/i18n";
 import { CharacterInfo } from "../../../../api/services/CharacterInfo.ts";
 
 export interface MyCharactersProps {

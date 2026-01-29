@@ -1,7 +1,7 @@
-import { useClient } from "@alepha/react";
-import { useForm } from "@alepha/react/form";
 import { TypeForm } from "@alepha/ui";
 import { Flex } from "@mantine/core";
+import { useClient } from "alepha/react";
+import { useForm } from "alepha/react/form";
 import type { AppSecurity } from "../api/AppSecurity.ts";
 
 const Home = () => {

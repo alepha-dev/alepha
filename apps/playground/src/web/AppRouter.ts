@@ -1,5 +1,5 @@
-import { $page } from "@alepha/react/router";
 import { t } from "alepha";
+import { $page } from "alepha/react/router";
 import Home from "./Home.tsx";
 import { Layout } from "./Layout.tsx";
 

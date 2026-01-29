@@ -1,6 +1,6 @@
-import { useEvents } from "@alepha/react";
-import { NestedView, useRouterState } from "@alepha/react/router";
 import { IconLock, IconLockOpen } from "@tabler/icons-react";
+import { useEvents } from "alepha/react";
+import { NestedView, useRouterState } from "alepha/react/router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useKonamiCode } from "../../hooks/useKonamiCode.ts";
 import CommandPalette from "./CommandPalette.tsx";

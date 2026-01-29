@@ -104,14 +104,14 @@ export const coreFeatures = [
   {
     icon: IconBrandReact,
     title: "React",
-    module: "@alepha/react",
+    module: "alepha/react",
     description: "SSR, CSR, or SSG with routing.",
     slug: "packages-alepha-react-core",
   },
   {
     icon: IconSeo,
     title: "Head",
-    module: "@alepha/react/head",
+    module: "alepha/react/head",
     description: "Document head and SEO metadata.",
     slug: "packages-alepha-react-head",
   },

@@ -2,11 +2,11 @@
 
 So you want URLs that actually do things. Wild concept.
 
-Alepha's router (`@alepha/react/router`) gives you SSR, type-safe navigation, nested routes, data loading, and error handling. All without a single `pages/` folder or magic filename convention.
+Alepha's router (`alepha/react/router`) gives you SSR, type-safe navigation, nested routes, data loading, and error handling. All without a single `pages/` folder or magic filename convention.
 
 You define routes as class properties. TypeScript knows about them. Your IDE autocompletes them. You sleep better at night.
 
-> **Note:** The router depends on `@alepha/react` (core). If you only need hooks like `useClient` or `useStore` without routing, see [React Integration](./1-react-integration.md).
+> **Note:** The router depends on `alepha/react` (core). If you only need hooks like `useClient` or `useStore` without routing, see [React Integration](./1-react-integration.md).
 
 ---
 
@@ -15,7 +15,7 @@ You define routes as class properties. TypeScript knows about them. Your IDE aut
 In Next.js, you create files. In Remix, you create more files. In Alepha, you define pages as class properties with `$page`.
 
 ```tsx
-import { $page } from "@alepha/react/router";
+import { $page } from "alepha/react/router";
 import { t } from "alepha";
 
 class AppRouter {
@@ -216,7 +216,7 @@ In your layout, use `NestedView` to render children:
 
 ```tsx
 // Layout.tsx
-import { NestedView } from "@alepha/react/router";
+import { NestedView } from "alepha/react/router";
 
 export default function Layout({ children }) {
   return (
@@ -239,7 +239,7 @@ export default function Layout({ children }) {
 Navigate programmatically with full type safety:
 
 ```tsx
-import { useRouter } from "@alepha/react/router";
+import { useRouter } from "alepha/react/router";
 
 const Navigation = () => {
   const router = useRouter<AppRouter>();
@@ -322,7 +322,7 @@ The `onClick` handler prevents default, navigates client-side. The `href` is the
 Build navigation that knows where you are:
 
 ```tsx
-import { useActive } from "@alepha/react/router";
+import { useActive } from "alepha/react/router";
 
 const NavLink = ({ href, children }) => {
   const { isActive, isPending, anchorProps } = useActive(href);
@@ -475,7 +475,7 @@ termsOfService = $page({
 Access the current router state anywhere:
 
 ```tsx
-import { useRouterState } from "@alepha/react/router";
+import { useRouterState } from "alepha/react/router";
 
 const Debug = () => {
   const state = useRouterState();
@@ -526,7 +526,7 @@ When you use `$page` in your module's primitives, the router module loads automa
 
 ```typescript
 import { $module } from "alepha";
-import { $page } from "@alepha/react/router";
+import { $page } from "alepha/react/router";
 
 export const MyAppModule = $module({
   name: "my-app",

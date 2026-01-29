@@ -3,7 +3,6 @@ ignores:
     - '@vitejs/plugin-react'
     - 'jsdom'
     - '@alepha/ui'
-    - '@alepha/react'
     - '@vitest/coverage-v8'
     - 'drizzle-kit'
     - 'swagger-ui-dist'

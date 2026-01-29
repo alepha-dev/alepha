@@ -1,6 +1,6 @@
-import type { FormModel } from "@alepha/react/form";
 import { Flex } from "@mantine/core";
 import { type TObject, t } from "alepha";
+import type { FormModel } from "alepha/react/form";
 import { useMemo } from "react";
 import { ui } from "../../constants/ui.ts";
 import TypeForm, { type TypeFormProps } from "../form/TypeForm.tsx";

@@ -64,7 +64,6 @@ export class ProjectScaffolder {
       force?: boolean;
       packageJson?: boolean | DependencyModes;
       tsconfigJson?: boolean;
-      indexHtml?: boolean;
       biomeJson?: boolean;
       editorconfig?: boolean;
       agentMd?: false | (AgentMdOptions & { type: AgentMdType });
@@ -85,9 +84,6 @@ export class ProjectScaffolder {
     }
     if (opts.tsconfigJson) {
       tasks.push(this.ensureTsConfig(root, { force }));
-    }
-    if (opts.indexHtml) {
-      tasks.push(this.ensureReactProject(root, { force }));
     }
     if (opts.biomeJson) {
       tasks.push(this.ensureBiomeConfig(root, { force }));
@@ -183,22 +179,20 @@ export class ProjectScaffolder {
   // ===========================================
 
   /**
-   * Ensure minimal project with just src/main.server.ts.
+   * Ensure src/main.server.ts exists with correct module imports.
    */
-  public async ensureMinimalProject(
+  public async ensureMainServerTs(
     root: string,
-    opts: { force?: boolean } = {},
+    opts: { api?: boolean; react?: boolean; force?: boolean } = {},
   ): Promise<void> {
     const srcDir = this.fs.join(root, "src");
-
-    // Don't overwrite existing content unless force is set
-    if (!opts.force && (await this.fs.exists(srcDir))) {
-      const files = await this.fs.ls(srcDir);
-      if (files.length > 0) return;
-    }
-
     await this.fs.mkdir(srcDir, { recursive: true });
-    await this.ensureFile(srcDir, "main.server.ts", mainServerTs(), opts.force);
+    await this.ensureFile(
+      srcDir,
+      "main.server.ts",
+      mainServerTs({ api: opts.api, react: opts.react }),
+      opts.force,
+    );
   }
 
   // ===========================================
@@ -206,10 +200,9 @@ export class ProjectScaffolder {
   // ===========================================
 
   /**
-   * Ensure src/main.server.ts exists with full API structure.
+   * Ensure API module structure exists.
    *
    * Creates:
-   * - src/main.server.ts (entry point)
    * - src/api/index.ts (API module)
    * - src/api/controllers/HelloController.ts (example controller)
    */
@@ -217,14 +210,6 @@ export class ProjectScaffolder {
     root: string,
     opts: { force?: boolean } = {},
   ): Promise<void> {
-    const srcDir = this.fs.join(root, "src");
-
-    // Don't overwrite existing content unless force is set
-    if (!opts.force && (await this.fs.exists(srcDir))) {
-      const files = await this.fs.ls(srcDir);
-      if (files.length > 0) return;
-    }
-
     const appName = this.getAppName(root);
 
     // Create directories
@@ -233,56 +218,6 @@ export class ProjectScaffolder {
     });
 
     // Create files
-    await this.ensureFile(
-      srcDir,
-      "main.server.ts",
-      mainServerTs({ api: true }),
-      opts.force,
-    );
-    await this.ensureFile(
-      srcDir,
-      "api/index.ts",
-      apiIndexTs({ appName }),
-      opts.force,
-    );
-    await this.ensureFile(
-      srcDir,
-      "api/controllers/HelloController.ts",
-      apiHelloControllerTs(),
-      opts.force,
-    );
-  }
-
-  // ===========================================
-  // React Project Structure
-  // ===========================================
-
-  /**
-   * Ensure full React project structure exists.
-   *
-   * Creates:
-   * - src/main.server.ts, src/main.browser.ts
-   * - src/api/index.ts, src/api/controllers/HelloController.ts
-   * - src/web/index.ts, src/web/AppRouter.ts, src/web/components/Hello.tsx
-   */
-  public async ensureReactProject(
-    root: string,
-    opts: { force?: boolean } = {},
-  ): Promise<void> {
-    const appName = this.getAppName(root);
-
-    // Create directories
-    await this.fs.mkdir(this.fs.join(root, "src/api/controllers"), {
-      recursive: true,
-    });
-    await this.fs.mkdir(this.fs.join(root, "src/web/components"), {
-      recursive: true,
-    });
-
-    // src/main.css
-    await this.ensureFile(root, "src/main.css", mainCss(), opts.force);
-
-    // API structure
     await this.ensureFile(
       root,
       "src/api/index.ts",
@@ -295,10 +230,36 @@ export class ProjectScaffolder {
       apiHelloControllerTs(),
       opts.force,
     );
+  }
+
+  // ===========================================
+  // Web Project Structure
+  // ===========================================
+
+  /**
+   * Ensure web/React project structure exists.
+   *
+   * Creates:
+   * - src/main.browser.ts
+   * - src/main.css
+   * - src/web/index.ts, src/web/AppRouter.ts, src/web/components/Hello.tsx
+   */
+  public async ensureWebProject(
+    root: string,
+    opts: { ui?: boolean; force?: boolean } = {},
+  ): Promise<void> {
+    const appName = this.getAppName(root);
+
+    // Create directories
+    await this.fs.mkdir(this.fs.join(root, "src/web/components"), {
+      recursive: true,
+    });
+
+    // src/main.css
     await this.ensureFile(
       root,
-      "src/main.server.ts",
-      mainServerTs({ api: true, react: true }),
+      "src/main.css",
+      mainCss({ ui: opts.ui }),
       opts.force,
     );
 

@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import "./LevelUpAnimation.css";
-import { useInject, useStore } from "@alepha/react";
+import { useInject, useStore } from "alepha/react";
 import type { Character } from "../../../../api/entities/characters.ts";
 import { CharacterInfo } from "../../../../api/services/CharacterInfo.ts";
 import { currentProjectCharacterAtom } from "../../atoms/currentProjectCharacterAtom.ts";

@@ -760,9 +760,8 @@ export class PackagesCommand {
   /**
    * Converts a package name to a filesystem-safe directory name with ordering prefix.
    * alepha → 1-alepha
-   * @alepha/react → 2-@alepha-react
-   * @alepha/ui → 3-@alepha-ui
-   * others → alphabetical order starting from 4
+   * @alepha/ui → 2-@alepha-ui
+   * others → alphabetical order starting from 3
    */
   getPackageDirName(pkgName: string, allPackages: string[]): string {
     const safeName = pkgName.replace(/\//g, "-");
@@ -770,18 +769,17 @@ export class PackagesCommand {
     // Define explicit ordering for core packages
     const coreOrder: Record<string, number> = {
       alepha: 1,
-      "@alepha/react": 2,
-      "@alepha/ui": 3,
+      "@alepha/ui": 2,
     };
 
     if (coreOrder[pkgName]) {
       return `${coreOrder[pkgName]}-${safeName}`;
     }
 
-    // For other packages, assign order based on alphabetical position starting from 4
+    // For other packages, assign order based on alphabetical position starting from 3
     const otherPackages = allPackages.filter((p) => !coreOrder[p]).sort();
     const index = otherPackages.indexOf(pkgName);
-    const order = index !== -1 ? 4 + index : 99;
+    const order = index !== -1 ? 3 + index : 99;
 
     return `${order}-${safeName}`;
   }
@@ -936,7 +934,7 @@ export class PackagesCommand {
             return;
           }
 
-          // Use real package name (alepha, @alepha/react, etc.)
+          // Use real package name (alepha, @alepha/ui, etc.)
           const realPkgName: string = pkgJson.name;
           const packageDirName = this.getPackageDirName(
             realPkgName,

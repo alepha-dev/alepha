@@ -1,6 +1,6 @@
-import { ClientOnly } from "@alepha/react";
-import { useI18n } from "@alepha/react/i18n";
 import { IconClock, IconGitBranch } from "@tabler/icons-react";
+import { ClientOnly } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 
 interface FileHeaderProps {
   name: string;

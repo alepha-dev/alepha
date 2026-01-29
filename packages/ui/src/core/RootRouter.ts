@@ -1,4 +1,4 @@
-import { $page } from "@alepha/react/router";
+import { $page } from "alepha/react/router";
 import AlephaMantineProvider from "./components/layout/AlephaMantineProvider.tsx";
 
 export class RootRouter {

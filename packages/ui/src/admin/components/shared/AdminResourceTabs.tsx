@@ -1,5 +1,5 @@
-import { useActive, useRouter } from "@alepha/react/router";
 import { Tabs } from "@mantine/core";
+import { useActive, useRouter } from "alepha/react/router";
 import type { ComponentType, ReactNode } from "react";
 
 export interface AdminResourceTab {

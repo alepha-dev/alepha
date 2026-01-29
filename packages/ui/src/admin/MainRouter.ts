@@ -1,7 +1,7 @@
-import { $page } from "@alepha/react/router";
 import { AlephaMantineProvider } from "@alepha/ui";
 import { AuthRouter } from "@alepha/ui/auth";
 import { $inject } from "alepha";
+import { $page } from "alepha/react/router";
 import { AdminRouter } from "./AdminRouter.ts";
 
 /**

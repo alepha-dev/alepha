@@ -1,5 +1,5 @@
-import type { BaseInputField } from "@alepha/react/form";
 import { type TObject, TypeBoxError } from "alepha";
+import type { BaseInputField } from "alepha/react/form";
 import {
   createElement,
   isValidElement,

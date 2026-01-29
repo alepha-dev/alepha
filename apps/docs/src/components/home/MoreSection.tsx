@@ -1,4 +1,3 @@
-import { Link } from "@alepha/react/router";
 import {
   IconArrowRight,
   IconBrandGithub,
@@ -6,6 +5,7 @@ import {
   IconCheck,
   IconCopy,
 } from "@tabler/icons-react";
+import { Link } from "alepha/react/router";
 import { useCallback, useState } from "react";
 
 const MoreSection = () => {
@@ -100,12 +100,9 @@ const MoreSection = () => {
                 }}
               >
                 Some modules like{" "}
-                <span style={{ color: "var(--color-cyan)" }}>
-                  @alepha/react
-                </span>
-                , <span style={{ color: "var(--color-cyan)" }}>@alepha/ui</span>
-                , and cloud storage providers are separate packages, but
-                installed seamlessly by the Alepha CLI.
+                <span style={{ color: "var(--color-cyan)" }}>@alepha/ui</span>{" "}
+                and cloud storage providers are separate packages, but installed
+                seamlessly by the Alepha CLI.
                 <span
                   style={{
                     position: "absolute",

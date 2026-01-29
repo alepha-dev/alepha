@@ -75,12 +75,15 @@
       "alepha/topic/redis": ["./packages/alepha/src/topic/redis/index.ts"],
       "alepha/vite": ["./packages/alepha/src/vite/index.ts"],
       "alepha/websocket": ["./packages/alepha/src/websocket/index.ts"],
-      "@alepha/react": ["./packages/react/src/core/index.ts"],
-      "@alepha/react/auth": ["./packages/react/src/auth/index.ts"],
-      "@alepha/react/form": ["./packages/react/src/form/index.ts"],
-      "@alepha/react/head": ["./packages/react/src/head/index.ts"],
-      "@alepha/react/i18n": ["./packages/react/src/i18n/index.ts"],
-      "@alepha/react/websocket": ["./packages/react/src/websocket/index.ts"],
+      "alepha/react": ["./packages/alepha/src/react/core/index.ts"],
+      "alepha/react/auth": ["./packages/alepha/src/react/auth/index.ts"],
+      "alepha/react/form": ["./packages/alepha/src/react/form/index.ts"],
+      "alepha/react/head": ["./packages/alepha/src/react/head/index.ts"],
+      "alepha/react/i18n": ["./packages/alepha/src/react/i18n/index.ts"],
+      "alepha/react/router": ["./packages/alepha/src/react/router/index.ts"],
+      "alepha/react/websocket": [
+        "./packages/alepha/src/react/websocket/index.ts"
+      ],
       "@alepha/ui": ["./packages/ui/src/core/index.ts"],
       "@alepha/ui/admin": ["./packages/ui/src/admin/index.ts"],
       "@alepha/ui/auth": ["./packages/ui/src/auth/index.ts"]

@@ -1,9 +1,9 @@
-import { useClient } from "@alepha/react";
-import { useI18n } from "@alepha/react/i18n";
 import { DataTable, Flex, Text } from "@alepha/ui";
 import { Badge } from "@mantine/core";
 import { type Page, t } from "alepha";
 import { type FileController, type FileEntity, files } from "alepha/api/files";
+import { useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 
 const AdminFiles = () => {
   const client = useClient<FileController>();

@@ -1,6 +1,6 @@
-import { useInject } from "@alepha/react";
-import { useRoom } from "@alepha/react/websocket";
 import type { Static } from "alepha";
+import { useInject } from "alepha/react";
+import { useRoom } from "alepha/react/websocket";
 import { type FormEvent, useEffect, useState } from "react";
 import { ChatChannels, type chatInSchema } from "../channels/ChatChannels.ts";
 

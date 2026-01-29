@@ -1,6 +1,7 @@
 import { $inject, Alepha } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
+import alephaPackageJson from "alepha/package.json" with { type: "json" };
 import { FileSystemProvider } from "alepha/system";
 import { version } from "../version.ts";
 
@@ -324,11 +325,21 @@ export class PackageManagerUtils {
     scripts: Record<string, string>;
     type: "module";
   } {
+    const alephaDeps = alephaPackageJson.devDependencies;
+
     const dependencies: Record<string, string> = {
       alepha: `^${version}`,
     };
 
     const devDependencies: Record<string, string> = {};
+
+    // Add biome/vitest only if not a workspace package (workspace root has them)
+    if (!modes.isPackage) {
+      devDependencies["@biomejs/biome"] = alephaDeps["@biomejs/biome"];
+      if (modes.test) {
+        devDependencies.vitest = alephaDeps.vitest;
+      }
+    }
 
     const scripts: Record<string, string> = {
       dev: "alepha dev",
@@ -338,16 +349,19 @@ export class PackageManagerUtils {
       verify: "alepha verify",
     };
 
+    if (modes.test) {
+      scripts.test = "vitest run";
+    }
+
     if (modes.ui) {
       dependencies["@alepha/ui"] = `^${version}`;
       modes.react = true;
     }
 
     if (modes.react) {
-      dependencies["@alepha/react"] = `^${version}`;
-      dependencies.react = "^19.2.0";
-      dependencies["react-dom"] = "^19.2.0";
-      devDependencies["@types/react"] = "^19.2.0";
+      dependencies.react = alephaDeps.react;
+      dependencies["react-dom"] = alephaDeps["react-dom"];
+      devDependencies["@types/react"] = alephaDeps["@types/react"];
     }
 
     return {
@@ -375,4 +389,7 @@ export interface DependencyModes {
   react?: boolean;
   ui?: boolean;
   expo?: boolean;
+  test?: boolean;
+  /** Skip biome/vitest when inside a workspace package (they're at root) */
+  isPackage?: boolean;
 }

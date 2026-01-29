@@ -1,4 +1,3 @@
-import { Link, useRouter, useRouterState } from "@alepha/react/router";
 import {
   IconBrandGithub,
   IconFile,
@@ -10,6 +9,7 @@ import {
   IconSun,
   IconX,
 } from "@tabler/icons-react";
+import { Link, useRouter, useRouterState } from "alepha/react/router";
 import { useCallback, useEffect, useState } from "react";
 
 // =============================================================================

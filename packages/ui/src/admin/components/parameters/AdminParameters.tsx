@@ -1,4 +1,3 @@
-import { useClient } from "@alepha/react";
 import { Flex, Text } from "@alepha/ui";
 import { Loader, Stack } from "@mantine/core";
 import { IconSettings } from "@tabler/icons-react";
@@ -7,6 +6,7 @@ import type {
   ConfigTreeNode,
   Parameter,
 } from "alepha/api/parameters";
+import { useClient } from "alepha/react";
 import { useCallback, useEffect, useState } from "react";
 import ParameterDetails from "./ParameterDetails.tsx";
 import ParameterHistory from "./ParameterHistory.tsx";

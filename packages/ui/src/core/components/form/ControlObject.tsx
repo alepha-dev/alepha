@@ -1,6 +1,6 @@
-import type { BaseInputField, ObjectInputField } from "@alepha/react/form";
 import { Fieldset, Grid, Stack, Text } from "@mantine/core";
 import type { TObject } from "alepha";
+import type { BaseInputField, ObjectInputField } from "alepha/react/form";
 import {
   type GenericControlProps,
   parseInput,

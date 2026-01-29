@@ -1,4 +1,3 @@
-import { useRouter, useRouterState } from "@alepha/react/router";
 import {
   IconChevronDown,
   IconChevronRight,
@@ -6,6 +5,7 @@ import {
   IconFolder,
   IconFolderOpen,
 } from "@tabler/icons-react";
+import { useRouter, useRouterState } from "alepha/react/router";
 import { type CSSProperties, useCallback, useEffect, useState } from "react";
 import type { DocNode } from "../../config/docs.ts";
 import styles from "./FileTree.module.css";

@@ -1,4 +1,4 @@
-import { useInject, useStore } from "@alepha/react";
+import { useInject, useStore } from "alepha/react";
 import {
   alephaThemeAtom,
   type CurrentAlephaTheme,

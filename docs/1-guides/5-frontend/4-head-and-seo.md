@@ -2,16 +2,16 @@
 
 SEO. Social sharing. The stuff that makes marketing people happy and developers groan.
 
-The `@alepha/react/head` module lets you control the document `<head>` from anywhere in your component tree. Title, meta tags, Open Graph, Twitter cards - all type-safe and SSR-friendly.
+The `alepha/react/head` module lets you control the document `<head>` from anywhere in your component tree. Title, meta tags, Open Graph, Twitter cards - all type-safe and SSR-friendly.
 
-> **Requires Router:** This module depends on `@alepha/react/router` for SSR rendering of head tags.
+> **Requires Router:** This module depends on `alepha/react/router` for SSR rendering of head tags.
 
 ## Installation
 
 Head management is a separate module from router:
 
 ```typescript
-import { AlephaReactHead } from "@alepha/react/head";
+import { AlephaReactHead } from "alepha/react/head";
 
 const alepha = Alepha.create()
   .with(AlephaReactRouter)  // Required
@@ -22,8 +22,8 @@ Or just use `$head` in your primitives - it auto-loads:
 
 ```typescript
 import { $module } from "alepha";
-import { $page } from "@alepha/react/router";
-import { $head } from "@alepha/react/head";
+import { $page } from "alepha/react/router";
+import { $head } from "alepha/react/head";
 
 export const AppModule = $module({
   name: "my-app",
@@ -36,7 +36,7 @@ export const AppModule = $module({
 Set default head values for your entire app:
 
 ```tsx
-import { $head } from "@alepha/react/head";
+import { $head } from "alepha/react/head";
 
 class App {
   head = $head({
@@ -111,7 +111,7 @@ $head({
 Override head values per page:
 
 ```tsx
-import { $page } from "@alepha/react/router";
+import { $page } from "alepha/react/router";
 
 class AppRouter {
   blog = $page({
@@ -166,7 +166,7 @@ head: (props, previous) => ({
 Update head from any component:
 
 ```tsx
-import { useHead } from "@alepha/react/head";
+import { useHead } from "alepha/react/head";
 
 const ProductPage = ({ product }) => {
   const [head, setHead] = useHead({
@@ -212,7 +212,7 @@ const ProductMeta = () => {
 The `SeoExpander` helper fills in missing values automatically:
 
 ```typescript
-import { SeoExpander } from "@alepha/react/head";
+import { SeoExpander } from "alepha/react/head";
 
 const expander = new SeoExpander({
   baseUrl: "https://example.com",

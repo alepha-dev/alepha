@@ -1,11 +1,3 @@
-import { type UseActionReturn, useAction } from "@alepha/react";
-import { type FormModel, useFormState } from "@alepha/react/form";
-import {
-  type RouterGoOptions,
-  type UseActiveOptions,
-  useActive,
-  useRouter,
-} from "@alepha/react/router";
 import {
   Anchor,
   type AnchorProps,
@@ -23,6 +15,14 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 import { IconCheck, IconChevronRight } from "@tabler/icons-react";
+import { type UseActionReturn, useAction } from "alepha/react";
+import { type FormModel, useFormState } from "alepha/react/form";
+import {
+  type RouterGoOptions,
+  type UseActiveOptions,
+  useActive,
+  useRouter,
+} from "alepha/react/router";
 import {
   type ButtonHTMLAttributes,
   Children,

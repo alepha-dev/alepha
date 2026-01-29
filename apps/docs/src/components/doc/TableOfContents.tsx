@@ -1,4 +1,4 @@
-import { useRouter } from "@alepha/react/router";
+import { useRouter } from "alepha/react/router";
 import {
   type CSSProperties,
   useEffect,

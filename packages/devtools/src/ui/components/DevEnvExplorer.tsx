@@ -1,4 +1,3 @@
-import { useInject } from "@alepha/react";
 import { ui } from "@alepha/ui";
 import {
   Badge,
@@ -21,6 +20,7 @@ import {
   IconSettings,
   IconVariable,
 } from "@tabler/icons-react";
+import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useEffect, useMemo, useState } from "react";
 import type { DevEnvMetadata } from "../../api/schemas/DevEnvMetadata.ts";

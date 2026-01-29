@@ -14,9 +14,9 @@ That's it. Your app is running. Make changes and watch them appear instantly.
 
 The `dev` command is smart about what kind of project you're running:
 
-### Full-Stack App (with @alepha/react)
+### Full-Stack App (with alepha/react)
 
-If you have `@alepha/react` installed, Alepha knows you're building a web application:
+If you have `alepha/react` installed, Alepha knows you're building a web application:
 
 ```bash
 alepha dev

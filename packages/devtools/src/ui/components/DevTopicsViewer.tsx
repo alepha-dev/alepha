@@ -1,4 +1,3 @@
-import { useInject } from "@alepha/react";
 import { ui } from "@alepha/ui";
 import { JsonViewer } from "@alepha/ui/json";
 import {
@@ -28,6 +27,7 @@ import {
   IconServer,
   IconTrash,
 } from "@tabler/icons-react";
+import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { devMetadataSchema } from "../../api/schemas/DevMetadata.ts";

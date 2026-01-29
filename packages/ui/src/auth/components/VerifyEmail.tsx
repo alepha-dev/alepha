@@ -1,10 +1,10 @@
-import { useClient } from "@alepha/react";
-import { useI18n } from "@alepha/react/i18n";
-import { useRouter, useRouterState } from "@alepha/react/router";
 import { ActionButton } from "@alepha/ui";
 import { Alert, Card, Flex, Loader, Stack, Text } from "@mantine/core";
 import { IconAlertCircle, IconCheck, IconMailCheck } from "@tabler/icons-react";
 import type { UserController } from "alepha/api/users";
+import { useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { useRouter, useRouterState } from "alepha/react/router";
 import { useEffect, useState } from "react";
 import type { AuthI18n } from "../AuthI18n.ts";
 import type { AuthRouter } from "../AuthRouter.ts";

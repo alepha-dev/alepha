@@ -18,7 +18,6 @@
   "dependencies": {
     "@alepha/bucket-vercel": "^0.15.1",
     "@alepha/devtools": "^0.15.1",
-    "@alepha/react": "^0.15.1",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/utilities": "^3.2.2",
     "@mantine/charts": "^8.3.13",

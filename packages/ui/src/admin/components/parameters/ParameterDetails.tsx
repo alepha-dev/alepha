@@ -1,5 +1,3 @@
-import { useForm } from "@alepha/react/form";
-import { useI18n } from "@alepha/react/i18n";
 import { Flex, Text, TypeForm } from "@alepha/ui";
 import {
   Badge,
@@ -13,6 +11,8 @@ import {
 } from "@mantine/core";
 import { IconClock, IconSettings } from "@tabler/icons-react";
 import { jsonSchemaToTypeBox, type TObject } from "alepha";
+import { useForm } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
 import { useMemo } from "react";
 import { type ConfigValue, formatJson } from "./types.ts";
 

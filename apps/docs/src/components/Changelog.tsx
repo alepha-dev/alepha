@@ -1,4 +1,3 @@
-import { Link } from "@alepha/react/router";
 import {
   IconAlertTriangle,
   IconArrowLeft,
@@ -6,6 +5,7 @@ import {
   IconGitCommit,
   IconSparkles,
 } from "@tabler/icons-react";
+import { Link } from "alepha/react/router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChangelogChange } from "../../scripts/interfaces.ts";
 import type { ChangelogEntry } from "../config/docs.ts";

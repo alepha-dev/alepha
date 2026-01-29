@@ -1,5 +1,3 @@
-import { useEvents } from "@alepha/react";
-import { useRouter } from "@alepha/react/router";
 import {
   Flex,
   type FlexProps,
@@ -11,6 +9,8 @@ import {
   IconChevronRight,
   IconSquareRounded,
 } from "@tabler/icons-react";
+import { useEvents } from "alepha/react";
+import { useRouter } from "alepha/react/router";
 import {
   type ComponentType,
   type ReactNode,

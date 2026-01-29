@@ -1,5 +1,3 @@
-import { useEvents, useStore } from "@alepha/react";
-import { NestedView, useRouter } from "@alepha/react/router";
 import {
   AppShell,
   type AppShellFooterProps,
@@ -8,6 +6,8 @@ import {
   type AppShellNavbarProps,
   type AppShellProps,
 } from "@mantine/core";
+import { useEvents, useStore } from "alepha/react";
+import { NestedView, useRouter } from "alepha/react/router";
 import { type ReactNode, useState } from "react";
 import { ui } from "../../constants/ui.ts";
 import AppBar, { type AppBarProps } from "./AppBar.tsx";

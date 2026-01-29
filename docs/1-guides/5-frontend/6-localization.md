@@ -9,7 +9,7 @@ Alepha's i18n system handles translations, date formatting, number formatting, a
 Use `$dictionary` to register translations. Each dictionary is a language:
 
 ```typescript
-import { $dictionary } from "@alepha/react/i18n";
+import { $dictionary } from "alepha/react/i18n";
 
 class I18n {
   en = $dictionary({
@@ -58,7 +58,7 @@ Use `$1`, `$2`, etc. for dynamic values:
 The `useI18n` hook gives you access to translations:
 
 ```tsx
-import { useI18n } from "@alepha/react/i18n";
+import { useI18n } from "alepha/react/i18n";
 
 const Header = () => {
   const { tr } = useI18n<I18n, "en">(); // <- weird syntax
@@ -102,7 +102,7 @@ If no translation exists, the key itself is returned. Useful for spotting missin
 The i18n provider exposes `setLang` and `lang`:
 
 ```tsx
-import { useI18n } from "@alepha/react/i18n";
+import { useI18n } from "alepha/react/i18n";
 
 const LanguageSwitcher = () => {
   const { lang, setLang, languages } = useI18n<I18n, "en">();
@@ -170,7 +170,7 @@ Here's a complete i18n setup:
 
 ```typescript
 // src/web/app/services/I18n.ts
-import { $dictionary } from "@alepha/react/i18n";
+import { $dictionary } from "alepha/react/i18n";
 
 export class I18n {
   en = $dictionary({
@@ -228,7 +228,7 @@ export class I18n {
 Use it in components:
 
 ```tsx
-import { useI18n } from "@alepha/react/i18n";
+import { useI18n } from "alepha/react/i18n";
 import type { I18n } from "../services/I18n";
 
 const TaskList = ({ tasks }: { tasks: Task[] }) => {

@@ -3,7 +3,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@alepha/react": "0.15.1",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@tabler/icons-react": "^3.36.1",
     "alepha": "^0.15.1",

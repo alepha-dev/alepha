@@ -22,7 +22,6 @@
     "styles.css"
   ],
   "dependencies": {
-    "@alepha/react": "0.15.1",
     "@mantine/core": "^8.3.13",
     "@mantine/dates": "^8.3.13",
     "@mantine/hooks": "^8.3.13",

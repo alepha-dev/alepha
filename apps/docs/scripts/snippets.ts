@@ -28,7 +28,7 @@ run(Api);
       "Create React apps with built-in Server-Side Rendering and data fetching",
     content: `
 import { run } from "alepha";
-import { $page } from "@alepha/react/router";
+import { $page } from "alepha/react/router";
 
 const HelloComponent = (props: { message: string }) => {
   return <h1>{props.message}</h1>;

@@ -19,6 +19,7 @@
   ],
   "dependencies": {
     "@redis/client": "^5.10.0",
+    "@vitejs/plugin-react": "^5.1.2",
     "dayjs": "^1.11.19",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.1",
@@ -26,23 +27,43 @@
     "postgres": "^3.4.8",
     "tsx": "^4.21.0",
     "typebox": "^1.0.79",
+    "vite": "^7.3.1",
     "vite-bundle-analyzer": "^1.3.2",
     "ws": "^8.19.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.12",
     "@electric-sql/pglite": "^0.3.15",
     "@faker-js/faker": "^10.2.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^25.0.10",
     "@types/nodemailer": "^7.0.5",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.18.1",
     "cron-schedule": "^6.0.0",
     "jose": "^6.1.3",
+    "jsdom": "^27.4.0",
     "openid-client": "^6.8.1",
     "prom-client": "^15.1.3",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "swagger-ui-dist": "^5.31.0",
     "tsdown": "^0.20.1",
-    "vite": "^7.3.1",
     "vitest": "^4.0.18"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "scarfSettings": {
     "enabled": false
@@ -216,6 +237,47 @@
       "types": "./src/queue/redis/index.ts",
       "import": "./src/queue/redis/index.ts",
       "default": "./src/queue/redis/index.ts"
+    },
+    "./react/auth": {
+      "types": "./src/react/auth/index.ts",
+      "react-native": "./src/react/auth/index.browser.ts",
+      "browser": "./src/react/auth/index.browser.ts",
+      "import": "./src/react/auth/index.ts",
+      "default": "./src/react/auth/index.ts"
+    },
+    "./react": {
+      "types": "./src/react/core/index.ts",
+      "import": "./src/react/core/index.ts",
+      "default": "./src/react/core/index.ts"
+    },
+    "./react/form": {
+      "types": "./src/react/form/index.ts",
+      "import": "./src/react/form/index.ts",
+      "default": "./src/react/form/index.ts"
+    },
+    "./react/head": {
+      "types": "./src/react/head/index.ts",
+      "react-native": "./src/react/head/index.browser.ts",
+      "browser": "./src/react/head/index.browser.ts",
+      "import": "./src/react/head/index.ts",
+      "default": "./src/react/head/index.ts"
+    },
+    "./react/i18n": {
+      "types": "./src/react/i18n/index.ts",
+      "import": "./src/react/i18n/index.ts",
+      "default": "./src/react/i18n/index.ts"
+    },
+    "./react/router": {
+      "types": "./src/react/router/index.ts",
+      "react-native": "./src/react/router/index.browser.ts",
+      "browser": "./src/react/router/index.browser.ts",
+      "import": "./src/react/router/index.ts",
+      "default": "./src/react/router/index.ts"
+    },
+    "./react/websocket": {
+      "types": "./src/react/websocket/index.ts",
+      "import": "./src/react/websocket/index.ts",
+      "default": "./src/react/websocket/index.ts"
     },
     "./redis": {
       "types": "./src/redis/index.ts",

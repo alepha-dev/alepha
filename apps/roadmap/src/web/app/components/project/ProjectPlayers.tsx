@@ -1,6 +1,3 @@
-import { useClient, useInject } from "@alepha/react";
-import { useAuth } from "@alepha/react/auth";
-import { Localize, useI18n } from "@alepha/react/i18n";
 import {
   Avatar,
   Badge,
@@ -24,6 +21,9 @@ import {
   IconUser,
   IconUsers,
 } from "@tabler/icons-react";
+import { useClient, useInject } from "alepha/react";
+import { useAuth } from "alepha/react/auth";
+import { Localize, useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 import type { InvitationController } from "../../../../api/controllers/InvitationController.ts";
 import type { Character } from "../../../../api/entities/characters.ts";

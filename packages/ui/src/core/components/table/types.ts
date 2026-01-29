@@ -1,4 +1,3 @@
-import type { FormModel } from "@alepha/react/form";
 import type { TableProps, TableTrProps } from "@mantine/core";
 import type {
   Alepha,
@@ -9,6 +8,7 @@ import type {
   TObject,
 } from "alepha";
 import type { DurationLike } from "alepha/datetime";
+import type { FormModel } from "alepha/react/form";
 import type { ReactNode } from "react";
 import type { ActionProps } from "../buttons/ActionButton.tsx";
 import type { TypeFormProps } from "../form/TypeForm.tsx";

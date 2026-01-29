@@ -31,7 +31,7 @@ The `init` command is your project bootstrap. It handles the tedious setup work 
 
 | Flag | Description |
 |------|-------------|
-| `--react` | Include React and @alepha/react for building web apps |
+| `--react` | Include React and alepha/react for building web apps |
 | `--ui` | Include @alepha/ui component library (automatically includes --react) |
 | `--test` | Set up Vitest and create a test directory |
 | `--yarn` | Use Yarn as the package manager |
@@ -81,7 +81,7 @@ Sets up a full-stack application with server-side rendering.
 - `src/AppRouter.ts` — Your route definitions
 
 **Additional dependencies:**
-- `@alepha/react` — SSR React integration
+- `alepha/react` — SSR React integration
 - `react` and `react-dom` — React itself
 - `@types/react` — TypeScript definitions
 

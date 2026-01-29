@@ -1,5 +1,3 @@
-import { useEvents } from "@alepha/react";
-import { useFormState } from "@alepha/react/form";
 import {
   Input,
   NumberInput,
@@ -7,6 +5,8 @@ import {
   Slider,
   type SliderProps,
 } from "@mantine/core";
+import { useEvents } from "alepha/react";
+import { useFormState } from "alepha/react/form";
 import { useRef, useState } from "react";
 import {
   type GenericControlProps,

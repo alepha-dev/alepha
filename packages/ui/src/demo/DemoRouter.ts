@@ -1,4 +1,3 @@
-import { $page } from "@alepha/react/router";
 import {
   IconBinaryTree,
   IconBraces,
@@ -14,6 +13,7 @@ import {
   IconUserPlus,
   IconWall,
 } from "@tabler/icons-react";
+import { $page } from "alepha/react/router";
 
 export class DemoRouter {
   demoLayout = $page({

@@ -1,4 +1,3 @@
-import { useRouter } from "@alepha/react/router";
 import { ActionButton } from "@alepha/ui";
 import {
   ActionIcon,
@@ -16,6 +15,7 @@ import {
   IconChevronLeft,
   IconExternalLink,
 } from "@tabler/icons-react";
+import { useRouter } from "alepha/react/router";
 import type { ComponentType, ReactNode } from "react";
 
 export interface AdminResourceAction {

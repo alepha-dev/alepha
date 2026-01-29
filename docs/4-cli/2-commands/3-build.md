@@ -263,7 +263,7 @@ The server build:
 
 ## Backend-Only Projects
 
-If you don't have `@alepha/react` installed, the build only creates the server:
+If you don't have `alepha/react` installed, the build only creates the server:
 
 ```bash
 alepha build

@@ -1,5 +1,3 @@
-import { useAuth } from "@alepha/react/auth";
-import { useRouter } from "@alepha/react/router";
 import {
   ActionButton,
   type ActionMenuConfig,
@@ -9,6 +7,8 @@ import {
 } from "@alepha/ui";
 import { Avatar } from "@mantine/core";
 import { IconLogin2, IconLogout, IconUser } from "@tabler/icons-react";
+import { useAuth } from "alepha/react/auth";
+import { useRouter } from "alepha/react/router";
 import type { ReactNode } from "react";
 import type { AuthRouter } from "../../AuthRouter.ts";
 

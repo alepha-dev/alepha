@@ -27,7 +27,7 @@ This file provides guidance to AI coding assistants when working with this Aleph
 
 ### Pages with \`$page\`
 \`\`\`tsx
-import { $page } from "@alepha/react/router";
+import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 import type { UserController } from "./UserController.ts";
 
@@ -53,9 +53,9 @@ class AppRouter {
 
 ### React Hooks
 \`\`\`typescript
-import { useAlepha, useClient, useStore, useAction, useInject } from "@alepha/react";
-import { useRouter, useActive } from "@alepha/react/router";
-import { useForm } from "@alepha/react/form";
+import { useAlepha, useClient, useStore, useAction, useInject } from "alepha/react";
+import { useRouter, useActive } from "alepha/react/router";
+import { useForm } from "alepha/react/form";
 \`\`\`
 
 - \`useClient<Controller>()\` - Type-safe API calls
@@ -253,7 +253,7 @@ ${reactSection}
 | \`$command\` | \`alepha/command\` | CLI commands |${
     react
       ? `
-| \`$page\` | \`@alepha/react/router\` | React pages with SSR |
+| \`$page\` | \`alepha/react/router\` | React pages with SSR |
 | \`$atom\` | \`alepha\` | Global state |`
       : ""
   }

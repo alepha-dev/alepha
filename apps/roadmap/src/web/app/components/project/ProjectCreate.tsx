@@ -1,12 +1,12 @@
-import { useAlepha, useClient, useInject } from "@alepha/react";
-import { useAuth } from "@alepha/react/auth";
-import { useForm } from "@alepha/react/form";
-import { useI18n } from "@alepha/react/i18n";
-import { useRouter } from "@alepha/react/router";
 import { ActionButton } from "@alepha/ui";
 import { Card, Container, Flex, Stack, Text } from "@mantine/core";
 import { IconHammer, IconTag } from "@tabler/icons-react";
 import { t } from "alepha";
+import { useAlepha, useClient, useInject } from "alepha/react";
+import { useAuth } from "alepha/react/auth";
+import { useForm } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import { useMemo } from "react";
 import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
 import type { AppRouter } from "../../AppRouter.ts";

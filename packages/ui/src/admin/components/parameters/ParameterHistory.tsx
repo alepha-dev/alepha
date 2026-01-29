@@ -1,4 +1,3 @@
-import { useI18n } from "@alepha/react/i18n";
 import { ActionButton, Flex, Text } from "@alepha/ui";
 import {
   Badge,
@@ -11,6 +10,7 @@ import {
 } from "@mantine/core";
 import { IconHistory } from "@tabler/icons-react";
 import type { Parameter } from "alepha/api/parameters";
+import { useI18n } from "alepha/react/i18n";
 import { getStatusColor } from "./types.ts";
 
 export interface ParameterHistoryProps {

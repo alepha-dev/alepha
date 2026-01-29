@@ -55,7 +55,7 @@ my-app/
 └── tsconfig.json
 ```
 
-The `src/web/` and `main.browser.ts` are only needed when using `@alepha/react` for the frontend.
+The `src/web/` and `main.browser.ts` are only needed when using `alepha/react` for the frontend.
 
 ## Scaling with Modules
 
@@ -158,7 +158,7 @@ For React apps, `main.browser.ts` hydrates the client:
 
 ```typescript
 // src/main.browser.ts
-import { hydrate } from "@alepha/react/router";
+import { hydrate } from "alepha/react/router";
 import { WebModule } from "./web/index.ts";
 
 hydrate(WebModule);

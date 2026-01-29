@@ -1,4 +1,3 @@
-import { useInject } from "@alepha/react";
 import { ui } from "@alepha/ui";
 import {
   Badge,
@@ -12,6 +11,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconDatabase, IconSearch, IconTable } from "@tabler/icons-react";
+import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useEffect, useMemo, useState } from "react";
 import { devMetadataSchema } from "../../../api/schemas/DevMetadata.ts";

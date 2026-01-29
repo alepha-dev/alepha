@@ -1,5 +1,5 @@
-import { $head } from "@alepha/react/head";
 import { $inject, Alepha, AlephaError } from "alepha";
+import { $head } from "alepha/react/head";
 import { $cookie } from "alepha/server/cookies";
 import { alephaThemeAtom } from "../atoms/alephaThemeAtom.ts";
 import { alephaThemeListAtom } from "../atoms/alephaThemeListAtom.ts";

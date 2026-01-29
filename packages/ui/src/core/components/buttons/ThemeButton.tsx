@@ -1,5 +1,5 @@
-import { useStore } from "@alepha/react";
 import { IconPalette } from "@tabler/icons-react";
+import { useStore } from "alepha/react";
 import { alephaThemeListAtom } from "../../atoms/alephaThemeListAtom.ts";
 import { useTheme } from "../../hooks/useTheme.ts";
 import ActionButton, { type ActionProps } from "./ActionButton.tsx";

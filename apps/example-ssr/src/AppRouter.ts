@@ -1,5 +1,5 @@
-import { $page } from "@alepha/react/router";
 import { t } from "alepha";
+import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 import type { CountApi } from "./CountApi.ts";
 

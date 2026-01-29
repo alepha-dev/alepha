@@ -1,5 +1,5 @@
-import { Link } from "@alepha/react/router";
 import { IconArrowRight, IconPackage } from "@tabler/icons-react";
+import { Link } from "alepha/react/router";
 import CodeDemo from "./CodeDemo.tsx";
 import LightPillar from "./LightPillar.tsx";
 import ScrollButton from "./ScrollButton.tsx";

@@ -1,7 +1,7 @@
-import { AlephaReactForm } from "@alepha/react/form";
-import { AlephaReactHead } from "@alepha/react/head";
-import { AlephaReactI18n } from "@alepha/react/i18n";
 import { $module, type Static } from "alepha";
+import { AlephaReactForm } from "alepha/react/form";
+import { AlephaReactHead } from "alepha/react/head";
+import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ComponentType, ReactNode } from "react";
 import { alephaThemeAtom } from "./atoms/alephaThemeAtom.ts";
 import type { ControlProps } from "./components/form/Control.tsx";
@@ -125,7 +125,7 @@ declare module "alepha" {
   }
 }
 
-declare module "@alepha/react/router" {
+declare module "alepha/react/router" {
   interface PagePrimitiveOptions {
     /**
      * Human-readable title for the page.

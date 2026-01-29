@@ -51,7 +51,10 @@ export class InitCommand {
         }),
       ),
       ui: t.optional(
-        t.boolean({ description: "Include Alepha UI dependencies" }),
+        t.boolean({
+          description:
+            "Include @alepha/ui (components, auth portal, admin portal)",
+        }),
       ),
       test: t.optional(
         t.boolean({ description: "Include Vitest and create test directory" }),
@@ -64,12 +67,6 @@ export class InitCommand {
       ),
     }),
     handler: async ({ run, flags, root, args }) => {
-      // React implies API and UI
-      if (flags.react) {
-        flags.api = true;
-        flags.ui = true;
-      }
-
       if (args) {
         root = this.fs.join(root, args);
         await this.fs.mkdir(root);
@@ -95,24 +92,29 @@ export class InitCommand {
           await this.scaffolder.ensureConfig(root, {
             force,
             tsconfigJson: !workspace.config.tsconfigJson,
-            packageJson: flags,
+            packageJson: { ...flags, isPackage: workspace.isPackage },
             // Skip workspace-level configs if they exist at workspace root
             biomeJson: !workspace.config.biomeJson,
             editorconfig: !workspace.config.editorconfig,
-            indexHtml: !!flags.react && !isExpo,
             agentMd: agentType
               ? { type: agentType, react: !!flags.react, ui: !!flags.ui }
               : false,
           });
 
           // Create project structure based on flags
-          // Note: React project is created via indexHtml option above
-          if (!flags.react) {
-            if (flags.api) {
-              await this.scaffolder.ensureApiProject(root, { force });
-            } else {
-              await this.scaffolder.ensureMinimalProject(root, { force });
-            }
+          await this.scaffolder.ensureMainServerTs(root, {
+            api: !!flags.api,
+            react: !!flags.react && !isExpo,
+            force,
+          });
+          if (flags.api) {
+            await this.scaffolder.ensureApiProject(root, { force });
+          }
+          if (flags.react && !isExpo) {
+            await this.scaffolder.ensureWebProject(root, {
+              ui: !!flags.ui,
+              force,
+            });
           }
         },
       });
@@ -144,32 +146,9 @@ export class InitCommand {
         root: installRoot,
       });
 
-      // Only add vite/biome as dependencies if not in a workspace package
-      // (workspace root should already have them)
-      if (!workspace.isPackage) {
-        if (!isExpo) {
-          await this.pm.ensureDependency(root, "vite", {
-            run,
-            exec: (cmd, opts) => this.utils.exec(cmd, opts),
-          });
-        }
-
-        await this.pm.ensureDependency(root, "@biomejs/biome", {
-          run,
-          exec: (cmd, opts) => this.utils.exec(cmd, opts),
-        });
-      }
-
-      // Install vitest and create test directory if --test flag is set
+      // Create test directory if --test flag is set (vitest is in package.json)
       if (flags.test) {
         await this.scaffolder.ensureTestDir(root);
-        await run(
-          `${pmName} ${pmName === "yarn" ? "add" : "install"} -D vitest`,
-          {
-            alias: "setup testing with Vitest",
-            root: installRoot,
-          },
-        );
       }
 
       await run(`${pmName} run lint`, {

@@ -1,5 +1,3 @@
-import { useInject } from "@alepha/react";
-import { type FormModel, useForm } from "@alepha/react/form";
 import { Checkbox, Flex, Table, Text, UnstyledButton } from "@mantine/core";
 import { useDebouncedCallback } from "@mantine/hooks";
 import {
@@ -9,6 +7,8 @@ import {
 } from "@tabler/icons-react";
 import { Alepha, type Static, type TObject, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { useInject } from "alepha/react";
+import { type FormModel, useForm } from "alepha/react/form";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ui } from "../../constants/ui.ts";
 import DataTableFilters, {

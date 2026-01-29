@@ -1,8 +1,8 @@
-import { ClientOnly } from "@alepha/react";
 import { Flex, Kbd, Text } from "@mantine/core";
 import { useOs } from "@mantine/hooks";
 import { spotlight } from "@mantine/spotlight";
 import { IconSearch } from "@tabler/icons-react";
+import { ClientOnly } from "alepha/react";
 import ActionButton, { type ActionProps } from "./ActionButton.tsx";
 
 export interface OmnibarButtonProps {

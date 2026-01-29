@@ -1,7 +1,3 @@
-import { useClient } from "@alepha/react";
-import { useForm } from "@alepha/react/form";
-import { useI18n } from "@alepha/react/i18n";
-import { useRouterState } from "@alepha/react/router";
 import { ActionButton, ClipboardButton, Control } from "@alepha/ui";
 import {
   Badge,
@@ -30,6 +26,10 @@ import {
 } from "@tabler/icons-react";
 import { t } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
+import { useClient } from "alepha/react";
+import { useForm } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
+import { useRouterState } from "alepha/react/router";
 import { type ReactNode, useEffect, useState } from "react";
 
 export interface AdminUserDetailsProps {

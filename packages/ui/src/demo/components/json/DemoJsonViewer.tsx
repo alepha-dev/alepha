@@ -1,5 +1,5 @@
-import { useI18n } from "@alepha/react/i18n";
 import { t } from "alepha";
+import { useI18n } from "alepha/react/i18n";
 import { JsonViewer } from "../../../json/index.ts";
 import Showcase from "../shared/Showcase.tsx";
 

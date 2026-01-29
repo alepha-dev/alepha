@@ -1,8 +1,3 @@
-import { useClient } from "@alepha/react";
-import { useAuth } from "@alepha/react/auth";
-import { useForm } from "@alepha/react/form";
-import { useI18n } from "@alepha/react/i18n";
-import { useRouter } from "@alepha/react/router";
 import { ActionButton, Control, capitalize } from "@alepha/ui";
 import {
   Alert,
@@ -28,6 +23,11 @@ import type {
   RegistrationIntentResponse,
   UserController,
 } from "alepha/api/users";
+import { useClient } from "alepha/react";
+import { useAuth } from "alepha/react/auth";
+import { useForm } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import { useMemo, useState } from "react";
 import type { AuthI18n } from "../AuthI18n.ts";
 import type { AuthRouter } from "../AuthRouter.ts";

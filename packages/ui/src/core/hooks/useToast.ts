@@ -1,4 +1,4 @@
-import { useInject } from "@alepha/react";
+import { useInject } from "alepha/react";
 import { ToastService } from "../services/ToastService.tsx";
 
 /**

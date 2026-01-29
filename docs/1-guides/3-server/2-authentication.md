@@ -194,7 +194,7 @@ class UserController {
 On the client (React), you don't need to manage tokens manually. Alepha handles the cookies for you.
 
 ```tsx
-import { useAuth } from "@alepha/react/auth";
+import { useAuth } from "alepha/react/auth";
 import type { AuthProviders } from "./AuthProviders";
 
 const LoginPage = () => {

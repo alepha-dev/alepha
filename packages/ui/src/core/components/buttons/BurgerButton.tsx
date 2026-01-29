@@ -1,5 +1,5 @@
-import { useStore } from "@alepha/react";
 import { Burger, type BurgerProps } from "@mantine/core";
+import { useStore } from "alepha/react";
 
 export interface BurgerButtonProps extends BurgerProps {}
 

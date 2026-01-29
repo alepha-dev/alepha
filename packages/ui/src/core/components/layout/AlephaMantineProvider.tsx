@@ -1,6 +1,3 @@
-import { useEvents } from "@alepha/react";
-import { FormValidationError } from "@alepha/react/form";
-import { NestedView } from "@alepha/react/router";
 import {
   ColorSchemeScript,
   type ColorSchemeScriptProps,
@@ -12,6 +9,9 @@ import { Notifications, type NotificationsProps } from "@mantine/notifications";
 import type { NavigationProgressProps } from "@mantine/nprogress";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
 import { TypeBoxError } from "alepha";
+import { useEvents } from "alepha/react";
+import { FormValidationError } from "alepha/react/form";
+import { NestedView } from "alepha/react/router";
 import type { ReactNode } from "react";
 import { useTheme } from "../../hooks/useTheme.ts";
 import { useToast } from "../../hooks/useToast.ts";

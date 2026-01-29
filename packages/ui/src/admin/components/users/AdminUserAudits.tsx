@@ -1,6 +1,3 @@
-import { useClient } from "@alepha/react";
-import { useI18n } from "@alepha/react/i18n";
-import { useRouterState } from "@alepha/react/router";
 import { DataTable, Flex, Text } from "@alepha/ui";
 import { Badge, Group, Tooltip } from "@mantine/core";
 import {
@@ -11,6 +8,9 @@ import {
 } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
+import { useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { useRouterState } from "alepha/react/router";
 
 export interface AdminUserAuditsProps {
   userRealmName?: string;
