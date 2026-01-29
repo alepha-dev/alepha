@@ -464,6 +464,150 @@ describe("$page browser tests", () => {
     });
   });
 
+  describe("onEnter hook", () => {
+    it("should call onEnter when navigating to a page", async () => {
+      const homeOnEnterSpy = vi.fn();
+      const aboutOnEnterSpy = vi.fn();
+
+      class App {
+        home = $page({
+          path: "/",
+          onEnter: homeOnEnterSpy,
+          component: () => <div data-testid="home">Home</div>,
+        });
+
+        about = $page({
+          path: "/about",
+          onEnter: aboutOnEnterSpy,
+          component: () => <div data-testid="about">About</div>,
+        });
+      }
+
+      alepha = Alepha.create().with(AlephaReact).with(App);
+      await alepha.start();
+
+      const router = alepha.inject(ReactRouter);
+
+      // Navigate to home first
+      await act(async () => {
+        await router.go("/");
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-testid="home"]')).toBeDefined();
+      });
+
+      // Clear spies after initial setup to test subsequent navigation
+      homeOnEnterSpy.mockClear();
+      aboutOnEnterSpy.mockClear();
+
+      // Navigate to about - onEnter should be called
+      await act(async () => {
+        await router.go("/about");
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-testid="about"]')).toBeDefined();
+      });
+
+      expect(aboutOnEnterSpy).toHaveBeenCalledTimes(1);
+      // Home's onEnter should not be called when leaving
+      expect(homeOnEnterSpy).not.toHaveBeenCalled();
+    });
+
+    it("should call onEnter on initial navigation", async () => {
+      const onEnterSpy = vi.fn();
+
+      class App {
+        home = $page({
+          path: "/",
+          onEnter: onEnterSpy,
+          component: () => <div data-testid="home">Home</div>,
+        });
+      }
+
+      alepha = Alepha.create().with(AlephaReact).with(App);
+      await alepha.start();
+
+      const router = alepha.inject(ReactRouter);
+
+      // Navigate to home - onEnter should be called
+      await act(async () => {
+        await router.go("/");
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-testid="home"]')).toBeDefined();
+      });
+
+      expect(onEnterSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not call parent onEnter when only child changes", async () => {
+      const parentOnEnterSpy = vi.fn();
+      const child1OnEnterSpy = vi.fn();
+      const child2OnEnterSpy = vi.fn();
+
+      class App {
+        layout = $page({
+          path: "/",
+          onEnter: parentOnEnterSpy,
+          component: () => (
+            <div data-testid="layout">
+              <NestedView />
+            </div>
+          ),
+          children: [],
+        });
+
+        child1 = $page({
+          path: "/child1",
+          parent: this.layout,
+          onEnter: child1OnEnterSpy,
+          component: () => <div data-testid="child1">Child 1</div>,
+        });
+
+        child2 = $page({
+          path: "/child2",
+          parent: this.layout,
+          onEnter: child2OnEnterSpy,
+          component: () => <div data-testid="child2">Child 2</div>,
+        });
+      }
+
+      alepha = Alepha.create().with(AlephaReact).with(App);
+      await alepha.start();
+
+      const router = alepha.inject(ReactRouter);
+
+      // Navigate to child1
+      await act(async () => {
+        await router.go("/child1");
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-testid="child1"]')).toBeDefined();
+      });
+
+      expect(parentOnEnterSpy).toHaveBeenCalledTimes(1);
+      expect(child1OnEnterSpy).toHaveBeenCalledTimes(1);
+      expect(child2OnEnterSpy).not.toHaveBeenCalled();
+
+      // Navigate to child2 - parent onEnter should NOT be called again
+      await act(async () => {
+        await router.go("/child2");
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-testid="child2"]')).toBeDefined();
+      });
+
+      // Parent should still be 1 (not called again)
+      expect(parentOnEnterSpy).toHaveBeenCalledTimes(1);
+      expect(child2OnEnterSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("schema validation", () => {
     it("should validate and parse params", async () => {
       class App {

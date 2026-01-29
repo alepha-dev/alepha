@@ -270,6 +270,22 @@ export interface PagePrimitiveOptions<
   onServerResponse?: (request: ServerRequest) => unknown;
 
   /**
+   * Called when user enters the page. (browser only)
+   *
+   * Useful for browser-only side effects like analytics, scroll management,
+   * or focus handling that don't need to return data to the component.
+   *
+   * @example
+   * ```ts
+   * onEnter: () => {
+   *   analytics.trackPageView("/dashboard");
+   *   window.scrollTo(0, 0);
+   * }
+   * ```
+   */
+  onEnter?: () => void;
+
+  /**
    * Called when user leaves the page. (browser only)
    */
   onLeave?: () => void;
