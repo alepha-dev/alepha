@@ -11,7 +11,7 @@
   "dependencies": {
     "@mantine/core": "^8.3.13",
     "alepha": "^0.15.1",
-    "react": "^19.2.3"
+    "react": "^19.2.4"
   },
   "devDependencies": {
     "vite": "^7.3.1"

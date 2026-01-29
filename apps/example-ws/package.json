@@ -7,6 +7,6 @@
   },
   "dependencies": {
     "alepha": "^0.15.1",
-    "react": "^19.2.3"
+    "react": "^19.2.4"
   }
 }
