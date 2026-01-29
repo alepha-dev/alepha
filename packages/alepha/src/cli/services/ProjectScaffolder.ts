@@ -51,7 +51,7 @@ export class ProjectScaffolder {
    */
   public getAppName(root: string): string {
     const dirName = basename(root);
-    const appName = dirName.toLowerCase().replace(/[\s\-_]/g, "");
+    const appName = dirName.toLowerCase().replace(/[\s\-_.\d]/g, "");
     return appName || "app";
   }
 
