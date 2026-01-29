@@ -72,6 +72,10 @@ export class InitCommand {
         await this.fs.mkdir(root);
       }
 
+      if (flags.ui) {
+        flags.react = true;
+      }
+
       // Detect workspace context (are we inside packages/ or apps/ of a monorepo?)
       const workspace = await this.pm.getWorkspaceContext(root);
 
@@ -112,6 +116,7 @@ export class InitCommand {
           }
           if (flags.react && !isExpo) {
             await this.scaffolder.ensureWebProject(root, {
+              api: !!flags.api,
               ui: !!flags.ui,
               force,
             });

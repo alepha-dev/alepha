@@ -169,12 +169,17 @@ export class PackageManagerUtils {
 
   /**
    * Install a dependency if it's missing from the project.
+   * Optionally checks workspace root for the dependency in monorepo setups.
    */
   public async ensureDependency(
     root: string,
     packageName: string,
     options: {
       dev?: boolean;
+      /**
+       * Also check workspace root for the dependency (for monorepo setups).
+       */
+      checkWorkspace?: boolean;
       run?: RunnerMethod;
       exec?: (
         cmd: string,
@@ -182,11 +187,25 @@ export class PackageManagerUtils {
       ) => Promise<void>;
     } = {},
   ): Promise<void> {
-    const { dev = true } = options;
+    const { dev = true, checkWorkspace = false } = options;
 
+    // Check current package
     if (await this.hasDependency(root, packageName)) {
       this.log.debug(`Dependency '${packageName}' is already installed`);
       return;
+    }
+
+    // Check workspace root (for monorepo setups)
+    if (checkWorkspace) {
+      const workspace = await this.getWorkspaceContext(root);
+      if (workspace.workspaceRoot) {
+        if (await this.hasDependency(workspace.workspaceRoot, packageName)) {
+          this.log.debug(
+            `Dependency '${packageName}' is already installed in workspace root`,
+          );
+          return;
+        }
+      }
     }
 
     const cmd = await this.getInstallCommand(root, packageName, dev);

@@ -9,7 +9,7 @@ export const mainServerTs = (options: MainServerTsOptions = {}) => {
   const imports: string[] = [];
   const withs: string[] = [];
 
-  if (api || react) {
+  if (api) {
     imports.push(`import { ApiModule } from "./api/index.ts";`);
     withs.push(`alepha.with(ApiModule);`);
   }
@@ -27,6 +27,7 @@ import { Alepha, run } from "alepha";
 ${importsBlock}
 const alepha = Alepha.create();
 ${withsBlock}
+
 run(alepha);
 `.trim();
 };

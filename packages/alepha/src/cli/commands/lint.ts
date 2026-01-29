@@ -13,10 +13,16 @@ export class LintCommand {
     name: "lint",
     description: "Run linter across the codebase using Biome",
     handler: async ({ root }) => {
-      await this.scaffolder.ensureConfig(root, { biomeJson: true });
+      await this.scaffolder.ensureConfig(root, {
+        biomeJson: true,
+        checkWorkspace: true,
+      });
+
       await this.pm.ensureDependency(root, "@biomejs/biome", {
+        checkWorkspace: true,
         exec: (cmd, opts) => this.utils.exec(cmd, opts),
       });
+
       await this.utils.exec("biome check --fix");
     },
   });

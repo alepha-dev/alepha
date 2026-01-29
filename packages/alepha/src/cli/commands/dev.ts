@@ -20,39 +20,20 @@ export class DevCommand {
 
   /**
    * Will run the project in watch mode.
-   *
-   * - If an index.html file is found in the project root, it will run Vite in dev mode.
-   * - Otherwise, it will look for a server entry file and run it with tsx in watch mode.
    */
   public readonly dev = $command({
     name: "dev",
     description: "Run the project in development mode",
     handler: async ({ root }) => {
-      const [expo, react] = await Promise.all([
-        this.pm.hasExpo(root),
-        this.pm.hasReact(root),
-      ]);
-
       await this.scaffolder.ensureConfig(root, {
         tsconfigJson: true,
       });
-
-      if (expo) {
-        await this.utils.exec("expo start");
-        return;
-      }
 
       const entry = await this.boot.getAppEntry(root);
       this.log.debug("Entry file found", { entry });
 
       // -> here, we assume we use Vite as runner (api or fullstack)
       // but it's planned to support Bun runner in the future as well
-
-      // Ensure vite is installed before running
-      await this.pm.ensureDependency(root, "vite", {
-        exec: (cmd, opts) => this.utils.exec(cmd, opts),
-      });
-
       await this.viteDevServer.init({ root, entry });
       await this.viteDevServer.start();
     },

@@ -62,6 +62,10 @@ export class ProjectScaffolder {
     root: string,
     opts: {
       force?: boolean;
+      /**
+       * Check workspace root for existing config files.
+       */
+      checkWorkspace?: boolean;
       packageJson?: boolean | DependencyModes;
       tsconfigJson?: boolean;
       biomeJson?: boolean;
@@ -71,6 +75,7 @@ export class ProjectScaffolder {
   ): Promise<void> {
     const tasks: Promise<void>[] = [];
     const force = opts.force ?? false;
+    const checkWorkspace = opts.checkWorkspace ?? false;
 
     if (opts.packageJson) {
       tasks.push(
@@ -86,10 +91,10 @@ export class ProjectScaffolder {
       tasks.push(this.ensureTsConfig(root, { force }));
     }
     if (opts.biomeJson) {
-      tasks.push(this.ensureBiomeConfig(root, { force }));
+      tasks.push(this.ensureBiomeConfig(root, { force, checkWorkspace }));
     }
     if (opts.editorconfig) {
-      tasks.push(this.ensureEditorConfig(root, { force }));
+      tasks.push(this.ensureEditorConfig(root, { force, checkWorkspace }));
     }
     if (opts.agentMd) {
       tasks.push(this.ensureAgentMd(root, { ...opts.agentMd, force }));
@@ -118,15 +123,29 @@ export class ProjectScaffolder {
 
   public async ensureBiomeConfig(
     root: string,
-    opts: { force?: boolean } = {},
+    opts: { force?: boolean; checkWorkspace?: boolean } = {},
   ): Promise<void> {
+    if (
+      !opts.force &&
+      opts.checkWorkspace &&
+      (await this.existsInParents(root, "biome.json"))
+    ) {
+      return;
+    }
     await this.ensureFile(root, "biome.json", biomeJson(), opts.force);
   }
 
   public async ensureEditorConfig(
     root: string,
-    opts: { force?: boolean } = {},
+    opts: { force?: boolean; checkWorkspace?: boolean } = {},
   ): Promise<void> {
+    if (
+      !opts.force &&
+      opts.checkWorkspace &&
+      (await this.existsInParents(root, ".editorconfig"))
+    ) {
+      return;
+    }
     await this.ensureFile(root, ".editorconfig", editorconfig(), opts.force);
   }
 
@@ -246,7 +265,7 @@ export class ProjectScaffolder {
    */
   public async ensureWebProject(
     root: string,
-    opts: { ui?: boolean; force?: boolean } = {},
+    opts: { api?: boolean; ui?: boolean; force?: boolean } = {},
   ): Promise<void> {
     const appName = this.getAppName(root);
 
@@ -273,7 +292,7 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/web/AppRouter.ts",
-      webAppRouterTs(),
+      webAppRouterTs({ api: opts.api, ui: opts.ui }),
       opts.force,
     );
     await this.ensureFile(

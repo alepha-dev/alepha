@@ -2,11 +2,11 @@ export const webHelloComponentTsx = () =>
   `import { useState } from "react";
 
 interface Props {
-  message: string;
+  message?: string;
 }
 
 const Hello = (props: Props) => {
-  const [message, setMessage] = useState(props.message);
+  const [message, setMessage] = useState(props.message ?? "");
   return (
     <div>
       <h1>{message}</h1>

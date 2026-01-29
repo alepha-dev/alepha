@@ -299,6 +299,11 @@ export class ViteDevServerProvider {
     res: any,
     ctx: { metadata: any },
   ): Promise<boolean> {
+    // Skip if response already started
+    if (res.headersSent || res.writableEnded) {
+      return false;
+    }
+
     return new Promise((resolve) => {
       let resolved = false;
 
@@ -308,6 +313,29 @@ export class ViteDevServerProvider {
         if (handled) ctx.metadata.vite = true;
         resolve(handled);
       };
+
+      // Wrap response to prevent writes after we've resolved
+      const originalSetHeader = res.setHeader.bind(res);
+      const originalWriteHead = res.writeHead?.bind(res);
+      const originalWrite = res.write.bind(res);
+      const originalEnd = res.end.bind(res);
+
+      const guardedCall = <T>(fn: (...args: any[]) => T, ...args: any[]): T => {
+        if (resolved && !ctx.metadata.vite) {
+          // Vite didn't handle this request, silently ignore late writes
+          return undefined as T;
+        }
+        return fn(...args);
+      };
+
+      res.setHeader = (...args: any[]) =>
+        guardedCall(originalSetHeader, ...args);
+      if (originalWriteHead) {
+        res.writeHead = (...args: any[]) =>
+          guardedCall(originalWriteHead, ...args);
+      }
+      res.write = (...args: any[]) => guardedCall(originalWrite, ...args);
+      res.end = (...args: any[]) => guardedCall(originalEnd, ...args);
 
       res.on("finish", () => done(true));
       res.on("close", () => res.headersSent && done(true));

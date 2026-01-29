@@ -83,10 +83,6 @@ export class BuildCommand {
       const distDir = "dist";
       const publicDir = "public";
 
-      await this.pm.ensureDependency(root, "vite", {
-        run,
-        exec: (cmd, opts) => this.utils.exec(cmd, opts),
-      });
       await run.rm("dist", { alias: "clean dist" });
 
       const options = this.options;
