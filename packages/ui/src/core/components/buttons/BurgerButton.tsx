@@ -1,15 +1,16 @@
 import { Burger, type BurgerProps } from "@mantine/core";
 import { useStore } from "alepha/react";
+import { alephaSidebarAtom } from "../../atoms/alephaSidebarAtom.ts";
 
 export interface BurgerButtonProps extends BurgerProps {}
 
 const BurgerButton = (props: BurgerButtonProps) => {
-  const [opened, setOpened] = useStore("alepha.ui.sidebar.opened");
+  const [sidebar, setSidebar] = useStore(alephaSidebarAtom);
 
   return (
     <Burger
-      opened={opened}
-      onClick={() => setOpened(!opened)}
+      opened={sidebar.opened}
+      onClick={() => setSidebar({ ...sidebar, opened: !sidebar.opened })}
       hiddenFrom="sm"
       size="sm"
       {...props}

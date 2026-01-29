@@ -49,44 +49,51 @@ export const Sidebar = (props: SidebarProps) => {
   const router = useRouter();
   const { onItemClick } = props;
 
+  const divider = (key: string | number) => {
+    return (
+      <Flex
+        key={key}
+        h={1}
+        bg={"var(--alepha-border)"}
+        my={"xs"}
+        mx={props.collapsed ? 0 : "sm"}
+      />
+    );
+  };
+
   const renderNode = (item: SidebarNode, key: number) => {
     if ("type" in item) {
+      // Hide spacers when collapsed
       if (item.type === "spacer") {
+        if (props.collapsed) return null;
         return <Flex key={key} h={16} />;
       }
 
       if (item.type === "divider") {
-        return (
-          <Flex
-            key={key}
-            h={1}
-            bg={"var(--alepha-border)"}
-            my={"md"}
-            mx={"sm"}
-          />
-        );
+        return divider(key);
       }
 
       if (item.type === "search") {
-        return <OmnibarButton collapsed={props.collapsed} key={key} />;
+        return (
+          <Flex key={key} mb="xs">
+            <OmnibarButton collapsed={props.collapsed} />
+          </Flex>
+        );
       }
 
       if (item.type === "toggle") {
         return <ToggleSidebarButton key={key} />;
       }
 
+      // Replace sections with dividers when collapsed
       if (item.type === "section") {
-        if (props.collapsed) return;
+        if (props.collapsed) {
+          return divider(key);
+        }
         return (
-          <Flex key={key} mt={"md"} mb={"xs"} align={"center"} gap={"xs"}>
+          <Flex key={key} mt={"md"} align={"center"} gap={"xs"}>
             {renderIcon(item.icon)}
-            <Text
-              key={key}
-              size={"xs"}
-              c={"dimmed"}
-              tt={"uppercase"}
-              fw={"bold"}
-            >
+            <Text size={"xs"} c={"dimmed"} tt={"uppercase"} fw={"bold"}>
               {item.label}
             </Text>
           </Flex>
@@ -150,15 +157,18 @@ export const Sidebar = (props: SidebarProps) => {
   };
 
   const padding = "md";
-  const gap = props.items ? props.gap : "xs";
-  const menu = useMemo(() => getSidebarNodes(), []);
+  const gap = props.items ? (props.gap ?? 2) : "xs";
+  const menu = useMemo(
+    () => getSidebarNodes(),
+    [props.items, props.autoPopulateMenu],
+  );
 
   return (
     <Flex
       flex={1}
       py={padding}
       direction={"column"}
-      className={"overflow-auto"}
+      className="alepha-sidebar-scroll"
       {...props.flexProps}
     >
       <Flex gap={gap} px={padding} direction={"column"}>
@@ -171,7 +181,7 @@ export const Sidebar = (props: SidebarProps) => {
         px={padding}
         direction={"column"}
         flex={1}
-        className={"overflow-auto"}
+        className="alepha-sidebar-scroll"
       >
         {menu
           .filter((it) => !it.position)
@@ -332,34 +342,9 @@ export interface SidebarItemProps {
 const SidebarCollapsedItem = (props: SidebarItemProps) => {
   const { item, level } = props;
 
-  const router = useRouter();
-  const isActive = useCallback((item: SidebarMenuItem): boolean => {
-    if (!item.children) return false;
-    for (const child of item.children) {
-      if (child.href) {
-        if (router.isActive(child.href)) {
-          return true;
-        }
-      }
-      if (isActive(child)) {
-        return true;
-      }
-    }
-    return false;
-  }, []);
-
-  const [isOpen, setIsOpen] = useState<boolean>(isActive(item));
-
-  const handleItemClick = (e: MouseEvent) => {
-    if (!props.item.target) {
-      e.preventDefault();
-    }
-    if (item.children && item.children.length > 0) {
-      setIsOpen(!isOpen);
-    } else {
-      props.onItemClick?.(item);
-      item.onClick?.();
-    }
+  const handleItemClick = () => {
+    props.onItemClick?.(item);
+    item.onClick?.();
   };
 
   return (
@@ -371,35 +356,15 @@ const SidebarCollapsedItem = (props: SidebarItemProps) => {
       }
       variant={"subtle"}
       variantActive={"default"}
-      tooltip={
-        item.children
-          ? undefined
-          : {
-              label: item.label,
-              position: "right",
-            }
-      }
+      tooltip={{
+        label: item.label,
+        position: "right",
+      }}
       radius={props.item.theme?.radius ?? props.theme.button?.radius ?? "md"}
       onClick={handleItemClick}
       icon={renderIcon(item.icon) ?? <IconSquareRounded />}
       href={props.item.href as any}
       target={props.item.target}
-      menu={
-        item.children
-          ? ({
-              position: "right",
-              on: "hover",
-              items: item.children
-                .filter((child) => !child.can || child.can())
-                .map((child) => ({
-                  label: child.label,
-                  href: child.href,
-                  icon: renderIcon(child.icon),
-                  children: child.children?.filter((c) => !c.can || c.can()),
-                })),
-            } as any)
-          : undefined
-      }
       {...props.item.actionProps}
     />
   );

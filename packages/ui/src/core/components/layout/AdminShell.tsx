@@ -5,10 +5,18 @@ import {
   type AppShellMainProps,
   type AppShellNavbarProps,
   type AppShellProps,
+  Flex,
 } from "@mantine/core";
 import { useEvents, useStore } from "alepha/react";
 import { NestedView, useRouter } from "alepha/react/router";
-import { type ReactNode, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { alephaSidebarAtom } from "../../atoms/alephaSidebarAtom.ts";
 import { ui } from "../../constants/ui.ts";
 import AppBar, { type AppBarProps } from "./AppBar.tsx";
 import { Sidebar, type SidebarProps } from "./Sidebar.tsx";
@@ -25,6 +33,12 @@ export interface AdminShellProps {
   footer?: ReactNode;
   children?: ReactNode;
 
+  /**
+   * Enable drag-to-resize for the sidebar.
+   * Width and constraints are configured in alephaSidebarAtom.
+   */
+  resizable?: boolean;
+
   noSidebarWhen?: {
     /**
      * Paths where the sidebar should be hidden.
@@ -33,27 +47,142 @@ export interface AdminShellProps {
   };
 }
 
-declare module "alepha" {
-  interface State {
-    /**
-     * Whether the sidebar is opened or closed.
-     */
-    "alepha.ui.sidebar.opened"?: boolean;
-
-    /**
-     * Whether the sidebar is collapsed (narrow) or expanded (wide).
-     */
-    "alepha.ui.sidebar.collapsed"?: boolean;
-  }
-}
-
 const AdminShell = (props: AdminShellProps) => {
   const router = useRouter();
-  const [opened, setOpened] = useStore("alepha.ui.sidebar.opened");
-  const [collapsed] = useStore(
-    "alepha.ui.sidebar.collapsed",
-    props.sidebarProps?.collapsed,
+  const [sidebar, setSidebar] = useStore(alephaSidebarAtom);
+  const { opened, collapsed } = sidebar;
+
+  // Initialize collapsed state from props on mount
+  useEffect(() => {
+    if (props.sidebarProps?.collapsed !== undefined) {
+      setSidebar({ ...sidebar, collapsed: props.sidebarProps.collapsed });
+    }
+  }, []);
+
+  // Resize state
+  const [isResizing, setIsResizing] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const [collapseEffect, setCollapseEffect] = useState({
+    offset: 0,
+    opacity: 1,
+  });
+  const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  // Use atom values for constraints
+  const {
+    collapsedWidth,
+    collapseThreshold,
+    maxWidth,
+    hoverDelay,
+    defaultWidth,
+  } = sidebar;
+
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      if (!props.resizable) return;
+      e.preventDefault();
+
+      // If collapsed and hovering, un-collapse first and start from defaultWidth
+      if (collapsed) {
+        setSidebar({ ...sidebar, collapsed: false, width: defaultWidth });
+        setIsResizing(true);
+        resizeRef.current = {
+          startX: e.clientX,
+          startWidth: defaultWidth,
+        };
+      } else {
+        setIsResizing(true);
+        resizeRef.current = {
+          startX: e.clientX,
+          startWidth: sidebar.width,
+        };
+      }
+    },
+    [props.resizable, collapsed, sidebar, setSidebar, defaultWidth],
   );
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizeRef.current) return;
+      const delta = e.clientX - resizeRef.current.startX;
+      const rawWidth = resizeRef.current.startWidth + delta;
+      const newWidth = Math.min(Math.max(rawWidth, collapsedWidth), maxWidth);
+
+      // Visual effect when below collapse threshold
+      if (rawWidth < collapseThreshold) {
+        const progress = Math.max(
+          0,
+          (collapseThreshold - rawWidth) / collapseThreshold,
+        );
+        setCollapseEffect({
+          offset: -progress * collapsedWidth,
+          opacity: 1 - progress * 0.7,
+        });
+        setSidebar({ ...sidebar, width: collapseThreshold, collapsed: false });
+      } else {
+        setCollapseEffect({ offset: 0, opacity: 1 });
+        setSidebar({ ...sidebar, width: newWidth, collapsed: false });
+      }
+    };
+
+    const handleMouseUp = () => {
+      // If we released while in collapse zone, actually collapse
+      if (collapseEffect.offset < 0) {
+        setSidebar({ ...sidebar, collapsed: true });
+      }
+      setCollapseEffect({ offset: 0, opacity: 1 });
+      setIsResizing(false);
+      resizeRef.current = null;
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [
+    isResizing,
+    sidebar,
+    setSidebar,
+    collapsedWidth,
+    maxWidth,
+    collapseThreshold,
+    collapseEffect.offset,
+  ]);
+
+  // Hover to expand when collapsed (with delay)
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleNavbarMouseEnter = useCallback(() => {
+    if (collapsed) {
+      hoverTimeoutRef.current = setTimeout(() => {
+        setIsHovering(true);
+      }, hoverDelay);
+    }
+  }, [collapsed, hoverDelay]);
+
+  const handleNavbarMouseLeave = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setIsHovering(false);
+  }, []);
+
+  // Reset hover state when collapsed changes (e.g., when toggle button is clicked)
+  useEffect(() => {
+    if (collapsed) {
+      setIsHovering(false);
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+    }
+  }, [collapsed]);
 
   const shouldShowSidebar = () => {
     if (props.noSidebarWhen?.paths) {
@@ -78,10 +207,10 @@ const AdminShell = (props: AdminShellProps) => {
         setShowSidebar(shouldShowSidebar());
       },
       "react:transition:begin": () => {
-        setOpened(false);
+        setSidebar({ ...sidebar, opened: false });
       },
     },
-    [],
+    [sidebar],
   );
 
   // Default AppBar items with burger button on the left
@@ -94,7 +223,20 @@ const AdminShell = (props: AdminShellProps) => {
 
   const headerHeight = hasAppBar ? 60 : 0;
   const footerHeight = props.footer ? 24 : 0;
-  const sidebarWidth = hasSidebar ? (collapsed ? 78 : 300) : 0;
+  const expandedWidth = Math.max(sidebar.width, collapsedWidth);
+
+  // When collapsed but hovering, show defaultWidth (not current width)
+  const isExpandedByHover = collapsed && isHovering;
+  const effectiveCollapsed = collapsed && !isHovering;
+  const hoverWidth = Math.max(defaultWidth, collapsedWidth);
+  const sidebarWidth = hasSidebar
+    ? effectiveCollapsed
+      ? collapsedWidth
+      : isExpandedByHover
+        ? hoverWidth
+        : expandedWidth
+    : 0;
+  const canResize = props.resizable && !collapsed;
 
   return (
     <AppShell
@@ -105,7 +247,11 @@ const AdminShell = (props: AdminShellProps) => {
       navbar={
         hasSidebar
           ? {
-              width: collapsed ? { base: 78 } : { base: 300 },
+              width: effectiveCollapsed
+                ? { base: collapsedWidth }
+                : isExpandedByHover
+                  ? { base: hoverWidth }
+                  : { base: expandedWidth },
               breakpoint: "sm",
               collapsed: { mobile: !opened },
             }
@@ -121,8 +267,38 @@ const AdminShell = (props: AdminShellProps) => {
       </AppShell.Header>
 
       {hasSidebar && (
-        <AppShell.Navbar bg={ui.colors.surface} {...props.appShellNavbarProps}>
-          <Sidebar collapsed={collapsed} {...(props.sidebarProps ?? {})} />
+        <AppShell.Navbar
+          bg={ui.colors.surface}
+          className="alepha-sidebar-navbar"
+          data-resizing={isResizing}
+          onMouseEnter={handleNavbarMouseEnter}
+          onMouseLeave={handleNavbarMouseLeave}
+          style={{
+            transform: collapseEffect.offset
+              ? `translateX(${collapseEffect.offset}px)`
+              : undefined,
+            opacity: collapseEffect.opacity,
+          }}
+          {...props.appShellNavbarProps}
+        >
+          <Sidebar
+            {...(props.sidebarProps ?? {})}
+            collapsed={effectiveCollapsed}
+          />
+          {(canResize || isExpandedByHover) && (
+            <Flex
+              pos="absolute"
+              right={-2}
+              top={0}
+              bottom={0}
+              w={4}
+              style={{
+                cursor: "col-resize",
+                userSelect: "none",
+              }}
+              onMouseDown={handleResizeStart}
+            />
+          )}
         </AppShell.Navbar>
       )}
 
@@ -134,6 +310,8 @@ const AdminShell = (props: AdminShellProps) => {
         display={"flex"}
         flex={1}
         style={{ flexDirection: "column" }}
+        className="alepha-sidebar-main"
+        data-resizing={isResizing}
         {...props.appShellMainProps}
       >
         {props.children ?? <NestedView />}

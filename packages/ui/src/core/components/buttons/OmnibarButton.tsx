@@ -15,6 +15,19 @@ const OmnibarButton = (props: OmnibarButtonProps) => {
   const isMac = os === "macos" || os === "ios";
   const shortcut = isMac ? "⌘" : "Ctrl";
 
+  if (props.collapsed) {
+    return (
+      <ActionButton
+        variant={"subtle"}
+        onClick={spotlight.open}
+        radius={"md"}
+        icon={<IconSearch size={16} />}
+        tooltip={{ label: "Search", position: "right" }}
+        {...props.actionProps}
+      />
+    );
+  }
+
   return (
     <ActionButton
       variant={"default"}

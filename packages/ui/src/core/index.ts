@@ -1,8 +1,9 @@
-import { $module, type Static } from "alepha";
+import { $context, $module, type Static } from "alepha";
 import { AlephaReactForm } from "alepha/react/form";
 import { AlephaReactHead } from "alepha/react/head";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ComponentType, ReactNode } from "react";
+import { alephaSidebarAtom } from "./atoms/alephaSidebarAtom.ts";
 import { alephaThemeAtom } from "./atoms/alephaThemeAtom.ts";
 import type { ControlProps } from "./components/form/Control.tsx";
 import { ThemeProvider } from "./providers/ThemeProvider.ts";
@@ -13,6 +14,7 @@ import { ToastService } from "./services/ToastService.tsx";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export { Flex, Text } from "@mantine/core";
+export * from "./atoms/alephaSidebarAtom.ts";
 export * from "./atoms/alephaThemeAtom.ts";
 export * from "./atoms/alephaThemeListAtom.ts";
 export * from "./atoms/themes/default.ts";
@@ -35,6 +37,7 @@ export { default as LanguageButton } from "./components/buttons/LanguageButton.t
 export { default as OmnibarButton } from "./components/buttons/OmnibarButton.tsx";
 export type { ThemeButtonProps } from "./components/buttons/ThemeButton.tsx";
 export { default as ThemeButton } from "./components/buttons/ThemeButton.tsx";
+export { default as ToggleSidebarButton } from "./components/buttons/ToggleSidebarButton.tsx";
 export { default as AlertDialog } from "./components/dialogs/AlertDialog.tsx";
 export { default as ConfirmDialog } from "./components/dialogs/ConfirmDialog.tsx";
 export { default as PromptDialog } from "./components/dialogs/PromptDialog.tsx";
@@ -121,6 +124,7 @@ declare module "typebox" {
 
 declare module "alepha" {
   interface State {
+    [alephaSidebarAtom.key]?: Static<typeof alephaSidebarAtom.schema>;
     [alephaThemeAtom.key]?: Static<typeof alephaThemeAtom.schema>;
   }
 }
@@ -186,3 +190,32 @@ export const AlephaUI = $module({
     alepha.with(ToastService);
   },
 });
+
+/**
+ * Register UI components and get the RootRouter instance.
+ */
+export const $ui = (
+  opts: {
+    // TODO:
+    // theme?: ThemeOptions;
+    // root?: string = "/";
+  } = {},
+) => {
+  const { alepha } = $context();
+
+  // TODO: Register unique instance ? In order to have multiple ui apps in the same context ?
+  // app = $ui();
+  // admin = $ui({ root: "/admin", theme: adminTheme });
+  // auth = $ui({ root: "/auth", theme: authTheme });
+  // etc...
+
+  /**
+   * If multi ui, should we have N themes ? or one $atom theme but with change based on current ui app ?
+   *
+   * App (theme=T1) -> Admin (theme=T2) ?
+   *
+   * > It can be done with onLeave()/onEnter() of the RootRouter to set the theme atom.
+   */
+
+  return alepha.inject(RootRouter); // Inject as singleton ?
+};

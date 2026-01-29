@@ -287,7 +287,7 @@ const ActionButton = (_props: ActionProps) => {
 
     if (!props.children) {
       restProps.children = Children.only(icon);
-      restProps.px ??= "xs";
+      restProps.px ??= "xs"; // TODO: change based on props.size ?
     } else {
       restProps.leftSection = icon;
     }
