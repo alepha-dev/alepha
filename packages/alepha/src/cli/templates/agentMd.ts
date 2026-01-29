@@ -311,6 +311,11 @@ alepha build     # Build the project
 ## Source Code Access
 
 Full framework source available at \`node_modules/alepha/src/\`.
-Read primitives directly when you need implementation details.
+
+**IMPORTANT:** When answering questions about Alepha primitives, APIs, or internals:
+1. ALWAYS read the local source code first at \`node_modules/alepha/src/\` or \`node_modules/@alepha/ui/src/\` for UI-related questions
+2. Use \`Glob\` to find relevant files: \`node_modules/alepha/src/**/primitives/$<name>.ts\`
+3. Read the implementation AND the \`.spec.ts\` test files for usage examples
+4. Use external documentation as a fallback if source code is insufficient
 `.trim();
 };
