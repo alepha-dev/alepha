@@ -12,7 +12,7 @@
     "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
-    "alepha": "^0.15.1",
+    "alepha": "^0.15.2",
     "react": "^19.2.4"
   },
   "devDependencies": {

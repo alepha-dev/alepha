@@ -1,3 +1,26 @@
+## [0.15.2] - 2026-01-29
+
+### Features
+
+- **react/router**: add page.onEnter (browser only event) (`1fae5992`)
+- **cli**: throw error if --arg doesn't exist (`034340a3`)
+- **ui**: greatly improve sidebar component (`e551b3a6`)
+- **react/router**: merge @alepha/react into alepha main package [BREAKING] (`020b309e`)
+- **cli**: init now runs "git init" (`91a0357f`)
+- **server**: add more server request context helper (`7a09387c`)
+- **cache**: add incr (`15cd4fe0`)
+- **redis**: add incr (`fe6d2f0c`)
+- **api/keys**: new module for managing API_KEYs (`dbece8bc`)
+- **cache**: add testing utils function for memory cache impl (`afdb4454`)
+- **security**: allow more than one user-resolver - load user from jwt or apikey or whatever (`10932117`)
+- **orm**: repository update accept custom sql``, like Drizzle (`2cc66b23`)
+- **cli**: alepha init --pm=bun|node|... and --agent (auto detect claude|codex|...) (`aef9288d`)
+
+### Bug Fixes
+
+- **cli**: allow init in package directory (`a7b1776f`)
+- **server/rate-limit**: fix edge cases (`3ac0ab25`)
+
 ## [0.15.1] - 2026-01-23
 
 ### Features

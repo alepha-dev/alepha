@@ -7,7 +7,7 @@
     "mantine"
   ],
   "author": "Nicolas Foures",
-  "version": "0.15.1",
+  "version": "0.15.2",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -30,7 +30,7 @@
     "@mantine/nprogress": "^8.3.13",
     "@mantine/spotlight": "^8.3.13",
     "@tabler/icons-react": "^3.36.1",
-    "alepha": "0.15.1",
+    "alepha": "0.15.2",
     "dayjs": "^1.11.19"
   },
   "devDependencies": {
