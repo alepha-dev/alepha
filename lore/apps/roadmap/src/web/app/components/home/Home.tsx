@@ -1,6 +1,3 @@
-import { useInject, useStore } from "@alepha/react";
-import { useI18n } from "@alepha/react/i18n";
-import { useRouter } from "@alepha/react/router";
 import { ActionButton } from "@alepha/ui";
 import { Card, Container, Flex, SimpleGrid, Stack, Text } from "@mantine/core";
 import {
@@ -9,6 +6,9 @@ import {
   IconMapRoute,
 } from "@tabler/icons-react";
 import { DateTimeProvider } from "alepha/datetime";
+import { useInject, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import type { Project } from "../../../../api/entities/projects.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";

@@ -1,8 +1,8 @@
-import { useStore } from "@alepha/react";
-import { useRouter, useRouterState } from "@alepha/react/router";
 import { ActionButton } from "@alepha/ui";
 import { Flex, Menu } from "@mantine/core";
 import { IconPlus, IconSquare, IconSquareCheck } from "@tabler/icons-react";
+import { useStore } from "alepha/react";
+import { useRouter, useRouterState } from "alepha/react/router";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";

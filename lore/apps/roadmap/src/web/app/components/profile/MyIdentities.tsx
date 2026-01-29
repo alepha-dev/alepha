@@ -1,5 +1,3 @@
-import { useClient } from "@alepha/react";
-import { useForm } from "@alepha/react/form";
 import { ActionButton } from "@alepha/ui";
 import {
   Badge,
@@ -21,6 +19,8 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 import { t } from "alepha";
+import { useClient } from "alepha/react";
+import { useForm } from "alepha/react/form";
 import { useState } from "react";
 import type { IdentityController } from "../../../../api/controllers/IdentityController.ts";
 import Control from "../ui/Control.tsx";

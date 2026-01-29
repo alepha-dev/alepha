@@ -1,13 +1,8 @@
-import { ReactAuth } from "@alepha/react/auth";
-import { $head, type Head } from "@alepha/react/head";
-import {
-  $page,
-  NotFound,
-  ReactRouter,
-  Redirection,
-} from "@alepha/react/router";
 import { AuthRouter } from "@alepha/ui/auth";
 import { $env, $hook, $inject, Alepha, t } from "alepha";
+import { ReactAuth } from "alepha/react/auth";
+import { $head, type Head } from "alepha/react/head";
+import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
 import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";

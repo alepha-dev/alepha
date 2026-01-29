@@ -1,7 +1,3 @@
-import { useAlepha, useClient, useStore } from "@alepha/react";
-import { useForm } from "@alepha/react/form";
-import { useI18n } from "@alepha/react/i18n";
-import { useRouter } from "@alepha/react/router";
 import { ActionButton } from "@alepha/ui";
 import { Flex, SimpleGrid, Space, Stack } from "@mantine/core";
 import {
@@ -14,6 +10,10 @@ import {
   IconTent,
 } from "@tabler/icons-react";
 import { t } from "alepha";
+import { useAlepha, useClient, useStore } from "alepha/react";
+import { useForm } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
 import type { Project } from "../../../../../api/entities/projects.ts";
 import type { Task } from "../../../../../api/entities/tasks.ts";

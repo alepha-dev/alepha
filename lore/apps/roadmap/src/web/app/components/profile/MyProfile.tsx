@@ -1,5 +1,3 @@
-import { useClient, useInject, useStore } from "@alepha/react";
-import { useI18n } from "@alepha/react/i18n";
 import {
   Avatar,
   Badge,
@@ -24,6 +22,8 @@ import {
   IconTrophy,
   IconUser,
 } from "@tabler/icons-react";
+import { useClient, useInject, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { type ChangeEvent, useRef, useState } from "react";
 import type { UserController } from "../../../../api/controllers/UserController.ts";
 import type { User } from "../../../../api/entities/users.ts";

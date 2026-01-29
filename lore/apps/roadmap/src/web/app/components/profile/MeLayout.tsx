@@ -1,5 +1,3 @@
-import { useAuth } from "@alepha/react/auth";
-import { NestedView, useRouter } from "@alepha/react/router";
 import { ActionButton, type ActionProps } from "@alepha/ui";
 import { Card, Container, Flex, Stack, Text } from "@mantine/core";
 import {
@@ -10,6 +8,8 @@ import {
   IconShield,
   IconUser,
 } from "@tabler/icons-react";
+import { useAuth } from "alepha/react/auth";
+import { NestedView, useRouter } from "alepha/react/router";
 import { theme } from "../../constants/theme.ts";
 import type { MeRouter } from "./MeRouter.ts";
 

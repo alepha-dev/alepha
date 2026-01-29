@@ -1,5 +1,3 @@
-import { useAlepha, useClient } from "@alepha/react";
-import { useI18n } from "@alepha/react/i18n";
 import {
   Badge,
   Button,
@@ -12,6 +10,8 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconMail, IconX } from "@tabler/icons-react";
+import { useAlepha, useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 import type { InvitationController } from "../../../../api/controllers/InvitationController.ts";
 import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";

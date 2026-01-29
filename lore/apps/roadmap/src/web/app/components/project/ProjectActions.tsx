@@ -1,6 +1,3 @@
-import { useClient, useStore } from "@alepha/react";
-import { useI18n } from "@alepha/react/i18n";
-import { useRouter, useRouterState } from "@alepha/react/router";
 import { ActionButton } from "@alepha/ui";
 import {
   Card,
@@ -19,6 +16,9 @@ import {
   IconTable,
   IconUsers,
 } from "@tabler/icons-react";
+import { useClient, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { useRouter, useRouterState } from "alepha/react/router";
 import { useState } from "react";
 import type { TaskController } from "../../../../api/controllers/TaskController.ts";
 import type { AppRouter } from "../../AppRouter.ts";

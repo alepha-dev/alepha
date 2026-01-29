@@ -1,4 +1,3 @@
-import { useAlepha, useClient } from "@alepha/react";
 import { ActionButton } from "@alepha/ui";
 import { AreaChart, BarChart } from "@mantine/charts";
 import {
@@ -22,6 +21,7 @@ import {
   IconTrophy,
   IconUsers,
 } from "@tabler/icons-react";
+import { useAlepha, useClient } from "alepha/react";
 import { useState } from "react";
 import type { ProjectStatsController } from "../../../../api/controllers/ProjectStatsController.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";

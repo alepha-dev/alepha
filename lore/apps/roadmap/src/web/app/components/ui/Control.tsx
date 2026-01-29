@@ -1,4 +1,3 @@
-import { type BaseInputField, useFormState } from "@alepha/react/form";
 import {
   Autocomplete,
   type AutocompleteProps,
@@ -20,6 +19,7 @@ import {
   type TextInputProps,
 } from "@mantine/core";
 import { TypeBoxError } from "alepha";
+import { type BaseInputField, useFormState } from "alepha/react/form";
 import type { ComponentType, ReactNode } from "react";
 
 export interface ControlProps {

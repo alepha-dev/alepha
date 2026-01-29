@@ -1,6 +1,3 @@
-import { useAlepha, useClient, useStore } from "@alepha/react";
-import { useI18n } from "@alepha/react/i18n";
-import { useRouter } from "@alepha/react/router";
 import { ActionButton } from "@alepha/ui";
 import {
   Button,
@@ -13,6 +10,9 @@ import {
   TextInput,
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
+import { useAlepha, useClient, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import { useState } from "react";
 import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
 import type { Project } from "../../../../api/entities/projects.ts";

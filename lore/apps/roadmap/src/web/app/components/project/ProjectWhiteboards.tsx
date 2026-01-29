@@ -1,7 +1,7 @@
-import { useClient, useStore } from "@alepha/react";
 import { useDialog } from "@alepha/ui";
 import { ActionIcon, Box, Flex, Loader, Text } from "@mantine/core";
 import { IconBrush, IconPlus } from "@tabler/icons-react";
+import { useClient, useStore } from "alepha/react";
 import { type ComponentType, useEffect, useState } from "react";
 import type { WhiteboardController } from "../../../../api/controllers/WhiteboardController.ts";
 import type { Project } from "../../../../api/entities/projects.ts";

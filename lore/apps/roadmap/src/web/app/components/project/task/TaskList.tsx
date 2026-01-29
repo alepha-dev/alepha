@@ -1,5 +1,3 @@
-import { useAlepha, useClient } from "@alepha/react";
-import { useI18n } from "@alepha/react/i18n";
 import {
   DndContext,
   type DragEndEvent,
@@ -8,6 +6,8 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { Flex, Stack, Text } from "@mantine/core";
+import { useAlepha, useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { useId, useMemo } from "react";
 import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
 import type { Task } from "../../../../../api/entities/tasks.ts";
