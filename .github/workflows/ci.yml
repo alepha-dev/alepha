@@ -63,7 +63,7 @@ jobs:
         run: yarn check-dependencies
 
       - name: Test Project
-        run: yarn test --coverage --reporter=verbose --reporter=junit --outputFile=test-report.junit.xml
+        run: VITEST_ARGS="--coverage --reporter=verbose --reporter=junit --outputFile=test-report.junit.xml" yarn test
 
       - name: Build Project
         run: yarn build
