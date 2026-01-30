@@ -22,6 +22,7 @@ export class WhiteboardController {
   });
 
   getWhiteboards = $action({
+    secure: true,
     schema: {
       params: t.object({
         projectId: t.integer(),
@@ -40,6 +41,7 @@ export class WhiteboardController {
   });
 
   createWhiteboard = $action({
+    secure: true,
     schema: {
       body: t.object({
         projectId: t.integer(),
@@ -60,6 +62,7 @@ export class WhiteboardController {
   });
 
   getWhiteboardById = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -74,6 +77,7 @@ export class WhiteboardController {
   });
 
   updateWhiteboard = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -101,6 +105,7 @@ export class WhiteboardController {
   });
 
   deleteWhiteboard = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -118,6 +123,7 @@ export class WhiteboardController {
 
   // Upload image for whiteboard
   uploadImage = $action({
+    secure: true,
     path: "/whiteboards/images",
     schema: {
       body: t.object({
@@ -142,6 +148,7 @@ export class WhiteboardController {
 
   // Delete image from whiteboard
   deleteImage = $action({
+    secure: true,
     method: "DELETE",
     path: "/whiteboards/images/:fileId",
     schema: {

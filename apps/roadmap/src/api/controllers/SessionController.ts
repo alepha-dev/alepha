@@ -29,6 +29,7 @@ export class SessionController {
   });
 
   getMySessions = $action({
+    secure: true,
     schema: {
       response: t.array(userSession),
     },
@@ -49,6 +50,7 @@ export class SessionController {
   });
 
   revokeSession = $action({
+    secure: true,
     schema: {
       params: t.object({
         sessionId: t.string(),
@@ -68,6 +70,7 @@ export class SessionController {
   });
 
   revokeAllSessions = $action({
+    secure: true,
     schema: {
       response: t.void(),
     },

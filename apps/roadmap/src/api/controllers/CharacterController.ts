@@ -9,6 +9,7 @@ export class CharacterController {
   projects = $repository(projects);
 
   getMyCharacters = $action({
+    secure: true,
     schema: {
       response: t.array(
         t.object({

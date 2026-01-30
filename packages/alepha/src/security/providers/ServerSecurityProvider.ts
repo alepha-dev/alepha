@@ -31,25 +31,23 @@ export class ServerSecurityProvider {
     handler: async () => {
       for (const action of this.alepha.primitives($action)) {
         // -------------------------------------------------------------------------------------------------------------
-        // if the action is disabled or not secure, we do NOT create a permission for it
+        // Only create permission when secure is explicitly set to true
+        // Actions are public by default (like $route)
         // -------------------------------------------------------------------------------------------------------------
         if (
           action.options.disabled ||
-          action.options.secure === false ||
+          action.options.secure !== true ||
           this.securityProvider.getRealms().length === 0
         ) {
           continue;
         }
 
-        const secure = action.options.secure;
-        if (typeof secure !== "object") {
-          this.securityProvider.createPermission({
-            name: action.name,
-            group: action.group,
-            method: action.route.method,
-            path: action.route.path,
-          });
-        }
+        this.securityProvider.createPermission({
+          name: action.name,
+          group: action.group,
+          method: action.route.method,
+          path: action.route.path,
+        });
       }
     },
   });
@@ -59,10 +57,12 @@ export class ServerSecurityProvider {
   protected readonly onActionRequest = $hook({
     on: "action:onRequest",
     handler: async ({ action, request, options }) => {
-      // if you set explicitly secure: false, we assume you don't want any security check
-      // but only if no user is provided in options
-      if (action.options.secure === false && !options.user) {
-        this.log.trace("Skipping security check for route");
+      const secure = action.options.secure;
+
+      // Skip security if not explicitly enabled (secure: true or secure: { realm: ... })
+      // Actions are public by default (like $route)
+      if (secure !== true && typeof secure !== "object" && !options.user) {
+        this.log.trace("Skipping security check for action - not secured");
         return;
       }
 
@@ -93,7 +93,7 @@ export class ServerSecurityProvider {
           this.alepha.codec.decode(userAccountInfoSchema, request.user),
         );
       } catch (error) {
-        if (action.options.secure || permission) {
+        if (secure === true || typeof secure === "object" || permission) {
           throw error;
         }
         // else, we skip the security check
@@ -106,7 +106,7 @@ export class ServerSecurityProvider {
     on: "server:onRequest",
     priority: "last",
     handler: async ({ request, route }) => {
-      // if you set explicitly secure: false, we assume you don't want any security check
+      // Skip entirely only if explicitly disabled
       if (route.secure === false) {
         this.log.trace(
           "Skipping security check for route - explicitly disabled",
@@ -126,7 +126,7 @@ export class ServerSecurityProvider {
         typeof route.secure === "object" ? route.secure.realm : undefined;
 
       try {
-        // Try to resolve user (JWT, API key, etc.)
+        // Try to resolve user (JWT, API key, etc.) - even for public routes (optional auth)
         request.user = await this.securityProvider.resolveUserFromServerRequest(
           request,
           { permission, realm },
@@ -135,7 +135,11 @@ export class ServerSecurityProvider {
         // No user resolved?
         if (!request.user) {
           // Route requires auth → throw
-          if (route.secure || permission) {
+          if (
+            route.secure === true ||
+            typeof route.secure === "object" ||
+            permission
+          ) {
             // Provide a more specific error message when no auth header was provided
             if (!request.headers.authorization) {
               throw new InvalidTokenError(
@@ -144,7 +148,7 @@ export class ServerSecurityProvider {
             }
             throw new UnauthorizedError("Authentication required");
           }
-          // Route is public → skip
+          // Route is public → skip (but we tried to resolve user for optional auth)
           this.log.trace(
             "Skipping security check for route - no auth provided and not required",
           );
@@ -166,11 +170,15 @@ export class ServerSecurityProvider {
           permission,
         });
       } catch (error) {
-        if (route.secure || permission) {
+        if (
+          route.secure === true ||
+          typeof route.secure === "object" ||
+          permission
+        ) {
           throw error;
         }
 
-        // else, we skip the security check
+        // else, we skip the security check (route is public)
         this.log.trace(
           "Skipping security check for route - error occurred",
           error,

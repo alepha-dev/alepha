@@ -38,6 +38,7 @@ export class TaskController {
   });
 
   createTask = $action({
+    secure: true,
     schema: {
       body: taskCreateSchema,
       response: tasks.schema,
@@ -68,6 +69,7 @@ export class TaskController {
   });
 
   uploadAttachment = $action({
+    secure: true,
     path: "/tasks/attachments",
     schema: {
       body: t.object({
@@ -91,6 +93,7 @@ export class TaskController {
   });
 
   addAttachment = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -121,6 +124,7 @@ export class TaskController {
   });
 
   removeAttachment = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -154,6 +158,7 @@ export class TaskController {
   });
 
   getTasks = $action({
+    secure: true,
     schema: {
       params: t.object({
         projectId: t.integer(),
@@ -194,6 +199,7 @@ export class TaskController {
   });
 
   abandonTask = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -225,6 +231,7 @@ export class TaskController {
   });
 
   acceptTask = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -256,6 +263,7 @@ export class TaskController {
   });
 
   completeTask = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -323,6 +331,7 @@ export class TaskController {
   });
 
   getTaskById = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -343,6 +352,7 @@ export class TaskController {
   });
 
   updateTaskById = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -392,6 +402,7 @@ export class TaskController {
   });
 
   completeObjective = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -437,6 +448,7 @@ export class TaskController {
   });
 
   updateTaskObjectives = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -478,6 +490,7 @@ export class TaskController {
   });
 
   deleteTask = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -502,6 +515,7 @@ export class TaskController {
   });
 
   moveTaskToZone = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -546,6 +560,7 @@ export class TaskController {
   });
 
   updateTaskNote = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -574,6 +589,7 @@ export class TaskController {
   });
 
   startTimer = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -610,6 +626,7 @@ export class TaskController {
   });
 
   stopTimer = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),

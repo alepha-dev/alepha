@@ -2,6 +2,7 @@ import { defineConfig } from "alepha/cli";
 
 export default defineConfig({
   build: {
+    target: "cloudflare",
     sitemap: {
       hostname: "https://example-ssr.alepha.dev",
     },

@@ -17,6 +17,9 @@ export default defineConfig((env) => {
         resolveId(id, importer) {
           if (id === "perf_hooks" || id === "node:perf_hooks") {
             console.error(`\n⚠️  perf_hooks imported by: ${importer}\n`);
+            console.log(
+              "If you see this, it means project 'example-ssr' has a regression in its server build.",
+            );
             process.exit(1);
           }
         },

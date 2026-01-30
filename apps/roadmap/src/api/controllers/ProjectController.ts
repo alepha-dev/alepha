@@ -18,6 +18,7 @@ export class ProjectController {
   security = $inject(AppSecurityProvider);
 
   createProject = $action({
+    secure: true,
     schema: {
       body: t.pick(projects.insertSchema, ["title", "public"]),
       response: projects.schema,
@@ -53,6 +54,7 @@ export class ProjectController {
   });
 
   getMyProjects = $action({
+    secure: true,
     description: "Get all projects for the authenticated user",
     schema: {
       query: pageQuerySchema,
@@ -78,6 +80,7 @@ export class ProjectController {
   // -------------------------------------------------------------------------------------------------------------------
 
   getProjectUsers = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -101,6 +104,7 @@ export class ProjectController {
   });
 
   updateProjectById = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -125,6 +129,7 @@ export class ProjectController {
   });
 
   getProjectById = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -162,6 +167,7 @@ export class ProjectController {
   });
 
   getProjectPlayers = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -220,6 +226,7 @@ export class ProjectController {
   });
 
   deleteProjectById = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),
@@ -242,6 +249,7 @@ export class ProjectController {
   });
 
   renameZone = $action({
+    secure: true,
     schema: {
       params: t.object({
         id: t.integer(),

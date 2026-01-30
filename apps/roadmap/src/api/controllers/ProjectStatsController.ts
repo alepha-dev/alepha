@@ -16,6 +16,7 @@ export class ProjectStatsController {
   fs = $inject(FileSystemProvider);
 
   getProjectStats = $action({
+    secure: true,
     cache: true,
     schema: {
       params: t.object({
@@ -264,6 +265,7 @@ export class ProjectStatsController {
   });
 
   exportTasksCsv = $action({
+    secure: true,
     path: "/projects/:id/export",
     schema: {
       params: t.object({
