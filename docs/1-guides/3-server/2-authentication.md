@@ -53,7 +53,7 @@ class AppSecurity {
 
 - Including an `$issuer` in your app automatically enables security check.
 - System is permission based by default. You can define roles and permissions as needed.
-- Alepha generates permissions automatically for each action (e.g., `module:action`).
+- Alepha generates permissions automatically for secured actions (those with `secure: true`).
 - `$issuer` is considered low-level. You usually want to use high-level `$realm` for full user management.
 
 Use `$issuer` directly when:
@@ -167,24 +167,39 @@ class AuthProviders {
 
 ## Protecting Routes
 
-To protect an endpoint, tell the `$action` who is allowed in.
+Both `$action` and `$route` are **public by default**. Use `secure: true` to require authentication.
 
-- $action: By default, only authenticated users can access.
-- $route: `secure: true` to require authentication.
+| `secure` value | Behavior |
+|----------------|----------|
+| `undefined` | Public with optional auth (user resolved if token present) |
+| `false` | Public, skip auth entirely |
+| `true` | Required authentication |
+| `{ realm: "x" }` | Required auth + realm check |
 
 ```typescript
 class UserController {
-  // Only logged-in users can see this
+  // Protected: requires authentication
   getProfile = $action({
+    secure: true,
     path: "/me",
     handler: async ({ user }) => {
       return user;
     }
   });
 
-  noAuthNeeded = $action({
-    secure: false,
+  // Public: no auth required (default behavior)
+  publicEndpoint = $action({
     handler: () => "This is public!",
+  });
+
+  // Public with optional auth: user is available if logged in
+  homepage = $action({
+    handler: ({ user }) => {
+      if (user) {
+        return `Welcome back, ${user.name}!`;
+      }
+      return "Welcome, guest!";
+    },
   });
 }
 ```

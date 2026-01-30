@@ -1,10 +1,25 @@
-export const webAppRouterTs = (options: { api?: boolean; ui?: boolean }) => {
+export const webAppRouterTs = (options: {
+  api?: boolean;
+  ui?: boolean;
+  auth?: boolean;
+  admin?: boolean;
+}) => {
   const imports: string[] = [];
   const classMembers: string[] = [];
 
   // UI import and setup
   if (options.ui) {
     imports.push('import { $ui } from "@alepha/ui";');
+  }
+
+  // Auth import
+  if (options.auth) {
+    imports.push('import { $uiAuth } from "@alepha/ui/auth";');
+  }
+
+  // Admin import
+  if (options.admin) {
+    imports.push('import { $uiAdmin } from "@alepha/ui/admin";');
   }
 
   // Page import
@@ -22,6 +37,15 @@ export const webAppRouterTs = (options: { api?: boolean; ui?: boolean }) => {
   // UI layout setup
   if (options.ui) {
     classMembers.push("  ui = $ui();");
+
+    if (options.auth) {
+      classMembers.push("  uiAuth = $uiAuth();");
+    }
+
+    if (options.admin) {
+      classMembers.push("  uiAdmin = $uiAdmin();");
+    }
+
     classMembers.push(`  layout = $page({
     parent: this.ui.root,
     children: () => [this.home],

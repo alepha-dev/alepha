@@ -7,6 +7,7 @@ import {
   type AgentMdType,
   agentMd,
 } from "../templates/agentMd.ts";
+import { apiAppSecurityTs } from "../templates/apiAppSecurityTs.ts";
 import { apiHelloControllerTs } from "../templates/apiHelloControllerTs.ts";
 import { apiIndexTs } from "../templates/apiIndexTs.ts";
 import { biomeJson } from "../templates/biomeJson.ts";
@@ -227,7 +228,7 @@ export class ProjectScaffolder {
    */
   public async ensureApiProject(
     root: string,
-    opts: { force?: boolean } = {},
+    opts: { auth?: boolean; force?: boolean } = {},
   ): Promise<void> {
     const appName = this.getAppName(root);
 
@@ -240,7 +241,7 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/api/index.ts",
-      apiIndexTs({ appName }),
+      apiIndexTs({ appName, auth: opts.auth }),
       opts.force,
     );
     await this.ensureFile(
@@ -249,6 +250,16 @@ export class ProjectScaffolder {
       apiHelloControllerTs(),
       opts.force,
     );
+
+    // Create AppSecurity if auth is enabled
+    if (opts.auth) {
+      await this.ensureFile(
+        root,
+        "src/api/AppSecurity.ts",
+        apiAppSecurityTs(),
+        opts.force,
+      );
+    }
   }
 
   // ===========================================
@@ -265,7 +276,13 @@ export class ProjectScaffolder {
    */
   public async ensureWebProject(
     root: string,
-    opts: { api?: boolean; ui?: boolean; force?: boolean } = {},
+    opts: {
+      api?: boolean;
+      ui?: boolean;
+      auth?: boolean;
+      admin?: boolean;
+      force?: boolean;
+    } = {},
   ): Promise<void> {
     const appName = this.getAppName(root);
 
@@ -292,13 +309,18 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/web/AppRouter.ts",
-      webAppRouterTs({ api: opts.api, ui: opts.ui }),
+      webAppRouterTs({
+        api: opts.api,
+        ui: opts.ui,
+        auth: opts.auth,
+        admin: opts.admin,
+      }),
       opts.force,
     );
     await this.ensureFile(
       root,
       "src/web/components/Hello.tsx",
-      webHelloComponentTsx(),
+      webHelloComponentTsx({ auth: opts.auth }),
       opts.force,
     );
     await this.ensureFile(

@@ -145,4 +145,20 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
   public isInstalledAsync(cmd: string): Promise<boolean> {
     return this.shell.isInstalled(cmd);
   }
+
+  /**
+   * Get the current git revision (commit SHA).
+   *
+   * @returns The short commit SHA or "unknown" if not in a git repo
+   */
+  public async getGitRevision(): Promise<string> {
+    try {
+      const result = await this.shell.run("git rev-parse --short HEAD", {
+        capture: true,
+      });
+      return result.trim();
+    } catch {
+      return "unknown";
+    }
+  }
 }

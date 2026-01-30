@@ -76,16 +76,16 @@ describe("alepha init", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Agent Files (--agent flag)
+  // AI Agent Files (--ai flag)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  describe("--agent flag", () => {
+  describe("--ai flag", () => {
     it("should create CLAUDE.md when claude CLI is installed", async () => {
       const { fs, shell, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
       shell.installedCommands.add("claude");
 
-      await cli.run(cmd.init, { argv: "--agent", root: "/project" });
+      await cli.run(cmd.init, { argv: "--ai", root: "/project" });
 
       expect(fs.wasWritten("/project/CLAUDE.md")).toBe(true);
       expect(fs.wasWritten("/project/AGENTS.md")).toBe(false);
@@ -95,7 +95,7 @@ describe("alepha init", () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { argv: "--agent", root: "/project" });
+      await cli.run(cmd.init, { argv: "--ai", root: "/project" });
 
       expect(fs.wasWritten("/project/AGENTS.md")).toBe(true);
       expect(fs.wasWritten("/project/CLAUDE.md")).toBe(false);
@@ -105,7 +105,7 @@ describe("alepha init", () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { argv: "--agent", root: "/project" });
+      await cli.run(cmd.init, { argv: "--ai", root: "/project" });
 
       expect(fs.wasWrittenMatching("/project/AGENTS.md", /Alepha/)).toBe(true);
       expect(fs.wasWrittenMatching("/project/AGENTS.md", /alepha lint/)).toBe(
@@ -113,7 +113,7 @@ describe("alepha init", () => {
       );
     });
 
-    it("should not create agent files without --agent flag", async () => {
+    it("should not create agent files without --ai flag", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 

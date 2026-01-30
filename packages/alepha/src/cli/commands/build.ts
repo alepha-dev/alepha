@@ -12,7 +12,11 @@ import {
   generateVercel,
   prerenderPages,
 } from "alepha/vite";
-import { buildOptions } from "../atoms/buildOptions.ts";
+import {
+  type BuildRuntime,
+  type BuildTarget,
+  buildOptions,
+} from "../atoms/buildOptions.ts";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "../providers/ViteBuildProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
@@ -29,6 +33,41 @@ export class BuildCommand {
   protected readonly viteBuildProvider = $inject(ViteBuildProvider);
   protected readonly options = $use(buildOptions);
 
+  /**
+   * Resolve the effective runtime based on target and explicit runtime flag.
+   *
+   * Some targets force a specific runtime:
+   * - `cloudflare` always uses `workerd`
+   * - `vercel` always uses `node`
+   * - `docker` and bare deployments respect the runtime flag
+   *
+   * @throws {AlephaError} If an incompatible runtime is specified for a target
+   */
+  protected resolveRuntime(
+    target: BuildTarget | undefined,
+    runtime: BuildRuntime | undefined,
+  ): BuildRuntime {
+    if (target === "cloudflare") {
+      if (runtime && runtime !== "workerd") {
+        throw new AlephaError(
+          `Target 'cloudflare' requires 'workerd' runtime, got '${runtime}'`,
+        );
+      }
+      return "workerd";
+    }
+
+    if (target === "vercel") {
+      if (runtime && runtime !== "node") {
+        throw new AlephaError(
+          `Target 'vercel' requires 'node' runtime, got '${runtime}'`,
+        );
+      }
+      return "node";
+    }
+
+    return runtime ?? "node";
+  }
+
   public readonly build = $command({
     name: "build",
     mode: "production",
@@ -39,29 +78,40 @@ export class BuildCommand {
           description: "Generate build stats report",
         }),
       ),
-      vercel: t.optional(
-        t.boolean({
-          description: "Generate Vercel deployment configuration",
+      target: t.optional(
+        t.enum(["docker", "vercel", "cloudflare"], {
+          aliases: ["t"],
+          description:
+            "Deployment target: docker, vercel, or cloudflare (default: bare)",
         }),
       ),
-      cloudflare: t.optional(
-        t.boolean({
-          description: "Generate Cloudflare Workers configuration",
+      runtime: t.optional(
+        t.enum(["node", "bun", "workerd"], {
+          aliases: ["r"],
+          description:
+            "JavaScript runtime: node (default), bun, or workerd (auto-set for cloudflare)",
         }),
       ),
-      docker: t.optional(
-        t.boolean({
-          description: "Generate Docker configuration",
-        }),
+      image: t.optional(
+        t.union(
+          [
+            t.boolean({
+              description:
+                "Build Docker image. Use -i for latest, -i=<version> for specific version",
+            }),
+            t.text({
+              description:
+                "Build Docker image. Use -i for latest, -i=<version> for specific version",
+            }),
+          ],
+          {
+            aliases: ["i"],
+          },
+        ),
       ),
       sitemap: t.optional(
         t.text({
           description: "Generate sitemap.xml with base URL",
-        }),
-      ),
-      bun: t.optional(
-        t.boolean({
-          description: "Prioritize .bun.ts entry files for Bun runtime",
         }),
       ),
     }),
@@ -87,6 +137,22 @@ export class BuildCommand {
 
       const options = this.options;
       await this.utils.loadEnv(root, [".env", ".env.production"]);
+
+      // Resolve target and runtime
+      const target = flags.target ?? options.target;
+      const runtime = this.resolveRuntime(
+        target,
+        flags.runtime ?? options.runtime,
+      );
+
+      // Validate --image requires --target=docker
+      if (flags.image && target !== "docker") {
+        throw new AlephaError(
+          `Flag '--image' requires '--target=docker', got '${target ?? "bare"}'`,
+        );
+      }
+
+      this.log.trace("Build configuration", { target, runtime });
 
       const stats = flags.stats ?? options.stats ?? false;
       let template = "";
@@ -140,20 +206,11 @@ export class BuildCommand {
           const clientIndexPath = `${distDir}/${publicDir}/index.html`;
           const clientBuilt = await this.fs.exists(clientIndexPath);
 
+          // Set export conditions based on runtime
           const conditions: string[] = [];
-
-          // bun:
-          // - alepha
-          // - react-dom
-
-          if (flags.bun) {
+          if (runtime === "bun") {
             conditions.push("bun");
-          }
-
-          // workerd:
-          // - react-dom
-          // - postgres
-          if (options.cloudflare) {
+          } else if (runtime === "workerd") {
             conditions.push("workerd");
           }
 
@@ -204,8 +261,8 @@ export class BuildCommand {
         });
       }
 
-      // Generate deployment configurations
-      if (flags.vercel || options.vercel) {
+      // Generate deployment configuration based on target
+      if (target === "vercel") {
         await run({
           name: "add Vercel config",
           handler: () =>
@@ -217,7 +274,7 @@ export class BuildCommand {
         });
       }
 
-      if (flags.cloudflare || options.cloudflare) {
+      if (target === "cloudflare") {
         await run({
           name: "add Cloudflare config",
           handler: () =>
@@ -228,15 +285,87 @@ export class BuildCommand {
         });
       }
 
-      if (flags.docker || options.docker) {
+      if (target === "docker") {
+        // Auto-configure Docker based on runtime
+        const dockerFrom =
+          options.docker?.from ??
+          (runtime === "bun" ? "oven/bun:alpine" : "node:24-alpine");
+        const dockerCommand =
+          options.docker?.command ?? (runtime === "bun" ? "bun" : "node");
+
         await run({
           name: "add Docker config",
           handler: () =>
             generateDocker({
               distDir,
-              ...options.docker,
+              image: dockerFrom,
+              command: dockerCommand,
             }),
         });
+
+        // Build Docker image if --image flag is provided
+        if (flags.image) {
+          const imageConfig = options.docker?.image;
+          const flagValue =
+            typeof flags.image === "string" ? flags.image : null;
+
+          let imageTag: string;
+          let version: string;
+
+          if (!flagValue) {
+            // -i (no value) → use config tag:latest
+            if (!imageConfig?.tag) {
+              throw new AlephaError(
+                "Flag '--image' requires 'build.docker.image.tag' in config",
+              );
+            }
+            version = "latest";
+            imageTag = `${imageConfig.tag}:${version}`;
+          } else if (flagValue.startsWith(":")) {
+            // -i=:1.3.4 → version only, prepend config tag
+            if (!imageConfig?.tag) {
+              throw new AlephaError(
+                "Flag '--image=:version' requires 'build.docker.image.tag' in config",
+              );
+            }
+            version = flagValue.slice(1); // remove leading ":"
+            imageTag = `${imageConfig.tag}:${version}`;
+          } else if (flagValue.includes(":")) {
+            // -i=toto:1.3.4 → full image with version
+            imageTag = flagValue;
+            version = flagValue.split(":")[1];
+          } else {
+            // -i=toto → image name without version → add :latest
+            imageTag = `${flagValue}:latest`;
+            version = "latest";
+          }
+
+          const args: string[] = [];
+
+          // Add custom args
+          if (imageConfig?.args) {
+            args.push(imageConfig.args);
+          }
+
+          // Add OCI labels if enabled
+          if (imageConfig?.oci) {
+            const revision = await this.utils.getGitRevision();
+            const created = new Date().toISOString();
+
+            args.push(
+              `--label "org.opencontainers.image.revision=${revision}"`,
+            );
+            args.push(`--label "org.opencontainers.image.created=${created}"`);
+            args.push(`--label "org.opencontainers.image.version=${version}"`);
+          }
+
+          const argsStr = args.length > 0 ? `${args.join(" ")} ` : "";
+          const dockerCmd = `docker build ${argsStr}-t ${imageTag} ${distDir}`;
+
+          await run(dockerCmd, {
+            alias: `docker build ${imageTag}`,
+          });
+        }
       }
     },
   });

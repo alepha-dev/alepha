@@ -26,9 +26,8 @@ export class InitCommand {
       }),
     ),
     flags: t.object({
-      agent: t.optional(
+      ai: t.optional(
         t.boolean({
-          aliases: ["a"],
           description:
             "Add AI agent instructions (CLAUDE.md if claude CLI installed, else AGENTS.md)",
         }),
@@ -56,6 +55,17 @@ export class InitCommand {
             "Include @alepha/ui (components, auth portal, admin portal)",
         }),
       ),
+      auth: t.optional(
+        t.boolean({
+          description:
+            "Include authentication (AppSecurity, $uiAuth). Implies --api --ui --react",
+        }),
+      ),
+      admin: t.optional(
+        t.boolean({
+          description: "Include admin portal ($uiAdmin). Implies --auth",
+        }),
+      ),
       test: t.optional(
         t.boolean({ description: "Include Vitest and create test directory" }),
       ),
@@ -72,6 +82,14 @@ export class InitCommand {
         await this.fs.mkdir(root, { force: true });
       }
 
+      // Flag cascading: --admin → --auth → --ui → --react, --api
+      if (flags.admin) {
+        flags.auth = true;
+      }
+      if (flags.auth) {
+        flags.api = true;
+        flags.ui = true;
+      }
       if (flags.ui) {
         flags.react = true;
       }
@@ -81,7 +99,7 @@ export class InitCommand {
 
       // Detect agent type: claude CLI → CLAUDE.md, else → AGENTS.md
       let agentType: "claude" | "agents" | false = false;
-      if (flags.agent) {
+      if (flags.ai) {
         const hasClaudeCli = await this.utils.isInstalledAsync("claude");
         agentType = hasClaudeCli ? "claude" : "agents";
       }
@@ -112,12 +130,17 @@ export class InitCommand {
             force,
           });
           if (flags.api) {
-            await this.scaffolder.ensureApiProject(root, { force });
+            await this.scaffolder.ensureApiProject(root, {
+              auth: !!flags.auth,
+              force,
+            });
           }
           if (flags.react && !isExpo) {
             await this.scaffolder.ensureWebProject(root, {
               api: !!flags.api,
               ui: !!flags.ui,
+              auth: !!flags.auth,
+              admin: !!flags.admin,
               force,
             });
           }
