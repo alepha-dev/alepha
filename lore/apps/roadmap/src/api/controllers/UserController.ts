@@ -10,6 +10,7 @@ export class UserController {
   realmProvider = $inject(RealmProvider);
 
   me = $action({
+    secure: true,
     schema: {
       response: users.schema,
     },
@@ -23,6 +24,7 @@ export class UserController {
   });
 
   updateAvatar = $action({
+    secure: true,
     schema: {
       body: t.object({
         file: t.file(),

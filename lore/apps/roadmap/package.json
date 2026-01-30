@@ -10,7 +10,7 @@
     "deploy": "alepha deploy --build --mode=production",
     "typecheck": "alepha typecheck",
     "studio": "alepha db studio",
-    "start": "SERVER_PORT=3002 LOG_FORMAT=pretty LOG_LEVEL=trace node dist",
+    "start": "DATABASE_URL=pglite://:memory: SERVER_PORT=3002 LOG_FORMAT=pretty LOG_LEVEL=debug node dist",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed"

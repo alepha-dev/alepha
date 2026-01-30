@@ -9,6 +9,7 @@ export class IdentityController {
   crypto = $inject(CryptoProvider);
 
   getMyIdentities = $action({
+    secure: true,
     schema: {
       response: t.array(
         t.object({
@@ -36,6 +37,7 @@ export class IdentityController {
   });
 
   setPassword = $action({
+    secure: true,
     schema: {
       body: t.object({
         username: t.string({ minLength: 3, maxLength: 50 }),
