@@ -159,6 +159,17 @@ Implementation of AlephaRouter for React in browser environment.
 
 Handle page routes for React applications. (Browser and Server)
 
+#### ReactPreloadProvider
+
+Adds HTTP Link headers for preloading entry assets.
+
+Benefits:
+- Early Hints (103): Servers can send preload hints before the full response
+- CDN optimization: Many CDNs use Link headers to optimize asset delivery
+- Browser prefetching: Browsers can start fetching resources earlier
+
+The Link header is computed once at first request and cached for reuse.
+
 #### ReactServerProvider
 
 React server provider responsible for SSR and static file serving.
@@ -173,17 +184,10 @@ Uses `react-dom/server` under the hood.
 
 #### ReactServerTemplateProvider
 
-Handles HTML template parsing, preprocessing, and streaming for SSR.
+Handles HTML streaming for SSR.
 
-Responsibilities:
-- Parse template once at startup into logical slots
-- Pre-encode static parts as Uint8Array for zero-copy streaming
-- Render dynamic parts (attributes, head content) efficiently
-- Build hydration data for client-side rehydration
-
-This provider is injected into ReactServerProvider to handle all
-template-related operations, keeping ReactServerProvider focused
-on request handling and React rendering coordination.
+Uses hardcoded HTML structure - all customization via $head primitive.
+Pre-encodes static parts as Uint8Array for zero-copy streaming.
 
 #### SSRManifestProvider
 

@@ -6,7 +6,6 @@ import {
   $inject,
   $use,
   Alepha,
-  AlephaError,
   type Static,
   t,
 } from "alepha";
@@ -101,54 +100,21 @@ export class ReactServerProvider {
       }
 
       if (ssrEnabled) {
-        await this.registerPages(async () => this.template);
+        this.registerPages();
         this.log.info("SSR OK");
         return;
       }
 
-      // no SSR enabled, serve index.html for all unmatched routes
-      this.log.info("SSR is disabled, use History API fallback");
-      this.serverRouterProvider.createRoute({
-        path: "*",
-        handler: async ({ url, reply }) => {
-          if (url.pathname.includes(".")) {
-            // If the request is for a file (e.g., /style.css), do not fallback
-            reply.headers["content-type"] = "text/plain";
-            reply.body = "Not Found";
-            reply.status = 404;
-            return;
-          }
-
-          reply.headers["content-type"] = "text/html";
-
-          // serve index.html for all unmatched routes
-          return this.template;
-        },
-      });
+      // no SSR enabled, serve a minimal fallback
+      this.log.info("SSR is disabled");
     },
   });
 
   /**
-   * Get the current HTML template.
-   */
-  public get template() {
-    return (
-      this.alepha.store.get("alepha.react.server.template") ??
-      "<!DOCTYPE html><html lang='en'><head></head><body><div id='root'></div></body></html>"
-    );
-  }
-
-  /**
    * Register all pages as server routes.
    */
-  protected async registerPages(templateLoader: TemplateLoader) {
-    // Parse template once at startup
-    const template = await templateLoader();
-    if (template) {
-      this.templateProvider.parseTemplate(template);
-    }
-
-    // Set up early head content (entry assets preloads)
+  protected registerPages(): void {
+    // Set up early head content (entry assets)
     this.setupEarlyHeadContent();
 
     // Cache ServerLinksProvider check at startup
@@ -163,7 +129,7 @@ export class ReactServerProvider {
           schema: undefined, // schema is handled by the page primitive provider
           method: "GET",
           path: page.match,
-          handler: this.createHandler(page, templateLoader),
+          handler: this.createHandler(page),
         });
       }
     }
@@ -174,13 +140,6 @@ export class ReactServerProvider {
    *
    * This content is sent immediately when streaming starts, before page loaders run,
    * allowing the browser to start downloading entry.js and CSS files early.
-   *
-   * Uses <script type="module"> instead of <link rel="modulepreload"> for JS
-   * because the script needs to execute anyway - this way the browser starts
-   * downloading, parsing, AND will execute as soon as ready.
-   *
-   * Also injects critical meta tags (charset, viewport) if not specified in $head,
-   * and strips these assets from the original template head to avoid duplicates.
    */
   protected setupEarlyHeadContent(): void {
     const assets = this.ssrManifestProvider.getEntryAssets();
@@ -189,13 +148,9 @@ export class ReactServerProvider {
     const parts: string[] = [];
 
     if (assets) {
-      // Add CSS stylesheets (critical for rendering)
       for (const css of assets.css) {
         parts.push(`<link rel="stylesheet" href="${css}" crossorigin="">`);
       }
-
-      // Add entry JS as script module (not just modulepreload)
-      // This starts download, parse, AND execution immediately
       if (assets.js) {
         parts.push(
           `<script type="module" crossorigin="" src="${assets.js}"></script>`,
@@ -203,11 +158,9 @@ export class ReactServerProvider {
       }
     }
 
-    // Pass global head so critical meta tags can be injected if missing
     this.templateProvider.setEarlyHeadContent(
       parts.length > 0 ? `${parts.join("\n")}\n` : "",
       globalHead,
-      assets ?? undefined,
     );
 
     this.log.debug("Early head content set", {
@@ -251,22 +204,9 @@ export class ReactServerProvider {
   /**
    * Create the request handler for a page route.
    */
-  protected createHandler(
-    route: PageRoute,
-    templateLoader: TemplateLoader,
-  ): ServerHandler {
+  protected createHandler(route: PageRoute): ServerHandler {
     return async (serverRequest) => {
       const { url, reply, query, params } = serverRequest;
-
-      // Ensure template is parsed (handles dev mode where template may change)
-      if (!this.templateProvider.isReady()) {
-        const template = await templateLoader();
-        if (!template) {
-          throw new AlephaError("Missing template for SSR rendering");
-        }
-        this.templateProvider.parseTemplate(template);
-        this.setupEarlyHeadContent();
-      }
 
       this.log.trace("Rendering page", { name: route.name });
 
@@ -446,12 +386,6 @@ export class ReactServerProvider {
 
     await this.alepha.events.emit("react:server:render:begin", { state });
 
-    // Ensure template is parsed with early head content (entry.js, CSS)
-    if (!this.templateProvider.isReady()) {
-      this.templateProvider.parseTemplate(this.template);
-      this.setupEarlyHeadContent();
-    }
-
     // Use shared rendering logic
     const result = await this.renderPage(page, state);
 
@@ -508,10 +442,6 @@ export class ReactServerProvider {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-type TemplateLoader = () => Promise<string | undefined>;
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 const envSchema = t.object({
   REACT_SSR_ENABLED: t.optional(t.boolean()),
 });
@@ -520,7 +450,6 @@ declare module "alepha" {
   interface Env extends Partial<Static<typeof envSchema>> {}
   interface State {
     "alepha.react.server.ssr"?: boolean;
-    "alepha.react.server.template"?: string;
   }
 }
 

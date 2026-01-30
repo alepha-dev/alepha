@@ -521,38 +521,6 @@ describe("$page primitive tests", () => {
     expect(functionRendered.html).toBe("Function animation");
   });
 
-  test("$page - match method (not implemented)", ({ expect }) => {
-    class App {
-      page = $page({
-        path: "/test",
-        component: () => "test",
-      });
-    }
-
-    const app = alepha.inject(App);
-
-    expect(app.page.match("/test")).toBe(false);
-    expect(app.page.match("/other")).toBe(false);
-  });
-
-  test("$page - pathname method", ({ expect }) => {
-    class App {
-      withPath = $page({
-        path: "/test/:id",
-        component: () => "test",
-      });
-
-      withoutPath = $page({
-        component: () => "test",
-      });
-    }
-
-    const app = alepha.inject(App);
-
-    expect(app.withPath.pathname({})).toBe("/test/:id");
-    expect(app.withoutPath.pathname({})).toBe("");
-  });
-
   test("$page - complex schema with nested objects", async ({ expect }) => {
     class App {
       complex = $page({

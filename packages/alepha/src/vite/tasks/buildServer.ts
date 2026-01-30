@@ -23,7 +23,7 @@ export interface BuildServerOptions {
 
   /**
    * Optional client directory name (relative to distDir).
-   * If provided, the client template will be embedded in the server output.
+   * If provided, the SSR manifest will be embedded in the server output.
    */
   clientDir?: string;
 
@@ -167,16 +167,6 @@ export async function buildServer(
 
   const entryFile = extractEntryFromBundle(opts.entry, result);
 
-  // Embed client template if client was built
-  let template = "";
-  if (opts.clientDir) {
-    const index = await readFile(
-      `${opts.distDir}/${opts.clientDir}/index.html`,
-      "utf-8",
-    );
-    template = `__alepha.set("alepha.react.server.template", \`${index.replace(/>\s*</g, "><").trim()}\`);\n`;
-  }
-
   // Embed SSR manifests if client was built
   // This bundles all manifest data into index.js for serverless deployments
   let manifest = "";
@@ -230,7 +220,7 @@ export async function buildServer(
 
   await writeFile(
     `${opts.distDir}/index.js`,
-    `${warning}\n${template}${manifest}import './server/${entryFile}';\n`.trim(),
+    `${warning}\n${manifest}import './server/${entryFile}';\n`.trim(),
   );
 
   return { entryFile, manifest: manifestData };

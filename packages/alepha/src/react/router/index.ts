@@ -11,6 +11,7 @@ import {
   ReactPageProvider,
   type ReactRouterState,
 } from "./providers/ReactPageProvider.ts";
+import { ReactPreloadProvider } from "./providers/ReactPreloadProvider.ts";
 import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
 import { ReactServerTemplateProvider } from "./providers/ReactServerTemplateProvider.ts";
 import { SSRManifestProvider } from "./providers/SSRManifestProvider.ts";
@@ -23,6 +24,7 @@ import { ReactRouter } from "./services/ReactRouter.ts";
 export * from "./index.shared.ts";
 export * from "./providers/ReactBrowserProvider.ts";
 export * from "./providers/ReactPageProvider.ts";
+export * from "./providers/ReactPreloadProvider.ts";
 export * from "./providers/ReactServerProvider.ts";
 export * from "./providers/ReactServerTemplateProvider.ts";
 export * from "./providers/SSRManifestProvider.ts";
@@ -117,6 +119,7 @@ export const AlephaReactRouter = $module({
   services: [
     ReactPageProvider,
     ReactPageService,
+    ReactPreloadProvider,
     ReactRouter,
     ReactServerProvider,
     ReactServerTemplateProvider,
@@ -136,6 +139,7 @@ export const AlephaReactRouter = $module({
       })
       .with(SSRManifestProvider)
       .with(ReactServerTemplateProvider)
+      .with(ReactPreloadProvider)
       .with(ReactServerProvider)
       .with(ReactPageProvider)
       .with(ReactRouter),

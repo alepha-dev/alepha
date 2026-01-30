@@ -3,7 +3,6 @@ import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import { importVite, importViteReact, viteAlephaSsrPreload } from "alepha/vite";
 import type { InlineConfig, Plugin, ViteDevServer } from "vite";
-import { ViteUtils } from "../services/ViteUtils.ts";
 import type { AppEntry } from "./AppEntryProvider.ts";
 
 export interface ViteDevServerOptions {
@@ -49,7 +48,6 @@ export interface ViteDevServerOptions {
 export class ViteDevServerProvider {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
-  protected readonly templateProvider = $inject(ViteUtils);
   protected server!: ViteDevServer;
   protected options!: ViteDevServerOptions;
   protected alepha: Alepha | null = null;
@@ -240,19 +238,12 @@ export class ViteDevServerProvider {
   }
 
   /**
-   * Setup Alepha instance with Vite middleware and template.
+   * Setup Alepha instance with Vite middleware.
    */
   protected async setupAlepha(): Promise<void> {
     if (!this.alepha || !this.hasReact()) {
       return;
     }
-
-    const template = await this.server.transformIndexHtml(
-      "/",
-      this.templateProvider.generateIndexHtml(this.options.entry),
-    );
-
-    this.alepha.store.set("alepha.react.server.template", template);
 
     this.alepha.events.on("server:onRequest", {
       priority: "first",

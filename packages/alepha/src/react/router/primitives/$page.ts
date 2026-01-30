@@ -368,10 +368,7 @@ export interface PagePrimitiveOptions<
   [PAGE_PRELOAD_KEY]?: string;
 }
 
-export type ErrorHandler = (
-  error: Error,
-  state: ReactRouterState,
-) => ReactNode | Redirection | undefined;
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class PagePrimitive<
   TConfig extends PageConfigSchema = PageConfigSchema,
@@ -413,21 +410,16 @@ export class PagePrimitive<
   }> {
     return this.reactPageService.fetch(this.options.path || "", options);
   }
-
-  public match(url: string): boolean {
-    // TODO: Implement a way to match the URL against the pathname
-    return false;
-  }
-
-  public pathname(config: any) {
-    // TODO: Implement a way to generate the pathname based on the config
-    return this.options.path || "";
-  }
 }
 
 $page[KIND] = PagePrimitive;
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+export type ErrorHandler = (
+  error: Error,
+  state: ReactRouterState,
+) => ReactNode | Redirection | undefined;
 
 export interface PageConfigSchema {
   query?: TSchema;
