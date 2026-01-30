@@ -10,7 +10,8 @@
 Alepha
 </h1>
 <p style="max-width: 512px">
-Easy mode for building TypeScript applications.
+TypeScript Framework
+Made Easy
 </p>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/v/alepha.svg" alt="npm"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/l/alepha.svg" alt="npm"/></a>
@@ -19,98 +20,103 @@ Easy mode for building TypeScript applications.
 <a href="https://github.com/feunard/alepha"><img src="https://img.shields.io/github/stars/feunard/alepha.svg?style=social" alt="GitHub stars"/></a>
 </div>
 
-## What is this?
-
-A full-stack TypeScript framework for building APIs, React apps with SSR, CLI tools, and more.
-
-- **Runs on Node.js and Bun** — switch runtimes without changing code
-- **Zero config** — sensible defaults, override when needed
-- **Type-safe everything** — schemas validate at runtime, TypeScript catches the rest
-- **Single bundle deploy** — no `node_modules` in production
-
-Check out the [documentation](https://alepha.dev) for the full picture.
-
-## Quick Start
-
-**Requirements:** [Node.js](https://nodejs.org/) v22+ or [Bun](https://bun.sh/)
-
-### API Server
-
-```bash
-npx alepha init my-api
-cd my-api
-```
-
-Edit `src/api/controllers/HelloController.ts`:
-
-```ts
+```tsx
+// src/Api.ts (server)
 import { t } from "alepha";
 import { $action } from "alepha/server";
-import { $swagger } from "alepha/server/swagger";
+import { $entity, $repository, db } from "alepha/orm";
 
-export class HelloController {
-  docs = $swagger();
+const viewEntity = $entity({
+  name: "views",
+  schema: t.object({
+    id: db.primaryKey(t.uuid()),
+    createdAt: db.createdAt(),
+  }),
+});
 
-  hello = $action({
-    path: "/hello",
-    schema: {
-      query: t.object({
-        name: t.optional(t.text()),
-      }),
-      response: t.object({
-        message: t.text(),
-      }),
+export class Api {
+  views = $repository(viewEntity);
+  inc = $action({
+    schema: { response: t.object({ count: t.number() }) },
+    handler: async () => {
+      await this.views.create({});
+      return { count: await this.views.count() };
     },
-    handler: ({ query }) => ({
-      message: `Hello, ${query.name || "World"}!`,
-    }),
+  });
+}
+
+// src/AppRouter.tsx (client & server)
+import { $client } from "alepha/server/links";
+import { $page } from "alepha/react/router";
+import type { Api } from "./Api.ts";
+
+export class AppRouter {
+  api = $client<Api>();  // ← type-safe API client, zero codegen
+  home = $page({
+    loader: () => this.api.inc(),
+    component: (props) => <div>Counter: {props.count}</div>,
   });
 }
 ```
 
+## What is this?
+
+API, React SSR, CLI, MCP — one framework, all targets.
+
+Few dependencies. No library shopping. One decision, then build.
+
+Every line can be customized, extended, or replaced.
+
+Dev, build, test, deploy — one tool handles everything.
+
+Schema-driven DSL with compile-time types and runtime validation.
+
+Structured DSL that AI agents actually understand.
+
+For more information, please visit the [documentation](https://alepha.dev).
+
+## Getting Started
+
+**Requirements:** [Node.js](https://nodejs.org/) v22+ or [Bun](https://bun.sh/) v1.3+
+
 ```bash
+npx alepha init my-app
+cd my-app
 npm run dev
-# Open http://localhost:3000/docs/ for auto-generated API docs
 ```
 
-Build and run in production:
+## Pick Your Weapon
 
 ```bash
-npm run build
-node dist  # or: bun dist
+# API backend (REST endpoints, validation, OpenAPI docs)
+npx alepha init my-api --api
+
+# React frontend (SSR, routing, code-splitting)
+npx alepha init my-app --api --react
+
+# Complete SaaS starter (auth, admin portal, user management)
+npx alepha init my-saas --admin
+
+# Using an AI assistant ?
+npx alepha init my-saas --admin --ai
 ```
 
-### Full-Stack React
+Each command scaffolds a working project with best practices baked in.
 
-In same directory, re-initialize with React support:
+## Production
 
 ```bash
-npx alepha init --react
-```
+# Build for production
+alepha build
 
-Your `src/main.server.ts` wires everything together:
-
-```ts
-import { Alepha, run } from "alepha";
-import { ApiModule } from "./api/index.ts";
-import { WebModule } from "./web/index.ts";
-
-const alepha = Alepha.create();
-
-alepha.with(ApiModule);  // API endpoints
-alepha.with(WebModule);  // React pages
-
-run(alepha);
-```
-
-Start development server:
-
-```bash
-npm run dev
-# Open http://localhost:3000/
+# Deploy anywhere
+alepha build --target=docker      # Containerized
+alepha build --target=vercel      # Serverless
+alepha build --target=cloudflare  # Edge
 ```
 
 ## Learn More
 
-- [Documentation](https://alepha.dev) — guides, concepts, API reference
-- [GitHub](https://github.com/feunard/alepha) — source code and issues
+- [Documentation](https://alepha.dev) - Full guides and API reference
+- [GitHub](https://github.com/feunard/alepha) - Source code and examples
+- [llms.txt](https://alepha.dev/llms.txt) - For AI assistants
