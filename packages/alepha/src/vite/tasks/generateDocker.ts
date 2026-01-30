@@ -67,6 +67,10 @@ WORKDIR /app
 
 COPY . .
 
+RUN ${command === "bun" ? "bun" : "npm"} install
+
+ENV SERVER_HOST=0.0.0.0
+
 CMD ["${command}", "index.js"]
 `;
 

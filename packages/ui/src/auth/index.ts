@@ -43,7 +43,7 @@ export const AlephaUIAuth = $module({
 /**
  * Register Auth UI components and get the AuthRouter instance.
  */
-export const $uiAdmin = () => {
+export const $uiAuth = () => {
   const { alepha } = $context();
   return alepha.inject(AuthRouter);
 };
