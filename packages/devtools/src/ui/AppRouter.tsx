@@ -1,4 +1,4 @@
-import { RootRouter } from "@alepha/ui";
+import { $ui, midnightTheme } from "@alepha/ui";
 import {
   IconApi,
   IconArchive,
@@ -13,9 +13,13 @@ import {
 } from "@tabler/icons-react";
 import { $page } from "alepha/react/router";
 
-export class AppRouter extends RootRouter {
+export class AppRouter {
+  ui = $ui({
+    themes: [midnightTheme],
+  });
+
   layout = $page({
-    parent: this.root,
+    parent: this.ui.root,
     lazy: () => import("./components/DevLayout.tsx"),
   });
 

@@ -1,6 +1,6 @@
 import { AlephaUI } from "@alepha/ui";
 import { AlephaUIAuth } from "@alepha/ui/auth";
-import { $module } from "alepha";
+import { $context, $module } from "alepha";
 import { AdminRouter } from "./AdminRouter.ts";
 import { MainRouter } from "./MainRouter.ts";
 
@@ -62,3 +62,13 @@ export const AlephaUIAdmin = $module({
     alepha.with(AdminRouter);
   },
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Register Admin UI components and get the AdminRouter instance.
+ */
+export const $uiAdmin = () => {
+  const { alepha } = $context();
+  return alepha.inject(AdminRouter);
+};

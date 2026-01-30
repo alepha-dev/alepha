@@ -24,7 +24,7 @@ import { $page, ReactRouter, Redirection } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 
 export class AdminRouter {
-  protected readonly router = $inject(ReactRouter);
+  protected readonly router = $inject(ReactRouter<AdminRouter>);
   protected readonly authRouter = $inject(AuthRouter);
   protected readonly auth = $inject(ReactAuth);
   protected readonly userCtrl = $client<AdminUserController>();
@@ -87,7 +87,7 @@ export class AdminRouter {
     parent: this.adminLayout,
     path: "/users/create",
     label: "Create User",
-    description: "Create a new user account.",
+    description: "Create a new user account",
     lazy: () => import("./components/users/AdminUserCreate.tsx"),
     can: () => this.userCtrl.createUser.can(),
   });

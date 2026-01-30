@@ -5,6 +5,8 @@ import {
   type AppShellMainProps,
   type AppShellNavbarProps,
   type AppShellProps,
+  Container,
+  type ContainerProps,
   Flex,
 } from "@mantine/core";
 import { useEvents, useStore } from "alepha/react";
@@ -45,6 +47,12 @@ export interface AdminShellProps {
      */
     paths?: string[];
   };
+
+  /**
+   * Wrap AppBar and main content in a Mantine Container.
+   * Pass `true` for default Container, or ContainerProps to customize.
+   */
+  container?: boolean | ContainerProps;
 }
 
 const AdminShell = (props: AdminShellProps) => {
@@ -218,6 +226,10 @@ const AdminShell = (props: AdminShellProps) => {
     { position: "left" as const, type: "burger" as const },
   ];
 
+  // Forward container to appBarProps if not already set
+  const appBarProps = { ...props.appBarProps };
+  appBarProps.container ??= props.container;
+
   const hasSidebar = showSidebar && props.sidebarProps !== undefined;
   const hasAppBar = hasSidebar || props.appBarProps || props.header;
 
@@ -260,9 +272,7 @@ const AdminShell = (props: AdminShellProps) => {
       {...props.appShellProps}
     >
       <AppShell.Header bg={ui.colors.surface} {...props.appShellHeaderProps}>
-        {props.header ?? (
-          <AppBar items={defaultAppBarItems} {...props.appBarProps} />
-        )}
+        {props.header ?? <AppBar items={defaultAppBarItems} {...appBarProps} />}
       </AppShell.Header>
 
       {hasSidebar && (
@@ -320,7 +330,19 @@ const AdminShell = (props: AdminShellProps) => {
         data-resizing={isResizing}
         {...props.appShellMainProps}
       >
-        {props.children ?? <NestedView />}
+        {props.container ? (
+          <Container
+            w={"100%"}
+            flex={1}
+            display="flex"
+            style={{ flexDirection: "column" }}
+            {...(typeof props.container === "boolean" ? {} : props.container)}
+          >
+            {props.children ?? <NestedView />}
+          </Container>
+        ) : (
+          (props.children ?? <NestedView />)
+        )}
       </AppShell.Main>
 
       {props.footer && (

@@ -1,5 +1,5 @@
 import { AlephaUI } from "@alepha/ui";
-import { $module } from "alepha";
+import { $context, $module } from "alepha";
 import { AlephaReactAuth } from "alepha/react/auth";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AuthI18n } from "./AuthI18n.ts";
@@ -37,3 +37,13 @@ export const AlephaUIAuth = $module({
   name: "alepha.ui.auth",
   services: [AlephaUI, AlephaReactAuth, AlephaReactI18n, AuthRouter, AuthI18n],
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Register Auth UI components and get the AuthRouter instance.
+ */
+export const $uiAdmin = () => {
+  const { alepha } = $context();
+  return alepha.inject(AuthRouter);
+};

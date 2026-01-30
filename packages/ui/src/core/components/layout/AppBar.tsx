@@ -1,5 +1,17 @@
-import { Divider, Flex, type FlexProps } from "@mantine/core";
-import type { ReactNode } from "react";
+import {
+  Anchor,
+  Container,
+  type ContainerProps,
+  Divider,
+  Flex,
+  type FlexProps,
+  Image,
+  Text,
+} from "@mantine/core";
+import { IconArrowLeft } from "@tabler/icons-react";
+import { Link, useRouter } from "alepha/react/router";
+import type { ComponentType, ReactNode } from "react";
+import ActionButton from "../buttons/ActionButton.tsx";
 import BurgerButton from "../buttons/BurgerButton.tsx";
 import DarkModeButton, {
   type DarkModeButtonProps,
@@ -18,55 +30,146 @@ export type AppBarItem =
   | AppBarSearch
   | AppBarLang
   | AppBarSpacer
-  | AppBarDivider;
+  | AppBarDivider
+  | AppBarLogo
+  | AppBarBack;
 
-export interface AppBarElement {
+export interface AppBarAbstractItem {
   position: "left" | "center" | "right";
+
+  /**
+   * Visibility control: return true to show, false to hide.
+   */
+  can?: () => boolean;
+}
+
+export interface AppBarElement extends AppBarAbstractItem {
   element: ReactNode;
 }
 
-export interface AppBarBurger {
-  position: "left" | "center" | "right";
+export interface AppBarBurger extends AppBarAbstractItem {
   type: "burger";
 }
 
-export interface AppBarDark {
-  position: "left" | "center" | "right";
+export interface AppBarDark extends AppBarAbstractItem {
   type: "dark";
   props?: DarkModeButtonProps;
 }
 
-export interface AppBarSearch {
-  position: "left" | "center" | "right";
+export interface AppBarSearch extends AppBarAbstractItem {
   type: "search";
   props?: OmnibarButtonProps;
 }
 
-export interface AppBarLang {
-  position: "left" | "center" | "right";
+export interface AppBarLang extends AppBarAbstractItem {
   type: "lang";
   props?: LanguageButtonProps;
 }
 
-export interface AppBarSpacer {
-  position: "left" | "center" | "right";
+export interface AppBarSpacer extends AppBarAbstractItem {
   type: "spacer";
 }
 
-export interface AppBarDivider {
-  position: "left" | "center" | "right";
+export interface AppBarDivider extends AppBarAbstractItem {
   type: "divider";
+}
+
+export interface AppBarLogo extends AppBarAbstractItem {
+  type: "logo";
+  props?: {
+    /**
+     * Logo image source URL.
+     */
+    src?: string;
+
+    /**
+     * Logo text (used if no src provided).
+     */
+    text?: string;
+
+    /**
+     * Icon component (used if no src or text provided).
+     */
+    icon?: ReactNode | ComponentType;
+
+    /**
+     * Link href when logo is clicked.
+     */
+    href?: string;
+
+    /**
+     * Logo image height in pixels.
+     * @default 32
+     */
+    height?: number;
+
+    /**
+     * Logo image width in pixels.
+     */
+    width?: number;
+
+    /**
+     * Font weight for text logo.
+     * @default 700
+     */
+    fontWeight?: number;
+
+    /**
+     * Font size for text logo.
+     * @default "lg"
+     */
+    fontSize?: string;
+  };
+}
+
+export interface AppBarBack extends AppBarAbstractItem {
+  type: "back";
+  props?: {
+    /**
+     * Custom label for back button.
+     * @default "Back"
+     */
+    label?: string;
+
+    /**
+     * Show only icon without label.
+     * @default true
+     */
+    iconOnly?: boolean;
+
+    /**
+     * Custom href to navigate to instead of history back.
+     */
+    href?: string;
+
+    /**
+     * Custom icon component.
+     */
+    icon?: ReactNode | ComponentType;
+  };
 }
 
 export interface AppBarProps {
   flexProps?: FlexProps;
   items?: AppBarItem[];
+
+  /**
+   * Wrap the AppBar content in a Mantine Container.
+   * Pass `true` for default Container, or ContainerProps to customize.
+   */
+  container?: boolean | ContainerProps;
 }
 
 const AppBar = (props: AppBarProps) => {
   const { items = [] } = props;
+  const router = useRouter();
 
   const renderItem = (item: AppBarItem, index: number) => {
+    // Check visibility control
+    if (item.can && !item.can()) {
+      return null;
+    }
+
     if ("type" in item) {
       if (item.type === "burger") {
         return <BurgerButton key={index} />;
@@ -86,6 +189,12 @@ const AppBar = (props: AppBarProps) => {
       if (item.type === "divider") {
         return <Divider key={index} orientation="vertical" />;
       }
+      if (item.type === "logo") {
+        return renderLogo(item, index);
+      }
+      if (item.type === "back") {
+        return renderBack(item, index);
+      }
     }
     if ("element" in item) {
       return item.element;
@@ -93,15 +202,111 @@ const AppBar = (props: AppBarProps) => {
     return null;
   };
 
+  const renderLogo = (item: AppBarLogo, index: number) => {
+    const {
+      src,
+      text,
+      icon,
+      href,
+      height = 32,
+      width,
+      fontWeight = 700,
+      fontSize = "lg",
+    } = item.props ?? {};
+
+    const logoContent = src ? (
+      <Image src={src} h={height} w={width} fit="contain" />
+    ) : icon ? (
+      typeof icon === "function" ? (
+        (() => {
+          const IconComponent = icon;
+          return <IconComponent />;
+        })()
+      ) : (
+        icon
+      )
+    ) : text ? (
+      <Text fw={fontWeight} size={fontSize}>
+        {text}
+      </Text>
+    ) : null;
+
+    if (href) {
+      return (
+        <Anchor
+          component={Link}
+          key={index}
+          href={href}
+          underline="never"
+          c="inherit"
+        >
+          {logoContent}
+        </Anchor>
+      );
+    }
+
+    return <Flex key={index}>{logoContent}</Flex>;
+  };
+
+  const renderBack = (item: AppBarBack, index: number) => {
+    const { label = "Back", iconOnly = true, href, icon } = item.props ?? {};
+
+    const renderIcon = () => {
+      if (!icon) {
+        return <IconArrowLeft size={18} />;
+      }
+      if (typeof icon === "function") {
+        const IconComponent = icon as ComponentType<{ size?: number }>;
+        return <IconComponent size={18} />;
+      }
+      return icon;
+    };
+
+    const iconElement = renderIcon();
+
+    const handleClick = () => {
+      if (href) {
+        router.go(href);
+      } else {
+        router.back();
+      }
+    };
+
+    if (iconOnly) {
+      return (
+        <ActionButton
+          key={index}
+          icon={iconElement}
+          variant="subtle"
+          color="gray"
+          onClick={handleClick}
+          tooltip={{ label, position: "bottom" }}
+        />
+      );
+    }
+
+    return (
+      <ActionButton
+        key={index}
+        leftSection={iconElement}
+        variant="subtle"
+        color="gray"
+        onClick={handleClick}
+      >
+        {label}
+      </ActionButton>
+    );
+  };
+
   const leftItems = items.filter((item) => item.position === "left");
   const centerItems = items.filter((item) => item.position === "center");
   const rightItems = items.filter((item) => item.position === "right");
 
-  return (
+  const content = (
     <Flex
       h="100%"
       align="center"
-      px="md"
+      px={props.container ? 0 : "md"}
       justify="space-between"
       {...props.flexProps}
     >
@@ -128,6 +333,18 @@ const AppBar = (props: AppBarProps) => {
       </Flex>
     </Flex>
   );
+
+  if (props.container) {
+    const containerProps =
+      typeof props.container === "boolean" ? {} : props.container;
+    return (
+      <Container h="100%" {...containerProps}>
+        {content}
+      </Container>
+    );
+  }
+
+  return content;
 };
 
 export default AppBar;

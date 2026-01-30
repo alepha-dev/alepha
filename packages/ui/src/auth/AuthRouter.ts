@@ -3,6 +3,7 @@ import {
   IconLogout2,
   IconMailCheck,
   IconPasswordUser,
+  IconUser,
   IconUserPlus,
 } from "@tabler/icons-react";
 import { $inject, AlephaError, t } from "alepha";
@@ -34,6 +35,7 @@ export class AuthRouter {
       this.register,
       this.resetPassword,
       this.verifyEmail,
+      this.profile,
     ],
   });
 
@@ -113,6 +115,16 @@ export class AuthRouter {
       this.auth.logout();
       return {};
     },
+  });
+
+  profile = $page({
+    name: "userProfile",
+    icon: IconUser,
+    label: "Profile",
+    description: "View your profile",
+    path: "/profile",
+    can: () => !!this.auth.user,
+    lazy: () => import("./components/Profile.tsx"),
   });
 
   protected async loadRealmConfig(realmName?: string) {

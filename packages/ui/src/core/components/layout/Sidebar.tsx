@@ -265,6 +265,7 @@ export const SidebarItem = (props: SidebarItemProps) => {
           props.theme.button?.size ??
           (level === 0 ? "sm" : "xs")
         }
+        tooltip={item.description}
         c={"var(--mantine-color-text)"}
         color={"gray"}
         variant={"subtle"}
@@ -276,11 +277,6 @@ export const SidebarItem = (props: SidebarItemProps) => {
             {renderIcon(item.icon)}
             <Flex direction={"column"}>
               <Flex>{item.label}</Flex>
-              {item.description && (
-                <Text size={"xs"} c={"dimmed"}>
-                  {item.description}
-                </Text>
-              )}
             </Flex>
           </Flex>
         }

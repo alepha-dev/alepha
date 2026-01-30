@@ -6,9 +6,16 @@ import {
   ui,
 } from "@alepha/ui";
 import { Avatar } from "@mantine/core";
-import { IconLogin2, IconLogout, IconUser } from "@tabler/icons-react";
+import {
+  IconLogin2,
+  IconLogout,
+  IconSettings,
+  IconUser,
+} from "@tabler/icons-react";
+import type { AdminUserController } from "alepha/api/users";
+import { useClient, useInject } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
-import { useRouter } from "alepha/react/router";
+import { ReactPageProvider, useRouter } from "alepha/react/router";
 import type { ReactNode } from "react";
 import type { AuthRouter } from "../../AuthRouter.ts";
 
@@ -53,12 +60,19 @@ const UserButton = (props: UserButtonProps) => {
 
   buttonProps.variant ??= "subtle";
 
+  const adminUserCtrl = useClient<AdminUserController>();
+  const pages = useInject(ReactPageProvider);
+
   const auth = useAuth<{
     username?: string;
     email?: string;
     picture?: string;
   }>();
 
+  const isConnected = !!auth.user;
+  const isAdmin = isConnected && adminUserCtrl.findUsers.can();
+  const userPage = pages.getPages().find((it) => it.name === "userProfile");
+  const adminPage = pages.getPages().find((it) => it.name === "adminLayout");
   const authRouter = useRouter<AuthRouter>();
 
   if (!auth.user) {
@@ -80,6 +94,24 @@ const UserButton = (props: UserButtonProps) => {
     items.push({
       type: "label",
       label: auth.user.email,
+    });
+  }
+
+  // Add profile page link if available
+  if (userPage && isConnected) {
+    items.push({
+      label: "Profile",
+      icon: <IconUser size={ui.sizes.icon.md} />,
+      href: authRouter.path("userProfile"),
+    });
+  }
+
+  // Add admin page link if available and user is admin
+  if (adminPage && isAdmin) {
+    items.push({
+      label: "Admin",
+      icon: <IconSettings size={ui.sizes.icon.md} />,
+      href: authRouter.path("adminLayout"),
     });
   }
 

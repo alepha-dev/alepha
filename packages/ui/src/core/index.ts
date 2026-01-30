@@ -5,11 +5,15 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ComponentType, ReactNode } from "react";
 import { alephaSidebarAtom } from "./atoms/alephaSidebarAtom.ts";
 import { alephaThemeAtom } from "./atoms/alephaThemeAtom.ts";
+import {
+  type AlephaThemeListAtom,
+  alephaThemeListAtom,
+} from "./atoms/alephaThemeListAtom.ts";
 import type { ControlProps } from "./components/form/Control.tsx";
 import { ThemeProvider } from "./providers/ThemeProvider.ts";
-import { RootRouter } from "./RootRouter.ts";
 import { DialogService } from "./services/DialogService.tsx";
 import { ToastService } from "./services/ToastService.tsx";
+import { UiRouter } from "./UiRouter.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -98,7 +102,6 @@ export * from "./constants/ui.ts";
 export { useDialog } from "./hooks/useDialog.ts";
 export { useToast } from "./hooks/useToast.ts";
 export * from "./providers/ThemeProvider.ts";
-export * from "./RootRouter.ts";
 export type {
   AlertDialogOptions,
   AlertDialogProps,
@@ -110,6 +113,7 @@ export type {
 } from "./services/DialogService.tsx";
 export { DialogService } from "./services/DialogService.tsx";
 export { ToastService } from "./services/ToastService.tsx";
+export * from "./UiRouter.ts";
 export * from "./utils/extractSchemaFields.ts";
 export * from "./utils/icons.tsx";
 export * from "./utils/string.ts";
@@ -180,7 +184,7 @@ declare module "alepha/react/router" {
  */
 export const AlephaUI = $module({
   name: "alepha.ui",
-  services: [DialogService, ToastService, ThemeProvider, RootRouter],
+  services: [DialogService, ToastService, ThemeProvider, UiRouter],
   register: (alepha) => {
     alepha.with(AlephaReactI18n);
     alepha.with(AlephaReactHead);
@@ -192,30 +196,12 @@ export const AlephaUI = $module({
 });
 
 /**
- * Register UI components and get the RootRouter instance.
+ * Convenience function to configure and inject the UiRouter.
  */
-export const $ui = (
-  opts: {
-    // TODO:
-    // theme?: ThemeOptions;
-    // root?: string = "/";
-  } = {},
-) => {
+export const $ui = (options: { themes?: AlephaThemeListAtom } = {}) => {
   const { alepha } = $context();
-
-  // TODO: Register unique instance ? In order to have multiple ui apps in the same context ?
-  // app = $ui();
-  // admin = $ui({ root: "/admin", theme: adminTheme });
-  // auth = $ui({ root: "/auth", theme: authTheme });
-  // etc...
-
-  /**
-   * If multi ui, should we have N themes ? or one $atom theme but with change based on current ui app ?
-   *
-   * App (theme=T1) -> Admin (theme=T2) ?
-   *
-   * > It can be done with onLeave()/onEnter() of the RootRouter to set the theme atom.
-   */
-
-  return alepha.inject(RootRouter); // Inject as singleton ?
+  if (options.themes) {
+    alepha.store.set(alephaThemeListAtom, options.themes);
+  }
+  return alepha.inject(UiRouter); // Inject as singleton ?
 };
