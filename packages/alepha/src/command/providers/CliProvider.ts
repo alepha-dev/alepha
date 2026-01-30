@@ -10,6 +10,7 @@ import {
   type Static,
   type TObject,
   type TSchema,
+  type TUnion,
   TypeBoxError,
   t,
 } from "alepha";
@@ -658,8 +659,24 @@ export class CliProvider {
         continue;
       }
 
+      // Check if schema is a union containing boolean (allows flag without value)
+      const isUnionWithBoolean =
+        t.schema.isUnion(def.schema) &&
+        (def.schema as TUnion).anyOf.some((s) => t.schema.isBoolean(s));
+
       if (t.schema.isBoolean(def.schema)) {
         result[def.key] = true;
+      } else if (isUnionWithBoolean && !value) {
+        // Union with boolean: --flag without value → true
+        const nextArg = argv[i + 1];
+        if (nextArg && !nextArg.startsWith("-")) {
+          // Has a value after space: --flag value
+          result[def.key] = nextArg;
+          i++; // consume next arg
+        } else {
+          // No value: --flag → true
+          result[def.key] = true;
+        }
       } else if (value) {
         // Value provided via --flag=value syntax
         try {
@@ -713,8 +730,24 @@ export class CliProvider {
       const def = flagDefs.find((d) => d.aliases.includes(rawKey));
       if (!def) continue;
 
+      // Check if schema is a union containing boolean
+      const isUnionWithBoolean =
+        t.schema.isUnion(def.schema) &&
+        (def.schema as TUnion).anyOf.some((s) => t.schema.isBoolean(s));
+
       // If not a boolean flag and no = value, the next arg is consumed as the value
-      if (!t.schema.isBoolean(def.schema) && !hasEqualValue) {
+      // Exception: union with boolean can work without a value
+      if (
+        !t.schema.isBoolean(def.schema) &&
+        !isUnionWithBoolean &&
+        !hasEqualValue
+      ) {
+        const nextArg = argv[i + 1];
+        if (nextArg && !nextArg.startsWith("-")) {
+          consumed.add(i + 1);
+        }
+      } else if (isUnionWithBoolean && !hasEqualValue) {
+        // Union with boolean: check if next arg looks like a value (not a flag)
         const nextArg = argv[i + 1];
         if (nextArg && !nextArg.startsWith("-")) {
           consumed.add(i + 1);
