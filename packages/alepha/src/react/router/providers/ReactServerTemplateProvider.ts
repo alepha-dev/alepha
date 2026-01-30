@@ -633,12 +633,21 @@ export class ReactServerTemplateProvider {
         ? `${criticalMeta.join("\n")}\n${content}`
         : content;
 
-    // Strip entry assets from original head content to avoid duplicates
-    if (entryAssets && this.slots) {
+    // Strip early-injected content from original head to avoid duplicates
+    if (this.slots) {
       let headContent = this.slots.headOriginalContent;
 
+      // Remove charset meta tag (we inject it early)
+      headContent = headContent.replace(/<meta\s+charset=[^>]*>\s*/gi, "");
+
+      // Remove viewport meta tag (we inject it early)
+      headContent = headContent.replace(
+        /<meta\s+name=["']viewport["'][^>]*>\s*/gi,
+        "",
+      );
+
       // Remove entry script tag
-      if (entryAssets.js) {
+      if (entryAssets?.js) {
         // Match script tag with this src (handles various attribute orders)
         const scriptPattern = new RegExp(
           `<script[^>]*\\ssrc=["']${this.escapeRegExp(entryAssets.js)}["'][^>]*>\\s*</script>\\s*`,
@@ -648,12 +657,14 @@ export class ReactServerTemplateProvider {
       }
 
       // Remove entry CSS link tags
-      for (const css of entryAssets.css) {
-        const linkPattern = new RegExp(
-          `<link[^>]*\\shref=["']${this.escapeRegExp(css)}["'][^>]*>\\s*`,
-          "gi",
-        );
-        headContent = headContent.replace(linkPattern, "");
+      if (entryAssets?.css) {
+        for (const css of entryAssets.css) {
+          const linkPattern = new RegExp(
+            `<link[^>]*\\shref=["']${this.escapeRegExp(css)}["'][^>]*>\\s*`,
+            "gi",
+          );
+          headContent = headContent.replace(linkPattern, "");
+        }
       }
 
       this.slots.headOriginalContent = headContent.trim();
