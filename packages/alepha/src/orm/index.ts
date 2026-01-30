@@ -152,11 +152,7 @@ export const AlephaOrm = $module({
     alepha.with(RepositoryProvider);
 
     const url = env.DATABASE_URL;
-    const hasPGlite = !!PglitePostgresProvider.importPglite();
     const isPostgres = url?.startsWith("postgres:");
-    const isSqlite = url?.startsWith("sqlite:");
-    const isMemory = url?.includes(":memory:");
-    const isFile = !!url && !isPostgres && !isMemory;
     const isBun = alepha.isBun();
 
     if (url?.startsWith("cloudflare-d1:")) {
@@ -168,7 +164,7 @@ export const AlephaOrm = $module({
       return;
     }
 
-    if (hasPGlite && (isMemory || isFile || !url) && !isSqlite) {
+    if (url?.startsWith("pglite:")) {
       alepha.with({
         optional: true,
         provide: DatabaseProvider,
