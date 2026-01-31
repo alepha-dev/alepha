@@ -3,7 +3,7 @@
   "private": true,
   "devDependencies": {
     "@types/autocannon": "^7.12.7",
-    "alepha": "0.15.2",
+    "alepha": "0.15.3",
     "autocannon": "^8.0.0",
     "express": "^5.2.1",
     "fastify": "^5.7.2",

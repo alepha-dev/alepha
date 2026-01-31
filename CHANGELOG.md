@@ -1,3 +1,15 @@
+## [0.15.3] - 2026-01-31
+
+### Features
+
+- **react/router**: rename useRouter() .go to .push [BREAKING] (`f385060c`)
+- **cli**: show flag enum values in printHelp (`a8d557eb`)
+- **security**: actions are not secured by default anymore. secure: true is now required. [BREAKING] (`0973bdfd`)
+
+### Bug Fixes
+
+- **core**: fix unhandled error when running .start() twice (`65661fa6`)
+
 ## [0.15.2] - 2026-01-29
 
 ### Features
