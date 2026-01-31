@@ -154,7 +154,10 @@ export class BunSqliteProvider extends DatabaseProvider {
         },
       });
 
-      await this.migrate();
+      // Never migrate in serverless mode - migrations should be applied during deployment
+      if (!this.alepha.isServerless()) {
+        await this.migrate();
+      }
 
       this.log.info(`Using Bun SQLite database at ${filepath}`);
     },

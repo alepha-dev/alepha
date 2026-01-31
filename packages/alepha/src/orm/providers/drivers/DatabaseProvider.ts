@@ -97,9 +97,17 @@ export abstract class DatabaseProvider {
   }
 
   /**
-   * Base migration orchestration - handles environment logic
+   * Base migration orchestration - handles environment logic.
+   *
+   * Never runs in serverless mode - migrations should be applied during
+   * deployment, not at runtime (to avoid race conditions and timeouts).
    */
   public async migrate(): Promise<void> {
+    // Never migrate in serverless mode - migrations should be applied during deployment
+    if (this.alepha.isServerless()) {
+      return;
+    }
+
     const migrationsFolder = this.getMigrationsFolder();
 
     // Handle different environments

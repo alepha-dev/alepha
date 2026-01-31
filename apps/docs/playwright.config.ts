@@ -21,5 +21,7 @@ export default defineConfig({
     env: {
       SERVER_PORT: `${port}`,
     },
+    stdout: "pipe",
+    stderr: "pipe",
   },
 });

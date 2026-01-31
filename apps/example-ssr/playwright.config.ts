@@ -16,7 +16,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "yarn start",
+    command: "yarn start:e2e",
     url: `http://localhost:${port}`,
     env: {
       SERVER_PORT: `${port}`,

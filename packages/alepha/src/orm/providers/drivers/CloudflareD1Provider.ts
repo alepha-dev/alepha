@@ -104,41 +104,69 @@ export class CloudflareD1Provider extends DatabaseProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      const [bindingName] = this.env.DATABASE_URL.replace(
-        "cloudflare-d1://",
-        "",
-      ).split(":");
-      const cloudflareEnv = this.alepha.store.get("cloudflare.env" as any);
-      if (!cloudflareEnv) {
-        throw new AlephaError(
-          "Cloudflare Workers environment not found in Alepha store under 'cloudflare.env'.",
-        );
+      try {
+        const [bindingName] = this.env.DATABASE_URL.replace(
+          "cloudflare-d1://",
+          "",
+        ).split(":");
+        const cloudflareEnv = this.alepha.store.get("cloudflare.env" as any);
+        if (!cloudflareEnv) {
+          throw new AlephaError(
+            "Cloudflare Workers environment not found in Alepha store under 'cloudflare.env'.",
+          );
+        }
+
+        const binding = cloudflareEnv[bindingName] as D1Database;
+        if (!binding) {
+          throw new AlephaError(
+            `D1 binding '${bindingName}' not found in Cloudflare Workers environment.`,
+          );
+        }
+
+        this.d1 = binding;
+
+        // Dynamic import to avoid crashes when not on Cloudflare
+        const { drizzle } = await import("drizzle-orm/d1");
+
+        this.drizzleDb = drizzle(this.d1) as DrizzleD1Database;
+
+        // Never migrate in serverless mode - D1 migrations must be applied
+        // via `wrangler d1 migrations apply` before deployment
+        if (!this.alepha.isServerless()) {
+          await this.migrate();
+        }
+
+        this.log.info("Using Cloudflare D1 database");
+      } catch (error) {
+        // Log the full error for debugging since Cloudflare Workers
+        // doesn't properly display error causes
+        const errorMessage =
+          error instanceof Error
+            ? `${error.message}${error.stack ? `\n${error.stack}` : ""}`
+            : String(error);
+        this.log.error(`D1 initialization failed: ${errorMessage}`);
+        throw error;
       }
-
-      const binding = cloudflareEnv[bindingName] as D1Database;
-      if (!binding) {
-        throw new AlephaError(
-          `D1 binding '${bindingName}' not found in Cloudflare Workers environment.`,
-        );
-      }
-
-      this.d1 = binding;
-
-      // Dynamic import to avoid crashes when not on Cloudflare
-      const { drizzle } = await import("drizzle-orm/d1");
-
-      this.drizzleDb = drizzle(this.d1) as DrizzleD1Database;
-
-      await this.migrate();
-
-      this.log.info("Using Cloudflare D1 database");
     },
   });
 
   protected async executeMigrations(migrationsFolder: string): Promise<void> {
-    // Dynamic import for D1 migrator
-    const { migrate } = await import("drizzle-orm/d1/migrator");
-    await migrate(this.db as any, { migrationsFolder });
+    this.log.debug(`Running D1 migrations from '${migrationsFolder}'...`);
+    try {
+      // Dynamic import for D1 migrator
+      const { migrate } = await import("drizzle-orm/d1/migrator");
+      await migrate(this.db as any, { migrationsFolder });
+      this.log.debug("D1 migrations completed successfully");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? `${error.name}: ${error.message}`
+          : String(error);
+      throw new AlephaError(
+        `D1 migration failed from '${migrationsFolder}': ${errorMessage}`,
+        { cause: error },
+      );
+    }
   }
 
   /**

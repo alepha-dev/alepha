@@ -7,10 +7,10 @@
     "build": "alepha build",
     "deploy": "alepha deploy --build --migrate --mode=production",
     "studio": "alepha db studio --mode=production",
-    "migrate": "alepha db migrate",
-    "start": "alepha db migrate && cd dist && wrangler dev --port 3301",
     "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui"
+    "e2e:ui": "playwright test --ui",
+    "start:e2e": "CI=true yarn migrate:e2e && cd dist && wrangler dev --port $SERVER_PORT",
+    "migrate:e2e": "cp -R migrations/sqlite dist/migrations && cd dist && wrangler d1 migrations apply alepha-one --local"
   },
   "dependencies": {
     "alepha": "^0.15.2",
