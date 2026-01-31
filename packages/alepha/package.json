@@ -399,6 +399,7 @@
     "./system": {
       "types": "./src/system/index.ts",
       "react-native": "./src/system/index.browser.ts",
+      "workerd": "./src/system/index.workerd.ts",
       "browser": "./src/system/index.browser.ts",
       "import": "./src/system/index.ts",
       "default": "./src/system/index.ts"

@@ -11,6 +11,7 @@ interface Module {
   dependencies: string[];
   native?: boolean;
   browser?: boolean;
+  workerd?: boolean;
   bun?: boolean;
   node?: boolean;
 }
@@ -51,6 +52,10 @@ export class AlephaPackageBuilderCli {
         } else if (item.browser) {
           pkgData.exports[path]["react-native"] =
             `./src/${item.name}/index.browser.ts`;
+        }
+
+        if (item.workerd) {
+          pkgData.exports[path].workerd = `./src/${item.name}/index.workerd.ts`;
         }
 
         if (item.browser) {
@@ -321,6 +326,9 @@ export async function analyzeModules(
           );
           const hasBun = await fileExists(join(modulePath, "index.bun.ts"));
           const hasNode = await fileExists(join(modulePath, "index.node.ts"));
+          const hasEdge = await fileExists(
+            join(modulePath, "index.workerd.ts"),
+          );
 
           // Get all .ts/.tsx files in this module
           const files = await getAllFiles(modulePath);
@@ -353,6 +361,7 @@ export async function analyzeModules(
           };
 
           if (hasNative) module.native = true;
+          if (hasEdge) module.workerd = true;
           if (hasBrowser) module.browser = true;
           if (hasBun) module.bun = true;
           if (hasNode) module.node = true;

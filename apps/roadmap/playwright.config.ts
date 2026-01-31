@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const port = 3303;
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -8,7 +10,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
   use: {
-    baseURL: "http://localhost:3002",
+    baseURL: `http://localhost:${3303}`,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -20,8 +22,11 @@ export default defineConfig({
   ],
   webServer: {
     command: "yarn start",
-    url: "http://localhost:3002",
+    url: `http://localhost:${3303}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180000,
+    env: {
+      SERVER_PORT: `${port}`,
+    },
   },
 });

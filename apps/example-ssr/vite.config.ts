@@ -15,8 +15,15 @@ export default defineConfig((env) => {
         name: "debug-resolve",
         enforce: "pre", // Run before other plugins
         resolveId(id, importer) {
-          if (id === "perf_hooks" || id === "node:perf_hooks") {
-            console.error(`\n⚠️  perf_hooks imported by: ${importer}\n`);
+          const denyList = [
+            "perf_hooks",
+            "node:perf_hooks",
+            "node:child_process",
+          ];
+
+          if (denyList.includes(id)) {
+            const who = denyList.find((moduleName) => moduleName === id);
+            console.error(`\n⚠️  ${who} imported by: ${importer}\n`);
             console.log(
               "If you see this, it means project 'example-ssr' has a regression in its server build.",
             );

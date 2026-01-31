@@ -31,7 +31,7 @@
     "dev": "LOG_LEVEL=trace alepha dev",
     "copy": "alepha gen:packages && alepha gen:tree",
     "copy&dev": "yarn copy && alepha dev",
-    "start": "SERVER_PORT=3000 node dist",
+    "start": "node dist",
     "lint": "alepha lint",
     "typecheck": "alepha typecheck",
     "build": "alepha build",

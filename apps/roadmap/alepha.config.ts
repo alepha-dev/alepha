@@ -2,6 +2,7 @@ import { defineConfig } from "alepha/cli";
 
 export default defineConfig({
   build: {
+    target: "vercel",
     vercel: {
       projectName: "alepha-roadmap",
       config: {

@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const port = 3001;
+const port = 3301;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -25,8 +25,5 @@ export default defineConfig({
     url: `http://localhost:${port}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180000,
-    env: {
-      SERVER_PORT: String(port),
-    },
   },
 });
