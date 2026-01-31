@@ -48,7 +48,7 @@ export class ServerLinksProvider {
           group: action.group,
           schema: action.options.schema,
           requestBodyType: action.getBodyContentType(),
-          secured: action.options.secure ?? true,
+          secured: action.options.secure,
           method: action.method === "GET" ? undefined : action.method,
           prefix: action.prefix,
           path: action.path,
