@@ -211,7 +211,7 @@ const TabBar = () => {
         const newTabs = prev.filter((t) => t.path !== closedPath);
         // If closing the active tab, navigate to the next most recent tab
         if (isActive && newTabs.length > 0) {
-          router.go(newTabs[0].path);
+          router.push(newTabs[0].path);
         }
         return newTabs;
       });

@@ -43,7 +43,7 @@ const AdminUserCreate = (props: AdminUserCreateProps) => {
         },
       });
 
-      await router.go("adminUserDetails", {
+      await router.push("adminUserDetails", {
         params: { userId: user.id },
       });
     },

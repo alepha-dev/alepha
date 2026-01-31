@@ -36,7 +36,7 @@ export const useActive = (args: string | UseActiveOptions): UseActiveHook => {
 
         setPending(true);
         try {
-          await router.go(href);
+          await router.push(href);
         } finally {
           setPending(false);
         }

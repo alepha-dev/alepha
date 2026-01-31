@@ -100,7 +100,7 @@ const AdminAudits = (props: AdminAuditsProps) => {
           },
           onClick: () => {
             if (item.userId) {
-              router.go("adminUserDetails", {
+              router.push("adminUserDetails", {
                 params: { userId: item.userId },
               });
             }

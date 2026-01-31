@@ -28,7 +28,7 @@ const HeaderProject = () => {
             <IconSquare size={16} />
           )
         }
-        onClick={() => router.go(`/p/${id}`)}
+        onClick={() => router.push(`/p/${id}`)}
       >
         {label}
       </Menu.Item>

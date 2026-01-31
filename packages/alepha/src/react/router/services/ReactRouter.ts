@@ -7,7 +7,7 @@ import {
   type ReactRouterState,
 } from "../providers/ReactPageProvider.ts";
 
-export interface RouterGoOptions {
+export interface RouterPushOptions {
   replace?: boolean;
   params?: Record<string, string>;
   query?: Record<string, string>;
@@ -114,7 +114,7 @@ export class ReactRouter<T extends object> {
       return;
     }
 
-    await this.go(this.location.pathname + this.location.search, {
+    await this.push(this.location.pathname + this.location.search, {
       replace: true,
       force: true,
     });
@@ -168,18 +168,18 @@ export class ReactRouter<T extends object> {
     await this.browser?.invalidate(props);
   }
 
-  public async go(path: string, options?: RouterGoOptions): Promise<void>;
-  public async go(
+  public async push(path: string, options?: RouterPushOptions): Promise<void>;
+  public async push(
     path: keyof VirtualRouter<T>,
-    options?: RouterGoOptions,
+    options?: RouterPushOptions,
   ): Promise<void>;
-  public async go(
+  public async push(
     path: string | keyof VirtualRouter<T>,
-    options?: RouterGoOptions,
+    options?: RouterPushOptions,
   ): Promise<void> {
     for (const page of this.pages) {
       if (page.name === path) {
-        await this.browser?.go(
+        await this.browser?.push(
           this.path(path as keyof VirtualRouter<T>, options),
           options,
         );
@@ -187,17 +187,17 @@ export class ReactRouter<T extends object> {
       }
     }
 
-    await this.browser?.go(path as string, options);
+    await this.browser?.push(path as string, options);
   }
 
-  public anchor(path: string, options?: RouterGoOptions): AnchorProps;
+  public anchor(path: string, options?: RouterPushOptions): AnchorProps;
   public anchor(
     path: keyof VirtualRouter<T>,
-    options?: RouterGoOptions,
+    options?: RouterPushOptions,
   ): AnchorProps;
   public anchor(
     path: string | keyof VirtualRouter<T>,
-    options: RouterGoOptions = {},
+    options: RouterPushOptions = {},
   ): AnchorProps {
     let href = path as string;
 
@@ -214,7 +214,7 @@ export class ReactRouter<T extends object> {
         ev.stopPropagation();
         ev.preventDefault();
 
-        this.go(href, options).catch(console.error);
+        this.push(href, options).catch(console.error);
       },
     };
   }

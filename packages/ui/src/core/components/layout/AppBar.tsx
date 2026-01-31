@@ -266,7 +266,7 @@ const AppBar = (props: AppBarProps) => {
 
     const handleClick = () => {
       if (href) {
-        router.go(href);
+        router.push(href);
       } else {
         router.back();
       }

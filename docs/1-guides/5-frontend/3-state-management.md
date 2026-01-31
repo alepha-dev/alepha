@@ -186,7 +186,7 @@ const ProjectCreate = () => {
       ]);
 
       // Navigate to the new project
-      await router.go("project", {
+      await router.push("project", {
         params: { projectId: String(project.id) },
       });
     },

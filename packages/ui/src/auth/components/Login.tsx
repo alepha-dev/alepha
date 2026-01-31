@@ -78,7 +78,7 @@ const Login = (props: LoginProps) => {
           password: data.password,
           realm: props.realmConfig.realmName,
         });
-        await router.go(router.query.r || "/");
+        await router.push(router.query.r || "/");
       } catch (error) {
         if (
           error instanceof HttpError &&

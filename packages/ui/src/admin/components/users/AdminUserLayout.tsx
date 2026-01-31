@@ -123,7 +123,7 @@ const AdminUserLayout = (props: AdminUserLayoutProps) => {
         params: { id: userId },
         query: { userRealmName: props.userRealmName },
       });
-      await router.go("adminUsers");
+      await router.push("adminUsers");
     } finally {
       setActionLoading(null);
     }

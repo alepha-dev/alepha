@@ -35,9 +35,9 @@ const Omnibar = (props: OmnibarProps) => {
           description: page.description,
           onClick: () => {
             if (page.staticName) {
-              return router.go(page.staticName, { params: page.params });
+              return router.push(page.staticName, { params: page.params });
             }
-            return router.go(page.name);
+            return router.push(page.name);
           },
           leftSection: renderIcon(page.icon),
         })),

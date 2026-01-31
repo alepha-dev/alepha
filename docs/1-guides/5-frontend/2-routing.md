@@ -35,7 +35,7 @@ That's it. Two routes. Type-safe. Ready for SSR.
 
 ### Why Class Properties?
 
-Because then TypeScript knows your routes exist. You can `router.go("home")` and get autocomplete. You can generate paths with `router.path("userProfile", { params: { id: "123" } })` and the compiler yells if you misspell it.
+Because then TypeScript knows your routes exist. You can `router.push("home")` and get autocomplete. You can generate paths with `router.path("userProfile", { params: { id: "123" } })` and the compiler yells if you misspell it.
 
 File-based routing gives you magic strings. Class-based routing gives you types.
 
@@ -247,15 +247,15 @@ const Navigation = () => {
   return (
     <div>
       {/* By page name */}
-      <button onClick={() => router.go("home")}>Home</button>
+      <button onClick={() => router.push("home")}>Home</button>
 
       {/* With params */}
-      <button onClick={() => router.go("userProfile", { params: { id: 123 } })}>
+      <button onClick={() => router.push("userProfile", { params: { id: 123 } })}>
         View User
       </button>
 
       {/* With query */}
-      <button onClick={() => router.go("search", { query: { q: "test" } })}>
+      <button onClick={() => router.push("search", { query: { q: "test" } })}>
         Search
       </button>
 
@@ -563,8 +563,8 @@ $page({
 
 // Navigation
 const router = useRouter<AppRouter>();
-router.go("home");
-router.go("userProfile", { params: { id: 123 } });
+router.push("home");
+router.push("userProfile", { params: { id: 123 } });
 router.back();
 router.forward();
 router.reload();

@@ -84,7 +84,7 @@ const NavButton = (props: NavButtonProps) => {
   return (
     <button
       type="button"
-      onClick={() => router.go(href)}
+      onClick={() => router.push(href)}
       aria-label={label}
       aria-busy={isPending}
       disabled={isPending}

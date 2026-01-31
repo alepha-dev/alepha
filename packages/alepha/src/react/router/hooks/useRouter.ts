@@ -13,7 +13,7 @@ import { ReactRouter } from "../services/ReactRouter.ts";
  * }
  *
  * const router = useRouter<App>();
- * router.go("home"); // typesafe
+ * router.push("home"); // typesafe
  */
 export const useRouter = <T extends object = any>(): ReactRouter<T> => {
   return useInject(ReactRouter<T>);

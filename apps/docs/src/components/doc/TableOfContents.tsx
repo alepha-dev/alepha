@@ -22,7 +22,7 @@ const TableOfContents = (props: TableOfContentsProps) => {
   const router = useRouter();
 
   useLayoutEffect(() => {
-    (window as any).go = (url: string) => router.go(url);
+    (window as any).go = (url: string) => router.push(url);
   }, [props.name, router]);
 
   return (

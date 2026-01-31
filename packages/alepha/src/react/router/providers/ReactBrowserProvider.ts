@@ -12,14 +12,14 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { BrowserHeadProvider } from "alepha/react/head";
 import { LinkProvider } from "alepha/server/links";
-import type { RouterGoOptions } from "../services/ReactRouter.ts";
+import type { RouterPushOptions } from "../services/ReactRouter.ts";
 import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
 import type {
   PreviousLayerData,
   ReactRouterState,
 } from "./ReactPageProvider.ts";
 
-export type { RouterGoOptions } from "../services/ReactRouter.ts";
+export type { RouterPushOptions } from "../services/ReactRouter.ts";
 
 /**
  * React browser renderer configuration atom
@@ -158,7 +158,10 @@ export class ReactBrowserProvider {
     await this.render({ previous });
   }
 
-  public async go(url: string, options: RouterGoOptions = {}): Promise<void> {
+  public async push(
+    url: string,
+    options: RouterPushOptions = {},
+  ): Promise<void> {
     this.log.trace(`Going to ${url}`, {
       url,
       options,

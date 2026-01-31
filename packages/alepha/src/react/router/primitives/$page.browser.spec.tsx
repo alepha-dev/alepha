@@ -34,7 +34,7 @@ describe("$page browser tests", () => {
     const router = alepha.inject(ReactRouter);
 
     await act(async () => {
-      await router.go("/");
+      await router.push("/");
     });
 
     await waitFor(() => {
@@ -64,7 +64,7 @@ describe("$page browser tests", () => {
 
     // Navigate to home
     await act(async () => {
-      await router.go("/");
+      await router.push("/");
     });
 
     await waitFor(() => {
@@ -73,7 +73,7 @@ describe("$page browser tests", () => {
 
     // Navigate to about
     await act(async () => {
-      await router.go("/about");
+      await router.push("/about");
     });
 
     await waitFor(() => {
@@ -119,7 +119,7 @@ describe("$page browser tests", () => {
       const router = alepha.inject(ReactRouter);
 
       await act(async () => {
-        await router.go("/user/123");
+        await router.push("/user/123");
       });
 
       await waitFor(() => {
@@ -153,7 +153,7 @@ describe("$page browser tests", () => {
       const router = alepha.inject(ReactRouter);
 
       await act(async () => {
-        await router.go("/async");
+        await router.push("/async");
       });
 
       await waitFor(
@@ -204,7 +204,7 @@ describe("$page browser tests", () => {
 
       // Try to access protected - should redirect to login
       await act(async () => {
-        await router.go("/protected");
+        await router.push("/protected");
       });
 
       await waitFor(() => {
@@ -215,7 +215,7 @@ describe("$page browser tests", () => {
       isAuthenticated = true;
 
       await act(async () => {
-        await router.go("/protected");
+        await router.push("/protected");
       });
 
       await waitFor(() => {
@@ -248,7 +248,7 @@ describe("$page browser tests", () => {
       const router = alepha.inject(ReactRouter);
 
       await act(async () => {
-        await router.go("/error");
+        await router.push("/error");
       });
 
       await waitFor(() => {
@@ -294,7 +294,7 @@ describe("$page browser tests", () => {
 
       // Navigate to home - should show layout and home
       await act(async () => {
-        await router.go("/");
+        await router.push("/");
       });
 
       await waitFor(() => {
@@ -306,7 +306,7 @@ describe("$page browser tests", () => {
 
       // Navigate to about - layout should persist
       await act(async () => {
-        await router.go("/about");
+        await router.push("/about");
       });
 
       await waitFor(() => {
@@ -348,7 +348,7 @@ describe("$page browser tests", () => {
       const router = alepha.inject(ReactRouter);
 
       await act(async () => {
-        await router.go("/page");
+        await router.push("/page");
       });
 
       await waitFor(() => {
@@ -404,7 +404,7 @@ describe("$page browser tests", () => {
       const router = alepha.inject(ReactRouter);
 
       await act(async () => {
-        await router.go("/section/page");
+        await router.push("/section/page");
       });
 
       await waitFor(() => {
@@ -441,7 +441,7 @@ describe("$page browser tests", () => {
 
       // Navigate to home
       await act(async () => {
-        await router.go("/");
+        await router.push("/");
       });
 
       await waitFor(() => {
@@ -452,7 +452,7 @@ describe("$page browser tests", () => {
 
       // Navigate away from home to about
       await act(async () => {
-        await router.go("/about");
+        await router.push("/about");
       });
 
       await waitFor(() => {
@@ -490,7 +490,7 @@ describe("$page browser tests", () => {
 
       // Navigate to home first
       await act(async () => {
-        await router.go("/");
+        await router.push("/");
       });
 
       await waitFor(() => {
@@ -503,7 +503,7 @@ describe("$page browser tests", () => {
 
       // Navigate to about - onEnter should be called
       await act(async () => {
-        await router.go("/about");
+        await router.push("/about");
       });
 
       await waitFor(() => {
@@ -533,7 +533,7 @@ describe("$page browser tests", () => {
 
       // Navigate to home - onEnter should be called
       await act(async () => {
-        await router.go("/");
+        await router.push("/");
       });
 
       await waitFor(() => {
@@ -582,7 +582,7 @@ describe("$page browser tests", () => {
 
       // Navigate to child1
       await act(async () => {
-        await router.go("/child1");
+        await router.push("/child1");
       });
 
       await waitFor(() => {
@@ -595,7 +595,7 @@ describe("$page browser tests", () => {
 
       // Navigate to child2 - parent onEnter should NOT be called again
       await act(async () => {
-        await router.go("/child2");
+        await router.push("/child2");
       });
 
       await waitFor(() => {
@@ -633,7 +633,7 @@ describe("$page browser tests", () => {
       const router = alepha.inject(ReactRouter);
 
       await act(async () => {
-        await router.go("/user/abc123");
+        await router.push("/user/abc123");
       });
 
       await waitFor(() => {
@@ -678,7 +678,7 @@ describe("$page browser tests", () => {
       const router = alepha.inject(ReactRouter);
 
       await act(async () => {
-        await router.go("/search?q=typescript&page=2");
+        await router.push("/search?q=typescript&page=2");
       });
 
       await waitFor(() => {
@@ -728,7 +728,7 @@ describe("$page browser tests", () => {
 
       // Navigate with query params
       await act(async () => {
-        await router.go("/search?q=alepha&page=5");
+        await router.push("/search?q=alepha&page=5");
       });
 
       await waitFor(() => {
@@ -783,7 +783,7 @@ describe("$page browser tests", () => {
       const router = alepha.inject(ReactRouter);
 
       await act(async () => {
-        await router.go("/users/john/posts?sort=popular&limit=20");
+        await router.push("/users/john/posts?sort=popular&limit=20");
       });
 
       await waitFor(() => {
@@ -835,7 +835,7 @@ describe("$page browser tests", () => {
 
       // Navigate without query params - should use defaults
       await act(async () => {
-        await router.go("/search");
+        await router.push("/search");
       });
 
       await waitFor(() => {

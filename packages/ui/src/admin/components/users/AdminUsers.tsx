@@ -63,7 +63,7 @@ const AdminUsers = (props: AdminUsersProps) => {
           const baseProps: Record<string, any> = {
             style: { cursor: "pointer" },
             onClick: () =>
-              router.go("adminUserDetails", {
+              router.push("adminUserDetails", {
                 params: { userId: item.id },
               }),
           };

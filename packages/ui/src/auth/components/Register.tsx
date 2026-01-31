@@ -155,7 +155,7 @@ const Register = (props: RegisterProps) => {
         });
       }
 
-      await router.go(router.query.r || "/");
+      await router.push(router.query.r || "/");
     },
   });
 
@@ -188,7 +188,7 @@ const Register = (props: RegisterProps) => {
         });
       }
 
-      await router.go(router.query.r || "/");
+      await router.push(router.query.r || "/");
     } catch (error) {
       setVerificationError(
         error instanceof Error ? error.message : "Verification failed",

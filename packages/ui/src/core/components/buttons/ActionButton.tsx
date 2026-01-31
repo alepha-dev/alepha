@@ -18,7 +18,7 @@ import { IconCheck, IconChevronRight } from "@tabler/icons-react";
 import { type UseActionReturn, useAction } from "alepha/react";
 import { type FormModel, useFormState } from "alepha/react/form";
 import {
-  type RouterGoOptions,
+  type RouterPushOptions,
   type UseActiveOptions,
   useActive,
   useRouter,
@@ -551,7 +551,7 @@ const ActionClickButton = (props: ActionClickButtonProps) => {
 export interface ActionNavigationButtonProps extends ButtonProps {
   href: string;
   active?: Partial<UseActiveOptions> | false;
-  routerGoOptions?: RouterGoOptions;
+  routerGoOptions?: RouterPushOptions;
   classNameActive?: string;
   variantActive?: ButtonProps["variant"];
   target?: string;

@@ -105,7 +105,7 @@ const ProjectSettings = (props: ProjectSettingsProps) => {
                         ),
                       );
 
-                      router.go("home");
+                      router.push("home");
                     });
                 }}
               >

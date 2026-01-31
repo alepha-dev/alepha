@@ -60,7 +60,7 @@ const AdminUserSettings = (props: AdminUserSettingsProps) => {
         params: { id: userId },
         query: { userRealmName: props.userRealmName },
       });
-      await router.go("adminUsers");
+      await router.push("adminUsers");
     } finally {
       setDeleteLoading(false);
     }

@@ -135,7 +135,7 @@ const CommandPalette = () => {
         e.preventDefault();
         const selected = results[selectedIndex];
         if (selected?.doc.href) {
-          router.go(selected.doc.href);
+          router.push(selected.doc.href);
           closeDialog();
         }
       }
@@ -146,7 +146,7 @@ const CommandPalette = () => {
   // Handle click on result
   const handleSelect = useCallback(
     (href: string) => {
-      router.go(href);
+      router.push(href);
       closeDialog();
     },
     [router, closeDialog],

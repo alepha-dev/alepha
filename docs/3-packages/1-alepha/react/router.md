@@ -139,7 +139,7 @@ class App {
 }
 
 const router = useRouter<App>();
-router.go("home"); // typesafe
+router.push("home"); // typesafe
 
 ### Providers
 

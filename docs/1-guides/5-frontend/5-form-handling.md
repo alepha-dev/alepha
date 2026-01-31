@@ -76,7 +76,7 @@ const form = useForm({
   handler: async (values) => {
     try {
       await auth.login(values.email, values.password);
-      router.go("/dashboard");
+      router.push("/dashboard");
     } catch (error) {
       // Re-throw to let the form handle it
       throw error;
@@ -220,7 +220,7 @@ const LoginPage = () => {
           username: data.identifier,
           password: data.password,
         });
-        await router.go("/");
+        await router.push("/");
       } catch (error) {
         if (error instanceof HttpError && error.error === "InvalidCredentialsError") {
           throw new FormValidationError({

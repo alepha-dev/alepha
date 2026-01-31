@@ -48,7 +48,7 @@ const ProjectCreate = () => {
     },
     handler: async (body) => {
       if (!auth.user) {
-        await router.go("login", {
+        await router.push("login", {
           query: {
             r: router.path("projectCreate", {
               query: {
@@ -62,7 +62,7 @@ const ProjectCreate = () => {
 
       const project = await client.createProject({ body });
 
-      await router.go("project", {
+      await router.push("project", {
         params: { projectId: String(project.id) },
       });
 
