@@ -388,6 +388,8 @@ export class PackageManagerUtils {
     if (modes.react) {
       dependencies.react = alephaDeps.react;
       dependencies["react-dom"] = alephaDeps["react-dom"];
+      devDependencies["@vitejs/plugin-react"] =
+        alephaDeps["@vitejs/plugin-react"];
       devDependencies["@types/react"] = alephaDeps["@types/react"];
     }
 

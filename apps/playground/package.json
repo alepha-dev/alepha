@@ -9,9 +9,9 @@
     "start:bun": "bun dist"
   },
   "dependencies": {
-    "@mantine/core": "^8.3.13",
     "alepha": "^0.15.2",
-    "react": "^19.2.4"
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "vite": "^7.3.1"

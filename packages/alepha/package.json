@@ -19,7 +19,6 @@
   ],
   "dependencies": {
     "@redis/client": "^5.10.0",
-    "@vitejs/plugin-react": "^5.1.2",
     "dayjs": "^1.11.19",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.1",
@@ -43,6 +42,7 @@
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^5.1.2",
     "cron-schedule": "^6.0.0",
     "jose": "^6.1.3",
     "jsdom": "^27.4.0",
