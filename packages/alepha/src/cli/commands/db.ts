@@ -405,20 +405,18 @@ export class DbCommand {
         }
 
         const url = options.providerUrl;
-        if (!url.startsWith("cloudflare-d1://")) {
-          throw new AlephaError(
-            "D1 provider URL must start with 'cloudflare-d1://'.",
-          );
+        if (!url.startsWith("d1://")) {
+          throw new AlephaError("D1 provider URL must start with 'd1://'.");
         }
 
         const [, databaseId] = url
-          .replace("cloudflare-d1://", "")
-          .replace("cloudflare-d1:", "")
+          .replace("d1://", "")
+          .replace("d1:", "")
           .split(":");
 
         if (!databaseId) {
           throw new AlephaError(
-            "Database ID is missing in the D1 provider URL. Cloudflare D1 URL format: cloudflare-d1://<database_name>:<database_id>",
+            "Database ID is missing in the D1 provider URL. Cloudflare D1 URL format: d1://<database_name>:<database_id>",
           );
         }
 

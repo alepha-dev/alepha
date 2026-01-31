@@ -7,10 +7,12 @@
     "build": "alepha build",
     "deploy": "alepha deploy --build --migrate --mode=production",
     "studio": "alepha db studio --mode=production",
+    "db:generate": "alepha db generate",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
-    "start:e2e": "CI=true yarn migrate:e2e && cd dist && wrangler dev --port $SERVER_PORT",
-    "migrate:e2e": "cp -R migrations/sqlite dist/migrations && cd dist && wrangler d1 migrations apply alepha-one --local"
+    "start:e2e": "CI=true yarn build:e2e && yarn migrate:e2e && wrangler dev --cwd dist --port $SERVER_PORT",
+    "migrate:e2e": "cp -R migrations/sqlite dist/migrations && wrangler d1 migrations apply alepha-one --cwd dist --local",
+    "build:e2e": "DATABASE_URL=d1://alepha-one:00000000-0000-0000-0000-000000000000 alepha build"
   },
   "dependencies": {
     "alepha": "^0.15.2",
@@ -18,7 +20,6 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0",
-    "better-sqlite3": "^12.6.2",
     "vite": "^7.3.1",
     "wrangler": "^4.61.1"
   }

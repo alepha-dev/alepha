@@ -64,7 +64,7 @@ export class CloudflareD1Provider extends DatabaseProvider {
   protected readonly env = $env(
     t.object({
       DATABASE_URL: t.string({
-        description: "Expect to be 'cloudflare-d1://name:id'",
+        description: "Expect to be 'd1://name:id'",
       }),
     }),
   );
@@ -105,10 +105,9 @@ export class CloudflareD1Provider extends DatabaseProvider {
     on: "start",
     handler: async () => {
       try {
-        const [bindingName] = this.env.DATABASE_URL.replace(
-          "cloudflare-d1://",
-          "",
-        ).split(":");
+        const [bindingName] = this.env.DATABASE_URL.replace("d1://", "").split(
+          ":",
+        );
         const cloudflareEnv = this.alepha.store.get("cloudflare.env" as any);
         if (!cloudflareEnv) {
           throw new AlephaError(

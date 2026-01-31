@@ -52,7 +52,7 @@ export const AlephaOrm = $module({
     const url = env.DATABASE_URL;
     const isPostgres = url?.startsWith("postgres:");
 
-    if (url?.startsWith("cloudflare-d1:")) {
+    if (url?.startsWith("d1:")) {
       alepha.with({
         optional: true,
         provide: DatabaseProvider,

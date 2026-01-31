@@ -63,11 +63,8 @@ export async function generateCloudflare(
   }
 
   const url = process.env.DATABASE_URL;
-  if (url?.startsWith("cloudflare-d1:")) {
-    const [name, id] = url
-      .replace("cloudflare-d1://", "")
-      .replace("cloudflare-d1:", "")
-      .split(":");
+  if (url?.startsWith("d1:")) {
+    const [name, id] = url.replace("d1://", "").replace("d1:", "").split(":");
     wrangler.d1_databases = wrangler.d1_databases || [];
     wrangler.d1_databases.push({
       binding: name,
@@ -75,7 +72,7 @@ export async function generateCloudflare(
       database_id: id,
     });
     wrangler.vars ??= {};
-    wrangler.vars.DATABASE_URL = `cloudflare-d1://${name}:${id}`;
+    wrangler.vars.DATABASE_URL = `d1://${name}:${id}`;
   }
 
   await writeFile(
@@ -102,7 +99,13 @@ export default {
 
     __alepha.set("cloudflare.env", env);
 
-    await __alepha.start();
+    try {
+      await __alepha.start();
+    } catch (err) {
+      console.error(err);
+      return new Response("Internal Server Error", { status: 500 });
+    }
+
     await __alepha.events.emit("web:request", ctx);
 
     return ctx.res;
