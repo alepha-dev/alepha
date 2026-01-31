@@ -47,6 +47,7 @@ export class Runner {
   protected cliName = "";
   protected commandName = "";
   protected firstTaskStarted = false;
+  protected taskCounter = 0;
 
   constructor() {
     this.run = this.createRunMethod();
@@ -66,6 +67,8 @@ export class Runner {
   public startCommand(cliName: string, commandName: string): void {
     this.cliName = cliName;
     this.commandName = commandName;
+    this.firstTaskStarted = false;
+    this.taskCounter = 0;
   }
 
   protected createRunMethod() {
@@ -190,7 +193,7 @@ export class Runner {
 
   protected async executeTask(task: Task): Promise<string> {
     const now = Date.now();
-    const taskId = task.name; // Use task name as unique ID
+    const taskId = `task-${++this.taskCounter}`; // Use unique counter-based ID
 
     // Setup dynamic logger
     if (this.useDynamicLogger) {

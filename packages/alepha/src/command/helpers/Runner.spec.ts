@@ -7,6 +7,12 @@ import { MemoryShellProvider } from "alepha/system";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { Runner } from "../index.ts";
 
+class TestRunner extends Runner {
+  protected override get useDynamicLogger() {
+    return true;
+  }
+}
+
 describe("Runner", () => {
   let mockLogger: MemoryDestinationProvider;
   let mockShell: MemoryShellProvider;
@@ -126,5 +132,134 @@ describe("Runner", () => {
 
     const logs = mockLogger.logs.map((l) => l.message);
     expect(logs.length).toBe(0);
+  });
+
+  test("should reset firstTaskStarted when starting a new command", async () => {
+    // Simulate running command A
+    runner.startCommand("cli", "commandA");
+    await runner.run("task A1", () => {});
+    await runner.run("task A2", () => {});
+    runner.end();
+
+    const logsAfterA = mockLogger.logs.length;
+    expect(logsAfterA).toBeGreaterThan(0);
+
+    // Clear logs for next command
+    mockLogger.clear();
+
+    // Simulate running command B (should get fresh start)
+    runner.startCommand("cli", "commandB");
+    await runner.run("task B1", () => {});
+    runner.end();
+
+    // Verify command B also logged properly (not reusing A's state)
+    expect(mockLogger.logs.length).toBeGreaterThan(0);
+    expect(mockLogger.logs[0].message).toBe("Starting 'task B1' ...");
+  });
+
+  test("should handle running same task name in different commands", async () => {
+    // Run command with task "clean"
+    runner.startCommand("cli", "build");
+    await runner.run("clean", () => {});
+    runner.end();
+
+    mockLogger.clear();
+
+    // Run another command with same task name "clean"
+    runner.startCommand("cli", "verify");
+    await runner.run("clean", () => {});
+    runner.end();
+
+    // Both should have executed and logged independently
+    expect(mockLogger.logs[0].message).toBe("Starting 'clean' ...");
+    expect(mockLogger.logs[1].message).toMatch(/^Finished 'clean' after/);
+  });
+
+  test("should reset firstTaskStarted with PrettyPrint (LOG_FORMAT=raw)", async () => {
+    // Use TestRunner to force useDynamicLogger=true (bypasses isCI check)
+    const alepha = Alepha.create({
+      env: {
+        LOG_LEVEL: "info",
+        LOG_FORMAT: "raw",
+      },
+    })
+      .with({ provide: LogDestinationProvider, use: MemoryDestinationProvider })
+      .with({ provide: Runner, use: TestRunner });
+
+    const prettyRunner = alepha.inject(Runner);
+
+    // Capture stdout to verify PrettyPrint output
+    const output: string[] = [];
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = (chunk: any) => {
+      output.push(String(chunk));
+      return true;
+    };
+
+    try {
+      // Run command A
+      prettyRunner.startCommand("cli", "commandA");
+      await prettyRunner.run("task A", () => {});
+      prettyRunner.end();
+
+      // Verify command A header was printed
+      expect(output.some((line) => line.includes("cli commandA"))).toBe(true);
+
+      // Clear output for command B
+      output.length = 0;
+
+      // Run command B - should get its own header
+      prettyRunner.startCommand("cli", "commandB");
+      await prettyRunner.run("task B", () => {});
+      prettyRunner.end();
+
+      // Verify command B header was printed (not reusing A's state)
+      expect(output.some((line) => line.includes("cli commandB"))).toBe(true);
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+  });
+
+  test("should display duplicate task names in same command with PrettyPrint", async () => {
+    // Use TestRunner to force useDynamicLogger=true (bypasses isCI check)
+    const alepha = Alepha.create({
+      env: {
+        LOG_LEVEL: "info",
+        LOG_FORMAT: "raw",
+      },
+    })
+      .with({ provide: LogDestinationProvider, use: MemoryDestinationProvider })
+      .with({ provide: Runner, use: TestRunner });
+
+    const prettyRunner = alepha.inject(Runner);
+
+    // Capture stdout to verify PrettyPrint output
+    const output: string[] = [];
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = (chunk: any) => {
+      output.push(String(chunk));
+      return true;
+    };
+
+    try {
+      // Run command with duplicate task names (like "alepha verify" does with "clean")
+      prettyRunner.startCommand("cli", "verify");
+      await prettyRunner.run("clean", () => {});
+      await prettyRunner.run("lint", () => {});
+      await prettyRunner.run("typecheck", () => {});
+      await prettyRunner.run("clean", () => {}); // Same name as first task
+      prettyRunner.end();
+
+      // Count occurrences of "clean" in output (should appear twice)
+      const fullOutput = output.join("");
+      const cleanMatches = fullOutput.match(/clean/g) || [];
+      expect(cleanMatches.length).toBeGreaterThanOrEqual(2);
+
+      // Verify all tasks were logged
+      expect(fullOutput).toContain("lint");
+      expect(fullOutput).toContain("typecheck");
+    } finally {
+      process.stdout.write = originalWrite;
+    }
   });
 });
