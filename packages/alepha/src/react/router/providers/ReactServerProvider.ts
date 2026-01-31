@@ -142,11 +142,22 @@ export class ReactServerProvider {
    * allowing the browser to start downloading entry.js and CSS files early.
    */
   protected setupEarlyHeadContent(): void {
-    const assets = this.ssrManifestProvider.getEntryAssets();
     const globalHead = this.serverHeadProvider.resolveGlobalHead();
+    const manifest = this.ssrManifestProvider.getManifest();
 
+    // Dev mode: use pre-transformed head content from Vite
+    if (manifest.devHead) {
+      this.templateProvider.setEarlyHeadContent(
+        `${manifest.devHead}\n`,
+        globalHead,
+      );
+      this.log.debug("Early head content set (dev mode)");
+      return;
+    }
+
+    // Production: build from SSR manifest entry assets
     const parts: string[] = [];
-
+    const assets = this.ssrManifestProvider.getEntryAssets();
     if (assets) {
       for (const css of assets.css) {
         parts.push(`<link rel="stylesheet" href="${css}" crossorigin="">`);
@@ -164,8 +175,7 @@ export class ReactServerProvider {
     );
 
     this.log.debug("Early head content set", {
-      css: assets?.css.length ?? 0,
-      js: assets?.js ? 1 : 0,
+      parts: parts.length,
     });
   }
 

@@ -1,29 +1,26 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const port = 3312;
+const port = 3311;
 
 export default defineConfig({
   testDir: "./e2e",
   reporter: "html",
-  fullyParallel: false,
   use: {
     screenshot: "only-on-failure",
     ...devices["Desktop Chrome"],
   },
   projects: [
     {
-      name: "prod",
+      name: "dev",
       use: { baseURL: `http://localhost:${port}` },
+      testIgnore: /prod\//,
     },
   ],
-  webServer: [
-    {
-      reuseExistingServer: true,
-      command: "yarn start:e2e",
-      url: `http://localhost:${port}`,
-      env: { SERVER_PORT: `${port}` },
-      stdout: "pipe",
-      stderr: "pipe",
-    },
-  ],
+  webServer: {
+    command: "yarn dev",
+    url: `http://localhost:${port}`,
+    env: { SERVER_PORT: `${port}` },
+    stdout: "pipe",
+    stderr: "pipe",
+  },
 });

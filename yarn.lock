@@ -156,7 +156,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/ui@npm:0.15.3, @alepha/ui@workspace:packages/ui":
+"@alepha/ui@npm:0.15.3, @alepha/ui@npm:^0.15.3, @alepha/ui@workspace:packages/ui":
   version: 0.0.0-use.local
   resolution: "@alepha/ui@workspace:packages/ui"
   dependencies:
@@ -13697,6 +13697,19 @@ __metadata:
   checksum: 10c0/b64b535861a6f310c5d9bfa10834cf49127c71922c297da9d4d1b45eeaae40bf9b4363275876088fbe2667e5db028d2cd4f8ee72eed9bede840a67d57dab7593
   languageName: node
   linkType: hard
+
+"xptdr-c13683@workspace:apps/xptdr":
+  version: 0.0.0-use.local
+  resolution: "xptdr-c13683@workspace:apps/xptdr"
+  dependencies:
+    "@alepha/ui": "npm:^0.15.3"
+    "@types/react": "npm:^19.2.10"
+    "@vitejs/plugin-react": "npm:^5.1.2"
+    alepha: "npm:^0.15.3"
+    react: "npm:^19.2.4"
+    react-dom: "npm:^19.2.4"
+  languageName: unknown
+  linkType: soft
 
 "y18n@npm:^5.0.5":
   version: 5.0.8

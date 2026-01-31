@@ -32,6 +32,13 @@ export const ssrManifestAtomSchema = t.object({
       }),
     ),
   ),
+
+  /**
+   * Dev mode head content.
+   * Contains pre-transformed scripts injected by Vite and plugins (React, etc.).
+   * Only set in dev mode via ViteDevServerProvider.
+   */
+  devHead: t.optional(t.string()),
 });
 
 /**

@@ -33,6 +33,13 @@ export class SSRManifestProvider {
   }
 
   /**
+   * Get the full manifest object.
+   */
+  public getManifest(): Static<SsrManifestAtomSchema> {
+    return this.manifest;
+  }
+
+  /**
    * Get the base path for assets (from Vite's base config).
    * Returns empty string if base is "/" (default), otherwise returns the base path.
    */

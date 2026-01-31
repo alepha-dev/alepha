@@ -245,6 +245,11 @@ export class ViteDevServerProvider {
       return;
     }
 
+    // Generate dev head content using Vite's transformIndexHtml
+    // This lets Vite and all plugins (React, etc.) inject their scripts
+    const devHead = await this.generateDevHead();
+    this.alepha.store.set("alepha.react.ssr.manifest" as any, { devHead });
+
     this.alepha.events.on("server:onRequest", {
       priority: "first",
       callback: async ({ request }) => {
@@ -262,6 +267,32 @@ export class ViteDevServerProvider {
         }
       },
     });
+  }
+
+  /**
+   * Generate dev head content by transforming a minimal HTML through Vite.
+   * This lets Vite and all plugins inject their scripts (HMR client, React Fast Refresh, etc.).
+   */
+  protected async generateDevHead(): Promise<string> {
+    const { browser, style } = this.options.entry;
+
+    // Build minimal HTML with entry points
+    const scripts: string[] = [];
+    if (style) {
+      scripts.push(`<link rel="stylesheet" href="/${style}">`);
+    }
+    if (browser) {
+      scripts.push(`<script type="module" src="/${browser}"></script>`);
+    }
+
+    const minimalHtml = `<!DOCTYPE html><html><head>${scripts.join("\n")}</head><body></body></html>`;
+
+    // Transform through Vite to inject all plugin scripts
+    const transformed = await this.server.transformIndexHtml("/", minimalHtml);
+
+    // Extract head content
+    const headMatch = transformed.match(/<head>([\s\S]*?)<\/head>/i);
+    return headMatch?.[1]?.trim() ?? "";
   }
 
   /**
