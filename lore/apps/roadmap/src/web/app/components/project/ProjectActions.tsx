@@ -112,7 +112,7 @@ const ProjectActions = () => {
             <SegmentedControl
               size={"md"}
               value={routerState.name}
-              onChange={(value) => router.go(value as TabValue, opts)}
+              onChange={(value) => router.push(value as TabValue, opts)}
               data={tabs}
             />
             <Flex flex={1} />

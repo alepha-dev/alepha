@@ -122,7 +122,7 @@ export class AppRouter {
         this.router.state.url.pathname !== loginPath
       ) {
         this.alepha.store.set("alepha.server.request.user", undefined);
-        await this.router.go(loginPath, {
+        await this.router.push(loginPath, {
           query: {
             redirect: this.router.state.url.pathname,
           },

@@ -104,7 +104,7 @@ const TaskView = (props: TaskViewProps) => {
           (t) => t.id !== task.id,
         ),
       );
-      await router.go("projectBoard", {
+      await router.push("projectBoard", {
         meta: {
           deleted: true,
         },
@@ -358,7 +358,7 @@ const TaskView = (props: TaskViewProps) => {
                           alepha.store.get(currentAssignedTasksAtom) ?? []
                         ).filter((t) => t.id !== task.id),
                       );
-                      await router.go("projectBoard", {
+                      await router.push("projectBoard", {
                         meta: {
                           completed: true,
                         },

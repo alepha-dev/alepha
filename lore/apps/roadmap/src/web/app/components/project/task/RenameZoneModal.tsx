@@ -42,7 +42,7 @@ export const RenameZoneModal = (props: RenameZoneModalProps) => {
 
       modals.closeAll();
 
-      await router.go(router.pathname, {
+      await router.push(router.pathname, {
         force: true,
       });
     },

@@ -83,7 +83,7 @@ const TaskCreate = (props: TaskCreateProps) => {
 
       props.onSubmit(task);
 
-      await router.go("projectTask", {
+      await router.push("projectTask", {
         params: {
           projectId: String(props.project.id),
           taskId: String(task.id),
