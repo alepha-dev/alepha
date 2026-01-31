@@ -4,15 +4,10 @@ const port = 3301;
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
   reporter: "html",
   use: {
-    baseURL: `http://localhost:${port}`,
-    trace: "on-first-retry",
     screenshot: "only-on-failure",
+    baseURL: `http://localhost:${port}`,
   },
   projects: [
     {
@@ -23,7 +18,8 @@ export default defineConfig({
   webServer: {
     command: "yarn start",
     url: `http://localhost:${port}`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 180000,
+    env: {
+      SERVER_PORT: `${port}`,
+    },
   },
 });

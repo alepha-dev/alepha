@@ -8,7 +8,7 @@ import { $atom } from "../../core/primitives/$atom.ts";
  * - `vercel` - Generate Vercel deployment configuration (forces node runtime)
  * - `cloudflare` - Generate Cloudflare Workers configuration (forces workerd runtime)
  */
-export type BuildTarget = "docker" | "vercel" | "cloudflare";
+export type BuildTarget = "bare" | "docker" | "vercel" | "cloudflare";
 
 /**
  * JavaScript runtime for the build output.
@@ -41,7 +41,7 @@ export const buildOptions = $atom({
      * - `vercel` - Generate Vercel deployment configuration (forces node runtime)
      * - `cloudflare` - Generate Cloudflare Workers configuration (forces workerd runtime)
      */
-    target: t.optional(t.enum(["docker", "vercel", "cloudflare"])),
+    target: t.optional(t.enum(["bare", "docker", "vercel", "cloudflare"])),
 
     /**
      * JavaScript runtime for the build output.

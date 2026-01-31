@@ -44,7 +44,7 @@ jobs:
       - name: Prepare Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24.x"
+          node-version: "25.x"
           cache: "yarn"
 
       - name: Install Dependencies
@@ -63,13 +63,15 @@ jobs:
         run: yarn check-dependencies
 
       - name: Test Project
-        run: VITEST_ARGS="--coverage --reporter=verbose --reporter=junit --outputFile=test-report.junit.xml" yarn test
+        run: yarn test
+        env:
+          VITEST_ARGS: --coverage --reporter=verbose --reporter=junit --outputFile=test-report.junit.xml
 
       - name: Build Project
         run: yarn build
 
       - name: Install Playwright
-        run: cd apps/docs && npx playwright install chromium --with-deps
+        run: yarn playwright install chromium --with-deps
 
       - name: Run E2E Tests
         run: yarn e2e

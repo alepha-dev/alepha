@@ -79,7 +79,7 @@ export class BuildCommand {
         }),
       ),
       target: t.optional(
-        t.enum(["docker", "vercel", "cloudflare"], {
+        t.enum(["bare", "docker", "vercel", "cloudflare"], {
           aliases: ["t"],
           description:
             "Deployment target: docker, vercel, or cloudflare (default: bare)",
