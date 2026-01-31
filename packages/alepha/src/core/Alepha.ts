@@ -472,44 +472,51 @@ export class Alepha {
 
     this.starting = Promise.withResolvers();
 
-    const now = Date.now();
+    try {
+      const now = Date.now();
 
-    this.log?.info("Starting App...");
+      this.log?.info("Starting App...");
 
-    for (const [key] of this.substitutions.entries()) {
-      this.inject(key);
-    }
-
-    const target = this.store.get("alepha.target");
-    if (target) {
-      this.modules = [];
-      this.registry = new Map();
-      this.primitiveRegistry = new Map();
-      this.pendingInstantiations = [];
-      this.substitutions = new Map();
-      this.events.clear();
-      delete (target as any)[MODULE];
-      this.with(target);
       for (const [key] of this.substitutions.entries()) {
         this.inject(key);
       }
+
+      const target = this.store.get("alepha.target");
+      if (target) {
+        this.modules = [];
+        this.registry = new Map();
+        this.primitiveRegistry = new Map();
+        this.pendingInstantiations = [];
+        this.substitutions = new Map();
+        this.events.clear();
+        delete (target as any)[MODULE];
+        this.with(target);
+        for (const [key] of this.substitutions.entries()) {
+          this.inject(key);
+        }
+      }
+
+      this.locked = true;
+
+      await this.events.emit("configure", this, { log: true });
+
+      this.configured = true;
+
+      await this.events.emit("start", this, { log: true });
+
+      this.started = true;
+
+      await this.events.emit("ready", this, { log: true });
+
+      this.log?.info(`App is now ready [${Date.now() - now}ms]`);
+
+      this.ready = true;
+    } catch (error) {
+      this.starting.reject(error);
+      const promise = this.starting.promise;
+      this.starting = undefined;
+      return promise;
     }
-
-    this.locked = true;
-
-    await this.events.emit("configure", this, { log: true });
-
-    this.configured = true;
-
-    await this.events.emit("start", this, { log: true });
-
-    this.started = true;
-
-    await this.events.emit("ready", this, { log: true });
-
-    this.log?.info(`App is now ready [${Date.now() - now}ms]`);
-
-    this.ready = true;
 
     this.starting.resolve(this);
     this.starting = undefined;
