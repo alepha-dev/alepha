@@ -18,6 +18,7 @@ ignores:
     - 'vercel'
     - '@fontsource/jetbrains-mono'
     - '@types/bun'
+    - 'better-sqlite3'
     - 'bun'
     - 'bun:sqlite'
 ignore-patterns:
