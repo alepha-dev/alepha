@@ -177,6 +177,7 @@ __metadata:
     vite: "npm:^7.3.1"
     vitest: "npm:^4.0.18"
   peerDependencies:
+    alepha: 0.15.2
     react: "*"
     react-dom: "*"
   languageName: unknown
