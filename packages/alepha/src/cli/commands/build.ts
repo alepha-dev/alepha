@@ -81,33 +81,21 @@ export class BuildCommand {
       target: t.optional(
         t.enum(["bare", "docker", "vercel", "cloudflare"], {
           aliases: ["t"],
-          description:
-            "Deployment target: docker, vercel, or cloudflare (default: bare)",
+          description: "Deployment target",
         }),
       ),
       runtime: t.optional(
         t.enum(["node", "bun", "workerd"], {
           aliases: ["r"],
-          description:
-            "JavaScript runtime: node (default), bun, or workerd (auto-set for cloudflare)",
+          description: "JavaScript runtime",
         }),
       ),
       image: t.optional(
-        t.union(
-          [
-            t.boolean({
-              description:
-                "Build Docker image. Use -i for latest, -i=<version> for specific version",
-            }),
-            t.text({
-              description:
-                "Build Docker image. Use -i for latest, -i=<version> for specific version",
-            }),
-          ],
-          {
-            aliases: ["i"],
-          },
-        ),
+        t.union([t.boolean(), t.text()], {
+          aliases: ["i"],
+          description:
+            "Build Docker image. Use -i for latest, -i=<version> for specific version",
+        }),
       ),
       sitemap: t.optional(
         t.text({

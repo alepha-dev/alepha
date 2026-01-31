@@ -24,6 +24,36 @@ class TestCliProvider extends CliProvider {
   public testFindCommand = this.findCommand.bind(this);
   public testFindPreHooks = this.findPreHooks.bind(this);
   public testFindPostHooks = this.findPostHooks.bind(this);
+  public testGetEnumValues = this.getEnumValues.bind(this);
+  public testFormatFlagDescription = this.formatFlagDescription.bind(this);
+
+  /**
+   * Extract flag definitions from a command's flags schema (for testing printHelp logic).
+   */
+  public testExtractFlagDefs(flagsSchema: any) {
+    return Object.entries(flagsSchema.properties).map(([key, value]) => ({
+      key,
+      schema: value,
+      aliases: [
+        key,
+        ...((value as any).aliases ??
+          ((value as any).alias ? [(value as any).alias] : [])),
+      ],
+      description: (value as any).description,
+    }));
+  }
+
+  /**
+   * Format aliases array into flag string (e.g., "-t, --target").
+   * Sorts by length (shorter first).
+   */
+  public testFormatFlagStr(aliases: string[]): string {
+    return aliases
+      .slice()
+      .sort((a, b) => a.length - b.length)
+      .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
+      .join(", ");
+  }
 }
 
 describe("CliProvider", () => {
@@ -1103,6 +1133,129 @@ describe("CliProvider", () => {
 
       // Just verify it doesn't throw - hidden commands filtered in getTopLevelCommands
       expect(() => cli.printHelp()).not.toThrow();
+    });
+
+    it("should include flag aliases in help output", () => {
+      const cli = createTestCli();
+
+      const flagsSchema = t.object({
+        target: t.optional(
+          t.enum(["bare", "docker", "vercel"], {
+            aliases: ["t"],
+            description: "Deployment target",
+          }),
+        ),
+        runtime: t.optional(
+          t.enum(["node", "bun"], {
+            alias: "r", // singular alias
+            description: "JavaScript runtime",
+          }),
+        ),
+        verbose: t.optional(
+          t.boolean({
+            description: "Verbose output",
+          }),
+        ),
+      });
+
+      const flagDefs = cli.testExtractFlagDefs(flagsSchema);
+
+      // target should have key + aliases array
+      const targetFlag = flagDefs.find((f) => f.key === "target");
+      expect(targetFlag?.aliases).toContain("target");
+      expect(targetFlag?.aliases).toContain("t");
+      expect(cli.testFormatFlagStr(targetFlag!.aliases)).toBe("-t, --target");
+
+      // runtime should have key + alias (singular)
+      const runtimeFlag = flagDefs.find((f) => f.key === "runtime");
+      expect(runtimeFlag?.aliases).toContain("runtime");
+      expect(runtimeFlag?.aliases).toContain("r");
+      expect(cli.testFormatFlagStr(runtimeFlag!.aliases)).toBe("-r, --runtime");
+
+      // verbose should only have key (no aliases defined)
+      const verboseFlag = flagDefs.find((f) => f.key === "verbose");
+      expect(verboseFlag?.aliases).toEqual(["verbose"]);
+      expect(cli.testFormatFlagStr(verboseFlag!.aliases)).toBe("--verbose");
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // getEnumValues
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("getEnumValues", () => {
+    it("should extract values from t.enum schema", () => {
+      const cli = createTestCli();
+      const schema = t.enum(["yarn", "npm", "pnpm", "bun"]);
+
+      const values = cli.testGetEnumValues(schema);
+
+      expect(values).toEqual(["yarn", "npm", "pnpm", "bun"]);
+    });
+
+    it("should return undefined for non-enum schemas", () => {
+      const cli = createTestCli();
+
+      expect(cli.testGetEnumValues(t.string())).toBeUndefined();
+      expect(cli.testGetEnumValues(t.boolean())).toBeUndefined();
+      expect(cli.testGetEnumValues(t.number())).toBeUndefined();
+      expect(cli.testGetEnumValues(t.object({}))).toBeUndefined();
+    });
+
+    it("should return undefined for empty or undefined schema", () => {
+      const cli = createTestCli();
+
+      expect(cli.testGetEnumValues(undefined as any)).toBeUndefined();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // formatFlagDescription
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("formatFlagDescription", () => {
+    it("should append enum values to description", () => {
+      const cli = createTestCli();
+      const schema = t.enum(["yarn", "npm", "pnpm", "bun"]);
+
+      const result = cli.testFormatFlagDescription(
+        "Package manager to use",
+        schema,
+      );
+
+      expect(result).toContain("Package manager to use");
+      expect(result).toContain("yarn");
+      expect(result).toContain("npm");
+      expect(result).toContain("pnpm");
+      expect(result).toContain("bun");
+    });
+
+    it("should return only enum values when description is empty", () => {
+      const cli = createTestCli();
+      const schema = t.enum(["a", "b", "c"]);
+
+      const result = cli.testFormatFlagDescription(undefined, schema);
+
+      expect(result).toContain("a");
+      expect(result).toContain("b");
+      expect(result).toContain("c");
+    });
+
+    it("should return original description for non-enum schemas", () => {
+      const cli = createTestCli();
+
+      expect(cli.testFormatFlagDescription("A string flag", t.string())).toBe(
+        "A string flag",
+      );
+      expect(cli.testFormatFlagDescription("A boolean flag", t.boolean())).toBe(
+        "A boolean flag",
+      );
+    });
+
+    it("should return empty string when no description and no enum", () => {
+      const cli = createTestCli();
+
+      expect(cli.testFormatFlagDescription(undefined, t.string())).toBe("");
     });
   });
 

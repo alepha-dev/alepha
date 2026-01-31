@@ -961,7 +961,11 @@ export class CliProvider {
         ...Object.entries(command.flags.properties).map(([key, value]) => ({
           key,
           schema: value,
-          aliases: (value as any).alias ?? [key],
+          aliases: [
+            key,
+            ...((value as any).aliases ??
+              ((value as any).alias ? [(value as any).alias] : [])),
+          ],
           description: (value as any).description,
         })),
         // Add --mode flag if command has mode option enabled
@@ -974,6 +978,7 @@ export class CliProvider {
                   typeof command.options.mode === "string"
                     ? `Environment mode - loads .env.{mode} (default: ${command.options.mode})`
                     : "Environment mode (e.g., production, staging) - loads .env.{mode}",
+                schema: t.string() as TSchema,
               },
             ]
           : []),
@@ -984,13 +989,20 @@ export class CliProvider {
       ];
 
       const maxFlagLength = this.getMaxFlagLength(flags);
-      for (const { aliases, description } of flags) {
-        const flagStr = (Array.isArray(aliases) ? aliases : [aliases])
+      for (const flag of flags) {
+        const { aliases, description } = flag;
+        const schema = "schema" in flag ? (flag.schema as TSchema) : undefined;
+        // Sort aliases by length (shorter first: -t before --target)
+        const sortedAliases = (Array.isArray(aliases) ? aliases : [aliases])
+          .slice()
+          .sort((a, b) => a.length - b.length);
+        const flagStr = sortedAliases
           .map((a: string) => (a.length === 1 ? `-${a}` : `--${a}`))
           .join(", ");
         const coloredFlag = c.set("GREY_LIGHT", flagStr);
         const padding = " ".repeat(Math.max(0, maxFlagLength - flagStr.length));
-        this.log.info(`    ${coloredFlag}${padding}  ${description ?? ""}`);
+        const formattedDesc = this.formatFlagDescription(description, schema);
+        this.log.info(`    ${coloredFlag}${padding}  ${formattedDesc}`);
       }
 
       // Show environment variables if defined
@@ -1057,6 +1069,7 @@ export class CliProvider {
                 []),
             ],
             description: (value as any).description,
+            schema: value as TSchema,
           }))
         : [];
 
@@ -1065,13 +1078,14 @@ export class CliProvider {
         ...Object.values(this.getAllGlobalFlags()),
       ];
       const maxFlagLength = this.getMaxFlagLength(globalFlags);
-      for (const { aliases, description } of globalFlags) {
+      for (const { aliases, description, schema } of globalFlags) {
         const flagStr = aliases
           .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
           .join(", ");
         const coloredFlag = c.set("GREY_LIGHT", flagStr);
         const padding = " ".repeat(Math.max(0, maxFlagLength - flagStr.length));
-        this.log.info(`    ${coloredFlag}${padding}  ${description ?? ""}`);
+        const formattedDesc = this.formatFlagDescription(description, schema);
+        this.log.info(`    ${coloredFlag}${padding}  ${formattedDesc}`);
       }
     }
     this.log.info(""); // Newline
@@ -1191,5 +1205,68 @@ export class CliProvider {
           .join(", ").length;
       }),
     );
+  }
+
+  /**
+   * Extract enum values from a schema if it represents an enum.
+   * Returns undefined if the schema is not an enum.
+   */
+  protected getEnumValues(schema: TSchema): string[] | undefined {
+    if (!schema) return undefined;
+
+    // Check if schema has an enum property (t.enum creates schemas with this)
+    if (
+      "enum" in schema &&
+      Array.isArray(schema.enum) &&
+      schema.enum.every((v) => typeof v === "string")
+    ) {
+      return schema.enum as string[];
+    }
+
+    // Also check for union of string literals (alternative enum representation)
+    if (t.schema.isUnion(schema)) {
+      const union = schema as TUnion;
+      const values: string[] = [];
+
+      for (const variant of union.anyOf) {
+        // Check if the variant is a string literal (has const property)
+        if (
+          t.schema.isString(variant) &&
+          "const" in variant &&
+          typeof variant.const === "string"
+        ) {
+          values.push(variant.const);
+        } else {
+          // Not all variants are string literals, not a simple enum
+          return undefined;
+        }
+      }
+
+      return values.length > 0 ? values : undefined;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Format flag description with enum values if applicable.
+   */
+  protected formatFlagDescription(
+    description: string | undefined,
+    schema: TSchema | undefined,
+  ): string {
+    const baseDesc = description ?? "";
+
+    if (!schema) return baseDesc;
+
+    const enumValues = this.getEnumValues(schema);
+    if (enumValues && enumValues.length > 0) {
+      const valuesStr = enumValues.join(", ");
+      const c = this.color;
+      const enumHint = c.set("GREY_DARK", `[${valuesStr}]`);
+      return baseDesc ? `${baseDesc} ${enumHint}` : enumHint;
+    }
+
+    return baseDesc;
   }
 }

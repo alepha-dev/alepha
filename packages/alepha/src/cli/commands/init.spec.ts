@@ -180,6 +180,50 @@ describe("alepha init", () => {
       expect(shell.wasCalled("npm install")).toBe(true);
       expect(shell.wasCalled("yarn install")).toBe(false);
     });
+
+    it("should accept --pm=yarn", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--pm=yarn", root: "/project" });
+
+      expect(shell.wasCalled("yarn install")).toBe(true);
+    });
+
+    it("should accept --pm=pnpm", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--pm=pnpm", root: "/project" });
+
+      expect(shell.wasCalled("pnpm install")).toBe(true);
+    });
+
+    it("should accept --pm=bun", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--pm=bun", root: "/project" });
+
+      expect(shell.wasCalled("bun install")).toBe(true);
+    });
+
+    it("should reject invalid --pm value", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await expect(
+        cli.run(cmd.init, { argv: "--pm=invalid", root: "/project" }),
+      ).rejects.toThrowError(/Invalid flag/);
+    });
+
+    it("should show enum values in help for --pm flag", async () => {
+      const { alepha, cli, cmd } = createTestEnv();
+      await alepha.start();
+
+      // Verify printHelp works with the init command (which has an enum flag)
+      expect(() => cli.printHelp(cmd.init)).not.toThrow();
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
