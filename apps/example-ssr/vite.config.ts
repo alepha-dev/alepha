@@ -18,6 +18,7 @@ export default defineConfig((env) => {
           const denyList = [
             "perf_hooks",
             "node:perf_hooks",
+            "child_process",
             "node:child_process",
           ];
 
