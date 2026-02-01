@@ -219,6 +219,9 @@ export class ViteDevServerProvider {
       );
     }
 
+    // expose Vite server to Alepha for Logger SSR Fix stack traces
+    alepha.store.set("alepha.vite.server" as any, this.server);
+
     this.alepha = alepha;
     await this.setupAlepha();
 
@@ -343,8 +346,8 @@ export class ViteDevServerProvider {
       const originalEnd = res.end.bind(res);
 
       const guardedCall = <T>(fn: (...args: any[]) => T, ...args: any[]): T => {
-        if (resolved && !ctx.metadata.vite) {
-          // Vite didn't handle this request, silently ignore late writes
+        if (resolved && ctx.metadata.vite) {
+          // Vite already handled this request, ignore late writes from framework
           return undefined as T;
         }
         return fn(...args);

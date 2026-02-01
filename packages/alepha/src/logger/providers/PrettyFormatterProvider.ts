@@ -107,10 +107,17 @@ export class PrettyFormatterProvider extends LogFormatterProvider {
       return "";
     }
 
+    // hack: use vite's stack trace formatter if available
+    const vite = this.alepha.store.get("alepha.vite.server" as any);
+
+    vite?.ssrFixStacktrace(error);
+
     let str = error.stack ?? error.message;
 
     const anyError = error as any;
     while (anyError.cause && anyError.cause instanceof Error) {
+      vite?.ssrFixStacktrace(anyError.cause);
+
       str += `\nCaused by: ${anyError.cause.stack ?? anyError.cause.message}`;
       anyError.cause = anyError.cause.cause;
     }
