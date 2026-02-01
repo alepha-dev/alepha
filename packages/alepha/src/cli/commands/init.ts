@@ -1,11 +1,14 @@
 import { $inject, t } from "alepha";
 import { $command } from "alepha/command";
+import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
 export class InitCommand {
+  protected readonly log = $logger();
+  protected readonly colors = $inject(ConsoleColorProvider);
   protected readonly utils = $inject(AlephaCliUtils);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly scaffolder = $inject(ProjectScaffolder);
@@ -106,6 +109,11 @@ export class InitCommand {
 
       const isExpo = await this.pm.hasExpo(root);
 
+      // Get git email for admin auto-promotion (if auth enabled)
+      const adminEmail = flags.auth
+        ? await this.utils.getGitEmail()
+        : undefined;
+
       const force = !!flags.force;
 
       await run({
@@ -132,6 +140,7 @@ export class InitCommand {
           if (flags.api) {
             await this.scaffolder.ensureApiProject(root, {
               auth: !!flags.auth,
+              adminEmail,
               force,
             });
           }
@@ -196,6 +205,33 @@ export class InitCommand {
           });
         }
       }
+
+      run.end();
+
+      // Success message
+      const projectName = args || ".";
+      const pmRun = pmName === "npm" ? "npm run" : pmName;
+      const c = this.colors;
+
+      this.log.info("");
+      this.log.info(`  ${c.set("GREEN", "✓")} Project ready!`);
+      this.log.info("");
+      this.log.info(
+        `  ${c.set("GREY_DARK", "$")} cd ${c.set("CYAN", projectName)}`,
+      );
+      this.log.info(
+        `  ${c.set("GREY_DARK", "$")} ${c.set("CYAN", `${pmRun} dev`)}`,
+      );
+
+      if (adminEmail) {
+        this.log.info("");
+        this.log.info(`  Admin email: ${c.set("GREEN", adminEmail)}`);
+        this.log.info(
+          `  ${c.set("GREY_DARK", "(from git config, change in src/api/AppSecurity.ts)")}`,
+        );
+      }
+
+      this.log.info("");
     },
   });
 }

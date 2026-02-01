@@ -47,7 +47,7 @@ export class JwtProvider {
     } else if (this.isSecretKey(secretKeyOrJwks)) {
       const secretKey = this.encoder.encode(secretKeyOrJwks);
       this.log.info(
-        `will verify JWTs from '${name}' with secret a key (${secretKey.length} bytes)`,
+        `will verify JWTs from issuer '${name}' with secret key (${secretKey.length} bytes)`,
       );
       this.keystore.push({
         name,
@@ -56,7 +56,7 @@ export class JwtProvider {
       });
     } else {
       this.log.info(
-        `will verify JWTs from '${name}' with JWKS ${secretKeyOrJwks}`,
+        `will verify JWTs from issuer '${name}' with JWKS ${secretKeyOrJwks}`,
       );
       this.keystore.push({
         name,

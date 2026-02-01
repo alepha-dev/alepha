@@ -161,4 +161,21 @@ ${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")
       return "unknown";
     }
   }
+
+  /**
+   * Get the user's email from git config.
+   *
+   * @returns The git user email or undefined if not configured
+   */
+  public async getGitEmail(): Promise<string | undefined> {
+    try {
+      const result = await this.shell.run("git config user.email", {
+        capture: true,
+      });
+      const email = result.trim();
+      return email || undefined;
+    } catch {
+      return undefined;
+    }
+  }
 }

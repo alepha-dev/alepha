@@ -19,7 +19,7 @@ import { mainCss } from "../templates/mainCss.ts";
 import { mainServerTs } from "../templates/mainServerTs.ts";
 import { tsconfigJson } from "../templates/tsconfigJson.ts";
 import { webAppRouterTs } from "../templates/webAppRouterTs.ts";
-import { webHelloComponentTsx } from "../templates/webHelloComponentTsx.ts";
+import { webHomeComponentTsx } from "../templates/webHomeComponentTsx.ts";
 import { webIndexTs } from "../templates/webIndexTs.ts";
 import { AlephaCliUtils } from "./AlephaCliUtils.ts";
 import {
@@ -34,7 +34,7 @@ import {
  * - Project structure (src/api, src/web)
  * - Configuration files (tsconfig, biome, editorconfig)
  * - Entry points (main.server.ts, main.browser.ts)
- * - Example code (HelloController, Hello component)
+ * - Example code (HelloController, Home component)
  */
 export class ProjectScaffolder {
   protected readonly log = $logger();
@@ -228,7 +228,7 @@ export class ProjectScaffolder {
    */
   public async ensureApiProject(
     root: string,
-    opts: { auth?: boolean; force?: boolean } = {},
+    opts: { auth?: boolean; adminEmail?: string; force?: boolean } = {},
   ): Promise<void> {
     const appName = this.getAppName(root);
 
@@ -256,7 +256,7 @@ export class ProjectScaffolder {
       await this.ensureFile(
         root,
         "src/api/AppSecurity.ts",
-        apiAppSecurityTs(),
+        apiAppSecurityTs({ adminEmail: opts.adminEmail }),
         opts.force,
       );
     }
@@ -272,7 +272,7 @@ export class ProjectScaffolder {
    * Creates:
    * - src/main.browser.ts
    * - src/main.css
-   * - src/web/index.ts, src/web/AppRouter.ts, src/web/components/Hello.tsx
+   * - src/web/index.ts, src/web/AppRouter.ts, src/web/components/Home.tsx
    */
   public async ensureWebProject(
     root: string,
@@ -292,12 +292,7 @@ export class ProjectScaffolder {
     });
 
     // src/main.css
-    await this.ensureFile(
-      root,
-      "src/main.css",
-      mainCss({ ui: opts.ui }),
-      opts.force,
-    );
+    await this.ensureFile(root, "src/main.css", mainCss(), opts.force);
 
     // Web structure
     await this.ensureFile(
@@ -319,8 +314,8 @@ export class ProjectScaffolder {
     );
     await this.ensureFile(
       root,
-      "src/web/components/Hello.tsx",
-      webHelloComponentTsx({ auth: opts.auth }),
+      "src/web/components/Home.tsx",
+      webHomeComponentTsx(),
       opts.force,
     );
     await this.ensureFile(

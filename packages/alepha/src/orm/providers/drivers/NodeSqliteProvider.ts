@@ -162,7 +162,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
         await this.migrate();
       }
 
-      this.log.info(`Using SQLite database at ${filepath}`);
+      this.log.info(`SQLite database OK`, { at: filepath });
     },
   });
 

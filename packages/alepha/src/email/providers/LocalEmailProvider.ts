@@ -46,11 +46,11 @@ export class LocalEmailProvider implements EmailProvider {
       try {
         await this.fs.mkdir(this.directory, { recursive: true });
         this.log.info("Email directory OK", {
-          directory: this.directory,
+          at: this.directory,
         });
       } catch (error) {
         const message = `Failed to create email directory: ${error instanceof Error ? error.message : String(error)}`;
-        this.log.error(message, { directory: this.directory });
+        this.log.error(message, { at: this.directory });
         throw new EmailError(
           message,
           error instanceof Error ? error : undefined,

@@ -4,11 +4,7 @@ import { alephaThemeListAtom } from "../../atoms/alephaThemeListAtom.ts";
 import { useTheme } from "../../hooks/useTheme.ts";
 import ActionButton, { type ActionProps } from "./ActionButton.tsx";
 
-export interface ThemeButtonProps {
-  actionProps?: Partial<ActionProps>;
-}
-
-const ThemeButton = (props: ThemeButtonProps) => {
+const ThemeButton = (props: Partial<ActionProps>) => {
   const [theme, setTheme] = useTheme();
   const themeList = useStore(alephaThemeListAtom)[0];
 
@@ -26,7 +22,7 @@ const ThemeButton = (props: ThemeButtonProps) => {
           active: theme.name === it.name,
         })),
       }}
-      {...props.actionProps}
+      {...props}
     />
   );
 };

@@ -34,11 +34,19 @@ export interface RunnerMethod {
   ): Promise<string>;
   rm: (glob: string | string[], options?: RunOptions) => Promise<string>;
   cp: (source: string, dest: string, options?: RunOptions) => Promise<string>;
+
+  /**
+   * Ends the runner and prints a summary of executed tasks.
+   *
+   * > This is automatically called at the end of command execution.
+   * > But can be called manually if needed to print more stuff before the command ends.
+   */
+  end: () => void;
 }
 
 export class Runner {
   protected readonly log = $logger();
-  protected readonly timers: Timer[] = [];
+  protected timers: Timer[] = [];
   protected readonly startTime: number = Date.now();
   protected readonly prettyPrint = $inject(PrettyPrint);
   protected readonly alepha = $inject(Alepha);
@@ -149,6 +157,8 @@ export class Runner {
       );
     };
 
+    runFn.end = () => this.end();
+
     return runFn;
   }
 
@@ -189,6 +199,9 @@ export class Runner {
     const totalTime = ((Date.now() - this.startTime) / 1000).toFixed(1);
     this.log.info(`Total time: ${totalTime}s`);
     this.log.info(``);
+
+    // clear timers after rendering
+    this.timers = [];
   }
 
   protected async executeTask(task: Task): Promise<string> {

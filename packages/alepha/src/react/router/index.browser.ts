@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaReact } from "alepha/react";
+import { AlephaReactHead } from "alepha/react/head";
 import { AlephaServer } from "alepha/server";
 import { AlephaServerLinks } from "alepha/server/links";
 import { $page } from "./primitives/$page.ts";
@@ -34,6 +35,7 @@ export const AlephaReactRouter = $module({
   register: (alepha) =>
     alepha
       .with(AlephaReact)
+      .with(AlephaReactHead)
       .with(AlephaDateTime)
       .with(AlephaServer)
       .with(AlephaServerLinks)

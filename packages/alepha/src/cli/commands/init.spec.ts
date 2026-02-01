@@ -316,7 +316,7 @@ describe("alepha init", () => {
 
       expect(fs.wasWritten("/project/src/web/index.ts")).toBe(true);
       expect(fs.wasWritten("/project/src/web/AppRouter.ts")).toBe(true);
-      expect(fs.wasWritten("/project/src/web/components/Hello.tsx")).toBe(true);
+      expect(fs.wasWritten("/project/src/web/components/Home.tsx")).toBe(true);
     });
 
     it("should create main.browser.ts for client-side entry", async () => {
@@ -331,28 +331,13 @@ describe("alepha init", () => {
       ).toBe(true);
     });
 
-    it("should create main.css with base styles", async () => {
+    it("should create main.css", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
       await cli.run(cmd.init, { argv: "--react", root: "/project" });
 
       expect(fs.wasWritten("/project/src/main.css")).toBe(true);
-      expect(fs.wasWrittenMatching("/project/src/main.css", /box-sizing/)).toBe(
-        true,
-      );
-    });
-
-    it("should create main.css with @alepha/ui import when --ui", async () => {
-      const { fs, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json);
-
-      await cli.run(cmd.init, { argv: "--react --ui", root: "/project" });
-
-      expect(fs.wasWritten("/project/src/main.css")).toBe(true);
-      expect(
-        fs.wasWrittenMatching("/project/src/main.css", /@alepha\/ui\/styles/),
-      ).toBe(true);
     });
 
     it("should not create api structure without --api flag", async () => {

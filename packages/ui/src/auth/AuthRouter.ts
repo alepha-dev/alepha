@@ -26,8 +26,7 @@ export class AuthRouter {
   protected readonly realmClient = $client<RealmController>();
   protected readonly auth = $inject(ReactAuth);
 
-  layout = $page({
-    name: "AuthLayout",
+  authLayout = $page({
     path: "/auth",
     lazy: () => import("./components/AuthLayout.tsx"),
     children: () => [

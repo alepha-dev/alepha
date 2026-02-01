@@ -62,6 +62,14 @@ export const realmAuthSettingsAtom = $atom({
     resetPasswordAllowed: t.boolean({
       description: "Enable forgot password functionality",
     }),
+    adminEmails: t.array(t.email(), {
+      description:
+        "List of email addresses that are automatically promoted to admin role on login",
+    }),
+    adminUsernames: t.array(t.text(), {
+      description:
+        "List of usernames that are automatically promoted to admin role on login",
+    }),
     passwordPolicy: t.object({
       minLength: t.integer({
         description: "Minimum password length",
@@ -97,6 +105,8 @@ export const realmAuthSettingsAtom = $atom({
     resetPasswordAllowed: false,
     firstNameLastNameEnabled: false,
     firstNameLastNameRequired: false,
+    adminEmails: [],
+    adminUsernames: [],
     // TODO: not implemented yet
     passwordPolicy: {
       minLength: 8,

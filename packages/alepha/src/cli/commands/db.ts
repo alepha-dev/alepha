@@ -9,6 +9,7 @@ import type {
 import { FileSystemProvider } from "alepha/system";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
+import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 
 const drizzleCommandFlags = t.object({
   provider: t.optional(
@@ -29,6 +30,7 @@ export class DbCommand {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
+  protected readonly pm = $inject(PackageManagerUtils);
   protected readonly entryProvider = $inject(AppEntryProvider);
 
   /**
@@ -315,6 +317,13 @@ export class DbCommand {
 
       this.log.info("");
       this.log.info(options.logMessage(providerName, dialect));
+
+      if (dialect === "sqlite") {
+        await this.pm.ensureDependency(options.root, "better-sqlite3", {
+          dev: true,
+          exec: (cmd, opts) => this.utils.exec(cmd, opts),
+        });
+      }
 
       const drizzleConfigJsPath = await this.prepareDrizzleConfig({
         kit: drizzleKitProvider,

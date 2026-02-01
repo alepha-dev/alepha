@@ -94,6 +94,8 @@ const buildRealmConfig = (props: {
       firstNameLastNameEnabled: false,
       firstNameLastNameRequired: false,
       resetPasswordAllowed: props.resetPasswordAllowed,
+      adminEmails: [],
+      adminUsernames: [],
       passwordPolicy: {
         minLength: 8,
         requireUppercase: true,

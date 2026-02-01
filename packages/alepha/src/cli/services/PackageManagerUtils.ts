@@ -48,6 +48,7 @@ export class PackageManagerUtils {
 
   /**
    * Detect the package manager used in the project.
+   * Checks current directory first, then workspace root if in a monorepo.
    */
   public async getPackageManager(
     root: string,
@@ -55,10 +56,21 @@ export class PackageManagerUtils {
   ): Promise<"yarn" | "pnpm" | "npm" | "bun"> {
     if (pm) return pm;
     if (this.alepha.isBun()) return "bun";
+
+    // Check current directory first
     if (await this.fs.exists(this.fs.join(root, "bun.lock"))) return "bun";
     if (await this.fs.exists(this.fs.join(root, "yarn.lock"))) return "yarn";
     if (await this.fs.exists(this.fs.join(root, "pnpm-lock.yaml")))
       return "pnpm";
+    if (await this.fs.exists(this.fs.join(root, "package-lock.json")))
+      return "npm";
+
+    // Check workspace root (for monorepo packages like apps/blog)
+    const workspace = await this.getWorkspaceContext(root);
+    if (workspace.packageManager) {
+      return workspace.packageManager;
+    }
+
     return "npm";
   }
 

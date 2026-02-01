@@ -18,13 +18,24 @@ Alepha
 
 ## What is this?
 
-Full-stack TypeScript framework. Node.js and Bun, same code.
+Enterprise-grade TypeScript framework for building full-stack applications with end-to-end type safety and minimal boilerplate.
 
-You define your API with `$action`, your DB with `$entity`, jobs with `$queue`.
-One schema handles database, validation, and TypeScript types.
-The client gets full autocomplete without codegen.
-Testing? Swap services with `.with()`, no mocking.
-Deploy anywhere — Cloudflare, Vercel, Docker, bare metal.
+- **Multi-runtime** — Same code runs on Node, Bun, Workerd, Browser, and Expo
+- **One schema, everywhere** — Define once, get database, validation, TypeScript types, and React forms
+- **Full autocomplete** — Client calls server with complete type safety, zero codegen
+- **Substitutable** — Swap any service with `.with()` for testing or customization
+- **Deploy anywhere** — Cloudflare, Vercel, Docker, bare metal
+- **AI friendly** — Built-in [llms.txt](https://alepha.dev/llms.txt) for LLM context
+
+Pick your layer. Each one builds on the previous.
+
+| Layer | Description | Primitives |
+|-------|-------------|------------|
+| **L0** | Foundation: DI, lifecycle, config | `$inject`, `$client`, `$env`, `$module`, `$hook`, `$logger` |
+| **L1** | Backend: database, queues, storage | `$entity`, `$action`, `$queue`, `$bucket`, `$permission` |
+| **L2** | React frontend with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary` |
+| **L3** | SaaS features: users, jobs, audits | `$realm`, `$job`, `$audit`, `$notification` |
+| **L4** | Admin panel & auth UI included | `$uiAdmin`, `$uiAuth` |
 
 ## Example
 
@@ -80,10 +91,10 @@ export class AppRouter {
 Requirements: [Node.js](https://nodejs.org/) 22+ or [Bun](https://bun.sh/) 1.3+
 
 ```bash
-npx alepha init my-app --api         # API only
-npx alepha init my-app --react       # With React
-npx alepha init my-app --admin       # Full SaaS starter
-npx alepha init my-app --admin --ai  # + AI assistant context
+npx alepha init my-app --api         # L1: Backend only
+npx alepha init my-app --react       # L2: + React frontend
+npx alepha init my-app --admin       # L4: Full SaaS starter
+npx alepha init my-app --admin --ai  # L4: + AI assistant context
 
 cd my-app && npm run dev
 ```

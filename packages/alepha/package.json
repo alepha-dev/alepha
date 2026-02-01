@@ -270,6 +270,11 @@
       "import": "./src/react/i18n/index.ts",
       "default": "./src/react/i18n/index.ts"
     },
+    "./react/intro": {
+      "types": "./src/react/intro/index.ts",
+      "import": "./src/react/intro/index.ts",
+      "default": "./src/react/intro/index.ts"
+    },
     "./react/router": {
       "types": "./src/react/router/index.ts",
       "react-native": "./src/react/router/index.browser.ts",

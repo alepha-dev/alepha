@@ -47,22 +47,22 @@ export const webAppRouterTs = (options: {
     }
 
     classMembers.push(`  layout = $page({
-    parent: this.ui.root,
-    children: () => [this.home],
-  });`);
+      parent: this.ui.root,
+      children: () => [this.home],
+    });`);
   }
 
   // Home page - with or without loader
   if (options.api) {
     classMembers.push(`  home = $page({
     path: "/",
-    lazy: () => import("./components/Hello.tsx"),
+    lazy: () => import("./components/Home.tsx"),
     loader: () => this.api.hello(),
   });`);
   } else {
     classMembers.push(`  home = $page({
     path: "/",
-    lazy: () => import("./components/Hello.tsx"),
+    lazy: () => import("./components/Home.tsx"),
   });`);
   }
 

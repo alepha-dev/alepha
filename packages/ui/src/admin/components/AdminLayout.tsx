@@ -7,6 +7,7 @@ import {
 } from "@alepha/ui";
 import { UserButton } from "@alepha/ui/auth";
 import { IconArrowLeft } from "@tabler/icons-react";
+import "../../core/styles.css";
 
 export interface AdminLayoutProps {
   adminShellProps?: AdminShellProps;

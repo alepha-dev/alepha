@@ -46,6 +46,55 @@ export class SessionService {
   }
 
   /**
+   * Check if user should be auto-promoted to admin based on adminEmails/adminUsernames settings.
+   * If user matches and doesn't have admin role, promote them.
+   */
+  protected async ensureAdminRole(
+    user: {
+      id: string;
+      email?: string | null;
+      username?: string | null;
+      roles: string[];
+    },
+    userRealmName?: string,
+  ): Promise<boolean> {
+    if (user.roles.includes("admin")) return false;
+
+    const { settings, name } = this.realmProvider.getRealm(userRealmName);
+    const adminEmails = settings.adminEmails ?? [];
+    const adminUsernames = settings.adminUsernames ?? [];
+
+    const isAdminByEmail = user.email && adminEmails.includes(user.email);
+    const isAdminByUsername =
+      user.username && adminUsernames.includes(user.username);
+
+    if (!isAdminByEmail && !isAdminByUsername) return false;
+
+    // Promote to admin
+    user.roles = [...user.roles.filter((r) => r !== "admin"), "admin"];
+    await this.users(userRealmName).updateById(user.id, { roles: user.roles });
+
+    const reason = isAdminByEmail ? "adminEmails" : "adminUsernames";
+    this.log.info(`User auto-promoted to admin via ${reason} setting`, {
+      userId: user.id,
+      email: user.email,
+      username: user.username,
+      realm: name,
+    });
+
+    await this.userAudits(userRealmName)?.recordUser("role_change", {
+      userId: user.id,
+      userEmail: user.email ?? undefined,
+      userRealm: name,
+      resourceId: user.id,
+      description: `User auto-promoted to admin via ${reason} setting`,
+      metadata: { addedRole: "admin", reason },
+    });
+
+    return true;
+  }
+
+  /**
    * Random delay to prevent timing attacks (50-200ms)
    * Uses cryptographically secure random number generation
    */
@@ -183,6 +232,9 @@ export class SessionService {
         metadata: { provider, username },
       });
 
+      // Auto-promote to admin if configured
+      await this.ensureAdminRole(user, userRealmName);
+
       return user;
     } catch (error) {
       if (error instanceof InvalidCredentialsError) {
@@ -257,6 +309,9 @@ export class SessionService {
         id: { eq: session.userId },
       },
     });
+
+    // Auto-promote to admin if configured (handles "I promote you admin" case)
+    await this.ensureAdminRole(user, userRealmName);
 
     this.log.debug("Session refreshed", {
       sessionId: session.id,
@@ -340,6 +395,9 @@ export class SessionService {
         metadata: { provider, providerUserId: profile.sub },
       });
 
+      // Auto-promote to admin if configured
+      await this.ensureAdminRole(user, userRealmName);
+
       return user;
     }
 
@@ -383,6 +441,9 @@ export class SessionService {
         description: `OAuth2 identity linked to existing user (${provider})`,
         metadata: { provider, providerUserId: profile.sub, linked: true },
       });
+
+      // Auto-promote to admin if configured
+      await this.ensureAdminRole(existing, userRealmName);
 
       return existing;
     }
@@ -462,6 +523,9 @@ export class SessionService {
       description: `First login via OAuth2 (${provider})`,
       metadata: { provider, providerUserId: profile.sub, firstLogin: true },
     });
+
+    // Auto-promote to admin if configured
+    await this.ensureAdminRole(user, userRealmName);
 
     return user;
   }

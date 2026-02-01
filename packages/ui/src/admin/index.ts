@@ -2,13 +2,10 @@ import { AlephaUI } from "@alepha/ui";
 import { AlephaUIAuth } from "@alepha/ui/auth";
 import { $context, $module } from "alepha";
 import { AdminRouter } from "./AdminRouter.ts";
-import { MainRouter } from "./MainRouter.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export { AdminRouter } from "./AdminRouter.ts";
-// Layout
-export { default as AdminLayout } from "./components/AdminLayout.tsx";
 // Audits
 export { default as AdminAudits } from "./components/audits/AdminAudits.tsx";
 // Files
@@ -33,7 +30,6 @@ export { default as AdminUserSettings } from "./components/users/AdminUserSettin
 export { default as AdminUsers } from "./components/users/AdminUsers.tsx";
 // Verifications
 export { default as AdminVerifications } from "./components/verifications/AdminVerifications.tsx";
-export { MainRouter } from "./MainRouter.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -59,7 +55,7 @@ export { MainRouter } from "./MainRouter.ts";
  */
 export const AlephaUIAdmin = $module({
   name: "alepha.ui.admin",
-  services: [AlephaUI, AlephaUIAuth, AdminRouter, MainRouter],
+  services: [AlephaUI, AlephaUIAuth, AdminRouter],
   register: (alepha) => {
     alepha.with(AdminRouter);
   },

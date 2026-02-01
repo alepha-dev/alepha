@@ -1,6 +1,7 @@
 import { AlephaMantineProvider } from "@alepha/ui";
 import { Flex } from "@mantine/core";
 import { NestedView } from "alepha/react/router";
+import "../../core/styles.css";
 
 const AuthLayout = () => {
   return (

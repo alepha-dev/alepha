@@ -2,12 +2,7 @@ import { IconLanguage } from "@tabler/icons-react";
 import { useI18n } from "alepha/react/i18n";
 import ActionButton, { type ActionProps } from "./ActionButton.tsx";
 
-export interface LanguageButtonProps {
-  languages?: string[];
-  actionProps?: ActionProps;
-}
-
-const LanguageButton = (props: LanguageButtonProps) => {
+const LanguageButton = (props: Partial<ActionProps>) => {
   const i18n = useI18n();
   return (
     <ActionButton
@@ -20,7 +15,7 @@ const LanguageButton = (props: LanguageButtonProps) => {
           active: i18n.lang === lang,
         })),
       }}
-      {...props.actionProps}
+      {...props}
     />
   );
 };
