@@ -27,6 +27,7 @@ This file provides guidance to AI coding assistants when working with this Aleph
 
 ### Pages with \`$page\`
 \`\`\`tsx
+import { t } from "alepha";
 import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 import type { UserController } from "./UserController.ts";
@@ -196,31 +197,6 @@ class AppRouter {
 }
 \`\`\`
 
-### Modules with \`$module\`
-\`\`\`typescript
-// src/api/index.ts - Groups all API services
-import { $module } from "alepha";
-
-export const ApiModule = $module({
-  name: "app.api",
-  services: [
-    UserController,
-    OrderController,
-    UserService,
-  ],
-});
-
-// src/web/index.ts - Groups all web services (React only)
-export const WebModule = $module({
-  name: "app.web",
-  services: [AppRouter, Toaster],
-  register(alepha) {
-    // Optional: configure additional services
-    alepha.with(SomeLibrary);
-  },
-});
-\`\`\`
-
 ### Environment Variables
 \`\`\`typescript
 import { $env, t } from "alepha";
@@ -268,6 +244,7 @@ describe("UserService", () => {
   it("should create user", async () => {
     const alepha = Alepha.create().with(UserService);
     const service = alepha.inject(UserService);
+    await alepha.start();
 
     const user = await service.create({ email: "test@example.com" });
     expect(user.email).toBe("test@example.com");

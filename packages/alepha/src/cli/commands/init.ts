@@ -121,9 +121,9 @@ export class InitCommand {
         handler: async () => {
           await this.scaffolder.ensureConfig(root, {
             force,
-            tsconfigJson: !workspace.config.tsconfigJson,
             packageJson: { ...flags, isPackage: workspace.isPackage },
             // Skip workspace-level configs if they exist at workspace root
+            tsconfigJson: !workspace.config.tsconfigJson,
             biomeJson: !workspace.config.biomeJson,
             editorconfig: !workspace.config.editorconfig,
             agentMd: agentType
