@@ -46,7 +46,11 @@ export class Api {
   views = $repository(viewEntity);
 
   inc = $action({
-    schema: { response: t.object({ count: t.number() }) },  // ← validates + generates OpenAPI
+    schema: { // ← validates + generates OpenAPI
+      response: t.object({
+        count: t.number()
+      })
+    },
     handler: async () => {
       await this.views.create({});
       return { count: await this.views.count() };

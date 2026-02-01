@@ -18,3 +18,4 @@ playwright-report
 .playwright-mcp
 pulse
 .gen
+deno.lock
