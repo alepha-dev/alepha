@@ -20,8 +20,8 @@ const HeaderActions = () => {
     <Flex gap={"xs"} align="center" justify="center">
       <AuthButton />
       <ThemeButton />
-      <LanguageButton actionProps={{ variant: "subtle" }} />
-      <DarkModeButton actionProps={{ variant: "subtle" }} />
+      <LanguageButton variant="subtle" />
+      <DarkModeButton variant="subtle" />
     </Flex>
   );
 };

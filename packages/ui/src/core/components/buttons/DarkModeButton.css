@@ -1,0 +1,6 @@
+/* Dark Mode Toggle - SSR-safe icon switching */
+
+[data-mantine-color-scheme="light"] .alepha-light-hidden,
+[data-mantine-color-scheme="dark"] .alepha-dark-hidden {
+  display: none;
+}

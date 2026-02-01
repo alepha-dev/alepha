@@ -11,14 +11,11 @@ import {
 import { IconArrowLeft } from "@tabler/icons-react";
 import { Link, useRouter } from "alepha/react/router";
 import type { ComponentType, ReactNode } from "react";
+import type { ActionProps } from "../buttons/ActionButton.tsx";
 import ActionButton from "../buttons/ActionButton.tsx";
 import BurgerButton from "../buttons/BurgerButton.tsx";
-import DarkModeButton, {
-  type DarkModeButtonProps,
-} from "../buttons/DarkModeButton.tsx";
-import LanguageButton, {
-  type LanguageButtonProps,
-} from "../buttons/LanguageButton.tsx";
+import DarkModeButton from "../buttons/DarkModeButton.tsx";
+import LanguageButton from "../buttons/LanguageButton.tsx";
 import OmnibarButton, {
   type OmnibarButtonProps,
 } from "../buttons/OmnibarButton.tsx";
@@ -53,7 +50,7 @@ export interface AppBarBurger extends AppBarAbstractItem {
 
 export interface AppBarDark extends AppBarAbstractItem {
   type: "dark";
-  props?: DarkModeButtonProps;
+  props?: Partial<ActionProps>;
 }
 
 export interface AppBarSearch extends AppBarAbstractItem {
@@ -63,7 +60,7 @@ export interface AppBarSearch extends AppBarAbstractItem {
 
 export interface AppBarLang extends AppBarAbstractItem {
   type: "lang";
-  props?: LanguageButtonProps;
+  props?: Partial<ActionProps>;
 }
 
 export interface AppBarSpacer extends AppBarAbstractItem {

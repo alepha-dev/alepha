@@ -39,7 +39,6 @@ export { default as ClipboardButton } from "./components/buttons/ClipboardButton
 export { default as DarkModeButton } from "./components/buttons/DarkModeButton.tsx";
 export { default as LanguageButton } from "./components/buttons/LanguageButton.tsx";
 export { default as OmnibarButton } from "./components/buttons/OmnibarButton.tsx";
-export type { ThemeButtonProps } from "./components/buttons/ThemeButton.tsx";
 export { default as ThemeButton } from "./components/buttons/ThemeButton.tsx";
 export { default as ToggleSidebarButton } from "./components/buttons/ToggleSidebarButton.tsx";
 export { default as AlertDialog } from "./components/dialogs/AlertDialog.tsx";
