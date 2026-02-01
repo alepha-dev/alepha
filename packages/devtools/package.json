@@ -2,7 +2,7 @@
   "name": "@alepha/devtools",
   "description": "Developer tools for monitoring and debugging Alepha applications.",
   "author": "Nicolas Foures",
-  "version": "0.15.3",
+  "version": "0.15.4",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -16,13 +16,13 @@
     "assets"
   ],
   "devDependencies": {
-    "@alepha/ui": "0.15.3",
+    "@alepha/ui": "0.15.4",
     "@biomejs/biome": "^2.3.13",
     "@mantine/core": "^8.3.13",
     "@mantine/hooks": "^8.3.13",
     "@tabler/icons-react": "^3.36.1",
     "@xyflow/react": "^12.10.0",
-    "alepha": "0.15.3",
+    "alepha": "0.15.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tsdown": "^0.20.1",
@@ -31,7 +31,7 @@
     "vitest": "^4.0.18"
   },
   "peerDependencies": {
-    "alepha": "0.15.3"
+    "alepha": "0.15.4"
   },
   "scripts": {
     "lint": "alepha lint",

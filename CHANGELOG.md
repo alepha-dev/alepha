@@ -1,3 +1,16 @@
+## [0.15.4] - 2026-02-01
+
+### Features
+
+- **scheduler**: add workerd support (`4085f724`)
+- **email**: add workerd support (`0cb39e3d`)
+
+### Bug Fixes
+
+- **react/auth**: add cache-busting to logout URI to prevent non-desired caching (`c8470d91`)
+- **react/server**: fix 'alepha dev' ssr (`d77cfc42`)
+- **server/links**: action.secure = undefined add now a link (`2af04138`)
+
 ## [0.15.3] - 2026-01-31
 
 ### Features
