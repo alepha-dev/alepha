@@ -1,6 +1,7 @@
 import {
   $env,
   $inject,
+  AlephaError,
   type Async,
   createPrimitive,
   isTypeFile,
@@ -188,8 +189,8 @@ export interface ActionPrimitiveOptions<TConfig extends RequestConfigSchema>
   description?: string;
 
   /**
-   * Disable the route. Useful with env variables do disable one specific route.
-   * Route won't be available in the API but can still be called locally!
+   * Disable the route. Useful with env variables to disable one specific route.
+   * Route won't be available in the API nor locally.
    */
   disabled?: boolean;
 
@@ -317,6 +318,9 @@ export class ActionPrimitive<
     config?: ClientRequestEntry<TConfig>,
     options: ClientRequestOptions = {}, // most of the options are ignored here
   ): Promise<ClientRequestResponse<TConfig>> {
+    if (this.options.disabled) {
+      throw new AlephaError(`Action '${this.name}' is disabled.`);
+    }
     const handler = this.options.handler;
     const {
       body,

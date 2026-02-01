@@ -81,8 +81,9 @@ describe("$action", () => {
 
     expect(await app.a1.fetch({}).then((it) => it.data)).toBe("ok:a1");
     expect(await app.a2.fetch({}).then((it) => it.data)).toBe("Not Found");
-    // note: $action disabled is callable locally
-    expect(await app.a2.run({})).toBe("ok:a2");
+    await expect(app.a2.run({})).rejects.toThrowError(
+      "Action 'a2' is disabled.",
+    );
   });
 
   test("should return nothing", async ({ expect }) => {
