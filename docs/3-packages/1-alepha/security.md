@@ -10,9 +10,9 @@ npm install alepha
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| backend | epic | stable |
+| Stability | Since | Runtime |
+|-----------|-------|---------|
+| 3 - stable | 0.1.0 | node, bun, workerd, browser|
 
 Complete authentication and authorization system with JWT, RBAC, and multi-issuer support.
 

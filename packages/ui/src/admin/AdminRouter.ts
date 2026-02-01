@@ -5,14 +5,18 @@ import {
   IconDevices,
   IconFile,
   IconHistory,
+  IconKey,
   IconPlus,
   IconSettings,
+  IconTerminal2,
   IconUser,
   IconUsers,
 } from "@tabler/icons-react";
 import { $inject } from "alepha";
 import type { AdminAuditController } from "alepha/api/audits";
 import type { FileController } from "alepha/api/files";
+import type { AdminJobController } from "alepha/api/jobs";
+import type { AdminApiKeyController } from "alepha/api/keys";
 import type { AdminNotificationController } from "alepha/api/notifications";
 import type { AdminConfigController } from "alepha/api/parameters";
 import type {
@@ -33,6 +37,8 @@ export class AdminRouter {
   protected readonly fileCtrl = $client<FileController>();
   protected readonly configCtrl = $client<AdminConfigController>();
   protected readonly auditCtrl = $client<AdminAuditController>();
+  protected readonly jobCtrl = $client<AdminJobController>();
+  protected readonly apiKeyCtrl = $client<AdminApiKeyController>();
 
   protected adminShellProps(): AdminShellProps {
     return {};
@@ -198,5 +204,33 @@ export class AdminRouter {
     description: "View and manage application configuration parameters.",
     lazy: () => import("./components/parameters/AdminParameters.tsx"),
     can: () => this.configCtrl.getConfigTree.can(),
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Jobs
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  public readonly adminJobs = $page({
+    icon: IconTerminal2,
+    parent: this.adminLayout,
+    path: "/jobs",
+    label: "Jobs",
+    description: "Monitor and manage background jobs and scheduled tasks.",
+    lazy: () => import("./components/jobs/AdminJobs.tsx"),
+    can: () => this.jobCtrl.getJobs.can(),
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // API Keys
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  public readonly adminApiKeys = $page({
+    icon: IconKey,
+    parent: this.adminLayout,
+    path: "/api-keys",
+    label: "API Keys",
+    description: "View and manage API keys for programmatic access.",
+    lazy: () => import("./components/keys/AdminApiKeys.tsx"),
+    can: () => this.apiKeyCtrl.findApiKeys.can(),
   });
 }

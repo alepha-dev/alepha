@@ -10,9 +10,9 @@ npm install alepha
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| devops | standard | stable |
+| Stability | Since | Runtime |
+|-----------|-------|---------|
+| 3 - stable | 0.7.0 | node, bun, workerd|
 
 Application health monitoring endpoints.
 

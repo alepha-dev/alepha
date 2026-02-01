@@ -19,9 +19,9 @@ export * from "./providers/CliProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | tooling | rare | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.6.0 | node, bun|
  *
  * Declarative CLI command framework.
  *

@@ -9,9 +9,9 @@ export * from "./providers/ServerCompressProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.13.0 | node, bun|
  *
  * Response compression.
  *

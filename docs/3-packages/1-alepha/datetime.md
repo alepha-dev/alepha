@@ -10,9 +10,9 @@ npm install alepha
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| tooling | standard | stable |
+| Stability | Since | Runtime |
+|-----------|-------|---------|
+| 3 - stable | 0.10.0 | node, bun, workerd, browser, expo|
 
 Date and time operations.
 

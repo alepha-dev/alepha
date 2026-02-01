@@ -15,9 +15,9 @@ export * from "./providers/TopicProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | rare | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.7.0 | node, bun|
  *
  * Publish/subscribe messaging for event-driven architectures.
  *

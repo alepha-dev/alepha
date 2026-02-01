@@ -29,9 +29,9 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | rare | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.8.0 | node, bun, workerd|
  *
  * OAuth2/OIDC authentication with social login providers.
  *

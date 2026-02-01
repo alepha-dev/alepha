@@ -9,9 +9,9 @@ export * from "./providers/ServerMultipartProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.5.0 | node, bun|
  *
  * Multipart form data handling for file uploads.
  *

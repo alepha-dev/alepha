@@ -10,9 +10,9 @@ npm install alepha
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| backend | standard | stable |
+| Stability | Since | Runtime |
+|-----------|-------|---------|
+| 3 - stable | 0.8.0 | node, bun|
 
 Job execution monitoring.
 

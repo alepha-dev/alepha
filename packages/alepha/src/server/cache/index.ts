@@ -9,9 +9,9 @@ export * from "./providers/ServerCacheProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.10.0 | node, bun, workerd|
  *
  * ETag-based response caching.
  *

@@ -9,9 +9,9 @@ export * from "./providers/ServerHelmetProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.15.0 | node, bun, workerd|
  *
  * HTTP security headers.
  *

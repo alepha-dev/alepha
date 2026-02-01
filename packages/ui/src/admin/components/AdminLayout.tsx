@@ -42,6 +42,7 @@ const AdminLayout = (props: AdminLayoutProps) => {
             },
           ],
         }}
+        sidebarResizable
         sidebarProps={{
           autoPopulateMenu: {
             startsWith: "/admin",

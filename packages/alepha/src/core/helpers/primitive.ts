@@ -47,11 +47,6 @@ export abstract class Primitive<T extends object = {}> {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export type PrimitiveFactory<TPrimitive extends Primitive = Primitive> = {
-  (options: TPrimitive["options"]): TPrimitive;
-  [KIND]: InstantiableClass<TPrimitive>;
-};
-
 export type PrimitiveFactoryLike<T extends object = any> = {
   (options: T): any;
   [KIND]: any;

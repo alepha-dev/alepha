@@ -54,9 +54,9 @@ export interface RateLimitOptions {
 }
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.16.0 | node, bun, workerd|
  *
  * Request rate limiting on actions.
  *

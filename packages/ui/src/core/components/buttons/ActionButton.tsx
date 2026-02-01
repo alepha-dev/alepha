@@ -567,13 +567,20 @@ const ActionNavigationButton = (props: ActionNavigationButtonProps) => {
     classNameActive,
     variantActive,
     routerGoOptions,
+    onClick: propsOnClick,
     ...buttonProps
-  } = props;
+  } = props as ActionNavigationButtonProps & { onClick?: (e: any) => void };
   const router = useRouter();
   const { isPending, isActive } = useActive(
     options ? { href: props.href, ...options } : { href: props.href },
   );
   const anchorProps = router.anchor(props.href, routerGoOptions);
+
+  // Combine passed onClick with router's onClick
+  const combinedOnClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    propsOnClick?.(e as any);
+    anchorProps.onClick?.(e);
+  };
 
   const className = buttonProps.className || "";
   if (isActive && options !== false && classNameActive) {
@@ -582,7 +589,12 @@ const ActionNavigationButton = (props: ActionNavigationButtonProps) => {
 
   if (props.anchorProps) {
     return (
-      <Anchor component={"a"} {...anchorProps} {...props.anchorProps}>
+      <Anchor
+        component={"a"}
+        {...anchorProps}
+        {...props.anchorProps}
+        onClick={combinedOnClick}
+      >
         {props.children}
       </Anchor>
     );
@@ -594,6 +606,7 @@ const ActionNavigationButton = (props: ActionNavigationButtonProps) => {
       loading={isPending}
       {...buttonProps}
       {...anchorProps}
+      onClick={combinedOnClick}
       variant={
         isActive && options !== false
           ? (variantActive ?? "filled")

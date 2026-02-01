@@ -10,9 +10,9 @@ export * from "./providers/BatchProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.8.0 | node, bun|
  *
  * Batch accumulation and processing.
  *

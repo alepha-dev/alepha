@@ -58,9 +58,9 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | frontend | epic | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.2.0 | node, bun, workerd, browser, expo|
  *
  * Full-stack React framework with server-side rendering.
  *

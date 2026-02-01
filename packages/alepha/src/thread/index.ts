@@ -22,9 +22,9 @@ Alepha.prototype.isWorkerThread = function (this: Alepha): boolean {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | experimental |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 1 - experimental | 0.16.0 | node|
  *
  * Multi-threading support.
  *

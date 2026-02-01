@@ -22,9 +22,9 @@ declare module "alepha/react/router" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | frontend | rare | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.8.0 | node, bun, browser|
  *
  * Auth-related React components and hooks.
  *

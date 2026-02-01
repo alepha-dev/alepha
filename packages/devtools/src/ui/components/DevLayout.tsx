@@ -20,11 +20,10 @@ export const DevLayout = () => {
         bg: ui.colors.background,
       }}
       appShellNavbarProps={{
-        bg: "transparent",
+        bg: ui.colors.background,
       }}
+      sidebarResizable
       sidebarProps={{
-        gap: 4,
-        collapsed: true,
         items: [
           {
             label: "Dashboard",

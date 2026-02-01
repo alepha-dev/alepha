@@ -10,9 +10,9 @@ npm install alepha
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| backend | standard | experimental |
+| Stability | Since | Runtime |
+|-----------|-------|---------|
+| 1 - experimental | 0.16.0 | node|
 
 Multi-threading support.
 

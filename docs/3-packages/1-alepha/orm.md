@@ -10,9 +10,9 @@ npm install alepha
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| backend | epic | stable |
+| Stability | Since | Runtime |
+|-----------|-------|---------|
+| 3 - stable | 0.1.0 | node, bun, workerd|
 
 Full-featured database abstraction built on Drizzle ORM with complete type safety.
 

@@ -9,9 +9,9 @@ export * from "./providers/FakeProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | tooling | rare | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.11.0 | node, bun, workerd, browser|
  *
  * Test data generation with Faker.js.
  *

@@ -10,9 +10,9 @@ npm install alepha
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| backend | rare | experimental |
+| Stability | Since | Runtime |
+|-----------|-------|---------|
+| 1 - experimental | 0.19.0 | node, browser|
 
 Real-time bidirectional communication.
 

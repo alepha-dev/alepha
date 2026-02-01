@@ -41,12 +41,11 @@ const AdminParameters = () => {
     setLoadingHistory(true);
 
     try {
-      const [current, historyData] = await Promise.all([
+      const [current] = await Promise.all([
         client.getCurrent({ params: { name } }),
-        client.getHistory({ params: { name } }),
       ]);
       setConfigValue(current);
-      setHistory(historyData.versions);
+      setHistory([]);
     } finally {
       setLoadingConfig(false);
       setLoadingHistory(false);

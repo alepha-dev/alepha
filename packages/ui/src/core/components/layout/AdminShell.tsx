@@ -21,7 +21,11 @@ import {
 import { alephaSidebarAtom } from "../../atoms/alephaSidebarAtom.ts";
 import { ui } from "../../constants/ui.ts";
 import AppBar, { type AppBarProps } from "./AppBar.tsx";
-import { Sidebar, type SidebarProps } from "./Sidebar.tsx";
+import {
+  Sidebar,
+  type SidebarMenuItem,
+  type SidebarProps,
+} from "./Sidebar.tsx";
 
 export interface AdminShellProps {
   appShellProps?: Partial<AppShellProps>;
@@ -240,6 +244,17 @@ const AdminShell = (props: AdminShellProps) => {
   // When collapsed but hovering, show defaultWidth (not current width)
   const isExpandedByHover = collapsed && isHovering;
   const effectiveCollapsed = collapsed && !isHovering;
+
+  // Wrap onItemClick to collapse sidebar when clicking during hover-expansion
+  const handleSidebarItemClick = useCallback(
+    (item: SidebarMenuItem) => {
+      if (isExpandedByHover) {
+        setIsHovering(false);
+      }
+      props.sidebarProps?.onItemClick?.(item);
+    },
+    [isExpandedByHover, props.sidebarProps?.onItemClick],
+  );
   const hoverWidth = Math.max(defaultWidth, collapsedWidth);
   // When hovering, keep main content at collapsed width (sidebar overlays)
   const sidebarWidth = hasSidebar
@@ -300,6 +315,7 @@ const AdminShell = (props: AdminShellProps) => {
           <Sidebar
             {...(props.sidebarProps ?? {})}
             collapsed={effectiveCollapsed}
+            onItemClick={handleSidebarItemClick}
           />
           {(canResize || isExpandedByHover) && (
             <Flex

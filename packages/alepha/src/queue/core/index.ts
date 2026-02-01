@@ -16,9 +16,9 @@ export * from "./providers/WorkerProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | epic | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.6.0 | node, bun|
  *
  * Asynchronous message processing with automatic worker management.
  *

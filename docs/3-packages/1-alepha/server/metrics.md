@@ -10,9 +10,9 @@ npm install alepha
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| devops | standard | stable |
+| Stability | Since | Runtime |
+|-----------|-------|---------|
+| 2 - beta | 0.14.0 | node, bun|
 
 Prometheus-style metrics collection.
 

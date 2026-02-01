@@ -10,9 +10,9 @@ npm install alepha
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| backend | standard | stable |
+| Stability | Since | Runtime |
+|-----------|-------|---------|
+| 2 - beta | 0.12.0 | node, bun|
 
 Reverse proxy routing.
 

@@ -12,9 +12,9 @@ export * from "./providers/RetryProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.12.0 | node, bun, workerd, browser, expo|
  *
  * Automatic retry with backoff.
  *

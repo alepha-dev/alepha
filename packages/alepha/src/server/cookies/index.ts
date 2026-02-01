@@ -18,9 +18,9 @@ declare module "alepha/server" {
 }
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.3.0 | node, bun, workerd|
  *
  * Server and browser-safe cookie handling.
  *

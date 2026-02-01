@@ -1,7 +1,7 @@
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | frontend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.2.0 | node, bun, workerd, browser, expo|
  *
  * Frontend routing infrastructure.
  *

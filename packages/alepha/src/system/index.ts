@@ -21,9 +21,9 @@ export * from "./services/FileDetector.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | tooling | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.14.0 | node, bun, browser|
  *
  * System-level abstractions for portable code across runtimes.
  *

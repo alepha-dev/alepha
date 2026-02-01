@@ -11,9 +11,9 @@ export * from "./providers/ServerStaticProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.3.0 | node, bun|
  *
  * Static file serving.
  *
