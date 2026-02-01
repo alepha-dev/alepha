@@ -5,7 +5,13 @@ import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaSecurity } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
-import { AlephaApiUsers, UserController, UserService } from "../index.ts";
+import {
+  AlephaApiUsers,
+  RealmProvider,
+  UserController,
+  UserNotifications,
+  UserService,
+} from "../index.ts";
 
 const setup = async () => {
   const alepha = Alepha.create({
@@ -16,8 +22,17 @@ const setup = async () => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiVerification);
   alepha.with(AlephaApiUsers);
+  alepha.with(UserNotifications);
 
   await alepha.start();
+
+  // Enable notifications for the default realm
+  const realmProvider = alepha.inject(RealmProvider);
+  realmProvider.register("default", {
+    features: {
+      notifications: true,
+    },
+  });
 
   const emailProvider = alepha.inject(MemoryEmailProvider);
   emailProvider.records = [];

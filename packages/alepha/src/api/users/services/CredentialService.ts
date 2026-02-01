@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { $inject } from "alepha";
-import { AuditService } from "alepha/api/audits";
+import { $inject, Alepha } from "alepha";
 import type { VerificationController } from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
@@ -8,10 +7,11 @@ import { $logger } from "alepha/logger";
 import { CryptoProvider } from "alepha/security";
 import { BadRequestError, HttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
-import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { CompletePasswordResetRequest } from "../schemas/completePasswordResetRequestSchema.ts";
 import type { PasswordResetIntentResponse } from "../schemas/passwordResetIntentResponseSchema.ts";
+import { UserAudits } from "./UserAudits.ts";
+import { UserNotifications } from "./UserNotifications.ts";
 
 /**
  * Intent stored in cache during the password reset flow.
@@ -27,13 +27,28 @@ interface PasswordResetIntent {
 const INTENT_TTL_MINUTES = 10;
 
 export class CredentialService {
+  protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly cryptoProvider = $inject(CryptoProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly verificationController = $client<VerificationController>();
-  protected readonly userNotifications = $inject(UserNotifications);
   protected readonly realmProvider = $inject(RealmProvider);
-  protected readonly auditService = $inject(AuditService);
+
+  protected userAudits(realmName?: string) {
+    const realm = this.realmProvider.getRealm(realmName);
+    if (realm.features.audits) {
+      return this.alepha.inject(UserAudits);
+    }
+    return undefined;
+  }
+
+  protected userNotifications(realmName?: string) {
+    const realm = this.realmProvider.getRealm(realmName);
+    if (realm.features.notifications) {
+      return this.alepha.inject(UserNotifications);
+    }
+    return undefined;
+  }
 
   protected readonly intentCache = $cache<PasswordResetIntent>({
     name: "password-reset-intents",
@@ -118,7 +133,7 @@ export class CredentialService {
         });
 
       // Send password reset notification with the code
-      await this.userNotifications.passwordReset.push({
+      await this.userNotifications(userRealmName)?.passwordReset.push({
         contact: email,
         variables: {
           email,
@@ -225,7 +240,7 @@ export class CredentialService {
     const realm = this.realmProvider.getRealm(intent.realmName);
 
     // Audit: password reset
-    await this.auditService.recordUser("update", {
+    await this.userAudits(intent.realmName)?.recordUser("update", {
       userId: intent.userId,
       userEmail: intent.email,
       userRealm: realm.name,
@@ -235,14 +250,18 @@ export class CredentialService {
     });
 
     // Audit: sessions invalidated (security event)
-    await this.auditService.record("security", "sessions_invalidated", {
-      userId: intent.userId,
-      userEmail: intent.email,
-      userRealm: realm.name,
-      resourceId: intent.userId,
-      severity: "warning",
-      description: "All sessions invalidated after password reset",
-    });
+    await this.userAudits(intent.realmName)?.record(
+      "security",
+      "sessions_invalidated",
+      {
+        userId: intent.userId,
+        userEmail: intent.email,
+        userRealm: realm.name,
+        resourceId: intent.userId,
+        severity: "warning",
+        description: "All sessions invalidated after password reset",
+      },
+    );
   }
 
   // Legacy methods kept for backward compatibility
@@ -333,7 +352,7 @@ export class CredentialService {
     const realm = this.realmProvider.getRealm(userRealmName);
 
     // Audit: password reset (legacy method)
-    await this.auditService.recordUser("update", {
+    await this.userAudits(userRealmName)?.recordUser("update", {
       userId: user.id,
       userEmail: email,
       userRealm: realm.name,
@@ -343,13 +362,17 @@ export class CredentialService {
     });
 
     // Audit: sessions invalidated
-    await this.auditService.record("security", "sessions_invalidated", {
-      userId: user.id,
-      userEmail: email,
-      userRealm: realm.name,
-      resourceId: user.id,
-      severity: "warning",
-      description: "All sessions invalidated after password reset",
-    });
+    await this.userAudits(userRealmName)?.record(
+      "security",
+      "sessions_invalidated",
+      {
+        userId: user.id,
+        userEmail: email,
+        userRealm: realm.name,
+        resourceId: user.id,
+        severity: "warning",
+        description: "All sessions invalidated after password reset",
+      },
+    );
   }
 }

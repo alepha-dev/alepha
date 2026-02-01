@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { $inject } from "alepha";
-import { AuditService } from "alepha/api/audits";
+import { $inject, Alepha } from "alepha";
 import type { VerificationController } from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
@@ -9,11 +8,12 @@ import { CryptoProvider } from "alepha/security";
 import { BadRequestError, ConflictError, HttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import type { UserEntity } from "../entities/users.ts";
-import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { CompleteRegistrationRequest } from "../schemas/completeRegistrationRequestSchema.ts";
 import type { RegisterRequest } from "../schemas/registerRequestSchema.ts";
 import type { RegistrationIntentResponse } from "../schemas/registrationIntentResponseSchema.ts";
+import { UserAudits } from "./UserAudits.ts";
+import { UserNotifications } from "./UserNotifications.ts";
 
 /**
  * Intent stored in cache during the registration flow.
@@ -40,18 +40,33 @@ interface RegistrationIntent {
 const INTENT_TTL_MINUTES = 10;
 
 export class RegistrationService {
+  protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly cryptoProvider = $inject(CryptoProvider);
   protected readonly verificationController = $client<VerificationController>();
-  protected readonly userNotifications = $inject(UserNotifications);
   protected readonly realmProvider = $inject(RealmProvider);
-  protected readonly auditService = $inject(AuditService);
 
   protected readonly intentCache = $cache<RegistrationIntent>({
     name: "registration-intents",
     ttl: [INTENT_TTL_MINUTES, "minutes"],
   });
+
+  protected userAudits(realmName?: string) {
+    const realm = this.realmProvider.getRealm(realmName);
+    if (realm.features.audits) {
+      return this.alepha.inject(UserAudits);
+    }
+    return undefined;
+  }
+
+  protected userNotifications(realmName?: string) {
+    const realm = this.realmProvider.getRealm(realmName);
+    if (realm.features.notifications) {
+      return this.alepha.inject(UserNotifications);
+    }
+    return undefined;
+  }
 
   /**
    * Phase 1: Create a registration intent.
@@ -130,11 +145,11 @@ export class RegistrationService {
 
     // Create verification sessions and send codes
     if (requirements.email && body.email) {
-      await this.sendEmailVerification(body.email);
+      await this.sendEmailVerification(body.email, userRealmName);
     }
 
     if (requirements.phone && body.phoneNumber) {
-      await this.sendPhoneVerification(body.phoneNumber);
+      await this.sendPhoneVerification(body.phoneNumber, userRealmName);
     }
 
     // Generate intent ID and expiration
@@ -291,7 +306,7 @@ export class RegistrationService {
 
     const realm = this.realmProvider.getRealm(userRealmName);
 
-    await this.auditService.recordUser("create", {
+    await this.userAudits(userRealmName)?.recordUser("create", {
       userId: user.id,
       userEmail: user.email ?? undefined,
       userRealm: realm.name,
@@ -353,7 +368,10 @@ export class RegistrationService {
   /**
    * Send email verification code.
    */
-  protected async sendEmailVerification(email: string): Promise<void> {
+  protected async sendEmailVerification(
+    email: string,
+    realmName?: string,
+  ): Promise<void> {
     this.log.debug("Sending email verification code", { email });
 
     const verification =
@@ -362,7 +380,7 @@ export class RegistrationService {
         body: { target: email },
       });
 
-    await this.userNotifications.emailVerification.push({
+    await this.userNotifications(realmName)?.emailVerification.push({
       contact: email,
       variables: {
         email,
@@ -377,7 +395,10 @@ export class RegistrationService {
   /**
    * Send phone verification code.
    */
-  protected async sendPhoneVerification(phoneNumber: string): Promise<void> {
+  protected async sendPhoneVerification(
+    phoneNumber: string,
+    realmName?: string,
+  ): Promise<void> {
     this.log.debug("Sending phone verification code", { phoneNumber });
     try {
       const verification =
@@ -386,7 +407,7 @@ export class RegistrationService {
           body: { target: phoneNumber },
         });
 
-      await this.userNotifications.phoneVerification.push({
+      await this.userNotifications(realmName)?.phoneVerification.push({
         contact: phoneNumber,
         variables: {
           phoneNumber,

@@ -1,5 +1,4 @@
 import { $inject, Alepha, AlephaError } from "alepha";
-import { $bucket } from "alepha/bucket";
 import { $repository, type Repository } from "alepha/orm";
 import {
   type RealmAuthSettings,
@@ -8,7 +7,7 @@ import {
 import { identities } from "../entities/identities.ts";
 import { sessions } from "../entities/sessions.ts";
 import { DEFAULT_USER_REALM_NAME, users } from "../entities/users.ts";
-import type { RealmOptions } from "../primitives/$realm.ts";
+import type { RealmFeatures, RealmOptions } from "../primitives/$realm.ts";
 
 export interface RealmRepositories {
   identities: Repository<typeof identities.schema>;
@@ -20,6 +19,7 @@ export interface Realm {
   name: string;
   repositories: RealmRepositories;
   settings: RealmAuthSettings;
+  features: RealmFeatures;
 }
 
 export class RealmProvider {
@@ -31,12 +31,19 @@ export class RealmProvider {
 
   protected realms = new Map<string, Realm>();
 
-  public avatars = $bucket({
-    maxSize: 5 * 1024 * 1024, // 5 MB
-    mimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
-  });
-
   public register(realmName: string, realmOptions: RealmOptions = {}) {
+    // Merge features with defaults
+    const features: RealmFeatures = {
+      jobs: false,
+      notifications: false,
+      apiKeys: false,
+      parameters: false,
+      files: false,
+      audits: false,
+      organizations: false,
+      ...realmOptions.features,
+    };
+
     this.realms.set(realmName, {
       name: realmName,
       repositories: {
@@ -53,6 +60,7 @@ export class RealmProvider {
           ...realmOptions.settings?.passwordPolicy,
         },
       },
+      features,
     });
     return this.getRealm(realmName);
   }

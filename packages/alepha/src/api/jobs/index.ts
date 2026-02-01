@@ -12,14 +12,15 @@ export * from "./providers/JobProvider.ts";
 export * from "./schemas/jobExecutionQuerySchema.ts";
 export * from "./schemas/jobExecutionResourceSchema.ts";
 export * from "./schemas/triggerJobSchema.ts";
+export * from "./services/JobAudits.ts";
 export * from "./services/JobService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.8.0 | node, bun|
  *
  * Job execution monitoring.
  *

@@ -25,9 +25,9 @@ export * from "./services/NotificationService.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.10.0 | node, bun, workerd|
  *
  * User notification management.
  *

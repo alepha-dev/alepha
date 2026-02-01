@@ -49,9 +49,9 @@ declare module "alepha/bucket" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.12.0 | node, bun, workerd|
  *
  * File management endpoints.
  *

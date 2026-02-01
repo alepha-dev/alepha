@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { AdminConfigController } from "./controllers/AdminConfigController.ts";
+import { $config } from "./primitives/$config.ts";
 import { ConfigActivationScheduler } from "./schedulers/ConfigActivationScheduler.ts";
 import { ConfigStore } from "./services/ConfigStore.ts";
 
@@ -19,9 +20,9 @@ export * from "./services/ConfigStore.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.9.0 | node, bun, workerd|
  *
  * Application configuration management.
  *
@@ -35,5 +36,6 @@ export * from "./services/ConfigStore.ts";
  */
 export const AlephaApiParameters = $module({
   name: "alepha.api.parameters",
+  primitives: [$config],
   services: [ConfigStore, AdminConfigController, ConfigActivationScheduler],
 });

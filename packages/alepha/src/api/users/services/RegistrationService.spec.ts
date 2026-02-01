@@ -10,6 +10,7 @@ import {
   RealmProvider,
   RegistrationService,
   SessionService,
+  UserNotifications,
   UserService,
 } from "../index.ts";
 
@@ -20,6 +21,7 @@ const setup = async (realmSettings?: Record<string, unknown>) => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiVerification);
   alepha.with(AlephaApiUsers);
+  alepha.with(UserNotifications);
 
   await alepha.start();
 
@@ -84,6 +86,9 @@ describe("alepha/api/users - RegistrationService", () => {
 
       // Register realm with email verification required
       realmProvider.register("verify-email-realm", {
+        features: {
+          notifications: true,
+        },
         settings: {
           verifyEmailRequired: true,
         } as never,
@@ -315,6 +320,9 @@ describe("alepha/api/users - RegistrationService", () => {
         await setup();
 
       realmProvider.register("email-verify-realm", {
+        features: {
+          notifications: true,
+        },
         settings: {
           verifyEmailRequired: true,
         } as never,
@@ -586,6 +594,9 @@ describe("alepha/api/users - RegistrationService", () => {
       } = await setup();
 
       realmProvider.register("full-verify-realm", {
+        features: {
+          notifications: true,
+        },
         settings: {
           verifyEmailRequired: true,
         } as never,

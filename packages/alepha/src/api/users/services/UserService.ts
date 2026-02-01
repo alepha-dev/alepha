@@ -1,23 +1,38 @@
-import { $inject } from "alepha";
-import { AuditService } from "alepha/api/audits";
+import { $inject, Alepha } from "alepha";
 import type { VerificationController } from "alepha/api/verifications";
 import { $logger } from "alepha/logger";
 import { type Page, parseQueryString } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import type { UserEntity } from "../entities/users.ts";
-import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { CreateUser } from "../schemas/createUserSchema.ts";
 import type { UpdateUser } from "../schemas/updateUserSchema.ts";
 import type { UserQuery } from "../schemas/userQuerySchema.ts";
+import { UserAudits } from "./UserAudits.ts";
+import { UserNotifications } from "./UserNotifications.ts";
 
 export class UserService {
+  protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly verificationController = $client<VerificationController>();
-  protected readonly userNotifications = $inject(UserNotifications);
   protected readonly realmProvider = $inject(RealmProvider);
-  protected readonly auditService = $inject(AuditService);
+
+  protected userAudits(realmName?: string) {
+    const realm = this.realmProvider.getRealm(realmName);
+    if (realm.features.audits) {
+      return this.alepha.inject(UserAudits);
+    }
+    return undefined;
+  }
+
+  protected userNotifications(realmName?: string) {
+    const realm = this.realmProvider.getRealm(realmName);
+    if (realm.features.notifications) {
+      return this.alepha.inject(UserNotifications);
+    }
+    return undefined;
+  }
 
   public users(userRealmName?: string) {
     return this.realmProvider.userRepository(userRealmName);
@@ -79,21 +94,23 @@ export class UserService {
           ? `${verifyUrl}${url.search}`
           : url.pathname + url.search;
 
-        await this.userNotifications.emailVerificationLink.push({
-          contact: email,
-          variables: {
-            email,
-            verifyUrl: fullVerifyUrl,
-            expiresInMinutes: Math.floor(verification.codeExpiration / 60),
+        await this.userNotifications(userRealmName)?.emailVerificationLink.push(
+          {
+            contact: email,
+            variables: {
+              email,
+              verifyUrl: fullVerifyUrl,
+              expiresInMinutes: Math.floor(verification.codeExpiration / 60),
+            },
           },
-        });
+        );
 
         this.log.debug("Email verification link sent", {
           email,
           userId: user.id,
         });
       } else {
-        await this.userNotifications.emailVerification.push({
+        await this.userNotifications(userRealmName)?.emailVerification.push({
           contact: email,
           variables: {
             email,
@@ -158,7 +175,7 @@ export class UserService {
 
     const realm = this.realmProvider.getRealm(userRealmName);
 
-    await this.auditService.recordUser("update", {
+    await this.userAudits(userRealmName)?.recordUser("update", {
       userId: user.id,
       userEmail: email,
       userRealm: realm.name,
@@ -314,7 +331,7 @@ export class UserService {
       email: user.email,
     });
 
-    await this.auditService.recordUser("create", {
+    await this.userAudits(userRealmName)?.recordUser("create", {
       userRealm: realm.name,
       resourceId: user.id,
       description: "User created",
@@ -357,7 +374,7 @@ export class UserService {
       data.roles !== undefined &&
       JSON.stringify(before.roles) !== JSON.stringify(data.roles);
 
-    await this.auditService.recordUser(
+    await this.userAudits(userRealmName)?.recordUser(
       isRoleChange ? "role_change" : "update",
       {
         userRealm: realm.name,
@@ -384,7 +401,7 @@ export class UserService {
 
     const realm = this.realmProvider.getRealm(userRealmName);
 
-    await this.auditService.recordUser("delete", {
+    await this.userAudits(userRealmName)?.recordUser("delete", {
       userRealm: realm.name,
       resourceId: id,
       severity: "warning",

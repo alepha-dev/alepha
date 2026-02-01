@@ -1,6 +1,4 @@
 import { $module } from "alepha";
-import { AlephaApiNotifications } from "alepha/api/notifications";
-import { AlephaApiVerification } from "alepha/api/verifications";
 import { AlephaEmail } from "alepha/email";
 import { AlephaServerCompress } from "alepha/server/compress";
 import { AlephaServerHelmet } from "alepha/server/helmet";
@@ -9,7 +7,6 @@ import { AdminSessionController } from "./controllers/AdminSessionController.ts"
 import { AdminUserController } from "./controllers/AdminUserController.ts";
 import { RealmController } from "./controllers/RealmController.ts";
 import { UserController } from "./controllers/UserController.ts";
-import { UserNotifications } from "./notifications/UserNotifications.ts";
 import { RealmProvider } from "./providers/RealmProvider.ts";
 import { CredentialService } from "./services/CredentialService.ts";
 import { IdentityService } from "./services/IdentityService.ts";
@@ -52,14 +49,19 @@ export * from "./services/IdentityService.ts";
 export * from "./services/RegistrationService.ts";
 export * from "./services/SessionCrudService.ts";
 export * from "./services/SessionService.ts";
+export * from "./services/UserAudits.ts";
+export * from "./services/UserFiles.ts";
+export * from "./services/UserJobs.ts";
+export * from "./services/UserNotifications.ts";
+export * from "./services/UserParameters.ts";
 export * from "./services/UserService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | epic | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.5.0 | node, bun, workerd|
  *
  * Complete user management with multi-realm support for multi-tenant applications.
  *
@@ -78,8 +80,6 @@ export * from "./services/UserService.ts";
 export const AlephaApiUsers = $module({
   name: "alepha.api.users",
   services: [
-    AlephaApiVerification,
-    AlephaApiNotifications,
     AlephaServerHelmet,
     AlephaServerCompress,
     AlephaEmail,
@@ -95,6 +95,5 @@ export const AlephaApiUsers = $module({
     AdminSessionController,
     AdminIdentityController,
     RealmController,
-    UserNotifications,
   ],
 });

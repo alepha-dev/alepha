@@ -1,13 +1,16 @@
-import { $inject, t } from "alepha";
+import { $inject, Alepha, t } from "alepha";
+import { AlephaApiAudits } from "alepha/api/audits";
 import { $action, okSchema } from "alepha/server";
 import { jobExecutionQuerySchema } from "../schemas/jobExecutionQuerySchema.ts";
 import { jobExecutionResourceSchema } from "../schemas/jobExecutionResourceSchema.ts";
 import { triggerJobSchema } from "../schemas/triggerJobSchema.ts";
+import { JobAudits } from "../services/JobAudits.ts";
 import { JobService } from "../services/JobService.ts";
 
 export class AdminJobController {
   protected readonly url: string = "/jobs";
   protected readonly group: string = "admin:jobs";
+  protected readonly alepha = $inject(Alepha);
   protected readonly jobService = $inject(JobService);
 
   public readonly getJobs = $action({
@@ -40,6 +43,16 @@ export class AdminJobController {
       body: triggerJobSchema,
       response: okSchema,
     },
-    handler: ({ body }) => this.jobService.triggerJob(body.name),
+    handler: async ({ body }) => {
+      const result = await this.jobService.triggerJob(body.name);
+
+      // Audit the manual trigger if audits are enabled
+      if (this.alepha.has(AlephaApiAudits)) {
+        const jobAudits = this.alepha.inject(JobAudits);
+        await jobAudits.logTrigger(body.name);
+      }
+
+      return result;
+    },
   });
 }

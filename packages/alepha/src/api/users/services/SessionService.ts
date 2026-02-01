@@ -1,6 +1,5 @@
 import { randomInt } from "node:crypto";
 import { $inject, Alepha } from "alepha";
-import { AuditService } from "alepha/api/audits";
 import type { FileController } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -15,6 +14,7 @@ import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
 import type { UserEntity } from "../entities/users.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
+import { UserAudits } from "./UserAudits.ts";
 
 export class SessionService {
   protected readonly alepha = $inject(Alepha);
@@ -24,7 +24,14 @@ export class SessionService {
   protected readonly log = $logger();
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly fileController = $client<FileController>();
-  protected readonly auditService = $inject(AuditService);
+
+  protected userAudits(realmName?: string) {
+    const realm = this.realmProvider.getRealm(realmName);
+    if (realm.features.audits) {
+      return this.alepha.inject(UserAudits);
+    }
+    return undefined;
+  }
 
   public users(userRealmName?: string) {
     return this.realmProvider.userRepository(userRealmName);
@@ -80,7 +87,7 @@ export class SessionService {
               realm: name,
             });
 
-            await this.auditService.recordAuth("login_failed", {
+            await this.userAudits(userRealmName)?.recordAuth("login_failed", {
               userRealm: name,
               description: "Username does not match required format",
               metadata: { provider, username },
@@ -101,7 +108,7 @@ export class SessionService {
           realm: name,
         });
 
-        await this.auditService.recordAuth("login_failed", {
+        await this.userAudits(userRealmName)?.recordAuth("login_failed", {
           userRealm: name,
           description: "Invalid login identifier format",
           metadata: { provider, username },
@@ -118,7 +125,7 @@ export class SessionService {
           realm: name,
         });
 
-        await this.auditService.recordAuth("login_failed", {
+        await this.userAudits(userRealmName)?.recordAuth("login_failed", {
           userRealm: name,
           description: "User not found",
           metadata: { provider, username },
@@ -157,7 +164,7 @@ export class SessionService {
           realm: name,
         });
 
-        await this.auditService.recordAuth("login_failed", {
+        await this.userAudits(userRealmName)?.recordAuth("login_failed", {
           userRealm: name,
           resourceId: user.id,
           description: "Invalid password",
@@ -167,7 +174,7 @@ export class SessionService {
         throw new InvalidCredentialsError();
       }
 
-      await this.auditService.recordAuth("login", {
+      await this.userAudits(userRealmName)?.recordAuth("login", {
         userId: user.id,
         userEmail: user.email ?? undefined,
         userRealm: name,
@@ -281,7 +288,7 @@ export class SessionService {
     if (session) {
       const { name } = this.realmProvider.getRealm(userRealmName);
 
-      await this.auditService.recordAuth("logout", {
+      await this.userAudits(userRealmName)?.recordAuth("logout", {
         userId: session.userId,
         userRealm: name,
         sessionId: session.id,
@@ -324,7 +331,7 @@ export class SessionService {
 
       const user = await users.findById(identity.userId);
 
-      await this.auditService.recordAuth("login", {
+      await this.userAudits(userRealmName)?.recordAuth("login", {
         userId: user.id,
         userEmail: user.email ?? undefined,
         userRealm: realm.name,
@@ -368,7 +375,7 @@ export class SessionService {
         userId: existing.id,
       });
 
-      await this.auditService.recordAuth("login", {
+      await this.userAudits(userRealmName)?.recordAuth("login", {
         userId: existing.id,
         userEmail: existing.email ?? undefined,
         userRealm: realm.name,
@@ -432,7 +439,7 @@ export class SessionService {
     });
 
     // Audit: user created via OAuth
-    await this.auditService.recordUser("create", {
+    await this.userAudits(userRealmName)?.recordUser("create", {
       userId: user.id,
       userEmail: user.email ?? undefined,
       userRealm: realm.name,
@@ -447,7 +454,7 @@ export class SessionService {
     });
 
     // Audit: login event
-    await this.auditService.recordAuth("login", {
+    await this.userAudits(userRealmName)?.recordAuth("login", {
       userId: user.id,
       userEmail: user.email ?? undefined,
       userRealm: realm.name,

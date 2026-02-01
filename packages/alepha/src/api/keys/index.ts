@@ -16,9 +16,9 @@ export * from "./schemas/revokeApiKeyResponseSchema.ts";
 export * from "./services/ApiKeyService.ts";
 
 /**
- * | type | quality | stability |
- * |------|---------|--------------|
- * | backend | good | experimental |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.11.0 | node, bun, workerd|
  *
  * API key management module for programmatic access.
  *

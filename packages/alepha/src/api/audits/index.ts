@@ -15,9 +15,9 @@ export * from "./services/AuditService.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 3 - stable | 0.14.0 | node, bun, workerd|
  *
  * Audit trail for compliance.
  *

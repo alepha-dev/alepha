@@ -33,7 +33,7 @@ const setup = async () => {
   // Create a realm with API keys enabled
   class TestApp {
     realm = $realm({
-      apiKeys: true,
+      features: { apiKeys: true },
     });
 
     // A protected action to test API key authentication (any authenticated user)

@@ -8,7 +8,9 @@ import { describe, it } from "vitest";
 import {
   AlephaApiUsers,
   CredentialService,
+  RealmProvider,
   SessionService,
+  UserNotifications,
   UserService,
 } from "../index.ts";
 
@@ -21,8 +23,17 @@ const setup = async () => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiVerification);
   alepha.with(AlephaApiUsers);
+  alepha.with(UserNotifications);
 
   await alepha.start();
+
+  // Enable notifications for the default realm
+  const realmProvider = alepha.inject(RealmProvider);
+  realmProvider.register("default", {
+    features: {
+      notifications: true,
+    },
+  });
 
   const emailProvider = alepha.inject(MemoryEmailProvider);
   emailProvider.records = [];
