@@ -45,23 +45,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   >;
   protected compiledOnError?: CompiledEventExecutor<Hooks["server:onError"]>;
 
-  // Reusable context.run options object - mutated per request
-  // Includes slots for request data to avoid closure allocation in context.run
-  protected readonly contextRunOptions = {
-    context: "",
-    // Request data slots - populated before context.run, read by processRequestBound
-    _request: null as unknown as ServerRequest,
-    _route: null as unknown as ServerRoute,
-    _responseKind: "any" as ResponseKind,
-  };
-
-  // Pre-bound method reference - created once at instantiation, reused for all requests
-  // Reads arguments from contextRunOptions to avoid closure allocation per request
-  protected readonly processRequestBound = (): Promise<any> => {
-    const opts = this.contextRunOptions;
-    return this.processRequest(opts._request, opts._route, opts._responseKind);
-  };
-
   // Cache query schema keys to avoid property enumeration on every request
   // WeakMap allows GC of schemas that are no longer referenced
   protected readonly queryKeysCache = new WeakMap<object, string[]>();
@@ -137,16 +120,11 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
         const request =
           this.serverRequestParser.createServerRequest(rawRequest);
 
-        // Populate pre-allocated options with request data
-        // This avoids closure allocation - processRequestBound reads from these slots
-        const opts = this.contextRunOptions;
-        opts.context = this.getContextId(rawRequest.headers);
-        opts._request = request;
-        opts._route = route;
-        opts._responseKind = responseKind;
-
-        // Use pre-bound method reference instead of creating closure per request
-        return this.alepha.context.run(this.processRequestBound, opts);
+        // Create context options per request to avoid race conditions with concurrent requests
+        return this.alepha.context.run(
+          () => this.processRequest(request, route, responseKind),
+          { context: this.getContextId(rawRequest.headers) },
+        );
       },
     });
   }

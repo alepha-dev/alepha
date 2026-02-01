@@ -358,7 +358,9 @@ export class PackageManagerUtils {
       alepha: `^${version}`,
     };
 
-    const devDependencies: Record<string, string> = {};
+    const devDependencies: Record<string, string> = {
+      vite: alephaDeps.vite,
+    };
 
     // Add biome/vitest only if not a workspace package (workspace root has them)
     if (!modes.isPackage) {

@@ -220,13 +220,15 @@ export class ServerProvider {
 
     // empty body - just send status & headers
     if (!response.body) {
-      res.writeHead(response.status, response.headers).end();
+      res.writeHead(response.status, response.headers);
+      res.end();
       return;
     }
 
     // if response.body is string or buffer
     if (typeof response.body === "string" || Buffer.isBuffer(response.body)) {
-      res.writeHead(response.status, response.headers).end(response.body);
+      res.writeHead(response.status, response.headers);
+      res.end(response.body);
       return;
     }
 
