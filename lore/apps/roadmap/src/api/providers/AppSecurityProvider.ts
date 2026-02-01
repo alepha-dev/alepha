@@ -18,7 +18,7 @@ export class AppSecurityProvider {
   });
 
   realm = $realm({
-    apiKeys: true,
+    features: { apiKeys: true, files: true },
     settings: {
       usernameRequired: true,
       resetPasswordAllowed: true,
