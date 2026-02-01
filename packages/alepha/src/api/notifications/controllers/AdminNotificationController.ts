@@ -15,6 +15,7 @@ export class AdminNotificationController {
   public readonly findNotifications = $action({
     path: this.url,
     group: this.group,
+    secure: true,
     description: "Find notifications with pagination and filtering",
     schema: {
       query: notificationQuerySchema,

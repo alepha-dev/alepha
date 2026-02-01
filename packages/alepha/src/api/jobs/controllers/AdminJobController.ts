@@ -13,6 +13,7 @@ export class AdminJobController {
   public readonly getJobs = $action({
     path: this.url,
     group: this.group,
+    secure: true,
     schema: {
       response: t.array(t.string()),
     },
@@ -22,6 +23,7 @@ export class AdminJobController {
   public readonly getJobExecutions = $action({
     path: `${this.url}/executions`,
     group: this.group,
+    secure: true,
     schema: {
       query: jobExecutionQuerySchema,
       response: t.page(jobExecutionResourceSchema),
@@ -33,6 +35,7 @@ export class AdminJobController {
     method: "POST",
     path: `${this.url}/trigger`,
     group: this.group,
+    secure: true,
     schema: {
       body: triggerJobSchema,
       response: okSchema,

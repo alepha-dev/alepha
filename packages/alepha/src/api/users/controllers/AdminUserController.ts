@@ -17,6 +17,7 @@ export class AdminUserController {
   public readonly findUsers = $action({
     path: this.url,
     group: this.group,
+    secure: true,
     description: "Find users with pagination and filtering",
     schema: {
       query: t.extend(userQuerySchema, {
@@ -36,6 +37,7 @@ export class AdminUserController {
   public readonly getUser = $action({
     path: `${this.url}/:id`,
     group: this.group,
+    secure: true,
     description: "Get a user by ID",
     schema: {
       params: t.object({
@@ -57,6 +59,7 @@ export class AdminUserController {
     method: "POST",
     path: this.url,
     group: this.group,
+    secure: true,
     description: "Create a new user",
     schema: {
       query: t.object({
@@ -76,6 +79,7 @@ export class AdminUserController {
     method: "PATCH",
     path: `${this.url}/:id`,
     group: this.group,
+    secure: true,
     description: "Update a user",
     schema: {
       params: t.object({
@@ -98,6 +102,7 @@ export class AdminUserController {
     method: "DELETE",
     path: `${this.url}/:id`,
     group: this.group,
+    secure: true,
     description: "Delete a user",
     schema: {
       params: t.object({

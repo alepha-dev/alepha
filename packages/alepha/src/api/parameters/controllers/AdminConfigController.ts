@@ -41,6 +41,7 @@ export class AdminConfigController {
    */
   getConfigTree = $action({
     group: this.group,
+    secure: true,
     description:
       "Get tree structure of all configuration names for navigation.",
     path: "/configs/tree",
@@ -58,6 +59,7 @@ export class AdminConfigController {
    */
   listConfigNames = $action({
     group: this.group,
+    secure: true,
     description: "List all unique configuration names.",
     path: "/configs",
     method: "GET",
@@ -75,6 +77,7 @@ export class AdminConfigController {
    */
   getByStatus = $action({
     group: this.group,
+    secure: true,
     description: "Get all configurations with a specific status.",
     path: "/configs/status/:status",
     method: "GET",
@@ -95,6 +98,7 @@ export class AdminConfigController {
    */
   getHistory = $action({
     group: this.group,
+    secure: true,
     description: "Get all versions of a specific configuration.",
     path: "/configs/:name/history",
     method: "GET",
@@ -115,6 +119,7 @@ export class AdminConfigController {
    */
   getCurrent = $action({
     group: this.group,
+    secure: true,
     description: "Get current and next scheduled values for a configuration.",
     path: "/configs/:name",
     method: "GET",
@@ -139,6 +144,7 @@ export class AdminConfigController {
    */
   getVersion = $action({
     group: this.group,
+    secure: true,
     description: "Get a specific version of a configuration.",
     path: "/configs/:name/versions/:version",
     method: "GET",
@@ -157,6 +163,7 @@ export class AdminConfigController {
    */
   createVersion = $action({
     group: this.group,
+    secure: true,
     description:
       "Create a new version of a configuration (immediate or scheduled).",
     path: "/configs/:name",
@@ -184,6 +191,7 @@ export class AdminConfigController {
    */
   rollback = $action({
     group: this.group,
+    secure: true,
     description:
       "Rollback a configuration to a previous version (creates new version with old content).",
     path: "/configs/:name/rollback",
@@ -207,6 +215,7 @@ export class AdminConfigController {
    */
   activateNow = $action({
     group: this.group,
+    secure: true,
     description: "Activate a future/next configuration version immediately.",
     path: "/configs/:name/activate",
     method: "POST",
@@ -248,6 +257,7 @@ export class AdminConfigController {
    */
   checkScheduled = $action({
     group: this.group,
+    secure: true,
     description:
       "Manually trigger activation check for all scheduled configurations.",
     path: "/configs/activate-scheduled",

@@ -20,6 +20,7 @@ export class AdminFileStatsController {
   public readonly getStats = $action({
     path: this.url,
     group: this.group,
+    secure: true,
     description: "Get storage statistics",
     schema: {
       response: storageStatsSchema,
