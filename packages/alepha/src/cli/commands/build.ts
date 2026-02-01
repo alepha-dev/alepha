@@ -269,6 +269,7 @@ export class BuildCommand {
             generateCloudflare({
               distDir,
               config: options.cloudflare?.config,
+              alepha: alepha!,
             }),
         });
       }

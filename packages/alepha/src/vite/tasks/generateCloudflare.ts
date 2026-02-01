@@ -1,5 +1,8 @@
 import { access, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
+import type { Alepha } from "alepha";
+import type { CronProvider } from "alepha/scheduler";
+import type { WorkerdCronProvider } from "../../scheduler/providers/WorkerdCronProvider.ts";
 
 export interface GenerateCloudflareOptions {
   /**
@@ -13,6 +16,8 @@ export interface GenerateCloudflareOptions {
    * Additional Wrangler configuration options to merge into wrangler.jsonc.
    */
   config?: WranglerConfig;
+
+  alepha: Alepha;
 }
 
 export interface WranglerConfig {
@@ -31,7 +36,7 @@ const WARNING_COMMENT =
  * - worker.js entry point for Cloudflare Workers
  */
 export async function generateCloudflare(
-  opts: GenerateCloudflareOptions = {},
+  opts: GenerateCloudflareOptions,
 ): Promise<void> {
   const distDir = opts.distDir ?? "dist";
   const root = process.cwd();
@@ -39,6 +44,15 @@ export async function generateCloudflare(
   const hasAssets = await access(join(root, distDir, "public"))
     .then(() => true)
     .catch(() => false);
+
+  let workerdCronProvider: CronProvider | undefined;
+  try {
+    workerdCronProvider = opts.alepha.inject(
+      "CronProvider",
+    ) as WorkerdCronProvider;
+  } catch {}
+
+  const crons = workerdCronProvider?.getCronJobs();
 
   const wrangler: WranglerConfig = {
     name,
@@ -60,6 +74,12 @@ export async function generateCloudflare(
       directory: "./public",
       binding: "ASSETS",
     };
+  }
+
+  if (crons && crons.length > 0) {
+    const cronExpressions = [...new Set(crons.map((c) => c.expression))];
+    wrangler.triggers ??= {};
+    wrangler.triggers.crons = cronExpressions;
   }
 
   const url = process.env.DATABASE_URL;
@@ -102,13 +122,29 @@ export default {
     try {
       await __alepha.start();
     } catch (err) {
-      console.error(err);
+      console.error("Failed to start Alepha for fetch event", err);
       return new Response("Internal Server Error", { status: 500 });
     }
 
     await __alepha.events.emit("web:request", ctx);
 
     return ctx.res;
+  },
+
+  scheduled: async (event, env, ctx) => {
+    __alepha.set("cloudflare.env", env);
+
+    try {
+      await __alepha.start();
+    } catch (err) {
+      console.error("Failed to start Alepha for scheduled event", err);
+      throw err;
+    }
+
+    await __alepha.events.emit("cloudflare:scheduled", {
+      cron: event.cron,
+      scheduledTime: event.scheduledTime,
+    });
   },
 };
 `.trim();

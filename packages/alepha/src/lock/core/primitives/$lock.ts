@@ -302,7 +302,19 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
   protected readonly provider = $inject(LockProvider);
   protected readonly env = $env(envSchema);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
-  protected readonly id = crypto.randomUUID();
+
+  /**
+   * Lazy-initialized UUID to avoid calling crypto.randomUUID() in global scope.
+   * Cloudflare Workers doesn't allow random value generation during initialization.
+   */
+  protected _id?: string;
+  protected get id(): string {
+    if (!this._id) {
+      this._id = crypto.randomUUID();
+    }
+    return this._id;
+  }
+
   public readonly maxDuration = this.dateTimeProvider.duration(
     this.options.maxDuration ?? [5, "minutes"],
   );

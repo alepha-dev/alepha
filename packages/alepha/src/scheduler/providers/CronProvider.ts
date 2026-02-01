@@ -16,6 +16,11 @@ export class CronProvider {
   protected readonly start = $hook({
     on: "start",
     handler: () => {
+      if (this.alepha.isServerless()) {
+        this.log.info("Ignoring cron jobs in serverless environment");
+        return;
+      }
+
       for (const cron of this.cronJobs) {
         if (!cron.running) {
           cron.running = true;
@@ -62,12 +67,12 @@ export class CronProvider {
         ? this.cronJobs.find((c) => c.name === name)
         : name;
 
-    if (!cron) {
+    if (!cron || !cron.running) {
       return;
     }
 
     cron.running = false;
-    cron.abort.abort();
+    cron.abort?.abort();
     this.log.debug(`Cron task '${cron.name}' stopped`);
   }
 
@@ -109,13 +114,13 @@ export class CronProvider {
     }
 
     const duration = next.getTime() - now.toDate().getTime();
-
-    task.abort = new AbortController();
+    const abort = new AbortController();
+    task.abort = abort;
 
     this.dt
       .wait(duration, {
         now: now.valueOf(),
-        signal: task.abort.signal,
+        signal: abort.signal,
       })
       .then(() => {
         if (!task.running) {
@@ -141,6 +146,48 @@ export class CronProvider {
         this.log.warn("Issue during cron waiting timer", err as Error);
       });
   }
+
+  /**
+   * Trigger a specific cron job by name.
+   */
+  public async trigger(name: string): Promise<void> {
+    const job = this.cronJobs.find((j) => j.name === name);
+    if (!job) {
+      this.log.warn(`Cron job '${name}' not found`);
+      return;
+    }
+    await this.runJobs([job], this.dt.now());
+  }
+
+  /**
+   * Trigger all registered cron jobs.
+   */
+  public async triggerAll(): Promise<void> {
+    await this.runJobs(this.cronJobs, this.dt.now());
+  }
+
+  /**
+   * Run multiple cron jobs in parallel.
+   */
+  protected async runJobs(jobs: CronJob[], now: DateTime): Promise<void> {
+    const results = await Promise.allSettled(
+      jobs.map(async (job) => {
+        this.log.debug(`Running cron job '${job.name}'`);
+        try {
+          await job.handler({ now });
+          this.log.debug(`Cron job '${job.name}' completed`);
+        } catch (error) {
+          this.log.error(`Cron job '${job.name}' failed`, error);
+          throw error;
+        }
+      }),
+    );
+
+    const failures = results.filter((r) => r.status === "rejected");
+    if (failures.length > 0) {
+      this.log.error(`${failures.length}/${jobs.length} cron jobs failed`);
+    }
+  }
 }
 
 export interface CronJob {
@@ -151,5 +198,5 @@ export interface CronJob {
   loop: boolean;
   running?: boolean;
   onError?: (error: Error) => void;
-  abort: AbortController;
+  abort?: AbortController;
 }
