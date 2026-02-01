@@ -62,6 +62,12 @@ export class ServerCompressProvider {
   public readonly onResponse = $hook({
     on: "server:onResponse",
     handler: async ({ request, response }) => {
+      // In serverless (Cloudflare Workers), skip compression entirely:
+      // Cloudflare's edge network automatically compresses responses
+      if (this.alepha.isServerless()) {
+        return;
+      }
+
       // skip if already compressed
       if (response.headers["content-encoding"]) {
         return;
