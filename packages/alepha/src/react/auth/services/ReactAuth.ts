@@ -130,6 +130,8 @@ export class ReactAuth {
   }
 
   public logout() {
-    window.location.href = `${alephaServerAuthRoutes.logout}?post_logout_redirect_uri=${encodeURIComponent(window.location.origin)}`;
+    // Add cache-busting parameter to prevent browser from using cached redirect
+    const cacheBuster = Date.now();
+    window.location.href = `${alephaServerAuthRoutes.logout}?post_logout_redirect_uri=${encodeURIComponent(window.location.origin)}&_=${cacheBuster}`;
   }
 }
