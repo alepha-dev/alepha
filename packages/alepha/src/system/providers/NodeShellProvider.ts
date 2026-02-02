@@ -55,15 +55,21 @@ export class NodeShellProvider implements ShellProvider {
     options: { cwd: string; env?: Record<string, string> },
   ): Promise<string> {
     const isWindows = process.platform === "win32";
-    const proc = spawn(executable, args, {
-      stdio: "inherit",
-      cwd: options.cwd,
-      shell: isWindows,
-      env: {
-        ...process.env,
-        ...options.env,
-      },
-    });
+
+    // On Windows, use shell mode with a single command string to avoid
+    // Node.js DEP0190 deprecation warning about unescaped args with shell: true
+    const proc = isWindows
+      ? spawn(this.buildShellCommand(executable, args), [], {
+          stdio: "inherit",
+          cwd: options.cwd,
+          shell: true,
+          env: { ...process.env, ...options.env },
+        })
+      : spawn(executable, args, {
+          stdio: "inherit",
+          cwd: options.cwd,
+          env: { ...process.env, ...options.env },
+        });
 
     return new Promise<string>((resolve, reject) => {
       proc.on("exit", (code) => {
@@ -75,6 +81,22 @@ export class NodeShellProvider implements ShellProvider {
       });
       proc.on("error", reject);
     });
+  }
+
+  /**
+   * Build a shell command string with proper escaping for Windows.
+   */
+  protected buildShellCommand(executable: string, args: string[]): string {
+    const escapeArg = (arg: string): string => {
+      // If arg contains spaces or special chars, wrap in double quotes
+      // and escape internal double quotes
+      if (/[\s"&|<>^]/.test(arg)) {
+        return `"${arg.replace(/"/g, '\\"')}"`;
+      }
+      return arg;
+    };
+
+    return [executable, ...args.map(escapeArg)].join(" ");
   }
 
   /**
