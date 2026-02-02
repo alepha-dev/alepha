@@ -1,4 +1,5 @@
 import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import {
   $atom,
@@ -170,9 +171,9 @@ export class NodeSqliteProvider extends DatabaseProvider {
       const filepath = this.url.replace("sqlite://", "").replace("sqlite:", "");
 
       if (filepath !== ":memory:" && filepath !== "") {
-        const dirname = filepath.split("/").slice(0, -1).join("/");
-        if (dirname) {
-          await mkdir(dirname, { recursive: true }).catch(() => null);
+        const dir = dirname(filepath);
+        if (dir) {
+          await mkdir(dir, { recursive: true }).catch(() => null);
         }
       }
 

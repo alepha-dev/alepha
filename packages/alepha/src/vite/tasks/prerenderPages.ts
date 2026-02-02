@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import type { Alepha } from "alepha";
 import {
   compressFile,
@@ -130,7 +131,7 @@ async function renderFile(
   const pathname = state.url.pathname;
   const filepath = `${dist}${pathname === "/" ? "/index" : pathname}.html`;
 
-  await mkdir(filepath.substring(0, filepath.lastIndexOf("/")), {
+  await mkdir(dirname(filepath), {
     recursive: true,
   });
 

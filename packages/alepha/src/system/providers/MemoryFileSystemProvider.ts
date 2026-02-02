@@ -1,4 +1,4 @@
-import { join as nodeJoin } from "node:path";
+import { basename as nodeBasename, join as nodeJoin } from "node:path";
 import { $inject, type FileLike, Json } from "alepha";
 import type {
   CpOptions,
@@ -120,6 +120,14 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   }
 
   /**
+   * Normalize path separators to forward slashes for consistent internal storage.
+   * This ensures Windows paths work correctly in the in-memory file system.
+   */
+  protected normalizePath(path: string): string {
+    return path.replace(/\\/g, "/");
+  }
+
+  /**
    * Create a FileLike object from various sources.
    */
   public createFile(options: CreateFileOptions): FileLike {
@@ -132,7 +140,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
         );
       }
       return {
-        name: options.name ?? filePath.split("/").pop() ?? "file",
+        name: options.name ?? nodeBasename(filePath),
         type: options.type ?? "application/octet-stream",
         size: buffer.byteLength,
         lastModified: Date.now(),
@@ -291,15 +299,17 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
       throw this.mkdirError;
     }
 
-    if (this.directories.has(path) && !options?.recursive) {
+    const normalizedPath = this.normalizePath(path);
+
+    if (this.directories.has(normalizedPath) && !options?.recursive) {
       throw new Error(`EEXIST: file already exists, mkdir '${path}'`);
     }
 
-    this.directories.add(path);
+    this.directories.add(normalizedPath);
 
     // If recursive, create parent directories
     if (options?.recursive) {
-      const parts = path.split("/").filter(Boolean);
+      const parts = normalizedPath.split("/").filter(Boolean);
       let current = "";
       for (const part of parts) {
         current = current ? `${current}/${part}` : part;
@@ -312,13 +322,16 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * List files in a directory.
    */
   public async ls(path: string, options?: LsOptions): Promise<string[]> {
-    const normalizedPath = path.replace(/\/$/, "");
+    const normalizedPath = this.normalizePath(path).replace(/\/$/, "");
     const entries = new Set<string>();
 
     // Find files in the directory
     for (const filePath of this.files.keys()) {
-      if (filePath.startsWith(`${normalizedPath}/`)) {
-        const relativePath = filePath.slice(normalizedPath.length + 1);
+      const normalizedFilePath = this.normalizePath(filePath);
+      if (normalizedFilePath.startsWith(`${normalizedPath}/`)) {
+        const relativePath = normalizedFilePath.slice(
+          normalizedPath.length + 1,
+        );
         const parts = relativePath.split("/");
 
         if (options?.recursive) {
@@ -331,11 +344,12 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
 
     // Find subdirectories
     for (const dirPath of this.directories) {
+      const normalizedDirPath = this.normalizePath(dirPath);
       if (
-        dirPath.startsWith(`${normalizedPath}/`) &&
-        dirPath !== normalizedPath
+        normalizedDirPath.startsWith(`${normalizedPath}/`) &&
+        normalizedDirPath !== normalizedPath
       ) {
-        const relativePath = dirPath.slice(normalizedPath.length + 1);
+        const relativePath = normalizedDirPath.slice(normalizedPath.length + 1);
         const parts = relativePath.split("/");
 
         if (options?.recursive) {

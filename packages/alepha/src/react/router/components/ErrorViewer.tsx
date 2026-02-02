@@ -310,7 +310,9 @@ function StackFrameRow({
 }) {
   const [hovered, setHovered] = useState(false);
   const isFirst = index === 0 && !dimmed;
-  const fileName = frame.file.split("/").pop() || frame.file;
+  // Split on both / and \ to handle paths from different platforms
+  const pathParts = frame.file.split(/[/\\]/);
+  const fileName = pathParts.pop() || frame.file;
   const dirPath = frame.file.substring(0, frame.file.length - fileName.length);
 
   // Build vscode:// link for clickable paths
