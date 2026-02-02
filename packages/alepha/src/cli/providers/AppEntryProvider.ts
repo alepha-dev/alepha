@@ -46,37 +46,28 @@ export class AppEntryProvider {
     };
 
     if (this.options.server) {
-      const serverExists = await this.fs.exists(
-        this.fs.join(root, this.options.server),
-      );
+      const serverPath = this.fs.join(root, this.options.server);
+      const serverExists = await this.fs.exists(serverPath);
       if (!serverExists) {
-        throw new AlephaError(
-          `Custom server entry "${this.options.server}" not found.`,
-        );
+        throw new AlephaError(`Custom server entry not found: ${serverPath}`);
       }
       appEntry.server = this.options.server;
     }
 
     if (this.options.browser) {
-      const browserExists = await this.fs.exists(
-        this.fs.join(root, this.options.browser),
-      );
+      const browserPath = this.fs.join(root, this.options.browser);
+      const browserExists = await this.fs.exists(browserPath);
       if (!browserExists) {
-        throw new AlephaError(
-          `Custom browser entry "${this.options.browser}" not found.`,
-        );
+        throw new AlephaError(`Custom browser entry not found: ${browserPath}`);
       }
       appEntry.browser = this.options.browser;
     }
 
     if (this.options.style) {
-      const styleExists = await this.fs.exists(
-        this.fs.join(root, this.options.style),
-      );
+      const stylePath = this.fs.join(root, this.options.style);
+      const styleExists = await this.fs.exists(stylePath);
       if (!styleExists) {
-        throw new AlephaError(
-          `Custom style entry "${this.options.style}" not found.`,
-        );
+        throw new AlephaError(`Custom style entry not found: ${stylePath}`);
       }
       appEntry.style = this.options.style;
     }
@@ -94,8 +85,12 @@ export class AppEntryProvider {
     }
 
     if (!appEntry.server) {
+      const srcDir = this.fs.join(root, "src");
+      const tried = this.serverEntries
+        .map((e) => this.fs.join(srcDir, e))
+        .join(", ");
       throw new AlephaError(
-        "No server entry found. Please, add a main.server.ts file in the src/ directory or configure a custom entry in alepha.config.ts.",
+        `No server entry found. Tried: ${tried}. Add a main.server.ts file or configure a custom entry in alepha.config.ts.`,
       );
     }
 

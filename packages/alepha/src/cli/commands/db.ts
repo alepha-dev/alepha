@@ -74,7 +74,7 @@ export class DbCommand {
         const migrationDir = this.fs.join(rootDir, "migrations", providerName);
 
         const journalBuffer = await this.fs
-          .readFile(`${migrationDir}/meta/_journal.json`)
+          .readFile(this.fs.join(migrationDir, "meta", "_journal.json"))
           .catch(() => null);
 
         if (!journalBuffer) {
@@ -85,7 +85,11 @@ export class DbCommand {
         const journal = JSON.parse(journalBuffer.toString("utf-8"));
         const lastMigration = journal.entries[journal.entries.length - 1];
         const snapshotBuffer = await this.fs.readFile(
-          `${migrationDir}/meta/${String(lastMigration.idx).padStart(4, "0")}_snapshot.json`,
+          this.fs.join(
+            migrationDir,
+            "meta",
+            `${String(lastMigration.idx).padStart(4, "0")}_snapshot.json`,
+          ),
         );
         const lastSnapshot = JSON.parse(snapshotBuffer.toString("utf-8"));
 

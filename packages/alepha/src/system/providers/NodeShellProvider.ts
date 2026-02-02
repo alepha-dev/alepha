@@ -32,11 +32,11 @@ export class NodeShellProvider implements ShellProvider {
     let args: string[];
 
     if (resolve) {
-      const [bin, ...rest] = command.split(" ");
+      const [bin, ...rest] = this.parseCommand(command);
       executable = await this.resolveExecutable(bin, cwd);
       args = rest;
     } else {
-      [executable, ...args] = command.split(" ");
+      [executable, ...args] = this.parseCommand(command);
     }
 
     if (capture) {
@@ -54,9 +54,11 @@ export class NodeShellProvider implements ShellProvider {
     args: string[],
     options: { cwd: string; env?: Record<string, string> },
   ): Promise<string> {
+    const isWindows = process.platform === "win32";
     const proc = spawn(executable, args, {
       stdio: "inherit",
       cwd: options.cwd,
+      shell: isWindows,
       env: {
         ...process.env,
         ...options.env,
@@ -117,42 +119,40 @@ export class NodeShellProvider implements ShellProvider {
     name: string,
     root: string,
   ): Promise<string> {
-    const suffix = process.platform === "win32" ? ".cmd" : "";
+    const isWindows = process.platform === "win32";
+    // On Windows, try .cmd first (npm scripts), then .exe, then no extension
+    const suffixes = isWindows ? [".cmd", ".exe", ""] : [""];
 
-    // 1. Local node_modules
-    let execPath = await this.findExecutable(
-      root,
-      `node_modules/.bin/${name}${suffix}`,
-    );
+    for (const suffix of suffixes) {
+      // 1. Local node_modules
+      let execPath = await this.findExecutable(
+        root,
+        `node_modules/.bin/${name}${suffix}`,
+      );
+      if (execPath) return execPath;
 
-    // 2. Pnpm nested (alepha's own node_modules)
-    if (!execPath) {
+      // 2. Pnpm nested (alepha's own node_modules)
       execPath = await this.findExecutable(
         root,
         `node_modules/alepha/node_modules/.bin/${name}${suffix}`,
       );
-    }
+      if (execPath) return execPath;
 
-    // 3. Monorepo: check parent directories (up to 3 levels)
-    if (!execPath) {
+      // 3. Monorepo: check parent directories (up to 3 levels)
       let parentDir = this.fs.join(root, "..");
       for (let i = 0; i < 3; i++) {
         execPath = await this.findExecutable(
           parentDir,
           `node_modules/.bin/${name}${suffix}`,
         );
-        if (execPath) break;
+        if (execPath) return execPath;
         parentDir = this.fs.join(parentDir, "..");
       }
     }
 
-    if (!execPath) {
-      throw new AlephaError(
-        `Could not find executable for '${name}'. Make sure the package is installed.`,
-      );
-    }
-
-    return execPath;
+    throw new AlephaError(
+      `Could not find executable for '${name}'. Make sure the package is installed.`,
+    );
   }
 
   /**
@@ -180,5 +180,44 @@ export class NodeShellProvider implements ShellProvider {
           : `command -v ${command}`;
       exec(check, (error) => resolve(!error));
     });
+  }
+
+  /**
+   * Parse a command string into executable and arguments.
+   *
+   * Handles quoted arguments properly for paths with spaces.
+   * Supports both single and double quotes.
+   */
+  protected parseCommand(command: string): string[] {
+    const result: string[] = [];
+    let current = "";
+    let inQuote: string | null = null;
+
+    for (let i = 0; i < command.length; i++) {
+      const char = command[i];
+
+      if (inQuote) {
+        if (char === inQuote) {
+          inQuote = null;
+        } else {
+          current += char;
+        }
+      } else if (char === '"' || char === "'") {
+        inQuote = char;
+      } else if (char === " ") {
+        if (current) {
+          result.push(current);
+          current = "";
+        }
+      } else {
+        current += char;
+      }
+    }
+
+    if (current) {
+      result.push(current);
+    }
+
+    return result;
   }
 }

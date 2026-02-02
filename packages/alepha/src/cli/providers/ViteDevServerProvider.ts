@@ -117,7 +117,7 @@ export class ViteDevServerProvider {
     return {
       name: "alepha-hmr",
       handleHotUpdate: async (ctx) => {
-        if (ctx.file.includes("/.idea/")) return [];
+        if (/[/\\]\.idea[/\\]/.test(ctx.file)) return [];
 
         const firstModule = ctx.modules[0] as any;
         const isBrowserOnly = firstModule && !firstModule._ssrModule;

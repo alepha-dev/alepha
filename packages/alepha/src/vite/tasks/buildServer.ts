@@ -1,5 +1,5 @@
 import { readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { type Alepha, AlephaError } from "alepha";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
@@ -269,16 +269,17 @@ function extractEntryFromBundle(
     | vite.Rollup.RollupOutput[]
     | vite.Rollup.RollupWatcher,
 ): string {
-  const entryFilePath = entry.startsWith("/")
-    ? entry
-    : join(process.cwd(), entry);
+  const entryFilePath = isAbsolute(entry) ? entry : join(process.cwd(), entry);
+
+  // Normalize to forward slashes for comparison (Vite/Rollup uses forward slashes)
+  const normalizedEntryPath = entryFilePath.replace(/\\/g, "/");
 
   const rollupOutput = (
     Array.isArray(result) ? result[0] : result
   ) as vite.Rollup.RollupOutput;
 
   const entryFile = rollupOutput.output.find(
-    (it) => "facadeModuleId" in it && it.facadeModuleId === entryFilePath,
+    (it) => "facadeModuleId" in it && it.facadeModuleId === normalizedEntryPath,
   )?.fileName;
 
   if (!entryFile) {

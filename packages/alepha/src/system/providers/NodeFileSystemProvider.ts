@@ -11,7 +11,7 @@ import {
   rename,
   stat,
 } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { PassThrough, Readable } from "node:stream";
 import type { ReadableStream as NodeWebStream } from "node:stream/web";
 import { fileURLToPath } from "node:url";
@@ -95,9 +95,9 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    */
   createFile(options: CreateFileOptions): FileLike {
     if ("path" in options) {
-      const path = options.path;
-      const filename = path.split("/").pop() || "file";
-      return this.createFileFromUrl(`file://${path}`, {
+      const filePath = options.path;
+      const filename = basename(filePath);
+      return this.createFileFromUrl(`file://${filePath}`, {
         type: options.type,
         name: options.name || filename,
       });
