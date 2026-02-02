@@ -1,6 +1,6 @@
 import { createReadStream } from "node:fs";
 import { access, readdir, stat } from "node:fs/promises";
-import { basename, isAbsolute, join } from "node:path";
+import { basename, isAbsolute, join, sep } from "node:path";
 import type { Readable as NodeStream } from "node:stream";
 import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -48,11 +48,14 @@ export class ServerStaticProvider {
     // 2. create a $route for each file (yes, this could be a lot of routes)
     const routes = await Promise.all(
       files.map(async (file) => {
-        const path = file.replace(root, "").replace(/\\/g, "/");
-        this.log.trace(`Mount ${join(prefix, path)} -> ${join(root, path)}`);
+        // Normalize to forward slashes for URL paths
+        const urlPath = file.replace(root, "").replace(/\\/g, "/");
+        const routePath = `${prefix}${encodeURI(urlPath)}`.replace(/\/+/g, "/");
+        const filePath = join(root, urlPath.replace(/\//g, sep));
+        this.log.trace(`Mount ${routePath} -> ${filePath}`);
         return {
-          path: join(prefix, encodeURI(path)),
-          handler: await this.createFileHandler(join(root, path), options),
+          path: routePath,
+          handler: await this.createFileHandler(filePath, options),
         };
       }),
     );
