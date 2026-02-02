@@ -1,3 +1,14 @@
+## [0.15.5] - 2026-02-02
+
+### Features
+
+- **cli**: greatly improve "alepha init --admin" experience (`7ee728d2`)
+- **api/users**: now choose features in $realm (notif, param, job, audit, ...) (`f64930bb`)
+
+### Bug Fixes
+
+- **cli**: fix stacktrace in dev-mode with vite (`9a22c89f`)
+
 ## [0.15.4] - 2026-02-01
 
 ### Features
