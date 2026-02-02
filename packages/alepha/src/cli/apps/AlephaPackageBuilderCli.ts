@@ -94,12 +94,13 @@ export class AlephaPackageBuilderCli {
         this.fs.join(root, "../../tsconfig.json"),
       );
 
-      const external: string[] = Object.keys(
+      const external: (string | RegExp)[] = Object.keys(
         JSON.parse(tsconfigBuffer.toString("utf-8")).compilerOptions.paths,
       );
 
       external.push("bun");
       external.push("bun:sqlite");
+      external.push("@alepha/ui/styles");
 
       await run.rm(this.dist);
 

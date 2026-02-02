@@ -20,6 +20,27 @@ import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+// HACK - Hide ExperimentalWarning about SQLite from Node.js to avoid spamming logs
+// TODO: Remove when SQLite support is stable in Node.js
+
+(() => {
+  if (process?.emit) {
+    const originalEmit = process.emit;
+    process.emit = (event: any, warning: any, ...args: any[]) => {
+      if (
+        event === "warning" &&
+        warning?.name === "ExperimentalWarning" &&
+        warning?.message?.includes("SQLite")
+      ) {
+        return false;
+      }
+      return originalEmit.apply(process, [event, warning, ...args]);
+    };
+  }
+})();
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 const envSchema = t.object({
   DATABASE_URL: t.optional(t.text()),
 });
