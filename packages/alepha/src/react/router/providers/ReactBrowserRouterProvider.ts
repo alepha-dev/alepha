@@ -2,6 +2,7 @@ import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { BrowserHeadProvider } from "alepha/react/head";
 import { type Route, RouterProvider } from "alepha/router";
+import { ForbiddenError } from "alepha/server";
 import { createElement, type ReactNode } from "react";
 import NotFoundPage from "../components/NotFound.tsx";
 import {
@@ -82,6 +83,13 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
         }
       }
 
+      if (route?.page.can) {
+        const canAccess = route.page.can();
+        if (!canAccess) {
+          throw new ForbiddenError("Access denied to this page.");
+        }
+      }
+
       state.name = route?.page.name;
       state.query = query;
       state.params = params ?? {};
@@ -135,7 +143,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
     if (previous) {
       for (let i = 0; i < previous.length; i++) {
         const layer = previous[i];
-        if (state.layers[i]?.name !== layer.name) {
+        if (state.layers[i]?.name !== layer.name && layer.name !== "error") {
           this.pageApi.page(layer.name)?.onLeave?.();
         }
       }
@@ -144,7 +152,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
     // [feature]: local hook for entering a page
     for (let i = 0; i < state.layers.length; i++) {
       const layer = state.layers[i];
-      if (previous?.[i]?.name !== layer.name) {
+      if (previous?.[i]?.name !== layer.name && layer.name !== "error") {
         this.pageApi.page(layer.name)?.onEnter?.();
       }
     }
