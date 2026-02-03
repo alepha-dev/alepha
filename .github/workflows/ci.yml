@@ -11,7 +11,7 @@ on:
       - completed
 
 jobs:
-  verify:
+  verify-linux:
     runs-on: ubuntu-latest
     services:
 
@@ -90,7 +90,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   deploy-docs:
-    needs: verify
+    needs: verify-linux
     runs-on: ubuntu-latest
 
     permissions:
@@ -137,7 +137,7 @@ jobs:
         uses: actions/deploy-pages@v4
 
   deploy-roadmap:
-    needs: verify
+    needs: verify-linux
     runs-on: ubuntu-latest
 
     env:
@@ -161,12 +161,12 @@ jobs:
         run: yarn
 
       - name: Build Roadmap
-        run: cd apps/roadmap && yarn build
+        run: yarn w @alepha/roadmap build
 
       - name: Deploy to Vercel
         run: cd apps/roadmap/dist && npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod
 
-  e2e-windows:
+  verify-windows:
     runs-on: windows-latest
 
     steps:
@@ -174,7 +174,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Enable Corepack
-        run: corepack enable
+        run: |
+          npm uninstall -g yarn
+          corepack enable
 
       - name: Prepare Node.js
         uses: actions/setup-node@v4
@@ -182,8 +184,17 @@ jobs:
           node-version: "24.x"
           cache: "yarn"
 
-      - name: Install Dependencies
-        run: yarn
+      - name: Clean
+        run: yarn clean
+
+      - name: Lint Project
+        run: yarn lint
+
+      - name: TypeScript Check
+        run: yarn typecheck
+
+      - name: Dependencies Check
+        run: yarn check-dependencies
 
       - name: Build Project
         run: yarn build

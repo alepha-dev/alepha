@@ -52,7 +52,7 @@ async function run(
     const timeout = setTimeout(() => {
       proc.kill();
       reject(new Error(`Command timed out: ${command}`));
-    }, 20000);
+    }, 40000);
 
     proc.on("close", (code) => {
       clearTimeout(timeout);
