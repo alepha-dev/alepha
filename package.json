@@ -37,6 +37,7 @@
     "test": "yarn vitest run",
     "check-dependencies": "yarn workspaces foreach -Apt exec depcheck .",
     "build": "yarn workspaces foreach -Apt run build",
-    "e2e": "yarn workspaces foreach -Apt run e2e"
+    "e2e": "yarn workspaces foreach -Apt run e2e",
+    "e2e-cli": "yarn w e2e-cli test"
   }
 }

@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "name": "e2e-cli",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
+  }
+}

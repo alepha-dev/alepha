@@ -44,7 +44,7 @@ jobs:
       - name: Prepare Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "25.x"
+          node-version: "24.x"
           cache: "yarn"
 
       - name: Install Dependencies
@@ -75,6 +75,9 @@ jobs:
 
       - name: Run E2E Tests
         run: yarn e2e
+
+      - name: Run CLI E2E Tests
+        run: yarn e2e-cli
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -162,4 +165,29 @@ jobs:
 
       - name: Deploy to Vercel
         run: cd apps/roadmap/dist && npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod
+
+  e2e-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Prepare Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          cache: "yarn"
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Build Project
+        run: yarn build
+
+      - name: Run CLI E2E Tests
+        run: yarn e2e-cli
 

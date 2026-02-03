@@ -19,3 +19,4 @@ playwright-report
 pulse
 .gen
 deno.lock
+apps/tmp

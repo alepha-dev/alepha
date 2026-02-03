@@ -50,7 +50,13 @@ export default defineConfig({
           name: { label: "node", color: "green" },
           environment: "node",
           // include: ["packages/**/*.spec.{ts,tsx}"], <-- doesn't work well with Webstorm
-          exclude: ["**/*.browser.spec.{ts,tsx}", "node_modules", "**/e2e/**"],
+          exclude: [
+            "**/*.browser.spec.{ts,tsx}",
+            "node_modules",
+            "**/e2e/**",
+            "apps/e2e-cli/**",
+            "apps/tmp/**",
+          ],
         },
       },
       {
