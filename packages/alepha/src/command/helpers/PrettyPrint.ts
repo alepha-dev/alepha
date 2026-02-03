@@ -22,6 +22,7 @@ export class PrettyPrint {
       taskName: string;
       frameIndex: number;
       status: "running" | "success" | "error";
+      startTime: number;
       duration?: string;
     }
   >();
@@ -72,6 +73,7 @@ export class PrettyPrint {
       taskName,
       frameIndex: 0,
       status: "running",
+      startTime: Date.now(),
     });
 
     // Start interval if not already running
@@ -136,7 +138,8 @@ export class PrettyPrint {
 
       if (task.status === "running") {
         const frame = this.frames[task.frameIndex];
-        line += `${this.colors.cyan}${frame}${this.colors.reset} ${this.colors.dim}${task.taskName}${this.colors.reset}`;
+        const elapsed = Math.floor((Date.now() - task.startTime) / 1000);
+        line += `${this.colors.cyan}${frame}${this.colors.reset} ${this.colors.dim}${task.taskName}${this.colors.reset}  ${this.colors.dim}${elapsed}s${this.colors.reset}`;
         task.frameIndex = (task.frameIndex + 1) % this.frames.length;
       } else if (task.status === "success") {
         const durationStr = task.duration
