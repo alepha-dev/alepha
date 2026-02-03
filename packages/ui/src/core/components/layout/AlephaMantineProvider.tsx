@@ -39,8 +39,9 @@ const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
       "react:transition:end": () => {
         nprogress.complete();
       },
-      "react:action:error": ({ error }) => {
+      "react:action:error": ({ error, type }) => {
         if (
+          type === "transition" ||
           error instanceof FormValidationError ||
           error instanceof TypeBoxError
         ) {

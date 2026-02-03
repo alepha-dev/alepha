@@ -51,9 +51,6 @@ export class AdminRouter {
 
   public getDefaultSidebarItems(): SidebarNode[] {
     return [
-      // Search
-      { type: "search", position: "top" },
-
       // Identity & Access
       {
         label: "Identity",
@@ -139,7 +136,7 @@ export class AdminRouter {
   public readonly adminLayout = $page({
     path: "/admin",
     label: "Admin",
-    can: () => this.userCtrl.findUsers.can(),
+    can: () => this.auth.can("admin:*"),
     lazy: () => import("./components/AdminLayout.tsx"),
     props: () => ({
       adminShellProps: this.adminShellProps(),
