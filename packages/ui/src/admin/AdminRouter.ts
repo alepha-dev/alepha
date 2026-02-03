@@ -1,4 +1,4 @@
-import type { AdminShellProps } from "@alepha/ui";
+import type { AdminShellProps, SidebarNode } from "@alepha/ui";
 import { AuthRouter } from "@alepha/ui/auth";
 import {
   IconBell,
@@ -40,7 +40,85 @@ export class AdminRouter {
   protected readonly jobCtrl = $client<AdminJobController>();
   protected readonly apiKeyCtrl = $client<AdminApiKeyController>();
 
+  public configFn?: (adminRouter: AdminRouter) => AdminShellProps = () => {
+    return {
+      sidebarResizable: true,
+      sidebarProps: {
+        items: this.getDefaultSidebarItems(),
+      },
+    };
+  };
+
+  public getDefaultSidebarItems(): SidebarNode[] {
+    return [
+      // Search
+      { type: "search", position: "top" },
+
+      // Identity & Access
+      {
+        label: "Identity",
+        icon: IconUsers,
+        children: [
+          {
+            ...this.router.node(this.adminUsers.name),
+            can: () => this.userCtrl.findUsers.can(),
+          },
+          {
+            ...this.router.node(this.adminSessions.name),
+            can: () => this.sessionCtrl.findSessions.can(),
+          },
+          {
+            ...this.router.node(this.adminApiKeys.name),
+            can: () => this.apiKeyCtrl.findApiKeys.can(),
+          },
+        ],
+      },
+
+      // Content & Storage
+      {
+        label: "Content",
+        icon: IconFile,
+        children: [
+          {
+            ...this.router.node(this.adminFiles.name),
+            can: () => this.fileCtrl.findFiles.can(),
+          },
+          {
+            ...this.router.node(this.adminNotifications.name),
+            can: () => this.notificationCtrl.findNotifications.can(),
+          },
+        ],
+      },
+
+      // System
+      {
+        label: "System",
+        icon: IconSettings,
+        children: [
+          {
+            ...this.router.node(this.adminJobs.name),
+            can: () => this.jobCtrl.getJobs.can(),
+          },
+          {
+            ...this.router.node(this.adminAudits.name),
+            can: () => this.auditCtrl.findAudits.can(),
+          },
+          {
+            ...this.router.node(this.adminParameters.name),
+            can: () => this.configCtrl.getConfigTree.can(),
+          },
+        ],
+      },
+
+      // Bottom
+      { type: "toggle", position: "bottom" },
+    ];
+  }
+
   protected adminShellProps(): AdminShellProps {
+    if (this.configFn) {
+      return this.configFn(this);
+    }
     return {};
   }
 

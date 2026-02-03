@@ -1,5 +1,5 @@
 import { AlephaUI } from "@alepha/ui";
-import { $context, $module } from "alepha";
+import { $module } from "alepha";
 import { AlephaReactAuth } from "alepha/react/auth";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AuthI18n } from "./AuthI18n.ts";
@@ -14,13 +14,14 @@ export { default as Login } from "./components/Login.tsx";
 export { default as Register } from "./components/Register.tsx";
 export { default as ResetPassword } from "./components/ResetPassword.tsx";
 export { default as VerifyEmail } from "./components/VerifyEmail.tsx";
+export * from "./primitives/$uiAuth.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | frontend | rare | experimental |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 2 - beta | 0.12.0 | node, bun, workerd, browser|
  *
  * Authentication UI components.
  *
@@ -37,13 +38,3 @@ export const AlephaUIAuth = $module({
   name: "alepha.ui.auth",
   services: [AlephaUI, AlephaReactAuth, AlephaReactI18n, AuthRouter, AuthI18n],
 });
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Register Auth UI components and get the AuthRouter instance.
- */
-export const $uiAuth = () => {
-  const { alepha } = $context();
-  return alepha.inject(AuthRouter);
-};
