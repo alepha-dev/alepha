@@ -110,6 +110,16 @@ export const Sidebar = (props: SidebarProps) => {
       return null;
     }
 
+    // Hide parent if all children are hidden
+    if (item.children && item.children.length > 0) {
+      const hasVisibleChild = item.children.some(
+        (child) => !child.can || child.can(),
+      );
+      if (!hasVisibleChild) {
+        return null;
+      }
+    }
+
     if (props.collapsed) {
       return (
         <SidebarCollapsedItem
