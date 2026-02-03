@@ -1,73 +1,19 @@
-import { $inject, type Alepha, AlephaError } from "alepha";
-import { $logger } from "alepha/logger";
-import { FileSystemProvider } from "alepha/system";
+import { join } from "node:path";
+import type { Alepha } from "alepha";
 import { importVite, importViteReact, viteAlephaSsrPreload } from "alepha/vite";
 import type { InlineConfig, Plugin, ViteDevServer } from "vite";
-import type { AppEntry } from "./AppEntryProvider.ts";
-
-export interface ViteDevServerOptions {
-  /**
-   * Root directory of the project.
-   */
-  root: string;
-
-  /**
-   * Path to the server entry file.
-   */
-  entry: AppEntry;
-
-  /**
-   * Port to run the dev server on.
-   */
-  port?: number;
-
-  /**
-   * Host to bind the dev server to.
-   */
-  host?: string | boolean;
-}
+import { DevServerProvider } from "./DevServerProvider.ts";
 
 /**
  * Vite development server with Alepha integration.
- *
- * Architecture:
- * - Vite runs in middleware mode (no HTTP server)
- * - Alepha is the HTTP server via server:onRequest event
- * - Request flow: Page requests → Alepha SSR, Assets → Vite middleware
- *
- * HMR Strategy:
- * - Browser-only changes (CSS, client components) → Vite HMR (React Fast Refresh)
- * - Server-only changes → Restart Alepha → Full browser reload
- * - Shared changes → Restart Alepha → Let Vite HMR propagate
- *
- * Features:
- * - Automatic .env reload detection
- * - Error recovery on next file change
- * - Optimized module invalidation (only changed files + importers)
  */
-export class ViteDevServerProvider {
-  protected readonly log = $logger();
-  protected readonly fs = $inject(FileSystemProvider);
+export class ViteDevServerProvider extends DevServerProvider {
   protected server!: ViteDevServer;
-  protected options!: ViteDevServerOptions;
-  protected alepha: Alepha | null = null;
-  protected hasError = false;
-  protected changedFiles = new Set<string>();
-
-  public async init(options: ViteDevServerOptions): Promise<Alepha> {
-    this.options = options;
-    await this.createViteServer();
-    return await this.loadAlepha(true);
-  }
-
-  public async start(): Promise<void> {
-    await this.alepha?.start();
-  }
 
   /**
    * Create the Vite server in middleware mode.
    */
-  protected async createViteServer(): Promise<void> {
+  protected async createServer(): Promise<void> {
     const { createServer } = await importVite();
     const viteReact = await importViteReact();
 
@@ -84,7 +30,7 @@ export class ViteDevServerProvider {
       customLogger: {
         info: () => {},
         warn: this.log.warn.bind(this.log),
-        error: this.log.error.bind(this.log),
+        error: () => {}, // Suppress Vite errors, we handle them with better formatting
         warnOnce: this.log.warn.bind(this.log),
         clearScreen: () => {},
         hasWarned: false,
@@ -92,19 +38,32 @@ export class ViteDevServerProvider {
       },
     } satisfies InlineConfig);
 
+    this.patchViteServerRestartForEnvReload();
+  }
+
+  protected patchViteServerRestartForEnvReload(): void {
     // Intercept .env changes (Vite calls restart() for .env files)
     this.server.restart = async () => {
+      // Skip when waiting for startup retry
+      if (this.waitingForRetry) return;
+
+      console.log();
+      console.log(this.colors.set("CYAN", "  ⟳ Reloading .env..."));
       const startTime = Date.now();
       try {
         this.hasError = true; // Force full invalidation for env changes
         await this.loadAlepha(false);
+
         await this.alepha?.start();
-        this.log.debug(`Env reloaded in ${Date.now() - startTime}ms`);
+
+        console.log(
+          this.colors.set("GREEN", `  ✓ Ready in ${Date.now() - startTime}ms`),
+        );
+        console.log();
         this.sendBrowserReload();
       } catch (err) {
         this.hasError = true;
-        this.log.error("Reload failed", err);
-        this.log.warn("Waiting for file changes to retry...");
+        this.logError("Reload failed", err);
         this.alepha = null;
       }
     };
@@ -119,6 +78,9 @@ export class ViteDevServerProvider {
       handleHotUpdate: async (ctx) => {
         if (/[/\\]\.idea[/\\]/.test(ctx.file)) return [];
 
+        // Skip HMR when waiting for startup retry (handled by waitForSuccessfulLoad)
+        if (this.waitingForRetry) return [];
+
         const firstModule = ctx.modules[0] as any;
         const isBrowserOnly = firstModule && !firstModule._ssrModule;
         const isServerOnly = firstModule && !firstModule._clientModule;
@@ -127,13 +89,24 @@ export class ViteDevServerProvider {
         if (isBrowserOnly) return;
 
         // Server or shared change: restart Alepha
+        console.log();
+        console.log(this.colors.set("CYAN", "  ⟳ Reloading..."));
+        console.log();
         const startTime = Date.now();
 
         try {
           this.changedFiles.add(ctx.file);
+
           await this.loadAlepha(false);
+
           await this.alepha?.start();
-          this.log.debug(`Reloaded in ${Date.now() - startTime}ms`);
+          // console.log(
+          //   this.colors.set(
+          //     "GREEN",
+          //     `  ✓ Ready in ${Date.now() - startTime}ms`,
+          //   ),
+          // );
+          // console.log();
 
           // Server-only: full browser reload
           if (isServerOnly) {
@@ -145,9 +118,11 @@ export class ViteDevServerProvider {
           return;
         } catch (err) {
           this.hasError = true;
-          this.log.error("Reload failed", err);
-          this.log.warn("Waiting for file changes to retry...");
+          this.logError("Reload failed", err);
           this.alepha = null;
+
+          this.renderErrorOverlay(err as Error);
+
           return [];
         }
       },
@@ -167,6 +142,31 @@ export class ViteDevServerProvider {
   }
 
   /**
+   * Fix stack trace using Vite's SSR stack trace fixer.
+   */
+  protected fixStacktrace(error: Error): void {
+    this.server.ssrFixStacktrace(error);
+  }
+
+  /**
+   * Subscribe to file changes via Vite's watcher.
+   */
+  protected subscribeToFileChanges(
+    onChange: (file: string) => void,
+  ): () => void {
+    const watcher = this.server.watcher;
+    watcher.on("change", onChange);
+    return () => watcher.off("change", onChange);
+  }
+
+  /**
+   * Run Vite middleware for a request.
+   */
+  protected runMiddleware(req: any, res: any, next: () => void): void {
+    this.server.middlewares(req, res, next);
+  }
+
+  /**
    * Setup environment variables for dev mode.
    */
   protected async setupEnvironment(): Promise<void> {
@@ -179,25 +179,15 @@ export class ViteDevServerProvider {
       process.env[key] ??= value;
     }
 
-    process.env.NODE_ENV ??= "development";
-    process.env.VITE_ALEPHA_DEV = "true";
-    process.env.SERVER_HOST ??= this.options.host?.toString() ?? "localhost";
-    process.env.SERVER_PORT ??= String(
-      this.options.port ??
-        (process.env.SERVER_PORT ? Number(process.env.SERVER_PORT) : 3000),
-    );
+    this.setupDevEnvironment();
   }
 
   /**
    * Load or reload the Alepha instance.
    */
   protected async loadAlepha(isInitialLoad = false): Promise<Alepha> {
-    if (this.alepha) {
-      await this.alepha
-        .stop()
-        .catch((err) => this.log.warn("Error stopping Alepha", err));
-      this.alepha = null;
-    }
+    await this.destroyAlepha();
+    this.clearAlephaRefs();
 
     if (isInitialLoad || this.hasError) {
       this.server.moduleGraph.invalidateAll();
@@ -210,17 +200,23 @@ export class ViteDevServerProvider {
     const envSnapshot = { ...process.env };
     await this.setupEnvironment();
 
-    await this.server.ssrLoadModule(this.options.entry.server);
-
-    const alepha: Alepha = (globalThis as any).__alepha;
-    if (!alepha) {
-      throw new AlephaError(
-        "Alepha instance not found after loading entry module",
-      );
+    try {
+      await this.server.ssrLoadModule(this.options.entry.server, {
+        fixStacktrace: true,
+      });
+    } catch (err) {
+      this.hasError = true;
+      process.env = envSnapshot;
+      throw err;
     }
+
+    const alepha = this.getLoadedAlepha();
 
     // expose Vite server to Alepha for Logger SSR Fix stack traces
     alepha.store.set("alepha.vite.server" as any, this.server);
+    if (this.nodeServer) {
+      alepha.store.set("alepha.node.server", this.nodeServer);
+    }
 
     this.alepha = alepha;
     await this.setupAlepha();
@@ -229,15 +225,6 @@ export class ViteDevServerProvider {
     process.env = envSnapshot;
 
     return alepha;
-  }
-
-  public hasReact(): boolean {
-    try {
-      this.alepha?.inject("ReactServerProvider");
-      return true;
-    } catch {
-      return false;
-    }
   }
 
   /**
@@ -296,24 +283,6 @@ export class ViteDevServerProvider {
     // Extract head content
     const headMatch = transformed.match(/<head>([\s\S]*?)<\/head>/i);
     return headMatch?.[1]?.trim() ?? "";
-  }
-
-  /**
-   * Check if request is for an HTML page (not an asset).
-   */
-  protected isPageRequest(req: any): boolean {
-    const url = req.url || "/";
-
-    // Root and index.html are page requests
-    if (url === "/" || url === "/index.html") return true;
-
-    // Vite internal routes
-    if (url.startsWith("/@") || url.startsWith("/__vite")) return false;
-
-    // Files with extensions are assets
-    if (/\.\w+$/.test(url.split("?")[0])) return false;
-
-    return true;
   }
 
   /**
@@ -398,6 +367,18 @@ export class ViteDevServerProvider {
           queue.push(importer.id);
         }
       }
+    }
+
+    // Always invalidate entry module to ensure __alepha is set on reload
+    // This prevents race conditions where the entry doesn't re-execute
+    const entryPath = this.options.entry.server;
+    const absoluteEntryPath = join(this.options.root, entryPath);
+    const entryMod =
+      this.server.moduleGraph.getModuleById(absoluteEntryPath) ??
+      this.server.moduleGraph.getModuleById(entryPath) ??
+      this.server.moduleGraph.getModuleById(`/${entryPath}`);
+    if (entryMod) {
+      this.server.moduleGraph.invalidateModule(entryMod);
     }
   }
 }

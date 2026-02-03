@@ -60,12 +60,14 @@ export class NodeHttpServerProvider extends ServerProvider {
   };
 
   public get hostname(): string {
-    if (this.server.listening) {
+    // sometimes hostname is called before .star(), so server may not be created yet (nor listening)
+    if (this.server?.listening) {
       const address = this.server.address();
       if (typeof address === "object" && address !== null) {
         return `http://${this.env.SERVER_HOST}:${address.port}`;
       }
     }
+
     return `http://${this.env.SERVER_HOST}:${this.env.SERVER_PORT}`;
   }
 
@@ -76,35 +78,51 @@ export class NodeHttpServerProvider extends ServerProvider {
     res.end("Internal Server Error");
   };
 
-  public readonly server = this.createHttpServer((req, res) => {
-    const promise = this.handleNodeRequest({ req, res });
-    promise.catch((err) => this.handleRequestError(res, err));
+  public server!: Server;
+
+  public readonly configure = $hook({
+    on: "configure",
+    handler: async () => {
+      this.server = this.createHttpServer();
+    },
   });
 
   public readonly start = $hook({
     on: "start",
     handler: async () => {
       await this.listen();
-      this.alepha.store.set("alepha.node.server", this.server);
     },
   });
 
-  protected createHttpServer(
-    func: (req: IncomingMessage, res: ServerResponse) => void,
-  ): Server {
-    const server = createServer(
-      {
+  protected requestListener = (req: IncomingMessage, res: ServerResponse) => {
+    const promise = this.handleNodeRequest({ req, res });
+    promise.catch((err) => this.handleRequestError(res, err));
+  };
+
+  protected connectionListener = (socket: Socket) => {
+    this.connections.add(socket);
+    socket.on("close", () => this.connections.delete(socket));
+  };
+
+  protected createHttpServer(): Server {
+    let server: Server;
+
+    const existing = this.alepha.store.get("alepha.node.server");
+    if (this.alepha.isViteDev() && existing) {
+      server = existing;
+      server.removeAllListeners("request");
+      // --> server.removeAllListeners("connection");
+    } else {
+      server = createServer({
         // nov 25 - keep connections alive for better performance, cuz we http/1.1 by default
         keepAlive: this.alepha.isProduction(),
-      },
-      func,
-    );
+      });
+    }
+
+    server.on("request", this.requestListener);
 
     // Track connections for fast shutdown
-    server.on("connection", (socket) => {
-      this.connections.add(socket);
-      socket.on("close", () => this.connections.delete(socket));
-    });
+    server.on("connection", this.connectionListener);
 
     return server;
   }
@@ -117,6 +135,10 @@ export class NodeHttpServerProvider extends ServerProvider {
   });
 
   protected async listen() {
+    if (this.alepha.store.get("alepha.node.server")) {
+      return;
+    }
+
     let port = this.env.SERVER_PORT;
 
     // for testing, use a random port if port is 3000 (default)
@@ -134,9 +156,17 @@ export class NodeHttpServerProvider extends ServerProvider {
         reject(err);
       });
     });
+
+    this.alepha.store.set("alepha.node.server", this.server);
   }
 
   protected async close() {
+    if (this.alepha.isViteDev()) {
+      this.server.removeListener("request", this.requestListener);
+      this.server.removeListener("connection", this.connectionListener);
+      return;
+    }
+
     // Dev/Test: instant shutdown (destroy connections immediately)
     // Production: graceful shutdown (wait for requests to complete, then close)
     if (!this.alepha.isProduction()) {

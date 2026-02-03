@@ -549,6 +549,31 @@ export class Alepha {
     this.ready = false;
   }
 
+  /**
+   * Destroys the App and clears all internal state.
+   *
+   * Use this for HMR in development mode to prevent duplicate class registrations.
+   * Unlike stop(), this method fully resets the container state.
+   *
+   * @return A promise that resolves when the App has been destroyed.
+   */
+  public async destroy(): Promise<void> {
+    await this.stop();
+
+    // Clear all internal state to prevent duplicate classes on HMR reload
+    this.modules = [];
+    this.registry = new Map();
+    this.primitiveRegistry = new Map();
+    this.pendingInstantiations = [];
+    this.substitutions = new Map();
+    this.cacheEnv = new Map();
+    this.events.clear();
+
+    // Reset flags
+    this.locked = false;
+    this.configured = false;
+  }
+
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
