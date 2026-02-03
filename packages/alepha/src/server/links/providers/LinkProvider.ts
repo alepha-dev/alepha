@@ -156,9 +156,16 @@ export class LinkProvider {
 
   /**
    * Check if a link with the given name exists.
+   * Supports wildcard matching: "admin:*" matches any link starting with "admin:".
    * @param name
    */
   public can(name: string): boolean {
+    if (name.endsWith("*")) {
+      const prefix = name.slice(0, -1);
+      return this.links.some((link) =>
+        `${link.group}:${link.name}`.startsWith(prefix),
+      );
+    }
     return this.links.some((link) => link.name === name);
   }
 
