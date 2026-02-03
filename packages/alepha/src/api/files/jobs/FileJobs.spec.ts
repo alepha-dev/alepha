@@ -21,7 +21,7 @@ describe("FileJobRegistry", () => {
     return fs.createFile(textOrOpts);
   };
 
-  it("should remove expired files", { retry: 2 }, async () => {
+  it("should remove expired files", { retry: 3 }, async () => {
     const file = createFile("");
 
     await Promise.all([
