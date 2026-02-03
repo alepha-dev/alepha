@@ -74,6 +74,9 @@ async function main(to?: string) {
               if (value.browser) {
                 value.browser = replace(value.browser);
               }
+              if (value.workerd) {
+                value.workerd = replace(value.workerd);
+              }
               if (value["react-native"]) {
                 value["react-native"] = replace(value["react-native"]);
               }
@@ -116,6 +119,9 @@ async function main(to?: string) {
               value.import = replace(value.import);
               if (value.browser) {
                 value.browser = replace(value.browser);
+              }
+              if (value.workerd) {
+                value.workerd = replace(value.workerd);
               }
               if (value["react-native"]) {
                 value["react-native"] = replace(value["react-native"]);

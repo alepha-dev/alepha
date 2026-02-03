@@ -123,6 +123,27 @@ export class AlephaPackageBuilderCli {
           },
         });
 
+        if (item.workerd) {
+          entries.push({
+            entry: this.fs.join(src, "index.workerd.ts"),
+            outDir: dest,
+            platform: "neutral",
+            sourcemap: true,
+            dts: false,
+            inlineOnly: false,
+            external,
+            inputOptions: {
+              resolve: {
+                // platform: "neutral" defaults mainFields to [], so packages
+                // without an "exports" field (like worker-mailer) won't resolve.
+                // We need to explicitly set mainFields to check module/main.
+                mainFields: ["workerd", "module", "main"],
+              },
+            },
+            fixedExtension: false,
+          });
+        }
+
         if (item.native) {
           entries.push({
             entry: this.fs.join(src, "index.native.ts"),
