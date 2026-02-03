@@ -1,3 +1,4 @@
+import { pathToFileURL } from "node:url";
 import { $hook, $inject, $module, Alepha } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 import { BuildCommand } from "../commands/build.ts";
@@ -35,8 +36,9 @@ class AlephaCliExtension {
         return;
       }
 
-      // import
-      const { default: Extension } = await import(extensionPath);
+      // import (use file:// URL for Windows compatibility)
+      const extensionUrl = pathToFileURL(extensionPath).href;
+      const { default: Extension } = await import(extensionUrl);
       if (typeof Extension !== "function") {
         return;
       }
