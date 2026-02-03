@@ -102,7 +102,7 @@ export class InitCommand {
 
       // Detect agent type: claude CLI → CLAUDE.md, else → AGENTS.md
       let agentType: "claude" | "agents" | false = false;
-      if (flags.ai) {
+      if (flags.ai && !workspace.isPackage) {
         const hasClaudeCli = await this.utils.isInstalledAsync("claude");
         agentType = hasClaudeCli ? "claude" : "agents";
       }
@@ -206,6 +206,12 @@ export class InitCommand {
         }
       }
 
+      // Don't show success message if no path arg, e.g. just "alepha init" to re-configure current dir
+      if (!args) {
+        return;
+      }
+
+      // We must end the run context in order to log success message
       run.end();
 
       // Success message

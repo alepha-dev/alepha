@@ -292,7 +292,12 @@ export class ProjectScaffolder {
     });
 
     // src/main.css
-    await this.ensureFile(root, "src/main.css", mainCss(), opts.force);
+    await this.ensureFile(
+      root,
+      "src/main.css",
+      mainCss({ ui: opts.ui }),
+      opts.force,
+    );
 
     // Web structure
     await this.ensureFile(
