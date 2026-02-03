@@ -1,126 +1,109 @@
 import { useRouter } from "alepha/react/router";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAdminSlide } from "./GettingStartedAdminSlide.tsx";
+import { useAuthSlide } from "./GettingStartedAuthSlide.tsx";
 
-type Step = {
+export type GettingStartedStep = {
   num: string;
   text: ReactNode;
 };
 
-type Message = {
+export type GettingStartedSlide = {
   text: string;
   sub: string;
   detail?: string;
-  steps?: Step[];
+  steps?: GettingStartedStep[];
   links?: { label: string; href: string }[];
 };
 
-const messages: Message[] = [
-  {
-    text: "Let's begin.",
-    sub: "Every story starts with a blank page.",
-    detail: "This one is yours.",
-  },
-  {
-    text: "Need help?",
-    sub: "We've got you covered.",
-    detail: "Even our AI friends can read the docs.",
-    links: [
-      { label: "alepha.dev", href: "https://alepha.dev" },
-      { label: "llms.txt", href: "https://alepha.dev/llms.txt" },
-    ],
-  },
-];
+export type GettingStartedWelcome = {
+  appName: string;
+  serverTime: string;
+};
+
+export type GettingStartedProps = {
+  /**
+   * Welcome data loaded from the server via SSR.
+   *
+   * When provided, displays app name and server timestamp on the first slide,
+   * demonstrating the full SSR → hydration data flow.
+   */
+  welcome?: GettingStartedWelcome;
+};
+
+const defaultFirstSlide: GettingStartedSlide = {
+  text: "Let's begin.",
+  sub: "Every story starts with a blank page.",
+  detail: "This one is yours.",
+};
+
+const helpSlide: GettingStartedSlide = {
+  text: "Need help?",
+  sub: "We've got you covered.",
+  detail: "Even our AI friends can read the docs.",
+  links: [
+    { label: "alepha.dev", href: "https://alepha.dev" },
+    { label: "llms.txt", href: "https://alepha.dev/llms.txt" },
+  ],
+};
+
+const formatServerTime = (isoString: string): string => {
+  try {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch {
+    return isoString;
+  }
+};
 
 /**
  * A welcome component displayed when creating a new Alepha application.
  */
-const GettingStarted = () => {
+const GettingStarted = ({ welcome }: GettingStartedProps) => {
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState<"next" | "prev">("next");
 
   const router = useRouter();
-  const hasAdmin = router.pages.find((it) => it.name === "adminLayout");
   const hasAuth = router.pages.find((it) => it.name === "authLayout");
+  const hasAdmin = router.pages.find((it) => it.name === "adminLayout");
 
-  const adminAnchorProps = hasAdmin
-    ? router.anchor(router.path("adminLayout"))
-    : undefined;
-  const authAnchorProps = hasAuth
-    ? router.anchor(router.path("login"))
-    : undefined;
+  // Get auth-aware slide content (hooks handle user state internally)
+  const authSlide = useAuthSlide();
+  const adminSlide = useAdminSlide();
 
   const filteredMessages = useMemo(() => {
-    const result: Message[] = [];
+    const result: GettingStartedSlide[] = [];
 
-    // Add static messages up to "What's next?"
-    for (const msg of messages) {
-      if (msg.text === "Need help?") break;
-      result.push(msg);
+    // First slide: use welcome data if provided, otherwise default
+    if (welcome) {
+      result.push({
+        ...defaultFirstSlide,
+        detail: `Server time: ${formatServerTime(welcome.serverTime)} - App: ${welcome.appName}`,
+      });
+    } else {
+      result.push(defaultFirstSlide);
     }
 
-    // Add auth message if available
-    if (hasAuth && authAnchorProps) {
-      result.push({
-        text: "Who are you?",
-        sub: "Create your first account.",
-        steps: [
-          {
-            num: "1",
-            text: (
-              <>
-                Sign up at <a {...authAnchorProps}>/auth/login</a>
-              </>
-            ),
-          },
-          {
-            num: "2",
-            text: (
-              <>
-                Customize in <code>src/api/AppSecurity.ts</code>
-              </>
-            ),
-          },
-        ],
-      });
+    // Add auth slide if auth routes exist
+    if (hasAuth) {
+      result.push(authSlide);
     }
 
-    // Add admin message if available
-    if (hasAdmin && adminAnchorProps) {
-      result.push({
-        text: "Take the wheel.",
-        sub: "Become admin in three steps.",
-        steps: [
-          {
-            num: "1",
-            text: (
-              <>
-                Add your email to <code>adminEmails</code> in{" "}
-                <code>AppSecurity.ts</code>
-              </>
-            ),
-          },
-          { num: "2", text: "Create a user account with that email" },
-          {
-            num: "3",
-            text: (
-              <>
-                Go to <a {...adminAnchorProps}>/admin</a>
-              </>
-            ),
-          },
-        ],
-      });
+    // Add admin slide if admin routes exist
+    if (hasAdmin) {
+      result.push(adminSlide);
     }
 
     // Add "Need help?" message
-    const helpMsg = messages.find((msg) => msg.text === "Need help?");
-    if (helpMsg) {
-      result.push(helpMsg);
-    }
+    result.push(helpSlide);
 
     return result;
-  }, [hasAuth, hasAdmin, authAnchorProps, adminAnchorProps]);
+  }, [welcome, hasAuth, hasAdmin, authSlide, adminSlide]);
 
   const current = filteredMessages[index];
 
