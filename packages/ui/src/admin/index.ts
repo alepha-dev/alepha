@@ -1,6 +1,6 @@
 import { AlephaUI } from "@alepha/ui";
 import { AlephaUIAuth } from "@alepha/ui/auth";
-import { $context, $module } from "alepha";
+import { $module } from "alepha";
 import { AdminRouter } from "./AdminRouter.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -30,13 +30,14 @@ export { default as AdminUserSettings } from "./components/users/AdminUserSettin
 export { default as AdminUsers } from "./components/users/AdminUsers.tsx";
 // Verifications
 export { default as AdminVerifications } from "./components/verifications/AdminVerifications.tsx";
+export * from "./primitives/$uiAdmin.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | frontend | rare | experimental |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 2 - beta | 0.12.0 | node, bun, workerd, browser|
  *
  * Admin panel UI components.
  *
@@ -62,11 +63,3 @@ export const AlephaUIAdmin = $module({
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Register Admin UI components and get the AdminRouter instance.
- */
-export const $uiAdmin = () => {
-  const { alepha } = $context();
-  return alepha.inject(AdminRouter);
-};

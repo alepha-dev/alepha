@@ -12,7 +12,7 @@ npm install alepha
 
 | Stability | Since | Runtime |
 |-----------|-------|---------|
-| 1 - experimental | 0.16.0 | node|
+| 1 - experimental | 0.15.0 | node|
 
 Multi-threading support.
 

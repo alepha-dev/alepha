@@ -10,9 +10,9 @@ npm install @alepha/ui
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| frontend | rare | experimental |
+| Stability | Since | Runtime |
+|-----------|-------|---------|
+| 2 - beta | 0.12.0 | node, bun, workerd, browser|
 
 Core UI components based on Mantine UI v8.
 

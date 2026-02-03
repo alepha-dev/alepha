@@ -34,6 +34,7 @@ async function run(
         NODE_ENV: "development",
         FORCE_COLOR: "0",
         NO_COLOR: "1",
+        YARN_ENABLE_IMMUTABLE_INSTALLS: "false",
       },
     });
 
@@ -92,6 +93,7 @@ function startProcess(
       NODE_ENV: "development",
       FORCE_COLOR: "0",
       NO_COLOR: "1",
+      YARN_ENABLE_IMMUTABLE_INSTALLS: "false",
       ...env,
     },
   });

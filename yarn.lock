@@ -156,7 +156,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/ui@npm:0.15.5, @alepha/ui@npm:^0.15.5, @alepha/ui@workspace:packages/ui":
+"@alepha/ui@npm:0.15.5, @alepha/ui@workspace:packages/ui":
   version: 0.0.0-use.local
   resolution: "@alepha/ui@workspace:packages/ui"
   dependencies:
@@ -12641,21 +12641,6 @@ __metadata:
   checksum: 10c0/e88fb8acaaf57250da01a56733cedf5bb2b3ae797c21302cef3cbaf3bc5aefe99ef3bf6472562af54f26b51c104d83dc178d4ebff373fba6d1f4ed133ac27194
   languageName: node
   linkType: hard
-
-"tmp-93740c@workspace:apps/tmp":
-  version: 0.0.0-use.local
-  resolution: "tmp-93740c@workspace:apps/tmp"
-  dependencies:
-    "@alepha/ui": "npm:^0.15.5"
-    "@types/react": "npm:^19.2.10"
-    "@vitejs/plugin-react": "npm:^5.1.2"
-    alepha: "npm:^0.15.5"
-    react: "npm:^19.2.4"
-    react-dom: "npm:^19.2.4"
-    vite: "npm:^7.3.1"
-    vitest: "npm:^4.0.18"
-  languageName: unknown
-  linkType: soft
 
 "to-regex-range@npm:^5.0.1":
   version: 5.0.1
