@@ -1,3 +1,21 @@
+## [0.16.0] - 2026-02-03
+
+### Features
+
+- **server/links**: add can("group:*") (`ecc7bfa9`)
+- **commands**: Pretty runner now display duration of current task (`c2e343af`)
+- **cli**: rework 'alepha dev', start using shared instances (re-use http server on reload), for better dx & speed (`f3413fc1`)
+- **admin**: add default sidebar admin (`d4e6f33f`)
+- **ui**: Hide sidebar node if all children are not visible (`97aea7a0`)
+
+### Bug Fixes
+
+- **react/router**: reject transition if can() false (`1c27613c`)
+- **server/static**: fix static hosting on Windows (`d4526265`)
+- **cli**: fix shell warning on Windows (`47350114`)
+- **cli**: fix cli crash on Windows (`7717e214`)
+- **ui**: fix lazy loading of styles (`dfdd7ba4`)
+
 ## [0.15.5] - 2026-02-02
 
 ### Features
