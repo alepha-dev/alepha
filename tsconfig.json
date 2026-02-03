@@ -70,6 +70,7 @@
         "./packages/alepha/src/server/swagger/index.ts"
       ],
       "alepha/sms": ["./packages/alepha/src/sms/index.ts"],
+      "alepha/system": ["./packages/alepha/src/system/index.ts"],
       "alepha/thread": ["./packages/alepha/src/thread/index.ts"],
       "alepha/topic": ["./packages/alepha/src/topic/core/index.ts"],
       "alepha/topic/redis": ["./packages/alepha/src/topic/redis/index.ts"],
