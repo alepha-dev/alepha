@@ -261,8 +261,8 @@ describe("Alepha CLI E2E", () => {
       // Fix the error
       await writeFile(mainServerPath, originalContent, "utf-8");
 
-      // Wait for recovery
-      await new Promise((r) => setTimeout(r, 3000));
+      // Wait for recovery (Windows file watchers are slower)
+      await new Promise((r) => setTimeout(r, isWindows ? 8000 : 3000));
 
       // Server should be working again
       const recoveryResponse = await fetchWithRetry(
