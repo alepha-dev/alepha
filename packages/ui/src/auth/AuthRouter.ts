@@ -46,7 +46,6 @@ export class AuthRouter {
     schema: {
       query: realmQuerySchema,
     },
-    can: () => !this.auth.user,
     lazy: () => import("./components/Login.tsx"),
     loader: async ({ query, user }) => {
       if (user) {
@@ -66,7 +65,6 @@ export class AuthRouter {
     schema: {
       query: realmQuerySchema,
     },
-    can: () => !this.auth.user,
     lazy: () => import("./components/Register.tsx"),
     loader: async ({ query, user }) => {
       if (user) {
@@ -86,7 +84,6 @@ export class AuthRouter {
     schema: {
       query: realmQuerySchema,
     },
-    can: () => !this.auth.user,
     lazy: () => import("./components/ResetPassword.tsx"),
     loader: async ({ query, user }) => {
       if (user) {
@@ -116,7 +113,6 @@ export class AuthRouter {
     icon: IconLogout2,
     label: "Sign Out",
     description: "Sign out of your account",
-    can: () => !!this.auth.user,
     path: "/logout",
     component: () => null,
     loader: () => {
