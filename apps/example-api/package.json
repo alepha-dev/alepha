@@ -10,7 +10,7 @@
     "compile": "cd dist && bun build --compile --minify --bytecode index.js"
   },
   "dependencies": {
-    "alepha": "^0.16.0"
+    "alepha": "^0.16.1"
   },
   "devDependencies": {
     "vite": "^7.3.1",

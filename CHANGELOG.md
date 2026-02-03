@@ -1,3 +1,10 @@
+## [0.16.1] - 2026-02-03
+
+### Bug Fixes
+
+- **cli**: add missing workerd export (`b122692d`)
+- **ui**: remove css inside ts for now (`79f9c405`)
+
 ## [0.16.0] - 2026-02-03
 
 ### Features

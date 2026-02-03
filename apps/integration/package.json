@@ -8,7 +8,7 @@
     "typecheck": "alepha typecheck"
   },
   "dependencies": {
-    "alepha": "^0.16.0"
+    "alepha": "^0.16.1"
   },
   "devDependencies": {
     "vitest": "^4.0.18"
