@@ -9,7 +9,7 @@ import {
 import { $inject, AlephaError, t } from "alepha";
 import type { RealmController } from "alepha/api/users";
 import { ReactAuth } from "alepha/react/auth";
-import { $page } from "alepha/react/router";
+import { $page, Redirection } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 
 /**
@@ -48,7 +48,10 @@ export class AuthRouter {
     },
     can: () => !this.auth.user,
     lazy: () => import("./components/Login.tsx"),
-    loader: async ({ query }) => {
+    loader: async ({ query, user }) => {
+      if (user) {
+        throw new Redirection(query.r || "/");
+      }
       return {
         realmConfig: await this.loadRealmConfig(query.realm),
       };
@@ -65,7 +68,10 @@ export class AuthRouter {
     },
     can: () => !this.auth.user,
     lazy: () => import("./components/Register.tsx"),
-    loader: async ({ query }) => {
+    loader: async ({ query, user }) => {
+      if (user) {
+        throw new Redirection(query.r || "/");
+      }
       return {
         realmConfig: await this.loadRealmConfig(query.realm),
       };
@@ -82,7 +88,10 @@ export class AuthRouter {
     },
     can: () => !this.auth.user,
     lazy: () => import("./components/ResetPassword.tsx"),
-    loader: async ({ query }) => {
+    loader: async ({ query, user }) => {
+      if (user) {
+        throw new Redirection(query.r || "/");
+      }
       return {
         realmConfig: await this.loadRealmConfig(query.realm),
       };
