@@ -39,8 +39,11 @@ export class NodeShellProvider implements ShellProvider {
       [executable, ...args] = this.parseCommand(command);
     }
 
+    // Build properly escaped command string for shell execution
+    const shellCommand = this.buildShellCommand(executable, args);
+
     if (capture) {
-      return this.execCapture(command, { cwd, env });
+      return this.execCapture(shellCommand, { cwd, env });
     }
 
     return this.execInherit(executable, args, { cwd, env });
@@ -85,18 +88,19 @@ export class NodeShellProvider implements ShellProvider {
 
   /**
    * Build a shell command string with proper escaping for Windows.
+   * Quotes both executable and arguments that contain spaces or special characters.
    */
   protected buildShellCommand(executable: string, args: string[]): string {
-    const escapeArg = (arg: string): string => {
-      // If arg contains spaces or special chars, wrap in double quotes
+    const escapeForShell = (str: string): string => {
+      // If str contains spaces or special chars, wrap in double quotes
       // and escape internal double quotes
-      if (/[\s"&|<>^]/.test(arg)) {
-        return `"${arg.replace(/"/g, '\\"')}"`;
+      if (/[\s"&|<>^()]/.test(str)) {
+        return `"${str.replace(/"/g, '\\"')}"`;
       }
-      return arg;
+      return str;
     };
 
-    return [executable, ...args.map(escapeArg)].join(" ");
+    return [escapeForShell(executable), ...args.map(escapeForShell)].join(" ");
   }
 
   /**
