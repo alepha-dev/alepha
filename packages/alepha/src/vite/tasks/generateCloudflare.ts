@@ -1,6 +1,7 @@
 import { access, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import type { Alepha } from "alepha";
+import { CloudflareR2Provider, R2_DEFAULT_BINDING } from "alepha/bucket";
 import type { CronProvider } from "alepha/scheduler";
 import type { WorkerdCronProvider } from "../../scheduler/providers/WorkerdCronProvider.ts";
 
@@ -93,6 +94,20 @@ export async function generateCloudflare(
     });
     wrangler.vars ??= {};
     wrangler.vars.DATABASE_URL = `d1://${name}:${id}`;
+  }
+
+  // Add R2 binding if CloudflareR2Provider is used
+  let r2Provider: CloudflareR2Provider | undefined;
+  try {
+    r2Provider = opts.alepha.inject(CloudflareR2Provider);
+  } catch {}
+
+  if (r2Provider) {
+    wrangler.r2_buckets = wrangler.r2_buckets || [];
+    wrangler.r2_buckets.push({
+      binding: R2_DEFAULT_BINDING,
+      bucket_name: r2Provider.bucketName,
+    });
   }
 
   await writeFile(

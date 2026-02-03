@@ -12,6 +12,7 @@ import { MemoryFileStorageProvider } from "./providers/MemoryFileStorageProvider
 
 export * from "./errors/FileNotFoundError.ts";
 export * from "./primitives/$bucket.ts";
+export * from "./providers/CloudflareR2Provider.ts";
 export * from "./providers/FileStorageProvider.ts";
 export * from "./providers/LocalFileStorageProvider.ts";
 export * from "./providers/MemoryFileStorageProvider.ts";

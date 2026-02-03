@@ -157,6 +157,7 @@
     },
     "./bucket": {
       "types": "./src/bucket/index.ts",
+      "workerd": "./src/bucket/index.workerd.ts",
       "import": "./src/bucket/index.ts",
       "default": "./src/bucket/index.ts"
     },
