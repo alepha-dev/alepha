@@ -17,9 +17,9 @@
   ],
   "devDependencies": {
     "@alepha/ui": "0.15.5",
-    "@biomejs/biome": "^2.3.13",
-    "@mantine/core": "^8.3.13",
-    "@mantine/hooks": "^8.3.13",
+    "@biomejs/biome": "^2.3.14",
+    "@mantine/core": "^8.3.14",
+    "@mantine/hooks": "^8.3.14",
     "@tabler/icons-react": "^3.36.1",
     "@xyflow/react": "^12.10.0",
     "alepha": "0.15.5",

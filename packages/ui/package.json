@@ -22,18 +22,18 @@
     "styles.css"
   ],
   "dependencies": {
-    "@mantine/core": "^8.3.13",
-    "@mantine/dates": "^8.3.13",
-    "@mantine/hooks": "^8.3.13",
-    "@mantine/modals": "^8.3.13",
-    "@mantine/notifications": "^8.3.13",
-    "@mantine/nprogress": "^8.3.13",
-    "@mantine/spotlight": "^8.3.13",
+    "@mantine/core": "^8.3.14",
+    "@mantine/dates": "^8.3.14",
+    "@mantine/hooks": "^8.3.14",
+    "@mantine/modals": "^8.3.14",
+    "@mantine/notifications": "^8.3.14",
+    "@mantine/nprogress": "^8.3.14",
+    "@mantine/spotlight": "^8.3.14",
     "@tabler/icons-react": "^3.36.1",
     "dayjs": "^1.11.19"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.13",
+    "@biomejs/biome": "^2.3.14",
     "alepha": "0.15.5",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
