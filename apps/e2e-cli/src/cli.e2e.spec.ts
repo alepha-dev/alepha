@@ -49,10 +49,13 @@ async function run(
       stderr += data.toString();
     });
 
-    const timeout = setTimeout(() => {
-      proc.kill();
-      reject(new Error(`Command timed out: ${command}`));
-    }, 40000);
+    const timeout = setTimeout(
+      () => {
+        proc.kill();
+        reject(new Error(`Command timed out: ${command}`));
+      },
+      isWindows ? 90000 : 40000,
+    );
 
     proc.on("close", (code) => {
       clearTimeout(timeout);
@@ -122,8 +125,8 @@ function startProcess(
           proc.kill("SIGTERM");
         }
       }
-      // Wait for cleanup
-      await new Promise((r) => setTimeout(r, 500));
+      // Wait for cleanup (Windows needs more time to release file handles)
+      await new Promise((r) => setTimeout(r, isWindows ? 3000 : 500));
     },
     waitForOutput: (pattern: RegExp, timeout = 30_000) => {
       return new Promise((resolve, reject) => {
@@ -178,7 +181,10 @@ describe("Alepha CLI E2E", () => {
   });
 
   afterAll(async () => {
-    // Cleanup
+    // Skip cleanup on Windows CI - runners are ephemeral and EBUSY errors are common
+    if (isWindows && process.env.CI) {
+      return;
+    }
     if (existsSync(PROJECT_DIR)) {
       await rm(PROJECT_DIR, { recursive: true, force: true });
     }
