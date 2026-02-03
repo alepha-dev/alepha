@@ -7,8 +7,10 @@ import {
   type AgentMdType,
   agentMd,
 } from "../templates/agentMd.ts";
+import { alephaConfigTs } from "../templates/alephaConfigTs.ts";
 import { apiAppSecurityTs } from "../templates/apiAppSecurityTs.ts";
 import { apiHelloControllerTs } from "../templates/apiHelloControllerTs.ts";
+import { apiHelloResponseSchemaTs } from "../templates/apiHelloResponseSchemaTs.ts";
 import { apiIndexTs } from "../templates/apiIndexTs.ts";
 import { biomeJson } from "../templates/biomeJson.ts";
 import { dummySpecTs } from "../templates/dummySpecTs.ts";
@@ -194,6 +196,21 @@ export class ProjectScaffolder {
     );
   }
 
+  /**
+   * Ensure alepha.config.ts exists with documented options.
+   */
+  public async ensureAlephaConfig(
+    root: string,
+    opts: { force?: boolean } = {},
+  ): Promise<void> {
+    await this.ensureFile(
+      root,
+      "alepha.config.ts",
+      alephaConfigTs(),
+      opts.force,
+    );
+  }
+
   // ===========================================
   // Minimal Project Structure
   // ===========================================
@@ -236,6 +253,9 @@ export class ProjectScaffolder {
     await this.fs.mkdir(this.fs.join(root, "src/api/controllers"), {
       recursive: true,
     });
+    await this.fs.mkdir(this.fs.join(root, "src/api/schemas"), {
+      recursive: true,
+    });
 
     // Create files
     await this.ensureFile(
@@ -247,7 +267,13 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/api/controllers/HelloController.ts",
-      apiHelloControllerTs(),
+      apiHelloControllerTs({ appName }),
+      opts.force,
+    );
+    await this.ensureFile(
+      root,
+      "src/api/schemas/helloResponseSchema.ts",
+      apiHelloResponseSchemaTs(),
       opts.force,
     );
 
@@ -320,7 +346,7 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/web/components/Home.tsx",
-      webHomeComponentTsx(),
+      webHomeComponentTsx({ api: opts.api }),
       opts.force,
     );
     await this.ensureFile(

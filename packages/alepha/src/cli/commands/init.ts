@@ -131,6 +131,9 @@ export class InitCommand {
               : false,
           });
 
+          // Create alepha.config.ts with documented options
+          await this.scaffolder.ensureAlephaConfig(root, { force });
+
           // Create project structure based on flags
           await this.scaffolder.ensureMainServerTs(root, {
             api: !!flags.api,

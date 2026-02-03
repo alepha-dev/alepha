@@ -73,6 +73,27 @@ describe("alepha init", () => {
         fs.wasWrittenMatching("/project/.editorconfig", /root\s*=\s*true/),
       ).toBe(true);
     });
+
+    it("should create alepha.config.ts with documented options", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/alepha.config.ts")).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/alepha.config.ts", /defineConfig/),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/alepha.config.ts", /Entry Points/),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/alepha.config.ts",
+          /Build Configuration/,
+        ),
+      ).toBe(true);
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────────

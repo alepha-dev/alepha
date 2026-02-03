@@ -225,6 +225,11 @@ function removeComments(content: string): string {
   // Remove multi-line comments
   cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, "");
 
+  // Remove template literal (`)
+  cleaned = cleaned.replace(/`[\s\S]*?`/g, (match) => {
+    return match.replace(/from\s+["'][^"']+["'];/g, "");
+  });
+
   return cleaned;
 }
 
