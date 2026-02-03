@@ -184,6 +184,9 @@ jobs:
           node-version: "24.x"
           cache: "yarn"
 
+      - name: Install Dependencies
+        run: yarn
+
       - name: Clean
         run: yarn clean
 
