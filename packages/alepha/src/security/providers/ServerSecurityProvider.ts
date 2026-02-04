@@ -226,12 +226,16 @@ export class ServerSecurityProvider {
       "alepha.server.security.system.user",
     );
 
+    let typeTaken: string;
     if (type === "system") {
       user = fromSystem;
+      typeTaken = "system";
     } else if (type === "context") {
       user = fromContext;
+      typeTaken = "context";
     } else {
       user = fromOptions ?? fromContext ?? fromSystem;
+      typeTaken = fromOptions ? "options" : fromContext ? "context" : "system";
     }
 
     if (!user) {
@@ -248,7 +252,7 @@ export class ServerSecurityProvider {
       );
       if (!result.isAuthorized) {
         throw new ForbiddenError(
-          `Permission '${this.securityProvider.permissionToString(permission)}' is required for this route`,
+          `Permission '${this.securityProvider.permissionToString(permission)}' is required for this route (called from ${typeTaken})`,
         );
       }
       ownership = result.ownership;

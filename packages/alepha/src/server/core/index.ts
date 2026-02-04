@@ -151,7 +151,9 @@ export const AlephaServer = $module({
     ServerRouterProvider,
   ],
   register: (alepha: Alepha) => {
-    if (!alepha.isServerless()) {
+    // In Vite dev mode, Vite owns the HTTP server - just use base ServerProvider
+    // In serverless mode, no HTTP server needed - just use base ServerProvider
+    if (!alepha.isServerless() && !alepha.isViteDev()) {
       if (alepha.isBun()) {
         alepha.with({
           optional: true,

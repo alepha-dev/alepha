@@ -398,6 +398,9 @@ export class Alepha {
     return !!this.env.VITE_ALEPHA_DEV;
   }
 
+  /**
+   * Returns whether the App is running in Bun.js environment.
+   */
   public isBun(): boolean {
     return "Bun" in globalThis;
   }
