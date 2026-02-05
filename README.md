@@ -18,24 +18,23 @@ Alepha
 
 ## What is this?
 
-Enterprise-grade TypeScript framework for building full-stack applications with end-to-end type safety and minimal boilerplate.
+Full-stack TypeScript framework. Define your schema once, get database, validation, types, and forms.
 
-- **Multi-runtime** — Same code runs on Node, Bun, Workerd, Browser, and Expo
-- **One schema, everywhere** — Define once, get database, validation, TypeScript types, and React forms
+- **Multi-runtime** — Same code runs on Node, Bun, Cloudflare Workers, Browser, and Expo
+- **One schema, everywhere** — Database, API validation, TypeScript types, React forms — all from one definition
 - **Full autocomplete** — Client calls server with complete type safety, zero codegen
 - **Substitutable** — Swap any service with `.with()` for testing or customization
 - **Deploy anywhere** — Cloudflare, Vercel, Docker, bare metal
-- **AI friendly** — Built-in [llms.txt](https://alepha.dev/llms.txt) for LLM context
 
-Pick your layer. Each one builds on the previous.
+Each layer builds on the previous.
 
 | Layer | Description | Primitives |
 |-------|-------------|------------|
-| **L0** | Foundation: DI, lifecycle, config | `$inject`, `$client`, `$env`, `$module`, `$hook`, `$logger` |
-| **L1** | Backend: database, queues, storage | `$entity`, `$action`, `$queue`, `$bucket`, `$permission` |
-| **L2** | React frontend with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary` |
-| **L3** | SaaS features: users, jobs, audits | `$realm`, `$job`, `$audit`, `$notification` |
-| **L4** | Admin panel & auth UI included | `$uiAdmin`, `$uiAuth` |
+| **Foundation** | DI, lifecycle, config | `$inject`, `$env`, `$module`, `$hook`, `$logger` |
+| **Backend** | Database, queues, storage, API | `$entity`, `$action`, `$queue`, `$bucket`, `$scheduler` |
+| **Frontend** | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary` |
+| **Platform** | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification` |
+| **Admin** | Admin panel & auth UI | `@alepha/ui` |
 
 ## Example
 

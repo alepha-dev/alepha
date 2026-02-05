@@ -1,41 +1,47 @@
 # Introduction
 
-Welcome to Alepha.
+Alepha is a full-stack TypeScript framework.
 
-If you are reading this, you are probably tired. Tired of spending the first two weeks of every project configuring ESLint, choosing a router, wiring up an ORM, figuring out how to share types between your frontend and backend, and debugging Dockerfiles.
+Most frameworks require assembling the stack: pick a router, configure an ORM, wire up auth,
+set up queues, debug Dockerfiles.
 
-We built Alepha because we wanted to stop building "stacks" and start building **products**.
+Alepha ships with all of it built-in.
 
 ## What is Alepha?
 
-Alepha is an integrated, opinionated, full-stack framework for **Node.js 22+** and **Bun**.
+Alepha is an integrated, opinionated, full-stack framework for **Node.js 22+**, **Bun**, and
+**Cloudflare Workers**. It automatically selects the right providers (HTTP server, SQL, Redis) based on
+the runtime.
 
-> **Bun-Native Support**
->
-> We're working to make Alepha fully Bun-native. When running on Bun, we automatically use Bun's built-in APIs (file system, SQLite, HTTP server, etc.) instead of Node.js equivalents for better performance.
+It is not a wrapper around Express or Fastify. It is not a React meta-framework like Next.js.
+It is a complete full-stack platform: server, database, auth, queues, storage, and frontend — unified.
 
-It is not a wrapper around Express or Fastify. It is not just a React meta-framework like Next.js. It is a complete **SaaS Operating System**.
+Each layer builds on the previous.
 
-It assumes that if you are building a modern application, you *will* need:
-*   A database (Postgres/SQLite)
-*   An API (REST)
-*   Authentication & Permissions
-*   Background Jobs & Queues
-*   File Storage
-*   A frontend (React)
+| Layer | Description | Primitives                                              |
+|-------|-------------|---------------------------------------------------------|
+| **Foundation** | DI, lifecycle, config | `$inject`, `$env`, `$module`, `$hook`, `$logger`        |
+| **Backend** | Database, queues, storage, API | `$entity`, `$action`, `$queue`, `$bucket`, `$scheduler` |
+| **Frontend** | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                |
+| **Platform** | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
+| **Admin** | Admin panel & auth UI | `ui`, `uiAuth`, `uiAdmin`                               |
 
-In other frameworks, you have to assemble these pieces yourself. In Alepha, they are built-in primitives.
+> Not all layers are required. Foundation alone is enough for CLI tools. Add Backend for APIs,
+> Frontend for web apps, Platform for users and background jobs.
+
+Other frameworks require assembling these pieces manually. In Alepha, they are built-in primitives.
 
 ## The "Primitive" Architecture
 
-Alepha doesn't use decorators (like NestJS) or file-system magic (like Next.js). Instead, we use **Primitives**. These are factory functions starting with `$` that live directly in your class properties.
+Alepha doesn't use decorators (like NestJS) or file-system magic (like Next.js). Instead, it uses
+**Primitives** — factory functions starting with `$` that live directly in your class properties.
 
 You define your logic where it belongs: in your code.
 
 ```typescript
 import { t } from "alepha";
 import { $action } from "alepha/server";
-import { $entity, db } from "alepha/orm";
+import { $entity, $repository, db } from "alepha/orm";
 
 // 1. Define your Database Schema
 const product = $entity({
@@ -66,50 +72,44 @@ class ProductService {
 }
 ```
 
-Because Alepha understands what these Primitives are, it gives you superpowers for free:
-1.  **Automatic OpenAPI/Swagger** documentation.
-2.  **End-to-End Type Safety** without code generation steps.
+This architecture enables:
+- **One schema, everywhere** — Database, API validation, and TypeScript types from a single definition.
+- **Type-safe RPC** — Browser↔server and server↔server calls, fully typed, no codegen.
+- **Auto-generated OpenAPI** — Documentation stays in sync automatically.
 
 ## The "Zero-Mapping" Philosophy
 
 The biggest source of bugs in full-stack development is the boundary between the server and the client.
 
-Usually, you define a SQL schema, then a Zod schema for the API, then a TypeScript interface for the frontend. If you change one, you break the others.
+Usually, you define a SQL schema, then a Zod schema for the API, then a TypeScript interface for the
+frontend. If you change one, you break the others.
 
 Alepha uses **TypeBox** as a single source of truth.
 *   The `$entity` uses the schema to create the database table.
 *   The `$action` uses the *same* schema to validate the HTTP request.
 *   The React `$page` uses the *same* schema to type your props.
 
-Data flows from your database to your React component without ever losing its type information or requiring a manual mapping layer.
+Data flows from your database to your React component without ever losing its type information or
+requiring a manual mapping layer.
 
 ## Infrastructure as Code (Literally)
 
-Alepha takes the "Batteries Included" concept seriously.
+Common infrastructure needs are built-in primitives:
 
-*   Need a background job? Use `$queue`.
-*   Need to upload a file? Use `$bucket`.
-*   Need a cron job? Use `$scheduler`.
-*   Need to verify an email? Use the built-in `VerificationService`.
+- Background jobs → `$queue`
+- File uploads → `$bucket`
+- Cron jobs → `$scheduler`
+- Pub/sub → `$topic`
 
-When you build for production, Alepha compiles everything into a highly optimized, lightweight bundle that runs anywhere: Vercel, Docker, Cloudflare, or a $5 VPS.
+Production builds compile to an optimized bundle deployable to Vercel, Docker, Cloudflare, or any VPS.
+Primitives like `$scheduler` automatically map to native formats (Cloudflare Triggers, Vercel Cron).
 
 ## Built for the AI Era
 
-Alepha is designed to work seamlessly with AI coding assistants like Claude, ChatGPT, Cursor, and GitHub Copilot.
+Alepha is designed to work seamlessly with AI coding assistants like Claude Code, Codex, and
+GitHub Copilot.
 
-We provide a machine-readable documentation file at [alepha.dev/llms.txt](https://alepha.dev/llms.txt) that AI assistants can consume to understand the entire framework. Point your AI tool to this URL and it will know how to write Alepha code correctly.
+A machine-readable documentation file is available at [alepha.dev/llms.txt](https://alepha.dev/llms.txt).
+AI assistants can consume this to understand the framework and generate correct Alepha code.
 
-> **Why this matters**
->
-> AI assistants work best when they understand the conventions of your framework. Alepha's opinionated, primitive-based architecture gives AI tools clear patterns to follow - making AI-assisted development faster and more accurate.
-
-## Who is this for?
-
-Alepha is for the **Pragmatic Developer**.
-
-If you enjoy spending days debating which folder structure is best, or if you need to micro-optimize a specific sub-system with a custom C++ module, Alepha might feel too opinionated for you.
-
-But if you are a solo founder, a small team, or an agency that needs to ship robust, scalable SaaS products in days instead of months, you are home.
-
-Ready to build? Let's get your environment set up.
+The opinionated, primitive-based architecture provides clear patterns for AI tools to follow.
