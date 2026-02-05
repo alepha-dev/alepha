@@ -36,17 +36,61 @@ export class FormModel<T extends TObject> {
   ) {
     this.options = options;
 
+    // Initialize with schema defaults first, then override with initialValues
+    const schemaDefaults = this.extractSchemaDefaults(options.schema);
+    if (Object.keys(schemaDefaults).length > 0) {
+      Object.assign(this.values, schemaDefaults);
+    }
+
     if (options.initialValues) {
-      this.values = this.alepha.codec.decode(
+      const decoded = this.alepha.codec.decode(
         options.schema,
         options.initialValues,
       ) as Record<string, any>;
+      Object.assign(this.values, decoded);
     }
 
     this.input = this.createProxyFromSchema(options, options.schema, {
       store: this.values,
       parent: "",
     });
+  }
+
+  /**
+   * Extract default values from a TypeBox schema.
+   * Recursively handles nested objects.
+   */
+  protected extractSchemaDefaults(
+    schema: TObject,
+    prefix: string = "",
+  ): Record<string, any> {
+    const defaults: Record<string, any> = {};
+
+    if (!schema.properties) {
+      return defaults;
+    }
+
+    for (const [key, propSchema] of Object.entries(schema.properties)) {
+      const fullKey = prefix ? `${prefix}.${key}` : key;
+
+      if ("default" in propSchema && propSchema.default !== undefined) {
+        defaults[fullKey] = propSchema.default;
+      } else if (
+        propSchema &&
+        "type" in propSchema &&
+        propSchema.type === "object" &&
+        "properties" in propSchema
+      ) {
+        // Recursively extract defaults from nested objects
+        const nestedDefaults = this.extractSchemaDefaults(
+          propSchema as TObject,
+          fullKey,
+        );
+        Object.assign(defaults, nestedDefaults);
+      }
+    }
+
+    return defaults;
   }
 
   public get element(): HTMLFormElement {

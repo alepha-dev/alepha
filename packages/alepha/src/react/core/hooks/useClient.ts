@@ -3,6 +3,7 @@ import {
   type HttpVirtualClient,
   LinkProvider,
 } from "alepha/server/links";
+import { useMemo } from "react";
 import { useInject } from "./useInject.ts";
 
 /**
@@ -13,5 +14,9 @@ import { useInject } from "./useInject.ts";
 export const useClient = <T extends object>(
   scope?: ClientScope,
 ): HttpVirtualClient<T> => {
-  return useInject(LinkProvider).client<T>(scope);
+  const linkProvider = useInject(LinkProvider);
+
+  return useMemo(() => {
+    return linkProvider.client<T>(scope);
+  }, [scope]);
 };
