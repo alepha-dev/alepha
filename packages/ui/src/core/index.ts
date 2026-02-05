@@ -52,10 +52,6 @@ export { default as ControlObject } from "./components/form/ControlObject.tsx";
 export { default as ControlQueryBuilder } from "./components/form/ControlQueryBuilder.tsx";
 export { default as ControlSelect } from "./components/form/ControlSelect.tsx";
 export { default as TypeForm } from "./components/form/TypeForm.tsx";
-export {
-  type AdminShellProps,
-  default as AdminShell,
-} from "./components/layout/AdminShell.tsx";
 export { default as AlephaMantineProvider } from "./components/layout/AlephaMantineProvider.tsx";
 export type {
   AppBarBurger,
@@ -69,6 +65,12 @@ export type {
   AppBarSpacer,
 } from "./components/layout/AppBar.tsx";
 export { default as AppBar } from "./components/layout/AppBar.tsx";
+export {
+  type DashboardShellProps,
+  type DashboardShellProps as AdminShellProps,
+  default as DashboardShell,
+  default as AdminShell,
+} from "./components/layout/DashboardShell.tsx";
 export { default as Omnibar } from "./components/layout/Omnibar.tsx";
 export type {
   SidebarAbstractItem,
@@ -171,7 +173,7 @@ declare module "alepha/react/router" {
  * - AlertDialog, ConfirmDialog, PromptDialog
  * - Form controls: Control, ControlArray, ControlDate, ControlNumber, ControlObject, ControlSelect, ControlQueryBuilder
  * - TypeForm for automatic form generation from TypeBox schemas
- * - AdminShell layout component
+ * - DashboardShell layout component
  * - AppBar with configurable elements
  * - Sidebar navigation with sections and menu items
  * - Omnibar for command palette / search

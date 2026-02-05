@@ -45,6 +45,8 @@ export class ViteDevServerProvider {
   protected currentError: Error | null = null;
   protected changedFiles = new Set<string>();
   protected waitingForRetry = false;
+  protected reloadDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  protected isReloading = false;
 
   /**
    * Initialize the dev server and load Alepha.
@@ -146,12 +148,13 @@ export class ViteDevServerProvider {
    */
   protected patchServerRestartForEnvReload(): void {
     this.server.restart = async () => {
-      if (this.waitingForRetry) return;
+      if (this.waitingForRetry || this.isReloading) return;
+
+      this.isReloading = true;
 
       console.log();
       console.log(this.colors.set("CYAN", "  ⟳ Reloading ..."));
       console.log();
-      const startTime = Date.now();
 
       try {
         this.hasError = true; // Force full invalidation for env changes
@@ -159,10 +162,6 @@ export class ViteDevServerProvider {
         await this.alepha?.start();
 
         this.currentError = null;
-        // console.log(
-        //   this.colors.set("GREEN", `  ✓ Ready in ${Date.now() - startTime}ms`),
-        // );
-        // console.log();
         this.sendBrowserReload();
       } catch (err) {
         this.hasError = true;
@@ -170,6 +169,8 @@ export class ViteDevServerProvider {
         this.logError("Reload failed", err);
         this.alepha = null;
         this.sendErrorOverlay(this.currentError);
+      } finally {
+        this.isReloading = false;
       }
     };
   }
@@ -236,49 +237,16 @@ export class ViteDevServerProvider {
           | { _ssrModule?: unknown; _clientModule?: unknown }
           | undefined;
         const isBrowserOnly = firstModule && !firstModule._ssrModule;
-        const isServerOnly = firstModule && !firstModule._clientModule;
 
         // Browser-only: let Vite HMR handle it (React Fast Refresh)
         if (isBrowserOnly) return;
 
-        // Server or shared change: reload Alepha
-        console.log();
-        console.log(this.colors.set("CYAN", "  ⟳ Reloading..."));
-        console.log();
-        const startTime = Date.now();
+        // Server or shared change: queue for debounced reload
+        this.changedFiles.add(ctx.file);
+        this.scheduleReload();
 
-        try {
-          this.changedFiles.add(ctx.file);
-          await this.loadAlepha(false);
-          await this.alepha?.start();
-
-          this.currentError = null;
-          // disabled for now
-          // console.log(
-          //   this.colors.set(
-          //     "GREEN",
-          //     `  ✓ Ready in ${Date.now() - startTime}ms`,
-          //   ),
-          // );
-          // console.log();
-
-          // Server-only: full browser reload
-          if (isServerOnly) {
-            this.sendBrowserReload();
-            return [];
-          }
-
-          // Shared: let HMR propagate to browser
-          return;
-        } catch (err) {
-          this.hasError = true;
-          this.currentError =
-            err instanceof Error ? err : new Error(String(err));
-          this.logError("Reload failed", err);
-          this.alepha = null;
-          this.sendErrorOverlay(this.currentError);
-          return [];
-        }
+        // Prevent default HMR, we'll handle the reload
+        return [];
       },
     };
   }
@@ -311,18 +279,83 @@ export class ViteDevServerProvider {
   }
 
   /**
+   * Schedule a debounced reload.
+   * Batches rapid file changes into a single reload operation.
+   */
+  protected scheduleReload(): void {
+    // Clear any pending reload
+    if (this.reloadDebounceTimer) {
+      clearTimeout(this.reloadDebounceTimer);
+    }
+
+    // If already reloading, the pending changes will be picked up
+    // when the current reload checks changedFiles
+    if (this.isReloading) {
+      return;
+    }
+
+    this.reloadDebounceTimer = setTimeout(() => {
+      this.reloadDebounceTimer = null;
+      this.performReload();
+    }, 100);
+  }
+
+  /**
+   * Perform the actual reload after debounce.
+   */
+  protected async performReload(): Promise<void> {
+    if (this.isReloading || this.changedFiles.size === 0) {
+      return;
+    }
+
+    this.isReloading = true;
+
+    // Snapshot files to process and clear immediately
+    // New files arriving during reload will go to fresh set
+    const filesToInvalidate = new Set(this.changedFiles);
+    this.changedFiles.clear();
+
+    console.log();
+    console.log(this.colors.set("CYAN", "  ⟳ Reloading..."));
+    console.log();
+
+    try {
+      await this.loadAlepha(false, filesToInvalidate);
+      await this.alepha?.start();
+
+      this.currentError = null;
+      this.sendBrowserReload();
+    } catch (err) {
+      this.hasError = true;
+      this.currentError = err instanceof Error ? err : new Error(String(err));
+      this.logError("Reload failed", err);
+      this.alepha = null;
+      this.sendErrorOverlay(this.currentError);
+    } finally {
+      this.isReloading = false;
+
+      // If more files changed during reload, schedule another
+      if (this.changedFiles.size > 0) {
+        this.scheduleReload();
+      }
+    }
+  }
+
+  /**
    * Load or reload the Alepha instance.
    */
-  protected async loadAlepha(isInitialLoad = false): Promise<Alepha> {
+  protected async loadAlepha(
+    isInitialLoad = false,
+    filesToInvalidate?: Set<string>,
+  ): Promise<Alepha> {
     await this.destroyAlepha();
     this.clearAlephaRefs();
 
     if (isInitialLoad || this.hasError) {
       this.server.moduleGraph.invalidateAll();
     } else {
-      this.invalidateModulesWithImporters();
+      this.invalidateModulesWithImporters(filesToInvalidate ?? new Set());
     }
-    this.changedFiles.clear();
 
     // Snapshot and restore process.env to isolate each reload
     const envSnapshot = { ...process.env };
@@ -415,9 +448,9 @@ export class ViteDevServerProvider {
   /**
    * Invalidate modules and all their importers.
    */
-  protected invalidateModulesWithImporters(): void {
+  protected invalidateModulesWithImporters(changedFiles: Set<string>): void {
     const invalidated = new Set<string>();
-    const queue: string[] = [...this.changedFiles];
+    const queue: string[] = [...changedFiles];
 
     while (queue.length > 0) {
       const file = queue.pop()!;
@@ -460,10 +493,11 @@ export class ViteDevServerProvider {
 
         console.log();
         console.log(this.colors.set("CYAN", "  ⟳ Retrying..."));
-        this.changedFiles.add(file);
+
+        const filesToInvalidate = new Set([file]);
 
         try {
-          const alepha = await this.loadAlepha(false);
+          const alepha = await this.loadAlepha(false, filesToInvalidate);
           this.waitingForRetry = false;
           this.currentError = null;
           this.server.watcher.off("change", onFileChange);

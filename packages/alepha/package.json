@@ -283,6 +283,11 @@
       "import": "./src/react/router/index.ts",
       "default": "./src/react/router/index.ts"
     },
+    "./react/testing": {
+      "types": "./src/react/testing/index.ts",
+      "import": "./src/react/testing/index.ts",
+      "default": "./src/react/testing/index.ts"
+    },
     "./react/websocket": {
       "types": "./src/react/websocket/index.ts",
       "import": "./src/react/websocket/index.ts",
