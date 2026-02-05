@@ -15,7 +15,9 @@
     "dist",
     "src",
     "assets",
-    "tsconfig.base.json"
+    "tsconfig.base.json",
+    "AGENTS.md",
+    "CLAUDE.md"
   ],
   "dependencies": {
     "@redis/client": "^5.10.0",

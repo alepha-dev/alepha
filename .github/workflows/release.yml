@@ -115,6 +115,11 @@ jobs:
       - name: Convert to JavaScript
         run: yarn convert js
 
+      - name: Copy agent templates
+        run: |
+          cp packages/alepha/assets/agents-template.md packages/alepha/CLAUDE.md
+          cp packages/alepha/assets/agents-template.md packages/alepha/AGENTS.md
+
       - name: Publish to NPM
         run: |
           yarn workspaces foreach --no-private -Apt exec npm publish --access=public

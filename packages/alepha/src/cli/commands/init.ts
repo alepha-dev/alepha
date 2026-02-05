@@ -126,9 +126,7 @@ export class InitCommand {
             tsconfigJson: !workspace.config.tsconfigJson,
             biomeJson: !workspace.config.biomeJson,
             editorconfig: !workspace.config.editorconfig,
-            agentMd: agentType
-              ? { type: agentType, react: !!flags.react, ui: !!flags.ui }
-              : false,
+            agentMd: agentType ? { type: agentType } : false,
           });
 
           // Create alepha.config.ts with documented options

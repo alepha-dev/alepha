@@ -2,11 +2,7 @@ import { basename, dirname } from "node:path";
 import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
-import {
-  type AgentMdOptions,
-  type AgentMdType,
-  agentMd,
-} from "../templates/agentMd.ts";
+import { type AgentMdType, agentMd } from "../templates/agentMd.ts";
 import { alephaConfigTs } from "../templates/alephaConfigTs.ts";
 import { apiAppSecurityTs } from "../templates/apiAppSecurityTs.ts";
 import { apiHelloControllerTs } from "../templates/apiHelloControllerTs.ts";
@@ -73,7 +69,7 @@ export class ProjectScaffolder {
       tsconfigJson?: boolean;
       biomeJson?: boolean;
       editorconfig?: boolean;
-      agentMd?: false | (AgentMdOptions & { type: AgentMdType });
+      agentMd?: false | { type: AgentMdType };
     },
   ): Promise<void> {
     const tasks: Promise<void>[] = [];
@@ -185,15 +181,10 @@ export class ProjectScaffolder {
 
   public async ensureAgentMd(
     root: string,
-    options: AgentMdOptions & { type: AgentMdType; force?: boolean },
+    options: { type: AgentMdType; force?: boolean },
   ): Promise<void> {
     const filename = options.type === "claude" ? "CLAUDE.md" : "AGENTS.md";
-    await this.ensureFile(
-      root,
-      filename,
-      agentMd(options.type, options),
-      options.force,
-    );
+    await this.ensureFile(root, filename, agentMd(options.type), options.force);
   }
 
   /**
