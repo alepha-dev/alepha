@@ -103,6 +103,7 @@ export async function buildClient(opts: BuildClientOptions): Promise<void> {
           entryFileNames: "entry.[hash].js",
           chunkFileNames: "chunk.[hash].js",
           assetFileNames: "asset.[hash][extname]",
+          experimentalMinChunkSize: 5000, // Enable experimental min chunk size to reduce overhead of many small chunks
         },
       },
     },
