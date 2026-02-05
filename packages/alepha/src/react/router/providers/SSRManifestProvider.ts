@@ -202,7 +202,8 @@ export class SSRManifestProvider {
 
     return chunks.map((href) => {
       if (href.endsWith(".css")) {
-        return { rel: "preload", href, as: "style" };
+        // Must include crossorigin to match Vite's dynamic CSS loading which always uses crossorigin=""
+        return { rel: "preload", href, as: "style", crossorigin: "" };
       }
       return { rel: "modulepreload", href };
     });
