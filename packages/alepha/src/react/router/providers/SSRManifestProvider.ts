@@ -202,7 +202,7 @@ export class SSRManifestProvider {
 
     return chunks.map((href) => {
       if (href.endsWith(".css")) {
-        return { rel: "preload", href, as: "style", crossorigin: "" };
+        return { rel: "preload", href, as: "style" };
       }
       return { rel: "modulepreload", href };
     });

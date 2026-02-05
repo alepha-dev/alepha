@@ -160,7 +160,7 @@ export class ReactServerProvider {
     const assets = this.ssrManifestProvider.getEntryAssets();
     if (assets) {
       for (const css of assets.css) {
-        parts.push(`<link rel="stylesheet" href="${css}" crossorigin="">`);
+        parts.push(`<link rel="stylesheet" href="${css}">`);
       }
       if (assets.js) {
         parts.push(

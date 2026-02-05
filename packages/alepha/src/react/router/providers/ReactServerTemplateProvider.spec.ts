@@ -112,8 +112,10 @@ describe("ReactServerTemplateProvider", () => {
       const response = await http.fetch(`${server.hostname}/`);
 
       // Verify entry assets are in the head
+      // Note: CSS stylesheets do NOT include crossorigin="" to avoid credential mode mismatches
+      // with Early Hints preloading (HTTP 103). JS modules still need crossorigin="".
       expect(response.data).toContain(
-        '<link rel="stylesheet" href="/assets/style.def456.css" crossorigin="">',
+        '<link rel="stylesheet" href="/assets/style.def456.css">',
       );
       expect(response.data).toContain(
         '<script type="module" crossorigin="" src="/assets/entry.abc123.js"></script>',
