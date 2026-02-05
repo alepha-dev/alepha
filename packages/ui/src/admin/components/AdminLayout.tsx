@@ -1,21 +1,22 @@
 import {
   ActionButton,
-  AdminShell,
-  type AdminShellProps,
   AlephaMantineProvider,
-  OmnibarButton,
+  DashboardShell,
+  type DashboardShellProps,
 } from "@alepha/ui";
 import { UserButton } from "@alepha/ui/auth";
+import { Flex } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 
 export interface AdminLayoutProps {
-  adminShellProps?: AdminShellProps;
+  adminShellProps?: DashboardShellProps;
 }
 
 const AdminLayout = (props: AdminLayoutProps) => {
   return (
     <AlephaMantineProvider>
-      <AdminShell
+      <DashboardShell
+        footer={<Flex h={24} />}
         appBarProps={{
           items: [
             {
@@ -27,10 +28,6 @@ const AdminLayout = (props: AdminLayoutProps) => {
                 />
               ),
               position: "left",
-            },
-            {
-              element: <OmnibarButton />,
-              position: "center",
             },
             {
               element: <UserButton />,

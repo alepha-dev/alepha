@@ -22,7 +22,7 @@ Core UI components based on Mantine UI v8.
 - AlertDialog, ConfirmDialog, PromptDialog
 - Form controls: Control, ControlArray, ControlDate, ControlNumber, ControlObject, ControlSelect, ControlQueryBuilder
 - TypeForm for automatic form generation from TypeBox schemas
-- AdminShell layout component
+- DashboardShell layout component
 - AppBar with configurable elements
 - Sidebar navigation with sections and menu items
 - Omnibar for command palette / search

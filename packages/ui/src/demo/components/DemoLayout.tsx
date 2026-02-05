@@ -1,4 +1,8 @@
-import { ActionButton, AdminShell, AlephaMantineProvider } from "@alepha/ui";
+import {
+  ActionButton,
+  AlephaMantineProvider,
+  DashboardShell,
+} from "@alepha/ui";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { useRouter } from "alepha/react/router";
 import type { DemoRouter } from "../DemoRouter.ts";
@@ -7,7 +11,7 @@ const DemoLayout = () => {
   const router = useRouter<DemoRouter>();
   return (
     <AlephaMantineProvider>
-      <AdminShell
+      <DashboardShell
         appShellMainProps={{ h: "100%" }}
         appBarProps={{
           items: [

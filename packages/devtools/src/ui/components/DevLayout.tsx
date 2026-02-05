@@ -1,4 +1,4 @@
-import { AdminShell, DarkModeButton, OmnibarButton, ui } from "@alepha/ui";
+import { DarkModeButton, DashboardShell, OmnibarButton, ui } from "@alepha/ui";
 import { Flex } from "@mantine/core";
 import {
   IconApi,
@@ -15,7 +15,7 @@ import {
 
 export const DevLayout = () => {
   return (
-    <AdminShell
+    <DashboardShell
       appShellHeaderProps={{
         bg: ui.colors.background,
       }}

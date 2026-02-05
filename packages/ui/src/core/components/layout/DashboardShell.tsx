@@ -27,7 +27,7 @@ import {
   type SidebarProps,
 } from "./Sidebar.tsx";
 
-export interface AdminShellProps {
+export interface DashboardShellProps {
   appShellProps?: Partial<AppShellProps>;
   appShellMainProps?: Partial<AppShellMainProps>;
   appShellHeaderProps?: Partial<AppShellHeaderProps>;
@@ -59,7 +59,7 @@ export interface AdminShellProps {
   container?: boolean | ContainerProps;
 }
 
-const AdminShell = (props: AdminShellProps) => {
+const DashboardShell = (props: DashboardShellProps) => {
   const router = useRouter();
   const [sidebar, setSidebar] = useStore(alephaSidebarAtom);
   const { opened, collapsed } = sidebar;
@@ -266,9 +266,9 @@ const AdminShell = (props: AdminShellProps) => {
 
   return (
     <AppShell
+      bg={ui.colors.background}
       w={"100%"}
       flex={1}
-      padding="md"
       header={hasAppBar ? { height: 60 } : undefined}
       navbar={
         hasSidebar
@@ -286,13 +286,12 @@ const AdminShell = (props: AdminShellProps) => {
       footer={props.footer ? { height: 24 } : undefined}
       {...props.appShellProps}
     >
-      <AppShell.Header bg={ui.colors.surface} {...props.appShellHeaderProps}>
+      <AppShell.Header {...props.appShellHeaderProps}>
         {props.header ?? <AppBar items={defaultAppBarItems} {...appBarProps} />}
       </AppShell.Header>
 
       {hasSidebar && (
         <AppShell.Navbar
-          bg={ui.colors.surface}
           className="alepha-sidebar-navbar"
           data-resizing={isResizing}
           data-hover-expanded={isExpandedByHover}
@@ -335,13 +334,6 @@ const AdminShell = (props: AdminShellProps) => {
       )}
 
       <AppShell.Main
-        pl={sidebarWidth}
-        pt={headerHeight}
-        pb={footerHeight}
-        pr={0}
-        display={"flex"}
-        flex={1}
-        style={{ flexDirection: "column" }}
         className="alepha-sidebar-main"
         data-resizing={isResizing}
         {...props.appShellMainProps}
@@ -370,4 +362,4 @@ const AdminShell = (props: AdminShellProps) => {
   );
 };
 
-export default AdminShell;
+export default DashboardShell;

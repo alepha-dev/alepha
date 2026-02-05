@@ -72,6 +72,7 @@ const AlephaMantineProvider = (props: AlephaMantineProviderProps) => {
         {...props.mantine}
         defaultColorScheme={defaultColorScheme}
         theme={{
+          cursorType: "pointer",
           // Spread all theme properties from the selected theme
           ...theme,
           // User overrides take precedence

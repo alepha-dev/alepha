@@ -1,9 +1,9 @@
-import { AdminShell, AlephaMantineProvider } from "@alepha/ui";
+import { AlephaMantineProvider, DashboardShell } from "@alepha/ui";
 
 export const Layout = () => {
   return (
     <AlephaMantineProvider>
-      <AdminShell
+      <DashboardShell
         appBarProps={{
           items: [
             { position: "center", type: "search" },
