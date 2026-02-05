@@ -8,12 +8,15 @@ import {
   type ParameterStatus,
   parameters,
 } from "../entities/parameters.ts";
-import type { ConfigPrimitive } from "../primitives/$config.ts";
+import type { ParameterPrimitive } from "../primitives/$parameter.ts";
+import type { ParameterTreeNode } from "../schemas/parameterTreeNodeSchema.ts";
+
+export type { ParameterTreeNode };
 
 /**
- * Payload for config sync events across instances.
+ * Payload for parameter sync events across instances.
  */
-export interface ConfigSyncPayload {
+export interface ParameterSyncPayload {
   name: string;
   version: number;
   content: unknown;
@@ -22,16 +25,16 @@ export interface ConfigSyncPayload {
 }
 
 /**
- * ConfigStore manages versioned configuration persistence and synchronization.
+ * ParameterStore manages versioned parameter persistence and synchronization.
  *
  * Features:
- * - Stores all config versions in PostgreSQL
+ * - Stores all parameter versions in PostgreSQL
  * - Manages status transitions (future → next → current → expired)
  * - Provides cross-instance sync via topic
  * - Supports schema migrations via hash comparison
- * - Auto-activates scheduled configs
+ * - Auto-activates scheduled parameters
  */
-export class ConfigStore {
+export class ParameterStore {
   protected readonly log = $logger();
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly repo = $repository(parameters);
@@ -42,15 +45,15 @@ export class ConfigStore {
   protected readonly instanceId = crypto.randomUUID();
 
   /**
-   * In-memory cache of registered configs.
+   * In-memory cache of registered parameters.
    */
-  protected readonly configs = new Map<string, ConfigPrimitive<any>>();
+  protected readonly parameters = new Map<string, ParameterPrimitive<any>>();
 
   /**
    * Topic for cross-instance synchronization.
    */
   public readonly syncTopic = $topic({
-    name: "config:sync",
+    name: "parameter:sync",
     schema: {
       payload: t.object({
         name: t.text(),
@@ -61,19 +64,19 @@ export class ConfigStore {
       }),
     },
     handler: async ({ payload }) => {
-      await this.handleSyncMessage(payload as ConfigSyncPayload);
+      await this.handleSyncMessage(payload as ParameterSyncPayload);
     },
   });
 
   /**
-   * Register a config primitive with the store.
+   * Register a parameter primitive with the store.
    */
-  public register(config: ConfigPrimitive<any>): void {
-    this.configs.set(config.name, config);
+  public register(param: ParameterPrimitive<any>): void {
+    this.parameters.set(param.name, param);
   }
 
   /**
-   * Load the current config value from database.
+   * Load the current parameter value from database.
    * Returns the current or next version if no current exists.
    */
   public async load<T extends TObject>(
@@ -103,10 +106,10 @@ export class ConfigStore {
   }
 
   /**
-   * Save a new config version.
+   * Save a new parameter version.
    *
-   * @param name - Config name (e.g., "app.features.flags")
-   * @param content - New config content
+   * @param name - Parameter name (e.g., "app.features.flags")
+   * @param content - New parameter content
    * @param schemaHash - Hash of the schema for migration detection
    * @param options - Additional options (activation date, creator info, etc.)
    */
@@ -114,13 +117,13 @@ export class ConfigStore {
     name: string,
     content: Static<T>,
     schemaHash: string,
-    options: SaveConfigOptions = {},
+    options: SaveParameterOptions = {},
   ): Promise<Parameter> {
     const now = this.dateTimeProvider.now().toDate();
     const activationDate = options.activationDate ?? now;
     const isImmediate = activationDate <= now;
 
-    // Get current version number for this config
+    // Get current version number for this parameter
     const versions = await this.repo.findMany({
       where: { name },
       orderBy: { column: "version", direction: "desc" },
@@ -136,14 +139,17 @@ export class ConfigStore {
     }
 
     // Get previous content for rollback reference
-    const currentConfig = versions.find((v) => v.status === "current");
-    const previousContent = currentConfig?.content;
+    const currentParam = versions.find((v) => v.status === "current");
+    const previousContent = currentParam?.content;
 
     // Check for schema migration
     let migrationLog: string | undefined;
     if (latestVersion && latestVersion.schemaHash !== schemaHash) {
       migrationLog = `Schema changed from ${latestVersion.schemaHash} to ${schemaHash} at version ${newVersion}`;
-      this.log.info("Config schema migration detected", { name, migrationLog });
+      this.log.info("Parameter schema migration detected", {
+        name,
+        migrationLog,
+      });
     }
 
     // If immediate activation, expire current and transition next to current
@@ -173,13 +179,13 @@ export class ConfigStore {
     // Publish sync event
     await this.publishSync(name, newVersion, content, status);
 
-    this.log.info("Config saved", { name, version: newVersion, status });
+    this.log.info("Parameter saved", { name, version: newVersion, status });
 
     return inserted;
   }
 
   /**
-   * Get all versions of a config.
+   * Get all versions of a parameter.
    */
   public async getHistory(name: string): Promise<Parameter[]> {
     return this.repo.findMany({
@@ -189,7 +195,7 @@ export class ConfigStore {
   }
 
   /**
-   * Get a specific version of a config.
+   * Get a specific version of a parameter.
    */
   public async getVersion(
     name: string,
@@ -207,12 +213,12 @@ export class ConfigStore {
   public async rollback(
     name: string,
     targetVersion: number,
-    options: SaveConfigOptions = {},
+    options: SaveParameterOptions = {},
   ): Promise<Parameter> {
     const target = await this.getVersion(name, targetVersion);
 
     if (!target) {
-      throw new Error(`Config version not found: ${name}@${targetVersion}`);
+      throw new Error(`Parameter version not found: ${name}@${targetVersion}`);
     }
 
     return this.save(
@@ -228,7 +234,7 @@ export class ConfigStore {
   }
 
   /**
-   * Get all configs by status.
+   * Get all parameters by status.
    */
   public async getByStatus(status: ParameterStatus): Promise<Parameter[]> {
     return this.repo.findMany({
@@ -238,24 +244,24 @@ export class ConfigStore {
   }
 
   /**
-   * Get current config value with fallback to default from registered primitive.
+   * Get current parameter value with fallback to default from registered primitive.
    * Returns the in-memory current value which may be the default if never saved.
    */
   public getCurrentValue(
     name: string,
   ): { content: unknown; isDefault: boolean } | null {
-    const config = this.configs.get(name);
-    if (!config) {
+    const param = this.parameters.get(name);
+    if (!param) {
       return null;
     }
     return {
-      content: config.current,
+      content: param.current,
       isDefault: true, // Will be updated after checking history
     };
   }
 
   /**
-   * Get config info including current value with default fallback.
+   * Get parameter info including current value with default fallback.
    */
   public async getCurrentWithDefault(name: string): Promise<{
     current: Parameter | null;
@@ -269,18 +275,18 @@ export class ConfigStore {
     const next = history.find((v) => v.status === "next") ?? null;
 
     // Get default and current from registered primitive
-    const config = this.configs.get(name);
-    const defaultValue = config?.options.default ?? null;
-    const currentValue = config?.current ?? null;
-    const schema = config?.schema ?? null;
+    const param = this.parameters.get(name);
+    const defaultValue = param?.options.default ?? null;
+    const currentValue = param?.current ?? null;
+    const schema = param?.schema ?? null;
 
     return { current, next, defaultValue, currentValue, schema };
   }
 
   /**
-   * Get all unique config names (for tree view).
+   * Get all unique parameter names (for tree view).
    */
-  public async getConfigNames(): Promise<string[]> {
+  public async getParameterNames(): Promise<string[]> {
     const results = await this.repo.findMany({
       orderBy: { column: "name", direction: "asc" },
     });
@@ -294,44 +300,44 @@ export class ConfigStore {
   }
 
   /**
-   * Build a tree structure from config names for UI.
-   * Includes both database configs and registered (but not yet saved) configs.
+   * Build a tree structure from parameter names for UI.
+   * Includes both database parameters and registered (but not yet saved) parameters.
    */
-  public async getConfigTree(): Promise<ConfigTreeNode[]> {
-    const dbNames = await this.getConfigNames();
-    const registeredNames = Array.from(this.configs.keys());
+  public async getParameterTree(): Promise<ParameterTreeNode[]> {
+    const dbNames = await this.getParameterNames();
+    const registeredNames = Array.from(this.parameters.keys());
     const allNames = [...new Set([...dbNames, ...registeredNames])].sort();
     return this.buildTree(allNames);
   }
 
   /**
-   * Check and activate scheduled configs that are due.
+   * Check and activate scheduled parameters that are due.
    * Should be called periodically (e.g., via scheduler).
    */
-  public async activateScheduledConfigs(): Promise<void> {
+  public async activateScheduledParameters(): Promise<void> {
     const now = this.dateTimeProvider.now().toDate();
 
-    // Find all NEXT configs that should be activated
-    const dueConfigs = await this.repo.findMany({
+    // Find all NEXT parameters that should be activated
+    const dueParams = await this.repo.findMany({
       where: { status: "next" },
     });
 
-    for (const config of dueConfigs) {
-      if (new Date(config.activationDate) <= now) {
-        await this.transitionStatuses(config.name, now);
-        await this.recalculateStatuses(config.name);
+    for (const param of dueParams) {
+      if (new Date(param.activationDate) <= now) {
+        await this.transitionStatuses(param.name, now);
+        await this.recalculateStatuses(param.name);
 
-        // Notify registered config primitives
-        const primitive = this.configs.get(config.name);
+        // Notify registered parameter primitives
+        const primitive = this.parameters.get(param.name);
         if (primitive) {
           await primitive.reload();
         }
 
         // Publish sync
         await this.publishSync(
-          config.name,
-          config.version,
-          config.content,
+          param.name,
+          param.version,
+          param.content,
           "current",
         );
       }
@@ -339,16 +345,16 @@ export class ConfigStore {
   }
 
   /**
-   * Transition config statuses when a new current is activated.
+   * Transition parameter statuses when a new current is activated.
    */
   protected async transitionStatuses(name: string, now: Date): Promise<void> {
-    // Find current configs and expire them
-    const currentConfigs = await this.repo.findMany({
+    // Find current parameters and expire them
+    const currentParams = await this.repo.findMany({
       where: { name, status: "current" },
     });
 
-    for (const config of currentConfigs) {
-      await this.repo.updateById(config.id, {
+    for (const param of currentParams) {
+      await this.repo.updateById(param.id, {
         status: "expired",
         expiredAt: now.toISOString(),
       });
@@ -425,28 +431,30 @@ export class ConfigStore {
   /**
    * Handle incoming sync message from other instances.
    */
-  protected async handleSyncMessage(payload: ConfigSyncPayload): Promise<void> {
+  protected async handleSyncMessage(
+    payload: ParameterSyncPayload,
+  ): Promise<void> {
     // Ignore messages from self
     if (payload.instanceId === this.instanceId) {
       return;
     }
 
-    const config = this.configs.get(payload.name);
-    if (!config) {
+    const param = this.parameters.get(payload.name);
+    if (!param) {
       return;
     }
 
-    // Update config with skipEvents to avoid infinite loop
+    // Update parameter with skipEvents to avoid infinite loop
     if (payload.status === "current") {
-      await config.updateFromSync(payload.content);
+      await param.updateFromSync(payload.content);
     }
   }
 
   /**
    * Build tree structure from dot-notation names.
    */
-  protected buildTree(names: string[]): ConfigTreeNode[] {
-    const root: ConfigTreeNode[] = [];
+  protected buildTree(names: string[]): ParameterTreeNode[] {
+    const root: ParameterTreeNode[] = [];
 
     for (const name of names) {
       const parts = name.split(".");
@@ -481,17 +489,10 @@ export class ConfigStore {
   }
 }
 
-export interface SaveConfigOptions {
+export interface SaveParameterOptions {
   activationDate?: Date;
   changeDescription?: string;
   tags?: string[];
   creatorId?: string;
   creatorName?: string;
-}
-
-export interface ConfigTreeNode {
-  name: string;
-  path: string;
-  isLeaf: boolean;
-  children: ConfigTreeNode[];
 }

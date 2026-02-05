@@ -14,10 +14,10 @@ npm install alepha
 |-----------|-------|---------|
 | 3 - stable | 0.9.0 | node, bun, workerd|
 
-Application configuration management.
+Application parameter management.
 
 **Features:**
-- Versioned configuration definitions
+- Versioned parameter definitions
 - Scheduled activation (FUTURE, NEXT, CURRENT, EXPIRED)
 - Schema validation with migration detection
 - Cross-instance sync via pub/sub

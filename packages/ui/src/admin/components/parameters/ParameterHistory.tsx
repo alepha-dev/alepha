@@ -1,7 +1,7 @@
 import { ActionButton, Flex, Text } from "@alepha/ui";
 import {
   Badge,
-  Card,
+  Box,
   Group,
   Loader,
   ScrollArea,
@@ -21,7 +21,6 @@ export interface ParameterHistoryProps {
 }
 
 const ParameterHistory = ({
-  selectedConfig,
   history,
   loading,
   onRollback,
@@ -29,16 +28,6 @@ const ParameterHistory = ({
   const { l } = useI18n();
 
   const renderContent = () => {
-    if (!selectedConfig) {
-      return (
-        <Flex flex={1} justify="center" align="center">
-          <Text c="dimmed" size="xs">
-            Select a parameter
-          </Text>
-        </Flex>
-      );
-    }
-
     if (loading) {
       return (
         <Flex flex={1} justify="center" align="center">
@@ -51,7 +40,7 @@ const ParameterHistory = ({
       return (
         <Flex flex={1} justify="center" align="center">
           <Text c="dimmed" size="xs">
-            No history
+            Empty
           </Text>
         </Flex>
       );
@@ -124,22 +113,28 @@ const ParameterHistory = ({
   };
 
   return (
-    <Card
-      withBorder
-      w={300}
+    <Box
+      w={160}
       h="100%"
-      style={{ flexShrink: 0, overflow: "hidden" }}
+      p="xs"
+      style={{
+        flexShrink: 0,
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        borderLeft: "1px solid var(--mantine-color-default-border)",
+      }}
     >
-      <Stack gap="xs" h="100%">
+      <Stack gap="xs" h="100%" style={{ minHeight: 0 }}>
         <Group gap="xs">
           <IconHistory size={16} color="var(--mantine-color-dimmed)" />
           <Text size="sm" fw={500}>
-            Version History
+            History
           </Text>
         </Group>
         {renderContent()}
       </Stack>
-    </Card>
+    </Box>
   );
 };
 

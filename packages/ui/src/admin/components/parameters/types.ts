@@ -1,10 +1,10 @@
 import type { Parameter } from "alepha/api/parameters";
 
-export interface ConfigValue {
+export interface ParameterValue {
   current?: Parameter;
   next?: Parameter;
   /**
-   * Default value from the registered $config primitive.
+   * Default value from the registered $parameter primitive.
    */
   defaultValue?: unknown;
   /**
@@ -12,7 +12,7 @@ export interface ConfigValue {
    */
   currentValue?: unknown;
   /**
-   * TypeBox/JSON schema for the configuration (as JSON from API).
+   * TypeBox/JSON schema for the parameter (as JSON from API).
    */
   schema?: Record<string, unknown>;
 }

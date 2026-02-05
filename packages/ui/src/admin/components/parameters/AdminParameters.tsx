@@ -1,61 +1,115 @@
-import { Flex, Text } from "@alepha/ui";
-import { Loader, Stack } from "@mantine/core";
+import { Text, useToast } from "@alepha/ui";
+import { Card, Flex, Stack } from "@mantine/core";
 import { IconSettings } from "@tabler/icons-react";
 import type {
-  AdminConfigController,
-  ConfigTreeNode,
+  AdminParameterController,
   Parameter,
+  ParameterTreeNode,
 } from "alepha/api/parameters";
 import { useClient } from "alepha/react";
 import { useCallback, useEffect, useState } from "react";
 import ParameterDetails from "./ParameterDetails.tsx";
+import ParameterEmptyState from "./ParameterEmptyState.tsx";
 import ParameterHistory from "./ParameterHistory.tsx";
 import ParameterTree from "./ParameterTree.tsx";
-import type { ConfigValue } from "./types.ts";
+import type { ParameterValue } from "./types.ts";
 
-const AdminParameters = () => {
-  const client = useClient<AdminConfigController>();
+export interface AdminParametersProps {
+  treeData: ParameterTreeNode[];
+}
+
+const AdminParameters = ({
+  treeData: initialTreeData,
+}: AdminParametersProps) => {
+  const client = useClient<AdminParameterController>();
+  const toast = useToast();
 
   // State
-  const [treeData, setTreeData] = useState<ConfigTreeNode[]>([]);
+  const [treeData, setTreeData] =
+    useState<ParameterTreeNode[]>(initialTreeData);
   const [selectedConfig, setSelectedConfig] = useState<string | null>(null);
-  const [configValue, setConfigValue] = useState<ConfigValue | null>(null);
+  const [configValue, setConfigValue] = useState<ParameterValue | null>(null);
   const [history, setHistory] = useState<Parameter[]>([]);
-  const [loading, setLoading] = useState(true);
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Load tree data
-  const loadTree = useCallback(async () => {
+  // Refresh tree data
+  const handleRefresh = useCallback(async () => {
     try {
-      const tree = await client.getConfigTree({});
-      setTreeData(tree as ConfigTreeNode[]);
-    } finally {
-      setLoading(false);
+      const tree = await client.getParameterTree({});
+      setTreeData(tree as ParameterTreeNode[]);
+    } catch (error) {
+      toast.danger({
+        title: "Failed to refresh parameters",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
     }
-  }, []);
+  }, [client, toast]);
 
   // Load config value and history when selection changes
-  const loadConfigDetails = useCallback(async (name: string) => {
-    setLoadingConfig(true);
-    setLoadingHistory(true);
+  const loadConfigDetails = useCallback(
+    async (name: string) => {
+      setLoadingConfig(true);
+      setLoadingHistory(true);
 
-    try {
-      const [current] = await Promise.all([
-        client.getCurrent({ params: { name } }),
-      ]);
-      setConfigValue(current);
-      setHistory([]);
-    } finally {
-      setLoadingConfig(false);
-      setLoadingHistory(false);
-    }
-  }, []);
+      try {
+        const [currentResponse, historyResponse] = await Promise.all([
+          client.getCurrent({ params: { name } }),
+          client.getHistory({ params: { name } }),
+        ]);
+        setConfigValue(currentResponse);
+        setHistory(historyResponse.versions);
+      } catch (error) {
+        toast.danger({
+          title: "Failed to load configuration",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+        setConfigValue(null);
+        setHistory([]);
+      } finally {
+        setLoadingConfig(false);
+        setLoadingHistory(false);
+      }
+    },
+    [client, toast],
+  );
 
-  // Initial load
-  useEffect(() => {
-    loadTree();
-  }, [loadTree]);
+  // Handle save
+  const handleSave = useCallback(
+    async (values: Record<string, unknown>) => {
+      if (!selectedConfig || !configValue) return;
+
+      setSaving(true);
+      try {
+        await client.createVersion({
+          params: { name: selectedConfig },
+          body: {
+            content: values,
+            schemaHash: "", // Schema hash is computed server-side when empty
+            changeDescription: "Updated via admin UI",
+          },
+        });
+
+        toast.success({
+          title: "Configuration saved",
+          message: `${selectedConfig} has been updated`,
+        });
+
+        // Reload details
+        await loadConfigDetails(selectedConfig);
+      } catch (error) {
+        toast.danger({
+          title: "Failed to save configuration",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+        throw error;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [client, selectedConfig, configValue, loadConfigDetails, toast],
+  );
 
   // Load details when selection changes
   useEffect(() => {
@@ -68,25 +122,32 @@ const AdminParameters = () => {
   }, [selectedConfig, loadConfigDetails]);
 
   // Handle rollback
-  const handleRollback = async (version: number) => {
-    if (!selectedConfig) return;
+  const handleRollback = useCallback(
+    async (version: number) => {
+      if (!selectedConfig) return;
 
-    await client.rollback({
-      params: { name: selectedConfig },
-      body: { targetVersion: version },
-    });
+      try {
+        await client.rollback({
+          params: { name: selectedConfig },
+          body: { targetVersion: version },
+        });
 
-    // Reload details
-    await loadConfigDetails(selectedConfig);
-  };
+        toast.success({
+          title: "Rollback successful",
+          message: `${selectedConfig} rolled back to version ${version}`,
+        });
 
-  if (loading) {
-    return (
-      <Flex flex={1} justify="center" align="center">
-        <Loader />
-      </Flex>
-    );
-  }
+        // Reload details
+        await loadConfigDetails(selectedConfig);
+      } catch (error) {
+        toast.danger({
+          title: "Rollback failed",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    },
+    [client, selectedConfig, loadConfigDetails, toast],
+  );
 
   // Empty state when no configs exist
   if (treeData.length === 0) {
@@ -100,7 +161,7 @@ const AdminParameters = () => {
           />
           <Text c="dimmed">No Parameters Found</Text>
           <Text size="xs" c="dimmed" ta="center" maw={400}>
-            Define parameters using the $config primitive to manage dynamic
+            Define parameters using the $parameter primitive to manage dynamic
             application settings. Parameters will appear here once created.
           </Text>
         </Stack>
@@ -109,26 +170,43 @@ const AdminParameters = () => {
   }
 
   return (
-    <Flex flex={1} gap={"xs"} h="100%">
-      <ParameterTree
-        treeData={treeData}
-        selectedConfig={selectedConfig}
-        onSelect={setSelectedConfig}
-        onRefresh={loadTree}
-      />
+    <Flex flex={1} p="md">
+      <Card
+        withBorder
+        p={0}
+        w={"100%"}
+        style={{
+          flexDirection: "row",
+        }}
+      >
+        <ParameterTree
+          treeData={treeData}
+          selectedConfig={selectedConfig}
+          onSelect={setSelectedConfig}
+          onRefresh={handleRefresh}
+        />
 
-      <ParameterDetails
-        selectedConfig={selectedConfig}
-        configValue={configValue}
-        loading={loadingConfig}
-      />
+        {selectedConfig ? (
+          <>
+            <ParameterDetails
+              selectedConfig={selectedConfig}
+              configValue={configValue}
+              loading={loadingConfig}
+              saving={saving}
+              onSave={handleSave}
+            />
 
-      <ParameterHistory
-        selectedConfig={selectedConfig}
-        history={history}
-        loading={loadingHistory}
-        onRollback={handleRollback}
-      />
+            <ParameterHistory
+              selectedConfig={selectedConfig}
+              history={history}
+              loading={loadingHistory}
+              onRollback={handleRollback}
+            />
+          </>
+        ) : (
+          <ParameterEmptyState />
+        )}
+      </Card>
     </Flex>
   );
 };

@@ -1,8 +1,8 @@
 import { type Static, t } from "alepha";
 import { $entity, db } from "alepha/orm";
-import { parameterStatusSchema } from "../schemas/index.ts";
+import { parameterStatusSchema } from "../schemas/parameterStatusSchema.ts";
 
-export type { ParameterStatus } from "../schemas/index.ts";
+export type { ParameterStatus } from "../schemas/parameterStatusSchema.ts";
 
 /**
  * Configuration parameter entity for versioned configuration management.

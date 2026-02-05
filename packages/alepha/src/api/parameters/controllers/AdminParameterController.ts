@@ -2,109 +2,108 @@ import { $inject, t } from "alepha";
 import { $action } from "alepha/server";
 import type { ParameterStatus } from "../entities/parameters.ts";
 import {
-  activateConfigBodySchema,
+  activateParameterBodySchema,
   checkScheduledResponseSchema,
-  configCurrentResponseSchema,
-  configHistoryResponseSchema,
-  configNameParamSchema,
-  configNamesResponseSchema,
-  configsByStatusResponseSchema,
-  configTreeNodeSchema,
-  configVersionParamSchema,
-  configVersionResponseSchema,
-  createConfigVersionBodySchema,
+  createParameterVersionBodySchema,
+  parameterCurrentResponseSchema,
+  parameterHistoryResponseSchema,
+  parameterNameParamSchema,
+  parameterNamesResponseSchema,
   parameterResponseSchema,
-  rollbackConfigBodySchema,
+  parametersByStatusResponseSchema,
+  parameterTreeNodeSchema,
+  parameterVersionParamSchema,
+  parameterVersionResponseSchema,
+  rollbackParameterBodySchema,
   statusParamSchema,
 } from "../schemas/index.ts";
-import { ConfigStore } from "../services/ConfigStore.ts";
+import { ParameterStore } from "../services/ParameterStore.ts";
 
 /**
- * REST API controller for versioned configuration management.
+ * REST API controller for versioned parameter management.
  *
  * Provides endpoints for:
- * - Listing all configurations (tree view support)
- * - Getting configuration history (all versions)
- * - Getting current/next configuration values
- * - Creating new configuration versions (immediate or scheduled)
+ * - Listing all parameters (tree view support)
+ * - Getting parameter history (all versions)
+ * - Getting current/next parameter values
+ * - Creating new parameter versions (immediate or scheduled)
  * - Rolling back to previous versions
  * - Activating scheduled versions immediately
  */
-export class AdminConfigController {
-  protected readonly url = "/configs";
-  protected readonly group = "admin:configs";
-  protected readonly store = $inject(ConfigStore);
+export class AdminParameterController {
+  protected readonly url = "/parameters";
+  protected readonly group = "admin:parameters";
+  protected readonly store = $inject(ParameterStore);
 
   /**
-   * Get tree structure of all configuration names.
+   * Get tree structure of all parameter names.
    * Useful for admin UI navigation.
    */
-  getConfigTree = $action({
+  getParameterTree = $action({
     group: this.group,
     secure: true,
-    description:
-      "Get tree structure of all configuration names for navigation.",
-    path: "/configs/tree",
+    description: "Get tree structure of all parameter names for navigation.",
+    path: "/parameters/tree",
     method: "GET",
     schema: {
-      response: t.array(configTreeNodeSchema),
+      response: t.array(parameterTreeNodeSchema),
     },
     handler: async () => {
-      return this.store.getConfigTree();
+      return this.store.getParameterTree();
     },
   });
 
   /**
-   * List all unique configuration names.
+   * List all unique parameter names.
    */
-  listConfigNames = $action({
+  listParameterNames = $action({
     group: this.group,
     secure: true,
-    description: "List all unique configuration names.",
-    path: "/configs",
+    description: "List all unique parameter names.",
+    path: "/parameters",
     method: "GET",
     schema: {
-      response: configNamesResponseSchema,
+      response: parameterNamesResponseSchema,
     },
     handler: async () => {
-      const names = await this.store.getConfigNames();
+      const names = await this.store.getParameterNames();
       return { names };
     },
   });
 
   /**
-   * Get configurations by status.
+   * Get parameters by status.
    */
   getByStatus = $action({
     group: this.group,
     secure: true,
-    description: "Get all configurations with a specific status.",
-    path: "/configs/status/:status",
+    description: "Get all parameters with a specific status.",
+    path: "/parameters/status/:status",
     method: "GET",
     schema: {
       params: statusParamSchema,
-      response: configsByStatusResponseSchema,
+      response: parametersByStatusResponseSchema,
     },
     handler: async ({ params }) => {
-      const configs = await this.store.getByStatus(
+      const parameters = await this.store.getByStatus(
         params.status as ParameterStatus,
       );
-      return { configs };
+      return { parameters };
     },
   });
 
   /**
-   * Get version history for a specific configuration.
+   * Get version history for a specific parameter.
    */
   getHistory = $action({
     group: this.group,
     secure: true,
-    description: "Get all versions of a specific configuration.",
-    path: "/configs/:name/history",
+    description: "Get all versions of a specific parameter.",
+    path: "/parameters/:name/history",
     method: "GET",
     schema: {
-      params: configNameParamSchema,
-      response: configHistoryResponseSchema,
+      params: parameterNameParamSchema,
+      response: parameterHistoryResponseSchema,
     },
     handler: async ({ params }) => {
       const versions = await this.store.getHistory(params.name);
@@ -113,19 +112,19 @@ export class AdminConfigController {
   });
 
   /**
-   * Get current and next values for a configuration.
+   * Get current and next values for a parameter.
    * Includes defaultValue and currentValue from the registered primitive
    * even if no versions exist in the database yet.
    */
   getCurrent = $action({
     group: this.group,
     secure: true,
-    description: "Get current and next scheduled values for a configuration.",
-    path: "/configs/:name",
+    description: "Get current and next scheduled values for a parameter.",
+    path: "/parameters/:name",
     method: "GET",
     schema: {
-      params: configNameParamSchema,
-      response: configCurrentResponseSchema,
+      params: parameterNameParamSchema,
+      response: parameterCurrentResponseSchema,
     },
     handler: async ({ params }) => {
       const result = await this.store.getCurrentWithDefault(params.name);
@@ -140,37 +139,40 @@ export class AdminConfigController {
   });
 
   /**
-   * Get a specific version of a configuration.
+   * Get a specific version of a parameter.
    */
   getVersion = $action({
     group: this.group,
     secure: true,
-    description: "Get a specific version of a configuration.",
-    path: "/configs/:name/versions/:version",
+    description: "Get a specific version of a parameter.",
+    path: "/parameters/:name/versions/:version",
     method: "GET",
     schema: {
-      params: configVersionParamSchema,
-      response: configVersionResponseSchema,
+      params: parameterVersionParamSchema,
+      response: parameterVersionResponseSchema,
     },
     handler: async ({ params }) => {
-      const config = await this.store.getVersion(params.name, params.version);
-      return { config: config ?? undefined };
+      const parameter = await this.store.getVersion(
+        params.name,
+        params.version,
+      );
+      return { parameter: parameter ?? undefined };
     },
   });
 
   /**
-   * Create a new configuration version.
+   * Create a new parameter version.
    */
   createVersion = $action({
     group: this.group,
     secure: true,
     description:
-      "Create a new version of a configuration (immediate or scheduled).",
-    path: "/configs/:name",
+      "Create a new version of a parameter (immediate or scheduled).",
+    path: "/parameters/:name",
     method: "POST",
     schema: {
-      params: configNameParamSchema,
-      body: createConfigVersionBodySchema,
+      params: parameterNameParamSchema,
+      body: createParameterVersionBodySchema,
       response: parameterResponseSchema,
     },
     handler: async ({ params, body }) => {
@@ -193,12 +195,12 @@ export class AdminConfigController {
     group: this.group,
     secure: true,
     description:
-      "Rollback a configuration to a previous version (creates new version with old content).",
-    path: "/configs/:name/rollback",
+      "Rollback a parameter to a previous version (creates new version with old content).",
+    path: "/parameters/:name/rollback",
     method: "POST",
     schema: {
-      params: configNameParamSchema,
-      body: rollbackConfigBodySchema,
+      params: parameterNameParamSchema,
+      body: rollbackParameterBodySchema,
       response: parameterResponseSchema,
     },
     handler: async ({ params, body }) => {
@@ -216,19 +218,19 @@ export class AdminConfigController {
   activateNow = $action({
     group: this.group,
     secure: true,
-    description: "Activate a future/next configuration version immediately.",
-    path: "/configs/:name/activate",
+    description: "Activate a future/next parameter version immediately.",
+    path: "/parameters/:name/activate",
     method: "POST",
     schema: {
-      params: configNameParamSchema,
-      body: activateConfigBodySchema,
+      params: parameterNameParamSchema,
+      body: activateParameterBodySchema,
       response: parameterResponseSchema,
     },
     handler: async ({ params, body }) => {
       const target = await this.store.getVersion(params.name, body.version);
       if (!target) {
         throw new Error(
-          `Version ${body.version} not found for config ${params.name}`,
+          `Version ${body.version} not found for parameter ${params.name}`,
         );
       }
 
@@ -252,22 +254,22 @@ export class AdminConfigController {
   });
 
   /**
-   * Trigger activation check for all scheduled configs.
+   * Trigger activation check for all scheduled parameters.
    * Normally called by a scheduler, but exposed for manual triggering.
    */
   checkScheduled = $action({
     group: this.group,
     secure: true,
     description:
-      "Manually trigger activation check for all scheduled configurations.",
-    path: "/configs/activate-scheduled",
+      "Manually trigger activation check for all scheduled parameters.",
+    path: "/parameters/activate-scheduled",
     method: "POST",
     schema: {
       response: checkScheduledResponseSchema,
     },
     handler: async () => {
-      await this.store.activateScheduledConfigs();
-      return { message: "Scheduled configuration activation check completed" };
+      await this.store.activateScheduledParameters();
+      return { message: "Scheduled parameter activation check completed" };
     },
   });
 }

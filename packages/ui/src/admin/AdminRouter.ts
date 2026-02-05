@@ -1,4 +1,4 @@
-import type { AdminShellProps, SidebarNode } from "@alepha/ui";
+import type { DashboardShellProps, SidebarNode } from "@alepha/ui";
 import { AuthRouter } from "@alepha/ui/auth";
 import {
   IconBell,
@@ -18,7 +18,7 @@ import type { FileController } from "alepha/api/files";
 import type { AdminJobController } from "alepha/api/jobs";
 import type { AdminApiKeyController } from "alepha/api/keys";
 import type { AdminNotificationController } from "alepha/api/notifications";
-import type { AdminConfigController } from "alepha/api/parameters";
+import type { AdminParameterController } from "alepha/api/parameters";
 import type {
   AdminSessionController,
   AdminUserController,
@@ -35,12 +35,12 @@ export class AdminRouter {
   protected readonly sessionCtrl = $client<AdminSessionController>();
   protected readonly notificationCtrl = $client<AdminNotificationController>();
   protected readonly fileCtrl = $client<FileController>();
-  protected readonly configCtrl = $client<AdminConfigController>();
+  protected readonly paramCtrl = $client<AdminParameterController>();
   protected readonly auditCtrl = $client<AdminAuditController>();
   protected readonly jobCtrl = $client<AdminJobController>();
   protected readonly apiKeyCtrl = $client<AdminApiKeyController>();
 
-  public configFn?: (adminRouter: AdminRouter) => AdminShellProps = () => {
+  public configFn?: (adminRouter: AdminRouter) => DashboardShellProps = () => {
     return {
       sidebarResizable: true,
       sidebarProps: {
@@ -102,7 +102,7 @@ export class AdminRouter {
           },
           {
             ...this.router.node(this.adminParameters.name),
-            can: () => this.configCtrl.getConfigTree.can(),
+            can: () => this.paramCtrl.getParameterTree.can(),
           },
         ],
       },
@@ -112,7 +112,7 @@ export class AdminRouter {
     ];
   }
 
-  protected adminShellProps(): AdminShellProps {
+  protected adminShellProps(): DashboardShellProps {
     if (this.configFn) {
       return this.configFn(this);
     }
@@ -276,9 +276,13 @@ export class AdminRouter {
     parent: this.adminLayout,
     path: "/parameters",
     label: "Parameters",
-    description: "View and manage application configuration parameters.",
+    description: "View and manage application parameters.",
     lazy: () => import("./components/parameters/AdminParameters.tsx"),
-    can: () => this.configCtrl.getConfigTree.can(),
+    can: () => this.paramCtrl.getParameterTree.can(),
+    loader: async () => {
+      const treeData = await this.paramCtrl.getParameterTree({});
+      return { treeData };
+    },
   });
 
   // ─────────────────────────────────────────────────────────────────────────────

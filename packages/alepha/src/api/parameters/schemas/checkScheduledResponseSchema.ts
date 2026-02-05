@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { type Static, t } from "alepha";
 
 /**
  * Check scheduled response schema.
@@ -6,3 +6,7 @@ import { t } from "alepha";
 export const checkScheduledResponseSchema = t.object({
   message: t.text(),
 });
+
+export type CheckScheduledResponse = Static<
+  typeof checkScheduledResponseSchema
+>;

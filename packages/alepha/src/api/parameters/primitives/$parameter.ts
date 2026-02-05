@@ -9,10 +9,10 @@ import {
 } from "alepha";
 import { $logger } from "alepha/logger";
 import type { UserAccount } from "alepha/security";
-import { ConfigStore } from "../services/ConfigStore.ts";
+import { ParameterStore } from "../services/ParameterStore.ts";
 
 /**
- * Creates a versioned configuration primitive for managing application settings.
+ * Creates a versioned parameter primitive for managing application settings.
  *
  * Provides type-safe, versioned configuration with:
  * - Schema validation with auto-migration detection
@@ -31,7 +31,7 @@ import { ConfigStore } from "../services/ConfigStore.ts";
  * @example
  * ```ts
  * class AppConfig {
- *   features = $config({
+ *   features = $parameter({
  *     name: "app.features.flags",
  *     schema: t.object({
  *       enableBeta: t.boolean(),
@@ -55,34 +55,34 @@ import { ConfigStore } from "../services/ConfigStore.ts";
  * }
  * ```
  */
-export interface ConfigPrimitiveOptions<T extends TObject> {
+export interface ParameterPrimitiveOptions<T extends TObject> {
   /**
-   * Configuration name using dot notation for tree hierarchy.
+   * Parameter name using dot notation for tree hierarchy.
    * Examples: "app.features", "app.pricing.tiers", "system.limits"
    */
   name?: string;
 
   /**
-   * Human-readable description of the configuration.
+   * Human-readable description of the parameter.
    */
   description?: string;
 
   /**
-   * TypeBox schema defining the configuration structure.
+   * TypeBox schema defining the parameter structure.
    */
   schema: T;
 
   /**
-   * Default value used when no configuration exists in database.
+   * Default value used when no parameter exists in database.
    */
   default: Static<T>;
 }
 
-export class ConfigPrimitive<T extends TObject> extends Primitive<
-  ConfigPrimitiveOptions<T>
+export class ParameterPrimitive<T extends TObject> extends Primitive<
+  ParameterPrimitiveOptions<T>
 > {
   protected readonly log = $logger();
-  protected readonly store = $inject(ConfigStore);
+  protected readonly store = $inject(ParameterStore);
 
   /**
    * Internal atom key for state management.
@@ -105,21 +105,21 @@ export class ConfigPrimitive<T extends TObject> extends Primitive<
   protected loaded = false;
 
   /**
-   * Configuration name (uses property key if not specified).
+   * Parameter name (uses property key if not specified).
    */
   public get name(): string {
     return this.options.name || this.config.propertyKey;
   }
 
   /**
-   * The TypeBox schema for this configuration.
+   * The TypeBox schema for this parameter.
    */
   public get schema(): T {
     return this.options.schema;
   }
 
   /**
-   * Get the current configuration value.
+   * Get the current parameter value.
    */
   public get current(): Static<T> {
     return (
@@ -129,21 +129,21 @@ export class ConfigPrimitive<T extends TObject> extends Primitive<
   }
 
   /**
-   * Get a specific field from the current configuration.
+   * Get a specific field from the current parameter.
    */
   public get<Key extends keyof Static<T>>(key: Key): Static<T>[Key] {
     return this.current[key];
   }
 
   /**
-   * Set a new configuration value.
+   * Set a new parameter value.
    *
-   * @param value - The new configuration value
+   * @param value - The new parameter value
    * @param options - Optional settings (activation date, creator info, etc.)
    */
   public async set(
     value: Static<T>,
-    options: SetConfigOptions = {},
+    options: SetParameterOptions = {},
   ): Promise<void> {
     // Save to database
     await this.store.save(this.name, value, this.schemaHash, {
@@ -167,7 +167,7 @@ export class ConfigPrimitive<T extends TObject> extends Primitive<
   }
 
   /**
-   * Subscribe to configuration changes.
+   * Subscribe to parameter changes.
    */
   public sub(fn: (curr: Static<T>) => void): () => void {
     return this.alepha.events.on("state:mutate", {
@@ -180,8 +180,8 @@ export class ConfigPrimitive<T extends TObject> extends Primitive<
   }
 
   /**
-   * Reload configuration from database.
-   * Called when scheduled config activates or sync message received.
+   * Reload parameter from database.
+   * Called when scheduled parameter activates or sync message received.
    */
   public async reload(): Promise<void> {
     const value = await this.store.load<T>(this.name);
@@ -196,7 +196,7 @@ export class ConfigPrimitive<T extends TObject> extends Primitive<
   }
 
   /**
-   * Update from sync message (called by ConfigStore).
+   * Update from sync message (called by ParameterStore).
    * Uses skipEvents to avoid infinite loops.
    */
   public async updateFromSync(content: unknown): Promise<void> {
@@ -211,7 +211,7 @@ export class ConfigPrimitive<T extends TObject> extends Primitive<
   }
 
   /**
-   * Get version history for this configuration.
+   * Get version history for this parameter.
    */
   public async getHistory() {
     return this.store.getHistory(this.name);
@@ -222,7 +222,7 @@ export class ConfigPrimitive<T extends TObject> extends Primitive<
    */
   public async rollback(
     version: number,
-    options?: SetConfigOptions,
+    options?: SetParameterOptions,
   ): Promise<void> {
     await this.store.rollback(this.name, version, {
       changeDescription: options?.changeDescription,
@@ -247,7 +247,7 @@ export class ConfigPrimitive<T extends TObject> extends Primitive<
    */
   protected onInit(): void {
     // Create unique key for state management
-    this.atomKey = `config:${this.name}`;
+    this.atomKey = `parameter:${this.name}`;
 
     // Calculate schema hash for migration detection
     this.schemaHash = this.calculateSchemaHash();
@@ -281,7 +281,7 @@ export class ConfigPrimitive<T extends TObject> extends Primitive<
         }
 
         // Auto-save to database when state is mutated via alepha.set()
-        this.log.debug("Config state mutated, persisting to database", {
+        this.log.debug("Parameter state mutated, persisting to database", {
           name: this.name,
         });
         await this.store.save(this.name, value as Static<T>, this.schemaHash);
@@ -327,22 +327,22 @@ export class ConfigPrimitive<T extends TObject> extends Primitive<
   }
 }
 
-export const $config = <T extends TObject>(
-  options: ConfigPrimitiveOptions<T>,
+export const $parameter = <T extends TObject>(
+  options: ParameterPrimitiveOptions<T>,
 ) => {
-  return createPrimitive(ConfigPrimitive<T>, options);
+  return createPrimitive(ParameterPrimitive<T>, options);
 };
 
-$config[KIND] = ConfigPrimitive;
+$parameter[KIND] = ParameterPrimitive;
 
-export interface SetConfigOptions {
+export interface SetParameterOptions {
   /**
    * User making the change (for audit trail).
    */
   user?: Pick<UserAccount, "id" | "email" | "name">;
 
   /**
-   * When this configuration should become active.
+   * When this parameter should become active.
    * Default is immediate (now).
    */
   activationDate?: Date;

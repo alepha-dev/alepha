@@ -1,32 +1,56 @@
-import { Flex, Text, TypeForm } from "@alepha/ui";
-import {
-  Badge,
-  Box,
-  Card,
-  Code,
-  Group,
-  Loader,
-  ScrollArea,
-  Stack,
-} from "@mantine/core";
-import { IconClock, IconSettings } from "@tabler/icons-react";
-import { jsonSchemaToTypeBox, type TObject } from "alepha";
+import { ActionButton, Flex, Text, TypeForm } from "@alepha/ui";
+import { Box, Card, Code, Group, Loader, Stack } from "@mantine/core";
+import { IconClock } from "@tabler/icons-react";
+import { jsonSchemaToTypeBox, type TObject, t } from "alepha";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useMemo } from "react";
-import { type ConfigValue, formatJson } from "./types.ts";
+import { formatJson, type ParameterValue } from "./types.ts";
 
 export interface ParameterDetailsProps {
   selectedConfig: string | null;
-  configValue: ConfigValue | null;
+  configValue: ParameterValue | null;
   loading: boolean;
+  saving: boolean;
+  onSave: (values: Record<string, unknown>) => Promise<void>;
 }
 
-const ParameterDetails = ({
+/**
+ * Loading state.
+ */
+const LoadingState = () => (
+  <Box
+    flex={1}
+    h="100%"
+    p="md"
+    style={{
+      overflow: "hidden",
+      minWidth: 0,
+      display: "flex",
+    }}
+  >
+    <Flex flex={1} justify="center" align="center" h="100%">
+      <Loader size="sm" />
+    </Flex>
+  </Box>
+);
+
+interface ConfigFormProps {
+  selectedConfig: string;
+  configValue: ParameterValue | null;
+  saving: boolean;
+  onSave: (values: Record<string, unknown>) => Promise<void>;
+}
+
+/**
+ * The actual form component - only rendered when a config is selected.
+ */
+const ConfigForm = ({
   selectedConfig,
   configValue,
-  loading,
-}: ParameterDetailsProps) => {
+  saving,
+  onSave,
+}: ConfigFormProps) => {
   const { l } = useI18n();
 
   // Get the current value to display (from saved version or default)
@@ -43,17 +67,21 @@ const ParameterDetails = ({
   // Convert JSON Schema from API to TypeBox schema
   const schemaForForm = useMemo(() => {
     if (!configValue?.schema) {
-      return { type: "object", properties: {} } as unknown as TObject;
+      return t.object({});
     }
-    return jsonSchemaToTypeBox(configValue.schema) as TObject;
+    try {
+      return jsonSchemaToTypeBox(configValue.schema) as TObject;
+    } catch {
+      return t.object({});
+    }
   }, [configValue?.schema]);
 
   const form = useForm(
     {
       schema: schemaForForm,
       initialValues: (currentContent ?? {}) as Record<string, unknown>,
-      handler: async () => {
-        // Read-only for now
+      handler: async (values) => {
+        await onSave(values as Record<string, unknown>);
       },
     },
     [selectedConfig, schemaForForm, currentContent],
@@ -66,89 +94,68 @@ const ParameterDetails = ({
       schema &&
       typeof schema === "object" &&
       "properties" in schema &&
-      Object.keys(schema.properties ?? {}).length > 0
+      Object.keys(schema.properties as object).length > 0
     );
   }, [configValue?.schema]);
 
-  if (!selectedConfig) {
-    return (
-      <Card withBorder flex={1} h="100%" style={{ overflow: "hidden" }}>
-        <Flex flex={1} justify="center" align="center" h="100%">
-          <Stack align="center" gap="xs">
-            <IconSettings
-              size={32}
-              stroke={1.5}
-              color="var(--mantine-color-dimmed)"
-            />
-            <Text c="dimmed" size="sm">
-              Select a parameter to view its value
-            </Text>
-          </Stack>
-        </Flex>
-      </Card>
-    );
-  }
+  // Count the number of fields to determine column layout
+  const fieldCount = useMemo(() => {
+    const schema = configValue?.schema;
+    if (
+      schema &&
+      typeof schema === "object" &&
+      "properties" in schema &&
+      schema.properties
+    ) {
+      return Object.keys(schema.properties as object).length;
+    }
+    return 0;
+  }, [configValue?.schema]);
 
-  if (loading) {
-    return (
-      <Card withBorder flex={1} h="100%" style={{ overflow: "hidden" }}>
-        <Flex flex={1} justify="center" align="center" h="100%">
-          <Loader size="sm" />
-        </Flex>
-      </Card>
-    );
-  }
+  // Determine optimal column count based on field count
+  const columns = useMemo(() => {
+    if (fieldCount <= 2) return 1;
+    if (fieldCount <= 6) return 2;
+    return 3;
+  }, [fieldCount]);
 
   return (
-    <Card withBorder flex={1} h="100%" style={{ overflow: "hidden" }}>
-      <Stack gap="md" h="100%">
-        <Group justify="space-between">
-          <Stack gap={2}>
-            <Text size="sm" fw={500}>
-              {selectedConfig}
-            </Text>
-            {configValue?.current && (
-              <Group gap="xs">
-                <Badge size="xs" color="green" variant="light">
-                  v{configValue.current.version}
-                </Badge>
-                {configValue.next && (
-                  <Badge size="xs" color="blue" variant="light">
-                    Next: v{configValue.next.version}
-                  </Badge>
-                )}
-              </Group>
-            )}
-            {!configValue?.current &&
-              configValue?.currentValue !== undefined && (
-                <Badge size="xs" color="yellow" variant="light">
-                  Default
-                </Badge>
-              )}
-          </Stack>
-        </Group>
-
-        <ScrollArea flex={1} offsetScrollbars>
+    <Box
+      flex={1}
+      h="100%"
+      style={{
+        overflow: "hidden",
+        minWidth: 0,
+        display: "flex",
+      }}
+    >
+      <Flex direction="column" h="100%" w="100%" style={{ minHeight: 0 }}>
+        {/* Content */}
+        <Box flex={1} p="md" className="overflow-auto" style={{ minHeight: 0 }}>
           {currentContent !== null ? (
-            <Stack gap="md">
+            <Stack gap="lg">
+              {/* Form or JSON view */}
               <Box>
-                <Text size="xs" c="dimmed" mb={4}>
-                  Current Value
-                </Text>
                 {hasValidSchema ? (
                   <TypeForm
                     form={form}
-                    columns={1}
+                    columns={columns}
                     skipSubmitButton
-                    skipFormElement
+                    fill={false}
                   />
                 ) : (
-                  <Code block style={{ whiteSpace: "pre-wrap" }}>
-                    {formatJson(currentContent)}
-                  </Code>
+                  <Box>
+                    <Text size="xs" c="dimmed" mb={4}>
+                      Current Value
+                    </Text>
+                    <Code block style={{ whiteSpace: "pre-wrap" }}>
+                      {formatJson(currentContent)}
+                    </Code>
+                  </Box>
                 )}
               </Box>
 
+              {/* Metadata */}
               {configValue?.current?.changeDescription && (
                 <Box>
                   <Text size="xs" c="dimmed" mb={4}>
@@ -187,15 +194,16 @@ const ParameterDetails = ({
                   </Text>
                 )}
 
+              {/* Scheduled update preview */}
               {configValue?.next && (
-                <Card withBorder bg="blue.0" p="sm">
+                <Card withBorder p="sm" bg="var(--mantine-color-blue-light)">
                   <Stack gap="xs">
                     <Group gap="xs">
                       <IconClock
                         size={14}
                         color="var(--mantine-color-blue-6)"
                       />
-                      <Text size="xs" fw={500} c="blue.7">
+                      <Text size="xs" fw={500} c="blue">
                         Scheduled Update (v{configValue.next.version})
                       </Text>
                     </Group>
@@ -219,9 +227,61 @@ const ParameterDetails = ({
               </Text>
             </Flex>
           )}
-        </ScrollArea>
-      </Stack>
-    </Card>
+        </Box>
+
+        {/* Footer with actions */}
+        {hasValidSchema && currentContent !== null && (
+          <Box
+            p="md"
+            style={{
+              flexShrink: 0,
+              borderTop: "1px solid var(--mantine-color-default-border)",
+            }}
+          >
+            <Group justify="flex-end" gap="sm">
+              <ActionButton
+                variant="subtle"
+                onClick={() => form.reset({} as any)}
+                disabled={saving}
+              >
+                Reset
+              </ActionButton>
+              <ActionButton intent="primary" form={form} loading={saving}>
+                Save Changes
+              </ActionButton>
+            </Group>
+          </Box>
+        )}
+      </Flex>
+    </Box>
+  );
+};
+
+/**
+ * Parameter details panel.
+ * Shows loading state or the config form.
+ * Note: Empty state is handled by parent (AdminParameters).
+ */
+const ParameterDetails = ({
+  selectedConfig,
+  configValue,
+  loading,
+  saving,
+  onSave,
+}: ParameterDetailsProps) => {
+  // Loading state
+  if (loading) {
+    return <LoadingState />;
+  }
+
+  // Config form (selectedConfig is guaranteed to be non-null by parent)
+  return (
+    <ConfigForm
+      selectedConfig={selectedConfig!}
+      configValue={configValue}
+      saving={saving}
+      onSave={onSave}
+    />
   );
 };
 

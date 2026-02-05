@@ -1,21 +1,23 @@
 import { $module } from "alepha";
-import { AdminConfigController } from "./controllers/AdminConfigController.ts";
-import { $config } from "./primitives/$config.ts";
-import { ConfigActivationScheduler } from "./schedulers/ConfigActivationScheduler.ts";
-import { ConfigStore } from "./services/ConfigStore.ts";
+import { AdminParameterController } from "./controllers/AdminParameterController.ts";
+import { $parameter } from "./primitives/$parameter.ts";
+import { ParameterActivationScheduler } from "./schedulers/ParameterActivationScheduler.ts";
+import { ParameterStore } from "./services/ParameterStore.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 // Controller exports
-export * from "./controllers/AdminConfigController.ts";
+export * from "./controllers/AdminParameterController.ts";
 // Entity exports
 export * from "./entities/parameters.ts";
 // Primitive exports
-export * from "./primitives/$config.ts";
+export * from "./primitives/$parameter.ts";
 // Scheduler exports
-export * from "./schedulers/ConfigActivationScheduler.ts";
+export * from "./schedulers/ParameterActivationScheduler.ts";
+// Schema exports (types for UI)
+export * from "./schemas/index.ts";
 // Service exports
-export * from "./services/ConfigStore.ts";
+export * from "./services/ParameterStore.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -24,10 +26,10 @@ export * from "./services/ConfigStore.ts";
  * |-----------|-------|---------|
  * | 3 - stable | 0.9.0 | node, bun, workerd|
  *
- * Application configuration management.
+ * Application parameter management.
  *
  * **Features:**
- * - Versioned configuration definitions
+ * - Versioned parameter definitions
  * - Scheduled activation (FUTURE, NEXT, CURRENT, EXPIRED)
  * - Schema validation with migration detection
  * - Cross-instance sync via pub/sub
@@ -36,6 +38,10 @@ export * from "./services/ConfigStore.ts";
  */
 export const AlephaApiParameters = $module({
   name: "alepha.api.parameters",
-  primitives: [$config],
-  services: [ConfigStore, AdminConfigController, ConfigActivationScheduler],
+  primitives: [$parameter],
+  services: [
+    ParameterStore,
+    AdminParameterController,
+    ParameterActivationScheduler,
+  ],
 });
