@@ -31,9 +31,14 @@ import {
   PG_UPDATED_AT,
   PG_VERSION,
 } from "../constants/PG_SYMBOLS.ts";
+import { DbColumnNotFoundError } from "../errors/DbColumnNotFoundError.ts";
 import { DbConflictError } from "../errors/DbConflictError.ts";
+import { DbDeadlockError } from "../errors/DbDeadlockError.ts";
 import { DbEntityNotFoundError } from "../errors/DbEntityNotFoundError.ts";
 import { DbError } from "../errors/DbError.ts";
+import { DbForeignKeyError } from "../errors/DbForeignKeyError.ts";
+import { DbNotNullError } from "../errors/DbNotNullError.ts";
+import { DbTableNotFoundError } from "../errors/DbTableNotFoundError.ts";
 import { DbVersionMismatchError } from "../errors/DbVersionMismatchError.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
 import type {
@@ -161,7 +166,13 @@ export abstract class Repository<T extends TObject> {
       );
     }
 
-    const rows = await this.provider.execute(raw);
+    // Only wrap database execution errors, not post-processing errors (e.g., TypeBoxError)
+    let rows: Array<Record<string, unknown>>;
+    try {
+      rows = await this.provider.execute(raw);
+    } catch (error) {
+      throw this.handleError(error, "Custom query has failed");
+    }
 
     return rows.map((it) => {
       return this.clean(
@@ -389,7 +400,7 @@ export abstract class Repository<T extends TObject> {
 
       return rows as PgStatic<T, R>[];
     } catch (error) {
-      throw new DbError("Query select has failed", error as Error);
+      throw this.handleError(error, "Query select has failed");
     }
   }
 
@@ -859,7 +870,7 @@ export abstract class Repository<T extends TObject> {
 
       return ids;
     } catch (error) {
-      throw new DbError("Delete query has failed", error as Error);
+      throw this.handleError(error, "Delete query has failed");
     }
   }
 
@@ -937,19 +948,93 @@ export abstract class Repository<T extends TObject> {
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  protected conflictMessagePattern =
-    "duplicate key value violates unique constraint";
+  // Error message patterns for different database errors
+  protected errorPatterns = {
+    // Unique constraint violations
+    conflict: [
+      "duplicate key value violates unique constraint", // PostgreSQL
+      "UNIQUE constraint failed", // SQLite
+    ],
+    // Foreign key violations
+    foreignKey: [
+      "violates foreign key constraint", // PostgreSQL
+      "FOREIGN KEY constraint failed", // SQLite
+    ],
+    // NOT NULL violations
+    notNull: [
+      "violates not-null constraint", // PostgreSQL
+      "NOT NULL constraint failed", // SQLite
+    ],
+    // Deadlock
+    deadlock: [
+      "deadlock detected", // PostgreSQL
+      // SQLite doesn't have true deadlocks
+    ],
+    // Table not found
+    tableNotFound: [
+      "does not exist", // PostgreSQL: relation "x" does not exist
+      "no such table", // SQLite
+    ],
+    // Column not found
+    columnNotFound: [
+      'column "', // PostgreSQL: column "x" does not exist
+      "no such column", // SQLite
+    ],
+  };
 
   protected handleError(error: unknown, message: string): DbError {
     if (!(error instanceof Error)) {
       return new DbError(message);
     }
 
-    if (
-      (error.cause as Error)?.message.includes(this.conflictMessagePattern) ||
-      error.message.includes(this.conflictMessagePattern)
-    ) {
+    const errorMessage = error.message;
+    const causeMessage = (error.cause as Error)?.message ?? "";
+    const fullMessage = `${errorMessage} ${causeMessage}`.toLowerCase();
+
+    const hasPattern = (patterns: string[]) =>
+      patterns.some(
+        (pattern) =>
+          causeMessage.toLowerCase().includes(pattern.toLowerCase()) ||
+          errorMessage.toLowerCase().includes(pattern.toLowerCase()),
+      );
+
+    const getSourceError = () =>
+      error.cause instanceof Error ? error.cause : error;
+
+    // Check for unique constraint violation (conflict)
+    if (hasPattern(this.errorPatterns.conflict)) {
       return new DbConflictError(message, error);
+    }
+
+    // Check for foreign key violation
+    if (hasPattern(this.errorPatterns.foreignKey)) {
+      return DbForeignKeyError.fromDatabaseError(
+        getSourceError(),
+        this.tableName,
+      );
+    }
+
+    // Check for NOT NULL violation
+    if (hasPattern(this.errorPatterns.notNull)) {
+      return DbNotNullError.fromDatabaseError(getSourceError(), this.tableName);
+    }
+
+    // Check for deadlock
+    if (hasPattern(this.errorPatterns.deadlock)) {
+      return DbDeadlockError.fromDatabaseError(getSourceError());
+    }
+
+    // Check for table not found (must check before column not found)
+    if (
+      hasPattern(this.errorPatterns.tableNotFound) &&
+      (fullMessage.includes("relation") || fullMessage.includes("table"))
+    ) {
+      return DbTableNotFoundError.fromDatabaseError(getSourceError());
+    }
+
+    // Check for column not found
+    if (hasPattern(this.errorPatterns.columnNotFound)) {
+      return DbColumnNotFoundError.fromDatabaseError(getSourceError());
     }
 
     return new DbError(message, error);
