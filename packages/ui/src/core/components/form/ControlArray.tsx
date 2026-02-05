@@ -9,15 +9,23 @@ import {
 } from "@mantine/core";
 import { IconGripVertical, IconPlus, IconTrash } from "@tabler/icons-react";
 import type { TObject, TSchema } from "alepha";
-import { useEvents } from "alepha/react";
+import { useAlepha } from "alepha/react";
 import type { BaseInputField } from "alepha/react/form";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "../../constants/ui.ts";
 import {
   type GenericControlProps,
   parseInput,
 } from "../../utils/parseInput.ts";
 import Control, { type ControlProps } from "./Control.tsx";
+
+/**
+ * Represents an array item with a stable key for React reconciliation.
+ */
+interface ArrayItem {
+  key: number;
+  value: any;
+}
 
 export interface ControlArrayProps extends GenericControlProps {
   /**
@@ -71,6 +79,169 @@ export interface ControlArrayProps extends GenericControlProps {
 }
 
 /**
+ * Custom hook to sync array items with form state.
+ * Uses form events as the source of truth, eliminating dual-state issues.
+ */
+const useArrayItems = (
+  input: BaseInputField | undefined,
+): {
+  items: ArrayItem[];
+  setItems: (items: ArrayItem[]) => void;
+  nextKey: () => number;
+} => {
+  const alepha = useAlepha();
+  const keyCounter = useRef(0);
+
+  // Initialize from defaultValue
+  const [items, setItemsState] = useState<ArrayItem[]>(() => {
+    const defaultValue = input?.props?.defaultValue;
+    if (Array.isArray(defaultValue)) {
+      return defaultValue.map((value) => ({
+        key: keyCounter.current++,
+        value,
+      }));
+    }
+    return [];
+  });
+
+  // Sync form value to local state
+  const syncFromFormValue = useCallback((formValue: any[] | undefined) => {
+    if (!Array.isArray(formValue)) {
+      setItemsState([]);
+      return;
+    }
+
+    // Preserve keys for existing items where possible
+    setItemsState((prevItems) => {
+      // If lengths match and values are same references, keep existing keys
+      if (prevItems.length === formValue.length) {
+        const allSame = prevItems.every(
+          (item, i) => item.value === formValue[i],
+        );
+        if (allSame) return prevItems;
+      }
+
+      // Otherwise, create new items with fresh keys
+      keyCounter.current = 0;
+      return formValue.map((value) => ({
+        key: keyCounter.current++,
+        value,
+      }));
+    });
+  }, []);
+
+  // Listen for form changes and reset events
+  useEffect(() => {
+    if (!input?.form) return;
+
+    const formId = input.form.id;
+    const fieldPath = input.path;
+
+    const listeners = [
+      // Handle form reset
+      alepha.events.on("form:reset", (event) => {
+        if (event.id === formId) {
+          const defaultValue = input.props?.defaultValue;
+          keyCounter.current = 0;
+          if (Array.isArray(defaultValue)) {
+            setItemsState(
+              defaultValue.map((value) => ({
+                key: keyCounter.current++,
+                value,
+              })),
+            );
+          } else {
+            setItemsState([]);
+          }
+        }
+      }),
+
+      // Handle external value changes (e.g., programmatic updates)
+      alepha.events.on("form:change", (event) => {
+        if (event.id === formId && event.path === fieldPath) {
+          // Value was changed externally, sync our state
+          syncFromFormValue(event.value);
+        }
+      }),
+    ];
+
+    return () => {
+      for (const unsub of listeners) {
+        unsub();
+      }
+    };
+  }, [alepha, input, syncFromFormValue]);
+
+  // Update form when items change
+  const setItems = useCallback(
+    (newItems: ArrayItem[]) => {
+      setItemsState(newItems);
+      // Update form value - this will trigger form:change but we'll detect it's from us
+      input?.set(newItems.map((item) => item.value));
+    },
+    [input],
+  );
+
+  const nextKey = useCallback(() => keyCounter.current++, []);
+
+  return { items, setItems, nextKey };
+};
+
+/**
+ * Creates a proper InputField for an array item that integrates with the form system.
+ * Uses array index for test IDs to ensure predictable, testable element identifiers.
+ */
+const createArrayItemInput = (
+  parentInput: BaseInputField,
+  itemSchema: TSchema,
+  index: number,
+  _itemKey: number,
+  value: any,
+  onValueChange: (value: any) => void,
+): BaseInputField => {
+  return {
+    schema: itemSchema,
+    path: `${parentInput.path}/${index}`,
+    required: false,
+    form: parentInput.form,
+    props: {
+      id: `${parentInput.props.id}-${index}`,
+      name: `${parentInput.props.name}[${index}]`,
+      defaultValue: value,
+    },
+    set: onValueChange,
+  };
+};
+
+/**
+ * Creates a proper InputField for a nested object field within an array item.
+ * Uses array index for test IDs to ensure predictable, testable element identifiers.
+ */
+const createArrayItemFieldInput = (
+  parentInput: BaseInputField,
+  itemSchema: TObject,
+  fieldName: string,
+  index: number,
+  _itemKey: number,
+  itemValue: any,
+  onFieldChange: (field: string, value: any) => void,
+): BaseInputField => {
+  const fieldSchema = itemSchema.properties[fieldName];
+  return {
+    schema: fieldSchema,
+    path: `${parentInput.path}/${index}/${fieldName}`,
+    required: itemSchema.required?.includes(fieldName) ?? false,
+    form: parentInput.form,
+    props: {
+      id: `${parentInput.props.id}-${index}-${fieldName}`,
+      name: `${parentInput.props.name}[${index}].${fieldName}`,
+      defaultValue: itemValue?.[fieldName],
+    },
+    set: (value: any) => onFieldChange(fieldName, value),
+  };
+};
+
+/**
  * ControlArray component for editing arrays of schema items.
  *
  * Features:
@@ -79,6 +250,7 @@ export interface ControlArrayProps extends GenericControlProps {
  * - Supports arrays of primitives
  * - Grid layout for object items
  * - Min/max constraints
+ * - Syncs with form state (handles external updates and resets)
  *
  * @example
  * ```tsx
@@ -102,42 +274,7 @@ export interface ControlArrayProps extends GenericControlProps {
  */
 const ControlArray = (props: ControlArrayProps) => {
   const { inputProps } = parseInput(props, {});
-  const idCounter = useRef(0);
-
-  // Initialize items with unique keys for React
-  const [items, setItems] = useState<Array<{ key: number; value: any }>>(() => {
-    const defaultValue = props.input?.props?.defaultValue;
-    if (Array.isArray(defaultValue)) {
-      return defaultValue.map((value) => ({
-        key: idCounter.current++,
-        value,
-      }));
-    }
-    return [];
-  });
-
-  // Listen for form reset events
-  useEvents(
-    {
-      "form:reset": (event) => {
-        if (event.id === props.input?.form?.id) {
-          const defaultValue = props.input?.props?.defaultValue;
-          if (Array.isArray(defaultValue)) {
-            idCounter.current = 0;
-            setItems(
-              defaultValue.map((value) => ({
-                key: idCounter.current++,
-                value,
-              })),
-            );
-          } else {
-            setItems([]);
-          }
-        }
-      },
-    },
-    [props.input],
-  );
+  const { items, setItems, nextKey } = useArrayItems(props.input);
 
   if (!props.input?.props) {
     return null;
@@ -148,13 +285,9 @@ const ControlArray = (props: ControlArrayProps) => {
     return null;
   }
 
-  const itemSchema = (schema as any).items as TSchema;
+  const itemSchema = (schema as { items: TSchema }).items;
   const isObjectItem = itemSchema && "properties" in itemSchema;
   const { min = 0, max = Number.POSITIVE_INFINITY, columns = 1 } = props;
-
-  const updateFormValue = (newItems: Array<{ key: number; value: any }>) => {
-    props.input.set(newItems.map((item) => item.value));
-  };
 
   const handleAdd = () => {
     if (items.length >= max) return;
@@ -174,23 +307,18 @@ const ControlArray = (props: ControlArrayProps) => {
       newValue = "";
     }
 
-    const newItems = [...items, { key: idCounter.current++, value: newValue }];
-    setItems(newItems);
-    updateFormValue(newItems);
+    setItems([...items, { key: nextKey(), value: newValue }]);
   };
 
   const handleRemove = (index: number) => {
     if (items.length <= min) return;
-    const newItems = items.filter((_, i) => i !== index);
-    setItems(newItems);
-    updateFormValue(newItems);
+    setItems(items.filter((_, i) => i !== index));
   };
 
   const handleItemChange = (index: number, value: any) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], value };
     setItems(newItems);
-    updateFormValue(newItems);
   };
 
   const handleFieldChange = (index: number, field: string, value: any) => {
@@ -200,12 +328,12 @@ const ControlArray = (props: ControlArrayProps) => {
       value: { ...newItems[index].value, [field]: value },
     };
     setItems(newItems);
-    updateFormValue(newItems);
   };
 
   const colSpan = 12 / columns;
-  const fieldNames = isObjectItem
-    ? Object.keys((itemSchema as TObject).properties)
+  const objectItemSchema = isObjectItem ? (itemSchema as TObject) : null;
+  const fieldNames = objectItemSchema
+    ? Object.keys(objectItemSchema.properties)
     : [];
 
   const renderItems = () => (
@@ -229,34 +357,23 @@ const ControlArray = (props: ControlArrayProps) => {
             </ActionIcon>
           )}
 
-          {isObjectItem ? (
+          {objectItemSchema ? (
             <Grid style={{ flex: 1 }} gutter="sm">
               {fieldNames.map((fieldName) => {
-                const fieldSchema = (itemSchema as TObject).properties[
-                  fieldName
-                ];
                 const fieldControlProps = props.controlProps?.[fieldName] ?? {};
-
-                // Create a virtual InputField for the nested property
-                const virtualInput: BaseInputField = {
-                  schema: fieldSchema,
-                  props: {
-                    id: `${props.input.props.id}-${item.key}-${fieldName}`,
-                    name: `${props.input.props.name}[${index}].${fieldName}`,
-                    defaultValue: item.value?.[fieldName],
-                  },
-                  path: `${props.input.path}/${index}/${fieldName}`,
-                  required:
-                    (itemSchema as TObject).required?.includes(fieldName) ??
-                    false,
-                  form: props.input.form,
-                  set: (value: any) =>
-                    handleFieldChange(index, fieldName, value),
-                };
+                const fieldInput = createArrayItemFieldInput(
+                  props.input,
+                  objectItemSchema,
+                  fieldName,
+                  index,
+                  item.key,
+                  item.value,
+                  (field, value) => handleFieldChange(index, field, value),
+                );
 
                 return (
                   <Grid.Col key={fieldName} span={colSpan}>
-                    <Control input={virtualInput} {...fieldControlProps} />
+                    <Control input={fieldInput} {...fieldControlProps} />
                   </Grid.Col>
                 );
               })}
@@ -264,20 +381,14 @@ const ControlArray = (props: ControlArrayProps) => {
           ) : (
             <Flex style={{ flex: 1 }}>
               <Control
-                input={
-                  {
-                    schema: itemSchema,
-                    props: {
-                      id: `${props.input.props.id}-${item.key}`,
-                      name: `${props.input.props.name}[${index}]`,
-                      defaultValue: item.value,
-                    },
-                    path: `${props.input.path}/${index}`,
-                    required: false,
-                    form: props.input.form,
-                    set: (value: any) => handleItemChange(index, value),
-                  } as BaseInputField
-                }
+                input={createArrayItemInput(
+                  props.input,
+                  itemSchema,
+                  index,
+                  item.key,
+                  item.value,
+                  (value) => handleItemChange(index, value),
+                )}
                 {...props.itemControlProps}
               />
             </Flex>

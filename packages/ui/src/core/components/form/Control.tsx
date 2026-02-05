@@ -264,40 +264,18 @@ const Control = (_props: ControlProps) => {
     "type" in props.input.schema &&
     props.input.schema.type === "boolean"
   ) {
-    if (props.switch) {
-      const switchProps = typeof props.switch === "object" ? props.switch : {};
-
-      return (
-        <Switch
-          {...inputProps}
-          id={id}
-          color={"blue"}
-          defaultChecked={props.input.props.defaultValue}
-          onChange={(event) => {
-            props.input.set(event.currentTarget.checked);
-          }}
-          {...switchProps}
-        />
-      );
-    }
-
-    // by default, render as <Select/> with Yes/No/Empty options
-    const selectProps: Partial<ControlSelectProps> = {
-      loader: async () => [
-        { value: "true", label: "Yes" },
-        { value: "false", label: "No" },
-        { value: "", label: "" },
-      ],
-      ...props.input.props,
-    };
+    const switchProps = typeof props.switch === "object" ? props.switch : {};
 
     return (
-      <ControlSelect
-        input={props.input}
-        title={props.title}
-        description={props.description}
-        icon={icon}
-        {...selectProps}
+      <Switch
+        {...inputProps}
+        id={id}
+        color={"blue"}
+        defaultChecked={props.input.props.defaultValue}
+        onChange={(event) => {
+          props.input.set(event.currentTarget.checked);
+        }}
+        {...switchProps}
       />
     );
   }
