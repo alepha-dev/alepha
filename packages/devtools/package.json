@@ -25,7 +25,7 @@
     "alepha": "0.16.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "tsdown": "^0.20.1",
+    "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"
