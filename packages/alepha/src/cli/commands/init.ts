@@ -29,12 +29,6 @@ export class InitCommand {
       }),
     ),
     flags: t.object({
-      ai: t.optional(
-        t.boolean({
-          description:
-            "Add AI agent instructions (CLAUDE.md if claude CLI installed, else AGENTS.md)",
-        }),
-      ),
       pm: t.optional(
         t.enum(["yarn", "npm", "pnpm", "bun"], {
           description: "Package manager to use",
@@ -102,7 +96,7 @@ export class InitCommand {
 
       // Detect agent type: claude CLI → CLAUDE.md, else → AGENTS.md
       let agentType: "claude" | "agents" | false = false;
-      if (flags.ai && !workspace.isPackage) {
+      if (!workspace.isPackage) {
         const hasClaudeCli = await this.utils.isInstalledAsync("claude");
         agentType = hasClaudeCli ? "claude" : "agents";
       }

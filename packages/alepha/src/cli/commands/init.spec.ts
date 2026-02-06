@@ -97,16 +97,16 @@ describe("alepha init", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // AI Agent Files (--ai flag)
+  // AI Agent Files (always generated)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  describe("--ai flag", () => {
+  describe("AI agent files", () => {
     it("should create CLAUDE.md when claude CLI is installed", async () => {
       const { fs, shell, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
       shell.installedCommands.add("claude");
 
-      await cli.run(cmd.init, { argv: "--ai", root: "/project" });
+      await cli.run(cmd.init, { root: "/project" });
 
       expect(fs.wasWritten("/project/CLAUDE.md")).toBe(true);
       expect(fs.wasWritten("/project/AGENTS.md")).toBe(false);
@@ -116,7 +116,7 @@ describe("alepha init", () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { argv: "--ai", root: "/project" });
+      await cli.run(cmd.init, { root: "/project" });
 
       expect(fs.wasWritten("/project/AGENTS.md")).toBe(true);
       expect(fs.wasWritten("/project/CLAUDE.md")).toBe(false);
@@ -126,22 +126,12 @@ describe("alepha init", () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { argv: "--ai", root: "/project" });
+      await cli.run(cmd.init, { root: "/project" });
 
       expect(fs.wasWrittenMatching("/project/AGENTS.md", /Alepha/)).toBe(true);
       expect(fs.wasWrittenMatching("/project/AGENTS.md", /alepha lint/)).toBe(
         true,
       );
-    });
-
-    it("should not create agent files without --ai flag", async () => {
-      const { fs, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json);
-
-      await cli.run(cmd.init, { root: "/project" });
-
-      expect(fs.wasWritten("/project/CLAUDE.md")).toBe(false);
-      expect(fs.wasWritten("/project/AGENTS.md")).toBe(false);
     });
   });
 
