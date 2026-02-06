@@ -20,3 +20,5 @@ pulse
 .gen
 deno.lock
 apps/tmp
+reviews
+apps/blog-mantine

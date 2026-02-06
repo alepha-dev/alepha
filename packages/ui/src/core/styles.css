@@ -29,13 +29,13 @@
   --alepha-text: var(--alepha-text-light);
 }
 
-#root {
-  display: flex;
-  background-color: var(--alepha-background);
-  color: var(--alepha-text);
-  min-height: 100dvh;
-  flex-direction: column;
-}
+/*#root {*/
+/*  display: flex;*/
+/*  background-color: var(--alepha-background);*/
+/*  color: var(--alepha-text);*/
+/*  min-height: 100dvh;*/
+/*  flex-direction: column;*/
+/*}*/
 
 /* ------------------------------------------------------------------------------------------------------------------ */
 

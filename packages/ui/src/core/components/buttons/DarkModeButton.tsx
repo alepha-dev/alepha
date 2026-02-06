@@ -28,8 +28,8 @@ const DarkModeButton = (props: Partial<ActionProps>) => {
       px={"xs"}
       icon={
         <>
-          <IconSun className="alepha-light-hidden" />
-          <IconMoon className="alepha-dark-hidden" />
+          <IconSun size={14} className="alepha-light-hidden" />
+          <IconMoon size={14} className="alepha-dark-hidden" />
         </>
       }
       {...props}

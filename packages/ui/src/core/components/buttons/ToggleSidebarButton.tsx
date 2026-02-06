@@ -14,11 +14,9 @@ const ToggleSidebarButton = (props: Props) => {
   return (
     <ActionButton
       icon={
-        sidebar.collapsed ? (
-          <IconLayoutSidebarRightCollapse />
-        ) : (
-          <IconLayoutSidebarLeftCollapse />
-        )
+        sidebar.collapsed
+          ? IconLayoutSidebarRightCollapse
+          : IconLayoutSidebarLeftCollapse
       }
       visibleFrom={"sm"}
       variant={"subtle"}

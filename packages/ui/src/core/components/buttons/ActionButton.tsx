@@ -243,17 +243,14 @@ const ActionButton = (_props: ActionProps) => {
   const props = { ..._props };
   const { tooltip, menu, icon, ...restProps } = props;
 
-  if (props.variant === "subtle") {
-    restProps.c ??= "var(--mantine-color-text)";
+  if (props.variant === "subtle" || props.variant === "outline") {
     restProps.color ??= "gray";
   }
 
   if (props.intent) {
     if (props.intent === "none") {
-      restProps.c ??= "var(--mantine-color-text)";
       restProps.color ??= "gray";
     } else if (props.intent === "primary") {
-      restProps.c ??= "white";
       restProps.color ??= theme.primaryColor;
     } else if (props.intent === "success") {
       restProps.c ??= "white";
@@ -262,7 +259,6 @@ const ActionButton = (_props: ActionProps) => {
       restProps.c ??= "white";
       restProps.color ??= "red";
     } else if (props.intent === "warning") {
-      restProps.c ??= "var(--mantine-color-text)";
       restProps.color ??= "yellow";
     } else if (props.intent === "info") {
       restProps.c ??= "white";
@@ -271,18 +267,11 @@ const ActionButton = (_props: ActionProps) => {
   }
 
   if (props.icon) {
+    const sizes = ui.sizes.icon as Record<string, number>;
     const icon = isComponentType(props.icon) ? (
-      <props.icon size={ui.sizes.icon.md} />
+      <props.icon size={sizes[props.size || "md"]} />
     ) : (
-      <ThemeIcon
-        w={24} // TODO: make size configurable
-        variant={"transparent"}
-        size={"sm"}
-        c={"var(--mantine-color-text)"}
-        {...props.themeIconProps}
-      >
-        {props.icon as ReactNode}
-      </ThemeIcon>
+      <span>{props.icon as ReactNode}</span>
     );
 
     if (!props.children) {

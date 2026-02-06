@@ -21,6 +21,7 @@ ignores:
     - '@fontsource/jetbrains-mono'
     - '@types/bun'
     - 'better-sqlite3'
+    - 'surge'
     - 'bun'
     - 'bun:sqlite'
 ignore-patterns:

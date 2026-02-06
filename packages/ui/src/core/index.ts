@@ -65,6 +65,8 @@ export type {
   AppBarSpacer,
 } from "./components/layout/AppBar.tsx";
 export { default as AppBar } from "./components/layout/AppBar.tsx";
+export type { BreadcrumbProps } from "./components/layout/Breadcrumb.tsx";
+export { default as Breadcrumb } from "./components/layout/Breadcrumb.tsx";
 export {
   type DashboardShellProps,
   type DashboardShellProps as AdminShellProps,

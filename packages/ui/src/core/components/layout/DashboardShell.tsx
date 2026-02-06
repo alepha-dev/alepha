@@ -19,7 +19,6 @@ import {
   useState,
 } from "react";
 import { alephaSidebarAtom } from "../../atoms/alephaSidebarAtom.ts";
-import { ui } from "../../constants/ui.ts";
 import AppBar, { type AppBarProps } from "./AppBar.tsx";
 import {
   Sidebar,
@@ -38,6 +37,35 @@ export interface DashboardShellProps {
   header?: ReactNode;
   footer?: ReactNode;
   children?: ReactNode;
+
+  /**
+   * AppShell layout mode.
+   * - "default": header/footer span full width, navbar below header.
+   * - "alt": navbar is full height, header/footer offset by navbar width.
+   */
+  layout?: "default" | "alt";
+
+  /**
+   * Content rendered above the Sidebar inside the navbar (e.g. logo).
+   */
+  navbarHeader?: ReactNode;
+
+  /**
+   * Content rendered below the Sidebar inside the navbar (e.g. toggle button).
+   */
+  navbarFooter?: ReactNode;
+
+  /**
+   * Height of the header bar in pixels.
+   * @default 60
+   */
+  headerHeight?: number;
+
+  /**
+   * Height of the footer bar in pixels.
+   * @default 24
+   */
+  footerHeight?: number;
 
   /**
    * Enable drag-to-resize for the sidebar.
@@ -235,10 +263,12 @@ const DashboardShell = (props: DashboardShellProps) => {
   appBarProps.container ??= props.container;
 
   const hasSidebar = showSidebar && props.sidebarProps !== undefined;
-  const hasAppBar = hasSidebar || props.appBarProps || props.header;
+  const hasAppBar = props.appBarProps || props.header;
 
-  const headerHeight = hasAppBar ? 60 : 0;
-  const footerHeight = props.footer ? 24 : 0;
+  const hHeight = props.headerHeight ?? 60;
+  const fHeight = props.footerHeight ?? 24;
+  const headerHeight = hasAppBar ? hHeight : 0;
+  const footerHeight = props.footer ? fHeight : 0;
   const expandedWidth = Math.max(sidebar.width, collapsedWidth);
 
   // When collapsed but hovering, show defaultWidth (not current width)
@@ -266,10 +296,10 @@ const DashboardShell = (props: DashboardShellProps) => {
 
   return (
     <AppShell
-      bg={ui.colors.background}
+      layout={props.layout}
       w={"100%"}
       flex={1}
-      header={hasAppBar ? { height: 60 } : undefined}
+      header={hasAppBar ? { height: hHeight } : undefined}
       navbar={
         hasSidebar
           ? {
@@ -283,12 +313,16 @@ const DashboardShell = (props: DashboardShellProps) => {
             }
           : undefined
       }
-      footer={props.footer ? { height: 24 } : undefined}
+      footer={props.footer ? { height: fHeight } : undefined}
       {...props.appShellProps}
     >
-      <AppShell.Header {...props.appShellHeaderProps}>
-        {props.header ?? <AppBar items={defaultAppBarItems} {...appBarProps} />}
-      </AppShell.Header>
+      {hasAppBar && (
+        <AppShell.Header {...props.appShellHeaderProps}>
+          {props.header ?? (
+            <AppBar items={defaultAppBarItems} {...appBarProps} />
+          )}
+        </AppShell.Header>
+      )}
 
       {hasSidebar && (
         <AppShell.Navbar
@@ -311,11 +345,22 @@ const DashboardShell = (props: DashboardShellProps) => {
           }}
           {...props.appShellNavbarProps}
         >
+          {props.navbarHeader}
           <Sidebar
             {...(props.sidebarProps ?? {})}
             collapsed={effectiveCollapsed}
             onItemClick={handleSidebarItemClick}
           />
+          {props.navbarFooter ? (
+            <Flex
+              style={{
+                borderTop: "1px solid var(--mantine-color-default-border)",
+              }}
+              h={footerHeight}
+            >
+              {props.navbarFooter}
+            </Flex>
+          ) : null}
           {(canResize || isExpandedByHover) && (
             <Flex
               pos="absolute"
@@ -354,7 +399,7 @@ const DashboardShell = (props: DashboardShellProps) => {
       </AppShell.Main>
 
       {props.footer && (
-        <AppShell.Footer bg={ui.colors.surface} {...props.appShellFooterProps}>
+        <AppShell.Footer {...props.appShellFooterProps}>
           {props.footer}
         </AppShell.Footer>
       )}
