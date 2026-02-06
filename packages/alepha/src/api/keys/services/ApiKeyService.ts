@@ -5,11 +5,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, sql } from "alepha/orm";
 import type { IssuerResolver, UserInfo } from "alepha/security";
-import {
-  ForbiddenError,
-  NotFoundError,
-  type ServerRequest,
-} from "alepha/server";
+import { ForbiddenError, type ServerRequest } from "alepha/server";
 import { type ApiKeyEntity, apiKeyEntity } from "../entities/apiKeyEntity.ts";
 
 export class ApiKeyService {
@@ -158,24 +154,14 @@ export class ApiKeyService {
    * Get an API key by ID (admin only).
    */
   public async getById(id: string): Promise<ApiKeyEntity> {
-    const apiKey = await this.repo.findById(id).catch(() => null);
-
-    if (!apiKey) {
-      throw new NotFoundError("API key not found");
-    }
-
-    return apiKey;
+    return await this.repo.getById(id);
   }
 
   /**
    * Revoke any API key (admin only).
    */
   public async revokeByAdmin(id: string): Promise<void> {
-    const apiKey = await this.repo.findById(id).catch(() => null);
-
-    if (!apiKey) {
-      throw new NotFoundError("API key not found");
-    }
+    const apiKey = await this.repo.getById(id);
 
     if (apiKey.revokedAt) {
       return; // Already revoked
@@ -202,11 +188,7 @@ export class ApiKeyService {
    * Revoke an API key. Only the owner can revoke their own keys.
    */
   public async revoke(id: string, userId: string): Promise<void> {
-    const apiKey = await this.repo.findById(id).catch(() => null);
-
-    if (!apiKey) {
-      throw new NotFoundError("API key not found");
-    }
+    const apiKey = await this.repo.getById(id);
 
     if (apiKey.userId !== userId) {
       throw new ForbiddenError("Not your API key");
@@ -244,11 +226,10 @@ export class ApiKeyService {
 
     // If not in cache, look up in database
     if (apiKey === undefined) {
-      apiKey = await this.repo
-        .findOne({
+      apiKey =
+        (await this.repo.findOne({
           where: { tokenHash: { eq: hash } },
-        })
-        .catch(() => null);
+        })) ?? null;
 
       // Store in cache (even if null, to prevent repeated lookups)
       if (apiKey) {

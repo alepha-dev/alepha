@@ -72,9 +72,9 @@ export class RealmController {
       const realmName = query.realmName;
       const userRepository = this.realmProvider.userRepository(realmName);
 
-      const existingUser = await userRepository
-        .findOne({ where: { username: { eq: body.username } } })
-        .catch(() => undefined);
+      const existingUser = await userRepository.findOne({
+        where: { username: { eq: body.username } },
+      });
 
       return {
         available: !existingUser,

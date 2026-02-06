@@ -636,7 +636,7 @@ describe("SQL Injection Security Tests", () => {
             metadata: { permissions: [char] },
           });
 
-          const found = await app.users.findOne({
+          const found = await app.users.getOne({
             where: { username: { eq: char } },
           });
 
@@ -673,7 +673,7 @@ describe("SQL Injection Security Tests", () => {
         metadata: { permissions: ["read"] },
       });
 
-      const found = await app.users.findOne({
+      const found = await app.users.getOne({
         where: {
           username: { eq: longString },
         },
@@ -700,7 +700,7 @@ describe("SQL Injection Security Tests", () => {
         metadata: { permissions: [] },
       });
 
-      const found = await app.users.findOne({
+      const found = await app.users.getOne({
         where: { username: { eq: "" } },
       });
 

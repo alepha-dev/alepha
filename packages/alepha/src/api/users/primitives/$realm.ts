@@ -1,4 +1,5 @@
 import { $context } from "alepha";
+import { AlephaApiClients, OAuth2Service } from "alepha/api/clients";
 import { AlephaApiKeys, ApiKeyService } from "alepha/api/keys";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import type { Repository } from "alepha/orm";
@@ -74,6 +75,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     jobs: false,
     notifications: false,
     apiKeys: false,
+    clients: false,
     parameters: false,
     files: false,
     audits: false,
@@ -127,6 +129,11 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     customResolvers.push(apiKeyService.createResolver());
   }
 
+  // Enable OAuth2 Authorization Server for third-party client authentication
+  if (features.clients) {
+    alepha.with(AlephaApiClients);
+  }
+
   const realm: RealmPrimitive = $issuer({
     ...options.issuer,
     name,
@@ -171,6 +178,13 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
       ...options.issuer?.settings,
     },
   });
+
+  // Wire OAuth2Service with the issuer
+  if (features.clients) {
+    const oauth2Service = alepha.inject(OAuth2Service);
+    oauth2Service.issuer = realm;
+    oauth2Service.realmName = name;
+  }
 
   realm.link = (name: string) => {
     return (ctx: LinkAccountOptions) =>
@@ -248,6 +262,26 @@ export interface RealmFeatures {
    * @default false
    */
   apiKeys?: boolean;
+
+  /**
+   * Enable OAuth2 Authorization Server for third-party client authentication.
+   *
+   * When enabled, Alepha acts as an OAuth2 Authorization Server, allowing
+   * third-party applications to authenticate users via standard OAuth2 flows:
+   * - Authorization Code + PKCE (OAuth 2.1)
+   * - Client Credentials (machine-to-machine)
+   * - Refresh Token
+   *
+   * Also provides:
+   * - Token introspection (RFC 7662)
+   * - Token revocation (RFC 7009)
+   * - AS metadata (RFC 8414)
+   * - Protected Resource metadata (RFC 9728)
+   * - MCP-compatible OAuth2 flow
+   *
+   * @default false
+   */
+  clients?: boolean;
 
   /**
    * Enable runtime configuration management.

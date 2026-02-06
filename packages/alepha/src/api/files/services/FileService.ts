@@ -337,7 +337,7 @@ export class FileService {
       return id;
     }
 
-    return await this.fileRepository.findById(id);
+    return await this.fileRepository.getById(id);
   }
 
   /**

@@ -166,7 +166,7 @@ export class SessionService {
         throw new InvalidCredentialsError();
       }
 
-      const user = await users.findOne({ where }).catch(() => undefined);
+      const user = await users.findOne({ where });
       if (!user) {
         this.log.warn("User not found during login attempt", {
           provider,
@@ -183,7 +183,7 @@ export class SessionService {
         throw new InvalidCredentialsError();
       }
 
-      const identity = await identities.findOne({
+      const identity = await identities.getOne({
         where: {
           provider: { eq: provider },
           userId: { eq: user.id },
@@ -286,7 +286,7 @@ export class SessionService {
   public async refreshSession(refreshToken: string, userRealmName?: string) {
     this.log.trace("Refreshing session");
 
-    const session = await this.sessions(userRealmName).findOne({
+    const session = await this.sessions(userRealmName).getOne({
       where: {
         refreshToken: { eq: refreshToken },
       },
@@ -304,7 +304,7 @@ export class SessionService {
       throw new UnauthorizedError("Session expired");
     }
 
-    const user = await this.users(userRealmName).findOne({
+    const user = await this.users(userRealmName).getOne({
       where: {
         id: { eq: session.userId },
       },
@@ -329,11 +329,9 @@ export class SessionService {
     this.log.trace("Deleting session");
 
     // Get session info before deletion for audit
-    const session = await this.sessions(userRealmName)
-      .findOne({
-        where: { refreshToken: { eq: refreshToken } },
-      })
-      .catch(() => undefined);
+    const session = await this.sessions(userRealmName).findOne({
+      where: { refreshToken: { eq: refreshToken } },
+    });
 
     await this.sessions(userRealmName).deleteOne({
       refreshToken,
@@ -367,14 +365,12 @@ export class SessionService {
     const identities = this.identities(userRealmName);
     const users = this.users(userRealmName);
 
-    const identity = await identities
-      .findOne({
-        where: {
-          provider,
-          providerUserId: profile.sub,
-        },
-      })
-      .catch(() => undefined);
+    const identity = await identities.findOne({
+      where: {
+        provider,
+        providerUserId: profile.sub,
+      },
+    });
 
     // existing identity found, return associated user
     if (identity) {
@@ -384,7 +380,7 @@ export class SessionService {
         userId: identity.userId,
       });
 
-      const user = await users.findById(identity.userId);
+      const user = await users.getById(identity.userId);
 
       await this.userAudits(userRealmName)?.recordAuth("login", {
         userId: user.id,
@@ -412,13 +408,11 @@ export class SessionService {
       };
     }
 
-    const existing = await users
-      .findOne({
-        where: {
-          email: profile.email,
-        },
-      })
-      .catch(() => undefined);
+    const existing = await users.findOne({
+      where: {
+        email: profile.email,
+      },
+    });
 
     if (existing) {
       this.log.debug("Linking OAuth2 profile to existing user by email", {

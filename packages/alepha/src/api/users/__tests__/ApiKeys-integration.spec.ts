@@ -946,7 +946,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
         { params: { id: "00000000-0000-0000-0000-000000000000" } },
         { user: { id: user.id, roles: user.roles } },
       ),
-    ).rejects.toThrow("API key not found");
+    ).rejects.toThrow("was not found");
   });
 
   it("should return 404 when getting non-existent API key via admin", async ({
@@ -960,7 +960,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
         { params: { id: "00000000-0000-0000-0000-000000000000" } },
         { user: adminUser },
       ),
-    ).rejects.toThrow("API key not found");
+    ).rejects.toThrow("was not found");
   });
 
   it("should list empty when user has no API keys", async ({ expect }) => {

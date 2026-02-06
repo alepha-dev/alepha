@@ -24,7 +24,7 @@ class A {
     waitMs = 0,
     tx?: TransactionContext,
   ) => {
-    const { counter } = await this.repository.findById(id, {
+    const { counter } = await this.repository.getById(id, {
       tx,
     });
 
@@ -49,8 +49,8 @@ describe("version", () => {
     await alepha.start();
 
     const { id } = await app.repository.create({ counter: 0 });
-    const r1 = await app.repository.findById(id);
-    const r2 = await app.repository.findById(id);
+    const r1 = await app.repository.getById(id);
+    const r2 = await app.repository.getById(id);
 
     r1.counter += 1;
     r2.counter += 1;

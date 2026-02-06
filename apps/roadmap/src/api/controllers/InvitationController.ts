@@ -35,23 +35,19 @@ export class InvitationController {
       }
 
       // Check if user is already a member of the project
-      const invitedUser = await this.users
-        .findOne({
-          where: {
-            email: { eq: body.invitedEmail },
-          },
-        })
-        .catch(() => null);
+      const invitedUser = await this.users.findOne({
+        where: {
+          email: { eq: body.invitedEmail },
+        },
+      });
 
       if (invitedUser) {
-        const existingCharacter = await this.characters
-          .findOne({
-            where: {
-              projectId: { eq: body.projectId },
-              userId: { eq: invitedUser.id },
-            },
-          })
-          .catch(() => null);
+        const existingCharacter = await this.characters.findOne({
+          where: {
+            projectId: { eq: body.projectId },
+            userId: { eq: invitedUser.id },
+          },
+        });
 
         if (existingCharacter) {
           throw new BadRequestError("User is already a member of this project");
@@ -59,15 +55,13 @@ export class InvitationController {
       }
 
       // Check if invitation already exists
-      const existingInvitation = await this.invitations
-        .findOne({
-          where: {
-            projectId: { eq: body.projectId },
-            invitedEmail: { eq: body.invitedEmail },
-            status: { eq: "pending" },
-          },
-        })
-        .catch(() => null);
+      const existingInvitation = await this.invitations.findOne({
+        where: {
+          projectId: { eq: body.projectId },
+          invitedEmail: { eq: body.invitedEmail },
+          status: { eq: "pending" },
+        },
+      });
 
       if (existingInvitation) {
         throw new BadRequestError(
@@ -111,12 +105,12 @@ export class InvitationController {
       return await Promise.all(
         userInvitations.map(async (invitation) => {
           const [project, inviter] = await Promise.all([
-            this.projects.findOne({
+            this.projects.getOne({
               where: {
                 id: { eq: invitation.projectId },
               },
             }),
-            this.users.findOne({
+            this.users.getOne({
               where: {
                 id: { eq: invitation.invitedBy },
               },
@@ -147,7 +141,7 @@ export class InvitationController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const invitation = await this.invitations.findOne({
+      const invitation = await this.invitations.getOne({
         where: {
           id: { eq: params.id },
           invitedEmail: { eq: user.email },
@@ -156,14 +150,12 @@ export class InvitationController {
       });
 
       // Check if user is already a member of the project
-      const existingCharacter = await this.characters
-        .findOne({
-          where: {
-            projectId: { eq: invitation.projectId },
-            userId: { eq: user.id },
-          },
-        })
-        .catch(() => null);
+      const existingCharacter = await this.characters.findOne({
+        where: {
+          projectId: { eq: invitation.projectId },
+          userId: { eq: user.id },
+        },
+      });
 
       if (existingCharacter) {
         // Update invitation status and return
@@ -206,7 +198,7 @@ export class InvitationController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const invitation = await this.invitations.findOne({
+      const invitation = await this.invitations.getOne({
         where: {
           id: { eq: params.id },
           invitedEmail: { eq: user.email },

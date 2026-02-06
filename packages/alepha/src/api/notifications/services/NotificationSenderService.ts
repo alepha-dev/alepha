@@ -26,7 +26,7 @@ export class NotificationSenderService {
 
     const notification =
       typeof notificationId === "string"
-        ? await this.notificationRepository.findById(notificationId)
+        ? await this.notificationRepository.getById(notificationId)
         : notificationId;
 
     if (notification.sentAt) {

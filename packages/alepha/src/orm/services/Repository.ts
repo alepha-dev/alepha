@@ -405,20 +405,30 @@ export abstract class Repository<T extends TObject> {
   }
 
   /**
-   * Find a single entity.
+   * Find a single entity. Returns `undefined` if not found.
    */
   public async findOne<R extends PgRelationMap<T>>(
     query: Pick<PgQueryRelations<T, R>, "with" | "where">,
     opts: StatementOptions = {},
-  ): Promise<PgStatic<T, R>> {
+  ): Promise<PgStatic<T, R> | undefined> {
     const [entity] = await this.findMany({ limit: 1, ...query }, opts);
+    return entity as PgStatic<T, R> | undefined;
+  }
+
+  /**
+   * Find a single entity. Throws `DbEntityNotFoundError` if not found.
+   */
+  public async getOne<R extends PgRelationMap<T>>(
+    query: Pick<PgQueryRelations<T, R>, "with" | "where">,
+    opts: StatementOptions = {},
+  ): Promise<PgStatic<T, R>> {
+    const entity = await this.findOne(query, opts);
 
     if (!entity) {
-      // TODO: enhance error message when finding by ID
       throw new DbEntityNotFoundError(this.tableName);
     }
 
-    return entity as PgStatic<T, R>;
+    return entity;
   }
 
   /**
@@ -506,21 +516,34 @@ export abstract class Repository<T extends TObject> {
   }
 
   /**
-   * Find an entity by ID.
-   *
-   * This is a convenience method for `findOne` with a where clause on the primary key.
-   * If you need more complex queries, use `findOne` instead.
+   * Find an entity by ID. Returns `undefined` if not found.
    */
   public async findById(
     id: string | number,
     opts: StatementOptions = {},
-  ): Promise<Static<T>> {
+  ): Promise<Static<T> | undefined> {
     return await this.findOne(
       {
         where: this.getWhereId(id),
       },
       opts,
     );
+  }
+
+  /**
+   * Find an entity by ID. Throws `DbEntityNotFoundError` if not found.
+   */
+  public async getById(
+    id: string | number,
+    opts: StatementOptions = {},
+  ): Promise<Static<T>> {
+    const entity = await this.findById(id, opts);
+
+    if (!entity) {
+      throw new DbEntityNotFoundError(this.tableName);
+    }
+
+    return entity;
   }
 
   /**
@@ -753,8 +776,8 @@ export abstract class Repository<T extends TObject> {
       if (error instanceof DbEntityNotFoundError && versionField) {
         // Verify entity still exists to differentiate between not-found vs version mismatch
         try {
-          // If findById succeeds, entity exists and this was a version mismatch
-          await this.findById(id);
+          // If getById succeeds, entity exists and this was a version mismatch
+          await this.getById(id);
           throw new DbVersionMismatchError(this.tableName, id);
         } catch (lookupError) {
           // If it's still not found, propagate the original not found error

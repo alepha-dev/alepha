@@ -333,9 +333,9 @@ export class RegistrationService {
     const userRepository = this.realmProvider.userRepository(userRealmName);
 
     if (body.username) {
-      const existingUser = await userRepository
-        .findOne({ where: { username: { eq: body.username } } })
-        .catch(() => undefined);
+      const existingUser = await userRepository.findOne({
+        where: { username: { eq: body.username } },
+      });
       if (existingUser) {
         this.log.debug("Username already taken", { username: body.username });
         throw new ConflictError("User with this username already exists");
@@ -343,9 +343,9 @@ export class RegistrationService {
     }
 
     if (body.email) {
-      const existingUser = await userRepository
-        .findOne({ where: { email: { eq: body.email } } })
-        .catch(() => undefined);
+      const existingUser = await userRepository.findOne({
+        where: { email: { eq: body.email } },
+      });
       if (existingUser) {
         this.log.debug("Email already taken", { email: body.email });
         throw new ConflictError("User with this email already exists");
@@ -353,9 +353,9 @@ export class RegistrationService {
     }
 
     if (body.phoneNumber) {
-      const existingUser = await userRepository
-        .findOne({ where: { phoneNumber: { eq: body.phoneNumber } } })
-        .catch(() => undefined);
+      const existingUser = await userRepository.findOne({
+        where: { phoneNumber: { eq: body.phoneNumber } },
+      });
       if (existingUser) {
         this.log.debug("Phone number already taken", {
           phoneNumber: body.phoneNumber,

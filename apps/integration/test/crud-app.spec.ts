@@ -81,8 +81,8 @@ class UserCrudApp {
       response: userResourceSchema,
     },
     handler: async ({ params }) => {
-      // findById already throws when not found
-      return await this.users.findById(params.id);
+      // getById throws when not found
+      return await this.users.getById(params.id);
     },
   });
 
@@ -154,8 +154,8 @@ class UserCrudApp {
       response: userResourceSchema,
     },
     handler: async ({ params, body }) => {
-      // findById already throws when not found
-      const existing = await this.users.findById(params.id);
+      // getById throws when not found
+      const existing = await this.users.getById(params.id);
 
       // Check for duplicate email if email is being updated
       if (body.email && body.email !== existing.email) {

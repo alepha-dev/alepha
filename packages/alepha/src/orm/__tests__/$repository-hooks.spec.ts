@@ -241,7 +241,7 @@ const testRepositoryHooks = async (alepha: Alepha) => {
 
   // Test: save hook (uses updateOne internally)
   app.tracker.clear();
-  const userToSave = await app.users.findById(user1.id);
+  const userToSave = await app.users.getById(user1.id);
   userToSave.name = "Alice Saved";
   await app.users.save(userToSave);
 

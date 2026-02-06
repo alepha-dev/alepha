@@ -65,7 +65,7 @@ export class IdentityService {
     userRealmName?: string,
   ): Promise<IdentityEntity> {
     this.log.trace("Getting identity by ID", { id, userRealmName });
-    const identity = await this.identities(userRealmName).findById(id);
+    const identity = await this.identities(userRealmName).getById(id);
     this.log.debug("Identity retrieved", {
       id,
       provider: identity.provider,

@@ -58,7 +58,7 @@ export class SessionController {
       response: t.void(),
     },
     handler: async ({ params, user }) => {
-      const session = await this.sessions.findOne({
+      const session = await this.sessions.getOne({
         where: {
           id: { eq: params.sessionId },
           userId: { eq: user.id },

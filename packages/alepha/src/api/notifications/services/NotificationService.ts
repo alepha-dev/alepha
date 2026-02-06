@@ -66,7 +66,7 @@ export class NotificationService {
 
   public async findNotificationById(id: string) {
     this.log.trace("Finding notification by ID", { id });
-    return this.notificationRepository.findOne({ where: { id } });
+    return this.notificationRepository.getOne({ where: { id } });
   }
 
   public async findNotifications(

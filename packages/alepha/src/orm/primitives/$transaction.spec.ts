@@ -26,7 +26,7 @@ class App {
 
   runIncrementTest = $transaction({
     handler: async (tx, id: number, val: number, waitMs = 0) => {
-      const e = await this.repository.findById(id, {
+      const e = await this.repository.getById(id, {
         tx,
       });
       if (waitMs) {
@@ -62,7 +62,7 @@ describe("$transaction", () => {
       await app.runIncrementTest(id, 100);
       await tx;
 
-      const r3 = await app.repository.findById(id);
+      const r3 = await app.repository.getById(id);
 
       expect(r3.counter).toBe(110);
     },

@@ -58,7 +58,7 @@ describe("deletedAt", () => {
       DbEntityNotFoundError,
     );
     await repository.save(it, { force: true });
-    expect(await repository.findById(it.id, { force: true })).toEqual({
+    expect(await repository.getById(it.id, { force: true })).toEqual({
       id: it.id,
       deletedAt: now,
       name: "Toby",

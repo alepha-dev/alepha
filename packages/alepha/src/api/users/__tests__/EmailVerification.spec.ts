@@ -161,7 +161,7 @@ describe("alepha/api/users - Email Verification", () => {
     expect(result.message).toContain("Email has been verified successfully");
 
     // Check that emailVerified is now true
-    const updatedUser = await userService.users().findOne({
+    const updatedUser = await userService.users().getOne({
       where: { id: { eq: user.id } },
     });
     expect(updatedUser.emailVerified).toBe(true);

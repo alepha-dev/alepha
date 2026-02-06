@@ -22,7 +22,7 @@ describe("$repository - save", () => {
 
     // Create a new entity
     const entity = await app.dummies.create({ name: "Test" });
-    expect(await app.dummies.findById(entity.id).then((it) => it.name)).toBe(
+    expect(await app.dummies.getById(entity.id).then((it) => it.name)).toBe(
       "Test",
     );
 
@@ -31,7 +31,7 @@ describe("$repository - save", () => {
     await app.dummies.save(entity);
     expect(entity.name).toBeUndefined();
     expect(
-      await app.dummies.findById(entity.id).then((it) => it.name),
+      await app.dummies.getById(entity.id).then((it) => it.name),
     ).toBeUndefined();
   });
 });

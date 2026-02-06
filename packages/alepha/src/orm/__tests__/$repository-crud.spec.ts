@@ -90,25 +90,37 @@ const testBasicCrud = async (alepha: Alepha) => {
   const paginatedUsers = await app.users.findMany({ limit: 2, offset: 1 });
   expect(paginatedUsers).toHaveLength(2);
 
-  // Test: findOne
+  // Test: findOne (returns undefined when not found)
   const foundAlice = await app.users.findOne({
     where: { name: { eq: "Alice" } },
   });
-  expect(foundAlice.id).toBe(aliceId);
-  expect(foundAlice.name).toBe("Alice");
+  expect(foundAlice).toBeDefined();
+  expect(foundAlice!.id).toBe(aliceId);
+  expect(foundAlice!.name).toBe("Alice");
 
-  // Test: findOne throws when not found
+  // Test: findOne returns undefined when not found
+  const notFound = await app.users.findOne({
+    where: { name: { eq: "NonExistent" } },
+  });
+  expect(notFound).toBeUndefined();
+
+  // Test: getOne throws when not found
   await expect(
-    app.users.findOne({ where: { name: { eq: "NonExistent" } } }),
+    app.users.getOne({ where: { name: { eq: "NonExistent" } } }),
   ).rejects.toThrowError(DbEntityNotFoundError);
 
-  // Test: findById
+  // Test: findById (returns undefined when not found)
   const userById = await app.users.findById(aliceId);
-  expect(userById.id).toBe(aliceId);
-  expect(userById.name).toBe("Alice");
+  expect(userById).toBeDefined();
+  expect(userById!.id).toBe(aliceId);
+  expect(userById!.name).toBe("Alice");
 
-  // Test: findById throws when not found
-  await expect(app.users.findById(999999)).rejects.toThrowError(
+  // Test: findById returns undefined when not found
+  const notFoundById = await app.users.findById(999999);
+  expect(notFoundById).toBeUndefined();
+
+  // Test: getById throws when not found
+  await expect(app.users.getById(999999)).rejects.toThrowError(
     DbEntityNotFoundError,
   );
 
@@ -157,7 +169,7 @@ const testBasicCrud = async (alepha: Alepha) => {
   expect(updatedByIdAlice.name).toBe("Alice Updated"); // Previous update persisted
 
   // Verify update persisted
-  const verifyAlice = await app.users.findById(aliceId);
+  const verifyAlice = await app.users.getById(aliceId);
   expect(verifyAlice.name).toBe("Alice Updated");
   expect(verifyAlice.role).toBe("superadmin");
 
@@ -176,14 +188,14 @@ const testBasicCrud = async (alepha: Alepha) => {
   expect(members.every((u) => u.role === "member")).toBe(true);
 
   // Test: save
-  const userToSave = await app.users.findOne({
+  const userToSave = await app.users.getOne({
     where: { name: { eq: "Charlie" } },
   });
   userToSave.name = "Charlie Saved";
   userToSave.profile = { age: 36 };
   await app.users.save(userToSave);
 
-  const savedUser = await app.users.findById(userToSave.id);
+  const savedUser = await app.users.getById(userToSave.id);
   expect(savedUser.name).toBe("Charlie Saved");
   expect(savedUser.profile?.age).toBe(36);
 
@@ -192,7 +204,7 @@ const testBasicCrud = async (alepha: Alepha) => {
   // ========================================
 
   // Test: deleteOne
-  const bob = await app.users.findOne({ where: { name: { eq: "Bob" } } });
+  const bob = await app.users.getOne({ where: { name: { eq: "Bob" } } });
   const deletedOneIds = await app.users.deleteOne({ id: { eq: bob.id } });
   expect(deletedOneIds).toHaveLength(1);
   expect(deletedOneIds[0]).toBe(bob.id);
@@ -203,7 +215,7 @@ const testBasicCrud = async (alepha: Alepha) => {
   expect(usersAfterDeleteOne.every((u) => u.name !== "Bob")).toBe(true);
 
   // Test: deleteById
-  const eve = await app.users.findOne({ where: { name: { eq: "Eve" } } });
+  const eve = await app.users.getOne({ where: { name: { eq: "Eve" } } });
   const deletedByIdResult = await app.users.deleteById(eve.id);
   expect(deletedByIdResult).toHaveLength(1);
   expect(deletedByIdResult[0]).toBe(eve.id);
@@ -218,7 +230,7 @@ const testBasicCrud = async (alepha: Alepha) => {
   expect(usersAfterDeleteById).toHaveLength(3);
 
   // Test: destroy (delete by entity)
-  const david = await app.users.findOne({ where: { name: { eq: "David" } } });
+  const david = await app.users.getOne({ where: { name: { eq: "David" } } });
   const destroyedIds = await app.users.destroy(david);
   expect(destroyedIds).toHaveLength(1);
   expect(destroyedIds[0]).toBe(david.id);

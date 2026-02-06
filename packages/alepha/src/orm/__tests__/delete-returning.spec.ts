@@ -49,7 +49,7 @@ const testDeleteReturning = async (alepha: Alepha) => {
   expect(deletedIds[0]).toBe(user1.id);
 
   // Verify the user is deleted
-  await expect(app.users.findById(user1.id)).rejects.toThrow(
+  await expect(app.users.getById(user1.id)).rejects.toThrow(
     DbEntityNotFoundError,
   );
 

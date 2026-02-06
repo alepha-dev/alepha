@@ -289,7 +289,7 @@ export class AuditService {
    * Get audit entry by ID.
    */
   public async getById(id: string): Promise<AuditEntity> {
-    return this.repo.findById(id);
+    return this.repo.getById(id);
   }
 
   /**

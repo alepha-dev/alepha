@@ -233,7 +233,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     const { users: testUsers } = await setupTestData(app);
 
-    const result = await app.users.findOne({
+    const result = await app.users.getOne({
       where: { id: { eq: testUsers.alice.id } },
       with: {
         profile: {
@@ -259,7 +259,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     const { cities: testCities } = await setupTestData(app);
 
-    const result = await app.cities.findOne({
+    const result = await app.cities.getOne({
       where: { id: { eq: testCities.nyc.id } },
       with: {
         country: {
@@ -284,7 +284,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     const { users: testUsers } = await setupTestData(app);
 
-    const result = await app.users.findOne({
+    const result = await app.users.getOne({
       where: { id: { eq: testUsers.alice.id } },
       with: {
         profile: {
@@ -337,7 +337,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     const manager = users.alias("manager");
 
-    const result = await app.users.findOne({
+    const result = await app.users.getOne({
       where: { id: { eq: testUsers.bob.id } },
       with: {
         manager: {
@@ -383,7 +383,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     const { users: testUsers } = await setupTestData(app);
 
-    const result = await app.users.findOne({
+    const result = await app.users.getOne({
       where: { id: { eq: testUsers.bob.id } },
       with: {
         profile: {
@@ -412,7 +412,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     const { users: testUsers } = await setupTestData(app);
 
-    const result = await app.users.findOne({
+    const result = await app.users.getOne({
       where: { id: { eq: testUsers.alice.id } },
       with: {
         profile: {
@@ -444,7 +444,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     const { users: testUsers } = await setupTestData(app);
 
-    const result = await app.users.findOne({
+    const result = await app.users.getOne({
       where: { id: { eq: testUsers.bob.id } },
       with: {
         city: {
@@ -475,7 +475,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     const { posts: testPosts } = await setupTestData(app);
 
-    const result = await app.posts.findOne({
+    const result = await app.posts.getOne({
       where: { id: { eq: testPosts.post1.id } },
       with: {
         author: {
@@ -510,7 +510,7 @@ describe("Joins - Comprehensive Tests", () => {
     const manager = users.alias("manager");
     const managerCity = cities.alias("manager_city");
 
-    const result = await app.users.findOne({
+    const result = await app.users.getOne({
       where: { id: { eq: testUsers.bob.id } },
       with: {
         city: {
@@ -560,7 +560,7 @@ describe("Joins - Comprehensive Tests", () => {
 
     const { posts: testPosts } = await setupTestData(app);
 
-    const result = await app.posts.findOne({
+    const result = await app.posts.getOne({
       where: { id: { eq: testPosts.post3.id } },
       with: {
         author: {
@@ -604,7 +604,7 @@ describe("Joins - Comprehensive Tests", () => {
     const manager = users.alias("manager");
     const managerManager = users.alias("manager_manager");
 
-    const result = await app.users.findOne({
+    const result = await app.users.getOne({
       where: { id: { eq: testUsers.diana.id } },
       with: {
         manager: {
@@ -841,7 +841,7 @@ describe("Joins - Comprehensive Tests", () => {
     const { posts: testPosts } = await setupTestData(app);
 
     // This requires multiple separate queries since we don't support one-to-many yet
-    const post = await app.posts.findOne({
+    const post = await app.posts.getOne({
       where: { id: { eq: testPosts.post1.id } },
       with: {
         author: {
@@ -881,7 +881,7 @@ describe("Joins - Comprehensive Tests", () => {
       email: "eve@example.com",
     });
 
-    const result = await app.users.findOne({
+    const result = await app.users.getOne({
       where: { id: { eq: userWithoutCity.id } },
       with: {
         city: {
@@ -1047,11 +1047,11 @@ describe("Joins - Comprehensive Tests", () => {
     const authorCity = cities.alias("author_city");
 
     // Get first comment
-    const comment = await app.comments.findOne({
+    const comment = await app.comments.getOne({
       where: { postId: { eq: testPosts.post1.id } },
     });
 
-    const result = await app.comments.findOne({
+    const result = await app.comments.getOne({
       where: { id: { eq: comment.id } },
       with: {
         post: {

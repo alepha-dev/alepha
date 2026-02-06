@@ -57,11 +57,9 @@ export class UserService {
       method,
     });
 
-    const user = await this.users(userRealmName)
-      .findOne({
-        where: { email: { eq: email } },
-      })
-      .catch(() => undefined);
+    const user = await this.users(userRealmName).findOne({
+      where: { email: { eq: email } },
+    });
 
     if (!user) {
       this.log.debug("Email verification requested for non-existent user", {
@@ -163,7 +161,7 @@ export class UserService {
       throw new BadRequestError("Invalid or expired verification token");
     }
 
-    const user = await this.users(userRealmName).findOne({
+    const user = await this.users(userRealmName).getOne({
       where: { email: { eq: email } },
     });
 
@@ -194,11 +192,9 @@ export class UserService {
   ): Promise<boolean> {
     this.log.trace("Checking if email is verified", { email, userRealmName });
 
-    const user = await this.users(userRealmName)
-      .findOne({
-        where: { email: { eq: email } },
-      })
-      .catch(() => undefined);
+    const user = await this.users(userRealmName).findOne({
+      where: { email: { eq: email } },
+    });
 
     return user?.emailVerified ?? false;
   }
@@ -257,7 +253,7 @@ export class UserService {
     userRealmName?: string,
   ): Promise<UserEntity> {
     this.log.trace("Getting user by ID", { id, userRealmName });
-    return await this.users(userRealmName).findById(id);
+    return await this.users(userRealmName).getById(id);
   }
 
   /**
@@ -279,11 +275,9 @@ export class UserService {
 
     // Check for existing user based on provided unique fields
     if (data.username) {
-      const existingUser = await this.users(userRealmName)
-        .findOne({
-          where: { username: { eq: data.username } },
-        })
-        .catch(() => undefined);
+      const existingUser = await this.users(userRealmName).findOne({
+        where: { username: { eq: data.username } },
+      });
 
       if (existingUser) {
         this.log.debug("Username already taken", { username: data.username });
@@ -292,11 +286,9 @@ export class UserService {
     }
 
     if (data.email) {
-      const existingUser = await this.users(userRealmName)
-        .findOne({
-          where: { email: { eq: data.email } },
-        })
-        .catch(() => undefined);
+      const existingUser = await this.users(userRealmName).findOne({
+        where: { email: { eq: data.email } },
+      });
 
       if (existingUser) {
         this.log.debug("Email already taken", { email: data.email });
@@ -305,11 +297,9 @@ export class UserService {
     }
 
     if (data.phoneNumber) {
-      const existingUser = await this.users(userRealmName)
-        .findOne({
-          where: { phoneNumber: { eq: data.phoneNumber } },
-        })
-        .catch(() => undefined);
+      const existingUser = await this.users(userRealmName).findOne({
+        where: { phoneNumber: { eq: data.phoneNumber } },
+      });
 
       if (existingUser) {
         this.log.debug("Phone number already taken", {

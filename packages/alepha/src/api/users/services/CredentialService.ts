@@ -91,11 +91,9 @@ export class CredentialService {
       .toISOString();
 
     // Find user by email (silent fail for security)
-    const user = await this.users(userRealmName)
-      .findOne({
-        where: { email: { eq: email } },
-      })
-      .catch(() => undefined);
+    const user = await this.users(userRealmName).findOne({
+      where: { email: { eq: email } },
+    });
 
     if (!user) {
       // Silent fail - don't reveal that email doesn't exist
@@ -106,14 +104,12 @@ export class CredentialService {
     }
 
     // Find the credentials identity for this user
-    const identity = await this.identities(userRealmName)
-      .findOne({
-        where: {
-          userId: { eq: user.id },
-          provider: { eq: "credentials" },
-        },
-      })
-      .catch(() => undefined);
+    const identity = await this.identities(userRealmName).findOne({
+      where: {
+        userId: { eq: user.id },
+        provider: { eq: "credentials" },
+      },
+    });
 
     if (!identity) {
       // User doesn't have credentials identity (maybe OAuth only)
@@ -325,11 +321,11 @@ export class CredentialService {
     }
 
     // Find user and identity
-    const user = await this.users(userRealmName).findOne({
+    const user = await this.users(userRealmName).getOne({
       where: { email: { eq: email } },
     });
 
-    const identity = await this.identities(userRealmName).findOne({
+    const identity = await this.identities(userRealmName).getOne({
       where: {
         userId: { eq: user.id },
         provider: { eq: "credentials" },

@@ -51,7 +51,7 @@ export class SessionCrudService {
     userRealmName?: string,
   ): Promise<SessionEntity> {
     this.log.trace("Getting session by ID", { id, userRealmName });
-    const session = await this.sessions(userRealmName).findById(id);
+    const session = await this.sessions(userRealmName).getById(id);
     this.log.debug("Session retrieved", { id, userId: session.userId });
     return session;
   }

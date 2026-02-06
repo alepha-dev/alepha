@@ -15,7 +15,7 @@ export class UserController {
       response: users.schema,
     },
     handler: async ({ user }) => {
-      return await this.users.findOne({
+      return await this.users.getOne({
         where: {
           id: { eq: user.id },
         },

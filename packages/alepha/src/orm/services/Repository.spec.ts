@@ -28,12 +28,12 @@ describe("Repository", () => {
 
     const it = await app.repository.create({ name: "test" });
 
-    expect(await app.repository.findById(it.id)).toEqual(it);
-    expect(await app.repository.findById(String(it.id))).toEqual(it);
+    expect(await app.repository.getById(it.id)).toEqual(it);
+    expect(await app.repository.getById(String(it.id))).toEqual(it);
 
     const update = await app.repository.updateById(it.id, { name: "2" });
 
-    expect(await app.repository.findById(it.id)).toEqual(update);
+    expect(await app.repository.getById(it.id)).toEqual(update);
 
     await app.repository.deleteById(it.id);
 
@@ -64,11 +64,11 @@ describe("Repository", () => {
 
     const it = await app.repository.create({ name: "test" });
 
-    expect(await app.repository.findById(it.uuid)).toEqual(it);
+    expect(await app.repository.getById(it.uuid)).toEqual(it);
 
     const update = await app.repository.updateById(it.uuid, { name: "2" });
 
-    expect(await app.repository.findById(it.uuid)).toEqual(update);
+    expect(await app.repository.getById(it.uuid)).toEqual(update);
 
     await app.repository.deleteById(it.uuid);
 
