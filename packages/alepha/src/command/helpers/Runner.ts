@@ -62,7 +62,7 @@ export class Runner {
   }
 
   protected get useDynamicLogger() {
-    if (this.alepha.isCI()) {
+    if (this.alepha.isCI() || this.alepha.env.CLAUDECODE) {
       return false;
     }
 
