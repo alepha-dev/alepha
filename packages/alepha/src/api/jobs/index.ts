@@ -12,7 +12,6 @@ export * from "./providers/JobProvider.ts";
 export * from "./schemas/jobExecutionQuerySchema.ts";
 export * from "./schemas/jobExecutionResourceSchema.ts";
 export * from "./schemas/triggerJobSchema.ts";
-export * from "./services/JobAudits.ts";
 export * from "./services/JobService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -28,7 +27,7 @@ export * from "./services/JobService.ts";
  * - Job definitions for tracking
  * - Job status tracking
  * - Execution history
- * - Retry management
+ * - Manual trigger tracking
  *
  * @module alepha.api.jobs
  */

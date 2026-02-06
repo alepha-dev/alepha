@@ -4,7 +4,10 @@ import { $lock, type LockPrimitive } from "alepha/lock";
 import type { LogEntry } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
-import { jobExecutions } from "../entities/jobExecutions.ts";
+import {
+  type JobExecutionEntity,
+  jobExecutions,
+} from "../entities/jobExecutions.ts";
 
 const envSchema = t.object({
   JOB_PREFIX: t.optional(
@@ -30,6 +33,7 @@ export class JobProvider {
   protected readonly env = $env(envSchema);
   protected readonly logs = new Map<string, LogEntry[]>();
   protected readonly jobs = new Map<string, JobRegistration>();
+  protected readonly pendingContext = new Map<string, JobTriggerContext[]>();
 
   /**
    * Register and set up a job for execution (called during primitive initialization).
@@ -66,7 +70,8 @@ export class JobProvider {
               return `${prefix}job:${jobName}`;
             },
             handler: async () => {
-              await this.executeJob(jobName, options.handler);
+              const ctx = this.pendingContext.get(jobName)?.shift();
+              await this.executeJob(jobName, options.handler, ctx);
             },
           })
         : null;
@@ -92,17 +97,35 @@ export class JobProvider {
   /**
    * Trigger a job by name.
    */
-  public async triggerJob(jobName: string): Promise<void> {
+  public async triggerJob(
+    jobName: string,
+    context?: JobTriggerContext,
+  ): Promise<void> {
     const registration = this.jobs.get(jobName);
     if (!registration) {
       throw new Error(`Job not registered: ${jobName}`);
     }
 
-    // Execute handler with or without lock
-    if (registration.options.lock !== false && registration.lockPrimitive) {
-      await registration.lockPrimitive.run();
-    } else {
-      await this.executeJob(jobName, registration.options.handler);
+    // Queue context for the lock handler path
+    if (context) {
+      const queue = this.pendingContext.get(jobName) ?? [];
+      queue.push(context);
+      this.pendingContext.set(jobName, queue);
+    }
+
+    try {
+      // Execute handler with or without lock
+      if (registration.options.lock !== false && registration.lockPrimitive) {
+        await registration.lockPrimitive.run();
+      } else {
+        await this.executeJob(jobName, registration.options.handler, context);
+      }
+    } finally {
+      // Clean up queue if empty
+      const queue = this.pendingContext.get(jobName);
+      if (queue && queue.length === 0) {
+        this.pendingContext.delete(jobName);
+      }
     }
   }
 
@@ -112,6 +135,7 @@ export class JobProvider {
   public async executeJob(
     jobName: string,
     handler: (args: { now: DateTime }) => Async<void>,
+    triggerContext?: JobTriggerContext,
   ): Promise<void> {
     if (!this.alepha.isStarted()) {
       return;
@@ -121,16 +145,20 @@ export class JobProvider {
 
     await this.alepha.context.run(
       async () => {
+        let execution: JobExecutionEntity | undefined;
+
         try {
           const now = this.dateTimeProvider.now();
 
           // Initialize log collection for this context
           this.logs.set(context, []);
 
-          // Create execution record
-          await this.executionRepository.create({
+          // Create execution record and capture its ID
+          execution = await this.executionRepository.create({
             job: jobName,
             status: "STARTED",
+            triggeredBy: triggerContext?.triggeredBy,
+            triggeredByName: triggerContext?.triggeredByName,
           });
 
           await this.alepha.events.emit("scheduler:begin", {
@@ -144,18 +172,12 @@ export class JobProvider {
 
           // Update execution as completed
           const logs = this.logs.get(context) || [];
-          const exec = await this.executionRepository.findOne({
-            where: {
-              job: jobName,
-              status: "STARTED",
-            },
-          });
 
-          exec.status = "COMPLETED";
-          exec.logs = logs;
-          exec.finishedAt = this.dateTimeProvider.nowISOString();
+          execution.status = "COMPLETED";
+          execution.logs = logs;
+          execution.finishedAt = this.dateTimeProvider.nowISOString();
 
-          await this.executionRepository.save(exec);
+          await this.executionRepository.save(execution);
 
           await this.alepha.events.emit(
             "scheduler:success",
@@ -168,21 +190,17 @@ export class JobProvider {
             },
           );
         } catch (error) {
-          // Update execution as failed
-          const logs = this.logs.get(context) || [];
-          const exec = await this.executionRepository.findOne({
-            where: {
-              job: jobName,
-              status: "STARTED",
-            },
-          });
+          // Update execution as failed (only if we have a record)
+          if (execution) {
+            const logs = this.logs.get(context) || [];
 
-          exec.status = "FAILED";
-          exec.error = (error as Error).message;
-          exec.logs = logs;
-          exec.finishedAt = this.dateTimeProvider.nowISOString();
+            execution.status = "FAILED";
+            execution.error = (error as Error).message;
+            execution.logs = logs;
+            execution.finishedAt = this.dateTimeProvider.nowISOString();
 
-          await this.executionRepository.save(exec);
+            await this.executionRepository.save(execution);
+          }
 
           await this.alepha.events.emit(
             "scheduler:error",
@@ -250,15 +268,22 @@ export interface Job {
    * @default true
    */
   lock?: boolean;
-
-  /**
-   * Optional prefix for job lock keys.
-   */
-  lockPrefix?: string;
 }
 
 export interface JobRegistration {
   name: string;
   options: Job;
   lockPrimitive: LockPrimitive<() => Promise<void>> | null;
+}
+
+export interface JobTriggerContext {
+  /**
+   * ID of the user who triggered the job.
+   */
+  triggeredBy?: string;
+
+  /**
+   * Display name of the user who triggered the job.
+   */
+  triggeredByName?: string;
 }

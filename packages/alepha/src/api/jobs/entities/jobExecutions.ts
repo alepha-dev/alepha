@@ -12,9 +12,12 @@ export const jobExecutions = $entity({
     finishedAt: t.optional(t.datetime()),
     job: t.string(),
     status: t.enum(["STARTED", "FAILED", "COMPLETED"]),
+    triggeredBy: t.optional(t.string()),
+    triggeredByName: t.optional(t.string()),
     error: t.optional(t.string()),
     logs: t.optional(t.array(logEntrySchema)),
   }),
+  indexes: [{ columns: ["job", "status"] }, { columns: ["job", "createdAt"] }],
 });
 
 export type JobExecutionEntity = Static<typeof jobExecutions.schema>;

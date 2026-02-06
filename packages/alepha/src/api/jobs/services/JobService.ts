@@ -1,7 +1,9 @@
 import { $inject, Alepha } from "alepha";
 import { $repository } from "alepha/orm";
+import { NotFoundError } from "alepha/server";
 import { jobExecutions } from "../entities/jobExecutions.ts";
 import { $job } from "../primitives/$job.ts";
+import type { JobTriggerContext } from "../providers/JobProvider.ts";
 import type { JobExecutionQuery } from "../schemas/jobExecutionQuerySchema.ts";
 
 export class JobService {
@@ -33,15 +35,18 @@ export class JobService {
     );
   }
 
-  public async triggerJob(name: string): Promise<{ ok: boolean }> {
+  public async triggerJob(
+    name: string,
+    context?: JobTriggerContext,
+  ): Promise<{ ok: boolean }> {
     const jobPrimitives = this.alepha.primitives($job);
     const job = jobPrimitives.find((j) => j.name === name);
 
     if (!job) {
-      throw new Error(`Job not found: ${name}`);
+      throw new NotFoundError(`Job not found: ${name}`);
     }
 
-    await job.trigger();
+    await job.trigger(context);
     return { ok: true };
   }
 }

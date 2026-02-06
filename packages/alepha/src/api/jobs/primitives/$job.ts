@@ -1,6 +1,9 @@
 import { $inject, createPrimitive, KIND, Primitive } from "alepha";
-import type { DateTime } from "alepha/datetime";
-import { type Job, JobProvider } from "../providers/JobProvider.ts";
+import {
+  type Job,
+  JobProvider,
+  type JobTriggerContext,
+} from "../providers/JobProvider.ts";
 
 /**
  * Job primitive - a drop-in replacement for $scheduler with built-in execution tracking.
@@ -38,15 +41,9 @@ export class JobPrimitive extends Primitive<JobPrimitiveOptions> {
     });
   }
 
-  public async trigger(): Promise<void> {
-    await this.jobProvider.triggerJob(this.name);
+  public async trigger(context?: JobTriggerContext): Promise<void> {
+    await this.jobProvider.triggerJob(this.name, context);
   }
 }
 
 $job[KIND] = JobPrimitive;
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export interface JobHandlerArguments {
-  now: DateTime;
-}

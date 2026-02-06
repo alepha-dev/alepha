@@ -1,6 +1,8 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider, dayjs } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { AlephaSecurity } from "alepha/security";
+import { AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { $job, AdminJobController, JobService } from "../index.ts";
 
@@ -266,6 +268,70 @@ describe("JobController", () => {
         query: { job: "test-job" },
       });
       expect(finalExecutions.page.totalElements ?? 0).toBe(initialCount + 1);
+    });
+
+    it("should store triggeredBy and triggeredByName via primitive", async () => {
+      const { app, ctrl } = await setup();
+
+      await app.testJob.trigger({
+        triggeredBy: "user-123",
+        triggeredByName: "John Doe",
+      });
+
+      const executions = await ctrl.getJobExecutions({
+        query: { job: "test-job" },
+      });
+
+      const execution = executions.content[0];
+      expect(execution.triggeredBy).toBe("user-123");
+      expect(execution.triggeredByName).toBe("John Doe");
+    });
+
+    it("should store triggeredBy and triggeredByName from user context via controller", async () => {
+      const alepha = Alepha.create();
+      alepha.with(AlephaServer);
+      alepha.with(AlephaSecurity);
+
+      class SecureApp {
+        testJob = $job({
+          name: "secure-test-job",
+          handler: async () => {},
+        });
+      }
+
+      alepha.inject(SecureApp);
+      const ctrl = alepha.inject(AdminJobController);
+      const service = alepha.inject(JobService);
+      await alepha.start();
+
+      const user = { id: "user-456", name: "Jane Doe", roles: ["admin"] };
+
+      await ctrl.triggerJob.run(
+        { body: { name: "secure-test-job" } },
+        { user },
+      );
+
+      const executions = await service.getJobExecutions({
+        job: "secure-test-job",
+      });
+
+      const execution = executions.content[0];
+      expect(execution.triggeredBy).toBe("user-456");
+      expect(execution.triggeredByName).toBe("Jane Doe");
+    });
+
+    it("should leave triggeredBy empty when no user context", async () => {
+      const { app, ctrl } = await setup();
+
+      await app.testJob.trigger();
+
+      const executions = await ctrl.getJobExecutions({
+        query: { job: "test-job" },
+      });
+
+      const execution = executions.content[0];
+      expect(execution.triggeredBy).toBeUndefined();
+      expect(execution.triggeredByName).toBeUndefined();
     });
   });
 
