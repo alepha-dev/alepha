@@ -1,0 +1,66 @@
+# Alepha - Redis
+
+## Installation
+
+Part of the `alepha` package. Import from `alepha/redis`.
+
+```bash
+npm install alepha
+```
+
+## Overview
+
+| Stability | Since | Runtime |
+|-----------|-------|---------|
+| 3 - stable | 0.1.0 | node, bun|
+
+Redis client wrapper.
+
+**Features:**
+- Connection pooling
+- Automatic reconnection
+- Command pipelining
+- Pub/sub support
+
+## API Reference
+
+### Providers
+
+Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
+
+For more details, see the [Providers documentation](/docs/concepts-providers).
+
+#### BunRedisProvider
+
+Bun Redis client provider using Bun's native Redis client.
+
+This provider uses Bun's built-in `RedisClient` class for Redis connections,
+which provides excellent performance (7.9x faster than ioredis) on the Bun runtime.
+
+#### BunRedisSubscriberProvider
+
+Bun Redis subscriber provider for pub/sub operations.
+
+This provider creates a dedicated Redis connection for subscriptions,
+as Redis requires separate connections for pub/sub operations.
+
+#### NodeRedisProvider
+
+Node.js Redis client provider using `@redis/client`.
+
+This provider uses the official Redis client for Node.js runtime.
+
+#### NodeRedisSubscriberProvider
+
+Node.js Redis subscriber provider using `@redis/client`.
+
+This provider creates a dedicated Redis connection for subscriptions,
+as Redis requires separate connections for pub/sub operations.
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `REDIS_URL` | text | redis://localhost:6379 | Redis connection URL |

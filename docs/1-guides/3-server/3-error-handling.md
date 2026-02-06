@@ -1,12 +1,12 @@
 # Error Handling
 
-Every framework promises "great error handling." Then you get a stack trace 47 levels deep pointing to some internal middleware you've never seen.
+Every tool promises "great error handling." Then you get a stack trace 47 levels deep pointing to some internal middleware you've never seen.
 
 Alepha tries to be honest about errors. When something breaks, you should know what, where, and why.
 
 ## The Error Hierarchy
 
-All errors thrown by Alepha extend `AlephaError`. This is the base class that ensures consistent behavior across the framework:
+All errors thrown by Alepha extend `AlephaError`. This is the base class that ensures consistent behavior across the engine:
 
 ```
 AlephaError (base)
@@ -25,7 +25,7 @@ AlephaError (base)
 ```
 
 **If you see an error that doesn't extend `AlephaError`, that's a bug.**
-Either in your code or in the framework. All framework modules use this hierarchy consistently.
+Either in your code or in the engine. All modules use this hierarchy consistently.
 
 ## HTTP Errors
 

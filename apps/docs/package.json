@@ -29,7 +29,7 @@
   },
   "scripts": {
     "dev": "LOG_LEVEL=trace alepha dev",
-    "copy": "alepha gen:packages && alepha gen:tree",
+    "copy": "alepha gen:docs && alepha gen:tree",
     "copy&dev": "yarn copy && alepha dev",
     "start": "node dist",
     "lint": "alepha lint",

@@ -1,11 +1,11 @@
 import { defineConfig } from "alepha/cli";
 import pkg from "../../packages/alepha/package.json" with { type: "json" };
+import { DocsCommand } from "./scripts/gen-docs.ts";
 import { LlmsCommand } from "./scripts/gen-llms.ts";
-import { PackagesCommand } from "./scripts/gen-packages.ts";
 import { TreeCommand } from "./scripts/gen-tree.ts";
 
 export default defineConfig({
-  services: [PackagesCommand, TreeCommand, LlmsCommand],
+  services: [DocsCommand, TreeCommand, LlmsCommand],
   build: {
     sitemap: { hostname: "https://alepha.dev" },
   },

@@ -3,7 +3,7 @@
 The `Alepha` class is the brain of your application.
 It acts as the central container that holds your configuration, manages the state, and controls the lifecycle of all your services.
 
-Unlike frameworks that rely on global nasty side-effects, Alepha keeps everything contained within this instance.
+Unlike tools that rely on global nasty side-effects, Alepha keeps everything contained within this instance.
 This makes your application portable, testable, and predictable.
 
 ## Creating the Instance

@@ -100,7 +100,7 @@ npm run build
 
 This produces a `dist/` folder.
 
-Unlike other frameworks that output a mess of files, Alepha (powered by Vite) produces a highly optimized bundle. You can deploy this folder to:
+Unlike other tools that output a mess of files, Alepha (powered by Vite) produces a highly optimized bundle. You can deploy this folder to:
 *   **Docker:** We generate the Dockerfile for you.
 *   **Vercel,Cloudflare:** We adapt the output to Serverless functions automatically.
 *   **VPS:** Just run `node dist` or `bun dist`.

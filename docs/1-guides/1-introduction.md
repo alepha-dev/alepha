@@ -1,15 +1,15 @@
 # Introduction
 
-Alepha is a full-stack TypeScript framework.
+Alepha is a full-stack TypeScript application engine.
 
-Most frameworks require assembling the stack: pick a router, configure an ORM, wire up auth,
+Most tools require assembling the stack: pick a router, configure an ORM, wire up auth,
 set up queues, debug Dockerfiles.
 
 Alepha ships with all of it built-in.
 
 ## What is Alepha?
 
-Alepha is an integrated, opinionated, full-stack framework for **Node.js 22+**, **Bun**, and
+Alepha is an integrated, opinionated, full-stack engine for **Node.js 22+**, **Bun**, and
 **Cloudflare Workers**. It automatically selects the right providers (HTTP server, SQL, Redis) based on
 the runtime.
 
@@ -29,7 +29,7 @@ Each layer builds on the previous.
 > Not all layers are required. Foundation alone is enough for CLI tools. Add Backend for APIs,
 > Frontend for web apps, Platform for users and background jobs.
 
-Other frameworks require assembling these pieces manually. In Alepha, they are built-in primitives.
+Other tools require assembling these pieces manually. In Alepha, they are built-in primitives.
 
 ## The "Primitive" Architecture
 
@@ -110,6 +110,6 @@ Alepha is designed to work seamlessly with AI coding assistants like Claude Code
 GitHub Copilot.
 
 A machine-readable documentation file is available at [alepha.dev/llms.txt](https://alepha.dev/llms.txt).
-AI assistants can consume this to understand the framework and generate correct Alepha code.
+AI assistants can consume this to understand the engine and generate correct Alepha code.
 
 The opinionated, primitive-based architecture provides clear patterns for AI tools to follow.

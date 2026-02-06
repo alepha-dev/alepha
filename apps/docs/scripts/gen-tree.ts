@@ -648,7 +648,9 @@ export class TreeCommand {
 
         if (!categoryMap.has(categoryPath)) {
           // Check if this is inside packages section
-          const packagesIndex = parts.findIndex((p) => p.startsWith("3-"));
+          const packagesIndex = parts.findIndex((p) =>
+            p.match(/^\d+-packages$/),
+          );
           const isInsidePackages = packagesIndex !== -1 && i > packagesIndex;
 
           // Determine display name
@@ -696,7 +698,7 @@ export class TreeCommand {
 
         // Check if this is inside packages section
         const parts = item.category.split("/");
-        const packagesIndex = parts.findIndex((p) => p.startsWith("3-"));
+        const packagesIndex = parts.findIndex((p) => p.match(/^\d+-packages$/));
         const isInsidePackages = packagesIndex !== -1;
 
         let displayName: string;

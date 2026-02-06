@@ -92,8 +92,7 @@ Requirements: [Node.js](https://nodejs.org/) 22+ or [Bun](https://bun.sh/) 1.3+
 ```bash
 npx alepha init my-app --api         # L1: Backend only
 npx alepha init my-app --react       # L2: + React frontend
-npx alepha init my-app --admin       # L4: Full SaaS starter
-npx alepha init my-app --admin --ai  # L4: + AI assistant context
+npx alepha init my-app --admin       # L3: Full SaaS starter
 
 cd my-app && npm run dev
 ```

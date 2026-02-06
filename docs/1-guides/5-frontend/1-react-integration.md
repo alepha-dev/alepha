@@ -1,6 +1,6 @@
 # React Integration
 
-Alepha isn't just a backend framework pretending it doesn't know about frontends. It's a full-stack framework that treats your React code as a first-class citizen. No more "backend team vs frontend team" drama. Just code.
+Alepha isn't just a backend engine pretending it doesn't know about frontends. It's a full-stack application engine that treats your React code as a first-class citizen. No more "backend team vs frontend team" drama. Just code.
 
 The `alepha/react` package gives you hooks for dependency injection, type-safe API calls, global state, and async operations. Use it with Alepha's router, or plug it into your existing Next.js/Expo/whatever setup.
 
@@ -36,7 +36,7 @@ import {
   useClient,        // Type-safe HTTP client
   useStore,         // Global state management
   useAction,        // Async operations with loading/error/cancel
-  useEvents,        // Subscribe to framework events
+  useEvents,        // Subscribe to engine events
 
   // Components
   ClientOnly,       // Skip SSR for browser-only code
@@ -48,7 +48,7 @@ These work **anywhere**. With Alepha's router, with Next.js, with Expo, with you
 
 ---
 
-## `useAlepha` - Access the Framework
+## `useAlepha` - Access the Engine
 
 Need the Alepha instance? Here you go:
 
@@ -90,7 +90,7 @@ Same DI container, same services, works in your components. No context providers
 
 ### When to Use It
 
-- Accessing framework services (Logger, Cache, etc.)
+- Accessing Alepha services (Logger, Cache, etc.)
 - Sharing business logic between server and client
 - Testing with mock services
 
@@ -263,9 +263,9 @@ const [search, { loading }] = useAction({
 
 ---
 
-## `useEvents` - Subscribe to Framework Events
+## `useEvents` - Subscribe to Engine Events
 
-React to framework events:
+React to engine events:
 
 ```tsx
 import { useEvents } from "alepha/react";
@@ -506,7 +506,7 @@ const [action, { loading, error, data, cancel }] = useAction({
   debounce: 300,
 });
 
-// Framework events
+// Engine events
 useEvents({
   "react:action:error": ({ error }) => toast(error.message),
 }, []);

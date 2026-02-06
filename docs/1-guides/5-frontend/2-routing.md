@@ -79,7 +79,7 @@ userProfile = $page({
 });
 ```
 
-Without the schema, `params` is `unknown`. With it, you get full type safety and validation. The framework validates the parameter before your loader even runs.
+Without the schema, `params` is `unknown`. With it, you get full type safety and validation. Alepha validates the parameter before your loader even runs.
 
 ### Query Parameters
 

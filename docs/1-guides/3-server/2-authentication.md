@@ -1,6 +1,6 @@
 # Authentication & Security
 
-In most frameworks, adding authentication involves:
+In most tools, adding authentication involves:
 1.  Installing Passport.js / NextAuth.
 2.  Configuring a session store (Redis).
 3.  Writing middleware to check headers.

@@ -106,7 +106,7 @@ Vercel serverless functions experience **cold starts** - a delay when your funct
 - Pro tier: Faster cold starts with more resources
 - Enterprise: Provisioned concurrency available
 
-**Alepha is Serverless Native.** We design the framework with serverless in mind and continuously optimize startup performance. However, the free tier has resource constraints that affect cold start times.
+**Alepha is Serverless Native.** We design the engine with serverless in mind and continuously optimize startup performance. However, the free tier has resource constraints that affect cold start times.
 
 **Tips to reduce cold starts:**
 - Keep your bundle size small

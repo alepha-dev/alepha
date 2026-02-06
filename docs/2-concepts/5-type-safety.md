@@ -1,6 +1,6 @@
 # Type Safety (The `t` Object)
 
-In many full-stack frameworks, you end up defining your data structures three times:
+In many full-stack tools, you end up defining your data structures three times:
 1.  Once for the Database (SQL/ORM)
 2.  Once for the API Validation (Zod/Joi)
 3.  Once for TypeScript interfaces

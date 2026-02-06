@@ -2,9 +2,9 @@
 
 If services are the "classes" of your application, **Primitives** are the "superpowers" you attach to them.
 
-In other frameworks, you might use **Decorators** (like `@Get()` in NestJS) or **File-System naming conventions** (like `+page.server.ts` in SvelteKit) to define special behavior.
+In other tools, you might use **Decorators** (like `@Get()` in NestJS) or **File-System naming conventions** (like `+page.server.ts` in SvelteKit) to define special behavior.
 
-In Alepha, we use **Primitives**. These are factory functions, always prefixed with `$`, that you assign to class properties. They tell the framework: *"This isn't just a variable. This is an API endpoint, a database table, or a background job."*
+In Alepha, we use **Primitives**. These are factory functions, always prefixed with `$`, that you assign to class properties. They tell the engine: *"This isn't just a variable. This is an API endpoint, a database table, or a background job."*
 
 ## How they work
 

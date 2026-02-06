@@ -42,7 +42,7 @@ run(app);
 
 ## The Golden Rule: Boundaries
 
-Here is where Alepha differs from other frameworks.
+Here is where Alepha differs from other tools.
 
 In a traditional Node.js app, it is tempting to just import `BillingService` into `UserService` and use it.
 **Don't do this.**

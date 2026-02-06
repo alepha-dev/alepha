@@ -2,7 +2,7 @@
 
 The fastest database query is the one you don't make.
 
-Caching in most frameworks involves Redis setup, serialization headaches, and cache invalidation bugs that haunt you at 3 AM. Alepha makes it boring — in a good way.
+Caching in most tools involves Redis setup, serialization headaches, and cache invalidation bugs that haunt you at 3 AM. Alepha makes it boring — in a good way.
 
 ## The `$cache` Primitive
 
