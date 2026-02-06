@@ -1,0 +1,150 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap");
+@import "@alepha/ui/styles";
+
+:root {
+  --cf-orange: #f6821f;
+  --cf-blue: #0051c3;
+  --cf-dark: #1d1f20;
+  --cf-border: #d1d5db;
+  --cf-bg: #f5f5f5;
+  --cf-sidebar-bg: #ffffff;
+  --cf-header-bg: #ffffff;
+  --cf-card-bg: #ffffff;
+  --cf-text: #1d1f20;
+  --cf-text-dimmed: #6b7280;
+  --cf-section-label: #9ca3af;
+}
+
+/* Stronger default borders in light mode */
+:root[data-mantine-color-scheme="light"] {
+  --mantine-color-default-border: #d1d5db;
+  --mantine-color-gray-3: #c9cdd3;
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Sidebar active item - Cloudflare dark style */
+.cf-nav-active {
+  background-color: var(--cf-dark) !important;
+  color: #fff !important;
+  border-radius: 6px;
+}
+.cf-nav-active .mantine-NavLink-label,
+.cf-nav-active .mantine-NavLink-description {
+  color: #fff !important;
+}
+
+/* Section labels in sidebar */
+.cf-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--cf-section-label);
+  padding: 16px 12px 4px;
+}
+
+/* Product/stat cards */
+.cf-card {
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  background: var(--mantine-color-body);
+  transition: box-shadow 0.15s ease;
+}
+.cf-card:hover {
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+}
+.cf-card-clickable {
+  cursor: pointer;
+}
+
+/* Mantine Card border override for light mode */
+:root[data-mantine-color-scheme="light"] .mantine-Card-root[data-with-border] {
+  border-color: #d1d5db;
+}
+
+/* Mantine Table border override for light mode */
+:root[data-mantine-color-scheme="light"] .mantine-Table-tr {
+  border-color: #d1d5db;
+}
+
+/* SegmentedControl stronger border */
+:root[data-mantine-color-scheme="light"] .mantine-SegmentedControl-root {
+  border: 1px solid #d1d5db;
+}
+
+/* Input borders */
+:root[data-mantine-color-scheme="light"] .mantine-Input-input {
+  border-color: #d1d5db;
+}
+
+/* Divider */
+:root[data-mantine-color-scheme="light"] .mantine-Divider-root {
+  --_divider-color: #d1d5db;
+}
+
+/* Sidebar scrollbar - hugs the right border */
+.cf-sidebar .mantine-ScrollArea-viewport {
+  scrollbar-gutter: stable;
+}
+.cf-sidebar .mantine-ScrollArea-scrollbar {
+  right: 0 !important;
+  width: 4px !important;
+  padding: 0 !important;
+}
+.cf-sidebar .mantine-ScrollArea-thumb {
+  background: #c9cdd3 !important;
+  border-radius: 0 !important;
+}
+:root[data-mantine-color-scheme="dark"] .cf-sidebar .mantine-ScrollArea-thumb {
+  background: #4b5563 !important;
+}
+
+/* Stat sparkline placeholder */
+.cf-sparkline {
+  height: 32px;
+  margin-top: 8px;
+  border-left: 2px solid #3b82f6;
+  margin-left: 4px;
+}
+
+/* Media grid image placeholder */
+.cf-media-placeholder {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.cf-media-placeholder:hover {
+  opacity: 0.85;
+}
+
+/* Theme card */
+.cf-theme-card {
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--mantine-color-body);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+.cf-theme-card:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+.cf-theme-preview {
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
