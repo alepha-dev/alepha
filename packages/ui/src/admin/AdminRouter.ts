@@ -51,8 +51,8 @@ export class AdminRouter {
 
   public getDefaultSidebarItems(): SidebarNode[] {
     return [
-      // Identity & Access
       {
+        type: "section",
         label: "Identity",
         icon: IconUsers,
         children: [
@@ -70,9 +70,8 @@ export class AdminRouter {
           },
         ],
       },
-
-      // Content & Storage
       {
+        type: "section",
         label: "Content",
         icon: IconFile,
         children: [
@@ -86,9 +85,8 @@ export class AdminRouter {
           },
         ],
       },
-
-      // System
       {
+        type: "section",
         label: "System",
         icon: IconSettings,
         children: [
@@ -106,8 +104,6 @@ export class AdminRouter {
           },
         ],
       },
-
-      // Bottom
       { type: "toggle", position: "bottom" },
     ];
   }

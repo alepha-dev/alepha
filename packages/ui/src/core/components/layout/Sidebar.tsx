@@ -13,11 +13,13 @@ import { useEvents } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 import {
   type ComponentType,
+  Fragment,
   type ReactNode,
   useCallback,
   useMemo,
   useState,
 } from "react";
+import { ui } from "../../constants/ui.ts";
 import { renderIcon } from "../../helpers/renderIcon.tsx";
 import ActionButton, { type ActionProps } from "../buttons/ActionButton.tsx";
 import OmnibarButton from "../buttons/OmnibarButton.tsx";
@@ -49,19 +51,25 @@ export const Sidebar = (props: SidebarProps) => {
   const router = useRouter();
   const { onItemClick } = props;
 
-  const divider = (key: string | number) => {
+  const divider = (key: string | number, fill?: boolean) => {
     return (
       <Flex
         key={key}
         h={1}
-        bg={"var(--alepha-border)"}
+        bg={"var(--mantine-color-default-border)"}
         my={"xs"}
-        mx={props.collapsed ? 0 : "sm"}
+        mx={
+          fill
+            ? "calc(-1 * var(--mantine-spacing-md))"
+            : props.collapsed
+              ? 0
+              : "sm"
+        }
       />
     );
   };
 
-  const renderNode = (item: SidebarNode, key: number) => {
+  const renderNode = (item: SidebarNode, key: number | string) => {
     if ("type" in item) {
       // Hide spacers when collapsed
       if (item.type === "spacer") {
@@ -70,7 +78,7 @@ export const Sidebar = (props: SidebarProps) => {
       }
 
       if (item.type === "divider") {
-        return divider(key);
+        return divider(key, item.fill);
       }
 
       if (item.type === "search") {
@@ -86,23 +94,44 @@ export const Sidebar = (props: SidebarProps) => {
       }
 
       // Replace sections with dividers when collapsed
+      // Replace sections with dividers when collapsed
       if (item.type === "section") {
+        // Hide section if all children are hidden
+        if (item.children && item.children.length > 0) {
+          const hasVisibleChild = item.children.some(
+            (child) => !("can" in child) || !child.can || child.can(),
+          );
+          if (!hasVisibleChild) return null;
+        }
+
         if (props.collapsed) {
-          return divider(key);
+          return (
+            <Fragment key={key}>
+              {divider(`${key}-d`)}
+              {item.children?.map((child, index) =>
+                renderNode(child, `s${key}-${index}`),
+              )}
+            </Fragment>
+          );
         }
         return (
-          <Flex key={key} mt={"md"} align={"center"} gap={"xs"}>
-            {renderIcon(item.icon)}
-            <Text size={"xs"} c={"dimmed"} tt={"uppercase"} fw={"bold"}>
-              {item.label}
-            </Text>
-          </Flex>
+          <Fragment key={key}>
+            <Flex mt={"md"} align={"center"} gap={"xs"}>
+              {renderIcon(item.icon, ui.sizes.icon.sm)}
+              <Text size={"xs"} c={"dimmed"} tt={"uppercase"} fw={"bold"}>
+                {item.label}
+              </Text>
+            </Flex>
+            {item.children?.map((child, index) =>
+              renderNode(child, `s${key}-${index}`),
+            )}
+          </Fragment>
         );
       }
     }
 
     if ("element" in item) {
-      return <Flex key={key}>{item.element}</Flex>;
+      return <Fragment key={key}>{item.element}</Fragment>;
     }
 
     // Check visibility control
@@ -167,7 +196,7 @@ export const Sidebar = (props: SidebarProps) => {
   };
 
   const padding = "md";
-  const gap = props.items ? (props.gap ?? 2) : "xs";
+  const gap = props.items ? (props.gap ?? 4) : "xs";
   const menu = useMemo(
     () => getSidebarNodes(),
     [props.items, props.autoPopulateMenu],
@@ -276,7 +305,6 @@ export const SidebarItem = (props: SidebarItemProps) => {
           (level === 0 ? "sm" : "xs")
         }
         tooltip={item.description}
-        c={"var(--mantine-color-text)"}
         color={"gray"}
         variant={"subtle"}
         variantActive={"default"}
@@ -284,7 +312,7 @@ export const SidebarItem = (props: SidebarItemProps) => {
         onClick={handleItemClick}
         leftSection={
           <Flex w={"100%"} align="center" gap={"sm"}>
-            {renderIcon(item.icon)}
+            {renderIcon(item.icon, ui.sizes.icon.sm)}
             <Flex direction={"column"}>
               <Flex>{item.label}</Flex>
             </Flex>
@@ -313,7 +341,7 @@ export const SidebarItem = (props: SidebarItemProps) => {
               position: "absolute",
               width: 1,
               background:
-                "linear-gradient(to bottom, transparent, var(--alepha-border), transparent)",
+                "linear-gradient(to bottom, transparent, var(--mantine-color-default-border), transparent)",
               top: 48,
               left: 20 + 32 * level,
               bottom: 16,
@@ -368,7 +396,11 @@ const SidebarCollapsedItem = (props: SidebarItemProps) => {
       }}
       radius={props.item.theme?.radius ?? props.theme.button?.radius ?? "md"}
       onClick={handleItemClick}
-      icon={renderIcon(item.icon) ?? <IconSquareRounded />}
+      icon={
+        renderIcon(item.icon, ui.sizes.icon.sm) ?? (
+          <IconSquareRounded size={ui.sizes.icon.sm} />
+        )
+      }
       href={props.item.href as any}
       target={props.item.target}
       {...props.item.actionProps}
@@ -401,6 +433,7 @@ export interface SidebarSpacer extends SidebarAbstractItem {
 
 export interface SidebarDivider extends SidebarAbstractItem {
   type: "divider";
+  fill?: true;
 }
 
 export interface SidebarSearch extends SidebarAbstractItem {
@@ -415,6 +448,7 @@ export interface SidebarSection extends SidebarAbstractItem {
   type: "section";
   label: string;
   icon?: ReactNode | ComponentType;
+  children?: SidebarNode[];
 }
 
 export interface SidebarMenuItem extends SidebarAbstractItem {
