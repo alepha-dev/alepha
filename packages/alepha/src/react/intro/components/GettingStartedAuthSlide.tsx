@@ -5,10 +5,17 @@ import type { GettingStartedSlide } from "./GettingStarted.tsx";
 /**
  * Hook that provides the auth slide content.
  * Content changes based on whether user is logged in.
+ * Returns undefined if auth routes are not configured.
  */
-export const useAuthSlide = (): GettingStartedSlide => {
+export const useAuthSlide = (): GettingStartedSlide | undefined => {
   const { user } = useAuth();
   const router = useRouter();
+
+  // Check if auth routes exist
+  const hasAuth = router.pages.find((it) => it.name === "authLayout");
+  if (!hasAuth) {
+    return undefined;
+  }
 
   // User is logged in - show user info and logout option
   if (user) {

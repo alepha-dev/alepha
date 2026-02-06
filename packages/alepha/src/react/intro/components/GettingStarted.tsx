@@ -1,4 +1,3 @@
-import { useRouter } from "alepha/react/router";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdminSlide } from "./GettingStartedAdminSlide.tsx";
@@ -68,11 +67,7 @@ const GettingStarted = ({ welcome }: GettingStartedProps) => {
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState<"next" | "prev">("next");
 
-  const router = useRouter();
-  const hasAuth = router.pages.find((it) => it.name === "authLayout");
-  const hasAdmin = router.pages.find((it) => it.name === "adminLayout");
-
-  // Get auth-aware slide content (hooks handle user state internally)
+  // Get auth-aware slide content (hooks return undefined if routes don't exist)
   const authSlide = useAuthSlide();
   const adminSlide = useAdminSlide();
 
@@ -90,12 +85,12 @@ const GettingStarted = ({ welcome }: GettingStartedProps) => {
     }
 
     // Add auth slide if auth routes exist
-    if (hasAuth) {
+    if (authSlide) {
       result.push(authSlide);
     }
 
     // Add admin slide if admin routes exist
-    if (hasAdmin) {
+    if (adminSlide) {
       result.push(adminSlide);
     }
 
@@ -103,7 +98,7 @@ const GettingStarted = ({ welcome }: GettingStartedProps) => {
     result.push(helpSlide);
 
     return result;
-  }, [welcome, hasAuth, hasAdmin, authSlide, adminSlide]);
+  }, [welcome, authSlide, adminSlide]);
 
   const current = filteredMessages[index];
 

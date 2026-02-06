@@ -5,10 +5,17 @@ import type { GettingStartedSlide } from "./GettingStarted.tsx";
 /**
  * Hook that provides the admin slide content.
  * Content changes based on user status and admin permissions.
+ * Returns undefined if admin routes are not configured.
  */
-export const useAdminSlide = (): GettingStartedSlide => {
+export const useAdminSlide = (): GettingStartedSlide | undefined => {
   const { user, can } = useAuth();
   const router = useRouter();
+
+  // Check if admin routes exist
+  const hasAdmin = router.pages.find((it) => it.name === "adminLayout");
+  if (!hasAdmin) {
+    return undefined;
+  }
 
   const adminAnchorProps = router.anchor(router.path("adminLayout"));
   const canAccessAdmin = can("admin:*");
