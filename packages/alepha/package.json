@@ -100,6 +100,11 @@
       "import": "./src/api/audits/index.ts",
       "default": "./src/api/audits/index.ts"
     },
+    "./api/clients": {
+      "types": "./src/api/clients/index.ts",
+      "import": "./src/api/clients/index.ts",
+      "default": "./src/api/clients/index.ts"
+    },
     "./api/files": {
       "types": "./src/api/files/index.ts",
       "react-native": "./src/api/files/index.browser.ts",
