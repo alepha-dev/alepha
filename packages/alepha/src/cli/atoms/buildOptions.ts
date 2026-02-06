@@ -8,7 +8,12 @@ import { $atom } from "../../core/primitives/$atom.ts";
  * - `vercel` - Generate Vercel deployment configuration (forces node runtime)
  * - `cloudflare` - Generate Cloudflare Workers configuration (forces workerd runtime)
  */
-export type BuildTarget = "bare" | "docker" | "vercel" | "cloudflare";
+export type BuildTarget =
+  | "bare"
+  | "docker"
+  | "vercel"
+  | "cloudflare"
+  | "static";
 
 /**
  * JavaScript runtime for the build output.
@@ -41,7 +46,9 @@ export const buildOptions = $atom({
      * - `vercel` - Generate Vercel deployment configuration (forces node runtime)
      * - `cloudflare` - Generate Cloudflare Workers configuration (forces workerd runtime)
      */
-    target: t.optional(t.enum(["bare", "docker", "vercel", "cloudflare"])),
+    target: t.optional(
+      t.enum(["bare", "docker", "vercel", "cloudflare", "static"]),
+    ),
 
     /**
      * JavaScript runtime for the build output.
@@ -154,6 +161,26 @@ export const buildOptions = $atom({
             oci: t.optional(t.boolean()),
           }),
         ),
+      }),
+    ),
+
+    /**
+     * Static site deployment configuration.
+     *
+     * Note: Set `target: "static"` to enable static site generation.
+     */
+    static: t.optional(
+      t.object({
+        /**
+         * Surge domain for deployment.
+         *
+         * If set, a CNAME file is written to dist/public/.
+         * If not set, a domain is auto-generated from package.json name.
+         *
+         * @example "my-app.surge.sh"
+         * @example "my-custom-domain.com"
+         */
+        domain: t.optional(t.string()),
       }),
     ),
 

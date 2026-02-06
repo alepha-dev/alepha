@@ -9,6 +9,7 @@ import {
   generateCloudflare,
   generateDocker,
   generateSitemap,
+  generateStatic,
   generateVercel,
   prerenderPages,
 } from "alepha/vite";
@@ -79,7 +80,7 @@ export class BuildCommand {
         }),
       ),
       target: t.optional(
-        t.enum(["bare", "docker", "vercel", "cloudflare"], {
+        t.enum(["bare", "docker", "vercel", "cloudflare", "static"], {
           aliases: ["t"],
           description: "Deployment target",
         }),
@@ -355,6 +356,18 @@ export class BuildCommand {
             alias: `docker build ${imageTag}`,
           });
         }
+      }
+
+      if (target === "static") {
+        await generateStatic({
+          alepha: alepha!,
+          distDir,
+          clientDir: publicDir,
+          compress: true,
+          domain: options.static?.domain,
+          root,
+          run,
+        });
       }
     },
   });

@@ -17,5 +17,6 @@ export * from "./generateCloudflare.ts";
 export * from "./generateDocker.ts";
 export * from "./generateExternals.ts";
 export * from "./generateSitemap.ts";
+export * from "./generateStatic.ts";
 export * from "./generateVercel.ts";
 export * from "./prerenderPages.ts";

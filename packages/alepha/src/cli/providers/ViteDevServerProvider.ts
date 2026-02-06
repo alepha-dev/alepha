@@ -47,6 +47,7 @@ export class ViteDevServerProvider {
   protected waitingForRetry = false;
   protected reloadDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   protected isReloading = false;
+  protected needsBrowserReload = false;
 
   /**
    * Initialize the dev server and load Alepha.
@@ -241,11 +242,19 @@ export class ViteDevServerProvider {
         // Browser-only: let Vite HMR handle it (React Fast Refresh)
         if (isBrowserOnly) return;
 
-        // Server or shared change: queue for debounced reload
+        // Queue Alepha reload for server-side invalidation
         this.changedFiles.add(ctx.file);
-        this.scheduleReload();
 
-        // Prevent default HMR, we'll handle the reload
+        // React components (.tsx/.jsx): restart Alepha silently,
+        // let Vite HMR handle the browser update (React Fast Refresh)
+        if (/\.(tsx|jsx)$/.test(ctx.file)) {
+          this.scheduleReload();
+          return;
+        }
+
+        // Pure server files: need full browser reload after Alepha restart
+        this.needsBrowserReload = true;
+        this.scheduleReload();
         return [];
       },
     };
@@ -313,7 +322,9 @@ export class ViteDevServerProvider {
     // Snapshot files to process and clear immediately
     // New files arriving during reload will go to fresh set
     const filesToInvalidate = new Set(this.changedFiles);
+    const sendReload = this.needsBrowserReload;
     this.changedFiles.clear();
+    this.needsBrowserReload = false;
 
     console.log();
     console.log(this.colors.set("CYAN", "  ⟳ Reloading..."));
@@ -324,7 +335,9 @@ export class ViteDevServerProvider {
       await this.alepha?.start();
 
       this.currentError = null;
-      this.sendBrowserReload();
+      if (sendReload) {
+        this.sendBrowserReload();
+      }
     } catch (err) {
       this.hasError = true;
       this.currentError = err instanceof Error ? err : new Error(String(err));
