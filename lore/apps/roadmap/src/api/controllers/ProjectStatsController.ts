@@ -275,13 +275,13 @@ export class ProjectStatsController {
     },
     handler: async ({ params, user }) => {
       // Verify project access
-      const project = await this.projects.findOne({
+      const project = await this.projects.getOne({
         where: {
           id: { eq: params.id },
         },
       });
 
-      await this.characters.findOne({
+      await this.characters.getOne({
         where: {
           userId: { eq: user.id },
           projectId: { eq: project.id },

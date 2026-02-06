@@ -142,17 +142,16 @@ export class ProjectController {
     handler: async ({ params, user }) => {
       const { project } = await this.security.checkOwnership(params.id, user);
 
-      const character = await this.characters
-        .findOne({
-          where: {
-            projectId: { eq: params.id },
-            userId: { eq: user.id },
-          },
-        })
-        .catch((err) => {
-          if (project.public) return undefined;
-          throw err;
-        });
+      const character = await this.characters.findOne({
+        where: {
+          projectId: { eq: params.id },
+          userId: { eq: user.id },
+        },
+      });
+
+      if (!character && !project.public) {
+        throw new ForbiddenError("Not a member of this project");
+      }
 
       const projectTasks = await this.tasks.findMany({
         where: {

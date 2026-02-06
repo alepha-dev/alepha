@@ -104,7 +104,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, body, user }) => {
-      const task = await this.tasks.findOne({
+      const task = await this.tasks.getOne({
         where: {
           id: { eq: params.id },
           completedAt: { isNull: true },
@@ -133,7 +133,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, user }) => {
-      const task = await this.tasks.findOne({
+      const task = await this.tasks.getOne({
         where: {
           id: { eq: params.id },
           completedAt: { isNull: true },
@@ -207,7 +207,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, user }) => {
-      const task = await this.tasks.findOne({
+      const task = await this.tasks.getOne({
         where: {
           id: { eq: params.id },
           acceptedAt: { isNotNull: true },
@@ -239,7 +239,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, user }) => {
-      const task = await this.tasks.findOne({
+      const task = await this.tasks.getOne({
         where: {
           id: { eq: params.id },
           acceptedAt: { isNull: true },
@@ -274,7 +274,7 @@ export class TaskController {
     },
     handler: async ({ params, user }) => {
       return this.tasks.transaction(async (tx) => {
-        const task = await this.tasks.findOne(
+        const task = await this.tasks.getOne(
           {
             where: {
               id: { eq: params.id },
@@ -299,7 +299,7 @@ export class TaskController {
           }
         }
 
-        const character = await this.characters.findOne(
+        const character = await this.characters.getOne(
           {
             where: {
               projectId: { eq: task.projectId },
@@ -339,7 +339,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, user }) => {
-      const task = await this.tasks.findOne({
+      const task = await this.tasks.getOne({
         where: {
           id: { eq: params.id },
         },
@@ -371,7 +371,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, body, user }) => {
-      const task = await this.tasks.findOne({
+      const task = await this.tasks.getOne({
         where: {
           id: { eq: params.id },
           completedAt: { isNull: true },
@@ -413,7 +413,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, user, body }) => {
-      const task = await this.tasks.findOne({
+      const task = await this.tasks.getOne({
         where: {
           id: { eq: params.id },
           completedAt: { isNull: true },
@@ -464,7 +464,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, body, user }) => {
-      const task = await this.tasks.findOne({
+      const task = await this.tasks.getOne({
         where: {
           id: { eq: params.id },
           completedAt: { isNull: true },
@@ -498,7 +498,7 @@ export class TaskController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const task = await this.tasks.findOne({
+      const task = await this.tasks.getOne({
         where: {
           id: { eq: params.id },
         },
@@ -526,7 +526,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, body, user }) => {
-      const task = await this.tasks.findOne({
+      const task = await this.tasks.getOne({
         where: {
           id: { eq: params.id },
         },
@@ -548,7 +548,7 @@ export class TaskController {
       });
 
       // Ensure the new zone exists in the project's packages list
-      const project = await this.projects.findById(task.projectId);
+      const project = await this.projects.getById(task.projectId);
       if (!project.packages.includes(body.newZone)) {
         await this.projects.updateById(project.id, {
           packages: [...project.packages, body.newZone],
@@ -571,7 +571,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, body, user }) => {
-      const task = await this.tasks.findOne({
+      const task = await this.tasks.getOne({
         where: {
           id: { eq: params.id },
         },
@@ -597,7 +597,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, user }) => {
-      const task = await this.tasks.findOne({
+      const task = await this.tasks.getOne({
         where: {
           id: { eq: params.id },
           acceptedAt: { isNotNull: true },
@@ -634,7 +634,7 @@ export class TaskController {
       response: tasks.schema,
     },
     handler: async ({ params, user }) => {
-      const task = await this.tasks.findOne({
+      const task = await this.tasks.getOne({
         where: {
           id: { eq: params.id },
           acceptedAt: { isNotNull: true },

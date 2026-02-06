@@ -51,28 +51,24 @@ export class IdentityController {
       const { username, password } = body;
 
       // Check if usernamePassword identity already exists
-      const existingIdentity = await this.identities
-        .findOne({
-          where: {
-            provider: { eq: "usernamePassword" },
-            userId: { eq: user.id },
-          },
-        })
-        .catch(() => null);
+      const existingIdentity = await this.identities.findOne({
+        where: {
+          provider: { eq: "usernamePassword" },
+          userId: { eq: user.id },
+        },
+      });
 
       if (existingIdentity) {
         throw new AlephaError("Password identity already exists for this user");
       }
 
       // Check if username is already taken
-      const existingUsername = await this.identities
-        .findOne({
-          where: {
-            provider: { eq: "usernamePassword" },
-            providerUserId: { eq: username },
-          },
-        })
-        .catch(() => null);
+      const existingUsername = await this.identities.findOne({
+        where: {
+          provider: { eq: "usernamePassword" },
+          providerUserId: { eq: username },
+        },
+      });
 
       if (existingUsername) {
         throw new AlephaError("Username is already taken");

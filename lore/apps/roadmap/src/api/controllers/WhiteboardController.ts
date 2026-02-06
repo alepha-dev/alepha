@@ -70,7 +70,7 @@ export class WhiteboardController {
       response: whiteboards.schema,
     },
     handler: async ({ params, user }) => {
-      const whiteboard = await this.whiteboards.findById(params.id);
+      const whiteboard = await this.whiteboards.getById(params.id);
       await this.security.checkOwnership(whiteboard.projectId, user);
       return whiteboard;
     },
@@ -89,7 +89,7 @@ export class WhiteboardController {
       response: whiteboards.schema,
     },
     handler: async ({ params, body, user }) => {
-      const whiteboard = await this.whiteboards.findById(params.id);
+      const whiteboard = await this.whiteboards.getById(params.id);
       await this.security.checkOwnership(whiteboard.projectId, user);
 
       const updateData: { title?: string; data?: WhiteboardData } = {};
@@ -113,7 +113,7 @@ export class WhiteboardController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const whiteboard = await this.whiteboards.findById(params.id);
+      const whiteboard = await this.whiteboards.getById(params.id);
       await this.security.checkOwnership(whiteboard.projectId, user);
 
       await this.whiteboards.deleteById(params.id);

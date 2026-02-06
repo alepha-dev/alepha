@@ -36,7 +36,7 @@ export class AppSecurityProvider {
     projectId: number,
     user: UserAccountToken,
   ): Promise<ProjectGuard> {
-    const project = await this.projects.findOne({
+    const project = await this.projects.getOne({
       where: {
         id: { eq: projectId },
       },
@@ -45,7 +45,7 @@ export class AppSecurityProvider {
     if (project.createdBy !== user.id && !project.public && user.ownership) {
       return {
         project,
-        character: await this.characters.findOne({
+        character: await this.characters.getOne({
           where: {
             projectId: { eq: projectId },
             userId: { eq: user.id },
