@@ -324,6 +324,13 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       return;
     }
 
+    // Plain objects/arrays → auto-serialize as JSON
+    if (typeof reply.body === "object") {
+      headers[HEADER_CONTENT_TYPE] ??= CONTENT_TYPE_JSON;
+      reply.body = JSON.stringify(reply.body);
+      return;
+    }
+
     headers[HEADER_CONTENT_TYPE] ??= CONTENT_TYPE_TEXT;
     reply.body = String(reply.body);
     return;
