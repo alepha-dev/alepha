@@ -6209,9 +6209,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"blog-mantine-dafa77@workspace:apps/blog-mantine":
+"blog-0cb386@workspace:apps/blog":
   version: 0.0.0-use.local
-  resolution: "blog-mantine-dafa77@workspace:apps/blog-mantine"
+  resolution: "blog-0cb386@workspace:apps/blog"
   dependencies:
     "@alepha/ui": "npm:^0.16.1"
     "@mantine/core": "npm:^8.3.14"
