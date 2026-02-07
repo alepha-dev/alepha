@@ -24,7 +24,7 @@ Each layer builds on the previous.
 | **Backend** | Database, queues, storage, API | `$entity`, `$action`, `$queue`, `$bucket`, `$scheduler` |
 | **Frontend** | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                |
 | **Platform** | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
-| **Admin** | Admin panel & auth UI | `$uiAdmin`, `$uiAuth`                                   |
+| **Admin** | Admin panel & auth UI | `$ui`, `$uiAdmin`, `$uiAuth`                            |
 
 Not all layers are required. Foundation alone is enough for CLI tools. Add Backend for APIs,
 Frontend for web apps, Platform for users and background jobs.
