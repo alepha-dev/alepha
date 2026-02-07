@@ -40,6 +40,7 @@ Complete authentication and authorization system with JWT, RBAC, and multi-issue
 ### Providers
 
 - [`JwtProvider`](/docs/reference-providers-jwtprovider) — Provides utilities for working with JSON Web Tokens (JWT).
+- [`ServerCsrfProvider`](/docs/reference-providers-servercsrfprovider) — CSRF protection via Origin header validation.
 
 ### Environment Variables
 
