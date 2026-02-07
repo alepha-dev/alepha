@@ -20,7 +20,7 @@ db.primaryKey(t.integer()) // integer with identity
 db.primaryKey(t.bigint())  // bigint with identity
 ```
 
-Calling `db.primaryKey()` with no argument creates an integer identity column. This is the default primary key type.
+Calling `db.primaryKey()` with no argument creates an integer (identity) column. This is the default primary key type.
 
 There are also explicit shortcut methods:
 

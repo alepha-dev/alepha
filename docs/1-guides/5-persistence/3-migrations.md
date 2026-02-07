@@ -66,19 +66,18 @@ For Cloudflare Workers using D1, migrations must be applied manually before depl
 
 ```bash
 alepha db generate
-wrangler d1 migrations apply <db-name> --local   # local dev
-wrangler d1 migrations apply <db-name> --remote   # production
+alepha db migrate --mode production # <- will use D1 driver based on DATABASE_URL of .env.production
 ```
 
 ## Database URL Configuration
 
 The database driver is selected based on the `DATABASE_URL` environment variable:
 
-| URL Prefix | Driver |
-|------------|--------|
-| `postgres://` | PostgreSQL (Node.js or Bun, selected automatically) |
-| `pglite://` | PGlite (embedded PostgreSQL) |
-| `d1://` | Cloudflare D1 |
+| URL Prefix        | Driver |
+|-------------------|--------|
+| `postgres://`     | PostgreSQL (Node.js or Bun, selected automatically) |
+| `pglite://`       | PGlite (embedded PostgreSQL) |
+| `d1://`           | Cloudflare D1 |
 | Other / no prefix | SQLite (Node.js or Bun, selected automatically) |
 
 ## Workflow Summary
@@ -90,8 +89,4 @@ alepha dev
 # Production - explicit migration workflow
 alepha db generate              # generate migration files
 alepha db migrate --mode production  # apply to production database
-
-# Cloudflare D1
-alepha db generate
-wrangler d1 migrations apply my-db --remote
 ```

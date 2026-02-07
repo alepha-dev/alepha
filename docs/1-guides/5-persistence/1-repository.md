@@ -4,6 +4,10 @@ Alepha ORM is built on top of [Drizzle ORM](https://orm.drizzle.team/) and Drizz
 
 `$entity` defines a database table. `$repository` creates a type-safe data access layer for that table.
 
+Alepha main target is PostgreSQL, but SQLite are also supported.
+
+The API is mostly database-agnostic, but some features (e.g. certain column types or operators) may be database-specific.
+
 ```typescript
 import { t } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
