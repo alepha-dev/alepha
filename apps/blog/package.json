@@ -1,4 +1,6 @@
 {
+  "private": true,
+  "name": "@alepha/blog",
   "type": "module",
   "dependencies": {
     "@alepha/ui": "^0.16.1",
