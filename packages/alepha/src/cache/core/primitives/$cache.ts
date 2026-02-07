@@ -118,6 +118,12 @@ export interface CachePrimitiveOptions<
    * If the cache is disabled.
    */
   disabled?: boolean;
+
+  /**
+   * Enable gzip compression for cached values.
+   * Reduces storage size by 60-80% for JSON payloads at the cost of CPU.
+   */
+  compress?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -143,6 +149,7 @@ export class CachePrimitive<
     BINARY: 0x01,
     JSON: 0x02,
     STRING: 0x03,
+    COMPRESSED: 0x04,
   };
 
   public get container(): string {
@@ -160,7 +167,7 @@ export class CachePrimitive<
 
     const key = this.key(...args);
     const cached = await this.get(key);
-    if (cached) {
+    if (cached !== undefined) {
       return cached;
     }
 
@@ -176,7 +183,13 @@ export class CachePrimitive<
     return this.options.key ? this.options.key(...args) : JSON.stringify(args);
   }
 
+  public async incr(key: string, amount = 1): Promise<number> {
+    return this.provider.incr(this.container, key, amount);
+  }
+
   public async invalidate(...keys: string[]): Promise<void> {
+    // When called with no args, keysToDelete stays empty and
+    // provider.del(container) with no keys deletes all entries in the container.
     const keysToDelete: string[] = [];
 
     for (const key of keys) {
@@ -199,18 +212,26 @@ export class CachePrimitive<
     value: TReturn,
     ttl?: DurationLike,
   ): Promise<void> {
+    if (
+      !this.alepha.isStarted() ||
+      this.options.disabled ||
+      !this.env.CACHE_ENABLED
+    ) {
+      return;
+    }
+
     const px = this.dateTimeProvider
       .duration(
         ttl ?? this.options.ttl ?? [this.env.CACHE_DEFAULT_TTL, "seconds"],
       )
       .as("milliseconds");
 
-    await this.provider.set(
-      this.container,
-      key,
-      this.serialize(value),
-      px > 0 ? px : undefined,
-    );
+    let data = this.serialize(value);
+    if (this.options.compress) {
+      data = await this.compress(data);
+    }
+
+    await this.provider.set(this.container, key, data, px > 0 ? px : undefined);
   }
 
   public async get(key: string): Promise<TReturn | undefined> {
@@ -224,7 +245,11 @@ export class CachePrimitive<
 
     const data = await this.provider.get(this.container, key);
     if (data) {
-      return await this.deserialize<TReturn>(data);
+      if (data[0] === this.codes.COMPRESSED) {
+        const decompressed = await this.decompress(data.subarray(1));
+        return this.deserialize<TReturn>(decompressed);
+      }
+      return this.deserialize<TReturn>(data);
     }
 
     return undefined;
@@ -232,22 +257,24 @@ export class CachePrimitive<
 
   protected serialize<TReturn>(value: TReturn): Uint8Array {
     if (value instanceof Uint8Array) {
-      return new Uint8Array([this.codes.BINARY, ...value]); // TODO: check if copy is ok?
+      const result = new Uint8Array(1 + value.length);
+      result[0] = this.codes.BINARY;
+      result.set(value, 1);
+      return result;
     }
 
-    if (typeof value === "string") {
-      return new Uint8Array([this.codes.STRING, ...this.encoder.encode(value)]);
-    }
-
-    return new Uint8Array([
-      this.codes.JSON,
-      ...this.encoder.encode(JSON.stringify(value)),
-    ]);
+    const encoded = this.encoder.encode(
+      typeof value === "string" ? value : JSON.stringify(value),
+    );
+    const code =
+      typeof value === "string" ? this.codes.STRING : this.codes.JSON;
+    const result = new Uint8Array(1 + encoded.length);
+    result[0] = code;
+    result.set(encoded, 1);
+    return result;
   }
 
-  protected async deserialize<TReturn>(
-    uint8Array: Uint8Array,
-  ): Promise<TReturn> {
+  protected deserialize<TReturn>(uint8Array: Uint8Array): TReturn {
     const type = uint8Array[0];
     const payload = uint8Array.slice(1);
 
@@ -262,6 +289,34 @@ export class CachePrimitive<
     }
 
     throw new CacheError(`Unknown serialization type: ${type}`);
+  }
+
+  protected async compress(data: Uint8Array): Promise<Uint8Array> {
+    const buf = (data.buffer as ArrayBuffer).slice(
+      data.byteOffset,
+      data.byteOffset + data.byteLength,
+    );
+    const compressed = new Uint8Array(
+      await new Response(
+        new Blob([buf]).stream().pipeThrough(new CompressionStream("gzip")),
+      ).arrayBuffer(),
+    );
+    const result = new Uint8Array(1 + compressed.length);
+    result[0] = this.codes.COMPRESSED;
+    result.set(compressed, 1);
+    return result;
+  }
+
+  protected async decompress(data: Uint8Array): Promise<Uint8Array> {
+    const buf = (data.buffer as ArrayBuffer).slice(
+      data.byteOffset,
+      data.byteOffset + data.byteLength,
+    );
+    return new Uint8Array(
+      await new Response(
+        new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip")),
+      ).arrayBuffer(),
+    );
   }
 
   protected $provider(): CacheProvider {

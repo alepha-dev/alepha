@@ -6,15 +6,20 @@ import {
   TestCache,
   testCacheBasic,
   testCacheClear,
+  testCacheCompress,
+  testCacheCompressTypes,
   testCacheDisabled,
+  testCacheFalsyValues,
   testCacheIncr,
   testCacheInvalidateAll,
   testCacheInvalidateByArgs,
   testCacheInvalidateByKey,
   testCacheKeys,
   testCacheMissingProvider,
+  testCachePrimitiveIncr,
   testCacheProviderClear,
   testCacheReturnTypes,
+  testCacheSetDisabled,
   testCacheStop,
   testSimpleKeyMappingHandler,
 } from "../__tests__/shared.ts";
@@ -112,5 +117,25 @@ describe("$cache", () => {
 
   it("should increment values atomically", async () => {
     await testCacheIncr();
+  });
+
+  it("should cache falsy values (0, empty string, false, null)", async () => {
+    await testCacheFalsyValues();
+  });
+
+  it("should not write to provider when cache is disabled", async () => {
+    await testCacheSetDisabled();
+  });
+
+  it("should increment via primitive", async () => {
+    await testCachePrimitiveIncr();
+  });
+
+  it("should compress cached values with gzip", async () => {
+    await testCacheCompress();
+  });
+
+  it("should handle different types with compression", async () => {
+    await testCacheCompressTypes();
   });
 });

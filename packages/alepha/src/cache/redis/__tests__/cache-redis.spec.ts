@@ -3,15 +3,20 @@ import { describe, it } from "vitest";
 import {
   testCacheBasic,
   testCacheClear,
+  testCacheCompress,
+  testCacheCompressTypes,
   testCacheDisabled,
+  testCacheFalsyValues,
   testCacheIncr,
   testCacheInvalidateAll,
   testCacheInvalidateByArgs,
   testCacheInvalidateByKey,
   testCacheKeys,
   testCacheMissingProvider,
+  testCachePrimitiveIncr,
   testCacheProviderClear,
   testCacheReturnTypes,
+  testCacheSetDisabled,
   testCacheStop,
   testSimpleKeyMappingHandler,
 } from "../../core/__tests__/shared.ts";
@@ -71,5 +76,25 @@ describe("$cache - redis", () => {
 
   it("should increment values atomically", async () => {
     await testCacheIncr(env(), provider);
+  });
+
+  it("should cache falsy values (0, empty string, false, null)", async () => {
+    await testCacheFalsyValues(env(), provider);
+  });
+
+  it("should not write to provider when cache is disabled", async () => {
+    await testCacheSetDisabled(env(), provider);
+  });
+
+  it("should increment via primitive", async () => {
+    await testCachePrimitiveIncr(env(), provider);
+  });
+
+  it("should compress cached values with gzip", async () => {
+    await testCacheCompress(env(), provider);
+  });
+
+  it("should handle different types with compression", async () => {
+    await testCacheCompressTypes(env(), provider);
   });
 });

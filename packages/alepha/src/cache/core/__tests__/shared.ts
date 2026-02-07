@@ -351,6 +351,117 @@ export const testCacheIncr = async (
   expect(val3).toBe(4);
 };
 
+export const testCacheFalsyValues = async (
+  env: Env = {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  class FalsyCache {
+    zeroCount = 0;
+    emptyCount = 0;
+    falseCount = 0;
+    nullCount = 0;
+
+    zero = $cache({
+      handler: () => {
+        this.zeroCount++;
+        return 0;
+      },
+    });
+
+    empty = $cache({
+      handler: () => {
+        this.emptyCount++;
+        return "";
+      },
+    });
+
+    bool = $cache({
+      handler: () => {
+        this.falseCount++;
+        return false;
+      },
+    });
+
+    nil = $cache({
+      handler: () => {
+        this.nullCount++;
+        return null;
+      },
+    });
+  }
+
+  const app = Alepha.create({ env }).with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+  const test = app.inject(FalsyCache);
+  await app.start();
+
+  // Each value should be cached after first call
+  expect(await test.zero()).toBe(0);
+  expect(await test.zero()).toBe(0);
+  expect(await test.zero()).toBe(0);
+  expect(test.zeroCount).toBe(1);
+
+  expect(await test.empty()).toBe("");
+  expect(await test.empty()).toBe("");
+  expect(test.emptyCount).toBe(1);
+
+  expect(await test.bool()).toBe(false);
+  expect(await test.bool()).toBe(false);
+  expect(test.falseCount).toBe(1);
+
+  expect(await test.nil()).toBe(null);
+  expect(await test.nil()).toBe(null);
+  expect(test.nullCount).toBe(1);
+};
+
+export const testCacheSetDisabled = async (
+  env: Env = {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  class ManualCache {
+    store = $cache<string>();
+  }
+
+  const app = Alepha.create({
+    env: { CACHE_ENABLED: false, ...env },
+  }).with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+
+  const test = app.inject(ManualCache);
+  const provider = app.inject(CacheProvider);
+  await app.start();
+
+  // set() should be a no-op when cache is disabled
+  await test.store.set("key1", "value1");
+  expect(await provider.has("ManualCache:store", "key1")).toBe(false);
+};
+
+export const testCachePrimitiveIncr = async (
+  env: Env = {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  class CounterApp {
+    counter = $cache<number>();
+  }
+
+  const app = Alepha.create({ env }).with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+  const test = app.inject(CounterApp);
+  await app.start();
+
+  // incr through the primitive
+  expect(await test.counter.incr("views")).toBe(1);
+  expect(await test.counter.incr("views")).toBe(2);
+  expect(await test.counter.incr("views", 5)).toBe(7);
+  expect(await test.counter.incr("views", -3)).toBe(4);
+};
+
 export const testCacheProviderClear = async (
   env: Env = {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
@@ -404,4 +515,95 @@ export const testCacheProviderClear = async (
   expect(await test.a({ name: "A" })).toBe("A:2");
   expect(await test.a({ name: "B" })).toBe("B:3");
   expect(await test.b({ name: "C" })).toBe("C:1");
+};
+
+export const testCacheCompress = async (
+  env: Env = {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  class CompressedCache {
+    count = 0;
+    data = $cache({
+      compress: true,
+      handler: () => {
+        this.count++;
+        return {
+          users: Array.from({ length: 100 }, (_, i) => ({
+            id: i,
+            name: `User ${i}`,
+            email: `user${i}@example.com`,
+          })),
+        };
+      },
+    });
+  }
+
+  const app = Alepha.create({ env }).with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+  const test = app.inject(CompressedCache);
+  await app.start();
+
+  const result1 = await test.data();
+  expect(result1.users).toHaveLength(100);
+  expect(result1.users[0]).toEqual({
+    id: 0,
+    name: "User 0",
+    email: "user0@example.com",
+  });
+
+  // Second call returns cached (and compressed) value
+  const result2 = await test.data();
+  expect(result2).toEqual(result1);
+  expect(test.count).toBe(1);
+
+  // Verify stored data has COMPRESSED prefix and is smaller than raw JSON
+  const provider = app.inject(CacheProvider);
+  const raw = await provider.get("CompressedCache:data", "[]");
+  expect(raw).toBeDefined();
+  expect(raw![0]).toBe(0x04);
+
+  const uncompressedJson = JSON.stringify(result1);
+  expect(raw!.length).toBeLessThan(uncompressedJson.length);
+};
+
+export const testCacheCompressTypes = async (
+  env: Env = {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  class CompressedTypes {
+    json = $cache({
+      compress: true,
+      handler: () => ({ key: "value".repeat(50) }),
+    });
+    str = $cache({
+      compress: true,
+      handler: () => "hello".repeat(50),
+    });
+    num = $cache({
+      compress: true,
+      handler: () => 42,
+    });
+    bool = $cache({
+      compress: true,
+      handler: () => true,
+    });
+  }
+
+  const app = Alepha.create({ env }).with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+  const test = app.inject(CompressedTypes);
+  await app.start();
+
+  expect(await test.json()).toEqual({ key: "value".repeat(50) });
+  expect(await test.json()).toEqual({ key: "value".repeat(50) });
+  expect(await test.str()).toBe("hello".repeat(50));
+  expect(await test.str()).toBe("hello".repeat(50));
+  expect(await test.num()).toBe(42);
+  expect(await test.num()).toBe(42);
+  expect(await test.bool()).toBe(true);
+  expect(await test.bool()).toBe(true);
 };

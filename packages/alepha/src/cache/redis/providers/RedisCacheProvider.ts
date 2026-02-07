@@ -69,20 +69,23 @@ export class RedisCacheProvider implements CacheProvider {
     const nameKey = this.prefix(name);
 
     if (keys.length === 0) {
-      const keys = await this.redisProvider.keys(`${nameKey}:*`);
-      await this.redisProvider.del(keys);
+      const matched = await this.redisProvider.keys(`${nameKey}:*`);
+      if (matched.length > 0) {
+        await this.redisProvider.del(matched);
+      }
       return;
     }
 
-    await this.redisProvider.del(
-      keys.map((key) =>
-        key.startsWith(nameKey) ? key : this.prefix(name, key),
-      ),
+    const prefixed = keys.map((key) =>
+      key.startsWith(nameKey) ? key : this.prefix(name, key),
     );
+    if (prefixed.length > 0) {
+      await this.redisProvider.del(prefixed);
+    }
   }
 
   public async has(name: string, key: string): Promise<boolean> {
-    return this.get(name, key).then((value) => value != null);
+    return this.redisProvider.has(this.prefix(name, key));
   }
 
   public async keys(name: string, filter?: string): Promise<string[]> {
@@ -96,7 +99,9 @@ export class RedisCacheProvider implements CacheProvider {
     this.log.debug("Clearing all cache");
     const pattern = `${this.prefix()}:*`;
     const keys = await this.redisProvider.keys(pattern);
-    await this.redisProvider.del(keys);
+    if (keys.length > 0) {
+      await this.redisProvider.del(keys);
+    }
   }
 
   public async incr(
