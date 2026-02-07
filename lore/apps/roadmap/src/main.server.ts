@@ -1,6 +1,6 @@
 import { AlephaBucketVercel } from "@alepha/bucket-vercel";
-import { AlephaDevtools } from "@alepha/devtools";
 import { Alepha, run } from "alepha";
+import { AlephaDevtools } from "alepha/devtools";
 import { RoadmapApi } from "./api/index.ts";
 import { RoadmapMcp } from "./mcp/index.ts";
 import { RoadmapWebAdmin } from "./web/admin/index.ts";
