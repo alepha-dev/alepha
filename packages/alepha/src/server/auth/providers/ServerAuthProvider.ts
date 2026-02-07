@@ -551,7 +551,7 @@ export class ServerAuthProvider {
    */
   public readonly logout = $route({
     path: alephaServerAuthRoutes.logout,
-    method: "GET",
+    method: "POST",
     schema: {
       query: t.object({
         post_logout_redirect_uri: t.optional(t.text()),

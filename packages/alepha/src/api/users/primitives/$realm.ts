@@ -1,5 +1,6 @@
 import { $context } from "alepha";
 import { AlephaApiClients, OAuth2Service } from "alepha/api/clients";
+import { AlephaApiFiles } from "alepha/api/files";
 import { AlephaApiKeys, ApiKeyService } from "alepha/api/keys";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import type { Repository } from "alepha/orm";
@@ -96,6 +97,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   // Enable features based on configuration
   // Each feature registers its wrapper service which internally uses the module primitives
   if (features.files) {
+    alepha.with(AlephaApiFiles);
     alepha.with(UserFiles);
   }
 
