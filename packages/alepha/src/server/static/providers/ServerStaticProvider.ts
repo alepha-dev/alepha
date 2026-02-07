@@ -54,6 +54,7 @@ export class ServerStaticProvider {
         const filePath = join(root, urlPath.replace(/\//g, sep));
         this.log.trace(`Mount ${routePath} -> ${filePath}`);
         return {
+          silent: options.silent,
           path: routePath,
           handler: await this.createFileHandler(filePath, options),
         };
@@ -70,6 +71,7 @@ export class ServerStaticProvider {
         route.path.endsWith("index.html")
       ) {
         this.routerProvider.createRoute({
+          silent: options.silent,
           path: route.path.replace(/index\.html$/, ""),
           handler: route.handler,
         });
@@ -86,6 +88,7 @@ export class ServerStaticProvider {
     if (options.historyApiFallback) {
       // meaning all unmatched routes should serve index.html
       this.routerProvider.createRoute({
+        silent: options.silent,
         path: join(prefix, "*").replace(/\\/g, "/"),
         handler: async (request) => {
           const { reply } = request;

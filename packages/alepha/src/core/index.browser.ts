@@ -18,11 +18,11 @@ export const run = (
     }
   }
 
-  if (import.meta?.hot) {
-    import.meta.hot.on("alepha:reload", async () => {
-      window.location.reload();
-    });
-  }
+  // if (import.meta?.hot) {
+  //   import.meta.hot.on("alepha:reload", async () => {
+  //     window.location.reload();
+  //   });
+  // }
 
   (async () => {
     try {

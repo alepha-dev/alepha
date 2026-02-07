@@ -1,9 +1,12 @@
 import { run } from "alepha";
-import { $route } from "alepha/server";
+import { $action, $route } from "alepha/server";
 
 class App {
   root = $route({
     path: "/",
+    handler: () => "Hello, Alepha!",
+  });
+  testp = $action({
     handler: () => "Hello, Alepha!",
   });
 }

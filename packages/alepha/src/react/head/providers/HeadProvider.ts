@@ -33,7 +33,9 @@ export class HeadProvider {
    * @returns Merged global head with htmlAttributes
    */
   public resolveGlobalHead(): Head {
-    const head: Head = {};
+    const head: Head = {
+      htmlAttributes: { lang: "en" },
+    };
 
     for (const h of this.global ?? []) {
       const resolved = typeof h === "function" ? h() : h;
@@ -63,6 +65,13 @@ export class HeadProvider {
         this.fillHeadByPage(layer.route, state, layer.props ?? {});
       }
     }
+
+    // Defaults if none were set by global $head or page head
+    state.head.title ??= "App";
+    state.head.htmlAttributes = {
+      lang: "en",
+      ...state.head.htmlAttributes,
+    };
   }
 
   protected mergeHead(state: HeadState, head: Head): void {

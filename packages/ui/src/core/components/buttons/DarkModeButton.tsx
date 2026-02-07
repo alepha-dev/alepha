@@ -1,5 +1,6 @@
 import { useMantineColorScheme } from "@mantine/core";
 import { IconMoon, IconSun } from "@tabler/icons-react";
+import { ui } from "../../constants/ui.ts";
 import ActionButton, { type ActionProps } from "./ActionButton.tsx";
 
 /**
@@ -19,17 +20,20 @@ const DarkModeButton = (props: Partial<ActionProps>) => {
     setColorScheme(current === "dark" ? "light" : "dark");
   };
 
+  const size = props.size ?? "md";
+  const iconSize =
+    (ui.sizes.icon as Record<string, number>)[size] ?? ui.sizes.icon.md;
+
   return (
     <ActionButton
       onClick={toggleColorScheme}
       variant={props.variant ?? "subtle"}
-      size={props.size ?? "sm"}
+      size={size}
       aria-label="Toggle color scheme"
-      px={"xs"}
       icon={
         <>
-          <IconSun size={14} className="alepha-light-hidden" />
-          <IconMoon size={14} className="alepha-dark-hidden" />
+          <IconSun size={iconSize} className="alepha-light-hidden" />
+          <IconMoon size={iconSize} className="alepha-dark-hidden" />
         </>
       }
       {...props}

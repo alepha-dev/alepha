@@ -64,6 +64,13 @@ export interface ServePrimitiveOptions {
    * @default {}
    */
   cacheControl?: Partial<CacheControlOptions> | false;
+
+  /**
+   * Whether to suppress logging for this primitive.
+   *
+   * @default false
+   */
+  silent?: boolean;
 }
 
 export interface CacheControlOptions {

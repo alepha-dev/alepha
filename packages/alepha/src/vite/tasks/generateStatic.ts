@@ -74,17 +74,32 @@ export async function generateStatic(
       await alepha.events.emit("configure", alepha);
     }
 
-    // Force-render "/" if index.html does not exist yet
+    // Force-render "/" if index.html does not exist yet (not pre-rendered)
     const indexPath = join(publicDir, "index.html");
-    if (!(await exists(indexPath))) {
+    const isPrerendered = await exists(indexPath);
+    if (!isPrerendered) {
       await renderRootPage(alepha, publicDir, compress);
     }
 
-    // Generate empty SPA shell from index.html for 200.html and 404.html.
-    // These files must have an empty <div id="root"></div> to avoid
-    // hydration mismatches — the client-side router handles rendering.
+    // Build an SPA shell from index.html with an empty <div id="root"></div>.
+    // Pages pre-rendered via `static: true` already have their own HTML files;
+    // the shell is used for index.html (when not pre-rendered), 200.html,
+    // and 404.html so the client-side router handles rendering without
+    // hydration mismatches.
     const indexHtml = await readFile(indexPath, "utf-8");
     const shell = stripRootContent(indexHtml);
+
+    // If index.html was generated here (not pre-rendered), replace it
+    // with the empty shell to avoid hydration mismatches.
+    if (!isPrerendered) {
+      await writeFile(indexPath, shell);
+      if (compress) {
+        await compressFile(
+          typeof compress === "object" ? compress : {},
+          indexPath,
+        );
+      }
+    }
 
     const notFoundPath = join(publicDir, "404.html");
     if (!(await exists(notFoundPath))) {

@@ -345,7 +345,16 @@ const DashboardShell = (props: DashboardShellProps) => {
           }}
           {...props.appShellNavbarProps}
         >
-          {props.navbarHeader}
+          {props.navbarHeader ? (
+            <Flex
+              style={{
+                borderBottom: "1px solid var(--mantine-color-default-border)",
+              }}
+              h={headerHeight}
+            >
+              {props.navbarHeader}
+            </Flex>
+          ) : null}
           <Sidebar
             {...(props.sidebarProps ?? {})}
             collapsed={effectiveCollapsed}

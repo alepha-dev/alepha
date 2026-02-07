@@ -185,4 +185,4 @@ console.log(alepha.graph());
 // }
 ```
 
-Alepha has also a built-in graph visualization tool in `@alepha/devtools` that shows module boundaries and dependencies.
+Alepha has also a built-in graph visualization tool in `alepha/devtools` that shows module boundaries and dependencies.

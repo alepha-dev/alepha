@@ -22,4 +22,5 @@ Create a new static file handler.
 | `historyApiFallback` | `boolean` | No | Force all requests "not found" to be served with the index.html file |
 | `name` | `string` | No | Optional name of the primitive |
 | `cacheControl` | `Partial&lt;CacheControlOptions&gt; \| false` | No | Whether to use cache control headers. |
+| `silent` | `boolean` | No | Whether to suppress logging for this primitive. |
 
