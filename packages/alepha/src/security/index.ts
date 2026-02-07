@@ -9,6 +9,7 @@ import { CryptoProvider } from "./providers/CryptoProvider.ts";
 import { JwtProvider } from "./providers/JwtProvider.ts";
 import { SecurityProvider } from "./providers/SecurityProvider.ts";
 import { ServerBasicAuthProvider } from "./providers/ServerBasicAuthProvider.ts";
+import { ServerCsrfProvider } from "./providers/ServerCsrfProvider.ts";
 import { ServerSecurityProvider } from "./providers/ServerSecurityProvider.ts";
 import type { UserAccount } from "./schemas/userAccountInfoSchema.ts";
 
@@ -26,6 +27,7 @@ export * from "./providers/CryptoProvider.ts";
 export * from "./providers/JwtProvider.ts";
 export * from "./providers/SecurityProvider.ts";
 export * from "./providers/ServerBasicAuthProvider.ts";
+export * from "./providers/ServerCsrfProvider.ts";
 export * from "./providers/ServerSecurityProvider.ts";
 export * from "./schemas/permissionSchema.ts";
 export * from "./schemas/roleSchema.ts";
@@ -117,6 +119,7 @@ export const AlephaSecurity = $module({
     CryptoProvider,
     ServerSecurityProvider,
     ServerBasicAuthProvider,
+    ServerCsrfProvider,
   ],
   register: (alepha: Alepha) => {
     // Always register core security providers
@@ -128,6 +131,7 @@ export const AlephaSecurity = $module({
     if (alepha.has(AlephaServer)) {
       alepha.with(ServerSecurityProvider);
       alepha.with(ServerBasicAuthProvider);
+      alepha.with(ServerCsrfProvider);
     }
   },
 });
