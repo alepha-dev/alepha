@@ -32,8 +32,8 @@ Core UI components based on Mantine UI v8.
 
 ## API Reference
 
-### Hooks
+### React Hooks
 
-- [`useDialog`](/docs/primitives-usedialog) — Use this hook to access the Dialog Service for showing various dialog types.
-- [`useTheme`](/docs/primitives-usetheme) — Hook to get and set the current theme.
-- [`useToast`](/docs/primitives-usetoast) — Use this hook to access the Toast Service for showing notifications.
+- [`useDialog`](/docs/reference-react-hooks-usedialog) — Use this hook to access the Dialog Service for showing various dialog types.
+- [`useTheme`](/docs/reference-react-hooks-usetheme) — Hook to get and set the current theme.
+- [`useToast`](/docs/reference-react-hooks-usetoast) — Use this hook to access the Toast Service for showing notifications.

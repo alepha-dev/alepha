@@ -27,18 +27,12 @@ Type-safe API client with request deduplication.
 
 ### Primitives
 
-- [`$client`](/docs/primitives-$client) — Create a new client.
-- [`$remote`](/docs/primitives-$remote) — $remote is a primitive that allows you to define remote service access.
+- [`$client`](/docs/reference-primitives-$client) — Create a new client.
+- [`$remote`](/docs/reference-primitives-$remote) — $remote is a primitive that allows you to define remote service access.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### LinkProvider
-
-Browser, SSR friendly, service to handle links.
+- [`LinkProvider`](/docs/reference-providers-linkprovider) — Browser, SSR friendly, service to handle links.
 
 ### Environment Variables
 

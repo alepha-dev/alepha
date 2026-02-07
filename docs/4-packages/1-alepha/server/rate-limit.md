@@ -23,7 +23,7 @@ Request rate limiting on actions.
 
 ### Primitives
 
-- [`$rateLimit`](/docs/primitives-$ratelimit) — Declares rate limiting for server routes or custom usage.
+- [`$rateLimit`](/docs/reference-primitives-$ratelimit) — Declares rate limiting for server routes or custom usage.
 
 ### Environment Variables
 

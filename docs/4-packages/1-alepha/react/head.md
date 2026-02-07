@@ -25,35 +25,14 @@ HTML head element management.
 
 ### Primitives
 
-- [`$head`](/docs/primitives-$head) — Set global `<head>` options for the application.
+- [`$head`](/docs/reference-primitives-$head) — Set global `<head>` options for the application.
 
-### Hooks
+### React Hooks
 
-- [`useHead`](/docs/primitives-usehead) — ```tsx
+- [`useHead`](/docs/reference-react-hooks-usehead) — ```tsx
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### BrowserHeadProvider
-
-Browser-side head provider that manages document head elements.
-
-Used by ReactBrowserProvider and ReactBrowserRouterProvider to update
-document title, meta tags, and other head elements during client-side
-navigation.
-
-#### HeadProvider
-
-Provides methods to fill and merge head information into the application state.
-
-Used both on server and client side to manage document head.
-
-#### ServerHeadProvider
-
-Server-side head provider that fills head content from route configurations.
-
-Used by ReactServerProvider to collect title, meta tags, and other head
-elements which are then rendered by ReactServerTemplateProvider.
+- [`BrowserHeadProvider`](/docs/reference-providers-browserheadprovider) — Browser-side head provider that manages document head elements.
+- [`HeadProvider`](/docs/reference-providers-headprovider) — Provides methods to fill and merge head information into the application state.
+- [`ServerHeadProvider`](/docs/reference-providers-serverheadprovider) — Server-side head provider that fills head content from route configurations.

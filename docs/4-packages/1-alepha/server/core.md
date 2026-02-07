@@ -32,39 +32,14 @@ Convention-driven HTTP server with automatic validation and type inference.
 
 ### Primitives
 
-- [`$action`](/docs/primitives-$action) — Creates a server action primitive for defining type-safe HTTP endpoints.
-- [`$route`](/docs/primitives-$route) — Create a basic endpoint.
+- [`$action`](/docs/reference-primitives-$action) — Creates a server action primitive for defining type-safe HTTP endpoints.
+- [`$route`](/docs/reference-primitives-$route) — Create a basic endpoint.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### ServerNotReadyProvider
-
-On every request, this provider checks if the server is ready.
-
-If the server is not ready, it responds with a 503 status code and a message indicating that the server is not ready yet.
-
-The response also includes a `Retry-After` header indicating that the client should retry after 5 seconds.
-
-#### ServerProvider
-
-Base server provider to handle incoming requests and route them.
-
-This is the default implementation for serverless environments.
-
-ServerProvider supports both Node.js HTTP requests and Web (Fetch API) requests.
-
-#### ServerRouterProvider
-
-Main router for all routes server side.
-
-Reminder:
-- $route => generic route
-- $action => action route (for API calls)
-- $page => React route (for React SSR)
+- [`ServerNotReadyProvider`](/docs/reference-providers-servernotreadyprovider) — On every request, this provider checks if the server is ready.
+- [`ServerProvider`](/docs/reference-providers-serverprovider) — Base server provider to handle incoming requests and route them.
+- [`ServerRouterProvider`](/docs/reference-providers-serverrouterprovider) — Main router for all routes server side.
 
 ### Environment Variables
 

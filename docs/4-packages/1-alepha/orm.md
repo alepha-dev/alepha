@@ -34,10 +34,10 @@ Full-featured database abstraction built on Drizzle ORM with complete type safet
 
 ### Primitives
 
-- [`$entity`](/docs/primitives-$entity) — Creates a database entity primitive that defines table structure using TypeBox schemas.
-- [`$repository`](/docs/primitives-$repository) — Get the repository for the given entity.
-- [`$sequence`](/docs/primitives-$sequence) — Creates a PostgreSQL sequence primitive for generating unique numeric values.
-- [`$transaction`](/docs/primitives-$transaction) — Creates a transaction primitive for database operations requiring atomicity and consistency.
+- [`$entity`](/docs/reference-primitives-$entity) — Creates a database entity primitive that defines table structure using TypeBox schemas.
+- [`$repository`](/docs/reference-primitives-$repository) — Get the repository for the given entity.
+- [`$sequence`](/docs/reference-primitives-$sequence) — Creates a PostgreSQL sequence primitive for generating unique numeric values.
+- [`$transaction`](/docs/reference-primitives-$transaction) — Creates a transaction primitive for database operations requiring atomicity and consistency.
 
 ### Environment Variables
 

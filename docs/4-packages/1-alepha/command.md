@@ -28,24 +28,11 @@ Declarative CLI command framework.
 
 ### Primitives
 
-- [`$command`](/docs/primitives-$command) — Declares a CLI command.
+- [`$command`](/docs/reference-primitives-$command) — Declares a CLI command.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### CliProvider
-
-CLI provider for parsing and executing commands.
-
-Handles:
-- Command resolution (simple, nested, colon-notation)
-- Flag and argument parsing
-- Environment variable validation
-- Help generation
-- Pre/post command hooks
+- [`CliProvider`](/docs/reference-providers-cliprovider) — CLI provider for parsing and executing commands.
 
 ### Environment Variables
 

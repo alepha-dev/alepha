@@ -30,8 +30,8 @@ Asynchronous message processing with automatic worker management.
 
 ### Primitives
 
-- [`$consumer`](/docs/primitives-$consumer) — Creates a consumer primitive to process messages from a specific queue.
-- [`$queue`](/docs/primitives-$queue) — Creates a queue primitive for asynchronous message processing with background workers.
+- [`$consumer`](/docs/reference-primitives-$consumer) — Creates a consumer primitive to process messages from a specific queue.
+- [`$queue`](/docs/reference-primitives-$queue) — Creates a queue primitive for asynchronous message processing with background workers.
 
 ### Environment Variables
 

@@ -30,7 +30,7 @@ Configurable logging with multiple outputs.
 
 ### Primitives
 
-- [`$logger`](/docs/primitives-$logger) — Create a logger.
+- [`$logger`](/docs/reference-primitives-$logger) — Create a logger.
 
 ### Environment Variables
 

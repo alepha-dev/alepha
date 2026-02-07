@@ -29,23 +29,8 @@ Unified file storage abstraction across multiple backends.
 
 ### Primitives
 
-- [`$bucket`](/docs/primitives-$bucket) — Creates a bucket primitive for file storage and management with configurable validation.
+- [`$bucket`](/docs/reference-primitives-$bucket) — Creates a bucket primitive for file storage and management with configurable validation.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### CloudflareR2Provider
-
-Cloudflare R2 storage provider.
-
-Uses a single R2 bucket binding for all $bucket primitives.
-Files are organized as: {APP_NAME}/{bucketName}/{fileId}
-
-**Required environment variables:**
-- `R2_BUCKET_NAME` - The actual R2 bucket name in Cloudflare
-
-**Optional (uses core Alepha env):**
-- `APP_NAME` - Prefix for all files (for multi-app setups sharing one R2 bucket)
+- [`CloudflareR2Provider`](/docs/reference-providers-cloudflarer2provider) — Cloudflare R2 storage provider.

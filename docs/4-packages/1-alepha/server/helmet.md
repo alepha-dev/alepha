@@ -26,11 +26,4 @@ HTTP security headers.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### ServerHelmetProvider
-
-Provides a configurable way to apply essential HTTP security headers
-to every server response, without external dependencies.
+- [`ServerHelmetProvider`](/docs/reference-providers-serverhelmetprovider) — Provides a configurable way to apply essential HTTP security headers

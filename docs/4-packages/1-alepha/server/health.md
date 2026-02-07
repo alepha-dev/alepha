@@ -23,12 +23,4 @@ Application health monitoring endpoints.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### ServerHealthProvider
-
-Register `/health` & `/healthz` endpoint.
-
-- Provides basic health information about the server.
+- [`ServerHealthProvider`](/docs/reference-providers-serverhealthprovider) — Register `/health` & `/healthz` endpoint.

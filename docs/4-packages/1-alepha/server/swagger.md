@@ -24,4 +24,4 @@ Automatic API documentation generation.
 
 ### Primitives
 
-- [`$swagger`](/docs/primitives-$swagger) — Creates an OpenAPI/Swagger documentation primitive with interactive UI.
+- [`$swagger`](/docs/reference-primitives-$swagger) — Creates an OpenAPI/Swagger documentation primitive with interactive UI.

@@ -23,4 +23,4 @@ Static file serving.
 
 ### Primitives
 
-- [`$serve`](/docs/primitives-$serve) — Create a new static file handler.
+- [`$serve`](/docs/reference-primitives-$serve) — Create a new static file handler.

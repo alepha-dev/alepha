@@ -26,13 +26,7 @@ Vercel Blob Storage provider.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](https://feunard.github.io/alepha/).
-
-#### VercelFileStorageProvider
-
-Vercel Blob Storage implementation of File Storage Provider.
+- [`VercelFileStorageProvider`](https://alepha.dev/docs/reference-providers-vercelfilestorageprovider) — Vercel Blob Storage implementation of File Storage Provider.
 
 ### Environment Variables
 

@@ -27,20 +27,11 @@ Type-safe caching with TTL support.
 
 ### Primitives
 
-- [`$cache`](/docs/primitives-$cache) — Creates a cache primitive for high-performance data caching with automatic management.
+- [`$cache`](/docs/reference-primitives-$cache) — Creates a cache primitive for high-performance data caching with automatic management.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### MemoryCacheProvider
-
-In-memory implementation of CacheProvider for testing.
-
-This provider stores all cache entries in memory, making it ideal for
-unit tests that need to verify cache operations without touching Redis or other backends.
+- [`MemoryCacheProvider`](/docs/reference-providers-memorycacheprovider) — In-memory implementation of CacheProvider for testing.
 
 ### Environment Variables
 

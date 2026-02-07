@@ -27,5 +27,5 @@ Publish/subscribe messaging for event-driven architectures.
 
 ### Primitives
 
-- [`$subscriber`](/docs/primitives-$subscriber) — Creates a subscriber primitive to listen for messages from a specific topic.
-- [`$topic`](/docs/primitives-$topic) — Creates a topic primitive for publish/subscribe messaging and event-driven architecture.
+- [`$subscriber`](/docs/reference-primitives-$subscriber) — Creates a subscriber primitive to listen for messages from a specific topic.
+- [`$topic`](/docs/reference-primitives-$topic) — Creates a topic primitive for publish/subscribe messaging and event-driven architecture.

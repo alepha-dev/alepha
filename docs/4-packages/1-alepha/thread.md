@@ -26,4 +26,4 @@ Multi-threading support.
 
 ### Primitives
 
-- [`$thread`](/docs/primitives-$thread) — Creates a worker thread primitive for offloading CPU-intensive tasks to separate threads.
+- [`$thread`](/docs/reference-primitives-$thread) — Creates a worker thread primitive for offloading CPU-intensive tasks to separate threads.

@@ -27,25 +27,13 @@ Model Context Protocol for AI tool integration.
 
 ### Primitives
 
-- [`$prompt`](/docs/primitives-$prompt) — Creates an MCP prompt primitive for defining reusable prompt templates.
-- [`$resource`](/docs/primitives-$resource) — Creates an MCP resource primitive for exposing read-only data.
-- [`$tool`](/docs/primitives-$tool) — Creates an MCP tool primitive for defining callable functions.
+- [`$prompt`](/docs/reference-primitives-$prompt) — Creates an MCP prompt primitive for defining reusable prompt templates.
+- [`$resource`](/docs/reference-primitives-$resource) — Creates an MCP resource primitive for exposing read-only data.
+- [`$tool`](/docs/reference-primitives-$tool) — Creates an MCP tool primitive for defining callable functions.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### McpServerProvider
-
-Core MCP server provider that handles protocol messages.
-
-This provider maintains registries of tools, resources, and prompts,
-and routes incoming JSON-RPC requests to the appropriate handlers.
-
-It is transport-agnostic - actual communication is handled by
-transport providers like StdioMcpTransport or SseMcpTransport.
+- [`McpServerProvider`](/docs/reference-providers-mcpserverprovider) — Core MCP server provider that handles protocol messages.
 
 ### Environment Variables
 

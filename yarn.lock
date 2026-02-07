@@ -13368,6 +13368,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"testq-0780e4@workspace:apps/testq":
+  version: 0.0.0-use.local
+  resolution: "testq-0780e4@workspace:apps/testq"
+  dependencies:
+    alepha: "npm:^0.16.1"
+    vite: "npm:^7.3.1"
+  languageName: unknown
+  linkType: soft
+
 "thread-stream@npm:^4.0.0":
   version: 4.0.0
   resolution: "thread-stream@npm:4.0.0"

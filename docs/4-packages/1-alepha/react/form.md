@@ -25,6 +25,6 @@ Type-safe forms with validation.
 
 ## API Reference
 
-### Hooks
+### React Hooks
 
-- [`useForm`](/docs/primitives-useform) — Custom hook to create a form with validation and field management.
+- [`useForm`](/docs/reference-react-hooks-useform) — Custom hook to create a form with validation and field management.

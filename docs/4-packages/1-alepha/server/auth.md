@@ -29,8 +29,8 @@ OAuth2/OIDC authentication with social login providers.
 
 ### Primitives
 
-- [`$auth`](/docs/primitives-$auth) — Creates an authentication provider primitive for handling user login flows.
-- [`$authApple`](/docs/primitives-$authapple) — TODO: Implement Apple authentication
-- [`$authCredentials`](/docs/primitives-$authcredentials) — Already configured Credentials authentication primitive.
-- [`$authGithub`](/docs/primitives-$authgithub) — Already configured GitHub authentication primitive.
-- [`$authGoogle`](/docs/primitives-$authgoogle) — Already configured Google authentication primitive.
+- [`$auth`](/docs/reference-primitives-$auth) — Creates an authentication provider primitive for handling user login flows.
+- [`$authApple`](/docs/reference-primitives-$authapple) — TODO: Implement Apple authentication
+- [`$authCredentials`](/docs/reference-primitives-$authcredentials) — Already configured Credentials authentication primitive.
+- [`$authGithub`](/docs/reference-primitives-$authgithub) — Already configured GitHub authentication primitive.
+- [`$authGoogle`](/docs/reference-primitives-$authgoogle) — Already configured Google authentication primitive.

@@ -26,4 +26,4 @@ Date and time operations.
 
 ### Primitives
 
-- [`$interval`](/docs/primitives-$interval) — Run a function periodically.
+- [`$interval`](/docs/reference-primitives-$interval) — Run a function periodically.

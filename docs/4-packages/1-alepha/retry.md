@@ -26,15 +26,8 @@ Automatic retry with backoff.
 
 ### Primitives
 
-- [`$retry`](/docs/primitives-$retry) — Creates a function that automatically retries a handler upon failure,
+- [`$retry`](/docs/reference-primitives-$retry) — Creates a function that automatically retries a handler upon failure,
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### RetryProvider
-
-Service for executing functions with automatic retry logic.
-Supports exponential backoff, max duration, conditional retries, and cancellation.
+- [`RetryProvider`](/docs/reference-providers-retryprovider) — Service for executing functions with automatic retry logic.

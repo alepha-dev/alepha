@@ -25,4 +25,4 @@ Authentication UI components.
 
 ### Primitives
 
-- [`$uiAuth`](/docs/primitives-$uiauth) — Register Auth UI components and get the AuthRouter instance.
+- [`$uiAuth`](/docs/reference-primitives-$uiauth) — Register Auth UI components and get the AuthRouter instance.

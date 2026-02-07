@@ -23,7 +23,7 @@ Server and browser-safe cookie handling.
 
 ### Primitives
 
-- [`$cookie`](/docs/primitives-$cookie) — Declares a type-safe, configurable HTTP cookie.
+- [`$cookie`](/docs/reference-primitives-$cookie) — Declares a type-safe, configurable HTTP cookie.
 
 ### Environment Variables
 

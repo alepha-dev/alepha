@@ -1,120 +1,230 @@
 # Getting Started
 
-Let's get your hands dirty.
-
-This guide isn't going to ask you to configure Webpack, Babel, or ESLint. Alepha is designed to get out of your way so you can write code.
+This guide takes you from zero to a running Alepha server in under five minutes.
+No Webpack, no Babel, no ESLint configuration.
 
 ## Prerequisites
 
-You need a modern JavaScript runtime. Alepha requires **Node.js 22+** or **Bun 1.1+**.
+You need one of the following:
 
-- [Download Node.js](https://nodejs.org/) *(recommended for beginners)*
-- [Download Bun](https://bun.sh/)
+- [Node.js 22+](https://nodejs.org/) (recommended for beginners)
+- [Bun 1.1+](https://bun.sh/)
 
-## Project Setup
-
-Create a new folder for your project. We like to start clean.
+## Create a Project
 
 ```bash
-mkdir my-app
-cd my-app
+npx alepha@latest init my-app
 ```
 
-Now, initialize the project. This command doesn't scaffold a massive bloat of files; it just creates a `package.json` and a `tsconfig.json` configured correctly for Alepha.
+This creates a `my-app` directory with:
+
+- `package.json` with Alepha as a dependency
+- `tsconfig.json` configured for TypeScript
+- `alepha.config.ts` with documented build options
+- `biome.json` for formatting and linting
+- `src/main.server.ts` as the entry file
+
+Dependencies are installed automatically.
+
+### Init Flags
+
+You can scaffold more structure with flags:
 
 ```bash
-npx alepha@latest init
+npx alepha@latest init my-app --api              # Add API module (src/api/)
+npx alepha@latest init my-app --api --react      # Add API + React frontend (src/web/)
+npx alepha@latest init my-app --api --react --admin  # Full stack with admin panel
+npx alepha@latest init my-app --test             # Include Vitest test directory
+npx alepha@latest init my-app --pm=bun           # Use Bun as package manager
 ```
+
+Flag cascading: `--admin` implies `--auth`, which implies `--api` and `--ui`, which implies `--react`.
+
+For this guide, we will start with the simplest possible app.
 
 ## Your First Server
 
-Alepha uses classes to organize logic. Forget about `app.get()` or `router.use()` chains.
+After running `init`, enter the project:
 
-Let's have a look at entry file.
+```bash
+cd my-app
+```
 
-```typescript filename="src/main.ts"
+Open the entry file. For a minimal project (no flags), it looks like this:
+
+```typescript filename="src/main.server.ts"
+import { Alepha, run } from "alepha";
+
+const alepha = Alepha.create();
+
+run(alepha);
+```
+
+This starts an empty server. Let us add a route. Replace the file contents with:
+
+```typescript filename="src/main.server.ts"
 import { run } from "alepha";
 import { $route } from "alepha/server";
 
-class Server {
-  // The $route primitive defines an endpoint directly in your class.
-  // No mapping files, no separate router configuration.
+class App {
   hello = $route({
     path: "/",
     handler: () => "Hello, Alepha!",
   });
 }
 
-// Run handles the lifecycle, error trapping, and graceful shutdowns.
-run(Server);
+run(App);
 ```
 
-> **Wait, what is `$route`?**
->
-> That `$` function is what we call a **Primitive**. It's a factory function that tells Alepha: *"This property isn't just data; it's logic."*
->
-> You can learn more about Primitives in the [Concepts](/docs/concepts-primitives) page.
+That `$route` call is a **Primitive** -- a factory function that registers an HTTP endpoint
+directly on your class. No separate router file, no middleware chain.
 
-## Running the App
+`run(App)` creates an Alepha container, registers `App`, starts the server, and handles
+signal trapping (SIGINT, SIGTERM) for graceful shutdown.
 
-You can run your server right now using `npm run dev`.
-
-This gives you:
-1.  **Hot Module Replacement (HMR):** Change code, server updates instantly.
-2.  **TypeScript Support:** No build step required for dev.
-3.  **Pretty Logs:** Readable, structured logging out of the box.
+## Run in Development Mode
 
 ```bash
 npm run dev
 ```
 
-You should see the engine starting up:
+You should see:
 
 ```
-[22:05:51.123] INFO <alepha.core.Alepha>: Starting App...
-[22:05:51.160] INFO <alepha.server.NodeHttpServerProvider>: Server listening on http://localhost:3000
-[22:05:51.160] INFO <alepha.core.Alepha>: App is now ready [37ms]
+[02:10:43.013] INFO <alepha.core.Alepha>: Starting App...
+[02:10:43.013] INFO <alepha.core.Alepha>: App is now ready [0ms]
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: use --host to expose
+  ➜  press h + enter to show help
 ```
 
-Open `http://localhost:3000` in your browser. You've just built a server.
+Open [http://localhost:3000](http://localhost:3000) in your browser. You will see "Hello, Alepha!".
 
-### "Can I run it with just Node?"
+Development mode gives you:
 
-Yes. Alepha doesn't rely on a magical runner.
-Behind the scenes, Alepha uses `tsx`, `vite`, or `bun`, depending on what your context.
-But you can run it with plain Node or Bun as well.
+1. **Hot Module Replacement (HMR)** -- change code, server updates instantly.
+2. **TypeScript support** -- no build step required.
+3. **Pretty logs** -- readable, structured output.
 
-```bash
-# Works perfectly fine, no lock-in
-node src/main.ts
-bun src/main.ts
+## Add a Typed API Endpoint
+
+`$route` is low-level. For real APIs, use `$action` -- it adds schema validation, automatic
+OpenAPI documentation, and type-safe client calls.
+
+```typescript filename="src/main.server.ts"
+import { t, run, $inject } from "alepha";
+import { $action } from "alepha/server";
+import { DateTimeProvider } from "alepha/datetime";
+
+class App {
+  dateTimeProvider = $inject(DateTimeProvider);
+
+  hello = $action({
+    path: "/hello",
+    schema: {
+      response: t.object({
+        message: t.text(),
+        serverTime: t.datetime(),
+      }),
+    },
+    handler: () => ({
+      message: "Hello from Alepha",
+      // consider using `dateTimeProvider.nowISOString()` instead of `new Date().toISOString()`
+      // for better testability and consistency across runtimes
+      serverTime: this.dateTimeProvider.nowISOString(),
+    }),
+  });
+}
+
+run(App);
 ```
 
-## Building for Production
+Key differences from `$route`:
 
-When you are ready to ship, don't ship your source code. Build it.
+- All `$action` paths are automatically prefixed with `/api`. This endpoint serves at `GET /api/hello`.
+- The `schema.response` validates the return value and generates OpenAPI documentation.
+- If a `schema.body` is provided, the method defaults to `POST`.
+- The response is type-checked at compile time.
+
+Save the file. HMR reloads the server. Visit [http://localhost:3000/api/hello](http://localhost:3000/api/hello).
+
+## Build for Production
+
+When you are ready to deploy:
 
 ```bash
 npm run build
 ```
 
-This produces a `dist/` folder.
+This produces a `dist/` folder with an optimized, self-contained bundle.
 
-Unlike other tools that output a mess of files, Alepha (powered by Vite) produces a highly optimized bundle. You can deploy this folder to:
-*   **Docker:** We generate the Dockerfile for you.
-*   **Vercel,Cloudflare:** We adapt the output to Serverless functions automatically.
-*   **VPS:** Just run `node dist` or `bun dist`.
-
-You can run the production build locally as well:
+Run it locally to verify:
 
 ```bash
-node dist # or bun dist
+node dist
 ```
 
-## Next Steps
+Or with Bun:
 
-"Hello World" is boring. You want to build a real app.
+```bash
+bun dist
+```
 
-*   **[Build an API](/docs/guides-server-building-an-api):** Learn how to use `$action` to create type-safe endpoints with automatic Swagger docs.
-*   **[Connect a Database](/docs/guides-data-database-access):** See how `$entity` creates your tables and types simultaneously.
-*   **[Add a Frontend](/docs/guides-frontend-react-integration):** Add React to the mix with `$page`.
+### Build Targets
+
+Alepha adapts the build output based on where you deploy:
+
+```bash
+npm run build -- --target=docker       # Generates a Dockerfile in dist/
+npm run build -- --target=vercel       # Adapts output for Vercel serverless
+npm run build -- --target=cloudflare   # Adapts output for Cloudflare Workers
+npm run build -- --runtime=bun         # Optimizes for Bun runtime
+# or with alepha
+npx alepha build
+```
+
+Build targets and runtime can also be set in `alepha.config.ts`:
+
+```typescript filename="alepha.config.ts"
+import { defineConfig } from "alepha/cli";
+
+export default defineConfig({
+  build: {
+    target: "docker", // will produce a Dockerfile with Node.js base image
+    runtime: "node",
+  },
+});
+```
+
+## Project Structure
+
+With `--api` and `--react` flags, `alepha init` scaffolds this structure:
+
+```
+my-app/
+  alepha.config.ts          # Build and entry point configuration
+  package.json
+  tsconfig.json
+  biome.json
+  src/
+    main.server.ts          # Server entry point
+    main.browser.ts         # Browser entry point (React apps)
+    main.css                # Global styles (React apps)
+    api/
+      index.ts              # API module definition
+      controllers/
+        HelloController.ts  # Example $action endpoint
+      schemas/
+        helloResponseSchema.ts
+    web/
+      index.ts              # Web module definition
+      AppRouter.ts          # $page routes
+      components/
+        Home.tsx            # Example React component
+```
+
+Entry file conventions:
+- `src/main.ts` -- server-only apps (API)
+- `src/main.server.ts` -- server entry when a browser entry also exists
+- `src/main.browser.ts` -- browser entry for React apps

@@ -26,4 +26,4 @@ Audit trail for compliance.
 
 ### Primitives
 
-- [`$audit`](/docs/primitives-$audit) — Options for creating an audit type primitive.
+- [`$audit`](/docs/reference-primitives-$audit) — Options for creating an audit type primitive.

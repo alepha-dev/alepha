@@ -9,32 +9,33 @@
 />
 Alepha
 </h1>
-<p>TypeScript Framework Made Easy</p>
+<p>The AI-Native Application Engine</p>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/v/alepha.svg" alt="npm version"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/l/alepha.svg" alt="license"/></a>
 <a href="https://codecov.io/gh/feunard/alepha"><img src="https://codecov.io/gh/feunard/alepha/graph/badge.svg?token=ZDLWI514CP" alt="coverage"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/dt/alepha.svg" alt="downloads"/></a>
 </div>
 
-## What is this?
+## What is Alepha?
 
-Full-stack TypeScript framework. Define your schema once, get database, validation, types, and forms.
+Full-stack TypeScript engine for agentic era. Define your schema once — get database, API, types, and forms.
 
-- **Multi-runtime** — Same code runs on Node, Bun, Cloudflare Workers, Browser, and Expo
 - **One schema, everywhere** — Database, API validation, TypeScript types, React forms — all from one definition
 - **Full autocomplete** — Client calls server with complete type safety, zero codegen
-- **Substitutable** — Swap any service with `.with()` for testing or customization
+- **Multi-runtime** — Same code runs on Node, Bun, and Cloudflare Workers
 - **Deploy anywhere** — Cloudflare, Vercel, Docker, bare metal
+
+Built on predictable conventions and typed primitives — works great with AI coding assistants (BYOA).
 
 Each layer builds on the previous.
 
-| Layer | Description | Primitives |
-|-------|-------------|------------|
-| **Foundation** | DI, lifecycle, config | `$inject`, `$env`, `$module`, `$hook`, `$logger` |
+| Layer | Description | Primitives                                              |
+|-------|-------------|---------------------------------------------------------|
+| **Foundation** | DI, lifecycle, config | `$inject`, `$env`, `$module`, `$hook`, `$logger`        |
 | **Backend** | Database, queues, storage, API | `$entity`, `$action`, `$queue`, `$bucket`, `$scheduler` |
-| **Frontend** | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary` |
-| **Platform** | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification` |
-| **Admin** | Admin panel & auth UI | `@alepha/ui` |
+| **Frontend** | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                |
+| **Platform** | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
+| **Admin** | Admin panel & auth UI | `$uiAdmin`, `$uiAuth`                                   |
 
 ## Example
 
@@ -91,8 +92,8 @@ Requirements: [Node.js](https://nodejs.org/) 22+ or [Bun](https://bun.sh/) 1.3+
 
 ```bash
 npx alepha init my-app --api         # L1: Backend only
-npx alepha init my-app --react       # L2: + React frontend
-npx alepha init my-app --admin       # L3: Full SaaS starter
+                       --react       # L2: + React frontend
+                       --admin       # L3: + Admin UI
 
 cd my-app && npm run dev
 ```

@@ -29,4 +29,4 @@ Admin panel UI components.
 
 ### Primitives
 
-- [`$uiAdmin`](/docs/primitives-$uiadmin) — Register Admin UI components and get the AdminRouter instance.
+- [`$uiAdmin`](/docs/reference-primitives-$uiadmin) — Register Admin UI components and get the AdminRouter instance.

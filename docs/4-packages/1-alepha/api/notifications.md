@@ -27,4 +27,4 @@ User notification management.
 
 ### Primitives
 
-- [`$notification`](/docs/primitives-$notification) — Creates a notification primitive for managing email/SMS notification templates.
+- [`$notification`](/docs/reference-primitives-$notification) — Creates a notification primitive for managing email/SMS notification templates.

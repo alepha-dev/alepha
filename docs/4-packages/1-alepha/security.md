@@ -31,21 +31,15 @@ Complete authentication and authorization system with JWT, RBAC, and multi-issue
 
 ### Primitives
 
-- [`$basicAuth`](/docs/primitives-$basicauth) — Declares HTTP Basic Authentication for server routes.
-- [`$issuer`](/docs/primitives-$issuer) — Create a new issuer.
-- [`$permission`](/docs/primitives-$permission) — Create a new permission.
-- [`$role`](/docs/primitives-$role) — Create a new role.
-- [`$serviceAccount`](/docs/primitives-$serviceaccount) — Allow to get an access token for a service account.
+- [`$basicAuth`](/docs/reference-primitives-$basicauth) — Declares HTTP Basic Authentication for server routes.
+- [`$issuer`](/docs/reference-primitives-$issuer) — Create a new issuer.
+- [`$permission`](/docs/reference-primitives-$permission) — Create a new permission.
+- [`$role`](/docs/reference-primitives-$role) — Create a new role.
+- [`$serviceAccount`](/docs/reference-primitives-$serviceaccount) — Allow to get an access token for a service account.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### JwtProvider
-
-Provides utilities for working with JSON Web Tokens (JWT).
+- [`JwtProvider`](/docs/reference-providers-jwtprovider) — Provides utilities for working with JSON Web Tokens (JWT).
 
 ### Environment Variables
 

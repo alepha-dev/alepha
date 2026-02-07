@@ -37,10 +37,10 @@ Full-stack React framework with server-side rendering.
 
 ## API Reference
 
-### Hooks
+### React Hooks
 
-- [`useAction`](/docs/primitives-useaction) — Hook for handling async actions with automatic error handling and event emission.
-- [`useAlepha`](/docs/primitives-usealepha) — Main Alepha hook.
-- [`useClient`](/docs/primitives-useclient) — Hook to get a virtual client for the specified scope.
-- [`useEvents`](/docs/primitives-useevents) — Allow subscribing to multiple Alepha events. See {@link Hooks} for available events.
-- [`useInject`](/docs/primitives-useinject) — Hook to inject a service instance.
+- [`useAction`](/docs/reference-react-hooks-useaction) — Hook for handling async actions with automatic error handling and event emission.
+- [`useAlepha`](/docs/reference-react-hooks-usealepha) — Main Alepha hook.
+- [`useClient`](/docs/reference-react-hooks-useclient) — Hook to get a virtual client for the specified scope.
+- [`useEvents`](/docs/reference-react-hooks-useevents) — Allow subscribing to multiple Alepha events. See {@link Hooks} for available events.
+- [`useInject`](/docs/reference-react-hooks-useinject) — Hook to inject a service instance.

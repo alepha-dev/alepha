@@ -2,7 +2,7 @@ import { type Dirent, promises as fs } from "node:fs";
 import { join, relative } from "node:path";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
-import type { EnvVarInfo, ModuleInfo, PrimitiveInfo } from "./interfaces.ts";
+import type { EnvVarInfo, ModuleInfo } from "./interfaces.ts";
 
 interface PrimitiveDoc {
   name: string;
@@ -21,16 +21,23 @@ interface OptionField {
   description: string;
 }
 
+interface ProviderDoc {
+  name: string;
+  summary: string;
+  description: string;
+  importPath: string;
+}
+
 interface ModuleData {
   description: string | null;
   primitives: PrimitiveDoc[];
   hooks: PrimitiveDoc[];
-  providers: PrimitiveInfo[];
+  providers: ProviderDoc[];
   envVars: EnvVarInfo[];
 }
 
 /**
- * Generates per-primitive documentation pages (docs/3-primitives/)
+ * Generates per-reference documentation pages (docs/3-reference/)
  * and per-package documentation pages + READMEs (docs/4-packages/).
  */
 export class DocsCommand {
@@ -252,7 +259,11 @@ export class DocsCommand {
     }
   }
 
-  async extractProviderInfo(filePath: string): Promise<PrimitiveInfo | null> {
+  async extractProviderInfo(
+    filePath: string,
+    srcDir: string,
+    importMap: Map<string, string>,
+  ): Promise<ProviderDoc | null> {
     try {
       const content = await fs.readFile(filePath, "utf-8");
       const regex =
@@ -263,12 +274,19 @@ export class DocsCommand {
           .pop()
           ?.replace(/\.tsx?$/, "") ?? "";
 
-      const providers: PrimitiveInfo[] = [];
+      const providers: ProviderDoc[] = [];
       for (const m of content.matchAll(regex)) {
         if (m[1].includes("@internal")) continue;
+        const { description } = this.parseJsDoc(m[1]);
         providers.push({
           name: m[2],
-          description: this.parseJsDoc(m[1]).description,
+          summary:
+            description
+              .split("\n")
+              .find((l) => l.trim())
+              ?.trim() ?? "",
+          description,
+          importPath: this.resolveImportPath(filePath, srcDir, importMap),
         });
       }
 
@@ -428,7 +446,7 @@ export class DocsCommand {
         this.readDir(
           join(sourcePath, "providers"),
           (n) => notSpec(n),
-          (p) => this.extractProviderInfo(p),
+          (p) => this.extractProviderInfo(p, srcDir, importMap),
         ),
         this.getEnvInfo(sourcePath),
       ]);
@@ -486,13 +504,18 @@ export class DocsCommand {
     return { subdir: prefix, filename: `${moduleName.substring(idx + 1)}.md` };
   }
 
-  generatePrimitiveMarkdown(doc: PrimitiveDoc): string {
+  generateReferenceMarkdown(doc: {
+    name: string;
+    description: string;
+    importPath: string;
+    options?: OptionField[];
+    examples?: string[];
+  }): string {
     let md = `# ${doc.name}\n\n`;
-    if (doc.summary) md += `> ${doc.summary}\n\n`;
     md += `## Import\n\n\`\`\`typescript\nimport { ${doc.name} } from "${doc.importPath}";\n\`\`\`\n\n`;
     if (doc.description) md += `## Overview\n\n${doc.description}\n\n`;
 
-    if (doc.options.length > 0) {
+    if (doc.options && doc.options.length > 0) {
       md += `## Options\n\n| Option | Type | Required | Description |\n|--------|------|----------|-------------|\n`;
       for (const o of doc.options) {
         md += `| \`${o.name}\` | \`${this.escapeTableCell(o.type)}\` | ${o.required ? "Yes" : "No"} | ${this.escapeTableCell(o.description)} |\n`;
@@ -500,7 +523,7 @@ export class DocsCommand {
       md += `\n`;
     }
 
-    if (doc.examples.length > 0) {
+    if (doc.examples && doc.examples.length > 0) {
       md += `## Examples\n\n`;
       for (const ex of doc.examples) md += `${ex}\n\n`;
     }
@@ -512,8 +535,7 @@ export class DocsCommand {
    */
   generateApiReference(
     data: ModuleData,
-    primitiveBaseUrl: string,
-    providersDocUrl: string,
+    urls: { primitives: string; hooks: string; providers: string },
     envLabel: string,
   ): string {
     const hasContent =
@@ -529,21 +551,22 @@ export class DocsCommand {
     if (data.primitives.length > 0) {
       out += `\n### Primitives\n\n`;
       for (const p of data.primitives) {
-        out += `- [\`${p.name}\`](${primitiveBaseUrl}${p.name.toLowerCase()}) — ${p.summary}\n`;
+        out += `- [\`${p.name}\`](${urls.primitives}${p.name.toLowerCase()}) — ${p.summary}\n`;
       }
     }
 
     if (data.hooks.length > 0) {
-      out += `\n### Hooks\n\n`;
+      out += `\n### React Hooks\n\n`;
       for (const h of data.hooks) {
-        out += `- [\`${h.name}\`](${primitiveBaseUrl}${h.name.toLowerCase()}) — ${h.summary}\n`;
+        out += `- [\`${h.name}\`](${urls.hooks}${h.name.toLowerCase()}) — ${h.summary}\n`;
       }
     }
 
     if (data.providers.length > 0) {
-      out += `\n### Providers\n\nProviders are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.\n\nFor more details, see the [Providers documentation](${providersDocUrl}).\n`;
-      for (const p of data.providers)
-        out += `\n#### ${p.name}\n\n${p.description}\n`;
+      out += `\n### Providers\n\n`;
+      for (const p of data.providers) {
+        out += `- [\`${p.name}\`](${urls.providers}${p.name.toLowerCase()}) — ${p.summary}\n`;
+      }
     }
 
     if (data.envVars.length > 0) {
@@ -591,8 +614,11 @@ export class DocsCommand {
     if (data.description) md += `## Overview\n\n${data.description}\n\n`;
     md += this.generateApiReference(
       data,
-      "/docs/primitives-",
-      "/docs/concepts-providers",
+      {
+        primitives: "/docs/reference-primitives-",
+        hooks: "/docs/reference-react-hooks-",
+        providers: "/docs/reference-providers-",
+      },
       "Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.",
     );
     return md;
@@ -609,8 +635,11 @@ export class DocsCommand {
     if (data.description) md += `## Module\n\n${data.description}\n\n`;
     md += this.generateApiReference(
       data,
-      "https://alepha.dev/docs/primitives-",
-      "https://feunard.github.io/alepha/",
+      {
+        primitives: "https://alepha.dev/docs/reference-primitives-",
+        hooks: "https://alepha.dev/docs/reference-react-hooks-",
+        providers: "https://alepha.dev/docs/reference-providers-",
+      },
       "Environment variables used to configure this package.",
     );
     return md;
@@ -618,16 +647,21 @@ export class DocsCommand {
 
   docs = $command({
     name: "gen:docs",
-    description: "Generate primitive pages and package documentation",
+    description: "Generate reference pages and package documentation",
     handler: async ({ run, root }) => {
       const rootDir = join(root, "../..");
       const packagesDir = join(rootDir, "packages");
-      const primitivesDocsDir = join(rootDir, "docs/3-primitives");
+      const referenceDocsDir = join(rootDir, "docs/3-reference");
+      const primitivesDocsDir = join(referenceDocsDir, "1-primitives");
+      const hooksDocsDir = join(referenceDocsDir, "2-react-hooks");
+      const providersDocsDir = join(referenceDocsDir, "3-providers");
       const packagesDocsDir = join(rootDir, "docs/4-packages");
 
       await run("clean", async () => {
-        await fs.rm(primitivesDocsDir, { recursive: true, force: true });
+        await fs.rm(referenceDocsDir, { recursive: true, force: true });
         await fs.mkdir(primitivesDocsDir, { recursive: true });
+        await fs.mkdir(hooksDocsDir, { recursive: true });
+        await fs.mkdir(providersDocsDir, { recursive: true });
         await fs.rm(packagesDocsDir, { recursive: true, force: true });
         await fs.mkdir(packagesDocsDir, { recursive: true });
       });
@@ -675,7 +709,15 @@ export class DocsCommand {
 
       // Second pass: collect data and generate
       const allPrimitiveDocs: PrimitiveDoc[] = [];
-      const stats = { primitives: 0, packages: 0, readmes: 0 };
+      const allHookDocs: PrimitiveDoc[] = [];
+      const allProviderDocs: ProviderDoc[] = [];
+      const stats = {
+        primitives: 0,
+        hooks: 0,
+        providers: 0,
+        packages: 0,
+        readmes: 0,
+      };
 
       for (const dirent of dirents) {
         if (!dirent.isDirectory()) continue;
@@ -709,7 +751,9 @@ export class DocsCommand {
               );
               if (!data.description) continue;
 
-              allPrimitiveDocs.push(...data.primitives, ...data.hooks);
+              allPrimitiveDocs.push(...data.primitives);
+              allHookDocs.push(...data.hooks);
+              allProviderDocs.push(...data.providers);
               const md = this.generateModuleMarkdown(
                 pkgJson,
                 mod.name,
@@ -734,7 +778,9 @@ export class DocsCommand {
               importMap,
             );
             if (!data.description) return;
-            allPrimitiveDocs.push(...data.primitives, ...data.hooks);
+            allPrimitiveDocs.push(...data.primitives);
+            allHookDocs.push(...data.hooks);
+            allProviderDocs.push(...data.providers);
             await fs.writeFile(
               join(packagesDocsDir, `${dirName}.md`),
               this.generateModuleMarkdown(
@@ -770,23 +816,40 @@ export class DocsCommand {
         });
       }
 
-      await run("generate primitives", async () => {
-        allPrimitiveDocs.sort((a, b) => {
-          if (a.kind !== b.kind) return a.kind === "primitive" ? -1 : 1;
-          return a.name.localeCompare(b.name);
-        });
+      await run("generate reference", async () => {
+        allPrimitiveDocs.sort((a, b) => a.name.localeCompare(b.name));
         for (const doc of allPrimitiveDocs) {
           await fs.writeFile(
             join(primitivesDocsDir, `${doc.name}.md`),
-            this.generatePrimitiveMarkdown(doc),
+            this.generateReferenceMarkdown(doc),
             "utf-8",
           );
         }
         stats.primitives = allPrimitiveDocs.length;
+
+        allHookDocs.sort((a, b) => a.name.localeCompare(b.name));
+        for (const doc of allHookDocs) {
+          await fs.writeFile(
+            join(hooksDocsDir, `${doc.name}.md`),
+            this.generateReferenceMarkdown(doc),
+            "utf-8",
+          );
+        }
+        stats.hooks = allHookDocs.length;
+
+        allProviderDocs.sort((a, b) => a.name.localeCompare(b.name));
+        for (const doc of allProviderDocs) {
+          await fs.writeFile(
+            join(providersDocsDir, `${doc.name}.md`),
+            this.generateReferenceMarkdown(doc),
+            "utf-8",
+          );
+        }
+        stats.providers = allProviderDocs.length;
       });
 
       this.log.debug(
-        `Done: ${stats.primitives} primitives, ${stats.packages} package docs, ${stats.readmes} READMEs`,
+        `Done: ${stats.primitives} primitives, ${stats.hooks} hooks, ${stats.providers} providers, ${stats.packages} package docs, ${stats.readmes} READMEs`,
       );
     },
   });

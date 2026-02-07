@@ -1,0 +1,260 @@
+# React Integration
+
+Alepha provides first-class React support with server-side rendering, dependency injection in components, type-safe API calls, and a global state system.
+
+## Project Setup
+
+Scaffold a React project with the Alepha CLI:
+
+```bash
+alepha init --react
+```
+
+This generates two entry points:
+
+- `src/main.server.ts` (or `main.ts`) -- server entry, registers modules and starts the app
+- `src/main.browser.ts` -- browser entry, registers browser-side modules and hydrates
+
+**Server entry (`main.ts`):**
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AppRouter } from "./AppRouter.ts";
+import { CountApi } from "./CountApi.ts";
+
+const alepha = Alepha.create({
+  env: { APP_NAME: "MY_APP" },
+});
+
+alepha.with(CountApi);
+alepha.with(AppRouter);
+
+run(alepha);
+```
+
+**Browser entry (`main.browser.ts`):**
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AppRouter } from "./AppRouter.ts";
+
+const alepha = Alepha.create();
+alepha.with(AppRouter);
+
+run(alepha);
+```
+
+The browser entry only registers the modules needed on the client (e.g., routes, UI). Server-only modules like API controllers are excluded.
+
+## Core Hooks
+
+All core React hooks are imported from `"alepha/react"`.
+
+### useAlepha
+
+Returns the current Alepha instance from context. Provides access to the DI container, event system, and store.
+
+```typescript
+import { useAlepha } from "alepha/react";
+
+function MyComponent() {
+  const alepha = useAlepha();
+  // alepha.inject(SomeService)
+  // alepha.events.emit(...)
+  // alepha.store.get(...)
+}
+```
+
+Must be used within an Alepha context (provided automatically by the router or by `<AlephaProvider>`).
+
+### useInject
+
+Injects a DI service into a React component. The service must be registered with the Alepha instance. Result is memoized.
+
+```typescript
+import { useInject } from "alepha/react";
+
+function Dashboard() {
+  const analytics = useInject(AnalyticsService);
+  // use analytics methods
+}
+```
+
+### useClient
+
+Type-safe API calls from React. Connects to server-side controllers via the link system. Works with SSR -- on the server, calls are made internally without HTTP.
+
+```typescript
+import { useAction, useClient } from "alepha/react";
+import { useState } from "react";
+import type { CountApi } from "./CountApi.ts";
+
+const Home = (props: { count: number }) => {
+  const [count, setCount] = useState(props.count);
+  const countApi = useClient<CountApi>();
+
+  const inc = useAction(
+    {
+      handler: async () => {
+        const result = await countApi.inc();
+        setCount(result.count);
+      },
+    },
+    [count],
+  );
+
+  return <button onClick={inc.run}>Click {count}</button>;
+};
+```
+
+The type parameter `<CountApi>` provides full type safety -- method names, parameter types, and return types are all inferred from the controller class.
+
+### useAction
+
+Manages async operations with loading state, error handling, cancellation, debounce, and polling.
+
+```typescript
+import { useAction } from "alepha/react";
+```
+
+**Returns:** `{ run, loading, error, cancel, result }`
+
+| Property  | Type                  | Description                                |
+|-----------|-----------------------|--------------------------------------------|
+| `run`     | `(...args) => Promise` | Execute the action                        |
+| `loading` | `boolean`             | True while executing                      |
+| `error`   | `Error \| undefined`  | Error from last failed execution          |
+| `cancel`  | `() => void`          | Cancel debounce timer or abort in-flight  |
+| `result`  | `T \| undefined`      | Result from last successful execution     |
+
+**Options:**
+
+| Option      | Type                  | Description                                      |
+|-------------|-----------------------|--------------------------------------------------|
+| `handler`   | `(...args, ctx) => Promise` | The async function to execute. Receives an `ActionContext` with an `AbortSignal` as the last argument. |
+| `onError`   | `(error) => void`     | Custom error handler. Prevents re-throw if set.  |
+| `onSuccess` | `(result) => void`    | Called after successful execution.                |
+| `id`        | `string`              | Identifier for debugging and analytics.           |
+| `debounce`  | `number`              | Delay in milliseconds before executing.           |
+| `runOnInit` | `boolean`             | Run once when the component mounts.               |
+| `runEvery`  | `DurationLike`        | Run periodically at the given interval.           |
+
+By default, concurrent executions are prevented -- calling `run` while already executing is a no-op.
+
+**Debounce example (search input):**
+
+```typescript
+const search = useAction(
+  {
+    handler: async (query: string) => {
+      return await api.search(query);
+    },
+    debounce: 300,
+  },
+  [],
+);
+
+// <input onChange={(e) => search.run(e.target.value)} />
+```
+
+**Polling example:**
+
+```typescript
+const pollStatus = useAction(
+  {
+    handler: async () => {
+      return await api.getStatus();
+    },
+    runEvery: 5000,
+  },
+  [],
+);
+
+// Or with duration tuple:
+// runEvery: [30, "seconds"]
+```
+
+**AbortController example:**
+
+```typescript
+const fetchData = useAction(
+  {
+    handler: async (url: string, { signal }: { signal: AbortSignal }) => {
+      const response = await fetch(url, { signal });
+      return response.json();
+    },
+  },
+  [],
+);
+// Automatically cancelled on unmount or when a new request starts
+```
+
+**Lifecycle events:**
+
+Actions emit events on the Alepha event system:
+
+- `react:action:begin` -- action started
+- `react:action:success` -- action completed successfully
+- `react:action:error` -- action threw an error
+- `react:action:end` -- always emitted at the end
+
+Global error handling example:
+
+```typescript
+alepha.events.on("react:action:error", ({ error }) => {
+  toast.danger(error.message);
+});
+```
+
+### useEvents
+
+Subscribe to Alepha events inside React components. Subscriptions are automatically cleaned up on unmount.
+
+```typescript
+import { useEvents } from "alepha/react";
+
+function StatusBar() {
+  useEvents(
+    {
+      "react:transition:begin": (ev) => {
+        console.log("Navigating to:", ev.state.url.pathname);
+      },
+      "react:action:error": (ev) => {
+        console.error("Action failed:", ev.error);
+      },
+    },
+    [],
+  );
+
+  return <div>...</div>;
+}
+```
+
+The second argument is a dependency list (same as `useEffect`). Events are fully typed based on the `Hooks` interface.
+
+## AlephaProvider
+
+Only needed if you are **not** using the Alepha Router (e.g., in Expo or Next.js integrations). When using `$page` and the router, the context is provided automatically.
+
+```typescript
+import { AlephaProvider } from "alepha/react";
+
+function App() {
+  return (
+    <AlephaProvider
+      onLoading={() => <div>Loading...</div>}
+      onError={(error) => <div>Error: {error.message}</div>}
+    >
+      <MyApp />
+    </AlephaProvider>
+  );
+}
+```
+
+`AlephaProvider` creates an Alepha instance, calls `start()`, and provides the instance via React context. Props:
+
+| Prop        | Type                        | Description                       |
+|-------------|-----------------------------|-----------------------------------|
+| `children`  | `ReactNode`                 | Application content               |
+| `onLoading` | `() => ReactNode`           | Rendered while Alepha is starting |
+| `onError`   | `(error: Error) => ReactNode` | Rendered if start fails         |

@@ -27,17 +27,11 @@ Resource locking for distributed systems.
 
 ### Primitives
 
-- [`$lock`](/docs/primitives-$lock) — Creates a distributed lock primitive for ensuring single-instance execution across processes.
+- [`$lock`](/docs/reference-primitives-$lock) — Creates a distributed lock primitive for ensuring single-instance execution across processes.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### MemoryLockProvider
-
-A simple in-memory store provider.
+- [`MemoryLockProvider`](/docs/reference-providers-memorylockprovider) — A simple in-memory store provider.
 
 ### Environment Variables
 

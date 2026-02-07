@@ -26,15 +26,8 @@ Batch accumulation and processing.
 
 ### Primitives
 
-- [`$batch`](/docs/primitives-$batch) — Creates a batch processing primitive for efficient grouping and processing of multiple operations.
+- [`$batch`](/docs/reference-primitives-$batch) — Creates a batch processing primitive for efficient grouping and processing of multiple operations.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### BatchProvider
-
-Service for batch processing operations.
-Provides methods to manage batches of items with automatic flushing based on size or time.
+- [`BatchProvider`](/docs/reference-providers-batchprovider) — Service for batch processing operations.

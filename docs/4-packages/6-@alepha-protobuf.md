@@ -23,16 +23,4 @@ Protocol Buffers support.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### ProtobufSchemaCodec
-
-ProtobufSchemaCodec handles encoding/decoding for Protobuf format.
-
-Key differences from JSON codec:
-- BigInt values are kept as BigInt (not converted to string)
-- Date values are converted to ISO strings for protobuf compatibility
-- Binary data (Uint8Array) is kept as-is
-- Proto3 default values are applied when decoding (to handle omitted fields)
+- [`ProtobufSchemaCodec`](/docs/reference-providers-protobufschemacodec) — ProtobufSchemaCodec handles encoding/decoding for Protobuf format.

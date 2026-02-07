@@ -26,18 +26,11 @@ Job execution monitoring.
 
 ### Primitives
 
-- [`$job`](/docs/primitives-$job) — Job primitive - a drop-in replacement for $scheduler with built-in execution tracking.
+- [`$job`](/docs/reference-primitives-$job) — Job primitive - a drop-in replacement for $scheduler with built-in execution tracking.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### JobProvider
-
-Provider for job management and execution.
-Handles job lifecycle, execution tracking, log capturing, and event emission.
+- [`JobProvider`](/docs/reference-providers-jobprovider) — Provider for job management and execution.
 
 ### Environment Variables
 

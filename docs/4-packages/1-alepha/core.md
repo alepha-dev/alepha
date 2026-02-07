@@ -33,33 +33,15 @@ Foundation of the entire framework with dependency injection and lifecycle manag
 
 ### Primitives
 
-- [`$atom`](/docs/primitives-$atom) — Define an atom for state management.
-- [`$env`](/docs/primitives-$env) — Get typed values from environment variables.
-- [`$hook`](/docs/primitives-$hook) — Registers a new hook.
-- [`$inject`](/docs/primitives-$inject) — Get the instance of the specified type from the context.
-- [`$module`](/docs/primitives-$module) — Wrap Services and Primitives into a Module.
-- [`$use`](/docs/primitives-$use) — Subscribes to an atom's state and returns its current value for use in components.
+- [`$atom`](/docs/reference-primitives-$atom) — Define an atom for state management.
+- [`$env`](/docs/reference-primitives-$env) — Get typed values from environment variables.
+- [`$hook`](/docs/reference-primitives-$hook) — Registers a new hook.
+- [`$inject`](/docs/reference-primitives-$inject) — Get the instance of the specified type from the context.
+- [`$module`](/docs/reference-primitives-$module) — Wrap Services and Primitives into a Module.
+- [`$use`](/docs/reference-primitives-$use) — Subscribes to an atom's state and returns its current value for use in components.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### CodecManager
-
-CodecManager manages multiple codec formats and provides a unified interface
-for encoding and decoding data with different formats.
-
-#### Json
-
-Mimics the JSON global object with stringify and parse methods.
-
-Used across the codebase via dependency injection.
-
-#### KeylessJsonSchemaCodec
-
-KeylessJsonSchemaCodec provides schema-driven JSON encoding without keys.
-
-It uses the schema to determine field order, allowing the encoded output
-to be a simple JSON array instead of an object with keys.
+- [`CodecManager`](/docs/reference-providers-codecmanager) — CodecManager manages multiple codec formats and provides a unified interface
+- [`Json`](/docs/reference-providers-json) — Mimics the JSON global object with stringify and parse methods.
+- [`KeylessJsonSchemaCodec`](/docs/reference-providers-keylessjsonschemacodec) — KeylessJsonSchemaCodec provides schema-driven JSON encoding without keys.

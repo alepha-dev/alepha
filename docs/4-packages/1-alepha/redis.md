@@ -26,36 +26,10 @@ Redis client wrapper.
 
 ### Providers
 
-Providers are classes that encapsulate specific functionality and can be injected into your application. They handle initialization, configuration, and lifecycle management.
-
-For more details, see the [Providers documentation](/docs/concepts-providers).
-
-#### BunRedisProvider
-
-Bun Redis client provider using Bun's native Redis client.
-
-This provider uses Bun's built-in `RedisClient` class for Redis connections,
-which provides excellent performance (7.9x faster than ioredis) on the Bun runtime.
-
-#### BunRedisSubscriberProvider
-
-Bun Redis subscriber provider for pub/sub operations.
-
-This provider creates a dedicated Redis connection for subscriptions,
-as Redis requires separate connections for pub/sub operations.
-
-#### NodeRedisProvider
-
-Node.js Redis client provider using `@redis/client`.
-
-This provider uses the official Redis client for Node.js runtime.
-
-#### NodeRedisSubscriberProvider
-
-Node.js Redis subscriber provider using `@redis/client`.
-
-This provider creates a dedicated Redis connection for subscriptions,
-as Redis requires separate connections for pub/sub operations.
+- [`BunRedisProvider`](/docs/reference-providers-bunredisprovider) — Bun Redis client provider using Bun's native Redis client.
+- [`BunRedisSubscriberProvider`](/docs/reference-providers-bunredissubscriberprovider) — Bun Redis subscriber provider for pub/sub operations.
+- [`NodeRedisProvider`](/docs/reference-providers-noderedisprovider) — Node.js Redis client provider using `@redis/client`.
+- [`NodeRedisSubscriberProvider`](/docs/reference-providers-noderedissubscriberprovider) — Node.js Redis subscriber provider using `@redis/client`.
 
 ### Environment Variables
 
