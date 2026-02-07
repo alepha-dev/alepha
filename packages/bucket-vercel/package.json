@@ -23,7 +23,7 @@
     "src"
   ],
   "dependencies": {
-    "@vercel/blob": "^2.1.0"
+    "@vercel/blob": "^2.2.0"
   },
   "devDependencies": {
     "@types/node": "^25.2.1",
