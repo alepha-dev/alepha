@@ -16,6 +16,9 @@ Alepha
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/dt/alepha.svg" alt="downloads"/></a>
 </div>
 
+> [!WARNING]
+> This project is in active development and may not be suitable for production use. Please report any issues or bugs on [GitHub](https://github.com/feunard/alepha/issues).
+
 ## What is Alepha?
 
 Full-stack TypeScript engine for agentic era. Define your schema once — get database, API, types, and forms.
