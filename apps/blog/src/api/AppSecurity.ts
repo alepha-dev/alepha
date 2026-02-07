@@ -23,12 +23,12 @@ export class AppSecurity {
     },
     features: {
       // Enable additional features
-      notifications: false,
-      audits: false,
-      apiKeys: false,
-      jobs: false,
-      files: false,
-      parameters: false,
+      notifications: true,
+      audits: true,
+      apiKeys: true,
+      jobs: true,
+      files: true,
+      parameters: true,
     },
     identities: {
       // Enable authentication providers

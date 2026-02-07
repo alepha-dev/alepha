@@ -1,6 +1,9 @@
+import { $uiAuth } from "@alepha/ui/auth";
 import { $page } from "alepha/react/router";
 
 export class AppRouter {
+  uiAuth = $uiAuth();
+
   layout = $page({
     lazy: () => import("./components/Layout.tsx"),
     children: () => [

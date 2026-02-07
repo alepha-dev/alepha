@@ -9,6 +9,8 @@ import {
   ThemeButton,
   ToggleSidebarButton,
 } from "@alepha/ui";
+import { AdminRouter } from "@alepha/ui/admin";
+import { UserButton } from "@alepha/ui/auth";
 import {
   Anchor,
   Badge,
@@ -35,7 +37,7 @@ import {
   IconUser,
   IconUsers,
 } from "@tabler/icons-react";
-import { useStore } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 import { Link, NestedView } from "alepha/react/router";
 
 const blogTheme = createTheme({
@@ -164,12 +166,16 @@ function NavbarLogo() {
 }
 
 function Shell() {
+  const adminRouter = useInject(AdminRouter);
+
   return (
     <DashboardShell
       layout="alt"
       footerHeight={50}
       headerHeight={48}
-      sidebarProps={{ items: sidebarItems }}
+      sidebarProps={{
+        items: [...sidebarItems, ...adminRouter.getDefaultSidebarItems()],
+      }}
       sidebarResizable
       navbarHeader={<NavbarLogo />}
       navbarFooter={
@@ -238,6 +244,7 @@ function Shell() {
               size="sm"
               icon={IconUser}
             />
+            <UserButton size="sm" />
           </Group>
         </Group>
       }

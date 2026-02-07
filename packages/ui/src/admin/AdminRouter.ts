@@ -54,7 +54,6 @@ export class AdminRouter {
       {
         type: "section",
         label: "Identity",
-        icon: IconUsers,
         children: [
           {
             ...this.router.node(this.adminUsers.name),
@@ -72,8 +71,7 @@ export class AdminRouter {
       },
       {
         type: "section",
-        label: "Content",
-        icon: IconFile,
+        label: "System",
         children: [
           {
             ...this.router.node(this.adminFiles.name),
@@ -83,13 +81,6 @@ export class AdminRouter {
             ...this.router.node(this.adminNotifications.name),
             can: () => this.notificationCtrl.findNotifications.can(),
           },
-        ],
-      },
-      {
-        type: "section",
-        label: "System",
-        icon: IconSettings,
-        children: [
           {
             ...this.router.node(this.adminJobs.name),
             can: () => this.jobCtrl.getJobs.can(),
