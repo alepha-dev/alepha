@@ -18,6 +18,8 @@ import { UserService } from "./services/UserService.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./atoms/realmAuthSettingsAtom.ts";
+export * from "./audits/UserAudits.ts";
+export * from "./buckets/UserBuckets.ts";
 export * from "./controllers/AdminIdentityController.ts";
 export * from "./controllers/AdminSessionController.ts";
 export * from "./controllers/AdminUserController.ts";
@@ -26,6 +28,9 @@ export * from "./controllers/UserController.ts";
 export * from "./entities/identities.ts";
 export * from "./entities/sessions.ts";
 export * from "./entities/users.ts";
+export * from "./jobs/UserJobs.ts";
+export * from "./notifications/UserNotifications.ts";
+export * from "./parameters/UserParameters.ts";
 export * from "./primitives/$realm.ts";
 export * from "./providers/RealmProvider.ts";
 export * from "./schemas/completePasswordResetRequestSchema.ts";
@@ -49,11 +54,6 @@ export * from "./services/IdentityService.ts";
 export * from "./services/RegistrationService.ts";
 export * from "./services/SessionCrudService.ts";
 export * from "./services/SessionService.ts";
-export * from "./services/UserAudits.ts";
-export * from "./services/UserFiles.ts";
-export * from "./services/UserJobs.ts";
-export * from "./services/UserNotifications.ts";
-export * from "./services/UserParameters.ts";
 export * from "./services/UserService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

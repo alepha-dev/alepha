@@ -170,6 +170,7 @@
     },
     "./cache": {
       "types": "./src/cache/core/index.ts",
+      "workerd": "./src/cache/core/index.workerd.ts",
       "import": "./src/cache/core/index.ts",
       "default": "./src/cache/core/index.ts"
     },

@@ -7,11 +7,11 @@ import { $logger } from "alepha/logger";
 import { CryptoProvider } from "alepha/security";
 import { BadRequestError, HttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
+import { UserAudits } from "../audits/UserAudits.ts";
+import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { CompletePasswordResetRequest } from "../schemas/completePasswordResetRequestSchema.ts";
 import type { PasswordResetIntentResponse } from "../schemas/passwordResetIntentResponseSchema.ts";
-import { UserAudits } from "./UserAudits.ts";
-import { UserNotifications } from "./UserNotifications.ts";
 
 /**
  * Intent stored in cache during the password reset flow.

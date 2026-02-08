@@ -7,13 +7,13 @@ import { $logger } from "alepha/logger";
 import { CryptoProvider } from "alepha/security";
 import { BadRequestError, ConflictError, HttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
+import { UserAudits } from "../audits/UserAudits.ts";
 import type { UserEntity } from "../entities/users.ts";
+import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { CompleteRegistrationRequest } from "../schemas/completeRegistrationRequestSchema.ts";
 import type { RegisterRequest } from "../schemas/registerRequestSchema.ts";
 import type { RegistrationIntentResponse } from "../schemas/registrationIntentResponseSchema.ts";
-import { UserAudits } from "./UserAudits.ts";
-import { UserNotifications } from "./UserNotifications.ts";
 
 /**
  * Intent stored in cache during the registration flow.

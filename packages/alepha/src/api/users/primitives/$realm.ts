@@ -1,8 +1,6 @@
 import { $context } from "alepha";
 import { AlephaApiClients, OAuth2Service } from "alepha/api/clients";
-import { AlephaApiFiles } from "alepha/api/files";
 import { AlephaApiKeys, ApiKeyService } from "alepha/api/keys";
-import { AlephaApiVerification } from "alepha/api/verifications";
 import type { Repository } from "alepha/orm";
 import {
   $issuer,
@@ -22,16 +20,15 @@ import {
   type WithLoginFn,
 } from "alepha/server/auth";
 import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
+import { UserAudits } from "../audits/UserAudits.ts";
+import { UserBuckets } from "../buckets/UserBuckets.ts";
 import type { identities } from "../entities/identities.ts";
 import type { sessions } from "../entities/sessions.ts";
 import { DEFAULT_USER_REALM_NAME, type users } from "../entities/users.ts";
+import { UserJobs } from "../jobs/UserJobs.ts";
+import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { SessionService } from "../services/SessionService.ts";
-import { UserAudits } from "../services/UserAudits.ts";
-import { UserFiles } from "../services/UserFiles.ts";
-import { UserJobs } from "../services/UserJobs.ts";
-import { UserNotifications } from "../services/UserNotifications.ts";
-import { UserParameters } from "../services/UserParameters.ts";
 
 export type RealmPrimitive = IssuerPrimitive & WithLinkFn & WithLoginFn;
 
@@ -94,11 +91,13 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
   const realmRegistration = realmProvider.register(name, options);
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   // Enable features based on configuration
   // Each feature registers its wrapper service which internally uses the module primitives
+
   if (features.files) {
-    alepha.with(AlephaApiFiles);
-    alepha.with(UserFiles);
+    alepha.with(UserBuckets);
   }
 
   if (features.audits) {
@@ -110,13 +109,10 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   }
 
   if (features.notifications) {
-    alepha.with(AlephaApiVerification);
     alepha.with(UserNotifications);
   }
 
-  if (features.parameters) {
-    alepha.with(UserParameters);
-  }
+  // -------------------------------------------------------------------------------------------------------------------
 
   // Collect custom resolvers that will be registered during $issuer.onInit()
   // This ensures they are registered AFTER the realm is created (not on the default test realm)

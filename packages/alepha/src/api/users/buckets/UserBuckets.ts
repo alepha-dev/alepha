@@ -8,7 +8,7 @@ import { $bucket } from "alepha/bucket";
  *
  * It is lazy-loaded when the `files` feature is enabled in the realm.
  */
-export class UserFiles {
+export class UserBuckets {
   /**
    * Bucket for user avatar storage.
    */

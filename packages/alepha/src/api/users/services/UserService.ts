@@ -4,13 +4,13 @@ import { $logger } from "alepha/logger";
 import { type Page, parseQueryString } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 import { $client } from "alepha/server/links";
+import { UserAudits } from "../audits/UserAudits.ts";
 import type { UserEntity } from "../entities/users.ts";
+import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { CreateUser } from "../schemas/createUserSchema.ts";
 import type { UpdateUser } from "../schemas/updateUserSchema.ts";
 import type { UserQuery } from "../schemas/userQuerySchema.ts";
-import { UserAudits } from "./UserAudits.ts";
-import { UserNotifications } from "./UserNotifications.ts";
 
 export class UserService {
   protected readonly alepha = $inject(Alepha);
