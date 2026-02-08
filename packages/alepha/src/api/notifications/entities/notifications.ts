@@ -66,6 +66,7 @@ export const notifications = $entity({
 
     // TODO: retryCount, lastRetryAt, etc.
   }),
+  indexes: ["type", "scheduledAt", "sentAt", "contact", "category"],
 });
 
 export type NotificationEntity = Static<typeof notifications.schema>;

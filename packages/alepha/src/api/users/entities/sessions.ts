@@ -21,6 +21,7 @@ export const sessions = $entity({
       }),
     ),
   }),
+  indexes: ["userId", "expiresAt", { column: "refreshToken", unique: true }],
 });
 
 export type SessionEntity = Static<typeof sessions.schema>;

@@ -15,6 +15,12 @@ export const identities = $entity({
     providerUserId: t.optional(t.text()),
     providerData: t.optional(t.json()),
   }),
+  indexes: [
+    "userId",
+    "provider",
+    { columns: ["userId", "provider"] },
+    { columns: ["provider", "providerUserId"], unique: true },
+  ],
 });
 
 export type IdentityEntity = Static<typeof identities.schema>;
