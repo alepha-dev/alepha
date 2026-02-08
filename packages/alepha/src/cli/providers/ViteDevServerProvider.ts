@@ -429,7 +429,7 @@ export class ViteDevServerProvider {
 
     const mod = await this.server.ssrLoadModule("alepha/devtools");
 
-    // alepha.with(mod.AlephaDevtools);
+    alepha.with(mod.AlephaDevtools);
 
     this.alepha = alepha;
     await this.setupAlepha();
