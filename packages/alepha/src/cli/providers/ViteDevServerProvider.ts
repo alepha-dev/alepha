@@ -132,6 +132,11 @@ export class ViteDevServerProvider {
       server: {
         port,
       },
+      optimizeDeps: {
+        entries: this.options.entry.browser
+          ? [this.options.entry.browser]
+          : [],
+      },
       // customLogger: {
       //   info: () => {},
       //   warn: this.log.warn.bind(this.log),
