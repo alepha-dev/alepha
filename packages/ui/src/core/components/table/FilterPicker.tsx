@@ -1,10 +1,9 @@
 import {
   Button,
   Checkbox,
-  Group,
+  Flex,
   Popover,
   ScrollArea,
-  Stack,
   Text,
 } from "@mantine/core";
 import { IconFilter } from "@tabler/icons-react";
@@ -93,12 +92,18 @@ const FilterPicker = ({
           backdropFilter: "blur(20px)",
         }}
       >
-        <Stack gap="xs" bg={ui.colors.surface} p="sm" bdrs="sm">
-          <Group justify="space-between">
+        <Flex
+          direction="column"
+          gap="xs"
+          bg={ui.colors.surface}
+          p="sm"
+          bdrs="sm"
+        >
+          <Flex justify="space-between">
             <Text size="sm" fw={500}>
               Filters ({visibleCount}/{filterKeys.length})
             </Text>
-            <Group gap={4}>
+            <Flex gap={4}>
               <Button
                 size="compact-xs"
                 variant="subtle"
@@ -113,11 +118,11 @@ const FilterPicker = ({
               >
                 None
               </Button>
-            </Group>
-          </Group>
+            </Flex>
+          </Flex>
 
           <ScrollArea.Autosize mah={300}>
-            <Stack gap={4}>
+            <Flex direction="column" gap={4}>
               {filterKeys.map((key) => (
                 <Checkbox
                   key={key}
@@ -127,9 +132,9 @@ const FilterPicker = ({
                   size="sm"
                 />
               ))}
-            </Stack>
+            </Flex>
           </ScrollArea.Autosize>
-        </Stack>
+        </Flex>
       </Popover.Dropdown>
     </Popover>
   );

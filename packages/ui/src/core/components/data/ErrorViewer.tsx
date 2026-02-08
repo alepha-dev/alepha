@@ -1,8 +1,8 @@
 import {
   ActionIcon,
-  Box,
   Collapse,
   CopyButton,
+  Flex,
   type MantineSize,
   Text,
   Tooltip,
@@ -64,9 +64,9 @@ export const ErrorViewer = ({
   };
 
   return (
-    <Box pos="relative" w="100%">
+    <Flex pos="relative" w="100%">
       {copyable && (
-        <Box pos="absolute" top={0} right={0} style={{ zIndex: 1 }}>
+        <Flex pos="absolute" top={0} right={0} style={{ zIndex: 1 }}>
           <CopyButton value={getCopyContent()}>
             {({ copied, copy }) => (
               <Tooltip label={copied ? "Copied" : "Copy Error"}>
@@ -85,10 +85,10 @@ export const ErrorViewer = ({
               </Tooltip>
             )}
           </CopyButton>
-        </Box>
+        </Flex>
       )}
-      <Box pt={copyable ? 30 : 0}>
-        <Box
+      <Flex pt={copyable ? 30 : 0}>
+        <Flex
           style={{
             display: "flex",
             alignItems: "flex-start",
@@ -112,11 +112,11 @@ export const ErrorViewer = ({
           >
             {errorMessage}
           </Text>
-        </Box>
+        </Flex>
 
         {showStack && stackLines.length > 1 && (
-          <Box mt="sm">
-            <Box
+          <Flex mt="sm">
+            <Flex
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -135,10 +135,10 @@ export const ErrorViewer = ({
               <Text c="dimmed" size={sizeConfig.text} fw={500}>
                 Stack Trace ({stackLines.length - 1} frames)
               </Text>
-            </Box>
+            </Flex>
 
             <Collapse in={stackExpanded}>
-              <Box
+              <Flex
                 mt="xs"
                 pl="md"
                 style={{
@@ -159,12 +159,12 @@ export const ErrorViewer = ({
                     {line}
                   </Text>
                 ))}
-              </Box>
+              </Flex>
             </Collapse>
-          </Box>
+          </Flex>
         )}
-      </Box>
-    </Box>
+      </Flex>
+    </Flex>
   );
 };
 

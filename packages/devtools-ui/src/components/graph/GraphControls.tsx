@@ -1,9 +1,7 @@
-import { ActionButton, ui } from "@alepha/ui";
+import { ActionButton, Flex, ui } from "@alepha/ui";
 import {
   Badge,
   Checkbox,
-  Flex,
-  Group,
   SegmentedControl,
   Select,
   TextInput,
@@ -148,14 +146,14 @@ export const GraphControls = ({
         ]}
       />
 
-      <Group gap={4}>
+      <Flex gap={4}>
         <Badge size="xs" variant="light" color="gray">
           {nodeCount} {isModuleView ? "modules" : "services"}
         </Badge>
         <Badge size="xs" variant="light" color="gray">
           {edgeCount} edges
         </Badge>
-      </Group>
+      </Flex>
 
       <ActionButton
         size="sm"

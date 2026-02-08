@@ -1,13 +1,5 @@
 import { ActionButton, Flex, Text } from "@alepha/ui";
-import {
-  Badge,
-  Box,
-  Group,
-  Loader,
-  ScrollArea,
-  Stack,
-  Timeline,
-} from "@mantine/core";
+import { Badge, Loader, ScrollArea, Timeline } from "@mantine/core";
 import { IconHistory } from "@tabler/icons-react";
 import type { Parameter } from "alepha/api/parameters";
 import { useI18n } from "alepha/react/i18n";
@@ -62,7 +54,7 @@ const ParameterHistory = ({
                 </Text>
               }
               title={
-                <Group gap="xs">
+                <Flex gap="xs">
                   <Text size="xs" fw={500}>
                     Version {version.version}
                   </Text>
@@ -73,10 +65,10 @@ const ParameterHistory = ({
                   >
                     {version.status}
                   </Badge>
-                </Group>
+                </Flex>
               }
             >
-              <Stack gap={4} mt={4}>
+              <Flex direction="column" gap={4} mt={4}>
                 <Text size="xs" c="dimmed">
                   {l(version.createdAt, { date: "fromNow" })}
                 </Text>
@@ -104,7 +96,7 @@ const ParameterHistory = ({
                     Rollback to this version
                   </ActionButton>
                 )}
-              </Stack>
+              </Flex>
             </Timeline.Item>
           ))}
         </Timeline>
@@ -113,7 +105,7 @@ const ParameterHistory = ({
   };
 
   return (
-    <Box
+    <Flex
       w={160}
       h="100%"
       p="xs"
@@ -125,16 +117,16 @@ const ParameterHistory = ({
         borderLeft: "1px solid var(--mantine-color-default-border)",
       }}
     >
-      <Stack gap="xs" h="100%" style={{ minHeight: 0 }}>
-        <Group gap="xs">
+      <Flex direction="column" gap="xs" h="100%" style={{ minHeight: 0 }}>
+        <Flex gap="xs">
           <IconHistory size={16} color="var(--mantine-color-dimmed)" />
           <Text size="sm" fw={500}>
             History
           </Text>
-        </Group>
+        </Flex>
         {renderContent()}
-      </Stack>
-    </Box>
+      </Flex>
+    </Flex>
   );
 };
 

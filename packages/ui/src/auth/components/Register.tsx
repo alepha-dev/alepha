@@ -1,15 +1,5 @@
 import { ActionButton, Control, capitalize } from "@alepha/ui";
-import {
-  Alert,
-  Card,
-  Flex,
-  Group,
-  Image,
-  PinInput,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Alert, Card, Flex, Image, PinInput, Text, Title } from "@mantine/core";
 import {
   IconAlertCircle,
   IconLock,
@@ -222,9 +212,9 @@ const Register = (props: RegisterProps) => {
   if (registrationState.phase === "verification" && registrationState.intent) {
     return (
       <Flex flex={1} justify={"center"} align={"center"}>
-        <Stack gap={"sm"} w={360}>
+        <Flex direction="column" gap={"sm"} w={360}>
           <Card withBorder p={"lg"} bg={"var(--alepha-elevated)"}>
-            <Stack gap={"md"}>
+            <Flex direction="column" gap={"md"}>
               <Text size="lg" fw={500} ta="center">
                 {tr("registerVerifyTitle") ?? "Verify your account"}
               </Text>
@@ -240,7 +230,7 @@ const Register = (props: RegisterProps) => {
               )}
 
               {registrationState.intent.expectEmailVerification && (
-                <Stack gap={"xs"}>
+                <Flex direction="column" gap={"xs"}>
                   <Text size="sm" fw={500}>
                     {tr("registerEmailCode")}
                   </Text>
@@ -254,11 +244,11 @@ const Register = (props: RegisterProps) => {
                       aria-label="Email verification code"
                     />
                   </Flex>
-                </Stack>
+                </Flex>
               )}
 
               {registrationState.intent.expectPhoneVerification && (
-                <Stack gap={"xs"}>
+                <Flex direction="column" gap={"xs"}>
                   <Text size="sm" fw={500}>
                     {tr("registerPhoneCode")}
                   </Text>
@@ -272,7 +262,7 @@ const Register = (props: RegisterProps) => {
                       aria-label="Phone verification code"
                     />
                   </Flex>
-                </Stack>
+                </Flex>
               )}
 
               <ActionButton
@@ -292,9 +282,9 @@ const Register = (props: RegisterProps) => {
               >
                 {tr("registerVerifyBack") ?? "Back to registration"}
               </ActionButton>
-            </Stack>
+            </Flex>
           </Card>
-        </Stack>
+        </Flex>
       </Flex>
     );
   }
@@ -309,14 +299,14 @@ const Register = (props: RegisterProps) => {
   // Registration form phase UI
   return (
     <Flex flex={1} justify={"center"} align={"center"}>
-      <Stack gap={"sm"} w={360}>
+      <Flex direction="column" gap={"sm"} w={360}>
         <Card withBorder p={"lg"} bg={"var(--alepha-elevated)"}>
-          <Stack gap={"md"}>
+          <Flex direction="column" gap={"md"}>
             {/* Realm branding */}
             {(settings.logoUrl ||
               settings.displayName ||
               settings.description) && (
-              <Stack gap={"xs"} align="center" mb="xs">
+              <Flex direction="column" gap={"xs"} align="center" mb="xs">
                 {settings.logoUrl && (
                   <Image
                     src={settings.logoUrl}
@@ -336,7 +326,7 @@ const Register = (props: RegisterProps) => {
                     {settings.description}
                   </Text>
                 )}
-              </Stack>
+              </Flex>
             )}
 
             {!isRegistrationAllowed ? (
@@ -361,7 +351,7 @@ const Register = (props: RegisterProps) => {
                 {/* Credentials registration form */}
                 {credentialsProvider && (
                   <form {...form.props}>
-                    <Stack flex={1} gap={"md"}>
+                    <Flex direction="column" flex={1} gap={"md"}>
                       {settings.usernameEnabled !== false &&
                         form.input.username && (
                           <Control
@@ -417,24 +407,24 @@ const Register = (props: RegisterProps) => {
                       >
                         {tr("registerCreateAccount")}
                       </ActionButton>
-                    </Stack>
+                    </Flex>
                   </form>
                 )}
 
                 {/* OR divider - only when both credentials AND external methods exist */}
                 {showOrDivider && (
-                  <Group align="center" justify="center" gap={"md"}>
+                  <Flex align="center" justify="center" gap={"md"}>
                     <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
                     <Text size="xs" c="dimmed">
                       {tr("registerOr")}
                     </Text>
                     <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
-                  </Group>
+                  </Flex>
                 )}
 
                 {/* External login methods */}
                 {externalMethods.length > 0 && (
-                  <Stack gap={"sm"}>
+                  <Flex direction="column" gap={"sm"}>
                     {externalMethods.map((method) => (
                       <ActionButton
                         variant={"default"}
@@ -452,7 +442,7 @@ const Register = (props: RegisterProps) => {
                         })}
                       </ActionButton>
                     ))}
-                  </Stack>
+                  </Flex>
                 )}
 
                 {/* Sign in link */}
@@ -469,12 +459,12 @@ const Register = (props: RegisterProps) => {
                 </Text>
               </>
             )}
-          </Stack>
+          </Flex>
         </Card>
         <ActionButton variant={"subtle"} href={redirect}>
           {tr("registerCancel")}
         </ActionButton>
-      </Stack>
+      </Flex>
     </Flex>
   );
 };

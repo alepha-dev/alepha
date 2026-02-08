@@ -1,5 +1,5 @@
-import { ActionButton, ui, useDialog } from "@alepha/ui";
-import { Alert, Badge, Flex, Loader, Stack, Text } from "@mantine/core";
+import { ActionButton, Flex, ui, useDialog } from "@alepha/ui";
+import { Alert, Badge, Loader, Text } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconFocusCentered,
@@ -305,7 +305,8 @@ const FlowControls = () => {
   const [isLocked, setIsLocked] = useState(false);
 
   return (
-    <Stack
+    <Flex
+      direction="column"
       gap={4}
       style={{
         position: "absolute",
@@ -346,6 +347,6 @@ const FlowControls = () => {
         onClick={() => setIsLocked(!isLocked)}
         icon={isLocked ? <IconLock size={14} /> : <IconLockOpen size={14} />}
       />
-    </Stack>
+    </Flex>
   );
 };

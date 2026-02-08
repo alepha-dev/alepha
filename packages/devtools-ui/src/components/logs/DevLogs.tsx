@@ -1,30 +1,33 @@
-import { ui } from "@alepha/ui";
+import { Flex, ui } from "@alepha/ui";
 import { JsonViewer } from "@alepha/ui/json";
 import {
   Badge,
-  Box,
   CloseButton,
   Code,
-  Flex,
-  Group,
   ScrollArea,
   SegmentedControl,
   Select,
-  Stack,
   Text,
   TextInput,
-  UnstyledButton,
 } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type MouseEvent as ReactMouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 interface LogEntry {
   level: string;
   message: string;
   module: string;
   service: string;
+  context?: string;
   data?: any;
   timestamp: number;
   stack?: string;
@@ -39,8 +42,15 @@ const LEVEL_COLORS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  "http:request": "teal",
-  "db:query": "violet",
+  http: "teal",
+  db: "violet",
+};
+
+const detectEventType = (data: any): string | undefined => {
+  if (!data || typeof data !== "object") return undefined;
+  if (data.status && data.method && data.path && data.duration) return "http";
+  if (data.type === "db:query") return "db";
+  return undefined;
 };
 
 const TIME_RANGES = [
@@ -53,12 +63,12 @@ const TIME_RANGES = [
   { value: "0", label: "All time" },
 ];
 
+const pad2 = (n: number) => (n < 10 ? `0${n}` : String(n));
+const pad3 = (n: number) => (n < 10 ? `00${n}` : n < 100 ? `0${n}` : String(n));
+
 const formatTime = (ts: number): string => {
   const d = new Date(ts);
-  return d.toLocaleTimeString("en", {
-    hour12: false,
-    fractionalSecondDigits: 3,
-  });
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}.${pad3(d.getMilliseconds())}`;
 };
 
 const formatRelative = (ts: number): string => {
@@ -68,6 +78,21 @@ const formatRelative = (ts: number): string => {
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
   return `${Math.floor(diff / 3_600_000)}h ago`;
 };
+
+type ColumnDef = {
+  key: string;
+  label: string;
+  defaultWidth: number;
+  minWidth: number;
+};
+
+const COLUMNS: ColumnDef[] = [
+  { key: "time", label: "Time", defaultWidth: 105, minWidth: 60 },
+  { key: "level", label: "Level", defaultWidth: 58, minWidth: 40 },
+  { key: "type", label: "Type", defaultWidth: 60, minWidth: 40 },
+  { key: "context", label: "Context", defaultWidth: 80, minWidth: 40 },
+  { key: "module", label: "Module", defaultWidth: 100, minWidth: 50 },
+];
 
 export const DevLogs = () => {
   const http = useInject(HttpClient);
@@ -81,6 +106,55 @@ export const DevLogs = () => {
   const [moduleFilter, setModuleFilter] = useState("");
   const [search, setSearch] = useState("");
   const [timeRange, setTimeRange] = useState("0");
+
+  // Column widths
+  const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
+    const widths: Record<string, number> = {};
+    for (const col of COLUMNS) {
+      widths[col.key] = col.defaultWidth;
+    }
+    return widths;
+  });
+
+  // Resize state
+  const resizeRef = useRef<{
+    colKey: string;
+    startX: number;
+    startWidth: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const onMouseMove = (e: globalThis.MouseEvent) => {
+      if (!resizeRef.current) return;
+      const { colKey, startX, startWidth } = resizeRef.current;
+      const col = COLUMNS.find((c) => c.key === colKey);
+      const minW = col?.minWidth ?? 40;
+      const newWidth = Math.max(minW, startWidth + (e.clientX - startX));
+      setColWidths((prev) => ({ ...prev, [colKey]: newWidth }));
+    };
+    const onMouseUp = () => {
+      resizeRef.current = null;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
+
+  const startResize = (colKey: string, e: ReactMouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    resizeRef.current = {
+      colKey,
+      startX: e.clientX,
+      startWidth: colWidths[colKey],
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  };
 
   // Available modules (collected from logs)
   const modules = useMemo(() => {
@@ -123,7 +197,7 @@ export const DevLogs = () => {
   return (
     <Flex style={{ flex: 1, overflow: "hidden" }} direction="column">
       {/* Filters bar */}
-      <Box
+      <Flex
         px="md"
         py="xs"
         style={{
@@ -145,8 +219,8 @@ export const DevLogs = () => {
             value={typeFilter || null}
             onChange={(v) => setTypeFilter(v ?? "")}
             data={[
-              { value: "http:request", label: "HTTP" },
-              { value: "db:query", label: "DB Query" },
+              { value: "http", label: "HTTP" },
+              { value: "db", label: "DB Query" },
             ]}
             w={120}
           />
@@ -179,13 +253,69 @@ export const DevLogs = () => {
             {total} total
           </Badge>
         </Flex>
-      </Box>
+      </Flex>
 
       {/* Main area: table + detail */}
       <Flex style={{ flex: 1, overflow: "hidden" }}>
         {/* Log table */}
-        <ScrollArea style={{ flex: 1 }}>
-          <Box>
+        <Flex direction="column" style={{ flex: 1, overflow: "hidden" }}>
+          {/* Table header */}
+          <Flex
+            style={{
+              borderBottom: `1px solid ${ui.colors.border}`,
+              flexShrink: 0,
+            }}
+          >
+            {COLUMNS.map((col) => (
+              <Flex
+                key={col.key}
+                align="center"
+                px="xs"
+                py={4}
+                style={{
+                  width: colWidths[col.key],
+                  minWidth: col.minWidth,
+                  flexShrink: 0,
+                  position: "relative",
+                  userSelect: "none",
+                }}
+              >
+                <Text fz={10} c="dimmed" tt="uppercase" fw={600} lts={0.5}>
+                  {col.label}
+                </Text>
+                <div
+                  onMouseDown={(e) => startResize(col.key, e)}
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 4,
+                    cursor: "col-resize",
+                    background: "transparent",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.background =
+                      ui.colors.border;
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!resizeRef.current) {
+                      (e.currentTarget as HTMLElement).style.background =
+                        "transparent";
+                    }
+                  }}
+                />
+              </Flex>
+            ))}
+            <Flex align="center" px="xs" py={4} style={{ flex: 1 }}>
+              <Text fz={10} c="dimmed" tt="uppercase" fw={600} lts={0.5}>
+                Message
+              </Text>
+            </Flex>
+          </Flex>
+
+          {/* Table body */}
+          <ScrollArea style={{ flex: 1 }}>
             {logs.length === 0 && (
               <Flex align="center" justify="center" py="xl" c="dimmed">
                 <Text fz="sm">No logs match the current filters</Text>
@@ -193,73 +323,147 @@ export const DevLogs = () => {
             )}
             {logs.map((entry, i) => {
               const isSelected = selectedIndex === i;
-              const eventType = entry.data?.type;
+              const eventType = detectEventType(entry.data);
 
               return (
-                <UnstyledButton
+                <Flex
                   key={`${entry.timestamp}-${i}`}
-                  w="100%"
                   onClick={() => setSelectedIndex(isSelected ? null : i)}
                   style={{
                     borderBottom: `1px solid ${ui.colors.border}20`,
                     background: isSelected ? ui.colors.elevated : "transparent",
+                    cursor: "pointer",
+                    transition: "background 100ms",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) {
+                      (e.currentTarget as HTMLElement).style.background =
+                        `${ui.colors.elevated}80`;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) {
+                      (e.currentTarget as HTMLElement).style.background =
+                        "transparent";
+                    }
                   }}
                 >
-                  <Flex align="center" gap="xs" px="md" py={5}>
-                    <Text
-                      fz={11}
-                      ff="monospace"
-                      c="dimmed"
-                      w={85}
-                      style={{ flexShrink: 0 }}
-                    >
+                  {/* Time */}
+                  <Flex
+                    align="center"
+                    px="xs"
+                    py={4}
+                    style={{
+                      width: colWidths.time,
+                      flexShrink: 0,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Text fz={11} ff="monospace" c="dimmed" truncate>
                       {formatTime(entry.timestamp)}
                     </Text>
+                  </Flex>
+
+                  {/* Level */}
+                  <Flex
+                    align="center"
+                    px="xs"
+                    py={4}
+                    style={{
+                      width: colWidths.level,
+                      flexShrink: 0,
+                      overflow: "hidden",
+                    }}
+                  >
                     <Badge
                       size="xs"
                       variant="light"
                       color={LEVEL_COLORS[entry.level] ?? "gray"}
-                      w={48}
-                      style={{ flexShrink: 0 }}
                     >
                       {entry.level}
                     </Badge>
+                  </Flex>
+
+                  {/* Type */}
+                  <Flex
+                    align="center"
+                    px="xs"
+                    py={4}
+                    style={{
+                      width: colWidths.type,
+                      flexShrink: 0,
+                      overflow: "hidden",
+                    }}
+                  >
                     {eventType && (
                       <Badge
                         size="xs"
                         variant="dot"
                         color={TYPE_COLORS[eventType] ?? "gray"}
-                        style={{ flexShrink: 0 }}
                       >
-                        {eventType === "http:request"
+                        {eventType === "http"
                           ? "HTTP"
-                          : eventType === "db:query"
+                          : eventType === "db"
                             ? "DB"
                             : eventType}
                       </Badge>
                     )}
-                    <Text
-                      fz={11}
-                      c="dimmed"
-                      w={80}
-                      truncate
-                      style={{ flexShrink: 0 }}
-                    >
+                  </Flex>
+
+                  {/* Context */}
+                  <Flex
+                    align="center"
+                    px="xs"
+                    py={4}
+                    style={{
+                      width: colWidths.context,
+                      flexShrink: 0,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {entry.context && (
+                      <Text fz={11} ff="monospace" c="dimmed" truncate>
+                        {entry.context}
+                      </Text>
+                    )}
+                  </Flex>
+
+                  {/* Module */}
+                  <Flex
+                    align="center"
+                    px="xs"
+                    py={4}
+                    style={{
+                      width: colWidths.module,
+                      flexShrink: 0,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Text fz={11} c="dimmed" truncate>
                       {entry.module}
                     </Text>
-                    <Text fz={11} ff="monospace" truncate style={{ flex: 1 }}>
+                  </Flex>
+
+                  {/* Message */}
+                  <Flex
+                    align="center"
+                    px="xs"
+                    py={4}
+                    style={{ flex: 1, overflow: "hidden" }}
+                  >
+                    <Text fz={11} ff="monospace" truncate>
                       {entry.message}
                     </Text>
                   </Flex>
-                </UnstyledButton>
+                </Flex>
               );
             })}
-          </Box>
-        </ScrollArea>
+          </ScrollArea>
+        </Flex>
 
         {/* Detail panel */}
         {selectedLog && (
-          <Box
+          <Flex
             w={400}
             style={{
               borderLeft: `1px solid ${ui.colors.border}`,
@@ -285,9 +489,9 @@ export const DevLogs = () => {
               <CloseButton size="xs" onClick={() => setSelectedIndex(null)} />
             </Flex>
             <ScrollArea style={{ flex: 1 }} p="md">
-              <Stack gap="md">
+              <Flex direction="column" gap="md">
                 {/* Meta */}
-                <Group gap="xs" wrap="wrap">
+                <Flex gap="xs" wrap="wrap">
                   <Badge
                     size="sm"
                     variant="light"
@@ -295,13 +499,18 @@ export const DevLogs = () => {
                   >
                     {selectedLog.level}
                   </Badge>
-                  {selectedLog.data?.type && (
+                  {detectEventType(selectedLog.data) && (
                     <Badge
                       size="sm"
                       variant="dot"
-                      color={TYPE_COLORS[selectedLog.data.type] ?? "gray"}
+                      color={
+                        TYPE_COLORS[detectEventType(selectedLog.data)!] ??
+                        "gray"
+                      }
                     >
-                      {selectedLog.data.type}
+                      {detectEventType(selectedLog.data) === "http"
+                        ? "HTTP"
+                        : "DB"}
                     </Badge>
                   )}
                   {selectedLog.module && (
@@ -315,10 +524,10 @@ export const DevLogs = () => {
                       {selectedLog.module}
                     </Badge>
                   )}
-                </Group>
+                </Flex>
 
                 {/* Timestamp */}
-                <Box>
+                <Flex direction="column">
                   <Text
                     fz={10}
                     c="dimmed"
@@ -335,10 +544,29 @@ export const DevLogs = () => {
                   <Text fz="xs" c="dimmed">
                     {formatRelative(selectedLog.timestamp)}
                   </Text>
-                </Box>
+                </Flex>
+
+                {/* Context */}
+                {selectedLog.context && (
+                  <Flex direction="column">
+                    <Text
+                      fz={10}
+                      c="dimmed"
+                      tt="uppercase"
+                      fw={600}
+                      lts={0.5}
+                      mb={4}
+                    >
+                      Context
+                    </Text>
+                    <Text fz="xs" ff="monospace">
+                      {selectedLog.context}
+                    </Text>
+                  </Flex>
+                )}
 
                 {/* Message */}
-                <Box>
+                <Flex direction="column">
                   <Text
                     fz={10}
                     c="dimmed"
@@ -356,11 +584,11 @@ export const DevLogs = () => {
                   >
                     {selectedLog.message}
                   </Text>
-                </Box>
+                </Flex>
 
                 {/* Service */}
                 {selectedLog.service && (
-                  <Box>
+                  <Flex direction="column">
                     <Text
                       fz={10}
                       c="dimmed"
@@ -374,12 +602,12 @@ export const DevLogs = () => {
                     <Text fz="xs" ff="monospace">
                       {selectedLog.service}
                     </Text>
-                  </Box>
+                  </Flex>
                 )}
 
                 {/* Structured data */}
                 {selectedLog.data && (
-                  <Box>
+                  <Flex direction="column">
                     <Text
                       fz={10}
                       c="dimmed"
@@ -391,12 +619,12 @@ export const DevLogs = () => {
                       Data
                     </Text>
                     <JsonViewer data={selectedLog.data} maxDepth={4} />
-                  </Box>
+                  </Flex>
                 )}
 
                 {/* Stack trace */}
                 {selectedLog.stack && (
-                  <Box>
+                  <Flex direction="column">
                     <Text
                       fz={10}
                       c="dimmed"
@@ -417,11 +645,11 @@ export const DevLogs = () => {
                     >
                       {selectedLog.stack}
                     </Code>
-                  </Box>
+                  </Flex>
                 )}
-              </Stack>
+              </Flex>
             </ScrollArea>
-          </Box>
+          </Flex>
         )}
       </Flex>
     </Flex>

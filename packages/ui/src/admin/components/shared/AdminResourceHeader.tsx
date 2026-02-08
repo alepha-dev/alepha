@@ -4,9 +4,8 @@ import {
   Avatar,
   Badge,
   Button,
-  Group,
+  Flex,
   Menu,
-  Stack,
   Text,
   Tooltip,
 } from "@mantine/core";
@@ -172,10 +171,10 @@ const AdminResourceHeader = (props: AdminResourceHeaderProps) => {
   };
 
   return (
-    <Stack gap="xs">
+    <Flex direction="column" gap="xs">
       {/* Breadcrumb / Back navigation */}
       {backHref && (
-        <Group>
+        <Flex>
           <ActionButton
             variant="subtle"
             size="xs"
@@ -185,18 +184,23 @@ const AdminResourceHeader = (props: AdminResourceHeaderProps) => {
           >
             {backLabel}
           </ActionButton>
-        </Group>
+        </Flex>
       )}
 
       {/* Main header */}
-      <Group justify="space-between" align="flex-start" wrap="nowrap">
+      <Flex justify="space-between" align="flex-start" wrap="nowrap">
         {/* Left: Avatar + Info */}
-        <Group gap="md" wrap="nowrap">
+        <Flex gap="md" wrap="nowrap">
           {renderAvatar()}
 
-          <Stack gap={2} justify="center" style={{ minHeight: 56 }}>
+          <Flex
+            direction="column"
+            gap={2}
+            justify="center"
+            style={{ minHeight: 56 }}
+          >
             {/* Title row */}
-            <Group gap="xs" align="center">
+            <Flex gap="xs" align="center">
               <Text size="md" fw={600} lh={1.2}>
                 {title}
               </Text>
@@ -210,7 +214,7 @@ const AdminResourceHeader = (props: AdminResourceHeaderProps) => {
                   {status.label}
                 </Badge>
               )}
-            </Group>
+            </Flex>
 
             {/* Subtitle */}
             {subtitle && (
@@ -218,11 +222,11 @@ const AdminResourceHeader = (props: AdminResourceHeaderProps) => {
                 {subtitle}
               </Text>
             )}
-          </Stack>
-        </Group>
+          </Flex>
+        </Flex>
 
         {/* Right: Actions */}
-        <Group gap="xs">
+        <Flex gap="xs">
           {externalUrl && (
             <Tooltip label="Open in new tab" openDelay={500}>
               <ActionIcon
@@ -272,9 +276,9 @@ const AdminResourceHeader = (props: AdminResourceHeaderProps) => {
               </Menu.Dropdown>
             </Menu>
           )}
-        </Group>
-      </Group>
-    </Stack>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 };
 

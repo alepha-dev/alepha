@@ -1,5 +1,5 @@
-import { ui } from "@alepha/ui";
-import { Badge, Group, Stack, Text } from "@mantine/core";
+import { Flex, ui } from "@alepha/ui";
+import { Badge, Text } from "@mantine/core";
 import { IconKey, IconLink } from "@tabler/icons-react";
 import { Handle, type NodeProps, Position } from "@xyflow/react";
 
@@ -30,20 +30,20 @@ export const EntityNode = ({ data }: NodeProps) => {
           background: ui.colors.elevated,
         }}
       >
-        <Group gap="xs">
+        <Flex gap="xs">
           <Text fz="sm" fw={700}>
             {entity.name}
           </Text>
           <Badge size="xs" variant="light" color="gray">
             {entity.provider}
           </Badge>
-        </Group>
+        </Flex>
       </div>
 
       {/* Columns */}
-      <Stack gap={0} p={0}>
+      <Flex direction="column" gap={0} p={0}>
         {(entity.columns ?? []).map((col: any) => (
-          <Group
+          <Flex
             key={col.name}
             gap="xs"
             px="sm"
@@ -69,9 +69,9 @@ export const EntityNode = ({ data }: NodeProps) => {
                 ?
               </Text>
             )}
-          </Group>
+          </Flex>
         ))}
-      </Stack>
+      </Flex>
 
       <Handle
         type="source"

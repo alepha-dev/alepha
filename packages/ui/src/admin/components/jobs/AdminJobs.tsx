@@ -9,16 +9,13 @@ import {
 import {
   ActionIcon,
   Badge,
-  Box,
   Card,
-  Group,
   Paper,
   Progress,
   RingProgress,
   ScrollArea,
   SimpleGrid,
   Skeleton,
-  Stack,
   Tabs,
   ThemeIcon,
   Tooltip,
@@ -167,8 +164,8 @@ const JobCard = (props: JobCardProps) => {
         transition: "all 150ms ease",
       }}
     >
-      <Group justify="space-between" mb="xs">
-        <Group gap="xs">
+      <Flex justify="space-between" mb="xs">
+        <Flex gap="xs">
           <ThemeIcon
             size="sm"
             radius="sm"
@@ -182,7 +179,7 @@ const JobCard = (props: JobCardProps) => {
           <Text size="sm" fw={600} ff="monospace">
             {job}
           </Text>
-        </Group>
+        </Flex>
         <Tooltip label="Trigger job manually" position="left">
           <ActionIcon
             size="sm"
@@ -197,36 +194,36 @@ const JobCard = (props: JobCardProps) => {
             <IconPlayerPlay size={12} />
           </ActionIcon>
         </Tooltip>
-      </Group>
+      </Flex>
 
       {stats ? (
         <>
-          <Group gap="lg" mb="xs">
-            <Box>
+          <Flex gap="lg" mb="xs">
+            <Flex>
               <Text size="xs" c="dimmed" tt="uppercase" fw={500}>
                 Total
               </Text>
               <Text size="lg" fw={700} ff="monospace">
                 {stats.total}
               </Text>
-            </Box>
-            <Box>
+            </Flex>
+            <Flex>
               <Text size="xs" c="dimmed" tt="uppercase" fw={500}>
                 Success
               </Text>
               <Text size="lg" fw={700} ff="monospace" c="teal">
                 {stats.completed}
               </Text>
-            </Box>
-            <Box>
+            </Flex>
+            <Flex>
               <Text size="xs" c="dimmed" tt="uppercase" fw={500}>
                 Failed
               </Text>
               <Text size="lg" fw={700} ff="monospace" c="red">
                 {stats.failed}
               </Text>
-            </Box>
-          </Group>
+            </Flex>
+          </Flex>
 
           <Progress.Root size="sm" radius="xs">
             <Tooltip label={`${stats.completed} completed`}>
@@ -256,10 +253,10 @@ const JobCard = (props: JobCardProps) => {
           )}
         </>
       ) : (
-        <Stack gap="xs">
+        <Flex direction="column" gap="xs">
           <Skeleton height={8} radius="xl" />
           <Skeleton height={8} width="70%" radius="xl" />
-        </Stack>
+        </Flex>
       )}
     </Card>
   );
@@ -279,17 +276,17 @@ const ExecutionLogViewer = (props: ExecutionLogViewerProps) => {
 
   if (!logs?.length && !error) {
     return (
-      <Box p="md">
+      <Flex p="md">
         <Text size="sm" c="dimmed" ta="center">
           No logs available
         </Text>
-      </Box>
+      </Flex>
     );
   }
 
   return (
     <ScrollArea h={300} type="auto">
-      <Box
+      <Flex
         p="md"
         style={{
           fontFamily: "var(--mantine-font-family-monospace)",
@@ -299,7 +296,7 @@ const ExecutionLogViewer = (props: ExecutionLogViewerProps) => {
       >
         {error && (
           <Paper p="sm" mb="md" bg="var(--mantine-color-red-light)" radius="sm">
-            <Group gap="xs" align="flex-start">
+            <Flex gap="xs" align="flex-start">
               <IconAlertTriangle
                 size={14}
                 color="var(--mantine-color-red-filled)"
@@ -311,12 +308,12 @@ const ExecutionLogViewer = (props: ExecutionLogViewerProps) => {
               >
                 {error}
               </Text>
-            </Group>
+            </Flex>
           </Paper>
         )}
 
         {logs?.map((log, index) => (
-          <Group key={index} gap="sm" align="flex-start" mb={4} wrap="nowrap">
+          <Flex key={index} gap="sm" align="flex-start" mb={4} wrap="nowrap">
             <Text size="xs" c="dimmed" style={{ minWidth: 80, flexShrink: 0 }}>
               {new Date(log.timestamp).toLocaleTimeString()}
             </Text>
@@ -334,9 +331,9 @@ const ExecutionLogViewer = (props: ExecutionLogViewerProps) => {
             <Text size="xs" style={{ wordBreak: "break-word" }}>
               {log.message}
             </Text>
-          </Group>
+          </Flex>
         ))}
-      </Box>
+      </Flex>
     </ScrollArea>
   );
 };
@@ -489,40 +486,40 @@ const AdminJobs = () => {
       {/* Header Stats */}
       <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
         <Paper p="md" radius="md" withBorder>
-          <Group justify="space-between">
-            <Box>
+          <Flex justify="space-between">
+            <Flex>
               <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
                 Total Jobs
               </Text>
               <Text size="xl" fw={700} ff="monospace">
                 {jobs.length}
               </Text>
-            </Box>
+            </Flex>
             <ThemeIcon size="lg" radius="md" variant="light" color="blue">
               <IconTerminal2 size={20} />
             </ThemeIcon>
-          </Group>
+          </Flex>
         </Paper>
 
         <Paper p="md" radius="md" withBorder>
-          <Group justify="space-between">
-            <Box>
+          <Flex justify="space-between">
+            <Flex>
               <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
                 Executions
               </Text>
               <Text size="xl" fw={700} ff="monospace">
                 {globalStats.total}
               </Text>
-            </Box>
+            </Flex>
             <ThemeIcon size="lg" radius="md" variant="light" color="gray">
               <IconClock size={20} />
             </ThemeIcon>
-          </Group>
+          </Flex>
         </Paper>
 
         <Paper p="md" radius="md" withBorder>
-          <Group justify="space-between">
-            <Box>
+          <Flex justify="space-between">
+            <Flex>
               <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
                 Success Rate
               </Text>
@@ -540,7 +537,7 @@ const AdminJobs = () => {
               >
                 {successRate}%
               </Text>
-            </Box>
+            </Flex>
             <RingProgress
               size={48}
               thickness={4}
@@ -557,19 +554,19 @@ const AdminJobs = () => {
                 },
               ]}
             />
-          </Group>
+          </Flex>
         </Paper>
 
         <Paper p="md" radius="md" withBorder>
-          <Group justify="space-between">
-            <Box>
+          <Flex justify="space-between">
+            <Flex>
               <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
                 Running Now
               </Text>
               <Text size="xl" fw={700} ff="monospace" c="blue">
                 {globalStats.running}
               </Text>
-            </Box>
+            </Flex>
             <ThemeIcon
               size="lg"
               radius="md"
@@ -578,7 +575,7 @@ const AdminJobs = () => {
             >
               <IconPlayerPlay size={20} />
             </ThemeIcon>
-          </Group>
+          </Flex>
         </Paper>
       </SimpleGrid>
 
@@ -594,7 +591,7 @@ const AdminJobs = () => {
         </Tabs.List>
 
         <Tabs.Panel value="overview" pt="md">
-          <Group justify="space-between" mb="md">
+          <Flex justify="space-between" mb="md">
             <Text size="sm" c="dimmed">
               {jobs.length} registered job{jobs.length !== 1 ? "s" : ""}
             </Text>
@@ -606,7 +603,7 @@ const AdminJobs = () => {
             >
               Refresh
             </ActionButton>
-          </Group>
+          </Flex>
 
           {loading ? (
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
@@ -715,7 +712,7 @@ const AdminJobs = () => {
                     ).length || 0;
 
                   return (
-                    <Group gap={4}>
+                    <Flex gap={4}>
                       <Badge size="xs" variant="light" color="gray">
                         {logCount} logs
                       </Badge>
@@ -724,7 +721,7 @@ const AdminJobs = () => {
                           {errorCount} errors
                         </Badge>
                       )}
-                    </Group>
+                    </Flex>
                   );
                 },
               },
@@ -754,12 +751,12 @@ const AdminJobs = () => {
               },
             }}
             panel={(item) => (
-              <Box bg="var(--mantine-color-dark-7)" p={0}>
+              <Flex bg="var(--mantine-color-dark-7)" p={0}>
                 <ExecutionLogViewer
                   logs={item.logs as LogEntry[] | undefined}
                   error={item.error}
                 />
-              </Box>
+              </Flex>
             )}
             canPanel={(item) => Boolean(item.logs?.length || item.error)}
           />

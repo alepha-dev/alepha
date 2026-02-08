@@ -1,14 +1,5 @@
 import { ActionButton } from "@alepha/ui";
-import {
-  Avatar,
-  Badge,
-  Card,
-  Flex,
-  Group,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Avatar, Badge, Card, Flex, Text, Title } from "@mantine/core";
 import {
   IconAt,
   IconCalendar,
@@ -35,9 +26,9 @@ const Profile = () => {
 
   return (
     <Flex flex={1} justify="center" align="center">
-      <Stack gap="md" w={400}>
+      <Flex direction="column" gap="md" w={400}>
         <Card withBorder p="xl" bg="var(--alepha-elevated)">
-          <Stack gap="lg">
+          <Flex direction="column" gap="lg">
             {/* Avatar and name */}
             <Flex direction="column" align="center" gap="md">
               <Avatar
@@ -48,18 +39,18 @@ const Profile = () => {
               >
                 {!picture && <IconUser size={48} />}
               </Avatar>
-              <Stack gap={4} align="center">
+              <Flex direction="column" gap={4} align="center">
                 <Title order={3}>{displayName}</Title>
                 {email && username && (
                   <Text size="sm" c="dimmed">
                     @{username}
                   </Text>
                 )}
-              </Stack>
+              </Flex>
             </Flex>
 
             {/* User details */}
-            <Stack gap="sm">
+            <Flex direction="column" gap="sm">
               {email && (
                 <ProfileField icon={<IconAt size={18} />} label="Email">
                   {email}
@@ -83,13 +74,13 @@ const Profile = () => {
               {/* Roles */}
               {roles && roles.length > 0 && (
                 <ProfileField icon={<IconShield size={18} />} label="Roles">
-                  <Group gap="xs">
+                  <Flex gap="xs">
                     {roles.map((role) => (
                       <Badge key={role} size="sm" variant="light">
                         {role}
                       </Badge>
                     ))}
-                  </Group>
+                  </Flex>
                 </ProfileField>
               )}
 
@@ -99,19 +90,19 @@ const Profile = () => {
                   icon={<IconCalendar size={18} />}
                   label="Organizations"
                 >
-                  <Group gap="xs">
+                  <Flex gap="xs">
                     {organizations.map((org) => (
                       <Badge key={org} size="sm" variant="outline">
                         {org}
                       </Badge>
                     ))}
-                  </Group>
+                  </Flex>
                 </ProfileField>
               )}
-            </Stack>
+            </Flex>
 
             {/* Actions */}
-            <Stack gap="sm" mt="md">
+            <Flex direction="column" gap="sm" mt="md">
               <ActionButton
                 variant="light"
                 color="red"
@@ -120,14 +111,14 @@ const Profile = () => {
               >
                 Sign out
               </ActionButton>
-            </Stack>
-          </Stack>
+            </Flex>
+          </Flex>
         </Card>
 
         <ActionButton variant="subtle" href="/">
           Back to home
         </ActionButton>
-      </Stack>
+      </Flex>
     </Flex>
   );
 };
@@ -144,12 +135,12 @@ const ProfileField = ({ icon, label, children }: ProfileFieldProps) => {
       <Flex c="dimmed" mt={2}>
         {icon}
       </Flex>
-      <Stack gap={2} flex={1}>
+      <Flex direction="column" gap={2} flex={1}>
         <Text size="xs" c="dimmed" tt="uppercase" fw={500}>
           {label}
         </Text>
         <Text size="sm">{children}</Text>
-      </Stack>
+      </Flex>
     </Flex>
   );
 };

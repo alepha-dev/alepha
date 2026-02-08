@@ -1,6 +1,6 @@
 import {
   ActionIcon,
-  Group,
+  Flex,
   getTreeExpandedState,
   type MantineSize,
   Text,
@@ -295,7 +295,7 @@ const RowNode = ({
     isExpandable ? JSON.stringify(nodeValue, null, 2) : String(nodeValue ?? "");
 
   return (
-    <Group
+    <Flex
       gap={6}
       wrap="nowrap"
       {...elementProps}
@@ -346,7 +346,7 @@ const RowNode = ({
       {showCopyButton && (
         <CopyButton value={getCopyValue()} iconSize={config.icon} />
       )}
-    </Group>
+    </Flex>
   );
 };
 

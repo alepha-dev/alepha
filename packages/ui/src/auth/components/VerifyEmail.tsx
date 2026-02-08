@@ -1,5 +1,5 @@
 import { ActionButton } from "@alepha/ui";
-import { Alert, Card, Flex, Loader, Stack, Text } from "@mantine/core";
+import { Alert, Card, Flex, Loader, Text } from "@mantine/core";
 import { IconAlertCircle, IconCheck, IconMailCheck } from "@tabler/icons-react";
 import type { UserController } from "alepha/api/users";
 import { useClient } from "alepha/react";
@@ -49,9 +49,9 @@ const VerifyEmail = (_props: VerifyEmailProps) => {
 
   return (
     <Flex flex={1} justify="center" align="center">
-      <Stack gap="sm" w={400}>
+      <Flex direction="column" gap="sm" w={400}>
         <Card withBorder p="lg" bg="var(--alepha-elevated)">
-          <Stack gap="md" align="center">
+          <Flex direction="column" gap="md" align="center">
             {step === "verifying" && (
               <>
                 <Loader size="lg" />
@@ -93,9 +93,9 @@ const VerifyEmail = (_props: VerifyEmailProps) => {
                 </ActionButton>
               </>
             )}
-          </Stack>
+          </Flex>
         </Card>
-      </Stack>
+      </Flex>
     </Flex>
   );
 };

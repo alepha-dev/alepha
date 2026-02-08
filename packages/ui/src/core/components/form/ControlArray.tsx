@@ -3,7 +3,6 @@ import {
   Fieldset,
   Flex,
   Grid,
-  Stack,
   Text,
   UnstyledButton,
 } from "@mantine/core";
@@ -337,7 +336,7 @@ const ControlArray = (props: ControlArrayProps) => {
     : [];
 
   const renderItems = () => (
-    <Stack gap="sm">
+    <Flex direction="column" gap="sm">
       {items.map((item, index) => (
         <Flex
           key={item.key}
@@ -440,12 +439,12 @@ const ControlArray = (props: ControlArrayProps) => {
         <IconPlus size={14} />
         {props.addLabel ?? "Add"}
       </UnstyledButton>
-    </Stack>
+    </Flex>
   );
 
   if (props.variant === "plain") {
     return (
-      <Stack gap="xs">
+      <Flex direction="column" gap="xs">
         {inputProps.label && (
           <Text size="sm" fw={500}>
             {inputProps.label}
@@ -462,13 +461,13 @@ const ControlArray = (props: ControlArrayProps) => {
             {inputProps.error}
           </Text>
         )}
-      </Stack>
+      </Flex>
     );
   }
 
   return (
     <Fieldset legend={inputProps.label}>
-      <Stack gap="xs">
+      <Flex direction="column" gap="xs">
         {inputProps.description && (
           <Text size="sm" c="dimmed">
             {inputProps.description}
@@ -480,7 +479,7 @@ const ControlArray = (props: ControlArrayProps) => {
             {inputProps.error}
           </Text>
         )}
-      </Stack>
+      </Flex>
     </Fieldset>
   );
 };

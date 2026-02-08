@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdminSlide } from "./GettingStartedAdminSlide.tsx";
 import { useAuthSlide } from "./GettingStartedAuthSlide.tsx";
+import { useDevtoolsSlide } from "./GettingStartedDevtoolsSlide.tsx";
 
 export type GettingStartedStep = {
   num: string;
@@ -70,6 +71,7 @@ const GettingStarted = ({ welcome }: GettingStartedProps) => {
   // Get auth-aware slide content (hooks return undefined if routes don't exist)
   const authSlide = useAuthSlide();
   const adminSlide = useAdminSlide();
+  const devtoolsSlide = useDevtoolsSlide();
 
   const filteredMessages = useMemo(() => {
     const result: GettingStartedSlide[] = [];
@@ -94,11 +96,16 @@ const GettingStarted = ({ welcome }: GettingStartedProps) => {
       result.push(adminSlide);
     }
 
+    // Add devtools slide in non-production environments
+    if (devtoolsSlide) {
+      result.push(devtoolsSlide);
+    }
+
     // Add "Need help?" message
     result.push(helpSlide);
 
     return result;
-  }, [welcome, authSlide, adminSlide]);
+  }, [welcome, authSlide, adminSlide, devtoolsSlide]);
 
   const current = filteredMessages[index];
 

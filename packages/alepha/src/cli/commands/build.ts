@@ -23,6 +23,7 @@ import { ViteBuildProvider } from "../providers/ViteBuildProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
+import { ViteUtils } from "../services/ViteUtils.ts";
 
 export class BuildCommand {
   protected readonly log = $logger();
@@ -32,6 +33,7 @@ export class BuildCommand {
   protected readonly scaffolder = $inject(ProjectScaffolder);
   protected readonly boot = $inject(AppEntryProvider);
   protected readonly viteBuildProvider = $inject(ViteBuildProvider);
+  protected readonly viteUtils = $inject(ViteUtils);
   protected readonly options = $use(buildOptions);
 
   /**
@@ -271,6 +273,7 @@ export class BuildCommand {
               distDir,
               config: options.cloudflare?.config,
               alepha: alepha!,
+              importModule: (path) => this.viteUtils.importModule(path),
             }),
         });
       }

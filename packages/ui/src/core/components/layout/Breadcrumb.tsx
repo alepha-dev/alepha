@@ -1,10 +1,10 @@
-import { Anchor, Group, type GroupProps, Text } from "@mantine/core";
+import { Anchor, Flex, type FlexProps, Text } from "@mantine/core";
 import { IconChevronRight } from "@tabler/icons-react";
 import { Link, useRouter, useRouterState } from "alepha/react/router";
 import type { ReactNode } from "react";
 import { toTitleCase } from "../../utils/string.ts";
 
-export interface BreadcrumbProps extends GroupProps {
+export interface BreadcrumbProps extends FlexProps {
   /**
    * Label for the home/root crumb. Set to `false` to hide the root crumb.
    *
@@ -69,9 +69,9 @@ const Breadcrumb = ({
   const sep = separator ?? <IconChevronRight size={12} color="#9ca3af" />;
 
   return (
-    <Group gap={4} {...groupProps}>
+    <Flex gap={4} {...groupProps}>
       {crumbs.map((crumb, i) => (
-        <Group key={crumb.href} gap={4}>
+        <Flex key={crumb.href} gap={4}>
           {i > 0 && sep}
           {i < crumbs.length - 1 ? (
             <Anchor component={Link} href={crumb.href} size={size} c="dimmed">
@@ -82,9 +82,9 @@ const Breadcrumb = ({
               {crumb.label}
             </Text>
           )}
-        </Group>
+        </Flex>
       ))}
-    </Group>
+    </Flex>
   );
 };
 

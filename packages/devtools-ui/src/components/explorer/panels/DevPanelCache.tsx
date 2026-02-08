@@ -1,5 +1,5 @@
-import { ui } from "@alepha/ui";
-import { Badge, Card, Group, Stack, Text } from "@mantine/core";
+import { Flex, ui } from "@alepha/ui";
+import { Badge, Card, Text } from "@mantine/core";
 
 const formatTtl = (seconds?: number): string => {
   if (!seconds) return "No TTL";
@@ -11,14 +11,14 @@ const formatTtl = (seconds?: number): string => {
 
 export const DevPanelCache = ({ cache }: { cache: any }) => {
   return (
-    <Stack gap="md">
+    <Flex direction="column" gap="md">
       <div>
         <Text fz="lg" fw={600} mb="xs">
           {cache.name}
         </Text>
       </div>
 
-      <Group gap="xs">
+      <Flex gap="xs">
         <Badge size="xs" variant="light" color="cyan">
           Cache
         </Badge>
@@ -32,7 +32,7 @@ export const DevPanelCache = ({ cache }: { cache: any }) => {
             Disabled
           </Badge>
         )}
-      </Group>
+      </Flex>
 
       <Card
         padding="sm"
@@ -41,33 +41,33 @@ export const DevPanelCache = ({ cache }: { cache: any }) => {
           border: `1px solid ${ui.colors.border}`,
         }}
       >
-        <Stack gap="xs">
-          <Group justify="space-between">
+        <Flex direction="column" gap="xs">
+          <Flex justify="space-between">
             <Text fz="xs" c="dimmed">
               TTL
             </Text>
             <Text fz="sm" ff="monospace">
               {formatTtl(cache.ttl)}
             </Text>
-          </Group>
-          <Group justify="space-between">
+          </Flex>
+          <Flex justify="space-between">
             <Text fz="xs" c="dimmed">
               Provider
             </Text>
             <Text fz="sm" ff="monospace">
               {cache.provider ?? "default"}
             </Text>
-          </Group>
-          <Group justify="space-between">
+          </Flex>
+          <Flex justify="space-between">
             <Text fz="xs" c="dimmed">
               Status
             </Text>
             <Badge size="xs" color={cache.disabled ? "red" : "green"}>
               {cache.disabled ? "Disabled" : "Active"}
             </Badge>
-          </Group>
-        </Stack>
+          </Flex>
+        </Flex>
       </Card>
-    </Stack>
+    </Flex>
   );
 };

@@ -1,13 +1,10 @@
-import { ui } from "@alepha/ui";
+import { Flex, ui } from "@alepha/ui";
 import {
   Badge,
-  Box,
   Card,
   Grid,
-  Group,
   ScrollArea,
   SimpleGrid,
-  Stack,
   Text,
   Title,
 } from "@mantine/core";
@@ -67,18 +64,25 @@ const levelColors: Record<string, string> = {
 };
 
 const eventTypeColors: Record<string, string> = {
-  "http:request": "teal",
-  "db:query": "violet",
+  http: "teal",
+  db: "violet",
   error: "red",
+};
+
+const detectEventType = (data: any): string | undefined => {
+  if (!data || typeof data !== "object") return undefined;
+  if (data.status && data.method && data.path && data.duration) return "http";
+  if (data.type === "db:query") return "db";
+  return undefined;
 };
 
 const formatEvent = (entry: LogEntry): string => {
   const data = entry.data;
-  if (!data || typeof data !== "object") return entry.message;
-  if (data.type === "http:request") {
+  const eventType = detectEventType(data);
+  if (eventType === "http") {
     return `${data.method} ${data.path} → ${data.status} (${data.duration}ms)`;
   }
-  if (data.type === "db:query") {
+  if (eventType === "db") {
     return `${data.operation} (${Math.round(data.duration)}ms)`;
   }
   return entry.message;
@@ -99,7 +103,7 @@ export const DevDashboard = () => {
           schema: { response: devMetadataSchema },
         }),
         http.fetch("/__devtools/api/logs?limit=10&level=DEBUG"),
-        http.fetch("/__devtools/api/logs?limit=20&type=http:request,db:query"),
+        http.fetch("/__devtools/api/logs?limit=20&type=http,db"),
       ]);
       setMetadata(metaRes.data);
       setLogs((logsRes.data as any)?.logs ?? []);
@@ -184,8 +188,8 @@ export const DevDashboard = () => {
   }, [metadata]);
 
   return (
-    <Box p="lg" style={{ flex: 1, overflow: "auto" }}>
-      <Stack gap="lg">
+    <Flex p="lg" style={{ flex: 1, overflow: "auto" }}>
+      <Flex direction="column" gap="lg">
         {/* App Stats */}
         <div>
           <Title
@@ -199,7 +203,7 @@ export const DevDashboard = () => {
           >
             System
           </Title>
-          <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 7 }} spacing="sm">
+          <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 6 }} spacing="sm">
             {system && (
               <>
                 <StatCard
@@ -232,11 +236,6 @@ export const DevDashboard = () => {
                   label="Memory"
                   value={formatBytes(system.memoryUsage)}
                 />
-                <StatCard
-                  icon={IconServer}
-                  label="Alepha"
-                  value={system.alephaVersion}
-                />
               </>
             )}
           </SimpleGrid>
@@ -265,16 +264,16 @@ export const DevDashboard = () => {
                 Recent Events
               </Title>
               <ScrollArea h={280}>
-                <Stack gap={4}>
+                <Flex direction="column" gap={4}>
                   {events.length === 0 && (
                     <Text c="dimmed" fz="sm" ta="center" py="xl">
                       No events yet
                     </Text>
                   )}
                   {events.map((entry, i) => {
-                    const eventType = entry.data?.type ?? "log";
+                    const eventType = detectEventType(entry.data) ?? "log";
                     return (
-                      <Group
+                      <Flex
                         key={`${entry.timestamp}-${i}`}
                         gap="xs"
                         px="xs"
@@ -310,9 +309,9 @@ export const DevDashboard = () => {
                           color={eventTypeColors[eventType] ?? "gray"}
                           style={{ flexShrink: 0 }}
                         >
-                          {eventType === "http:request"
+                          {eventType === "http"
                             ? "HTTP"
-                            : eventType === "db:query"
+                            : eventType === "db"
                               ? "DB"
                               : "LOG"}
                         </Badge>
@@ -324,10 +323,10 @@ export const DevDashboard = () => {
                         >
                           {formatEvent(entry)}
                         </Text>
-                      </Group>
+                      </Flex>
                     );
                   })}
-                </Stack>
+                </Flex>
               </ScrollArea>
             </Card>
           </Grid.Col>
@@ -342,7 +341,7 @@ export const DevDashboard = () => {
                 border: `1px solid ${ui.colors.border}`,
               }}
             >
-              <Group justify="space-between" mb="sm">
+              <Flex justify="space-between" mb="sm">
                 <Title
                   order={5}
                   c="dimmed"
@@ -361,16 +360,16 @@ export const DevDashboard = () => {
                 >
                   View all
                 </Text>
-              </Group>
+              </Flex>
               <ScrollArea h={280}>
-                <Stack gap={4}>
+                <Flex direction="column" gap={4}>
                   {logs.length === 0 && (
                     <Text c="dimmed" fz="sm" ta="center" py="xl">
                       No logs yet
                     </Text>
                   )}
                   {logs.map((entry, i) => (
-                    <Group
+                    <Flex
                       key={`${entry.timestamp}-${i}`}
                       gap="xs"
                       px="xs"
@@ -398,9 +397,9 @@ export const DevDashboard = () => {
                       <Text fz="xs" ff="monospace" truncate style={{ flex: 1 }}>
                         {entry.message}
                       </Text>
-                    </Group>
+                    </Flex>
                   ))}
-                </Stack>
+                </Flex>
               </ScrollArea>
             </Card>
           </Grid.Col>
@@ -430,7 +429,7 @@ export const DevDashboard = () => {
                   border: `1px solid ${ui.colors.border}`,
                 }}
               >
-                <Group gap="sm">
+                <Flex gap="sm">
                   <stat.icon size={18} opacity={0.5} />
                   <div style={{ flex: 1 }}>
                     <Text fz="xs" c="dimmed">
@@ -440,13 +439,13 @@ export const DevDashboard = () => {
                       {stat.count}
                     </Text>
                   </div>
-                </Group>
+                </Flex>
               </Card>
             ))}
           </SimpleGrid>
         </div>
-      </Stack>
-    </Box>
+      </Flex>
+    </Flex>
   );
 };
 
@@ -467,7 +466,7 @@ const StatCard = ({
       border: `1px solid ${ui.colors.border}`,
     }}
   >
-    <Group gap="xs">
+    <Flex gap="xs">
       <Icon size={16} opacity={0.4} />
       <div>
         <Text fz={10} c="dimmed" tt="uppercase" lts={0.5}>
@@ -477,7 +476,7 @@ const StatCard = ({
           {value}
         </Text>
       </div>
-    </Group>
+    </Flex>
   </Card>
 );
 

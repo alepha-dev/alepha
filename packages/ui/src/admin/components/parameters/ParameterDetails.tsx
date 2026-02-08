@@ -1,5 +1,5 @@
 import { ActionButton, Flex, Text, TypeForm } from "@alepha/ui";
-import { Box, Card, Code, Group, Loader, Stack } from "@mantine/core";
+import { Card, Code, Loader } from "@mantine/core";
 import { IconClock } from "@tabler/icons-react";
 import { jsonSchemaToTypeBox, type TObject, t } from "alepha";
 import { useForm } from "alepha/react/form";
@@ -19,7 +19,7 @@ export interface ParameterDetailsProps {
  * Loading state.
  */
 const LoadingState = () => (
-  <Box
+  <Flex
     flex={1}
     h="100%"
     p="md"
@@ -32,7 +32,7 @@ const LoadingState = () => (
     <Flex flex={1} justify="center" align="center" h="100%">
       <Loader size="sm" />
     </Flex>
-  </Box>
+  </Flex>
 );
 
 interface ConfigFormProps {
@@ -120,7 +120,7 @@ const ConfigForm = ({
   }, [fieldCount]);
 
   return (
-    <Box
+    <Flex
       flex={1}
       h="100%"
       style={{
@@ -131,11 +131,16 @@ const ConfigForm = ({
     >
       <Flex direction="column" h="100%" w="100%" style={{ minHeight: 0 }}>
         {/* Content */}
-        <Box flex={1} p="md" className="overflow-auto" style={{ minHeight: 0 }}>
+        <Flex
+          flex={1}
+          p="md"
+          className="overflow-auto"
+          style={{ minHeight: 0 }}
+        >
           {currentContent !== null ? (
-            <Stack gap="lg">
+            <Flex direction="column" gap="lg">
               {/* Form or JSON view */}
-              <Box>
+              <Flex>
                 {hasValidSchema ? (
                   <TypeForm
                     form={form}
@@ -144,46 +149,46 @@ const ConfigForm = ({
                     fill={false}
                   />
                 ) : (
-                  <Box>
+                  <Flex>
                     <Text size="xs" c="dimmed" mb={4}>
                       Current Value
                     </Text>
                     <Code block style={{ whiteSpace: "pre-wrap" }}>
                       {formatJson(currentContent)}
                     </Code>
-                  </Box>
+                  </Flex>
                 )}
-              </Box>
+              </Flex>
 
               {/* Metadata */}
               {configValue?.current?.changeDescription && (
-                <Box>
+                <Flex>
                   <Text size="xs" c="dimmed" mb={4}>
                     Change Description
                   </Text>
                   <Text size="sm">{configValue.current.changeDescription}</Text>
-                </Box>
+                </Flex>
               )}
 
               {configValue?.current && (
-                <Group gap="xl">
-                  <Box>
+                <Flex gap="xl">
+                  <Flex>
                     <Text size="xs" c="dimmed" mb={2}>
                       Updated
                     </Text>
                     <Text size="sm">
                       {l(configValue.current.updatedAt, { date: "fromNow" })}
                     </Text>
-                  </Box>
+                  </Flex>
                   {configValue.current.creatorName && (
-                    <Box>
+                    <Flex>
                       <Text size="xs" c="dimmed" mb={2}>
                         Updated By
                       </Text>
                       <Text size="sm">{configValue.current.creatorName}</Text>
-                    </Box>
+                    </Flex>
                   )}
-                </Group>
+                </Flex>
               )}
 
               {!configValue?.current &&
@@ -197,8 +202,8 @@ const ConfigForm = ({
               {/* Scheduled update preview */}
               {configValue?.next && (
                 <Card withBorder p="sm" bg="var(--mantine-color-blue-light)">
-                  <Stack gap="xs">
-                    <Group gap="xs">
+                  <Flex direction="column" gap="xs">
+                    <Flex gap="xs">
                       <IconClock
                         size={14}
                         color="var(--mantine-color-blue-6)"
@@ -206,7 +211,7 @@ const ConfigForm = ({
                       <Text size="xs" fw={500} c="blue">
                         Scheduled Update (v{configValue.next.version})
                       </Text>
-                    </Group>
+                    </Flex>
                     <Text size="xs" c="dimmed">
                       Activates{" "}
                       {l(configValue.next.activationDate, {
@@ -216,10 +221,10 @@ const ConfigForm = ({
                     <Code block style={{ whiteSpace: "pre-wrap" }} fz="xs">
                       {formatJson(configValue.next.content)}
                     </Code>
-                  </Stack>
+                  </Flex>
                 </Card>
               )}
-            </Stack>
+            </Flex>
           ) : (
             <Flex justify="center" align="center" h={200}>
               <Text c="dimmed" size="sm">
@@ -227,18 +232,18 @@ const ConfigForm = ({
               </Text>
             </Flex>
           )}
-        </Box>
+        </Flex>
 
         {/* Footer with actions */}
         {hasValidSchema && currentContent !== null && (
-          <Box
+          <Flex
             p="md"
             style={{
               flexShrink: 0,
               borderTop: "1px solid var(--mantine-color-default-border)",
             }}
           >
-            <Group justify="flex-end" gap="sm">
+            <Flex justify="flex-end" gap="sm">
               <ActionButton
                 variant="subtle"
                 onClick={() => form.reset({} as any)}
@@ -249,11 +254,11 @@ const ConfigForm = ({
               <ActionButton intent="primary" form={form} loading={saving}>
                 Save Changes
               </ActionButton>
-            </Group>
-          </Box>
+            </Flex>
+          </Flex>
         )}
       </Flex>
-    </Box>
+    </Flex>
   );
 };
 

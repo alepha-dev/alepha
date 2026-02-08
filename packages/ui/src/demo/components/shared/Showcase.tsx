@@ -1,5 +1,5 @@
 import { TypeForm, ui } from "@alepha/ui";
-import { Box, Card, Flex, Text } from "@mantine/core";
+import { Card, Flex, Text } from "@mantine/core";
 import type { Static, TObject } from "alepha";
 import { useForm } from "alepha/react/form";
 import { type ReactNode, useState } from "react";
@@ -79,7 +79,7 @@ const Showcase = <T extends TObject>({
         </MacWindow>
       </Flex>
 
-      <Box
+      <Flex
         bg={ui.colors.surface}
         h={"100%"}
         p={"md"}
@@ -104,7 +104,7 @@ const Showcase = <T extends TObject>({
             />
           </Card.Section>
         </Card>
-      </Box>
+      </Flex>
     </Flex>
   );
 };

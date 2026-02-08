@@ -15,7 +15,7 @@ export default defineConfig({
   // Build Configuration
   // ─────────────────────────────────────────────────────────────────────────────
   build: {
-    target: "static", // "bare" | "docker" | "vercel" | "cloudflare"
+    // target: "bare", // "bare" | "docker" | "vercel" | "cloudflare"
     //   runtime: "node",               // "node" | "bun" | "workerd"
     //   sitemap: { hostname: "https://example.com" },
   },

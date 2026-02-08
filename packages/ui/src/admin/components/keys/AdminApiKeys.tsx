@@ -10,13 +10,10 @@ import {
 import {
   ActionIcon,
   Badge,
-  Box,
   Code,
-  Group,
   Paper,
   RingProgress,
   SimpleGrid,
-  Stack,
   ThemeIcon,
   Tooltip,
 } from "@mantine/core";
@@ -121,50 +118,50 @@ const StatsCards = ({ stats, loading }: StatsCardsProps) => {
   return (
     <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
       <Paper p="md" radius="md" withBorder>
-        <Group justify="space-between">
-          <Box>
+        <Flex justify="space-between">
+          <Flex>
             <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
               Total Keys
             </Text>
             <Text size="xl" fw={700} ff="monospace">
               {stats.total}
             </Text>
-          </Box>
+          </Flex>
           <ThemeIcon size="lg" radius="md" variant="light" color="blue">
             <IconKey size={20} />
           </ThemeIcon>
-        </Group>
+        </Flex>
       </Paper>
 
       <Paper p="md" radius="md" withBorder>
-        <Group justify="space-between">
-          <Box>
+        <Flex justify="space-between">
+          <Flex>
             <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
               Active
             </Text>
             <Text size="xl" fw={700} ff="monospace" c="teal">
               {stats.active}
             </Text>
-          </Box>
+          </Flex>
           <RingProgress
             size={48}
             thickness={4}
             roundCaps
             sections={[{ value: activePercentage, color: "teal" }]}
           />
-        </Group>
+        </Flex>
       </Paper>
 
       <Paper p="md" radius="md" withBorder>
-        <Group justify="space-between">
-          <Box>
+        <Flex justify="space-between">
+          <Flex>
             <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
               Revoked
             </Text>
             <Text size="xl" fw={700} ff="monospace" c="red">
               {stats.revoked}
             </Text>
-          </Box>
+          </Flex>
           <ThemeIcon
             size="lg"
             radius="md"
@@ -173,19 +170,19 @@ const StatsCards = ({ stats, loading }: StatsCardsProps) => {
           >
             <IconShieldOff size={20} />
           </ThemeIcon>
-        </Group>
+        </Flex>
       </Paper>
 
       <Paper p="md" radius="md" withBorder>
-        <Group justify="space-between">
-          <Box>
+        <Flex justify="space-between">
+          <Flex>
             <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
               Never Used
             </Text>
             <Text size="xl" fw={700} ff="monospace" c="yellow">
               {stats.neverUsed}
             </Text>
-          </Box>
+          </Flex>
           <ThemeIcon
             size="lg"
             radius="md"
@@ -194,7 +191,7 @@ const StatsCards = ({ stats, loading }: StatsCardsProps) => {
           >
             <IconClock size={20} />
           </ThemeIcon>
-        </Group>
+        </Flex>
       </Paper>
     </SimpleGrid>
   );
@@ -338,8 +335,8 @@ const AdminApiKeys = () => {
           name: {
             label: "Name",
             value: (item) => (
-              <Stack gap={2}>
-                <Group gap="xs">
+              <Flex direction="column" gap={2}>
+                <Flex gap="xs">
                   <ThemeIcon
                     size="xs"
                     radius="sm"
@@ -351,20 +348,20 @@ const AdminApiKeys = () => {
                   <Text size="sm" fw={600}>
                     {item.name}
                   </Text>
-                </Group>
+                </Flex>
                 {item.description && (
                   <Text size="xs" c="dimmed" lineClamp={1}>
                     {item.description}
                   </Text>
                 )}
-              </Stack>
+              </Flex>
             ),
           },
           token: {
             label: "Key",
             fit: true,
             value: (item) => (
-              <Group gap={4}>
+              <Flex gap={4}>
                 <Code
                   ff="monospace"
                   style={{
@@ -379,7 +376,7 @@ const AdminApiKeys = () => {
                   variant="subtle"
                   value={formatKeyPreview(item.tokenPrefix, item.tokenSuffix)}
                 />
-              </Group>
+              </Flex>
             ),
           },
           status: {
@@ -402,7 +399,7 @@ const AdminApiKeys = () => {
           roles: {
             label: "Roles",
             value: (item) => (
-              <Group gap={4} wrap="wrap">
+              <Flex gap={4} wrap="wrap">
                 {item.roles.length > 0 ? (
                   item.roles.slice(0, 3).map((role) => (
                     <Badge key={role} size="xs" variant="outline" color="gray">
@@ -421,19 +418,19 @@ const AdminApiKeys = () => {
                     </Badge>
                   </Tooltip>
                 )}
-              </Group>
+              </Flex>
             ),
           },
           usage: {
             label: "Usage",
             fit: true,
             value: (item) => (
-              <Stack gap={2}>
+              <Flex direction="column" gap={2}>
                 <Text size="xs" ff="monospace" fw={500}>
                   {item.usageCount.toLocaleString()} calls
                 </Text>
                 {item.lastUsedAt ? (
-                  <Group gap={4}>
+                  <Flex gap={4}>
                     <Text size="xs" c="dimmed">
                       {l(item.lastUsedAt, { date: "fromNow" })}
                     </Text>
@@ -445,13 +442,13 @@ const AdminApiKeys = () => {
                         />
                       </Tooltip>
                     )}
-                  </Group>
+                  </Flex>
                 ) : (
                   <Text size="xs" c="yellow">
                     Never used
                   </Text>
                 )}
-              </Stack>
+              </Flex>
             ),
           },
           userId: {

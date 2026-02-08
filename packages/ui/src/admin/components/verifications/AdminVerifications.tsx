@@ -1,11 +1,11 @@
 import { Flex, Text } from "@alepha/ui";
-import { Stack } from "@mantine/core";
+
 import { IconShieldCheck } from "@tabler/icons-react";
 
 const AdminVerifications = () => {
   return (
     <Flex flex={1} justify="center" align="center">
-      <Stack align="center" gap="xs">
+      <Flex direction="column" align="center" gap="xs">
         <IconShieldCheck
           size={48}
           stroke={1.5}
@@ -17,7 +17,7 @@ const AdminVerifications = () => {
           verification codes are generated and validated through the
           verification API endpoints.
         </Text>
-      </Stack>
+      </Flex>
     </Flex>
   );
 };

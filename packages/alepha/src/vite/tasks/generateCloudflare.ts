@@ -2,7 +2,7 @@ import { access, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import type { Alepha } from "alepha";
 import { CloudflareR2Provider, R2_DEFAULT_BINDING } from "alepha/bucket";
-import { CloudflareKVProvider, KV_DEFAULT_BINDING } from "alepha/cache";
+import { type CloudflareKVProvider, KV_DEFAULT_BINDING } from "alepha/cache";
 import type { CronProvider } from "alepha/scheduler";
 import type { WorkerdCronProvider } from "../../scheduler/providers/WorkerdCronProvider.ts";
 
@@ -20,6 +20,8 @@ export interface GenerateCloudflareOptions {
   config?: WranglerConfig;
 
   alepha: Alepha;
+
+  importModule: (root: string) => Promise<any>;
 }
 
 export interface WranglerConfig {
@@ -113,9 +115,14 @@ export async function generateCloudflare(
 
   // Add KV namespace binding if CloudflareKVProvider is used
   let kvProvider: CloudflareKVProvider | undefined;
+  const mod = await opts.importModule("alepha/cache");
   try {
-    kvProvider = opts.alepha.inject(CloudflareKVProvider);
-  } catch {}
+    kvProvider = opts.alepha.inject<CloudflareKVProvider>(
+      mod.CloudflareKVProvider,
+    );
+  } catch (e) {
+    console.log(e);
+  }
 
   if (kvProvider) {
     wrangler.kv_namespaces = wrangler.kv_namespaces || [];

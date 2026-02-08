@@ -1,12 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { $inject, type Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import { importVite, importViteReact, viteAlephaSsrPreload } from "alepha/vite";
 import type { Plugin, ViteDevServer } from "vite";
 import { __alephaRef } from "../../core/helpers/ref.ts";
+import { devtoolsAssets } from "../../devtools/assets.ts";
 import { ConsoleColorProvider } from "../../logger/providers/ConsoleColorProvider.ts";
 import type { AppEntry } from "./AppEntryProvider.ts";
 
@@ -133,9 +133,7 @@ export class ViteDevServerProvider {
         port,
       },
       optimizeDeps: {
-        entries: this.options.entry.browser
-          ? [this.options.entry.browser]
-          : [],
+        entries: this.options.entry.browser ? [this.options.entry.browser] : [],
       },
       // customLogger: {
       //   info: () => {},
@@ -211,10 +209,7 @@ export class ViteDevServerProvider {
             return next();
           }
 
-          const indexPath = join(
-            fileURLToPath(import.meta.url),
-            "../../../../assets/devtools-ui/index.html",
-          );
+          const indexPath = join(devtoolsAssets.ui, "index.html");
 
           try {
             let html = await readFile(indexPath, "utf-8");

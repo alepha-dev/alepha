@@ -138,7 +138,9 @@ export class PrettyPrint {
 
       if (task.status === "running") {
         const frame = this.frames[task.frameIndex];
-        const elapsed = Math.floor((Date.now() - task.startTime) / 1000);
+        const elapsed = String(
+          Math.floor((Date.now() - task.startTime) / 100) / 10,
+        ).padEnd(3, ".0");
         line += `${this.colors.cyan}${frame}${this.colors.reset} ${this.colors.dim}${task.taskName}${this.colors.reset}  ${this.colors.dim}${elapsed}s${this.colors.reset}`;
         task.frameIndex = (task.frameIndex + 1) % this.frames.length;
       } else if (task.status === "success") {

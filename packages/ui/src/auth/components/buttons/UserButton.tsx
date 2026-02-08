@@ -32,6 +32,11 @@ export interface UserButtonProps
   logoutLabel?: string;
 
   /**
+   * Custom label for the login button when user is not authenticated
+   */
+  loginLabel?: string;
+
+  /**
    * Menu configuration overrides
    */
   menuConfig?: Partial<Omit<ActionMenuConfig, "items">>;
@@ -51,6 +56,7 @@ const UserButton = (props: UserButtonProps) => {
   const {
     menuItems = [],
     logoutLabel = "Sign out",
+    loginLabel,
     menuConfig,
     showLogoutDivider = menuItems.length > 0,
     icon,
@@ -79,9 +85,11 @@ const UserButton = (props: UserButtonProps) => {
     return (
       <ActionButton
         {...buttonProps}
-        icon={IconLogin2}
+        icon={icon === null ? undefined : (icon ?? IconLogin2)}
         href={authRouter.path("login")}
-      />
+      >
+        {loginLabel ?? children}
+      </ActionButton>
     );
   }
 
@@ -132,12 +140,14 @@ const UserButton = (props: UserButtonProps) => {
   });
 
   // Use leftSection for Avatar (JSX element), icon prop for component types
-  const hasAvatar = !icon && auth.user.picture;
+  const hasAvatar = icon === undefined && auth.user.picture;
 
   return (
     <ActionButton
       {...buttonProps}
-      icon={hasAvatar ? undefined : (icon ?? IconUser)}
+      icon={
+        hasAvatar ? undefined : icon === null ? undefined : (icon ?? IconUser)
+      }
       leftSection={
         hasAvatar ? (
           <Avatar

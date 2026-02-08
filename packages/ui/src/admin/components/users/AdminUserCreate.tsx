@@ -1,5 +1,5 @@
 import { ActionButton, Control, Flex } from "@alepha/ui";
-import { Card, Stack, Text } from "@mantine/core";
+import { Card, Text } from "@mantine/core";
 import { t } from "alepha";
 import type { AdminUserController } from "alepha/api/users";
 import { useClient } from "alepha/react";
@@ -53,7 +53,7 @@ const AdminUserCreate = (props: AdminUserCreateProps) => {
     <Flex flex={1} p="md">
       <Card withBorder p="lg" maw={600} w="100%">
         <form {...form.props}>
-          <Stack gap="md">
+          <Flex direction="column" gap="md">
             <Text size="lg" fw={500}>
               Create New User
             </Text>
@@ -75,7 +75,7 @@ const AdminUserCreate = (props: AdminUserCreateProps) => {
             <Control title="Enabled" input={form.input.enabled} />
 
             <ActionButton form={form}>Create User</ActionButton>
-          </Stack>
+          </Flex>
         </form>
       </Card>
     </Flex>

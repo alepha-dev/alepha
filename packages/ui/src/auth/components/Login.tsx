@@ -1,5 +1,5 @@
 import { ActionButton, Control, capitalize } from "@alepha/ui";
-import { Card, Flex, Group, Image, Stack, Text, Title } from "@mantine/core";
+import { Card, Flex, Image, Text, Title } from "@mantine/core";
 import { IconLock, IconUser } from "@tabler/icons-react";
 import { AlephaError, t } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
@@ -115,14 +115,14 @@ const Login = (props: LoginProps) => {
 
   return (
     <Flex flex={1} justify={"center"} align={"center"}>
-      <Stack gap={"sm"} w={360}>
+      <Flex direction="column" gap={"sm"} w={360}>
         <Card withBorder p={"lg"} bg={"var(--alepha-elevated)"}>
-          <Stack gap={"md"}>
+          <Flex direction="column" gap={"md"}>
             {/* Realm branding */}
             {(settings.logoUrl ||
               settings.displayName ||
               settings.description) && (
-              <Stack gap={"xs"} align="center" mb="xs">
+              <Flex direction="column" gap={"xs"} align="center" mb="xs">
                 {settings.logoUrl && (
                   <Image
                     src={settings.logoUrl}
@@ -142,14 +142,14 @@ const Login = (props: LoginProps) => {
                     {settings.description}
                   </Text>
                 )}
-              </Stack>
+              </Flex>
             )}
 
             {/* Credentials login form */}
             {credentialsProvider && (
               <>
                 <form {...form.props}>
-                  <Stack flex={1} gap={"md"}>
+                  <Flex direction="column" flex={1} gap={"md"}>
                     <Control
                       title={identifierTitle}
                       input={form.input.identifier}
@@ -169,7 +169,7 @@ const Login = (props: LoginProps) => {
                     <ActionButton variant={"filled"} form={form}>
                       {tr("loginSignIn")}
                     </ActionButton>
-                  </Stack>
+                  </Flex>
                 </form>
                 {settings.resetPasswordAllowed && (
                   <Text size="sm" ta="center">
@@ -188,18 +188,18 @@ const Login = (props: LoginProps) => {
 
             {/* OR divider - only when both credentials AND external methods exist */}
             {showOrDivider && (
-              <Group align="center" justify="center" gap={"md"}>
+              <Flex align="center" justify="center" gap={"md"}>
                 <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
                 <Text size="xs" c={"dimmed"}>
                   {tr("loginOr")}
                 </Text>
                 <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
-              </Group>
+              </Flex>
             )}
 
             {/* External login methods */}
             {externalLoginMethods.length > 0 && (
-              <Stack gap={"sm"}>
+              <Flex direction="column" gap={"sm"}>
                 {externalLoginMethods.map((method) => (
                   <ActionButton
                     variant={"default"}
@@ -217,7 +217,7 @@ const Login = (props: LoginProps) => {
                     })}
                   </ActionButton>
                 ))}
-              </Stack>
+              </Flex>
             )}
 
             {/* Registration link */}
@@ -234,12 +234,12 @@ const Login = (props: LoginProps) => {
                 </ActionButton>
               </Text>
             )}
-          </Stack>
+          </Flex>
         </Card>
         <ActionButton variant={"subtle"} href={"/"}>
           {tr("loginCancel")}
         </ActionButton>
-      </Stack>
+      </Flex>
     </Flex>
   );
 };

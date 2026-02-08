@@ -1,12 +1,8 @@
-import { ActionButton, TypeForm, ui } from "@alepha/ui";
+import { ActionButton, Flex, TypeForm, ui } from "@alepha/ui";
 import {
   Badge,
-  Box,
-  Flex,
-  Group,
   Loader,
   ScrollArea,
-  Stack,
   Text,
   TextInput,
   UnstyledButton,
@@ -68,14 +64,14 @@ const RecordForm = ({
   );
 
   return (
-    <Stack gap="md">
-      <Group justify="space-between">
+    <Flex direction="column" gap="md">
+      <Flex justify="space-between">
         <Text fz="sm" fw={600}>
           {isNew
             ? "New Record"
             : `Edit Record (${pkColumn}: ${record?.[pkColumn]})`}
         </Text>
-        <Group gap="xs">
+        <Flex gap="xs">
           <ActionButton size="xs" onClick={() => onSave(form.currentValues)}>
             {isNew ? "Create" : "Save"}
           </ActionButton>
@@ -88,10 +84,10 @@ const RecordForm = ({
               icon={<IconTrash size={14} />}
             />
           )}
-        </Group>
-      </Group>
+        </Flex>
+      </Flex>
       <TypeForm form={form} skipSubmitButton skipFormElement columns={1} />
-    </Stack>
+    </Flex>
   );
 };
 
@@ -246,7 +242,7 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
   return (
     <Flex style={{ flex: 1, overflow: "hidden" }}>
       {/* Entity list */}
-      <Box
+      <Flex
         w={200}
         style={{
           borderRight: `1px solid ${ui.colors.border}`,
@@ -255,7 +251,7 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
           flexDirection: "column",
         }}
       >
-        <Box p="xs">
+        <Flex p="xs">
           <TextInput
             size="xs"
             placeholder="Filter tables..."
@@ -263,7 +259,7 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
           />
-        </Box>
+        </Flex>
         <ScrollArea style={{ flex: 1 }} px="xs">
           <TreeView
             nodes={entityNodes}
@@ -274,11 +270,11 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
             showLeafCount={false}
           />
         </ScrollArea>
-      </Box>
+      </Flex>
 
       {/* Records list */}
       {selectedEntity && (
-        <Box
+        <Flex
           w={200}
           style={{
             borderRight: `1px solid ${ui.colors.border}`,
@@ -287,7 +283,7 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
             flexDirection: "column",
           }}
         >
-          <Box
+          <Flex
             px="xs"
             py="xs"
             style={{
@@ -295,7 +291,7 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
               flexShrink: 0,
             }}
           >
-            <Group gap="xs" justify="space-between">
+            <Flex gap="xs" justify="space-between">
               <Text fz={10} c="dimmed" tt="uppercase" fw={600} lts={0.5}>
                 Records{" "}
                 {pageInfo?.totalElements != null &&
@@ -308,8 +304,8 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
                 onClick={navigateToNew}
                 icon={<IconPlus size={14} />}
               />
-            </Group>
-          </Box>
+            </Flex>
+          </Flex>
           <ScrollArea style={{ flex: 1 }} px="xs" py="xs">
             <UnstyledButton
               w="100%"
@@ -324,7 +320,7 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
               }}
               onClick={navigateToNew}
             >
-              <Group gap={8} wrap="nowrap">
+              <Flex gap={8} wrap="nowrap">
                 <IconPlus
                   size={13}
                   color="var(--mantine-color-teal-text)"
@@ -333,7 +329,7 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
                 <Text fz={12} c="teal">
                   New Record
                 </Text>
-              </Group>
+              </Flex>
             </UnstyledButton>
             {loading ? (
               <Flex justify="center" py="md">
@@ -366,11 +362,11 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
               })
             )}
           </ScrollArea>
-        </Box>
+        </Flex>
       )}
 
       {/* Editor panel */}
-      <Box style={{ flex: 1, overflow: "auto" }} p="md">
+      <Flex style={{ flex: 1, overflow: "auto" }} p="md">
         {!selectedEntity && (
           <Flex align="center" justify="center" h="100%">
             <Text c="dimmed" fz="sm">
@@ -397,7 +393,7 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
             pkColumn={pkColumn}
           />
         )}
-      </Box>
+      </Flex>
     </Flex>
   );
 };

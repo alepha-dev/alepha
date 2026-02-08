@@ -1,10 +1,10 @@
-import { Box, type BoxProps, Flex, SegmentedControl } from "@mantine/core";
+import { Flex, type FlexProps, SegmentedControl } from "@mantine/core";
 import { type ReactNode, useState } from "react";
 
 export interface MacWindowProps {
   children: ReactNode;
   title?: string;
-  containerProps?: BoxProps;
+  containerProps?: FlexProps;
   fill?: boolean;
 }
 
@@ -48,24 +48,24 @@ const MacWindow = ({
         }}
       >
         <Flex gap={6}>
-          <Box
+          <Flex
             w={12}
             h={12}
             style={{ borderRadius: "50%", background: "#ff5f57" }}
           />
-          <Box
+          <Flex
             w={12}
             h={12}
             style={{ borderRadius: "50%", background: "#febc2e" }}
           />
-          <Box
+          <Flex
             w={12}
             h={12}
             style={{ borderRadius: "50%", background: "#28c840" }}
           />
         </Flex>
 
-        <Box
+        <Flex
           style={{
             flex: 1,
             textAlign: "center",
@@ -74,7 +74,7 @@ const MacWindow = ({
           }}
         >
           {title}
-        </Box>
+        </Flex>
 
         {fill ? undefined : (
           <SegmentedControl

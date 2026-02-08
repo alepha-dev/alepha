@@ -1,4 +1,4 @@
-import { Box, Center, Loader, Stack, Text } from "@mantine/core";
+import { Center, Flex, Loader, Text } from "@mantine/core";
 import {
   IconBan,
   IconDevices,
@@ -60,10 +60,10 @@ const AdminUserLayout = (props: AdminUserLayoutProps) => {
   if (!user) {
     return (
       <Center flex={1}>
-        <Stack align="center" gap="xs">
+        <Flex direction="column" align="center" gap="xs">
           <IconUser size={48} opacity={0.3} />
           <Text c="dimmed">User not found</Text>
-        </Stack>
+        </Flex>
       </Center>
     );
   }
@@ -130,8 +130,8 @@ const AdminUserLayout = (props: AdminUserLayoutProps) => {
   };
 
   return (
-    <Box py="xl" px="xl" flex={1}>
-      <Stack gap="lg">
+    <Flex py="xl" px="xl" flex={1}>
+      <Flex direction="column" gap="lg">
         <AdminResourceHeader
           backHref={router.path("adminUsers")}
           backLabel="Users"
@@ -213,8 +213,8 @@ const AdminUserLayout = (props: AdminUserLayoutProps) => {
         />
 
         <NestedView />
-      </Stack>
-    </Box>
+      </Flex>
+    </Flex>
   );
 };
 

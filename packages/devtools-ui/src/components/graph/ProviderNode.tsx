@@ -1,5 +1,5 @@
-import { ui } from "@alepha/ui";
-import { Badge, Box, Flex, Text } from "@mantine/core";
+import { Flex, ui } from "@alepha/ui";
+import { Badge, Text } from "@mantine/core";
 import { Handle, Position } from "@xyflow/react";
 import { getModuleColor } from "./constants.ts";
 import type { ProviderNodeData } from "./types.ts";
@@ -15,7 +15,7 @@ export const ProviderNode = ({ data, selected }: ProviderNodeProps) => {
   const isModule = data.isModule;
 
   return (
-    <Box
+    <Flex
       p="xs"
       style={{
         borderRadius: isModule ? 12 : 8,
@@ -92,6 +92,6 @@ export const ProviderNode = ({ data, selected }: ProviderNodeProps) => {
           border: "none",
         }}
       />
-    </Box>
+    </Flex>
   );
 };

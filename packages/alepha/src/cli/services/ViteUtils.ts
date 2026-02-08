@@ -46,6 +46,13 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
     },
   });
 
+  public importModule(path: string): Promise<any> {
+    if (!this.viteDevServer) {
+      throw new AlephaError("Vite dev server not initialized");
+    }
+    return this.viteDevServer.ssrLoadModule(path);
+  }
+
   public async runAlepha(opts: {
     entry: AppEntry;
     mode: "production" | "development";

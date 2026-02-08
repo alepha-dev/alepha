@@ -1,5 +1,5 @@
 import { DataTable, Text } from "@alepha/ui";
-import { Badge, Flex, Group } from "@mantine/core";
+import { Badge, Flex } from "@mantine/core";
 import { IconCheck, IconUsersPlus, IconX } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
 import {
@@ -96,7 +96,7 @@ const AdminUsers = (props: AdminUsersProps) => {
           email: {
             label: "Email",
             value: (item) => (
-              <Group gap="xs">
+              <Flex gap="xs">
                 <Text size="sm">{item.email || "-"}</Text>
                 {item.email && (
                   <Badge
@@ -114,19 +114,19 @@ const AdminUsers = (props: AdminUsersProps) => {
                     {item.emailVerified ? "Verified" : "Unverified"}
                   </Badge>
                 )}
-              </Group>
+              </Flex>
             ),
           },
           roles: {
             label: "Roles",
             value: (item) => (
-              <Group gap={4}>
+              <Flex gap={4}>
                 {item.roles.map((role: string) => (
                   <Badge key={role} size="xs" variant="outline">
                     {role}
                   </Badge>
                 ))}
-              </Group>
+              </Flex>
             ),
           },
           enabled: {

@@ -1,10 +1,10 @@
-import { Button, Group, Text } from "@mantine/core";
+import { Button, Flex, Text } from "@mantine/core";
 import type { ConfirmDialogProps } from "../../services/DialogService.tsx";
 
 const ConfirmDialog = ({ options, onConfirm }: ConfirmDialogProps) => (
   <>
     {options?.message && <Text mb="md">{options.message}</Text>}
-    <Group justify="flex-end">
+    <Flex justify="flex-end">
       <Button variant="subtle" onClick={() => onConfirm(false)}>
         {options?.cancelLabel || "Cancel"}
       </Button>
@@ -14,7 +14,7 @@ const ConfirmDialog = ({ options, onConfirm }: ConfirmDialogProps) => (
       >
         {options?.confirmLabel || "Confirm"}
       </Button>
-    </Group>
+    </Flex>
   </>
 );
 

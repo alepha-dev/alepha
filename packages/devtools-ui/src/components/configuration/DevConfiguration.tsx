@@ -1,5 +1,5 @@
-import { ui } from "@alepha/ui";
-import { Box, Flex, SegmentedControl } from "@mantine/core";
+import { Flex, ui } from "@alepha/ui";
+import { SegmentedControl } from "@mantine/core";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 
 export const DevConfiguration = () => {
@@ -13,7 +13,7 @@ export const DevConfiguration = () => {
 
   return (
     <Flex direction="column" style={{ flex: 1 }}>
-      <Box
+      <Flex
         px="md"
         py="xs"
         style={{ borderBottom: `1px solid ${ui.colors.border}` }}
@@ -27,7 +27,7 @@ export const DevConfiguration = () => {
             { label: "Atoms", value: "atoms" },
           ]}
         />
-      </Box>
+      </Flex>
       <NestedView />
     </Flex>
   );

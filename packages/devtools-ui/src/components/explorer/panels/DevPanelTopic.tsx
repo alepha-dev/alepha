@@ -1,10 +1,10 @@
-import { ui } from "@alepha/ui";
+import { Flex, ui } from "@alepha/ui";
 import { JsonViewer } from "@alepha/ui/json";
-import { Badge, Card, Group, Stack, Text } from "@mantine/core";
+import { Badge, Card, Text } from "@mantine/core";
 
 export const DevPanelTopic = ({ topic }: { topic: any }) => {
   return (
-    <Stack gap="md">
+    <Flex direction="column" gap="md">
       <div>
         <Text fz="lg" fw={600} mb="xs">
           {topic.name}
@@ -16,7 +16,7 @@ export const DevPanelTopic = ({ topic }: { topic: any }) => {
         )}
       </div>
 
-      <Group gap="xs">
+      <Flex gap="xs">
         <Badge size="xs" variant="light" color="pink">
           Topic
         </Badge>
@@ -30,7 +30,7 @@ export const DevPanelTopic = ({ topic }: { topic: any }) => {
             {topic.subscribers} subscriber{topic.subscribers !== 1 ? "s" : ""}
           </Badge>
         )}
-      </Group>
+      </Flex>
 
       {topic.schema && (
         <div>
@@ -52,6 +52,6 @@ export const DevPanelTopic = ({ topic }: { topic: any }) => {
           </Card>
         </div>
       )}
-    </Stack>
+    </Flex>
   );
 };

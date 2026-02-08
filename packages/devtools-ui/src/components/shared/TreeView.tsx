@@ -1,4 +1,5 @@
-import { Box, Flex, Group, Text, UnstyledButton } from "@mantine/core";
+import { Flex } from "@alepha/ui";
+import { Text, UnstyledButton } from "@mantine/core";
 import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
@@ -124,9 +125,9 @@ const TreeViewItem = ({
           }
         }}
       >
-        <Group gap={8} wrap="nowrap">
+        <Flex gap={8} wrap="nowrap">
           {isFolder ? (
-            <Box
+            <Flex
               style={{
                 width: 14,
                 flexShrink: 0,
@@ -139,9 +140,9 @@ const TreeViewItem = ({
               ) : (
                 <IconChevronRight size={14} opacity={0.5} />
               )}
-            </Box>
+            </Flex>
           ) : (
-            <Box
+            <Flex
               style={{
                 width: 14,
                 flexShrink: 0,
@@ -165,7 +166,7 @@ const TreeViewItem = ({
               {leafCount}
             </Text>
           )}
-        </Group>
+        </Flex>
       </UnstyledButton>
       {isFolder && isOpen && (
         <Flex direction="column" gap={2} style={{ minHeight: 0 }}>

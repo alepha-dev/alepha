@@ -1,5 +1,5 @@
-import { ui } from "@alepha/ui";
-import { Box, Flex, ScrollArea, Text, TextInput } from "@mantine/core";
+import { Flex, ui } from "@alepha/ui";
+import { ScrollArea, Text, TextInput } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import { t } from "alepha";
 import { devMetadataSchema } from "alepha/devtools";
@@ -289,7 +289,7 @@ export const DevExplorer = () => {
   return (
     <Flex style={{ flex: 1, overflow: "hidden" }}>
       {/* Tree sidebar */}
-      <Box
+      <Flex
         w={280}
         style={{
           borderRight: `1px solid ${ui.colors.border}`,
@@ -298,7 +298,7 @@ export const DevExplorer = () => {
           flexDirection: "column",
         }}
       >
-        <Box p="xs">
+        <Flex p="xs">
           <TextInput
             placeholder="Search..."
             size="xs"
@@ -306,7 +306,7 @@ export const DevExplorer = () => {
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
           />
-        </Box>
+        </Flex>
         <ScrollArea style={{ flex: 1 }} px="xs" pb="xs">
           <ExplorerTree
             nodes={tree}
@@ -317,10 +317,10 @@ export const DevExplorer = () => {
             onToggle={handleToggle}
           />
         </ScrollArea>
-      </Box>
+      </Flex>
 
       {/* Detail panel */}
-      <Box style={{ flex: 1, overflow: "auto" }} p="lg">
+      <Flex style={{ flex: 1, overflow: "auto" }} p="lg">
         {!selectedData && (
           <Flex align="center" justify="center" h="100%">
             <Text c="dimmed" fz="sm">
@@ -343,7 +343,7 @@ export const DevExplorer = () => {
         {selectedData?.type === "cache" && selectedData.data && (
           <DevPanelCache cache={selectedData.data} />
         )}
-      </Box>
+      </Flex>
     </Flex>
   );
 };

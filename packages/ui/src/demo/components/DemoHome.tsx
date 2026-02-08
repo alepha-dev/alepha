@@ -1,4 +1,4 @@
-import { Box, Stack, Text, Title } from "@mantine/core";
+import { Flex, Text, Title } from "@mantine/core";
 import { IconBraces } from "@tabler/icons-react";
 
 const components = [
@@ -13,16 +13,16 @@ const components = [
 
 const DemoHome = () => {
   return (
-    <Stack gap="xl" p="xl">
-      <Box>
+    <Flex direction="column" gap="xl" p="xl">
+      <Flex>
         <Title order={1} mb="xs">
           Component Showcase
         </Title>
         <Text c="dimmed" size="lg">
           Interactive demos and documentation for @alepha/ui components.
         </Text>
-      </Box>
-    </Stack>
+      </Flex>
+    </Flex>
   );
 };
 

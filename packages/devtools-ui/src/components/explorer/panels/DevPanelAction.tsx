@@ -1,15 +1,6 @@
-import { ActionButton, TypeForm, ui } from "@alepha/ui";
+import { ActionButton, Flex, TypeForm, ui } from "@alepha/ui";
 import { JsonViewer } from "@alepha/ui/json";
-import {
-  Badge,
-  Card,
-  Code,
-  Group,
-  JsonInput,
-  Stack,
-  Tabs,
-  Text,
-} from "@mantine/core";
+import { Badge, Card, Code, JsonInput, Tabs, Text } from "@mantine/core";
 import { IconPlayerPlay, IconSchema } from "@tabler/icons-react";
 import { jsonSchemaToTypeBox, t } from "alepha";
 import { useInject } from "alepha/react";
@@ -147,9 +138,9 @@ export const DevPanelAction = ({ action }: { action: any }) => {
   ]);
 
   return (
-    <Stack gap="md">
+    <Flex direction="column" gap="md">
       <div>
-        <Group gap="sm" mb="xs">
+        <Flex gap="sm" mb="xs">
           <Badge
             size="lg"
             variant="light"
@@ -163,7 +154,7 @@ export const DevPanelAction = ({ action }: { action: any }) => {
               Secure
             </Badge>
           )}
-        </Group>
+        </Flex>
         {action.description && (
           <Text fz="sm" c="dimmed">
             {action.description}
@@ -182,7 +173,7 @@ export const DevPanelAction = ({ action }: { action: any }) => {
         </Tabs.List>
 
         <Tabs.Panel value="schema" pt="md">
-          <Stack gap="md">
+          <Flex direction="column" gap="md">
             {action.body && (
               <div>
                 <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
@@ -271,11 +262,11 @@ export const DevPanelAction = ({ action }: { action: any }) => {
                   No schema defined for this action.
                 </Text>
               )}
-          </Stack>
+          </Flex>
         </Tabs.Panel>
 
         <Tabs.Panel value="tryit" pt="md">
-          <Stack gap="md">
+          <Flex direction="column" gap="md">
             {paramsSchema && (
               <div>
                 <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
@@ -329,7 +320,7 @@ export const DevPanelAction = ({ action }: { action: any }) => {
                 )}
               </div>
             )}
-            <Group>
+            <Flex>
               <ActionButton
                 size="xs"
                 loading={loading}
@@ -344,7 +335,7 @@ export const DevPanelAction = ({ action }: { action: any }) => {
                   {timing}ms
                 </Text>
               )}
-            </Group>
+            </Flex>
             {response && (
               <div>
                 <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
@@ -380,9 +371,9 @@ export const DevPanelAction = ({ action }: { action: any }) => {
                 </Card>
               </div>
             )}
-          </Stack>
+          </Flex>
         </Tabs.Panel>
       </Tabs>
-    </Stack>
+    </Flex>
   );
 };

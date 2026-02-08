@@ -1,13 +1,13 @@
 import { $inject, t } from "alepha";
 import { FileService } from "alepha/api/files";
-import { UserFiles, users } from "alepha/api/users";
+import { UserBuckets, users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { $action } from "alepha/server";
 
 export class UserController {
   users = $repository(users);
   fileService = $inject(FileService);
-  userFiles = $inject(UserFiles);
+  userFiles = $inject(UserBuckets);
 
   me = $action({
     secure: true,

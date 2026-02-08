@@ -1,5 +1,5 @@
 import { ActionButton, DataTable, Flex, Text } from "@alepha/ui";
-import { Badge, Group } from "@mantine/core";
+import { Badge } from "@mantine/core";
 import {
   IconDeviceDesktop,
   IconDeviceMobile,
@@ -120,7 +120,7 @@ const AdminSessions = (props: AdminSessionsProps) => {
             label: "Device",
             fit: true,
             value: (item) => (
-              <Group gap={4}>
+              <Flex gap={4}>
                 {item.userAgent ? (
                   <>
                     <Badge
@@ -139,7 +139,7 @@ const AdminSessions = (props: AdminSessionsProps) => {
                     -
                   </Text>
                 )}
-              </Group>
+              </Flex>
             ),
           },
           ip: {

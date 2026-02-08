@@ -1,14 +1,5 @@
-import { ActionButton, ui } from "@alepha/ui";
-import {
-  Badge,
-  Box,
-  Divider,
-  Flex,
-  Paper,
-  ScrollArea,
-  Stack,
-  Text,
-} from "@mantine/core";
+import { ActionButton, Flex, ui } from "@alepha/ui";
+import { Badge, Divider, Paper, ScrollArea, Text } from "@mantine/core";
 import {
   IconArrowDown,
   IconArrowUp,
@@ -50,7 +41,7 @@ export const NodeDetails = ({
       }}
     >
       <Flex justify="space-between" align="start" mb="sm">
-        <Box style={{ flex: 1 }}>
+        <Flex style={{ flex: 1 }}>
           <Text size="sm" fw={600} style={{ wordBreak: "break-word" }}>
             {data.label}
           </Text>
@@ -72,7 +63,7 @@ export const NodeDetails = ({
               {data.providerCount} services
             </Text>
           )}
-        </Box>
+        </Flex>
         <ActionButton
           size="sm"
           variant="subtle"
@@ -107,13 +98,13 @@ export const NodeDetails = ({
             </Text>
           </Flex>
           <ScrollArea h={100}>
-            <Stack gap={2}>
+            <Flex direction="column" gap={2}>
               {data.providers.map((provider) => (
                 <Text key={provider} size="xs">
                   {provider.split(".").pop()}
                 </Text>
               ))}
-            </Stack>
+            </Flex>
           </ScrollArea>
         </>
       )}
@@ -121,9 +112,9 @@ export const NodeDetails = ({
       <Divider my="xs" />
 
       <ScrollArea h={isModule ? 120 : 200}>
-        <Stack gap="xs">
+        <Flex direction="column" gap="xs">
           {data.dependencies.length > 0 && (
-            <Box>
+            <Flex>
               <Flex align="center" gap={4} mb={4}>
                 <IconArrowDown size={12} opacity={0.5} />
                 <Text size="xs" c="dimmed">
@@ -131,7 +122,7 @@ export const NodeDetails = ({
                   {data.dependencies.length})
                 </Text>
               </Flex>
-              <Stack gap={2}>
+              <Flex direction="column" gap={2}>
                 {data.dependencies.map((dep) => (
                   <Text
                     key={dep}
@@ -143,19 +134,19 @@ export const NodeDetails = ({
                     {dep}
                   </Text>
                 ))}
-              </Stack>
-            </Box>
+              </Flex>
+            </Flex>
           )}
 
           {data.dependents.length > 0 && (
-            <Box>
+            <Flex>
               <Flex align="center" gap={4} mb={4}>
                 <IconArrowUp size={12} opacity={0.5} />
                 <Text size="xs" c="dimmed">
                   Used by ({data.dependents.length})
                 </Text>
               </Flex>
-              <Stack gap={2}>
+              <Flex direction="column" gap={2}>
                 {data.dependents.map((dep) => (
                   <Text
                     key={dep}
@@ -167,8 +158,8 @@ export const NodeDetails = ({
                     {dep}
                   </Text>
                 ))}
-              </Stack>
-            </Box>
+              </Flex>
+            </Flex>
           )}
 
           {data.dependencies.length === 0 && data.dependents.length === 0 && (
@@ -176,7 +167,7 @@ export const NodeDetails = ({
               No dependencies
             </Text>
           )}
-        </Stack>
+        </Flex>
       </ScrollArea>
     </Paper>
   );

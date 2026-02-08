@@ -1,10 +1,9 @@
 import {
   Button,
   Checkbox,
-  Group,
+  Flex,
   Popover,
   ScrollArea,
-  Stack,
   Text,
 } from "@mantine/core";
 import { IconColumns } from "@tabler/icons-react";
@@ -81,12 +80,18 @@ const ColumnPicker = <T extends object, Filters extends TObject>({
           backdropFilter: "blur(20px)",
         }}
       >
-        <Stack gap="xs" bg={ui.colors.surface} p="sm" bdrs="sm">
-          <Group justify="space-between">
+        <Flex
+          direction="column"
+          gap="xs"
+          bg={ui.colors.surface}
+          p="sm"
+          bdrs="sm"
+        >
+          <Flex justify="space-between">
             <Text size="sm" fw={500}>
               Columns ({visibleCount}/{columnEntries.length})
             </Text>
-            <Group gap={4}>
+            <Flex gap={4}>
               <Button
                 size="compact-xs"
                 variant="subtle"
@@ -101,11 +106,11 @@ const ColumnPicker = <T extends object, Filters extends TObject>({
               >
                 None
               </Button>
-            </Group>
-          </Group>
+            </Flex>
+          </Flex>
 
           <ScrollArea.Autosize mah={300}>
-            <Stack gap={4}>
+            <Flex direction="column" gap={4}>
               {columnEntries.map(([key, col]) => (
                 <Checkbox
                   key={key}
@@ -115,9 +120,9 @@ const ColumnPicker = <T extends object, Filters extends TObject>({
                   size="sm"
                 />
               ))}
-            </Stack>
+            </Flex>
           </ScrollArea.Autosize>
-        </Stack>
+        </Flex>
       </Popover.Dropdown>
     </Popover>
   );

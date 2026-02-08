@@ -1,12 +1,9 @@
-import { ui } from "@alepha/ui";
+import { Flex, ui } from "@alepha/ui";
 import {
   Badge,
-  Box,
   Code,
   CopyButton,
-  Flex,
   ScrollArea,
-  Stack,
   Text,
   TextInput,
   Tooltip,
@@ -83,7 +80,7 @@ const EnvLine = ({ variable }: { variable: EnvVariable }) => {
   const sensitive = isSensitive(variable.name);
 
   return (
-    <Box>
+    <Flex>
       {/* Description as comment */}
       {variable.description?.split("\n").map((line, i) => (
         <Text key={i} fz={11} ff="monospace" c="dimmed" fs="italic" lh={1.6}>
@@ -134,20 +131,20 @@ const EnvLine = ({ variable }: { variable: EnvVariable }) => {
           <CopyButton value={String(variable.value)}>
             {({ copied, copy }) => (
               <Tooltip label={copied ? "Copied!" : "Copy"} withArrow>
-                <Box
+                <Flex
                   ml={6}
                   onClick={copy}
                   style={{ cursor: "pointer", flexShrink: 0 }}
                   c={copied ? "teal" : "dimmed"}
                 >
                   {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
-                </Box>
+                </Flex>
               </Tooltip>
             )}
           </CopyButton>
         )}
       </Flex>
-    </Box>
+    </Flex>
   );
 };
 
@@ -180,20 +177,20 @@ export const ConfigEnv = () => {
   if (variables.length === 0) {
     return (
       <Flex align="center" justify="center" style={{ flex: 1 }} c="dimmed">
-        <Stack align="center" gap="xs">
+        <Flex direction="column" align="center" gap="xs">
           <IconVariable size={40} opacity={0.3} />
           <Text fz="sm">No environment variables found</Text>
           <Text fz="xs" c="dimmed">
             Use $env primitive to define expected environment variables
           </Text>
-        </Stack>
+        </Flex>
       </Flex>
     );
   }
 
   return (
     <Flex direction="column" style={{ flex: 1 }}>
-      <Box
+      <Flex
         p="sm"
         style={{ borderBottom: `1px solid ${ui.colors.border}`, flexShrink: 0 }}
       >
@@ -210,7 +207,7 @@ export const ConfigEnv = () => {
             {filtered.length} / {variables.length}
           </Badge>
         </Flex>
-      </Box>
+      </Flex>
       <ScrollArea style={{ flex: 1 }} p="md">
         <Code
           block
@@ -221,11 +218,11 @@ export const ConfigEnv = () => {
             padding: 16,
           }}
         >
-          <Stack gap={8}>
+          <Flex direction="column" gap={8}>
             {filtered.map((v) => (
               <EnvLine key={v.name} variable={v} />
             ))}
-          </Stack>
+          </Flex>
         </Code>
       </ScrollArea>
     </Flex>

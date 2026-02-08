@@ -1,12 +1,12 @@
-import { Button, Group, Text } from "@mantine/core";
+import { Button, Flex, Text } from "@mantine/core";
 import type { AlertDialogProps } from "../../services/DialogService.tsx";
 
 const AlertDialog = ({ options, onClose }: AlertDialogProps) => (
   <>
     {options?.message && <Text mb="md">{options.message}</Text>}
-    <Group justify="flex-end">
+    <Flex justify="flex-end">
       <Button onClick={onClose}>{options?.okLabel || "OK"}</Button>
-    </Group>
+    </Flex>
   </>
 );
 

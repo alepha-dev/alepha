@@ -1,4 +1,4 @@
-import { Fieldset, Grid, Stack, Text } from "@mantine/core";
+import { Fieldset, Flex, Grid, Text } from "@mantine/core";
 import type { TObject } from "alepha";
 import type { BaseInputField, ObjectInputField } from "alepha/react/form";
 import {
@@ -107,7 +107,7 @@ const ControlObject = (props: ControlObjectProps) => {
 
   return (
     <Fieldset legend={inputProps.label}>
-      <Stack gap="xs">
+      <Flex direction="column" gap="xs">
         {inputProps.description && (
           <Text size="sm" c="dimmed">
             {inputProps.description}
@@ -119,7 +119,7 @@ const ControlObject = (props: ControlObjectProps) => {
             {inputProps.error}
           </Text>
         )}
-      </Stack>
+      </Flex>
     </Fieldset>
   );
 };

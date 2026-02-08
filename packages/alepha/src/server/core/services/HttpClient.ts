@@ -25,6 +25,7 @@ export class HttpClient {
   protected readonly alepha = $inject(Alepha);
 
   public readonly cache = $cache<HttpClientCache>({
+    provider: "memory",
     name: "http:client",
   });
 

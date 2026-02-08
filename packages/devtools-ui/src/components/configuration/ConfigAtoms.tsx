@@ -1,12 +1,9 @@
-import { ActionButton, ui } from "@alepha/ui";
+import { ActionButton, Flex, ui } from "@alepha/ui";
 import { JsonViewer } from "@alepha/ui/json";
 import {
   Badge,
-  Box,
-  Flex,
   NumberInput,
   ScrollArea,
-  Stack,
   Switch,
   Text,
   Textarea,
@@ -101,10 +98,10 @@ const SchemaEditor = ({
 
   if (type === "object" && actualSchema.properties) {
     return (
-      <Stack gap="sm">
+      <Flex direction="column" gap="sm">
         {Object.entries(actualSchema.properties).map(
           ([key, propSchema]: [string, any]) => (
-            <Box key={key}>
+            <Flex key={key}>
               <Text fz="xs" fw={500} mb={4}>
                 {propSchema.title || key}
                 {propSchema.description && (
@@ -118,10 +115,10 @@ const SchemaEditor = ({
                 value={value?.[key]}
                 onChange={(v) => onChange({ ...value, [key]: v })}
               />
-            </Box>
+            </Flex>
           ),
         )}
-      </Stack>
+      </Flex>
     );
   }
 
@@ -219,7 +216,7 @@ const AtomDetailPanel = ({
   return (
     <Flex direction="column" h="100%">
       {/* Header */}
-      <Box
+      <Flex
         px="md"
         py="sm"
         style={{
@@ -241,13 +238,13 @@ const AtomDetailPanel = ({
             {atom.description}
           </Text>
         )}
-      </Box>
+      </Flex>
 
       <ScrollArea style={{ flex: 1 }} p="md">
-        <Stack gap="lg">
+        <Flex direction="column" gap="lg">
           {/* Current / Default values */}
           <Flex gap="lg" wrap="wrap">
-            <Box style={{ flex: 1, minWidth: 200 }}>
+            <Flex style={{ flex: 1, minWidth: 200 }}>
               <Text
                 fz={10}
                 c="dimmed"
@@ -265,8 +262,8 @@ const AtomDetailPanel = ({
                   (using default)
                 </Text>
               )}
-            </Box>
-            <Box style={{ flex: 1, minWidth: 200 }}>
+            </Flex>
+            <Flex style={{ flex: 1, minWidth: 200 }}>
               <Text
                 fz={10}
                 c="dimmed"
@@ -284,11 +281,11 @@ const AtomDetailPanel = ({
                   (no default)
                 </Text>
               )}
-            </Box>
+            </Flex>
           </Flex>
 
           {/* Editor */}
-          <Box>
+          <Flex>
             <Flex align="center" justify="space-between" mb="sm">
               <Text fz={10} c="dimmed" tt="uppercase" fw={600} lts={0.5}>
                 Edit Value
@@ -337,7 +334,7 @@ const AtomDetailPanel = ({
                 }}
               />
             ) : (
-              <Box
+              <Flex
                 p="sm"
                 style={{
                   border: `1px solid ${ui.colors.border}`,
@@ -350,18 +347,18 @@ const AtomDetailPanel = ({
                   value={editValue}
                   onChange={setEditValue}
                 />
-              </Box>
+              </Flex>
             )}
-          </Box>
+          </Flex>
 
           {/* Schema info */}
-          <Box>
+          <Flex>
             <Text fz={10} c="dimmed" tt="uppercase" fw={600} lts={0.5} mb="xs">
               Schema
             </Text>
             <JsonViewer data={atom.schema} maxDepth={2} />
-          </Box>
-        </Stack>
+          </Flex>
+        </Flex>
       </ScrollArea>
     </Flex>
   );
@@ -445,13 +442,13 @@ export const ConfigAtoms = () => {
   if (atoms.length === 0) {
     return (
       <Flex align="center" justify="center" style={{ flex: 1 }} c="dimmed">
-        <Stack align="center" gap="xs">
+        <Flex direction="column" align="center" gap="xs">
           <IconAtom size={40} opacity={0.3} />
           <Text fz="sm">No atoms found</Text>
           <Text fz="xs" c="dimmed">
             Use $atom primitive to define state atoms
           </Text>
-        </Stack>
+        </Flex>
       </Flex>
     );
   }
@@ -461,7 +458,7 @@ export const ConfigAtoms = () => {
   return (
     <Flex style={{ flex: 1, overflow: "hidden" }}>
       {/* Tree sidebar */}
-      <Box
+      <Flex
         w={260}
         style={{
           borderRight: `1px solid ${ui.colors.border}`,
@@ -470,7 +467,7 @@ export const ConfigAtoms = () => {
           flexDirection: "column",
         }}
       >
-        <Box p="xs" style={{ flexShrink: 0 }}>
+        <Flex p="xs" style={{ flexShrink: 0 }}>
           <TextInput
             placeholder="Search atoms..."
             leftSection={<IconSearch size={14} />}
@@ -478,7 +475,7 @@ export const ConfigAtoms = () => {
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
           />
-        </Box>
+        </Flex>
         <ScrollArea style={{ flex: 1 }} px="xs" pb="xs">
           <TreeView
             nodes={treeViewNodes}
@@ -488,10 +485,10 @@ export const ConfigAtoms = () => {
             onToggle={handleToggle}
           />
         </ScrollArea>
-      </Box>
+      </Flex>
 
       {/* Detail panel */}
-      <Box style={{ flex: 1, overflow: "hidden" }}>
+      <Flex style={{ flex: 1, overflow: "hidden" }}>
         {selectedAtom ? (
           <AtomDetailPanel atom={selectedAtom} onSave={handleSave} />
         ) : (
@@ -501,7 +498,7 @@ export const ConfigAtoms = () => {
             </Text>
           </Flex>
         )}
-      </Box>
+      </Flex>
     </Flex>
   );
 };

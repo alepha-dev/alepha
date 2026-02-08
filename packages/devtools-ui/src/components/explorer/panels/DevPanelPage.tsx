@@ -1,10 +1,10 @@
-import { ui } from "@alepha/ui";
+import { Flex, ui } from "@alepha/ui";
 import { JsonViewer } from "@alepha/ui/json";
-import { Badge, Card, Code, Group, Stack, Text } from "@mantine/core";
+import { Badge, Card, Code, Text } from "@mantine/core";
 
 export const DevPanelPage = ({ page }: { page: any }) => {
   return (
-    <Stack gap="md">
+    <Flex direction="column" gap="md">
       <div>
         <Text fz="lg" fw={600} mb="xs">
           {page.label || page.name}
@@ -21,7 +21,7 @@ export const DevPanelPage = ({ page }: { page: any }) => {
         )}
       </div>
 
-      <Group gap="xs">
+      <Flex gap="xs">
         {page.hasLazy && (
           <Badge size="xs" variant="light" color="blue">
             Lazy
@@ -57,7 +57,7 @@ export const DevPanelPage = ({ page }: { page: any }) => {
             Static
           </Badge>
         )}
-      </Group>
+      </Flex>
 
       {page.params && (
         <div>
@@ -92,6 +92,6 @@ export const DevPanelPage = ({ page }: { page: any }) => {
           </Card>
         </div>
       )}
-    </Stack>
+    </Flex>
   );
 };

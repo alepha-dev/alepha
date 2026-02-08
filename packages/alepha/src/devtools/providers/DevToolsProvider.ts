@@ -1,10 +1,9 @@
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { $hook, $inject, Alepha, t } from "alepha";
 import { $logger, MemoryDestinationProvider } from "alepha/logger";
 import { RepositoryProvider } from "alepha/orm";
 import { $route, ServerProvider } from "alepha/server";
 import { $serve } from "alepha/server/static";
+import { devtoolsAssets } from "../assets.ts";
 import { devMetadataSchema } from "../schemas/DevMetadata.ts";
 import { DevToolsMetadataProvider } from "./DevToolsMetadataProvider.ts";
 
@@ -40,10 +39,7 @@ export class DevToolsProvider {
 
   protected readonly uiRoute = $serve({
     path: "/__devtools",
-    root: join(
-      fileURLToPath(import.meta.url),
-      "../../../../assets/devtools-ui",
-    ),
+    root: devtoolsAssets.ui,
     historyApiFallback: true,
     silent: true,
   });
@@ -131,12 +127,20 @@ export class DevToolsProvider {
 
       if (query.type) {
         const types = query.type.split(",").map((t) => t.trim());
-        entries = entries.filter(
-          (e) =>
-            e.data &&
-            typeof e.data === "object" &&
-            types.includes((e.data as any).type),
-        );
+        entries = entries.filter((e) => {
+          if (!e.data || typeof e.data !== "object") return false;
+          const d = e.data as Record<string, unknown>;
+          for (const t of types) {
+            if (t === "http" || t === "http:request") {
+              if (d.status && d.method && d.path && d.duration) return true;
+            } else if (t === "db" || t === "db:query") {
+              if (d.type === "db:query") return true;
+            } else if (d.type === t) {
+              return true;
+            }
+          }
+          return false;
+        });
       }
 
       if (query.module) {

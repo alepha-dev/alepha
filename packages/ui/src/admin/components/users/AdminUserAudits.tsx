@@ -1,5 +1,5 @@
 import { DataTable, Flex, Text } from "@alepha/ui";
-import { Badge, Group, Tooltip } from "@mantine/core";
+import { Badge, Tooltip } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconCheck,
@@ -138,20 +138,20 @@ const AdminUserAudits = (_props: AdminUserAuditsProps) => {
             fit: true,
             value: (item) =>
               item.success ? (
-                <Group gap={4}>
+                <Flex gap={4}>
                   <IconCheck size={14} color="var(--mantine-color-green-6)" />
                   <Text size="xs" c="green">
                     Success
                   </Text>
-                </Group>
+                </Flex>
               ) : (
                 <Tooltip label={item.errorMessage || "Failed"}>
-                  <Group gap={4}>
+                  <Flex gap={4}>
                     <IconX size={14} color="var(--mantine-color-red-6)" />
                     <Text size="xs" c="red">
                       Failed
                     </Text>
-                  </Group>
+                  </Flex>
                 </Tooltip>
               ),
           },

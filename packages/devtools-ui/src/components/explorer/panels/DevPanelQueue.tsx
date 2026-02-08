@@ -1,10 +1,10 @@
-import { ui } from "@alepha/ui";
+import { Flex, ui } from "@alepha/ui";
 import { JsonViewer } from "@alepha/ui/json";
-import { Badge, Card, Group, Stack, Text } from "@mantine/core";
+import { Badge, Card, Text } from "@mantine/core";
 
 export const DevPanelQueue = ({ queue }: { queue: any }) => {
   return (
-    <Stack gap="md">
+    <Flex direction="column" gap="md">
       <div>
         <Text fz="lg" fw={600} mb="xs">
           {queue.name}
@@ -16,7 +16,7 @@ export const DevPanelQueue = ({ queue }: { queue: any }) => {
         )}
       </div>
 
-      <Group gap="xs">
+      <Flex gap="xs">
         <Badge size="xs" variant="light" color="orange">
           Queue
         </Badge>
@@ -25,7 +25,7 @@ export const DevPanelQueue = ({ queue }: { queue: any }) => {
             {queue.provider}
           </Badge>
         )}
-      </Group>
+      </Flex>
 
       {queue.schema && (
         <div>
@@ -47,6 +47,6 @@ export const DevPanelQueue = ({ queue }: { queue: any }) => {
           </Card>
         </div>
       )}
-    </Stack>
+    </Flex>
   );
 };

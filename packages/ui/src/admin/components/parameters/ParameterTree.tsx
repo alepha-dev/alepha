@@ -1,10 +1,8 @@
 import { ActionButton, Text } from "@alepha/ui";
 import {
-  Box,
   Collapse,
-  Group,
+  Flex,
   ScrollArea,
-  Stack,
   TextInput,
   UnstyledButton,
 } from "@mantine/core";
@@ -95,7 +93,7 @@ const TreeNode = memo(
     const handleMouseLeave = useCallback(() => setIsHovered(false), []);
 
     return (
-      <Box>
+      <Flex>
         <UnstyledButton
           onClick={handleClick}
           onMouseEnter={handleMouseEnter}
@@ -103,7 +101,7 @@ const TreeNode = memo(
           w="100%"
           style={{ display: "block" }}
         >
-          <Group
+          <Flex
             gap={6}
             wrap="nowrap"
             p="4px 8px"
@@ -118,7 +116,7 @@ const TreeNode = memo(
           >
             {hasChildren ? (
               <>
-                <Box
+                <Flex
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -137,7 +135,7 @@ const TreeNode = memo(
                       color="var(--mantine-color-dimmed)"
                     />
                   )}
-                </Box>
+                </Flex>
                 {isExpanded ? (
                   <IconFolderOpen
                     size={16}
@@ -154,7 +152,7 @@ const TreeNode = memo(
               </>
             ) : (
               <>
-                <Box w={16} />
+                <Flex w={16} />
                 <IconSettings
                   size={16}
                   color={
@@ -178,7 +176,7 @@ const TreeNode = memo(
             >
               {node.name}
             </Text>
-          </Group>
+          </Flex>
         </UnstyledButton>
 
         {hasChildren && (
@@ -196,7 +194,7 @@ const TreeNode = memo(
             ))}
           </Collapse>
         )}
-      </Box>
+      </Flex>
     );
   },
 );
@@ -259,7 +257,7 @@ const ParameterTree = ({
   );
 
   return (
-    <Box
+    <Flex
       w={280}
       h="100%"
       p="sm"
@@ -270,8 +268,8 @@ const ParameterTree = ({
         borderRight: "1px solid var(--mantine-color-default-border)",
       }}
     >
-      <Stack gap="sm" h="100%" style={{ minHeight: 0 }}>
-        <Group justify="space-between" gap="xs">
+      <Flex direction="column" gap="sm" h="100%" style={{ minHeight: 0 }}>
+        <Flex justify="space-between" gap="xs">
           <Text size="sm" fw={600}>
             Parameters
           </Text>
@@ -283,7 +281,7 @@ const ParameterTree = ({
           >
             <IconRefresh size={14} />
           </ActionButton>
-        </Group>
+        </Flex>
 
         <TextInput
           placeholder="Search..."
@@ -299,7 +297,7 @@ const ParameterTree = ({
               {searchQuery ? "No matching parameters" : "No parameters"}
             </Text>
           ) : (
-            <Stack gap={0} style={{ gap: 1 }}>
+            <Flex direction="column" gap={0} style={{ gap: 1 }}>
               {filteredTreeData.map((node) => (
                 <TreeNode
                   key={node.path}
@@ -311,11 +309,11 @@ const ParameterTree = ({
                   onToggle={handleToggle}
                 />
               ))}
-            </Stack>
+            </Flex>
           )}
         </ScrollArea>
-      </Stack>
-    </Box>
+      </Flex>
+    </Flex>
   );
 };
 

@@ -1,16 +1,14 @@
 import { ActionButton, ClipboardButton, Control } from "@alepha/ui";
 import {
   Badge,
-  Box,
   Card,
   Center,
   Divider,
+  Flex,
   Grid,
-  Group,
   Loader,
   Paper,
   SimpleGrid,
-  Stack,
   Text,
   ThemeIcon,
 } from "@mantine/core";
@@ -43,7 +41,7 @@ interface DataRowProps {
 }
 
 const DataRow = ({ label, value, copyValue }: DataRowProps) => (
-  <Group
+  <Flex
     justify="space-between"
     py={8}
     wrap="nowrap"
@@ -52,7 +50,7 @@ const DataRow = ({ label, value, copyValue }: DataRowProps) => (
     <Text size="sm" c="dimmed" style={{ flexShrink: 0 }}>
       {label}
     </Text>
-    <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+    <Flex gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
       {typeof value === "string" ? (
         <Text size="sm" fw={500} truncate style={{ maxWidth: 220 }}>
           {value || "—"}
@@ -68,8 +66,8 @@ const DataRow = ({ label, value, copyValue }: DataRowProps) => (
           c="dimmed"
         />
       )}
-    </Group>
-  </Group>
+    </Flex>
+  </Flex>
 );
 
 interface StatCardProps {
@@ -81,19 +79,19 @@ interface StatCardProps {
 
 const StatCard = ({ icon, label, value, color }: StatCardProps) => (
   <Paper p="md" radius="md" withBorder>
-    <Group gap="sm">
+    <Flex gap="sm">
       <ThemeIcon size="lg" radius="md" variant="light" color={color}>
         {icon}
       </ThemeIcon>
-      <Box>
+      <Flex>
         <Text size="xl" fw={700} lh={1}>
           {value}
         </Text>
         <Text size="xs" c="dimmed">
           {label}
         </Text>
-      </Box>
-    </Group>
+      </Flex>
+    </Flex>
   </Paper>
 );
 
@@ -165,10 +163,10 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
   if (!user) {
     return (
       <Center flex={1} py="xl">
-        <Stack align="center" gap="xs">
+        <Flex direction="column" align="center" gap="xs">
           <IconUser size={48} opacity={0.3} />
           <Text c="dimmed">User not found</Text>
-        </Stack>
+        </Flex>
       </Center>
     );
   }
@@ -179,7 +177,7 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
       : user.firstName || user.lastName || null;
 
   return (
-    <Stack gap="md">
+    <Flex direction="column" gap="md">
       {/* Stats Overview */}
       <SimpleGrid cols={{ base: 2, sm: 4 }}>
         <StatCard
@@ -212,12 +210,12 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
         {/* Left Column - Account Details */}
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Card padding={0} radius="md" withBorder h="100%">
-            <Group justify="space-between" p="md" pb={0}>
+            <Flex justify="space-between" p="md" pb={0}>
               <Text fw={600} size="sm">
                 Account Details
               </Text>
-            </Group>
-            <Box px="md" pb="md">
+            </Flex>
+            <Flex px="md" pb="md">
               <DataRow label="User ID" value={user.id} copyValue={user.id} />
               <DataRow
                 label="Username"
@@ -227,7 +225,7 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
               <DataRow
                 label="Email"
                 value={
-                  <Group gap={6}>
+                  <Flex gap={6}>
                     <Text size="sm" fw={500}>
                       {user.email || "—"}
                     </Text>
@@ -240,7 +238,7 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
                         {user.emailVerified ? "verified" : "unverified"}
                       </Badge>
                     )}
-                  </Group>
+                  </Flex>
                 }
                 copyValue={user.email}
               />
@@ -253,7 +251,7 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
               <DataRow
                 label="Status"
                 value={
-                  <Group gap={4}>
+                  <Flex gap={4}>
                     <ThemeIcon
                       size={16}
                       radius="xl"
@@ -269,17 +267,17 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
                     <Text size="sm" fw={500}>
                       {user.enabled ? "Active" : "Disabled"}
                     </Text>
-                  </Group>
+                  </Flex>
                 }
               />
-            </Box>
+            </Flex>
           </Card>
         </Grid.Col>
 
         {/* Right Column - Personal Info */}
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Card padding={0} radius="md" withBorder h="100%">
-            <Group justify="space-between" p="md" pb={0}>
+            <Flex justify="space-between" p="md" pb={0}>
               <Text fw={600} size="sm">
                 Personal Information
               </Text>
@@ -292,12 +290,12 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
                   Edit
                 </ActionButton>
               )}
-            </Group>
+            </Flex>
 
             {editing ? (
-              <Box p="md">
+              <Flex p="md">
                 <form {...form.props}>
-                  <Stack gap="sm">
+                  <Flex direction="column" gap="sm">
                     <SimpleGrid cols={2}>
                       <Control
                         title="First Name"
@@ -311,7 +309,7 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
                     </SimpleGrid>
                     <Control title="Roles" input={form.input.roles} />
                     <Divider />
-                    <Group justify="flex-end" gap="xs">
+                    <Flex justify="flex-end" gap="xs">
                       <ActionButton
                         variant="subtle"
                         size="xs"
@@ -322,12 +320,12 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
                       <ActionButton size="xs" form={form}>
                         Save
                       </ActionButton>
-                    </Group>
-                  </Stack>
+                    </Flex>
+                  </Flex>
                 </form>
-              </Box>
+              </Flex>
             ) : (
-              <Box px="md" pb="md">
+              <Flex px="md" pb="md">
                 <DataRow label="First Name" value={user.firstName || "—"} />
                 <DataRow label="Last Name" value={user.lastName || "—"} />
                 <DataRow label="Display Name" value={displayName || "—"} />
@@ -335,13 +333,13 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
                   label="Roles"
                   value={
                     user.roles.length > 0 ? (
-                      <Group gap={4}>
+                      <Flex gap={4}>
                         {user.roles.map((role) => (
                           <Badge key={role} size="xs" variant="light">
                             {role}
                           </Badge>
                         ))}
-                      </Group>
+                      </Flex>
                     ) : (
                       <Text size="sm" c="dimmed">
                         No roles
@@ -349,7 +347,7 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
                     )
                   }
                 />
-              </Box>
+              </Flex>
             )}
           </Card>
         </Grid.Col>
@@ -357,58 +355,58 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
 
       {/* Timeline */}
       <Card padding={0} radius="md" withBorder>
-        <Group justify="space-between" p="md" pb={0}>
+        <Flex justify="space-between" p="md" pb={0}>
           <Text fw={600} size="sm">
             Activity Timeline
           </Text>
-        </Group>
+        </Flex>
         <SimpleGrid cols={{ base: 2, sm: 4 }} p="md">
-          <Box>
-            <Group gap={6} mb={4}>
+          <Flex>
+            <Flex gap={6} mb={4}>
               <IconCalendar size={14} style={{ opacity: 0.5 }} />
               <Text size="xs" c="dimmed">
                 Created
               </Text>
-            </Group>
+            </Flex>
             <Text size="sm" fw={500}>
               {l(user.createdAt, { date: "ll" })}
             </Text>
             <Text size="xs" c="dimmed">
               {l(user.createdAt, { date: "fromNow" })}
             </Text>
-          </Box>
-          <Box>
-            <Group gap={6} mb={4}>
+          </Flex>
+          <Flex>
+            <Flex gap={6} mb={4}>
               <IconCalendar size={14} style={{ opacity: 0.5 }} />
               <Text size="xs" c="dimmed">
                 Updated
               </Text>
-            </Group>
+            </Flex>
             <Text size="sm" fw={500}>
               {l(user.updatedAt, { date: "ll" })}
             </Text>
             <Text size="xs" c="dimmed">
               {l(user.updatedAt, { date: "fromNow" })}
             </Text>
-          </Box>
-          <Box>
-            <Group gap={6} mb={4}>
+          </Flex>
+          <Flex>
+            <Flex gap={6} mb={4}>
               <IconDevices size={14} style={{ opacity: 0.5 }} />
               <Text size="xs" c="dimmed">
                 Last Login
               </Text>
-            </Group>
+            </Flex>
             <Text size="sm" c="dimmed">
               —
             </Text>
-          </Box>
-          <Box>
-            <Group gap={6} mb={4}>
+          </Flex>
+          <Flex>
+            <Flex gap={6} mb={4}>
               <IconCheck size={14} style={{ opacity: 0.5 }} />
               <Text size="xs" c="dimmed">
                 Email Verified
               </Text>
-            </Group>
+            </Flex>
             {user.emailVerified ? (
               <>
                 <Text size="sm" fw={500}>
@@ -423,10 +421,10 @@ const AdminUserDetails = (props: AdminUserDetailsProps) => {
                 Not verified
               </Text>
             )}
-          </Box>
+          </Flex>
         </SimpleGrid>
       </Card>
-    </Stack>
+    </Flex>
   );
 };
 

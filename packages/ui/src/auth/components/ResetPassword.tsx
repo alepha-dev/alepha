@@ -1,14 +1,5 @@
 import { ActionButton, Control } from "@alepha/ui";
-import {
-  Alert,
-  Card,
-  Flex,
-  Image,
-  PinInput,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Alert, Card, Flex, Image, PinInput, Text, Title } from "@mantine/core";
 import {
   IconAlertCircle,
   IconCheck,
@@ -139,14 +130,14 @@ const ResetPassword = (props: ResetPasswordProps) => {
 
   return (
     <Flex flex={1} justify={"center"} align={"center"}>
-      <Stack gap={"sm"} w={360}>
+      <Flex direction="column" gap={"sm"} w={360}>
         <Card withBorder p={"lg"} bg={"var(--alepha-elevated)"}>
-          <Stack gap={"md"}>
+          <Flex direction="column" gap={"md"}>
             {/* Realm branding */}
             {(settings.logoUrl ||
               settings.displayName ||
               settings.description) && (
-              <Stack gap={"xs"} align="center" mb="xs">
+              <Flex direction="column" gap={"xs"} align="center" mb="xs">
                 {settings.logoUrl && (
                   <Image
                     src={settings.logoUrl}
@@ -166,7 +157,7 @@ const ResetPassword = (props: ResetPasswordProps) => {
                     {settings.description}
                   </Text>
                 )}
-              </Stack>
+              </Flex>
             )}
 
             {error && (
@@ -194,7 +185,7 @@ const ResetPassword = (props: ResetPasswordProps) => {
               </>
             ) : resetState.step === "email" ? (
               <form {...emailForm.props}>
-                <Stack flex={1} gap={"md"}>
+                <Flex direction="column" flex={1} gap={"md"}>
                   <Text size="lg" fw={500} ta="center">
                     {tr("resetPasswordTitle")}
                   </Text>
@@ -217,10 +208,10 @@ const ResetPassword = (props: ResetPasswordProps) => {
                   >
                     {tr("resetPasswordSendCode")}
                   </ActionButton>
-                </Stack>
+                </Flex>
               </form>
             ) : resetState.step === "code" ? (
-              <Stack gap={"md"}>
+              <Flex direction="column" gap={"md"}>
                 <Text size="lg" fw={500} ta="center">
                   {tr("resetPasswordTitle")}
                 </Text>
@@ -247,10 +238,10 @@ const ResetPassword = (props: ResetPasswordProps) => {
                 >
                   {tr("resetPasswordResendCode")}
                 </ActionButton>
-              </Stack>
+              </Flex>
             ) : resetState.step === "password" ? (
               <form {...passwordForm.props}>
-                <Stack flex={1} gap={"md"}>
+                <Flex direction="column" flex={1} gap={"md"}>
                   <Text size="lg" fw={500} ta="center">
                     {tr("resetPasswordTitle")}
                   </Text>
@@ -277,7 +268,7 @@ const ResetPassword = (props: ResetPasswordProps) => {
                   <ActionButton form={passwordForm}>
                     {tr("resetPasswordSetNewPassword")}
                   </ActionButton>
-                </Stack>
+                </Flex>
               </form>
             ) : (
               <>
@@ -293,12 +284,12 @@ const ResetPassword = (props: ResetPasswordProps) => {
                 </ActionButton>
               </>
             )}
-          </Stack>
+          </Flex>
         </Card>
         <ActionButton variant={"subtle"} href={redirect}>
           {tr("resetPasswordCancel")}
         </ActionButton>
-      </Stack>
+      </Flex>
     </Flex>
   );
 };

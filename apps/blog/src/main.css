@@ -1,5 +1,9 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 @import "@alepha/ui/styles";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Variables
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
   --cf-orange: #f6821f;
@@ -13,6 +17,75 @@
   --cf-text: #1d1f20;
   --cf-text-dimmed: #6b7280;
   --cf-section-label: #9ca3af;
+
+  --blog-font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+  --blog-font-sans:
+    "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Blog — Light Mode */
+:root,
+[data-mantine-color-scheme="light"] {
+  --blog-bg: #fafaf8;
+  --blog-text: #1a1a1a;
+  --blog-text-secondary: #24292f;
+  --blog-text-muted: #656d76;
+  --blog-text-faint: #8b949e;
+  --blog-accent: #0969da;
+  --blog-border: #d1d9e0;
+  --blog-surface: #f6f8fa;
+  --blog-code-bg: #f6f8fa;
+
+  /* Syntax highlighting — light */
+  --hljs-keyword: #cf222e;
+  --hljs-string: #0a3069;
+  --hljs-number: #0550ae;
+  --hljs-comment: #6e7781;
+  --hljs-function: #8250df;
+  --hljs-variable: #953800;
+  --hljs-type: #0550ae;
+  --hljs-tag: #116329;
+  --hljs-attr: #0550ae;
+  --hljs-literal: #0550ae;
+  --hljs-operator: #cf222e;
+  --hljs-punctuation: #24292f;
+}
+
+/* Blog — Dark Mode */
+[data-mantine-color-scheme="dark"] {
+  --blog-bg: #0d1117;
+  --blog-text: #e6edf3;
+  --blog-text-secondary: #c9d1d9;
+  --blog-text-muted: #8b949e;
+  --blog-text-faint: #484f58;
+  --blog-accent: #4493f8;
+  --blog-border: #30363d;
+  --blog-surface: #161b22;
+  --blog-code-bg: #161b22;
+
+  /* Syntax highlighting — dark */
+  --hljs-keyword: #ff7b72;
+  --hljs-string: #a5d6ff;
+  --hljs-number: #79c0ff;
+  --hljs-comment: #8b949e;
+  --hljs-function: #d2a8ff;
+  --hljs-variable: #ffa657;
+  --hljs-type: #79c0ff;
+  --hljs-tag: #7ee787;
+  --hljs-attr: #79c0ff;
+  --hljs-literal: #79c0ff;
+  --hljs-operator: #ff7b72;
+  --hljs-punctuation: #c9d1d9;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Base / Reset
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Stronger default borders in light mode */
@@ -21,18 +94,279 @@
   --mantine-color-gray-3: #c9cdd3;
 }
 
-body {
-  margin: 0;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* ═══════════════════════════════════════════════════════════════════════════
+   Blog — Article Content Typography
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.blog-article-content h1,
+.blog-article-content h2,
+.blog-article-content h3 {
+  font-family: var(--blog-font-mono);
+  font-weight: 700;
+  color: var(--blog-text);
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  scroll-margin-top: 80px;
 }
 
-/* Sidebar active item - Cloudflare dark style */
+.blog-article-content h1 {
+  font-size: 1.75rem;
+}
+
+.blog-article-content h2 {
+  font-size: 1.5rem;
+}
+
+.blog-article-content h3 {
+  font-size: 1.25rem;
+}
+
+.blog-article-content p {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  color: var(--blog-text-secondary);
+  margin-bottom: 1.25em;
+}
+
+.blog-article-content a {
+  color: var(--blog-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--blog-accent) 40%,
+    transparent
+  );
+  transition: text-decoration-color 200ms ease;
+}
+
+.blog-article-content a:hover {
+  text-decoration-color: var(--blog-accent);
+}
+
+.blog-article-content img {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 1.5em 0;
+}
+
+.blog-article-content blockquote {
+  border-left: 3px solid var(--blog-border);
+  padding-left: 1.25em;
+  margin: 1.5em 0;
+  color: var(--blog-text-muted);
+  font-style: italic;
+}
+
+.blog-article-content ul,
+.blog-article-content ol {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  color: var(--blog-text-secondary);
+  padding-left: 1.5em;
+  margin-bottom: 1.25em;
+}
+
+.blog-article-content li {
+  margin-bottom: 0.35em;
+}
+
+.blog-article-content code {
+  background: var(--blog-code-bg);
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+  font-family: var(--blog-font-mono);
+}
+
+.blog-article-content pre {
+  background: var(--blog-surface);
+  color: var(--blog-text);
+  padding: 1.25em;
+  border-radius: 6px;
+  border: 1px solid var(--blog-border);
+  overflow-x: auto;
+  margin: 1.5em 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  font-family: var(--blog-font-mono);
+}
+
+.blog-article-content pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+/* highlight.js token colors */
+.blog-article-content .hljs-keyword,
+.blog-article-content .hljs-selector-tag {
+  color: var(--hljs-keyword);
+}
+
+.blog-article-content .hljs-string,
+.blog-article-content .hljs-doctag {
+  color: var(--hljs-string);
+}
+
+.blog-article-content .hljs-number {
+  color: var(--hljs-number);
+}
+
+.blog-article-content .hljs-comment {
+  color: var(--hljs-comment);
+  font-style: italic;
+}
+
+.blog-article-content .hljs-function,
+.blog-article-content .hljs-title.function_ {
+  color: var(--hljs-function);
+}
+
+.blog-article-content .hljs-variable,
+.blog-article-content .hljs-template-variable,
+.blog-article-content .hljs-attr {
+  color: var(--hljs-variable);
+}
+
+.blog-article-content .hljs-type,
+.blog-article-content .hljs-built_in,
+.blog-article-content .hljs-title.class_ {
+  color: var(--hljs-type);
+}
+
+.blog-article-content .hljs-tag {
+  color: var(--hljs-tag);
+}
+
+.blog-article-content .hljs-name {
+  color: var(--hljs-tag);
+}
+
+.blog-article-content .hljs-literal {
+  color: var(--hljs-literal);
+}
+
+.blog-article-content .hljs-operator,
+.blog-article-content .hljs-punctuation {
+  color: var(--hljs-punctuation);
+}
+
+.blog-article-content .hljs-meta {
+  color: var(--hljs-comment);
+}
+
+.blog-article-content .hljs-property {
+  color: var(--hljs-variable);
+}
+
+.blog-article-content .hljs-params {
+  color: var(--blog-text-secondary);
+}
+
+.blog-article-content hr {
+  border: none;
+  border-top: 1px solid var(--blog-border);
+  margin: 2em 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Blog — Post Separator
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.blog-post-separator {
+  border: none;
+  border-top: 1px solid var(--blog-border);
+  margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Blog — Interactive States
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.blog-nav-link {
+  transition: color 180ms ease;
+}
+
+.blog-nav-link:hover {
+  color: var(--blog-text) !important;
+}
+
+.blog-load-more {
+  transition: color 200ms ease;
+}
+
+.blog-load-more:hover {
+  color: var(--blog-text) !important;
+}
+
+.blog-post-title {
+  transition: color 180ms ease;
+}
+
+.blog-post-title:hover {
+  color: var(--blog-accent) !important;
+}
+
+.blog-tag-link {
+  transition: color 180ms ease;
+  cursor: pointer;
+}
+
+.blog-tag-link:hover {
+  color: var(--blog-accent) !important;
+}
+
+/* Anchor link style (HTML-style blue links) */
+.blog-anchor-link {
+  color: var(--blog-accent);
+  text-decoration: none;
+  transition: all 180ms ease;
+}
+
+.blog-anchor-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Category arrow animation */
+.blog-category-arrow {
+  transition: transform 200ms ease;
+}
+
+.blog-category-item:hover .blog-category-arrow {
+  transform: translateX(4px);
+}
+
+/* TOC sidebar */
+.blog-toc {
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+.blog-toc-link {
+  transition: color 180ms ease;
+}
+
+.blog-toc-link:hover {
+  color: var(--blog-text) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Admin Theme (Cloudflare-inspired)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Sidebar active item — Cloudflare dark style */
 .cf-nav-active {
   background-color: var(--cf-dark) !important;
   color: #fff !important;
   border-radius: 6px;
 }
+
 .cf-nav-active .mantine-NavLink-label,
 .cf-nav-active .mantine-NavLink-description {
   color: #fff !important;
@@ -48,7 +382,7 @@ body {
   padding: 16px 12px 4px;
 }
 
-/* Product/stat cards */
+/* Product / stat cards */
 .cf-card {
   border: 1px solid var(--mantine-color-default-border);
   border-radius: 8px;
@@ -56,95 +390,82 @@ body {
   background: var(--mantine-color-body);
   transition: box-shadow 0.15s ease;
 }
+
 .cf-card:hover {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
 }
+
 .cf-card-clickable {
   cursor: pointer;
 }
 
-/* Mantine Card border override for light mode */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Mantine Light-Mode Overrides
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root[data-mantine-color-scheme="light"] .mantine-Card-root[data-with-border] {
   border-color: #d1d5db;
 }
 
-/* Mantine Table border override for light mode */
 :root[data-mantine-color-scheme="light"] .mantine-Table-tr {
   border-color: #d1d5db;
 }
 
-/* SegmentedControl stronger border */
 :root[data-mantine-color-scheme="light"] .mantine-SegmentedControl-root {
   border: 1px solid #d1d5db;
 }
 
-/* Input borders */
 :root[data-mantine-color-scheme="light"] .mantine-Input-input {
   border-color: #d1d5db;
 }
 
-/* Divider */
 :root[data-mantine-color-scheme="light"] .mantine-Divider-root {
   --_divider-color: #d1d5db;
 }
 
-/* Sidebar scrollbar - hugs the right border */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Admin Sidebar Scrollbar
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .cf-sidebar .mantine-ScrollArea-viewport {
   scrollbar-gutter: stable;
 }
+
 .cf-sidebar .mantine-ScrollArea-scrollbar {
   right: 0 !important;
   width: 4px !important;
   padding: 0 !important;
 }
+
 .cf-sidebar .mantine-ScrollArea-thumb {
   background: #c9cdd3 !important;
   border-radius: 0 !important;
 }
+
 :root[data-mantine-color-scheme="dark"] .cf-sidebar .mantine-ScrollArea-thumb {
   background: #4b5563 !important;
 }
 
-/* Stat sparkline placeholder */
-.cf-sparkline {
-  height: 32px;
-  margin-top: 8px;
-  border-left: 2px solid #3b82f6;
-  margin-left: 4px;
+/* ═══════════════════════════════════════════════════════════════════════════
+   Rich Text Editor (TipTap / Mantine) — Admin
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.mantine-RichTextEditor-root {
+  border: none;
 }
 
-/* Media grid image placeholder */
-.cf-media-placeholder {
-  aspect-ratio: 1;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  font-weight: 700;
-  color: #fff;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-.cf-media-placeholder:hover {
-  opacity: 0.85;
+.mantine-RichTextEditor-toolbar {
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  background: transparent;
 }
 
-/* Theme card */
-.cf-theme-card {
-  border: 1px solid var(--mantine-color-default-border);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--mantine-color-body);
-  cursor: pointer;
-  transition: box-shadow 0.15s ease;
+.mantine-RichTextEditor-content .tiptap {
+  padding: 16px;
+  min-height: 400px;
+  font-size: 1rem;
+  line-height: 1.7;
 }
-.cf-theme-card:hover {
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-.cf-theme-preview {
-  height: 160px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+
+.mantine-RichTextEditor-content .tiptap p.is-editor-empty:first-child::before {
+  color: var(--blog-text-faint);
 }

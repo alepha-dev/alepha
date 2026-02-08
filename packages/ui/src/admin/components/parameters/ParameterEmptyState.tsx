@@ -1,5 +1,5 @@
 import { Text } from "@alepha/ui";
-import { Flex, Stack } from "@mantine/core";
+import { Flex } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 
 /**
@@ -9,17 +9,17 @@ import { IconArrowLeft } from "@tabler/icons-react";
 const ParameterEmptyState = () => {
   return (
     <Flex flex={1} p={"xl"} align="center">
-      <Stack align="center" gap="md">
+      <Flex direction="column" align="center" gap="md">
         <IconArrowLeft size={32} color="var(--mantine-color-dimmed)" />
-        <Stack align="center" gap={4}>
+        <Flex direction="column" align="center" gap={4}>
           <Text fw={500} c="dimmed">
             No Parameter Selected
           </Text>
           <Text size="xs" c="dimmed" ta="center" maw={240}>
             Choose a parameter from the tree to view and edit its configuration
           </Text>
-        </Stack>
-      </Stack>
+        </Flex>
+      </Flex>
     </Flex>
   );
 };

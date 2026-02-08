@@ -1,5 +1,5 @@
 import { DataTable, Flex, Text } from "@alepha/ui";
-import { Badge, Group, Stack, Tooltip } from "@mantine/core";
+import { Badge, Tooltip } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconCheck,
@@ -155,20 +155,20 @@ const AdminAudits = (props: AdminAuditsProps) => {
               item.userId ? (
                 <Tooltip
                   label={
-                    <Stack gap={2}>
+                    <Flex direction="column" gap={2}>
                       <Text size="xs">{item.userEmail || "No email"}</Text>
                       <Text size="xs" c="dimmed">
                         {item.userRealm || "default"}
                       </Text>
-                    </Stack>
+                    </Flex>
                   }
                 >
-                  <Group gap={4}>
+                  <Flex gap={4}>
                     <IconUser size={12} />
                     <Text size="xs" lineClamp={1} maw={100}>
                       {item.userEmail?.split("@")[0] || item.userId.slice(0, 8)}
                     </Text>
-                  </Group>
+                  </Flex>
                 </Tooltip>
               ) : (
                 <Text size="xs" c="dimmed">

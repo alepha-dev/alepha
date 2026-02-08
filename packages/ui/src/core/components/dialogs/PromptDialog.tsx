@@ -1,4 +1,4 @@
-import { Button, Group, Text, TextInput } from "@mantine/core";
+import { Button, Flex, Text, TextInput } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 import type { PromptDialogProps } from "../../services/DialogService.tsx";
 
@@ -36,7 +36,7 @@ const PromptDialog = ({ options, onSubmit }: PromptDialogProps) => {
         required={options?.required}
         mb="md"
       />
-      <Group justify="flex-end">
+      <Flex justify="flex-end">
         <Button variant="subtle" onClick={() => onSubmit(null)}>
           {options?.cancelLabel || "Cancel"}
         </Button>
@@ -46,7 +46,7 @@ const PromptDialog = ({ options, onSubmit }: PromptDialogProps) => {
         >
           {options?.submitLabel || "OK"}
         </Button>
-      </Group>
+      </Flex>
     </>
   );
 };

@@ -1,5 +1,5 @@
 import { ActionButton, Flex, Text } from "@alepha/ui";
-import { Alert, Card, Group, Loader, Stack } from "@mantine/core";
+import { Alert, Card, Loader } from "@mantine/core";
 import {
   IconAlertCircle,
   IconCheck,
@@ -106,7 +106,7 @@ const AdminUserSettings = (props: AdminUserSettingsProps) => {
     <Flex flex={1} direction="column" gap="md">
       {user.email && !user.emailVerified && (
         <Card withBorder p="lg">
-          <Stack gap="md">
+          <Flex direction="column" gap="md">
             <Text size="lg" fw={500}>
               Email Verification
             </Text>
@@ -126,7 +126,7 @@ const AdminUserSettings = (props: AdminUserSettingsProps) => {
               </Alert>
             )}
 
-            <Group>
+            <Flex>
               <ActionButton
                 leftSection={<IconMail size={16} />}
                 loading={verifyLoading}
@@ -134,13 +134,13 @@ const AdminUserSettings = (props: AdminUserSettingsProps) => {
               >
                 Send Verification Link
               </ActionButton>
-            </Group>
-          </Stack>
+            </Flex>
+          </Flex>
         </Card>
       )}
 
       <Card withBorder p="lg">
-        <Stack gap="md">
+        <Flex direction="column" gap="md">
           <Text size="lg" fw={500} c="red">
             Danger Zone
           </Text>
@@ -152,7 +152,7 @@ const AdminUserSettings = (props: AdminUserSettingsProps) => {
             </Text>
           </Alert>
 
-          <Group>
+          <Flex>
             <ActionButton
               color="red"
               leftSection={<IconTrash size={16} />}
@@ -161,8 +161,8 @@ const AdminUserSettings = (props: AdminUserSettingsProps) => {
             >
               Delete User
             </ActionButton>
-          </Group>
-        </Stack>
+          </Flex>
+        </Flex>
       </Card>
     </Flex>
   );

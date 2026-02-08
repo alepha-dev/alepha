@@ -1,5 +1,5 @@
 import { Text, useToast } from "@alepha/ui";
-import { Card, Flex, Stack } from "@mantine/core";
+import { Card, Flex } from "@mantine/core";
 import { IconSettings } from "@tabler/icons-react";
 import type {
   AdminParameterController,
@@ -153,7 +153,7 @@ const AdminParameters = ({
   if (treeData.length === 0) {
     return (
       <Flex flex={1} justify="center" align="center">
-        <Stack align="center" gap="xs">
+        <Flex direction="column" align="center" gap="xs">
           <IconSettings
             size={48}
             stroke={1.5}
@@ -164,7 +164,7 @@ const AdminParameters = ({
             Define parameters using the $parameter primitive to manage dynamic
             application settings. Parameters will appear here once created.
           </Text>
-        </Stack>
+        </Flex>
       </Flex>
     );
   }

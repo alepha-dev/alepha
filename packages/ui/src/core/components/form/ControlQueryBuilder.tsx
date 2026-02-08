@@ -3,9 +3,7 @@ import {
   Badge,
   Divider,
   Flex,
-  Group,
   Popover,
-  Stack,
   Text,
   TextInput,
   type TextInputProps,
@@ -165,7 +163,7 @@ interface QueryHelpProps {
 
 function QueryHelp({ fields, onInsert }: QueryHelpProps) {
   return (
-    <Group
+    <Flex
       gap="md"
       align="flex-start"
       wrap="nowrap"
@@ -174,15 +172,15 @@ function QueryHelp({ fields, onInsert }: QueryHelpProps) {
       bdrs={"sm"}
     >
       {/* Left Column: Operators */}
-      <Stack gap="md" style={{ flex: 1 }}>
+      <Flex direction="column" gap="md" style={{ flex: 1 }}>
         {/* Available Operators */}
-        <Stack gap="xs">
+        <Flex direction="column" gap="xs">
           <Text size="sm" fw={600}>
             Operators
           </Text>
-          <Stack gap={4}>
+          <Flex direction="column" gap={4}>
             {Object.entries(OPERATOR_INFO).map(([key, info]) => (
-              <Group key={key} gap="xs" wrap="nowrap">
+              <Flex key={key} gap="xs" wrap="nowrap">
                 <ActionButton
                   px={"xs"}
                   size={"xs"}
@@ -197,20 +195,20 @@ function QueryHelp({ fields, onInsert }: QueryHelpProps) {
                 <Text size="xs" c="dimmed" style={{ flex: 1 }}>
                   {info.label}
                 </Text>
-              </Group>
+              </Flex>
             ))}
-          </Stack>
-        </Stack>
+          </Flex>
+        </Flex>
 
         <Divider />
 
         {/* Logic Operators */}
-        <Stack gap="xs">
+        <Flex direction="column" gap="xs">
           <Text size="sm" fw={600}>
             Logic
           </Text>
-          <Stack gap={4}>
-            <Group gap="xs" wrap="nowrap">
+          <Flex direction="column" gap={4}>
+            <Flex gap="xs" wrap="nowrap">
               <ActionButton
                 px={"xs"}
                 size={"xs"}
@@ -225,8 +223,8 @@ function QueryHelp({ fields, onInsert }: QueryHelpProps) {
               <Text size="xs" c="dimmed">
                 AND
               </Text>
-            </Group>
-            <Group gap="xs" wrap="nowrap">
+            </Flex>
+            <Flex gap="xs" wrap="nowrap">
               <ActionButton
                 px={"xs"}
                 size={"xs"}
@@ -241,10 +239,10 @@ function QueryHelp({ fields, onInsert }: QueryHelpProps) {
               <Text size="xs" c="dimmed">
                 OR
               </Text>
-            </Group>
-          </Stack>
-        </Stack>
-      </Stack>
+            </Flex>
+          </Flex>
+        </Flex>
+      </Flex>
 
       {/* Divider */}
       {fields.length > 0 && <Divider orientation="vertical" />}
@@ -283,7 +281,7 @@ function QueryHelp({ fields, onInsert }: QueryHelpProps) {
                     {field.description || field.type}
                   </Text>
                   {field.enum && (
-                    <Group gap={0} wrap="wrap">
+                    <Flex gap={0} wrap="wrap">
                       {field.enum.map((enumValue) => (
                         <ActionButton
                           px={"xs"}
@@ -295,7 +293,7 @@ function QueryHelp({ fields, onInsert }: QueryHelpProps) {
                           {enumValue}
                         </ActionButton>
                       ))}
-                    </Group>
+                    </Flex>
                   )}
                 </Flex>
                 <Badge size="xs" variant="light" style={{ flexShrink: 0 }}>
@@ -306,7 +304,7 @@ function QueryHelp({ fields, onInsert }: QueryHelpProps) {
           </Flex>
         </Flex>
       )}
-    </Group>
+    </Flex>
   );
 }
 
