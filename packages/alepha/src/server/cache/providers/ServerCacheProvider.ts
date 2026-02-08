@@ -43,6 +43,7 @@ export class ServerCacheProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly time = $inject(DateTimeProvider);
   protected readonly cache = $cache<RouteCacheEntry>({
+    name: "http:server:request",
     provider: "memory",
   });
 

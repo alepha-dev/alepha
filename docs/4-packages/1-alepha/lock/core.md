@@ -39,4 +39,4 @@ Environment variables used to configure this module. These can be set in your `.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `LOCK_PREFIX_KEY` | text | lock |  |
+| `LOCK_PREFIX_KEY` | text |  |  |

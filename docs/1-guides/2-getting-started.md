@@ -94,12 +94,12 @@ You should see:
 [02:10:43.013] INFO <alepha.core.Alepha>: Starting App...
 [02:10:43.013] INFO <alepha.core.Alepha>: App is now ready [0ms]
 
-  ➜  Local:   http://localhost:3000/
+  ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
   ➜  press h + enter to show help
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser. You will see "Hello, Alepha!".
+Open [http://localhost:5173](http://localhost:5173) in your browser. You will see "Hello, Alepha!".
 
 Development mode gives you:
 
@@ -147,7 +147,7 @@ Key differences from `$route`:
 - If a `schema.body` is provided, the method defaults to `POST`.
 - The response is type-checked at compile time.
 
-Save the file. HMR reloads the server. Visit [http://localhost:3000/api/hello](http://localhost:3000/api/hello).
+Save the file. HMR reloads the server. Visit [http://localhost:5173/api/hello](http://localhost:5173/api/hello).
 
 ## Build for Production
 
@@ -170,6 +170,11 @@ Or with Bun:
 ```bash
 bun dist
 ```
+
+App starts up just like in development mode, but without HMR and with better performance.
+
+> In production, default port is 3000 instead of 5173 to avoid conflicts with development servers.
+> `SERVER_PORT` environment variable can override this.
 
 ### Build Targets
 

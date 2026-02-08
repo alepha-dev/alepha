@@ -288,7 +288,7 @@ export interface LockPrimitiveOptions<TFunc extends AsyncFn> {
 // ---------------------------------------------------------------------------------------------------------------------
 
 const envSchema = t.object({
-  LOCK_PREFIX_KEY: t.text({ default: "lock" }),
+  LOCK_PREFIX_KEY: t.text({ default: "" }),
 });
 
 declare module "alepha" {
@@ -320,7 +320,7 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
   );
 
   protected readonly topicLockEnd = $topic({
-    name: `${this.env.LOCK_PREFIX_KEY}:lock-end`,
+    name: `${this.env.LOCK_PREFIX_KEY}lock:end`,
     provider: LockTopicProvider,
     schema: {
       payload: t.object({
@@ -433,7 +433,7 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
       base = `${this.config.service.name}:${this.config.propertyKey}`;
     }
 
-    return `${this.env.LOCK_PREFIX_KEY}:${base}`;
+    return `${this.env.LOCK_PREFIX_KEY}${base}`;
   }
 
   protected parse(value: string): LockResult {

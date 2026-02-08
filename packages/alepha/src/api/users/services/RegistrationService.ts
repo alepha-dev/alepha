@@ -48,7 +48,7 @@ export class RegistrationService {
   protected readonly realmProvider = $inject(RealmProvider);
 
   protected readonly intentCache = $cache<RegistrationIntent>({
-    name: "registration-intents",
+    name: "api:users:registrations",
     ttl: [INTENT_TTL_MINUTES, "minutes"],
   });
 

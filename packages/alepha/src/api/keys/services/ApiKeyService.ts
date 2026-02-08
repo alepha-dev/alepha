@@ -18,7 +18,7 @@ export class ApiKeyService {
    * Cache validated API keys for 15 minutes.
    */
   protected readonly validationCache = $cache<ApiKeyEntity | null, [string]>({
-    name: "api-key-validation",
+    name: "api:keys:validation",
     ttl: [15, "minutes"],
   });
 

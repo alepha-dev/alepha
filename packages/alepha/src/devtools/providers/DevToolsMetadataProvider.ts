@@ -16,9 +16,10 @@ import {
   RepositoryProvider,
 } from "alepha/orm";
 import { $queue } from "alepha/queue";
+import { $page } from "alepha/react/router";
 import { $scheduler } from "alepha/scheduler";
 import { $issuer } from "alepha/security";
-import { $action } from "alepha/server";
+import { $action, ServerProvider } from "alepha/server";
 import { $topic } from "alepha/topic";
 import type { DevActionMetadata } from "../schemas/DevActionMetadata.ts";
 import type { DevAtomMetadata } from "../schemas/DevAtomMetadata.ts";
@@ -33,7 +34,7 @@ import type {
   DevEntityMetadata,
 } from "../schemas/DevEntityMetadata.ts";
 import type { DevEnvMetadata } from "../schemas/DevEnvMetadata.ts";
-import type { DevMetadata } from "../schemas/DevMetadata.ts";
+import type { DevMetadata, DevSystem } from "../schemas/DevMetadata.ts";
 import type { DevModuleMetadata } from "../schemas/DevModuleMetadata.ts";
 import type { DevPageMetadata } from "../schemas/DevPageMetadata.ts";
 import type { DevProviderMetadata } from "../schemas/DevProviderMetadata.ts";
@@ -46,6 +47,8 @@ import type { DevTopicMetadata } from "../schemas/DevTopicMetadata.ts";
 export class DevToolsMetadataProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
+  protected readonly serverProvider = $inject(ServerProvider);
+  protected readonly startedAt = Date.now();
 
   public getActions(): DevActionMetadata[] {
     const actionPrimitives = this.alepha.primitives($action);
@@ -101,12 +104,23 @@ export class DevToolsMetadataProvider {
   public getTopics(): DevTopicMetadata[] {
     const topicPrimitives = this.alepha.primitives($topic);
 
-    return topicPrimitives.map((topic) => ({
-      name: topic.name,
-      description: topic.options.description,
-      schema: topic.options.schema,
-      provider: this.getProviderName(topic.options.provider),
-    }));
+    // Deduplicate by name, count subscribers
+    const topicMap = new Map<string, DevTopicMetadata>();
+    for (const topic of topicPrimitives) {
+      const existing = topicMap.get(topic.name);
+      if (existing) {
+        existing.subscribers++;
+      } else {
+        topicMap.set(topic.name, {
+          name: topic.name,
+          description: topic.options.description,
+          schema: topic.options.schema,
+          provider: this.getProviderName(topic.options.provider),
+          subscribers: 1,
+        });
+      }
+    }
+    return Array.from(topicMap.values());
   }
 
   public getBuckets(): DevBucketMetadata[] {
@@ -152,30 +166,42 @@ export class DevToolsMetadataProvider {
   }
 
   public getPages(): DevPageMetadata[] {
-    // const pagePrimitives = this.alepha.primitives($page);
-    //
-    // return pagePrimitives.map((page) => ({
-    //   name: page.name,
-    //   description: page.options.description,
-    //   path: page.options.path,
-    //   params: page.options.schema?.params,
-    //   query: page.options.schema?.query,
-    //   hasComponent: !!page.options.component,
-    //   hasLazy: !!page.options.lazy,
-    //   hasResolve: !!page.options.resolve,
-    //   hasChildren: !!page.options.children,
-    //   hasParent: !!page.options.parent,
-    //   hasErrorHandler: !!page.options.errorHandler,
-    //   static:
-    //     typeof page.options.static === "boolean"
-    //       ? page.options.static
-    //       : !!page.options.static,
-    //   cache: page.options.cache,
-    //   client: page.options.client,
-    //   animation: page.options.animation,
-    // }));
+    const pagePrimitives = this.alepha.primitives($page);
 
-    return [];
+    return pagePrimitives.map((page: any) => {
+      // Resolve children (can be an array or a function returning an array)
+      const children =
+        typeof page.options.children === "function"
+          ? page.options.children()
+          : page.options.children;
+      const childrenNames = Array.isArray(children)
+        ? children.map((c: any) => c.name).filter(Boolean)
+        : undefined;
+
+      return {
+        name: page.name,
+        label: page.options.label,
+        description: page.options.description,
+        path: page.options.path,
+        parentName: page.options.parent?.name,
+        params: page.options.schema?.params,
+        query: page.options.schema?.query,
+        hasComponent: !!page.options.component,
+        hasLazy: !!page.options.lazy,
+        hasResolve: !!page.options.resolve,
+        childrenNames: childrenNames?.length ? childrenNames : undefined,
+        hasChildren: !!page.options.children,
+        hasParent: !!page.options.parent,
+        hasErrorHandler: !!page.options.errorHandler,
+        static:
+          typeof page.options.static === "boolean"
+            ? page.options.static
+            : !!page.options.static,
+        cache: page.options.cache,
+        client: page.options.client,
+        animation: page.options.animation,
+      };
+    });
   }
 
   public getProviders(): DevProviderMetadata[] {
@@ -291,6 +317,9 @@ export class DevToolsMetadataProvider {
           indexes,
           foreignKeys,
           constraints,
+          schema: entity.schema,
+          insertSchema: entity.insertSchema,
+          updateSchema: entity.updateSchema,
         };
       });
     } catch {
@@ -388,8 +417,25 @@ export class DevToolsMetadataProvider {
     }));
   }
 
+  public getSystem(): DevSystem {
+    const isBun = typeof globalThis.Bun !== "undefined";
+    const port = Number(this.alepha.env.SERVER_PORT) || 3000;
+    return {
+      alephaVersion: String(this.alepha.env.npm_package_version ?? "unknown"),
+      nodeVersion: isBun
+        ? (globalThis.Bun?.version ?? "unknown")
+        : process.version,
+      runtime: isBun ? "bun" : "node",
+      mode: this.alepha.isProduction() ? "production" : "development",
+      port,
+      uptime: (Date.now() - this.startedAt) / 1000,
+      memoryUsage: process.memoryUsage?.()?.rss ?? 0,
+    };
+  }
+
   public getMetadata(): DevMetadata {
     return {
+      system: this.getSystem(),
       actions: this.getActions(),
       queues: this.getQueues(),
       schedulers: this.getSchedulers(),

@@ -101,19 +101,6 @@ npx alepha init my-app --api         # L1: Backend only
 cd my-app && npm run dev
 ```
 
-## CLI
-
-```bash
-alepha dev          # Dev server with HMR
-alepha lint         # Format & lint code
-alepha typecheck    # TypeScript check
-alepha test         # Run tests
-alepha build        # Production build
-alepha db generate  # Generate migrations
-alepha db migrate   # Apply migrations
-alepha db studio    # Visual database browser
-```
-
 ## Learn More
 
 - [Documentation](https://alepha.dev)

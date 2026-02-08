@@ -1,6 +1,5 @@
-import { ui } from "@alepha/ui";
+import { ActionButton, ui } from "@alepha/ui";
 import {
-  ActionIcon,
   Badge,
   Box,
   Divider,
@@ -74,9 +73,12 @@ export const NodeDetails = ({
             </Text>
           )}
         </Box>
-        <ActionIcon size="sm" variant="subtle" onClick={onClose}>
-          <IconX size={14} />
-        </ActionIcon>
+        <ActionButton
+          size="sm"
+          variant="subtle"
+          onClick={onClose}
+          icon={<IconX size={14} />}
+        />
       </Flex>
 
       {!isModule && data.aliases && data.aliases.length > 0 && (

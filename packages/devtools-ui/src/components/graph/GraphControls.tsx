@@ -1,6 +1,5 @@
-import { ui } from "@alepha/ui";
+import { ActionButton, ui } from "@alepha/ui";
 import {
-  ActionIcon,
   Badge,
   Checkbox,
   Flex,
@@ -158,11 +157,13 @@ export const GraphControls = ({
         </Badge>
       </Group>
 
-      <Tooltip label="Export as PNG">
-        <ActionIcon size="sm" variant="subtle" onClick={onExport}>
-          <IconDownload size={14} />
-        </ActionIcon>
-      </Tooltip>
+      <ActionButton
+        size="sm"
+        variant="subtle"
+        tooltip="Export as PNG"
+        onClick={onExport}
+        icon={<IconDownload size={14} />}
+      />
     </Flex>
   );
 };

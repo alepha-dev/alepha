@@ -38,6 +38,12 @@ export interface SidebarProps {
   };
 
   /**
+   * Whether the sidebar expands on hover when collapsed.
+   * @default true
+   */
+  expandOnHover?: boolean;
+
+  /**
    * Automatically populate the menu from the router's pages.
    */
   autoPopulateMenu?:

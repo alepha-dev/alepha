@@ -1,5 +1,4 @@
 import { readFile } from "node:fs/promises";
-import type { ServerResponse } from "node:http";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { $inject, type Alepha, AlephaError } from "alepha";
@@ -51,7 +50,6 @@ export class ViteDevServerProvider {
   protected reloadDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   protected isReloading = false;
   protected needsBrowserReload = false;
-  protected devtoolsClients = new Set<ServerResponse>();
 
   /**
    * Initialize the dev server and load Alepha.
@@ -431,7 +429,7 @@ export class ViteDevServerProvider {
 
     const mod = await this.server.ssrLoadModule("alepha/devtools");
 
-    alepha.with(mod.AlephaDevtools);
+    // alepha.with(mod.AlephaDevtools);
 
     this.alepha = alepha;
     await this.setupAlepha();

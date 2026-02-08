@@ -90,14 +90,11 @@ export interface DashboardShellProps {
 const DashboardShell = (props: DashboardShellProps) => {
   const router = useRouter();
   const [sidebar, setSidebar] = useStore(alephaSidebarAtom);
-  const { opened, collapsed } = sidebar;
-
-  // Initialize collapsed state from props on mount
-  useEffect(() => {
-    if (props.sidebarProps?.collapsed !== undefined) {
-      setSidebar({ ...sidebar, collapsed: props.sidebarProps.collapsed });
-    }
-  }, []);
+  const { opened } = sidebar;
+  const collapsed =
+    props.sidebarProps?.collapsed !== undefined
+      ? props.sidebarProps.collapsed
+      : sidebar.collapsed;
 
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
@@ -197,13 +194,15 @@ const DashboardShell = (props: DashboardShellProps) => {
   // Hover to expand when collapsed (with delay)
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const expandOnHover = props.sidebarProps?.expandOnHover !== false;
+
   const handleNavbarMouseEnter = useCallback(() => {
-    if (collapsed) {
+    if (collapsed && expandOnHover) {
       hoverTimeoutRef.current = setTimeout(() => {
         setIsHovering(true);
       }, hoverDelay);
     }
-  }, [collapsed, hoverDelay]);
+  }, [collapsed, expandOnHover, hoverDelay]);
 
   const handleNavbarMouseLeave = useCallback(() => {
     if (hoverTimeoutRef.current) {

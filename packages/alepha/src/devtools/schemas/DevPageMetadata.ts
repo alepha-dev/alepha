@@ -2,13 +2,16 @@ import { type Static, t } from "alepha";
 
 export const devPageMetadataSchema = t.object({
   name: t.text(),
+  label: t.optional(t.text()),
   description: t.optional(t.text()),
   path: t.optional(t.text()),
+  parentName: t.optional(t.text()),
   params: t.optional(t.any()),
   query: t.optional(t.any()),
   hasComponent: t.boolean(),
   hasLazy: t.boolean(),
   hasResolve: t.boolean(),
+  childrenNames: t.optional(t.array(t.text())),
   hasChildren: t.boolean(),
   hasParent: t.boolean(),
   hasErrorHandler: t.boolean(),

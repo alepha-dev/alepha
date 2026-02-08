@@ -49,7 +49,13 @@ export class ServerLoggerProvider {
       }
 
       const ms = Date.now() - request.metadata.now;
-      this.log.info("Request completed", { status: response.status, ms });
+      this.log.info("Request completed", {
+        type: "http:request",
+        method: request.method,
+        path: request.url.pathname,
+        status: response.status,
+        duration: ms,
+      });
     },
   });
 }

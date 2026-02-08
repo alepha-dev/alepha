@@ -15,7 +15,20 @@ import { devRouteMetadataSchema } from "./DevRouteMetadata.ts";
 import { devSchedulerMetadataSchema } from "./DevSchedulerMetadata.ts";
 import { devTopicMetadataSchema } from "./DevTopicMetadata.ts";
 
+export const devSystemSchema = t.object({
+  alephaVersion: t.text(),
+  nodeVersion: t.text(),
+  runtime: t.enum(["node", "bun"]),
+  mode: t.enum(["development", "production"]),
+  port: t.integer(),
+  uptime: t.number(),
+  memoryUsage: t.number(),
+});
+
+export type DevSystem = Static<typeof devSystemSchema>;
+
 export const devMetadataSchema = t.object({
+  system: devSystemSchema,
   actions: t.array(devActionMetadataSchema),
   queues: t.array(devQueueMetadataSchema),
   schedulers: t.array(devSchedulerMetadataSchema),

@@ -5,7 +5,7 @@ export class MemoryDestinationProvider extends LogDestinationProvider {
   protected entries: Array<LogEntry & { formatted: string }> = [];
 
   public readonly options = {
-    maxEntries: 1000,
+    maxEntries: 10_000,
   };
 
   public write(formatted: string, entry: LogEntry): void {

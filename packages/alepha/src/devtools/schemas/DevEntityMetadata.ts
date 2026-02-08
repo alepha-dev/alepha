@@ -48,6 +48,9 @@ export const devEntityMetadataSchema = t.object({
   indexes: t.array(devEntityIndexSchema),
   foreignKeys: t.array(devEntityForeignKeySchema),
   constraints: t.array(devEntityConstraintSchema),
+  schema: t.optional(t.any()),
+  insertSchema: t.optional(t.any()),
+  updateSchema: t.optional(t.any()),
 });
 
 export type DevEntityColumn = Static<typeof devEntityColumnSchema>;

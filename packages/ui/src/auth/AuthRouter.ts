@@ -27,6 +27,7 @@ export class AuthRouter {
   protected readonly auth = $inject(ReactAuth);
 
   authLayout = $page({
+    label: "Auth",
     path: "/auth",
     lazy: () => import("./components/AuthLayout.tsx"),
     children: () => [

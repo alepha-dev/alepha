@@ -49,6 +49,50 @@ export abstract class DatabaseProvider {
     return "public";
   }
 
+  /**
+   * Log a database query with structured metadata for devtools inspection.
+   */
+  protected logQuery(
+    sql: string,
+    params: unknown[],
+    duration: number,
+    rowCount: number,
+    error?: string,
+  ): void {
+    const operation = this.parseOperation(sql);
+    const data = {
+      type: "db:query",
+      sql,
+      params,
+      operation,
+      duration: Math.round(duration * 100) / 100,
+      rowCount,
+      success: !error,
+      error,
+    };
+
+    if (error) {
+      this.log.warn(`Query failed (${operation})`, data);
+    } else {
+      this.log.debug(
+        `Query OK (${operation}, ${Math.round(duration)}ms)`,
+        data,
+      );
+    }
+  }
+
+  protected parseOperation(sql: string): string {
+    const trimmed = sql.trimStart().toUpperCase();
+    if (trimmed.startsWith("SELECT")) return "SELECT";
+    if (trimmed.startsWith("INSERT")) return "INSERT";
+    if (trimmed.startsWith("UPDATE")) return "UPDATE";
+    if (trimmed.startsWith("DELETE")) return "DELETE";
+    if (trimmed.startsWith("CREATE")) return "CREATE";
+    if (trimmed.startsWith("ALTER")) return "ALTER";
+    if (trimmed.startsWith("DROP")) return "DROP";
+    return "OTHER";
+  }
+
   public table<T extends TObject>(
     entity: EntityPrimitive<T>,
   ): PgTableWithColumns<SchemaToTableConfig<T>> {

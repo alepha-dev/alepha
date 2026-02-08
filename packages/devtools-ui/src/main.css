@@ -1,1 +1,18 @@
 @import "@alepha/ui/styles";
+@import "@alepha/ui/json/styles";
+
+.devtools-tree-node:hover {
+  background: var(--mantine-color-default-hover) !important;
+}
+
+.devtools-tree-node:active {
+  background: var(--mantine-color-default-border) !important;
+}
+
+.devtools-tree-node[data-selected="true"] {
+  background: var(--mantine-primary-color-light) !important;
+}
+
+.devtools-tree-node[data-selected="true"]:hover {
+  background: var(--mantine-primary-color-light-hover) !important;
+}

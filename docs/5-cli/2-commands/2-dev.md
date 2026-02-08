@@ -20,7 +20,7 @@ If you have `alepha/react` installed, Alepha knows you're building a web applica
 
 ```bash
 alepha dev
-# → http://localhost:3000
+# → http://localhost:5173
 ```
 
 You get:

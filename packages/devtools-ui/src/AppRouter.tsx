@@ -1,14 +1,11 @@
 import { $ui, midnightTheme } from "@alepha/ui";
 import {
-  IconApi,
-  IconArchive,
-  IconAtom,
   IconDashboard,
   IconDatabase,
-  IconMessageCircle,
-  IconStack2,
+  IconList,
+  IconSettings,
+  IconSitemap,
   IconTopologyRing,
-  IconVariable,
 } from "@tabler/icons-react";
 import { $page } from "alepha/react/router";
 
@@ -27,63 +24,73 @@ export class AppRouter {
     label: "Dashboard",
     icon: <IconDashboard />,
     parent: this.layout,
-    lazy: () => import("./components/DevDashboard.tsx"),
+    lazy: () => import("./components/dashboard/DevDashboard.tsx"),
   });
 
-  actions = $page({
-    path: "/actions",
-    label: "Actions",
-    icon: <IconApi />,
+  explorer = $page({
+    path: "/explorer",
+    label: "Explorer",
+    icon: <IconSitemap />,
     parent: this.layout,
-    lazy: () => import("./components/actions/DevActionsExplorer.tsx"),
+    lazy: () => import("./components/explorer/DevExplorer.tsx"),
   });
 
-  queues = $page({
-    path: "/queues",
-    label: "Queues",
-    icon: <IconStack2 />,
-    parent: this.layout,
-    lazy: () => import("./components/DevQueueMonitor.tsx"),
-  });
-
-  topics = $page({
-    path: "/topics",
-    label: "Topics",
-    icon: <IconMessageCircle />,
-    parent: this.layout,
-    lazy: () => import("./components/DevTopicsViewer.tsx"),
-  });
-
-  caches = $page({
-    path: "/caches",
-    label: "Caches",
-    icon: <IconArchive />,
-    parent: this.layout,
-    lazy: () => import("./components/DevCacheInspector.tsx"),
-  });
-
-  env = $page({
-    path: "/env",
-    label: "Environment",
-    icon: <IconVariable />,
-    parent: this.layout,
-    lazy: () => import("./components/DevEnvExplorer.tsx"),
-  });
-
-  atoms = $page({
-    path: "/atoms",
-    label: "Atoms",
-    icon: <IconAtom />,
-    parent: this.layout,
-    lazy: () => import("./components/DevAtomsViewer.tsx"),
-  });
-
+  // Database parent (tabs + NestedView)
   db = $page({
     path: "/db",
-    label: "DB Studio",
-    icon: <IconDatabase />,
     parent: this.layout,
-    lazy: () => import("./components/db/DevDbStudio.tsx"),
+    lazy: () => import("./components/database/DevDatabase.tsx"),
+  });
+
+  dbErd = $page({
+    path: "/erd",
+    label: "Database",
+    icon: <IconDatabase />,
+    parent: this.db,
+    lazy: () => import("./components/database/DatabaseErd.page.tsx"),
+  });
+
+  dbEditor = $page({
+    path: "/editor",
+    label: "Database",
+    icon: <IconDatabase />,
+    parent: this.db,
+    lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
+  });
+
+  dbEditorTable = $page({
+    path: "/editor/:table",
+    parent: this.db,
+    lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
+  });
+
+  dbEditorRecord = $page({
+    path: "/editor/:table/:id",
+    parent: this.db,
+    lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
+  });
+
+  // Configuration parent (tabs + NestedView)
+  conf = $page({
+    path: "/conf",
+    parent: this.layout,
+    lazy: () => import("./components/configuration/DevConfiguration.tsx"),
+  });
+
+  confEnv = $page({
+    path: "/env",
+    label: "Configuration",
+    icon: <IconSettings />,
+    parent: this.conf,
+    lazy: () => import("./components/configuration/ConfigEnv.page.tsx"),
+  });
+
+  confAtoms = $page({
+    path: "/atoms",
+    label: "Configuration",
+    icon: <IconSettings />,
+    parent: this.conf,
+    lazy: () => import("./components/configuration/ConfigAtoms.page.tsx"),
   });
 
   graph = $page({
@@ -92,5 +99,13 @@ export class AppRouter {
     icon: <IconTopologyRing />,
     parent: this.layout,
     lazy: () => import("./components/graph/DevDependencyGraph.tsx"),
+  });
+
+  logs = $page({
+    path: "/logs",
+    label: "Logs",
+    icon: <IconList />,
+    parent: this.layout,
+    lazy: () => import("./components/logs/DevLogs.tsx"),
   });
 }

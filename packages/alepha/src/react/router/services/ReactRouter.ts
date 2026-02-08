@@ -250,7 +250,8 @@ export class ReactRouter<T extends object> {
   ) {
     const func = typeof record === "function" ? record : () => record;
     const search = new URLSearchParams(func(this.query)).toString();
-    const state = search ? `${this.pathname}?${search}` : this.pathname;
+    const path = search ? `${this.pathname}?${search}` : this.pathname;
+    const state = this.base(path);
 
     if (options.push) {
       window.history.pushState({}, "", state);

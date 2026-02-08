@@ -116,51 +116,86 @@ export class NodeSqliteProvider extends DatabaseProvider {
   ): Promise<Array<Record<string, unknown>>> {
     const all = (this.db as unknown as SqliteRemoteDatabase).all(query);
     const { sql, params, method } = all.getQuery();
-    this.log.trace(`${sql}`, params);
 
-    const statement = this.sqlite.prepare(sql);
-    if (method === "run") {
-      statement.run(...(params as any[]));
-      return [];
+    const start = performance.now();
+    let result: Array<Record<string, unknown>> = [];
+
+    try {
+      const statement = this.sqlite.prepare(sql);
+      if (method === "run") {
+        statement.run(...(params as any[]));
+        result = [];
+      } else if (method === "get") {
+        const data = statement.get(...(params as any[]));
+        result = data ? [{ ...data }] : [];
+      } else {
+        result = statement.all(...(params as any[]));
+      }
+
+      this.logQuery(
+        sql,
+        params as unknown[],
+        performance.now() - start,
+        result.length,
+      );
+      return result;
+    } catch (error) {
+      this.logQuery(
+        sql,
+        params as unknown[],
+        performance.now() - start,
+        0,
+        (error as Error).message,
+      );
+      throw error;
     }
-
-    if (method === "get") {
-      const data = statement.get(...(params as any[]));
-      return data ? [{ ...data }] : [];
-    }
-
-    return statement.all(...(params as any[]));
   }
 
   public readonly db = drizzle(async (sql, params, method) => {
+    const start = performance.now();
     const statement = this.sqlite.prepare(sql);
-    this.log.trace(`${sql}`, { params });
 
-    if (method === "get") {
-      const data = statement.get(...params);
-      return { rows: data ? [{ ...data }] : [] };
+    try {
+      if (method === "get") {
+        const data = statement.get(...params);
+        const rows = data ? [{ ...data }] : [];
+        this.logQuery(sql, params, performance.now() - start, rows.length);
+        return { rows };
+      }
+
+      if (method === "run") {
+        statement.run(...params);
+        this.logQuery(sql, params, performance.now() - start, 0);
+        return { rows: [] };
+      }
+
+      if (method === "all") {
+        const rows = statement.all(...params);
+        this.logQuery(sql, params, performance.now() - start, rows.length);
+        return {
+          rows: rows.map((row) => Object.values(row)),
+        };
+      }
+
+      if (method === "values") {
+        const rows = statement.all(...params);
+        this.logQuery(sql, params, performance.now() - start, rows.length);
+        return {
+          rows: rows.map((row) => Object.values(row)),
+        };
+      }
+
+      throw new AlephaError(`Unsupported method: ${method}`);
+    } catch (error) {
+      this.logQuery(
+        sql,
+        params,
+        performance.now() - start,
+        0,
+        (error as Error).message,
+      );
+      throw error;
     }
-
-    if (method === "run") {
-      statement.run(...params);
-      return { rows: [] };
-    }
-
-    if (method === "all") {
-      const rows = statement.all(...params);
-      return {
-        rows: rows.map((row) => Object.values(row)),
-      };
-    }
-
-    if (method === "values") {
-      const rows = statement.all(...params);
-      return {
-        rows: rows.map((row) => Object.values(row)),
-      };
-    }
-
-    throw new AlephaError(`Unsupported method: ${method}`);
   }) as unknown as PgDatabase<any>;
 
   protected readonly onStart = $hook({

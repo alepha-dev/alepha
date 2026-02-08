@@ -51,7 +51,7 @@ export class CredentialService {
   }
 
   protected readonly intentCache = $cache<PasswordResetIntent>({
-    name: "password-reset-intents",
+    name: "api:users:password-reset-intents",
     ttl: [INTENT_TTL_MINUTES, "minutes"],
   });
 

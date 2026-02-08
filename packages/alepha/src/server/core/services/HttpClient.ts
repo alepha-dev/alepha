@@ -24,7 +24,9 @@ export class HttpClient {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
 
-  public readonly cache = $cache<HttpClientCache>();
+  public readonly cache = $cache<HttpClientCache>({
+    name: "http:client",
+  });
 
   protected readonly pendingRequests: HttpClientPendingRequests = {};
 

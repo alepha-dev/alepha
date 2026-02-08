@@ -1,15 +1,5 @@
-import { ui, useDialog } from "@alepha/ui";
-import {
-  ActionIcon,
-  Alert,
-  Badge,
-  Flex,
-  Group,
-  Loader,
-  Stack,
-  Text,
-  Tooltip,
-} from "@mantine/core";
+import { ActionButton, ui, useDialog } from "@alepha/ui";
+import { Alert, Badge, Flex, Loader, Stack, Text } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconFocusCentered,
@@ -17,7 +7,6 @@ import {
   IconLockOpen,
   IconMinus,
   IconPlus,
-  IconTopologyRing,
 } from "@tabler/icons-react";
 import {
   Background,
@@ -218,21 +207,6 @@ export const DevDependencyGraph = () => {
 
   return (
     <Flex p="xl" direction="column" gap="md" w="100%" h="100%" flex={1} mih={0}>
-      <Group justify="space-between" wrap="nowrap">
-        <Group gap="sm">
-          <Flex
-            bdrs={"sm"}
-            h={"20px"}
-            w={"4px"}
-            bg={"var(--mantine-primary-color-filled)"}
-          />
-          <IconTopologyRing size={24} opacity={0.7} />
-          <Text size="lg" fw={500}>
-            Dependency Graph
-          </Text>
-        </Group>
-      </Group>
-
       <GraphControls
         filters={filters}
         onFiltersChange={setFilters}
@@ -344,34 +318,34 @@ const FlowControls = () => {
         padding: 4,
       }}
     >
-      <Tooltip label="Zoom in" position="right">
-        <ActionIcon size="sm" variant="subtle" onClick={() => zoomIn()}>
-          <IconPlus size={14} />
-        </ActionIcon>
-      </Tooltip>
-      <Tooltip label="Zoom out" position="right">
-        <ActionIcon size="sm" variant="subtle" onClick={() => zoomOut()}>
-          <IconMinus size={14} />
-        </ActionIcon>
-      </Tooltip>
-      <Tooltip label="Fit view" position="right">
-        <ActionIcon
-          size="sm"
-          variant="subtle"
-          onClick={() => fitView({ padding: 0.2 })}
-        >
-          <IconFocusCentered size={14} />
-        </ActionIcon>
-      </Tooltip>
-      <Tooltip label={isLocked ? "Unlock" : "Lock"} position="right">
-        <ActionIcon
-          size="sm"
-          variant="subtle"
-          onClick={() => setIsLocked(!isLocked)}
-        >
-          {isLocked ? <IconLock size={14} /> : <IconLockOpen size={14} />}
-        </ActionIcon>
-      </Tooltip>
+      <ActionButton
+        size="sm"
+        variant="subtle"
+        tooltip="Zoom in"
+        onClick={() => zoomIn()}
+        icon={<IconPlus size={14} />}
+      />
+      <ActionButton
+        size="sm"
+        variant="subtle"
+        tooltip="Zoom out"
+        onClick={() => zoomOut()}
+        icon={<IconMinus size={14} />}
+      />
+      <ActionButton
+        size="sm"
+        variant="subtle"
+        tooltip="Fit view"
+        onClick={() => fitView({ padding: 0.2 })}
+        icon={<IconFocusCentered size={14} />}
+      />
+      <ActionButton
+        size="sm"
+        variant="subtle"
+        tooltip={isLocked ? "Unlock" : "Lock"}
+        onClick={() => setIsLocked(!isLocked)}
+        icon={isLocked ? <IconLock size={14} /> : <IconLockOpen size={14} />}
+      />
     </Stack>
   );
 };

@@ -1,20 +1,15 @@
 import { DarkModeButton, DashboardShell, OmnibarButton } from "@alepha/ui";
 import { Flex } from "@mantine/core";
 import {
-  IconApi,
-  IconArchive,
-  IconAtom,
   IconDashboard,
   IconDatabase,
-  IconMessageCircle,
-  IconStack2,
+  IconList,
+  IconSettings,
+  IconSitemap,
   IconTopologyRing,
-  IconVariable,
 } from "@tabler/icons-react";
-import { useRouter } from "alepha/react/router";
 
 export const DevLayout = () => {
-  const router = useRouter();
   return (
     <DashboardShell
       layout={"alt"}
@@ -24,12 +19,16 @@ export const DevLayout = () => {
           flexDirection: "column",
         },
       }}
+      footer={<Flex />}
+      navbarFooter={<Flex />}
+      footerHeight={24}
       headerHeight={60}
       navbarHeader={
         <Flex align="center" justify={"center"} h="100%" w={"100%"}></Flex>
       }
       sidebarResizable={false}
       sidebarProps={{
+        expandOnHover: false,
         collapsed: true,
         items: [
           {
@@ -39,40 +38,19 @@ export const DevLayout = () => {
           },
           { type: "divider" },
           {
-            label: "Actions",
-            icon: <IconApi />,
-            href: "/actions",
+            label: "Explorer",
+            icon: <IconSitemap />,
+            href: "/explorer",
           },
           {
-            label: "Queues",
-            icon: <IconStack2 />,
-            href: "/queues",
-          },
-          {
-            label: "Topics",
-            icon: <IconMessageCircle />,
-            href: "/topics",
-          },
-          {
-            label: "Caches",
-            icon: <IconArchive />,
-            href: "/caches",
-          },
-          {
-            label: "DB Studio",
+            label: "Database",
             icon: <IconDatabase />,
-            href: "/db",
-          },
-          { type: "divider" },
-          {
-            label: "Environment",
-            icon: <IconVariable />,
-            href: "/env",
+            href: "/db/erd",
           },
           {
-            label: "Atoms",
-            icon: <IconAtom />,
-            href: "/atoms",
+            label: "Configuration",
+            icon: <IconSettings />,
+            href: "/conf/env",
           },
           { type: "divider" },
           {
@@ -80,12 +58,16 @@ export const DevLayout = () => {
             icon: <IconTopologyRing />,
             href: "/graph",
           },
+          {
+            label: "Logs",
+            icon: <IconList />,
+            href: "/logs",
+          },
         ],
       }}
       appBarProps={{
         items: [
           { position: "left", type: "burger" },
-
           {
             position: "left",
             element: (
