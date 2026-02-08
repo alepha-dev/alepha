@@ -7,7 +7,7 @@
     "mantine"
   ],
   "author": "Nicolas Foures",
-  "version": "0.16.1",
+  "version": "0.16.2",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -36,7 +36,7 @@
     "@biomejs/biome": "^2.3.14",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
-    "alepha": "0.16.1",
+    "alepha": "0.16.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "typescript": "^5.9.3",
@@ -44,7 +44,7 @@
     "vitest": "^4.0.18"
   },
   "peerDependencies": {
-    "alepha": "0.16.1",
+    "alepha": "0.16.2",
     "react": "*",
     "react-dom": "*"
   },

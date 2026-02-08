@@ -1,3 +1,22 @@
+## [0.16.2] - 2026-02-08
+
+### Features
+
+- **cache**: add compress:true (`9676992a`)
+- **api/clients**: introduce experimental oauth2 server (`34a6e481`)
+- **orm**: findOne/findById now returns T or undefined, add getOne/getById when T or Throw is required [BREAKING] (`2d0b5685`)
+- **ui**: minor updates (`39ff895d`)
+- **ui**: add Breadcrumb (`86449ef8`)
+- **ui**: sidebar - add section group (`90372a96`)
+- **cli**: add build --target static for building spa, and easy push to surge.sh (`c948beda`)
+- **orm**: add many custom DbError (`846821c4`)
+- **bucket**: add R2 support for Workers (`88ea25dc`)
+
+### Bug Fixes
+
+- **react/router**: remove crossorigin from earlyHint css files (`2206fd5e`)
+- **system**: buildShellCommand support directory with spaces in command (`d3615e8a`)
+
 ## [0.16.1] - 2026-02-03
 
 ### Bug Fixes

@@ -3,13 +3,13 @@
   "name": "@alepha/blog",
   "type": "module",
   "dependencies": {
-    "@alepha/ui": "^0.16.1",
+    "@alepha/ui": "^0.16.2",
     "@mantine/core": "^8.3.14",
     "@mantine/hooks": "^8.3.14",
     "@mantine/modals": "^8.3.14",
     "@mantine/notifications": "^8.3.14",
     "@tabler/icons-react": "^3.36.1",
-    "alepha": "^0.16.1",
+    "alepha": "^0.16.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
