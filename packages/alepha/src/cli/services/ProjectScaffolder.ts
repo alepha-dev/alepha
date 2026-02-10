@@ -16,6 +16,7 @@ import { mainBrowserTs } from "../templates/mainBrowserTs.ts";
 import { mainCss } from "../templates/mainCss.ts";
 import { mainServerTs } from "../templates/mainServerTs.ts";
 import { tsconfigJson } from "../templates/tsconfigJson.ts";
+import { viteConfigTs } from "../templates/viteConfigTs.ts";
 import { webAppRouterTs } from "../templates/webAppRouterTs.ts";
 import { webHomeComponentTsx } from "../templates/webHomeComponentTsx.ts";
 import { webIndexTs } from "../templates/webIndexTs.ts";
@@ -298,6 +299,7 @@ export class ProjectScaffolder {
       ui?: boolean;
       auth?: boolean;
       admin?: boolean;
+      tailwind?: boolean;
       force?: boolean;
     } = {},
   ): Promise<void> {
@@ -312,9 +314,14 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/main.css",
-      mainCss({ ui: opts.ui }),
+      mainCss({ ui: opts.ui, tailwind: opts.tailwind }),
       opts.force,
     );
+
+    // vite.config.ts (Tailwind CSS plugin)
+    if (opts.tailwind) {
+      await this.ensureFile(root, "vite.config.ts", viteConfigTs(), opts.force);
+    }
 
     // Web structure
     await this.ensureFile(

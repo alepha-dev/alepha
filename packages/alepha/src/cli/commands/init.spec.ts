@@ -428,6 +428,142 @@ describe("alepha init", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Tailwind CSS (--tailwind flag)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("--tailwind flag", () => {
+    it("should add tailwindcss devDependencies", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--tailwind", root: "/project" });
+
+      const pkg = await fs.readJsonFile<{
+        devDependencies?: Record<string, string>;
+      }>("/project/package.json");
+      expect(pkg.devDependencies?.tailwindcss).toBeDefined();
+      expect(pkg.devDependencies?.["@tailwindcss/vite"]).toBeDefined();
+    });
+
+    it("should create vite.config.ts with tailwind plugin", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--tailwind", root: "/project" });
+
+      expect(fs.wasWritten("/project/vite.config.ts")).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/vite.config.ts", /tailwindcss/),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/vite.config.ts", /@tailwindcss\/vite/),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/vite.config.ts", /defineConfig/),
+      ).toBe(true);
+    });
+
+    it("should add @import tailwindcss to main.css", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--tailwind", root: "/project" });
+
+      expect(fs.wasWritten("/project/src/main.css")).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/src/main.css", /@import "tailwindcss"/),
+      ).toBe(true);
+    });
+
+    it("should imply --react", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--tailwind", root: "/project" });
+
+      // React web structure should be created
+      expect(fs.wasWritten("/project/src/web/index.ts")).toBe(true);
+      expect(fs.wasWritten("/project/src/main.browser.ts")).toBe(true);
+    });
+
+    it("should not create vite.config.ts without --tailwind", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--react", root: "/project" });
+
+      expect(fs.wasWritten("/project/vite.config.ts")).toBe(false);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Non-empty directory guard (codegen flags)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("non-empty directory guard", () => {
+    it("should reject codegen into non-empty directory", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/src/existing.ts", "export {}");
+
+      await expect(
+        cli.run(cmd.init, { argv: "--api", root: "/project" }),
+      ).rejects.toThrowError(/Target directory is not empty/);
+    });
+
+    it("should allow codegen when only package.json exists", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--api", root: "/project" });
+
+      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(true);
+    });
+
+    it("should allow codegen into non-empty directory with --force", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/src/existing.ts", "export {}");
+
+      await cli.run(cmd.init, {
+        argv: "--api --force",
+        root: "/project",
+      });
+
+      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(true);
+    });
+
+    it("should allow non-codegen init in non-empty directory", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/src/existing.ts", "export {}");
+
+      // No codegen flags — should not throw
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/tsconfig.json")).toBe(true);
+    });
+
+    it("should check each codegen flag independently", async () => {
+      for (const flag of [
+        "--react",
+        "--ui",
+        "--auth",
+        "--admin",
+        "--tailwind",
+      ]) {
+        const { fs, cli, cmd, json } = createTestEnv();
+        await setupProject(fs, json);
+        await fs.writeFile("/project/src/existing.ts", "export {}");
+
+        await expect(
+          cli.run(cmd.init, { argv: flag, root: "/project" }),
+        ).rejects.toThrowError(/Target directory is not empty/);
+      }
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Path Argument
   // ─────────────────────────────────────────────────────────────────────────────
 

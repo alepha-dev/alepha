@@ -399,6 +399,11 @@ export class PackageManagerUtils {
       modes.react = true;
     }
 
+    if (modes.tailwind) {
+      devDependencies.tailwindcss = alephaDeps.tailwindcss;
+      devDependencies["@tailwindcss/vite"] = alephaDeps["@tailwindcss/vite"];
+    }
+
     if (modes.react) {
       dependencies.react = alephaDeps.react;
       dependencies["react-dom"] = alephaDeps["react-dom"];
@@ -432,6 +437,7 @@ export interface DependencyModes {
   react?: boolean;
   ui?: boolean;
   expo?: boolean;
+  tailwind?: boolean;
   test?: boolean;
   /**
    * Skip biome/vitest when inside a workspace package (they're at root).

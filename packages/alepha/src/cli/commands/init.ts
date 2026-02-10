@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, AlephaError, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -63,6 +63,11 @@ export class InitCommand {
           description: "Include admin portal ($uiAdmin). Implies --auth",
         }),
       ),
+      tailwind: t.optional(
+        t.boolean({
+          description: "Include Tailwind CSS with Vite plugin. Implies --react",
+        }),
+      ),
       test: t.optional(
         t.boolean({ description: "Include Vitest and create test directory" }),
       ),
@@ -89,6 +94,28 @@ export class InitCommand {
       }
       if (flags.ui) {
         flags.react = true;
+      }
+      if (flags.tailwind) {
+        flags.react = true;
+      }
+
+      // When codegen flags are set, target directory must be empty (unless --force)
+      const hasCodegenFlags =
+        flags.admin ||
+        flags.auth ||
+        flags.api ||
+        flags.ui ||
+        flags.react ||
+        flags.tailwind;
+      if (hasCodegenFlags && !flags.force) {
+        const files = await this.fs.ls(root);
+        // Allow a directory that only has package.json (common for monorepo packages)
+        const meaningful = files.filter((f) => f !== "package.json");
+        if (meaningful.length > 0) {
+          throw new AlephaError(
+            `Target directory is not empty (${root}). Use --force to overwrite existing files.`,
+          );
+        }
       }
 
       // Detect workspace context (are we inside packages/ or apps/ of a monorepo?)
@@ -145,6 +172,7 @@ export class InitCommand {
               ui: !!flags.ui,
               auth: !!flags.auth,
               admin: !!flags.admin,
+              tailwind: !!flags.tailwind,
               force,
             });
           }

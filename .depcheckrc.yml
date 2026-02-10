@@ -24,6 +24,8 @@ ignores:
     - 'surge'
     - 'bun'
     - 'bun:sqlite'
+    - 'tailwindcss'
+    - '@tailwindcss/vite'
 ignore-patterns:
     - 'dist'
     - 'assets'

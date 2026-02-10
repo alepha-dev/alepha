@@ -1,4 +1,4 @@
-export const mainCss = (opts: { ui?: boolean } = {}) => {
+export const mainCss = (opts: { ui?: boolean; tailwind?: boolean } = {}) => {
   if (opts.ui) {
     return `/**
  * Alepha UI - Based on Mantine component library
@@ -33,12 +33,19 @@ export const mainCss = (opts: { ui?: boolean } = {}) => {
 @import "@alepha/ui/styles";`;
   }
 
+  if (opts.tailwind) {
+    return `@import "tailwindcss";
+
+/* Add your styles here */
+`;
+  }
+
   return `/**
  * Global styles for your application.
  *
  * Options:
  * - @alepha/ui: Use \`alepha init --ui\` to add Mantine-based components
- * - Tailwind CSS: https://tailwindcss.com/docs/installation/using-vite
+ * - Tailwind CSS: Use \`alepha init --tailwind\` to add Tailwind CSS
  * - Raw CSS: Write your own styles below
  */
 
