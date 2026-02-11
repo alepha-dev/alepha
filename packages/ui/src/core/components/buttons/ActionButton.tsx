@@ -497,6 +497,7 @@ const ActionHookButton = (props: ActionHookButtonProps) => {
 
 export interface ActionClickButtonProps extends ButtonProps {
   onClick: (e: any) => any;
+  preventDefault?: boolean;
 }
 
 /**
@@ -509,14 +510,20 @@ export interface ActionClickButtonProps extends ButtonProps {
  * </ActionButton>
  * ```
  */
-const ActionClickButton = (props: ActionClickButtonProps) => {
+const ActionClickButton = ({
+  preventDefault,
+  ...props
+}: ActionClickButtonProps) => {
   const action = useAction(
     {
       handler: async (e: any) => {
+        if (preventDefault) {
+          e.preventDefault();
+        }
         await props.onClick(e);
       },
     },
-    [props.onClick],
+    [props.onClick, preventDefault],
   );
 
   return (
