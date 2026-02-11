@@ -699,6 +699,9 @@ export abstract class Repository<T extends TObject> {
       delete setData[this.id.key];
     }
 
+    // Always inject updatedAt into the conflict SET clause. This ensures that even
+    // with `set: {}`, the ON CONFLICT path touches the row — making it possible to
+    // distinguish inserts from no-ops by comparing createdAt vs updatedAt.
     const updatedAtField = getAttrFields(
       this.entity.schema,
       PG_UPDATED_AT,

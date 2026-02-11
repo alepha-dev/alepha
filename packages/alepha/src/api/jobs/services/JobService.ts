@@ -1,6 +1,6 @@
-import { $inject, Alepha, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
+import { $repository, sql } from "alepha/orm";
 import { NotFoundError } from "alepha/server";
 import type { JobExecutionEntity } from "../entities/jobExecutionEntity.ts";
 import { jobExecutionEntity } from "../entities/jobExecutionEntity.ts";
@@ -15,15 +15,6 @@ import type { JobFailure } from "../schemas/jobFailureSchema.ts";
 import type { JobQueueDepth } from "../schemas/jobQueueDepthSchema.ts";
 import type { JobRegistration } from "../schemas/jobRegistrationSchema.ts";
 import type { JobStats } from "../schemas/jobStatsSchema.ts";
-
-// -----------------------------------------------------------------------------------------------------------------
-
-const PRIORITY_REVERSE: Record<number, string> = {
-  0: "critical",
-  1: "high",
-  2: "normal",
-  3: "low",
-};
 
 // -----------------------------------------------------------------------------------------------------------------
 
@@ -47,61 +38,41 @@ export class JobService {
 
   public async getStats(): Promise<JobStats> {
     const jobs = this.jobProvider.getRegisteredJobs();
+    const twentyFourHoursAgo = this.dt.now().subtract(24, "hour").toISOString();
 
-    const now = this.dt.now();
-    const twentyFourHoursAgo = now.subtract(24, "hour").toISOString();
+    const rows = await this.executions.query(
+      (e) => sql`
+        SELECT
+          COUNT(*) FILTER (WHERE ${e.status} = 'running') AS running,
+          COUNT(*) FILTER (WHERE ${e.status} = 'pending') AS pending,
+          COUNT(*) FILTER (WHERE ${e.status} = 'scheduled') AS scheduled,
+          COUNT(*) FILTER (WHERE ${e.status} = 'retrying') AS retrying,
+          COUNT(*) FILTER (WHERE ${e.status} = 'dead') AS dead,
+          COUNT(*) FILTER (WHERE ${e.status} = 'completed' AND ${e.completedAt} >= ${twentyFourHoursAgo}) AS completed_24h,
+          COUNT(*) FILTER (WHERE ${e.status} IN ('dead', 'failed') AND ${e.completedAt} >= ${twentyFourHoursAgo}) AS failed_24h
+        FROM ${e}
+      `,
+      t.object({
+        running: t.string(),
+        pending: t.string(),
+        scheduled: t.string(),
+        retrying: t.string(),
+        dead: t.string(),
+        completed_24h: t.string(),
+        failed_24h: t.string(),
+      }),
+    );
 
-    const where = this.executions.createQueryWhere();
-
-    // Count by status
-    const allExecutions = await this.executions.findMany({ where });
-
-    let running = 0;
-    let pending = 0;
-    let scheduled = 0;
-    let retrying = 0;
-    let dead = 0;
-    let completed24h = 0;
-    let failed24h = 0;
-
-    for (const exec of allExecutions) {
-      switch (exec.status) {
-        case "running":
-          running++;
-          break;
-        case "pending":
-          pending++;
-          break;
-        case "scheduled":
-          scheduled++;
-          break;
-        case "retrying":
-          retrying++;
-          break;
-        case "dead":
-          dead++;
-          break;
-      }
-
-      if (exec.completedAt && exec.completedAt >= twentyFourHoursAgo) {
-        if (exec.status === "completed") {
-          completed24h++;
-        }
-        if (exec.status === "dead" || exec.status === "failed") {
-          failed24h++;
-        }
-      }
-    }
-
+    const row = rows[0];
     return {
       registered: jobs.size,
-      running,
-      pending,
-      scheduled,
-      retrying,
-      dead,
-      completed24h,
-      failed24h,
+      running: Number(row.running),
+      pending: Number(row.pending),
+      scheduled: Number(row.scheduled),
+      retrying: Number(row.retrying),
+      dead: Number(row.dead),
+      completed24h: Number(row.completed_24h),
+      failed24h: Number(row.failed_24h),
     };
   }
 
@@ -276,21 +247,46 @@ export class JobService {
 
   public async getCronJobs(): Promise<JobCronInfo[]> {
     const jobs = this.jobProvider.getRegisteredJobs();
-    const result: JobCronInfo[] = [];
+    const cronJobNames: string[] = [];
 
     for (const [name, reg] of jobs) {
-      const opts = reg.options;
-      if (!opts.cron) continue;
+      if (reg.options.cron) cronJobNames.push(name);
+    }
 
-      const where = this.executions.createQueryWhere();
-      where.jobName = { eq: name };
-      const executions = await this.executions.findMany({ where });
-      executions.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
-      const last = executions[0];
+    // Single query: fetch the latest execution per cron job using DISTINCT ON
+    const lastExecutions =
+      cronJobNames.length > 0
+        ? await this.executions.query(
+            (e) => sql`
+              SELECT DISTINCT ON (${e.jobName})
+                ${e.id}, ${e.jobName} AS job_name, ${e.status},
+                ${e.startedAt} AS started_at, ${e.completedAt} AS completed_at, ${e.error}
+              FROM ${e}
+              WHERE ${e.jobName} IN (${sql.join(cronJobNames.map((n) => sql`${n}`), sql`, `)})
+              ORDER BY ${e.jobName}, ${e.createdAt} DESC
+            `,
+            t.object({
+              id: t.string(),
+              job_name: t.string(),
+              status: t.string(),
+              started_at: t.optional(t.nullable(t.string())),
+              completed_at: t.optional(t.nullable(t.string())),
+              error: t.optional(t.nullable(t.string())),
+            }),
+          )
+        : [];
+
+    const lastByJob = new Map(lastExecutions.map((r) => [r.job_name, r]));
+
+    const result: JobCronInfo[] = [];
+    for (const name of cronJobNames) {
+      const reg = jobs.get(name)!;
+      const opts = reg.options;
+      const last = lastByJob.get(name);
 
       result.push({
         name,
-        cron: opts.cron,
+        cron: opts.cron!,
         lock: opts.lock !== false,
         priority: (opts.priority ?? "normal") as JobCronInfo["priority"],
         concurrency: opts.concurrency ?? 1,
@@ -299,9 +295,9 @@ export class JobService {
           ? {
               id: last.id,
               status: last.status,
-              startedAt: last.startedAt,
-              completedAt: last.completedAt,
-              error: last.error,
+              startedAt: last.started_at ?? undefined,
+              completedAt: last.completed_at ?? undefined,
+              error: last.error ?? undefined,
             }
           : undefined,
       });
@@ -312,53 +308,42 @@ export class JobService {
 
   public async getQueueDepth(): Promise<JobQueueDepth[]> {
     const jobs = this.jobProvider.getRegisteredJobs();
-    const where = this.executions.createQueryWhere();
-    where.status = {
-      inArray: ["pending", "running", "scheduled", "retrying", "dead"],
-    };
 
-    const allExecutions = await this.executions.findMany({ where });
+    const rows = await this.executions.query(
+      (e) => sql`
+        SELECT
+          ${e.jobName} AS job_name,
+          COUNT(*) FILTER (WHERE ${e.status} = 'pending') AS pending,
+          COUNT(*) FILTER (WHERE ${e.status} = 'running') AS running,
+          COUNT(*) FILTER (WHERE ${e.status} = 'scheduled') AS scheduled,
+          COUNT(*) FILTER (WHERE ${e.status} = 'retrying') AS retrying,
+          COUNT(*) FILTER (WHERE ${e.status} = 'dead') AS dead
+        FROM ${e}
+        WHERE ${e.status} IN ('pending', 'running', 'scheduled', 'retrying', 'dead')
+        GROUP BY ${e.jobName}
+      `,
+      t.object({
+        job_name: t.string(),
+        pending: t.string(),
+        running: t.string(),
+        scheduled: t.string(),
+        retrying: t.string(),
+        dead: t.string(),
+      }),
+    );
 
-    const counts = new Map<
-      string,
-      {
-        pending: number;
-        running: number;
-        scheduled: number;
-        retrying: number;
-        dead: number;
-      }
-    >();
-
-    for (const exec of allExecutions) {
-      let entry = counts.get(exec.jobName);
-      if (!entry) {
-        entry = { pending: 0, running: 0, scheduled: 0, retrying: 0, dead: 0 };
-        counts.set(exec.jobName, entry);
-      }
-      if (
-        exec.status === "pending" ||
-        exec.status === "running" ||
-        exec.status === "scheduled" ||
-        exec.status === "retrying" ||
-        exec.status === "dead"
-      ) {
-        entry[exec.status]++;
-      }
-    }
+    const counts = new Map(rows.map((r) => [r.job_name, r]));
 
     const result: JobQueueDepth[] = [];
     for (const [name, reg] of jobs) {
-      const entry = counts.get(name) ?? {
-        pending: 0,
-        running: 0,
-        scheduled: 0,
-        retrying: 0,
-        dead: 0,
-      };
+      const row = counts.get(name);
       result.push({
         jobName: name,
-        ...entry,
+        pending: Number(row?.pending ?? 0),
+        running: Number(row?.running ?? 0),
+        scheduled: Number(row?.scheduled ?? 0),
+        retrying: Number(row?.retrying ?? 0),
+        dead: Number(row?.dead ?? 0),
         concurrency: reg.options.concurrency ?? 1,
       });
     }
@@ -367,76 +352,65 @@ export class JobService {
   }
 
   public async getActivity(days = 14): Promise<JobActivityPoint[]> {
-    const now = this.dt.now();
-    const cutoff = now.subtract(days, "day").toISOString();
+    const rows = await this.executions.query(
+      (e) => sql`
+        WITH date_series AS (
+          SELECT generate_series(
+            CURRENT_DATE - ${days - 1}::int,
+            CURRENT_DATE,
+            '1 day'::interval
+          )::date AS date
+        )
+        SELECT
+          ds.date::text AS date,
+          COALESCE(COUNT(*) FILTER (WHERE ${e.status} = 'completed'), 0) AS completed,
+          COALESCE(COUNT(*) FILTER (WHERE ${e.status} IN ('dead', 'failed')), 0) AS failed
+        FROM date_series ds
+        LEFT JOIN ${e} ON DATE(${e.completedAt}) = ds.date
+          AND ${e.status} IN ('completed', 'dead', 'failed')
+        GROUP BY ds.date
+        ORDER BY ds.date ASC
+      `,
+      t.object({
+        date: t.string(),
+        completed: t.string(),
+        failed: t.string(),
+      }),
+    );
 
-    const where = this.executions.createQueryWhere();
-    where.completedAt = { gte: cutoff };
-    where.status = { inArray: ["completed", "dead", "failed"] };
-
-    const allExecutions = await this.executions.findMany({ where });
-
-    const dayMap = new Map<string, { completed: number; failed: number }>();
-
-    // Pre-fill all days so the chart has no gaps
-    for (let i = days - 1; i >= 0; i--) {
-      const date = now.subtract(i, "day").format("YYYY-MM-DD");
-      dayMap.set(date, { completed: 0, failed: 0 });
-    }
-
-    for (const exec of allExecutions) {
-      if (!exec.completedAt) continue;
-      const date = exec.completedAt.substring(0, 10);
-      let entry = dayMap.get(date);
-      if (!entry) {
-        entry = { completed: 0, failed: 0 };
-        dayMap.set(date, entry);
-      }
-      if (exec.status === "completed") {
-        entry.completed++;
-      } else {
-        entry.failed++;
-      }
-    }
-
-    const result: JobActivityPoint[] = [];
-    for (const [date, data] of dayMap) {
-      result.push({ date, ...data });
-    }
-    result.sort((a, b) => a.date.localeCompare(b.date));
-    return result;
+    return rows.map((row) => ({
+      date: row.date,
+      completed: Number(row.completed),
+      failed: Number(row.failed),
+    }));
   }
 
   public async getTopFailures(): Promise<JobFailure[]> {
-    const now = this.dt.now();
-    const sevenDaysAgo = now.subtract(7, "day").toISOString();
+    const sevenDaysAgo = this.dt.now().subtract(7, "day").toISOString();
 
-    const where = this.executions.createQueryWhere();
-    where.status = { inArray: ["dead", "failed"] };
-    where.completedAt = { gte: sevenDaysAgo };
+    const rows = await this.executions.query(
+      (e) => sql`
+        SELECT
+          ${e.jobName} AS job_name,
+          COUNT(*) AS failures,
+          (ARRAY_AGG(${e.error} ORDER BY ${e.completedAt} DESC))[1] AS last_error
+        FROM ${e}
+        WHERE ${e.status} IN ('dead', 'failed')
+          AND ${e.completedAt} >= ${sevenDaysAgo}
+        GROUP BY ${e.jobName}
+        ORDER BY failures DESC
+      `,
+      t.object({
+        job_name: t.string(),
+        failures: t.string(),
+        last_error: t.optional(t.nullable(t.string())),
+      }),
+    );
 
-    const allFailures = await this.executions.findMany({ where });
-
-    const grouped = new Map<string, { failures: number; lastError?: string }>();
-
-    for (const exec of allFailures) {
-      let entry = grouped.get(exec.jobName);
-      if (!entry) {
-        entry = { failures: 0 };
-        grouped.set(exec.jobName, entry);
-      }
-      entry.failures++;
-      if (exec.error) {
-        entry.lastError = exec.error;
-      }
-    }
-
-    const result: JobFailure[] = [];
-    for (const [jobName, data] of grouped) {
-      result.push({ jobName, ...data });
-    }
-
-    result.sort((a, b) => b.failures - a.failures);
-    return result;
+    return rows.map((row) => ({
+      jobName: row.job_name,
+      failures: Number(row.failures),
+      lastError: row.last_error ?? undefined,
+    }));
   }
 }
