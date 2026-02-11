@@ -11,7 +11,9 @@ export { default as AdminAudits } from "./components/audits/AdminAudits.tsx";
 // Files
 export { default as AdminFiles } from "./components/files/AdminFiles.tsx";
 // Jobs
-export { default as AdminJobs } from "./components/jobs/AdminJobs.tsx";
+export { default as AdminJobDashboard } from "./components/jobs/AdminJobDashboard.tsx";
+export { default as AdminJobExecutions } from "./components/jobs/AdminJobExecutions.tsx";
+export { default as AdminJobRegistry } from "./components/jobs/AdminJobRegistry.tsx";
 // API Keys
 export { default as AdminApiKeys } from "./components/keys/AdminApiKeys.tsx";
 // Notifications

@@ -12,30 +12,21 @@ npm install alepha
 
 | Stability | Since | Runtime |
 |-----------|-------|---------|
-| 3 - stable | 0.8.0 | node, bun|
+| 3 - stable | 0.9.0 | node, bun, workerd |
 
-Job execution monitoring.
+Job execution framework — unified primitive for deferred, scheduled, and queued work.
 
 **Features:**
-- Job definitions for tracking
-- Job status tracking
-- Execution history
-- Manual trigger tracking
+- Push-based jobs with typed payloads
+- Cron scheduling with execution tracking
+- Retry with exponential backoff
+- Priority, delay, cancellation
+- Deduplication via unique keys
+- Transactional push
+- Per-execution log capture
 
 ## API Reference
 
 ### Primitives
 
-- [`$job`](/docs/reference-primitives-$job) — Job primitive - a drop-in replacement for $scheduler with built-in execution tracking.
-
-### Providers
-
-- [`JobProvider`](/docs/reference-providers-jobprovider) — Provider for job management and execution.
-
-### Environment Variables
-
-Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `JOB_PREFIX` | text | - | Prefix for job lock keys |
+- [`$job`](/docs/reference-primitives-$job) — Job primitive for defining scheduled and on-demand tasks with payload validation, retry policies, and batching.

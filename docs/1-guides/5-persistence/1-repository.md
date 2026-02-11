@@ -203,6 +203,36 @@ const items = await this.repo.createMany(
 );
 ```
 
+### upsert
+
+Insert a new entity or update an existing one if a conflict is detected. Works on both PostgreSQL and SQLite.
+
+```typescript
+// Simple upsert on primary key
+const product = await this.repo.upsert({
+  id: "some-uuid",
+  name: "Widget",
+  price: 9.99,
+});
+
+// Upsert on a unique column
+const product = await this.repo.upsert(
+  { id: "some-uuid", sku: "WIDGET-1", name: "Widget", price: 9.99 },
+  { target: ["sku"] },
+);
+
+// Upsert with custom update fields (only update price on conflict)
+const product = await this.repo.upsert(
+  { id: "some-uuid", sku: "WIDGET-1", name: "Widget", price: 19.99 },
+  { target: ["sku"], set: { price: 19.99 } },
+);
+```
+
+- `target` — column(s) to detect conflicts on. Defaults to the primary key.
+- `set` — fields to update on conflict. Defaults to the insert data minus the target and primary key columns.
+
+If the entity has an `updatedAt` column, it is automatically set on conflict.
+
 ## Update Methods
 
 ### updateOne

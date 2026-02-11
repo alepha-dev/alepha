@@ -33,6 +33,11 @@ Asynchronous message processing with automatic worker management.
 - [`$consumer`](/docs/reference-primitives-$consumer) — Creates a consumer primitive to process messages from a specific queue.
 - [`$queue`](/docs/reference-primitives-$queue) — Creates a queue primitive for asynchronous message processing with background workers.
 
+### Providers
+
+- [`CloudflareQueueProvider`](/docs/reference-providers-cloudflarequeueprovider) — Cloudflare Queue provider.
+- [`WorkerdWorkerProvider`](/docs/reference-providers-workerdworkerprovider) — Cloudflare Workers queue consumer provider.
+
 ### Environment Variables
 
 Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.

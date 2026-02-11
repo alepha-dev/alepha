@@ -1,8 +1,8 @@
-import type { Static } from "alepha";
-import { t } from "alepha";
+import { type Static, t } from "alepha";
 
 export const triggerJobSchema = t.object({
-  name: t.string(),
+  name: t.text(),
+  payload: t.optional(t.record(t.text(), t.any())),
 });
 
 export type TriggerJob = Static<typeof triggerJobSchema>;

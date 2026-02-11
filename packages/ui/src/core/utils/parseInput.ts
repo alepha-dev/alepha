@@ -109,6 +109,7 @@ export interface GenericControlProps {
   title?: string;
   description?: string;
   icon?: ReactElement | ((props: { size: number }) => ReactNode);
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
 }
 
 export interface ControlInput {

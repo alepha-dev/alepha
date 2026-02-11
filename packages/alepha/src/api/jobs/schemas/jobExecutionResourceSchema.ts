@@ -1,13 +1,19 @@
 import { type Static, t } from "alepha";
-import { jobExecutions } from "../entities/jobExecutions.ts";
+import { jobExecutionEntity } from "../entities/jobExecutionEntity.ts";
+
+export const jobExecutionCanSchema = t.object({
+  retry: t.boolean(),
+  cancel: t.boolean(),
+});
 
 export const jobExecutionResourceSchema = t.extend(
-  jobExecutions.schema,
-  {},
+  jobExecutionEntity.schema,
+  {
+    can: jobExecutionCanSchema,
+  },
   {
     title: "JobExecutionResource",
-    description:
-      "A job execution resource representing the execution details of a job.",
+    description: "A job execution resource.",
   },
 );
 

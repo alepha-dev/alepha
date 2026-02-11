@@ -26,6 +26,7 @@ ignores:
     - 'bun:sqlite'
     - 'tailwindcss'
     - '@tailwindcss/vite'
+    - '@types/react-is'
 ignore-patterns:
     - 'dist'
     - 'assets'

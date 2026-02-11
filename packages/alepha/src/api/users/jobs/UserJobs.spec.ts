@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
-import { AlephaApiJobs } from "alepha/api/jobs";
+import { AlephaApiJobs, jobExecutionEntity } from "alepha/api/jobs";
 import { $repository, AlephaOrm } from "alepha/orm";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import { sessions } from "../entities/sessions.ts";
 import { users } from "../entities/users.ts";
 import { UserJobs } from "./UserJobs.ts";
@@ -14,6 +14,7 @@ describe("UserJobs", () => {
       class TestRepositories {
         userRepository = $repository(users);
         sessionRepository = $repository(sessions);
+        executions = $repository(jobExecutionEntity);
       }
 
       const userJobs = alepha.inject(UserJobs);
@@ -55,6 +56,17 @@ describe("UserJobs", () => {
       // Trigger the job
       await userJobs.purgeExpiredSessions.trigger();
 
+      // Wait for async job processing to complete
+      await vi.waitFor(async () => {
+        const executions = await repos.executions.findMany({
+          where: {
+            jobName: "UserJobs.purgeExpiredSessions",
+            status: "completed",
+          },
+        });
+        expect(executions).toHaveLength(1);
+      });
+
       // Verify only the valid session remains
       const sessionsAfter = await repos.sessionRepository.findMany();
       expect(sessionsAfter).toHaveLength(1);
@@ -71,6 +83,7 @@ describe("UserJobs", () => {
       class TestRepositories {
         userRepository = $repository(users);
         sessionRepository = $repository(sessions);
+        executions = $repository(jobExecutionEntity);
       }
 
       const userJobs = alepha.inject(UserJobs);
@@ -98,6 +111,17 @@ describe("UserJobs", () => {
 
       // Trigger the job - should not throw
       await userJobs.purgeExpiredSessions.trigger();
+
+      // Wait for async job processing to complete
+      await vi.waitFor(async () => {
+        const executions = await repos.executions.findMany({
+          where: {
+            jobName: "UserJobs.purgeExpiredSessions",
+            status: "completed",
+          },
+        });
+        expect(executions).toHaveLength(1);
+      });
 
       // Session should still exist
       const sessionsAfter = await repos.sessionRepository.findMany();

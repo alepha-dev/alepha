@@ -612,7 +612,7 @@ Each invocation is a separate `$job` execution. No worker is blocked between ste
 | Crash recovery | Heartbeat + `$job` recovery sweep | Heartbeat for fast detection, sweep as fallback |
 | Versioning | `version` field on definition + execution | Old runs keep old handler, new runs get new handler |
 | Observability | `workflow_executions` + admin endpoints | Dedicated admin UI for workflow state |
-| Internal job isolation | `internal: true` flag on workflow jobs | Filtered from jobs admin by default (toggle to show) |
+| Internal job isolation | `internal: true` flag on workflow jobs | Filtered from jobs admin by default (toggle to show). **Requires adding `internal` column to `jobExecutionEntity` in `$job` v2 migration.** |
 
 ### 3.3 Internal Dispatch Flow
 
@@ -683,13 +683,15 @@ Workflows use a **heartbeat mechanism** for fast crash detection, with the `$job
 
 **Heartbeat protocol:**
 
-1. When a workflow invocation starts, the worker sets `heartbeatAt` on the `workflow_executions` record to `now + heartbeatInterval`.
-2. During execution, the worker periodically extends `heartbeatAt` (every `heartbeatInterval`, default: 30 seconds).
-3. If the worker crashes, the heartbeat stops extending.
-4. The heartbeat sweep (internal system job, every `heartbeatInterval`) scans for workflows where `status IN ('running', 'compensating')` and `heartbeatAt < now`. These are assumed crashed.
+1. **On claim**: Worker sets `heartbeatAt` on the `workflow_executions` record to `now + heartbeatInterval`.
+2. **During execution**: Worker periodically extends `heartbeatAt` (every `heartbeatInterval`, default: 30 seconds). This includes during step execution — if a single step runs for longer than `heartbeatInterval`, the framework continues extending the heartbeat in the background. This prevents false-positive crash detection for long-running steps (e.g., a 2-minute PDF generation within a step with a 5-minute timeout).
+3. **On completion**: `heartbeatAt` is cleared (set to `null`).
+4. **Heartbeat sweep**: Queries `workflow_executions WHERE status IN ('running', 'compensating') AND heartbeatAt < now`. Marks these as stale and re-dispatches via `$job`. Compensation runs as a separate invocation sequence — workers crash during compensation too, and the sweep must detect this.
 5. Crashed workflows are re-dispatched via `$job` — the next invocation replays cached steps and re-attempts the interrupted step.
 
-This gives **sub-minute crash detection** vs the `$job` recovery sweep's 60-second poll. The `$job` sweep remains as a safety net for edge cases (e.g., both heartbeat and worker fail simultaneously).
+**Sweep registration.** The heartbeat sweep is registered as an internal `$job` cron during `WorkflowProvider.onInit()`, running every `heartbeatInterval` (default: 30s). This is separate from the `$job` recovery sweep (which handles stale job executions). Both sweeps run independently — the heartbeat sweep handles workflow-level crash detection, while the `$job` sweep is the safety net for edge cases where the heartbeat sweep itself fails.
+
+**Detection latency: 1-2x heartbeatInterval** (30-60 seconds by default). This is significantly faster than the `$job` recovery sweep's 60-second poll + 5-minute stale threshold.
 
 **No corruption possible.** The workflow step either completed (result persisted to `workflow_steps`) or didn't (will re-execute on the next invocation). The heartbeat mechanism never modifies step state — it only triggers re-dispatch.
 
@@ -745,7 +747,7 @@ Step results are keyed by step ID (`string`). Each invocation runs in two phases
 
 **Phase 1 — Plan.** Load all `workflow_steps` rows for this workflow into an in-memory map. Run the handler. When `step.run(id, fn)` is called:
 - If `id` exists with `status: "completed"` → return a **resolved promise** with the cached result. Handler continues normally.
-- If `id` exists with `status: "running"` → stale from a crash. Treat as new (re-execute).
+- If `id` exists with `status: "running"` → stale from a crash. Increment `attempt` and re-execute the step function (the `running` row is evidence the previous attempt didn't complete — see section 3.7).
 - If `id` exists with `status: "failed"` and retries remain → treat as new (re-attempt).
 - If `id` does NOT exist → register `fn` as a **pending step** and return a **sentinel promise** (a promise that never resolves in this invocation).
 
@@ -782,7 +784,14 @@ for (const item of items) {
 await step.run(crypto.randomUUID(), () => ...)
 ```
 
-**Replay overhead.** Each invocation loads all `workflow_steps` rows into an in-memory map. For workflows with fewer than ~100 steps, this is negligible. For workflows that generate hundreds of dynamic steps (e.g., processing large file sets), prefer splitting into child workflows via `step.invoke()` to keep each workflow's step count manageable.
+**Replay overhead.** Each invocation loads all `workflow_steps` rows into an in-memory map (`SELECT * FROM workflow_steps WHERE workflowId = ?`). For a sequential N-step workflow, that's N invocations, each loading all step records and running through cached lookups. For workflows with fewer than ~100 steps, this is negligible.
+
+**DB impact at scale.** For high-throughput workflows (hundreds per minute), be aware of two growth vectors:
+
+1. **`workflow_steps` reads.** A 20-step sequential workflow produces 20 invocations, each querying all step rows. The `(workflowId, stepId)` unique index makes individual lookups fast, but loading all rows per invocation scales linearly with step count. Prefer splitting large step counts into child workflows.
+2. **`job_executions` writes.** Each invocation is a `$job` execution. A 20-step workflow creates ~20 `job_executions` rows. At hundreds of workflows per minute, this table grows fast. The `retentionDays: 30` sweep (section 8.1) handles cleanup. For extreme throughput, reduce `retentionDays` or use child workflows to keep individual workflow invocation counts low.
+
+For workflows that generate hundreds of dynamic steps (e.g., processing large file sets), prefer splitting into child workflows via `step.invoke()` to keep each workflow's step count manageable.
 
 The framework emits a warning log when step count exceeds `warnStepCount` (default: 100): `"Workflow has ${n} steps (threshold: ${warnStepCount}). Consider splitting into child workflows for better performance."` The `maxInvocations` safety limit (default: 1000) catches runaway cases.
 
@@ -825,7 +834,7 @@ const order = await step.run("validate", () => this.orders.get(id), {
 3. The next invocation replays cached steps, then re-attempts the failed step.
 4. If retries exhausted: compensation runs (if any `rollback` handlers exist), then workflow transitions to `failed`.
 
-Step-level retry is independent of workflow-level concerns. A step can retry 3 times across 3 separate invocations — each invocation replays the cached steps and re-attempts the failing step.
+Step-level retry is independent of workflow-level concerns. A step can retry 3 times across 3 separate invocations — each invocation replays the cached steps (in-memory map lookups) and re-attempts the failing step. For a step deep in the workflow (e.g., step 15 of 20), each retry replays 14 cached lookups before reaching the failing step. This is not a correctness issue — cached lookups are fast O(1) map reads — but worth noting for performance profiling of high-step-count workflows with frequent retries.
 
 **When the handler throws outside a step:**
 
@@ -906,7 +915,9 @@ Signals are external events sent to a waiting workflow.
 
 Orphaned signal rows (workflow never reaches that `waitFor` — e.g., early-exit loops) are cleaned up automatically by `ON DELETE CASCADE` when the execution is purged by the retention sweep.
 
-**Warning: last-write-wins can silently lose data.** If two callers send different payloads for the same signal name, the first payload is overwritten. For workflows that receive multiple independent events (e.g., votes, approvals), **use unique signal names per event** — not a single shared name:
+**Warning: last-write-wins can silently lose data.** If two callers send different payloads for the same signal name, the first payload is overwritten with no error. This is intentional for retry-safety (callers can safely re-send), but it's an easy footgun when multiple independent events share a signal name.
+
+For workflows that receive multiple independent events (e.g., votes, approvals), **use unique signal names per event** — not a single shared name:
 
 ```ts
 // Good: unique signal name per voter
@@ -918,6 +929,8 @@ for (let i = 0; i < total; i++) {
 const vote1 = await step.waitFor("vote", ...)
 const vote2 = await step.waitFor("vote", ...) // same name — unique constraint conflict
 ```
+
+**Future consideration.** A stricter default (reject duplicate signals for `received` rows unless `{ upsert: true }` is passed) would prevent accidental data loss. Deferred to post-v1 — the current last-write-wins behavior is simpler and matches retry-safety expectations. If user feedback shows this is a frequent source of bugs, we can add an opt-in strict mode.
 
 **Signal timeout sweep.** A system job (internal) runs every minute to check for expired signals. Expired signals transition to `expired` status and the workflow is re-dispatched — `step.waitFor()` throws `WorkflowTimeoutError`.
 
@@ -956,7 +969,7 @@ const [user, order, settings] = await Promise.all([
 `step.invoke()` starts a child workflow and waits for completion:
 
 - Child has its own `workflow_executions` record with `parentId` set.
-- Parent suspends until child completes (via a signal mechanism internally).
+- Parent suspends until child completes (via a signal mechanism internally). **The parent remains in an active state (`waiting`) for the entire duration of the child, counting against the parent workflow's `concurrency` limit.** For example, if `concurrency: 5` and one parent sequentially invokes 3 slow children, that parent holds a concurrency slot for the total duration of all three children. Plan concurrency limits accordingly for workflows with long-running children.
 - If parent is cancelled, child is cancelled too (cascading cancellation) — unless `detached: true`.
 - If child fails (after its own retry/compensation), parent's step fails (parent's retry policy applies).
 - **Detached children** (`{ detached: true }`) are not cancelled when the parent cancels. They run to completion independently. Use for critical cleanup, shared workflows, or work that must not be interrupted.
@@ -1079,24 +1092,15 @@ class OrderWorkflows {
 - **Breaking changes** (removing steps, changing step IDs, changing step order): Bump version and keep old handler in `versions` until all old executions drain.
 - **Logic changes** (different behavior in existing steps): Bump version if the change would break in-flight executions.
 
+**Versioning and compensation.** The `versions` map must preserve **rollback handlers** for all in-flight versions, not just the forward path. If a v1 workflow fails at step 4 and triggers compensation, it runs rollback handlers from the v1 handler in `versions`. If the developer removed a rollback handler in v2 and deleted the v1 handler from `versions` before all v1 executions drained, compensation would fail with `WorkflowVersionError` — the rollback code no longer exists. **Rule: never remove a version from `versions` until all executions on that version have reached a terminal state.** The `workflow:version:drained` event (section 6.2) signals when this is safe.
+
 **Input schema is only used at `start()` time for validation.** The validated input is persisted to `workflow_executions.input`. On each invocation, the handler receives input from the database — not from a new validation pass. This means a v1 handler in `versions` always receives v1 input (validated against the schema that was active when the execution started), even if the current schema has changed for v2. No cross-version schema mismatch is possible.
 
 **Unversioned workflows** (no `version` field) always use the current `handler`. This is fine for short-lived workflows that complete quickly and don't span deployments.
 
-### 4.10 Heartbeat Protocol
+### 4.10 Step Idempotency
 
-Each workflow invocation maintains a heartbeat to enable fast crash detection:
-
-1. **On claim**: Worker sets `heartbeatAt = now + heartbeatInterval` on the execution.
-2. **During execution**: Worker extends `heartbeatAt` periodically (every `heartbeatInterval`, default: 30s).
-3. **On completion**: `heartbeatAt` is cleared (set to `null`).
-4. **Heartbeat sweep** (internal system job, runs every `heartbeatInterval`): Queries `workflow_executions WHERE status IN ('running', 'compensating') AND heartbeatAt < now`. Marks these as stale and re-dispatches via `$job`. Compensation runs as a separate invocation sequence — workers crash during compensation too, and the sweep must detect this.
-
-Detection latency: **1-2x heartbeatInterval** (30-60 seconds by default). This is significantly faster than the `$job` recovery sweep (60-second poll + 5-minute stale threshold).
-
-**Within-step heartbeat extension.** The heartbeat is extended during step execution, not just between steps. If a single step runs for longer than `heartbeatInterval`, the framework continues extending the heartbeat in the background. This prevents false-positive crash detection for long-running steps (e.g., a 2-minute PDF generation within a step with a 5-minute timeout).
-
-**Idempotency requirement.** Because crash recovery re-executes the interrupted step, step functions MUST be idempotent — safe to call more than once. If a step completed its side effect (e.g., charged a payment) but crashed before persisting the result, the re-invocation will execute the step again. Use idempotency keys in external API calls:
+Because crash recovery re-executes the interrupted step (see heartbeat protocol in section 3.5), step functions MUST be idempotent — safe to call more than once. If a step completed its side effect (e.g., charged a payment) but crashed before persisting the result, the re-invocation will execute the step again. Use idempotency keys in external API calls:
 
 ```ts
 handler: async ({ input, step, workflowId }) => {
@@ -1110,8 +1114,6 @@ handler: async ({ input, step, workflowId }) => {
   })
 }
 ```
-
-The heartbeat sweep does NOT modify step state — it only re-dispatches the workflow. The re-invocation replays cached steps and re-attempts the interrupted step. No data loss, no corruption.
 
 ---
 
@@ -1136,8 +1138,6 @@ export const workflowExecutionEntity = $entity({
 
     input: t.optional(t.record(t.text(), t.any())),        // validated input
     output: t.optional(t.any()),                             // handler return value (any serializable JSON type)
-    // Note: admin API resource schema wraps output as t.optional(t.record(t.text(), t.any()))
-    // to satisfy HTTP response validation. Non-object outputs are wrapped: { value: <output> }
     status: db.default(
       t.enum(["running", "waiting", "sleeping", "compensating", "completed", "failed", "cancelled", "compensation_failed"]),
       "running",
@@ -1342,7 +1342,7 @@ export class WorkflowProvider {
 8. **WaitFor**: Insert `workflow_signals` record. Workflow status → `waiting`. Clear heartbeat. No re-dispatch until signal arrives.
 9. **Signal received**: Update signal record. Re-dispatch invocation. Workflow status → `running`.
 10. **Parallel** (`Promise.all`): Multiple `step.run` calls return sentinels synchronously. `Promise.all` stalls. Framework collects all pending steps, executes in parallel, persists results, re-dispatches.
-11. **Handler returns**: Persist output. Mark workflow `completed`. Set `key` to `null`. Clear heartbeat. Emit `workflow:complete` event.
+11. **Handler returns**: Persist output to `workflow_executions.output` as-is (any JSON-serializable value). Mark workflow `completed`. Set `key` to `null`. Clear heartbeat. Emit `workflow:complete` event. **Admin API output wrapping**: The admin API resource schema requires `t.record(t.text(), t.any())` for HTTP response validation. `WorkflowService.getExecution()` wraps non-object outputs: if `output` is not a plain object, it is returned as `{ value: <output> }`. This wrapping is API-layer only — the raw value is stored in the entity.
 12. **Handler throws (outside a step)**: No retry (retries are step-level). Run compensation for all completed steps with rollbacks. Mark workflow `failed` or `compensation_failed`. See section 4.2.
 13. **Handler throws (step retry exhaustion)**: Run compensation (status → `compensating`). On completion, mark workflow `failed` or `compensation_failed`. Clear heartbeat. Emit events.
 14. **Signal cleanup**: On any terminal transition (`failed`, `cancelled`, `compensation_failed`), update all `waiting` signals for this workflow to `expired`. Prevents orphaned signal records.
@@ -2194,25 +2194,27 @@ class ApprovalWorkflows {
         await this.notifications.notifyAll(input.requestId, input.approverIds)
       })
 
-      // Collect approvals one at a time
+      // Collect all approvals in parallel — all waitFor calls are registered at once,
+      // so votes can arrive in any order. Use Promise.all, not a sequential loop.
+      const votes = await Promise.all(
+        input.approverIds.map((_, i) =>
+          step.waitFor(`vote-${i}`, { timeout: [48, "hour"] }),
+        ),
+      )
+
       let approved = 0
       let rejected = 0
       const threshold = input.requiredApprovals
-      const total = input.approverIds.length
 
-      for (let i = 0; i < total; i++) {
-        const response = await step.waitFor(`vote-${i}`, {
-          timeout: [48, "hour"],
-        })
-
+      for (const response of votes) {
         if (response.data.approved) approved++
         else rejected++
-
-        // Early exit: enough approvals or mathematically impossible
-        if (approved >= threshold) break
-        if (rejected > total - threshold) break
       }
 
+      // Note: with Promise.all, early exit isn't possible — all signals must arrive.
+      // For early-exit semantics (stop waiting once threshold is reached), use a
+      // sequential loop instead. The trade-off: sequential waitFor means vote-0 must
+      // arrive before vote-1 is even registered. Choose based on your use case.
       const isApproved = approved >= threshold
 
       await step.run("finalize", async () => {
@@ -2472,4 +2474,4 @@ test("workflow with sleep completes", async ({ expect }) => {
 
 13. **Heartbeat-based crash recovery.** Inspired by OpenWorkflow. Workers periodically extend a `heartbeatAt` timestamp on the execution. On crash, the heartbeat stops and the sweep detects it within 30-60 seconds. This is much faster than the `$job` recovery sweep's 5-minute stale threshold. The `$job` sweep remains as a safety net. The heartbeat mechanism never modifies step state — it only triggers re-dispatch.
 
-14. **Internal job isolation.** Workflow invocations create `job_executions` records marked `internal: true`. The jobs admin dashboard filters these out by default (with a toggle to show). This prevents high-throughput workflows from drowning out "real" application jobs in the jobs UI. Workflow invocations are visible in the dedicated workflows admin instead.
+14. **Internal job isolation.** Workflow invocations create `job_executions` records marked `internal: true`. The jobs admin dashboard filters these out by default (with a toggle to show). This prevents high-throughput workflows from drowning out "real" application jobs in the jobs UI. Workflow invocations are visible in the dedicated workflows admin instead. **Prerequisite:** The `internal` column must be added to `jobExecutionEntity` as part of the `$job` v2 schema migration — the current entity does not have this column.
