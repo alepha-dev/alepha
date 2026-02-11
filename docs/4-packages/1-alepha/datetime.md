@@ -27,3 +27,4 @@ Date and time operations.
 ### Primitives
 
 - [`$interval`](/docs/reference-primitives-$interval) — Run a function periodically.
+- [`$timeout`](/docs/reference-primitives-$timeout) — Middleware that aborts handler execution if it exceeds a duration limit.
