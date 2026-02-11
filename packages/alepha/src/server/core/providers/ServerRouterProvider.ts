@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Readable as NodeStream } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
-import type { CompiledEventExecutor, Hooks } from "alepha";
 import { $inject, Alepha, isFileLike, isTypeFile, t } from "alepha";
 import { $logger } from "alepha/logger";
 import { RouterProvider } from "alepha/router";
@@ -34,19 +33,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   protected readonly routes: ServerRoute[] = [];
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
   protected readonly serverRequestParser = $inject(ServerRequestParser);
-
-  // Compiled event executors - initialized on first request
-  protected compiledOnRequest?: CompiledEventExecutor<
-    Hooks["server:onRequest"]
-  >;
-  protected compiledOnSend?: CompiledEventExecutor<Hooks["server:onSend"]>;
-  protected compiledOnResponse?: CompiledEventExecutor<
-    Hooks["server:onResponse"]
-  >;
-  protected compiledOnError?: CompiledEventExecutor<Hooks["server:onError"]>;
-
-  // Cache query schema keys to avoid property enumeration on every request
-  // WeakMap allows GC of schemas that are no longer referenced
   protected readonly queryKeysCache = new WeakMap<object, string[]>();
 
   /**
@@ -59,23 +45,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       this.queryKeysCache.set(schema.properties, keys);
     }
     return keys;
-  }
-
-  /**
-   * Compile event executors for optimal performance.
-   * Called lazily on first request after all hooks are registered.
-   */
-  protected compileEvents(): void {
-    if (this.compiledOnRequest) return; // Already compiled
-
-    this.compiledOnRequest = this.alepha.events.compile("server:onRequest");
-    this.compiledOnSend = this.alepha.events.compile("server:onSend", {
-      catch: true,
-    });
-    this.compiledOnResponse = this.alepha.events.compile("server:onResponse", {
-      catch: true,
-    });
-    this.compiledOnError = this.alepha.events.compile("server:onError");
   }
 
   /**
@@ -120,7 +89,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
         const request =
           this.serverRequestParser.createServerRequest(rawRequest);
 
-        // Create context options per request to avoid race conditions with concurrent requests
         return this.alepha.context.run(
           () => this.processRequest(request, route, responseKind),
           { context: this.getContextId(rawRequest.headers) },
@@ -131,64 +99,48 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
   /**
    * Get or generate a context ID from request headers.
+   *
+   * It first checks for common headers like 'x-request-id' or 'x-correlation-id' that may be set by proxies or clients.
+   * If none of these headers are present, it generates a new UUID to ensure uniqueness.
+   *
+   * Note: In production environments, it's recommended to have a proxy (e.g. Nginx, Cloudflare) that sets a consistent request ID header for better traceability across services.
    */
   protected getContextId(headers: Record<string, string>): string {
-    // Use constant header names to reduce string allocation
-    const contextId =
-      headers[HEADER_REQUEST_ID] || headers[HEADER_CORRELATION_ID];
-    if (contextId) {
-      return contextId;
-    }
-
-    return randomUUID();
+    // note: we trust these headers as all our environments are behind a proxy
+    return (
+      headers["x-request-id"] || headers["x-correlation-id"] || randomUUID()
+    );
   }
 
   /**
    * Process an incoming request through the full lifecycle:
-   * - onRequest hooks
-   * - route handler
-   * - onSend hooks
-   * - response serialization
-   * - onResponse hooks
+   * onRequest → handler → onSend → response → onResponse
    */
   protected async processRequest(
     request: ServerRequest,
     route: ServerRoute,
     responseKind: ResponseKind,
   ) {
-    // Compile events on first request (after all hooks are registered)
-    this.compileEvents();
-
-    // Use try/catch instead of .catch() to avoid function creation overhead
     try {
       await this.runRouteHandler(route, request, responseKind);
     } catch (error) {
       await this.errorHandler(route, request, error as Error);
     }
 
-    // Local reference to reduce property lookups
-    const reply = request.reply;
-
-    // Create payload per request to avoid race conditions with concurrent requests
-    // (async hooks may hold references while other requests modify shared payloads)
     const payload = { request, route, response: undefined as any };
+    await this.alepha.events.emit("server:onSend", payload, { catch: true });
 
-    // Use compiled executor - only await if returns promise
-    const onSendResult = this.compiledOnSend!(payload);
-    if (onSendResult) await onSendResult;
-
-    // Create response
+    const reply = request.reply;
     const response = {
-      status: reply.status ?? (reply.body ? 200 : 204),
+      status: reply.status ?? (reply.body ? 200 : 204), // default status: 200 if body is set, otherwise 204
       headers: reply.headers,
       body: reply.body as any,
     };
 
     payload.response = response;
-
-    // Use compiled executor - only await if returns promise
-    const onResponseResult = this.compiledOnResponse!(payload);
-    if (onResponseResult) await onResponseResult;
+    await this.alepha.events.emit("server:onResponse", payload, {
+      catch: true,
+    });
 
     return response;
   }
@@ -201,57 +153,42 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     request: ServerRequest,
     responseKind: ResponseKind,
   ) {
-    // there are some built-in hooks that are called before the request is handled
-    // - ServerBodyParserProvider (parse body)
-    // - ServerSecurityProvider (build user from headers)
-    // - ServerLoggerProvider (log request)
+    // Built-in hooks: body parsing, security, logging
+    await this.alepha.events.emit("server:onRequest", { request, route });
 
-    // Local reference for timing provider
-    const timing = this.serverTimingProvider;
-
-    // Create payload per request to avoid race conditions with concurrent requests
-    const payload = { request, route };
-
-    // Use compiled executor - only await if returns promise
-    const onRequestResult = this.compiledOnRequest!(payload);
-    if (onRequestResult) await onRequestResult;
-
-    // Local reference to reduce property lookups
+    // A hook (e.g. CORS preflight) may have already written the response
     const reply = request.reply;
     if (reply.body || (reply.status && reply.status >= 200)) {
-      // if the body is already set, we can skip the handler
-      // this is useful for middlewares that set the body
       return;
     }
 
-    // request is ready to be used -> inject to context
-    this.alepha.context.set<ServerRequest>(CTX_REQUEST, request);
+    // Make the request available to handlers via alepha.context
+    this.alepha.context.set<ServerRequest>("request", request);
 
-    // validate request
-    timing.beginTiming(TIMING_VALIDATE);
+    const timing = this.serverTimingProvider;
+
+    timing.beginTiming("validateRequest");
     try {
       this.validateRequest(route, request);
     } finally {
-      timing.endTiming(TIMING_VALIDATE);
+      timing.endTiming("validateRequest");
     }
 
-    // call the handler only if the body is not set yet
-    timing.beginTiming(TIMING_HANDLER);
+    timing.beginTiming("runHandler");
     try {
       const result = await route.handler(request);
       if (result) {
-        request.reply.body = result;
+        reply.body = result;
       }
     } finally {
-      timing.endTiming(TIMING_HANDLER);
+      timing.endTiming("runHandler");
     }
 
-    // serialize response
-    timing.beginTiming(TIMING_SERIALIZE);
+    timing.beginTiming("serializeResponse");
     try {
-      this.serializeResponse(route, request.reply, responseKind);
+      this.serializeResponse(route, reply, responseKind);
     } finally {
-      timing.endTiming(TIMING_SERIALIZE);
+      timing.endTiming("serializeResponse");
     }
   }
 
@@ -263,16 +200,13 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     reply: ServerReply,
     responseKind: ResponseKind,
   ): void {
-    // Local reference to reduce property lookups
     const headers = reply.headers;
 
     if (responseKind === "json" && route.schema?.response) {
-      headers[HEADER_CONTENT_TYPE] = CONTENT_TYPE_JSON;
-      reply.body = this.alepha.codec.encode(
-        route.schema.response,
-        reply.body,
-        ENCODE_OPTIONS_STRING,
-      );
+      headers["content-type"] = "application/json";
+      reply.body = this.alepha.codec.encode(route.schema.response, reply.body, {
+        as: "string" as const,
+      });
       return;
     }
 
@@ -280,11 +214,11 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       if (!isFileLike(reply.body)) {
         throw new HttpError({
           status: 500,
-          message: ERROR_NOT_FILE,
+          message: "Invalid response body - not a file",
         });
       }
-      headers[HEADER_CONTENT_TYPE] = reply.body.type;
-      headers[HEADER_CONTENT_DISPOSITION] =
+      headers["content-type"] = reply.body.type;
+      headers["content-disposition"] =
         `attachment; filename="${reply.body.name.replaceAll('"', "")}"`;
       reply.body = reply.body.stream();
       return;
@@ -292,26 +226,27 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     if (responseKind === "text") {
       reply.body = String(reply.body);
+      // Detect HTML responses (starts with <!DOCTYPE html>)
       if (
         reply.body.length > 15 &&
         reply.body.charCodeAt(0) === 60 &&
         reply.body.startsWith("<!DOCTYPE html>")
       ) {
-        headers[HEADER_CONTENT_TYPE] ??= CONTENT_TYPE_HTML;
+        headers["content-type"] ??= "text/html; charset=UTF-8";
       } else {
-        headers[HEADER_CONTENT_TYPE] ??= CONTENT_TYPE_TEXT;
+        headers["content-type"] ??= "text/plain";
       }
       return;
     }
 
     if (reply.body == null || responseKind === "void") {
-      delete headers[HEADER_CONTENT_TYPE];
+      delete headers["content-type"];
       reply.body = undefined;
       return;
     }
 
     if (Buffer.isBuffer(reply.body)) {
-      headers[HEADER_CONTENT_TYPE] ??= CONTENT_TYPE_OCTET;
+      headers["content-type"] ??= "application/octet-stream";
       return;
     }
 
@@ -319,21 +254,19 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       reply.body instanceof NodeWebStream ||
       reply.body instanceof NodeStream
     ) {
-      // set content-type to application/octet-stream if not set
-      headers[HEADER_CONTENT_TYPE] ??= CONTENT_TYPE_OCTET;
+      headers["content-type"] ??= "application/octet-stream";
       return;
     }
 
     // Plain objects/arrays → auto-serialize as JSON
     if (typeof reply.body === "object") {
-      headers[HEADER_CONTENT_TYPE] ??= CONTENT_TYPE_JSON;
+      headers["content-type"] ??= "application/json";
       reply.body = JSON.stringify(reply.body);
       return;
     }
 
-    headers[HEADER_CONTENT_TYPE] ??= CONTENT_TYPE_TEXT;
+    headers["content-type"] ??= "text/plain";
     reply.body = String(reply.body);
-    return;
   }
 
   /**
@@ -371,64 +304,62 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   }
 
   /**
-   * When an error occurs during request processing, this method is called.
+   * Handle errors during request processing.
    */
   protected async errorHandler(
     route: ServerRoute,
     request: ServerRequest,
     error: Error,
   ) {
-    // Local references to reduce property lookups
+    // Reset body — it's likely invalid after an error
     const reply = request.reply;
-    const headers = reply.headers;
-    const requestId = request.requestId;
-
-    // Reset body, which is probably invalid!
-    // It can be filled by server:onError hook or by the default handler below
     reply.body = null;
 
-    // Use compiled executor - only await if returns promise
-    const onErrorResult = this.compiledOnError!({ request, route, error });
-    if (onErrorResult) {
-      await onErrorResult;
+    // Let error hooks handle it first (e.g. custom error pages, Sentry)
+    await this.alepha.events.emit("server:onError", { request, route, error });
+    // |
+    // |
+    // --> If a hook already set the response, we're done!
+    if (reply.status) return;
+
+    const requestId = request.requestId;
+
+    if (error instanceof HttpError) {
+      reply.status = error.status;
+      reply.headers["content-type"] = "application/json";
+      const errorJson = HttpError.toJSON(error);
+      errorJson.requestId = requestId;
+      reply.body = JSON.stringify(errorJson);
+      return;
     }
 
-    if (!reply.body && !reply.status) {
-      if (error instanceof HttpError) {
-        reply.status = error.status;
-        headers[HEADER_CONTENT_TYPE] = CONTENT_TYPE_JSON;
-        // Avoid spread operator - directly mutate the error JSON
-        const errorJson = HttpError.toJSON(error);
-        errorJson.requestId = requestId;
-        reply.body = JSON.stringify(errorJson);
-      } else {
-        if (
-          "status" in error &&
-          typeof error.status === "number" &&
-          !!errorNameByStatus[error.status]
-        ) {
-          const status = error.status;
-          reply.status = status;
-          headers[HEADER_CONTENT_TYPE] = CONTENT_TYPE_JSON;
-          reply.body = JSON.stringify({
-            status,
-            error: errorNameByStatus[status],
-            message: error.message,
-            requestId,
-          });
-          return;
-        }
-
-        reply.status = 500;
-        headers[HEADER_CONTENT_TYPE] = CONTENT_TYPE_JSON;
-        reply.body = JSON.stringify({
-          status: 500,
-          error: ERROR_INTERNAL,
-          message: error.message,
-          requestId,
-        });
-      }
+    // Errors with a known HTTP status (e.g. from upstream libraries)
+    if (
+      "status" in error &&
+      typeof error.status === "number" &&
+      !!errorNameByStatus[error.status]
+    ) {
+      const status = error.status;
+      reply.status = status;
+      reply.headers["content-type"] = "application/json";
+      reply.body = JSON.stringify({
+        status,
+        error: errorNameByStatus[status],
+        message: error.message,
+        requestId,
+      });
+      return;
     }
+
+    // Fallback: unknown error → 500
+    reply.status = 500;
+    reply.headers["content-type"] = "application/json";
+    reply.body = JSON.stringify({
+      status: 500,
+      error: "InternalServerError",
+      message: error.message,
+      requestId,
+    });
   }
 
   /**
@@ -438,7 +369,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     route: { schema?: RequestConfigSchema },
     request: ServerRequestConfig,
   ) {
-    // Validate params (path parameters)
     if (route.schema?.params) {
       try {
         request.params = this.alepha.codec.validate(
@@ -450,17 +380,13 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       }
     }
 
-    // Validate query parameters (?key=value&key2=value2)
     if (route.schema?.query) {
       try {
-        // Use cached keys instead of for...in enumeration
         const schemaQuery = route.schema.query;
         const keys = this.getQuerySchemaKeys(schemaQuery);
         const query: Record<string, any> = {};
 
-        // Use indexed loop for better performance than for...of
-        for (let i = 0; i < keys.length; i++) {
-          const key = keys[i];
+        for (const key of keys) {
           if (request.query[key] != null) {
             query[key] = this.alepha.codec.decode(
               schemaQuery.properties[key],
@@ -475,7 +401,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       }
     }
 
-    // Validate headers
     if (route.schema?.headers) {
       try {
         request.headers = this.alepha.codec.validate(
@@ -487,7 +412,6 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       }
     }
 
-    // Validate body
     if (route.schema?.body) {
       if (t.schema.isString(route.schema.body)) {
         if (typeof request.body !== "string") {
@@ -506,34 +430,3 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     }
   }
 }
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-// Pre-allocated encode options for response serialization
-const ENCODE_OPTIONS_STRING = Object.freeze({
-  as: "string" as const,
-});
-
-// HTTP Headers
-const HEADER_CONTENT_TYPE = "content-type";
-const HEADER_CONTENT_DISPOSITION = "content-disposition";
-const HEADER_REQUEST_ID = "x-request-id";
-const HEADER_CORRELATION_ID = "x-correlation-id";
-
-// Content Types
-const CONTENT_TYPE_JSON = "application/json";
-const CONTENT_TYPE_TEXT = "text/plain";
-const CONTENT_TYPE_HTML = "text/html; charset=UTF-8";
-const CONTENT_TYPE_OCTET = "application/octet-stream";
-
-// Timing Keys
-const TIMING_VALIDATE = "validateRequest";
-const TIMING_HANDLER = "runHandler";
-const TIMING_SERIALIZE = "serializeResponse";
-
-// Context Keys
-const CTX_REQUEST = "request";
-
-// Error Messages
-const ERROR_INTERNAL = "InternalServerError";
-const ERROR_NOT_FILE = "Invalid response body - not a file";

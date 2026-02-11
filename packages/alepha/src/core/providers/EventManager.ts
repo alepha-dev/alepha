@@ -7,7 +7,9 @@ import type { LoggerInterface } from "../interfaces/LoggerInterface.ts";
  * Compiled event executor - optimized for hot paths.
  * Returns void for sync-only chains, Promise<void> for chains with async hooks.
  */
-export type CompiledEventExecutor<T> = (payload: T) => void | Promise<void>;
+export type CompiledEventExecutor<T extends keyof Hooks> = (
+  payload: Hooks[T],
+) => void | Promise<void>;
 
 /**
  * Options for compiled event executors.
@@ -28,6 +30,11 @@ export class EventManager {
    */
   protected events: Record<string, Array<Hook>> = {};
 
+  /**
+   * Cache of compiled executors, auto-built on first emit per event.
+   */
+  protected cache = new Map<string, CompiledEventExecutor<any>>();
+
   constructor(logFn?: () => LoggerInterface | undefined) {
     this.logFn = logFn;
   }
@@ -38,6 +45,7 @@ export class EventManager {
 
   public clear(): void {
     this.events = {};
+    this.cache.clear();
   }
 
   /**
@@ -54,6 +62,8 @@ export class EventManager {
     const hook =
       typeof hookOrFunc === "function" ? { callback: hookOrFunc } : hookOrFunc;
 
+    // Insert hook respecting priority: "first" → front, "last" → back,
+    // default → before any "last" hooks (preserves registration order)
     if (hook.priority === "first") {
       this.events[event].unshift(hook);
     } else if (hook.priority === "last") {
@@ -69,37 +79,29 @@ export class EventManager {
       }
     }
 
+    // Invalidate cached executor — hook list changed
+    this.cache.delete(event as string);
+
     return () => {
       this.events[event] = this.events[event].filter(
         (it) => it.callback !== hook.callback,
       );
+      this.cache.delete(event as string);
     };
   }
 
   /**
    * Compiles an event into an optimized executor function.
    *
-   * Call this after all hooks are registered (e.g., after Alepha.start()).
-   * The returned function checks each hook's return value and awaits promises.
-   * Returns undefined if all hooks are sync, or a Promise if any hook returns one.
-   *
-   * @example
-   * ```ts
-   * // At startup (after hooks are registered)
-   * const onRequest = alepha.events.compile("server:onRequest", { catch: true });
-   *
-   * // In hot path - only await if promise returned
-   * const result = onRequest({ request, route });
-   * if (result) await result;
-   * ```
+   * Called automatically by emit() on first use. Can also be called
+   * manually for direct access to the executor.
    */
   public compile<T extends keyof Hooks>(
     event: T,
     options: CompileOptions = {},
-  ): CompiledEventExecutor<Hooks[T]> {
+  ): CompiledEventExecutor<T> {
     const hooks = this.events[event];
 
-    // No hooks - return no-op
     if (!hooks || hooks.length === 0) {
       return () => {};
     }
@@ -107,7 +109,8 @@ export class EventManager {
     const catchErrors = options.catch ?? false;
     const log = this.log;
 
-    // Helper to run remaining hooks sequentially after first async hook
+    // Once the first async hook is encountered, all remaining hooks
+    // must run in this async continuation to preserve sequential ordering
     const runRemainingAsync = async (
       startIndex: number,
       payload: Hooks[T],
@@ -141,15 +144,15 @@ export class EventManager {
       }
     };
 
-    // Return executor that runs sync hooks synchronously, then switches to async
-    // when encountering the first async hook. Returns void if all sync.
+    // Run sync hooks synchronously. On first async hook, switch to
+    // runRemainingAsync and return the Promise. If all hooks are sync,
+    // returns void (no Promise allocation).
     return (payload: Hooks[T]): void | Promise<void> => {
       for (let i = 0; i < hooks.length; i++) {
         const hook = hooks[i];
         try {
           const result = hook.callback(payload);
           if (result && typeof result === "object" && "then" in result) {
-            // Hit an async hook - await it and continue remaining hooks async
             if (catchErrors) {
               return (result as Promise<void>)
                 .catch((error) => {
@@ -175,18 +178,17 @@ export class EventManager {
           }
         }
       }
-      // All hooks were sync - return void
     };
   }
 
   /**
    * Emits the specified event with the given payload.
    *
-   * For hot paths (like HTTP request handling), use compile() instead
-   * to get an optimized executor.
+   * Auto-compiles and caches an optimized executor on first call per event.
+   * Use `{ log: true }` for startup events that need timing information.
    */
   public async emit<T extends keyof Hooks>(
-    func: T,
+    event: T,
     payload: Hooks[T],
     options: {
       /**
@@ -203,46 +205,28 @@ export class EventManager {
       catch?: boolean;
     } = {},
   ): Promise<void> {
-    // Fast path: no listeners for this event
-    const events = this.events[func];
-    if (!events || events.length === 0) {
-      return;
-    }
-
-    // Fast path: single listener, no logging
-    if (events.length === 1 && !options.log) {
-      const hook = events[0];
-      try {
-        const result = hook.callback(payload);
-        if (result && typeof result === "object" && "then" in result) {
-          await result;
-        }
-      } catch (error) {
-        if (options.catch) {
-          this.log?.error(
-            `${String(func)}(${hook.caller?.name ?? "unknown"}) ERROR`,
-            error,
-          );
-          return;
-        }
-        throw error;
+    // Fast path: auto-compiled executor
+    if (!options.log) {
+      let executor = this.cache.get(event as string);
+      if (!executor) {
+        executor = this.compile(event, { catch: options.catch });
+        this.cache.set(event as string, executor);
       }
+      await executor(payload);
       return;
     }
 
-    const ctx: any = {};
+    // Slow path with logging (startup only)
+    const events = this.events[event];
+    if (!events || events.length === 0) return;
 
-    if (options.log) {
-      ctx.now = performance.now();
-      this.log?.trace(`${String(func)} ...`);
-    }
+    const now = performance.now();
+    this.log?.trace(`${String(event)} ...`);
 
     for (const hook of events) {
       const name = hook.caller?.name ?? "unknown";
-      if (options.log) {
-        ctx.now2 = performance.now();
-        this.log?.trace(`${String(func)}(${name}) ...`);
-      }
+      const hookStart = performance.now();
+      this.log?.trace(`${String(event)}(${name}) ...`);
 
       try {
         const result = hook.callback(payload);
@@ -251,29 +235,22 @@ export class EventManager {
         }
       } catch (error) {
         if (options.catch) {
-          this.log?.error(`${String(func)}(${name}) ERROR`, error);
+          this.log?.error(`${String(event)}(${name}) ERROR`, error);
           continue;
         }
-        if (options.log) {
-          throw new AlephaError(
-            `Failed during '${String(func)}()' hook for service: ${name}`,
-            { cause: error },
-          );
-        }
-        throw error;
-      }
-
-      if (options.log) {
-        this.log?.debug(
-          `${String(func)}(${name}) OK [${(performance.now() - ctx.now2).toFixed(1)}ms]`,
+        throw new AlephaError(
+          `Failed during '${String(event)}()' hook for service: ${name}`,
+          { cause: error },
         );
       }
-    }
 
-    if (options.log) {
       this.log?.debug(
-        `${String(func)} OK [${(performance.now() - ctx.now).toFixed(1)}ms]`,
+        `${String(event)}(${name}) OK [${(performance.now() - hookStart).toFixed(1)}ms]`,
       );
     }
+
+    this.log?.debug(
+      `${String(event)} OK [${(performance.now() - now).toFixed(1)}ms]`,
+    );
   }
 }
