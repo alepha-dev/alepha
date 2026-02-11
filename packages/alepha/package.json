@@ -251,6 +251,7 @@
     },
     "./queue": {
       "types": "./src/queue/core/index.ts",
+      "workerd": "./src/queue/core/index.workerd.ts",
       "import": "./src/queue/core/index.ts",
       "default": "./src/queue/core/index.ts"
     },

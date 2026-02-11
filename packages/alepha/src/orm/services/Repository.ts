@@ -643,6 +643,97 @@ export abstract class Repository<T extends TObject> {
     }
   }
 
+  /**
+   * Insert or update an entity.
+   *
+   * If a row with the same conflict target already exists, it updates that row.
+   * Otherwise, it inserts a new row.
+   *
+   * @param data The entity data to insert.
+   * @param opts.target The column(s) to detect conflicts on. Defaults to the primary key.
+   * @param opts.set The fields to update on conflict. Defaults to the insert data (minus conflict target columns).
+   * @returns The created or updated entity.
+   *
+   * @example
+   * ```ts
+   * // Simple upsert on primary key
+   * await repo.upsert({ id: "abc", name: "Alice", role: "admin" });
+   *
+   * // Upsert on a unique column
+   * await repo.upsert(
+   *   { email: "alice@example.com", name: "Alice" },
+   *   { target: ["email"] },
+   * );
+   *
+   * // Upsert with custom update fields
+   * await repo.upsert(
+   *   { id: "abc", name: "Alice", role: "admin" },
+   *   { set: { role: "admin" } },
+   * );
+   * ```
+   */
+  public async upsert(
+    data: Static<TObjectInsert<T>>,
+    opts: StatementOptions & {
+      target?: Array<keyof Static<T>>;
+      set?: WithSQL<Static<TObjectUpdate<T>>>;
+    } = {},
+  ): Promise<Static<T>> {
+    await this.alepha.events.emit("repository:create:before", {
+      tableName: this.tableName,
+      data,
+    });
+
+    const targetKeys = opts.target ?? [this.id.key];
+    const targetColumns = targetKeys.map((key) => this.col(key as string));
+
+    let setData: any;
+    if (opts.set) {
+      setData = opts.set;
+    } else {
+      // Default: update all fields from the insert data except the conflict target and primary key columns
+      setData = { ...data };
+      for (const key of targetKeys) {
+        delete setData[key];
+      }
+      delete setData[this.id.key];
+    }
+
+    const updatedAtField = getAttrFields(
+      this.entity.schema,
+      PG_UPDATED_AT,
+    )?.[0];
+
+    if (updatedAtField) {
+      setData[updatedAtField.key] = this.dateTimeProvider
+        .of(opts.now)
+        .toISOString();
+    }
+
+    setData = this.cast(setData, false) as any;
+
+    try {
+      const entity = await this.rawInsert(opts)
+        .values(this.cast(data ?? {}, true))
+        .onConflictDoUpdate({
+          target: targetColumns,
+          set: setData,
+        })
+        .returning(this.table)
+        .then(([it]) => this.clean(it, this.entity.schema));
+
+      await this.alepha.events.emit("repository:create:after", {
+        tableName: this.tableName,
+        data,
+        entity,
+      });
+
+      return entity;
+    } catch (error) {
+      throw this.handleError(error, "Upsert query has failed");
+    }
+  }
+
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
