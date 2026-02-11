@@ -11,16 +11,17 @@
   },
   "scripts": {
     "start": "node src/run-benchmark.ts",
-    "raw-node": "node src/3004-node.ts",
-    "raw-bun": "bun src/3006-bun.ts",
-    "express": "node src/3001-express.js",
-    "fastify": "node src/3002-fastify.ts",
-    "alepha": "node src/3003-alepha.ts",
-    "alepha-bun": "SERVER_PORT=3005 bun src/3003-alepha.ts",
-    "concurrent": "npm-run-all -p alepha alepha-bun express fastify raw-node raw-bun",
+    "x-raw-node": "node src/3004-node.ts",
+    "x-raw-bun": "bun src/3006-bun.ts",
+    "x-express": "node src/3001-express.js",
+    "x-fastify": "node src/3002-fastify.ts",
+    "x-alepha": "node src/3003-alepha.ts",
+    "x-alepha-bun": "SERVER_PORT=3005 bun src/3003-alepha.ts",
+    "concurrent": "npm-run-all -p x-alepha x-alepha-bun x-express x-fastify x-raw-node x-raw-bun",
     "prof:run": "node --prof src/3003-alepha.ts",
     "prof:process": "node --prof-process isolate-*.log > profile.txt && rm isolate-*.log",
     "clinic:run": "clinic flame -- node src/3003-alepha.ts",
-    "clinic:test": "autocannon -c 100 -d 20 -p 10 http://localhost:3003/ping"
+    "clinic:test": "autocannon -c 100 -d 20 -p 10 http://localhost:3003/ping",
+    "kill": "bash scripts/kill-servers.sh"
   }
 }
