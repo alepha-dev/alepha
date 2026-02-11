@@ -1,4 +1,4 @@
-import { Alepha, createPrimitive, Primitive } from "alepha";
+import { Alepha, createPrimitive, PipelinePrimitive } from "alepha";
 import { describe, test } from "vitest";
 import {
   $pipeline,
@@ -212,7 +212,7 @@ describe("$scope metadata", () => {
     }
 
     const svc = alepha.inject(TestService);
-    const meta = (svc.scoped as any).__middlewares as MiddlewareMetadata[];
+    const meta = svc.scoped.middlewares;
     expect(meta).toHaveLength(1);
     expect(meta[0]).toEqual({ name: "$scope" });
   });
@@ -288,19 +288,7 @@ describe("$scope composition", () => {
   test("works inside fake host primitive", async ({ expect }) => {
     const alepha = Alepha.create();
 
-    class FakeAction extends Primitive<{
-      use?: Middleware[];
-      handler: (...args: any[]) => any;
-    }> {
-      protected wrappedHandler = $pipeline({
-        use: this.options.use,
-        handler: this.options.handler,
-      });
-
-      async run(...args: any[]) {
-        return this.wrappedHandler(...args);
-      }
-    }
+    class FakeAction extends PipelinePrimitive {}
 
     class TestController {
       action = createPrimitive(FakeAction, {
@@ -315,5 +303,6 @@ describe("$scope composition", () => {
     const ctrl = alepha.inject(TestController);
     const result = await ctrl.action.run("hello", "world");
     expect(result).toBe("world");
+    expect(alepha.store.get("hello" as any)).toBe(undefined);
   });
 });

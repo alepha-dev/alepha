@@ -79,15 +79,20 @@ export class EventManager {
       }
     }
 
-    // Invalidate cached executor — hook list changed
-    this.cache.delete(event as string);
+    // Invalidate cached executors — hook list changed
+    this.invalidateCache(event as string);
 
     return () => {
       this.events[event] = this.events[event].filter(
         (it) => it.callback !== hook.callback,
       );
-      this.cache.delete(event as string);
+      this.invalidateCache(event as string);
     };
+  }
+
+  protected invalidateCache(event: string): void {
+    this.cache.delete(event);
+    this.cache.delete(`${event}:catch`);
   }
 
   /**
@@ -207,10 +212,13 @@ export class EventManager {
   ): Promise<void> {
     // Fast path: auto-compiled executor
     if (!options.log) {
-      let executor = this.cache.get(event as string);
+      const cacheKey = options.catch
+        ? `${event as string}:catch`
+        : (event as string);
+      let executor = this.cache.get(cacheKey);
       if (!executor) {
         executor = this.compile(event, { catch: options.catch });
-        this.cache.set(event as string, executor);
+        this.cache.set(cacheKey, executor);
       }
       await executor(payload);
       return;
