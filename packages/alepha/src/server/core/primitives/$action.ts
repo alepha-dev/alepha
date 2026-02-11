@@ -6,7 +6,8 @@ import {
   createPrimitive,
   isTypeFile,
   KIND,
-  Primitive,
+  PipelinePrimitive,
+  type PipelinePrimitiveOptions,
   type Static,
   type TObject,
   type TSchema,
@@ -126,7 +127,8 @@ export const $action = <TConfig extends RequestConfigSchema>(
 // ----------------------------------------------------------------------------------------------------------
 
 export interface ActionPrimitiveOptions<TConfig extends RequestConfigSchema>
-  extends Omit<ServerRoute, "handler" | "path" | "schema" | "mapParams"> {
+  extends Omit<ServerRoute, "handler" | "path" | "schema" | "mapParams">,
+    PipelinePrimitiveOptions {
   /**
    * Name of the action.
    *
@@ -211,7 +213,7 @@ const envSchema = t.object({
 
 export class ActionPrimitive<
   TConfig extends RequestConfigSchema,
-> extends Primitive<ActionPrimitiveOptions<TConfig>> {
+> extends PipelinePrimitive<ActionPrimitiveOptions<TConfig>> {
   protected readonly log = $logger();
   protected readonly env = $env(envSchema);
   protected readonly httpClient = $inject(HttpClient);
@@ -237,6 +239,7 @@ export class ActionPrimitive<
       ...(this.options as any), // TODO: fix schema.header mapping
       method: this.method,
       path: `${this.prefix}${this.path}`,
+      handler: this.handler,
     } as ServerRoute;
   }
 
@@ -321,7 +324,7 @@ export class ActionPrimitive<
     if (this.options.disabled) {
       throw new AlephaError(`Action '${this.name}' is disabled.`);
     }
-    const handler = this.options.handler;
+    const handler = this.handler.run.bind(this.handler);
     const {
       body,
       params = {},

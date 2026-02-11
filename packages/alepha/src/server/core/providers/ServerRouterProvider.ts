@@ -1,7 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { Readable as NodeStream } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
-import { $inject, Alepha, isFileLike, isTypeFile, t } from "alepha";
+import {
+  $inject,
+  Alepha,
+  isFileLike,
+  isTypeFile,
+  type Middleware,
+  PipelineHandler,
+  t,
+} from "alepha";
 import { $logger } from "alepha/logger";
 import { RouterProvider } from "alepha/router";
 import type { RouteMethod } from "../constants/routeMethods.ts";
@@ -14,6 +22,7 @@ import type {
   ServerRequest,
   ServerRequestConfig,
   ServerRoute,
+  ServerRouteInput,
   ServerRouteMatcher,
 } from "../interfaces/ServerRequest.ts";
 import { ServerRequestParser } from "../services/ServerRequestParser.ts";
@@ -34,6 +43,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
   protected readonly serverRequestParser = $inject(ServerRequestParser);
   protected readonly queryKeysCache = new WeakMap<object, string[]>();
+  protected readonly globalMiddlewareRegistry: GlobalMiddlewareEntry[] = [];
 
   /**
    * Get cached keys for a query schema, computing them lazily on first access.
@@ -47,6 +57,58 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     return keys;
   }
 
+  public pushMiddleware(
+    pattern: string,
+    middleware: Middleware[],
+    options?: PushMiddlewareOptions,
+  ): void {
+    this.globalMiddlewareRegistry.push({ pattern, middleware, ...options });
+    for (const route of this.getRoutes(pattern)) {
+      if (this.matchesMiddlewareFilter(route, options)) {
+        route.handler.use(...middleware);
+      }
+    }
+  }
+
+  /**
+   * Check if a route passes the middleware filter options (method, exclude).
+   */
+  protected matchesMiddlewareFilter(
+    route: ServerRoute,
+    options?: PushMiddlewareOptions,
+  ): boolean {
+    if (options?.method) {
+      const methods = Array.isArray(options.method)
+        ? options.method
+        : [options.method];
+      if (
+        route.method &&
+        !methods.includes(route.method.toUpperCase() as RouteMethod)
+      ) {
+        return false;
+      }
+    }
+    if (options?.exclude) {
+      for (const exclude of options.exclude) {
+        if (route.path === exclude || route.path.startsWith(`${exclude}/`)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Check if a route path matches a pattern.
+   * Wildcard `*` at end = prefix match, otherwise exact match.
+   */
+  protected matchesPattern(routePath: string, pattern: string): boolean {
+    if (pattern.endsWith("*")) {
+      return routePath.startsWith(pattern.slice(0, -1));
+    }
+    return routePath === pattern;
+  }
+
   /**
    * Get all registered routes, optionally filtered by a pattern.
    *
@@ -55,28 +117,40 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
    */
   public getRoutes(pattern?: string): ServerRoute[] {
     if (pattern) {
-      if (pattern.endsWith("*")) {
-        const basePattern = pattern.slice(0, -1);
-        return this.routes.filter((route) =>
-          route.path.startsWith(basePattern),
-        );
-      } else {
-        return this.routes.filter((route) => route.path === pattern);
-      }
+      return this.routes.filter((route) =>
+        this.matchesPattern(route.path, pattern),
+      );
     }
     return this.routes;
   }
 
   /**
    * Create a new server route.
+   *
+   * Accepts both `PipelineHandler` and plain handler functions.
+   * Plain functions are auto-wrapped in `PipelineHandler`.
    */
   public createRoute<TConfig extends RequestConfigSchema = RequestConfigSchema>(
-    route: ServerRoute<TConfig>,
+    input: ServerRouteInput<TConfig>,
   ): void {
+    // Auto-wrap plain function handlers in PipelineHandler
+    if (!(input.handler instanceof PipelineHandler)) {
+      (input as any).handler = new PipelineHandler(input.handler);
+    }
+
+    const route = input as unknown as ServerRoute<TConfig>;
     route.method ??= "GET";
     route.method = route.method.toUpperCase() as RouteMethod;
 
     this.routes.push(route);
+
+    for (const entry of this.globalMiddlewareRegistry) {
+      if (this.matchesPattern(route.path, entry.pattern)) {
+        if (this.matchesMiddlewareFilter(route, entry)) {
+          route.handler.use(...entry.middleware);
+        }
+      }
+    }
 
     const path = `/${route.method}/${route.path}`.replace(/\/+/g, "/");
     const responseKind = this.getResponseType(route.schema);
@@ -176,7 +250,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     timing.beginTiming("runHandler");
     try {
-      const result = await route.handler(request);
+      const result = await route.handler.run(request);
       if (result) {
         reply.body = result;
       }
@@ -429,4 +503,16 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface PushMiddlewareOptions {
+  method?: RouteMethod | RouteMethod[];
+  exclude?: string[];
+}
+
+interface GlobalMiddlewareEntry extends PushMiddlewareOptions {
+  pattern: string;
+  middleware: Middleware[];
 }

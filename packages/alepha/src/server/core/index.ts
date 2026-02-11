@@ -1,5 +1,5 @@
 import type { Server } from "node:http";
-import { $module, type Alepha, type PrimitiveFactoryLike } from "alepha";
+import { $module, type Alepha } from "alepha";
 import type { HttpError } from "./errors/HttpError.ts";
 import type {
   NodeRequestEvent,
@@ -15,6 +15,7 @@ import {
   type ActionPrimitive,
   type ClientRequestOptions,
 } from "./primitives/$action.ts";
+import { $middleware } from "./primitives/$middleware.ts";
 import { $route } from "./primitives/$route.ts";
 import { BunHttpServerProvider } from "./providers/BunHttpServerProvider.ts";
 import { NodeHttpServerProvider } from "./providers/NodeHttpServerProvider.ts";
@@ -101,6 +102,7 @@ declare module "alepha" {
 
 export * from "./index.shared.ts";
 export * from "./primitives/$action.ts";
+export * from "./primitives/$middleware.ts";
 export * from "./primitives/$route.ts";
 export * from "./providers/BunHttpServerProvider.ts";
 export * from "./providers/NodeHttpServerProvider.ts";
@@ -136,7 +138,7 @@ export * from "./services/UserAgentParser.ts";
  */
 export const AlephaServer = $module({
   name: "alepha.server",
-  primitives: [$route, $action as PrimitiveFactoryLike],
+  primitives: [$route, $action, $middleware],
   services: [
     ServerProvider,
     BunHttpServerProvider,

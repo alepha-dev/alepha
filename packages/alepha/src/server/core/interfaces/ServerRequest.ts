@@ -6,6 +6,7 @@ import type { Readable as NodeStream } from "node:stream";
 import type { ReadableStream as NodeWebStream } from "node:stream/web";
 import type {
   Async,
+  PipelineHandler,
   Static,
   StreamLike,
   TArray,
@@ -160,7 +161,7 @@ export interface ServerRoute<
   /**
    * Handler function for this route.
    */
-  handler: ServerHandler<TConfig>;
+  handler: PipelineHandler;
 
   /**
    * HTTP method for this route.
@@ -188,6 +189,16 @@ export interface ServerRoute<
    */
   silent?: boolean;
 }
+
+/**
+ * Input type for `createRoute()`. Accepts both a `PipelineHandler` and a plain handler function.
+ * Plain functions are auto-wrapped in `PipelineHandler` by `createRoute()`.
+ */
+export type ServerRouteInput<
+  TConfig extends RequestConfigSchema = RequestConfigSchema,
+> = Omit<ServerRoute<TConfig>, "handler"> & {
+  handler: PipelineHandler | ServerHandler<TConfig>;
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 

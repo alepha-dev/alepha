@@ -1,6 +1,13 @@
-import { $inject, createPrimitive, KIND, Primitive } from "alepha";
+import {
+  $inject,
+  createPrimitive,
+  KIND,
+  PipelinePrimitive,
+  type PipelinePrimitiveOptions,
+} from "alepha";
 import type {
   RequestConfigSchema,
+  ServerHandler,
   ServerRoute,
 } from "../interfaces/ServerRequest.ts";
 import { ServerRouterProvider } from "../providers/ServerRouterProvider.ts";
@@ -23,17 +30,21 @@ export const $route = <TConfig extends RequestConfigSchema>(
 
 export interface RoutePrimitiveOptions<
   TConfig extends RequestConfigSchema = RequestConfigSchema,
-> extends ServerRoute<TConfig> {}
+> extends Omit<ServerRoute<TConfig>, "handler">,
+    PipelinePrimitiveOptions<ServerHandler<TConfig>> {}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class RoutePrimitive<
   TConfig extends RequestConfigSchema,
-> extends Primitive<RoutePrimitiveOptions<TConfig>> {
+> extends PipelinePrimitive<RoutePrimitiveOptions<TConfig>> {
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 
   protected onInit() {
-    this.serverRouterProvider.createRoute(this.options);
+    this.serverRouterProvider.createRoute({
+      ...(this.options as any),
+      handler: this.handler,
+    } as ServerRoute<TConfig>);
   }
 }
 

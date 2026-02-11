@@ -1,4 +1,4 @@
-import { Alepha, t } from "alepha";
+import { Alepha, createMiddleware, t } from "alepha";
 import { describe, test } from "vitest";
 import { $route, ServerProvider } from "../index.ts";
 
@@ -61,5 +61,42 @@ describe("$route", () => {
         },
       },
     });
+  });
+
+  test("should apply per-route middleware via use option", async ({
+    expect,
+  }) => {
+    const log: string[] = [];
+    const $track = () =>
+      createMiddleware({
+        name: "$track",
+        handler:
+          ({ next }) =>
+          async (...args: any[]) => {
+            log.push("before");
+            const result = await next(...args);
+            log.push("after");
+            return result;
+          },
+      });
+
+    const alepha = Alepha.create();
+
+    class TestApp {
+      route = $route({
+        path: "/hello",
+        use: [$track()],
+        handler: () => {
+          log.push("handler");
+          return "OK";
+        },
+      });
+    }
+
+    await alepha.with(TestApp).start();
+
+    const resp = await fetch(`${alepha.inject(ServerProvider).hostname}/hello`);
+    expect(await resp.text()).toBe("OK");
+    expect(log).toStrictEqual(["before", "handler", "after"]);
   });
 });
