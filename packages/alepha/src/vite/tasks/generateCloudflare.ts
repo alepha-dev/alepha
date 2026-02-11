@@ -4,6 +4,8 @@ import type { Alepha } from "alepha";
 import { CloudflareR2Provider, R2_DEFAULT_BINDING } from "alepha/bucket";
 import { type CloudflareKVProvider, KV_DEFAULT_BINDING } from "alepha/cache";
 import type { CronProvider } from "alepha/scheduler";
+import type { CloudflareQueueProvider } from "../../queue/core/providers/CloudflareQueueProvider.ts";
+import { QUEUE_DEFAULT_BINDING } from "../../queue/core/providers/CloudflareQueueProvider.ts";
 import type { WorkerdCronProvider } from "../../scheduler/providers/WorkerdCronProvider.ts";
 
 export interface GenerateCloudflareOptions {
@@ -131,6 +133,29 @@ export async function generateCloudflare(
     });
   }
 
+  // Add Queue binding if CloudflareQueueProvider is used
+  let queueProvider: CloudflareQueueProvider | undefined;
+  const queueMod = await opts.importModule("alepha/queue");
+  try {
+    queueProvider = opts.alepha.inject<CloudflareQueueProvider>(
+      queueMod.CloudflareQueueProvider,
+    );
+  } catch {}
+
+  if (queueProvider) {
+    const queueName = `${name}-queue`;
+    wrangler.queues ??= {};
+    wrangler.queues.producers = wrangler.queues.producers || [];
+    wrangler.queues.producers.push({
+      binding: QUEUE_DEFAULT_BINDING,
+      queue: queueName,
+    });
+    wrangler.queues.consumers = wrangler.queues.consumers || [];
+    wrangler.queues.consumers.push({
+      queue: queueName,
+    });
+  }
+
   await writeFile(
     join(root, distDir, "wrangler.jsonc"),
     JSON.stringify(wrangler, null, 2),
@@ -181,6 +206,26 @@ export default {
       cron: event.cron,
       scheduledTime: event.scheduledTime,
     });
+  },
+
+  queue: async (batch, env) => {
+    __alepha.set("cloudflare.env", env);
+
+    try {
+      await __alepha.start();
+    } catch (err) {
+      console.error("Failed to start Alepha for queue event", err);
+      throw err;
+    }
+
+    for (const msg of batch.messages) {
+      try {
+        await __alepha.events.emit("cloudflare:queue", msg.body);
+        msg.ack();
+      } catch (e) {
+        msg.retry();
+      }
+    }
   },
 };
 `.trim();
