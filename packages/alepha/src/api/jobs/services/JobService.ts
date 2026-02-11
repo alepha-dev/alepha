@@ -262,7 +262,10 @@ export class JobService {
                 ${e.id}, ${e.jobName} AS job_name, ${e.status},
                 ${e.startedAt} AS started_at, ${e.completedAt} AS completed_at, ${e.error}
               FROM ${e}
-              WHERE ${e.jobName} IN (${sql.join(cronJobNames.map((n) => sql`${n}`), sql`, `)})
+              WHERE ${e.jobName} IN (${sql.join(
+                cronJobNames.map((n) => sql`${n}`),
+                sql`, `,
+              )})
               ORDER BY ${e.jobName}, ${e.createdAt} DESC
             `,
             t.object({

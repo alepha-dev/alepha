@@ -23,6 +23,8 @@ export * from "./primitives/$env.ts";
 export * from "./primitives/$hook.ts";
 export * from "./primitives/$inject.ts";
 export * from "./primitives/$module.ts";
+export * from "./primitives/$pipeline.ts";
+export * from "./primitives/$scope.ts";
 export * from "./primitives/$use.ts";
 export * from "./providers/AlsProvider.ts";
 export * from "./providers/CodecManager.ts";

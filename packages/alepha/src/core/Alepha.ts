@@ -175,6 +175,14 @@ export class Alepha {
       });
     }
 
+    state["alepha.logger"] ??= {
+      trace: console.log,
+      debug: console.debug,
+      info: console.log,
+      warn: console.warn,
+      error: console.error,
+    };
+
     const alepha = new Alepha(state);
 
     if (alepha.isTest()) {

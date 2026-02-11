@@ -38,6 +38,7 @@ Foundation of the entire framework with dependency injection and lifecycle manag
 - [`$hook`](/docs/reference-primitives-$hook) — Registers a new hook.
 - [`$inject`](/docs/reference-primitives-$inject) — Get the instance of the specified type from the context.
 - [`$module`](/docs/reference-primitives-$module) — Wrap Services and Primitives into a Module.
+- [`$scope`](/docs/reference-primitives-$scope) — Middleware that wraps the handler in an ALS (AsyncLocalStorage) context.
 - [`$use`](/docs/reference-primitives-$use) — Subscribes to an atom's state and returns its current value for use in components.
 
 ### Providers
