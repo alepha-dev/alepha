@@ -14,6 +14,14 @@ import type { ActionProps } from "../buttons/ActionButton.tsx";
 import type { TypeFormProps } from "../form/TypeForm.tsx";
 
 // -----------------------------------------------------------------------------
+// Row Action Types
+// -----------------------------------------------------------------------------
+
+export type DataTableRowAction = ActionProps & {
+  visible?: boolean;
+};
+
+// -----------------------------------------------------------------------------
 // Visibility Types
 // -----------------------------------------------------------------------------
 
@@ -37,7 +45,7 @@ export interface DataTableColumnContext<Filters extends TObject> {
 
 export interface DataTableColumn<T extends object, Filters extends TObject> {
   label: string;
-  value: (item: T, ctx: DataTableColumnContext<Filters>) => ReactNode;
+  value?: (item: T, ctx: DataTableColumnContext<Filters>) => ReactNode;
   fit?: boolean;
   /**
    * Enable sorting for this column. When true, clicking the header will sort by this column.
@@ -48,6 +56,19 @@ export interface DataTableColumn<T extends object, Filters extends TObject> {
    * Follows Alepha sort convention: 'field' for ASC, '-field' for DESC.
    */
   sortKey?: string;
+  /**
+   * Row-level actions rendered as ActionButtons.
+   * Defaults: variant="subtle", size="xs", preventDefault=true.
+   * Use `visible` on each action to conditionally show/hide.
+   */
+  actions?: (
+    item: T,
+    ctx: DataTableColumnContext<Filters>,
+  ) => DataTableRowAction[];
+  /**
+   * Hide this column by default. Users can show it via the column picker.
+   */
+  defaultHidden?: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -128,6 +149,11 @@ export interface DataTableProps<T extends object, Filters extends TObject> {
   withLineNumbers?: boolean;
 
   /**
+   * Enable export button in toolbar (CSV download + clipboard copy).
+   */
+  withExport?: boolean;
+
+  /**
    * Enable row selection with checkboxes. When true, a checkbox column is added as the first column.
    */
   withCheckbox?: boolean;
@@ -150,38 +176,10 @@ export interface DataTableProps<T extends object, Filters extends TObject> {
    */
   infinityScroll?: boolean;
 
-  // -------------------------------------------------------------------------------------------------------------------
-  // Column Visibility
-  // -------------------------------------------------------------------------------------------------------------------
-
   /**
-   * Initial column visibility state. By default, first 10 columns are visible.
+   * Filter keys to show by default. Default: none (empty array).
    */
-  defaultColumnVisibility?: ColumnVisibility;
-
-  /**
-   * Maximum number of columns to show by default. Default is 10.
-   */
-  defaultVisibleColumnCount?: number;
-
-  /**
-   * Callback when column visibility changes.
-   */
-  onColumnVisibilityChange?: (visibility: ColumnVisibility) => void;
-
-  // -------------------------------------------------------------------------------------------------------------------
-  // Filter Visibility
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Initial filter visibility state. By default, all filters are visible.
-   */
-  defaultFilterVisibility?: FilterVisibility;
-
-  /**
-   * Callback when filter visibility changes.
-   */
-  onFilterVisibilityChange?: (visibility: FilterVisibility) => void;
+  defaultFilters?: string[];
 
   // -------------------------------------------------------------------------------------------------------------------
   // Mantine Props

@@ -51,11 +51,19 @@ const DataTableFilters = ({
       style={{ borderBottom: "1px solid var(--alepha-border)" }}
     >
       <TypeForm
+        size={"xs"}
         {...typeFormProps}
         skipSubmitButton
         fill
         form={form}
         schema={visibleSchema}
+        columns={{
+          base: 1,
+          sm: 2,
+          md: 3,
+          lg: 4,
+          xl: 6,
+        }}
       />
     </Flex>
   );

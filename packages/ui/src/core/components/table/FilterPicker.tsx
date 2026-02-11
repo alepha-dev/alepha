@@ -62,9 +62,7 @@ const FilterPicker = ({
     });
   };
 
-  const visibleCount = filterKeys.filter(
-    (key) => visibility[key] !== false,
-  ).length;
+  const visibleCount = filterKeys.filter((key) => visibility[key]).length;
 
   return (
     <Popover
@@ -82,7 +80,13 @@ const FilterPicker = ({
       }}
     >
       <Popover.Target>
-        <ActionButton variant="subtle" icon={IconFilter} />
+        <div>
+          <ActionButton
+            variant="subtle"
+            icon={IconFilter}
+            onClick={() => setOpened((o) => !o)}
+          />
+        </div>
       </Popover.Target>
       <Popover.Dropdown
         bg="transparent"
@@ -127,7 +131,7 @@ const FilterPicker = ({
                 <Checkbox
                   key={key}
                   label={getFieldLabel(schema, key)}
-                  checked={visibility[key] !== false}
+                  checked={visibility[key] === true}
                   onChange={(e) => handleToggle(key, e.currentTarget.checked)}
                   size="sm"
                 />

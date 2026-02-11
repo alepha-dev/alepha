@@ -4,6 +4,8 @@ import {
   IconArrowDown,
   IconArrowsSort,
   IconArrowUp,
+  IconChevronDown,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import { Alepha, type Static, type TObject, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -11,6 +13,7 @@ import { useInject } from "alepha/react";
 import { type FormModel, useForm } from "alepha/react/form";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ui } from "../../constants/ui.ts";
+import ActionButton from "../buttons/ActionButton.tsx";
 import DataTableFilters, {
   type DataTableFiltersProps,
 } from "./DataTableFilters.tsx";
@@ -24,7 +27,7 @@ import type {
   MaybePage,
 } from "./types.ts";
 
-const DEFAULT_VISIBLE_COLUMN_COUNT = 10;
+const DEFAULT_MAX_VISIBLE_COLUMNS = 8;
 
 type SortDirection = "asc" | "desc" | null;
 
@@ -93,49 +96,35 @@ const DataTable = <T extends object, Filters extends TObject>(
   // Column visibility state
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
     () => {
-      if (props.defaultColumnVisibility) {
-        return props.defaultColumnVisibility;
-      }
-      const columnKeys = Object.keys(props.columns);
-      const maxVisible =
-        props.defaultVisibleColumnCount ?? DEFAULT_VISIBLE_COLUMN_COUNT;
-      return columnKeys.reduce(
-        (acc, key, index) => ({
-          ...acc,
-          [key]: index < maxVisible,
-        }),
-        {} as ColumnVisibility,
-      );
+      const entries = Object.entries(props.columns);
+      let visibleCount = 0;
+      return entries.reduce((acc, [key, col]) => {
+        if (col.defaultHidden) {
+          acc[key] = false;
+        } else if (visibleCount < DEFAULT_MAX_VISIBLE_COLUMNS) {
+          acc[key] = true;
+          visibleCount++;
+        } else {
+          acc[key] = false;
+        }
+        return acc;
+      }, {} as ColumnVisibility);
     },
   );
 
-  // Filter visibility state
+  // Filter visibility state — default: none visible
   const [filterVisibility, setFilterVisibility] = useState<FilterVisibility>(
     () => {
-      if (props.defaultFilterVisibility) {
-        return props.defaultFilterVisibility;
-      }
       if (!props.filters?.properties) {
         return {};
       }
+      const defaults = new Set(props.defaultFilters ?? []);
       return Object.keys(props.filters.properties).reduce(
-        (acc, key) => ({ ...acc, [key]: true }),
+        (acc, key) => ({ ...acc, [key]: defaults.has(key) }),
         {} as FilterVisibility,
       );
     },
   );
-
-  // Handle column visibility changes
-  const handleColumnVisibilityChange = (visibility: ColumnVisibility) => {
-    setColumnVisibility(visibility);
-    props.onColumnVisibilityChange?.(visibility);
-  };
-
-  // Handle filter visibility changes
-  const handleFilterVisibilityChange = (visibility: FilterVisibility) => {
-    setFilterVisibility(visibility);
-    props.onFilterVisibilityChange?.(visibility);
-  };
 
   // Compute visible columns
   const visibleColumns = useMemo(() => {
@@ -238,6 +227,21 @@ const DataTable = <T extends object, Filters extends TObject>(
   // Clear all selections
   const clearSelection = useCallback(() => {
     setSelectedKeys(new Set());
+  }, []);
+
+  // Panel expand state
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+
+  const toggleExpand = useCallback((key: string) => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
   }, []);
 
   const form = useForm(
@@ -414,13 +418,36 @@ const DataTable = <T extends object, Filters extends TObject>(
     );
   });
 
-  const rows = items.content.map((item, index) => {
+  const rows = items.content.flatMap((item, index) => {
     const trProps = props.tableTrProps ? props.tableTrProps(item as T) : {};
     const itemKey = getItemKey(item as T);
     const isSelected = selectedKeys.has(itemKey);
+    const showPanel = props.panel && props.canPanel?.(item as T);
+    const isExpanded = expandedKeys.has(itemKey);
 
-    return (
+    const elements = [
       <Table.Tr key={itemKey} {...trProps}>
+        {props.panel && (
+          <Table.Td style={{ width: 36, textAlign: "center" }} py={2} px={0}>
+            {showPanel && (
+              <UnstyledButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleExpand(itemKey);
+                }}
+                style={{ display: "inline-flex" }}
+              >
+                <Flex c="dimmed" align="center" justify="center">
+                  {isExpanded ? (
+                    <IconChevronDown size={ui.sizes.icon.sm} />
+                  ) : (
+                    <IconChevronRight size={ui.sizes.icon.sm} />
+                  )}
+                </Flex>
+              </UnstyledButton>
+            )}
+          </Table.Td>
+        )}
         {props.withCheckbox && (
           <Table.Td style={{ width: 40 }}>
             <Checkbox
@@ -430,20 +457,56 @@ const DataTable = <T extends object, Filters extends TObject>(
             />
           </Table.Td>
         )}
-        {visibleColumns.map(([key, col]) => (
-          <Table.Td key={key}>
-            {col.value(
-              item as T,
-              {
-                index,
-                form: form as unknown as FormModel<Filters>,
-                alepha,
-              } as DataTableColumnContext<Filters>,
-            )}
+        {visibleColumns.map(([key, col]) => {
+          const ctx = {
+            index,
+            form: form as unknown as FormModel<Filters>,
+            alepha,
+          } as DataTableColumnContext<Filters>;
+
+          if (col.actions) {
+            const rowActions = col
+              .actions(item as T, ctx)
+              .filter((a) => a.visible !== false);
+            return (
+              <Table.Td py={2} px={4} key={key}>
+                <Flex gap={4}>
+                  {rowActions.map(({ visible: _, ...actionProps }, i) => (
+                    <ActionButton
+                      key={i}
+                      variant="subtle"
+                      size="xs"
+                      preventDefault
+                      h={20}
+                      {...actionProps}
+                    />
+                  ))}
+                </Flex>
+              </Table.Td>
+            );
+          }
+
+          return (
+            <Table.Td py={2} px={4} key={key}>
+              {col.value?.(item as T, ctx)}
+            </Table.Td>
+          );
+        })}
+      </Table.Tr>,
+    ];
+
+    if (props.panel && showPanel && isExpanded) {
+      const colSpan = visibleColumns.length + (props.withCheckbox ? 1 : 0) + 1;
+      elements.push(
+        <Table.Tr key={`${itemKey}-panel`}>
+          <Table.Td colSpan={colSpan} p={0}>
+            {props.panel(item as T)}
           </Table.Td>
-        ))}
-      </Table.Tr>
-    );
+        </Table.Tr>,
+      );
+    }
+
+    return elements;
   });
 
   const filterSchema = useMemo(() => {
@@ -452,23 +515,18 @@ const DataTable = <T extends object, Filters extends TObject>(
   }, [props.filters, form.options.schema]);
 
   return (
-    <Flex
-      flex={1}
-      p={0}
-      bg="var(--alepha-elevated)"
-      bdrs="sm"
-      bd="1px solid var(--alepha-border)"
-      direction="column"
-    >
+    <Flex flex={1} p={0} bdrs="sm" direction="column">
       <DataTableToolbar
         columns={props.columns}
         filters={props.filters}
         columnVisibility={columnVisibility}
         filterVisibility={filterVisibility}
-        onColumnVisibilityChange={handleColumnVisibilityChange}
-        onFilterVisibilityChange={handleFilterVisibilityChange}
+        onColumnVisibilityChange={setColumnVisibility}
+        onFilterVisibilityChange={setFilterVisibility}
         actions={props.actions}
         onRefresh={() => form.submit()}
+        items={items.content as T[]}
+        withExport={props.withExport}
         selectedItems={selectedItems}
         checkboxActions={props.checkboxActions}
         onClearSelection={clearSelection}
@@ -489,6 +547,7 @@ const DataTable = <T extends object, Filters extends TObject>(
         <Table withColumnBorders withRowBorders {...props.tableProps}>
           <Table.Thead>
             <Table.Tr>
+              {props.panel && <Table.Th style={{ width: 36 }} />}
               {checkboxHeader}
               {head}
             </Table.Tr>

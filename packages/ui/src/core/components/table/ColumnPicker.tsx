@@ -35,11 +35,19 @@ const ColumnPicker = <T extends object, Filters extends TObject>({
     onVisibilityChange(newVisibility);
   };
 
-  const handleHideAll = () => {
-    const newVisibility = columnEntries.reduce(
-      (acc, [key]) => ({ ...acc, [key]: false }),
-      {} as ColumnVisibility,
-    );
+  const handleDefault = () => {
+    let count = 0;
+    const newVisibility = columnEntries.reduce((acc, [key, col]) => {
+      if (col.defaultHidden) {
+        acc[key] = false;
+      } else if (count < 6) {
+        acc[key] = true;
+        count++;
+      } else {
+        acc[key] = false;
+      }
+      return acc;
+    }, {} as ColumnVisibility);
     onVisibilityChange(newVisibility);
   };
 
@@ -70,7 +78,13 @@ const ColumnPicker = <T extends object, Filters extends TObject>({
       }}
     >
       <Popover.Target>
-        <ActionButton variant="subtle" icon={IconColumns} />
+        <div>
+          <ActionButton
+            variant="subtle"
+            icon={IconColumns}
+            onClick={() => setOpened((o) => !o)}
+          />
+        </div>
       </Popover.Target>
       <Popover.Dropdown
         bg="transparent"
@@ -102,9 +116,9 @@ const ColumnPicker = <T extends object, Filters extends TObject>({
               <Button
                 size="compact-xs"
                 variant="subtle"
-                onClick={handleHideAll}
+                onClick={handleDefault}
               >
-                None
+                Default
               </Button>
             </Flex>
           </Flex>
@@ -114,7 +128,7 @@ const ColumnPicker = <T extends object, Filters extends TObject>({
               {columnEntries.map(([key, col]) => (
                 <Checkbox
                   key={key}
-                  label={col.label}
+                  label={col.label || key}
                   checked={visibility[key] !== false}
                   onChange={(e) => handleToggle(key, e.currentTarget.checked)}
                   size="sm"
