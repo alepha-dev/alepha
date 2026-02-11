@@ -191,6 +191,7 @@ const Control = (_props: ControlProps) => {
     }
     return (
       <ControlNumber
+        size={props.size}
         input={props.input}
         title={props.title}
         description={props.description}
@@ -207,6 +208,7 @@ const Control = (_props: ControlProps) => {
     return (
       <FileInput
         {...inputProps}
+        size={props.size}
         id={id}
         leftSection={icon}
         onChange={(file) => {
@@ -224,6 +226,7 @@ const Control = (_props: ControlProps) => {
     return (
       <ColorInput
         {...inputProps}
+        size={props.size}
         id={id}
         leftSection={icon}
         {...props.input.props}
@@ -248,6 +251,7 @@ const Control = (_props: ControlProps) => {
     }
     return (
       <ControlSelect
+        size={props.size}
         input={props.input}
         title={props.title}
         description={props.description}
@@ -269,6 +273,7 @@ const Control = (_props: ControlProps) => {
     return (
       <Switch
         {...inputProps}
+        size={props.size}
         id={id}
         color={"blue"}
         defaultChecked={props.input.props.defaultValue}
@@ -288,6 +293,7 @@ const Control = (_props: ControlProps) => {
     return (
       <PasswordInput
         {...inputProps}
+        size={props.size}
         id={id}
         leftSection={icon}
         {...props.input.props}
@@ -303,6 +309,7 @@ const Control = (_props: ControlProps) => {
     return (
       <Textarea
         {...inputProps}
+        size={props.size}
         id={id}
         leftSection={icon}
         {...props.input.props}
@@ -324,6 +331,7 @@ const Control = (_props: ControlProps) => {
   ) {
     return (
       <ControlDate
+        size={props.size}
         input={props.input}
         title={props.title}
         description={props.description}
@@ -358,6 +366,7 @@ const Control = (_props: ControlProps) => {
   return (
     <TextInput
       {...inputProps}
+      size={props.size}
       id={id}
       leftSection={icon}
       type={getInputType()}

@@ -119,6 +119,7 @@ const ControlSelect = (props: ControlSelectProps) => {
     return (
       <Autocomplete
         {...inputProps}
+        size={props.size}
         id={id}
         leftSection={icon}
         data={data}
@@ -134,6 +135,7 @@ const ControlSelect = (props: ControlSelectProps) => {
     return (
       <TagsInput
         {...inputProps}
+        size={props.size}
         id={id}
         leftSection={icon}
         defaultValue={
@@ -163,6 +165,7 @@ const ControlSelect = (props: ControlSelectProps) => {
     return (
       <MultiSelect
         {...inputProps}
+        size={props.size}
         id={id}
         leftSection={icon}
         data={data}
@@ -186,6 +189,7 @@ const ControlSelect = (props: ControlSelectProps) => {
   return (
     <Select
       {...inputProps}
+      size={props.size}
       id={id}
       leftSection={icon}
       data={data}

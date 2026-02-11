@@ -310,7 +310,11 @@ export const SidebarItem = (props: SidebarItemProps) => {
           props.theme.button?.size ??
           (level === 0 ? "sm" : "xs")
         }
-        tooltip={item.description}
+        tooltip={
+          item.description
+            ? { label: item.description, position: "right" }
+            : undefined
+        }
         color={"gray"}
         variant={"subtle"}
         variantActive={"default"}

@@ -39,6 +39,8 @@ export interface TypeFormProps<T extends TObject> {
 
   fill?: boolean;
   flexProps?: FlexProps;
+
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
 }
 
 /**
@@ -93,6 +95,7 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
     skipSubmitButton = false,
     submitButtonProps,
     fill = true,
+    size,
   } = props;
 
   const schema = props.schema || form.options.schema;
@@ -162,6 +165,10 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
             ...controlProps,
             ...fieldControlProps?.[fieldName],
           };
+
+          if (size) {
+            mergedControlProps.size = size;
+          }
 
           return (
             <Grid.Col key={fieldName} span={span}>
