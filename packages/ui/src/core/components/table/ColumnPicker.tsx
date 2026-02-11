@@ -1,17 +1,14 @@
-import {
-  Button,
-  Checkbox,
-  Flex,
-  Popover,
-  ScrollArea,
-  Text,
-} from "@mantine/core";
+import { Checkbox, Flex, Popover, ScrollArea, Text } from "@mantine/core";
 import { IconColumns } from "@tabler/icons-react";
 import type { TObject } from "alepha";
 import { useState } from "react";
 import { ui } from "../../constants/ui.ts";
 import ActionButton from "../buttons/ActionButton.tsx";
-import type { ColumnVisibility, DataTableColumn } from "./types.ts";
+import {
+  type ColumnVisibility,
+  type DataTableColumn,
+  DEFAULT_MAX_VISIBLE_COLUMNS,
+} from "./types.ts";
 
 export interface ColumnPickerProps<T extends object, Filters extends TObject> {
   columns: { [key: string]: DataTableColumn<T, Filters> };
@@ -40,7 +37,7 @@ const ColumnPicker = <T extends object, Filters extends TObject>({
     const newVisibility = columnEntries.reduce((acc, [key, col]) => {
       if (col.defaultHidden) {
         acc[key] = false;
-      } else if (count < 6) {
+      } else if (count < DEFAULT_MAX_VISIBLE_COLUMNS) {
         acc[key] = true;
         count++;
       } else {
@@ -106,20 +103,20 @@ const ColumnPicker = <T extends object, Filters extends TObject>({
               Columns ({visibleCount}/{columnEntries.length})
             </Text>
             <Flex gap={4}>
-              <Button
+              <ActionButton
                 size="compact-xs"
                 variant="subtle"
                 onClick={handleShowAll}
               >
                 All
-              </Button>
-              <Button
+              </ActionButton>
+              <ActionButton
                 size="compact-xs"
                 variant="subtle"
                 onClick={handleDefault}
               >
                 Default
-              </Button>
+              </ActionButton>
             </Flex>
           </Flex>
 

@@ -1,5 +1,5 @@
 import { ActionButton, DataTable, Text, useDialog, useToast } from "@alepha/ui";
-import { Badge, Code, Drawer, Flex, Paper, Table } from "@mantine/core";
+import { Badge, Code, Flex, Paper, Table } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconCircleCheck,
@@ -125,7 +125,6 @@ const AdminJobExecutions = () => {
   const toast = useToast();
   const dialog = useDialog();
   const [refreshKey, setRefreshKey] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const handleRetry = useCallback(
     async (id: string) => {
@@ -177,10 +176,6 @@ const AdminJobExecutions = () => {
           verticalSpacing: "sm",
           highlightOnHover: true,
         }}
-        tableTrProps={(item) => ({
-          style: { cursor: "pointer" },
-          onClick: () => setSelectedId(item.id),
-        })}
         onFilterChange={(key, _value, form) => {
           if (key === "job" || key === "status" || key === "priority") {
             return form.submit();
@@ -328,75 +323,77 @@ const AdminJobExecutions = () => {
             ],
           },
         }}
-        panel={(item) => (
-          <Flex direction="column" gap="sm" p="sm">
-            {item.error && (
-              <Flex direction="column" gap={2}>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Error
-                </Text>
-                <Paper p="xs" bg="var(--mantine-color-red-light)" radius="sm">
-                  <Text
-                    size="xs"
-                    c="red"
-                    style={{
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    {item.error}
-                  </Text>
-                </Paper>
-              </Flex>
-            )}
-            <Flex gap="lg" wrap="wrap">
-              <Flex direction="column" gap={2}>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  ID
-                </Text>
-                <Text size="xs" ff="monospace">
-                  {item.id}
-                </Text>
-              </Flex>
-              {item.key && (
+        panel={{
+          can: (item) => Boolean(item.error || item.key || item.workerId),
+          render: (item) => (
+            <Flex direction="column" gap="sm" p="sm">
+              {item.error && (
                 <Flex direction="column" gap={2}>
                   <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                    Key
+                    Error
+                  </Text>
+                  <Paper p="xs" bg="var(--mantine-color-red-light)" radius="sm">
+                    <Text
+                      size="xs"
+                      c="red"
+                      style={{
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {item.error}
+                    </Text>
+                  </Paper>
+                </Flex>
+              )}
+              <Flex gap="lg" wrap="wrap">
+                <Flex direction="column" gap={2}>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                    ID
                   </Text>
                   <Text size="xs" ff="monospace">
-                    {item.key}
+                    {item.id}
                   </Text>
                 </Flex>
-              )}
-              {item.workerId && (
-                <Flex direction="column" gap={2}>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                    Worker
-                  </Text>
-                  <Text size="xs" ff="monospace">
-                    {item.workerId}
-                  </Text>
-                </Flex>
-              )}
-              {item.triggeredByName && (
-                <Flex direction="column" gap={2}>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                    Triggered By
-                  </Text>
-                  <Text size="xs">{item.triggeredByName}</Text>
-                </Flex>
-              )}
+                {item.key && (
+                  <Flex direction="column" gap={2}>
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                      Key
+                    </Text>
+                    <Text size="xs" ff="monospace">
+                      {item.key}
+                    </Text>
+                  </Flex>
+                )}
+                {item.workerId && (
+                  <Flex direction="column" gap={2}>
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                      Worker
+                    </Text>
+                    <Text size="xs" ff="monospace">
+                      {item.workerId}
+                    </Text>
+                  </Flex>
+                )}
+                {item.triggeredByName && (
+                  <Flex direction="column" gap={2}>
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                      Triggered By
+                    </Text>
+                    <Text size="xs">{item.triggeredByName}</Text>
+                  </Flex>
+                )}
+              </Flex>
             </Flex>
-          </Flex>
+          ),
+        }}
+        drawer={(item) => (
+          <ExecutionDetailContent
+            item={item}
+            onRetry={handleRetry}
+            onCancel={handleCancel}
+          />
         )}
-        canPanel={(item) => Boolean(item.error || item.key || item.workerId)}
-      />
-
-      <ExecutionDetailDrawer
-        id={selectedId}
-        onClose={() => setSelectedId(null)}
-        onRetry={handleRetry}
-        onCancel={handleCancel}
       />
     </Flex>
   );
@@ -404,14 +401,12 @@ const AdminJobExecutions = () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ExecutionDetailDrawer = ({
-  id,
-  onClose,
+const ExecutionDetailContent = ({
+  item,
   onRetry,
   onCancel,
 }: {
-  id: string | null;
-  onClose: () => void;
+  item: JobExecutionResource;
   onRetry: (id: string) => Promise<void>;
   onCancel: (id: string) => Promise<void>;
 }) => {
@@ -440,20 +435,18 @@ const ExecutionDetailDrawer = ({
   );
 
   useEffect(() => {
-    if (id) loadDetail(id);
-  }, [id, loadDetail]);
+    loadDetail(item.id);
+  }, [item.id, loadDetail]);
 
   const handleRetry = useCallback(async () => {
-    if (!id) return;
-    await onRetry(id);
-    loadDetail(id);
-  }, [id, onRetry, loadDetail]);
+    await onRetry(item.id);
+    loadDetail(item.id);
+  }, [item.id, onRetry, loadDetail]);
 
   const handleCancel = useCallback(async () => {
-    if (!id) return;
-    await onCancel(id);
-    loadDetail(id);
-  }, [id, onCancel, loadDetail]);
+    await onCancel(item.id);
+    loadDetail(item.id);
+  }, [item.id, onCancel, loadDetail]);
 
   const toggleLogExpand = useCallback((index: number) => {
     setExpandedLogs((prev) => {
@@ -467,219 +460,203 @@ const ExecutionDetailDrawer = ({
     });
   }, []);
 
-  return (
-    <Drawer
-      opened={id !== null}
-      onClose={onClose}
-      position="right"
-      size="xl"
-      title={
-        detail ? (
-          <Flex align="center" gap="sm">
-            <Text fw={600} ff="monospace">
-              {detail.jobName}
-            </Text>
-            <Badge
-              size="sm"
-              variant="light"
-              color={getStatusColor(detail.status)}
-              leftSection={getStatusIcon(detail.status, 12)}
-            >
-              {detail.status}
-            </Badge>
-            <Text size="xs" c="dimmed">
-              {detail.attempt}/{detail.maxAttempts}
-            </Text>
-          </Flex>
-        ) : (
-          "Execution Detail"
-        )
-      }
-    >
-      {loading && (
-        <Flex align="center" justify="center" py="xl">
-          <Text c="dimmed">Loading...</Text>
-        </Flex>
-      )}
-      {!loading && detail && (
-        <Flex direction="column" gap="md">
-          {/* Actions */}
-          <Flex gap="xs">
-            <ActionButton
-              tooltip="Refresh"
-              variant="light"
-              size="xs"
-              icon={IconRefresh}
-              onClick={() => id && loadDetail(id)}
-            />
-            {detail.can?.retry && (
-              <ActionButton
-                tooltip="Retry"
-                variant="light"
-                size="xs"
-                color="blue"
-                icon={IconRefresh}
-                onClick={handleRetry}
-              />
-            )}
-            {detail.can?.cancel && (
-              <ActionButton
-                tooltip="Cancel"
-                variant="light"
-                size="xs"
-                color="red"
-                icon={IconCircleX}
-                onClick={handleCancel}
-              />
-            )}
-          </Flex>
+  if (loading) {
+    return (
+      <Flex align="center" justify="center" py="xl">
+        <Text c="dimmed">Loading...</Text>
+      </Flex>
+    );
+  }
 
-          {/* Details */}
-          <Paper p="sm" radius="md" withBorder>
-            <Text size="sm" fw={600} mb="xs">
-              Details
-            </Text>
-            <Flex gap="lg" wrap="wrap">
-              <DetailField label="ID" value={detail.id} monospace copyable />
-              <DetailField label="Status" value={detail.status} capitalize />
+  if (!detail) return null;
+
+  return (
+    <Flex direction="column" gap="md">
+      {/* Header */}
+      <Flex align="center" gap="sm">
+        <Text fw={600} ff="monospace">
+          {detail.jobName}
+        </Text>
+        <Badge
+          size="sm"
+          variant="light"
+          color={getStatusColor(detail.status)}
+          leftSection={getStatusIcon(detail.status, 12)}
+        >
+          {detail.status}
+        </Badge>
+        <Text size="xs" c="dimmed">
+          {detail.attempt}/{detail.maxAttempts}
+        </Text>
+      </Flex>
+
+      {/* Actions */}
+      <Flex gap="xs">
+        <ActionButton
+          tooltip="Refresh"
+          variant="light"
+          size="xs"
+          icon={IconRefresh}
+          onClick={() => loadDetail(item.id)}
+        />
+        {detail.can?.retry && (
+          <ActionButton
+            tooltip="Retry"
+            variant="light"
+            size="xs"
+            color="blue"
+            icon={IconRefresh}
+            onClick={handleRetry}
+          />
+        )}
+        {detail.can?.cancel && (
+          <ActionButton
+            tooltip="Cancel"
+            variant="light"
+            size="xs"
+            color="red"
+            icon={IconCircleX}
+            onClick={handleCancel}
+          />
+        )}
+      </Flex>
+
+      {/* Details */}
+      <Paper p="sm" radius="md" withBorder>
+        <Text size="sm" fw={600} mb="xs">
+          Details
+        </Text>
+        <Flex gap="lg" wrap="wrap">
+          <DetailField label="ID" value={detail.id} monospace copyable />
+          <DetailField label="Status" value={detail.status} capitalize />
+          <DetailField
+            label="Priority"
+            value={PRIORITY_LABELS[detail.priority] ?? "Normal"}
+          />
+          <DetailField
+            label="Attempt"
+            value={`${detail.attempt}/${detail.maxAttempts}`}
+            monospace
+          />
+          {detail.workerId && (
+            <DetailField label="Worker" value={detail.workerId} monospace />
+          )}
+          {detail.key && (
+            <DetailField label="Key" value={detail.key} monospace />
+          )}
+          <DetailField
+            label="Created"
+            value={String(l(detail.createdAt, { date: "lll" }))}
+          />
+          {detail.startedAt && (
+            <DetailField
+              label="Started"
+              value={String(l(detail.startedAt, { date: "lll" }))}
+            />
+          )}
+          {detail.startedAt &&
+            (detail.completedAt || detail.status === "running") && (
               <DetailField
-                label="Priority"
-                value={PRIORITY_LABELS[detail.priority] ?? "Normal"}
-              />
-              <DetailField
-                label="Attempt"
-                value={`${detail.attempt}/${detail.maxAttempts}`}
+                label="Duration"
+                value={formatDuration(detail.startedAt, detail.completedAt)}
                 monospace
               />
-              {detail.workerId && (
-                <DetailField label="Worker" value={detail.workerId} monospace />
-              )}
-              {detail.key && (
-                <DetailField label="Key" value={detail.key} monospace />
-              )}
-              <DetailField
-                label="Created"
-                value={String(l(detail.createdAt, { date: "lll" }))}
-              />
-              {detail.startedAt && (
-                <DetailField
-                  label="Started"
-                  value={String(l(detail.startedAt, { date: "lll" }))}
-                />
-              )}
-              {detail.startedAt &&
-                (detail.completedAt || detail.status === "running") && (
-                  <DetailField
-                    label="Duration"
-                    value={formatDuration(detail.startedAt, detail.completedAt)}
-                    monospace
-                  />
-                )}
-              {detail.triggeredByName && (
-                <DetailField
-                  label="Triggered By"
-                  value={detail.triggeredByName}
-                />
-              )}
-              {detail.cancelledByName && (
-                <DetailField
-                  label="Cancelled By"
-                  value={detail.cancelledByName}
-                />
-              )}
-            </Flex>
-          </Paper>
-
-          {/* Payload */}
-          {detail.payload && (
-            <Paper p="sm" radius="md" withBorder>
-              <Text size="sm" fw={600} mb="xs">
-                Payload
-              </Text>
-              <Code block>{JSON.stringify(detail.payload, null, 2)}</Code>
-            </Paper>
+            )}
+          {detail.triggeredByName && (
+            <DetailField label="Triggered By" value={detail.triggeredByName} />
           )}
-
-          {/* Error */}
-          {detail.error && (
-            <Paper p="sm" radius="md" withBorder>
-              <Text size="sm" fw={600} mb="xs" c="red">
-                Error
-              </Text>
-              <Paper p="xs" bg="var(--mantine-color-red-light)" radius="sm">
-                <Text
-                  size="sm"
-                  c="red"
-                  style={{
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {detail.error}
-                </Text>
-              </Paper>
-            </Paper>
-          )}
-
-          {/* Logs */}
-          {detail.logs && detail.logs.length > 0 && (
-            <Paper p="sm" radius="md" withBorder>
-              <Text size="sm" fw={600} mb="xs">
-                Logs ({detail.logs.length})
-              </Text>
-              <Flex
-                direction="column"
-                style={{ maxHeight: 400, overflowY: "auto" }}
-              >
-                <Table highlightOnHover>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th style={{ width: 60 }}>Level</Table.Th>
-                      <Table.Th style={{ width: 90 }}>Time</Table.Th>
-                      <Table.Th>Message</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {detail.logs.map((log: LogEntry, i: number) => (
-                      <Table.Tr
-                        key={i}
-                        style={log.data ? { cursor: "pointer" } : undefined}
-                        onClick={
-                          log.data ? () => toggleLogExpand(i) : undefined
-                        }
-                      >
-                        <Table.Td>
-                          <Badge
-                            size="xs"
-                            variant="light"
-                            color={getLogLevelColor(log.level)}
-                          >
-                            {log.level}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text size="xs" c="dimmed" ff="monospace">
-                            {new Date(log.timestamp).toLocaleTimeString()}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text size="xs">{log.message}</Text>
-                          {expandedLogs.has(i) && log.data && (
-                            <Code block mt="xs">
-                              {JSON.stringify(log.data, null, 2)}
-                            </Code>
-                          )}
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Flex>
-            </Paper>
+          {detail.cancelledByName && (
+            <DetailField label="Cancelled By" value={detail.cancelledByName} />
           )}
         </Flex>
+      </Paper>
+
+      {/* Payload */}
+      {detail.payload && (
+        <Paper p="sm" radius="md" withBorder>
+          <Text size="sm" fw={600} mb="xs">
+            Payload
+          </Text>
+          <Code block>{JSON.stringify(detail.payload, null, 2)}</Code>
+        </Paper>
       )}
-    </Drawer>
+
+      {/* Error */}
+      {detail.error && (
+        <Paper p="sm" radius="md" withBorder>
+          <Text size="sm" fw={600} mb="xs" c="red">
+            Error
+          </Text>
+          <Paper p="xs" bg="var(--mantine-color-red-light)" radius="sm">
+            <Text
+              size="sm"
+              c="red"
+              style={{
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              {detail.error}
+            </Text>
+          </Paper>
+        </Paper>
+      )}
+
+      {/* Logs */}
+      {detail.logs && detail.logs.length > 0 && (
+        <Paper p="sm" radius="md" withBorder>
+          <Text size="sm" fw={600} mb="xs">
+            Logs ({detail.logs.length})
+          </Text>
+          <Flex
+            direction="column"
+            style={{ maxHeight: 400, overflowY: "auto" }}
+          >
+            <Table highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th style={{ width: 60 }}>Level</Table.Th>
+                  <Table.Th style={{ width: 90 }}>Time</Table.Th>
+                  <Table.Th>Message</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {detail.logs.map((log: LogEntry, i: number) => (
+                  <Table.Tr
+                    key={i}
+                    style={log.data ? { cursor: "pointer" } : undefined}
+                    onClick={log.data ? () => toggleLogExpand(i) : undefined}
+                  >
+                    <Table.Td>
+                      <Badge
+                        size="xs"
+                        variant="light"
+                        color={getLogLevelColor(log.level)}
+                      >
+                        {log.level}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="xs" c="dimmed" ff="monospace">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="xs">{log.message}</Text>
+                      {expandedLogs.has(i) && log.data && (
+                        <Code block mt="xs">
+                          {JSON.stringify(log.data, null, 2)}
+                        </Code>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Flex>
+        </Paper>
+      )}
+    </Flex>
   );
 };
 

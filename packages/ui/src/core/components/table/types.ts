@@ -1,4 +1,4 @@
-import type { TableProps, TableTrProps } from "@mantine/core";
+import type { DrawerProps, TableProps, TableTrProps } from "@mantine/core";
 import type {
   Alepha,
   Async,
@@ -12,6 +12,12 @@ import type { FormModel } from "alepha/react/form";
 import type { ReactNode } from "react";
 import type { ActionProps } from "../buttons/ActionButton.tsx";
 import type { TypeFormProps } from "../form/TypeForm.tsx";
+
+// -----------------------------------------------------------------------------
+// Constants
+// -----------------------------------------------------------------------------
+
+export const DEFAULT_MAX_VISIBLE_COLUMNS = 8;
 
 // -----------------------------------------------------------------------------
 // Row Action Types
@@ -140,13 +146,23 @@ export interface DataTableProps<T extends object, Filters extends TObject> {
    */
   filters?: TObject;
 
-  panel?: (item: T) => ReactNode;
-  canPanel?: (item: T) => boolean;
+  panel?:
+    | ((item: T) => ReactNode)
+    | {
+        render: (item: T) => ReactNode;
+        can?: (item: T) => boolean;
+      };
+
+  drawer?:
+    | ((item: T) => ReactNode)
+    | {
+        render: (item: T) => ReactNode;
+        can?: (item: T) => boolean;
+        props?: Omit<DrawerProps, "opened" | "onClose" | "children">;
+      };
 
   submitOnInit?: boolean;
   submitEvery?: DurationLike;
-
-  withLineNumbers?: boolean;
 
   /**
    * Enable export button in toolbar (CSV download + clipboard copy).
@@ -159,8 +175,9 @@ export interface DataTableProps<T extends object, Filters extends TObject> {
   withCheckbox?: boolean;
 
   /**
-   * Function to get a unique key for each item. Required when withCheckbox is true.
-   * Used to track selected items across pagination.
+   * Function to get a unique key for each item.
+   * Used to track selected items, panel expansion, and drawer identity.
+   * Falls back to item.id then JSON.stringify if not provided.
    */
   getItemKey?: (item: T) => string;
 

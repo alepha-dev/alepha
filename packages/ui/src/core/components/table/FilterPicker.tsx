@@ -1,11 +1,4 @@
-import {
-  Button,
-  Checkbox,
-  Flex,
-  Popover,
-  ScrollArea,
-  Text,
-} from "@mantine/core";
+import { Checkbox, Flex, Popover, ScrollArea, Text } from "@mantine/core";
 import { IconFilter } from "@tabler/icons-react";
 import type { TObject } from "alepha";
 import { useState } from "react";
@@ -108,20 +101,20 @@ const FilterPicker = ({
               Filters ({visibleCount}/{filterKeys.length})
             </Text>
             <Flex gap={4}>
-              <Button
+              <ActionButton
                 size="compact-xs"
                 variant="subtle"
                 onClick={handleShowAll}
               >
                 All
-              </Button>
-              <Button
+              </ActionButton>
+              <ActionButton
                 size="compact-xs"
                 variant="subtle"
                 onClick={handleHideAll}
               >
                 None
-              </Button>
+              </ActionButton>
             </Flex>
           </Flex>
 

@@ -296,7 +296,6 @@ const AdminJobRegistry = () => {
             </Flex>
           );
         }}
-        canPanel={() => true}
       />
     </Flex>
   );

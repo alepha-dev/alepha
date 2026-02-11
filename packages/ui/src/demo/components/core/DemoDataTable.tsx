@@ -1,5 +1,11 @@
-import { DataTable } from "@alepha/ui";
-import { Badge, Text } from "@mantine/core";
+import { DataTable, Text } from "@alepha/ui";
+import { Badge, Code, Flex, Paper } from "@mantine/core";
+import {
+  IconDownload,
+  IconEdit,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { t } from "alepha";
 import Showcase from "../shared/Showcase.tsx";
 
@@ -9,6 +15,7 @@ interface User {
   email: string;
   role: "admin" | "user" | "guest";
   status: "active" | "inactive";
+  notes?: string;
 }
 
 const sampleUsers: User[] = [
@@ -18,6 +25,7 @@ const sampleUsers: User[] = [
     email: "alice@example.com",
     role: "admin",
     status: "active",
+    notes: "Team lead for the backend team.",
   },
   {
     id: 2,
@@ -32,6 +40,7 @@ const sampleUsers: User[] = [
     email: "charlie@example.com",
     role: "user",
     status: "inactive",
+    notes: "On leave until March.",
   },
   {
     id: 4,
@@ -46,17 +55,56 @@ const sampleUsers: User[] = [
     email: "eve@example.com",
     role: "guest",
     status: "active",
+    notes: "External consultant, limited access.",
+  },
+  {
+    id: 6,
+    name: "Frank Castle",
+    email: "frank@example.com",
+    role: "user",
+    status: "inactive",
+  },
+  {
+    id: 7,
+    name: "Grace Hopper",
+    email: "grace@example.com",
+    role: "admin",
+    status: "active",
+    notes: "Pioneered compiler development.",
+  },
+  {
+    id: 8,
+    name: "Hank Pym",
+    email: "hank@example.com",
+    role: "user",
+    status: "active",
   },
 ];
 
 const filters = t.object({
   search: t.optional(t.text({ title: "Search" })),
   role: t.optional(t.enum(["admin", "user", "guest"], { title: "Role" })),
+  status: t.optional(t.enum(["active", "inactive"], { title: "Status" })),
 });
 
 const showcaseSchema = t.object({
   withCheckbox: t.boolean({
     title: "Checkbox",
+    default: true,
+    $control: { switch: true },
+  }),
+  withExport: t.boolean({
+    title: "Export",
+    default: true,
+    $control: { switch: true },
+  }),
+  withPanel: t.boolean({
+    title: "Panel",
+    default: true,
+    $control: { switch: true },
+  }),
+  withDrawer: t.boolean({
+    title: "Drawer",
     default: true,
     $control: { switch: true },
   }),
@@ -76,16 +124,32 @@ const DemoDataTable = () => {
       schema={showcaseSchema}
       initialValues={{
         withCheckbox: true,
+        withExport: true,
+        withPanel: true,
+        withDrawer: true,
         defaultSize: 5,
       }}
       columns={1}
     >
       {(props) => (
         <DataTable<User, typeof filters>
-          key={`${props.withCheckbox}-${props.defaultSize}`}
+          key={JSON.stringify(props)}
           filters={filters}
+          defaultFilters={["search", "role"]}
           submitOnInit
           defaultSize={props.defaultSize}
+          withCheckbox={props.withCheckbox}
+          withExport={props.withExport}
+          getItemKey={(u) => String(u.id)}
+          onFilterChange={(key, _value, form) => {
+            if (key === "role" || key === "status") {
+              return form.submit();
+            }
+          }}
+          typeFormProps={{
+            skipSubmitButton: true,
+            columns: 3,
+          }}
           items={async (params) => {
             let filtered = [...sampleUsers];
             if (params.search) {
@@ -99,6 +163,9 @@ const DemoDataTable = () => {
             if (params.role) {
               filtered = filtered.filter((u) => u.role === params.role);
             }
+            if (params.status) {
+              filtered = filtered.filter((u) => u.status === params.status);
+            }
             const start = params.page * params.size;
             const content = filtered.slice(start, start + params.size);
             return {
@@ -109,6 +176,35 @@ const DemoDataTable = () => {
               },
             };
           }}
+          actions={[
+            {
+              tooltip: "Add User",
+              icon: IconPlus,
+              variant: "light",
+              size: "xs",
+              onClick: () => alert("Add user clicked"),
+            },
+          ]}
+          checkboxActions={[
+            {
+              label: "Export Selected",
+              icon: <IconDownload size={14} />,
+              intent: "primary",
+              onClick: ({ selectedItems, clearSelection }) => {
+                alert(`Exporting ${selectedItems.length} users`);
+                clearSelection();
+              },
+            },
+            {
+              label: "Delete Selected",
+              icon: <IconTrash size={14} />,
+              intent: "danger",
+              onClick: ({ selectedItems, clearSelection }) => {
+                alert(`Deleting ${selectedItems.length} users`);
+                clearSelection();
+              },
+            },
+          ]}
           columns={{
             id: {
               label: "ID",
@@ -162,9 +258,117 @@ const DemoDataTable = () => {
                 </Badge>
               ),
             },
+            notes: {
+              label: "Notes",
+              defaultHidden: true,
+              value: (u) => (
+                <Text size="xs" c="dimmed" lineClamp={1}>
+                  {u.notes ?? "—"}
+                </Text>
+              ),
+            },
+            actions: {
+              label: "",
+              fit: true,
+              actions: (u) => [
+                {
+                  tooltip: "Edit",
+                  icon: IconEdit,
+                  color: "blue",
+                  onClick: () => alert(`Edit ${u.name}`),
+                },
+                {
+                  tooltip: "Delete",
+                  icon: IconTrash,
+                  color: "red",
+                  onClick: () => alert(`Delete ${u.name}`),
+                  visible: u.role !== "admin",
+                },
+              ],
+            },
           }}
-          withCheckbox={props.withCheckbox}
-          getItemKey={(u) => String(u.id)}
+          panel={
+            props.withPanel
+              ? {
+                  can: (u) => Boolean(u.notes),
+                  render: (u) => (
+                    <Flex direction="column" gap="xs" p="sm">
+                      <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                        Notes
+                      </Text>
+                      <Text size="sm">{u.notes}</Text>
+                    </Flex>
+                  ),
+                }
+              : undefined
+          }
+          drawer={
+            props.withDrawer
+              ? (u) => (
+                  <Flex direction="column" gap="md">
+                    <Text size="lg" fw={600}>
+                      {u.name}
+                    </Text>
+                    <Paper p="sm" radius="md" withBorder>
+                      <Flex direction="column" gap="xs">
+                        <Flex gap="xs">
+                          <Text size="sm" c="dimmed" w={60}>
+                            Email
+                          </Text>
+                          <Text size="sm">{u.email}</Text>
+                        </Flex>
+                        <Flex gap="xs">
+                          <Text size="sm" c="dimmed" w={60}>
+                            Role
+                          </Text>
+                          <Badge
+                            size="sm"
+                            color={
+                              u.role === "admin"
+                                ? "blue"
+                                : u.role === "user"
+                                  ? "green"
+                                  : "gray"
+                            }
+                          >
+                            {u.role}
+                          </Badge>
+                        </Flex>
+                        <Flex gap="xs">
+                          <Text size="sm" c="dimmed" w={60}>
+                            Status
+                          </Text>
+                          <Badge
+                            size="sm"
+                            color={u.status === "active" ? "green" : "red"}
+                            variant="light"
+                          >
+                            {u.status}
+                          </Badge>
+                        </Flex>
+                      </Flex>
+                    </Paper>
+                    {u.notes && (
+                      <Paper p="sm" radius="md" withBorder>
+                        <Text size="sm" fw={600} mb="xs">
+                          Notes
+                        </Text>
+                        <Text size="sm">{u.notes}</Text>
+                      </Paper>
+                    )}
+                    <Paper p="sm" radius="md" withBorder>
+                      <Text size="sm" fw={600} mb="xs">
+                        Raw Data
+                      </Text>
+                      <Code block>{JSON.stringify(u, null, 2)}</Code>
+                    </Paper>
+                  </Flex>
+                )
+              : undefined
+          }
+          tableProps={{
+            highlightOnHover: true,
+          }}
         />
       )}
     </Showcase>
