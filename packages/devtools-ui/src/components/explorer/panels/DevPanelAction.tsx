@@ -162,6 +162,21 @@ export const DevPanelAction = ({ action }: { action: any }) => {
         )}
       </div>
 
+      {action.middlewares?.length > 0 && (
+        <div>
+          <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
+            Middleware
+          </Text>
+          <Flex gap="xs" wrap="wrap">
+            {action.middlewares.map((mw: any) => (
+              <Badge key={mw.name} size="sm" variant="light" color="violet">
+                {mw.name}
+              </Badge>
+            ))}
+          </Flex>
+        </div>
+      )}
+
       <Tabs defaultValue="schema">
         <Tabs.List>
           <Tabs.Tab value="schema" leftSection={<IconSchema size={14} />}>

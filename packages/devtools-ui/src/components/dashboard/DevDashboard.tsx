@@ -188,7 +188,13 @@ export const DevDashboard = () => {
   }, [metadata]);
 
   return (
-    <Flex p="lg" style={{ flex: 1, overflow: "auto" }}>
+    <Flex
+      p="lg"
+      w={"100%"}
+      flex={1}
+      direction="column"
+      style={{ overflow: "auto" }}
+    >
       <Flex direction="column" gap="lg">
         {/* App Stats */}
         <div>

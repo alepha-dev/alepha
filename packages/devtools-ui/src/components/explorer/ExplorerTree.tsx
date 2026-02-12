@@ -83,6 +83,7 @@ const MethodBadge = ({ method }: { method: string }) => {
       ff="monospace"
       lh={1}
       style={{
+        paddingTop: 5,
         color: colors.color,
         background: colors.bg,
         padding: "2px 4px",
