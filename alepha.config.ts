@@ -38,7 +38,6 @@ export default (alepha: Alepha) => {
         process.env.YARN_ENABLE_IMMUTABLE_INSTALLS = "false";
 
         await run("yarn");
-        await run("yarn copy");
       },
     }),
     verify: $command({
@@ -50,6 +49,7 @@ export default (alepha: Alepha) => {
         process.env.CI = "true";
 
         await run(`yarn clean`);
+        await run(`yarn copy`);
         await run(`yarn lint`);
         await run(`yarn typecheck`);
         await run(`yarn test`);
@@ -63,6 +63,7 @@ export default (alepha: Alepha) => {
         await run(`yarn e2e-cli`);
         await run(`cd apps/docs && yarn alepha gen:llms`);
         await run(`yarn clean`);
+        await run(`yarn copy`);
       },
     }),
   };
