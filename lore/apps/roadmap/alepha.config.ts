@@ -14,6 +14,5 @@ export default defineConfig({
         ],
       },
     },
-    docker: {},
   },
 });
