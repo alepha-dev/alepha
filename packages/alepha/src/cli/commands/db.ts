@@ -153,11 +153,17 @@ export class DbCommand {
             "Custom migration name for drizzle-kit generate --custom",
         }),
       ),
+      name: t.optional(
+        t.text({
+          description: "Name for the generated migration file",
+        }),
+      ),
     }),
     handler: async ({ args, flags, root }) => {
-      const commandFlags = flags.custom
-        ? `--custom=${flags.custom}`
-        : undefined;
+      const parts: string[] = [];
+      if (flags.custom) parts.push(`--custom=${flags.custom}`);
+      if (flags.name) parts.push(`--name=${flags.name}`);
+      const commandFlags = parts.length > 0 ? parts.join(" ") : undefined;
 
       await this.runDrizzleKitCommand({
         root,
