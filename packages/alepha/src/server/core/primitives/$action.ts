@@ -1,6 +1,7 @@
 import {
-  $env,
+  $atom,
   $inject,
+  $use,
   AlephaError,
   type Async,
   createPrimitive,
@@ -204,18 +205,37 @@ export interface ActionPrimitiveOptions<TConfig extends RequestConfigSchema>
 
 // ----------------------------------------------------------------------------------------------------------
 
-const envSchema = t.object({
-  SERVER_API_PREFIX: t.text({
-    description: "Prefix for all API routes (e.g. $action).",
-    default: "/api",
+/**
+ * Server API configuration atom.
+ */
+export const serverApiOptions = $atom({
+  name: "alepha.server.api.options",
+  schema: t.object({
+    prefix: t.text({
+      default: "/api",
+      description: "Prefix for all API routes (e.g. $action).",
+    }),
   }),
+  default: {
+    prefix: "/api",
+  },
 });
+
+export type ServerApiOptions = Static<typeof serverApiOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [serverApiOptions.key]: ServerApiOptions;
+  }
+}
+
+// ----------------------------------------------------------------------------------------------------------
 
 export class ActionPrimitive<
   TConfig extends RequestConfigSchema,
 > extends PipelinePrimitive<ActionPrimitiveOptions<TConfig>> {
   protected readonly log = $logger();
-  protected readonly env = $env(envSchema);
+  protected readonly settings = $use(serverApiOptions);
   protected readonly httpClient = $inject(HttpClient);
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
@@ -231,7 +251,7 @@ export class ActionPrimitive<
   }
 
   public get prefix() {
-    return this.env.SERVER_API_PREFIX;
+    return this.settings.prefix;
   }
 
   public get route(): ServerRoute {
