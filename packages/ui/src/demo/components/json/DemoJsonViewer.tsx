@@ -1,6 +1,6 @@
+import { JsonViewer } from "@alepha/ui/json";
 import { t } from "alepha";
 import { useI18n } from "alepha/react/i18n";
-import { JsonViewer } from "../../../json/index.ts";
 import Showcase from "../shared/Showcase.tsx";
 
 const sampleData = {
