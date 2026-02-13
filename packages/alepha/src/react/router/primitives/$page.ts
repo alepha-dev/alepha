@@ -3,6 +3,7 @@ import {
   type Async,
   createPrimitive,
   KIND,
+  type Middleware,
   Primitive,
   type Static,
   type TSchema,
@@ -144,6 +145,21 @@ export interface PagePrimitiveOptions<
    * - `query`: query parameters from the URL.
    */
   schema?: TConfig;
+
+  /**
+   * Middleware to apply to the loader function.
+   * Works the same as `use` on `$action` and `$job`.
+   *
+   * @example
+   * ```ts
+   * dashboard = $page({
+   *   use: [$cache({ ttl: [5, "minutes"] })],
+   *   loader: async ({ params }) => this.dashboardService.getData(),
+   *   lazy: () => import("./Dashboard.tsx"),
+   * });
+   * ```
+   */
+  use?: Middleware[];
 
   /**
    * Load data before rendering the page.
