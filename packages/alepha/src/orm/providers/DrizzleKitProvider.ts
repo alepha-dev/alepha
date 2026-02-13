@@ -1,6 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { $inject, Alepha, AlephaError, type Static, t } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import type * as DrizzleKit from "drizzle-kit/api";
 import { sql } from "drizzle-orm";
@@ -11,12 +10,15 @@ export class DrizzleKitProvider {
   protected readonly alepha = $inject(Alepha);
 
   /**
-   * Synchronize database with current schema definitions.
+   * Push-based synchronization using Drizzle Kit's introspection API.
    *
-   * In development mode, it will generate and execute migrations based on the current state.
-   * In testing mode, it will generate migrations from scratch without applying them.
+   * Reads the actual database state, diffs against current entity definitions,
+   * and applies changes. No stored snapshots — no drift, no corruption.
    *
-   * Does nothing in production mode, you must handle migrations manually.
+   * - SQLite: uses `pushSQLiteSchema` (requires better-sqlite3 or bun-sqlite driver)
+   * - PostgreSQL: uses `pushSchema` with schema filters
+   *
+   * Does nothing in production mode — use file-based migrations instead.
    */
   public async synchronize(provider: DatabaseProvider): Promise<void> {
     if (this.alepha.isProduction()) {
@@ -24,34 +26,50 @@ export class DrizzleKitProvider {
       return;
     }
 
-    if (provider.schema !== "public") {
-      await this.createSchemaIfNotExists(provider, provider.schema);
+    if (this.alepha.isTest()) {
+      // In test mode, we want to generate migrations from scratch (no snapshots)
+      // to ensure the generated SQL is correct and can be applied cleanly.
+      const { statements } = await this.generateMigration(provider);
+      await this.executeFallbackStatements(statements, provider);
+      return;
     }
 
     const now = Date.now();
+    const kit = this.importDrizzleKit();
+    const models = this.getModels(provider);
 
-    if (this.alepha.isTest()) {
-      // -------------------------------------------------------------------------------------------------------------
-      // testing area, generate migrations from scratch - no need to push schema
-      const { statements } = await this.generateMigration(provider);
-      await this.executeStatements(statements, provider);
-    } else {
-      // -------------------------------------------------------------------------------------------------------------
-      // development area, generate migrations based on the current state
-      const entry = await this.loadDevMigrations(provider);
-      const { statements, snapshot } = await this.generateMigration(
-        provider,
-        entry?.snapshot ? JSON.parse(entry.snapshot) : undefined,
+    if (Object.keys(models).length === 0) {
+      this.log.info(`No models to synchronize for '${provider.name}'`);
+      return;
+    }
+
+    try {
+      if (provider.dialect === "sqlite") {
+        await this.pushSqlite(kit, models, provider);
+      } else {
+        await this.pushPostgres(kit, models, provider);
+      }
+    } catch (error) {
+      // Fallback: generate migrations from scratch (no snapshots)
+      // Covers drivers that don't support introspection (e.g. PgLite, sqlite-proxy)
+      this.log.debug(
+        "Push sync not available, falling back to migration generation",
+        { error },
       );
-      await this.executeStatements(statements, provider, true);
-      await this.saveDevMigrations(provider, snapshot, entry);
+      const { statements } = await this.generateMigration(provider);
+      await this.executeFallbackStatements(statements, provider);
     }
 
     this.log.info(`Sync with '${provider.name}' OK [${Date.now() - now}ms]`);
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
   /**
-   * Mostly used for testing purposes. You can generate SQL migration statements without executing them.
+   * Generate SQL migration statements by diffing two schema states.
+   *
+   * Used by tests (schema validation) and CLI (`alepha db generate`).
+   * Not part of the push sync flow.
    */
   public async generateMigration(
     provider: DatabaseProvider,
@@ -61,13 +79,9 @@ export class DrizzleKitProvider {
     models: Record<string, unknown>;
     snapshot?: any;
   }> {
-    // import Drizzle Kit API
     const kit = this.importDrizzleKit();
-
-    // load all models related to the given database connection provider
     const models = this.getModels(provider);
 
-    // generate and return migrations if there are models
     if (Object.keys(models).length > 0) {
       if (provider.dialect === "sqlite") {
         const prev = prevSnapshot ?? (await kit.generateSQLiteDrizzleJson({}));
@@ -131,136 +145,73 @@ export class DrizzleKitProvider {
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  /**
-   * Load the migration snapshot from the database.
-   */
-  protected async loadDevMigrations(
+  protected async pushSqlite(
+    kit: typeof DrizzleKit,
+    models: Record<string, unknown>,
     provider: DatabaseProvider,
-  ): Promise<DevMigrations | undefined> {
-    const name =
-      `${this.alepha.env.APP_NAME ?? "APP"}-${provider.constructor.name}`.toLowerCase();
-
-    if (provider.url.includes(":memory:")) {
-      this.log.trace(
-        `In-memory database detected for '${name}', skipping migration snapshot load.`,
-      );
-      return;
-    }
-
-    if (provider.dialect === "sqlite") {
-      try {
-        const text = await readFile(
-          `node_modules/.alepha/sqlite-${name}.json`,
-          "utf-8",
-        );
-        return this.alepha.codec.decode(devMigrationsSchema, text);
-      } catch (e) {
-        this.log.trace(`No existing migration snapshot for '${name}'`, e);
-      }
-      return;
-    }
-
-    await provider.execute(sql`CREATE SCHEMA IF NOT EXISTS "drizzle";`);
-    await provider.execute(sql`
-					CREATE TABLE IF NOT EXISTS "drizzle"."__drizzle_dev_migrations" (
-						"id" SERIAL PRIMARY KEY,
-						"name" TEXT NOT NULL,
-						"created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-						"snapshot" TEXT NOT NULL
-					);
-				`);
-
-    const rows = await provider.run(
-      sql`SELECT * FROM "drizzle"."__drizzle_dev_migrations" WHERE "name" = ${name} LIMIT 1`,
-      devMigrationsSchema,
+  ): Promise<void> {
+    const result = await this.muteSpinner(() =>
+      kit.pushSQLiteSchema(models, provider.db as any),
     );
 
-    if (rows.length === 0) {
-      this.log.trace(`No existing migration snapshot for '${name}'`);
-      return;
+    if (result.hasDataLoss) {
+      this.log.warn("Push would cause data loss", {
+        warnings: result.warnings,
+        statements: result.statementsToExecute,
+      });
     }
 
-    return this.alepha.codec.decode(devMigrationsSchema, rows[0]);
+    if (result.statementsToExecute.length > 0) {
+      this.log.debug(
+        `Pushing ${result.statementsToExecute.length} statements ...`,
+        { statements: result.statementsToExecute },
+      );
+      await this.muteSpinner(() => result.apply());
+    }
   }
 
-  protected async saveDevMigrations(
+  protected async pushPostgres(
+    kit: typeof DrizzleKit,
+    models: Record<string, unknown>,
     provider: DatabaseProvider,
-    curr: Record<string, any>,
-    devMigrations?: DevMigrations,
-  ) {
-    if (provider.url.includes(":memory:")) {
-      this.log.trace(
-        `In-memory database detected for '${provider.constructor.name}', skipping migration snapshot save.`,
-      );
-      return;
+  ): Promise<void> {
+    if (provider.schema !== "public") {
+      await this.createSchemaIfNotExists(provider, provider.schema);
     }
 
-    const name =
-      `${this.alepha.env.APP_NAME ?? "APP"}-${provider.constructor.name}`.toLowerCase();
-    if (provider.dialect === "sqlite") {
-      const filePath = `node_modules/.alepha/sqlite-${name}.json`;
-      await mkdir("node_modules/.alepha", { recursive: true }).catch(
-        () => null,
-      );
-      await writeFile(
-        filePath,
-        JSON.stringify(
-          {
-            id: devMigrations?.id ?? 1,
-            name,
-            created_at: new Date(),
-            snapshot: JSON.stringify(curr),
-          },
-          null,
-          2,
-        ),
-      );
-      this.log.debug(`Saved migration snapshot to '${filePath}'`);
-      return;
+    const result = await this.muteSpinner(() =>
+      kit.pushSchema(models, provider.db, [provider.schema]),
+    );
+
+    if (result.hasDataLoss) {
+      this.log.warn("Push would cause data loss", {
+        warnings: result.warnings,
+        statements: result.statementsToExecute,
+      });
     }
 
-    if (!devMigrations) {
-      await provider.execute(
-        sql`INSERT INTO "drizzle"."__drizzle_dev_migrations" ("name", "snapshot") VALUES (${name}, ${JSON.stringify(curr)})`,
+    if (result.statementsToExecute.length > 0) {
+      this.log.debug(
+        `Pushing ${result.statementsToExecute.length} statements ...`,
+        { statements: result.statementsToExecute },
       );
-    } else {
-      const newSnapshot = JSON.stringify(curr);
-      if (devMigrations.snapshot !== newSnapshot) {
-        await provider.execute(
-          sql`UPDATE "drizzle"."__drizzle_dev_migrations" SET "snapshot" = ${newSnapshot} WHERE "id" = ${devMigrations.id}`,
-        );
-      }
+      await this.muteSpinner(() => result.apply());
     }
   }
 
-  protected async executeStatements(
+  /**
+   * Execute migration statements as a fallback when push sync is not available.
+   * Used for drivers that don't support Drizzle Kit introspection (e.g. PgLite).
+   */
+  protected async executeFallbackStatements(
     statements: string[],
     provider: DatabaseProvider,
-    catchErrors = false,
-  ) {
-    let nErrors = 0;
+  ): Promise<void> {
     for (const statement of statements) {
-      // skip drop schema statements to avoid accidental data loss
       if (statement.startsWith("DROP SCHEMA")) {
         continue;
       }
-
-      try {
-        await provider.execute(sql.raw(statement));
-      } catch (error) {
-        const errorMessage = `Error executing statement: ${statement}`;
-        if (catchErrors) {
-          nErrors++;
-          this.log.warn(errorMessage, { context: [error] });
-        } else {
-          throw error;
-        }
-      }
-    }
-    if (nErrors > 0) {
-      this.log.warn(
-        `Executed ${statements.length} statements with ${nErrors} errors.`,
-      );
+      await provider.execute(sql.raw(statement));
     }
   }
 
@@ -270,9 +221,8 @@ export class DrizzleKitProvider {
     provider: DatabaseProvider,
     schemaName: string,
   ) {
-    // Validate schema name to prevent SQL injection
     if (!/^[a-z0-9_]+$/i.test(schemaName)) {
-      throw new Error(
+      throw new AlephaError(
         `Invalid schema name: ${schemaName}. Must only contain alphanumeric characters and underscores.`,
       );
     }
@@ -284,33 +234,45 @@ export class DrizzleKitProvider {
       await provider.execute(sql`DROP SCHEMA IF EXISTS ${sqlSchema} CASCADE`);
     }
 
-    // create schema if not exists
     this.log.debug(`Ensuring schema '${schemaName}' exists`);
     await provider.execute(sql`CREATE SCHEMA IF NOT EXISTS ${sqlSchema}`);
+  }
+
+  /**
+   * Suppress Drizzle Kit's spinner output during a callback.
+   *
+   * Only filters the "Pulling schema from database..." spinner lines.
+   * Other output (e.g. confirmation prompts for destructive changes) passes through.
+   */
+  protected async muteSpinner<T>(fn: () => Promise<T>): Promise<T> {
+    const originalWrite = process.stdout.write;
+    process.stdout.write = (chunk: any, ...args: any[]) => {
+      const str =
+        typeof chunk === "string" ? chunk : (chunk?.toString?.() ?? "");
+      if (str.includes("Pulling schema from database")) {
+        return true;
+      }
+      return (originalWrite as any).call(process.stdout, chunk, ...args);
+    };
+    try {
+      return await fn();
+    } finally {
+      process.stdout.write = originalWrite;
+    }
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
    * Try to load the official Drizzle Kit API.
-   * If not available, fallback to the local kit import.
    */
   public importDrizzleKit(): typeof DrizzleKit {
     try {
       return createRequire(import.meta.url)("drizzle-kit/api");
     } catch (_) {
-      throw new Error(
+      throw new AlephaError(
         "Drizzle Kit is not installed. Please install it with `npm install -D drizzle-kit`.",
       );
     }
   }
 }
-
-const devMigrationsSchema = t.object({
-  id: t.number(),
-  name: t.text(),
-  snapshot: t.string(),
-  created_at: t.string(),
-});
-
-type DevMigrations = Static<typeof devMigrationsSchema>;

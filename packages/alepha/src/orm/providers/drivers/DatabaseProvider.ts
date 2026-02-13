@@ -13,6 +13,7 @@ import {
   type PgDatabase,
   type PgTableWithColumns,
 } from "drizzle-orm/pg-core";
+import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 import { DbError } from "../../errors/DbError.ts";
 import type {
   EntityPrimitive,
@@ -20,7 +21,7 @@ import type {
 } from "../../primitives/$entity.ts";
 import type { SequencePrimitive } from "../../primitives/$sequence.ts";
 import type { ModelBuilder } from "../../services/ModelBuilder.ts";
-import type { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
+import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 
 export type SQLLike = SQLWrapper | string;
 
@@ -28,7 +29,7 @@ export abstract class DatabaseProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected abstract readonly builder: ModelBuilder;
-  protected abstract readonly kit: DrizzleKitProvider;
+  protected readonly kit = $inject(DrizzleKitProvider);
   public abstract readonly db: PgDatabase<any>;
   public abstract readonly dialect: "postgresql" | "sqlite";
   public abstract readonly url: string;
@@ -43,6 +44,14 @@ export abstract class DatabaseProvider {
 
   public get driver(): string {
     return this.dialect;
+  }
+
+  /**
+   * Raw database connection handle (e.g. DatabaseSync, bun:sqlite Database).
+   * Override in providers that expose native connections for introspection.
+   */
+  public get nativeConnection(): unknown {
+    return undefined;
   }
 
   public get schema() {
@@ -121,6 +130,35 @@ export abstract class DatabaseProvider {
     this.builder.buildSequence(sequence, this);
   }
 
+  /**
+   * Run a function inside a database transaction with implicit tx propagation.
+   *
+   * The transaction object is stored in `alepha.store` so that all Repository
+   * operations within `fn` automatically participate in the transaction without
+   * explicit `{ tx }` drilling.
+   *
+   * Nesting is safe — if already inside a `transactional()` block, the inner
+   * call reuses the outer transaction (no nested PG transactions / savepoints).
+   */
+  public async transactional<R>(
+    fn: () => Promise<R>,
+    config?: PgTransactionConfig,
+  ): Promise<R> {
+    const existing = this.alepha.store.get("tx" as any);
+    if (existing) {
+      return fn();
+    }
+
+    return this.db.transaction(async (tx) => {
+      this.alepha.store.set("tx" as any, tx, { skipEvents: true });
+      try {
+        return await fn();
+      } finally {
+        this.alepha.store.set("tx" as any, undefined, { skipEvents: true });
+      }
+    }, config);
+  }
+
   public abstract execute(
     statement: SQLLike,
   ): Promise<Record<string, unknown>[]>;
@@ -141,89 +179,38 @@ export abstract class DatabaseProvider {
   }
 
   /**
-   * Base migration orchestration - handles environment logic.
+   * Migration orchestration.
    *
-   * Never runs in serverless mode - migrations should be applied during
-   * deployment, not at runtime (to avoid race conditions and timeouts).
+   * - Production: file-based migrations from the migrations folder
+   * - Dev / Test: push-based sync (introspects actual DB, no snapshots)
+   * - Serverless: skipped (migrations should be applied during deployment)
    */
   public async migrate(): Promise<void> {
-    // Never migrate in serverless mode - migrations should be applied during deployment
     if (this.alepha.isServerless()) {
       return;
     }
 
-    const migrationsFolder = this.getMigrationsFolder();
-
-    // Handle different environments
     if (this.alepha.isProduction()) {
-      await this.runProductionMigration(migrationsFolder);
-    } else if (this.alepha.isTest()) {
-      await this.runTestMigration();
-    } else {
-      await this.runDevelopmentMigration(migrationsFolder);
-    }
-  }
+      const migrationsFolder = this.getMigrationsFolder();
+      const exists = await stat(migrationsFolder).catch(() => false);
 
-  /**
-   * Production: run migrations from folder
-   */
-  protected async runProductionMigration(
-    migrationsFolder: string,
-  ): Promise<void> {
-    // Check folder exists
-    const exists = await stat(migrationsFolder).catch(() => false);
-
-    if (!exists) {
-      this.log.warn("Migration SKIPPED - no migrations found");
-      return;
-    }
-
-    this.log.debug(`Migrate from '${migrationsFolder}' directory ...`);
-
-    // Delegate to provider-specific implementation
-    await this.executeMigrations(migrationsFolder);
-
-    this.log.info("Migration OK");
-  }
-
-  /**
-   * Test: always synchronize
-   */
-  protected async runTestMigration(): Promise<void> {
-    await this.synchronizeSchema();
-  }
-
-  /**
-   * Development: default to synchronize (can be overridden)
-   */
-  protected async runDevelopmentMigration(
-    migrationsFolder: string,
-  ): Promise<void> {
-    // try migrations silently first
-    try {
-      // exclude in-memory databases (there is nothing to migrate!)
-      if (!this.url.includes(":memory:")) {
-        await this.executeMigrations(migrationsFolder);
+      if (!exists) {
+        this.log.warn("Migration SKIPPED - no migrations found");
+        return;
       }
-    } catch {
-      // Ignore errors
-    }
 
-    // then synchronize
-    await this.synchronizeSchema();
-  }
-
-  /**
-   * Common synchronization with error handling
-   */
-  protected async synchronizeSchema(): Promise<void> {
-    try {
-      await this.kit.synchronize(this);
-    } catch (error) {
-      throw new DbError(
-        `Failed to synchronize ${this.dialect} database schema`,
-        error as Error,
-      );
+      this.log.debug(`Migrate from '${migrationsFolder}' directory ...`);
+      await this.executeMigrations(migrationsFolder);
+      this.log.info("Migration OK");
+    } else {
+      try {
+        await this.kit.synchronize(this);
+      } catch (error) {
+        throw new DbError(
+          `Failed to synchronize ${this.dialect} database schema`,
+          error as Error,
+        );
+      }
     }
   }
 

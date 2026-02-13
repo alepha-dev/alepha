@@ -122,9 +122,14 @@ export abstract class Repository<T extends TObject> {
 
   /**
    * Getter for the database connection from the database provider.
+   *
+   * Automatically picks up a transaction from `alepha.store` if one was set
+   * by `DatabaseProvider.transactional()`, so that all repository operations
+   * inside a `transactional()` block participate in the same transaction.
    */
   protected get db(): PgDatabase<any> {
-    return this.provider.db;
+    const tx = this.alepha.store.get("tx" as any);
+    return tx ?? this.provider.db;
   }
 
   /**
@@ -208,7 +213,7 @@ export abstract class Repository<T extends TObject> {
     const column = (this.table as any)[name];
     if (!column) {
       throw new AlephaError(
-        `Invalid access. Column ${String(name)} not found in table ${this.tableName}`,
+        `Invalid access. Column '${String(name)}' not found in table '${this.tableName}'`,
       );
     }
 
@@ -239,7 +244,8 @@ export abstract class Repository<T extends TObject> {
    * Start a SELECT query on the table.
    */
   protected rawSelect(opts: StatementOptions = {}) {
-    return (opts.tx ?? this.db).select().from(this.table as PgTable);
+    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
+    return db.select().from(this.table as PgTable);
   }
 
   /**
@@ -249,7 +255,7 @@ export abstract class Repository<T extends TObject> {
     opts: StatementOptions = {},
     columns: (keyof Static<T>)[] = [],
   ) {
-    const db = opts.tx ?? this.db;
+    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
     const table = this.table as PgTable;
 
     const fields: Record<string, any> = {};
@@ -266,21 +272,24 @@ export abstract class Repository<T extends TObject> {
    * Start an INSERT query on the table.
    */
   protected rawInsert(opts: StatementOptions = {}) {
-    return (opts.tx ?? this.db).insert(this.table);
+    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
+    return db.insert(this.table);
   }
 
   /**
    * Start an UPDATE query on the table.
    */
   protected rawUpdate(opts: StatementOptions = {}) {
-    return (opts.tx ?? this.db).update(this.table);
+    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
+    return db.update(this.table);
   }
 
   /**
    * Start a DELETE query on the table.
    */
   protected rawDelete(opts: StatementOptions = {}) {
-    return (opts.tx ?? this.db).delete(this.table);
+    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
+    return db.delete(this.table);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1060,7 +1069,8 @@ export abstract class Repository<T extends TObject> {
     opts: StatementOptions = {},
   ): Promise<number> {
     where = this.withDeletedAt(where, opts);
-    return (opts.tx ?? this.db).$count(this.table, this.toSQL(where));
+    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
+    return db.$count(this.table, this.toSQL(where));
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1361,8 +1371,12 @@ export abstract class Repository<T extends TObject> {
 export interface StatementOptions {
   /**
    * Transaction to use.
+   *
+   * - `undefined` — auto-detect from `alepha.store` (implicit transactional context)
+   * - `PgTransaction` — use this specific transaction (explicit)
+   * - `null` — force no transaction, bypass implicit context
    */
-  tx?: PgTransaction<any, Record<string, any>>;
+  tx?: PgTransaction<any, Record<string, any>> | null;
 
   /**
    * Lock strength.

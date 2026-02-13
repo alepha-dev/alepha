@@ -1,9 +1,7 @@
 import { $env, $hook, $inject, AlephaError, t } from "alepha";
-import { $logger } from "alepha/logger";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
-import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -58,8 +56,6 @@ export interface D1ExecResult {
  * ```
  */
 export class CloudflareD1Provider extends DatabaseProvider {
-  protected readonly kit = $inject(DrizzleKitProvider);
-  protected readonly log = $logger();
   protected readonly builder = $inject(SqliteModelBuilder);
   protected readonly env = $env(
     t.object({
@@ -169,27 +165,21 @@ export class CloudflareD1Provider extends DatabaseProvider {
   }
 
   /**
-   * Override development migration to skip sync (not supported on D1).
-   * D1 requires proper migrations to be applied.
+   * D1 doesn't support push-based schema sync.
+   * Always use file-based migrations regardless of environment.
    */
-  protected override async runDevelopmentMigration(
-    migrationsFolder: string,
-  ): Promise<void> {
-    await this.executeMigrations(migrationsFolder);
-  }
-
-  /**
-   * Override test migration to run migrations instead of sync.
-   * D1 doesn't support schema synchronization.
-   */
-  protected override async runTestMigration(): Promise<void> {
+  public override async migrate(): Promise<void> {
     const migrationsFolder = this.getMigrationsFolder();
     try {
       await this.executeMigrations(migrationsFolder);
-    } catch {
-      this.log.warn(
-        "D1 migrations failed in test environment - ensure migrations exist",
-      );
+    } catch (error) {
+      if (this.alepha.isTest()) {
+        this.log.warn(
+          "D1 migrations failed in test environment - ensure migrations exist",
+        );
+      } else {
+        throw error;
+      }
     }
   }
 }

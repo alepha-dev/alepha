@@ -1,34 +1,7 @@
-import { $env, $hook, $inject, AlephaError, type Static, t } from "alepha";
-import { $lock } from "alepha/lock";
-import { $logger } from "alepha/logger";
-import { sql } from "drizzle-orm";
+import { AlephaError } from "alepha";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { DbError } from "../../errors/DbError.ts";
-import { DbMigrationError } from "../../errors/DbMigrationError.ts";
-import { PostgresModelBuilder } from "../../services/PostgresModelBuilder.ts";
-import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
-import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
-
-declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
-}
-
-const envSchema = t.object({
-  /**
-   * Main configuration for database connection.
-   * Accept a string in the format of a Postgres connection URL.
-   * Example: postgres://user:password@localhost:5432/database
-   * or
-   * Example: postgres://user:password@localhost:5432/database?sslmode=require
-   */
-  DATABASE_URL: t.optional(t.text()),
-
-  /**
-   * In addition to the DATABASE_URL, you can specify the postgres schema name.
-   */
-  POSTGRES_SCHEMA: t.optional(t.text()),
-});
+import { PostgresProvider } from "./PostgresProvider.ts";
 
 /**
  * Bun PostgreSQL provider using Drizzle ORM with Bun's native SQL client.
@@ -48,65 +21,9 @@ const envSchema = t.object({
  * });
  * ```
  */
-export class BunPostgresProvider extends DatabaseProvider {
-  protected readonly log = $logger();
-  protected readonly env = $env(envSchema);
-  protected readonly kit = $inject(DrizzleKitProvider);
-  protected readonly builder = $inject(PostgresModelBuilder);
-
+export class BunPostgresProvider extends PostgresProvider {
   protected client?: Bun.SQL;
   protected bunDb?: BunSQLDatabase;
-
-  public readonly dialect = "postgresql";
-
-  public get name() {
-    return "postgres";
-  }
-
-  /**
-   * In testing mode, the schema name will be generated and deleted after the test.
-   */
-  protected schemaForTesting = this.alepha.isTest()
-    ? this.env.POSTGRES_SCHEMA?.startsWith("test_")
-      ? this.env.POSTGRES_SCHEMA
-      : this.generateTestSchemaName()
-    : undefined;
-
-  public override get url() {
-    if (!this.env.DATABASE_URL) {
-      throw new AlephaError("DATABASE_URL is not defined in the environment");
-    }
-
-    return this.env.DATABASE_URL;
-  }
-
-  /**
-   * Execute a SQL statement.
-   */
-  public override execute(
-    statement: SQLLike,
-  ): Promise<Array<Record<string, unknown>>> {
-    try {
-      return this.db.execute(statement);
-    } catch (error) {
-      throw new DbError("Error executing statement", error);
-    }
-  }
-
-  /**
-   * Get Postgres schema used by this provider.
-   */
-  public override get schema(): string {
-    if (this.schemaForTesting) {
-      return this.schemaForTesting;
-    }
-
-    if (this.env.POSTGRES_SCHEMA) {
-      return this.env.POSTGRES_SCHEMA;
-    }
-
-    return "public";
-  }
 
   /**
    * Get the Drizzle Postgres database instance.
@@ -127,50 +44,6 @@ export class BunPostgresProvider extends DatabaseProvider {
   }
 
   // -------------------------------------------------------------------------------------------------------------------
-
-  protected readonly onStart = $hook({
-    on: "start",
-    handler: async () => {
-      await this.connect();
-
-      // never migrate in serverless mode (vercel, netlify, ...)
-      if (!this.alepha.isServerless()) {
-        try {
-          await this.migrateLock.run();
-        } catch (error) {
-          throw new DbMigrationError(error);
-        }
-      }
-    },
-  });
-
-  protected readonly onStop = $hook({
-    on: "stop",
-    handler: async () => {
-      // cleanup test schema
-      if (
-        this.alepha.isTest() &&
-        this.schemaForTesting &&
-        this.schemaForTesting.startsWith("test_")
-      ) {
-        // Additional validation: schema name must only contain safe characters
-        if (!/^test_[a-z0-9_]+$/i.test(this.schemaForTesting)) {
-          throw new AlephaError(
-            `Invalid test schema name: ${this.schemaForTesting}. Must match pattern: test_[a-z0-9_]+`,
-          );
-        }
-
-        this.log.warn(`Deleting test schema '${this.schemaForTesting}' ...`);
-        await this.execute(
-          sql`DROP SCHEMA IF EXISTS ${sql.raw(this.schemaForTesting)} CASCADE`,
-        );
-        this.log.info(`Test schema '${this.schemaForTesting}' deleted`);
-      }
-
-      // close the connection
-      await this.close();
-    },
-  });
 
   public async connect(): Promise<void> {
     this.log.debug("Connect ..");
@@ -214,10 +87,4 @@ export class BunPostgresProvider extends DatabaseProvider {
       this.log.info("Connection closed");
     }
   }
-
-  protected migrateLock = $lock({
-    handler: async () => {
-      await this.migrate();
-    },
-  });
 }

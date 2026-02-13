@@ -2,11 +2,9 @@ import { mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import type { PGlite } from "@electric-sql/pglite";
 import { $env, $hook, $inject, AlephaError, t } from "alepha";
-import { $logger } from "alepha/logger";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { PostgresModelBuilder } from "../../services/PostgresModelBuilder.ts";
-import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
 const envSchema = t.object({
@@ -35,8 +33,6 @@ export class PglitePostgresProvider extends DatabaseProvider {
   }
 
   protected readonly env = $env(envSchema);
-  protected readonly log = $logger();
-  protected readonly kit = $inject(DrizzleKitProvider);
   protected readonly builder = $inject(PostgresModelBuilder);
 
   protected client?: PGlite;

@@ -11,11 +11,9 @@ import {
   type Static,
   t,
 } from "alepha";
-import { $logger } from "alepha/logger";
 import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
-import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -75,8 +73,6 @@ declare module "alepha" {
  * ```
  */
 export class BunSqliteProvider extends DatabaseProvider {
-  protected readonly kit = $inject(DrizzleKitProvider);
-  protected readonly log = $logger();
   protected readonly env = $env(envSchema);
   protected readonly builder = $inject(SqliteModelBuilder);
   protected readonly options = $use(bunSqliteOptions);
@@ -114,6 +110,10 @@ export class BunSqliteProvider extends DatabaseProvider {
     }
 
     return this.bunDb as unknown as PgDatabase<any>;
+  }
+
+  public override get nativeConnection(): unknown {
+    return this.sqlite;
   }
 
   public override async execute(

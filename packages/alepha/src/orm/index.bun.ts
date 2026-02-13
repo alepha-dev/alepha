@@ -8,6 +8,7 @@ import { BunSqliteProvider } from "./providers/drivers/BunSqliteProvider.ts";
 import { CloudflareD1Provider } from "./providers/drivers/CloudflareD1Provider.ts";
 import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
 import { PglitePostgresProvider } from "./providers/drivers/PglitePostgresProvider.ts";
+import { PostgresProvider } from "./providers/drivers/PostgresProvider.ts";
 import { RepositoryProvider } from "./providers/RepositoryProvider.ts";
 import { PgRelationManager } from "./services/PgRelationManager.ts";
 import { PostgresModelBuilder } from "./services/PostgresModelBuilder.ts";
@@ -27,6 +28,7 @@ export const AlephaOrm = $module({
   services: [
     AlephaDateTime,
     DatabaseProvider,
+    PostgresProvider,
     BunPostgresProvider,
     BunSqliteProvider,
     PglitePostgresProvider,
