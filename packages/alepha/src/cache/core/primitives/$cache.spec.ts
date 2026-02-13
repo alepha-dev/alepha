@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
@@ -67,7 +66,7 @@ describe("$cache", () => {
   });
 
   it("should handle infinite TTL", async () => {
-    const app = Alepha.create({ env: { REDIS_CACHE_PREFIX: randomUUID() } });
+    const app = Alepha.create();
     const test = app.inject(TestCache);
     const time = app.inject(DateTimeProvider);
     await app.start();

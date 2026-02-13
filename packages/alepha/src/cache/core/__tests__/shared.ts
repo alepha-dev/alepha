@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { Alepha, type Env, type Service } from "alepha";
-import { $cache, CacheProvider, MemoryCacheProvider } from "alepha/cache";
+import { Alepha, type Service } from "alepha";
+import {
+  $cache,
+  CacheProvider,
+  cacheOptions,
+  MemoryCacheProvider,
+} from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { expect } from "vitest";
 
@@ -27,15 +32,14 @@ export class TestCache {
 }
 
 export const testCacheBasic = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
-  const app = Alepha.create({
-    env,
-  }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
   const test = app.inject(TestCache);
   const time = app.inject(DateTimeProvider);
   await app.start();
@@ -62,15 +66,14 @@ export const testCacheBasic = async (
 };
 
 export const testCacheStop = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
-  const app = Alepha.create({
-    env,
-  }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
 
   const test = app.inject(TestCache);
   await app.start();
@@ -82,15 +85,14 @@ export const testCacheStop = async (
 };
 
 export const testCacheMissingProvider = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
-  const app = Alepha.create({
-    env,
-  }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
 
   const test = app.inject(TestCache);
 
@@ -99,19 +101,15 @@ export const testCacheMissingProvider = async (
 };
 
 export const testCacheDisabled = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
-  const app = Alepha.create({
-    env: {
-      REDIS_CACHE_PREFIX: randomUUID(),
-      CACHE_ENABLED: false,
-      ...env,
-    },
-  }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  app.store.mut(cacheOptions, (current) => ({ ...current, enabled: false }));
+  configure(app);
 
   const test = app.inject(TestCache);
   await app.start();
@@ -122,15 +120,14 @@ export const testCacheDisabled = async (
 };
 
 export const testCacheInvalidateByKey = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
-  const app = Alepha.create({
-    env,
-  }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
 
   const test = app.inject(TestCache);
   await app.start();
@@ -145,15 +142,14 @@ export const testCacheInvalidateByKey = async (
 };
 
 export const testCacheInvalidateByArgs = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
-  const app = Alepha.create({
-    env,
-  }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
 
   const test = app.inject(TestCache);
   await app.start();
@@ -168,15 +164,14 @@ export const testCacheInvalidateByArgs = async (
 };
 
 export const testCacheInvalidateAll = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
-  const app = Alepha.create({
-    env,
-  }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
 
   const test = app.inject(TestCache);
   await app.start();
@@ -189,15 +184,14 @@ export const testCacheInvalidateAll = async (
 };
 
 export const testCacheClear = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
-  const app = Alepha.create({
-    env,
-  }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
 
   const test = app.inject(TestCache);
   await app.start();
@@ -214,7 +208,7 @@ export const testCacheClear = async (
 };
 
 export const testCacheReturnTypes = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
   class Types {
@@ -232,12 +226,11 @@ export const testCacheReturnTypes = async (
     });
   }
 
-  const app = Alepha.create({
-    env,
-  }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
 
   const test = app.inject(Types);
 
@@ -255,15 +248,14 @@ export const testCacheReturnTypes = async (
 };
 
 export const testCacheKeys = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ) => {
-  const alepha = Alepha.create({
-    env,
-  }).with({
+  const alepha = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(alepha);
   class TestApp {
     cache = $cache<string>();
   }
@@ -286,7 +278,7 @@ export const testCacheKeys = async (
 };
 
 export const testSimpleKeyMappingHandler = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
   class App {
@@ -300,14 +292,13 @@ export const testSimpleKeyMappingHandler = async (
       },
     });
   }
-  const alepha = Alepha.create({
-    env,
-  })
+  const alepha = Alepha.create()
     .with({
       provide: CacheProvider,
       use: cacheProvider,
     })
     .with(App);
+  configure(alepha);
 
   await alepha.start();
   const app = alepha.inject(App);
@@ -322,15 +313,14 @@ export const testSimpleKeyMappingHandler = async (
 };
 
 export const testCacheIncr = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
-  const app = Alepha.create({
-    env,
-  }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
 
   const provider = app.inject(CacheProvider);
   await app.start();
@@ -352,7 +342,7 @@ export const testCacheIncr = async (
 };
 
 export const testCacheFalsyValues = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
   class FalsyCache {
@@ -390,10 +380,11 @@ export const testCacheFalsyValues = async (
     });
   }
 
-  const app = Alepha.create({ env }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
   const test = app.inject(FalsyCache);
   await app.start();
 
@@ -417,19 +408,19 @@ export const testCacheFalsyValues = async (
 };
 
 export const testCacheSetDisabled = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
   class ManualCache {
     store = $cache<string>();
   }
 
-  const app = Alepha.create({
-    env: { CACHE_ENABLED: false, ...env },
-  }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  app.store.mut(cacheOptions, (current) => ({ ...current, enabled: false }));
+  configure(app);
 
   const test = app.inject(ManualCache);
   const provider = app.inject(CacheProvider);
@@ -441,17 +432,18 @@ export const testCacheSetDisabled = async (
 };
 
 export const testCachePrimitiveIncr = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
   class CounterApp {
     counter = $cache<number>();
   }
 
-  const app = Alepha.create({ env }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
   const test = app.inject(CounterApp);
   await app.start();
 
@@ -463,7 +455,7 @@ export const testCachePrimitiveIncr = async (
 };
 
 export const testCacheProviderClear = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
   class TestClearCache {
@@ -486,12 +478,11 @@ export const testCacheProviderClear = async (
     });
   }
 
-  const app = Alepha.create({
-    env,
-  }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
 
   const test = app.inject(TestClearCache);
   const provider = app.inject(CacheProvider);
@@ -518,7 +509,7 @@ export const testCacheProviderClear = async (
 };
 
 export const testCacheCompress = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
   class CompressedCache {
@@ -538,10 +529,11 @@ export const testCacheCompress = async (
     });
   }
 
-  const app = Alepha.create({ env }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
   const test = app.inject(CompressedCache);
   await app.start();
 
@@ -569,7 +561,7 @@ export const testCacheCompress = async (
 };
 
 export const testCacheCompressTypes = async (
-  env: Env = {},
+  configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
 ): Promise<void> => {
   class CompressedTypes {
@@ -591,10 +583,11 @@ export const testCacheCompressTypes = async (
     });
   }
 
-  const app = Alepha.create({ env }).with({
+  const app = Alepha.create().with({
     provide: CacheProvider,
     use: cacheProvider,
   });
+  configure(app);
   const test = app.inject(CompressedTypes);
   await app.start();
 

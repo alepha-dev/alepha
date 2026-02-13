@@ -1,10 +1,14 @@
 import {
-  $env,
+  $atom,
   $inject,
+  $use,
   createPrimitive,
   type InstantiableClass,
   KIND,
+  type MiddlewareMetadata,
+  OPTIONS,
   Primitive,
+  type Static,
   t,
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
@@ -13,66 +17,72 @@ import { CacheProvider } from "../providers/CacheProvider.ts";
 import { MemoryCacheProvider } from "../providers/MemoryCacheProvider.ts";
 
 /**
- * Creates a cache primitive for high-performance data caching with automatic management.
+ * Creates a cache primitive for caching with automatic management.
  *
- * Provides a caching layer that improves application performance by storing frequently accessed
- * data in memory or external stores like Redis, with support for both function result caching
- * and manual cache operations.
- *
- * **Key Features**
- * - Automatic function result caching based on input parameters
- * - Multiple storage backends (in-memory, Redis, custom providers)
- * - Intelligent serialization for JSON, strings, and binary data
- * - Configurable TTL with automatic expiration
- * - Pattern-based cache invalidation with wildcard support
- * - Environment controls to enable/disable caching
- *
- * **Storage Backends**
- * - Memory: Fast in-memory cache (default for development)
- * - Redis: Distributed cache for production environments
- * - Custom providers: Implement your own storage backend
- *
- * @example
+ * **Middleware mode** (no `handler`) — usable in `use` arrays AND as a store:
  * ```ts
- * class DataService {
- *   // Function result caching
- *   getUserData = $cache({
- *     name: "user-data",
- *     ttl: [10, "minutes"],
- *     handler: async (userId: string) => {
- *       return await database.users.findById(userId);
- *     }
+ * class UserService {
+ *   userCache = $cache({ name: "users", ttl: [10, "minutes"] });
+ *
+ *   fetchUser = $pipeline({
+ *     use: [this.userCache],
+ *     handler: async (userId: string) => this.repo.getById(userId),
  *   });
  *
- *   // Manual cache operations
- *   sessionCache = $cache<UserSession>({
- *     name: "sessions",
- *     ttl: [1, "hour"]
- *   });
- *
- *   async storeSession(id: string, session: UserSession) {
- *     await this.sessionCache.set(id, session);
- *   }
- *
- *   async invalidateUserSessions(userId: string) {
- *     await this.sessionCache.invalidate(`user:${userId}:*`);
+ *   async invalidateUser(userId: string) {
+ *     await this.userCache.invalidate(userId);
  *   }
  * }
  * ```
+ *
+ * **Primitive mode** (with `handler`) — standalone callable:
+ * ```ts
+ * getUserData = $cache({
+ *   name: "user-data",
+ *   ttl: [10, "minutes"],
+ *   handler: async (userId: string) => {
+ *     return await database.users.findById(userId);
+ *   }
+ * });
+ * ```
  */
-export const $cache = <TReturn = string, TParameter extends any[] = any[]>(
-  options: CachePrimitiveOptions<TReturn, TParameter> = {},
-): CachePrimitiveFn<TReturn, TParameter> => {
-  const instance = createPrimitive(
-    CachePrimitive<TReturn, TParameter>,
-    options,
-  );
-  const fn = (...args: TParameter): Promise<TReturn> => instance.run(...args);
-  return Object.setPrototypeOf(fn, instance) as CachePrimitiveFn<
-    TReturn,
-    TParameter
-  >;
-};
+export function $cache<TReturn = string, TParameter extends any[] = any[]>(
+  options: CachePrimitiveOptions<TReturn, TParameter> & {
+    handler: (...args: TParameter) => TReturn;
+  },
+): CachePrimitiveFn<TReturn, TParameter>;
+export function $cache<TReturn = any, TParameter extends any[] = any[]>(
+  options?: CachePrimitiveOptions<TReturn, TParameter>,
+): CacheMiddlewareFn<TReturn>;
+export function $cache(options: any = {}): any {
+  const instance = createPrimitive(CachePrimitive, options);
+
+  if (options.handler) {
+    const fn = (...args: any[]): Promise<any> => instance.run(...args);
+    return Object.setPrototypeOf(fn, instance);
+  }
+
+  // Middleware mode: callable as (handler) => wrappedHandler, with store methods
+  const mw: any = <T extends (...args: any[]) => any>(handler: T): T => {
+    return (async (...args: any[]) => {
+      const key = instance.key(...args);
+      const cached = await instance.get(key);
+      if (cached !== undefined) return cached;
+
+      const result = await handler(...args);
+      // Fire-and-forget — cache write failures must not break the handler result
+      instance.set(key, result).catch(() => {});
+      return result;
+    }) as any as T;
+  };
+
+  mw[OPTIONS] = {
+    name: "$cache",
+    options: options as unknown as Record<string, unknown>,
+  } satisfies MiddlewareMetadata;
+
+  return Object.setPrototypeOf(mw, instance);
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -128,19 +138,42 @@ export interface CachePrimitiveOptions<
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const envSchema = t.object({
-  CACHE_ENABLED: t.boolean({ default: true }),
-  CACHE_DEFAULT_TTL: t.number({
-    default: 300, // 5 minutes
-    description: "The default time to live for cache entries. In seconds.",
+/**
+ * Cache configuration atom.
+ */
+export const cacheOptions = $atom({
+  name: "alepha.cache.options",
+  schema: t.object({
+    enabled: t.boolean({
+      default: true,
+      description: "Whether caching is enabled.",
+    }),
+    defaultTtl: t.number({
+      default: 300,
+      description: "Default time to live for cache entries in seconds.",
+    }),
   }),
+  default: {
+    enabled: true,
+    defaultTtl: 300,
+  },
 });
+
+export type CacheAtomOptions = Static<typeof cacheOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [cacheOptions.key]: CacheAtomOptions;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class CachePrimitive<
   TReturn = any,
   TParameter extends any[] = any[],
 > extends Primitive<CachePrimitiveOptions<TReturn, TParameter>> {
-  protected readonly env = $env(envSchema);
+  protected readonly settings = $use(cacheOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly provider = this.$provider();
   protected encoder: TextEncoder = new TextEncoder();
@@ -215,14 +248,14 @@ export class CachePrimitive<
     if (
       !this.alepha.isStarted() ||
       this.options.disabled ||
-      !this.env.CACHE_ENABLED
+      !this.settings.enabled
     ) {
       return;
     }
 
     const px = this.dateTimeProvider
       .duration(
-        ttl ?? this.options.ttl ?? [this.env.CACHE_DEFAULT_TTL, "seconds"],
+        ttl ?? this.options.ttl ?? [this.settings.defaultTtl, "seconds"],
       )
       .as("milliseconds");
 
@@ -238,7 +271,7 @@ export class CachePrimitive<
     if (
       !this.alepha.isStarted() ||
       this.options.disabled ||
-      !this.env.CACHE_ENABLED
+      !this.settings.enabled
     ) {
       return undefined;
     }
@@ -340,6 +373,16 @@ export interface CachePrimitiveFn<
    * Run the cache primitive with the provided arguments.
    */
   (...args: TParameter): Promise<TReturn>;
+}
+
+/**
+ * Cache middleware + store. Callable as middleware `(handler) => wrappedHandler`
+ * AND exposes store methods (`.get()`, `.set()`, `.invalidate()`, `.incr()`).
+ */
+export interface CacheMiddlewareFn<TReturn = any>
+  extends CachePrimitive<TReturn, any[]> {
+  <T extends (...args: any[]) => any>(handler: T): T;
+  [OPTIONS]?: MiddlewareMetadata;
 }
 
 $cache[KIND] = CachePrimitive;
