@@ -20,6 +20,16 @@ export interface DevServerOptions {
    * Path to the server entry file.
    */
   entry: AppEntry;
+
+  /**
+   * Disable devtools.
+   */
+  noDevtools?: boolean;
+
+  /**
+   * Disable Vite React plugin.
+   */
+  noViteReactPlugin?: boolean;
 }
 
 /**
@@ -112,17 +122,20 @@ export class ViteDevServerProvider {
     const viteReact = await importViteReact();
 
     const plugins: Plugin[] = [];
-    if (viteReact) plugins.push(viteReact());
+    if (viteReact && !this.options.noViteReactPlugin) plugins.push(viteReact());
     plugins.push(viteAlephaSsrPreload());
     plugins.push(this.createAlephaPlugin());
 
-    // For now, port is "Alepha" specific, meaning we avoid the default Vite port (5173)
+    // DEFAULT PORT
+    // Dev: 5173
+    // Prod: 3000
+
     let port: number;
     if (process.env.SERVER_PORT) {
       port = Number(process.env.SERVER_PORT);
     } else {
       const config = await resolveConfig({}, "serve", "development");
-      port = config.server?.port ? Number(config.server.port) : 3000;
+      port = config.server?.port ? Number(config.server.port) : 5173;
     }
 
     this.server = await createServer({
@@ -198,33 +211,35 @@ export class ViteDevServerProvider {
 
       configureServer: (server) => {
         // Devtools live reload via SSE
-        server.middlewares.use(async (req, res, next) => {
-          const url = req.url || "/";
+        if (!this.options.noDevtools) {
+          server.middlewares.use(async (req, res, next) => {
+            const url = req.url || "/";
 
-          // Serve devtools HTML with reload script injected
-          if (
-            !url.startsWith("/__devtools") ||
-            !req.headers.accept?.includes("text/html")
-          ) {
-            return next();
-          }
+            // Serve devtools HTML with reload script injected
+            if (
+              !url.startsWith("/__devtools") ||
+              !req.headers.accept?.includes("text/html")
+            ) {
+              return next();
+            }
 
-          const indexPath = join(devtoolsAssets.ui, "index.html");
+            const indexPath = join(devtoolsAssets.ui, "index.html");
 
-          try {
-            let html = await readFile(indexPath, "utf-8");
-            html = html.replace(
-              "<head>",
-              `<head><script type="module" src="/@vite/client"></script>`,
-            );
+            try {
+              let html = await readFile(indexPath, "utf-8");
+              html = html.replace(
+                "<head>",
+                `<head><script type="module" src="/@vite/client"></script>`,
+              );
 
-            res.writeHead(200, { "content-type": "text/html" });
-            res.end(html);
-          } catch (err) {
-            this.log.error("Failed to serve devtools UI", err);
-            next();
-          }
-        });
+              res.writeHead(200, { "content-type": "text/html" });
+              res.end(html);
+            } catch (err) {
+              this.log.error("Failed to serve devtools UI", err);
+              next();
+            }
+          });
+        }
 
         // Return function to run AFTER Vite's built-in middleware
         return () => {
@@ -427,9 +442,10 @@ export class ViteDevServerProvider {
     // Expose Vite server to Alepha for Logger SSR stack trace fixing
     alepha.store.set("alepha.vite.server" as any, this.server);
 
-    const mod = await this.server.ssrLoadModule("alepha/devtools");
-
-    alepha.with(mod.AlephaDevtools);
+    if (!this.options.noDevtools) {
+      const mod = await this.server.ssrLoadModule("alepha/devtools");
+      alepha.with(mod.AlephaDevtools);
+    }
 
     this.alepha = alepha;
     await this.setupAlepha();

@@ -5,6 +5,7 @@ import {
   appEntryOptions,
 } from "./atoms/appEntryOptions.ts";
 import { type BuildOptions, buildOptions } from "./atoms/buildOptions.ts";
+import { type DevOptions, devOptions } from "./atoms/devOptions.ts";
 
 export interface AlephaCliConfig {
   entry?: AppEntryOptions;
@@ -25,6 +26,11 @@ export interface AlephaCliConfig {
    * Configure Alepha build command.
    */
   build?: BuildOptions;
+
+  /**
+   * Configure Alepha dev command.
+   */
+  dev?: DevOptions;
 
   /**
    * Environment variables to set before running commands.
@@ -57,6 +63,10 @@ export const defineConfig = (
 
     if (config.build) {
       alepha.set(buildOptions, config.build);
+    }
+
+    if (config.dev) {
+      alepha.set(devOptions, config.dev);
     }
 
     if (config.entry) {
