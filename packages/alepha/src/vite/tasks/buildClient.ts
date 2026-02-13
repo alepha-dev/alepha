@@ -98,12 +98,24 @@ export async function buildClient(opts: BuildClientOptions): Promise<void> {
       outDir: opts.dist,
       // Generate manifest for SSR module preloading
       manifest: true,
-      rollupOptions: {
+      rolldownOptions: {
         output: {
           entryFileNames: "entry.[hash].js",
           chunkFileNames: "chunk.[hash].js",
           assetFileNames: "asset.[hash][extname]",
-          experimentalMinChunkSize: 5000, // Enable experimental min chunk size to reduce overhead of many small chunks
+          keepNames: true,
+          manualChunks: (id) => {
+            // TODO: this is mandatory for now, rolldown create some cyclical deps with icons & jsx
+            if (
+              id.includes("@tabler/icons-react") ||
+              id.includes("lucide-react")
+            ) {
+              return "icons";
+            }
+            if (id.includes("node_modules/react")) {
+              return "react";
+            }
+          },
         },
       },
     },
