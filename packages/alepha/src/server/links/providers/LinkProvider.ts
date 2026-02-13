@@ -7,7 +7,7 @@ import {
   t,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import type { ServerRouteSecure } from "alepha/security";
+import type { SecureOptions } from "alepha/security";
 import {
   type ActionPrimitive,
   type ClientRequestEntry,
@@ -283,7 +283,7 @@ export class LinkProvider {
     options.request ??= {};
     options.request.headers = new Headers(options.request.headers);
 
-    const als = this.alepha.context.get<ServerRequest>("request");
+    const als = this.alepha.store.get("alepha.http.request");
     if (als?.headers.authorization) {
       options.request.headers.set("authorization", als.headers.authorization);
     }
@@ -362,7 +362,7 @@ export class LinkProvider {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface HttpClientLink extends ApiLink {
-  secured?: boolean | ServerRouteSecure;
+  secured?: boolean | SecureOptions;
   prefix?: string;
   // -- server only --
   // only for remote actions

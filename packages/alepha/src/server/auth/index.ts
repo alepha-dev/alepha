@@ -1,5 +1,4 @@
 import { $module } from "alepha";
-import type { UserAccount } from "alepha/security";
 import { AlephaServerCookies } from "alepha/server/cookies";
 import { $auth } from "./primitives/$auth.ts";
 import { ServerAuthProvider } from "./providers/ServerAuthProvider.ts";
@@ -12,19 +11,6 @@ export * from "./primitives/$authCredentials.ts";
 export * from "./primitives/$authGithub.ts";
 export * from "./primitives/$authGoogle.ts";
 export * from "./providers/ServerAuthProvider.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-declare module "alepha" {
-  export interface State {
-    /**
-     * The authenticated user account attached to the server request state.
-     *
-     * @internal
-     */
-    "alepha.server.request.user"?: UserAccount;
-  }
-}
 
 // ---------------------------------------------------------------------------------------------------------------------
 

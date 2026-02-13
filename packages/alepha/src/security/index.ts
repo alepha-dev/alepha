@@ -1,18 +1,19 @@
 import { $module, type Alepha } from "alepha";
-import { AlephaServer, type FetchOptions } from "alepha/server";
+import type { FetchOptions } from "alepha/server";
+import { currentUserAtom } from "./atoms/currentUserAtom.ts";
 import type { UserAccountToken } from "./interfaces/UserAccountToken.ts";
-import { $basicAuth } from "./primitives/$basicAuth.ts";
 import { $issuer } from "./primitives/$issuer.ts";
 import { $permission } from "./primitives/$permission.ts";
 import { $role } from "./primitives/$role.ts";
-import { CryptoProvider } from "./providers/CryptoProvider.ts";
 import { JwtProvider } from "./providers/JwtProvider.ts";
 import { SecurityProvider } from "./providers/SecurityProvider.ts";
-import { ServerBasicAuthProvider } from "./providers/ServerBasicAuthProvider.ts";
-import { ServerCsrfProvider } from "./providers/ServerCsrfProvider.ts";
 import { ServerSecurityProvider } from "./providers/ServerSecurityProvider.ts";
 import type { UserAccount } from "./schemas/userAccountInfoSchema.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+export * from "alepha/crypto";
+export * from "./atoms/currentUserAtom.ts";
 export * from "./errors/InvalidCredentialsError.ts";
 export * from "./errors/InvalidPermissionError.ts";
 export * from "./errors/SecurityError.ts";
@@ -24,17 +25,14 @@ export * from "./primitives/$permission.ts";
 export * from "./primitives/$role.ts";
 export * from "./primitives/$secure.ts";
 export * from "./primitives/$serviceAccount.ts";
-export * from "./providers/CryptoProvider.ts";
 export * from "./providers/JwtProvider.ts";
 export * from "./providers/SecurityProvider.ts";
-export * from "./providers/ServerBasicAuthProvider.ts";
-export * from "./providers/ServerCsrfProvider.ts";
 export * from "./providers/ServerSecurityProvider.ts";
 export * from "./schemas/permissionSchema.ts";
 export * from "./schemas/roleSchema.ts";
 export * from "./schemas/userAccountInfoSchema.ts";
 
-import type { ServerRouteSecure } from "./providers/ServerSecurityProvider.ts";
+// ---------------------------------------------------------------------------------------------------------------------
 
 declare module "alepha" {
   interface Hooks {
@@ -51,14 +49,12 @@ declare module "alepha" {
      * If you define this, you assume that all actions are executed by this user by default.
      * > To force a different user, you need to pass it explicitly in the options.
      */
-    "alepha.server.security.system.user"?: UserAccountToken;
+    "alepha.security.system.user"?: UserAccountToken;
 
     /**
-     * The authenticated user account attached to the server request state.
-     *
-     * @internal
+     * The current authenticated user.
      */
-    "alepha.server.request.user"?: UserAccount;
+    "alepha.security.user"?: UserAccount;
   }
 }
 
@@ -69,14 +65,6 @@ declare module "alepha/server" {
 
   interface ServerActionRequest<TConfig> {
     user: UserAccountToken; // for actions, user is always present
-  }
-
-  interface ServerRoute {
-    /**
-     * If true, the route will be protected by the security provider.
-     * All actions are secure by default, but you can disable it for specific actions.
-     */
-    secure?: boolean | ServerRouteSecure;
   }
 
   interface ClientRequestOptions extends FetchOptions {
@@ -90,6 +78,8 @@ declare module "alepha/server" {
     user?: UserAccountToken | "system" | "context";
   }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
  * | Stability | Since | Runtime |
@@ -113,31 +103,12 @@ declare module "alepha/server" {
  */
 export const AlephaSecurity = $module({
   name: "alepha.security",
-  primitives: [$issuer, $role, $permission, $basicAuth],
-  services: [
-    SecurityProvider,
-    JwtProvider,
-    CryptoProvider,
-    ServerSecurityProvider,
-    ServerBasicAuthProvider,
-    ServerCsrfProvider,
-  ],
+  primitives: [$issuer, $role, $permission],
+  atoms: [currentUserAtom],
+  services: [SecurityProvider, JwtProvider, ServerSecurityProvider],
   register: (alepha: Alepha) => {
-    // Always register core security providers
     alepha.with(SecurityProvider);
     alepha.with(JwtProvider);
-    alepha.with(CryptoProvider);
-
-    // Register server security providers only if AlephaServer is available
-    if (alepha.has(AlephaServer)) {
-      alepha.with(ServerSecurityProvider);
-      alepha.with(ServerBasicAuthProvider);
-      alepha.with(ServerCsrfProvider);
-    }
+    alepha.with(ServerSecurityProvider);
   },
 });
-
-/**
- * @deprecated Use `AlephaSecurity` instead. Server security providers are automatically registered when `AlephaServer` is available.
- */
-export const AlephaServerSecurity = AlephaSecurity;

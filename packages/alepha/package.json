@@ -56,7 +56,7 @@
     "swagger-ui-dist": "^5.31.0",
     "tailwindcss": "^4.1.18",
     "tsdown": "^0.20.3",
-    "vite": "^8.0.0-beta.14",
+    "vite": "^7.3.1",
     "vitest": "^4.0.18",
     "worker-mailer": "^1.2.1"
   },
@@ -194,6 +194,13 @@
       "browser": "./src/core/index.browser.ts",
       "import": "./src/core/index.ts",
       "default": "./src/core/index.ts"
+    },
+    "./crypto": {
+      "types": "./src/crypto/index.ts",
+      "react-native": "./src/crypto/index.browser.ts",
+      "browser": "./src/crypto/index.browser.ts",
+      "import": "./src/crypto/index.ts",
+      "default": "./src/crypto/index.ts"
     },
     "./datetime": {
       "types": "./src/datetime/index.ts",
@@ -344,11 +351,6 @@
       "import": "./src/server/auth/index.ts",
       "default": "./src/server/auth/index.ts"
     },
-    "./server/cache": {
-      "types": "./src/server/cache/index.ts",
-      "import": "./src/server/cache/index.ts",
-      "default": "./src/server/cache/index.ts"
-    },
     "./server/compress": {
       "types": "./src/server/compress/index.ts",
       "import": "./src/server/compress/index.ts",
@@ -372,6 +374,11 @@
       "types": "./src/server/cors/index.ts",
       "import": "./src/server/cors/index.ts",
       "default": "./src/server/cors/index.ts"
+    },
+    "./server/etag": {
+      "types": "./src/server/etag/index.ts",
+      "import": "./src/server/etag/index.ts",
+      "default": "./src/server/etag/index.ts"
     },
     "./server/health": {
       "types": "./src/server/health/index.ts",

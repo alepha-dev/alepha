@@ -61,6 +61,7 @@ export class PostgresModelBuilder extends ModelBuilder {
     options: {
       tables: Map<string, unknown>;
       enums: Map<string, unknown>;
+      schemas: Map<string, unknown>;
       schema: string;
     },
   ) {
@@ -70,6 +71,12 @@ export class PostgresModelBuilder extends ModelBuilder {
     }
 
     const nsp = this.getPgSchema(options.schema);
+
+    // Register PgSchema so drizzle-kit knows the schema is declared in code.
+    // Without this, pushSchema diffs "schema exists in DB but not in code" → DROP.
+    if (options.schema !== "public" && !options.schemas.has(options.schema)) {
+      options.schemas.set(options.schema, nsp);
+    }
 
     const columns = this.schemaToPgColumns(
       tableName,

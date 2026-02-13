@@ -177,9 +177,6 @@ export class ReactServerTemplateProvider {
    * Build hydration data from router state.
    */
   public buildHydrationData(state: ReactRouterState): HydrationData {
-    const { request, context, ...store } =
-      this.alepha.context.als?.getStore() ?? {};
-
     const layers = state.layers.map((layer) => ({
       part: layer.part,
       name: layer.name,
@@ -195,19 +192,7 @@ export class ReactServerTemplateProvider {
         : undefined,
     }));
 
-    const hydrationData: HydrationData = { layers };
-
-    for (const [key, value] of Object.entries(store)) {
-      if (
-        key.charAt(0) !== "_" &&
-        key !== "alepha.react.router.state" &&
-        key !== "registry"
-      ) {
-        hydrationData[key] = value;
-      }
-    }
-
-    return hydrationData;
+    return { layers, ...this.alepha.store.exportAtoms("current") };
   }
 
   // ---------------------------------------------------------------------------

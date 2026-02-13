@@ -146,7 +146,9 @@ export class ViteDevServerProvider {
         port,
       },
       optimizeDeps: {
-        entries: this.options.entry.browser ? [this.options.entry.browser] : [],
+        entries: [
+          ...(this.options.entry.browser ? [this.options.entry.browser] : []),
+        ],
       },
       // customLogger: {
       //   info: () => {},
@@ -466,7 +468,7 @@ export class ViteDevServerProvider {
 
     // Generate dev head content using Vite's transformIndexHtml
     const devHead = await this.generateDevHead();
-    this.alepha.store.set("alepha.react.ssr.manifest" as any, { devHead });
+    this.alepha.store.set("alepha.react.ssr.manifest", { devHead });
   }
 
   /**
@@ -516,6 +518,7 @@ export class ViteDevServerProvider {
    * Invalidate modules and all their importers.
    */
   protected invalidateModulesWithImporters(changedFiles: Set<string>): void {
+    const graph = this.server.moduleGraph;
     const invalidated = new Set<string>();
     const queue: string[] = [...changedFiles];
 
@@ -526,7 +529,7 @@ export class ViteDevServerProvider {
       const mod = this.server.moduleGraph.getModuleById(file);
       if (!mod) continue;
 
-      this.server.moduleGraph.invalidateModule(mod);
+      graph.invalidateModule(mod);
       invalidated.add(file);
 
       for (const importer of mod.importers) {
@@ -540,11 +543,11 @@ export class ViteDevServerProvider {
     const entryPath = this.options.entry.server;
     const absoluteEntryPath = join(this.options.root, entryPath);
     const entryMod =
-      this.server.moduleGraph.getModuleById(absoluteEntryPath) ??
-      this.server.moduleGraph.getModuleById(entryPath) ??
-      this.server.moduleGraph.getModuleById(`/${entryPath}`);
+      graph.getModuleById(absoluteEntryPath) ??
+      graph.getModuleById(entryPath) ??
+      graph.getModuleById(`/${entryPath}`);
     if (entryMod) {
-      this.server.moduleGraph.invalidateModule(entryMod);
+      graph.invalidateModule(entryMod);
     }
   }
 

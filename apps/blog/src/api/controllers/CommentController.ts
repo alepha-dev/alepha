@@ -1,4 +1,5 @@
 import { $inject, t } from "alepha";
+import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import {
   commentCreateSchema,
@@ -37,7 +38,7 @@ export class CommentController {
     method: "POST",
     path: "/posts/:postId/comments",
     group: this.group,
-    secure: true,
+    use: [$secure()],
     description: "Create a comment on a post",
     schema: {
       params: t.object({ postId: t.uuid() }),

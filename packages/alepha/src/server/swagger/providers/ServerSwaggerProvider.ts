@@ -13,7 +13,6 @@ import {
   t,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import { AlephaSecurity } from "alepha/security";
 import {
   $action,
   type ActionPrimitive,
@@ -128,21 +127,12 @@ export class ServerSwaggerProvider {
         title: "API Documentation",
         version: "1.0.0",
       },
+      servers: doc.servers ?? [{ url: this.serverProvider.hostname }],
       paths: {},
       components: {},
     };
 
-    const hasSecurity = this.alepha.has(AlephaSecurity);
-    if (hasSecurity && openApi.components) {
-      openApi.components.securitySchemes = {
-        bearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          bearerFormat: "JWT",
-        },
-      };
-    }
-
+    let hasSecurity = false;
     const excludeTags = doc.excludeTags ?? [];
     const schemas: Record<string, any> = {};
 
@@ -185,10 +175,11 @@ export class ServerSwaggerProvider {
         operationId: route.name,
         summary: route.options.summary,
         description: route.options.description,
+        deprecated: route.options.deprecated || undefined,
         tags: [route.group.replaceAll(":", " / ")],
         responses: {
           [response.status]: {
-            description: "",
+            description: this.getStatusDescription(response.status),
             content: response.type
               ? {
                   [response.type]: {
@@ -200,8 +191,14 @@ export class ServerSwaggerProvider {
         },
       };
 
-      if (route.options.secure !== false && hasSecurity) {
+      const isSecured = route.middlewares.some((m) => m?.name === "$secure");
+
+      if (isSecured) {
         operation.security = [{ bearerAuth: [] }];
+        operation.responses["401"] = {
+          description: "Unauthorized",
+        };
+        hasSecurity = true;
       }
 
       const g = t.raw;
@@ -236,15 +233,20 @@ export class ServerSwaggerProvider {
 
       if (g.IsObject(route.options.schema.query)) {
         operation.parameters ??= [];
+        const requiredKeys: string[] =
+          route.options.schema.query.required ?? [];
         for (const [key, value] of Object.entries(
           route.options.schema.query.properties,
         )) {
-          operation.parameters.push({
+          const param: any = {
             name: key,
             in: "query",
-            required: false,
+            required: requiredKeys.includes(key),
             schema: schema(value),
-          });
+          };
+          const example = this.extractExample(value);
+          if (example !== undefined) param.example = example;
+          operation.parameters.push(param);
         }
       }
 
@@ -259,14 +261,25 @@ export class ServerSwaggerProvider {
               : undefined;
           const ref = schema(value);
           delete ref.description;
-          operation.parameters.push({
+          const param: any = {
             name: key,
             in: "path",
             required: true,
             description,
             schema: ref,
-          });
+          };
+          const example = this.extractExample(value);
+          if (example !== undefined) param.example = example;
+          operation.parameters.push(param);
         }
+      }
+
+      const hasValidation =
+        operation.requestBody || operation.parameters?.length;
+      if (hasValidation) {
+        operation.responses["400"] = {
+          description: "Bad Request",
+        };
       }
 
       const url = route.prefix + this.replacePathParams(route.path);
@@ -274,6 +287,18 @@ export class ServerSwaggerProvider {
       openApi.paths[url] = {
         ...openApi.paths[url],
         [route.method.toLowerCase()]: operation,
+      };
+    }
+
+    if (hasSecurity && openApi.components) {
+      openApi.components.securitySchemes = {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description:
+            "Enter a JWT token or API key. Both are accepted as Bearer tokens.",
+        },
       };
     }
 
@@ -328,6 +353,18 @@ export class ServerSwaggerProvider {
       };
     }
 
+    if (
+      t.schema.isNumber(schema) ||
+      t.schema.isInteger(schema) ||
+      t.schema.isBoolean(schema)
+    ) {
+      return {
+        schema,
+        status: 200,
+        type: "application/json",
+      };
+    }
+
     if (isTypeFile(schema)) {
       return {
         schema,
@@ -336,25 +373,72 @@ export class ServerSwaggerProvider {
       };
     }
 
+    // Status-code-keyed map: e.g. { 201: t.object({...}) }
     const status = Object.keys(schema)[0];
-    if (t.schema.isObject(schema[status]) || isTypeFile(schema[status])) {
+    if (status && !Number.isNaN(Number(status))) {
+      const inner = schema[status];
       return {
-        schema,
-        type: t.schema.isObject(schema[status])
-          ? "application/json"
-          : "application/octet-stream",
+        schema: inner,
         status: Number(status),
+        type: this.getContentType(inner),
       };
     }
+  }
+
+  protected extractExample(schema: any): any {
+    if ("examples" in schema && Array.isArray(schema.examples)) {
+      return schema.examples[0];
+    }
+    if ("default" in schema) {
+      return schema.default;
+    }
+    return undefined;
+  }
+
+  protected getStatusDescription(status: number): string {
+    switch (status) {
+      case 200:
+        return "OK";
+      case 201:
+        return "Created";
+      case 204:
+        return "No Content";
+      case 400:
+        return "Bad Request";
+      case 401:
+        return "Unauthorized";
+      case 403:
+        return "Forbidden";
+      case 404:
+        return "Not Found";
+      case 500:
+        return "Internal Server Error";
+      default:
+        return "";
+    }
+  }
+
+  protected getContentType(schema: any): string | undefined {
+    if (!schema) return undefined;
+    if (t.schema.isObject(schema) || t.schema.isArray(schema)) {
+      return "application/json";
+    }
+    if (t.schema.isString(schema)) return "text/plain";
+    if (
+      t.schema.isNumber(schema) ||
+      t.schema.isInteger(schema) ||
+      t.schema.isBoolean(schema)
+    ) {
+      return "application/json";
+    }
+    if (isTypeFile(schema)) return "application/octet-stream";
+    return "application/json";
   }
 
   protected configureSwaggerApi(prefix: string, json: OpenApiDocument): void {
     this.serverRouterProvider.createRoute({
       method: "GET",
       path: `${prefix}/json`,
-      cache: {
-        etag: true,
-      },
       schema: {
         response: t.json(),
       },
@@ -367,12 +451,14 @@ export class ServerSwaggerProvider {
     options: SwaggerPrimitiveOptions,
   ): Promise<void> {
     const ui = typeof options.ui === "object" ? options.ui : {};
+    const persistAuth = ui.persistAuthorization !== false;
     const initializer = `
 window.onload = function() {
 	window.ui = SwaggerUIBundle({
-		url: "/docs/json",
+		url: "${prefix}/json",
 		dom_id: '#swagger-ui',
 		deepLinking: true,
+		persistAuthorization: ${persistAuth},
 		presets: [
 			SwaggerUIBundle.presets.apis,
 			SwaggerUIStandalonePreset
@@ -397,6 +483,7 @@ window.onload = function() {
 
     const root = await this.getAssetPath(
       ui.root,
+      // TODO: this is shitty, take time to get the correct path
       join(dirname, "../../assets/swagger-ui"),
       join(dirname, "../../../assets/swagger-ui"),
       join(dirname, "../../../../assets/swagger-ui"),
@@ -416,9 +503,6 @@ window.onload = function() {
     this.serverRouterProvider.createRoute({
       method: "GET",
       path: `${prefix}/swagger-initializer.js`,
-      cache: {
-        etag: true,
-      },
       handler: ({ reply }) => {
         reply.headers["content-type"] = "application/javascript; charset=utf-8";
         return initializer;

@@ -3,6 +3,7 @@ import { $env, $hook, $inject, Alepha, t } from "alepha";
 import { ReactAuth } from "alepha/react/auth";
 import { $head, type Head } from "alepha/react/head";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
+import { currentUserAtom } from "alepha/security";
 import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
@@ -121,7 +122,7 @@ export class AppRouter {
         HttpError.is(error, 401) &&
         this.router.state.url.pathname !== loginPath
       ) {
-        this.alepha.store.set("alepha.server.request.user", undefined);
+        this.alepha.store.set(currentUserAtom, undefined);
         await this.router.push(loginPath, {
           query: {
             redirect: this.router.state.url.pathname,

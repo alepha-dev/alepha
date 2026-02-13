@@ -22,6 +22,7 @@
       "alepha/cache": ["./packages/alepha/src/cache/index.ts"],
       "alepha/cache/redis": ["./packages/alepha/src/cache/redis/index.ts"],
       "alepha/cli": ["./packages/alepha/src/cli/index.ts"],
+      "alepha/crypto": ["./packages/alepha/src/crypto/index.ts"],
       "alepha/command": ["./packages/alepha/src/command/index.ts"],
       "alepha/datetime": ["./packages/alepha/src/datetime/index.ts"],
       "alepha/email": ["./packages/alepha/src/email/index.ts"],
@@ -41,7 +42,7 @@
       "alepha/security": ["./packages/alepha/src/security/index.ts"],
       "alepha/server": ["./packages/alepha/src/server/core/index.ts"],
       "alepha/server/auth": ["./packages/alepha/src/server/auth/index.ts"],
-      "alepha/server/cache": ["./packages/alepha/src/server/cache/index.ts"],
+      "alepha/server/etag": ["./packages/alepha/src/server/etag/index.ts"],
       "alepha/server/compress": [
         "./packages/alepha/src/server/compress/index.ts"
       ],

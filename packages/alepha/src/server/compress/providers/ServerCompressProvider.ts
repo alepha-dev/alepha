@@ -62,6 +62,11 @@ export class ServerCompressProvider {
   public readonly onResponse = $hook({
     on: "server:onResponse",
     handler: async ({ request, response }) => {
+      // Per-route disable via $compress({ disabled: true })
+      if (this.options.disabled) {
+        return;
+      }
+
       // In serverless (Cloudflare Workers), skip compression entirely:
       // Cloudflare's edge network automatically compresses responses
       if (this.alepha.isServerless()) {
@@ -236,4 +241,9 @@ export class ServerCompressProvider {
 
 export interface ServerCompressProviderOptions {
   allowedContentTypes: string[];
+  /**
+   * Disable compression entirely for this request.
+   * Used by the `$compress` middleware.
+   */
+  disabled?: boolean;
 }

@@ -67,7 +67,8 @@ export class DevToolsMetadataProvider {
         description: action.options.description,
         summary: options.summary,
         disabled: action.options.disabled,
-        secure: options.secure,
+        secure:
+          action.middlewares.some((m) => m?.name === "$secure") || undefined,
         hide: options.hide,
         body: schema?.body,
         params: schema?.params,

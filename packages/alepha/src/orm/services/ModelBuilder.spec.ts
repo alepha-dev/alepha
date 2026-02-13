@@ -12,6 +12,7 @@ describe("ModelBuilder", () => {
     let options: {
       tables: Map<string, unknown>;
       enums: Map<string, unknown>;
+      schemas: Map<string, unknown>;
       schema: string;
     };
 
@@ -20,6 +21,7 @@ describe("ModelBuilder", () => {
       options = {
         tables: new Map(),
         enums: new Map(),
+        schemas: new Map(),
         schema: "public",
       };
     });
@@ -370,6 +372,7 @@ describe("ModelBuilder", () => {
     let options: {
       tables: Map<string, unknown>;
       enums: Map<string, unknown>;
+      schemas: Map<string, unknown>;
       schema: string;
     };
 
@@ -378,6 +381,7 @@ describe("ModelBuilder", () => {
       options = {
         tables: new Map(),
         enums: new Map(),
+        schemas: new Map(),
         schema: "public",
       };
     });

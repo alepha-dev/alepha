@@ -38,6 +38,7 @@ export class SqliteModelBuilder extends ModelBuilder {
     options: {
       tables: Map<string, unknown>;
       enums: Map<string, unknown>;
+      schemas: Map<string, unknown>;
       schema: string;
     },
   ) {

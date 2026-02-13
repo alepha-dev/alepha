@@ -1,7 +1,7 @@
 import { $inject, AlephaError, t } from "alepha";
 import { identities } from "alepha/api/users";
 import { $repository } from "alepha/orm";
-import { CryptoProvider } from "alepha/security";
+import { $secure, CryptoProvider } from "alepha/security";
 import { $action } from "alepha/server";
 
 export class IdentityController {
@@ -9,7 +9,7 @@ export class IdentityController {
   crypto = $inject(CryptoProvider);
 
   getMyIdentities = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       response: t.array(
         t.object({
@@ -37,7 +37,7 @@ export class IdentityController {
   });
 
   setPassword = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       body: t.object({
         username: t.string({ minLength: 3, maxLength: 50 }),

@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { DbEntityNotFoundError } from "alepha/orm";
-import { AlephaSecurity } from "alepha/security";
+import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { describe, it } from "vitest";
 import {
   AdminIdentityController,
@@ -8,6 +8,12 @@ import {
   IdentityService,
   UserService,
 } from "../index.ts";
+
+const adminUser: UserAccountToken = {
+  id: "00000000-0000-0000-0000-000000000001",
+  name: "Test Admin",
+  roles: ["admin"],
+};
 
 const setup = async () => {
   const alepha = Alepha.create({
@@ -49,9 +55,12 @@ describe("alepha/api/users - AdminIdentityController", () => {
       },
     });
 
-    const result = await controller.getIdentity({
-      params: { id: identity.id },
-    });
+    const result = await controller.getIdentity(
+      {
+        params: { id: identity.id },
+      },
+      { user: adminUser },
+    );
 
     expect(result.id).toBe(identity.id);
     expect(result.userId).toBe(user.id);
@@ -67,9 +76,12 @@ describe("alepha/api/users - AdminIdentityController", () => {
     const { controller } = await setup();
 
     await expect(
-      controller.getIdentity({
-        params: { id: "550e8400-e29b-41d4-a716-446655440000" },
-      }),
+      controller.getIdentity(
+        {
+          params: { id: "550e8400-e29b-41d4-a716-446655440000" },
+        },
+        { user: adminUser },
+      ),
     ).rejects.toThrowError(DbEntityNotFoundError);
   });
 
@@ -88,18 +100,24 @@ describe("alepha/api/users - AdminIdentityController", () => {
       providerUserId: "github-789",
     });
 
-    const result = await controller.deleteIdentity({
-      params: { id: identity.id },
-    });
+    const result = await controller.deleteIdentity(
+      {
+        params: { id: identity.id },
+      },
+      { user: adminUser },
+    );
 
     expect(result.ok).toBe(true);
     expect(result.id).toBe(identity.id);
 
     // Verify identity is deleted
     await expect(
-      controller.getIdentity({
-        params: { id: identity.id },
-      }),
+      controller.getIdentity(
+        {
+          params: { id: identity.id },
+        },
+        { user: adminUser },
+      ),
     ).rejects.toThrowError(DbEntityNotFoundError);
   });
 
@@ -129,9 +147,12 @@ describe("alepha/api/users - AdminIdentityController", () => {
       providerUserId: "apple-1",
     });
 
-    const result = await controller.findIdentities({
-      query: { userId: user.id },
-    });
+    const result = await controller.findIdentities(
+      {
+        query: { userId: user.id },
+      },
+      { user: adminUser },
+    );
 
     expect(result.content.length).toBeGreaterThanOrEqual(3);
 
@@ -172,9 +193,12 @@ describe("alepha/api/users - AdminIdentityController", () => {
       providerUserId: "google-user2-1",
     });
 
-    const result = await controller.findIdentities({
-      query: { userId: user1.id },
-    });
+    const result = await controller.findIdentities(
+      {
+        query: { userId: user1.id },
+      },
+      { user: adminUser },
+    );
 
     expect(result.content.every((i) => i.userId === user1.id)).toBe(true);
     expect(result.content.length).toBeGreaterThanOrEqual(2);
@@ -205,9 +229,12 @@ describe("alepha/api/users - AdminIdentityController", () => {
       providerUserId: "google-2",
     });
 
-    const result = await controller.findIdentities({
-      query: { provider: "%google%" },
-    });
+    const result = await controller.findIdentities(
+      {
+        query: { provider: "%google%" },
+      },
+      { user: adminUser },
+    );
 
     expect(result.content.every((i) => i.provider === "google")).toBe(true);
     expect(result.content.length).toBeGreaterThanOrEqual(2);
@@ -240,9 +267,12 @@ describe("alepha/api/users - AdminIdentityController", () => {
       providerUserId: "apple-sort-1",
     });
 
-    const result = await controller.findIdentities({
-      query: { userId: user.id },
-    });
+    const result = await controller.findIdentities(
+      {
+        query: { userId: user.id },
+      },
+      { user: adminUser },
+    );
 
     const identityIds = result.content.map((i) => i.id);
     expect(identityIds.indexOf(identity3.id)).toBeLessThan(
@@ -286,9 +316,12 @@ describe("alepha/api/users - AdminIdentityController", () => {
       },
     });
 
-    const googleResult = await controller.getIdentity({
-      params: { id: googleIdentity.id },
-    });
+    const googleResult = await controller.getIdentity(
+      {
+        params: { id: googleIdentity.id },
+      },
+      { user: adminUser },
+    );
     expect(googleResult.providerData).toEqual({
       email: "test@gmail.com",
       verified_email: true,
@@ -297,9 +330,12 @@ describe("alepha/api/users - AdminIdentityController", () => {
       locale: "en",
     });
 
-    const githubResult = await controller.getIdentity({
-      params: { id: githubIdentity.id },
-    });
+    const githubResult = await controller.getIdentity(
+      {
+        params: { id: githubIdentity.id },
+      },
+      { user: adminUser },
+    );
     expect(githubResult.providerData).toEqual({
       login: "testuser",
       avatar_url: "https://github.com/avatar.jpg",
@@ -322,9 +358,12 @@ describe("alepha/api/users - AdminIdentityController", () => {
       providerUserId: "custom-123",
     });
 
-    const result = await controller.getIdentity({
-      params: { id: identity.id },
-    });
+    const result = await controller.getIdentity(
+      {
+        params: { id: identity.id },
+      },
+      { user: adminUser },
+    );
 
     expect(result.providerData).toBeUndefined();
   });
@@ -354,9 +393,12 @@ describe("alepha/api/users - AdminIdentityController", () => {
       providerUserId: "apple-multi-1",
     });
 
-    const result = await controller.findIdentities({
-      query: { userId: user.id },
-    });
+    const result = await controller.findIdentities(
+      {
+        query: { userId: user.id },
+      },
+      { user: adminUser },
+    );
 
     expect(result.content.length).toBe(3);
     const providers = result.content.map((i) => i.provider).sort();

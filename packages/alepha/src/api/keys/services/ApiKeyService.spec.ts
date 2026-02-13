@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { $inject, Alepha, t } from "alepha";
-import { $issuer, AlephaSecurity } from "alepha/security";
+import { $issuer, $secure, AlephaSecurity } from "alepha/security";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { AlephaApiKeys } from "../index.ts";
@@ -204,7 +204,7 @@ describe("ApiKeyService", () => {
 
       // Action that can be accessed with API key
       protected = $action({
-        secure: true,
+        use: [$secure()],
         schema: {
           response: t.object({ userId: t.string() }),
         },

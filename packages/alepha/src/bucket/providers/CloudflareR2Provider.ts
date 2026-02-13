@@ -236,7 +236,9 @@ export class CloudflareR2Provider implements FileStorageProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      const cloudflareEnv = this.alepha.store.get("cloudflare.env" as any);
+      const cloudflareEnv = this.alepha.get("cloudflare.env") as
+        | Record<string, unknown>
+        | undefined;
       if (!cloudflareEnv) {
         throw new AlephaError(
           "Cloudflare Workers environment not found in Alepha store under 'cloudflare.env'.",

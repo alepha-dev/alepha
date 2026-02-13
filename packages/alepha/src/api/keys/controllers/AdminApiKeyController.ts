@@ -1,4 +1,5 @@
 import { $inject, t } from "alepha";
+import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { adminApiKeyQuerySchema } from "../schemas/adminApiKeyQuerySchema.ts";
 import { adminApiKeyResourceSchema } from "../schemas/adminApiKeyResourceSchema.ts";
@@ -19,7 +20,7 @@ export class AdminApiKeyController {
   public readonly findApiKeys = $action({
     path: this.url,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:api-key:read"] })],
     description: "Find API keys with pagination and filtering",
     schema: {
       query: adminApiKeyQuerySchema,
@@ -41,7 +42,7 @@ export class AdminApiKeyController {
   public readonly getApiKey = $action({
     path: `${this.url}/:id`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:api-key:read"] })],
     description: "Get an API key by ID",
     schema: {
       params: t.object({
@@ -59,7 +60,7 @@ export class AdminApiKeyController {
     method: "DELETE",
     path: `${this.url}/:id`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:api-key:delete"] })],
     description: "Revoke an API key",
     schema: {
       params: t.object({

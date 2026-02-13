@@ -128,7 +128,7 @@ export abstract class Repository<T extends TObject> {
    * inside a `transactional()` block participate in the same transaction.
    */
   protected get db(): PgDatabase<any> {
-    const tx = this.alepha.store.get("tx" as any);
+    const tx = this.alepha.get("alepha.orm.tx");
     return tx ?? this.provider.db;
   }
 

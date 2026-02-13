@@ -12,6 +12,7 @@ import {
   alias,
   type PgDatabase,
   type PgTableWithColumns,
+  type PgTransaction,
 } from "drizzle-orm/pg-core";
 import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 import { DbError } from "../../errors/DbError.ts";
@@ -37,6 +38,7 @@ export abstract class DatabaseProvider {
   public readonly enums = new Map<string, unknown>();
   public readonly tables = new Map<string, unknown>();
   public readonly sequences = new Map<string, unknown>();
+  public readonly schemas = new Map<string, unknown>();
 
   public get name() {
     return "default";
@@ -144,17 +146,19 @@ export abstract class DatabaseProvider {
     fn: () => Promise<R>,
     config?: PgTransactionConfig,
   ): Promise<R> {
-    const existing = this.alepha.store.get("tx" as any);
+    const existing = this.alepha.get("alepha.orm.tx");
     if (existing) {
       return fn();
     }
 
     return this.db.transaction(async (tx) => {
-      this.alepha.store.set("tx" as any, tx, { skipEvents: true });
+      this.alepha.store.set("alepha.orm.tx", tx as PgTransaction<any>, {
+        skipEvents: true,
+      });
       try {
         return await fn();
       } finally {
-        this.alepha.store.set("tx" as any, undefined, { skipEvents: true });
+        this.alepha.store.set("alepha.orm.tx", undefined, { skipEvents: true });
       }
     }, config);
   }

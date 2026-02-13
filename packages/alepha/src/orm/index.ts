@@ -1,5 +1,6 @@
 import { $module, type Alepha, t } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
+import type { PgTransaction } from "drizzle-orm/pg-core";
 import { $entity } from "./primitives/$entity.ts";
 import { $sequence } from "./primitives/$sequence.ts";
 import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
@@ -21,6 +22,9 @@ import { SqliteModelBuilder } from "./services/SqliteModelBuilder.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "alepha" {
+  interface State {
+    "alepha.orm.tx"?: PgTransaction<any>;
+  }
   interface Hooks {
     /**
      * Fires before creating an entity in the repository.

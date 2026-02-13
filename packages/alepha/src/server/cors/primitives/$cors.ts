@@ -1,5 +1,4 @@
 import { AlephaError, createMiddleware, type Middleware } from "alepha";
-import type { ServerRequest } from "alepha/server";
 import {
   type CorsOptions,
   ServerCorsProvider,
@@ -34,7 +33,7 @@ export const $cors = (options?: Partial<CorsOptions>): Middleware => {
       const corsProvider = alepha.inject(ServerCorsProvider);
 
       return async (...args) => {
-        const request = alepha.context.get<ServerRequest>("request");
+        const request = alepha.get("alepha.http.request");
 
         if (!request) {
           throw new AlephaError(

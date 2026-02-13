@@ -2,6 +2,7 @@ import { $inject, t } from "alepha";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
+import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 import { characters } from "../entities/characters.ts";
 import { invitations } from "../entities/invitations.ts";
@@ -17,7 +18,7 @@ export class InvitationController {
   security = $inject(AppSecurityProvider);
 
   createInvitation = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       body: t.object({
         projectId: t.integer(),
@@ -82,7 +83,7 @@ export class InvitationController {
   // -------------------------------------------------------------------------------------------------------------------
 
   getMyInvitations = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       response: t.array(
         t.object({
@@ -133,7 +134,7 @@ export class InvitationController {
   });
 
   acceptInvitation = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.uuid(),
@@ -190,7 +191,7 @@ export class InvitationController {
   });
 
   rejectInvitation = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.uuid(),
@@ -216,7 +217,7 @@ export class InvitationController {
   });
 
   getProjectInvitations = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         projectId: t.integer(),

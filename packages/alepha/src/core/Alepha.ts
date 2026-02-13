@@ -20,7 +20,7 @@ import {
 import type { Atom, AtomStatic, TAtomObject } from "./primitives/$atom.ts";
 import type { InjectOptions } from "./primitives/$inject.ts";
 import { Module, type WithModule } from "./primitives/$module.ts";
-import { AlsProvider } from "./providers/AlsProvider.ts";
+import { AlsProvider, type StateScope } from "./providers/AlsProvider.ts";
 import { CodecManager } from "./providers/CodecManager.ts";
 import { EventManager } from "./providers/EventManager.ts";
 import { StateManager } from "./providers/StateManager.ts";
@@ -175,14 +175,6 @@ export class Alepha {
       });
     }
 
-    state["alepha.logger"] ??= {
-      trace: console.log,
-      debug: console.debug,
-      info: console.log,
-      warn: console.warn,
-      error: console.error,
-    };
-
     const alepha = new Alepha(state);
 
     if (alepha.isTest()) {
@@ -209,6 +201,14 @@ export class Alepha {
         .set("alepha.test.afterAll", afterAll)
         .set("alepha.test.afterEach", afterEach)
         .set("alepha.test.onTestFinished", onTestFinished);
+    } else {
+      state["alepha.logger"] ??= {
+        trace: console.log,
+        debug: console.debug,
+        info: console.log,
+        warn: console.warn,
+        error: console.error,
+      };
     }
 
     return alepha;
@@ -326,6 +326,22 @@ export class Alepha {
     this.events.logFn = () => this.log;
     this.context = this.inject(AlsProvider);
     this.codec = this.inject(CodecManager);
+  }
+
+  public fork<R>(callback: () => R, data: Record<string, any> = {}): R {
+    return this.context.run(callback, data);
+  }
+
+  public get<T extends TAtomObject>(
+    target: Atom<T>,
+    scope?: StateScope,
+  ): Static<T>;
+  public get<Key extends keyof State>(
+    target: Key,
+    scope?: StateScope,
+  ): State[Key] | undefined;
+  public get(target: any, scope?: StateScope): any {
+    return this.store.get(target, scope);
   }
 
   public set<T extends TAtomObject>(
@@ -1131,6 +1147,8 @@ export interface Env {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface State {
+  [key: string]: unknown;
+
   /**
    * Environment variables for the application.
    */

@@ -244,6 +244,7 @@ export class ServerAuthProvider {
    */
   public readonly userinfo = $route({
     path: alephaServerAuthRoutes.userinfo,
+    use: [],
     schema: {
       response: userinfoResponseSchema,
     },

@@ -365,76 +365,100 @@ export class ActionPrimitive<
       query,
       headers,
       reply,
-      metadata: {},
+      metadata: {
+        routePath: this.route.path,
+        routeMethod: this.route.method,
+      },
     };
 
-    await this.alepha.events.emit("action:onRequest", {
+    const eventData: {
+      action: ActionPrimitive<TConfig>;
+      request: ServerRequest;
+      options: ClientRequestOptions;
+      context?: Record<string, any>;
+    } = {
       action: this,
       request: serverActionRequest as ServerRequest,
       options,
-    });
+    };
+
+    await this.alepha.events.emit("action:onRequest", eventData as any);
 
     if (serverActionRequest.reply?.body) {
       return serverActionRequest.reply.body as ClientRequestResponse<TConfig>;
     }
 
-    if (serverActionRequest.query && this.options.schema?.query) {
-      serverActionRequest.query = this.alepha.codec.encode(
-        this.options.schema.query,
-        serverActionRequest.query,
+    const executeHandler = async (): Promise<
+      ClientRequestResponse<TConfig>
+    > => {
+      if (serverActionRequest.query && this.options.schema?.query) {
+        serverActionRequest.query = this.alepha.codec.encode(
+          this.options.schema.query,
+          serverActionRequest.query,
+        );
+      }
+
+      if (serverActionRequest.headers && this.options.schema?.headers) {
+        serverActionRequest.headers = this.alepha.codec.encode(
+          this.options.schema.headers,
+          serverActionRequest.headers,
+        ) as Record<string, any>;
+      }
+
+      if (serverActionRequest.body && this.options.schema?.body) {
+        serverActionRequest.body = this.alepha.codec.encode(
+          this.options.schema.body,
+          serverActionRequest.body,
+        ) as unknown;
+      }
+
+      if (serverActionRequest.params && this.options.schema?.params) {
+        serverActionRequest.params = this.alepha.codec.encode(
+          this.options.schema.params,
+          serverActionRequest.params,
+        ) as Record<string, any>;
+      }
+
+      this.serverRouterProvider.validateRequest(
+        this.options,
+        serverActionRequest as ServerRequest,
       );
-    }
 
-    if (serverActionRequest.headers && this.options.schema?.headers) {
-      serverActionRequest.headers = this.alepha.codec.encode(
-        this.options.schema.headers,
-        serverActionRequest.headers,
-      ) as Record<string, any>;
-    }
+      let response: any = await handler(
+        serverActionRequest as ServerActionRequest<TConfig>,
+      );
 
-    if (serverActionRequest.body && this.options.schema?.body) {
-      serverActionRequest.body = this.alepha.codec.encode(
-        this.options.schema.body,
-        serverActionRequest.body,
-      ) as unknown;
-    }
+      // we validate response just to remove undeclared properties from response
+      if (
+        this.options.schema?.response &&
+        // skip validation if response is expected as file
+        !isTypeFile(this.options.schema.response)
+      ) {
+        response = this.alepha.codec.validate(
+          this.options.schema.response,
+          response,
+        );
+      }
 
-    if (serverActionRequest.params && this.options.schema?.params) {
-      serverActionRequest.params = this.alepha.codec.encode(
-        this.options.schema.params,
-        serverActionRequest.params,
-      ) as Record<string, any>;
-    }
-
-    this.serverRouterProvider.validateRequest(
-      this.options,
-      serverActionRequest as ServerRequest,
-    );
-
-    let response: any = await handler(
-      serverActionRequest as ServerActionRequest<TConfig>,
-    );
-
-    // we validate response just to remove undeclared properties from response
-    if (
-      this.options.schema?.response &&
-      // skip validation if response is expected as file
-      !isTypeFile(this.options.schema.response)
-    ) {
-      response = this.alepha.codec.validate(
-        this.options.schema.response,
+      await this.alepha.events.emit("action:onResponse", {
+        action: this,
+        request: serverActionRequest as ServerRequest,
+        options,
         response,
-      );
-    }
+      });
 
-    await this.alepha.events.emit("action:onResponse", {
-      action: this,
-      request: serverActionRequest as ServerRequest,
-      options,
-      response,
-    });
+      return response;
+    };
 
-    return response;
+    // Always fork to isolate each .run() call in its own ALS context.
+    // The synthetic action request is separate from any real HTTP request.
+    // Hook fork data (e.g. user atom) is merged into the context.
+    const forkData: Record<string, any> = {
+      "alepha.action.request": serverActionRequest,
+      ...eventData.context,
+    };
+
+    return this.alepha.fork(executeHandler, forkData);
   }
 
   /**
@@ -496,6 +520,10 @@ export interface ClientRequestOptions extends FetchOptions {
    */
   request?: RequestInit;
 
+  /**
+   * Add query parameters to the request URL. They will be merged with any query params defined in the action schema.
+   * This is useful for adding dynamic query params at runtime.
+   */
   query?: Record<string, string | number | boolean>;
 }
 

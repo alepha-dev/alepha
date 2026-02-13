@@ -104,7 +104,9 @@ export class CloudflareD1Provider extends DatabaseProvider {
         const [bindingName] = this.env.DATABASE_URL.replace("d1://", "").split(
           ":",
         );
-        const cloudflareEnv = this.alepha.store.get("cloudflare.env" as any);
+        const cloudflareEnv = this.alepha.get("cloudflare.env") as
+          | Record<string, unknown>
+          | undefined;
         if (!cloudflareEnv) {
           throw new AlephaError(
             "Cloudflare Workers environment not found in Alepha store under 'cloudflare.env'.",

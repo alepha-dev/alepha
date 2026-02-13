@@ -8,7 +8,7 @@ import {
   InvalidCredentialsError,
   type UserAccount,
 } from "alepha/security";
-import { type ServerRequest, UnauthorizedError } from "alepha/server";
+import { UnauthorizedError } from "alepha/server";
 import type { OAuth2Profile } from "alepha/server/auth";
 import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
@@ -255,7 +255,7 @@ export class SessionService {
   ) {
     this.log.trace("Creating session", { userId: user.id, expiresIn });
 
-    const request = this.alepha.context.get<ServerRequest>("request");
+    const request = this.alepha.store.get("alepha.http.request");
     const refreshToken = this.cryptoProvider.randomUUID();
 
     const expiresAt = this.dateTimeProvider

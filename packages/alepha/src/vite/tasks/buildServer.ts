@@ -121,26 +121,26 @@ export async function buildServer(
       sourcemap: true,
       chunkSizeWarningLimit: 10000,
       outDir: `${opts.distDir}/server`,
-      rolldownOptions: {
+      rollupOptions: {
         external: [/^bun(:|$)/, /^cloudflare:/],
         output: {
           entryFileNames: "[hash].js",
           chunkFileNames: "[hash].js",
           assetFileNames: "[hash][extname]",
           format: "esm",
-          keepNames: true,
-          manualChunks: (id) => {
-            // TODO: this is mandatory for now, rolldown create some cyclical deps with icons & jsx
-            if (
-              id.includes("@tabler/icons-react") ||
-              id.includes("lucide-react")
-            ) {
-              return "icons";
-            }
-            if (id.includes("node_modules/react")) {
-              return "react";
-            }
-          },
+          // keepNames: true,
+          // manualChunks: (id) => {
+          //   // TODO: this is mandatory for now, rolldown create some cyclical deps with icons & jsx
+          //   if (
+          //     id.includes("@tabler/icons-react") ||
+          //     id.includes("lucide-react")
+          //   ) {
+          //     return "icons";
+          //   }
+          //   if (id.includes("node_modules/react")) {
+          //     return "react";
+          //   }
+          // },
         },
       },
     },

@@ -3,7 +3,7 @@ import { AlephaDateTime } from "alepha/datetime";
 import { AlephaReact } from "alepha/react";
 import { AlephaReactHead } from "alepha/react/head";
 import { AlephaServer, type ServerRequest } from "alepha/server";
-import { AlephaServerCache } from "alepha/server/cache";
+import { AlephaServerEtag } from "alepha/server/etag";
 import { AlephaServerLinks } from "alepha/server/links";
 import type { ReactNode } from "react";
 import { $page, type PageAnimation } from "./primitives/$page.ts";
@@ -133,7 +133,7 @@ export const AlephaReactRouter = $module({
       .with(AlephaReactHead)
       .with(AlephaDateTime)
       .with(AlephaServer)
-      .with(AlephaServerCache)
+      .with(AlephaServerEtag)
       .with(AlephaServerLinks)
       .with({
         provide: ReactPageService,

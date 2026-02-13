@@ -4,7 +4,7 @@ import { AdminApiKeyController, ApiKeyController } from "alepha/api/keys";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
-import { AlephaSecurity } from "alepha/security";
+import { $secure, AlephaSecurity } from "alepha/security";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 import { AdminUserController } from "../controllers/AdminUserController.ts";
@@ -40,7 +40,7 @@ const setup = async () => {
     getProfile = $action({
       path: "/profile",
       group: "profile",
-      secure: true,
+      use: [$secure()],
       schema: {
         response: t.object({
           userId: t.string(),
@@ -53,12 +53,12 @@ const setup = async () => {
       }),
     });
 
-    // Admin-only action (group: "admin:*" is excluded from user role)
+    // Admin-only action (explicit permission — user role excludes "admin:*")
     adminStats = $action({
       path: "/admin/stats",
       method: "GET",
       group: "admin:stats",
-      secure: true,
+      use: [$secure({ permissions: ["admin:stats"] })],
       schema: {
         response: t.object({
           message: t.string(),

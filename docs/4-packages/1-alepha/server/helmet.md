@@ -24,6 +24,10 @@ HTTP security headers.
 
 ## API Reference
 
+### Primitives
+
+- [`$helmet`](/docs/reference-primitives-$helmet) — Middleware that applies security headers with per-route overrides.
+
 ### Providers
 
 - [`ServerHelmetProvider`](/docs/reference-providers-serverhelmetprovider) — Provides a configurable way to apply essential HTTP security headers

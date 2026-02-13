@@ -2,6 +2,7 @@ import { Spotlight, type SpotlightActionData } from "@mantine/spotlight";
 import { IconSearch } from "@tabler/icons-react";
 import { useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
+import { currentUserAtom } from "alepha/security";
 import { type ReactNode, useMemo } from "react";
 import { ui } from "../../constants/ui.ts";
 import { renderIcon } from "../../helpers/renderIcon.tsx";
@@ -19,7 +20,7 @@ const Omnibar = (props: OmnibarProps) => {
   const router = useRouter();
 
   // watch user to re-render on permission changes
-  const [user] = useStore("alepha.server.request.user");
+  const [user] = useStore(currentUserAtom);
 
   const actions: SpotlightActionData[] = useMemo(
     () =>

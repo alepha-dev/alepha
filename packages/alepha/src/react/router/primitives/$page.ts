@@ -4,6 +4,7 @@ import {
   createPrimitive,
   KIND,
   type Middleware,
+  OPTIONS,
   Primitive,
   type Static,
   type TSchema,
@@ -11,8 +12,8 @@ import {
 import type { ClientOnlyProps } from "alepha/react";
 import type { Head } from "alepha/react/head";
 import type { ServerRequest } from "alepha/server";
-import type { ServerRouteCache } from "alepha/server/cache";
 import type { FC, ReactNode } from "react";
+import { $cache } from "../../../cache/core/index.ts";
 import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
 import type { Redirection } from "../errors/Redirection.ts";
 import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
@@ -272,8 +273,6 @@ export interface PagePrimitiveOptions<
         entries?: Array<Partial<PageRequestConfig<TConfig>>>;
       };
 
-  cache?: ServerRouteCache;
-
   /**
    * If true, force the page to be rendered only on the client-side (browser).
    * It uses the `<ClientOnly/>` component to render the page.
@@ -395,12 +394,16 @@ export class PagePrimitive<
 
   protected onInit() {
     if (this.options.static) {
-      this.options.cache ??= {
-        store: {
-          provider: "memory",
-          ttl: [1, "week"],
-        },
-      };
+      this.options.use ??= [];
+      if (!this.options.use.some((m) => m[OPTIONS]?.name === "$cache")) {
+        this.options.use.push(
+          $cache({
+            name: `page:${this.name}`,
+            provider: "memory",
+            ttl: [1, "week"],
+          }),
+        );
+      }
     }
   }
 

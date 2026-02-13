@@ -4,6 +4,7 @@ import { ServerCompressProvider } from "./providers/ServerCompressProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./primitives/$compress.ts";
 export * from "./providers/ServerCompressProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

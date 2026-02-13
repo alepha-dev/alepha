@@ -233,11 +233,11 @@ export interface ServerRouteMatcher extends Route {
 }
 
 export interface ServerRequestData {
-  method: RouteMethod;
-  url: URL;
-  headers: Record<string, string>;
-  query: Record<string, string>;
-  params: Record<string, string>;
+  readonly method: RouteMethod;
+  readonly url: URL;
+  readonly headers: Record<string, string>;
+  readonly query: Record<string, string>;
+  readonly params: Record<string, string>;
   raw: ServerRawRequest;
 }
 

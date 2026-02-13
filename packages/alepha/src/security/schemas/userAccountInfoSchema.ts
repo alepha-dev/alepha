@@ -50,6 +50,12 @@ export const userAccountInfoSchema = t.object({
       description: "List of roles assigned to the user.",
     }),
   ),
+
+  realm: t.optional(
+    t.text({
+      description: "The realm (issuer) the user was authenticated from.",
+    }),
+  ),
 });
 
 export type UserAccount = Static<typeof userAccountInfoSchema>;

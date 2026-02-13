@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { storageStatsSchema } from "../schemas/storageStatsSchema.ts";
 import { FileService } from "../services/FileService.ts";
@@ -20,7 +21,7 @@ export class AdminFileStatsController {
   public readonly getStats = $action({
     path: this.url,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:file:read"] })],
     description: "Get storage statistics",
     schema: {
       response: storageStatsSchema,

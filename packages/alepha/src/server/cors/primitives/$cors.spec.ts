@@ -1,5 +1,5 @@
 import { $pipeline, Alepha } from "alepha";
-import { AlephaServer, type ServerRequest } from "alepha/server";
+import { AlephaServer } from "alepha/server";
 import { describe, test } from "vitest";
 import { AlephaServerCors } from "../index.ts";
 import { $cors } from "./$cors.ts";
@@ -23,7 +23,7 @@ describe("$cors", () => {
 
     await alepha.context.run(async () => {
       const headers: Record<string, string> = {};
-      alepha.context.set<ServerRequest>("request", {
+      alepha.set("alepha.http.request", {
         headers: { origin: "https://app.example.com" },
         reply: {
           setHeader: (name: string, value: string) => {
@@ -72,7 +72,7 @@ describe("$cors", () => {
 
     await alepha.context.run(async () => {
       const headers: Record<string, string> = {};
-      alepha.context.set<ServerRequest>("request", {
+      alepha.set("alepha.http.request", {
         headers: { origin: "https://disallowed.example.com" },
         reply: {
           setHeader: (name: string, value: string) => {
@@ -100,7 +100,7 @@ describe("$cors", () => {
 
     await alepha.context.run(async () => {
       const headers: Record<string, string> = {};
-      alepha.context.set<ServerRequest>("request", {
+      alepha.set("alepha.http.request", {
         headers: { origin: "https://any.example.com" },
         reply: {
           setHeader: (name: string, value: string) => {
@@ -134,7 +134,7 @@ describe("$cors", () => {
 
     await alepha.context.run(async () => {
       const headers: Record<string, string> = {};
-      alepha.context.set<ServerRequest>("request", {
+      alepha.set("alepha.http.request", {
         headers: { origin: "https://any.example.com" },
         reply: {
           setHeader: (name: string, value: string) => {
@@ -162,7 +162,7 @@ describe("$cors", () => {
     const svc = alepha.inject(TestService);
 
     await alepha.context.run(async () => {
-      alepha.context.set<ServerRequest>("request", {
+      alepha.set("alepha.http.request", {
         headers: { origin: "https://any.example.com" },
         reply: { setHeader: () => {} },
       } as any);
@@ -192,7 +192,7 @@ describe("$cors", () => {
     await alepha.context.run(async () => {
       const headers: Record<string, string> = {};
       let status: number | undefined;
-      alepha.context.set<ServerRequest>("request", {
+      alepha.set("alepha.http.request", {
         method: "OPTIONS",
         headers: { origin: "https://any.example.com" },
         reply: {

@@ -1,6 +1,6 @@
 import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
-import type { CacheProvider } from "./CacheProvider.ts";
+import { CacheProvider } from "./CacheProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -70,7 +70,7 @@ export const KV_DEFAULT_BINDING = "KV_CACHE";
  * id = "abc123"
  * ```
  */
-export class CloudflareKVProvider implements CacheProvider {
+export class CloudflareKVProvider extends CacheProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
 
@@ -79,7 +79,9 @@ export class CloudflareKVProvider implements CacheProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      const cloudflareEnv = this.alepha.store.get("cloudflare.env" as any);
+      const cloudflareEnv = this.alepha.get("cloudflare.env") as
+        | Record<string, unknown>
+        | undefined;
       if (!cloudflareEnv) {
         throw new AlephaError(
           "Cloudflare Workers environment not found in Alepha store under 'cloudflare.env'.",

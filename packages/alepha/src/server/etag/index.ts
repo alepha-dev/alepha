@@ -1,10 +1,12 @@
 import { $module } from "alepha";
 import { AlephaCache } from "alepha/cache";
-import { ServerCacheProvider } from "./providers/ServerCacheProvider.ts";
+import { AlephaCrypto } from "alepha/crypto";
+import { ServerEtagProvider } from "./providers/ServerEtagProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./providers/ServerCacheProvider.ts";
+export * from "./primitives/$etag.ts";
+export * from "./providers/ServerEtagProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -17,11 +19,13 @@ export * from "./providers/ServerCacheProvider.ts";
  *
  * **Features:**
  * - ETag generation and validation
- * - Conditional request handling
+ * - Conditional request handling (304 Not Modified)
+ * - Optional response caching (store)
+ * - Cache-Control header support
  *
- * @module alepha.server.cache
+ * @module alepha.server.etag
  */
-export const AlephaServerCache = $module({
-  name: "alepha.server.cache",
-  services: [AlephaCache, ServerCacheProvider],
+export const AlephaServerEtag = $module({
+  name: "alepha.server.etag",
+  services: [AlephaCache, AlephaCrypto, ServerEtagProvider],
 });

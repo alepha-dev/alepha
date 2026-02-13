@@ -1,5 +1,5 @@
 import { createMiddleware, type Middleware } from "alepha";
-import { HttpError, type ServerRequest } from "alepha/server";
+import { HttpError } from "alepha/server";
 import type { RateLimitOptions } from "../index.ts";
 import { ServerRateLimitProvider } from "../providers/ServerRateLimitProvider.ts";
 
@@ -43,7 +43,7 @@ export const $rateLimit = (
       const rateLimitProvider = alepha.inject(ServerRateLimitProvider);
 
       return async (...args) => {
-        const request = alepha.context.get<ServerRequest>("request");
+        const request = alepha.get("alepha.http.request");
 
         const result = options?.key
           ? await rateLimitProvider.checkLimitByKey(

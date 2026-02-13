@@ -6,6 +6,8 @@ import {
   $inject,
   $use,
   Alepha,
+  type Middleware,
+  OPTIONS,
   PipelineHandler,
   type Static,
   t,
@@ -125,9 +127,19 @@ export class ReactServerProvider {
       if (page.component || page.lazy) {
         this.log.debug(`+ ${page.match} -> ${page.name}`);
 
-        const rawHandler = this.createHandler(page);
-        const handler = page.use?.length
-          ? new PipelineHandler(rawHandler, page.use)
+        // Separate $cache from server-level middleware.
+        // $cache is applied inside createHandler around the render function,
+        // not around the entire server handler (which works via side effects).
+        const cacheMiddleware = (page.use ?? []).filter(
+          (m) => m[OPTIONS]?.name === "$cache",
+        );
+        const serverMiddleware = (page.use ?? []).filter(
+          (m) => m[OPTIONS]?.name !== "$cache",
+        );
+
+        const rawHandler = this.createHandler(page, cacheMiddleware);
+        const handler = serverMiddleware.length
+          ? new PipelineHandler(rawHandler, serverMiddleware)
           : rawHandler;
 
         this.serverRouterProvider.createRoute({
@@ -219,8 +231,16 @@ export class ReactServerProvider {
 
   /**
    * Create the request handler for a page route.
+   *
+   * When cacheMiddleware is provided, uses a non-streaming path that renders
+   * to a string so the result can be cached. Otherwise uses early HTML streaming.
    */
-  protected createHandler(route: PageRoute): ServerHandler {
+  protected createHandler(
+    route: PageRoute,
+    cacheMiddleware: Middleware[] = [],
+  ): ServerHandler {
+    const hasCache = cacheMiddleware.length > 0;
+
     return async (serverRequest) => {
       const { url, reply, query, params } = serverRequest;
 
@@ -270,6 +290,40 @@ export class ReactServerProvider {
 
       // Apply SSR headers early
       Object.assign(reply.headers, this.SSR_HEADERS);
+
+      if (hasCache) {
+        // When $cache middleware is present, render to string so the result
+        // is serializable. Streaming is not compatible with $cache since
+        // ReadableStream cannot be serialized/deserialized.
+        const renderFn = async (
+          _url: string,
+        ): Promise<{ html: string; redirect?: string }> => {
+          const { redirect, reactStream } = await this.renderPage(route, state);
+          if (redirect) {
+            return { redirect, html: "" };
+          }
+          const htmlStream = this.templateProvider.createHtmlStream(
+            reactStream!,
+            state,
+            { hydration: true },
+          );
+          return { html: await this.streamToString(htmlStream) };
+        };
+
+        const result = await new PipelineHandler(renderFn, cacheMiddleware).run(
+          url.href,
+        );
+
+        if (result.redirect) {
+          reply.status = 302;
+          reply.headers.location = result.redirect;
+          return;
+        }
+
+        route.onServerResponse?.(serverRequest);
+        reply.body = result.html;
+        return;
+      }
 
       // Resolve global head for early streaming (htmlAttributes only)
       const globalHead = this.serverHeadProvider.resolveGlobalHead();
@@ -402,36 +456,48 @@ export class ReactServerProvider {
 
     await this.alepha.events.emit("react:server:render:begin", { state });
 
-    // Use shared rendering logic, wrapped with page middleware if present
-    const renderFn = () => this.renderPage(page, state);
+    // Render page and collect the stream into a serializable result.
+    // This must happen inside the middleware pipeline so that $cache
+    // wraps a function returning { html, redirect? } — not a ReadableStream.
+    // The URL string is passed as argument so middleware like $cache can
+    // derive a unique cache key per URL (params + query).
+    const renderFn = async (
+      _url: string,
+    ): Promise<{
+      html: string;
+      redirect?: string;
+    }> => {
+      const { redirect, reactStream } = await this.renderPage(page, state);
+      if (redirect) {
+        return { redirect, html: "" };
+      }
+
+      if (!options.html) {
+        return { html: await this.streamToString(reactStream!) };
+      }
+
+      const htmlStream = this.templateProvider.createHtmlStream(
+        reactStream!,
+        state,
+        { hydration: options.hydration ?? true },
+      );
+      return { html: await this.streamToString(htmlStream) };
+    };
+
     const result = page.use?.length
-      ? await new PipelineHandler(renderFn, page.use).run()
-      : await renderFn();
+      ? await new PipelineHandler(renderFn, page.use).run(url.href)
+      : await renderFn(url.href);
 
     if (result.redirect) {
       return { state, html: "", redirect: result.redirect };
     }
 
-    const reactStream = result.reactStream!;
-
-    // If full HTML page not requested, collect just the React content
-    if (!options.html) {
-      const html = await this.streamToString(reactStream);
-      return { state, html };
-    }
-
-    // Create full HTML stream and collect to string
-    const htmlStream = this.templateProvider.createHtmlStream(
-      reactStream,
+    await this.alepha.events.emit("react:server:render:end", {
       state,
-      { hydration: options.hydration ?? true },
-    );
+      html: result.html,
+    });
 
-    const html = await this.streamToString(htmlStream);
-
-    await this.alepha.events.emit("react:server:render:end", { state, html });
-
-    return { state, html };
+    return { state, html: result.html };
   }
 
   /**

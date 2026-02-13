@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { createApiKeyBodySchema } from "../schemas/createApiKeyBodySchema.ts";
 import { createApiKeyResponseSchema } from "../schemas/createApiKeyResponseSchema.ts";
@@ -25,7 +26,7 @@ export class ApiKeyController {
     path: this.url,
     group: this.group,
     description: "Create a new API key",
-    secure: true,
+    use: [$secure({ permissions: ["api-key:create"] })],
     schema: {
       body: createApiKeyBodySchema,
       response: createApiKeyResponseSchema,
@@ -61,7 +62,7 @@ export class ApiKeyController {
     path: this.url,
     group: this.group,
     description: "List your API keys",
-    secure: true,
+    use: [$secure({ permissions: ["api-key:read"] })],
     schema: {
       response: listApiKeyResponseSchema,
     },
@@ -90,7 +91,7 @@ export class ApiKeyController {
     path: `${this.url}/:id`,
     group: this.group,
     description: "Revoke an API key",
-    secure: true,
+    use: [$secure({ permissions: ["api-key:delete"] })],
     schema: {
       params: revokeApiKeyParamsSchema,
       response: revokeApiKeyResponseSchema,

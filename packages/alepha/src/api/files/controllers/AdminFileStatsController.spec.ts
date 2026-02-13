@@ -1,8 +1,15 @@
 import { Alepha } from "alepha";
 import { $bucket } from "alepha/bucket";
+import type { UserAccountToken } from "alepha/security";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 import { AdminFileStatsController, FileService } from "../index.ts";
+
+const adminUser: UserAccountToken = {
+  id: "00000000-0000-0000-0000-000000000001",
+  name: "Test Admin",
+  roles: ["admin"],
+};
 
 describe("AdminFileStatsController", () => {
   class App {
@@ -38,7 +45,7 @@ describe("AdminFileStatsController", () => {
     it("should return zero stats when no files exist", async () => {
       const { ctrl } = await setup();
 
-      const stats = await ctrl.getStats();
+      const stats = await ctrl.getStats({}, { user: adminUser });
 
       expect(stats.totalSize).toBe(0);
       expect(stats.totalFiles).toBe(0);
@@ -52,7 +59,7 @@ describe("AdminFileStatsController", () => {
       await service.uploadFile(createFile("Hello", { name: "file1.txt" })); // 5 bytes
       await service.uploadFile(createFile("World!", { name: "file2.txt" })); // 6 bytes
 
-      const stats = await ctrl.getStats();
+      const stats = await ctrl.getStats({}, { user: adminUser });
 
       expect(stats.totalSize).toBe(11);
       expect(stats.totalFiles).toBe(2);
@@ -74,7 +81,7 @@ describe("AdminFileStatsController", () => {
         { bucket: "documents" },
       );
 
-      const stats = await ctrl.getStats();
+      const stats = await ctrl.getStats({}, { user: adminUser });
 
       expect(stats.byBucket).toHaveLength(2);
 
@@ -100,7 +107,7 @@ describe("AdminFileStatsController", () => {
         createFile("PDF data", { name: "doc.pdf", type: "application/pdf" }),
       );
 
-      const stats = await ctrl.getStats();
+      const stats = await ctrl.getStats({}, { user: adminUser });
 
       expect(stats.byMimeType).toHaveLength(2);
 
@@ -135,7 +142,7 @@ describe("AdminFileStatsController", () => {
         { bucket: "images", tags: ["tag1", "tag3"] },
       );
 
-      const stats = await ctrl.getStats();
+      const stats = await ctrl.getStats({}, { user: adminUser });
 
       expect(stats.totalFiles).toBe(3);
       expect(stats.totalSize).toBe(450);

@@ -6,7 +6,7 @@ import {
   type TAtomObject,
 } from "../primitives/$atom.ts";
 import { $inject } from "../primitives/$inject.ts";
-import { AlsProvider } from "./AlsProvider.ts";
+import { AlsProvider, type StateScope } from "./AlsProvider.ts";
 import { EventManager } from "./EventManager.ts";
 import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
 import type { Static } from "./TypeProvider.ts";
@@ -26,6 +26,41 @@ export class StateManager<State extends object = AlephaState> {
 
   constructor(store: Partial<State> = {}) {
     this.store = store;
+  }
+
+  /**
+   * Export all registered atoms as a plain object.
+   *
+   * @param scope - Controls which store layer to read from:
+   *   - `undefined` (default): Resolved value (walks fork tree then app store).
+   *   - `"current"`: Only the current ALS layer — intentionally does NOT walk
+   *     the parent chain so that SSR serialisation captures exactly what the
+   *     current request set, without leaking parent-fork state.
+   *   - `"app"`: Only the root (app-level) store.
+   */
+  public exportAtoms(scope?: "current" | "app"): Record<string, unknown> {
+    const exported: Record<string, unknown> = {};
+
+    if (scope === "current") {
+      if (this.als?.exists()) {
+        for (const atom of this.atoms.values()) {
+          const value = this.als.get(atom.key, "current");
+          if (value !== undefined) {
+            exported[atom.key as string] = value;
+          }
+        }
+      }
+      return exported;
+    }
+
+    for (const [key, atom] of this.atoms.entries()) {
+      const value = this.get(atom, scope);
+      if (value !== undefined) {
+        exported[key as string] = value;
+      }
+    }
+
+    return exported;
   }
 
   public getAtoms(context = true): Array<AtomWithValue> {
@@ -64,11 +99,23 @@ export class StateManager<State extends object = AlephaState> {
   }
 
   /**
-   * Get a value from the state with proper typing
+   * Get a value from the state with proper typing.
+   *
+   * @param scope - Optional scope to control resolution:
+   *   - `undefined` (default): Walk up the fork tree from current layer to root, then fall back to the app store.
+   *   - `"current"`: Read only from the current fork layer (no tree walking).
+   *   - `"parent"`: Read only from the immediate parent fork layer.
+   *   - `"app"`: Read only from the root (app-level) store.
    */
-  public get<T extends TAtomObject>(target: Atom<T>): Static<T>;
-  public get<Key extends keyof State>(target: Key): State[Key] | undefined;
-  public get(target: string | object): any {
+  public get<T extends TAtomObject>(
+    target: Atom<T>,
+    scope?: StateScope,
+  ): Static<T>;
+  public get<Key extends keyof State>(
+    target: Key,
+    scope?: StateScope,
+  ): State[Key] | undefined;
+  public get(target: string | object, scope?: StateScope): any {
     if (target instanceof Atom) {
       this.register(target);
     }
@@ -76,8 +123,12 @@ export class StateManager<State extends object = AlephaState> {
     const key = target instanceof Atom ? target.key : target;
     const store = this.store as Record<string, any>;
 
+    if (scope === "app") {
+      return store[key];
+    }
+
     return this.als?.exists()
-      ? (this.als.get(key as string) ?? store[key])
+      ? (this.als.get(key as string, scope) ?? (scope ? undefined : store[key]))
       : store[key];
   }
 
@@ -144,9 +195,13 @@ export class StateManager<State extends object = AlephaState> {
   }
 
   /**
-   * Check if a key exists in the state
+   * Check if a key exists in the state.
+   * Walks the ALS fork tree when inside a fork context.
    */
   public has<Key extends keyof State>(key: Key): boolean {
+    if (this.als?.has(key as string)) {
+      return true;
+    }
     return key in this.store;
   }
 

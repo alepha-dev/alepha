@@ -1,22 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
-import {
-  $action,
-  ForbiddenError,
-  type ServerRequest,
-  UnauthorizedError,
-} from "alepha/server";
-import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
+import type { ServerRequest } from "alepha/server";
+import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
-import type { Permission } from "../schemas/permissionSchema.ts";
-import { userAccountInfoSchema } from "../schemas/userAccountInfoSchema.ts";
 import { JwtProvider } from "./JwtProvider.ts";
 import { SecurityProvider } from "./SecurityProvider.ts";
-import {
-  type BasicAuthOptions,
-  isBasicAuth,
-} from "./ServerBasicAuthProvider.ts";
 
 export class ServerSecurityProvider {
   protected readonly log = $logger();
@@ -24,249 +13,60 @@ export class ServerSecurityProvider {
   protected readonly jwtProvider = $inject(JwtProvider);
   protected readonly alepha = $inject(Alepha);
 
-  protected readonly resolvers: Array<ServerSecurityUserResolver> = [];
-
-  protected readonly onConfigure = $hook({
-    on: "configure",
-    handler: async () => {
-      for (const action of this.alepha.primitives($action)) {
-        // -------------------------------------------------------------------------------------------------------------
-        // Only create permission when secure is explicitly set to true
-        // Actions are public by default (like $route)
-        // -------------------------------------------------------------------------------------------------------------
-        if (
-          action.options.disabled ||
-          action.options.secure !== true ||
-          this.securityProvider.getRealms().length === 0
-        ) {
-          continue;
+  protected readonly onServerRequest = $hook({
+    on: "server:onRequest",
+    priority: "last",
+    handler: async ({ request }) => {
+      // Resolve user from authorization header (authentication).
+      // This makes currentUserAtom available on ALL routes, not just $secure ones.
+      // $secure() then acts purely as an authorization gate.
+      if (request.headers.authorization) {
+        try {
+          const user =
+            await this.securityProvider.resolveUserFromServerRequest(request);
+          if (user) {
+            this.securityProvider.storeUserInContext(user);
+            request.user = user;
+          }
+        } catch (error) {
+          this.log.debug(
+            "Failed to resolve user from request authorization header",
+            error,
+          );
+          // Invalid/expired token — request continues as unauthenticated
         }
-
-        this.securityProvider.createPermission({
-          name: action.name,
-          group: action.group,
-          method: action.route.method,
-          path: action.route.path,
-        });
       }
     },
   });
 
-  // -------------------------------------------------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------------------------------------------
+  // action:onRequest — resolve user from options, request fork for ALS isolation
+  // ---------------------------------------------------------------------------------------------------------------
 
   protected readonly onActionRequest = $hook({
     on: "action:onRequest",
-    handler: async ({ action, request, options }) => {
-      const secure = action.options.secure;
+    handler: async (data) => {
+      if (!data.options.user) return;
 
-      // Skip security if not explicitly enabled (secure: true or secure: { realm: ... })
-      // Actions are public by default (like $route)
-      if (secure !== true && typeof secure !== "object" && !options.user) {
-        this.log.trace("Skipping security check for action - not secured");
-        return;
+      let user: UserAccountToken | undefined;
+
+      if (typeof data.options.user === "object") {
+        user = data.options.user;
+      } else if (data.options.user === "system") {
+        user = this.alepha.store.get("alepha.security.system.user");
+      } else if (data.options.user === "context") {
+        const ctx = this.alepha.store.get("alepha.http.request");
+        user = ctx?.user;
       }
 
-      if (isBasicAuth(action.route.secure)) {
-        return;
-      }
-
-      const permission = this.securityProvider
-        .getPermissions()
-        .find(
-          (it) =>
-            it.path === action.route.path && it.method === action.route.method,
-        );
-
-      try {
-        request.user = this.createUserFromLocalFunctionContext(
-          options,
-          permission,
-        );
-
-        const route = action.route;
-        if (typeof route.secure === "object") {
-          this.check(request.user, route.secure);
-        }
-
-        this.alepha.store.set(
-          "alepha.server.request.user",
-          this.alepha.codec.decode(userAccountInfoSchema, request.user),
-        );
-      } catch (error) {
-        if (secure === true || typeof secure === "object" || permission) {
-          throw error;
-        }
-        // else, we skip the security check
-        this.log.trace("Skipping security check for action");
+      if (user) {
+        data.context = { [currentUserAtom.key]: user };
       }
     },
   });
-
-  protected readonly onRequest = $hook({
-    on: "server:onRequest",
-    priority: "last",
-    handler: async ({ request, route }) => {
-      // Skip entirely only if explicitly disabled
-      if (route.secure === false) {
-        this.log.trace(
-          "Skipping security check for route - explicitly disabled",
-        );
-        return;
-      }
-
-      if (isBasicAuth(route.secure)) {
-        return;
-      }
-
-      const permission = this.securityProvider
-        .getPermissions()
-        .find((it) => it.path === route.path && it.method === route.method);
-
-      const realm =
-        typeof route.secure === "object" ? route.secure.realm : undefined;
-
-      try {
-        // Try to resolve user (JWT, API key, etc.) - even for public routes (optional auth)
-        request.user = await this.securityProvider.resolveUserFromServerRequest(
-          request,
-          { permission, realm },
-        );
-
-        // No user resolved?
-        if (!request.user) {
-          // Route requires auth → throw
-          if (
-            route.secure === true ||
-            typeof route.secure === "object" ||
-            permission
-          ) {
-            // Provide a more specific error message when no auth header was provided
-            if (!request.headers.authorization) {
-              throw new InvalidTokenError(
-                "Invalid authorization header, maybe token is missing ?",
-              );
-            }
-            throw new UnauthorizedError("Authentication required");
-          }
-          // Route is public → skip (but we tried to resolve user for optional auth)
-          this.log.trace(
-            "Skipping security check for route - no auth provided and not required",
-          );
-          return;
-        }
-
-        if (typeof route.secure === "object") {
-          this.check(request.user, route.secure);
-        }
-
-        this.alepha.store.set(
-          "alepha.server.request.user",
-          // remove sensitive info
-          this.alepha.codec.decode(userAccountInfoSchema, request.user),
-        );
-
-        this.log.trace("User set from request", {
-          user: request.user,
-          permission,
-        });
-      } catch (error) {
-        if (
-          route.secure === true ||
-          typeof route.secure === "object" ||
-          permission
-        ) {
-          throw error;
-        }
-
-        // else, we skip the security check (route is public)
-        this.log.trace(
-          "Skipping security check for route - error occurred",
-          error,
-        );
-      }
-    },
-  });
-
-  // -------------------------------------------------------------------------------------------------------------------
-
-  protected check(user: UserAccountToken, secure: ServerRouteSecure) {
-    if (secure.realm) {
-      if (user.realm !== secure.realm) {
-        throw new ForbiddenError(
-          `User must belong to realm '${secure.realm}' to access this route`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Get the user account token for a local action call.
-   * There are three possible sources for the user:
-   * - `options.user`: the user passed in the options
-   * - `"system"`: the system user from the state (you MUST set state `server.security.system.user`)
-   * - `"context"`: the user from the request context (you MUST be in an HTTP request context)
-   *
-   * Priority order: `options.user` > `"system"` > `"context"`.
-   *
-   * In testing environment, if no user is provided, a test user is created based on the SecurityProvider's roles.
-   */
-  protected createUserFromLocalFunctionContext(
-    options: { user?: UserAccountToken | "system" | "context" },
-    permission?: Permission,
-  ): UserAccountToken {
-    const fromOptions =
-      typeof options.user === "object" ? options.user : undefined;
-
-    const type = typeof options.user === "string" ? options.user : undefined;
-
-    let user: UserAccountToken | undefined;
-
-    const fromContext = this.alepha.context.get<ServerRequest>("request")?.user;
-    const fromSystem = this.alepha.store.get(
-      "alepha.server.security.system.user",
-    );
-
-    let typeTaken: string;
-    if (type === "system") {
-      user = fromSystem;
-      typeTaken = "system";
-    } else if (type === "context") {
-      user = fromContext;
-      typeTaken = "context";
-    } else {
-      user = fromOptions ?? fromContext ?? fromSystem;
-      typeTaken = fromOptions ? "options" : fromContext ? "context" : "system";
-    }
-
-    if (!user) {
-      throw new UnauthorizedError("User is required for calling this action");
-    }
-
-    const roles = user.roles ?? [];
-    let ownership: boolean | string | undefined;
-
-    if (permission) {
-      const result = this.securityProvider.checkPermission(
-        permission,
-        ...roles,
-      );
-      if (!result.isAuthorized) {
-        throw new ForbiddenError(
-          `Permission '${this.securityProvider.permissionToString(permission)}' is required for this route (called from ${typeTaken})`,
-        );
-      }
-      ownership = result.ownership;
-    }
-
-    // create a new user object with ownership if needed
-    return {
-      ...user,
-      ownership,
-    };
-  }
 
   // ---------------------------------------------------------------------------------------------------------------
-  // TESTING ONLY
+  // client:onRequest — automatic test token creation for .fetch()
   // ---------------------------------------------------------------------------------------------------------------
 
   protected createTestUser(): UserAccountToken {
@@ -285,7 +85,6 @@ export class ServerSecurityProvider {
       }
 
       // skip helper if user is explicitly set to undefined
-      //if ("user" in options && options.user === undefined) {
       if (!options.user) {
         return;
       }
@@ -312,11 +111,6 @@ export class ServerSecurityProvider {
     },
   });
 }
-
-export type ServerRouteSecure = {
-  realm?: string;
-  basic?: BasicAuthOptions;
-};
 
 export type ServerSecurityUserResolver = (
   request: ServerRequest,

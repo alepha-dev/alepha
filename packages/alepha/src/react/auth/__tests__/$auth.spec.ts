@@ -130,6 +130,7 @@ describe("$auth", () => {
         roles: user.roles,
         username: user.username,
         sessionId: expect.any(String),
+        realm: "issuer",
       },
       api: {
         prefix: "/api",
@@ -176,6 +177,7 @@ describe("$auth", () => {
         name: user.name,
         roles: user.roles,
         username: user.username,
+        realm: "issuer",
       },
       api: {
         prefix: "/api",

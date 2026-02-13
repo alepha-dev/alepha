@@ -1,7 +1,7 @@
 import "alepha/security";
 import { $module } from "alepha";
 import { AlephaServer, type RequestConfigSchema } from "alepha/server";
-import { AlephaServerCache } from "alepha/server/cache";
+import { AlephaServerEtag } from "alepha/server/etag";
 import { AlephaServerStatic } from "alepha/server/static";
 import { $swagger } from "./primitives/$swagger.ts";
 import { ServerSwaggerProvider } from "./providers/ServerSwaggerProvider.ts";
@@ -24,6 +24,11 @@ declare module "alepha/server" {
      * Don't include this action in the Swagger documentation.
      */
     hide?: boolean;
+
+    /**
+     * Mark this action as deprecated in the documentation.
+     */
+    deprecated?: boolean;
   }
 }
 
@@ -48,7 +53,7 @@ export const AlephaServerSwagger = $module({
   services: [ServerSwaggerProvider],
   register: (alepha) => {
     alepha.with(AlephaServer);
-    alepha.with(AlephaServerCache);
+    alepha.with(AlephaServerEtag);
     alepha.with(AlephaServerStatic);
     alepha.with(ServerSwaggerProvider);
     alepha.store.push("alepha.build.assets", "alepha");

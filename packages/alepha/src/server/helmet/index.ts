@@ -4,6 +4,7 @@ import { ServerHelmetProvider } from "./providers/ServerHelmetProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./primitives/$helmet.ts";
 export * from "./providers/ServerHelmetProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

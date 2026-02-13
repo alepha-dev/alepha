@@ -1,4 +1,5 @@
 import { $inject, t } from "alepha";
+import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { createUserSchema } from "../schemas/createUserSchema.ts";
 import { updateUserSchema } from "../schemas/updateUserSchema.ts";
@@ -17,7 +18,7 @@ export class AdminUserController {
   public readonly findUsers = $action({
     path: this.url,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:user:read"] })],
     description: "Find users with pagination and filtering",
     schema: {
       query: t.extend(userQuerySchema, {
@@ -37,7 +38,7 @@ export class AdminUserController {
   public readonly getUser = $action({
     path: `${this.url}/:id`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:user:read"] })],
     description: "Get a user by ID",
     schema: {
       params: t.object({
@@ -59,7 +60,7 @@ export class AdminUserController {
     method: "POST",
     path: this.url,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:user:create"] })],
     description: "Create a new user",
     schema: {
       query: t.object({
@@ -79,7 +80,7 @@ export class AdminUserController {
     method: "PATCH",
     path: `${this.url}/:id`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:user:update"] })],
     description: "Update a user",
     schema: {
       params: t.object({
@@ -102,7 +103,7 @@ export class AdminUserController {
     method: "DELETE",
     path: `${this.url}/:id`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:user:delete"] })],
     description: "Delete a user",
     schema: {
       params: t.object({

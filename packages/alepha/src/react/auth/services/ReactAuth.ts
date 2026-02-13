@@ -1,7 +1,7 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { ReactBrowserProvider, Redirection } from "alepha/react/router";
-import type { UserAccountToken } from "alepha/security";
+import { currentUserAtom, type UserAccountToken } from "alepha/security";
 import { HttpClient } from "alepha/server";
 import {
   alephaServerAuthRoutes,
@@ -47,7 +47,9 @@ export class ReactAuth {
    * Alias for `alepha.state.get("user")`
    */
   public get user(): UserAccountToken | undefined {
-    return this.alepha.store.get("alepha.server.request.user");
+    return this.alepha.store.get(currentUserAtom) as
+      | UserAccountToken
+      | undefined;
   }
 
   public async ping() {
@@ -59,7 +61,7 @@ export class ReactAuth {
     );
 
     this.alepha.store.set("alepha.server.request.apiLinks", data.api);
-    this.alepha.store.set("alepha.server.request.user", data.user);
+    this.alepha.store.set(currentUserAtom, data.user);
 
     return data.user;
   }
@@ -101,7 +103,7 @@ export class ReactAuth {
       );
 
       this.alepha.store.set("alepha.server.request.apiLinks", data.api);
-      this.alepha.store.set("alepha.server.request.user", data.user);
+      this.alepha.store.set(currentUserAtom, data.user);
 
       return data;
     }

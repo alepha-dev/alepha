@@ -1,5 +1,6 @@
 import { $inject, t } from "alepha";
 import { $action, okSchema } from "alepha/server";
+import { $etag } from "alepha/server/etag";
 import { fileQuerySchema } from "../schemas/fileQuerySchema.ts";
 import { fileResourceSchema } from "../schemas/fileResourceSchema.ts";
 import { FileService } from "../services/FileService.ts";
@@ -104,14 +105,15 @@ export class FileController {
     path: `${this.url}/:id`,
     group: this.group,
     description: "Download a file",
-    cache: {
-      etag: true,
-      control: {
-        public: true,
-        maxAge: [1, "year"],
-        immutable: true,
-      },
-    },
+    use: [
+      $etag({
+        control: {
+          public: true,
+          maxAge: [1, "year"],
+          immutable: true,
+        },
+      }),
+    ],
     schema: {
       params: t.object({
         id: t.uuid(),

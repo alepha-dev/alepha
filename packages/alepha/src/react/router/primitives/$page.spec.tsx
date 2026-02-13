@@ -1,4 +1,5 @@
-import { Alepha, t } from "alepha";
+import { Alepha, OPTIONS, t } from "alepha";
+import { $cache } from "alepha/cache";
 import type { FC } from "react";
 import { beforeEach, describe, test, vi } from "vitest";
 import {
@@ -384,11 +385,14 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.staticPage.options.cache).toEqual({
-      store: {
-        provider: "memory",
-        ttl: [1, "week"],
-      },
+    const cacheMw = app.staticPage.options.use?.find(
+      (m) => m[OPTIONS]?.name === "$cache",
+    );
+    expect(cacheMw).toBeDefined();
+    expect(cacheMw?.[OPTIONS]?.options).toEqual({
+      name: "page:staticPage",
+      provider: "memory",
+      ttl: [1, "week"],
     });
 
     const rendered = await app.staticPage.render();
@@ -649,12 +653,12 @@ describe("$page primitive tests", () => {
     class App {
       cached = $page({
         path: "/cached",
-        cache: {
-          store: {
+        use: [
+          $cache({
             provider: "memory",
             ttl: [5, "minute"],
-          },
-        },
+          }),
+        ],
         component: () => "Cached content",
       });
     }
@@ -662,12 +666,10 @@ describe("$page primitive tests", () => {
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.cached.options.cache).toEqual({
-      store: {
-        provider: "memory",
-        ttl: [5, "minute"],
-      },
-    });
+    const cacheMw = app.cached.options.use?.find(
+      (m) => m[OPTIONS]?.name === "$cache",
+    );
+    expect(cacheMw).toBeDefined();
     expect(app.cached.options.static).toBeUndefined();
 
     const rendered = await app.cached.render();

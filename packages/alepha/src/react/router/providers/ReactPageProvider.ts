@@ -525,7 +525,6 @@ export class ReactPageProvider {
         this.add({
           path: "/*",
           name: "notFound",
-          cache: true,
           component: NotFoundPage,
           onServerResponse: ({ reply }) => {
             reply.status = 404;

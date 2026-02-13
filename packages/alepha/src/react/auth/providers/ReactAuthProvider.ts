@@ -1,4 +1,5 @@
 import { $hook, $inject, Alepha } from "alepha";
+import { currentUserAtom } from "alepha/security";
 
 export class ReactAuthProvider {
   protected readonly alepha = $inject(Alepha);
@@ -8,7 +9,7 @@ export class ReactAuthProvider {
     handler: async ({ request, state }) => {
       if (request?.user) {
         const { token, realm, ...user } = request.user; // do not send token and realm to the client
-        this.alepha.store.set("alepha.server.request.user", user); // for hydration, browser, etc...
+        this.alepha.store.set(currentUserAtom, user);
         state.user = user;
       }
     },

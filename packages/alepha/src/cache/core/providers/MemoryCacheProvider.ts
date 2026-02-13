@@ -1,7 +1,7 @@
 import { $inject } from "alepha";
 import { DateTimeProvider, type Timeout } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import type { CacheProvider } from "./CacheProvider.ts";
+import { CacheProvider } from "./CacheProvider.ts";
 
 type CacheName = string;
 type CacheKey = string;
@@ -78,7 +78,7 @@ export interface MemoryCacheProviderOptions {
  * expect(cache.stats().hits).toBe(1);
  * ```
  */
-export class MemoryCacheProvider implements CacheProvider {
+export class MemoryCacheProvider extends CacheProvider {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly log = $logger();
 
@@ -129,6 +129,7 @@ export class MemoryCacheProvider implements CacheProvider {
   public delError: Error | null = null;
 
   constructor(options: MemoryCacheProviderOptions = {}) {
+    super();
     this.getError = options.getError ?? null;
     this.setError = options.setError ?? null;
     this.delError = options.delError ?? null;

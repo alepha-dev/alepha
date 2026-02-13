@@ -47,7 +47,9 @@ export class CloudflareQueueProvider extends QueueProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      const cloudflareEnv = this.alepha.store.get("cloudflare.env" as any);
+      const cloudflareEnv = this.alepha.store.get("cloudflare.env") as
+        | Record<string, unknown>
+        | undefined;
       if (!cloudflareEnv) {
         throw new AlephaError(
           "Cloudflare Workers environment not found in Alepha store under 'cloudflare.env'.",
@@ -69,7 +71,7 @@ export class CloudflareQueueProvider extends QueueProvider {
   });
 
   public async push(queue: string, message: string): Promise<void> {
-    this.getQueue().send({ queue, message });
+    await this.getQueue().send({ queue, message });
   }
 
   /**

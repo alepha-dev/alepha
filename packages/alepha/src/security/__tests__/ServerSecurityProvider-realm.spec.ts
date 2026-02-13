@@ -8,10 +8,10 @@ import {
   ServerProvider,
 } from "alepha/server";
 import { describe, expect, it } from "vitest";
-import { $issuer, AlephaSecurity } from "../index.ts";
+import { $issuer, $secure, AlephaSecurity } from "../index.ts";
 
-describe("ServerSecurityProvider - Realm Protection", () => {
-  it("should allow access when user belongs to the required realm", async () => {
+describe("$secure issuer protection", () => {
+  it("should allow access when user belongs to the required issuer", async () => {
     class TestApp {
       realmA = $issuer({
         secret: "test-realm-a",
@@ -35,7 +35,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
 
       // Action that requires realmA
       actionA = $action({
-        secure: { realm: "realmA" },
+        use: [$secure({ issuers: ["realmA"] })],
         handler: () => "REALM_A",
       });
 
@@ -43,7 +43,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
       routeB = $route({
         method: "GET",
         path: "/realm-b",
-        secure: { realm: "realmB" },
+        use: [$secure({ issuers: ["realmB"] })],
         handler: () => "REALM_B",
       });
     }
@@ -74,7 +74,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
       await app.actionA.fetch({}, { user: userA }).then((it) => it.data),
     ).toBe("REALM_A");
 
-    // User from realmB should access routeB via .run()
+    // User from realmB should access routeB via HTTP
     const tokenB = await app.realmB.createToken(userB);
     const responseB = await fetch(
       `${alepha.inject(ServerProvider).hostname}/realm-b`,
@@ -88,7 +88,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
     expect(await responseB.text()).toBe("REALM_B");
   });
 
-  it("should deny access when user does not belong to the required realm", async () => {
+  it("should deny access when user does not belong to the required issuer", async () => {
     class TestApp {
       realmA = $issuer({
         secret: "test-realm-a",
@@ -112,7 +112,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
 
       // Action that requires realmA
       actionA = $action({
-        secure: { realm: "realmA" },
+        use: [$secure({ issuers: ["realmA"] })],
         handler: () => "REALM_A",
       });
 
@@ -120,7 +120,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
       routeB = $route({
         method: "GET",
         path: "/realm-b",
-        secure: { realm: "realmB" },
+        use: [$secure({ issuers: ["realmB"] })],
         handler: () => "REALM_B",
       });
     }
@@ -150,7 +150,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
 
     // User from realmB should NOT access actionA via .fetch()
     await expect(app.actionA.fetch({}, { user: userB })).rejects.toThrowError(
-      "User must belong to realm 'realmA' to access this route",
+      "User must belong to issuer 'realmA' to access this route",
     );
 
     // User from realmA should NOT access routeB via HTTP (requires realmB)
@@ -169,13 +169,13 @@ describe("ServerSecurityProvider - Realm Protection", () => {
     const errorData = await responseB.json();
     expect(errorData).toEqual({
       error: "ForbiddenError",
-      message: "User must belong to realm 'realmB' to access this route",
+      message: "User must belong to issuer 'realmB' to access this route",
       status: 403,
       requestId: expect.any(String),
     });
   });
 
-  it("should work with actions when user has no realm attribute", async () => {
+  it("should work with actions when user has no issuer attribute", async () => {
     class TestApp {
       realmA = $issuer({
         secret: "test-realm-a",
@@ -188,7 +188,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
       });
 
       actionA = $action({
-        secure: { realm: "realmA" },
+        use: [$secure({ issuers: ["realmA"] })],
         handler: () => "REALM_A",
       });
     }
@@ -218,7 +218,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
     ).toBe("REALM_A");
   });
 
-  it("should combine realm and permission checks", async () => {
+  it("should combine issuer and permission checks", async () => {
     class TestApp {
       realmA = $issuer({
         secret: "test-realm-a",
@@ -238,17 +238,15 @@ describe("ServerSecurityProvider - Realm Protection", () => {
         secret: "test-realm-b",
       });
 
-      // Requires both realmA and admin permission
+      // Requires both realmA and admin:manage permission
       adminAction = $action({
-        group: "admin",
-        secure: { realm: "realmA" },
+        use: [$secure({ issuers: ["realmA"], permissions: ["admin:manage"] })],
         handler: () => "ADMIN",
       });
 
-      // Requires both realmA and read permission
+      // Requires both realmA and read:data permission
       readAction = $action({
-        group: "read",
-        secure: { realm: "realmA" },
+        use: [$secure({ issuers: ["realmA"], permissions: ["read:data"] })],
         handler: () => "READ",
       });
     }
@@ -298,26 +296,20 @@ describe("ServerSecurityProvider - Realm Protection", () => {
         .then((it) => it.data),
     ).toBe("READ");
 
-    // Regular user from realmA can access both actions via .run() (realm check only, no permission check)
-    // When secure: { realm: "..." } is used, permissions are not enforced
-    expect(await app.adminAction.run({}, { user: regularUserRealmA })).toBe(
-      "ADMIN",
-    );
+    // Regular user from realmA can access readAction (has read:* permission)
     expect(await app.readAction.run({}, { user: regularUserRealmA })).toBe(
       "READ",
     );
-
-    // Regular user from realmA can access both actions via .fetch()
-    expect(
-      await app.adminAction
-        .fetch({}, { user: regularUserRealmA })
-        .then((it) => it.data),
-    ).toBe("ADMIN");
     expect(
       await app.readAction
         .fetch({}, { user: regularUserRealmA })
         .then((it) => it.data),
     ).toBe("READ");
+
+    // Regular user from realmA cannot access adminAction (no admin:* permission)
+    await expect(
+      app.adminAction.run({}, { user: regularUserRealmA }),
+    ).rejects.toThrowError(ForbiddenError);
 
     // Admin from realmB should NOT access any action via .run() (wrong realm)
     await expect(
@@ -330,16 +322,16 @@ describe("ServerSecurityProvider - Realm Protection", () => {
     await expect(
       app.adminAction.fetch({}, { user: adminUserRealmB }),
     ).rejects.toThrowError(
-      "User must belong to realm 'realmA' to access this route",
+      "User must belong to issuer 'realmA' to access this route",
     );
     await expect(
       app.readAction.fetch({}, { user: adminUserRealmB }),
     ).rejects.toThrowError(
-      "User must belong to realm 'realmA' to access this route",
+      "User must belong to issuer 'realmA' to access this route",
     );
   });
 
-  it("should work with fetch requests when realm is valid", async () => {
+  it("should work with fetch requests when issuer is valid", async () => {
     class TestApp {
       realmA = $issuer({
         secret: "test-realm-a",
@@ -352,7 +344,7 @@ describe("ServerSecurityProvider - Realm Protection", () => {
       });
 
       actionA = $action({
-        secure: { realm: "realmA" },
+        use: [$secure({ issuers: ["realmA"] })],
         handler: () => "SUCCESS",
       });
     }

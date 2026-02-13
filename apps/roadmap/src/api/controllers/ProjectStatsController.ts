@@ -1,6 +1,8 @@
 import { $inject, t } from "alepha";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
+import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
+import { $etag } from "alepha/server/etag";
 import { FileSystemProvider } from "alepha/system";
 import { characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
@@ -16,8 +18,7 @@ export class ProjectStatsController {
   fs = $inject(FileSystemProvider);
 
   getProjectStats = $action({
-    secure: true,
-    cache: true,
+    use: [$secure(), $etag(true)],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -265,7 +266,7 @@ export class ProjectStatsController {
   });
 
   exportTasksCsv = $action({
-    secure: true,
+    use: [$secure()],
     path: "/projects/:id/export",
     schema: {
       params: t.object({

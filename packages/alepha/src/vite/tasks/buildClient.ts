@@ -94,28 +94,27 @@ export async function buildClient(opts: BuildClientOptions): Promise<void> {
     },
     publicDir: "public",
     build: {
-      chunkSizeWarningLimit: 1000,
       outDir: opts.dist,
-      // Generate manifest for SSR module preloading
       manifest: true,
-      rolldownOptions: {
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
         output: {
           entryFileNames: "entry.[hash].js",
           chunkFileNames: "chunk.[hash].js",
           assetFileNames: "asset.[hash][extname]",
-          keepNames: true,
-          manualChunks: (id) => {
-            // TODO: this is mandatory for now, rolldown create some cyclical deps with icons & jsx
-            if (
-              id.includes("@tabler/icons-react") ||
-              id.includes("lucide-react")
-            ) {
-              return "icons";
-            }
-            if (id.includes("node_modules/react")) {
-              return "react";
-            }
-          },
+          // keepNames: true,
+          // manualChunks: (id) => {
+          //   // TODO: this is mandatory for now, rolldown create some cyclical deps with icons & jsx
+          //   if (
+          //     id.includes("@tabler/icons-react") ||
+          //     id.includes("lucide-react")
+          //   ) {
+          //     return "icons";
+          //   }
+          //   if (id.includes("node_modules/react")) {
+          //     return "react";
+          //   }
+          // },
         },
       },
     },

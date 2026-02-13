@@ -1,10 +1,7 @@
 import { $pipeline, Alepha } from "alepha";
-import {
-  ForbiddenError,
-  type ServerRequest,
-  UnauthorizedError,
-} from "alepha/server";
+import { ForbiddenError, UnauthorizedError } from "alepha/server";
 import { describe, test } from "vitest";
+import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";
 import { $secure } from "./$secure.ts";
@@ -67,7 +64,7 @@ describe("$secure", () => {
 
     // Simulate request context
     await alepha.context.run(async () => {
-      alepha.context.set<ServerRequest>("request", {
+      alepha.set("alepha.http.request", {
         headers: { authorization: "Bearer test-token" },
       } as any);
 
@@ -94,7 +91,7 @@ describe("$secure", () => {
     const svc = alepha.inject(TestService);
 
     await alepha.context.run(async () => {
-      alepha.context.set<ServerRequest>("request", {
+      alepha.set("alepha.http.request", {
         headers: {},
       } as any);
 
@@ -102,7 +99,9 @@ describe("$secure", () => {
     });
   });
 
-  test("throws AlephaError when no request context", async ({ expect }) => {
+  test("throws UnauthorizedError when no request context and no atom", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create().with({
       provide: SecurityProvider,
       use: TestSecurityProvider,
@@ -117,10 +116,8 @@ describe("$secure", () => {
 
     const svc = alepha.inject(TestService);
 
-    // No context.run → no request
-    await expect(svc.fn()).rejects.toThrowError(
-      "$secure requires a request context",
-    );
+    // No context.run → no request and no atom → unauthorized
+    await expect(svc.fn()).rejects.toThrowError(UnauthorizedError);
   });
 
   test("sets request.user on success", async ({ expect }) => {
@@ -133,7 +130,7 @@ describe("$secure", () => {
       fn = $pipeline({
         use: [$secure()],
         handler: async () => {
-          const req = alepha.context.get<ServerRequest>("request");
+          const req = alepha.store.get("alepha.http.request");
           return req?.user;
         },
       });
@@ -142,7 +139,7 @@ describe("$secure", () => {
     const svc = alepha.inject(TestService);
 
     await alepha.context.run(async () => {
-      alepha.context.set<ServerRequest>("request", {
+      alepha.set("alepha.http.request", {
         headers: { authorization: "Bearer token" },
       } as any);
 
@@ -167,7 +164,7 @@ describe("$secure", () => {
     const svc = alepha.inject(TestService);
 
     await alepha.context.run(async () => {
-      alepha.context.set<ServerRequest>("request", {
+      alepha.set("alepha.http.request", {
         headers: { authorization: "Bearer token" },
       } as any);
 
@@ -197,7 +194,7 @@ describe("$secure permissions", () => {
     const svc = alepha.inject(TestService);
 
     await alepha.context.run(async () => {
-      alepha.context.set<ServerRequest>("request", {
+      alepha.set("alepha.http.request", {
         headers: { authorization: "Bearer token" },
       } as any);
 
@@ -230,7 +227,145 @@ describe("$secure permissions", () => {
     const svc = alepha.inject(TestService);
 
     await alepha.context.run(async () => {
-      alepha.context.set<ServerRequest>("request", {
+      alepha.set("alepha.http.request", {
+        headers: { authorization: "Bearer token" },
+      } as any);
+
+      await expect(svc.fn()).rejects.toThrowError(ForbiddenError);
+    });
+  });
+});
+
+// -----------------------------------------------------------------------------------------------------------------
+// $secure — roles
+// -----------------------------------------------------------------------------------------------------------------
+
+describe("$secure roles", () => {
+  test("allows when user has required role", async ({ expect }) => {
+    const alepha = Alepha.create().with({
+      provide: SecurityProvider,
+      use: TestSecurityProvider,
+    });
+
+    class TestService {
+      fn = $pipeline({
+        use: [$secure({ roles: ["admin"] })],
+        handler: async () => "ok",
+      });
+    }
+
+    const svc = alepha.inject(TestService);
+
+    await alepha.context.run(async () => {
+      alepha.set("alepha.http.request", {
+        headers: { authorization: "Bearer token" },
+      } as any);
+
+      expect(await svc.fn()).toBe("ok");
+    });
+  });
+
+  test("throws ForbiddenError when user lacks required role", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with({
+      provide: SecurityProvider,
+      use: TestSecurityProvider,
+    });
+
+    class TestService {
+      fn = $pipeline({
+        use: [$secure({ roles: ["superadmin"] })],
+        handler: async () => "ok",
+      });
+    }
+
+    const svc = alepha.inject(TestService);
+
+    await alepha.context.run(async () => {
+      alepha.set("alepha.http.request", {
+        headers: { authorization: "Bearer token" },
+      } as any);
+
+      // fakeUser has "admin" role, not "superadmin"
+      await expect(svc.fn()).rejects.toThrowError(ForbiddenError);
+    });
+  });
+
+  test("allows when user has one of multiple required roles", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with({
+      provide: SecurityProvider,
+      use: TestSecurityProvider,
+    });
+
+    class TestService {
+      fn = $pipeline({
+        use: [$secure({ roles: ["superadmin", "admin"] })],
+        handler: async () => "ok",
+      });
+    }
+
+    const svc = alepha.inject(TestService);
+
+    await alepha.context.run(async () => {
+      alepha.set("alepha.http.request", {
+        headers: { authorization: "Bearer token" },
+      } as any);
+
+      // fakeUser has "admin" role → matches one of the required roles
+      expect(await svc.fn()).toBe("ok");
+    });
+  });
+});
+
+// -----------------------------------------------------------------------------------------------------------------
+// $secure — guard
+// -----------------------------------------------------------------------------------------------------------------
+
+describe("$secure guard", () => {
+  test("allows when guard returns true", async ({ expect }) => {
+    const alepha = Alepha.create().with({
+      provide: SecurityProvider,
+      use: TestSecurityProvider,
+    });
+
+    class TestService {
+      fn = $pipeline({
+        use: [$secure({ guard: (user) => user.id === "user-1" })],
+        handler: async () => "ok",
+      });
+    }
+
+    const svc = alepha.inject(TestService);
+
+    await alepha.context.run(async () => {
+      alepha.set("alepha.http.request", {
+        headers: { authorization: "Bearer token" },
+      } as any);
+
+      expect(await svc.fn()).toBe("ok");
+    });
+  });
+
+  test("throws ForbiddenError when guard returns false", async ({ expect }) => {
+    const alepha = Alepha.create().with({
+      provide: SecurityProvider,
+      use: TestSecurityProvider,
+    });
+
+    class TestService {
+      fn = $pipeline({
+        use: [$secure({ guard: (user) => user.id === "someone-else" })],
+        handler: async () => "ok",
+      });
+    }
+
+    const svc = alepha.inject(TestService);
+
+    await alepha.context.run(async () => {
+      alepha.set("alepha.http.request", {
         headers: { authorization: "Bearer token" },
       } as any);
 
@@ -252,7 +387,7 @@ describe("$secure metadata", () => {
 
     class TestService {
       fn = $pipeline({
-        use: [$secure({ realm: "admin" })],
+        use: [$secure({ issuers: ["admin"] })],
         handler: async () => "ok",
       });
     }
@@ -278,5 +413,74 @@ describe("$secure metadata", () => {
 
     const svc = alepha.inject(TestService);
     expect(svc.fn.middlewares[0].name).toBe("$secure");
+  });
+
+  test("permissions are stored in metadata", ({ expect }) => {
+    const alepha = Alepha.create().with({
+      provide: SecurityProvider,
+      use: TestSecurityProvider,
+    });
+
+    class TestService {
+      fn = $pipeline({
+        use: [$secure({ permissions: ["orders:delete"] })],
+        handler: async () => "ok",
+      });
+    }
+
+    const svc = alepha.inject(TestService);
+    const meta = svc.fn.middlewares[0];
+    expect(meta.name).toBe("$secure");
+    expect(meta.options?.permissions).toEqual(["orders:delete"]);
+  });
+});
+
+// -----------------------------------------------------------------------------------------------------------------
+// $secure — atom resolution
+// -----------------------------------------------------------------------------------------------------------------
+
+describe("$secure atom resolution", () => {
+  test("reads user from currentUserAtom when set", async ({ expect }) => {
+    const alepha = Alepha.create().with({
+      provide: SecurityProvider,
+      use: TestSecurityProvider,
+    });
+
+    class TestService {
+      fn = $pipeline({
+        use: [$secure()],
+        handler: async () => "ok",
+      });
+    }
+
+    const svc = alepha.inject(TestService);
+
+    // Set user via atom (no request context needed)
+    await alepha.context.run(async () => {
+      alepha.store.set(currentUserAtom, fakeUser);
+      expect(await svc.fn()).toBe("ok");
+    });
+  });
+
+  test("atom user is checked for permissions", async ({ expect }) => {
+    const alepha = Alepha.create().with({
+      provide: SecurityProvider,
+      use: TestSecurityProvider,
+    });
+
+    class TestService {
+      fn = $pipeline({
+        use: [$secure({ permissions: ["orders:delete"] })],
+        handler: async () => "deleted",
+      });
+    }
+
+    const svc = alepha.inject(TestService);
+
+    // Set user with "viewer" role via atom → should be denied
+    await alepha.context.run(async () => {
+      alepha.store.set(currentUserAtom, { ...fakeUser, roles: ["viewer"] });
+      await expect(svc.fn()).rejects.toThrowError(ForbiddenError);
+    });
   });
 });

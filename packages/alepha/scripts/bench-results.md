@@ -285,7 +285,7 @@ Set `ALEPHA_BENCH_NO_EVENTS=1` to skip `server:onRequest`, `server:onSend`, `ser
 3. **Sync hook conversions** - Removed unnecessary `async` from:
    - ServerTimingProvider (onRequest, onResponse)
    - ServerCookiesProvider (onRequest, onAction, onSend)
-   - ServerCacheProvider (onSend)
+   - ServerEtagProvider (onSend)
 4. **$hook primitive** - Passes `isAsync` flag based on original handler
 
 ### Node.js v25.2.1
@@ -343,7 +343,7 @@ Set `ALEPHA_BENCH_NO_EVENTS=1` to skip `server:onRequest`, `server:onSend`, `ser
 
 All optimizations applied together:
 1. Compiled event executors
-2. Sync hooks (ServerTimingProvider, ServerCookiesProvider, ServerCacheProvider)
+2. Sync hooks (ServerTimingProvider, ServerCookiesProvider, ServerEtagProvider)
 3. `randomUUID` import from `node:crypto`
 
 ### Node.js v25.2.1

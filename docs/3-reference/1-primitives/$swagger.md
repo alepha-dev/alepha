@@ -22,6 +22,7 @@ and OAuth configuration.
 | `prefix` | `string` | No |  |
 | `disabled` | `boolean` | No | If true, docs will be disabled. |
 | `excludeTags` | `string[]` | No | Tags to exclude from the documentation. |
+| `servers` | `OpenApiServer[]` | No | Server URLs for the API |
 | `ui` | `boolean \| SwaggerUiOptions` | No | Enable Swagger UI. |
 | `rewrite` | `Object` | No | Function to rewrite the OpenAPI document before serving it. |
 

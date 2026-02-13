@@ -1,6 +1,7 @@
 import { $inject, t } from "alepha";
 import { $action } from "alepha/server";
 import { ServerAuthProvider } from "alepha/server/auth";
+import { $etag } from "alepha/server/etag";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { realmConfigSchema } from "../schemas/realmConfigSchema.ts";
 
@@ -22,13 +23,13 @@ export class RealmController {
     group: this.group,
     method: "GET",
     path: `${this.url}/config`,
-    secure: false,
-    cache: {
-      etag: true,
-      control: {
-        maxAge: [24, "hours"],
-      },
-    },
+    use: [
+      $etag({
+        control: {
+          maxAge: [24, "hours"],
+        },
+      }),
+    ],
     schema: {
       query: t.object({
         realmName: t.optional(t.string()),
@@ -56,7 +57,6 @@ export class RealmController {
   public readonly checkUsernameAvailability = $action({
     group: this.group,
     path: `${this.url}/check-username`,
-    secure: false,
     schema: {
       query: t.object({
         realmName: t.optional(t.text()),

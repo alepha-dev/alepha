@@ -4,7 +4,7 @@ import {
   type LogEntry,
   MemoryDestinationProvider,
 } from "alepha/logger";
-import { $action, ServerProvider } from "alepha/server";
+import { $action, ServerLoggerProvider, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { $client, $remote, AlephaServerLinks } from "../index.ts";
 
@@ -38,6 +38,7 @@ describe("requestId", () => {
         provide: LogDestinationProvider,
         use: SharedMemoryDestinationProvider,
       })
+      .with(ServerLoggerProvider)
       .with(Puppeteer)
       .with(AlephaServerLinks);
 
@@ -67,6 +68,7 @@ describe("requestId", () => {
         provide: LogDestinationProvider,
         use: SharedMemoryDestinationProvider,
       })
+      .with(ServerLoggerProvider)
       .with(Reporting);
 
     class Frontend {
@@ -93,6 +95,7 @@ describe("requestId", () => {
         provide: LogDestinationProvider,
         use: SharedMemoryDestinationProvider,
       })
+      .with(ServerLoggerProvider)
       .with(Frontend);
 
     await p1.start();

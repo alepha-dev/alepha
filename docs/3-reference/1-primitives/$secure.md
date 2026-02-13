@@ -8,24 +8,39 @@ import { $secure } from "alepha/security";
 
 ## Overview
 
-* Restrict to a specific authentication realm.
+* Restrict to specific issuers (realms).
+   * User must belong to one of the listed issuers.
    */
-  realm?: string;
+  issuers?: string[];
+
+  /**
+   * Required roles. User must have at least one of the listed roles.
+   */
+  roles?: string[];
 
   /**
    * Required permissions. All must be satisfied.
    */
   permissions?: (string | Permission)[];
+
+  /**
+   * Custom guard function. Runs after all other checks.
+   * Return `false` to deny access.
+   */
+  guard?: (user: UserAccountToken) => boolean;
 }
 
 /**
 Middleware that enforces authentication and authorization.
 
-Resolves the user from the request's authorization header via `SecurityProvider`.
-Throws `UnauthorizedError` if no user is resolved, `ForbiddenError` if permissions fail.
-Sets `request.user` and stores user in ALS for downstream access.
+Resolves the user from the request context, `currentUserAtom`, or authorization headers.
+Throws `UnauthorizedError` if no user is resolved, `ForbiddenError` if checks fail.
+Stores the resolved user in `currentUserAtom` and `request.user` for downstream access.
 
-**Route middleware** — requires a request context (`$action`). Throws if used outside one.
+Works across all transports (atom-first resolution):
+1. `currentUserAtom` — set by `action.run()` fork, MCP transport, pipelines, jobs
+2. `request.user` — set by previous middleware
+3. HTTP headers — JWT/API key resolution
 
 ```typescript
 class OrderController {
@@ -45,6 +60,8 @@ class OrderController {
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `realm` | `string` | No | Restrict to a specific authentication realm. |
+| `issuers` | `string[]` | No | Restrict to specific issuers (realms) |
+| `roles` | `string[]` | No | Required roles |
 | `permissions` | `Object` | No | Required permissions |
+| `guard` | `Object` | No | Custom guard function |
 

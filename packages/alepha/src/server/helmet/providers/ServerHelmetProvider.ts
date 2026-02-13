@@ -115,7 +115,25 @@ export class ServerHelmetProvider {
     };
   }
 
+  /**
+   * Build security headers with optional per-route overrides.
+   * Used by the `$helmet` middleware.
+   */
+  public buildHeadersFor(
+    overrides?: Partial<HelmetOptions>,
+  ): Record<string, string> {
+    if (!overrides) return this.buildHeadersFromConfig(this.options);
+    const merged = { ...this.options, ...overrides };
+    return this.buildHeadersFromConfig(merged);
+  }
+
   protected buildHeaders(): Record<string, string> {
+    return this.buildHeadersFromConfig(this.options);
+  }
+
+  protected buildHeadersFromConfig(
+    config: HelmetOptions,
+  ): Record<string, string> {
     const headers: Record<string, string> = {};
     const {
       strictTransportSecurity: hsts,
@@ -124,7 +142,7 @@ export class ServerHelmetProvider {
       xXssProtection,
       contentSecurityPolicy: csp,
       referrerPolicy,
-    } = this.options;
+    } = config;
 
     // Strict-Transport-Security
     if (hsts) {

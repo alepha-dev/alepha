@@ -20,3 +20,8 @@ Response compression.
 - Gzip compression
 - Brotli compression
 
+## API Reference
+
+### Primitives
+
+- [`$compress`](/docs/reference-primitives-$compress) — * Disable compression for this route.

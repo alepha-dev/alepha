@@ -1,4 +1,5 @@
 import { $inject, t } from "alepha";
+import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import type { ParameterStatus } from "../entities/parameters.ts";
 import {
@@ -41,7 +42,7 @@ export class AdminParameterController {
    */
   getParameterTree = $action({
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:parameter:read"] })],
     description: "Get tree structure of all parameter names for navigation.",
     path: "/parameters/tree",
     method: "GET",
@@ -58,7 +59,7 @@ export class AdminParameterController {
    */
   listParameterNames = $action({
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:parameter:read"] })],
     description: "List all unique parameter names.",
     path: "/parameters",
     method: "GET",
@@ -76,7 +77,7 @@ export class AdminParameterController {
    */
   getByStatus = $action({
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:parameter:read"] })],
     description: "Get all parameters with a specific status.",
     path: "/parameters/status/:status",
     method: "GET",
@@ -97,7 +98,7 @@ export class AdminParameterController {
    */
   getHistory = $action({
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:parameter:read"] })],
     description: "Get all versions of a specific parameter.",
     path: "/parameters/:name/history",
     method: "GET",
@@ -118,7 +119,7 @@ export class AdminParameterController {
    */
   getCurrent = $action({
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:parameter:read"] })],
     description: "Get current and next scheduled values for a parameter.",
     path: "/parameters/:name",
     method: "GET",
@@ -143,7 +144,7 @@ export class AdminParameterController {
    */
   getVersion = $action({
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:parameter:read"] })],
     description: "Get a specific version of a parameter.",
     path: "/parameters/:name/versions/:version",
     method: "GET",
@@ -165,7 +166,7 @@ export class AdminParameterController {
    */
   createVersion = $action({
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:parameter:create"] })],
     description:
       "Create a new version of a parameter (immediate or scheduled).",
     path: "/parameters/:name",
@@ -193,7 +194,7 @@ export class AdminParameterController {
    */
   rollback = $action({
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:parameter:rollback"] })],
     description:
       "Rollback a parameter to a previous version (creates new version with old content).",
     path: "/parameters/:name/rollback",
@@ -217,7 +218,7 @@ export class AdminParameterController {
    */
   activateNow = $action({
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:parameter:activate"] })],
     description: "Activate a future/next parameter version immediately.",
     path: "/parameters/:name/activate",
     method: "POST",
@@ -259,7 +260,7 @@ export class AdminParameterController {
    */
   checkScheduled = $action({
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:parameter:activate"] })],
     description:
       "Manually trigger activation check for all scheduled parameters.",
     path: "/parameters/activate-scheduled",

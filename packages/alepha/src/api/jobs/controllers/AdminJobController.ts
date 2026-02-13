@@ -1,4 +1,5 @@
 import { $inject, t } from "alepha";
+import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import {
   jobActivityPointSchema,
@@ -23,7 +24,7 @@ export class AdminJobController {
   public readonly getStats = $action({
     path: `${this.url}/stats`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
       response: jobStatsSchema,
     },
@@ -33,7 +34,7 @@ export class AdminJobController {
   public readonly getRegistry = $action({
     path: this.url,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
       response: t.array(jobRegistrationSchema),
     },
@@ -43,7 +44,7 @@ export class AdminJobController {
   public readonly findExecutions = $action({
     path: `${this.url}/executions`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
       query: jobExecutionQuerySchema,
       response: t.page(jobExecutionResourceSchema),
@@ -54,7 +55,7 @@ export class AdminJobController {
   public readonly getExecution = $action({
     path: `${this.url}/executions/:id`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
       params: t.object({
         id: t.uuid(),
@@ -68,7 +69,7 @@ export class AdminJobController {
     method: "POST",
     path: `${this.url}/trigger`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:job:trigger"] })],
     schema: {
       body: triggerJobSchema,
       response: okSchema,
@@ -86,7 +87,7 @@ export class AdminJobController {
     method: "POST",
     path: `${this.url}/executions/:id/retry`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:job:trigger"] })],
     schema: {
       params: t.object({
         id: t.uuid(),
@@ -105,7 +106,7 @@ export class AdminJobController {
     method: "POST",
     path: `${this.url}/executions/:id/cancel`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:job:cancel"] })],
     schema: {
       params: t.object({
         id: t.uuid(),
@@ -123,7 +124,7 @@ export class AdminJobController {
   public readonly getActivity = $action({
     path: `${this.url}/activity`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
       query: jobActivityQuerySchema,
       response: t.array(jobActivityPointSchema),
@@ -134,7 +135,7 @@ export class AdminJobController {
   public readonly getCronJobs = $action({
     path: `${this.url}/cron`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
       response: t.array(jobCronInfoSchema),
     },
@@ -144,7 +145,7 @@ export class AdminJobController {
   public readonly getQueueDepth = $action({
     path: `${this.url}/queue`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
       response: t.array(jobQueueDepthSchema),
     },
@@ -154,7 +155,7 @@ export class AdminJobController {
   public readonly getTopFailures = $action({
     path: `${this.url}/failures`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
       response: t.array(jobFailureSchema),
     },

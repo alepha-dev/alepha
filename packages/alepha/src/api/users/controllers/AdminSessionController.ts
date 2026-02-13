@@ -1,4 +1,5 @@
 import { $inject, t } from "alepha";
+import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { sessionQuerySchema } from "../schemas/sessionQuerySchema.ts";
 import { sessionResourceSchema } from "../schemas/sessionResourceSchema.ts";
@@ -15,7 +16,7 @@ export class AdminSessionController {
   public readonly findSessions = $action({
     path: this.url,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:session:read"] })],
     description: "Find sessions with pagination and filtering",
     schema: {
       query: t.extend(sessionQuerySchema, {
@@ -35,7 +36,7 @@ export class AdminSessionController {
   public readonly getSession = $action({
     path: `${this.url}/:id`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:session:read"] })],
     description: "Get a session by ID",
     schema: {
       params: t.object({
@@ -57,7 +58,7 @@ export class AdminSessionController {
     method: "DELETE",
     path: `${this.url}/:id`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:session:delete"] })],
     description: "Delete a session",
     schema: {
       params: t.object({

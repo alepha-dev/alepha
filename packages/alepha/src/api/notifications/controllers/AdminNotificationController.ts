@@ -1,4 +1,5 @@
 import { $inject, t } from "alepha";
+import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { notifications } from "../entities/notifications.ts";
 import { notificationQuerySchema } from "../schemas/notificationQuerySchema.ts";
@@ -15,7 +16,7 @@ export class AdminNotificationController {
   public readonly findNotifications = $action({
     path: this.url,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:notification:read"] })],
     description: "Find notifications with pagination and filtering",
     schema: {
       query: notificationQuerySchema,

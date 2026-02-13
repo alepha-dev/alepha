@@ -116,6 +116,12 @@ export class DrizzleKitProvider {
    */
   public getModels(provider: DatabaseProvider): Record<string, unknown> {
     const models: Record<string, unknown> = {};
+
+    // Required for pushSchema with Postgres and POSTGRES_SCHEMA
+    for (const [key, value] of provider.schemas.entries()) {
+      models[`__schema_${key}`] = value;
+    }
+
     for (const [key, value] of provider.tables.entries()) {
       if (models[key]) {
         throw new AlephaError(
@@ -124,6 +130,7 @@ export class DrizzleKitProvider {
       }
       models[key] = value;
     }
+
     for (const [key, value] of provider.enums.entries()) {
       if (models[key]) {
         throw new AlephaError(
@@ -132,6 +139,7 @@ export class DrizzleKitProvider {
       }
       models[key] = value;
     }
+
     for (const [key, value] of provider.sequences.entries()) {
       if (models[key]) {
         throw new AlephaError(
@@ -140,6 +148,7 @@ export class DrizzleKitProvider {
       }
       models[key] = value;
     }
+
     return models;
   }
 
@@ -154,22 +163,12 @@ export class DrizzleKitProvider {
       kit.pushSQLiteSchema(models, provider.db as any),
     );
 
-    if (result.hasDataLoss) {
-      this.log.warn("Push would cause data loss", {
-        warnings: result.warnings,
-        statements: result.statementsToExecute,
-      });
-    }
-
-    if (result.statementsToExecute.length > 0) {
-      this.log.debug(
-        `Pushing ${result.statementsToExecute.length} statements ...`,
-        { statements: result.statementsToExecute },
-      );
-      await this.muteSpinner(() => result.apply());
-    }
+    await this.runPushResult(result, provider);
   }
 
+  /**
+   * Push schema changes to PostgreSQL using Drizzle Kit's pushSchema with schema filters.
+   */
   protected async pushPostgres(
     kit: typeof DrizzleKit,
     models: Record<string, unknown>,
@@ -179,9 +178,42 @@ export class DrizzleKitProvider {
       await this.createSchemaIfNotExists(provider, provider.schema);
     }
 
+    // Drizzle Kit's pushSchema internally does:
+    //   const res = await drizzleInstance.execute(sql.raw(query));
+    //   return res.rows;
+    //
+    // This assumes node-postgres (pg) format where execute() returns { rows: [...] }.
+    // But postgres.js (used by Alepha) returns a Result that extends Array — no .rows property.
+    // We wrap the db instance so execute() returns { rows: [...] } as expected.
+    const wrappedDb = this.wrapDbForDrizzleKit(provider.db);
+
     const result = await this.muteSpinner(() =>
-      kit.pushSchema(models, provider.db, [provider.schema]),
+      kit.pushSchema(models, wrappedDb, [provider.schema]),
     );
+
+    await this.runPushResult(result, provider);
+  }
+
+  /**
+   * Run the statements returned by Drizzle Kit's pushSchema, with safety filters and logging.
+   */
+  protected async runPushResult(
+    result: {
+      statementsToExecute: string[];
+      warnings: string[];
+      hasDataLoss: boolean;
+    },
+    provider: DatabaseProvider,
+  ) {
+    // Filter out destructive schema/table drops — never auto-apply those in dev.
+    const safe = (result.statementsToExecute as string[]).filter((s) => {
+      const upper = s.trimStart().toUpperCase();
+      if (upper.startsWith("DROP SCHEMA") || upper.startsWith("DROP TABLE")) {
+        this.log.warn("Skipping destructive statement", { statement: s });
+        return false;
+      }
+      return true;
+    });
 
     if (result.hasDataLoss) {
       this.log.warn("Push would cause data loss", {
@@ -190,12 +222,13 @@ export class DrizzleKitProvider {
       });
     }
 
-    if (result.statementsToExecute.length > 0) {
-      this.log.debug(
-        `Pushing ${result.statementsToExecute.length} statements ...`,
-        { statements: result.statementsToExecute },
-      );
-      await this.muteSpinner(() => result.apply());
+    if (safe.length > 0) {
+      this.log.debug(`Pushing ${safe.length} statements ...`, {
+        statements: safe,
+      });
+      for (const statement of safe) {
+        await provider.execute(sql.raw(statement));
+      }
     }
   }
 
@@ -208,7 +241,12 @@ export class DrizzleKitProvider {
     provider: DatabaseProvider,
   ): Promise<void> {
     for (const statement of statements) {
-      if (statement.startsWith("DROP SCHEMA")) {
+      const upper = statement.trimStart().toUpperCase();
+      // Schema lifecycle is managed by createSchemaIfNotExists / generateTestSchema.
+      if (
+        upper.startsWith("DROP SCHEMA") ||
+        upper.startsWith("CREATE SCHEMA")
+      ) {
         continue;
       }
       await provider.execute(sql.raw(statement));
@@ -238,25 +276,62 @@ export class DrizzleKitProvider {
     await provider.execute(sql`CREATE SCHEMA IF NOT EXISTS ${sqlSchema}`);
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+
+  // TODO: remove both hacks when Drizzle Kit is updated !
+
+  /**
+   * Wrap a Drizzle PgDatabase instance for compatibility with Drizzle Kit.
+   *
+   * Drizzle Kit's pushSchema expects execute() to return { rows: T[] }
+   * (node-postgres/pg format), but postgres.js returns a Result that
+   * extends Array directly — no .rows property.
+   */
+  protected wrapDbForDrizzleKit(db: any): any {
+    return new Proxy(db, {
+      get(target, prop, receiver) {
+        if (prop === "execute") {
+          return async (...args: any[]) => {
+            const res = await target.execute(...args);
+            if (Array.isArray(res) && !("rows" in res)) {
+              return Object.assign(res, { rows: [...res] });
+            }
+            return res;
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+  }
+
   /**
    * Suppress Drizzle Kit's spinner output during a callback.
    *
-   * Only filters the "Pulling schema from database..." spinner lines.
-   * Other output (e.g. confirmation prompts for destructive changes) passes through.
+   * Drizzle Kit uses hanji's renderWithTask with a setInterval-based spinner.
+   * If the wrapped task throws, the interval is never cleared and leaks
+   * spinner frames to stdout. We keep the filter active until the next
+   * tick after the promise settles to catch any straggling writes.
    */
   protected async muteSpinner<T>(fn: () => Promise<T>): Promise<T> {
     const originalWrite = process.stdout.write;
-    process.stdout.write = (chunk: any, ...args: any[]) => {
+    const filter = (chunk: any, ...args: any[]) => {
       const str =
         typeof chunk === "string" ? chunk : (chunk?.toString?.() ?? "");
       if (str.includes("Pulling schema from database")) {
         return true;
       }
+      if (str.includes("\x1B[1A")) {
+        return true;
+      }
       return (originalWrite as any).call(process.stdout, chunk, ...args);
     };
+    process.stdout.write = filter as any;
     try {
       return await fn();
     } finally {
+      // Delay restore to catch orphaned setInterval spinner writes
+      // that fire after the promise rejects but before cleanup.
+      await new Promise((r) => setTimeout(r, 200));
       process.stdout.write = originalWrite;
     }
   }

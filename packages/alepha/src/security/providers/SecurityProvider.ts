@@ -9,8 +9,10 @@ import {
   t,
 } from "alepha";
 import { $logger } from "alepha/logger";
+import { ForbiddenError } from "alepha/server";
 import type { JSONWebKeySet, JWTPayload } from "jose";
 import type { JWTVerifyOptions } from "jose/jwt/verify";
+import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";
 import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 import { RealmNotFoundError } from "../errors/RealmNotFoundError.ts";
@@ -19,7 +21,10 @@ import type { IssuerResolver, UserInfo } from "../interfaces/IssuerResolver.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import type { Permission } from "../schemas/permissionSchema.ts";
 import type { Role } from "../schemas/roleSchema.ts";
-import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
+import {
+  type UserAccount,
+  userAccountInfoSchema,
+} from "../schemas/userAccountInfoSchema.ts";
 import { JwtProvider } from "./JwtProvider.ts";
 
 export const DEFAULT_APP_SECRET = "05759934015388327323179852515731"; // (32)
@@ -249,11 +254,6 @@ export class SecurityProvider {
     );
 
     if (existing) {
-      this.log.warn(`Permission '${asString}' already exists. Skipping.`, {
-        current: existing,
-        new: permission,
-      });
-
       return existing;
     }
 
@@ -678,6 +678,25 @@ export class SecurityProvider {
       : [permission.group];
 
     return `${groupParts.join(":")}:${permission.name}`;
+  }
+
+  /**
+   * Check that the user belongs to one of the required issuers.
+   */
+  public checkIssuers(user: UserAccountToken, issuers?: string[]) {
+    if (issuers?.length && (!user.realm || !issuers.includes(user.realm))) {
+      throw new ForbiddenError(
+        `User must belong to issuer '${issuers.join("' or '")}' to access this route`,
+      );
+    }
+  }
+
+  /**
+   * Store the resolved user in the atom for downstream access (useAuth, audit trail, etc.).
+   */
+  public storeUserInContext(user: UserAccountToken) {
+    const decoded = this.alepha.codec.decode(userAccountInfoSchema, user);
+    this.alepha.store.set(currentUserAtom, decoded);
   }
 
   // accessors

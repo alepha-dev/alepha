@@ -51,7 +51,7 @@ describe("$rateLimit", () => {
     await alepha.start();
 
     await alepha.context.run(async () => {
-      alepha.context.set<ServerRequest>("request", createFakeRequest());
+      alepha.set("alepha.http.request", createFakeRequest());
       expect(await svc.fn()).toBe("ok");
     });
 
@@ -75,7 +75,7 @@ describe("$rateLimit", () => {
     await alepha.start();
 
     await alepha.context.run(async () => {
-      alepha.context.set<ServerRequest>("request", createFakeRequest());
+      alepha.set("alepha.http.request", createFakeRequest());
 
       // First two pass
       expect(await svc.fn()).toBe("ok");
@@ -166,7 +166,7 @@ describe("$rateLimit", () => {
 
     await alepha.context.run(async () => {
       const req = createFakeRequest();
-      alepha.context.set<ServerRequest>("request", req);
+      alepha.set("alepha.http.request", req);
 
       await svc.fn();
 
@@ -197,19 +197,13 @@ describe("$rateLimit", () => {
 
     // First IP
     await alepha.context.run(async () => {
-      alepha.context.set<ServerRequest>(
-        "request",
-        createFakeRequest("10.0.0.1"),
-      );
+      alepha.set("alepha.http.request", createFakeRequest("10.0.0.1"));
       expect(await svc.fn()).toBe("ok");
     });
 
     // Second IP — separate bucket
     await alepha.context.run(async () => {
-      alepha.context.set<ServerRequest>(
-        "request",
-        createFakeRequest("10.0.0.2"),
-      );
+      alepha.set("alepha.http.request", createFakeRequest("10.0.0.2"));
       expect(await svc.fn()).toBe("ok");
     });
 
@@ -233,7 +227,7 @@ describe("$rateLimit", () => {
     await alepha.start();
 
     await alepha.context.run(async () => {
-      alepha.context.set<ServerRequest>("request", createFakeRequest());
+      alepha.set("alepha.http.request", createFakeRequest());
       expect(await svc.fn(3, 4)).toBe(7);
     });
 
@@ -257,7 +251,7 @@ describe("$rateLimit", () => {
     await alepha.start();
 
     await alepha.context.run(async () => {
-      alepha.context.set<ServerRequest>("request", createFakeRequest());
+      alepha.set("alepha.http.request", createFakeRequest());
 
       await svc.fn(); // Use up the limit
 

@@ -2,6 +2,7 @@ import { $inject, t } from "alepha";
 import { FileService } from "alepha/api/files";
 import { UserBuckets, users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
+import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
 export class UserController {
@@ -10,7 +11,7 @@ export class UserController {
   userFiles = $inject(UserBuckets);
 
   me = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       response: users.schema,
     },
@@ -24,7 +25,7 @@ export class UserController {
   });
 
   updateAvatar = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       body: t.object({
         file: t.file(),

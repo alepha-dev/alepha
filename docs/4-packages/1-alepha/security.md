@@ -31,17 +31,16 @@ Complete authentication and authorization system with JWT, RBAC, and multi-issue
 
 ### Primitives
 
-- [`$basicAuth`](/docs/reference-primitives-$basicauth) — Declares HTTP Basic Authentication for server routes.
+- [`$basicAuth`](/docs/reference-primitives-$basicauth) — Middleware that enforces HTTP Basic Authentication on the request.
 - [`$issuer`](/docs/reference-primitives-$issuer) — Create a new issuer.
 - [`$permission`](/docs/reference-primitives-$permission) — Create a new permission.
 - [`$role`](/docs/reference-primitives-$role) — Create a new role.
-- [`$secure`](/docs/reference-primitives-$secure) — * Restrict to a specific authentication realm.
+- [`$secure`](/docs/reference-primitives-$secure) — * Restrict to specific issuers (realms).
 - [`$serviceAccount`](/docs/reference-primitives-$serviceaccount) — Allow to get an access token for a service account.
 
 ### Providers
 
 - [`JwtProvider`](/docs/reference-providers-jwtprovider) — Provides utilities for working with JSON Web Tokens (JWT).
-- [`ServerCsrfProvider`](/docs/reference-providers-servercsrfprovider) — CSRF protection via Origin header validation.
 
 ### Environment Variables
 

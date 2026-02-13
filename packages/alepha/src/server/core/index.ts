@@ -35,6 +35,8 @@ import { UserAgentParser } from "./services/UserAgentParser.ts";
 declare module "alepha" {
   interface State {
     "alepha.node.server"?: Server;
+    "alepha.http.request"?: ServerRequest;
+    "alepha.action.request"?: ServerRequest;
   }
   interface Hooks {
     // -----------------------------------------------------------------------------------------------------------------
@@ -43,6 +45,7 @@ declare module "alepha" {
       action: ActionPrimitive<RequestConfigSchema>;
       request: ServerRequest;
       options: ClientRequestOptions;
+      context?: Record<string, any>;
     };
     "action:onResponse": {
       action: ActionPrimitive<RequestConfigSchema>;
@@ -175,8 +178,11 @@ export const AlephaServer = $module({
     }
 
     alepha.with(ServerBodyParserProvider);
-    alepha.with(ServerLoggerProvider);
-    alepha.with(ServerNotReadyProvider);
+
+    if (!alepha.isTest()) {
+      alepha.with(ServerLoggerProvider);
+      alepha.with(ServerNotReadyProvider);
+    }
 
     if (!alepha.isProduction()) {
       alepha.with(ServerTimingProvider);

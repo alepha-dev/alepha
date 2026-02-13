@@ -19,7 +19,6 @@ class AuthController {
   login = $action({
     method: "POST",
     path: "/auth/login",
-    secure: false,
     schema: {
       body: t.object({
         email: t.email(),
@@ -111,14 +110,18 @@ realm = $realm({
 
 ## Securing Actions
 
-When `AlephaSecurity` is registered, all actions are not secure by default.
-
-To make an action secured, set `secure: true`:
+Actions are public by default. To require authentication, add the `$secure()` middleware:
 
 ```typescript
+import { $secure } from "alepha/security";
+
 publicEndpoint = $action({
-  secure: true,
   handler: () => "anyone can access this",
+});
+
+protectedEndpoint = $action({
+  use: [$secure()],
+  handler: () => "only authenticated users",
 });
 ```
 
@@ -127,18 +130,96 @@ The authenticated user is available on the request object:
 ```typescript
 profile = $action({
   path: "/me",
-  secure: true,
+  use: [$secure()],
   handler: async ({ user }) => {
     return user;
   },
 });
 ```
 
+You can also restrict access to a specific issuer or role:
+
+```typescript
+adminOnly = $action({
+  use: [$secure({ issuers: ["admin"] })],
+  handler: () => "admin issuer only",
+});
+
+managersOnly = $action({
+  use: [$secure({ roles: ["manager", "admin"] })],
+  handler: () => "managers and admins only",
+});
+```
+
+### User Resolution
+
+`$secure()` resolves the authenticated user using atom-first resolution, which works across all transports:
+
+1. **`currentUserAtom`** — checked first. Set by `$action.run()` fork, MCP transports, pipelines, and jobs.
+2. **`request.user`** — HTTP request user set by previous middleware.
+3. **HTTP headers** — JWT or API key resolved from `Authorization` header.
+
+### Local Action Calls
+
+When calling an action locally via `.run()`, pass the user in options:
+
+```typescript
+// Pass a specific user
+await controller.action.run({}, { user: { id: "user-1", roles: ["admin"] } });
+
+// Use the system user
+await controller.action.run({}, { user: "system" });
+
+// Use the user from the current HTTP request
+await controller.action.run({}, { user: "context" });
+```
+
+The user is scoped to the action call using ALS fork isolation — it does not leak to subsequent calls.
+
+In test mode, `.fetch()` automatically creates a JWT token from the user option:
+
+```typescript
+// Automatic test token creation
+const res = await controller.action.fetch({}, { user: { id: "test-user" } });
+```
+
 ## Roles and Permissions
 
-Each action generates one permission automatically, named `{group}:{actionName}`.
+`$secure()` supports authentication-only, role checks, permission checks, and custom guards:
 
-Define roles with explicit permission sets:
+```typescript
+// Auth only — any authenticated user
+profile = $action({
+  use: [$secure()],
+  handler: ({ user }) => user,
+});
+
+// Auth + role check
+dashboard = $action({
+  use: [$secure({ roles: ["admin"] })],
+  handler: () => { /* ... */ },
+});
+
+// Auth + explicit permissions
+deleteOrder = $action({
+  use: [$secure({ permissions: ["orders:delete"] })],
+  handler: ({ params }) => { /* ... */ },
+});
+
+// Auth + permissions + issuer restriction
+adminManage = $action({
+  use: [$secure({ permissions: ["admin:manage"], issuers: ["admin"] })],
+  handler: () => { /* ... */ },
+});
+
+// Auth + custom guard
+ownProfile = $action({
+  use: [$secure({ guard: (user) => user.id === params.id })],
+  handler: () => { /* ... */ },
+});
+```
+
+Define roles with permission sets in the issuer:
 
 ```typescript
 issuer = $issuer({

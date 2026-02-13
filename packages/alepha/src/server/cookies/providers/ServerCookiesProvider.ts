@@ -19,7 +19,6 @@ import {
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { DEFAULT_APP_SECRET } from "alepha/security";
-import type { ServerRequest } from "alepha/server";
 import type {
   Cookie,
   CookiePrimitiveOptions,
@@ -86,8 +85,9 @@ export class ServerCookiesProvider {
   });
 
   protected getCookiesFromContext(cookies?: Cookies): Cookies {
-    const contextCookies =
-      this.alepha.context.get<ServerRequest>("request")?.cookies;
+    const contextCookies = this.alepha.store.get(
+      "alepha.http.request",
+    )?.cookies;
     if (cookies) return cookies;
     if (contextCookies) return contextCookies;
     throw new AlephaError(

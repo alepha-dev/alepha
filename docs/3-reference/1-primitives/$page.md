@@ -65,7 +65,6 @@ It provides a declarative way to define pages with powerful features:
 | `can` | `Object` | No | Function to determine if the page can be accessed |
 | `errorHandler` | `ErrorHandler` | No | Catch any error from the `loader` function or during `rendering` |
 | `entries` | `Array&lt;Partial&lt;PageRequestConfig&lt;TConfig&gt;&gt;&gt;` | No | If true, the page will be considered as a static page, immutable and cacheable |
-| `cache` | `ServerRouteCache` | No |  |
 | `client` | `boolean \| ClientOnlyProps` | No | If true, force the page to be rendered only on the client-side (browser) |
 | `onServerResponse` | `Object` | No | Called before the server response is sent to the client |
 | `onEnter` | `Object` | No | Called when user enters the page |

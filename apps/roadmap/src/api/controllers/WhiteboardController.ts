@@ -2,6 +2,7 @@ import { $inject, t } from "alepha";
 import { FileService } from "alepha/api/files";
 import { $bucket } from "alepha/bucket";
 import { $repository } from "alepha/orm";
+import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import {
   type WhiteboardData,
@@ -22,7 +23,7 @@ export class WhiteboardController {
   });
 
   getWhiteboards = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         projectId: t.integer(),
@@ -41,7 +42,7 @@ export class WhiteboardController {
   });
 
   createWhiteboard = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       body: t.object({
         projectId: t.integer(),
@@ -62,7 +63,7 @@ export class WhiteboardController {
   });
 
   getWhiteboardById = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -77,7 +78,7 @@ export class WhiteboardController {
   });
 
   updateWhiteboard = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -105,7 +106,7 @@ export class WhiteboardController {
   });
 
   deleteWhiteboard = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -123,7 +124,7 @@ export class WhiteboardController {
 
   // Upload image for whiteboard
   uploadImage = $action({
-    secure: true,
+    use: [$secure()],
     path: "/whiteboards/images",
     schema: {
       body: t.object({
@@ -148,7 +149,7 @@ export class WhiteboardController {
 
   // Delete image from whiteboard
   deleteImage = $action({
-    secure: true,
+    use: [$secure()],
     method: "DELETE",
     path: "/whiteboards/images/:fileId",
     schema: {

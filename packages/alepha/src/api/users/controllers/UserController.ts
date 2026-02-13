@@ -26,7 +26,6 @@ export class UserController {
     group: this.group,
     method: "POST",
     path: `${this.url}/register`,
-    secure: false,
     schema: {
       body: registerRequestSchema,
       query: registerQuerySchema,
@@ -47,7 +46,6 @@ export class UserController {
     group: this.group,
     method: "POST",
     path: `${this.url}/register/complete`,
-    secure: false,
     schema: {
       body: completeRegistrationRequestSchema,
       response: userResourceSchema,
@@ -63,7 +61,6 @@ export class UserController {
     group: this.group,
     method: "POST",
     path: `${this.url}/password-reset`,
-    secure: false,
     schema: {
       query: t.object({
         userRealmName: t.optional(t.string()),
@@ -88,7 +85,6 @@ export class UserController {
     group: this.group,
     method: "POST",
     path: `${this.url}/password-reset/complete`,
-    secure: false,
     schema: {
       body: completePasswordResetRequestSchema,
       response: okSchema,

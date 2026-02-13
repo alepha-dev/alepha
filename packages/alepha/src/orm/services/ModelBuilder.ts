@@ -36,6 +36,7 @@ export abstract class ModelBuilder {
     options: {
       tables: Map<string, unknown>;
       enums: Map<string, unknown>;
+      schemas: Map<string, unknown>;
       schema: string;
     },
   ): void;

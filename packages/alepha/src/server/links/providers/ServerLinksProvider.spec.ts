@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { Alepha, t } from "alepha";
-import { $issuer, AlephaSecurity } from "alepha/security";
+import { $issuer, $secure, AlephaSecurity } from "alepha/security";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 import { LinkProvider, ServerLinksProvider } from "../index.ts";
 
 describe("ServerLinksProvider", () => {
   describe("secured field in links", () => {
-    it("should set secured=undefined for public actions (no secure option)", async ({
+    it("should set secured=undefined for public actions (no $secure middleware)", async ({
       expect,
     }) => {
       class App {
@@ -26,30 +26,12 @@ describe("ServerLinksProvider", () => {
       expect(link?.secured).toBeUndefined();
     });
 
-    it("should set secured=false for explicitly public actions", async ({
+    it("should set secured=true for actions with $secure()", async ({
       expect,
     }) => {
       class App {
-        publicAction = $action({
-          secure: false,
-          handler: () => "PUBLIC",
-        });
-      }
-
-      const alepha = Alepha.create().with(App).with(ServerLinksProvider);
-      await alepha.start();
-
-      const links = alepha.inject(LinkProvider).getServerLinks();
-      const link = links.find((l) => l.name === "publicAction");
-
-      expect(link).toBeDefined();
-      expect(link?.secured).toBe(false);
-    });
-
-    it("should set secured=true for secured actions", async ({ expect }) => {
-      class App {
         securedAction = $action({
-          secure: true,
+          use: [$secure()],
           handler: () => "SECURED",
         });
       }
@@ -64,12 +46,12 @@ describe("ServerLinksProvider", () => {
       expect(link?.secured).toBe(true);
     });
 
-    it("should set secured to object for realm-secured actions", async ({
+    it("should set secured to options object for realm-secured actions", async ({
       expect,
     }) => {
       class App {
         realmAction = $action({
-          secure: { realm: "admin" },
+          use: [$secure({ issuers: ["admin"] })],
           handler: () => "REALM",
         });
       }
@@ -81,7 +63,7 @@ describe("ServerLinksProvider", () => {
       const link = links.find((l) => l.name === "realmAction");
 
       expect(link).toBeDefined();
-      expect(link?.secured).toEqual({ realm: "admin" });
+      expect(link?.secured).toEqual({ issuers: ["admin"] });
     });
   });
 
@@ -124,7 +106,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         securedAction = $action({
-          secure: true,
+          use: [$secure()],
           schema: { response: t.text() },
           handler: () => "SECURED",
         });
@@ -157,7 +139,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         securedAction = $action({
-          secure: true,
+          use: [$secure()],
           schema: { response: t.text() },
           handler: () => "SECURED",
         });
@@ -193,7 +175,7 @@ describe("ServerLinksProvider", () => {
           handler: () => "PUBLIC",
         });
         securedAction = $action({
-          secure: true,
+          use: [$secure()],
           schema: { response: t.text() },
           handler: () => "SECURED",
         });
@@ -222,19 +204,17 @@ describe("ServerLinksProvider", () => {
       );
     });
 
-    it("should filter secured actions based on user permissions", async ({
+    it("should filter secured actions based on explicit permissions", async ({
       expect,
     }) => {
       class App {
         adminOnly = $action({
-          secure: true,
-          group: "admin",
+          use: [$secure({ permissions: ["admin:manage"] })],
           schema: { response: t.text() },
           handler: () => "ADMIN",
         });
         userAction = $action({
-          secure: true,
-          group: "user",
+          use: [$secure({ permissions: ["user:read"] })],
           schema: { response: t.text() },
           handler: () => "USER",
         });
@@ -255,7 +235,7 @@ describe("ServerLinksProvider", () => {
 
       const linksProvider = alepha.inject(ServerLinksProvider);
 
-      // User with "user" role should only see userAction
+      // User with "user" role should only see userAction (has user:* which matches user:read)
       const userLinks = await linksProvider.getUserApiLinks({
         user: { id: randomUUID(), roles: ["user"] },
       });
@@ -267,7 +247,7 @@ describe("ServerLinksProvider", () => {
         expect.objectContaining({ name: "adminOnly" }),
       );
 
-      // User with "admin" role should see both
+      // User with "admin" role should see both (wildcard *)
       const adminLinks = await linksProvider.getUserApiLinks({
         user: { id: randomUUID(), roles: ["admin"] },
       });
@@ -277,6 +257,39 @@ describe("ServerLinksProvider", () => {
       );
       expect(adminLinks.links).toContainEqual(
         expect.objectContaining({ name: "adminOnly" }),
+      );
+    });
+
+    it("should show auth-only $secure() actions to any authenticated user", async ({
+      expect,
+    }) => {
+      class App {
+        authOnly = $action({
+          use: [$secure()],
+          schema: { response: t.text() },
+          handler: () => "AUTH_ONLY",
+        });
+        issuer = $issuer({
+          secret: "test",
+          roles: [{ name: "limited", permissions: [] }],
+        });
+      }
+
+      const alepha = Alepha.create()
+        .with(App)
+        .with(ServerLinksProvider)
+        .with(AlephaSecurity);
+      await alepha.start();
+
+      const linksProvider = alepha.inject(ServerLinksProvider);
+
+      // User with "limited" role (no permissions) should still see auth-only actions
+      const links = await linksProvider.getUserApiLinks({
+        user: { id: randomUUID(), roles: ["limited"] },
+      });
+
+      expect(links.links).toContainEqual(
+        expect.objectContaining({ name: "authOnly" }),
       );
     });
   });
@@ -293,7 +306,7 @@ describe("ServerLinksProvider", () => {
         });
         createUser = $action({
           path: "/users",
-          secure: true,
+          use: [$secure()],
           schema: {
             body: t.object({ name: t.text() }),
             response: t.text(),
@@ -303,7 +316,7 @@ describe("ServerLinksProvider", () => {
         deleteUser = $action({
           method: "DELETE",
           path: "/users/:id",
-          secure: true,
+          use: [$secure()],
           schema: {
             params: t.object({ id: t.text() }),
             response: t.void(),
@@ -321,7 +334,7 @@ describe("ServerLinksProvider", () => {
       const createUser = links.find((l) => l.name === "createUser");
       const deleteUser = links.find((l) => l.name === "deleteUser");
 
-      // getUsers is public (no secure option)
+      // getUsers is public (no $secure middleware)
       expect(getUsers?.secured).toBeUndefined();
 
       // createUser and deleteUser are secured

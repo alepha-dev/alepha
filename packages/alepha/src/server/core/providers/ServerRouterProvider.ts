@@ -236,8 +236,12 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       return;
     }
 
+    // Store route path info for middleware (e.g. $secure auto-permission lookup)
+    request.metadata.routePath = route.path;
+    request.metadata.routeMethod = route.method;
+
     // Make the request available to handlers via alepha.context
-    this.alepha.context.set<ServerRequest>("request", request);
+    this.alepha.set("alepha.http.request", request);
 
     const timing = this.serverTimingProvider;
 

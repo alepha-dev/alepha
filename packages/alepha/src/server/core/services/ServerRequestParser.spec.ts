@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+import { CryptoProvider } from "../../../crypto/index.ts";
 import type { ServerRequestData } from "../interfaces/ServerRequest.ts";
 import { ServerRequestParser } from "./ServerRequestParser.ts";
 
@@ -508,13 +509,20 @@ describe("ServerRequestParser", () => {
       expect(parser.getRequestId(request)).toBe("abc-123-def");
     });
 
-    it("should return undefined for missing header", ({ expect }) => {
-      const alepha = Alepha.create();
+    it("should return UUID for missing header", ({ expect }) => {
+      const reqId = "00000000-0000-0000-0000-000000000000";
+      const alepha = Alepha.create().with({
+        provide: CryptoProvider,
+        use: class extends CryptoProvider {
+          randomUUID() {
+            return reqId;
+          }
+        },
+      });
       const parser = alepha.inject(ServerRequestParser);
-
       const request = createMockRequestData({});
 
-      expect(parser.getRequestId(request)).toBe(undefined);
+      expect(parser.getRequestId(request)).toBe(reqId);
     });
   });
 });

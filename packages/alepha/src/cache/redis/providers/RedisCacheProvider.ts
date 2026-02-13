@@ -1,5 +1,5 @@
 import { $atom, $inject, $use, Alepha, type Static, t } from "alepha";
-import type { CacheProvider } from "alepha/cache";
+import { CacheProvider } from "alepha/cache";
 import { $logger } from "alepha/logger";
 import { RedisProvider } from "alepha/redis";
 
@@ -31,7 +31,7 @@ declare module "alepha" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class RedisCacheProvider implements CacheProvider {
+export class RedisCacheProvider extends CacheProvider {
   protected readonly log = $logger();
   protected readonly redisProvider = $inject(RedisProvider);
   protected readonly options = $use(redisCacheOptions);

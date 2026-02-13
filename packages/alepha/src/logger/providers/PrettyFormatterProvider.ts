@@ -120,7 +120,11 @@ export class PrettyFormatterProvider extends LogFormatterProvider {
     }
 
     // hack: use vite's stack trace formatter if available
-    const vite = this.alepha.store.get("alepha.vite.server" as any);
+    const vite = this.alepha.store.get("alepha.vite.server") as
+      | {
+          ssrFixStacktrace: (error: Error) => void;
+        }
+      | undefined;
 
     vite?.ssrFixStacktrace(error);
 

@@ -1,6 +1,5 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
-import type { ServerRequest } from "../interfaces/ServerRequest.ts";
 
 type TimingMap = Record<string, [number, number]>;
 
@@ -74,7 +73,7 @@ export class ServerTimingProvider {
       return;
     }
 
-    const request = this.alepha.context.get<ServerRequest>("request");
+    const request = this.alepha.store.get("alepha.http.request");
     if (!request) {
       return;
     }
@@ -89,7 +88,7 @@ export class ServerTimingProvider {
       return;
     }
 
-    const request = this.alepha.context.get<ServerRequest>("request");
+    const request = this.alepha.store.get("alepha.http.request");
     if (!request) {
       return;
     }

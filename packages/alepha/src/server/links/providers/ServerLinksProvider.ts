@@ -42,7 +42,10 @@ export class ServerLinksProvider {
           group: action.group,
           schema: action.options.schema,
           requestBodyType: action.getBodyContentType(),
-          secured: action.options.secure,
+          secured: action.middlewares.some((m) => m?.name === "$secure")
+            ? (action.middlewares.find((m) => m?.name === "$secure")?.options ??
+              true)
+            : undefined,
           method: action.method === "GET" ? undefined : action.method,
           prefix: action.prefix,
           path: action.path,
@@ -83,13 +86,9 @@ export class ServerLinksProvider {
   ): Promise<ApiLinksResponse> {
     const { user } = options;
     let permissions: Permission[] | undefined;
-    let permissionMap: Map<string, Permission> | undefined;
     const hasSecurity = this.alepha.has(SecurityProvider);
     if (hasSecurity && user) {
       permissions = this.alepha.inject(SecurityProvider).getPermissions(user);
-      permissionMap = new Map(
-        permissions.map((it) => [`${it.group}:${it.name}`, it]),
-      );
     }
 
     const userLinks: ApiLink[] = [];
@@ -121,18 +120,43 @@ export class ServerLinksProvider {
           continue;
         }
 
-        if (typeof link.secured === "object" && link.secured.realm) {
-          // realm check
-          if (user.realm !== link.secured.realm) {
+        if (typeof link.secured === "object") {
+          // issuer check
+          if (
+            link.secured.issuers?.length &&
+            (!user.realm || !link.secured.issuers.includes(user.realm))
+          ) {
             continue;
           }
-        } else if (permissionMap) {
-          // small permissions check, can be optimized later ... :')
 
-          if (!permissionMap.has(`${link.group}:${link.name}`)) {
-            continue;
+          // role check
+          if (link.secured.roles?.length) {
+            const hasRole = link.secured.roles.some((role: string) =>
+              user.roles?.includes(role),
+            );
+            if (!hasRole) continue;
+          }
+
+          // explicit permission check
+          if (link.secured.permissions?.length) {
+            const securityProvider = this.alepha.inject(SecurityProvider);
+            const perms = link.secured.permissions;
+
+            let allowed = true;
+            for (const perm of perms) {
+              const result = securityProvider.checkPermission(
+                perm,
+                ...(user.roles ?? []),
+              );
+              if (!result.isAuthorized) {
+                allowed = false;
+                break;
+              }
+            }
+            if (!allowed) continue;
           }
         }
+        // link.secured === true → auth only, user is already checked above
       }
 
       userLinks.push({

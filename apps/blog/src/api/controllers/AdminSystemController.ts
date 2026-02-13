@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
+import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { postEntity } from "../entities/postEntity.ts";
 import { CategoryService } from "../services/CategoryService.ts";
@@ -328,7 +329,7 @@ export class AdminSystemController {
     method: "POST",
     path: `${this.url}/seed`,
     group: this.group,
-    secure: true,
+    use: [$secure()],
     description: "Seed database with sample blog data",
     schema: {
       response: okSchema,

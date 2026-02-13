@@ -1,4 +1,5 @@
 import { $env, $inject, Alepha, t } from "alepha";
+import { CryptoProvider } from "../../../crypto/index.ts";
 import { ServerReply } from "../helpers/ServerReply.ts";
 import type {
   RequestGeo,
@@ -26,9 +27,21 @@ const envSchema = t.object({
 export class ServerRequestParser {
   protected readonly alepha = $inject(Alepha);
   protected readonly userAgentParser = $inject(UserAgentParser);
+  protected readonly cryptoProvider = $inject(CryptoProvider);
   protected readonly env = $env(envSchema);
+  protected readonly rootURL = new URL("http://localhost/");
 
-  public createServerRequest(rawRequest: ServerRequestData): ServerRequest {
+  public createServerRequest(
+    partialRawRequest: Partial<ServerRequestData>,
+  ): ServerRequest {
+    const rawRequest = {
+      method: "GET",
+      url: this.rootURL,
+      headers: {},
+      query: {},
+      params: {},
+      ...partialRawRequest,
+    } as ServerRequestData;
     const self = this;
     return {
       method: rawRequest.method,
@@ -37,11 +50,16 @@ export class ServerRequestParser {
       headers: rawRequest.headers,
       query: rawRequest.query,
       params: rawRequest.params,
+      // ---------------------------------------------------------------------------------------------------------------
       // body will be filled by body parser middleware
       body: null,
+      // ---------------------------------------------------------------------------------------------------------------
       metadata: {},
-      requestId: this.getRequestId(rawRequest) || crypto.randomUUID(),
       reply: this.alepha.inject(ServerReply, { lifetime: "transient" }),
+      // ---------------------------------------------------------------------------------------------------------------
+      get requestId() {
+        return self.getRequestId(rawRequest);
+      },
       get ip() {
         return self.getRequestIp(rawRequest);
       },
@@ -69,8 +87,8 @@ export class ServerRequestParser {
     } as ServerRequest;
   }
 
-  public getRequestId(request: ServerRequestData): string | undefined {
-    return request.headers["x-request-id"];
+  public getRequestId(request: ServerRequestData): string {
+    return request.headers["x-request-id"] || this.cryptoProvider.randomUUID();
   }
 
   public getRequestUserAgent(request: ServerRequestData) {

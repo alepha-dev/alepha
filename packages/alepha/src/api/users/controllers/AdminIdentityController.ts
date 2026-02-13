@@ -1,4 +1,5 @@
 import { $inject, t } from "alepha";
+import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { identityQuerySchema } from "../schemas/identityQuerySchema.ts";
 import { identityResourceSchema } from "../schemas/identityResourceSchema.ts";
@@ -15,7 +16,7 @@ export class AdminIdentityController {
   public readonly findIdentities = $action({
     path: this.url,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:identity:read"] })],
     description: "Find identities with pagination and filtering",
     schema: {
       query: t.extend(identityQuerySchema, {
@@ -35,7 +36,7 @@ export class AdminIdentityController {
   public readonly getIdentity = $action({
     path: `${this.url}/:id`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:identity:read"] })],
     description: "Get an identity by ID",
     schema: {
       params: t.object({
@@ -57,7 +58,7 @@ export class AdminIdentityController {
     method: "DELETE",
     path: `${this.url}/:id`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:identity:delete"] })],
     description: "Delete an identity",
     schema: {
       params: t.object({

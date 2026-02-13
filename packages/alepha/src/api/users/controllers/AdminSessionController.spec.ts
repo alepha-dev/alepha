@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { DbEntityNotFoundError } from "alepha/orm";
-import { AlephaSecurity } from "alepha/security";
+import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { describe, it } from "vitest";
 import {
   AdminSessionController,
@@ -9,6 +9,12 @@ import {
   SessionCrudService,
   UserService,
 } from "../index.ts";
+
+const adminUser: UserAccountToken = {
+  id: "00000000-0000-0000-0000-000000000001",
+  name: "Test Admin",
+  roles: ["admin"],
+};
 
 const setup = async () => {
   const alepha = Alepha.create({
@@ -54,9 +60,12 @@ describe("alepha/api/users - AdminSessionController", () => {
       },
     });
 
-    const result = await controller.getSession({
-      params: { id: session.id },
-    });
+    const result = await controller.getSession(
+      {
+        params: { id: session.id },
+      },
+      { user: adminUser },
+    );
 
     expect(result.id).toBe(session.id);
     expect(result.userId).toBe(user.id);
@@ -68,9 +77,12 @@ describe("alepha/api/users - AdminSessionController", () => {
     const { controller } = await setup();
 
     await expect(
-      controller.getSession({
-        params: { id: "550e8400-e29b-41d4-a716-446655440000" },
-      }),
+      controller.getSession(
+        {
+          params: { id: "550e8400-e29b-41d4-a716-446655440000" },
+        },
+        { user: adminUser },
+      ),
     ).rejects.toThrowError(DbEntityNotFoundError);
   });
 
@@ -90,18 +102,24 @@ describe("alepha/api/users - AdminSessionController", () => {
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
 
-    const result = await controller.deleteSession({
-      params: { id: session.id },
-    });
+    const result = await controller.deleteSession(
+      {
+        params: { id: session.id },
+      },
+      { user: adminUser },
+    );
 
     expect(result.ok).toBe(true);
     expect(result.id).toBe(session.id);
 
     // Verify session is deleted
     await expect(
-      controller.getSession({
-        params: { id: session.id },
-      }),
+      controller.getSession(
+        {
+          params: { id: session.id },
+        },
+        { user: adminUser },
+      ),
     ).rejects.toThrowError(DbEntityNotFoundError);
   });
 
@@ -132,9 +150,12 @@ describe("alepha/api/users - AdminSessionController", () => {
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
 
-    const result = await controller.findSessions({
-      query: { userId: user.id },
-    });
+    const result = await controller.findSessions(
+      {
+        query: { userId: user.id },
+      },
+      { user: adminUser },
+    );
 
     expect(result.content.length).toBeGreaterThanOrEqual(3);
 
@@ -176,9 +197,12 @@ describe("alepha/api/users - AdminSessionController", () => {
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
 
-    const result = await controller.findSessions({
-      query: { userId: user1.id },
-    });
+    const result = await controller.findSessions(
+      {
+        query: { userId: user1.id },
+      },
+      { user: adminUser },
+    );
 
     expect(result.content.every((s) => s.userId === user1.id)).toBe(true);
     expect(result.content.length).toBeGreaterThanOrEqual(2);
@@ -212,9 +236,12 @@ describe("alepha/api/users - AdminSessionController", () => {
       expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
     });
 
-    const result = await controller.findSessions({
-      query: { userId: user.id },
-    });
+    const result = await controller.findSessions(
+      {
+        query: { userId: user.id },
+      },
+      { user: adminUser },
+    );
 
     const sessionIds = result.content.map((s) => s.id);
     expect(sessionIds.indexOf(session3.id)).toBeLessThan(
@@ -259,15 +286,21 @@ describe("alepha/api/users - AdminSessionController", () => {
       },
     });
 
-    const desktopResult = await controller.getSession({
-      params: { id: desktopSession.id },
-    });
+    const desktopResult = await controller.getSession(
+      {
+        params: { id: desktopSession.id },
+      },
+      { user: adminUser },
+    );
     expect(desktopResult.userAgent?.device).toBe("DESKTOP");
     expect(desktopResult.userAgent?.browser).toBe("Edge");
 
-    const mobileResult = await controller.getSession({
-      params: { id: mobileSession.id },
-    });
+    const mobileResult = await controller.getSession(
+      {
+        params: { id: mobileSession.id },
+      },
+      { user: adminUser },
+    );
     expect(mobileResult.userAgent?.device).toBe("MOBILE");
     expect(mobileResult.userAgent?.browser).toBe("Safari");
   });

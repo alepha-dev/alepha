@@ -269,7 +269,7 @@ export class ApiKeyService {
    * Update usage statistics for an API key.
    */
   protected async updateUsage(id: string): Promise<void> {
-    const request = this.alepha.context.get<ServerRequest>("request");
+    const request = this.alepha.store.get("alepha.http.request");
 
     await this.repo.updateById(id, {
       lastUsedAt: this.dateTimeProvider.now().toISOString(),

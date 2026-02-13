@@ -1,29 +1,28 @@
 import { Alepha } from "alepha";
 import { $action } from "alepha/server";
 import { afterEach, beforeEach, describe, test } from "vitest";
-import { AlephaServerCache, ServerCacheProvider } from "../index.ts";
+import { $etag, AlephaServerEtag, ServerEtagProvider } from "../index.ts";
 
 class TestApp {
   counter = 0;
-  private resetCounter = 0;
+  protected resetCounter = 0;
 
   cachedAction = $action({
-    cache: true,
+    use: [$etag(true)],
     handler: () => `cached-${this.counter++}`,
   });
 
   uncachedAction = $action({
-    cache: false,
     handler: () => `uncached-${this.counter++}`,
   });
 
   cachedWithCustomTtl = $action({
-    cache: { store: { ttl: 1000 } },
+    use: [$etag({ store: { ttl: 1000 } })],
     handler: () => `ttl-cached-${this.counter++}`,
   });
 
   asyncCachedAction = $action({
-    cache: true,
+    use: [$etag(true)],
     handler: async () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
       return `async-cached-${this.counter++}`;
@@ -31,128 +30,143 @@ class TestApp {
   });
 
   etagOnlyAction = $action({
-    cache: { etag: true },
+    use: [$etag()],
     handler: () => `etag-only-${this.counter++}`,
   });
 
   etagAndCacheAction = $action({
-    cache: true,
+    use: [$etag(true)],
     handler: () => `etag-and-cache-${this.counter++}`,
   });
 
   dynamicContentAction = $action({
-    cache: { etag: true },
+    use: [$etag()],
     handler: () => `dynamic-${Date.now()}`,
   });
 
   cacheWithControlTrue = $action({
-    cache: { store: true, control: true },
+    use: [$etag({ store: true, control: true })],
     handler: () => `control-true-${this.counter++}`,
   });
 
   cacheWithControlString = $action({
-    cache: { store: true, control: "public, max-age=600, immutable" },
+    use: [$etag({ store: true, control: "public, max-age=600, immutable" })],
     handler: () => `control-string-${this.counter++}`,
   });
 
   cacheWithControlObject = $action({
-    cache: {
-      store: true,
-      control: {
-        public: true,
-        maxAge: 3600,
-        mustRevalidate: true,
-      },
-    },
+    use: [
+      $etag({
+        store: true,
+        control: {
+          public: true,
+          maxAge: 3600,
+          mustRevalidate: true,
+        },
+      }),
+    ],
     handler: () => `control-object-${this.counter++}`,
   });
 
   cacheWithComplexControl = $action({
-    cache: {
-      store: {
-        ttl: [10, "minutes"],
-      },
-      etag: true,
-      control: {
-        public: true,
-        maxAge: 600,
-        sMaxAge: 1200,
-        immutable: true,
-      },
-    },
+    use: [
+      $etag({
+        store: {
+          ttl: [10, "minutes"],
+        },
+        control: {
+          public: true,
+          maxAge: 600,
+          sMaxAge: 1200,
+          immutable: true,
+        },
+      }),
+    ],
     handler: () => `complex-control-${this.counter++}`,
   });
 
   cacheWithDurationMaxAge = $action({
-    cache: {
-      store: true,
-      control: {
-        public: true,
-        maxAge: [5, "minutes"],
-        sMaxAge: [1, "hour"],
-      },
-    },
+    use: [
+      $etag({
+        store: true,
+        control: {
+          public: true,
+          maxAge: [5, "minutes"],
+          sMaxAge: [1, "hour"],
+        },
+      }),
+    ],
     handler: () => `duration-maxage-${this.counter++}`,
   });
 
   cacheWith30Seconds = $action({
-    cache: {
-      store: true,
-      control: {
-        public: true,
-        maxAge: [30, "seconds"],
-      },
-    },
+    use: [
+      $etag({
+        store: true,
+        control: {
+          public: true,
+          maxAge: [30, "seconds"],
+        },
+      }),
+    ],
     handler: () => "test-30s",
   });
 
   cacheWith10Minutes = $action({
-    cache: {
-      store: true,
-      control: {
-        public: true,
-        maxAge: [10, "minutes"],
-      },
-    },
+    use: [
+      $etag({
+        store: true,
+        control: {
+          public: true,
+          maxAge: [10, "minutes"],
+        },
+      }),
+    ],
     handler: () => "test-10m",
   });
 
   cacheWith2Hours = $action({
-    cache: {
-      store: true,
-      control: {
-        public: true,
-        maxAge: [2, "hours"],
-      },
-    },
+    use: [
+      $etag({
+        store: true,
+        control: {
+          public: true,
+          maxAge: [2, "hours"],
+        },
+      }),
+    ],
     handler: () => "test-2h",
   });
 
   cacheWith1Day = $action({
-    cache: {
-      store: true,
-      control: {
-        public: true,
-        maxAge: [1, "day"],
-      },
-    },
+    use: [
+      $etag({
+        store: true,
+        control: {
+          public: true,
+          maxAge: [1, "day"],
+        },
+      }),
+    ],
     handler: () => "test-1d",
   });
 
   cacheWithMixedMaxAge = $action({
-    cache: {
-      store: true,
-      control: {
-        public: true,
-        maxAge: 600, // number (seconds)
-        sMaxAge: [20, "minutes"], // DurationLike
-      },
-    },
+    use: [
+      $etag({
+        store: true,
+        control: {
+          public: true,
+          maxAge: 600, // number (seconds)
+          sMaxAge: [20, "minutes"], // DurationLike
+        },
+      }),
+    ],
     handler: () => "mixed",
   });
 
   errorAction = $action({
-    cache: true,
+    use: [$etag(true)],
     handler: ({ reply }) => {
       reply.status = 500;
       return `error-${this.counter++}`;
@@ -160,7 +174,7 @@ class TestApp {
   });
 
   notFoundAction = $action({
-    cache: true,
+    use: [$etag(true)],
     handler: ({ reply }) => {
       reply.status = 404;
       return `not-found-${this.counter++}`;
@@ -168,7 +182,7 @@ class TestApp {
   });
 
   conditionalErrorAction = $action({
-    cache: true,
+    use: [$etag(true)],
     handler: ({ reply }) => {
       if (this.counter === 0) {
         reply.status = 500;
@@ -184,15 +198,15 @@ class TestApp {
   }
 }
 
-describe("ServerCacheProvider", () => {
+describe("ServerEtagProvider", () => {
   let alepha: Alepha;
   let app: TestApp;
-  let cacheProvider: ServerCacheProvider;
+  let etagProvider: ServerEtagProvider;
 
   beforeEach(async () => {
-    alepha = Alepha.create().with(AlephaServerCache);
+    alepha = Alepha.create().with(AlephaServerEtag);
     app = alepha.inject(TestApp);
-    cacheProvider = alepha.inject(ServerCacheProvider);
+    etagProvider = alepha.inject(ServerEtagProvider);
     await alepha.start();
   });
 
@@ -219,7 +233,7 @@ describe("ServerCacheProvider", () => {
       const firstResponse = await app.cachedAction.fetch();
       expect(firstResponse.data).toBe("cached-0");
 
-      await cacheProvider.invalidate(app.cachedAction.route);
+      await etagProvider.invalidate(app.cachedAction.route);
 
       const afterInvalidation = await app.cachedAction.fetch();
       expect(afterInvalidation.status).toBe(200);
@@ -239,7 +253,7 @@ describe("ServerCacheProvider", () => {
       expect(cachedResponse.status).toBe(304);
 
       // Cache invalidation should work
-      await cacheProvider.invalidate(app.cachedAction.route);
+      await etagProvider.invalidate(app.cachedAction.route);
       const afterInvalidation = await app.cachedAction.fetch();
       expect(afterInvalidation.status).toBe(200);
       expect(afterInvalidation.data).toBe("cached-1");
@@ -247,7 +261,7 @@ describe("ServerCacheProvider", () => {
   });
 
   describe("Cache behavior", () => {
-    test("should cache responses for actions with cache: true", async ({
+    test("should cache responses for actions with $etag(true)", async ({
       expect,
     }) => {
       for (let i = 0; i < 5; i++) {
@@ -258,7 +272,7 @@ describe("ServerCacheProvider", () => {
       }
     });
 
-    test("should not cache responses for actions with cache: false", async ({
+    test("should not cache responses for actions without $etag", async ({
       expect,
     }) => {
       for (let i = 0; i < 5; i++) {
@@ -279,7 +293,7 @@ describe("ServerCacheProvider", () => {
   });
 
   describe("Cache invalidation", () => {
-    test("should invalidate cache using ServerCacheProvider.invalidate()", async ({
+    test("should invalidate cache using ServerEtagProvider.invalidate()", async ({
       expect,
     }) => {
       const initialResponse = await app.cachedAction.fetch();
@@ -287,13 +301,13 @@ describe("ServerCacheProvider", () => {
 
       expect(initialResponse.data).toBe(cachedResponse.data);
 
-      await cacheProvider.invalidate(app.cachedAction.route);
+      await etagProvider.invalidate(app.cachedAction.route);
 
       const afterInvalidation = await app.cachedAction.fetch();
       expect(afterInvalidation.data).not.toBe(initialResponse.data);
     });
 
-    test("should invalidate cache using action.invalidate() method", async ({
+    test("should invalidate cache using injected ServerEtagProvider", async ({
       expect,
     }) => {
       const initialResponse = await app.cachedAction.fetch();
@@ -301,7 +315,7 @@ describe("ServerCacheProvider", () => {
 
       expect(initialResponse.data).toBe(cachedResponse.data);
 
-      await app.cachedAction.invalidate();
+      await etagProvider.invalidate(app.cachedAction.route);
 
       const afterInvalidation = await app.cachedAction.fetch();
       expect(afterInvalidation.data).not.toBe(initialResponse.data);
@@ -313,7 +327,7 @@ describe("ServerCacheProvider", () => {
       const cachedResponse1 = await app.cachedAction.fetch();
       const ttlCachedResponse1 = await app.cachedWithCustomTtl.fetch();
 
-      await cacheProvider.invalidate(app.cachedAction.route);
+      await etagProvider.invalidate(app.cachedAction.route);
 
       const cachedResponse2 = await app.cachedAction.fetch();
       const ttlCachedResponse2 = await app.cachedWithCustomTtl.fetch();
@@ -338,7 +352,7 @@ describe("ServerCacheProvider", () => {
       expect,
     }) => {
       expect(async () => {
-        await cacheProvider.invalidate("non-existent-route" as any);
+        await etagProvider.invalidate("non-existent-route" as any);
       }).not.toThrow();
     });
 
@@ -372,7 +386,7 @@ describe("ServerCacheProvider", () => {
       expect(cachedResponse1.data).toBe(initialResponse.data);
       expect(cachedResponse2.data).toBe(initialResponse.data);
 
-      await cacheProvider.invalidate(app.cachedAction.route);
+      await etagProvider.invalidate(app.cachedAction.route);
 
       const finalResponse = await app.cachedAction.fetch();
       expect(finalResponse.data).not.toBe(initialResponse.data);
@@ -400,7 +414,7 @@ describe("ServerCacheProvider", () => {
       await app.cachedAction.fetch();
       await alepha.stop();
 
-      alepha = Alepha.create().with(AlephaServerCache);
+      alepha = Alepha.create().with(AlephaServerEtag);
       app = alepha.inject(TestApp);
       await alepha.start();
 
@@ -541,7 +555,7 @@ describe("ServerCacheProvider", () => {
       expect(response1.data).toBe("etag-and-cache-0");
 
       // Invalidate cache
-      await cacheProvider.invalidate(app.etagAndCacheAction.route);
+      await etagProvider.invalidate(app.etagAndCacheAction.route);
 
       // Next request should generate new content and new ETag
       const response2 = await app.etagAndCacheAction.fetch();
@@ -596,7 +610,7 @@ describe("ServerCacheProvider", () => {
   });
 
   describe("Mixed scenarios", () => {
-    test("should handle routes with different cache/etag configurations independently", async ({
+    test("should handle routes with different etag configurations independently", async ({
       expect,
     }) => {
       // Cached action
@@ -678,7 +692,7 @@ describe("ServerCacheProvider", () => {
       expect(cacheControl).toContain("immutable");
     });
 
-    test("should not set Cache-Control when cache is true without control option", async ({
+    test("should not set Cache-Control when $etag(true) without control option", async ({
       expect,
     }) => {
       const response = await app.cachedAction.fetch();
@@ -698,17 +712,19 @@ describe("ServerCacheProvider", () => {
     });
 
     test("should support private cache directive", async ({ expect }) => {
-      const alepha = Alepha.create().with(AlephaServerCache);
+      const alepha = Alepha.create().with(AlephaServerEtag);
       const privateAction = alepha.inject(
         class TestPrivateCache {
           action = $action({
-            cache: {
-              store: true,
-              control: {
-                private: true,
-                maxAge: 300,
-              },
-            },
+            use: [
+              $etag({
+                store: true,
+                control: {
+                  private: true,
+                  maxAge: 300,
+                },
+              }),
+            ],
             handler: () => "private-cache",
           });
         },
@@ -726,17 +742,19 @@ describe("ServerCacheProvider", () => {
     test("should support no-cache and no-store directives", async ({
       expect,
     }) => {
-      const alepha = Alepha.create().with(AlephaServerCache);
+      const alepha = Alepha.create().with(AlephaServerEtag);
       const noCacheAction = alepha.inject(
         class TestNoCache {
           action = $action({
-            cache: {
-              store: true,
-              control: {
-                noCache: true,
-                noStore: true,
-              },
-            },
+            use: [
+              $etag({
+                store: true,
+                control: {
+                  noCache: true,
+                  noStore: true,
+                },
+              }),
+            ],
             handler: () => "no-cache",
           });
         },
@@ -751,18 +769,20 @@ describe("ServerCacheProvider", () => {
     });
 
     test("should support proxy-revalidate directive", async ({ expect }) => {
-      const alepha = Alepha.create().with(AlephaServerCache);
+      const alepha = Alepha.create().with(AlephaServerEtag);
       const proxyAction = alepha.inject(
         class TestProxyRevalidate {
           action = $action({
-            cache: {
-              store: true,
-              control: {
-                public: true,
-                proxyRevalidate: true,
-                maxAge: 600,
-              },
-            },
+            use: [
+              $etag({
+                store: true,
+                control: {
+                  public: true,
+                  proxyRevalidate: true,
+                  maxAge: 600,
+                },
+              }),
+            ],
             handler: () => "proxy-revalidate",
           });
         },
@@ -780,18 +800,20 @@ describe("ServerCacheProvider", () => {
     test("should support s-maxage for shared cache control", async ({
       expect,
     }) => {
-      const alepha = Alepha.create().with(AlephaServerCache);
+      const alepha = Alepha.create().with(AlephaServerEtag);
       const sharedCacheAction = alepha.inject(
         class TestSharedCache {
           action = $action({
-            cache: {
-              store: true,
-              control: {
-                public: true,
-                maxAge: 300,
-                sMaxAge: 600,
-              },
-            },
+            use: [
+              $etag({
+                store: true,
+                control: {
+                  public: true,
+                  maxAge: 300,
+                  sMaxAge: 600,
+                },
+              }),
+            ],
             handler: () => "shared-cache",
           });
         },
@@ -825,25 +847,25 @@ describe("ServerCacheProvider", () => {
     }) => {
       // Test directly via buildCacheControlHeader method
       expect(
-        cacheProvider.buildCacheControlHeader({
+        etagProvider.buildCacheControlHeader({
           control: { public: true, maxAge: [30, "seconds"] },
         }),
       ).toContain("max-age=30");
 
       expect(
-        cacheProvider.buildCacheControlHeader({
+        etagProvider.buildCacheControlHeader({
           control: { public: true, maxAge: [10, "minutes"] },
         }),
       ).toContain("max-age=600");
 
       expect(
-        cacheProvider.buildCacheControlHeader({
+        etagProvider.buildCacheControlHeader({
           control: { public: true, maxAge: [2, "hours"] },
         }),
       ).toContain("max-age=7200");
 
       expect(
-        cacheProvider.buildCacheControlHeader({
+        etagProvider.buildCacheControlHeader({
           control: { public: true, maxAge: [1, "day"] },
         }),
       ).toContain("max-age=86400");
@@ -852,7 +874,7 @@ describe("ServerCacheProvider", () => {
     test("should mix number and DurationLike for maxAge and sMaxAge", ({
       expect,
     }) => {
-      const cacheControl = cacheProvider.buildCacheControlHeader({
+      const cacheControl = etagProvider.buildCacheControlHeader({
         control: {
           public: true,
           maxAge: 600, // number (seconds)
@@ -882,7 +904,7 @@ describe("ServerCacheProvider", () => {
       });
 
       // Access the protected method via type assertion
-      const provider = cacheProvider as any;
+      const provider = etagProvider as any;
       const key = "test-stream-key";
 
       // Collect the stream for cache
@@ -920,7 +942,7 @@ describe("ServerCacheProvider", () => {
         },
       });
 
-      // Tee the stream like ServerCacheProvider does
+      // Tee the stream like ServerEtagProvider does
       const [clientStream, cacheStream] = originalStream.tee();
 
       // Read from client stream (simulates client receiving data)
@@ -963,7 +985,7 @@ describe("ServerCacheProvider", () => {
         },
       });
 
-      const provider = cacheProvider as any;
+      const provider = etagProvider as any;
       const key = "empty-stream-key";
 
       const hash = await provider.collectStreamForCache(
@@ -997,7 +1019,7 @@ describe("ServerCacheProvider", () => {
         },
       });
 
-      const provider = cacheProvider as any;
+      const provider = etagProvider as any;
       const key = "large-stream-key";
 
       const hash = await provider.collectStreamForCache(
@@ -1029,7 +1051,7 @@ describe("ServerCacheProvider", () => {
         },
       });
 
-      const provider = cacheProvider as any;
+      const provider = etagProvider as any;
 
       // Generate ETag from stream
       const streamHash = await provider.collectStreamForCache(
@@ -1041,7 +1063,7 @@ describe("ServerCacheProvider", () => {
       );
 
       // Generate ETag from string directly
-      const stringHash = cacheProvider.generateETag(content);
+      const stringHash = etagProvider.generateETag(content);
 
       // Both should produce the same ETag
       expect(streamHash).toBe(stringHash);
@@ -1098,11 +1120,11 @@ describe("ServerCacheProvider", () => {
 
     test("should NOT cache 4xx client errors", async ({ expect }) => {
       // Test with 400 Bad Request
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaServerEtag);
       const badRequestAction = alepha.inject(
         class TestBadRequest {
           action = $action({
-            cache: true,
+            use: [$etag(true)],
             handler: ({ reply }) => {
               reply.status = 400;
               return `bad-request-${app.counter++}`;

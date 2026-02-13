@@ -1,5 +1,4 @@
 import {
-  $inject,
   createPrimitive,
   KIND,
   Primitive,
@@ -7,13 +6,7 @@ import {
   type Static,
   type TSchema,
 } from "alepha";
-import {
-  DateTimeProvider,
-  type DurationLike,
-  type Timeout,
-} from "alepha/datetime";
-import { $logger } from "alepha/logger";
-import { TopicTimeoutError } from "../errors/TopicTimeoutError.ts";
+import type { DurationLike } from "alepha/datetime";
 import { MemoryTopicProvider } from "../providers/MemoryTopicProvider.ts";
 import {
   TopicProvider,
@@ -251,8 +244,6 @@ export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
 export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
   TopicPrimitiveOptions<T>
 > {
-  protected readonly log = $logger();
-  protected readonly dateTimeProvider = $inject(DateTimeProvider);
   public readonly provider = this.$provider();
 
   public get name(): string {
@@ -260,57 +251,29 @@ export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
   }
 
   public async publish(payload: TopicMessage<T>["payload"]): Promise<void> {
-    await this.provider.publish(
+    await this.provider.publishMessage<T>(
       this.name,
-      JSON.stringify({
-        payload: this.alepha.codec.encode(this.options.schema.payload, payload),
-      }),
+      this.options.schema.payload,
+      payload,
     );
   }
 
   public async subscribe(handler: TopicHandler<T>): Promise<UnSubscribeFn> {
-    return this.provider.subscribe(this.name, async (message) => {
-      try {
-        await handler(this.parseMessage(message));
-      } catch (error) {
-        this.log.error("Message processing has failed", error);
-      }
-    });
+    return this.provider.subscribeHandler<T>(
+      this.name,
+      this.options.schema.payload,
+      handler,
+    );
   }
 
   public async wait(
     options: TopicWaitOptions<T> = {},
   ): Promise<TopicMessage<T>> {
-    const filter = options.filter ?? (() => true);
-
-    return new Promise((resolve, reject) => {
-      const ref: { timeout?: Timeout } = {};
-
-      (async () => {
-        const clear = await this.provider.subscribe(this.name, (raw) => {
-          const message = this.parseMessage(raw);
-          if (!filter(message)) {
-            return;
-          }
-
-          ref.timeout?.clear();
-          clear();
-          resolve(message);
-        });
-
-        const timeoutDuration = options.timeout ?? [10, "seconds"];
-
-        ref.timeout = this.dateTimeProvider.createTimeout(() => {
-          clear();
-          reject(
-            new TopicTimeoutError(
-              this.name,
-              this.dateTimeProvider.duration(timeoutDuration).asMilliseconds(),
-            ),
-          );
-        }, timeoutDuration);
-      })();
-    });
+    return this.provider.waitForMessage<T>(
+      this.name,
+      this.options.schema.payload,
+      options,
+    );
   }
 
   protected $provider(): TopicProvider {
@@ -323,16 +286,6 @@ export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
     }
 
     return this.alepha.inject(this.options.provider);
-  }
-
-  protected parseMessage(message: string): TopicMessage<T> {
-    const { payload } = JSON.parse(message);
-    return {
-      payload: this.alepha.codec.decode(
-        this.options.schema.payload,
-        payload,
-      ) as TopicMessage<T>["payload"],
-    };
   }
 }
 

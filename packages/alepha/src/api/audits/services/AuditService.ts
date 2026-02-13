@@ -60,7 +60,7 @@ export class AuditService {
    * Get current request context if available.
    */
   protected getRequestContext(): ServerRequest | undefined {
-    return this.alepha.context.get<ServerRequest>("request");
+    return this.alepha.store.get("alepha.http.request");
   }
 
   /**

@@ -48,6 +48,12 @@ export interface SwaggerPrimitiveOptions {
   excludeTags?: string[];
 
   /**
+   * Server URLs for the API.
+   * If not provided, the server hostname is used automatically.
+   */
+  servers?: OpenApiServer[];
+
+  /**
    * Enable Swagger UI.
    *
    * @default true
@@ -60,8 +66,20 @@ export interface SwaggerPrimitiveOptions {
   rewrite?: (doc: OpenApiDocument) => void;
 }
 
+export interface OpenApiServer {
+  url: string;
+  description?: string;
+}
+
 export interface SwaggerUiOptions {
   root?: string;
+
+  /**
+   * If true, the authorization data is persisted in browser localStorage.
+   *
+   * @default true
+   */
+  persistAuthorization?: boolean;
 
   initOAuth?: {
     /**
@@ -132,6 +150,7 @@ export interface OpenApiDocument {
     version: string;
     description?: string;
   };
+  servers?: OpenApiServer[];
   paths: Record<string, any>;
   components?: {
     schemas?: Record<string, any>;
@@ -144,6 +163,7 @@ export interface OpenApiOperation {
   summary?: string;
   description?: string;
   operationId?: string;
+  deprecated?: boolean;
   parameters?: Array<{
     name: string;
     in: "query" | "header" | "path" | "cookie";

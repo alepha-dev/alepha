@@ -1,4 +1,5 @@
 import { $inject, t } from "alepha";
+import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { auditQuerySchema } from "../schemas/auditQuerySchema.ts";
 import { auditResourceSchema } from "../schemas/auditResourceSchema.ts";
@@ -25,7 +26,7 @@ export class AdminAuditController {
   public readonly findAudits = $action({
     path: this.url,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "Find audit entries with filtering and pagination",
     schema: {
       query: auditQuerySchema,
@@ -40,7 +41,7 @@ export class AdminAuditController {
   public readonly getAudit = $action({
     path: `${this.url}/:id`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "Get a single audit entry by ID",
     schema: {
       params: t.object({
@@ -53,12 +54,13 @@ export class AdminAuditController {
 
   /**
    * Create a new audit entry.
+   * System-only — this permission should never be assigned to human roles.
    */
   public readonly createAudit = $action({
     method: "POST",
     path: this.url,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:audit:create"] })],
     description: "Create a new audit entry",
     schema: {
       body: createAuditSchema,
@@ -73,7 +75,7 @@ export class AdminAuditController {
   public readonly findByUser = $action({
     path: `${this.url}/user/:userId`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "Get audit entries for a specific user",
     schema: {
       params: t.object({
@@ -92,7 +94,7 @@ export class AdminAuditController {
   public readonly findByResource = $action({
     path: `${this.url}/resource/:resourceType/:resourceId`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "Get audit entries for a specific resource",
     schema: {
       params: t.object({
@@ -116,7 +118,7 @@ export class AdminAuditController {
   public readonly getStats = $action({
     path: `${this.url}/stats`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "Get audit statistics for a time period",
     schema: {
       query: t.object({
@@ -150,7 +152,7 @@ export class AdminAuditController {
   public readonly getTypes = $action({
     path: `${this.url}/types`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "Get all registered audit types",
     schema: {
       response: t.array(
@@ -170,7 +172,7 @@ export class AdminAuditController {
   public readonly getFilterOptions = $action({
     path: `${this.url}/filters`,
     group: this.group,
-    secure: true,
+    use: [$secure({ permissions: ["admin:audit:read"] })],
     description: "Get distinct values for audit filters",
     schema: {
       response: t.object({
