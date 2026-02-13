@@ -1,9 +1,12 @@
 import {
-  $env,
+  $atom,
+  $context,
   $inject,
+  $use,
+  AlephaError,
   type AsyncFn,
-  createPrimitive,
-  KIND,
+  createMiddleware,
+  type Middleware,
   Primitive,
   type Static,
   t,
@@ -18,60 +21,135 @@ import { $topic, TopicTimeoutError } from "alepha/topic";
 import { LockProvider } from "../providers/LockProvider.ts";
 import { LockTopicProvider } from "../providers/LockTopicProvider.ts";
 
+export class LockAcquireError extends AlephaError {
+  constructor(name: string) {
+    super(`$lock: could not acquire lock '${name}'`);
+  }
+}
+
 /**
- * Creates a distributed lock primitive for ensuring single-instance execution across processes.
+ * Distributed lock middleware for `use` arrays in `$action`, `$job`, `$page`, `$pipeline`.
  *
- * Prevents multiple instances of the same operation from running simultaneously, essential for
- * maintaining data consistency and preventing race conditions in distributed applications.
+ * Acquires a distributed lock before the handler runs and releases it after completion.
+ * Throws `LockAcquireError` if the lock cannot be acquired (unless `wait: true`).
  *
- * **Key Features**
- * - Distributed coordination across multiple processes, servers, and containers
- * - Automatic expiration to prevent deadlocks
- * - Configurable wait behavior (blocking vs. non-blocking)
- * - Optional grace periods for lock extension after completion
- * - Dynamic or static lock keys for fine-grained control
- *
- * **Common Use Cases**
- * - Database migrations and scheduled jobs
- * - File processing and batch operations
- * - Critical section protection and resource initialization
- *
- * @example
  * ```ts
- * class TaskService {
- *   // Basic scheduled task - only one server executes
- *   dailyReport = $lock({
- *     handler: async () => {
- *       const report = await this.generateDailyReport();
- *       await this.sendReportToManagement(report);
- *     }
- *   });
- *
- *   // Migration with wait - all instances wait for completion
- *   migration = $lock({
- *     wait: true,
- *     maxDuration: [10, "minutes"],
- *     handler: async (version: string) => {
- *       await this.runMigrationScripts(version);
- *     }
- *   });
- *
- *   // Dynamic lock keys for per-resource locking
- *   processFile = $lock({
- *     name: (fileId: string) => `file-processing:${fileId}`,
- *     gracePeriod: [5, "minutes"],
- *     handler: async (fileId: string) => {
- *       await this.processFileData(fileId);
- *     }
- *   });
- * }
+ * processOrder = $action({
+ *   use: [$lock({ name: "process-order" })],
+ *   handler: async ({ body }) => { ... },
+ * });
  * ```
  */
-export const $lock = <TFunc extends AsyncFn>(
-  options: LockPrimitiveOptions<TFunc>,
-): LockPrimitive<TFunc> => {
-  return createPrimitive(LockPrimitive<TFunc>, options);
-};
+export function $lock(options: LockMiddlewareOptions): Middleware {
+  const { alepha } = $context();
+  const lockProvider = alepha.inject(LockProvider);
+  const dateTimeProvider = alepha.inject(DateTimeProvider);
+
+  return createMiddleware({
+    name: "$lock",
+    options: options as unknown as Record<string, unknown>,
+    handler: ({ next }) => {
+      const id = crypto.randomUUID();
+      const maxDurationMs = dateTimeProvider
+        .duration(options.maxDuration ?? [5, "minutes"])
+        .asMilliseconds();
+
+      return async (...args: any[]) => {
+        const name =
+          typeof options.name === "function"
+            ? options.name(...args)
+            : options.name;
+        if (!name) {
+          throw new AlephaError(
+            "$lock middleware requires a name option (no class context available)",
+          );
+        }
+
+        const value = await lockProvider.set(
+          name,
+          `${id},${dateTimeProvider.nowISOString()}`,
+          true,
+          maxDurationMs,
+        );
+
+        const [lockId, _createdAtStr, endedAtStr] = value.split(",");
+
+        // Lock already ended (grace period active)
+        if (endedAtStr) {
+          throw new LockAcquireError(name);
+        }
+
+        // Lock held by someone else
+        if (lockId !== id) {
+          if (options.wait) {
+            // Poll until lock is released
+            const start = dateTimeProvider.nowMillis();
+            while (dateTimeProvider.nowMillis() - start < maxDurationMs) {
+              await dateTimeProvider.wait(500);
+              const current = await lockProvider.set(
+                name,
+                `${id},${dateTimeProvider.nowISOString()}`,
+                true,
+                maxDurationMs,
+              );
+              const [currentId] = current.split(",");
+              if (currentId === id) {
+                break;
+              }
+            }
+            // Check if we got the lock
+            const final = await lockProvider.set(
+              name,
+              `${id},${dateTimeProvider.nowISOString()}`,
+              true,
+              maxDurationMs,
+            );
+            const [finalId] = final.split(",");
+            if (finalId !== id) {
+              throw new LockAcquireError(name);
+            }
+          } else {
+            throw new LockAcquireError(name);
+          }
+        }
+
+        // We hold the lock — execute handler
+        try {
+          return await next(...args);
+        } finally {
+          await lockProvider.del(name);
+        }
+      };
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Options for $lock in middleware mode (no handler).
+ */
+export interface LockMiddlewareOptions {
+  /**
+   * Lock key name. Required in middleware mode (no class context available).
+   * Can be a static string or a function that derives the key from handler args.
+   */
+  name: string | ((...args: any[]) => string);
+
+  /**
+   * Whether to wait for the lock to become available.
+   *
+   * @default false
+   */
+  wait?: boolean;
+
+  /**
+   * Maximum duration the lock can be held before automatic expiration.
+   *
+   * @default [5, "minutes"]
+   */
+  maxDuration?: DurationLike;
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -287,20 +365,38 @@ export interface LockPrimitiveOptions<TFunc extends AsyncFn> {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const envSchema = t.object({
-  LOCK_PREFIX_KEY: t.text({ default: "" }),
+/**
+ * Lock configuration atom.
+ */
+export const lockOptions = $atom({
+  name: "alepha.lock.options",
+  schema: t.object({
+    prefixKey: t.text({
+      default: "",
+      description: "Prefix for all lock keys.",
+    }),
+  }),
+  default: {
+    prefixKey: "",
+  },
 });
 
+export type LockAtomOptions = Static<typeof lockOptions.schema>;
+
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface State {
+    [lockOptions.key]: LockAtomOptions;
+  }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
   LockPrimitiveOptions<TFunc>
 > {
   protected readonly log = $logger();
   protected readonly provider = $inject(LockProvider);
-  protected readonly env = $env(envSchema);
+  protected readonly settings = $use(lockOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
   /**
@@ -320,7 +416,7 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
   );
 
   protected readonly topicLockEnd = $topic({
-    name: `${this.env.LOCK_PREFIX_KEY}lock:end`,
+    name: `${this.settings.prefixKey}lock:end`,
     provider: LockTopicProvider,
     schema: {
       payload: t.object({
@@ -433,7 +529,7 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
       base = `${this.config.service.name}:${this.config.propertyKey}`;
     }
 
-    return `${this.env.LOCK_PREFIX_KEY}${base}`;
+    return `${this.settings.prefixKey}${base}`;
   }
 
   protected parse(value: string): LockResult {
@@ -450,8 +546,6 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
     };
   }
 }
-
-$lock[KIND] = LockPrimitive;
 
 export interface LockResult {
   id: string;

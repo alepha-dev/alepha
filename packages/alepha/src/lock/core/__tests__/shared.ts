@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { $inject, Alepha, type Service } from "alepha";
+import { $inject, Alepha, createPrimitive, type Service } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import {
-  $lock,
   AlephaLock,
+  LockPrimitive,
   LockProvider,
   LockTopicProvider,
+  lockOptions,
   MemoryLockProvider,
 } from "alepha/lock";
 import {
@@ -34,7 +35,7 @@ export const testLockBasic = async (
     lock = $inject(LockProvider);
     dt = $inject(DateTimeProvider);
     stack = () => state.stack;
-    migrate = $lock({
+    migrate = createPrimitive(LockPrimitive, {
       handler: async () => {
         await this.dt.wait([50, "milliseconds"]);
         state.stack = state.stack ? `${state.stack}A` : "A";
@@ -45,11 +46,9 @@ export const testLockBasic = async (
   const prefix = randomUUID();
 
   const createApp = async () => {
-    return Alepha.create({
-      env: {
-        LOCK_PREFIX_KEY: prefix,
-      },
-    })
+    const app = Alepha.create();
+    app.store.mut(lockOptions, () => ({ prefixKey: prefix }));
+    return app
       .with({
         provide: LockTopicProvider,
         use: topicProvider,
@@ -90,7 +89,7 @@ export const testLockWait = async (
   class TestLockWait {
     dt = $inject(DateTimeProvider);
 
-    migrateLock = $lock({
+    migrateLock = createPrimitive(LockPrimitive, {
       wait: true,
       handler: async () => {
         count++;
@@ -157,7 +156,7 @@ export const testLockGracePeriod = async (
       });
 
     class TestApp {
-      fn = $lock({
+      fn = createPrimitive(LockPrimitive, {
         gracePeriod: config.gracePeriod,
         handler: async () => {
           count += 1;
