@@ -1,4 +1,4 @@
-import { $inject, $use, type Alepha, AlephaError, t } from "alepha";
+import { $inject, $use, Alepha, AlephaError, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -26,6 +26,7 @@ import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
 
 export class BuildCommand {
+  protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
@@ -206,7 +207,7 @@ export class BuildCommand {
           }
 
           await buildServer({
-            silent: true,
+            silent: !this.alepha.isCI(),
             entry: entry.server,
             distDir,
             clientDir: clientBuilt ? publicDir : undefined,
