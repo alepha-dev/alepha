@@ -1,4 +1,4 @@
-import { $context } from "alepha";
+import { $context, $pipeline } from "alepha";
 import { $retry } from "alepha/retry";
 import type { PgTransaction } from "drizzle-orm/pg-core";
 import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
@@ -26,8 +26,12 @@ export const $transaction = <T extends any[], R>(
   const { alepha } = $context();
   const provider = alepha.inject(DatabaseProvider);
 
-  return $retry({
-    when: (err) => err instanceof DbVersionMismatchError,
+  return $pipeline({
+    use: [
+      $retry({
+        when: (err) => err instanceof DbVersionMismatchError,
+      }),
+    ],
     handler: (...args: T) =>
       provider.db.transaction(
         async (tx) => opts.handler(tx, ...args),

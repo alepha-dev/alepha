@@ -58,8 +58,8 @@ describe("$transaction", () => {
 
       const { id } = await app.repository.create({ counter: 0 });
 
-      const tx = app.runIncrementTest(id, 10, 200);
-      await app.runIncrementTest(id, 100);
+      const tx = app.runIncrementTest.run(id, 10, 200);
+      await app.runIncrementTest.run(id, 100);
       await tx;
 
       const r3 = await app.repository.getById(id);
@@ -75,7 +75,9 @@ describe("$transaction", () => {
 
     await app.repository.create({ counter: 0 });
 
-    await expect(() => app.runCollisionTest()).rejects.toThrow(DbConflictError);
+    await expect(() => app.runCollisionTest.run()).rejects.toThrow(
+      DbConflictError,
+    );
 
     expect(await app.repository.count()).toBe(1);
   });
