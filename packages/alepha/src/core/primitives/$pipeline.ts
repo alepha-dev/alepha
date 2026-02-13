@@ -85,7 +85,7 @@ export interface PipelineOptions<
 
 export interface CreateMiddlewareOptions {
   name: string;
-  options?: Record<string, unknown>;
+  options?: any;
   handler: (context: {
     alepha: Alepha;
     next: (...args: any[]) => any;
