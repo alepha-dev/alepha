@@ -1,5 +1,4 @@
 import { $module } from "alepha";
-import { $retry } from "./primitives/$retry.ts";
 import { RetryProvider } from "./providers/RetryProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -28,6 +27,5 @@ export * from "./providers/RetryProvider.ts";
  */
 export const AlephaRetry = $module({
   name: "alepha.retry",
-  primitives: [$retry],
   services: [RetryProvider],
 });

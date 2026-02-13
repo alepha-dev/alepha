@@ -1,7 +1,8 @@
 import {
+  $context,
   $inject,
-  createPrimitive,
-  KIND,
+  createMiddleware,
+  type Middleware,
   Primitive,
   type PrimitiveArgs,
 } from "alepha";
@@ -10,16 +11,45 @@ import type { RetryBackoffOptions } from "../providers/RetryProvider.ts";
 import { RetryProvider } from "../providers/RetryProvider.ts";
 
 /**
- * Creates a function that automatically retries a handler upon failure,
- * with support for exponential backoff, max duration, and cancellation.
+ * Retry middleware for `use` arrays in `$action`, `$job`, `$page`, `$pipeline`.
+ *
+ * Retries the handler on failure with configurable backoff, max attempts, and
+ * conditional retry via `when`. Aborts on application shutdown.
+ *
+ * ```ts
+ * processOrder = $action({
+ *   use: [$retry({ max: 3, backoff: { initial: 500 } })],
+ *   handler: async ({ body }) => { ... },
+ * });
+ * ```
  */
-export const $retry = <T extends (...args: any[]) => any>(
-  options: RetryPrimitiveOptions<T>,
-): RetryPrimitiveFn<T> => {
-  const instance = createPrimitive(RetryPrimitive, options);
-  const fn = (...args: Parameters<T>) => instance.run(...args);
-  return Object.setPrototypeOf(fn, instance) as RetryPrimitiveFn<T>;
-};
+export function $retry(options?: RetryMiddlewareOptions): Middleware {
+  const { alepha } = $context();
+  const retryProvider = alepha.inject(RetryProvider);
+  let appAbortController: AbortController | undefined;
+
+  alepha.events.on("stop", () => {
+    appAbortController?.abort();
+  });
+
+  return createMiddleware({
+    name: "$retry",
+    options: options as unknown as Record<string, unknown>,
+    handler: ({ next }) => {
+      return async (...args) => {
+        appAbortController ??= new AbortController();
+        return retryProvider.retry(
+          {
+            ...options,
+            handler: next,
+            additionalSignal: appAbortController.signal,
+          },
+          ...args,
+        );
+      };
+    },
+  });
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -70,6 +100,47 @@ export interface RetryPrimitiveOptions<T extends (...args: any[]) => any> {
   signal?: AbortSignal;
 }
 
+/**
+ * Options for $retry in middleware mode (no handler).
+ */
+export interface RetryMiddlewareOptions {
+  /**
+   * The maximum number of attempts.
+   *
+   * @default 3
+   */
+  max?: number;
+
+  /**
+   * The backoff strategy for delays between retries.
+   *
+   * @default { initial: 200, factor: 2, jitter: true }
+   */
+  backoff?: number | RetryBackoffOptions;
+
+  /**
+   * An overall time limit for all retry attempts combined.
+   */
+  maxDuration?: DurationLike;
+
+  /**
+   * A function that determines if a retry should be attempted based on the error.
+   *
+   * @default (error) => true (retries on any error)
+   */
+  when?: (error: Error) => boolean;
+
+  /**
+   * A custom callback for when a retry attempt fails.
+   */
+  onError?: (error: Error, attempt: number) => void;
+
+  /**
+   * An AbortSignal to allow for external cancellation of the retry loop.
+   */
+  signal?: AbortSignal;
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class RetryPrimitive<
@@ -104,5 +175,3 @@ export interface RetryPrimitiveFn<T extends (...args: any[]) => any>
   extends RetryPrimitive<T> {
   (...args: Parameters<T>): Promise<ReturnType<T>>;
 }
-
-$retry[KIND] = RetryPrimitive;

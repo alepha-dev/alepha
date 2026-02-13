@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { $pipeline, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { $retry } from "../index.ts";
@@ -19,8 +19,8 @@ describe("$retry", () => {
   test("should retry handler up to max retries", async () => {
     class Dummy {
       inc = 0;
-      workRetry = $retry({
-        max: 3,
+      workRetry = $pipeline({
+        use: [$retry({ max: 3 })],
         handler: (n: number, end: number) => {
           this.inc += n;
           if (this.inc < end) {
@@ -32,7 +32,7 @@ describe("$retry", () => {
 
       work = async (n: number, end: number) => {
         this.inc = 0;
-        return await this.workRetry(n, end);
+        return await this.workRetry.run(n, end);
       };
     }
 
@@ -46,9 +46,13 @@ describe("$retry", () => {
   test("should only retry when condition matches", async () => {
     class Dummy {
       inc = 0;
-      workRetry = $retry({
-        max: 10,
-        when: (err: Error) => err.message === "Retry1",
+      workRetry = $pipeline({
+        use: [
+          $retry({
+            max: 10,
+            when: (err: Error) => err.message === "Retry1",
+          }),
+        ],
         handler: (n: number, end: number) => {
           this.inc += n;
           if (this.inc < end) {
@@ -60,7 +64,7 @@ describe("$retry", () => {
 
       async work(n: number, end: number) {
         this.inc = 0;
-        return await this.workRetry(n, end);
+        return await this.workRetry.run(n, end);
       }
     }
 
@@ -74,11 +78,14 @@ describe("$retry", () => {
     const handler = vi.fn().mockResolvedValue("success");
     const retryFunc = alepha.inject(
       class {
-        retry = $retry({ handler });
+        retry = $pipeline({
+          use: [$retry()],
+          handler,
+        });
       },
     ).retry;
 
-    await expect(retryFunc()).resolves.toBe("success");
+    await expect(retryFunc.run()).resolves.toBe("success");
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
@@ -88,13 +95,16 @@ describe("$retry", () => {
 
     const retryFunc = alepha.inject(
       class {
-        retry = $retry({ handler, max: 3, backoff: 0, onError });
+        retry = $pipeline({
+          use: [$retry({ max: 3, backoff: 0, onError })],
+          handler,
+        });
       },
     ).retry;
 
-    await expect(retryFunc()).rejects.toThrow("Failed");
+    await expect(retryFunc.run()).rejects.toThrow("Failed");
     expect(handler).toHaveBeenCalledTimes(3);
-    expect(onError).toHaveBeenCalledTimes(3); // onError is called for ALL failed attempts, including the last one
+    expect(onError).toHaveBeenCalledTimes(3);
     expect(onError).toHaveBeenCalledWith(expect.any(Error), 1);
     expect(onError).toHaveBeenCalledWith(expect.any(Error), 2);
     expect(onError).toHaveBeenCalledWith(expect.any(Error), 3);
@@ -112,11 +122,14 @@ describe("$retry", () => {
 
     const retryFunc = alepha.inject(
       class {
-        retry = $retry({ handler, max: 4, backoff: 0 });
+        retry = $pipeline({
+          use: [$retry({ max: 4, backoff: 0 })],
+          handler,
+        });
       },
     ).retry;
 
-    await expect(retryFunc()).resolves.toBe("success");
+    await expect(retryFunc.run()).resolves.toBe("success");
     expect(handler).toHaveBeenCalledTimes(3);
   });
 
@@ -128,16 +141,14 @@ describe("$retry", () => {
 
     const retryFunc = alepha.inject(
       class {
-        retry = $retry({
+        retry = $pipeline({
+          use: [$retry({ max: 5, maxDuration: [300, "ms"], backoff: 0 })],
           handler,
-          max: 5,
-          maxDuration: [300, "ms"],
-          backoff: 0,
         });
       },
     ).retry;
 
-    await expect(retryFunc()).rejects.toThrow(
+    await expect(retryFunc.run()).rejects.toThrow(
       "Retry operation timed out after 300ms.",
     );
     expect(handler).toHaveBeenCalledTimes(2);
@@ -152,16 +163,20 @@ describe("$retry", () => {
     const abortController = new AbortController();
     const retryFunc = alepha.inject(
       class {
-        retry = $retry({
+        retry = $pipeline({
+          use: [
+            $retry({
+              max: 5,
+              backoff: 100,
+              signal: abortController.signal,
+            }),
+          ],
           handler,
-          max: 5,
-          backoff: 100,
-          signal: abortController.signal,
         });
       },
     ).retry;
 
-    const promise = retryFunc();
+    const promise = retryFunc.run();
 
     // Let the first attempt start
     await time.travel(100);
@@ -178,7 +193,6 @@ describe("$retry", () => {
   test("should be cancellable by application shutdown", async () => {
     // Create a fresh alepha instance for this test
     const testAlepha = Alepha.create();
-    const testTime = testAlepha.inject(DateTimeProvider);
 
     const handler = vi.fn(async () => {
       // Throw immediately to trigger retry
@@ -187,14 +201,17 @@ describe("$retry", () => {
 
     const retryFunc = testAlepha.inject(
       class {
-        retry = $retry({ handler, max: 10, backoff: 100 });
+        retry = $pipeline({
+          use: [$retry({ max: 10, backoff: 100 })],
+          handler,
+        });
       },
     ).retry;
 
     await testAlepha.start();
 
     // Start the retry operation
-    const promise = retryFunc();
+    const promise = retryFunc.run();
 
     // Give it a moment to start
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -219,16 +236,20 @@ describe("$retry", () => {
 
     const retryFunc = alepha.inject(
       class {
-        retry = $retry({
+        retry = $pipeline({
+          use: [
+            $retry({
+              max: 3,
+              backoff: 0,
+              when: (error) => !(error instanceof CustomError),
+            }),
+          ],
           handler,
-          max: 3,
-          backoff: 0,
-          when: (error) => !(error instanceof CustomError),
         });
       },
     ).retry;
 
-    await expect(retryFunc()).rejects.toThrow(CustomError);
+    await expect(retryFunc.run()).rejects.toThrow(CustomError);
     expect(handler).toHaveBeenCalledTimes(1);
   });
 });

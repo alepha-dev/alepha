@@ -6,6 +6,7 @@ import {
   $inject,
   $use,
   Alepha,
+  PipelineHandler,
   type Static,
   t,
 } from "alepha";
@@ -124,12 +125,17 @@ export class ReactServerProvider {
       if (page.component || page.lazy) {
         this.log.debug(`+ ${page.match} -> ${page.name}`);
 
+        const rawHandler = this.createHandler(page);
+        const handler = page.use?.length
+          ? new PipelineHandler(rawHandler, page.use)
+          : rawHandler;
+
         this.serverRouterProvider.createRoute({
           ...page,
           schema: undefined, // schema is handled by the page primitive provider
           method: "GET",
           path: page.match,
-          handler: this.createHandler(page),
+          handler,
         });
       }
     }
@@ -396,8 +402,11 @@ export class ReactServerProvider {
 
     await this.alepha.events.emit("react:server:render:begin", { state });
 
-    // Use shared rendering logic
-    const result = await this.renderPage(page, state);
+    // Use shared rendering logic, wrapped with page middleware if present
+    const renderFn = () => this.renderPage(page, state);
+    const result = page.use?.length
+      ? await new PipelineHandler(renderFn, page.use).run()
+      : await renderFn();
 
     if (result.redirect) {
       return { state, html: "", redirect: result.redirect };
