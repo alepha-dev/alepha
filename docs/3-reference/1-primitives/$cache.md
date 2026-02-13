@@ -8,24 +8,34 @@ import { $cache } from "alepha/cache";
 
 ## Overview
 
-Creates a cache primitive for high-performance data caching with automatic management.
+Creates a cache primitive for caching with automatic management.
 
-Provides a caching layer that improves application performance by storing frequently accessed
-data in memory or external stores like Redis, with support for both function result caching
-and manual cache operations.
+**Middleware mode** (no `handler`) — usable in `use` arrays AND as a store:
+```ts
+class UserService {
+  userCache = $cache({ name: "users", ttl: [10, "minutes"] });
 
-**Key Features**
-- Automatic function result caching based on input parameters
-- Multiple storage backends (in-memory, Redis, custom providers)
-- Intelligent serialization for JSON, strings, and binary data
-- Configurable TTL with automatic expiration
-- Pattern-based cache invalidation with wildcard support
-- Environment controls to enable/disable caching
+  fetchUser = $pipeline({
+    use: [this.userCache],
+    handler: async (userId: string) => this.repo.getById(userId),
+  });
 
-**Storage Backends**
-- Memory: Fast in-memory cache (default for development)
-- Redis: Distributed cache for production environments
-- Custom providers: Implement your own storage backend
+  async invalidateUser(userId: string) {
+    await this.userCache.invalidate(userId);
+  }
+}
+```
+
+**Primitive mode** (with `handler`) — standalone callable:
+```ts
+getUserData = $cache({
+  name: "user-data",
+  ttl: [10, "minutes"],
+  handler: async (userId: string) => {
+    return await database.users.findById(userId);
+  }
+});
+```
 
 ## Options
 
@@ -38,33 +48,4 @@ and manual cache operations.
 | `ttl` | `DurationLike` | No | The time-to-live for the cache in seconds |
 | `disabled` | `boolean` | No | If the cache is disabled. |
 | `compress` | `boolean` | No | Enable gzip compression for cached values |
-
-## Examples
-
-```ts
-class DataService {
-  // Function result caching
-  getUserData = $cache({
-    name: "user-data",
-    ttl: [10, "minutes"],
-    handler: async (userId: string) => {
-      return await database.users.findById(userId);
-    }
-  });
-
-  // Manual cache operations
-  sessionCache = $cache<UserSession>({
-    name: "sessions",
-    ttl: [1, "hour"]
-  });
-
-  async storeSession(id: string, session: UserSession) {
-    await this.sessionCache.set(id, session);
-  }
-
-  async invalidateUserSessions(userId: string) {
-    await this.sessionCache.invalidate(`user:${userId}:*`);
-  }
-}
-```
 

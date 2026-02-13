@@ -23,7 +23,7 @@ import { RetryProvider } from "../providers/RetryProvider.ts";
  * });
  * ```
  */
-export function $retry(options?: RetryMiddlewareOptions): Middleware {
+export const $retry = (options?: RetryMiddlewareOptions): Middleware => {
   const { alepha } = $context();
   const retryProvider = alepha.inject(RetryProvider);
   let appAbortController: AbortController | undefined;
@@ -49,7 +49,7 @@ export function $retry(options?: RetryMiddlewareOptions): Middleware {
       };
     },
   });
-}
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 

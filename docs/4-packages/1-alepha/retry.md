@@ -26,7 +26,7 @@ Automatic retry with backoff.
 
 ### Primitives
 
-- [`$retry`](/docs/reference-primitives-$retry) — Creates a function that automatically retries a handler upon failure,
+- [`$retry`](/docs/reference-primitives-$retry) — Retry middleware for `use` arrays in `$action`, `$job`, `$page`, `$pipeline`.
 
 ### Providers
 

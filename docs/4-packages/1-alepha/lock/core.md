@@ -27,16 +27,8 @@ Resource locking for distributed systems.
 
 ### Primitives
 
-- [`$lock`](/docs/reference-primitives-$lock) — Creates a distributed lock primitive for ensuring single-instance execution across processes.
+- [`$lock`](/docs/reference-primitives-$lock) — Distributed lock middleware for `use` arrays in `$action`, `$job`, `$page`, `$pipeline`.
 
 ### Providers
 
 - [`MemoryLockProvider`](/docs/reference-providers-memorylockprovider) — A simple in-memory store provider.
-
-### Environment Variables
-
-Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `LOCK_PREFIX_KEY` | text |  |  |

@@ -8,25 +8,22 @@ import { $cors } from "alepha/server/cors";
 
 ## Overview
 
-Declares CORS configuration for specific server routes.
-This primitive provides path-based CORS configuration.
+Middleware that applies CORS headers to the response and handles OPTIONS preflight.
 
-## Options
+Reads the request from the ALS context and applies the configured
+CORS headers via `ServerCorsProvider`. Options are merged with
+global CORS defaults.
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | No | Name identifier for this CORS config (default: property key). |
-| `paths` | `string[]` | No | Path patterns to match (supports wildcards like /api/*). |
+For OPTIONS preflight requests, the middleware short-circuits with a 204 response
+and skips the handler entirely.
 
-## Examples
+**Route middleware** — requires a request context (`$action`). Throws if used outside one.
 
-```ts
-class ApiService {
-  // Apply specific CORS to API routes
-  cors = $cors({
-    paths: ["/api/*"],
-    origin: "https://app.example.com",
-    credentials: true,
+```typescript
+class ApiController {
+  getOrders = $action({
+    use: [$cors({ origin: "https://app.example.com", credentials: true })],
+    handler: async ({ query }) => { ... },
   });
 }
 ```

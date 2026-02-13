@@ -23,4 +23,4 @@ Cross-Origin Resource Sharing configuration.
 
 ### Primitives
 
-- [`$cors`](/docs/reference-primitives-$cors) — Declares CORS configuration for specific server routes.
+- [`$cors`](/docs/reference-primitives-$cors) — Middleware that applies CORS headers to the response and handles OPTIONS preflight.

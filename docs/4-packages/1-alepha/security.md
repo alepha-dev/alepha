@@ -35,6 +35,7 @@ Complete authentication and authorization system with JWT, RBAC, and multi-issue
 - [`$issuer`](/docs/reference-primitives-$issuer) — Create a new issuer.
 - [`$permission`](/docs/reference-primitives-$permission) — Create a new permission.
 - [`$role`](/docs/reference-primitives-$role) — Create a new role.
+- [`$secure`](/docs/reference-primitives-$secure) — * Restrict to a specific authentication realm.
 - [`$serviceAccount`](/docs/reference-primitives-$serviceaccount) — Allow to get an access token for a service account.
 
 ### Providers

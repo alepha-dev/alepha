@@ -18,14 +18,9 @@ import {
 } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $topic, TopicTimeoutError } from "alepha/topic";
+import { LockAcquireError } from "../errors/LockAcquireError.ts";
 import { LockProvider } from "../providers/LockProvider.ts";
 import { LockTopicProvider } from "../providers/LockTopicProvider.ts";
-
-export class LockAcquireError extends AlephaError {
-  constructor(name: string) {
-    super(`$lock: could not acquire lock '${name}'`);
-  }
-}
 
 /**
  * Distributed lock middleware for `use` arrays in `$action`, `$job`, `$page`, `$pipeline`.
@@ -40,7 +35,7 @@ export class LockAcquireError extends AlephaError {
  * });
  * ```
  */
-export function $lock(options: LockMiddlewareOptions): Middleware {
+export const $lock = (options: LockMiddlewareOptions): Middleware => {
   const { alepha } = $context();
   const lockProvider = alepha.inject(LockProvider);
   const dateTimeProvider = alepha.inject(DateTimeProvider);
@@ -122,7 +117,7 @@ export function $lock(options: LockMiddlewareOptions): Middleware {
       };
     },
   });
-}
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 

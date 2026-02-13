@@ -55,6 +55,7 @@ It provides a declarative way to define pages with powerful features:
 | `name` | `string` | No | Identifier name for the page |
 | `path` | `string` | No | Add a pathname to the page |
 | `schema` | `TConfig` | No | Add an input schema to define: - `params`: parameters from the pathname |
+| `use` | `Middleware[]` | No | Middleware to apply to the loader function |
 | `loader` | `Object` | No | Load data before rendering the page |
 | `props` | `Object` | No | Default props to pass to the component when rendering the page |
 | `component` | `FC&lt;TProps & TPropsParent&gt;` | No | The component to render when the page is loaded |

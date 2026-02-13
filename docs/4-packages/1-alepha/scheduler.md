@@ -31,11 +31,3 @@ Cron and interval-based task execution.
 ### Providers
 
 - [`WorkerdCronProvider`](/docs/reference-providers-workerdcronprovider) — Cloudflare Workers cron provider.
-
-### Environment Variables
-
-Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `SCHEDULER_PREFIX` | text | - | Prefix store key |

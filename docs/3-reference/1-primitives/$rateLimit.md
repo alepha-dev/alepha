@@ -8,36 +8,37 @@ import { $rateLimit } from "alepha/server/rate-limit";
 
 ## Overview
 
-Declares rate limiting for server routes or custom usage.
-This primitive provides methods to check rate limits and configure behavior
-within the server request/response cycle.
+* Custom key function. Receives the handler arguments.
+   * When provided, bypasses request-based key generation — works outside `$action`.
+   */
+  key?: (...args: any[]) => string;
+}
+
+/**
+Middleware that enforces rate limiting.
+
+**Key resolution** (in order):
+1. Explicit `key` function — user controls the key. Works anywhere (`$action`, `$job`, `$pipeline`).
+2. Auto-detect `request.ip` from ALS — default for `$action` context.
+3. `"global"` fallback — when no request context and no `key`. All calls share one bucket.
+
+Sets `X-RateLimit-*` response headers when a request context is available.
+Throws `HttpError(429)` when the limit is exceeded.
+
+```typescript
+// In $action: automatically rate limits by IP
+$action({ use: [$rateLimit({ max: 100, windowMs: 60000 })] })
+
+// In $action: rate limit by custom key
+$action({ use: [$rateLimit({ max: 10, windowMs: 60000, key: (req) => req.user?.id })] })
+
+// In $job: rate limit all executions globally
+$job({ use: [$rateLimit({ max: 5, windowMs: 3600000 })] })
+```
 
 ## Options
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `name` | `string` | No | Name identifier for this rate limit (default: property key). |
-| `paths` | `string[]` | No | Path patterns to match (supports wildcards like /api/*). |
-
-## Examples
-
-```ts
-class ApiService {
-  // Apply rate limiting to specific paths
-  apiRateLimit = $rateLimit({
-    paths: ["/api/*"],
-    max: 100,
-    windowMs: 15 * 60 * 1000, // 15 minutes
-  });
-
-  // Or use check() method for manual rate limiting
-  customAction = $action({
-    handler: async (req) => {
-      const result = await this.apiRateLimit.check(req);
-      if (!result.allowed) throw new Error("Rate limited");
-      return "ok";
-    },
-  });
-}
-```
+| `key` | `Object` | No | Custom key function |
 

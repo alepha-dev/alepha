@@ -23,13 +23,4 @@ Request rate limiting on actions.
 
 ### Primitives
 
-- [`$rateLimit`](/docs/reference-primitives-$ratelimit) — Declares rate limiting for server routes or custom usage.
-
-### Environment Variables
-
-Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `RATE_LIMIT_MAX_REQUESTS` | number | 100 | Maximum requests per window |
-| `RATE_LIMIT_WINDOW_MS` | number | 15 * 60 * 1000 | Rate limit window in milliseconds |
+- [`$rateLimit`](/docs/reference-primitives-$ratelimit) — * Custom key function. Receives the handler arguments.

@@ -1,7 +1,8 @@
 import { $pipeline, Alepha } from "alepha";
 import { describe, test } from "vitest";
+import { LockAcquireError } from "../errors/LockAcquireError.ts";
 import { AlephaLock } from "../index.ts";
-import { $lock, LockAcquireError } from "./$lock.ts";
+import { $lock } from "./$lock.ts";
 
 describe("$lock middleware", () => {
   test("executes handler when lock is available", async ({ expect }) => {
