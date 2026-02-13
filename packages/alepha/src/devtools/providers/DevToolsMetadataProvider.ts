@@ -74,6 +74,9 @@ export class DevToolsMetadataProvider {
         query: schema?.query,
         response: schema?.response,
         bodyContentType: action.getBodyContentType(),
+        middlewares: action.middlewares.filter(Boolean).length
+          ? action.middlewares.filter(Boolean)
+          : undefined,
       };
     });
   }

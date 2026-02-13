@@ -17,6 +17,14 @@ export const devActionMetadataSchema = t.object({
   query: t.optional(t.any()),
   response: t.optional(t.any()),
   bodyContentType: t.optional(t.text()),
+  middlewares: t.optional(
+    t.array(
+      t.object({
+        name: t.text(),
+        options: t.optional(t.any()),
+      }),
+    ),
+  ),
 });
 
 export type DevActionMetadata = Static<typeof devActionMetadataSchema>;
