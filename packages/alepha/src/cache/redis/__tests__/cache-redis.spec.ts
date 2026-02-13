@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Alepha } from "alepha";
 import { describe, it } from "vitest";
 import {
   testCacheBasic,
@@ -20,50 +21,52 @@ import {
   testCacheStop,
   testSimpleKeyMappingHandler,
 } from "../../core/__tests__/shared.ts";
-import { RedisCacheProvider } from "../index.ts";
+import { RedisCacheProvider, redisCacheOptions } from "../index.ts";
 
 const provider = RedisCacheProvider;
-const env = () => ({ REDIS_CACHE_PREFIX: randomUUID() });
+const configure = () => (app: Alepha) => {
+  app.store.mut(redisCacheOptions, () => ({ prefix: randomUUID() }));
+};
 
 describe("$cache - redis", () => {
   it("should handle basic caching", async () => {
-    await testCacheBasic(env(), provider);
+    await testCacheBasic(configure(), provider);
   });
 
   it("should handle stop lifecycle", async () => {
-    await testCacheStop(env(), provider);
+    await testCacheStop(configure(), provider);
   });
 
   it("should handle missing provider", async () => {
-    await testCacheMissingProvider(env(), provider);
+    await testCacheMissingProvider(configure(), provider);
   });
 
   it("should handle disabled cache", async () => {
-    await testCacheDisabled(env(), provider);
+    await testCacheDisabled(configure(), provider);
   });
 
   it("should invalidate by key", async () => {
-    await testCacheInvalidateByKey(env(), provider);
+    await testCacheInvalidateByKey(configure(), provider);
   });
 
   it("should invalidate by args", async () => {
-    await testCacheInvalidateByArgs(env(), provider);
+    await testCacheInvalidateByArgs(configure(), provider);
   });
 
   it("should invalidate all entries", async () => {
-    await testCacheInvalidateAll(env(), provider);
+    await testCacheInvalidateAll(configure(), provider);
   });
 
   it("should clear cache", async () => {
-    await testCacheClear(env(), provider);
+    await testCacheClear(configure(), provider);
   });
 
   it("should handle different return types", async () => {
-    await testCacheReturnTypes(env(), provider);
+    await testCacheReturnTypes(configure(), provider);
   });
 
   it("should generate cache keys correctly", async () => {
-    await testCacheKeys(env(), provider);
+    await testCacheKeys(configure(), provider);
   });
 
   it("should handle unique key with args", async () => {
@@ -71,30 +74,30 @@ describe("$cache - redis", () => {
   });
 
   it("should clear provider cache", async () => {
-    await testCacheProviderClear(env(), provider);
+    await testCacheProviderClear(configure(), provider);
   });
 
   it("should increment values atomically", async () => {
-    await testCacheIncr(env(), provider);
+    await testCacheIncr(configure(), provider);
   });
 
   it("should cache falsy values (0, empty string, false, null)", async () => {
-    await testCacheFalsyValues(env(), provider);
+    await testCacheFalsyValues(configure(), provider);
   });
 
   it("should not write to provider when cache is disabled", async () => {
-    await testCacheSetDisabled(env(), provider);
+    await testCacheSetDisabled(configure(), provider);
   });
 
   it("should increment via primitive", async () => {
-    await testCachePrimitiveIncr(env(), provider);
+    await testCachePrimitiveIncr(configure(), provider);
   });
 
   it("should compress cached values with gzip", async () => {
-    await testCacheCompress(env(), provider);
+    await testCacheCompress(configure(), provider);
   });
 
   it("should handle different types with compression", async () => {
-    await testCacheCompressTypes(env(), provider);
+    await testCacheCompressTypes(configure(), provider);
   });
 });

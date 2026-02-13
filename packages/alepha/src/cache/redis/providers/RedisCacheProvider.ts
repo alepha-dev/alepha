@@ -1,25 +1,40 @@
-import { $env, $inject, Alepha, type Static, t } from "alepha";
+import { $atom, $inject, $use, Alepha, type Static, t } from "alepha";
 import type { CacheProvider } from "alepha/cache";
 import { $logger } from "alepha/logger";
 import { RedisProvider } from "alepha/redis";
 
-const envSchema = t.object({
-  REDIS_CACHE_PREFIX: t.optional(
-    t.text({
-      description:
-        "Force a prefix for all cache keys in Redis. Useful for testing or multi-tenant applications.",
-    }),
-  ),
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Redis cache configuration atom.
+ */
+export const redisCacheOptions = $atom({
+  name: "alepha.cache.redis.options",
+  schema: t.object({
+    prefix: t.optional(
+      t.text({
+        description:
+          "Prefix for all cache keys in Redis. Useful for testing or multi-tenant applications.",
+      }),
+    ),
+  }),
+  default: {},
 });
 
+export type RedisCacheOptions = Static<typeof redisCacheOptions.schema>;
+
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface State {
+    [redisCacheOptions.key]: RedisCacheOptions;
+  }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class RedisCacheProvider implements CacheProvider {
   protected readonly log = $logger();
   protected readonly redisProvider = $inject(RedisProvider);
-  protected readonly env = $env(envSchema);
+  protected readonly options = $use(redisCacheOptions);
   protected readonly alepha = $inject(Alepha);
 
   public async get(name: string, key: string): Promise<Uint8Array | undefined> {
@@ -116,8 +131,8 @@ export class RedisCacheProvider implements CacheProvider {
   protected prefix(...path: string[]): string {
     const parts = ["cache", ...path];
 
-    if (this.env.REDIS_CACHE_PREFIX) {
-      parts.unshift(this.env.REDIS_CACHE_PREFIX);
+    if (this.options.prefix) {
+      parts.unshift(this.options.prefix);
     }
 
     return parts.join(":");
