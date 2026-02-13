@@ -1,6 +1,5 @@
 import { $module } from "alepha";
 import { AlephaServer } from "alepha/server";
-import { $rateLimit } from "./primitives/$rateLimit.ts";
 import { ServerRateLimitProvider } from "./providers/ServerRateLimitProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -67,6 +66,5 @@ export interface RateLimitOptions {
  */
 export const AlephaServerRateLimit = $module({
   name: "alepha.server.rate-limit",
-  primitives: [$rateLimit],
   services: [AlephaServer, ServerRateLimitProvider],
 });

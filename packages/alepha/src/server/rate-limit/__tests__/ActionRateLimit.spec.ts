@@ -1,8 +1,8 @@
 import { Alepha } from "alepha";
 import { AlephaCache } from "alepha/cache";
-import { $action, AlephaServer, HttpError } from "alepha/server";
+import { $action, AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { $rateLimit, AlephaServerRateLimit } from "../index.ts";
+import { AlephaServerRateLimit } from "../index.ts";
 
 describe("Action Rate Limiting", () => {
   let alepha: Alepha;
@@ -27,25 +27,6 @@ describe("Action Rate Limiting", () => {
     // Action without rate limiting
     unlimitedAction = $action({
       handler: () => "unlimited success",
-    });
-
-    // Rate limit primitive usage
-    customRateLimit = $rateLimit({ max: 1, windowMs: 500 });
-
-    primitiveAction = $action({
-      handler: async (request) => {
-        const result = await this.customRateLimit.check(request, {
-          max: 1,
-          windowMs: 500,
-        });
-        if (!result.allowed) {
-          throw new HttpError({
-            status: 429,
-            message: `Rate limit exceeded. Reset in ${result.retryAfter}s`,
-          });
-        }
-        return "primitive success";
-      },
     });
   }
 
@@ -135,30 +116,6 @@ describe("Action Rate Limiting", () => {
       // Should be allowed again
       const result = await app.limitedAction.run({});
       expect(result).toBe("success");
-    });
-  });
-
-  describe("$rateLimit primitive", () => {
-    it("should create rate limit primitive with options", () => {
-      const app = alepha.inject(TestApp);
-
-      expect(app.customRateLimit).toBeDefined();
-      expect(app.customRateLimit.name).toBe("customRateLimit");
-      expect(app.customRateLimit.options.max).toBe(1);
-      expect(app.customRateLimit.options.windowMs).toBe(500);
-    });
-
-    it("should handle rate limiting in custom action logic", async () => {
-      const app = alepha.inject(TestApp);
-
-      // First request should succeed
-      const result1 = await app.primitiveAction.run({});
-      expect(result1).toBe("primitive success");
-
-      // Second request should be blocked by custom logic
-      await expect(app.primitiveAction.run({})).rejects.toThrow(
-        "Rate limit exceeded",
-      );
     });
   });
 

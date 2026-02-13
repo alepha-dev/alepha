@@ -1,4 +1,4 @@
-import { $atom, $env, $hook, $inject, $use, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $use, type Static, t } from "alepha";
 import { CacheProvider } from "alepha/cache";
 import { $logger } from "alepha/logger";
 import {
@@ -7,7 +7,6 @@ import {
   ServerRouterProvider,
 } from "alepha/server";
 import type { RateLimitOptions } from "../index.ts";
-import type { RateLimitPrimitiveOptions } from "../primitives/$rateLimit.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -25,16 +24,14 @@ export interface RateLimitResult {
 export const rateLimitOptions = $atom({
   name: "alepha.server.rate-limit.options",
   schema: t.object({
-    windowMs: t.optional(
-      t.number({
-        description: "Window duration in milliseconds",
-      }),
-    ),
-    max: t.optional(
-      t.number({
-        description: "Maximum number of requests per window",
-      }),
-    ),
+    windowMs: t.number({
+      default: 15 * 60 * 1000,
+      description: "Window duration in milliseconds",
+    }),
+    max: t.number({
+      default: 100,
+      description: "Maximum number of requests per window",
+    }),
     skipFailedRequests: t.optional(
       t.boolean({
         description: "Skip rate limiting for failed requests",
@@ -46,7 +43,10 @@ export const rateLimitOptions = $atom({
       }),
     ),
   }),
-  default: {},
+  default: {
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+  },
 });
 
 export type RateLimitAtomOptions = Static<typeof rateLimitOptions.schema>;
@@ -57,23 +57,20 @@ declare module "alepha" {
   }
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
-
-const envSchema = t.object({
-  RATE_LIMIT_WINDOW_MS: t.number({
-    default: 15 * 60 * 1000, // 15 minutes
-    description: "Rate limit window in milliseconds",
-  }),
-  RATE_LIMIT_MAX_REQUESTS: t.number({
-    default: 100,
-    description: "Maximum requests per window",
-  }),
-});
+export interface RateLimitRegistration extends RateLimitOptions {
+  /**
+   * Name identifier for this rate limit.
+   */
+  name?: string;
+  /**
+   * Path patterns to match (supports wildcards like /api/*).
+   */
+  paths?: string[];
+}
 
 export class ServerRateLimitProvider {
   protected readonly log = $logger();
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
-  protected readonly env = $env(envSchema);
   protected readonly cacheProvider = $inject(CacheProvider);
   protected readonly globalOptions = $use(rateLimitOptions);
 
@@ -82,12 +79,12 @@ export class ServerRateLimitProvider {
   /**
    * Registered rate limit configurations with their path patterns
    */
-  public readonly registeredConfigs: RateLimitPrimitiveOptions[] = [];
+  public readonly registeredConfigs: RateLimitRegistration[] = [];
 
   /**
    * Register a rate limit configuration (called by primitives)
    */
-  public registerRateLimit(config: RateLimitPrimitiveOptions): void {
+  public registerRateLimit(config: RateLimitRegistration): void {
     this.registeredConfigs.push(config);
   }
 
@@ -165,7 +162,7 @@ export class ServerRateLimitProvider {
    * Build complete rate limit options by merging with global defaults
    */
   protected buildRateLimitOptions(
-    config: RateLimitPrimitiveOptions,
+    config: RateLimitRegistration,
   ): RateLimitOptions {
     return {
       max: config.max ?? this.globalOptions.max,
@@ -182,7 +179,7 @@ export class ServerRateLimitProvider {
   /**
    * Set rate limit headers on the response
    */
-  protected setRateLimitHeaders(
+  public setRateLimitHeaders(
     request: ServerRequest,
     result: RateLimitResult,
   ): void {
@@ -202,12 +199,23 @@ export class ServerRateLimitProvider {
   }
 
   public async checkLimit(
-    req: ServerRequest,
+    req: Pick<ServerRequest, "ip">,
     options: RateLimitOptions = {},
   ): Promise<RateLimitResult> {
-    const windowMs = options.windowMs ?? this.env.RATE_LIMIT_WINDOW_MS;
-    const max = options.max ?? this.env.RATE_LIMIT_MAX_REQUESTS;
     const baseKey = this.generateKey(req);
+    return this.checkLimitByKey(baseKey, options);
+  }
+
+  /**
+   * Check rate limit by an explicit key string.
+   * Useful when no request context is available (e.g. `$job`, `$pipeline`).
+   */
+  public async checkLimitByKey(
+    baseKey: string,
+    options: RateLimitOptions = {},
+  ): Promise<RateLimitResult> {
+    const windowMs = options.windowMs ?? this.globalOptions.windowMs;
+    const max = options.max ?? this.globalOptions.max;
 
     const now = Date.now();
     // Fixed window: round down to nearest window boundary
@@ -241,7 +249,7 @@ export class ServerRateLimitProvider {
     return result;
   }
 
-  protected generateKey(req: ServerRequest): string {
+  protected generateKey(req: Pick<ServerRequest, "ip">): string {
     // Use req.ip which is resolved by ServerRequestParser with proper trust proxy handling
     return `ip:${req.ip || "unknown"}`;
   }
