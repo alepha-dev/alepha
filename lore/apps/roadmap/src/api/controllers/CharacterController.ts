@@ -1,5 +1,6 @@
 import { t } from "alepha";
 import { $repository } from "alepha/orm";
+import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
@@ -9,7 +10,7 @@ export class CharacterController {
   projects = $repository(projects);
 
   getMyCharacters = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       response: t.array(
         t.object({

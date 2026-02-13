@@ -3,8 +3,8 @@
   "name": "@alepha/roadmap",
   "type": "module",
   "scripts": {
-    "dev": "alepha dev",
-    "build": "alepha build",
+    "dev": "DEBUG='vite:deps' CI=1 alepha dev",
+    "build": "alepha build --stats",
     "db:generate": "alepha db generate",
     "build:docker": "alepha build --docker && cd dist && docker build -t alepha/roadmap .",
     "deploy": "alepha deploy --build --mode=production",
@@ -50,8 +50,8 @@
     "@types/react-dom": "^19.2.3",
     "@types/sanitize-html": "^2.16.0",
     "typescript": "^5.9.3",
-    "vercel": "^50.16.0",
-    "vite": "^8.0.0-beta.14",
+    "vercel": "^50.17.1",
+    "vite": "^7.3.1",
     "vitest": "^4.0.18"
   }
 }

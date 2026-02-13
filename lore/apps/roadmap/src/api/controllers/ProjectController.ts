@@ -2,6 +2,7 @@ import { $inject, t } from "alepha";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
 import { $repository, pageQuerySchema } from "alepha/orm";
+import { $secure } from "alepha/security";
 import { $action, ForbiddenError, okSchema } from "alepha/server";
 import { type Character, characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
@@ -18,7 +19,7 @@ export class ProjectController {
   security = $inject(AppSecurityProvider);
 
   createProject = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       body: t.pick(projects.insertSchema, ["title", "public"]),
       response: projects.schema,
@@ -54,7 +55,7 @@ export class ProjectController {
   });
 
   getMyProjects = $action({
-    secure: true,
+    use: [$secure()],
     description: "Get all projects for the authenticated user",
     schema: {
       query: pageQuerySchema,
@@ -80,7 +81,7 @@ export class ProjectController {
   // -------------------------------------------------------------------------------------------------------------------
 
   getProjectUsers = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -104,7 +105,7 @@ export class ProjectController {
   });
 
   updateProjectById = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -129,7 +130,7 @@ export class ProjectController {
   });
 
   getProjectById = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -166,7 +167,7 @@ export class ProjectController {
   });
 
   getProjectPlayers = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -225,7 +226,7 @@ export class ProjectController {
   });
 
   deleteProjectById = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -248,7 +249,7 @@ export class ProjectController {
   });
 
   renameZone = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),

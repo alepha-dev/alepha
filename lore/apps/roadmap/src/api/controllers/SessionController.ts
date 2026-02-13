@@ -2,6 +2,7 @@ import { $inject, type Static, t } from "alepha";
 import { sessions } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
+import { $secure } from "alepha/security";
 import { $action, $route } from "alepha/server";
 
 export const userSession = t.extend(sessions.schema, {
@@ -29,7 +30,7 @@ export class SessionController {
   });
 
   getMySessions = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       response: t.array(userSession),
     },
@@ -50,7 +51,7 @@ export class SessionController {
   });
 
   revokeSession = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         sessionId: t.string(),
@@ -70,7 +71,7 @@ export class SessionController {
   });
 
   revokeAllSessions = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       response: t.void(),
     },

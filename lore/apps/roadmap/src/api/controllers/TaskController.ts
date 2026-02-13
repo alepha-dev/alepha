@@ -4,6 +4,7 @@ import { $bucket } from "alepha/bucket";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, pageQuerySchema, pg } from "alepha/orm";
+import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 import sanitizeHtml from "sanitize-html";
 import { characters } from "../entities/characters.ts";
@@ -38,7 +39,7 @@ export class TaskController {
   });
 
   createTask = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       body: taskCreateSchema,
       response: tasks.schema,
@@ -69,7 +70,7 @@ export class TaskController {
   });
 
   uploadAttachment = $action({
-    secure: true,
+    use: [$secure()],
     path: "/tasks/attachments",
     schema: {
       body: t.object({
@@ -93,7 +94,7 @@ export class TaskController {
   });
 
   addAttachment = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -124,7 +125,7 @@ export class TaskController {
   });
 
   removeAttachment = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -158,7 +159,7 @@ export class TaskController {
   });
 
   getTasks = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         projectId: t.integer(),
@@ -199,7 +200,7 @@ export class TaskController {
   });
 
   abandonTask = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -231,7 +232,7 @@ export class TaskController {
   });
 
   acceptTask = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -263,7 +264,7 @@ export class TaskController {
   });
 
   completeTask = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -331,7 +332,7 @@ export class TaskController {
   });
 
   getTaskById = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -352,7 +353,7 @@ export class TaskController {
   });
 
   updateTaskById = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -402,7 +403,7 @@ export class TaskController {
   });
 
   completeObjective = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -448,7 +449,7 @@ export class TaskController {
   });
 
   updateTaskObjectives = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -490,7 +491,7 @@ export class TaskController {
   });
 
   deleteTask = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -515,7 +516,7 @@ export class TaskController {
   });
 
   moveTaskToZone = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -560,7 +561,7 @@ export class TaskController {
   });
 
   updateTaskNote = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -589,7 +590,7 @@ export class TaskController {
   });
 
   startTimer = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -626,7 +627,7 @@ export class TaskController {
   });
 
   stopTimer = $action({
-    secure: true,
+    use: [$secure()],
     schema: {
       params: t.object({
         id: t.integer(),

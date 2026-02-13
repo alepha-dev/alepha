@@ -24,6 +24,7 @@ import {
 } from "@tabler/icons-react";
 import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { currentUserAtom } from "alepha/security";
 import { type ChangeEvent, useRef, useState } from "react";
 import type { UserController } from "../../../../api/controllers/UserController.ts";
 import type { User } from "../../../../api/entities/users.ts";
@@ -52,7 +53,7 @@ export interface ProfileProps {
 
 const MyProfile = (props: ProfileProps) => {
   const { user, characters, identities } = props;
-  const [, setUser] = useStore("alepha.server.request.user"); // to trigger re-render on avatar update
+  const [, setUser] = useStore(currentUserAtom); // to trigger re-render on avatar update
   const characterInfo = useInject(CharacterInfo);
   const userApi = useClient<UserController>();
   const fileInputRef = useRef<HTMLInputElement>(null);
