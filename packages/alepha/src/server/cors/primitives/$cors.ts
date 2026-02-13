@@ -1,61 +1,58 @@
-import { $inject, createPrimitive, KIND, Primitive } from "alepha";
-import type { CorsOptions } from "../providers/ServerCorsProvider.ts";
-import { ServerCorsProvider } from "../providers/ServerCorsProvider.ts";
+import { AlephaError, createMiddleware, type Middleware } from "alepha";
+import type { ServerRequest } from "alepha/server";
+import {
+  type CorsOptions,
+  ServerCorsProvider,
+} from "../providers/ServerCorsProvider.ts";
 
 /**
- * Declares CORS configuration for specific server routes.
- * This primitive provides path-based CORS configuration.
+ * Middleware that applies CORS headers to the response and handles OPTIONS preflight.
  *
- * @example
- * ```ts
- * class ApiService {
- *   // Apply specific CORS to API routes
- *   cors = $cors({
- *     paths: ["/api/*"],
- *     origin: "https://app.example.com",
- *     credentials: true,
+ * Reads the request from the ALS context and applies the configured
+ * CORS headers via `ServerCorsProvider`. Options are merged with
+ * global CORS defaults.
+ *
+ * For OPTIONS preflight requests, the middleware short-circuits with a 204 response
+ * and skips the handler entirely.
+ *
+ * **Route middleware** — requires a request context (`$action`). Throws if used outside one.
+ *
+ * ```typescript
+ * class ApiController {
+ *   getOrders = $action({
+ *     use: [$cors({ origin: "https://app.example.com", credentials: true })],
+ *     handler: async ({ query }) => { ... },
  *   });
  * }
  * ```
  */
-export const $cors = (options: CorsPrimitiveConfig): AbstractCorsPrimitive => {
-  return createPrimitive(CorsPrimitive, options);
+export const $cors = (options?: Partial<CorsOptions>): Middleware => {
+  return createMiddleware({
+    name: "$cors",
+    options: options as unknown as Record<string, unknown>,
+    handler: ({ alepha, next }) => {
+      const corsProvider = alepha.inject(ServerCorsProvider);
+
+      return async (...args) => {
+        const request = alepha.context.get<ServerRequest>("request");
+
+        if (!request) {
+          throw new AlephaError(
+            "$cors requires a request context (use inside $action)",
+          );
+        }
+
+        const corsConfig = corsProvider.buildCorsOptions(options ?? {});
+        corsProvider.applyCorsHeaders(request, corsConfig);
+
+        // OPTIONS preflight → respond immediately, skip handler
+        if (request.method === "OPTIONS") {
+          request.reply.setStatus(204);
+          return;
+        }
+
+        return next(...args);
+      };
+    },
+  });
 };
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export interface CorsPrimitiveConfig extends Partial<CorsOptions> {
-  /**
-   * Name identifier for this CORS config (default: property key).
-   */
-  name?: string;
-  /**
-   * Path patterns to match (supports wildcards like /api/*).
-   */
-  paths?: string[];
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export interface AbstractCorsPrimitive {
-  readonly name: string;
-  readonly options: CorsPrimitiveConfig;
-}
-
-export class CorsPrimitive
-  extends Primitive<CorsPrimitiveConfig>
-  implements AbstractCorsPrimitive
-{
-  protected readonly serverCorsProvider = $inject(ServerCorsProvider);
-
-  public get name(): string {
-    return this.options.name ?? `${this.config.propertyKey}`;
-  }
-
-  protected onInit() {
-    // Register this CORS configuration with the provider
-    this.serverCorsProvider.registerCors(this.options);
-  }
-}
-
-$cors[KIND] = CorsPrimitive;

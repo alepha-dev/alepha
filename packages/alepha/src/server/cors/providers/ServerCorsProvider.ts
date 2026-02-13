@@ -1,7 +1,6 @@
 import { $atom, $hook, $inject, $use, type Static, t } from "alepha";
 import { $logger } from "alepha/logger";
 import { ServerRouterProvider } from "alepha/server";
-import type { CorsPrimitiveConfig } from "../primitives/$cors.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -56,6 +55,17 @@ declare module "alepha" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export interface CorsRegistration extends Partial<CorsOptions> {
+  /**
+   * Name identifier for this CORS config.
+   */
+  name?: string;
+  /**
+   * Path patterns to match (supports wildcards like /api/*).
+   */
+  paths?: string[];
+}
+
 export class ServerCorsProvider {
   protected readonly log = $logger();
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
@@ -64,12 +74,12 @@ export class ServerCorsProvider {
   /**
    * Registered CORS configurations with their path patterns
    */
-  public readonly registeredConfigs: CorsPrimitiveConfig[] = [];
+  public readonly registeredConfigs: CorsRegistration[] = [];
 
   /**
    * Register a CORS configuration (called by primitives)
    */
-  public registerCors(config: CorsPrimitiveConfig): void {
+  public registerCors(config: CorsRegistration): void {
     this.registeredConfigs.push(config);
   }
 
@@ -95,6 +105,48 @@ export class ServerCorsProvider {
       }
     },
   });
+
+  /**
+   * Build complete CORS options by merging with global defaults
+   */
+  public buildCorsOptions(config: Partial<CorsOptions>): CorsOptions {
+    return {
+      origin: config.origin ?? this.globalOptions.origin,
+      methods: config.methods ?? this.globalOptions.methods,
+      headers: config.headers ?? this.globalOptions.headers,
+      credentials: config.credentials ?? this.globalOptions.credentials,
+      maxAge: config.maxAge ?? this.globalOptions.maxAge,
+    };
+  }
+
+  /**
+   * Apply CORS headers to the response
+   */
+  public applyCorsHeaders(
+    request: {
+      headers: { origin?: string };
+      reply: { setHeader: (name: string, value: string) => void };
+    },
+    options: CorsOptions,
+  ): void {
+    const reqOrigin = request.headers.origin;
+    const { origin, methods, headers, credentials, maxAge } = options;
+
+    if (reqOrigin && this.isOriginAllowed(reqOrigin, origin)) {
+      request.reply.setHeader("Access-Control-Allow-Origin", reqOrigin);
+    }
+
+    if (credentials) {
+      request.reply.setHeader("Access-Control-Allow-Credentials", "true");
+    }
+
+    request.reply.setHeader("Access-Control-Allow-Methods", methods.join(", "));
+    request.reply.setHeader("Access-Control-Allow-Headers", headers.join(", "));
+
+    if (maxAge != null) {
+      request.reply.setHeader("Access-Control-Max-Age", String(maxAge));
+    }
+  }
 
   protected readonly configure = $hook({
     on: "configure",
@@ -128,48 +180,6 @@ export class ServerCorsProvider {
       this.applyCorsHeaders(request, corsConfig);
     },
   });
-
-  /**
-   * Build complete CORS options by merging with global defaults
-   */
-  protected buildCorsOptions(config: CorsPrimitiveConfig): CorsOptions {
-    return {
-      origin: config.origin ?? this.globalOptions.origin,
-      methods: config.methods ?? this.globalOptions.methods,
-      headers: config.headers ?? this.globalOptions.headers,
-      credentials: config.credentials ?? this.globalOptions.credentials,
-      maxAge: config.maxAge ?? this.globalOptions.maxAge,
-    };
-  }
-
-  /**
-   * Apply CORS headers to the response
-   */
-  protected applyCorsHeaders(
-    request: {
-      headers: { origin?: string };
-      reply: { setHeader: (name: string, value: string) => void };
-    },
-    options: CorsOptions,
-  ): void {
-    const reqOrigin = request.headers.origin;
-    const { origin, methods, headers, credentials, maxAge } = options;
-
-    if (reqOrigin && this.isOriginAllowed(reqOrigin, origin)) {
-      request.reply.setHeader("Access-Control-Allow-Origin", reqOrigin);
-    }
-
-    if (credentials) {
-      request.reply.setHeader("Access-Control-Allow-Credentials", "true");
-    }
-
-    request.reply.setHeader("Access-Control-Allow-Methods", methods.join(", "));
-    request.reply.setHeader("Access-Control-Allow-Headers", headers.join(", "));
-
-    if (maxAge != null) {
-      request.reply.setHeader("Access-Control-Max-Age", String(maxAge));
-    }
-  }
 
   public isOriginAllowed(
     origin: string | undefined,
