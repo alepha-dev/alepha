@@ -1,4 +1,4 @@
-import { $env, $hook, $inject, Alepha, t } from "alepha";
+import { $hook, $inject, $use, Alepha } from "alepha";
 import {
   type Permission,
   SecurityProvider,
@@ -11,6 +11,7 @@ import {
   type ClientRequestOptions,
   type RequestConfigSchema,
   ServerTimingProvider,
+  serverApiOptions,
 } from "alepha/server";
 import {
   type ApiLink,
@@ -20,22 +21,15 @@ import {
 import { LinkProvider } from "./LinkProvider.ts";
 import { RemotePrimitiveProvider } from "./RemotePrimitiveProvider.ts";
 
-const envSchema = t.object({
-  SERVER_API_PREFIX: t.text({
-    description: "Prefix for all API routes (e.g. $action).",
-    default: "/api",
-  }),
-});
-
 export class ServerLinksProvider {
-  protected readonly env = $env(envSchema);
+  protected readonly serverApi = $use(serverApiOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly linkProvider = $inject(LinkProvider);
   protected readonly remoteProvider = $inject(RemotePrimitiveProvider);
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
 
   public get prefix() {
-    return this.env.SERVER_API_PREFIX;
+    return this.serverApi.prefix;
   }
 
   public readonly onRoute = $hook({
@@ -178,7 +172,7 @@ export class ServerLinksProvider {
     this.serverTimingProvider.endTiming("fetchRemoteLinks");
 
     return {
-      prefix: this.env.SERVER_API_PREFIX,
+      prefix: this.serverApi.prefix,
       links: userLinks,
     };
   }

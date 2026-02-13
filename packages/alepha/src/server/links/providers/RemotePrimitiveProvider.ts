@@ -1,7 +1,8 @@
-import { $env, $hook, $inject, Alepha, t } from "alepha";
+import { $hook, $inject, $pipeline, $use, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { $retry } from "alepha/retry";
 import type { ServiceAccountPrimitive } from "alepha/security";
+import { serverApiOptions } from "alepha/server";
 import { ServerProxyProvider } from "alepha/server/proxy";
 import { $remote, type RemotePrimitive } from "../primitives/$remote.ts";
 import {
@@ -10,15 +11,8 @@ import {
 } from "../schemas/apiLinksResponseSchema.ts";
 import { LinkProvider } from "./LinkProvider.ts";
 
-const envSchema = t.object({
-  SERVER_API_PREFIX: t.text({
-    description: "Prefix for all API routes (e.g. $action).",
-    default: "/api",
-  }),
-});
-
 export class RemotePrimitiveProvider {
-  protected readonly env = $env(envSchema);
+  protected readonly serverApi = $use(serverApiOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly proxyProvider = $inject(ServerProxyProvider);
   protected readonly linkProvider = $inject(LinkProvider);
@@ -124,11 +118,11 @@ export class RemotePrimitiveProvider {
 
     if (options.proxy) {
       this.proxyProvider.createProxy({
-        path: `${this.env.SERVER_API_PREFIX}/${name}/*`,
+        path: `${this.serverApi.prefix}/${name}/*`,
         target: url,
         rewrite: (url) => {
           url.pathname = url.pathname.replace(
-            `${this.env.SERVER_API_PREFIX}/${name}`,
+            `${this.serverApi.prefix}/${name}`,
             remote.prefix,
           );
         },
@@ -137,17 +131,18 @@ export class RemotePrimitiveProvider {
     }
   }
 
-  protected readonly fetchLinks = $retry({
-    max: 10,
-    backoff: {
-      initial: 1000,
-    },
-    onError: (_, attempt, { service, url }) => {
-      this.log.warn(`Failed to fetch links, retry (${attempt})...`, {
-        service,
-        url,
-      });
-    },
+  protected readonly fetchLinks = $pipeline({
+    use: [
+      $retry({
+        max: 10,
+        backoff: {
+          initial: 1000,
+        },
+        onError: (_: Error, attempt: number) => {
+          this.log.warn(`Failed to fetch links, retry (${attempt})...`);
+        },
+      }),
+    ],
     handler: async (opts: FetchLinksOptions): Promise<ApiLinksResponse> => {
       const { url, authorization } = opts;
       const response = await fetch(url, {
