@@ -6,6 +6,7 @@ import {
   $queue,
   MemoryQueueProvider,
   QueueProvider,
+  queueWorkerOptions,
   WorkerProvider,
 } from "../index.ts";
 
@@ -32,13 +33,13 @@ describe("WorkerProvider", () => {
       workerMaxInterval?: number;
     } = {},
   ) => {
-    const app = Alepha.create({
-      env: {
-        QUEUE_WORKER_CONCURRENCY: options.workerConcurrency ?? 1,
-        QUEUE_WORKER_INTERVAL: options.workerInterval ?? 10,
-        QUEUE_WORKER_MAX_INTERVAL: options.workerMaxInterval ?? 1000,
-      },
-    });
+    const app = Alepha.create();
+
+    app.store.mut(queueWorkerOptions, () => ({
+      concurrency: options.workerConcurrency ?? 1,
+      interval: options.workerInterval ?? 10,
+      maxInterval: options.workerMaxInterval ?? 1000,
+    }));
 
     app.with({
       provide: WorkerProvider,

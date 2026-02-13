@@ -1,7 +1,8 @@
 import {
   createPrimitive,
   KIND,
-  Primitive,
+  PipelinePrimitive,
+  type PipelinePrimitiveOptions,
   type Static,
   type TSchema,
 } from "alepha";
@@ -64,7 +65,8 @@ export const $consumer = <T extends TSchema>(
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface ConsumerPrimitiveOptions<T extends TSchema> {
+export interface ConsumerPrimitiveOptions<T extends TSchema>
+  extends PipelinePrimitiveOptions {
   /**
    * The queue primitive that this consumer will process messages from.
    *
@@ -175,7 +177,7 @@ export interface ConsumerPrimitiveOptions<T extends TSchema> {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class ConsumerPrimitive<T extends TSchema> extends Primitive<
+export class ConsumerPrimitive<T extends TSchema> extends PipelinePrimitive<
   ConsumerPrimitiveOptions<T>
 > {}
 

@@ -4,6 +4,7 @@ import {
   $queue,
   MemoryQueueProvider,
   QueueProvider,
+  queueWorkerOptions,
   WorkerProvider,
 } from "alepha/queue";
 import { expect } from "vitest";
@@ -40,11 +41,11 @@ export const testQueueBasic = async (provider: Service<QueueProvider>) => {
   const createApp = async <T extends object>(
     testClass: Service<T>,
   ): Promise<{ app: Alepha; test: T }> => {
-    const app = Alepha.create({
-      env: {
-        QUEUE_WORKER_INTERVAL: 10,
-      },
-    });
+    const app = Alepha.create();
+    app.store.mut(queueWorkerOptions, (current) => ({
+      ...current,
+      interval: 10,
+    }));
 
     app.with({
       provide: QueueProvider,
@@ -114,11 +115,7 @@ export const testQueueKillWorkerSleep = async (
     });
   }
 
-  const app = Alepha.create({
-    env: {
-      QUEUE_WORKER_INTERVAL: 10000,
-    },
-  })
+  const app = Alepha.create()
     .with({
       provide: QueueProvider,
       use: provider,
@@ -133,6 +130,11 @@ export const testQueueKillWorkerSleep = async (
       },
     })
     .with(A);
+
+  app.store.mut(queueWorkerOptions, (current) => ({
+    ...current,
+    interval: 10000,
+  }));
 
   expect(count).toBe(0);
   await app.start();

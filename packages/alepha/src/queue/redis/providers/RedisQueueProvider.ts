@@ -1,19 +1,41 @@
-import { $env, $inject, type Static, t } from "alepha";
+import { $atom, $inject, $use, type Static, t } from "alepha";
 import type { QueueProvider } from "alepha/queue";
 import { RedisProvider } from "alepha/redis";
 
-const envSchema = t.object({
-  REDIS_QUEUE_PREFIX: t.text({
-    default: "queue",
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Redis queue configuration atom.
+ */
+export const redisQueueOptions = $atom({
+  name: "alepha.queue.redis.options",
+  schema: t.object({
+    prefix: t.text({
+      default: "queue",
+      description: "Prefix for all queue keys in Redis.",
+    }),
   }),
+  default: {
+    prefix: "queue",
+  },
 });
 
+export type RedisQueueOptions = Static<typeof redisQueueOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [redisQueueOptions.key]: RedisQueueOptions;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export class RedisQueueProvider implements QueueProvider {
-  protected readonly env: Static<typeof envSchema> = $env(envSchema);
+  protected readonly options = $use(redisQueueOptions);
   protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
 
   public prefix(queue: string): string {
-    return `${this.env.REDIS_QUEUE_PREFIX}:${queue}`;
+    return `${this.options.prefix}:${queue}`;
   }
 
   public async push(queue: string, message: string): Promise<void> {

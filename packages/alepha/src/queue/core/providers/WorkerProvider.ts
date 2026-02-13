@@ -1,7 +1,8 @@
 import {
-  $env,
+  $atom,
   $hook,
   $inject,
+  $use,
   Alepha,
   type Static,
   type TSchema,
@@ -17,35 +18,50 @@ import {
 } from "../primitives/$queue.ts";
 import { QueueProvider } from "./QueueProvider.ts";
 
-const envSchema = t.object({
-  /**
-   * The interval in milliseconds to wait before checking for new messages.
-   */
-  QUEUE_WORKER_INTERVAL: t.integer({
-    default: 1000,
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Queue worker configuration atom.
+ */
+export const queueWorkerOptions = $atom({
+  name: "alepha.queue.worker.options",
+  schema: t.object({
+    interval: t.integer({
+      default: 1000,
+      description:
+        "Interval in milliseconds to wait before checking for new messages.",
+    }),
+    maxInterval: t.integer({
+      default: 32000,
+      description:
+        "Maximum interval in milliseconds to wait before checking for new messages.",
+    }),
+    concurrency: t.integer({
+      default: 1,
+      description:
+        "Number of workers to run concurrently. Useful only if you are doing a lot of I/O.",
+    }),
   }),
-  /**
-   * The maximum interval in milliseconds to wait before checking for new messages.
-   */
-  QUEUE_WORKER_MAX_INTERVAL: t.integer({
-    default: 32000,
-  }),
-  /**
-   * The number of workers to run concurrently. Defaults to 1.
-   * Useful only if you are doing a lot of I/O.
-   */
-  QUEUE_WORKER_CONCURRENCY: t.integer({
-    default: 1,
-  }),
+  default: {
+    interval: 1000,
+    maxInterval: 32000,
+    concurrency: 1,
+  },
 });
 
+export type QueueWorkerOptions = Static<typeof queueWorkerOptions.schema>;
+
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface State {
+    [queueWorkerOptions.key]: QueueWorkerOptions;
+  }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class WorkerProvider {
   protected readonly log = $logger();
-  protected readonly env = $env(envSchema);
+  protected readonly options = $use(queueWorkerOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly queueProvider = $inject(QueueProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
@@ -75,14 +91,17 @@ export class WorkerProvider {
       }
 
       for (const consumer of this.alepha.primitives($consumer)) {
-        this.consumers.push(consumer.options);
+        this.consumers.push({
+          queue: consumer.options.queue,
+          handler: (msg) => consumer.handler.run(msg),
+        });
       }
 
       if (this.consumers.length > 0) {
         this.startWorkers();
         this.log.debug(
-          `Watching for ${this.consumers.length} queue${this.consumers.length > 1 ? "s" : ""} with ${this.env.QUEUE_WORKER_CONCURRENCY} worker${
-            this.env.QUEUE_WORKER_CONCURRENCY > 1 ? "s" : ""
+          `Watching for ${this.consumers.length} queue${this.consumers.length > 1 ? "s" : ""} with ${this.options.concurrency} worker${
+            this.options.concurrency > 1 ? "s" : ""
           }.`,
         );
       }
@@ -98,8 +117,7 @@ export class WorkerProvider {
    * This method will create an endless loop that will check for new messages!
    */
   protected startWorkers(): void {
-    const workerToStart =
-      this.env.QUEUE_WORKER_CONCURRENCY - this.workersRunning;
+    const workerToStart = this.options.concurrency - this.workersRunning;
 
     for (let i = 0; i < workerToStart; i++) {
       this.workersRunning += 1;
@@ -149,7 +167,7 @@ export class WorkerProvider {
    */
   protected async waitForNextMessage(n: number): Promise<void> {
     const intervals = this.workerIntervals;
-    const milliseconds = intervals[n] || this.env.QUEUE_WORKER_INTERVAL;
+    const milliseconds = intervals[n] || this.options.interval;
 
     this.log.trace(`Worker n-${n} is waiting for ${milliseconds}ms.`);
 
@@ -163,7 +181,7 @@ export class WorkerProvider {
     });
 
     if (intervals[n]) {
-      if (intervals[n] < this.env.QUEUE_WORKER_MAX_INTERVAL) {
+      if (intervals[n] < this.options.maxInterval) {
         intervals[n] = intervals[n] * 2;
       }
     } else {
