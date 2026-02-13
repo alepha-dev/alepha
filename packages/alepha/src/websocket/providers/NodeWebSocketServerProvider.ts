@@ -1,5 +1,14 @@
 import type { IncomingMessage } from "node:http";
-import { $env, $hook, $inject, Alepha, type Static, t, Value } from "alepha";
+import {
+  $atom,
+  $hook,
+  $inject,
+  $use,
+  Alepha,
+  type Static,
+  t,
+  Value,
+} from "alepha";
 import { $logger } from "alepha/logger";
 import { WebSocket, WebSocketServer } from "ws";
 import { WebSocketValidationError } from "../errors/WebSocketError.ts";
@@ -17,15 +26,28 @@ import { WebSocketServerProvider } from "./WebSocketServerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const envSchema = t.object({
-  WEBSOCKET_PATH: t.text({
-    default: "/ws",
-    description: "Base path for WebSocket endpoints",
+/**
+ * WebSocket configuration atom.
+ */
+export const websocketOptions = $atom({
+  name: "alepha.websocket.options",
+  schema: t.object({
+    path: t.text({
+      default: "/ws",
+      description: "Base path for WebSocket endpoints.",
+    }),
   }),
+  default: {
+    path: "/ws",
+  },
 });
 
+export type WebSocketOptions = Static<typeof websocketOptions.schema>;
+
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface State {
+    [websocketOptions.key]: WebSocketOptions;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -35,7 +57,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   protected readonly roomManager = $inject(RoomManager);
   protected readonly topicService = $inject(WebSocketTopicService);
   protected readonly log = $logger();
-  protected readonly env = $env(envSchema);
+  protected readonly wsOptions = $use(websocketOptions);
 
   protected wss?: WebSocketServer;
   protected endpoints = new Map<string, WebSocketPrimitiveOptions<any, any>>();
@@ -384,7 +406,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       });
 
       this.log.info("WebSocket server OK", {
-        basePath: this.env.WEBSOCKET_PATH,
+        basePath: this.wsOptions.path,
       });
     },
   });
