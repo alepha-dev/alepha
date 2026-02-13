@@ -45,13 +45,13 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
-    "@types/node": "^25.2.2",
-    "@types/react": "^19.2.13",
+    "@types/node": "^25.2.3",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/sanitize-html": "^2.16.0",
     "typescript": "^5.9.3",
-    "vercel": "^50.14.0",
-    "vite": "^7.3.1",
+    "vercel": "^50.16.0",
+    "vite": "^8.0.0-beta.14",
     "vitest": "^4.0.18"
   }
 }

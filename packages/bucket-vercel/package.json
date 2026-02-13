@@ -26,7 +26,7 @@
     "@vercel/blob": "^2.2.0"
   },
   "devDependencies": {
-    "@types/node": "^25.2.2",
+    "@types/node": "^25.2.3",
     "alepha": "0.16.2",
     "tsdown": "^0.20.3",
     "vitest": "^4.0.18"
