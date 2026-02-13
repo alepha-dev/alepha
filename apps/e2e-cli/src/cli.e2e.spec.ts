@@ -208,7 +208,7 @@ describe("Alepha CLI E2E", () => {
 
   test("alepha dev starts server and responds to requests", async () => {
     const devServer = startProcess("yarn alepha dev", PROJECT_DIR, {
-      SERVER_PORT: "5000",
+      SERVER_PORT: "15000",
     });
 
     try {
@@ -222,7 +222,7 @@ describe("Alepha CLI E2E", () => {
       await new Promise((r) => setTimeout(r, 1000));
 
       // Test that server responds
-      const response = await fetchWithRetry("http://localhost:5000", 20, 500);
+      const response = await fetchWithRetry("http://localhost:15000", 20, 500);
       expect(response.status).toBe(200);
     } finally {
       await devServer.kill();

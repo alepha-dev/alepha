@@ -16,6 +16,8 @@ export default defineConfig((env) => {
         enforce: "pre", // Run before other plugins
         resolveId(id, importer) {
           const denyList = [
+            "cluster",
+            "node:cluster",
             "perf_hooks",
             "node:perf_hooks",
             "child_process",

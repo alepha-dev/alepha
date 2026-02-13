@@ -5,7 +5,6 @@ import {
   midnightTheme,
 } from "@alepha/ui";
 import { AlephaUIAuth } from "@alepha/ui/auth";
-import { AlephaUIDemo } from "@alepha/ui/demo";
 import { $module } from "alepha";
 import { CharacterInfo } from "../../api/services/CharacterInfo.ts";
 import { AppRouter } from "./AppRouter.ts";
@@ -49,9 +48,5 @@ export const RoadmapWebApp = $module({
           primaryColor: "gray",
         },
       ]);
-
-    if (!alepha.isProduction()) {
-      alepha.with(AlephaUIDemo);
-    }
   },
 });

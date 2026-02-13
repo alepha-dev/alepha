@@ -53,6 +53,9 @@ jobs:
       - name: Clean
         run: yarn clean
 
+      - name: Prepare
+        run: yarn copy
+
       - name: Lint Project
         run: yarn lint
 
