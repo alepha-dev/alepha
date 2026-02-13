@@ -3,7 +3,8 @@ import {
   type Async,
   createPrimitive,
   KIND,
-  Primitive,
+  PipelinePrimitive,
+  type PipelinePrimitiveOptions,
   type Static,
   type TSchema,
 } from "alepha";
@@ -58,7 +59,8 @@ export interface JobBatchOptions {
 
 export type JobPriority = "critical" | "high" | "normal" | "low";
 
-export interface JobPrimitiveOptions<T extends TSchema = TSchema> {
+export interface JobPrimitiveOptions<T extends TSchema = TSchema>
+  extends PipelinePrimitiveOptions {
   /**
    * Payload schema (TypeBox). Optional for cron-only jobs.
    */
@@ -110,9 +112,9 @@ export interface JobPrimitiveOptions<T extends TSchema = TSchema> {
 
 // -----------------------------------------------------------------------------------------------------------------
 
-export class JobPrimitive<T extends TSchema = TSchema> extends Primitive<
-  JobPrimitiveOptions<T>
-> {
+export class JobPrimitive<
+  T extends TSchema = TSchema,
+> extends PipelinePrimitive<JobPrimitiveOptions<T>> {
   protected readonly jobProvider = $inject(JobProvider);
 
   public get name(): string {
@@ -120,7 +122,8 @@ export class JobPrimitive<T extends TSchema = TSchema> extends Primitive<
   }
 
   protected onInit() {
-    this.jobProvider.registerJob(this.name, this.options);
+    const handler = this.handler.run.bind(this.handler);
+    this.jobProvider.registerJob(this.name, { ...this.options, handler });
   }
 
   /**
