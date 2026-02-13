@@ -1,5 +1,4 @@
 import { $context } from "alepha";
-import { AlephaApiClients, OAuth2Service } from "alepha/api/clients";
 import { AlephaApiKeys, ApiKeyService } from "alepha/api/keys";
 import type { Repository } from "alepha/orm";
 import {
@@ -127,11 +126,6 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     customResolvers.push(apiKeyService.createResolver());
   }
 
-  // Enable OAuth2 Authorization Server for third-party client authentication
-  if (features.clients) {
-    alepha.with(AlephaApiClients);
-  }
-
   const realm: RealmPrimitive = $issuer({
     ...options.issuer,
     name,
@@ -176,13 +170,6 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
       ...options.issuer?.settings,
     },
   });
-
-  // Wire OAuth2Service with the issuer
-  if (features.clients) {
-    const oauth2Service = alepha.inject(OAuth2Service);
-    oauth2Service.issuer = realm;
-    oauth2Service.realmName = name;
-  }
 
   realm.link = (name: string) => {
     return (ctx: LinkAccountOptions) =>
