@@ -1,6 +1,8 @@
 import {
-  $env,
+  $atom,
   $inject,
+  $pipeline,
+  $use,
   Alepha,
   type Async,
   createPrimitive,
@@ -66,21 +68,32 @@ export type SchedulerPrimitiveOptions = {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const envSchema = t.object({
-  SCHEDULER_PREFIX: t.optional(
-    t.text({
-      description: "Prefix store key",
-    }),
-  ),
+/**
+ * Scheduler configuration atom.
+ */
+export const schedulerOptions = $atom({
+  name: "alepha.scheduler.options",
+  schema: t.object({
+    prefix: t.optional(
+      t.text({
+        description: "Prefix for scheduler lock keys.",
+      }),
+    ),
+  }),
+  default: {},
 });
 
+export type SchedulerAtomOptions = Static<typeof schedulerOptions.schema>;
+
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface State {
+    [schedulerOptions.key]: SchedulerAtomOptions;
+  }
 }
 
 export class SchedulerPrimitive extends Primitive<SchedulerPrimitiveOptions> {
   protected readonly log = $logger();
-  protected readonly env = $env(envSchema);
+  protected readonly settings = $use(schedulerOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly cronProvider = $inject(CronProvider);
@@ -173,13 +186,15 @@ export class SchedulerPrimitive extends Primitive<SchedulerPrimitiveOptions> {
     );
   }
 
-  protected schedulerLock = $lock({
-    name: () => {
-      const prefix = this.env.SCHEDULER_PREFIX
-        ? `${this.env.SCHEDULER_PREFIX}:`
-        : "";
-      return `${prefix}scheduler:${this.name}`;
-    },
+  protected schedulerLock = $pipeline({
+    use: [
+      $lock({
+        name: () => {
+          const prefix = this.settings.prefix ? `${this.settings.prefix}:` : "";
+          return `${prefix}scheduler:${this.name}`;
+        },
+      }),
+    ],
     handler: async (args: SchedulerHandlerArguments) => {
       await this.options.handler(args);
     },

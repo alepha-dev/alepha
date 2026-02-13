@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Alepha, type Service } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { LockProvider, MemoryLockProvider } from "alepha/lock";
+import { LockProvider, lockOptions, MemoryLockProvider } from "alepha/lock";
 import { expect } from "vitest";
 import { $scheduler, type SchedulerPrimitiveOptions } from "../index.ts";
 
@@ -30,7 +30,8 @@ export const testSchedulerBasic = async (options: {
   const prefix = randomUUID();
 
   const createApp = () => {
-    const alepha = Alepha.create({ env: { LOCK_PREFIX_KEY: prefix } });
+    const alepha = Alepha.create();
+    alepha.store.mut(lockOptions, () => ({ prefixKey: prefix }));
 
     if (options.lock) {
       alepha.with({
