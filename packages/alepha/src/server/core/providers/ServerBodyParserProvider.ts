@@ -1,26 +1,48 @@
-import { ReadableStream as WebStream } from "node:stream/web";
+import { Readable } from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
 import type { TSchema } from "alepha";
-import { $env, $hook, $inject, Alepha, t } from "alepha";
+import { $atom, $hook, $inject, $use, Alepha, type Static, t } from "alepha";
 import { $logger } from "alepha/logger";
 import { HttpError } from "../errors/HttpError.ts";
 
-const envSchema = t.object({
-  SERVER_BODY_PARSER_INFLATE: t.boolean({
-    default: true,
-    description: "Enable decompression of request body.",
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Body parser configuration atom.
+ */
+export const bodyParserOptions = $atom({
+  name: "alepha.server.body-parser.options",
+  schema: t.object({
+    inflate: t.boolean({
+      default: true,
+      description: "Enable decompression of request body.",
+    }),
+    limit: t.integer({
+      default: 100_000, // 100KB
+      min: 0,
+      description: "Maximum size of request body in bytes.",
+    }),
   }),
-  SERVER_BODY_PARSER_LIMIT: t.integer({
-    default: 100_000, // 100KB
-    min: 0,
-    description: "Maximum size of request body in bytes.",
-  }),
+  default: {
+    inflate: true,
+    limit: 100_000,
+  },
 });
 
+export type BodyParserOptions = Static<typeof bodyParserOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [bodyParserOptions.key]: BodyParserOptions;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export class ServerBodyParserProvider {
-  protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
+  protected readonly options = $use(bodyParserOptions);
 
   public readonly onRequest = $hook({
     on: "server:onRequest",
@@ -34,10 +56,8 @@ export class ServerBodyParserProvider {
       if (request.raw.web?.req.body) {
         stream = request.raw.web.req.body;
       } else if (request.raw.node?.req) {
-        // convert Node.js IncomingMessage to Web ReadableStream
-        // TODO: check performance impact, it's better to directly read from Node stream!
-        stream = WebStream.from(
-          request.raw.node.req,
+        stream = Readable.toWeb(
+          request.raw.node.req as Readable,
         ) as unknown as ReadableStream;
       }
 
@@ -46,6 +66,17 @@ export class ServerBodyParserProvider {
       }
 
       if (route.schema?.body) {
+        const contentLength = request.headers["content-length"];
+        if (contentLength) {
+          const size = Number.parseInt(contentLength, 10);
+          if (!Number.isNaN(size) && size > this.options.limit) {
+            throw new HttpError({
+              status: 413,
+              message: "Request body size limit exceeded",
+            });
+          }
+        }
+
         return this.parse(stream, request.headers, route.schema.body)
           .then((body) => {
             if (body) {
@@ -108,9 +139,11 @@ export class ServerBodyParserProvider {
   ): Promise<object> {
     const text = await this.parseText(stream, contentEncoding);
     const params = new URLSearchParams(text);
-    const result: Record<string, string> = {};
-    for (const [key, value] of params.entries()) {
-      result[key] = value;
+    const result: Record<string, string | string[]> = {};
+
+    for (const key of params.keys()) {
+      const values = params.getAll(key);
+      result[key] = values.length === 1 ? values[0] : values;
     }
 
     return result;
@@ -128,7 +161,7 @@ export class ServerBodyParserProvider {
     buffer: Buffer,
     encoding: string | undefined,
   ): Promise<Buffer> {
-    if (!this.env.SERVER_BODY_PARSER_INFLATE && encoding) {
+    if (!this.options.inflate && encoding) {
       throw new HttpError({
         status: 415,
         message: `Content-Encoding ${encoding} not allowed`,
@@ -137,40 +170,44 @@ export class ServerBodyParserProvider {
 
     switch (encoding) {
       case "gzip":
-        return new Promise((res, rej) =>
-          createGunzip()
-            .end(buffer, () => {})
-            .on("data", res)
-            .on("error", rej),
-        );
+        return this.decompressBuffer(buffer, createGunzip());
       case "deflate":
-        return new Promise((res, rej) =>
-          createInflate()
-            .end(buffer, () => {})
-            .on("data", res)
-            .on("error", rej),
-        );
+        return this.decompressBuffer(buffer, createInflate());
       case "br":
-        return new Promise((res, rej) =>
-          createBrotliDecompress()
-            .end(buffer, () => {})
-            .on("data", res)
-            .on("error", rej),
-        );
+        return this.decompressBuffer(buffer, createBrotliDecompress());
       case undefined:
       case "identity":
         return buffer;
       default:
-        throw new Error(`Unsupported Content-Encoding: ${encoding}`);
+        throw new HttpError({
+          status: 415,
+          message: `Unsupported Content-Encoding: ${encoding}`,
+        });
     }
+  }
+
+  protected decompressBuffer(
+    buffer: Buffer,
+    transform:
+      | import("node:zlib").BrotliDecompress
+      | import("node:zlib").Gunzip
+      | import("node:zlib").Inflate,
+  ): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      transform
+        .on("data", (chunk: Buffer) => chunks.push(chunk))
+        .on("end", () => resolve(Buffer.concat(chunks)))
+        .on("error", reject);
+      transform.end(buffer);
+    });
   }
 
   /**
    * Convert Web ReadableStream to Buffer, with a size limit.
-   *
-   * TODO: move to alepha/file FileUtils
    */
   protected async streamToBuffer(stream: ReadableStream): Promise<Buffer> {
+    const limit = this.options.limit;
     const chunks: Uint8Array[] = [];
     let totalLength = 0;
 
@@ -187,16 +224,16 @@ export class ServerBodyParserProvider {
         if (value) {
           totalLength += value.length;
 
-          if (totalLength > this.env.SERVER_BODY_PARSER_LIMIT) {
+          if (totalLength > limit) {
             this.log.error(
-              `Body size limit exceeded: ${totalLength} > ${this.env.SERVER_BODY_PARSER_LIMIT}`,
+              `Body size limit exceeded: ${totalLength} > ${limit}`,
             );
 
-            await reader.cancel(); // Cancel the stream
+            await reader.cancel();
 
             throw new HttpError({
               status: 413,
-              message: `Request body size limit exceeded`,
+              message: "Request body size limit exceeded",
             });
           }
 
@@ -204,12 +241,7 @@ export class ServerBodyParserProvider {
         }
       }
 
-      // Combine all chunks into a single Buffer
-      const combinedLength = chunks.reduce(
-        (sum, chunk) => sum + chunk.length,
-        0,
-      );
-      const combined = new Uint8Array(combinedLength);
+      const combined = new Uint8Array(totalLength);
       let offset = 0;
 
       for (const chunk of chunks) {
@@ -217,11 +249,13 @@ export class ServerBodyParserProvider {
         offset += chunk.length;
       }
 
-      return Buffer.from(combined);
-    } catch (error) {
-      // Make sure to release the reader lock
+      return Buffer.from(
+        combined.buffer,
+        combined.byteOffset,
+        combined.byteLength,
+      );
+    } finally {
       reader.releaseLock();
-      throw error;
     }
   }
 }

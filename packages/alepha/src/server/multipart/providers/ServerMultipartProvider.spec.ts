@@ -1,7 +1,8 @@
 import { Alepha, t } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
-import { describe, expect, test } from "vitest";
+import { describe, test } from "vitest";
 import { AlephaServerMultipart } from "../index.ts";
+import { multipartOptions } from "./ServerMultipartProvider.ts";
 
 class App {
   upload = $action({
@@ -12,18 +13,13 @@ class App {
       response: t.text(),
     },
     handler: ({ body }) => {
-      expect(body.file).toBeDefined();
-      expect(body.file.name).toBe("test.txt");
-      expect(body.file.size).toBe(12);
-      expect(body.file.type).toBe("text/plain");
-      expect(body.file.lastModified).toBeGreaterThan(0);
-      return `File ${body.file.name} uploaded successfully.`;
+      return `${body.file.name} (${body.file.size}b, ${body.file.type})`;
     },
   });
 }
 
 describe("ServerMultipartProvider", () => {
-  test("ServerMultipartProvider - hello", async ({ expect }) => {
+  test("should upload file via HTTP", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
     await alepha.start();
 
@@ -33,30 +29,172 @@ describe("ServerMultipartProvider", () => {
 
     const resp = await fetch(
       `${alepha.inject(ServerProvider).hostname}/api/upload`,
-      {
-        method: "POST",
-        body,
-      },
+      { method: "POST", body },
     );
 
-    const text = await resp.text();
     expect(resp.status).toBe(200);
-    expect(text).toBe(`File test.txt uploaded successfully.`);
+    expect(await resp.text()).toBe("test.txt (12b, text/plain)");
   });
 
-  test("ServerMultipartProvider - local", async ({ expect }) => {
+  test("should upload file locally via run()", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
     await alepha.start();
 
     const file = new File(["test content"], "test.txt", { type: "text/plain" });
 
-    const resp = await alepha.inject(App).upload.run({
+    const result = await alepha.inject(App).upload.run({
+      body: { file },
+    });
+
+    expect(result).toBe("test.txt (12b, text/plain)");
+  });
+
+  test("should read file content via text()", async ({ expect }) => {
+    class TextApp {
+      upload = $action({
+        schema: {
+          body: t.object({ file: t.file() }),
+          response: t.text(),
+        },
+        handler: async ({ body }) => body.file.text(),
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaServerMultipart).with(TextApp);
+    await alepha.start();
+
+    const file = new File(["hello world"], "hi.txt", { type: "text/plain" });
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const resp = await fetch(
+      `${alepha.inject(ServerProvider).hostname}/api/upload`,
+      { method: "POST", body: formData },
+    );
+
+    expect(await resp.text()).toBe("hello world");
+  });
+
+  test("should read file content via arrayBuffer()", async ({ expect }) => {
+    class BufferApp {
+      upload = $action({
+        schema: {
+          body: t.object({ file: t.file() }),
+          response: t.text(),
+        },
+        handler: async ({ body }) => {
+          const ab = await body.file.arrayBuffer();
+          return new TextDecoder().decode(ab);
+        },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaServerMultipart).with(BufferApp);
+    await alepha.start();
+
+    const file = new File(["buffer test"], "buf.txt", { type: "text/plain" });
+
+    const result = await alepha.inject(BufferApp).upload.run({
+      body: { file },
+    });
+
+    expect(result).toBe("buffer test");
+  });
+
+  test("should handle binary file uploads", async ({ expect }) => {
+    class BinaryApp {
+      upload = $action({
+        schema: {
+          body: t.object({ file: t.file() }),
+          response: t.text(),
+        },
+        handler: async ({ body }) => {
+          const ab = await body.file.arrayBuffer();
+          const bytes = new Uint8Array(ab);
+          return `${body.file.name}: ${bytes.length}b, ${body.file.type}`;
+        },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaServerMultipart).with(BinaryApp);
+    await alepha.start();
+
+    const binary = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+    const file = new File([binary], "image.png", { type: "image/png" });
+
+    const result = await alepha.inject(BinaryApp).upload.run({
+      body: { file },
+    });
+
+    expect(result).toBe("image.png: 6b, image/png");
+  });
+
+  test("should handle empty file", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+    await alepha.start();
+
+    const file = new File([], "empty.txt", { type: "text/plain" });
+
+    const result = await alepha.inject(App).upload.run({
+      body: { file },
+    });
+
+    expect(result).toBe("empty.txt (0b, text/plain)");
+  });
+
+  test("should handle mixed file and text fields", async ({ expect }) => {
+    class MixedApp {
+      upload = $action({
+        schema: {
+          body: t.object({
+            name: t.text(),
+            description: t.text(),
+            file: t.file(),
+          }),
+          response: t.text(),
+        },
+        handler: ({ body }) =>
+          `${body.name}: ${body.description} (${body.file.size}b)`,
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaServerMultipart).with(MixedApp);
+    await alepha.start();
+
+    const file = new File(["content"], "doc.txt", { type: "text/plain" });
+
+    const result = await alepha.inject(MixedApp).upload.run({
       body: {
+        name: "Test Document",
+        description: "A test file upload",
         file,
       },
     });
 
-    expect(resp).toBe(`File test.txt uploaded successfully.`);
+    expect(result).toBe("Test Document: A test file upload (7b)");
+  });
+
+  test("should not have filepath (no filesystem)", async ({ expect }) => {
+    class PathApp {
+      upload = $action({
+        schema: {
+          body: t.object({ file: t.file() }),
+          response: t.text(),
+        },
+        handler: ({ body }) => String(body.file.filepath ?? "none"),
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaServerMultipart).with(PathApp);
+    await alepha.start();
+
+    const file = new File(["data"], "f.txt", { type: "text/plain" });
+
+    const result = await alepha.inject(PathApp).upload.run({
+      body: { file },
+    });
+
+    expect(result).toBe("none");
   });
 });
 
@@ -64,39 +202,23 @@ describe("ServerMultipartProvider - Size Limits", () => {
   test("should reject file exceeding individual file size limit", async ({
     expect,
   }) => {
-    class LargeFileApp {
-      upload = $action({
-        schema: {
-          body: t.object({
-            file: t.file(),
-          }),
-          response: t.text(),
-        },
-        handler: ({ body }) => `File ${body.file.name} uploaded.`,
-      });
-    }
-
-    // Set a very small file limit (100 bytes) via env config
-    const alepha = Alepha.create({
-      env: { SERVER_MULTIPART_FILE_LIMIT: "100" },
-    })
-      .with(AlephaServerMultipart)
-      .with(LargeFileApp);
+    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+    alepha.store.mut(multipartOptions, () => ({
+      limit: 10_000_000,
+      fileLimit: 100,
+      fileCount: 10,
+    }));
     await alepha.start();
 
-    // Create a file larger than the limit
-    const largeContent = "x".repeat(200);
-    const file = new File([largeContent], "large.txt", { type: "text/plain" });
+    const file = new File(["x".repeat(200)], "large.txt", {
+      type: "text/plain",
+    });
     const formData = new FormData();
     formData.append("file", file);
 
-    // Use HTTP request - validation happens at HTTP layer
     const resp = await fetch(
       `${alepha.inject(ServerProvider).hostname}/api/upload`,
-      {
-        method: "POST",
-        body: formData,
-      },
+      { method: "POST", body: formData },
     );
 
     expect(resp.status).toBe(413);
@@ -116,40 +238,33 @@ describe("ServerMultipartProvider - Size Limits", () => {
           }),
           response: t.text(),
         },
-        handler: ({ body }) =>
-          `Files ${body.file1.name} and ${body.file2.name} uploaded.`,
+        handler: () => "ok",
       });
     }
 
-    // Set total limit to 150 bytes, individual file limit to 100 bytes
-    const alepha = Alepha.create({
-      env: {
-        SERVER_MULTIPART_LIMIT: "150",
-        SERVER_MULTIPART_FILE_LIMIT: "100",
-      },
-    })
+    const alepha = Alepha.create()
       .with(AlephaServerMultipart)
       .with(MultiFileApp);
+    alepha.store.mut(multipartOptions, () => ({
+      limit: 150,
+      fileLimit: 100,
+      fileCount: 10,
+    }));
     await alepha.start();
 
-    // Create two files that individually fit but together exceed the limit
-    const file1 = new File(["x".repeat(80)], "file1.txt", {
+    const file1 = new File(["x".repeat(80)], "f1.txt", {
       type: "text/plain",
     });
-    const file2 = new File(["y".repeat(80)], "file2.txt", {
+    const file2 = new File(["y".repeat(80)], "f2.txt", {
       type: "text/plain",
     });
     const formData = new FormData();
     formData.append("file1", file1);
     formData.append("file2", file2);
 
-    // Use HTTP request - validation happens at HTTP layer
     const resp = await fetch(
       `${alepha.inject(ServerProvider).hostname}/api/upload`,
-      {
-        method: "POST",
-        body: formData,
-      },
+      { method: "POST", body: formData },
     );
 
     expect(resp.status).toBe(413);
@@ -168,33 +283,28 @@ describe("ServerMultipartProvider - Size Limits", () => {
           }),
           response: t.text(),
         },
-        handler: () => "uploaded",
+        handler: () => "ok",
       });
     }
 
-    // Set file count limit to 2
-    const alepha = Alepha.create({
-      env: { SERVER_MULTIPART_FILE_COUNT: "2" },
-    })
+    const alepha = Alepha.create()
       .with(AlephaServerMultipart)
       .with(ManyFilesApp);
+    alepha.store.mut(multipartOptions, () => ({
+      limit: 10_000_000,
+      fileLimit: 5_000_000,
+      fileCount: 2,
+    }));
     await alepha.start();
 
-    const file1 = new File(["content1"], "file1.txt", { type: "text/plain" });
-    const file2 = new File(["content2"], "file2.txt", { type: "text/plain" });
-    const file3 = new File(["content3"], "file3.txt", { type: "text/plain" });
     const formData = new FormData();
-    formData.append("file1", file1);
-    formData.append("file2", file2);
-    formData.append("file3", file3);
+    formData.append("file1", new File(["a"], "f1.txt", { type: "text/plain" }));
+    formData.append("file2", new File(["b"], "f2.txt", { type: "text/plain" }));
+    formData.append("file3", new File(["c"], "f3.txt", { type: "text/plain" }));
 
-    // Use HTTP request - validation happens at HTTP layer
     const resp = await fetch(
       `${alepha.inject(ServerProvider).hostname}/api/upload`,
-      {
-        method: "POST",
-        body: formData,
-      },
+      { method: "POST", body: formData },
     );
 
     expect(resp.status).toBe(413);
@@ -203,103 +313,43 @@ describe("ServerMultipartProvider - Size Limits", () => {
   });
 
   test("should accept file exactly at the size limit", async ({ expect }) => {
-    class ExactLimitApp {
-      upload = $action({
-        schema: {
-          body: t.object({
-            file: t.file(),
-          }),
-          response: t.text(),
-        },
-        handler: ({ body }) => `File size: ${body.file.size}`,
-      });
-    }
-
-    // Set file limit to exactly 100 bytes
-    const alepha = Alepha.create({
-      env: { SERVER_MULTIPART_FILE_LIMIT: "100" },
-    })
-      .with(AlephaServerMultipart)
-      .with(ExactLimitApp);
+    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+    alepha.store.mut(multipartOptions, () => ({
+      limit: 10_000_000,
+      fileLimit: 100,
+      fileCount: 10,
+    }));
     await alepha.start();
 
-    // Create a file exactly at the limit
-    const content = "x".repeat(100);
-    const file = new File([content], "exact.txt", { type: "text/plain" });
+    const file = new File(["x".repeat(100)], "exact.txt", {
+      type: "text/plain",
+    });
 
-    const result = await alepha.inject(ExactLimitApp).upload.run({
+    const result = await alepha.inject(App).upload.run({
       body: { file },
     });
 
-    expect(result).toBe("File size: 100");
-  });
-
-  test("should accept file just under the size limit", async ({ expect }) => {
-    class UnderLimitApp {
-      upload = $action({
-        schema: {
-          body: t.object({
-            file: t.file(),
-          }),
-          response: t.text(),
-        },
-        handler: ({ body }) => `File size: ${body.file.size}`,
-      });
-    }
-
-    // Set file limit to 100 bytes
-    const alepha = Alepha.create({
-      env: { SERVER_MULTIPART_FILE_LIMIT: "100" },
-    })
-      .with(AlephaServerMultipart)
-      .with(UnderLimitApp);
-    await alepha.start();
-
-    // Create a file just under the limit
-    const content = "x".repeat(99);
-    const file = new File([content], "under.txt", { type: "text/plain" });
-
-    const result = await alepha.inject(UnderLimitApp).upload.run({
-      body: { file },
-    });
-
-    expect(result).toBe("File size: 99");
+    expect(result).toBe("exact.txt (100b, text/plain)");
   });
 
   test("should reject file just over the size limit", async ({ expect }) => {
-    class OverLimitApp {
-      upload = $action({
-        schema: {
-          body: t.object({
-            file: t.file(),
-          }),
-          response: t.text(),
-        },
-        handler: ({ body }) => `File size: ${body.file.size}`,
-      });
-    }
-
-    // Set file limit to 100 bytes
-    const alepha = Alepha.create({
-      env: { SERVER_MULTIPART_FILE_LIMIT: "100" },
-    })
-      .with(AlephaServerMultipart)
-      .with(OverLimitApp);
+    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+    alepha.store.mut(multipartOptions, () => ({
+      limit: 10_000_000,
+      fileLimit: 100,
+      fileCount: 10,
+    }));
     await alepha.start();
 
-    // Create a file just over the limit
-    const content = "x".repeat(101);
-    const file = new File([content], "over.txt", { type: "text/plain" });
+    const file = new File(["x".repeat(101)], "over.txt", {
+      type: "text/plain",
+    });
     const formData = new FormData();
     formData.append("file", file);
 
-    // Use HTTP request - validation happens at HTTP layer
     const resp = await fetch(
       `${alepha.inject(ServerProvider).hostname}/api/upload`,
-      {
-        method: "POST",
-        body: formData,
-      },
+      { method: "POST", body: formData },
     );
 
     expect(resp.status).toBe(413);
@@ -307,145 +357,29 @@ describe("ServerMultipartProvider - Size Limits", () => {
     expect(body.message).toMatch(/exceeds size limit/i);
   });
 
-  test("should handle empty file upload", async ({ expect }) => {
-    class EmptyFileApp {
-      upload = $action({
-        schema: {
-          body: t.object({
-            file: t.file(),
-          }),
-          response: t.text(),
-        },
-        handler: ({ body }) => `File size: ${body.file.size}`,
-      });
-    }
-
-    const alepha = Alepha.create()
-      .with(AlephaServerMultipart)
-      .with(EmptyFileApp);
+  test("should reject via content-length pre-check", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+    alepha.store.mut(multipartOptions, () => ({
+      limit: 50,
+      fileLimit: 5_000_000,
+      fileCount: 10,
+    }));
     await alepha.start();
 
-    // Create an empty file
-    const file = new File([], "empty.txt", { type: "text/plain" });
-
-    const result = await alepha.inject(EmptyFileApp).upload.run({
-      body: { file },
+    const file = new File(["x".repeat(1000)], "big.txt", {
+      type: "text/plain",
     });
-
-    expect(result).toBe("File size: 0");
-
-    await alepha.stop();
-  });
-
-  test("should reject via HTTP when content-length exceeds limit", async ({
-    expect,
-  }) => {
-    class ContentLengthApp {
-      upload = $action({
-        schema: {
-          body: t.object({
-            file: t.file(),
-          }),
-          response: t.text(),
-        },
-        handler: ({ body }) => `uploaded`,
-      });
-    }
-
-    // Set a very small total limit
-    const alepha = Alepha.create({
-      env: { SERVER_MULTIPART_LIMIT: "50" },
-    })
-      .with(AlephaServerMultipart)
-      .with(ContentLengthApp);
-    await alepha.start();
-
-    const largeContent = "x".repeat(1000);
-    const file = new File([largeContent], "large.txt", { type: "text/plain" });
     const formData = new FormData();
     formData.append("file", file);
 
     const resp = await fetch(
       `${alepha.inject(ServerProvider).hostname}/api/upload`,
-      {
-        method: "POST",
-        body: formData,
-      },
+      { method: "POST", body: formData },
     );
 
     expect(resp.status).toBe(413);
     const body = await resp.json();
     expect(body.message).toMatch(/size limit exceeded/i);
-  });
-
-  test("should use default limits when env vars not set", async ({
-    expect,
-  }) => {
-    class DefaultLimitsApp {
-      upload = $action({
-        schema: {
-          body: t.object({
-            file: t.file(),
-          }),
-          response: t.text(),
-        },
-        handler: ({ body }) => `File size: ${body.file.size}`,
-      });
-    }
-
-    // Create with no env config to use defaults
-    const alepha = Alepha.create()
-      .with(AlephaServerMultipart)
-      .with(DefaultLimitsApp);
-    await alepha.start();
-
-    // Create a reasonable file (should work with default 5MB limit)
-    const content = "x".repeat(1000);
-    const file = new File([content], "normal.txt", { type: "text/plain" });
-
-    const result = await alepha.inject(DefaultLimitsApp).upload.run({
-      body: { file },
-    });
-
-    expect(result).toBe("File size: 1000");
-  });
-
-  test("should handle mixed file and text fields with size limits", async ({
-    expect,
-  }) => {
-    class MixedFieldsApp {
-      upload = $action({
-        schema: {
-          body: t.object({
-            name: t.text(),
-            description: t.text(),
-            file: t.file(),
-          }),
-          response: t.text(),
-        },
-        handler: ({ body }) =>
-          `${body.name}: ${body.description} (${body.file.size} bytes)`,
-      });
-    }
-
-    const alepha = Alepha.create({
-      env: { SERVER_MULTIPART_FILE_LIMIT: "1000" },
-    })
-      .with(AlephaServerMultipart)
-      .with(MixedFieldsApp);
-    await alepha.start();
-
-    const file = new File(["content"], "doc.txt", { type: "text/plain" });
-
-    const result = await alepha.inject(MixedFieldsApp).upload.run({
-      body: {
-        name: "Test Document",
-        description: "A test file upload",
-        file,
-      },
-    });
-
-    expect(result).toBe("Test Document: A test file upload (7 bytes)");
   });
 
   test("should count only file fields toward file count limit", async ({
@@ -467,62 +401,41 @@ describe("ServerMultipartProvider - Size Limits", () => {
       });
     }
 
-    // Set file count limit to 2 - should only count file fields, not text
-    const alepha = Alepha.create({
-      env: { SERVER_MULTIPART_FILE_COUNT: "2" },
-    })
+    const alepha = Alepha.create()
       .with(AlephaServerMultipart)
       .with(TextAndFilesApp);
+    alepha.store.mut(multipartOptions, () => ({
+      limit: 10_000_000,
+      fileLimit: 5_000_000,
+      fileCount: 2,
+    }));
     await alepha.start();
 
-    const file1 = new File(["content1"], "file1.txt", { type: "text/plain" });
-    const file2 = new File(["content2"], "file2.txt", { type: "text/plain" });
-
-    // Should succeed - only 2 files even though 5 total fields
     const result = await alepha.inject(TextAndFilesApp).upload.run({
       body: {
-        field1: "text1",
-        field2: "text2",
-        field3: "text3",
-        file1,
-        file2,
+        field1: "a",
+        field2: "b",
+        field3: "c",
+        file1: new File(["x"], "f1.txt", { type: "text/plain" }),
+        file2: new File(["y"], "f2.txt", { type: "text/plain" }),
       },
     });
 
     expect(result).toBe("success");
   });
 
-  test("should handle binary file uploads with size limits", async ({
-    expect,
-  }) => {
-    class BinaryFileApp {
-      upload = $action({
-        schema: {
-          body: t.object({
-            file: t.file(),
-          }),
-          response: t.text(),
-        },
-        handler: ({ body }) =>
-          `Binary file: ${body.file.name}, ${body.file.size} bytes, ${body.file.type}`,
-      });
-    }
-
-    const alepha = Alepha.create({
-      env: { SERVER_MULTIPART_FILE_LIMIT: "1000" },
-    })
-      .with(AlephaServerMultipart)
-      .with(BinaryFileApp);
+  test("should use default limits", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
     await alepha.start();
 
-    // Create binary content
-    const binaryContent = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
-    const file = new File([binaryContent], "image.png", { type: "image/png" });
+    const file = new File(["x".repeat(1000)], "normal.txt", {
+      type: "text/plain",
+    });
 
-    const result = await alepha.inject(BinaryFileApp).upload.run({
+    const result = await alepha.inject(App).upload.run({
       body: { file },
     });
 
-    expect(result).toBe("Binary file: image.png, 6 bytes, image/png");
+    expect(result).toBe("normal.txt (1000b, text/plain)");
   });
 });

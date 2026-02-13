@@ -1,52 +1,71 @@
-import { randomUUID } from "node:crypto";
-import { createReadStream } from "node:fs";
-import { readFile, unlink, writeFile } from "node:fs/promises";
-import * as os from "node:os";
-import { ReadableStream as WebStream } from "node:stream/web";
+import { Readable } from "node:stream";
 import {
-  $env,
+  $atom,
   $hook,
   $inject,
+  $use,
   Alepha,
   type FileLike,
   isTypeFile,
+  type Static,
   t,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import { HttpError, isMultipart, type ServerRoute } from "alepha/server";
 
-const envSchema = t.object({
-  SERVER_MULTIPART_LIMIT: t.integer({
-    default: 10_000_000, // 10MB total
-    min: 0,
-    description: "Maximum total size of multipart request body in bytes.",
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Multipart configuration atom.
+ */
+export const multipartOptions = $atom({
+  name: "alepha.server.multipart.options",
+  schema: t.object({
+    limit: t.integer({
+      default: 10_000_000, // 10MB total
+      min: 0,
+      description: "Maximum total size of multipart request body in bytes.",
+    }),
+    fileLimit: t.integer({
+      default: 5_000_000, // 5MB per file
+      min: 0,
+      description: "Maximum size of a single file in bytes.",
+    }),
+    fileCount: t.integer({
+      default: 10,
+      min: 1,
+      description: "Maximum number of files allowed in a single request.",
+    }),
   }),
-  SERVER_MULTIPART_FILE_LIMIT: t.integer({
-    default: 5_000_000, // 5MB per file
-    min: 0,
-    description: "Maximum size of a single file in bytes.",
-  }),
-  SERVER_MULTIPART_FILE_COUNT: t.integer({
-    default: 10,
-    min: 1,
-    description: "Maximum number of files allowed in a single request.",
-  }),
+  default: {
+    limit: 10_000_000,
+    fileLimit: 5_000_000,
+    fileCount: 10,
+  },
 });
+
+export type MultipartOptions = Static<typeof multipartOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [multipartOptions.key]: MultipartOptions;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class ServerMultipartProvider {
   protected readonly alepha = $inject(Alepha);
-  protected readonly env = $env(envSchema);
   protected readonly log = $logger();
+  protected readonly options = $use(multipartOptions);
 
   public readonly onRequest = $hook({
     on: "server:onRequest",
     handler: async ({ route, request }) => {
-      // already parsed (e.g. by body parser)
       if (request.body) {
         return;
       }
 
-      // we do not parse body if no schema
       if (!route.schema?.body) {
         return;
       }
@@ -59,8 +78,8 @@ export class ServerMultipartProvider {
         webRequest = new Request(request.url, {
           method: request.method,
           headers: request.headers,
-          body: WebStream.from(
-            request.raw.node.req,
+          body: Readable.toWeb(
+            request.raw.node.req as Readable,
           ) as unknown as ReadableStream,
           duplex: "half",
         } as RequestInit & { duplex: "half" });
@@ -76,13 +95,13 @@ export class ServerMultipartProvider {
       const contentLength = request.headers["content-length"];
       if (contentLength) {
         const size = Number.parseInt(contentLength, 10);
-        if (!Number.isNaN(size) && size > this.env.SERVER_MULTIPART_LIMIT) {
+        if (!Number.isNaN(size) && size > this.options.limit) {
           this.log.error(
-            `Multipart request size limit exceeded: ${size} > ${this.env.SERVER_MULTIPART_LIMIT}`,
+            `Multipart request size limit exceeded: ${size} > ${this.options.limit}`,
           );
           throw new HttpError({
             status: 413,
-            message: `Request body size limit exceeded. Maximum allowed: ${this.env.SERVER_MULTIPART_LIMIT} bytes`,
+            message: `Request body size limit exceeded. Maximum allowed: ${this.options.limit} bytes`,
           });
         }
       }
@@ -92,44 +111,23 @@ export class ServerMultipartProvider {
           return;
         }
 
-        // route expects multipart but content-type is not correct! reject with 415
         throw new HttpError({
           status: 415,
           message: `Invalid content-type: ${contentType} - only "multipart/form-data" is accepted`,
         });
       }
 
-      const { body, cleanup } = await this.handleMultipartBodyFromWeb(
-        route,
-        webRequest,
-      );
-
-      request.body = body;
-      request.metadata.multipart = { cleanup };
+      request.body = await this.parseMultipart(route, webRequest);
     },
   });
 
-  public readonly onResponse = $hook({
-    on: "server:onResponse",
-    handler: async ({ request }) => {
-      const cleanup = request.metadata.multipart?.cleanup;
-      if (typeof cleanup === "function") {
-        await cleanup();
-      }
-    },
-  });
-
-  public async handleMultipartBodyFromWeb(
+  public async parseMultipart(
     route: ServerRoute,
     request: Request,
-  ): Promise<{
-    body: Record<string, unknown>;
-    cleanup: () => Promise<void>;
-  }> {
+  ): Promise<Record<string, unknown>> {
     let formData: FormData;
 
     try {
-      // Parse the FormData from the request
       formData = await request.formData();
     } catch (error) {
       throw new HttpError(
@@ -142,169 +140,88 @@ export class ServerMultipartProvider {
     }
 
     const body: Record<string, any> = {};
-    const tempFiles: HybridFile[] = [];
+    let fileCount = 0;
+    let totalSize = 0;
 
-    // Helper to clean up temp files on error
-    const cleanupOnError = async () => {
-      for (const file of tempFiles) {
-        try {
-          await file.cleanup();
-        } catch {
-          // Ignore cleanup errors during error handling
+    if (route.schema?.body && t.schema.isObject(route.schema.body)) {
+      for (const [key, value] of Object.entries(route.schema.body.properties)) {
+        if (!t.schema.isSchema(value)) {
+          continue;
         }
-      }
-    };
 
-    try {
-      let fileCount = 0;
-      let totalSize = 0;
+        if (isTypeFile(value)) {
+          const file = formData.get(key);
+          if (file && typeof file === "object" && "arrayBuffer" in file) {
+            const blob = file as Blob;
 
-      if (route.schema?.body && t.schema.isObject(route.schema.body)) {
-        for (const [key, value] of Object.entries(
-          route.schema.body.properties,
-        )) {
-          if (t.schema.isSchema(value)) {
-            if (isTypeFile(value)) {
-              const file = formData.get(key);
-              // Check if file is a Blob (File extends Blob in Web APIs)
-              if (file && typeof file === "object" && "arrayBuffer" in file) {
-                const blob = file as Blob;
-
-                // Validate file count
-                fileCount++;
-                if (fileCount > this.env.SERVER_MULTIPART_FILE_COUNT) {
-                  this.log.error(
-                    `Too many files in multipart request: ${fileCount} > ${this.env.SERVER_MULTIPART_FILE_COUNT}`,
-                  );
-                  throw new HttpError({
-                    status: 413,
-                    message: `Too many files. Maximum allowed: ${this.env.SERVER_MULTIPART_FILE_COUNT}`,
-                  });
-                }
-
-                // Validate individual file size
-                if (blob.size > this.env.SERVER_MULTIPART_FILE_LIMIT) {
-                  this.log.error(
-                    `File "${key}" exceeds size limit: ${blob.size} > ${this.env.SERVER_MULTIPART_FILE_LIMIT}`,
-                  );
-                  throw new HttpError({
-                    status: 413,
-                    message: `File "${key}" exceeds size limit. Maximum allowed: ${this.env.SERVER_MULTIPART_FILE_LIMIT} bytes`,
-                  });
-                }
-
-                // Validate total size
-                totalSize += blob.size;
-                if (totalSize > this.env.SERVER_MULTIPART_LIMIT) {
-                  this.log.error(
-                    `Total multipart size exceeds limit: ${totalSize} > ${this.env.SERVER_MULTIPART_LIMIT}`,
-                  );
-                  throw new HttpError({
-                    status: 413,
-                    message: `Total request size exceeds limit. Maximum allowed: ${this.env.SERVER_MULTIPART_LIMIT} bytes`,
-                  });
-                }
-
-                const hybridFile = await this.createHybridFile(blob, key);
-                body[key] = hybridFile;
-                tempFiles.push(hybridFile);
-              }
-            } else {
-              const fieldValue = formData.get(key);
-              if (fieldValue !== null) {
-                // FormData values are either string or File/Blob
-                const stringValue =
-                  typeof fieldValue === "string" ? fieldValue : "";
-                body[key] = this.alepha.codec.decode(value, stringValue);
-              }
+            fileCount++;
+            if (fileCount > this.options.fileCount) {
+              this.log.error(
+                `Too many files in multipart request: ${fileCount} > ${this.options.fileCount}`,
+              );
+              throw new HttpError({
+                status: 413,
+                message: `Too many files. Maximum allowed: ${this.options.fileCount}`,
+              });
             }
+
+            if (blob.size > this.options.fileLimit) {
+              this.log.error(
+                `File "${key}" exceeds size limit: ${blob.size} > ${this.options.fileLimit}`,
+              );
+              throw new HttpError({
+                status: 413,
+                message: `File "${key}" exceeds size limit. Maximum allowed: ${this.options.fileLimit} bytes`,
+              });
+            }
+
+            totalSize += blob.size;
+            if (totalSize > this.options.limit) {
+              this.log.error(
+                `Total multipart size exceeds limit: ${totalSize} > ${this.options.limit}`,
+              );
+              throw new HttpError({
+                status: 413,
+                message: `Total request size exceeds limit. Maximum allowed: ${this.options.limit} bytes`,
+              });
+            }
+
+            body[key] = this.blobToFileLike(blob, key);
+          }
+        } else {
+          const fieldValue = formData.get(key);
+          if (fieldValue !== null) {
+            const stringValue =
+              typeof fieldValue === "string" ? fieldValue : "";
+            body[key] = this.alepha.codec.decode(value, stringValue);
           }
         }
       }
-
-      return {
-        body,
-        cleanup: async () => {
-          for (const file of tempFiles) {
-            await file.cleanup();
-          }
-        },
-      };
-    } catch (error) {
-      // Clean up any temp files that were created before the error
-      await cleanupOnError();
-      throw error;
     }
+
+    return body;
   }
 
-  /**
-   * This is a legacy code, previously we used "busboy" to parse multipart in Node.js environment.
-   * Now we rely on Web Request's formData() method, which is supported in modern Node.js versions.
-   * However, we still need to create temporary files for uploaded files to provide a consistent File-like interface.
-   *
-   * TODO: In future, we might want to refactor this to avoid using temporary files if not necessary?
-   */
-  protected async createHybridFile(
-    file: Blob,
-    fieldName: string,
-  ): Promise<HybridFile> {
-    const tmpPath = `${os.tmpdir()}/${randomUUID()}`;
+  protected blobToFileLike(blob: Blob, fieldName: string): FileLike {
+    const isFile = blob instanceof File;
 
-    // Get file data
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    return {
+      name: isFile ? blob.name : `${fieldName}_${Date.now()}`,
+      type: blob.type || "application/octet-stream",
+      size: blob.size,
+      lastModified: isFile ? blob.lastModified : Date.now(),
 
-    // Write to temp file
-    await writeFile(tmpPath, buffer);
-
-    // Get file name - check if it has name property (File type)
-    const fileName = (file as any).name || `${fieldName}_${Date.now()}`;
-
-    const hybridFile: HybridFile = {
-      _state: {
-        cleanup: false,
-        size: file.size,
-        tmpPath,
-      },
-      name: fileName,
-      type: file.type || "application/octet-stream",
-      lastModified: (file as any).lastModified || Date.now(),
-      filepath: tmpPath,
-      get size() {
-        return this._state.size;
-      },
       stream() {
-        return createReadStream(tmpPath);
+        return blob.stream() as unknown as ReadableStream;
       },
-      async arrayBuffer() {
-        const content = await readFile(tmpPath);
-        return content.buffer.slice(
-          content.byteOffset,
-          content.byteOffset + content.byteLength,
-        ) as ArrayBuffer;
-      },
-      text: async () => {
-        return await readFile(tmpPath, "utf-8");
-      },
-      async cleanup() {
-        if (this._state.cleanup) {
-          return;
-        }
 
-        await unlink(tmpPath); // clean up the temp file
-        this._state.cleanup = true;
+      arrayBuffer() {
+        return blob.arrayBuffer();
+      },
+
+      text() {
+        return blob.text();
       },
     };
-
-    return hybridFile;
   }
-}
-
-interface HybridFile extends FileLike {
-  cleanup(): Promise<void>;
-  _state: {
-    cleanup: boolean;
-    size: number;
-    tmpPath: string;
-  };
 }
