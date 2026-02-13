@@ -22,6 +22,7 @@ export * from "./primitives/$basicAuth.ts";
 export * from "./primitives/$issuer.ts";
 export * from "./primitives/$permission.ts";
 export * from "./primitives/$role.ts";
+export * from "./primitives/$secure.ts";
 export * from "./primitives/$serviceAccount.ts";
 export * from "./providers/CryptoProvider.ts";
 export * from "./providers/JwtProvider.ts";
