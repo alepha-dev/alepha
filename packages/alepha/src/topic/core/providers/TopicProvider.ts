@@ -59,9 +59,8 @@ export abstract class TopicProvider {
         continue;
       }
 
-      handlers.push(() =>
-        subscriber.options.topic.subscribe(subscriber.options.handler),
-      );
+      const handler = subscriber.handler.run.bind(subscriber.handler);
+      handlers.push(() => subscriber.options.topic.subscribe(handler));
     }
 
     return handlers;

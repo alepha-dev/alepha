@@ -1,4 +1,9 @@
-import { createPrimitive, KIND, Primitive } from "alepha";
+import {
+  createPrimitive,
+  KIND,
+  PipelinePrimitive,
+  type PipelinePrimitiveOptions,
+} from "alepha";
 import type {
   TopicHandler,
   TopicMessageSchema,
@@ -68,7 +73,8 @@ export const $subscriber = <T extends TopicMessageSchema>(
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface SubscriberPrimitiveOptions<T extends TopicMessageSchema> {
+export interface SubscriberPrimitiveOptions<T extends TopicMessageSchema>
+  extends PipelinePrimitiveOptions {
   /**
    * The topic primitive that this subscriber will listen to for messages.
    *
@@ -205,6 +211,6 @@ export interface SubscriberPrimitiveOptions<T extends TopicMessageSchema> {
 
 export class SubscriberPrimitive<
   T extends TopicMessageSchema,
-> extends Primitive<SubscriberPrimitiveOptions<T>> {}
+> extends PipelinePrimitive<SubscriberPrimitiveOptions<T>> {}
 
 $subscriber[KIND] = SubscriberPrimitive;
