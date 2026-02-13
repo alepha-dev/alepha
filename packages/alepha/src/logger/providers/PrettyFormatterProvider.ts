@@ -17,10 +17,22 @@ export class PrettyFormatterProvider extends LogFormatterProvider {
     if (isError) {
       details = this.formatError(data);
     } else if (data) {
-      try {
-        details = JSON.stringify(data);
-      } catch {
-        details = "[Unserializable Object]";
+      let error = "";
+      if ("error" in data && data.error instanceof Error) {
+        error = this.formatError(data.error);
+        delete data.error;
+      }
+
+      if (Object.keys(data).length > 0) {
+        try {
+          details = JSON.stringify(data);
+        } catch {
+          details = "[Unserializable Object]";
+        }
+      }
+
+      if (error) {
+        details += `\n${error}`;
       }
     }
 
