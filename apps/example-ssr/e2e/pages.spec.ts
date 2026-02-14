@@ -91,6 +91,7 @@ test.describe("Counter Functionality", () => {
 
   test("clicking button increments counter by 1", async ({ page }) => {
     await page.goto("/");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const button = page.locator("button");
     await expect(button).toBeVisible();
@@ -105,6 +106,7 @@ test.describe("Counter Functionality", () => {
 
   test("multiple clicks increment counter by 1, 2, 3", async ({ page }) => {
     await page.goto("/");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const button = page.locator("button");
     await expect(button).toBeVisible();

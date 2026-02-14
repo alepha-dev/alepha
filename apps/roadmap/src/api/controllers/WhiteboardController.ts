@@ -23,7 +23,7 @@ export class WhiteboardController {
   });
 
   getWhiteboards = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["whiteboard:read"] })],
     schema: {
       params: t.object({
         projectId: t.integer(),
@@ -42,7 +42,7 @@ export class WhiteboardController {
   });
 
   createWhiteboard = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["whiteboard:create"] })],
     schema: {
       body: t.object({
         projectId: t.integer(),
@@ -63,7 +63,7 @@ export class WhiteboardController {
   });
 
   getWhiteboardById = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["whiteboard:read"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -78,7 +78,7 @@ export class WhiteboardController {
   });
 
   updateWhiteboard = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["whiteboard:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -106,7 +106,7 @@ export class WhiteboardController {
   });
 
   deleteWhiteboard = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["whiteboard:delete"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -124,7 +124,7 @@ export class WhiteboardController {
 
   // Upload image for whiteboard
   uploadImage = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["whiteboard:create"] })],
     path: "/whiteboards/images",
     schema: {
       body: t.object({
@@ -149,7 +149,7 @@ export class WhiteboardController {
 
   // Delete image from whiteboard
   deleteImage = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["whiteboard:delete"] })],
     method: "DELETE",
     path: "/whiteboards/images/:fileId",
     schema: {

@@ -11,7 +11,7 @@ export class UserController {
   userFiles = $inject(UserBuckets);
 
   me = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["user:read"] })],
     schema: {
       response: users.schema,
     },
@@ -25,7 +25,7 @@ export class UserController {
   });
 
   updateAvatar = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["user:update"] })],
     schema: {
       body: t.object({
         file: t.file(),

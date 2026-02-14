@@ -10,7 +10,7 @@ export class CharacterController {
   projects = $repository(projects);
 
   getMyCharacters = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["character:read"] })],
     schema: {
       response: t.array(
         t.object({

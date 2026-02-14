@@ -30,7 +30,7 @@ export class SessionController {
   });
 
   getMySessions = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["session:read"] })],
     schema: {
       response: t.array(userSession),
     },
@@ -51,7 +51,7 @@ export class SessionController {
   });
 
   revokeSession = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["session:delete"] })],
     schema: {
       params: t.object({
         sessionId: t.string(),
@@ -71,7 +71,7 @@ export class SessionController {
   });
 
   revokeAllSessions = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["session:delete"] })],
     schema: {
       response: t.void(),
     },

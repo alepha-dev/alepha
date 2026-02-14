@@ -39,7 +39,7 @@ export class TaskController {
   });
 
   createTask = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:create"] })],
     schema: {
       body: taskCreateSchema,
       response: tasks.schema,
@@ -70,7 +70,7 @@ export class TaskController {
   });
 
   uploadAttachment = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:create"] })],
     path: "/tasks/attachments",
     schema: {
       body: t.object({
@@ -94,7 +94,7 @@ export class TaskController {
   });
 
   addAttachment = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -125,7 +125,7 @@ export class TaskController {
   });
 
   removeAttachment = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -159,7 +159,7 @@ export class TaskController {
   });
 
   getTasks = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:read"] })],
     schema: {
       params: t.object({
         projectId: t.integer(),
@@ -200,7 +200,7 @@ export class TaskController {
   });
 
   abandonTask = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -232,7 +232,7 @@ export class TaskController {
   });
 
   acceptTask = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -264,7 +264,7 @@ export class TaskController {
   });
 
   completeTask = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -332,7 +332,7 @@ export class TaskController {
   });
 
   getTaskById = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:read"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -353,7 +353,7 @@ export class TaskController {
   });
 
   updateTaskById = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -403,7 +403,7 @@ export class TaskController {
   });
 
   completeObjective = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -449,7 +449,7 @@ export class TaskController {
   });
 
   updateTaskObjectives = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -491,7 +491,7 @@ export class TaskController {
   });
 
   deleteTask = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:delete"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -516,7 +516,7 @@ export class TaskController {
   });
 
   moveTaskToZone = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -561,7 +561,7 @@ export class TaskController {
   });
 
   updateTaskNote = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -590,7 +590,7 @@ export class TaskController {
   });
 
   startTimer = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -627,7 +627,7 @@ export class TaskController {
   });
 
   stopTimer = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["task:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
