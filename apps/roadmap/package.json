@@ -3,7 +3,7 @@
   "name": "@alepha/roadmap",
   "type": "module",
   "scripts": {
-    "dev": "DEBUG='vite:deps' CI=1 alepha dev",
+    "dev": "alepha dev",
     "build": "alepha build --stats",
     "db:generate": "alepha db generate",
     "build:docker": "alepha build --docker && cd dist && docker build -t alepha/roadmap .",

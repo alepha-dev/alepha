@@ -425,11 +425,6 @@
       "import": "./src/system/index.ts",
       "default": "./src/system/index.ts"
     },
-    "./thread": {
-      "types": "./src/thread/index.ts",
-      "import": "./src/thread/index.ts",
-      "default": "./src/thread/index.ts"
-    },
     "./topic": {
       "types": "./src/topic/core/index.ts",
       "import": "./src/topic/core/index.ts",

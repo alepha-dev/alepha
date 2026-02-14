@@ -8,7 +8,7 @@
     "deploy": "alepha deploy --build --migrate --mode=production",
     "studio": "alepha db studio --mode=production",
     "db:generate": "alepha db generate",
-    "e2e": "yarn e2e:mode:prod",
+    "e2e": "yarn e2e:mode:dev && yarn e2e:mode:prod",
     "e2e:mode:dev": "CI=1 playwright test --config=./playwright.dev.config.ts",
     "e2e:mode:prod": "playwright test",
     "e2e:ui": "playwright test --ui",
