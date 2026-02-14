@@ -510,11 +510,11 @@ export class Alepha {
 
       const target = this.store.get("alepha.target");
       if (target) {
+        this.store.set("alepha.target", undefined);
         this.modules = [];
         this.registry = new Map();
         this.primitiveRegistry = new Map();
         this.pendingInstantiations = [];
-        this.substitutions = new Map();
         this.events.clear();
         delete (target as any)[MODULE];
         this.with(target);
@@ -706,6 +706,12 @@ export class Alepha {
   public with<T extends object>(
     serviceEntry: ServiceEntry<T> | { default: ServiceEntry<T> },
   ): this {
+    // Early cutoff: if a $mode already claimed the target, skip further registrations.
+    // The target's own dependencies are resolved via $inject during its constructor.
+    if (this.store?.get("alepha.target")) {
+      return this;
+    }
+
     const entry: ServiceEntry<T> =
       "default" in serviceEntry ? serviceEntry.default : serviceEntry;
 
