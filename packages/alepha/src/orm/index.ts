@@ -1,6 +1,7 @@
 import { $module, type Alepha, t } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import type { PgTransaction } from "drizzle-orm/pg-core";
+import { DbMigrationMode } from "./modes/DbMigrationMode.ts";
 import { $entity } from "./primitives/$entity.ts";
 import { $sequence } from "./primitives/$sequence.ts";
 import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
@@ -94,6 +95,7 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./index.shared-server.ts";
+export * from "./modes/DbMigrationMode.ts";
 export * from "./providers/drivers/BunPostgresProvider.ts";
 export * from "./providers/drivers/BunSqliteProvider.ts";
 export * from "./providers/drivers/NodePostgresProvider.ts";
@@ -146,6 +148,7 @@ export const AlephaOrm = $module({
     Repository,
     PgRelationManager,
     QueryManager,
+    DbMigrationMode,
   ],
   register: (alepha: Alepha) => {
     const env = alepha.parseEnv(

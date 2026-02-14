@@ -38,6 +38,7 @@ Foundation of the entire framework with dependency injection and lifecycle manag
 - [`$hook`](/docs/reference-primitives-$hook) — Registers a new hook.
 - [`$inject`](/docs/reference-primitives-$inject) — Get the instance of the specified type from the context.
 - [`$memoize`](/docs/reference-primitives-$memoize) — * Maximum number of entries to keep in the cache.
+- [`$mode`](/docs/reference-primitives-$mode) — * Environment variable to check for.
 - [`$module`](/docs/reference-primitives-$module) — Wrap Services and Primitives into a Module.
 - [`$pipeline`](/docs/reference-primitives-$pipeline) — Creates a pipeline primitive that composes middleware with a handler.
 - [`$scope`](/docs/reference-primitives-$scope) — Middleware that wraps the handler in an ALS (AsyncLocalStorage) context.

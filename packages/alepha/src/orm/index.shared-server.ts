@@ -11,6 +11,7 @@ export * from "./errors/DbVersionMismatchError.ts";
 export * from "./index.shared.ts";
 export * from "./middlewares/$transactional.ts";
 export * from "./primitives/$repository.ts";
+export * from "./primitives/$seed.ts";
 export * from "./primitives/$sequence.ts";
 export * from "./primitives/$transaction.ts";
 export * from "./providers/DrizzleKitProvider.ts";
