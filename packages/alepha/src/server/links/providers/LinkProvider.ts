@@ -48,6 +48,7 @@ export class LinkProvider {
   protected actionMap = new Map<string, HttpClientLink>();
   protected permissions = new Set<string>();
   protected definitions: Record<string, string> = {};
+  protected lastLoadedRegistry: ApiRegistryResponse | null = null;
 
   // Browser-only: batch collector for coalescing multiple calls
   protected batchCollector?: BatchCollector;
@@ -100,6 +101,7 @@ export class LinkProvider {
    * Called when storing from atom/fetch/SSR.
    */
   protected loadRegistry(registry: ApiRegistryResponse): void {
+    this.lastLoadedRegistry = registry;
     this.definitions = registry.definitions ?? {};
     this.permissions.clear();
     this.actionMap.clear();
@@ -130,7 +132,8 @@ export class LinkProvider {
     if (registry) {
       if (this.alepha.isBrowser()) {
         // Browser side: use the parsed action map
-        if (this.actionMap.size === 0) {
+        // Reload when registry changes (e.g. after login provides new authenticated links)
+        if (this.actionMap.size === 0 || registry !== this.lastLoadedRegistry) {
           this.loadRegistry(registry);
         }
         return [...this.actionMap.values()];
