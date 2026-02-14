@@ -23,9 +23,9 @@ import type { StorageStats } from "../schemas/storageStatsSchema.ts";
 export class FileService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly fileRepository = $repository(files);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly defaultBucket = $bucket({ name: "default" });
+  public readonly fileRepository = $repository(files);
 
   protected onUploadFile = $hook({
     on: "bucket:file:uploaded",

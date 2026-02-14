@@ -9,7 +9,7 @@
 />
 Alepha
 </h1>
-<p>The AI-Native Application Engine</p>
+<p>TypeScript Framework Made Easy</p>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/v/alepha.svg" alt="npm version"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/l/alepha.svg" alt="license"/></a>
 <a href="https://codecov.io/gh/feunard/alepha"><img src="https://codecov.io/gh/feunard/alepha/graph/badge.svg?token=ZDLWI514CP" alt="coverage"/></a>
@@ -21,7 +21,7 @@ Alepha
 
 ## What is Alepha?
 
-Full-stack TypeScript engine for agentic era. Define your schema once — get database, API, types, and forms.
+Full-stack TypeScript framework for agentic era. Define your schema once — get database, API, types, and forms.
 
 - **One schema, everywhere** — Database, API validation, TypeScript types, React forms — all from one definition
 - **Full autocomplete** — Client calls server with complete type safety, zero codegen

@@ -41,9 +41,9 @@ const HeroSection = () => {
               lineHeight: 1.15,
             }}
           >
-            Application Engine
+            TypeScript Framework
             <br />
-            <span style={{ color: "var(--color-accent)" }}>AI-Native</span>
+            <span style={{ color: "var(--color-accent)" }}>Made Easy</span>
           </h1>
 
           <p

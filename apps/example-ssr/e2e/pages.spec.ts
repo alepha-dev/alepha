@@ -74,8 +74,8 @@ test.describe("Counter Functionality", () => {
   async function waitForHydration(page: Page) {
     // Wait for network to be idle (all resources including JS loaded)
     await page.waitForLoadState("networkidle");
-    // Give React time to hydrate after script execution
-    await page.waitForTimeout(500);
+    // Give some time for the hydration process to complete after network idle
+    await page.waitForTimeout(1000);
   }
 
   /**
@@ -91,7 +91,6 @@ test.describe("Counter Functionality", () => {
 
   test("clicking button increments counter by 1", async ({ page }) => {
     await page.goto("/");
-    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const button = page.locator("button");
     await expect(button).toBeVisible();
@@ -106,7 +105,6 @@ test.describe("Counter Functionality", () => {
 
   test("multiple clicks increment counter by 1, 2, 3", async ({ page }) => {
     await page.goto("/");
-    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const button = page.locator("button");
     await expect(button).toBeVisible();

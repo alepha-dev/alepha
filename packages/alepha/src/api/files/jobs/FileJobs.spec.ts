@@ -5,29 +5,33 @@ import { describe, expect, it } from "vitest";
 import { FileJobs, FileService } from "../index.ts";
 
 describe("FileJobRegistry", () => {
-  const alepha = Alepha.create();
-  const jobs = alepha.inject(FileJobs);
-  const service = alepha.inject(FileService);
-  const dtp = alepha.inject(DateTimeProvider);
-  const fs = alepha.inject(FileSystemProvider);
-
-  const createFile = (
-    textOrOpts: string | { text: string; name?: string; type?: string },
-    opts?: { name?: string; type?: string },
-  ) => {
-    if (typeof textOrOpts === "string") {
-      return fs.createFile({ text: textOrOpts, ...(opts || {}) });
-    }
-    return fs.createFile(textOrOpts);
-  };
-
   it("should remove expired files", { retry: 3 }, async () => {
+    const alepha = Alepha.create();
+    const jobs = alepha.inject(FileJobs);
+    const service = alepha.inject(FileService);
+    const dtp = alepha.inject(DateTimeProvider);
+    const fs = alepha.inject(FileSystemProvider);
+
+    const createFile = (
+      textOrOpts: string | { text: string; name?: string; type?: string },
+      opts?: { name?: string; type?: string },
+    ) => {
+      if (typeof textOrOpts === "string") {
+        return fs.createFile({ text: textOrOpts, ...(opts || {}) });
+      }
+      return fs.createFile(textOrOpts);
+    };
+
+    await alepha.start();
+
+    await service.fileRepository.clear();
+
     const file = createFile("");
 
     await Promise.all([
       service.uploadFile(file),
       service.uploadFile(file, {
-        expirationDate: new Date().toISOString(),
+        expirationDate: dtp.nowISOString(),
       }),
       service.uploadFile(file, {
         expirationDate: dtp.now().add(1, "hour").toISOString(),
@@ -37,7 +41,10 @@ describe("FileJobRegistry", () => {
       }),
     ]);
 
-    const list = () => service.findFiles().then((it) => it.content);
+    const list = async () => {
+      const it = await service.findFiles();
+      return it.content;
+    };
 
     expect(await list()).toHaveLength(4);
 
