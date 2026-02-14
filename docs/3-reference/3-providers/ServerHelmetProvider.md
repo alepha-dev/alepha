@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { ServerHelmetProvider } from "alepha/server/helmet";
+import { ServerHelmetProvider } from "alepha/server";
 ```
 
 ## Overview

@@ -24,6 +24,8 @@ Convention-driven HTTP server with automatic validation and type inference.
 - Direct invocation (`run()`) or HTTP (`fetch()`)
 - Built-in authentication integration
 - Multipart file upload handling
+- Response compression (gzip, brotli, zstd)
+- Security headers (HSTS, CSP, X-Frame-Options, etc.)
 - Content-type auto-negotiation (JSON, form-data, text)
 - HTTP methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
 - Error handling: BadRequestError, ValidationError, ForbiddenError, UnauthorizedError, ConflictError, NotFoundError
@@ -38,6 +40,7 @@ Convention-driven HTTP server with automatic validation and type inference.
 
 ### Providers
 
+- [`ServerHelmetProvider`](/docs/reference-providers-serverhelmetprovider) — Provides a configurable way to apply essential HTTP security headers
 - [`ServerNotReadyProvider`](/docs/reference-providers-servernotreadyprovider) — On every request, this provider checks if the server is ready.
 - [`ServerProvider`](/docs/reference-providers-serverprovider) — Base server provider to handle incoming requests and route them.
 - [`ServerRouterProvider`](/docs/reference-providers-serverrouterprovider) — Main router for all routes server side.

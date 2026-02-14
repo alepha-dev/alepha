@@ -28,7 +28,7 @@
     "vitest": "^4.0.18"
   },
   "scripts": {
-    "dev": "LOG_LEVEL=trace alepha dev",
+    "dev": "alepha dev",
     "copy": "alepha gen:docs && alepha gen:tree",
     "copy&dev": "yarn copy && alepha dev",
     "start": "node dist",

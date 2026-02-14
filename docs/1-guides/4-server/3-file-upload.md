@@ -1,20 +1,6 @@
 # File Upload
 
-Alepha handles multipart/form-data uploads through the `t.file()` schema type and the `AlephaServerMultipart` module.
-
-## Setup
-
-Register the multipart module:
-
-```typescript
-import { Alepha } from "alepha";
-import { AlephaServerMultipart } from "alepha/server/multipart";
-
-Alepha.create()
-  .with(AlephaServerMultipart)
-  .with(App)
-  .start();
-```
+Alepha handles multipart/form-data uploads through the `t.file()` schema type. Multipart parsing is built into `AlephaServer` and active by default.
 
 ## Defining Upload Endpoints
 

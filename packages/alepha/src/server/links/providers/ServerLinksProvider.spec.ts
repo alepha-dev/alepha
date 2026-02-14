@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Alepha, t } from "alepha";
-import { $issuer, $secure, AlephaSecurity } from "alepha/security";
+import { $issuer, $permission, $secure, AlephaSecurity } from "alepha/security";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 import { LinkProvider, ServerLinksProvider } from "../index.ts";
@@ -93,12 +93,8 @@ describe("ServerLinksProvider", () => {
       );
       const data = await res.json();
 
-      expect(data.links).toContainEqual(
-        expect.objectContaining({
-          name: "publicAction",
-          path: "/publicAction",
-        }),
-      );
+      expect(data.actions.publicAction).toBeDefined();
+      expect(data.actions.publicAction.path).toBe("/publicAction");
     });
 
     it("should NOT return secured actions to unauthenticated users", async ({
@@ -127,11 +123,7 @@ describe("ServerLinksProvider", () => {
       );
       const data = await res.json();
 
-      expect(data.links).not.toContainEqual(
-        expect.objectContaining({
-          name: "securedAction",
-        }),
-      );
+      expect(data.actions.securedAction).toBeUndefined();
     });
 
     it("should return secured actions to authenticated users with permissions", async ({
@@ -194,14 +186,10 @@ describe("ServerLinksProvider", () => {
       const linksProvider = alepha.inject(ServerLinksProvider);
       const user = { id: randomUUID(), roles: ["user"] };
 
-      const { links } = await linksProvider.getUserApiLinks({ user });
+      const registry = await linksProvider.getUserApiLinks({ user });
 
-      expect(links).toContainEqual(
-        expect.objectContaining({ name: "publicAction" }),
-      );
-      expect(links).toContainEqual(
-        expect.objectContaining({ name: "securedAction" }),
-      );
+      expect(registry.actions.publicAction).toBeDefined();
+      expect(registry.actions.securedAction).toBeDefined();
     });
 
     it("should filter secured actions based on explicit permissions", async ({
@@ -235,29 +223,21 @@ describe("ServerLinksProvider", () => {
 
       const linksProvider = alepha.inject(ServerLinksProvider);
 
-      // User with "user" role should only see userAction (has user:* which matches user:read)
-      const userLinks = await linksProvider.getUserApiLinks({
+      // User with "user" role should only see userAction
+      const userRegistry = await linksProvider.getUserApiLinks({
         user: { id: randomUUID(), roles: ["user"] },
       });
 
-      expect(userLinks.links).toContainEqual(
-        expect.objectContaining({ name: "userAction" }),
-      );
-      expect(userLinks.links).not.toContainEqual(
-        expect.objectContaining({ name: "adminOnly" }),
-      );
+      expect(userRegistry.actions.userAction).toBeDefined();
+      expect(userRegistry.actions.adminOnly).toBeUndefined();
 
-      // User with "admin" role should see both (wildcard *)
-      const adminLinks = await linksProvider.getUserApiLinks({
+      // User with "admin" role should see both
+      const adminRegistry = await linksProvider.getUserApiLinks({
         user: { id: randomUUID(), roles: ["admin"] },
       });
 
-      expect(adminLinks.links).toContainEqual(
-        expect.objectContaining({ name: "userAction" }),
-      );
-      expect(adminLinks.links).toContainEqual(
-        expect.objectContaining({ name: "adminOnly" }),
-      );
+      expect(adminRegistry.actions.userAction).toBeDefined();
+      expect(adminRegistry.actions.adminOnly).toBeDefined();
     });
 
     it("should show auth-only $secure() actions to any authenticated user", async ({
@@ -284,13 +264,11 @@ describe("ServerLinksProvider", () => {
       const linksProvider = alepha.inject(ServerLinksProvider);
 
       // User with "limited" role (no permissions) should still see auth-only actions
-      const links = await linksProvider.getUserApiLinks({
+      const registry = await linksProvider.getUserApiLinks({
         user: { id: randomUUID(), roles: ["limited"] },
       });
 
-      expect(links.links).toContainEqual(
-        expect.objectContaining({ name: "authOnly" }),
-      );
+      expect(registry.actions.authOnly).toBeDefined();
     });
   });
 
@@ -340,6 +318,143 @@ describe("ServerLinksProvider", () => {
       // createUser and deleteUser are secured
       expect(createUser?.secured).toBe(true);
       expect(deleteUser?.secured).toBe(true);
+    });
+  });
+
+  describe("permissions in registry", () => {
+    it("should separate virtual permissions from actions", async ({
+      expect,
+    }) => {
+      class App {
+        getUsers = $action({
+          path: "/users",
+          schema: { response: t.array(t.text()) },
+          handler: () => [],
+        });
+        teamManagement = $permission({
+          name: "TeamManagement",
+          group: "team",
+        });
+        issuer = $issuer({
+          secret: "test",
+          roles: [
+            {
+              name: "admin",
+              permissions: [{ name: "*" }, { name: "team:TeamManagement" }],
+            },
+          ],
+        });
+      }
+
+      const alepha = Alepha.create()
+        .with(App)
+        .with(ServerLinksProvider)
+        .with(AlephaSecurity);
+      await alepha.start();
+
+      const linksProvider = alepha.inject(ServerLinksProvider);
+      const registry = await linksProvider.getUserApiLinks({
+        user: { id: randomUUID(), roles: ["admin"] },
+      });
+
+      // Virtual permissions should be in the permissions array, not in actions
+      expect(registry.permissions).toContain("team:TeamManagement");
+      expect(registry.actions.TeamManagement).toBeUndefined();
+
+      // Real actions should be in the actions map
+      expect(registry.actions.getUsers).toBeDefined();
+    });
+  });
+
+  describe("caching and ETag", () => {
+    it("should return ETag header on first request", async ({ expect }) => {
+      class App {
+        ping = $action({
+          handler: () => "pong",
+        });
+      }
+
+      const alepha = Alepha.create().with(App).with(ServerLinksProvider);
+      await alepha.start();
+
+      const res = await fetch(
+        `${alepha.inject(ServerProvider).hostname}/api/_links`,
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("etag")).toBeDefined();
+      expect(res.headers.get("etag")).toMatch(/^"[a-f0-9]{32}"$/);
+    });
+
+    it("should return 304 when If-None-Match matches ETag", async ({
+      expect,
+    }) => {
+      class App {
+        ping = $action({
+          handler: () => "pong",
+        });
+      }
+
+      const alepha = Alepha.create().with(App).with(ServerLinksProvider);
+      await alepha.start();
+
+      const hostname = alepha.inject(ServerProvider).hostname;
+
+      // First request — get the ETag
+      const res1 = await fetch(`${hostname}/api/_links`);
+      const etag = res1.headers.get("etag")!;
+      expect(etag).toBeDefined();
+
+      // Second request with If-None-Match — should get 304
+      const res2 = await fetch(`${hostname}/api/_links`, {
+        headers: { "if-none-match": etag },
+      });
+
+      expect(res2.status).toBe(304);
+      expect(res2.headers.get("etag")).toBe(etag);
+    });
+
+    it("should return same ETag for same roles", async ({ expect }) => {
+      class App {
+        ping = $action({
+          handler: () => "pong",
+        });
+      }
+
+      const alepha = Alepha.create().with(App).with(ServerLinksProvider);
+      await alepha.start();
+
+      const hostname = alepha.inject(ServerProvider).hostname;
+
+      const res1 = await fetch(`${hostname}/api/_links`);
+      const res2 = await fetch(`${hostname}/api/_links`);
+
+      expect(res1.headers.get("etag")).toBe(res2.headers.get("etag"));
+    });
+
+    it("should serve cached response on second request", async ({ expect }) => {
+      class App {
+        ping = $action({
+          schema: { response: t.text() },
+          handler: () => "pong",
+        });
+      }
+
+      const alepha = Alepha.create().with(App).with(ServerLinksProvider);
+      await alepha.start();
+
+      const hostname = alepha.inject(ServerProvider).hostname;
+
+      // First request populates cache
+      const res1 = await fetch(`${hostname}/api/_links`);
+      const data1 = await res1.json();
+
+      // Second request should use cache
+      const res2 = await fetch(`${hostname}/api/_links`);
+      const data2 = await res2.json();
+
+      expect(data1).toStrictEqual(data2);
+      expect(data1.actions.ping).toBeDefined();
     });
   });
 });

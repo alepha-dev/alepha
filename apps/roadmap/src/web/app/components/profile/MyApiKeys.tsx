@@ -77,7 +77,7 @@ const MyApiKeys = (props: MyApiKeysProps) => {
   });
 
   const handleRevoke = async (id: string) => {
-    await apiKeyApi.revokeApiKey({ params: { id } });
+    await apiKeyApi.revokeMyApiKey({ params: { id } });
     setApiKeys((prev) => prev.filter((key) => key.id !== id));
   };
 

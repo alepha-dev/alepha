@@ -18,7 +18,7 @@ export class AdminFileStatsController {
    * Returns aggregated data including total size, file count,
    * and breakdowns by bucket and MIME type.
    */
-  public readonly getStats = $action({
+  public readonly getFileStats = $action({
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:file:read"] })],

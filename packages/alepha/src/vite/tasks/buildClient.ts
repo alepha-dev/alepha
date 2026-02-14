@@ -118,7 +118,7 @@ export async function buildClient(opts: BuildClientOptions): Promise<void> {
         },
       },
     },
-    esbuild: { legalComments: "none" },
+    esbuild: { legalComments: "none", keepNames: true },
     customLogger: logger,
     plugins,
   };

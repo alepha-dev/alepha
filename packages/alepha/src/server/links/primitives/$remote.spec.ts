@@ -121,72 +121,55 @@ describe("$remote", () => {
 
     const linkProvider = front.inject(LinkProvider);
 
-    expect(await getLinks(c)).toEqual({
-      links: [
-        {
-          group: "ServiceC",
-          name: "print",
+    // Service C: single action
+    expect(await getRegistry(c)).toEqual({
+      actions: {
+        print: {
           path: "/print",
-          rawSchema: {},
         },
-      ],
+      },
       prefix: "/api",
     });
 
-    expect(await getLinks(b)).toEqual({
-      links: [
-        {
-          group: "ServiceB",
-          name: "compute",
+    // Service B: single action
+    expect(await getRegistry(b)).toEqual({
+      actions: {
+        compute: {
           path: "/compute",
-          rawSchema: {},
         },
-      ],
+      },
       prefix: "/api",
     });
 
-    expect(await getLinks(a)).toEqual({
-      links: [
-        {
-          group: "ServiceA",
-          name: "getReport",
+    // Service A: own action + proxied C action
+    expect(await getRegistry(a)).toEqual({
+      actions: {
+        getReport: {
           path: "/getReport",
-          rawSchema: {},
         },
-        {
-          group: "ServiceC",
-          name: "print",
+        print: {
           path: "/print",
           service: "cr",
-          rawSchema: {},
         },
-      ],
+      },
       prefix: "/api",
     });
 
-    expect(await getLinks(front)).toEqual({
-      links: [
-        {
-          group: "WebApp",
-          name: "ping",
+    // Frontend: own action + proxied A actions (including A's proxied C)
+    expect(await getRegistry(front)).toEqual({
+      actions: {
+        ping: {
           path: "/ping",
-          rawSchema: {},
         },
-        {
-          group: "ServiceA",
-          name: "getReport",
+        getReport: {
           path: "/getReport",
-          rawSchema: {},
           service: "a",
         },
-        {
-          group: "ServiceC",
-          name: "print",
+        print: {
           path: "/cr/print",
-          rawSchema: {},
           service: "a",
         },
-      ],
+      },
       prefix: "/api",
     });
 
@@ -222,7 +205,7 @@ describe("$remote", () => {
   });
 });
 
-const getLinks = (a: Alepha) =>
+const getRegistry = (a: Alepha) =>
   fetch(`${a.inject(ServerProvider).hostname}/api/_links`).then((res) =>
     res.json(),
   );

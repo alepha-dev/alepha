@@ -86,7 +86,7 @@ export class ApiKeyController {
   /**
    * Revoke an API key. Only the owner can revoke their own keys.
    */
-  public readonly revokeApiKey = $action({
+  public readonly revokeMyApiKey = $action({
     method: "DELETE",
     path: `${this.url}/:id`,
     group: this.group,

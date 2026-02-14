@@ -161,6 +161,12 @@ export class ViteDevServerProvider {
       // },
     });
 
+    // Vite 7 defers client plugin buildStart() until server.listen().
+    // Since we call ssrLoadModule() before listen(), plugins like vite:css
+    // that initialize shared state in buildStart() crash in SSR transforms.
+    // Force client buildStart() now so shared plugin state is ready for SSR.
+    await this.server.environments.client.pluginContainer.buildStart();
+
     this.patchServerRestartForEnvReload();
   }
 

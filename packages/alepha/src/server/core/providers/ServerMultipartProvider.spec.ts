@@ -1,7 +1,6 @@
 import { Alepha, t } from "alepha";
-import { $action, ServerProvider } from "alepha/server";
+import { $action, AlephaServer, ServerProvider } from "alepha/server";
 import { describe, test } from "vitest";
-import { AlephaServerMultipart } from "../index.ts";
 import { multipartOptions } from "./ServerMultipartProvider.ts";
 
 class App {
@@ -20,7 +19,7 @@ class App {
 
 describe("ServerMultipartProvider", () => {
   test("should upload file via HTTP", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+    const alepha = Alepha.create().with(AlephaServer).with(App);
     await alepha.start();
 
     const file = new File(["test content"], "test.txt", { type: "text/plain" });
@@ -37,7 +36,7 @@ describe("ServerMultipartProvider", () => {
   });
 
   test("should upload file locally via run()", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+    const alepha = Alepha.create().with(AlephaServer).with(App);
     await alepha.start();
 
     const file = new File(["test content"], "test.txt", { type: "text/plain" });
@@ -60,7 +59,7 @@ describe("ServerMultipartProvider", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaServerMultipart).with(TextApp);
+    const alepha = Alepha.create().with(AlephaServer).with(TextApp);
     await alepha.start();
 
     const file = new File(["hello world"], "hi.txt", { type: "text/plain" });
@@ -89,7 +88,7 @@ describe("ServerMultipartProvider", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaServerMultipart).with(BufferApp);
+    const alepha = Alepha.create().with(AlephaServer).with(BufferApp);
     await alepha.start();
 
     const file = new File(["buffer test"], "buf.txt", { type: "text/plain" });
@@ -116,7 +115,7 @@ describe("ServerMultipartProvider", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaServerMultipart).with(BinaryApp);
+    const alepha = Alepha.create().with(AlephaServer).with(BinaryApp);
     await alepha.start();
 
     const binary = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
@@ -130,7 +129,7 @@ describe("ServerMultipartProvider", () => {
   });
 
   test("should handle empty file", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+    const alepha = Alepha.create().with(AlephaServer).with(App);
     await alepha.start();
 
     const file = new File([], "empty.txt", { type: "text/plain" });
@@ -158,7 +157,7 @@ describe("ServerMultipartProvider", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaServerMultipart).with(MixedApp);
+    const alepha = Alepha.create().with(AlephaServer).with(MixedApp);
     await alepha.start();
 
     const file = new File(["content"], "doc.txt", { type: "text/plain" });
@@ -185,7 +184,7 @@ describe("ServerMultipartProvider", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaServerMultipart).with(PathApp);
+    const alepha = Alepha.create().with(AlephaServer).with(PathApp);
     await alepha.start();
 
     const file = new File(["data"], "f.txt", { type: "text/plain" });
@@ -202,7 +201,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
   test("should reject file exceeding individual file size limit", async ({
     expect,
   }) => {
-    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+    const alepha = Alepha.create().with(AlephaServer).with(App);
     alepha.store.mut(multipartOptions, () => ({
       limit: 10_000_000,
       fileLimit: 100,
@@ -242,9 +241,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
       });
     }
 
-    const alepha = Alepha.create()
-      .with(AlephaServerMultipart)
-      .with(MultiFileApp);
+    const alepha = Alepha.create().with(AlephaServer).with(MultiFileApp);
     alepha.store.mut(multipartOptions, () => ({
       limit: 150,
       fileLimit: 100,
@@ -287,9 +284,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
       });
     }
 
-    const alepha = Alepha.create()
-      .with(AlephaServerMultipart)
-      .with(ManyFilesApp);
+    const alepha = Alepha.create().with(AlephaServer).with(ManyFilesApp);
     alepha.store.mut(multipartOptions, () => ({
       limit: 10_000_000,
       fileLimit: 5_000_000,
@@ -313,7 +308,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
   });
 
   test("should accept file exactly at the size limit", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+    const alepha = Alepha.create().with(AlephaServer).with(App);
     alepha.store.mut(multipartOptions, () => ({
       limit: 10_000_000,
       fileLimit: 100,
@@ -333,7 +328,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
   });
 
   test("should reject file just over the size limit", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+    const alepha = Alepha.create().with(AlephaServer).with(App);
     alepha.store.mut(multipartOptions, () => ({
       limit: 10_000_000,
       fileLimit: 100,
@@ -358,7 +353,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
   });
 
   test("should reject via content-length pre-check", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+    const alepha = Alepha.create().with(AlephaServer).with(App);
     alepha.store.mut(multipartOptions, () => ({
       limit: 50,
       fileLimit: 5_000_000,
@@ -401,9 +396,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
       });
     }
 
-    const alepha = Alepha.create()
-      .with(AlephaServerMultipart)
-      .with(TextAndFilesApp);
+    const alepha = Alepha.create().with(AlephaServer).with(TextAndFilesApp);
     alepha.store.mut(multipartOptions, () => ({
       limit: 10_000_000,
       fileLimit: 5_000_000,
@@ -425,7 +418,7 @@ describe("ServerMultipartProvider - Size Limits", () => {
   });
 
   test("should use default limits", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaServerMultipart).with(App);
+    const alepha = Alepha.create().with(AlephaServer).with(App);
     await alepha.start();
 
     const file = new File(["x".repeat(1000)], "normal.txt", {

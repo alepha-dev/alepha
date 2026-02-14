@@ -450,6 +450,7 @@ export interface HttpAction {
   method?: string;
   prefix?: string;
   path: string;
+  contentType?: string;
   requestBodyType?: string;
   schema?: {
     params?: TObject;

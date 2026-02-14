@@ -21,7 +21,7 @@ export class AdminJobController {
   protected readonly group: string = "admin:jobs";
   protected readonly jobService = $inject(JobService);
 
-  public readonly getStats = $action({
+  public readonly getJobStats = $action({
     path: `${this.url}/stats`,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],

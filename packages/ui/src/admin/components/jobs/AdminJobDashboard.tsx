@@ -103,7 +103,7 @@ const AdminJobDashboard = () => {
     try {
       const [statsData, recentData, failureData, activityData, queueData] =
         await Promise.all([
-          client.getStats(),
+          client.getJobStats(),
           client.findExecutions({ query: { sort: "-createdAt", size: 10 } }),
           client.getTopFailures(),
           client.getActivity({ query: { days: 14 } }),

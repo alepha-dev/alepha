@@ -115,7 +115,7 @@ export class AdminAuditController {
   /**
    * Get audit statistics.
    */
-  public readonly getStats = $action({
+  public readonly getAuditStats = $action({
     path: `${this.url}/stats`,
     group: this.group,
     use: [$secure({ permissions: ["admin:audit:read"] })],

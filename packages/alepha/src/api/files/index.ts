@@ -3,7 +3,6 @@ import { AlephaBucket } from "alepha/bucket";
 import type { DurationLike } from "alepha/datetime";
 import type { UserAccountToken } from "alepha/security";
 import { AlephaServerEtag } from "alepha/server/etag";
-import { AlephaServerMultipart } from "alepha/server/multipart";
 import { AdminFileStatsController } from "./controllers/AdminFileStatsController.ts";
 import { FileController } from "./controllers/FileController.ts";
 import { FileJobs } from "./jobs/FileJobs.ts";
@@ -70,7 +69,6 @@ export const AlephaApiFiles = $module({
     alepha
       .with(AlephaBucket)
       .with(AlephaServerEtag)
-      .with(AlephaServerMultipart)
       .with(FileController)
       .with(AdminFileStatsController)
       .with(FileJobs);

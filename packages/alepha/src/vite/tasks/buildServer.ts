@@ -115,6 +115,7 @@ export async function buildServer(
       noExternal: true,
       resolve: { conditions },
     },
+    esbuild: { legalComments: "none", keepNames: true },
     build: {
       ssr: opts.entry,
       minify: true,

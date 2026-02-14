@@ -59,19 +59,6 @@ const getMiddlewareSummary = (
     case "$retry":
       if (opts.max) return [{ label: `max:${opts.max}`, color: "blue" }];
       break;
-    case "$compress":
-      if (opts.disabled) return [{ label: "disabled", color: "gray" }];
-      if (opts.allowedContentTypes)
-        return [
-          { label: `${opts.allowedContentTypes.length} types`, color: "teal" },
-        ];
-      break;
-    case "$helmet": {
-      const keys = Object.keys(opts).filter((k) => opts[k] !== undefined);
-      if (keys.length > 0)
-        return keys.map((k) => ({ label: k, color: "yellow" }));
-      break;
-    }
     case "$cors":
       if (opts.origin) return [{ label: String(opts.origin), color: "blue" }];
       break;

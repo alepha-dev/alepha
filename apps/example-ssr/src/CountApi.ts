@@ -1,11 +1,11 @@
 import { t } from "alepha";
-import { $entity, $repository, pg } from "alepha/orm";
+import { $entity, $repository, db } from "alepha/orm";
 import { $action } from "alepha/server";
 
 const viewEntity = $entity({
   name: "views",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     name: t.text(),
     count: t.integer(),
   }),

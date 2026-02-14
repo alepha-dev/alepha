@@ -6,8 +6,8 @@ import { serverApiOptions } from "alepha/server";
 import { ServerProxyProvider } from "alepha/server/proxy";
 import { $remote, type RemotePrimitive } from "../primitives/$remote.ts";
 import {
-  type ApiLinksResponse,
-  apiLinksResponseSchema,
+  type ApiRegistryResponse,
+  apiRegistryResponseSchema,
 } from "../schemas/apiLinksResponseSchema.ts";
 import { LinkProvider } from "./LinkProvider.ts";
 
@@ -46,26 +46,27 @@ export class RemotePrimitiveProvider {
           continue; // skip download links for remotes that are not internal
         }
 
-        const { links } = await remote.links({ authorization: token });
+        const registry = await remote.links({ authorization: token });
 
-        for (const link of links) {
-          let path = link.path.replace(remote.prefix, "");
-          if (link.service) {
-            path = `/${link.service}${path}`;
+        for (const [name, action] of Object.entries(registry.actions)) {
+          let path = action.path.replace(remote.prefix, "");
+          if (action.service) {
+            path = `/${action.service}${path}`;
           }
 
           this.linkProvider.registerLink({
-            ...link,
-            prefix: remote.prefix,
+            name,
             path,
-            method: link.method ?? "GET",
+            method: action.method ?? undefined,
+            contentType: action.contentType,
+            prefix: remote.prefix,
             host: remote.url,
             service: remote.name,
           });
         }
 
         this.log.info(`Remote '${remote.name}' OK`, {
-          links: remote.links.length,
+          actions: Object.keys(registry.actions).length,
           prefix: remote.prefix,
         });
       }
@@ -143,7 +144,7 @@ export class RemotePrimitiveProvider {
         },
       }),
     ],
-    handler: async (opts: FetchLinksOptions): Promise<ApiLinksResponse> => {
+    handler: async (opts: FetchLinksOptions): Promise<ApiRegistryResponse> => {
       const { url, authorization } = opts;
       const response = await fetch(url, {
         headers: new Headers(
@@ -160,7 +161,7 @@ export class RemotePrimitiveProvider {
       }
 
       return this.alepha.codec.decode(
-        apiLinksResponseSchema,
+        apiRegistryResponseSchema,
         await response.json(),
       );
     },
@@ -210,7 +211,7 @@ export interface ServerRemote {
   /**
    * Links fetcher.
    */
-  links: (args: { authorization?: string }) => Promise<ApiLinksResponse>;
+  links: (args: { authorization?: string }) => Promise<ApiRegistryResponse>;
 
   /**
    * Fetches schema for the remote service.

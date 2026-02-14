@@ -134,7 +134,7 @@ describe("$auth", () => {
       },
       api: {
         prefix: "/api",
-        links: [],
+        actions: {},
       },
     });
   });
@@ -153,7 +153,7 @@ describe("$auth", () => {
     expect(await userinfo(alepha, tokens.access_token)).toEqual({
       api: {
         prefix: "/api",
-        links: [],
+        actions: {},
       },
     });
   });
@@ -181,7 +181,7 @@ describe("$auth", () => {
       },
       api: {
         prefix: "/api",
-        links: [],
+        actions: {},
       },
     });
   });

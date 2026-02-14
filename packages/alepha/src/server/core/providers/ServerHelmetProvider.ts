@@ -8,6 +8,11 @@ import { $atom, $hook, $inject, $use, Alepha, type Static, t } from "alepha";
 export const helmetOptions = $atom({
   name: "alepha.server.helmet.options",
   schema: t.object({
+    disabled: t.optional(
+      t.boolean({
+        description: "Disable security headers entirely.",
+      }),
+    ),
     isSecure: t.optional(t.boolean()),
     strictTransportSecurity: t.optional(
       t.object({
@@ -115,18 +120,6 @@ export class ServerHelmetProvider {
     };
   }
 
-  /**
-   * Build security headers with optional per-route overrides.
-   * Used by the `$helmet` middleware.
-   */
-  public buildHeadersFor(
-    overrides?: Partial<HelmetOptions>,
-  ): Record<string, string> {
-    if (!overrides) return this.buildHeadersFromConfig(this.options);
-    const merged = { ...this.options, ...overrides };
-    return this.buildHeadersFromConfig(merged);
-  }
-
   protected buildHeaders(): Record<string, string> {
     return this.buildHeadersFromConfig(this.options);
   }
@@ -202,6 +195,10 @@ export class ServerHelmetProvider {
     on: "server:onResponse",
     priority: "first",
     handler: ({ response }) => {
+      if (this.options.disabled) {
+        return;
+      }
+
       // this check is important. Only add HSTS on HTTPS requests.
       const isSecure =
         response.headers["x-forwarded-proto"] === "https" ||

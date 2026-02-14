@@ -2,7 +2,7 @@ import { Readable, type Transform } from "node:stream";
 import { ReadableStream } from "node:stream/web";
 import { promisify } from "node:util";
 import * as zlib from "node:zlib";
-import { $hook, $inject, Alepha } from "alepha";
+import { $atom, $hook, $inject, $use, Alepha, type Static, t } from "alepha";
 import type { ServerResponse } from "alepha/server";
 
 const gzip = promisify(zlib.gzip);
@@ -12,11 +12,50 @@ const createBrotliCompress = zlib.createBrotliCompress;
 const zstd = zlib.zstdCompress ? promisify(zlib.zstdCompress) : undefined;
 const createZstdCompress = zstd ? zlib.createZstdCompress : undefined;
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Compression configuration atom.
+ */
+export const compressOptions = $atom({
+  name: "alepha.server.compress.options",
+  schema: t.object({
+    disabled: t.optional(
+      t.boolean({
+        description: "Disable response compression entirely.",
+      }),
+    ),
+    allowedContentTypes: t.array(t.string(), {
+      description: "Content types eligible for compression.",
+      default: [
+        "application/json",
+        "text/html",
+        "application/javascript",
+        "text/plain",
+        "text/css",
+      ],
+    }),
+  }),
+  default: {
+    allowedContentTypes: [
+      "application/json",
+      "text/html",
+      "application/javascript",
+      "text/plain",
+      "text/css",
+    ],
+  },
+});
+
+export type CompressOptions = Static<typeof compressOptions.schema>;
+
 declare module "alepha" {
   interface State {
-    "alepha.server.compress.options"?: ServerCompressProviderOptions;
+    [compressOptions.key]: CompressOptions;
   }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class ServerCompressProvider {
   static compressors: Record<
@@ -45,24 +84,11 @@ export class ServerCompressProvider {
   };
 
   protected readonly alepha = $inject(Alepha);
-
-  protected get options(): ServerCompressProviderOptions {
-    return {
-      allowedContentTypes: [
-        "application/json",
-        "text/html",
-        "application/javascript",
-        "text/plain",
-        "text/css",
-      ],
-      ...this.alepha.store.get("alepha.server.compress.options"),
-    };
-  }
+  protected readonly options = $use(compressOptions);
 
   public readonly onResponse = $hook({
     on: "server:onResponse",
     handler: async ({ request, response }) => {
-      // Per-route disable via $compress({ disabled: true })
       if (this.options.disabled) {
         return;
       }
@@ -169,7 +195,10 @@ export class ServerCompressProvider {
   ): ReadableStream<Uint8Array> {
     const compressor = createCompressor({
       params,
-      flush: zlib.constants.Z_SYNC_FLUSH,
+      flush:
+        encoding === "br"
+          ? zlib.constants.BROTLI_OPERATION_FLUSH
+          : zlib.constants.Z_SYNC_FLUSH,
     });
     const reader = Readable.fromWeb(input);
 
@@ -235,15 +264,5 @@ export class ServerCompressProvider {
   ): void {
     response.headers.vary = "content-encoding";
     response.headers["content-encoding"] = encoding;
-    response.headers["cache-control"] = "no-cache";
   }
-}
-
-export interface ServerCompressProviderOptions {
-  allowedContentTypes: string[];
-  /**
-   * Disable compression entirely for this request.
-   * Used by the `$compress` middleware.
-   */
-  disabled?: boolean;
 }

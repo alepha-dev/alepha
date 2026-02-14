@@ -203,7 +203,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     expect(beforeRevoke.data.userId).toBe(user.id);
 
     // Revoke the key
-    const revokeResponse = await apiKeyController.revokeApiKey.fetch(
+    const revokeResponse = await apiKeyController.revokeMyApiKey.fetch(
       { params: { id } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -253,7 +253,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
 
     // User2 tries to revoke User1's key - should fail with 403
     await expect(
-      apiKeyController.revokeApiKey.fetch(
+      apiKeyController.revokeMyApiKey.fetch(
         { params: { id } },
         { user: { id: user2.id, roles: user2.roles } },
       ),
@@ -535,7 +535,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
       { body: { name: "Revoked Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
-    await apiKeyController.revokeApiKey.fetch(
+    await apiKeyController.revokeMyApiKey.fetch(
       { params: { id: createResponse.data.id } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -711,7 +711,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     const { id, token } = createResponse.data;
 
     // Revoke the key
-    await apiKeyController.revokeApiKey.fetch(
+    await apiKeyController.revokeMyApiKey.fetch(
       { params: { id } },
       { user: { id: user.id, roles: user.roles } },
     );
@@ -942,7 +942,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
 
     // Try to revoke non-existent key
     await expect(
-      apiKeyController.revokeApiKey.fetch(
+      apiKeyController.revokeMyApiKey.fetch(
         { params: { id: "00000000-0000-0000-0000-000000000000" } },
         { user: { id: user.id, roles: user.roles } },
       ),
@@ -1012,7 +1012,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
       { body: { name: "Revoked Key" } },
       { user: { id: user.id, roles: user.roles } },
     );
-    await apiKeyController.revokeApiKey.fetch(
+    await apiKeyController.revokeMyApiKey.fetch(
       { params: { id: createResponse.data.id } },
       { user: { id: user.id, roles: user.roles } },
     );

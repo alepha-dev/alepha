@@ -1,7 +1,5 @@
 import { $module } from "alepha";
 import { AlephaEmail } from "alepha/email";
-import { AlephaServerCompress } from "alepha/server/compress";
-import { AlephaServerHelmet } from "alepha/server/helmet";
 import { AdminIdentityController } from "./controllers/AdminIdentityController.ts";
 import { AdminSessionController } from "./controllers/AdminSessionController.ts";
 import { AdminUserController } from "./controllers/AdminUserController.ts";
@@ -80,8 +78,6 @@ export * from "./services/UserService.ts";
 export const AlephaApiUsers = $module({
   name: "alepha.api.users",
   services: [
-    AlephaServerHelmet,
-    AlephaServerCompress,
     AlephaEmail,
     RealmProvider,
     SessionService,

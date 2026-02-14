@@ -1,11 +1,7 @@
 import { Alepha } from "alepha";
-import { $action, ServerProvider } from "alepha/server";
+import { $action, AlephaServer, ServerProvider } from "alepha/server";
 import { describe, expect, test } from "vitest";
-import {
-  AlephaServerHelmet,
-  type HelmetOptions,
-  helmetOptions,
-} from "../index.ts";
+import { type HelmetOptions, helmetOptions } from "./ServerHelmetProvider.ts";
 
 class TestApp {
   ping = $action({ handler: () => "pong" });
@@ -16,7 +12,7 @@ describe("ServerHelmetProvider", () => {
     const alepha = Alepha.create({
       env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
     })
-      .with(AlephaServerHelmet)
+      .with(AlephaServer)
       .with(TestApp);
 
     if (options) {

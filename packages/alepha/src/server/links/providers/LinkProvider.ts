@@ -24,9 +24,10 @@ import {
   UnauthorizedError,
 } from "alepha/server";
 import {
-  type ApiLink,
-  apiLinksResponseSchema,
+  type ApiRegistryResponse,
+  apiRegistryResponseSchema,
 } from "../schemas/apiLinksResponseSchema.ts";
+import { BatchCollector } from "../services/BatchCollector.ts";
 
 /**
  * Browser, SSR friendly, service to handle links.
@@ -40,9 +41,16 @@ export class LinkProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly httpClient = $inject(HttpClient);
 
-  // all server links (local + remote)
-  // THIS IS NOT USER LINKS! (which are filtered by permissions)
-  protected serverLinks: Array<HttpClientLink> = [];
+  // Server-side: all registered links (local + remote), keyed by name
+  protected serverLinkMap = new Map<string, HttpClientLink>();
+
+  // Browser/SSR: parsed from the registry response
+  protected actionMap = new Map<string, HttpClientLink>();
+  protected permissions = new Set<string>();
+  protected definitions: Record<string, string> = {};
+
+  // Browser-only: batch collector for coalescing multiple calls
+  protected batchCollector?: BatchCollector;
 
   /**
    * Get applicative links registered on the server.
@@ -56,7 +64,7 @@ export class LinkProvider {
       return [];
     }
 
-    return this.serverLinks;
+    return [...this.serverLinkMap.values()];
   }
 
   /**
@@ -76,36 +84,62 @@ export class LinkProvider {
       );
     }
 
-    if (this.serverLinks.some((l) => l.name === link.name)) {
-      // remove existing link with the same name
-      this.serverLinks = this.serverLinks.filter((l) => l.name !== link.name);
+    // Detect duplicate local actions (programming error)
+    const existing = this.serverLinkMap.get(link.name);
+    if (existing?.handler && link.handler) {
+      throw new AlephaError(
+        `Duplicate action name "${link.name}". Each action must have a unique name.`,
+      );
     }
 
-    if (!link.rawSchema) {
-      link.rawSchema = {};
-      if (link.schema?.body)
-        link.rawSchema.body = JSON.stringify(link.schema.body);
-      if (link.schema?.response)
-        link.rawSchema.response = JSON.stringify(link.schema.response);
+    this.serverLinkMap.set(link.name, link);
+  }
+
+  /**
+   * Load the registry response into internal stores (actionMap, permissions, definitions).
+   * Called when storing from atom/fetch/SSR.
+   */
+  protected loadRegistry(registry: ApiRegistryResponse): void {
+    this.definitions = registry.definitions ?? {};
+    this.permissions.clear();
+    this.actionMap.clear();
+
+    for (const [name, action] of Object.entries(registry.actions)) {
+      this.actionMap.set(name, {
+        name,
+        path: action.path,
+        method: action.method,
+        contentType: action.contentType,
+        service: action.service,
+        // Store definition refs for lazy schema resolution
+        bodyRef: action.body,
+        responseRef: action.response,
+      });
     }
 
-    this.serverLinks.push(link);
+    if (registry.permissions) {
+      for (const p of registry.permissions) {
+        this.permissions.add(p);
+      }
+    }
   }
 
   public get links(): HttpClientLink[] {
-    // TODO: not performant at all, use a map instead for ServerLinks
-    const apiLinks = this.alepha.store.get(
-      "alepha.server.request.apiLinks",
-    )?.links;
+    const registry = this.alepha.store.get("alepha.server.request.apiLinks");
 
-    if (apiLinks) {
+    if (registry) {
       if (this.alepha.isBrowser()) {
-        return apiLinks;
+        // Browser side: use the parsed action map
+        if (this.actionMap.size === 0) {
+          this.loadRegistry(registry);
+        }
+        return [...this.actionMap.values()];
       }
 
-      const links = [];
-      for (const link of apiLinks) {
-        const originalLink = this.serverLinks.find((l) => l.name === link.name);
+      // SSR side: map registry actions back to full server links
+      const links: HttpClientLink[] = [];
+      for (const name of Object.keys(registry.actions)) {
+        const originalLink = this.serverLinkMap.get(name);
         if (originalLink) {
           links.push(originalLink);
         }
@@ -113,7 +147,7 @@ export class LinkProvider {
       return links;
     }
 
-    return this.serverLinks ?? [];
+    return [...this.serverLinkMap.values()];
   }
 
   /**
@@ -125,14 +159,15 @@ export class LinkProvider {
       {
         method: "GET",
         schema: {
-          response: apiLinksResponseSchema,
+          response: apiRegistryResponseSchema,
         },
       },
     );
 
     this.alepha.store.set("alepha.server.request.apiLinks", data);
+    this.loadRegistry(data);
 
-    return data.links;
+    return [...this.actionMap.values()];
   }
 
   /**
@@ -155,18 +190,37 @@ export class LinkProvider {
   }
 
   /**
-   * Check if a link with the given name exists.
-   * Supports wildcard matching: "admin:*" matches any link starting with "admin:".
-   * @param name
+   * Check if a link with the given name exists or a permission matches.
+   *
+   * Action names never contain colons. Permission names always do.
+   * - `can("getUsers")` → O(1) map lookup
+   * - `can("admin:*")` → wildcard match against permissions set
+   * - `can("admin:user:read")` → O(1) set lookup
    */
   public can(name: string): boolean {
-    if (name.endsWith("*")) {
-      const prefix = name.slice(0, -1);
-      return this.links.some((link) =>
-        `${link.group}:${link.name}`.startsWith(prefix),
-      );
+    // Action check — O(1) map lookup
+    if (this.actionMap.size > 0) {
+      if (this.actionMap.has(name)) return true;
+    } else {
+      // Fallback for server-side where actionMap may not be populated
+      if (this.serverLinkMap.has(name)) return true;
+      // Also check links getter (for SSR with atom)
+      if (this.links.some((link) => link.name === name)) return true;
     }
-    return this.links.some((link) => link.name === name);
+
+    // Permission check — wildcard matching
+    if (name.includes(":")) {
+      if (name.endsWith("*")) {
+        const prefix = name.slice(0, -1);
+        for (const p of this.permissions) {
+          if (p.startsWith(prefix)) return true;
+        }
+        return false;
+      }
+      return this.permissions.has(name);
+    }
+
+    return false;
   }
 
   /**
@@ -205,6 +259,19 @@ export class LinkProvider {
       host: link.host,
       service: link.service,
     });
+
+    // Browser-only: use batch collector for calls without explicit host
+    if (this.alepha.isBrowser() && !link.host) {
+      this.batchCollector ??= this.alepha.inject(BatchCollector);
+      return this.batchCollector.add({
+        action: name,
+        params: config.params as any,
+        query: config.query as any,
+        body: config.body as any,
+        directCall: () =>
+          this.followRemote(link, config, options).then((r) => r.data),
+      });
+    }
 
     return this.followRemote(link, config, options).then(
       (response) => response.data,
@@ -252,24 +319,28 @@ export class LinkProvider {
         throw new AlephaError(`Link ${name} not found.`);
       }
 
-      if (link.rawSchema && !link.schema) {
-        link.schema = {};
-        link.schema.body = link.rawSchema?.body
-          ? (jsonSchemaToTypeBox(
-              JSON.parse(link.rawSchema.body),
-            ) as TRequestBody)
-          : undefined;
-        link.schema.response = link.rawSchema?.response
-          ? (jsonSchemaToTypeBox(
-              JSON.parse(link.rawSchema.response),
-            ) as TRequestBody)
-          : undefined;
+      // If schema is already resolved (server-side), return it
+      if (link.schema) {
+        return link.schema as { body: any; response: any };
       }
 
-      return link.schema as {
-        body: any;
-        response: any;
-      };
+      // Lazy resolve from definition refs (browser-side)
+      const resolved: RequestConfigSchema = {};
+      if (link.bodyRef && this.definitions[link.bodyRef]) {
+        resolved.body = jsonSchemaToTypeBox(
+          JSON.parse(this.definitions[link.bodyRef]),
+        ) as TRequestBody;
+      }
+      if (link.responseRef && this.definitions[link.responseRef]) {
+        resolved.response = jsonSchemaToTypeBox(
+          JSON.parse(this.definitions[link.responseRef]),
+        ) as TRequestBody;
+      }
+
+      // Cache for next access
+      link.schema = resolved;
+
+      return resolved as { body: any; response: any };
     };
 
     return $;
@@ -333,9 +404,7 @@ export class LinkProvider {
 
     const link = this.links.find(
       (a) =>
-        a.name === name &&
-        (!options.group || a.group === options.group) &&
-        (!options.service || options.service === a.service),
+        a.name === name && (!options.service || options.service === a.service),
     );
 
     if (!link) {
@@ -361,23 +430,28 @@ export class LinkProvider {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface HttpClientLink extends ApiLink {
+export interface HttpClientLink {
+  name: string;
+  path: string;
+  method?: string;
+  contentType?: string;
+  service?: string;
   secured?: boolean | SecureOptions;
   prefix?: string;
+  group?: string;
   // -- server only --
-  // only for remote actions
   host?: string;
-  service?: string;
-  // used only for local actions, not for remote actions
   schema?: RequestConfigSchema;
   handler?: (
     request: ServerRequest,
     options: ClientRequestOptions,
   ) => Async<ServerResponseBody>;
+  // -- browser only (definition refs for lazy schema resolution) --
+  bodyRef?: string;
+  responseRef?: string;
 }
 
 export interface ClientScope {
-  group?: string;
   service?: string;
   hostname?: string;
 }

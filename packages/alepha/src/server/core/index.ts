@@ -20,7 +20,10 @@ import { $route } from "./primitives/$route.ts";
 import { BunHttpServerProvider } from "./providers/BunHttpServerProvider.ts";
 import { NodeHttpServerProvider } from "./providers/NodeHttpServerProvider.ts";
 import { ServerBodyParserProvider } from "./providers/ServerBodyParserProvider.ts";
+import { ServerCompressProvider } from "./providers/ServerCompressProvider.ts";
+import { ServerHelmetProvider } from "./providers/ServerHelmetProvider.ts";
 import { ServerLoggerProvider } from "./providers/ServerLoggerProvider.ts";
+import { ServerMultipartProvider } from "./providers/ServerMultipartProvider.ts";
 import { ServerNotReadyProvider } from "./providers/ServerNotReadyProvider.ts";
 import { ServerProvider } from "./providers/ServerProvider.ts";
 import { ServerRouterProvider } from "./providers/ServerRouterProvider.ts";
@@ -110,7 +113,10 @@ export * from "./primitives/$middleware.ts";
 export * from "./primitives/$route.ts";
 export * from "./providers/BunHttpServerProvider.ts";
 export * from "./providers/NodeHttpServerProvider.ts";
+export * from "./providers/ServerCompressProvider.ts";
+export * from "./providers/ServerHelmetProvider.ts";
 export * from "./providers/ServerLoggerProvider.ts";
+export * from "./providers/ServerMultipartProvider.ts";
 export * from "./providers/ServerNotReadyProvider.ts";
 export * from "./providers/ServerProvider.ts";
 export * from "./providers/ServerRouterProvider.ts";
@@ -134,6 +140,8 @@ export * from "./services/UserAgentParser.ts";
  * - Direct invocation (`run()`) or HTTP (`fetch()`)
  * - Built-in authentication integration
  * - Multipart file upload handling
+ * - Response compression (gzip, brotli, zstd)
+ * - Security headers (HSTS, CSP, X-Frame-Options, etc.)
  * - Content-type auto-negotiation (JSON, form-data, text)
  * - HTTP methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
  * - Error handling: BadRequestError, ValidationError, ForbiddenError, UnauthorizedError, ConflictError, NotFoundError
@@ -148,6 +156,9 @@ export const AlephaServer = $module({
     BunHttpServerProvider,
     NodeHttpServerProvider,
     ServerBodyParserProvider,
+    ServerCompressProvider,
+    ServerHelmetProvider,
+    ServerMultipartProvider,
     ServerLoggerProvider,
     ServerNotReadyProvider,
     ServerTimingProvider,
@@ -178,6 +189,9 @@ export const AlephaServer = $module({
     }
 
     alepha.with(ServerBodyParserProvider);
+    alepha.with(ServerCompressProvider);
+    alepha.with(ServerHelmetProvider);
+    alepha.with(ServerMultipartProvider);
 
     if (!alepha.isTest()) {
       alepha.with(ServerLoggerProvider);

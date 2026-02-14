@@ -293,7 +293,7 @@ describe("MCP Security Integration", () => {
       expect(isErrorResponse(beforeRevoke.data)).toBe(false);
 
       // Revoke the key
-      await ctx.apiKeyController.revokeApiKey.fetch(
+      await ctx.apiKeyController.revokeMyApiKey.fetch(
         { params: { id } },
         { user },
       );
@@ -380,7 +380,7 @@ describe("MCP Security Integration", () => {
       });
 
       // Revoke first key
-      await ctx.apiKeyController.revokeApiKey.fetch(
+      await ctx.apiKeyController.revokeMyApiKey.fetch(
         { params: { id: id1 } },
         { user },
       );
@@ -450,7 +450,7 @@ describe("MCP Security Integration", () => {
 
       // User2 cannot revoke user1's key
       await expect(
-        ctx.apiKeyController.revokeApiKey.fetch(
+        ctx.apiKeyController.revokeMyApiKey.fetch(
           { params: { id } },
           { user: user2 },
         ),
@@ -616,7 +616,7 @@ describe("MCP Security Integration", () => {
 
       // Create and immediately revoke a key
       const { id, token } = await createApiKey(ctx, user);
-      await ctx.apiKeyController.revokeApiKey.fetch(
+      await ctx.apiKeyController.revokeMyApiKey.fetch(
         { params: { id } },
         { user },
       );

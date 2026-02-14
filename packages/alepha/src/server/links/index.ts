@@ -7,7 +7,9 @@ import { $remote } from "./primitives/$remote.ts";
 import { LinkProvider } from "./providers/LinkProvider.ts";
 import { RemotePrimitiveProvider } from "./providers/RemotePrimitiveProvider.ts";
 import { ServerLinksProvider } from "./providers/ServerLinksProvider.ts";
-import type { ApiLinksResponse } from "./schemas/apiLinksResponseSchema.ts";
+import type { ApiRegistryResponse } from "./schemas/apiLinksResponseSchema.ts";
+import { BatchCollector } from "./services/BatchCollector.ts";
+import { DefinitionsPool } from "./services/DefinitionsPool.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -17,18 +19,20 @@ export * from "./providers/LinkProvider.ts";
 export * from "./providers/RemotePrimitiveProvider.ts";
 export * from "./providers/ServerLinksProvider.ts";
 export * from "./schemas/apiLinksResponseSchema.ts";
+export * from "./services/BatchCollector.ts";
+export * from "./services/DefinitionsPool.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 declare module "alepha" {
   interface State {
     /**
-     * API links attached to the server request state.
+     * API registry attached to the server request state.
      *
-     * @see {@link ApiLinksResponse}
+     * @see {@link ApiRegistryResponse}
      * @internal
      */
-    "alepha.server.request.apiLinks"?: ApiLinksResponse;
+    "alepha.server.request.apiLinks"?: ApiRegistryResponse;
   }
 }
 
@@ -59,5 +63,7 @@ export const AlephaServerLinks = $module({
     ServerLinksProvider,
     RemotePrimitiveProvider,
     LinkProvider,
+    BatchCollector,
+    DefinitionsPool,
   ],
 });
