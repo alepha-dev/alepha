@@ -18,7 +18,7 @@ export class ProjectStatsController {
   fs = $inject(FileSystemProvider);
 
   getProjectStats = $action({
-    use: [$secure(), $etag(true)],
+    use: [$secure({ permissions: ["stats:read"] }), $etag(true)],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -266,7 +266,7 @@ export class ProjectStatsController {
   });
 
   exportTasksCsv = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["stats:export"] })],
     path: "/projects/:id/export",
     schema: {
       params: t.object({

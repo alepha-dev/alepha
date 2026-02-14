@@ -19,7 +19,7 @@ export class ProjectController {
   security = $inject(AppSecurityProvider);
 
   createProject = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["project:create"] })],
     schema: {
       body: t.pick(projects.insertSchema, ["title", "public"]),
       response: projects.schema,
@@ -55,7 +55,7 @@ export class ProjectController {
   });
 
   getMyProjects = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["project:read"] })],
     description: "Get all projects for the authenticated user",
     schema: {
       query: pageQuerySchema,
@@ -81,7 +81,7 @@ export class ProjectController {
   // -------------------------------------------------------------------------------------------------------------------
 
   getProjectUsers = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["project:read"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -105,7 +105,7 @@ export class ProjectController {
   });
 
   updateProjectById = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["project:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -130,7 +130,7 @@ export class ProjectController {
   });
 
   getProjectById = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["project:read"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -167,7 +167,7 @@ export class ProjectController {
   });
 
   getProjectPlayers = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["project:read"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -226,7 +226,7 @@ export class ProjectController {
   });
 
   deleteProjectById = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["project:delete"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -249,7 +249,7 @@ export class ProjectController {
   });
 
   renameZone = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["project:update"] })],
     schema: {
       params: t.object({
         id: t.integer(),

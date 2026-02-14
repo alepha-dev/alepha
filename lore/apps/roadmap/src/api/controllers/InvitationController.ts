@@ -18,7 +18,7 @@ export class InvitationController {
   security = $inject(AppSecurityProvider);
 
   createInvitation = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["invitation:create"] })],
     schema: {
       body: t.object({
         projectId: t.integer(),
@@ -83,7 +83,7 @@ export class InvitationController {
   // -------------------------------------------------------------------------------------------------------------------
 
   getMyInvitations = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["invitation:read"] })],
     schema: {
       response: t.array(
         t.object({
@@ -134,7 +134,7 @@ export class InvitationController {
   });
 
   acceptInvitation = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["invitation:update"] })],
     schema: {
       params: t.object({
         id: t.uuid(),
@@ -191,7 +191,7 @@ export class InvitationController {
   });
 
   rejectInvitation = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["invitation:update"] })],
     schema: {
       params: t.object({
         id: t.uuid(),
@@ -217,7 +217,7 @@ export class InvitationController {
   });
 
   getProjectInvitations = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["invitation:read"] })],
     schema: {
       params: t.object({
         projectId: t.integer(),
