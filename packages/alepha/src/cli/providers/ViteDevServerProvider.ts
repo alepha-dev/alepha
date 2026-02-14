@@ -150,22 +150,7 @@ export class ViteDevServerProvider {
           ...(this.options.entry.browser ? [this.options.entry.browser] : []),
         ],
       },
-      // customLogger: {
-      //   info: () => {},
-      //   warn: this.log.warn.bind(this.log),
-      //   error: () => {}, // Suppress Vite errors, we handle them with better formatting
-      //   warnOnce: this.log.warn.bind(this.log),
-      //   clearScreen: () => {},
-      //   hasWarned: false,
-      //   hasErrorLogged: () => false,
-      // },
     });
-
-    // Vite 7 defers client plugin buildStart() until server.listen().
-    // Since we call ssrLoadModule() before listen(), plugins like vite:css
-    // that initialize shared state in buildStart() crash in SSR transforms.
-    // Force client buildStart() now so shared plugin state is ready for SSR.
-    await this.server.environments.client.pluginContainer.buildStart();
 
     this.patchServerRestartForEnvReload();
   }
@@ -322,11 +307,6 @@ export class ViteDevServerProvider {
    * Send full browser reload via Vite's HMR.
    */
   protected sendBrowserReload(): void {
-    // this.server.hot.send({
-    //   type: "custom",
-    //   event: "alepha:reload",
-    //   data: {},
-    // });
     this.server.hot.send({
       type: "full-reload",
     });
@@ -472,30 +452,50 @@ export class ViteDevServerProvider {
       return;
     }
 
-    // Generate dev head content using Vite's transformIndexHtml
     const devHead = await this.generateDevHead();
     this.alepha.store.set("alepha.react.ssr.manifest", { devHead });
   }
 
   /**
-   * Generate dev head content by transforming HTML through Vite.
+   * Generate dev head content for SSR.
+   *
+   * IMPORTANT: We call transformIndexHtml() on an EMPTY <head> (no script/link
+   * tags) to collect plugin-injected preambles — specifically the React Fast
+   * Refresh runtime from @vitejs/plugin-react. We then manually append our
+   * own browser entry and stylesheet tags.
+   *
+   * Why not include <script>/<link> tags in the HTML passed to transformIndexHtml?
+   * Because Vite would pre-transform the referenced browser entry module, which
+   * walks the entire client module graph and triggers dep discovery. This creates
+   * a race condition with Vite's background dep scanner: both find the same deps,
+   * but the scanner commits a second optimization pass that replaces the first,
+   * causing "504 Outdated Optimize Dep" errors on cold start.
+   *
+   * By passing empty HTML, we get the preamble without triggering the module
+   * graph walk, leaving the scanner as the single dep discovery mechanism.
    */
   protected async generateDevHead(): Promise<string> {
     const { browser, style } = this.options.entry;
 
-    const scripts: string[] = [];
+    // Get plugin preambles (React Fast Refresh, etc.) without triggering
+    // client module graph walk — see JSDoc above for why this matters.
+    const emptyHtml = "<!DOCTYPE html><html><head></head><body></body></html>";
+    const transformed = await this.server.transformIndexHtml("/", emptyHtml);
+    const headMatch = transformed.match(/<head>([\s\S]*?)<\/head>/i);
+    const preamble = headMatch?.[1]?.trim() ?? "";
+
+    const tags: string[] = [];
+    if (preamble) {
+      tags.push(preamble);
+    }
     if (style) {
-      scripts.push(`<link rel="stylesheet" href="/${style}">`);
+      tags.push(`<link rel="stylesheet" href="/${style}">`);
     }
     if (browser) {
-      scripts.push(`<script type="module" src="/${browser}"></script>`);
+      tags.push(`<script type="module" src="/${browser}"></script>`);
     }
 
-    const minimalHtml = `<!DOCTYPE html><html><head>${scripts.join("\n")}</head><body></body></html>`;
-    const transformed = await this.server.transformIndexHtml("/", minimalHtml);
-
-    const headMatch = transformed.match(/<head>([\s\S]*?)<\/head>/i);
-    return headMatch?.[1]?.trim() ?? "";
+    return tags.join("\n");
   }
 
   /**
