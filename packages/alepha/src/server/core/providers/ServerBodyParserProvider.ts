@@ -56,9 +56,42 @@ export class ServerBodyParserProvider {
       if (request.raw.web?.req.body) {
         stream = request.raw.web.req.body;
       } else if (request.raw.node?.req) {
-        stream = Readable.toWeb(
-          request.raw.node.req as Readable,
-        ) as unknown as ReadableStream;
+        const nodeReq = request.raw.node.req as Readable & {
+          body?: string | Buffer | object;
+        };
+
+        if (nodeReq.body !== undefined) {
+          // Body was pre-consumed by the runtime (e.g., Vercel serverless).
+          // The original stream is already drained — reconstruct from pre-parsed body.
+          if (typeof nodeReq.body === "string") {
+            stream = new ReadableStream({
+              start(controller) {
+                controller.enqueue(
+                  new TextEncoder().encode(nodeReq.body as string),
+                );
+                controller.close();
+              },
+            });
+          } else if (Buffer.isBuffer(nodeReq.body)) {
+            stream = new ReadableStream({
+              start(controller) {
+                controller.enqueue(new Uint8Array(nodeReq.body as Buffer));
+                controller.close();
+              },
+            });
+          } else if (
+            nodeReq.body !== null &&
+            typeof nodeReq.body === "object"
+          ) {
+            // Already parsed as a JSON object — assign directly
+            request.body = nodeReq.body;
+            return;
+          }
+        } else {
+          stream = Readable.toWeb(
+            nodeReq as Readable,
+          ) as unknown as ReadableStream;
+        }
       }
 
       if (!stream) {
