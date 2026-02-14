@@ -1,3 +1,23 @@
+## [0.17.0] - 2026-02-14
+
+### Features
+
+- **orm**: add $transactional middleware (`12ae668c`)
+- **datetime**: add middleware $debounce and $throttle (`a2b5a743`)
+- **core**: add $memoize middleware (`576c1b7e`)
+- **cli**: add db generate --name <migration-name> (like drizzle-kit) (`da3a858b`)
+- **cli**: add dev options (noDevtools, noViteReactPlugin) (`907b7a3c`)
+- **server**: add $action.use and $middleware(path:"/", use) (`d1b6aedd`)
+- **datetime**: add $timeout middleware (`867ae469`)
+- **core**: introduce $pipeline - a middleware runner + $scope, first middleware (`cce16a7f`)
+- **api/jobs**: rework module (`06e37ba1`)
+- **ui**: DataTable now can add/remove filters, columns. (`7e4a812b`)
+- **ui**: add button onClick preventDefault (`2f692ee7`)
+- **ui**: add typeform, control size="xs" (`37244dc0`)
+- **orm**: add .upsert method (`ff548cd9`)
+- **queue**: add cloudflare provider (`6e3d9178`)
+- **cli**: init --tailwind (`751c8dff`)
+
 ## [0.16.2] - 2026-02-08
 
 ### Features
