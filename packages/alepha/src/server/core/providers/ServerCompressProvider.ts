@@ -27,23 +27,11 @@ export const compressOptions = $atom({
     ),
     allowedContentTypes: t.array(t.string(), {
       description: "Content types eligible for compression.",
-      default: [
-        "application/json",
-        "text/html",
-        "application/javascript",
-        "text/plain",
-        "text/css",
-      ],
+      default: ["application/json", "text/html"],
     }),
   }),
   default: {
-    allowedContentTypes: [
-      "application/json",
-      "text/html",
-      "application/javascript",
-      "text/plain",
-      "text/css",
-    ],
+    allowedContentTypes: ["application/json", "text/html"],
   },
 });
 

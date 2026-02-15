@@ -8,6 +8,13 @@
       "when": 1766415280205,
       "tag": "0000_perfect_starjammers",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1771117474999,
+      "tag": "0001_puzzling_maximus",
+      "breakpoints": true
     }
   ]
 }

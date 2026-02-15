@@ -1,6 +1,7 @@
 import { t } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
 import { $action } from "alepha/server";
+import { sql } from "drizzle-orm";
 
 const viewEntity = $entity({
   name: "views",
@@ -9,6 +10,13 @@ const viewEntity = $entity({
     name: t.text(),
     count: t.integer(),
   }),
+  indexes: [
+    {
+      name: "name_idx",
+      columns: ["name"],
+      unique: true,
+    },
+  ],
 });
 
 export class CountApi {
@@ -20,20 +28,15 @@ export class CountApi {
       }),
     },
     handler: async () => {
-      const view = await this.views
-        .findOne({ where: { name: "home" } })
-        .catch(() => undefined);
-
-      if (view) {
-        view.count += 1;
-        await this.views.save(view);
-        return view;
-      }
-
-      await this.views.create({ name: "home", count: 1 });
-      return {
-        count: 1,
-      };
+      return await this.views.upsert(
+        { name: "home", count: 1 },
+        {
+          target: ["name"],
+          set: {
+            count: sql`${this.views.table.count} + 1`,
+          },
+        },
+      );
     },
   });
 }

@@ -4,18 +4,19 @@
   "name": "example-ssr",
   "scripts": {
     "dev": "alepha dev",
-    "build": "alepha build",
+    "build": "alepha build --stats",
     "deploy": "alepha deploy --build --migrate --mode=production",
     "studio": "alepha db studio --mode=production",
     "db:generate": "alepha db generate",
+    "db:migrate": "alepha db migrate --mode=production",
     "e2e": "yarn e2e:mode:dev && yarn e2e:mode:prod",
     "e2e:mode:dev": "CI=1 playwright test --config=./playwright.dev.config.ts",
     "e2e:mode:prod": "playwright test",
     "e2e:ui": "playwright test --ui",
     "start": "yarn build:e2e && yarn migrate:e2e && wrangler dev --cwd dist --persist-to /tmp/wrangler-state",
     "start:e2e": "CI=true yarn build:e2e && yarn migrate:e2e && wrangler dev --cwd dist --port $SERVER_PORT --persist-to /tmp/wrangler-state",
-    "migrate:e2e": "cp -R migrations/sqlite dist/migrations && wrangler d1 migrations apply alepha-one --cwd dist --local --persist-to /tmp/wrangler-state",
-    "build:e2e": "DATABASE_URL=d1://alepha-one:00000000-0000-0000-0000-000000000000 alepha build"
+    "migrate:e2e": "cp -R migrations/sqlite dist/migrations && wrangler d1 migrations apply emerald --cwd dist --local --persist-to /tmp/wrangler-state",
+    "build:e2e": "DATABASE_URL=d1://emerald:00000000-0000-0000-0000-000000000000 alepha build"
   },
   "dependencies": {
     "alepha": "^0.17.1",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "better-sqlite3": "^12.6.2",
     "vite": "^7.3.1",
     "wrangler": "^4.65.0"
   }

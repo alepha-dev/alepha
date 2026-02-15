@@ -722,7 +722,7 @@ export abstract class Repository<T extends TObject> {
         .toISOString();
     }
 
-    setData = this.cast(setData, false) as any;
+    //setData = this.cast(setData, false) as any;
 
     try {
       const entity = await this.rawInsert(opts)

@@ -217,7 +217,7 @@ export async function buildServer(
       preload: preloadManifest,
     };
 
-    manifest = `__alepha.set("alepha.react.ssr.manifest", ${JSON.stringify(manifestData)});\n`;
+    manifest = `__alepha.set("alepha.react.ssr.manifest", ${JSON.stringify(manifestData, null, "  ")});\n`;
 
     // Set manifest in alepha store for pre-rendering
     opts.alepha.store.set("alepha.react.ssr.manifest" as any, manifestData);
@@ -233,7 +233,7 @@ export async function buildServer(
 
   await writeFile(
     `${opts.distDir}/index.js`,
-    `${warning}\n${manifest}import './server/${entryFile}';\n`.trim(),
+    `${warning}\nimport './server/${entryFile}';\n\n${manifest}`.trim(),
   );
 
   return { entryFile, manifest: manifestData };
