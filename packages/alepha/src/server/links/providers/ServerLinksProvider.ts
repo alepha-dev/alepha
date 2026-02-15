@@ -1,10 +1,7 @@
 import { createHash } from "node:crypto";
 import { $hook, $inject, $use, Alepha, AlephaError, t } from "alepha";
-import type {
-  Permission,
-  SecurityProvider,
-  UserAccountToken,
-} from "alepha/security";
+import { $logger } from "alepha/logger";
+import type { SecurityProvider, UserAccountToken } from "alepha/security";
 import {
   $action,
   $route,
@@ -25,6 +22,12 @@ export class ServerLinksProvider {
   protected readonly linkProvider = $inject(LinkProvider);
   protected readonly remoteProvider = $inject(RemotePrimitiveProvider);
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
+  protected readonly log = $logger();
+
+  /**
+   * Resolved once on start. Undefined when alepha/security is not loaded.
+   */
+  protected securityProvider: SecurityProvider | undefined;
 
   /**
    * Cache of serialized JSON by role key.
@@ -64,6 +67,20 @@ export class ServerLinksProvider {
             options: ClientRequestOptions = {},
           ) => action.run(config, options),
         });
+      }
+    },
+  });
+
+  protected readonly onStart = $hook({
+    on: "start",
+    handler: () => {
+      try {
+        this.securityProvider =
+          this.alepha.inject<SecurityProvider>("SecurityProvider");
+      } catch {
+        this.log.info(
+          "Security module is not loaded — permission checks are disabled",
+        );
       }
     },
   });
@@ -174,18 +191,11 @@ export class ServerLinksProvider {
     options: GetApiLinksOptions,
   ): Promise<ApiRegistryResponse> {
     const { user } = options;
-    let securityPermissions: Permission[] | undefined;
-    let securityProvider: SecurityProvider | undefined;
-    if (user) {
-      try {
-        securityProvider =
-          this.alepha.inject<SecurityProvider>("SecurityProvider");
-        securityPermissions = securityProvider.getPermissions(user);
-      } catch {
-        // If permissions retrieval fails, we treat the user as having no permissions.
-        securityPermissions = [];
-      }
-    }
+    const { securityProvider } = this;
+    const securityPermissions =
+      securityProvider && user
+        ? securityProvider.getPermissions(user)
+        : undefined;
 
     const pool = new DefinitionsPool();
     const actions: Record<string, any> = {};

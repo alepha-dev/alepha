@@ -1,7 +1,6 @@
 import { t } from "alepha";
-import { $entity, $repository, db } from "alepha/orm";
+import { $entity, $repository, db, sql } from "alepha/orm";
 import { $action } from "alepha/server";
-import { sql } from "drizzle-orm";
 
 const viewEntity = $entity({
   name: "views",
