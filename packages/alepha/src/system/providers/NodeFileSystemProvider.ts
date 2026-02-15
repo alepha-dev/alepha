@@ -222,30 +222,22 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    * // Copy a file
    * await fs.cp("/src/file.txt", "/dest/file.txt");
    *
-   * // Copy a directory recursively
-   * await fs.cp("/src/dir", "/dest/dir", { recursive: true });
+   * // Copy a directory (recursive by default)
+   * await fs.cp("/src/dir", "/dest/dir");
    *
    * // Copy with force (overwrite existing)
    * await fs.cp("/src/file.txt", "/dest/file.txt", { force: true });
    * ```
    */
   async cp(src: string, dest: string, options?: CpOptions): Promise<void> {
-    // Check if source is a directory
     const srcStat = await stat(src);
 
     if (srcStat.isDirectory()) {
-      if (!options?.recursive) {
-        throw new Error(
-          `Cannot copy directory without recursive option: ${src}`,
-        );
-      }
-      // Use Node.js cp function for recursive directory copy
       await fsCp(src, dest, {
-        recursive: true,
+        recursive: options?.recursive ?? true,
         force: options?.force ?? false,
       });
     } else {
-      // For files, use copyFile
       await copyFile(src, dest);
     }
   }

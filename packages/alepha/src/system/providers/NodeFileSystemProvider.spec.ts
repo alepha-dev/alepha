@@ -321,9 +321,7 @@ describe("NodeFileSystem", () => {
         await writeFile(`${testDir}/source/file.txt`, "content");
         await writeFile(`${testDir}/source/subdir/nested.txt`, "nested");
 
-        await fs.cp(`${testDir}/source`, `${testDir}/dest`, {
-          recursive: true,
-        });
+        await fs.cp(`${testDir}/source`, `${testDir}/dest`);
 
         const destFiles = await fs.ls(`${testDir}/dest`, { recursive: true });
         expect(destFiles).toContain("file.txt");

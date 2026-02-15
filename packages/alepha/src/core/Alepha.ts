@@ -1235,7 +1235,7 @@ export interface State {
    *
    * Used for Alepha-based applications that require static assets.
    *
-   * See alepha/vite for more details.
+   * See cli/services/ViteUtils for more details.
    */
   "alepha.build.assets"?: Array<string>;
 }

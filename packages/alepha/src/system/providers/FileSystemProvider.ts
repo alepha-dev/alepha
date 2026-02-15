@@ -181,7 +181,9 @@ export interface RmOptions {
  */
 export interface CpOptions {
   /**
-   * If true, copy directories recursively
+   * Copy directories recursively.
+   *
+   * @default true
    */
   recursive?: boolean;
   /**

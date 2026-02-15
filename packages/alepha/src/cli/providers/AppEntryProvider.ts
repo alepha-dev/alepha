@@ -5,7 +5,7 @@ import { appEntryOptions } from "../atoms/appEntryOptions.ts";
 /**
  * Service for locating entry files in Alepha projects.
  *
- * Originally in alepha/vite, moved to CLI to avoid cli -> vite dependency.
+ * Resolves application entry points for the CLI build pipeline.
  */
 export class AppEntryProvider {
   protected readonly fs = $inject(FileSystemProvider);

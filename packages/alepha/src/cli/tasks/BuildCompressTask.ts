@@ -20,7 +20,7 @@ export interface CompressOptions {
   /**
    * Enable gzip compression. Can be true or gzip-specific options.
    *
-   * @default true
+   * @default false
    */
   gzip?: boolean | ZlibOptions;
 
@@ -101,7 +101,7 @@ export class BuildCompressTask extends BuildTask {
     filePath: string,
     options?: CompressOptions,
   ): Promise<void> {
-    const { brotli = true, gzip = true } = options ?? {};
+    const { brotli = true, gzip = false } = options ?? {};
     const tasks: Promise<void>[] = [];
     const contentPromise = this.fs.readFile(filePath);
 

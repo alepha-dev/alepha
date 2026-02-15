@@ -263,7 +263,7 @@ export interface PagePrimitiveOptions<
    * If true, the page will be considered as a static page, immutable and cacheable.
    * Replace boolean by an object to define static entries. (e.g. list of params/query)
    *
-   * Browser-side: it only works with `alepha/vite`, which can pre-render the page at build time.
+   * Browser-side: it only works with the build pipeline, which can pre-render the page at build time.
    *
    * Server-side: It will act as timeless cached page. You can use `cache` to configure the cache behavior.
    */

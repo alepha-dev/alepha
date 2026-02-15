@@ -244,12 +244,6 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     options?: CpOptions,
   ): Promise<void> {
     if (this.directories.has(src)) {
-      if (!options?.recursive) {
-        throw new Error(
-          `Cannot copy directory without recursive option: ${src}`,
-        );
-      }
-      // Copy directory and contents
       this.directories.add(dest);
       for (const [filePath, content] of this.files) {
         if (filePath.startsWith(`${src}/`)) {

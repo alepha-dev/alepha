@@ -435,11 +435,6 @@
       "import": "./src/topic/redis/index.ts",
       "default": "./src/topic/redis/index.ts"
     },
-    "./vite": {
-      "types": "./src/vite/index.ts",
-      "import": "./src/vite/index.ts",
-      "default": "./src/vite/index.ts"
-    },
     "./websocket": {
       "types": "./src/websocket/index.ts",
       "react-native": "./src/websocket/index.browser.ts",

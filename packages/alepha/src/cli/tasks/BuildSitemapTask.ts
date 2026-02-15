@@ -102,7 +102,7 @@ export class BuildSitemapTask extends BuildTask {
     const urlEntries = urls
       .map(
         (url) =>
-          `  <url>\n    <loc>${this.escapeXml(url)}</loc>\n\t\t<lastmod>${lastMod}</lastmod>\n  </url>`,
+          `  <url>\n    <loc>${this.escapeXml(url)}</loc>\n    <lastmod>${lastMod}</lastmod>\n  </url>`,
       )
       .join("\n");
 

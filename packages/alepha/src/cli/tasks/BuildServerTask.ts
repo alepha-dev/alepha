@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
 import { isAbsolute, join } from "node:path";
-import { $inject, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
+import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
@@ -15,6 +16,8 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * package.json, and creates the dist/index.js entry wrapper.
  */
 export class BuildServerTask extends BuildTask {
+  protected readonly alepha = $inject(Alepha);
+  protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly viteUtils = $inject(ViteUtils);
 
@@ -22,7 +25,7 @@ export class BuildServerTask extends BuildTask {
     const distDir = ctx.options.output?.dist ?? "dist";
     const publicDir = ctx.options.output?.public ?? "public";
     const stats = ctx.options.stats ?? false;
-    const isCI = ctx.alepha.isCI();
+    const isCI = this.alepha.isCI();
 
     const clientIndexPath = this.fs.join(
       ctx.root,
@@ -67,7 +70,7 @@ export class BuildServerTask extends BuildTask {
     stats?: boolean;
     silent?: boolean;
     conditions?: string[];
-    alepha: any;
+    alepha: Alepha;
   }): Promise<void> {
     const { build: viteBuild, resolveConfig } =
       await this.viteUtils.importVite();
@@ -188,7 +191,7 @@ export class BuildServerTask extends BuildTask {
 
       opts.alepha.store.set("alepha.react.ssr.manifest" as any, manifestData);
 
-      await this.fs.rm(viteDir);
+      await this.fs.rm(viteDir, { recursive: true });
     }
 
     const warning =
@@ -216,9 +219,7 @@ export class BuildServerTask extends BuildTask {
         const pkg = JSON.parse((await this.fs.readFile(pkgPath)).toString());
         deps[dep] = `^${pkg.version}`;
       } catch {
-        console.warn(
-          `[generateExternals] Cannot find '${dep}' in node_modules`,
-        );
+        this.log.warn(`Cannot find '${dep}' in node_modules`);
       }
     }
 

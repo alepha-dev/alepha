@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 import type { UserConfig } from "vite";
 import { analyzer as viteAnalyzer } from "vite-bundle-analyzer";
@@ -14,6 +14,7 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * This task wraps only the actual Vite client build call.
  */
 export class BuildClientTask extends BuildTask {
+  protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly viteUtils = $inject(ViteUtils);
 
@@ -25,7 +26,7 @@ export class BuildClientTask extends BuildTask {
     const distDir = ctx.options.output?.dist ?? "dist";
     const publicDir = ctx.options.output?.public ?? "public";
     const stats = ctx.options.stats ?? false;
-    const isCI = ctx.alepha.isCI();
+    const isCI = this.alepha.isCI();
 
     // Write index.html template for Vite to consume
     const template = this.viteUtils.generateIndexHtml(ctx.entry);

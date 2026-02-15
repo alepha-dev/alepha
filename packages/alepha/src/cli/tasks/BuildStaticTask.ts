@@ -95,7 +95,7 @@ export class BuildStaticTask extends BuildTask {
     const entries = await this.fs.ls(distDir);
     for (const entry of entries) {
       if (entry !== clientDir) {
-        await this.fs.rm(this.fs.join(distDir, entry));
+        await this.fs.rm(this.fs.join(distDir, entry), { recursive: true });
       }
     }
   }

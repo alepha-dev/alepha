@@ -75,7 +75,6 @@
       "alepha/thread": ["./packages/alepha/src/thread/index.ts"],
       "alepha/topic": ["./packages/alepha/src/topic/core/index.ts"],
       "alepha/topic/redis": ["./packages/alepha/src/topic/redis/index.ts"],
-      "alepha/vite": ["./packages/alepha/src/vite/index.ts"],
       "alepha/websocket": ["./packages/alepha/src/websocket/index.ts"],
       "alepha/react": ["./packages/alepha/src/react/core/index.ts"],
       "alepha/react/auth": ["./packages/alepha/src/react/auth/index.ts"],

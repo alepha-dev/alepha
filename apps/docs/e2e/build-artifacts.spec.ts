@@ -7,19 +7,6 @@ const distDir = join(process.cwd(), "dist/public");
 
 test.describe("Build Artifacts", () => {
   test.describe("Pre-compressed Files", () => {
-    test("gzip compressed files exist", async () => {
-      const gzFiles = findFiles(distDir, ".gz");
-      expect(gzFiles.length).toBeGreaterThan(0);
-
-      // Should have compressed JS files
-      const jsGzFiles = gzFiles.filter((f) => f.endsWith(".js.gz"));
-      expect(jsGzFiles.length).toBeGreaterThan(0);
-
-      // Should have compressed CSS files
-      const cssGzFiles = gzFiles.filter((f) => f.endsWith(".css.gz"));
-      expect(cssGzFiles.length).toBeGreaterThan(0);
-    });
-
     test("brotli compressed files exist", async () => {
       const brFiles = findFiles(distDir, ".br");
       expect(brFiles.length).toBeGreaterThan(0);
@@ -35,18 +22,11 @@ test.describe("Build Artifacts", () => {
 
     test("compressed files are smaller than originals", async () => {
       const jsFiles = findFiles(distDir, ".js").filter(
-        (f) => !f.endsWith(".gz") && !f.endsWith(".br"),
+        (f) => !f.endsWith(".br"),
       );
 
       for (const jsFile of jsFiles.slice(0, 3)) {
-        const gzFile = `${jsFile}.gz`;
         const brFile = `${jsFile}.br`;
-
-        if (existsSync(gzFile)) {
-          const originalSize = statSync(jsFile).size;
-          const gzSize = statSync(gzFile).size;
-          expect(gzSize).toBeLessThan(originalSize);
-        }
 
         if (existsSync(brFile)) {
           const originalSize = statSync(jsFile).size;
@@ -137,10 +117,9 @@ test.describe("Build Artifacts", () => {
     test("pre-rendered pages have compressed versions", async () => {
       const htmlFiles = findFiles(distDir, ".html");
 
-      // Check a sample of pre-rendered files have .gz and .br versions
+      // Check a sample of pre-rendered files have .br versions
       const sampleFiles = htmlFiles.slice(0, 5);
       for (const htmlFile of sampleFiles) {
-        expect(existsSync(`${htmlFile}.gz`)).toBe(true);
         expect(existsSync(`${htmlFile}.br`)).toBe(true);
       }
     });
