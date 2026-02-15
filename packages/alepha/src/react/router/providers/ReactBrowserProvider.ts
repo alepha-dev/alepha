@@ -227,8 +227,9 @@ export class ReactBrowserProvider {
    */
   protected getHydrationState(): ReactHydrationState | undefined {
     try {
-      if ("__ssr" in window && typeof window.__ssr === "object") {
-        return window.__ssr as ReactHydrationState;
+      const el = this.document.getElementById("__ssr");
+      if (el?.textContent) {
+        return JSON.parse(el.textContent) as ReactHydrationState;
       }
     } catch (error) {
       console.error(error);
@@ -255,12 +256,12 @@ export class ReactBrowserProvider {
     on: "ready",
     handler: async () => {
       const hydration = this.getHydrationState();
-      const previous = hydration?.layers ?? [];
+      const previous = hydration?.["alepha.react.router.layers"] ?? [];
 
       if (hydration) {
         // low budget, but works for now
         for (const [key, value] of Object.entries(hydration)) {
-          if (key !== "layers") {
+          if (key !== "alepha.react.router.layers") {
             this.alepha.set(key as keyof State, value);
           }
         }
@@ -300,7 +301,7 @@ export class ReactBrowserProvider {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export type ReactHydrationState = {
-  layers?: Array<PreviousLayerData>;
+  "alepha.react.router.layers"?: Array<PreviousLayerData>;
 } & {
   [key: string]: any;
 };

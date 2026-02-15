@@ -77,11 +77,13 @@ describe("ReactServerTemplateProvider", () => {
       const response = await http.fetch(`${server.hostname}/with-loader`);
 
       // Verify hydration script is present
-      expect(response.data).toContain("<script>window.__ssr=");
+      expect(response.data).toContain(
+        '<script id="__ssr" type="application/json">',
+      );
       expect(response.data).toContain("</script>");
 
       // Verify hydration data structure
-      expect(response.data).toMatch(/window\.__ssr=\{.*"layers".*\}/);
+      expect(response.data).toMatch(/"alepha\.react\.router\.layers"/);
 
       await alepha.stop();
     });

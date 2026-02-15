@@ -226,7 +226,8 @@ test("ReactServerProvider - fillTemplate concatenation", async ({ expect }) => {
 
   const response = { html: "" };
   const app = "<h1>Hello World</h1>";
-  const script = '<script>window.__ssr={"test":true}</script>';
+  const script =
+    '<script id="__ssr" type="application/json">{"test":true}</script>';
 
   provider.fillTemplate(response, app, script);
 
@@ -235,7 +236,7 @@ test("ReactServerProvider - fillTemplate concatenation", async ({ expect }) => {
 <head><title>Test</title></head>
 <body>
   <div id="root"><h1>Hello World</h1></div>
-<script>window.__ssr={"test":true}</script></body>
+<script id="__ssr" type="application/json">{"test":true}</script></body>
 </html>`;
 
   expect(response.html).toBe(expected);
@@ -255,7 +256,8 @@ test("ReactServerProvider - fillTemplate without preprocessed template (fallback
 
   const response = { html: template };
   const app = "<h1>Hello World</h1>";
-  const script = '<script>window.__ssr={"test":true}</script>';
+  const script =
+    '<script id="__ssr" type="application/json">{"test":true}</script>';
 
   // Don't set preprocessedTemplate to test fallback
   (provider as any).preprocessedTemplate = null;
@@ -266,7 +268,7 @@ test("ReactServerProvider - fillTemplate without preprocessed template (fallback
 <html>
 <body>
   <div id="root"><h1>Hello World</h1></div>
-<script>window.__ssr={"test":true}</script></body>
+<script id="__ssr" type="application/json">{"test":true}</script></body>
 </html>`;
 
   expect(response.html).toBe(expected);
@@ -287,7 +289,8 @@ test("ReactServerProvider - fillTemplate performance comparison", async ({
 </html>`;
 
   const app = "<div><h1>Hello World</h1><p>This is a test</p></div>";
-  const script = '<script>window.__ssr={"data":"value","count":42}</script>';
+  const script =
+    '<script id="__ssr" type="application/json">{"data":"value","count":42}</script>';
 
   // Test with preprocessing (should be faster)
   const preprocessed = provider.preprocessTemplate(template);
@@ -311,6 +314,6 @@ test("ReactServerProvider - fillTemplate performance comparison", async ({
   // The result should contain the app content
   expect(response1.html).toContain("<h1>Hello World</h1>");
   expect(response1.html).toContain(
-    '<script>window.__ssr={"data":"value","count":42}</script>',
+    '<script id="__ssr" type="application/json">{"data":"value","count":42}</script>',
   );
 });

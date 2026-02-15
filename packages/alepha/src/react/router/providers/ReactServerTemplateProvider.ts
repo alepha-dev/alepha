@@ -37,7 +37,9 @@ export class ReactServerTemplateProvider {
     ROOT_OPEN: this.encoder.encode('<div id="root">'),
     ROOT_CLOSE: this.encoder.encode("</div>\n"),
     BODY_HTML_CLOSE: this.encoder.encode("</body>\n</html>"),
-    HYDRATION_PREFIX: this.encoder.encode("<script>window.__ssr="),
+    HYDRATION_PREFIX: this.encoder.encode(
+      '<script id="__ssr" type="application/json">',
+    ),
     HYDRATION_SUFFIX: this.encoder.encode("</script>"),
   } as const;
 
@@ -192,7 +194,10 @@ export class ReactServerTemplateProvider {
         : undefined,
     }));
 
-    return { layers, ...this.alepha.store.exportAtoms("current") };
+    return {
+      "alepha.react.router.layers": layers,
+      ...this.alepha.store.exportAtoms("current"),
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -516,11 +521,14 @@ export class ReactServerTemplateProvider {
 }
 
 /**
- * Hydration state serialized to window.__ssr
+ * Hydration state serialized to a JSON script tag with id="__ssr"
  */
 export interface HydrationData {
-  layers: Array<{
-    data?: unknown;
+  "alepha.react.router.layers": Array<{
+    part?: string;
+    name?: string;
+    config?: Record<string, any>;
+    props?: Record<string, any>;
     error?: { name: string; message: string; stack?: string };
   }>;
   [key: string]: unknown;

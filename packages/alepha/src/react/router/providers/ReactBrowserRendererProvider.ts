@@ -12,7 +12,7 @@ export class ReactBrowserRendererProvider {
   protected readonly onBrowserRender = $hook({
     on: "react:browser:render",
     handler: async ({ hydration, root, element }) => {
-      if (hydration?.layers) {
+      if (hydration?.["alepha.react.router.layers"]) {
         this.root = hydrateRoot(root, element);
         this.log.info("Hydrated root element");
       } else {
