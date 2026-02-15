@@ -1,0 +1,130 @@
+import { promisify } from "node:util";
+import {
+  type BrotliOptions,
+  brotliCompress as brotliCompressCb,
+  gzip as gzipCb,
+  type ZlibOptions,
+} from "node:zlib";
+import { $inject } from "alepha";
+import { FileSystemProvider } from "alepha/system";
+import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
+
+export interface CompressOptions {
+  /**
+   * Enable brotli compression. Can be true or brotli-specific options.
+   *
+   * @default true
+   */
+  brotli?: boolean | BrotliOptions;
+
+  /**
+   * Enable gzip compression. Can be true or gzip-specific options.
+   *
+   * @default true
+   */
+  gzip?: boolean | ZlibOptions;
+
+  /**
+   * Filter which files to compress.
+   * Can be a RegExp or a function that returns true for files to compress.
+   *
+   * @default /\.(js|mjs|cjs|css|wasm|svg|html|xml)$/
+   */
+  filter?: RegExp | ((fileName: string) => boolean);
+}
+
+/**
+ * Compresses all matching files in the public output directory.
+ *
+ * Creates .gz and .br copies alongside each matching file.
+ * Runs as the LAST step in the build pipeline, after all other tasks
+ * have written their files.
+ */
+export class BuildCompressTask extends BuildTask {
+  protected readonly fs = $inject(FileSystemProvider);
+  protected readonly gzipCompress = promisify(gzipCb);
+  protected readonly brotliCompress = promisify(brotliCompressCb);
+  protected readonly defaultFilter = /\.(js|mjs|cjs|css|wasm|svg|html|xml)$/;
+
+  async run(ctx: BuildTaskContext): Promise<void> {
+    if (!ctx.hasClient) {
+      return;
+    }
+
+    const dist = ctx.options.output?.dist ?? "dist";
+    const pub = ctx.options.output?.public ?? "public";
+    const dir = this.fs.join(ctx.root, dist, pub);
+
+    const hasDir = await this.fs.exists(dir);
+    if (!hasDir) {
+      return;
+    }
+
+    await ctx.run({
+      name: "compress assets",
+      handler: async () => {
+        await this.compressDirectory(dir);
+      },
+    });
+  }
+
+  /**
+   * Compress all matching files in a directory (recursive).
+   */
+  protected async compressDirectory(
+    dir: string,
+    options?: CompressOptions,
+  ): Promise<number> {
+    const filter = options?.filter ?? this.defaultFilter;
+    const files = await this.fs.ls(dir, { recursive: true });
+
+    const matchingFiles = files.filter((fileName) => {
+      if (typeof filter === "function") {
+        return filter(fileName);
+      }
+      return filter.test(fileName);
+    });
+
+    const tasks: Promise<void>[] = [];
+    for (const fileName of matchingFiles) {
+      tasks.push(this.compressFile(this.fs.join(dir, fileName), options));
+    }
+
+    await Promise.all(tasks);
+    return matchingFiles.length;
+  }
+
+  /**
+   * Compress a single file. Creates .gz and .br alongside original.
+   */
+  protected async compressFile(
+    filePath: string,
+    options?: CompressOptions,
+  ): Promise<void> {
+    const { brotli = true, gzip = true } = options ?? {};
+    const tasks: Promise<void>[] = [];
+    const contentPromise = this.fs.readFile(filePath);
+
+    if (gzip) {
+      const gzipOptions = typeof gzip === "object" ? gzip : { level: 9 };
+      tasks.push(
+        contentPromise.then(async (content) => {
+          const compressed = await this.gzipCompress(content, gzipOptions);
+          await this.fs.writeFile(`${filePath}.gz`, compressed);
+        }),
+      );
+    }
+
+    if (brotli) {
+      const brotliOptions = typeof brotli === "object" ? brotli : {};
+      tasks.push(
+        contentPromise.then(async (content) => {
+          const compressed = await this.brotliCompress(content, brotliOptions);
+          await this.fs.writeFile(`${filePath}.br`, compressed);
+        }),
+      );
+    }
+
+    await Promise.all(tasks);
+  }
+}

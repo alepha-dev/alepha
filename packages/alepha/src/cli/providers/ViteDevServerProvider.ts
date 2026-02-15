@@ -3,11 +3,11 @@ import { join } from "node:path";
 import { $inject, type Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
-import { importVite, importViteReact, viteAlephaSsrPreload } from "alepha/vite";
 import type { Plugin, ViteDevServer } from "vite";
 import { __alephaRef } from "../../core/helpers/ref.ts";
 import { devtoolsAssets } from "../../devtools/assets.ts";
 import { ConsoleColorProvider } from "../../logger/providers/ConsoleColorProvider.ts";
+import { ViteUtils } from "../services/ViteUtils.ts";
 import type { AppEntry } from "./AppEntryProvider.ts";
 
 export interface DevServerOptions {
@@ -49,6 +49,7 @@ export class ViteDevServerProvider {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly colors = $inject(ConsoleColorProvider);
+  protected readonly viteUtils = $inject(ViteUtils);
 
   protected server!: ViteDevServer;
   protected options!: DevServerOptions;
@@ -118,12 +119,12 @@ export class ViteDevServerProvider {
    * Create the Vite server with Alepha plugin.
    */
   protected async createServer(): Promise<void> {
-    const { createServer, resolveConfig } = await importVite();
-    const viteReact = await importViteReact();
+    const { createServer, resolveConfig } = await this.viteUtils.importVite();
+    const viteReact = await this.viteUtils.importViteReact();
 
     const plugins: Plugin[] = [];
     if (viteReact && !this.options.noViteReactPlugin) plugins.push(viteReact());
-    plugins.push(viteAlephaSsrPreload());
+    plugins.push(this.viteUtils.createSsrPreloadPlugin());
     plugins.push(this.createAlephaPlugin());
 
     // DEFAULT PORT
@@ -502,7 +503,7 @@ export class ViteDevServerProvider {
    * Setup environment variables for dev mode.
    */
   protected async setupEnvironment(): Promise<void> {
-    const { loadEnv } = await importVite();
+    const { loadEnv } = await this.viteUtils.importVite();
 
     process.env.VITE_ALEPHA_DEV = "true";
     process.env.NODE_ENV ??= "development";

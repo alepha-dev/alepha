@@ -15,6 +15,16 @@ import { TestCommand } from "../commands/test.ts";
 import { TypecheckCommand } from "../commands/typecheck.ts";
 import { VerifyCommand } from "../commands/verify.ts";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
+import { BuildAssetsTask } from "../tasks/BuildAssetsTask.ts";
+import { BuildClientTask } from "../tasks/BuildClientTask.ts";
+import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
+import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
+import { BuildDockerTask } from "../tasks/BuildDockerTask.ts";
+import { BuildPrerenderTask } from "../tasks/BuildPrerenderTask.ts";
+import { BuildServerTask } from "../tasks/BuildServerTask.ts";
+import { BuildSitemapTask } from "../tasks/BuildSitemapTask.ts";
+import { BuildStaticTask } from "../tasks/BuildStaticTask.ts";
+import { BuildVercelTask } from "../tasks/BuildVercelTask.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -72,5 +82,16 @@ export const AlephaCli = $module({
     // Support services
     AppEntryProvider,
     GitProvider,
+    // Build tasks
+    BuildAssetsTask,
+    BuildClientTask,
+    BuildCloudflareTask,
+    BuildCompressTask,
+    BuildDockerTask,
+    BuildPrerenderTask,
+    BuildServerTask,
+    BuildSitemapTask,
+    BuildStaticTask,
+    BuildVercelTask,
   ],
 });

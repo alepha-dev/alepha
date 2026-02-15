@@ -1,18 +1,6 @@
 import { $inject, $use, Alepha, AlephaError, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
-import { FileSystemProvider } from "alepha/system";
-import {
-  buildClient,
-  buildServer,
-  copyAssets,
-  generateCloudflare,
-  generateDocker,
-  generateSitemap,
-  generateStatic,
-  generateVercel,
-  prerenderPages,
-} from "alepha/vite";
 import {
   type BuildRuntime,
   type BuildTarget,
@@ -23,19 +11,45 @@ import { ViteBuildProvider } from "../providers/ViteBuildProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
-import { ViteUtils } from "../services/ViteUtils.ts";
+import { BuildAssetsTask } from "../tasks/BuildAssetsTask.ts";
+import { BuildClientTask } from "../tasks/BuildClientTask.ts";
+import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
+import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
+import { BuildDockerTask } from "../tasks/BuildDockerTask.ts";
+import { BuildPrerenderTask } from "../tasks/BuildPrerenderTask.ts";
+import { BuildServerTask } from "../tasks/BuildServerTask.ts";
+import { BuildSitemapTask } from "../tasks/BuildSitemapTask.ts";
+import { BuildStaticTask } from "../tasks/BuildStaticTask.ts";
+import type { BuildTaskContext } from "../tasks/BuildTask.ts";
+import { BuildVercelTask } from "../tasks/BuildVercelTask.ts";
 
 export class BuildCommand {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly scaffolder = $inject(ProjectScaffolder);
   protected readonly boot = $inject(AppEntryProvider);
   protected readonly viteBuildProvider = $inject(ViteBuildProvider);
-  protected readonly viteUtils = $inject(ViteUtils);
   protected readonly options = $use(buildOptions);
+
+  /**
+   * Build pipeline: tasks run sequentially in this order.
+   * Each task self-guards (checks target, hasClient, etc.).
+   * Order matters — compress must be last.
+   */
+  protected readonly pipeline = [
+    $inject(BuildClientTask),
+    $inject(BuildServerTask),
+    $inject(BuildAssetsTask),
+    $inject(BuildSitemapTask),
+    $inject(BuildPrerenderTask),
+    $inject(BuildVercelTask),
+    $inject(BuildCloudflareTask),
+    $inject(BuildDockerTask),
+    $inject(BuildStaticTask),
+    $inject(BuildCompressTask),
+  ];
 
   /**
    * Resolve the effective runtime based on target and explicit runtime flag.
@@ -122,20 +136,29 @@ export class BuildCommand {
       const entry = await this.boot.getAppEntry(root);
       this.log.trace("Entry file found", { entry });
 
-      const distDir = "dist";
-      const publicDir = "public";
-
-      await run.rm("dist", { alias: "clean dist" });
-
-      const options = this.options;
       await this.utils.loadEnv(root, [".env", ".env.production"]);
 
-      // Resolve target and runtime
-      const target = flags.target ?? options.target;
-      const runtime = this.resolveRuntime(
-        target,
-        flags.runtime ?? options.runtime,
-      );
+      // Resolve flags → mutate the atom (single source of truth)
+      this.alepha.store.mut(buildOptions, (current) => ({
+        ...current,
+        stats: flags.stats ?? current.stats ?? false,
+        target: flags.target ?? current.target,
+        runtime: this.resolveRuntime(
+          flags.target ?? current.target,
+          flags.runtime ?? current.runtime,
+        ),
+        ...(flags.sitemap && {
+          sitemap: { hostname: flags.sitemap },
+        }),
+      }));
+
+      const options = this.options;
+
+      const distDir = options.output?.dist ?? "dist";
+
+      await run.rm(distDir, { alias: "clean dist" });
+
+      const { target } = options;
 
       // Validate --image requires --target=docker
       if (flags.image && target !== "docker") {
@@ -144,234 +167,38 @@ export class BuildCommand {
         );
       }
 
-      this.log.trace("Build configuration", { target, runtime });
+      this.log.trace("Build configuration", {
+        target,
+        runtime: options.runtime,
+      });
 
-      const stats = flags.stats ?? options.stats ?? false;
-      let template = "";
+      let appAlepha: Alepha | undefined;
       let hasClient = false;
-      let alepha: Alepha | undefined;
 
       await run({
         name: "analyze app",
         handler: async () => {
-          alepha = await this.viteBuildProvider.init({ entry });
+          appAlepha = await this.viteBuildProvider.init({ entry });
           hasClient = this.viteBuildProvider.hasClient();
-          if (hasClient) {
-            template = this.viteBuildProvider.generateIndexHtml();
-          }
         },
       });
 
-      if (!alepha) {
+      if (!appAlepha) {
         throw new AlephaError("Alepha instance not found");
       }
 
-      // Build client (precompress always enabled)
-      if (hasClient) {
-        // TODO: find a way to avoid writing index.html to disk
-        const indexHtmlPath = this.fs.join(root, "index.html");
-        await this.fs.writeFile(indexHtmlPath, template);
-        try {
-          await run({
-            name: "vite build client",
-            handler: () =>
-              buildClient({
-                silent: true,
-                dist: `${distDir}/${publicDir}`,
-                stats,
-                precompress: true,
-              }),
-          });
-        } finally {
-          await this.fs.rm(indexHtmlPath);
-        }
-      }
-
-      // Build server
-      await run({
-        name: "vite build server",
-        handler: async () => {
-          if (!alepha) {
-            throw new AlephaError("Alepha instance not found");
-          }
-
-          const clientIndexPath = `${distDir}/${publicDir}/index.html`;
-          const clientBuilt = await this.fs.exists(clientIndexPath);
-
-          // Set export conditions based on runtime
-          const conditions: string[] = [];
-          if (runtime === "bun") {
-            conditions.push("bun");
-          } else if (runtime === "workerd") {
-            conditions.push("workerd");
-          }
-
-          await buildServer({
-            silent: !this.alepha.isCI(),
-            entry: entry.server,
-            distDir,
-            clientDir: clientBuilt ? publicDir : undefined,
-            stats,
-            conditions,
-            alepha,
-          });
-
-          // Server will handle index.html if both client & server are built
-          if (clientBuilt) {
-            await this.fs.rm(clientIndexPath);
-          }
-        },
-      });
-
-      // Copy assets
-      await copyAssets({
-        alepha,
+      const ctx: BuildTaskContext = {
+        alepha: appAlepha,
+        options,
         root,
-        entry: `${distDir}/index.js`,
-        distDir,
         run,
-      });
+        entry,
+        hasClient,
+        flags: { image: flags.image },
+      };
 
-      if (hasClient) {
-        // Generate sitemap
-        const sitemapHostname = flags.sitemap ?? options.sitemap?.hostname;
-        if (sitemapHostname) {
-          await generateSitemap({
-            alepha,
-            baseUrl: sitemapHostname,
-            output: `${distDir}/${publicDir}/sitemap.xml`,
-            run,
-          });
-        }
-
-        // Pre-render static pages (always enabled)
-        await prerenderPages({
-          alepha,
-          dist: `${distDir}/${publicDir}`,
-          compress: true,
-          run,
-        });
-      }
-
-      // Generate deployment configuration based on target
-      if (target === "vercel") {
-        await run({
-          name: "add Vercel config",
-          handler: () =>
-            generateVercel({
-              distDir,
-              clientDir: publicDir,
-              config: options.vercel,
-            }),
-        });
-      }
-
-      if (target === "cloudflare") {
-        await run({
-          name: "add Cloudflare config",
-          handler: () =>
-            generateCloudflare({
-              distDir,
-              config: options.cloudflare?.config,
-              alepha: alepha!,
-              importModule: (path) => this.viteUtils.importModule(path),
-            }),
-        });
-      }
-
-      if (target === "docker") {
-        // Auto-configure Docker based on runtime
-        const dockerFrom =
-          options.docker?.from ??
-          (runtime === "bun" ? "oven/bun:alpine" : "node:24-alpine");
-        const dockerCommand =
-          options.docker?.command ?? (runtime === "bun" ? "bun" : "node");
-
-        await run({
-          name: "add Docker config",
-          handler: () =>
-            generateDocker({
-              distDir,
-              image: dockerFrom,
-              command: dockerCommand,
-            }),
-        });
-
-        // Build Docker image if --image flag is provided
-        if (flags.image) {
-          const imageConfig = options.docker?.image;
-          const flagValue =
-            typeof flags.image === "string" ? flags.image : null;
-
-          let imageTag: string;
-          let version: string;
-
-          if (!flagValue) {
-            // -i (no value) → use config tag:latest
-            if (!imageConfig?.tag) {
-              throw new AlephaError(
-                "Flag '--image' requires 'build.docker.image.tag' in config",
-              );
-            }
-            version = "latest";
-            imageTag = `${imageConfig.tag}:${version}`;
-          } else if (flagValue.startsWith(":")) {
-            // -i=:1.3.4 → version only, prepend config tag
-            if (!imageConfig?.tag) {
-              throw new AlephaError(
-                "Flag '--image=:version' requires 'build.docker.image.tag' in config",
-              );
-            }
-            version = flagValue.slice(1); // remove leading ":"
-            imageTag = `${imageConfig.tag}:${version}`;
-          } else if (flagValue.includes(":")) {
-            // -i=toto:1.3.4 → full image with version
-            imageTag = flagValue;
-            version = flagValue.split(":")[1];
-          } else {
-            // -i=toto → image name without version → add :latest
-            imageTag = `${flagValue}:latest`;
-            version = "latest";
-          }
-
-          const args: string[] = [];
-
-          // Add custom args
-          if (imageConfig?.args) {
-            args.push(imageConfig.args);
-          }
-
-          // Add OCI labels if enabled
-          if (imageConfig?.oci) {
-            const revision = await this.utils.getGitRevision();
-            const created = new Date().toISOString();
-
-            args.push(
-              `--label "org.opencontainers.image.revision=${revision}"`,
-            );
-            args.push(`--label "org.opencontainers.image.created=${created}"`);
-            args.push(`--label "org.opencontainers.image.version=${version}"`);
-          }
-
-          const argsStr = args.length > 0 ? `${args.join(" ")} ` : "";
-          const dockerCmd = `docker build ${argsStr}-t ${imageTag} ${distDir}`;
-
-          await run(dockerCmd, {
-            alias: `docker build ${imageTag}`,
-          });
-        }
-      }
-
-      if (target === "static") {
-        await generateStatic({
-          alepha: alepha!,
-          distDir,
-          clientDir: publicDir,
-          compress: true,
-          domain: options.static?.domain,
-          root,
-          run,
-        });
+      for (const task of this.pipeline) {
+        await task.run(ctx);
       }
     },
   });

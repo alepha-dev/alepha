@@ -64,6 +64,27 @@ export const buildOptions = $atom({
     runtime: t.optional(t.enum(["node", "bun", "workerd"])),
 
     /**
+     * Output directory configuration.
+     */
+    output: t.optional(
+      t.object({
+        /**
+         * Root dist directory.
+         *
+         * @default "dist"
+         */
+        dist: t.optional(t.string({ default: "dist" })),
+
+        /**
+         * Public/client subdirectory.
+         *
+         * @default "public"
+         */
+        public: t.optional(t.string({ default: "public" })),
+      }),
+    ),
+
+    /**
      * Vercel-specific deployment configuration.
      *
      * Note: Set `target: "vercel"` to enable Vercel deployment.
