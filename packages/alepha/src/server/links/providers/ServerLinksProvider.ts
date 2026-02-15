@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { $hook, $inject, $use, Alepha, AlephaError, t } from "alepha";
-import {
-  type Permission,
+import type {
+  Permission,
   SecurityProvider,
-  type UserAccountToken,
+  UserAccountToken,
 } from "alepha/security";
 import {
   $action,
@@ -175,11 +175,16 @@ export class ServerLinksProvider {
   ): Promise<ApiRegistryResponse> {
     const { user } = options;
     let securityPermissions: Permission[] | undefined;
-    const hasSecurity = this.alepha.has(SecurityProvider);
-    if (hasSecurity && user) {
-      securityPermissions = this.alepha
-        .inject(SecurityProvider)
-        .getPermissions(user);
+    let securityProvider: SecurityProvider | undefined;
+    if (user) {
+      try {
+        securityProvider =
+          this.alepha.inject<SecurityProvider>("SecurityProvider");
+        securityPermissions = securityProvider.getPermissions(user);
+      } catch {
+        // If permissions retrieval fails, we treat the user as having no permissions.
+        securityPermissions = [];
+      }
     }
 
     const pool = new DefinitionsPool();
@@ -203,7 +208,7 @@ export class ServerLinksProvider {
       // SKIP REMOTE LINKS, remote links are handled separately for security
       if (link.host) continue;
 
-      if (hasSecurity && link.secured) {
+      if (securityProvider && link.secured) {
         // skip secured links if user is not provided
         if (!user) {
           continue;
@@ -228,7 +233,6 @@ export class ServerLinksProvider {
 
           // explicit permission check
           if (link.secured.permissions?.length) {
-            const securityProvider = this.alepha.inject(SecurityProvider);
             const perms = link.secured.permissions;
 
             let allowed = true;

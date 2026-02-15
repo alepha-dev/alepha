@@ -1,4 +1,3 @@
-import "alepha/security";
 import { $module } from "alepha";
 import { AlephaServer } from "alepha/server";
 import { apiLinksAtom } from "./atoms/apiLinksAtom.ts";
