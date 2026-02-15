@@ -21,7 +21,7 @@ export const AlephaCache = $module({
     alepha.with({
       optional: true,
       provide: CacheProvider,
-      use: alepha.isTest() ? MemoryCacheProvider : CloudflareKVProvider,
+      use: MemoryCacheProvider, // do not force CloudflareKVProvider for now
     });
   },
 });

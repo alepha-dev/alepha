@@ -117,16 +117,15 @@ export async function generateCloudflare(
 
   // Add KV namespace binding if CloudflareKVProvider is used
   let kvProvider: CloudflareKVProvider | undefined;
-  const mod = await opts.importModule("alepha/cache");
   try {
     kvProvider = opts.alepha.inject<CloudflareKVProvider>(
-      mod.CloudflareKVProvider,
+      "CloudflareKVProvider",
     );
-  } catch (e) {
-    console.log(e);
-  }
+  } catch {}
 
   if (kvProvider) {
+    // TODO: check if we really has caches before provisioning KV namespace...
+    // For now, even a hello-world has cache (http client) so it ask for KV namespace
     wrangler.kv_namespaces = wrangler.kv_namespaces || [];
     wrangler.kv_namespaces.push({
       binding: KV_DEFAULT_BINDING,
