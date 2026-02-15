@@ -1,3 +1,15 @@
+## [0.17.1] - 2026-02-15
+
+### Features
+
+- **orm**: use $mode for MIGRATE and SEED (with $seed) (`6afb5702`)
+- **core**: add $mode, a primitive for activate a selective boostrap mode (`11dd9503`)
+
+### Bug Fixes
+
+- **cli**: bad refresh with vite in "alepha dev" (`d4ef99ff`)
+- **server/links**: reload registry on login (`8c1ec695`)
+
 ## [0.17.0] - 2026-02-14
 
 ### Features

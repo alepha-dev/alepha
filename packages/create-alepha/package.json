@@ -2,7 +2,7 @@
   "name": "create-alepha",
   "description": "Create a new Alepha project with a single command.",
   "author": "Nicolas Foures",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -14,7 +14,7 @@
     "src"
   ],
   "dependencies": {
-    "alepha": "0.17.0"
+    "alepha": "0.17.1"
   },
   "devDependencies": {
     "tsdown": "^0.20.3",

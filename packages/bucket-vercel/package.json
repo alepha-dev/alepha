@@ -10,7 +10,7 @@
     "blob"
   ],
   "author": "Nicolas Foures",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -27,12 +27,12 @@
   },
   "devDependencies": {
     "@types/node": "^25.2.3",
-    "alepha": "0.17.0",
+    "alepha": "0.17.1",
     "tsdown": "^0.20.3",
     "vitest": "^4.0.18"
   },
   "peerDependencies": {
-    "alepha": "0.17.0"
+    "alepha": "0.17.1"
   },
   "scripts": {
     "lint": "alepha lint",
