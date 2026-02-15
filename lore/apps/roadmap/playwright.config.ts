@@ -16,6 +16,7 @@ export default defineConfig({
     },
   ],
   webServer: {
+    timeout: 120_000,
     command: "yarn start",
     url: `http://localhost:${port}`,
     env: {
