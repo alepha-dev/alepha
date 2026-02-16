@@ -29,6 +29,12 @@ export class PrettyPrint {
   protected lastLineCount = 0;
   protected header?: string;
   protected commandStartTime?: number;
+  protected paused = false;
+
+  // stdout interception
+  protected originalStdoutWrite?: (...args: any[]) => boolean;
+  protected bufferedOutput: string[] = [];
+  protected isOwnWrite = false;
 
   // ANSI color codes
   protected readonly colors = {
@@ -47,19 +53,20 @@ export class PrettyPrint {
     this.commandStartTime = Date.now();
     this.tasks.clear();
     this.lastLineCount = 0;
-    process.stdout.write(`┌─ ${this.header}\n`);
+    this.write(`┌─ ${this.header}\n`);
   }
 
   /**
    * End the command session with footer
    */
   public endCommand(): void {
+    this.restoreStdout();
     if (this.commandStartTime) {
       const totalDuration = (
         (Date.now() - this.commandStartTime) /
         1000
       ).toFixed(1);
-      process.stdout.write(`└─ Done in ${totalDuration}s\n`);
+      this.write(`└─ Done in ${totalDuration}s\n`);
     }
     this.header = undefined;
     this.commandStartTime = undefined;
@@ -75,6 +82,8 @@ export class PrettyPrint {
       status: "running",
       startTime: Date.now(),
     });
+
+    this.interceptStdout();
 
     // Start interval if not already running
     if (!this.spinnerInterval) {
@@ -115,18 +124,26 @@ export class PrettyPrint {
     }
 
     this.checkIfAllDone();
+    this.restoreStdout();
   }
 
   /**
    * Update the display for all tasks
    */
   protected updateDisplay(): void {
-    // Clear previous lines
+    // Clear previous spinner lines
     if (this.lastLineCount > 0) {
-      // Move cursor up and clear each line
       for (let i = 0; i < this.lastLineCount; i++) {
-        process.stdout.write("\x1b[1A\x1b[2K");
+        this.write("\x1b[1A\x1b[2K");
       }
+    }
+
+    // Flush buffered external output (appears permanently above spinner)
+    if (this.bufferedOutput.length > 0) {
+      for (const chunk of this.bufferedOutput) {
+        this.write(chunk);
+      }
+      this.bufferedOutput = [];
     }
 
     // Render all tasks
@@ -152,7 +169,7 @@ export class PrettyPrint {
         line += `${this.colors.red}✗${this.colors.reset} ${task.taskName}`;
       }
 
-      process.stdout.write(`${line}\n`);
+      this.write(`${line}\n`);
     }
 
     this.lastLineCount = taskArray.length;
@@ -173,6 +190,64 @@ export class PrettyPrint {
   }
 
   /**
+   * Pause the spinner animation and restore stdout so external processes
+   * (e.g. interactive login) can write to the terminal directly.
+   */
+  public pause(): void {
+    if (this.paused) return;
+    this.paused = true;
+
+    // Stop the animation interval
+    this.stopSpinner();
+
+    // Clear spinner lines from screen so external output starts clean
+    if (this.lastLineCount > 0) {
+      for (let i = 0; i < this.lastLineCount; i++) {
+        this.write("\x1b[1A\x1b[2K");
+      }
+      this.lastLineCount = 0;
+    }
+
+    // Close the box before external output
+    if (this.header) {
+      this.write("└───\n\n");
+    }
+
+    this.restoreStdout();
+  }
+
+  /**
+   * Resume the spinner animation after a pause.
+   */
+  public resume(): void {
+    if (!this.paused) return;
+    this.paused = false;
+
+    // Reopen the box after external output
+    if (this.header) {
+      this.write("\n┌───\n");
+    }
+
+    this.interceptStdout();
+
+    const hasRunningTasks = Array.from(this.tasks.values()).some(
+      (task) => task.status === "running",
+    );
+
+    if (hasRunningTasks) {
+      this.updateDisplay();
+
+      if (!this.spinnerInterval) {
+        this.spinnerInterval = this.dateTimeProvider.createInterval(
+          () => this.updateDisplay(),
+          80,
+          true,
+        );
+      }
+    }
+  }
+
+  /**
    * Stop the spinner without showing any symbol
    */
   public stopSpinner(): void {
@@ -188,6 +263,60 @@ export class PrettyPrint {
   public clear(): void {
     this.tasks.clear();
     this.stopSpinner();
+    this.restoreStdout();
     this.lastLineCount = 0;
+  }
+
+  // ---------------------------------------------------------------------------
+  // stdout interception
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Intercept process.stdout.write so external writes (logs, wrangler output)
+   * are buffered instead of breaking the spinner animation. Buffered output is
+   * flushed above the spinner area on each redraw.
+   */
+  protected interceptStdout(): void {
+    if (this.originalStdoutWrite) return;
+
+    const original = process.stdout.write.bind(process.stdout);
+    this.originalStdoutWrite = original;
+
+    process.stdout.write = ((
+      chunk: any,
+      encodingOrCb?: any,
+      cb?: any,
+    ): boolean => {
+      if (this.isOwnWrite) {
+        return original(chunk, encodingOrCb, cb);
+      }
+      this.bufferedOutput.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+  }
+
+  /**
+   * Restore the original process.stdout.write and flush remaining buffer.
+   */
+  protected restoreStdout(): void {
+    if (!this.originalStdoutWrite) return;
+
+    const original = this.originalStdoutWrite;
+    this.originalStdoutWrite = undefined;
+    process.stdout.write = original as typeof process.stdout.write;
+
+    for (const chunk of this.bufferedOutput) {
+      original(chunk);
+    }
+    this.bufferedOutput = [];
+  }
+
+  /**
+   * Write to stdout bypassing the intercept.
+   */
+  protected write(str: string): void {
+    this.isOwnWrite = true;
+    process.stdout.write(str);
+    this.isOwnWrite = false;
   }
 }

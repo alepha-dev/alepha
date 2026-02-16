@@ -42,6 +42,16 @@ export interface RunnerMethod {
    * > But can be called manually if needed to print more stuff before the command ends.
    */
   end: () => void;
+
+  /**
+   * Pause the spinner so external processes can write to stdout directly.
+   */
+  pause: () => void;
+
+  /**
+   * Resume the spinner after a pause.
+   */
+  resume: () => void;
 }
 
 export class Runner {
@@ -63,6 +73,11 @@ export class Runner {
 
   protected get useDynamicLogger() {
     if (this.alepha.isCI() || this.alepha.env.CLAUDECODE) {
+      return false;
+    }
+
+    const logLevel = String(this.alepha.env.LOG_LEVEL || "").toLowerCase();
+    if (logLevel === "debug" || logLevel === "trace") {
       return false;
     }
 
@@ -158,6 +173,12 @@ export class Runner {
     };
 
     runFn.end = () => this.end();
+    runFn.pause = () => {
+      if (this.useDynamicLogger) this.prettyPrint.pause();
+    };
+    runFn.resume = () => {
+      if (this.useDynamicLogger) this.prettyPrint.resume();
+    };
 
     return runFn;
   }
