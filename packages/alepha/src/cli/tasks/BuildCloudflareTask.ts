@@ -37,7 +37,7 @@ export class BuildCloudflareTask extends BuildTask {
     const distDir = ctx.options.output?.dist ?? "dist";
 
     await ctx.run({
-      name: "add Cloudflare config",
+      name: "generate deploy config (cloudflare)",
       handler: async () => {
         await this.generateCloudflare(ctx, distDir);
       },

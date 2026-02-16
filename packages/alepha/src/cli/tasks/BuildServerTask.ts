@@ -43,7 +43,7 @@ export class BuildServerTask extends BuildTask {
     }
 
     await ctx.run({
-      name: "vite build server",
+      name: "build server",
       handler: async () => {
         await this.buildServer({
           entry: ctx.entry.server,

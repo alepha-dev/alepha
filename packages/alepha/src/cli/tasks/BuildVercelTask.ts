@@ -27,7 +27,7 @@ export class BuildVercelTask extends BuildTask {
     const root = ctx.root;
 
     await ctx.run({
-      name: "add Vercel config",
+      name: "generate deploy config (vercel)",
       handler: async () => {
         await this.writeApiEntryPoint(root, distDir);
         await this.writeVercelConfig(

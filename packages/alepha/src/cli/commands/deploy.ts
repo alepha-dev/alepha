@@ -1,130 +1,286 @@
-import { $inject, AlephaError, t } from "alepha";
+import { $inject, Alepha, AlephaError, t } from "alepha";
+import { CloudflareR2Provider } from "alepha/bucket";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
-import { FileSystemProvider } from "alepha/system";
+import { FileSystemProvider, ShellProvider } from "alepha/system";
+import type { RunnerMethod } from "../../command/helpers/Runner.ts";
+import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
+import { ViteBuildProvider } from "../providers/ViteBuildProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 
 export class DeployCommand {
   protected readonly log = $logger();
+  protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly shell = $inject(ShellProvider);
   protected readonly utils = $inject(AlephaCliUtils);
   protected readonly pm = $inject(PackageManagerUtils);
+  protected readonly boot = $inject(AppEntryProvider);
+  protected readonly viteBuildProvider = $inject(ViteBuildProvider);
 
-  /**
-   * Deploy the project to a hosting platform (e.g., Vercel, Cloudflare, Surge)
-   *
-   * Deploy command can be overridden by creating a alepha.config.ts in the project root:
-   *
-   * ```ts
-   * import { defineConfig } from "alepha/cli";
-   *
-   * export default defineConfig({
-   *   commands: {
-   *     deploy: {
-   *       handler: async ({ root, mode, flags }) => {
-   *         // Custom deployment logic here
-   *       },
-   *     },
-   *   },
-   * });
-   * ```
-   */
   public readonly deploy = $command({
     name: "deploy",
-    description:
-      "Deploy the project to a hosting platform (e.g., Vercel, Cloudflare, Surge)",
-    mode: true,
+    mode: "production",
+    description: "Build and deploy the project",
     flags: t.object({
-      build: t.boolean({
-        description: "Build the project before deployment",
-        default: false,
-      }),
-      migrate: t.boolean({
-        description:
-          "Run database migrations before deployment (if applicable)",
-        default: false,
-      }),
-    }),
-    env: t.object({
-      VERCEL_TOKEN: t.optional(
-        t.text({
-          description: "Vercel API token (e.g., xxxxxxxxxxxxxxxxxxxx)",
-        }),
-      ),
-      VERCEL_ORG_ID: t.optional(
-        t.text({
-          description: "Vercel organization ID (e.g., team_abc123...)",
-        }),
-      ),
-      VERCEL_PROJECT_ID: t.optional(
-        t.text({ description: "Vercel project ID (e.g., prj_abc123...)" }),
-      ),
-      CLOUDFLARE_API_TOKEN: t.optional(
-        t.text({
-          description: "Cloudflare API token (e.g., xxxx-xxxx-xxxx-xxxx)",
-        }),
-      ),
-      CLOUDFLARE_ACCOUNT_ID: t.optional(
-        t.text({
-          description: "Cloudflare account ID (e.g., abc123def456...)",
+      target: t.optional(
+        t.enum(["bare", "docker", "vercel", "cloudflare", "static"], {
+          aliases: ["t"],
+          description: "Deployment target",
         }),
       ),
     }),
-    handler: async ({ root, mode, flags }) => {
-      if (flags.build) {
-        await this.utils.exec("alepha build");
-      }
+    handler: async ({ root, flags, run }) => {
+      process.env.NODE_ENV = "production";
+      await this.utils.loadEnv(root, [".env", ".env.production"]);
 
-      // Vercel deployment
-      if (await this.utils.exists(root, "dist/vercel.json")) {
-        if (flags.migrate) {
-          this.log.debug("Running database migrations before deployment...");
-          await this.utils.exec(`alepha db migrate --mode=${mode}`);
-        }
-        await this.pm.ensureDependency(root, "vercel", {
-          dev: true,
-          exec: (cmd, opts) => this.utils.exec(cmd, opts),
-        });
-        const command =
-          `vercel . --cwd=dist ${mode === "production" ? "--prod" : ""}`.trim();
-        this.log.debug(`Deploying to Vercel with command: ${command}`);
-        await this.utils.exec(command);
-        return;
-      }
+      // Build
+      const targetFlag = flags.target ? ` -t ${flags.target}` : "";
+      await this.shell.run(`alepha build${targetFlag}`, { resolve: true });
 
-      // Cloudflare deployment
-      if (await this.utils.exists(root, "dist/wrangler.jsonc")) {
-        if (flags.migrate) {
-          this.log.debug("Running database migrations before deployment...");
-          await this.utils.exec(`alepha db migrate --mode=${mode}`);
-        }
-        await this.pm.ensureDependency(root, "wrangler", {
-          dev: true,
-          exec: (cmd, opts) => this.utils.exec(cmd, opts),
-        });
-        const command =
-          `wrangler deploy ${mode === "production" ? "" : "--env preview"} --config=dist/wrangler.jsonc`.trim();
-        this.log.info(`Deploying to Cloudflare with command: ${command}`);
-        await this.utils.exec(command);
-        return;
-      }
+      // Deploy
+      const distDir = this.fs.join(root, "dist");
 
-      // Surge deployment
-      if (await this.utils.exists(root, "dist/public/404.html")) {
-        await this.pm.ensureDependency(root, "surge", {
-          dev: true,
-          exec: (cmd, opts) => this.utils.exec(cmd, opts),
-        });
-        const distPath = this.fs.join(root, "dist/public");
-        this.log.debug(`Deploying to Surge from directory: ${distPath}`);
-        await this.utils.exec(`surge ${distPath}`);
-        return;
+      if (await this.fs.exists(this.fs.join(distDir, "wrangler.jsonc"))) {
+        await this.deployToCloudflare(root, run);
+      } else {
+        this.log.info("No supported deployment target found in dist/");
       }
-
-      throw new AlephaError(
-        "No deployment configuration found in the dist folder.",
-      );
     },
   });
+
+  // ---------------------------------------------------------------------------
+  // Cloudflare
+  // ---------------------------------------------------------------------------
+
+  protected async deployToCloudflare(
+    root: string,
+    run: RunnerMethod,
+  ): Promise<void> {
+    const distDir = this.fs.join(root, "dist");
+
+    // Login
+    await run({
+      name: "authenticate",
+      handler: async () => {
+        await this.ensureWrangler(root);
+        await this.ensureLogin(run);
+      },
+    });
+
+    // Analyze app to detect resources
+    const entry = await this.boot.getAppEntry(root);
+    const appAlepha = await this.viteBuildProvider.init({ entry });
+
+    const name = await this.readProjectName(root);
+    const slug = this.slugify(name);
+
+    // R2
+    try {
+      const r2 = appAlepha.inject(CloudflareR2Provider);
+      const bucketName = r2.bucketName || `alepha-${slug}-r2`;
+      await run({
+        name: `provision bucket (${bucketName})`,
+        handler: async () => {
+          await this.ensureR2(bucketName);
+        },
+      });
+    } catch {}
+
+    // D1
+    let hasRepositories = false;
+    try {
+      const repoProvider = appAlepha.inject<any>("RepositoryProvider");
+      hasRepositories = repoProvider.getRepositories().length > 0;
+    } catch {}
+
+    if (hasRepositories) {
+      const dbName = `alepha-${slug}-main`;
+      let dbId = "";
+
+      await run({
+        name: `provision database (${dbName})`,
+        handler: async () => {
+          dbId = await this.ensureD1(dbName);
+          await this.updateWranglerD1(distDir, dbName, dbId);
+        },
+      });
+
+      await run({
+        name: "apply migrations",
+        handler: async () => {
+          await this.handleMigrations(root, distDir, dbName);
+        },
+      });
+    }
+
+    // Deploy
+    const capture = !this.alepha.isCI();
+    let deployedUrl: string | undefined;
+
+    await run({
+      name: "deploy worker",
+      handler: async () => {
+        const output = await this.shell.run(
+          "wrangler deploy --no-bundle --config=dist/wrangler.jsonc",
+          { resolve: true, capture },
+        );
+
+        if (capture) {
+          const urlMatch = output.match(/https:\/\/[^\s]+\.workers\.dev/);
+          if (urlMatch) {
+            deployedUrl = urlMatch[0];
+          }
+        }
+      },
+    });
+
+    run.end();
+
+    if (deployedUrl) {
+      process.stdout.write(`\n  \x1b[32m→\x1b[0m ${deployedUrl}\n\n`);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  protected async readProjectName(root: string): Promise<string> {
+    const pkg = await this.pm.readPackageJson(root);
+    if (!pkg.name) {
+      throw new AlephaError(
+        "Missing 'name' field in package.json. Add a project name to continue.",
+      );
+    }
+    return pkg.name;
+  }
+
+  protected slugify(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 63);
+  }
+
+  protected async ensureWrangler(root: string): Promise<void> {
+    await this.pm.ensureDependency(root, "wrangler", {
+      dev: true,
+      exec: (cmd, opts) => this.utils.exec(cmd, opts),
+    });
+  }
+
+  protected async ensureLogin(run: RunnerMethod): Promise<void> {
+    const output = await this.shell.run("wrangler whoami", {
+      resolve: true,
+      capture: true,
+    });
+
+    if (output.includes("not authenticated")) {
+      run.pause();
+      await this.shell.run("wrangler login", { resolve: true });
+      run.resume();
+    }
+  }
+
+  protected async ensureD1(name: string): Promise<string> {
+    const output = await this.shell.run("wrangler d1 list --json", {
+      resolve: true,
+      capture: true,
+    });
+
+    const databases = JSON.parse(output) as any[];
+    const existing = databases.find((db: any) => db.name === name);
+    if (existing) {
+      return existing.uuid;
+    }
+
+    const createOutput = await this.shell.run(`wrangler d1 create ${name}`, {
+      resolve: true,
+      capture: true,
+    });
+
+    const match = createOutput.match(/"database_id":\s*"([^"]+)"/);
+    if (!match) {
+      throw new AlephaError(
+        `Failed to parse D1 database ID from wrangler output:\n${createOutput}`,
+      );
+    }
+
+    return match[1];
+  }
+
+  protected async ensureR2(name: string): Promise<void> {
+    const output = await this.shell.run("wrangler r2 bucket list --json", {
+      resolve: true,
+      capture: true,
+    });
+
+    const buckets = JSON.parse(output) as any[];
+    const existing = buckets.find((b: any) => b.name === name);
+    if (existing) {
+      return;
+    }
+
+    await this.shell.run(`wrangler r2 bucket create ${name}`, {
+      resolve: true,
+      capture: !this.alepha.isCI(),
+    });
+  }
+
+  protected async updateWranglerD1(
+    distDir: string,
+    dbName: string,
+    dbId: string,
+  ): Promise<void> {
+    const configPath = this.fs.join(distDir, "wrangler.jsonc");
+    const config = await this.fs.readJsonFile<Record<string, any>>(configPath);
+
+    config.d1_databases = config.d1_databases || [];
+    config.d1_databases.push({
+      binding: dbName,
+      database_name: dbName,
+      database_id: dbId,
+    });
+
+    config.vars = config.vars || {};
+    config.vars.DATABASE_URL = `d1://${dbName}:${dbId}`;
+
+    await this.fs.writeFile(configPath, JSON.stringify(config, null, 2));
+  }
+
+  protected async handleMigrations(
+    root: string,
+    distDir: string,
+    dbName: string,
+  ): Promise<void> {
+    const migrationsDir = this.fs.join(root, "migrations", "sqlite");
+
+    if (await this.fs.exists(migrationsDir)) {
+      await this.shell.run("alepha db check-migrations", {
+        resolve: true,
+        capture: !this.alepha.isCI(),
+      });
+    } else {
+      await this.shell.run("alepha db generate", {
+        resolve: true,
+        capture: !this.alepha.isCI(),
+      });
+    }
+
+    // Copy migrations into dist/ for wrangler
+    await this.fs.cp(migrationsDir, this.fs.join(distDir, "migrations"));
+
+    await this.shell.run(
+      `wrangler d1 migrations apply ${dbName} --remote --config=dist/wrangler.jsonc`,
+      { resolve: true, capture: !this.alepha.isCI(), env: { CI: "1" } },
+    );
+
+    // Clean up
+    await this.fs.rm(this.fs.join(distDir, "migrations"), {
+      recursive: true,
+    });
+  }
 }

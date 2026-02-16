@@ -30,7 +30,7 @@ export class BuildDockerTask extends BuildTask {
       ctx.options.docker?.command ?? (runtime === "bun" ? "bun" : "node");
 
     await ctx.run({
-      name: "add Docker config",
+      name: "generate deploy config (docker)",
       handler: async () => {
         await this.copyDrizzleMigrations(ctx.root, distDir);
         await this.writeDockerfile(

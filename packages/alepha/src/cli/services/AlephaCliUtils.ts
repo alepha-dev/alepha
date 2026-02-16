@@ -1,4 +1,4 @@
-import { $inject, type Alepha } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { EnvUtils } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
@@ -24,6 +24,7 @@ export class AlephaCliUtils {
   protected readonly boot = $inject(AppEntryProvider);
   protected readonly shell = $inject(ShellProvider);
   protected readonly viteUtils = $inject(ViteUtils);
+  protected readonly alepha = $inject(Alepha);
 
   // ===========================================
   // Command Execution
@@ -49,7 +50,7 @@ export class AlephaCliUtils {
       root: options.root,
       env: options.env,
       resolve: !options.global,
-      capture: false,
+      capture: !this.alepha.isCI(),
     });
   }
 

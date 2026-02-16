@@ -35,7 +35,7 @@ export class BuildClientTask extends BuildTask {
 
     try {
       await ctx.run({
-        name: "vite build client",
+        name: "build client",
         handler: async () => {
           await this.buildClient({
             dist: `${distDir}/${publicDir}`,
