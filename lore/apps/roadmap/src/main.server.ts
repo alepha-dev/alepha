@@ -1,6 +1,5 @@
 import { AlephaBucketVercel } from "@alepha/bucket-vercel";
 import { Alepha, run } from "alepha";
-import { AlephaDevtools } from "alepha/devtools";
 import { RoadmapApi } from "./api/index.ts";
 import { RoadmapMcp } from "./mcp/index.ts";
 import { RoadmapWebAdmin } from "./web/admin/index.ts";
@@ -14,10 +13,6 @@ const alepha = Alepha.create({
 
 if (alepha.isProduction() && alepha.env.BLOB_READ_WRITE_TOKEN) {
   alepha.with(AlephaBucketVercel);
-}
-
-if (!alepha.isProduction()) {
-  alepha.with(AlephaDevtools);
 }
 
 alepha.with(RoadmapApi);
