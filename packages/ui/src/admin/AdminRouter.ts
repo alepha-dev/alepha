@@ -134,7 +134,6 @@ export class AdminRouter {
   public readonly adminLayout = $page({
     path: "/admin",
     label: "Admin",
-    can: () => this.auth.can("admin:*"),
     lazy: () => import("./components/AdminLayout.tsx"),
     props: () => ({
       adminShellProps: this.adminShellProps(),

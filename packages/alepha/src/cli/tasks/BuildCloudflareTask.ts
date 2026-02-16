@@ -1,6 +1,6 @@
 import { basename } from "node:path";
 import { $inject } from "alepha";
-import { CloudflareR2Provider, R2_DEFAULT_BINDING } from "alepha/bucket";
+import { CloudflareR2Provider } from "alepha/bucket";
 import { type CloudflareKVProvider, KV_DEFAULT_BINDING } from "alepha/cache";
 import { FileSystemProvider } from "alepha/system";
 import type { CloudflareQueueProvider } from "../../queue/core/providers/CloudflareQueueProvider.ts";
@@ -115,7 +115,7 @@ export class BuildCloudflareTask extends BuildTask {
     if (r2Provider) {
       wrangler.r2_buckets = wrangler.r2_buckets || [];
       wrangler.r2_buckets.push({
-        binding: R2_DEFAULT_BINDING,
+        binding: r2Provider.bucketName,
         bucket_name: r2Provider.bucketName,
       });
     }

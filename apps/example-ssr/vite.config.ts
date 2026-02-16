@@ -16,6 +16,10 @@ export default defineConfig((env) => {
         enforce: "pre", // Run before other plugins
         resolveId(id, importer) {
           const denyList = [
+            "readline",
+            "node:readline",
+            "readline/promises",
+            "node:readline/promises",
             "cluster",
             "node:cluster",
             "perf_hooks",

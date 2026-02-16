@@ -4,7 +4,6 @@ import { FileSystemProvider } from "alepha/system";
 import { BuildCommand } from "../commands/build.ts";
 import { CleanCommand } from "../commands/clean.ts";
 import { DbCommand } from "../commands/db.ts";
-import { DeckCommand } from "../commands/deck.ts";
 import { DeployCommand } from "../commands/deploy.ts";
 import { DevCommand } from "../commands/dev.ts";
 import { GitProvider } from "../commands/gen/changelog.ts";
@@ -71,7 +70,6 @@ export const AlephaCli = $module({
     BuildCommand,
     CleanCommand,
     DbCommand,
-    DeckCommand,
     DeployCommand,
     DevCommand,
     InitCommand,

@@ -136,6 +136,7 @@ __metadata:
     "@types/sanitize-html": "npm:^2.16.0"
     alepha: "npm:^0.17.1"
     animate.css: "npm:^4.1.1"
+    better-sqlite3: "npm:^12.6.2"
     framer-motion: "npm:^12.34.0"
     highlight.js: "npm:^11.11.1"
     konva: "npm:^10.2.0"
@@ -149,6 +150,7 @@ __metadata:
     vercel: "npm:^50.17.1"
     vite: "npm:^7.3.1"
     vitest: "npm:^4.0.18"
+    wrangler: "npm:^4.65.0"
   languageName: unknown
   linkType: soft
 

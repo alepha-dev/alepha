@@ -151,13 +151,6 @@ export interface R2UploadedPart {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Default R2 binding name used in wrangler.toml.
- */
-export const R2_DEFAULT_BINDING = "R2";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
  * Cloudflare R2 storage provider.
  *
  * Uses a single R2 bucket binding for all $bucket primitives.
@@ -245,10 +238,10 @@ export class CloudflareR2Provider implements FileStorageProvider {
         );
       }
 
-      const binding = cloudflareEnv[R2_DEFAULT_BINDING] as R2Bucket | undefined;
+      const binding = cloudflareEnv[this.bucketName] as R2Bucket | undefined;
       if (!binding) {
         throw new AlephaError(
-          `R2 binding '${R2_DEFAULT_BINDING}' not found in Cloudflare Workers environment.`,
+          `R2 binding '${this.bucketName}' not found in Cloudflare Workers environment.`,
         );
       }
 

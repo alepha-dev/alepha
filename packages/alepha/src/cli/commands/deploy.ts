@@ -1,5 +1,4 @@
 import { $inject, Alepha, AlephaError, t } from "alepha";
-import { CloudflareR2Provider } from "alepha/bucket";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
@@ -78,14 +77,17 @@ export class DeployCommand {
 
     // R2
     try {
-      const r2 = appAlepha.inject(CloudflareR2Provider);
-      const bucketName = r2.bucketName || `alepha-${slug}-r2`;
-      await run({
-        name: `provision bucket (${bucketName})`,
-        handler: async () => {
-          await this.ensureR2(bucketName);
-        },
-      });
+      const r2 = appAlepha.primitives("$bucket");
+      if (r2.length > 0) {
+        const bucketName = `alepha-${slug}-r2`;
+        await run({
+          name: `provision bucket (${bucketName})`,
+          handler: async () => {
+            await this.ensureR2(bucketName);
+            await this.updateWranglerR2(distDir, bucketName);
+          },
+        });
+      }
     } catch {}
 
     // D1
@@ -213,21 +215,36 @@ export class DeployCommand {
   }
 
   protected async ensureR2(name: string): Promise<void> {
-    const output = await this.shell.run("wrangler r2 bucket list --json", {
-      resolve: true,
-      capture: true,
-    });
-
-    const buckets = JSON.parse(output) as any[];
-    const existing = buckets.find((b: any) => b.name === name);
-    if (existing) {
-      return;
+    try {
+      await this.shell.run(`wrangler r2 bucket create ${name}`, {
+        resolve: true,
+        capture: true,
+      });
+    } catch (error: any) {
+      const msg = String(error.stderr || error.message || "");
+      if (!msg.includes("already exists")) {
+        throw error;
+      }
     }
+  }
 
-    await this.shell.run(`wrangler r2 bucket create ${name}`, {
-      resolve: true,
-      capture: !this.alepha.isCI(),
+  protected async updateWranglerR2(
+    distDir: string,
+    bucketName: string,
+  ): Promise<void> {
+    const configPath = this.fs.join(distDir, "wrangler.jsonc");
+    const config = await this.fs.readJsonFile<Record<string, any>>(configPath);
+
+    config.r2_buckets = config.r2_buckets || [];
+    config.r2_buckets.push({
+      binding: bucketName,
+      bucket_name: bucketName,
     });
+
+    config.vars = config.vars || {};
+    config.vars.R2_BUCKET_NAME = bucketName;
+
+    await this.fs.writeFile(configPath, JSON.stringify(config, null, 2));
   }
 
   protected async updateWranglerD1(
@@ -258,15 +275,21 @@ export class DeployCommand {
   ): Promise<void> {
     const migrationsDir = this.fs.join(root, "migrations", "sqlite");
 
+    const env = {
+      DATABASE_URL: `d1://${dbName}`,
+    };
+
     if (await this.fs.exists(migrationsDir)) {
       await this.shell.run("alepha db check-migrations", {
         resolve: true,
         capture: !this.alepha.isCI(),
+        env,
       });
     } else {
-      await this.shell.run("alepha db generate", {
+      await this.shell.run("alepha db generate --mode toto", {
         resolve: true,
         capture: !this.alepha.isCI(),
+        env,
       });
     }
 

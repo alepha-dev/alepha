@@ -4,7 +4,6 @@ import { $resource } from "./primitives/$resource.ts";
 import { $tool } from "./primitives/$tool.ts";
 import { McpServerProvider } from "./providers/McpServerProvider.ts";
 import { SseMcpTransport } from "./transports/SseMcpTransport.ts";
-import { StdioMcpTransport } from "./transports/StdioMcpTransport.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -88,7 +87,6 @@ export type { ToolPrimitiveOptions } from "./primitives/$tool.ts";
 export { $tool, ToolPrimitive } from "./primitives/$tool.ts";
 export { McpServerProvider } from "./providers/McpServerProvider.ts";
 export { SseMcpTransport } from "./transports/SseMcpTransport.ts";
-export { StdioMcpTransport } from "./transports/StdioMcpTransport.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -111,7 +109,7 @@ export { StdioMcpTransport } from "./transports/StdioMcpTransport.ts";
 export const AlephaMcp = $module({
   name: "alepha.mcp",
   primitives: [$tool, $resource, $prompt],
-  services: [McpServerProvider, SseMcpTransport, StdioMcpTransport],
+  services: [McpServerProvider, SseMcpTransport],
   register: (alepha) => {
     alepha.with(McpServerProvider);
   },
