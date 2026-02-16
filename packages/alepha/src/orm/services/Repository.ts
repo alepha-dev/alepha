@@ -12,7 +12,7 @@ import {
 } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { asc, desc, isSQLWrapper, type SQL } from "drizzle-orm";
+import { asc, desc, type SQL } from "drizzle-orm";
 import type {
   LockConfig,
   LockStrength,
@@ -187,19 +187,26 @@ export abstract class Repository<T extends TObject> {
     });
   }
 
+  private _columnNameMap?: Map<string, string>;
+
   /**
    * Map raw database fields to entity fields. (handles column name differences)
    */
   protected mapRawFieldsToEntity(row: Record<string, unknown>) {
+    if (!this._columnNameMap) {
+      this._columnNameMap = new Map();
+      for (const colKey of Object.keys(this.table)) {
+        this._columnNameMap.set(this.table[colKey].name, colKey);
+      }
+    }
+
     const entity: any = {};
 
     for (const key of Object.keys(row)) {
       entity[key] = row[key];
-      for (const colKey of Object.keys(this.table)) {
-        if (this.table[colKey].name === key) {
-          entity[colKey] = row[key];
-          break;
-        }
+      const fieldKey = this._columnNameMap.get(key);
+      if (fieldKey) {
+        entity[fieldKey] = row[key];
       }
     }
 
@@ -449,7 +456,9 @@ export abstract class Repository<T extends TObject> {
    */
   public async paginate<R extends PgRelationMap<T>>(
     pagination: PageQuery = {},
-    query: PgQueryRelations<T, R> = {},
+    query: Omit<PgQueryRelations<T, R>, "where"> & {
+      where?: PgQueryWhere<T>;
+    } = {},
     opts: StatementOptions & { count?: boolean } = {},
   ): Promise<Page<PgStatic<T, R>>> {
     const limit = query.limit ?? pagination.size ?? 10;
@@ -485,14 +494,13 @@ export abstract class Repository<T extends TObject> {
     );
 
     if (opts.count) {
-      const where = isSQLWrapper(query.where)
-        ? query.where
-        : query.where
-          ? this.toSQL(query.where)
-          : undefined;
+      const countWhere = this.withDeletedAt(
+        (query.where ?? {}) as PgQueryWhere<T>,
+        opts,
+      );
 
       tasks.push(
-        this.db.$count(this.table, where as SQL).then((it) => {
+        this.db.$count(this.table, this.toSQL(countWhere)).then((it) => {
           timers.count = Date.now() - timers.count;
           return it;
         }),
@@ -1040,7 +1048,14 @@ export abstract class Repository<T extends TObject> {
     where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
   ): Promise<Array<number | string>> {
-    return await this.deleteMany(where, opts);
+    const entity = await this.findOne({ where }, opts);
+    if (!entity) {
+      return [];
+    }
+    return await this.deleteMany(
+      this.getWhereId((entity as any)[this.id.key]),
+      opts,
+    );
   }
 
   /**
@@ -1114,16 +1129,11 @@ export abstract class Repository<T extends TObject> {
       return new DbError(message);
     }
 
-    const errorMessage = error.message;
-    const causeMessage = (error.cause as Error)?.message ?? "";
-    const fullMessage = `${errorMessage} ${causeMessage}`.toLowerCase();
+    const fullMessage =
+      `${error.message} ${(error.cause as Error)?.message ?? ""}`.toLowerCase();
 
     const hasPattern = (patterns: string[]) =>
-      patterns.some(
-        (pattern) =>
-          causeMessage.toLowerCase().includes(pattern.toLowerCase()) ||
-          errorMessage.toLowerCase().includes(pattern.toLowerCase()),
-      );
+      patterns.some((pattern) => fullMessage.includes(pattern.toLowerCase()));
 
     const getSourceError = () =>
       error.cause instanceof Error ? error.cause : error;

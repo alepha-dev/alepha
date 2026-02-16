@@ -7,7 +7,7 @@ import {
   type StaticEncode,
   type TObject,
 } from "alepha";
-import { NotificationService } from "../services/NotificationService.ts";
+import { NotificationJobs } from "../jobs/NotificationJobs.ts";
 
 /**
  * Creates a notification primitive for managing email/SMS notification templates.
@@ -62,19 +62,45 @@ export interface NotificationPrimitiveOptions<T extends TObject>
 export class NotificationPrimitive<T extends TObject> extends Primitive<
   NotificationPrimitiveOptions<T>
 > {
-  protected readonly notificationService = $inject(NotificationService);
+  protected readonly notificationJobs = $inject(NotificationJobs);
 
   public get name() {
     return this.options.name ?? `${this.config.propertyKey}`;
   }
 
   public async push(options: NotificationPushOptions<T>) {
+    const pushOpts = this.options.critical
+      ? ({ priority: "critical" } as const)
+      : undefined;
+
     if (this.options.email) {
-      await this.notificationService.createNotification({
-        ...options,
-        type: "email",
-        template: this.name,
-      });
+      await this.notificationJobs.sendNotification.push(
+        {
+          type: "email",
+          template: this.name,
+          contact: options.contact,
+          variables: options.variables as Record<string, unknown>,
+          category: this.options.category,
+          critical: this.options.critical,
+          sensitive: this.options.sensitive,
+        },
+        pushOpts,
+      );
+    }
+
+    if (this.options.sms) {
+      await this.notificationJobs.sendNotification.push(
+        {
+          type: "sms",
+          template: this.name,
+          contact: options.contact,
+          variables: options.variables as Record<string, unknown>,
+          category: this.options.category,
+          critical: this.options.critical,
+          sensitive: this.options.sensitive,
+        },
+        pushOpts,
+      );
     }
   }
 

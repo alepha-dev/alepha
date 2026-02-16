@@ -2,7 +2,6 @@ export * from "./schemas/DevActionMetadata.ts";
 export * from "./schemas/DevAtomMetadata.ts";
 export * from "./schemas/DevBucketMetadata.ts";
 export * from "./schemas/DevCacheMetadata.ts";
-export * from "./schemas/DevCommandMetadata.ts";
 export * from "./schemas/DevEntityMetadata.ts";
 export * from "./schemas/DevEnvMetadata.ts";
 export * from "./schemas/DevMetadata.ts";

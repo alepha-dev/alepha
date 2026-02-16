@@ -1,7 +1,7 @@
 import type { DashboardShellProps, SidebarNode } from "@alepha/ui";
 import { AuthRouter } from "@alepha/ui/auth";
 import {
-  IconBell,
+
   IconClock,
   IconDevices,
   IconFile,
@@ -19,7 +19,7 @@ import type { AdminAuditController } from "alepha/api/audits";
 import type { FileController } from "alepha/api/files";
 import type { AdminJobController } from "alepha/api/jobs";
 import type { AdminApiKeyController } from "alepha/api/keys";
-import type { AdminNotificationController } from "alepha/api/notifications";
+
 import type { AdminParameterController } from "alepha/api/parameters";
 import type {
   AdminSessionController,
@@ -35,7 +35,7 @@ export class AdminRouter {
   protected readonly auth = $inject(ReactAuth);
   protected readonly userCtrl = $client<AdminUserController>();
   protected readonly sessionCtrl = $client<AdminSessionController>();
-  protected readonly notificationCtrl = $client<AdminNotificationController>();
+
   protected readonly fileCtrl = $client<FileController>();
   protected readonly paramCtrl = $client<AdminParameterController>();
   protected readonly auditCtrl = $client<AdminAuditController>();
@@ -78,10 +78,6 @@ export class AdminRouter {
           {
             ...this.router.node(this.adminFiles.name),
             can: () => this.fileCtrl.findFiles.can(),
-          },
-          {
-            ...this.router.node(this.adminNotifications.name),
-            can: () => this.notificationCtrl.findNotifications.can(),
           },
           {
             ...this.router.node(this.adminJobDashboard.name),
@@ -234,20 +230,6 @@ export class AdminRouter {
     description: "View and manage all active sessions.",
     lazy: () => import("./components/sessions/AdminSessions.tsx"),
     can: () => this.sessionCtrl.findSessions.can(),
-  });
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Notifications
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  public readonly adminNotifications = $page({
-    icon: IconBell,
-    parent: this.adminLayout,
-    path: "/notifications",
-    label: "Notifications",
-    description: "View notification history and status.",
-    lazy: () => import("./components/notifications/AdminNotifications.tsx"),
-    can: () => this.notificationCtrl.findNotifications.can(),
   });
 
   // ─────────────────────────────────────────────────────────────────────────────

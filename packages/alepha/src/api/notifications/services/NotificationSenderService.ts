@@ -1,183 +1,90 @@
 import { $inject, Alepha, AlephaError } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
 import { EmailProvider } from "alepha/email";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
 import { SmsProvider } from "alepha/sms";
-import {
-  type NotificationEntity,
-  notifications,
-} from "../entities/notifications.ts";
 import { $notification } from "../primitives/$notification.ts";
+import type { NotificationPayload } from "../schemas/notificationPayloadSchema.ts";
 
 export class NotificationSenderService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly notificationRepository = $repository(notifications);
-  protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly emailProvider = $inject(EmailProvider);
   protected readonly smsProvider = $inject(SmsProvider);
 
-  public async send(notificationId: string | NotificationEntity) {
-    this.log.trace("Sending notification", {
-      notificationId:
-        typeof notificationId === "string" ? notificationId : notificationId.id,
+  public async send(payload: NotificationPayload) {
+    this.log.debug("Processing notification", {
+      type: payload.type,
+      template: payload.template,
+      contact: payload.contact,
     });
 
-    const notification =
-      typeof notificationId === "string"
-        ? await this.notificationRepository.getById(notificationId)
-        : notificationId;
-
-    if (notification.sentAt) {
-      this.log.debug("Notification already sent", {
-        notificationId: notification.id,
-        sentAt: notification.sentAt,
+    if (payload.type === "email") {
+      await this.emailProvider.send(this.renderEmail(payload));
+      this.log.info("Email notification sent", {
+        template: payload.template,
+        contact: payload.contact,
       });
-      return;
     }
 
-    this.log.debug("Processing notification", {
-      id: notification.id,
-      type: notification.type,
-      template: notification.template,
-      contact: notification.contact,
-    });
-
-    try {
-      if (notification.type === "email") {
-        await this.emailProvider.send(this.renderEmail(notification));
-        notification.sentAt = this.dateTimeProvider.nowISOString();
-        this.log.info("Email notification sent", {
-          id: notification.id,
-          template: notification.template,
-          contact: notification.contact,
-        });
-      }
-      if (notification.type === "sms") {
-        await this.smsProvider.send(this.renderSms(notification));
-        notification.sentAt = this.dateTimeProvider.nowISOString();
-        this.log.info("SMS notification sent", {
-          id: notification.id,
-          template: notification.template,
-          contact: notification.contact,
-        });
-      }
-    } catch (e) {
-      this.log.error("Failed to send notification", {
-        id: notification.id,
-        type: notification.type,
-        template: notification.template,
-        contact: notification.contact,
-        error: e,
+    if (payload.type === "sms") {
+      await this.smsProvider.send(this.renderSms(payload));
+      this.log.info("SMS notification sent", {
+        template: payload.template,
+        contact: payload.contact,
       });
-      if (e instanceof Error) {
-        notification.error = {
-          at: this.dateTimeProvider.nowISOString(),
-          name: e.name,
-          message: e.message,
-        };
-      }
-    } finally {
-      await this.notificationRepository.save(notification);
     }
   }
 
-  public renderSms(notification: NotificationEntity) {
-    this.log.trace("Rendering SMS notification", {
-      id: notification.id,
-      template: notification.template,
-    });
-
-    const { variables, contact, template } = this.load(notification);
+  public renderSms(payload: NotificationPayload) {
+    const { variables, contact, template } = this.load(payload);
 
     const sms = template.options.sms;
     if (!sms) {
-      this.log.error("Notification template has no SMS defined", {
-        id: notification.id,
-        template: notification.template,
-      });
       throw new AlephaError(
-        `Notification template ${notification.template} has no sms defined`,
+        `Notification template ${payload.template} has no sms defined`,
       );
     }
-
-    this.log.debug("Rendering SMS", {
-      template: notification.template,
-      contact,
-    });
 
     const message =
       typeof sms.message === "function"
         ? sms.message(variables as any)
         : sms.message;
 
-    return {
-      to: contact,
-      message,
-    };
+    return { to: contact, message };
   }
 
-  public renderEmail(notification: NotificationEntity) {
-    this.log.trace("Rendering email notification", {
-      id: notification.id,
-      template: notification.template,
-    });
-
-    const { variables, contact, template } = this.load(notification);
+  public renderEmail(payload: NotificationPayload) {
+    const { variables, contact, template } = this.load(payload);
 
     const email = template.options.email;
     if (!email) {
-      this.log.error("Notification template has no email defined", {
-        id: notification.id,
-        template: notification.template,
-      });
       throw new AlephaError(
-        `Notification template ${notification.template} has no email defined`,
+        `Notification template ${payload.template} has no email defined`,
       );
     }
 
-    this.log.debug("Rendering email", {
-      template: notification.template,
-      contact,
-      subject: email.subject,
-    });
-
     const subject = email.subject;
-
     const body =
       typeof email.body === "function"
         ? email.body(variables as any)
         : email.body;
 
-    return {
-      to: contact,
-      subject,
-      body,
-    };
+    return { to: contact, subject, body };
   }
 
-  protected load(notification: NotificationEntity) {
-    const variables = notification.variables || {};
-    const contact = notification.contact;
+  protected load(payload: NotificationPayload) {
+    const variables = payload.variables || {};
+    const contact = payload.contact;
     const template = this.alepha
       .primitives($notification)
-      .find((it) => it.name === notification.template);
+      .find((it) => it.name === payload.template);
 
     if (!template) {
-      this.log.error("Notification template not found", {
-        id: notification.id,
-        template: notification.template,
-      });
       throw new AlephaError(
-        `No notification template found for ${notification.template}`,
+        `No notification template found for ${payload.template}`,
       );
     }
 
-    return {
-      template,
-      variables,
-      contact,
-    };
+    return { template, variables, contact };
   }
 }

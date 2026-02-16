@@ -1349,4 +1349,582 @@ describe("$job v2", () => {
       expect(detail.can).toEqual({ retry: false, cancel: true });
     });
   });
+
+  // ----- Keyed job immediate dispatch -----
+
+  describe("keyed job immediate dispatch", () => {
+    it("should dispatch and complete a keyed job without delay", async () => {
+      const handler = vi.fn();
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler,
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      const id = await app.myJob.push({ value: "test" }, { key: "my-key" });
+
+      await vi.waitFor(async () => {
+        const exec = await app.repo.findById(id as string);
+        expect(exec?.status).toBe("completed");
+      });
+
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not re-dispatch on duplicate keyed push", async () => {
+      const handler = vi.fn();
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler,
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      // First push with delay (stays scheduled, key active)
+      const id1 = await app.myJob.push(
+        { value: "first" },
+        { key: "dup-key", delay: [1, "hour"] },
+      );
+
+      // Second push: same key, should return same ID and not re-dispatch
+      const id2 = await app.myJob.push(
+        { value: "second" },
+        { key: "dup-key", delay: [1, "hour"] },
+      );
+
+      expect(id1).toBe(id2);
+      expect(handler).not.toHaveBeenCalled();
+    });
+  });
+
+  // ----- Payload validation -----
+
+  describe("payload validation", () => {
+    it("should reject invalid payload", async () => {
+      class App {
+        myJob = $job({
+          schema: t.object({ userId: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await expect(
+        app.myJob.push({ wrong: 123 } as any),
+      ).rejects.toThrow();
+    });
+  });
+
+  // ----- Cancel edge cases -----
+
+  describe("cancel edge cases", () => {
+    it("should throw when cancelling non-existent execution", async () => {
+      class App {
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create();
+      alepha.inject(App);
+      await alepha.start();
+
+      const provider = alepha.inject(JobProvider);
+      await expect(
+        provider.cancel("00000000-0000-0000-0000-000000000000"),
+      ).rejects.toThrow(/not found/i);
+    });
+  });
+
+  // ----- Key lifecycle -----
+
+  describe("key lifecycle", () => {
+    it("should clear key on dead status", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {
+            throw new Error("always fail");
+          },
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      const id = await app.myJob.push(
+        { value: "test" },
+        { key: "dead-key" },
+      );
+
+      await vi.waitFor(async () => {
+        const exec = await app.repo.findById(id as string);
+        expect(exec?.status).toBe("dead");
+        expect(exec?.key).toBeNull();
+      });
+    });
+
+    it("should clear key on cancellation", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      const id = await app.myJob.push(
+        { value: "test" },
+        { key: "cancel-key", delay: [1, "hour"] },
+      );
+
+      await app.myJob.cancel(id as string);
+
+      const exec = await app.repo.findById(id as string);
+      expect(exec?.key).toBeNull();
+    });
+  });
+
+  // ----- Registration -----
+
+  describe("registration", () => {
+    it("should throw on duplicate job registration", async () => {
+      class App {
+        job1 = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create();
+      alepha.inject(App);
+
+      const provider = alepha.inject(JobProvider);
+      expect(() =>
+        provider.registerJob("App.job1", {
+          handler: async () => {},
+        }),
+      ).toThrow(/already registered/i);
+    });
+  });
+
+  // ----- Recovery sweep -----
+
+  describe("recovery sweep", () => {
+    it("should re-dispatch stale pending jobs", async () => {
+      const handler = vi.fn();
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler,
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      // Insert a stale pending record (10 min old, threshold is 5 min)
+      const staleTime = new Date(Date.now() - 600_000).toISOString();
+      await app.repo.create({
+        jobName: "App.myJob",
+        payload: { value: "stale" },
+        status: "pending",
+        priority: 2,
+        maxAttempts: 1,
+        createdAt: staleTime,
+        updatedAt: staleTime,
+      });
+
+      // Trigger recovery sweep directly
+      const provider = alepha.inject(JobProvider) as any;
+      await provider.recoverySweep();
+
+      await vi.waitFor(
+        async () => {
+          const completed = await app.repo.findMany({
+            where: { jobName: "App.myJob", status: "completed" },
+          });
+          expect(completed).toHaveLength(1);
+        },
+        { timeout: 5000 },
+      );
+    });
+
+    it("should mark crashed running jobs as failed", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      // Insert a crashed running record (1 hour old, threshold is 30 min)
+      const crashTime = new Date(Date.now() - 3_600_000).toISOString();
+      await app.repo.create({
+        jobName: "App.myJob",
+        payload: { value: "crashed" },
+        status: "running",
+        priority: 2,
+        attempt: 1,
+        maxAttempts: 1,
+        startedAt: crashTime,
+        workerId: "dead-worker",
+        createdAt: crashTime,
+        updatedAt: crashTime,
+      });
+
+      const provider = alepha.inject(JobProvider) as any;
+      await provider.recoverySweep();
+
+      await vi.waitFor(async () => {
+        const dead = await app.repo.findMany({
+          where: { jobName: "App.myJob", status: "dead" },
+        });
+        expect(dead).toHaveLength(1);
+        expect(dead[0].error).toContain("crashed");
+      });
+    });
+  });
+
+  // ----- Delayed dispatch sweep -----
+
+  describe("delayed dispatch sweep", () => {
+    it("should dispatch scheduled jobs when due", async () => {
+      const handler = vi.fn();
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler,
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      // Insert a scheduled job with scheduledAt in the past
+      const pastTime = new Date(Date.now() - 60_000).toISOString();
+      await app.repo.create({
+        jobName: "App.myJob",
+        payload: { value: "delayed" },
+        status: "scheduled",
+        priority: 2,
+        maxAttempts: 1,
+        scheduledAt: pastTime,
+      });
+
+      const provider = alepha.inject(JobProvider) as any;
+      await provider.delayedDispatchSweep();
+
+      await vi.waitFor(
+        async () => {
+          const completed = await app.repo.findMany({
+            where: { jobName: "App.myJob", status: "completed" },
+          });
+          expect(completed).toHaveLength(1);
+        },
+        { timeout: 5000 },
+      );
+    });
+
+    it("should dispatch retrying jobs when due", async () => {
+      const handler = vi.fn();
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler,
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      const pastTime = new Date(Date.now() - 60_000).toISOString();
+      await app.repo.create({
+        jobName: "App.myJob",
+        payload: { value: "retry" },
+        status: "retrying",
+        priority: 2,
+        attempt: 1,
+        maxAttempts: 3,
+        scheduledAt: pastTime,
+      });
+
+      const provider = alepha.inject(JobProvider) as any;
+      await provider.delayedDispatchSweep();
+
+      await vi.waitFor(
+        async () => {
+          const completed = await app.repo.findMany({
+            where: { jobName: "App.myJob", status: "completed" },
+          });
+          expect(completed).toHaveLength(1);
+        },
+        { timeout: 5000 },
+      );
+    });
+  });
+
+  // ----- Timeout + retry integration -----
+
+  describe("timeout + retry integration", () => {
+    it("should retry after timeout failure", async () => {
+      let callCount = 0;
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          timeout: [50, "millisecond"],
+          retry: { retries: 1, backoff: [10, "millisecond"] },
+          handler: async ({ signal }) => {
+            callCount++;
+            if (callCount === 1) {
+              // First call: hang until timeout
+              await new Promise<void>((resolve) => {
+                const check = () => {
+                  if (signal.aborted) resolve();
+                  else setTimeout(check, 10);
+                };
+                check();
+              });
+              throw new Error("timed out");
+            }
+          },
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.myJob.push({ value: "test" });
+
+      await vi.waitFor(
+        async () => {
+          const completed = await app.repo.findMany({
+            where: { jobName: "App.myJob", status: "completed" },
+          });
+          expect(completed).toHaveLength(1);
+          expect(completed[0].attempt).toBe(2);
+        },
+        { timeout: 5000 },
+      );
+
+      expect(callCount).toBe(2);
+    });
+  });
+
+  // ----- Log truncation -----
+
+  describe("log truncation", () => {
+    it("should truncate logs exceeding maxEntries", async () => {
+      class App {
+        log = $logger();
+        repo = $repository(jobExecutionEntity);
+        logRepo = $repository(jobExecutionLogEntity);
+        verboseJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {
+            for (let i = 0; i < 200; i++) {
+              this.log.info(`Log entry ${i}`);
+            }
+          },
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.verboseJob.push({ value: "test" });
+
+      await vi.waitFor(async () => {
+        const executions = await app.repo.findMany({
+          where: { jobName: "App.verboseJob", status: "completed" },
+        });
+        expect(executions).toHaveLength(1);
+
+        const logEntry = await app.logRepo.findById(executions[0].id);
+        expect(logEntry).toBeDefined();
+        // Default maxEntries is 100, plus 1 truncation warning
+        expect(logEntry!.logs.length).toBeLessThanOrEqual(101);
+        expect(
+          logEntry!.logs[logEntry!.logs.length - 1].message,
+        ).toContain("truncated");
+      });
+    });
+  });
+
+  // ----- job:cancel event -----
+
+  describe("job:cancel event", () => {
+    it("should emit job:cancel when a running job is cancelled", async () => {
+      const cancelHandler = vi.fn();
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async ({ signal }) => {
+            await new Promise<void>((resolve) => {
+              const check = () => {
+                if (signal.aborted) resolve();
+                else setTimeout(check, 10);
+              };
+              check();
+            });
+            // Delay to let cancel()'s DB update complete before the catch
+            // block checks execution status (avoids race condition)
+            await new Promise((r) => setTimeout(r, 50));
+            throw new Error("cancelled");
+          },
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      alepha.events.on("job:cancel", cancelHandler);
+      await alepha.start();
+
+      const id = (await app.myJob.push({ value: "test" })) as string;
+
+      await vi.waitFor(async () => {
+        const exec = await app.repo.findById(id);
+        expect(exec?.status).toBe("running");
+      });
+
+      await app.myJob.cancel(id);
+
+      await vi.waitFor(() => {
+        expect(cancelHandler).toHaveBeenCalledTimes(1);
+        expect(cancelHandler).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: "App.myJob",
+            executionId: id,
+          }),
+        );
+      });
+    });
+  });
+
+  // ----- JobService -----
+
+  describe("JobService", () => {
+    it("should retry a dead execution", async () => {
+      let callCount = 0;
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        jobService = $inject(JobService);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {
+            callCount++;
+            if (callCount === 1) throw new Error("first fail");
+          },
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.myJob.push({ value: "test" });
+
+      await vi.waitFor(async () => {
+        const dead = await app.repo.findMany({
+          where: { jobName: "App.myJob", status: "dead" },
+        });
+        expect(dead).toHaveLength(1);
+      });
+
+      const dead = await app.repo.findMany({
+        where: { jobName: "App.myJob", status: "dead" },
+      });
+      await app.jobService.retryExecution(dead[0].id);
+
+      await vi.waitFor(async () => {
+        const completed = await app.repo.findMany({
+          where: { jobName: "App.myJob", status: "completed" },
+        });
+        expect(completed).toHaveLength(1);
+      });
+
+      expect(callCount).toBe(2);
+    });
+
+    it("should throw when retrying a running execution", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        jobService = $inject(JobService);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async ({ signal }) => {
+            await new Promise<void>((resolve) => {
+              const check = () => {
+                if (signal.aborted) resolve();
+                else setTimeout(check, 10);
+              };
+              check();
+            });
+          },
+        });
+      }
+
+      const alepha = Alepha.create();
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      const id = (await app.myJob.push({ value: "test" })) as string;
+
+      await vi.waitFor(async () => {
+        const exec = await app.repo.findById(id);
+        expect(exec?.status).toBe("running");
+      });
+
+      await expect(
+        app.jobService.retryExecution(id),
+      ).rejects.toThrow(/Cannot retry/);
+
+      // Cleanup
+      await app.myJob.cancel(id);
+    });
+  });
 });

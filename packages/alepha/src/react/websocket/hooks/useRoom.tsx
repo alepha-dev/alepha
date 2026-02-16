@@ -158,32 +158,41 @@ export const useRoom = <TClient extends TWSObject, TServer extends TWSObject>(
     onError,
   } = options;
 
+  // Keep handler ref stable to avoid stale closures
+  const handlerRef = useRef(handler);
+  handlerRef.current = handler;
+
   useEffect(() => {
-    // Subscribe to room
-    const unsubscribe = webSocketClient.subscribe(roomId, channel, handler, {
-      url,
-      autoReconnect,
-      reconnectInterval,
-      maxReconnectAttempts,
-      onConnect: () => {
-        setIsConnected(true);
-        setIsConnecting(false);
-        setIsError(false);
-        setError(undefined);
-        onConnect?.();
+    // Subscribe to room — use ref so handler is always current
+    const unsubscribe = webSocketClient.subscribe(
+      roomId,
+      channel,
+      (msg) => handlerRef.current(msg),
+      {
+        url,
+        autoReconnect,
+        reconnectInterval,
+        maxReconnectAttempts,
+        onConnect: () => {
+          setIsConnected(true);
+          setIsConnecting(false);
+          setIsError(false);
+          setError(undefined);
+          onConnect?.();
+        },
+        onDisconnect: () => {
+          setIsConnected(false);
+          setIsConnecting(false);
+          onDisconnect?.();
+        },
+        onError: (err) => {
+          setIsError(true);
+          setError(err);
+          setIsConnecting(false);
+          onError?.(err);
+        },
       },
-      onDisconnect: () => {
-        setIsConnected(false);
-        setIsConnecting(false);
-        onDisconnect?.();
-      },
-      onError: (err) => {
-        setIsError(true);
-        setError(err);
-        setIsConnecting(false);
-        onError?.(err);
-      },
-    });
+    );
 
     unsubscribeRef.current = unsubscribe;
 

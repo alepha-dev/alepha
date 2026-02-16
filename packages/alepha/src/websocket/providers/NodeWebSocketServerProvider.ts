@@ -183,6 +183,21 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     const url = new URL(request.url || "/", "http://localhost");
     const roomIds = this.extractRoomIds(url);
 
+    // Check max connections per user before registering
+    if (userId && endpoint.maxConnectionsPerUser) {
+      const existingConns = this.userConnections.get(userId);
+      if (
+        existingConns &&
+        existingConns.size >= endpoint.maxConnectionsPerUser
+      ) {
+        this.log.warn(
+          `User ${userId} exceeded max connections (${endpoint.maxConnectionsPerUser})`,
+        );
+        ws.close(1008, "Max connections per user exceeded");
+        return;
+      }
+    }
+
     const connection = this.alepha.inject(NodeWebSocketConnection, {
       lifetime: "transient",
       args: [connectionId, userId, roomIds, ws, this, endpoint],
@@ -198,18 +213,6 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         this.userConnections.set(userId, userConns);
       }
       userConns.add(connectionId);
-
-      // Check max connections per user
-      if (
-        endpoint.maxConnectionsPerUser &&
-        userConns.size > endpoint.maxConnectionsPerUser
-      ) {
-        this.log.warn(
-          `User ${userId} exceeded max connections (${endpoint.maxConnectionsPerUser})`,
-        );
-        ws.close(1008, "Max connections per user exceeded");
-        return;
-      }
     }
 
     // Join rooms
@@ -233,8 +236,13 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       });
     }
 
-    ws.on("message", async (data) => {
-      await connection.handleMessage(data);
+    ws.on("message", (data) => {
+      connection.handleMessage(data).catch((error) => {
+        this.log.error(
+          `Unhandled error in message handler for ${connectionId}:`,
+          error,
+        );
+      });
     });
 
     ws.on("close", (code, reason) => {
@@ -282,7 +290,12 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     // Check for roomIds parameter (comma-separated)
     const roomIdsParam = url.searchParams.get("roomIds");
     if (roomIdsParam) {
-      roomIds.push(...roomIdsParam.split(",").map((id) => id.trim()));
+      roomIds.push(
+        ...roomIdsParam
+          .split(",")
+          .map((id) => id.trim())
+          .filter((id) => id.length > 0),
+      );
     }
 
     // Default room if none specified
@@ -563,10 +576,14 @@ export class NodeWebSocketConnection implements WebSocketConnection {
     } catch (error) {
       this.log.error(`Error handling WebSocket message on ${this.id}:`, error);
 
-      // Send error back to client
-      await this.send({
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+      // Send error back to client (best-effort, may not match channel schema)
+      try {
+        await this.send({
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      } catch {
+        // Connection may already be closed
+      }
     }
   }
 }

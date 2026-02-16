@@ -54,6 +54,7 @@ export class WebSocketChannelConnection<
   protected ws?: WebSocket;
   protected reconnectAttempts = 0;
   protected reconnectTimer?: number;
+  protected static readonly MAX_QUEUE_SIZE = 1000;
   protected messageQueue: Array<{ roomId: string; message: Static<TServer> }> =
     [];
 
@@ -341,7 +342,16 @@ export class WebSocketChannelConnection<
     }
 
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      // Queue message
+      if (
+        this.messageQueue.length >=
+        WebSocketChannelConnection.MAX_QUEUE_SIZE
+      ) {
+        this.log.warn("Message queue full, dropping oldest message", {
+          roomId,
+          queueSize: this.messageQueue.length,
+        });
+        this.messageQueue.shift();
+      }
       this.log.debug("Connection not ready, queuing message", {
         roomId,
         queueSize: this.messageQueue.length + 1,
@@ -363,6 +373,12 @@ export class WebSocketChannelConnection<
    * Schedule reconnection
    */
   protected scheduleReconnect(): void {
+    // Clear any pending reconnect timer
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
+
     const maxAttempts =
       this.options.maxReconnectAttempts ??
       this.env.WEBSOCKET_MAX_RECONNECT_ATTEMPTS ??

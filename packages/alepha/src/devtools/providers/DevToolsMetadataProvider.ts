@@ -1,7 +1,6 @@
 import { $inject, Alepha, type TObject, type TSchema, t } from "alepha";
 import { $bucket } from "alepha/bucket";
 import { $cache } from "alepha/cache";
-import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import {
   PG_CREATED_AT,
@@ -25,7 +24,6 @@ import type { DevActionMetadata } from "../schemas/DevActionMetadata.ts";
 import type { DevAtomMetadata } from "../schemas/DevAtomMetadata.ts";
 import type { DevBucketMetadata } from "../schemas/DevBucketMetadata.ts";
 import type { DevCacheMetadata } from "../schemas/DevCacheMetadata.ts";
-import type { DevCommandMetadata } from "../schemas/DevCommandMetadata.ts";
 import type {
   DevEntityColumn,
   DevEntityConstraint,
@@ -380,18 +378,6 @@ export class DevToolsMetadataProvider {
     return false;
   }
 
-  public getCommands(): DevCommandMetadata[] {
-    const commandPrimitives = this.alepha.primitives($command);
-
-    return commandPrimitives
-      .filter((cmd) => !cmd.options.hide)
-      .map((command) => ({
-        name: command.name,
-        description: command.options.description,
-        hidden: command.options.hide,
-      }));
-  }
-
   public getRoutes(): DevRouteMetadata[] {
     // Routes are the base primitive - actions and pages are routes
     // Showing them separately would be redundant with actions
@@ -451,7 +437,6 @@ export class DevToolsMetadataProvider {
       providers: this.getProviders(),
       modules: this.getModules(),
       entities: this.getEntities(),
-      commands: this.getCommands(),
       routes: this.getRoutes(),
       envs: this.getEnvs(),
       atoms: this.getAtoms(),

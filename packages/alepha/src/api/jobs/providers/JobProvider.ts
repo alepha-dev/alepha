@@ -55,8 +55,6 @@ export interface PushOptions {
   key?: string;
   priority?: JobPriority;
   scheduledAt?: Date;
-  tx?: unknown;
-  flush?: "immediate";
 }
 
 export interface PushManyItem<T extends TSchema = TSchema> {
@@ -170,6 +168,7 @@ export class JobProvider {
 
     // Keyed path: atomic upsert to avoid race between concurrent pushes
     if (options?.key) {
+      const now = this.dt.nowISOString();
       const execution = await this.executions.upsert(
         {
           jobName: name,
@@ -179,12 +178,14 @@ export class JobProvider {
           priority,
           maxAttempts,
           scheduledAt,
+          createdAt: now,
+          updatedAt: now,
         },
-        { target: ["jobName", "key"], set: {} },
+        { target: ["jobName", "key"], set: {}, now },
       );
 
-      // Fresh insert: createdAt === updatedAt (both from DB default now())
-      // Conflict: updatedAt was bumped, so they differ
+      // Fresh insert: both timestamps equal the explicit `now` value.
+      // Conflict: updatedAt was bumped by the ON CONFLICT SET clause, so they differ.
       if (
         execution.createdAt === execution.updatedAt &&
         status === "pending" &&
@@ -325,110 +326,110 @@ export class JobProvider {
     }
 
     const context = this.alepha.context.createContextId();
+    this.logs.set(context, []);
 
-    await this.alepha.context.run(
-      async () => {
-        // Set up log capture
-        this.logs.set(context, []);
+    try {
+      await this.alepha.context.run(
+        async () => {
+          // Create AbortController for timeout + cancellation
+          const abortController = new AbortController();
+          this.abortControllers.set(executionId, abortController);
 
-        // Create AbortController for timeout + cancellation
-        const abortController = new AbortController();
-        this.abortControllers.set(executionId, abortController);
-
-        // Set up timeout if configured
-        let timeoutId: ReturnType<typeof setTimeout> | undefined;
-        const opts = registration.options;
-        if (opts.timeout) {
-          const ms = this.dt.duration(opts.timeout).as("milliseconds");
-          timeoutId = setTimeout(() => abortController.abort(), ms);
-        }
-
-        const now = this.dt.now();
-
-        await this.alepha.events.emit("job:begin", {
-          name: jobName,
-          now,
-          executionId,
-        });
-
-        try {
-          // Build items array
-          const execution = await this.executions.findById(executionId);
-          const items: Array<JobItem> = [];
-          if (execution?.payload) {
-            items.push({
-              id: executionId,
-              payload: execution.payload,
-              attempt: execution.attempt,
-            });
+          // Set up timeout if configured
+          let timeoutId: ReturnType<typeof setTimeout> | undefined;
+          const opts = registration.options;
+          if (opts.timeout) {
+            const ms = this.dt.duration(opts.timeout).as("milliseconds");
+            timeoutId = setTimeout(() => abortController.abort(), ms);
           }
 
-          // Execute handler
-          await opts.handler({
-            items,
+          const now = this.dt.now();
+
+          await this.alepha.events.emit("job:begin", {
+            name: jobName,
             now,
-            signal: abortController.signal,
+            executionId,
           });
 
-          // Success
-          await this.executions.updateById(executionId, {
-            status: "completed",
-            completedAt: this.dt.nowISOString(),
-            key: null,
-          });
-
-          // Write logs to cold table
-          await this.writeLogs(executionId, context);
-
-          await this.alepha.events.emit(
-            "job:success",
-            { name: jobName, executionId },
-            { catch: true },
-          );
-        } catch (error) {
-          const err = error instanceof Error ? error : new Error(String(error));
-
-          // Check if this was a cancellation
-          if (abortController.signal.aborted) {
-            // Already marked as cancelled by cancel() or it's a timeout
-            const currentExecution =
-              await this.executions.findById(executionId);
-            if (currentExecution?.status !== "cancelled") {
-              // Timeout — treat as failure
-              await this.handleFailure(executionId, jobName, err, context);
-            } else {
-              // Was cancelled explicitly — just write logs
-              await this.writeLogs(executionId, context);
-              await this.alepha.events.emit(
-                "job:cancel",
-                { name: jobName, executionId },
-                { catch: true },
-              );
+          try {
+            // Build items array
+            const execution = await this.executions.findById(executionId);
+            const items: Array<JobItem> = [];
+            if (execution?.payload) {
+              items.push({
+                id: executionId,
+                payload: execution.payload,
+                attempt: execution.attempt,
+              });
             }
-          } else {
-            await this.handleFailure(executionId, jobName, err, context);
-          }
-        } finally {
-          if (timeoutId) clearTimeout(timeoutId);
-          this.abortControllers.delete(executionId);
-          this.logs.delete(context);
 
-          await this.alepha.events.emit(
-            "job:end",
-            { name: jobName, executionId },
-            { catch: true },
-          );
-        }
-      },
-      { context },
-    );
+            // Execute handler
+            await opts.handler({
+              items,
+              now,
+              signal: abortController.signal,
+            });
+
+            // Success
+            await this.executions.updateById(executionId, {
+              status: "completed",
+              completedAt: this.dt.nowISOString(),
+              key: null,
+            });
+
+            // Write logs to cold table
+            await this.writeLogs(executionId, context);
+
+            await this.alepha.events.emit(
+              "job:success",
+              { name: jobName, executionId },
+              { catch: true },
+            );
+          } catch (error) {
+            const err =
+              error instanceof Error ? error : new Error(String(error));
+
+            // Check if this was a cancellation
+            if (abortController.signal.aborted) {
+              // Already marked as cancelled by cancel() or it's a timeout
+              const currentExecution =
+                await this.executions.findById(executionId);
+              if (currentExecution?.status !== "cancelled") {
+                // Timeout — treat as failure
+                await this.handleFailure(executionId, jobName, err, context);
+              } else {
+                // Was cancelled explicitly — just write logs
+                await this.writeLogs(executionId, context);
+                await this.alepha.events.emit(
+                  "job:cancel",
+                  { name: jobName, executionId },
+                  { catch: true },
+                );
+              }
+            } else {
+              await this.handleFailure(executionId, jobName, err, context);
+            }
+          } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+            this.abortControllers.delete(executionId);
+
+            await this.alepha.events.emit(
+              "job:end",
+              { name: jobName, executionId },
+              { catch: true },
+            );
+          }
+        },
+        { context },
+      );
+    } finally {
+      this.logs.delete(context);
+    }
   }
 
   protected async claim(executionId: string): Promise<boolean> {
     const execution = await this.executions.findById(executionId);
-    if (!execution || execution.status !== "pending") {
-      return false;
-    }
+    if (!execution) return false;
 
     try {
       await this.executions.updateOne(
@@ -557,8 +558,10 @@ export class JobProvider {
       logs.push({
         level: "WARN",
         message: `Log entries truncated at ${maxEntries}`,
-        timestamp: this.dt.nowISOString(),
-      } as unknown as LogEntry);
+        timestamp: Date.now(),
+        service: "alepha.jobs",
+        module: "JobProvider",
+      } as LogEntry);
     }
 
     try {
@@ -673,7 +676,7 @@ export class JobProvider {
    * moves them to `pending`, and dispatches to the queue layer.
    */
   protected async delayedDispatchSweep(): Promise<void> {
-    this.log.trace("Starting recovery sweep");
+    this.log.trace("Starting delayed dispatch sweep");
     if (this.stopping) return;
     try {
       const now = this.dt.nowISOString();

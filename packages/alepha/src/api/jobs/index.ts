@@ -55,7 +55,6 @@ declare module "alepha" {
  * - Retry with exponential backoff
  * - Priority, delay, cancellation
  * - Deduplication via unique keys
- * - Transactional push
  * - Per-execution log capture
  *
  * @module alepha.api.jobs

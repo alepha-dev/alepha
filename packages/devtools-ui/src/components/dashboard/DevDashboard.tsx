@@ -22,7 +22,6 @@ import {
   IconServer,
   IconSettings,
   IconStack2,
-  IconTerminal,
   IconVariable,
 } from "@tabler/icons-react";
 import { devMetadataSchema } from "alepha/devtools";
@@ -177,12 +176,6 @@ export const DevDashboard = () => {
         count: metadata.envs?.length ?? 0,
         icon: IconVariable,
         color: "yellow",
-      },
-      {
-        label: "Commands",
-        count: metadata.commands?.length ?? 0,
-        icon: IconTerminal,
-        color: "gray",
       },
     ];
   }, [metadata]);

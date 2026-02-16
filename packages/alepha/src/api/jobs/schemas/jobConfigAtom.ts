@@ -4,10 +4,6 @@ export const jobConfig = $atom({
   name: "alepha.jobs",
   description: "Configuration for the $job v2 primitive.",
   schema: t.object({
-    batchWindow: t.integer({
-      description: "Max time (ms) to buffer pushes before flushing.",
-    }),
-    batchMaxSize: t.integer({ description: "Max items per flush." }),
     recovery: t.object({
       interval: t.integer({ description: "Sweep interval (ms)." }),
       staleThreshold: t.integer({
@@ -27,18 +23,8 @@ export const jobConfig = $atom({
     logMaxEntries: t.integer({
       description: "Max log entries captured per execution.",
     }),
-    shutdownGracePeriod: t.integer({
-      description: "Max time (ms) to wait for running handlers on shutdown.",
-    }),
-    prefix: t.optional(
-      t.text({
-        description: "Prefix for lock keys (multi-tenant).",
-      }),
-    ),
   }),
   default: {
-    batchWindow: 10,
-    batchMaxSize: 1000,
     recovery: {
       interval: 300_000,
       staleThreshold: 300_000,
@@ -49,7 +35,6 @@ export const jobConfig = $atom({
     },
     logRetentionDays: 30,
     logMaxEntries: 100,
-    shutdownGracePeriod: 30_000,
   },
 });
 

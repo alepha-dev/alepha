@@ -3,7 +3,6 @@ import { devActionMetadataSchema } from "./DevActionMetadata.ts";
 import { devAtomMetadataSchema } from "./DevAtomMetadata.ts";
 import { devBucketMetadataSchema } from "./DevBucketMetadata.ts";
 import { devCacheMetadataSchema } from "./DevCacheMetadata.ts";
-import { devCommandMetadataSchema } from "./DevCommandMetadata.ts";
 import { devEntityMetadataSchema } from "./DevEntityMetadata.ts";
 import { devEnvMetadataSchema } from "./DevEnvMetadata.ts";
 import { devModuleMetadataSchema } from "./DevModuleMetadata.ts";
@@ -40,7 +39,6 @@ export const devMetadataSchema = t.object({
   providers: t.array(devProviderMetadataSchema),
   modules: t.array(devModuleMetadataSchema),
   entities: t.array(devEntityMetadataSchema),
-  commands: t.array(devCommandMetadataSchema),
   routes: t.array(devRouteMetadataSchema),
   envs: t.array(devEnvMetadataSchema),
   atoms: t.array(devAtomMetadataSchema),
