@@ -1,15 +1,15 @@
 import { type Static, t } from "alepha";
 import { users } from "alepha/api/users";
-import { $entity, pg } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 import { projects } from "./projects.ts";
 
 export const tasks = $entity({
   name: "tasks",
   schema: t.object({
-    id: pg.primaryKey(t.integer()),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
-    deletedAt: pg.deletedAt(),
+    id: db.primaryKey(t.integer()),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
+    deletedAt: db.deletedAt(),
     title: t.string(),
     description: t.string({ size: "rich" }),
     package: t.string(),
@@ -17,7 +17,7 @@ export const tasks = $entity({
     complexity: t.integer({ minimum: 1, maximum: 5 }),
     acceptedAt: t.optional(t.datetime()),
     completedAt: t.optional(t.datetime()),
-    objectives: pg.default(
+    objectives: db.default(
       t.array(
         t.object({
           title: t.string(),
@@ -26,16 +26,16 @@ export const tasks = $entity({
       ),
       [],
     ),
-    projectId: pg.ref(t.integer(), () => projects.cols.id, {
+    projectId: db.ref(t.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
-    createdBy: pg.ref(t.uuid(), () => users.cols.id, {
+    createdBy: db.ref(t.uuid(), () => users.cols.id, {
       onDelete: "cascade",
     }),
-    acceptedBy: pg.ref(t.optional(t.uuid()), () => users.cols.id, {
+    acceptedBy: db.ref(t.optional(t.uuid()), () => users.cols.id, {
       onDelete: "set null",
     }),
-    completedBy: pg.ref(t.optional(t.uuid()), () => users.cols.id, {
+    completedBy: db.ref(t.optional(t.uuid()), () => users.cols.id, {
       onDelete: "set null",
     }),
     history: t.array(
@@ -51,8 +51,8 @@ export const tasks = $entity({
       }),
       { default: [] },
     ),
-    note: pg.default(t.string({ size: "rich" }), ""),
-    timerSessions: pg.default(
+    note: db.default(t.string({ size: "rich" }), ""),
+    timerSessions: db.default(
       t.array(
         t.object({
           startedAt: t.datetime(),
@@ -61,7 +61,7 @@ export const tasks = $entity({
       ),
       [],
     ),
-    attachments: pg.default(t.array(t.uuid()), []),
+    attachments: db.default(t.array(t.uuid()), []),
   }),
   indexes: [
     {

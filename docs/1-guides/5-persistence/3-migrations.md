@@ -32,7 +32,7 @@ In production, `synchronize()` does nothing. You must handle migrations explicit
 Use the Alepha CLI to generate migration files from your entity schemas:
 
 ```bash
-alepha db generate
+alepha db migrations generate
 ```
 
 This explores your application metadata, collects all registered entities, and invokes Drizzle Kit's migration generator.
@@ -42,7 +42,7 @@ This explores your application metadata, collects all registered entities, and i
 Apply generated migrations to the database:
 
 ```bash
-alepha db migrate
+alepha db migrations apply
 ```
 
 ### Environment Selection
@@ -50,8 +50,8 @@ alepha db migrate
 Use the `--mode` flag to specify which `.env` file to load for the database connection:
 
 ```bash
-alepha db generate --mode production
-alepha db migrate --mode production
+alepha db migrations generate --mode production
+alepha db migrations apply --mode production
 ```
 
 This loads `.env.production` for the `DATABASE_URL` and other environment variables.
@@ -65,8 +65,8 @@ When running multiple application instances (e.g., behind a load balancer), use 
 For Cloudflare Workers using D1, migrations must be applied manually before deploy since there is no persistent connection during cold start:
 
 ```bash
-alepha db generate
-alepha db migrate --mode production # <- will use D1 driver based on DATABASE_URL of .env.production
+alepha db migrations generate
+alepha db migrations apply --mode production # <- will use D1 driver based on DATABASE_URL of .env.production
 ```
 
 ## Database URL Configuration
@@ -87,6 +87,6 @@ The database driver is selected based on the `DATABASE_URL` environment variable
 alepha dev
 
 # Production - explicit migration workflow
-alepha db generate              # generate migration files
-alepha db migrate --mode production  # apply to production database
+alepha db migrations generate              # generate migration files
+alepha db migrations apply --mode production  # apply to production database
 ```

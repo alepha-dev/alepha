@@ -5,7 +5,6 @@ export * from "./atoms/changelogOptions.ts";
 export * from "./commands/build.ts";
 export * from "./commands/clean.ts";
 export * from "./commands/db.ts";
-export * from "./commands/deploy.ts";
 export * from "./commands/dev.ts";
 export * from "./commands/gen/changelog.ts";
 export * from "./commands/gen/openapi.ts";

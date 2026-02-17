@@ -1,14 +1,14 @@
 import { t } from "alepha";
 import { describe, expect, it } from "vitest";
 import { $entity } from "../primitives/$entity.ts";
-import { pg } from "../providers/DatabaseTypeProvider.ts";
+import { db } from "../providers/DatabaseTypeProvider.ts";
 
 describe("ModelBuilder Type Safety", () => {
   it("should enforce type-safe foreign key references", () => {
     const roleEntity = $entity({
       name: "roles",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         name: t.string(),
       }),
     });
@@ -16,7 +16,7 @@ describe("ModelBuilder Type Safety", () => {
     const userEntity = $entity({
       name: "users",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         email: t.email(),
         roleId: t.integer(),
       }),
@@ -52,7 +52,7 @@ describe("ModelBuilder Type Safety", () => {
     const categoryEntity = $entity({
       name: "categories",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         name: t.string(),
       }),
     });
@@ -60,7 +60,7 @@ describe("ModelBuilder Type Safety", () => {
     const userEntity = $entity({
       name: "users",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         username: t.string(),
       }),
     });
@@ -68,7 +68,7 @@ describe("ModelBuilder Type Safety", () => {
     const postEntity = $entity({
       name: "posts",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         title: t.string(),
         userId: t.integer(),
         categoryId: t.integer(),
@@ -105,7 +105,7 @@ describe("ModelBuilder Type Safety", () => {
     const tenantEntity = $entity({
       name: "tenants",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         code: t.string(),
         name: t.string(),
       }),
@@ -114,7 +114,7 @@ describe("ModelBuilder Type Safety", () => {
     const userEntity = $entity({
       name: "users",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         tenantId: t.integer(),
         tenantCode: t.string(),
         username: t.string(),
@@ -147,7 +147,7 @@ describe("ModelBuilder Type Safety", () => {
     const entity1 = $entity({
       name: "entity1",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         value: t.string(),
       }),
     });
@@ -155,7 +155,7 @@ describe("ModelBuilder Type Safety", () => {
     const entity2 = $entity({
       name: "entity2",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         entity1Id: t.integer(),
         entity1Value: t.string(),
       }),

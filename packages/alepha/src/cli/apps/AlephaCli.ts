@@ -4,16 +4,21 @@ import { FileSystemProvider } from "alepha/system";
 import { BuildCommand } from "../commands/build.ts";
 import { CleanCommand } from "../commands/clean.ts";
 import { DbCommand } from "../commands/db.ts";
-import { DeployCommand } from "../commands/deploy.ts";
 import { DevCommand } from "../commands/dev.ts";
 import { GitProvider } from "../commands/gen/changelog.ts";
 import { GenCommand } from "../commands/gen.ts";
 import { InitCommand } from "../commands/init.ts";
 import { LintCommand } from "../commands/lint.ts";
+import { PlatformCommand } from "../commands/platform.ts";
 import { RootCommand } from "../commands/root.ts";
 import { TestCommand } from "../commands/test.ts";
 import { TypecheckCommand } from "../commands/typecheck.ts";
 import { VerifyCommand } from "../commands/verify.ts";
+import { CloudflareAdapter } from "../platform/adapters/CloudflareAdapter.ts";
+import { PlatformCacheProvider } from "../platform/providers/PlatformCacheProvider.ts";
+import { NamingService } from "../platform/services/NamingService.ts";
+import { PlatformInspector } from "../platform/services/PlatformInspector.ts";
+import { PlatformOrchestrator } from "../platform/services/PlatformOrchestrator.ts";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { BuildAssetsTask } from "../tasks/BuildAssetsTask.ts";
 import { BuildClientTask } from "../tasks/BuildClientTask.ts";
@@ -70,7 +75,6 @@ export const AlephaCli = $module({
     BuildCommand,
     CleanCommand,
     DbCommand,
-    DeployCommand,
     DevCommand,
     InitCommand,
     LintCommand,
@@ -79,6 +83,13 @@ export const AlephaCli = $module({
     TypecheckCommand,
     VerifyCommand,
     GenCommand,
+    PlatformCommand,
+    // Platform services
+    CloudflareAdapter,
+    PlatformCacheProvider,
+    NamingService,
+    PlatformInspector,
+    PlatformOrchestrator,
     // Support services
     AppEntryProvider,
     GitProvider,

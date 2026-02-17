@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, DatabaseProvider, pg } from "../index.ts";
+import { $entity, $repository, DatabaseProvider, db } from "../index.ts";
 import {
   NodeSqliteProvider,
   nodeSqliteOptions,
@@ -11,7 +11,7 @@ describe("sqlite", () => {
     const users = $entity({
       name: "users",
       schema: t.object({
-        id: pg.primaryKey(t.integer()),
+        id: db.primaryKey(t.integer()),
         name: t.text(),
       }),
     });
@@ -54,7 +54,7 @@ describe("sqlite", () => {
     const posts = $entity({
       name: "posts",
       schema: t.object({
-        id: pg.primaryKey(t.bigint()),
+        id: db.primaryKey(t.bigint()),
         title: t.text(),
       }),
     });

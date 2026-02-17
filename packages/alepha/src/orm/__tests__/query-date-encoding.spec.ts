@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, it } from "vitest";
-import { pg } from "../index.ts";
+import { db } from "../index.ts";
 import { $entity } from "../primitives/$entity.ts";
 import { $repository } from "../primitives/$repository.ts";
 
@@ -10,9 +10,9 @@ describe("Query with Date Encoding", () => {
     const Entity = $entity({
       name: "events",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         name: t.text(),
-        eventDate: pg.createdAt(),
+        eventDate: db.createdAt(),
         scheduledFor: t.optional(t.datetime()),
       }),
     });
@@ -101,7 +101,7 @@ describe("Query with Date Encoding", () => {
     expect(rangeEvents.map((e) => e.name)).toContain("Recent Event");
 
     // Test 5: Filter with Dayjs object using between
-    // Note: eventDate is pg.createdAt() so it's the current timestamp
+    // Note: eventDate is db.createdAt() so it's the current timestamp
     // We use a future date as upper bound to include records created today
     const betweenEvents = await app.repository.findMany({
       where: {
@@ -151,7 +151,7 @@ describe("Query with Date Encoding", () => {
     const Entity = $entity({
       name: "tasks",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         title: t.text(),
         dueDate: t.optional(t.datetime()),
       }),
@@ -210,7 +210,7 @@ describe("Query with Date Encoding", () => {
     const Entity = $entity({
       name: "appointments",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         patientName: t.text(),
         appointmentDate: t.datetime(),
         status: t.text(),
@@ -303,7 +303,7 @@ describe("Query with Date Encoding", () => {
     const Entity = $entity({
       name: "projects",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         name: t.text(),
         completedAt: t.optional(t.datetime()),
       }),
@@ -360,7 +360,7 @@ describe("Query with Date Encoding", () => {
     const Entity = $entity({
       name: "events",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         name: t.text(),
         date: t.datetime(),
       }),

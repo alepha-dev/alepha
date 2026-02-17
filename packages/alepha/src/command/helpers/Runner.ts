@@ -255,11 +255,15 @@ export class Runner {
 
     const duration = ((Date.now() - now) / 1000).toFixed(1);
 
+    const message =
+      stdout && !stdout.includes("\n") ? stdout.trim() : undefined;
+
     // Clear spinner and show completion
     if (this.useDynamicLogger) {
-      this.prettyPrint.success(taskId, task.name, `${duration}s`);
+      this.prettyPrint.success(taskId, task.name, `${duration}s`, message);
     } else {
-      this.log.info(`Finished '${task.name}' after ${duration}s`);
+      const suffix = message ? ` - ${message}` : "";
+      this.log.info(`Finished '${task.name}' after ${duration}s${suffix}`);
     }
 
     this.timers.push({

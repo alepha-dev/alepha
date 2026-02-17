@@ -1,14 +1,14 @@
 import { Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, it } from "vitest";
-import { $entity, $repository, DbEntityNotFoundError, pg } from "../index.ts";
+import { $entity, $repository, DbEntityNotFoundError, db } from "../index.ts";
 
 describe("deletedAt", () => {
   const entity = $entity({
     name: "test_entity",
     schema: t.object({
-      id: pg.primaryKey(),
-      deletedAt: pg.deletedAt(),
+      id: db.primaryKey(),
+      deletedAt: db.deletedAt(),
       name: t.optional(t.text()),
     }),
   });

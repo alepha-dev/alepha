@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
 import { $entity, $repository } from "../index.ts";
-import { pg } from "../providers/DatabaseTypeProvider.ts";
+import { db } from "../providers/DatabaseTypeProvider.ts";
 
 // Helper function to parse dates from various formats
 const parseDate = (dateValue: any): Date => {
@@ -16,12 +16,12 @@ const parseDate = (dateValue: any): Date => {
 const articleEntity = $entity({
   name: "articles",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     title: t.string(),
     content: t.text(),
     status: t.string(),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
   }),
   indexes: [
     "createdAt",
@@ -36,12 +36,12 @@ const articleEntity = $entity({
 const userActivityEntity = $entity({
   name: "user_activities",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     userId: t.integer(),
     action: t.string(),
     metadata: t.optional(t.record(t.string(), t.any())),
-    createdAt: pg.createdAt(),
-    updatedAt: t.optional(pg.updatedAt()),
+    createdAt: db.createdAt(),
+    updatedAt: t.optional(db.updatedAt()),
   }),
 });
 
@@ -294,10 +294,10 @@ describe("Timestamp Fields (createdAt/updatedAt)", () => {
     const eventEntity = $entity({
       name: "events",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         name: t.string(),
-        startTime: pg.createdAt(),
-        endTime: t.optional(pg.updatedAt()),
+        startTime: db.createdAt(),
+        endTime: t.optional(db.updatedAt()),
         scheduledAt: t.string(), // Regular string field for ISO date
       }),
     });

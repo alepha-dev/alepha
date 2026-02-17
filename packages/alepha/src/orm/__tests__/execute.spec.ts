@@ -1,14 +1,14 @@
 import { Alepha, TypeBoxError, t } from "alepha";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, pg, sql } from "../index.ts";
+import { $entity, $repository, db, sql } from "../index.ts";
 
 describe("execute", () => {
   it("should execute basic SQL queries", async () => {
     const userEntity = $entity({
       name: "users",
       schema: t.object({
-        id: pg.primaryKey(t.int64()),
+        id: db.primaryKey(t.int64()),
         name: t.text(),
         guildId: t.optional(t.integer()),
       }),

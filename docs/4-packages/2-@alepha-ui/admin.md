@@ -19,7 +19,7 @@ Admin panel UI components.
 - AdminUsers with user list, create, details, settings, sessions, audits
 - AdminFiles for file management
 - AdminJobs for job monitoring
-- AdminNotifications for notification management
+
 - AdminParameters for configuration management
 - AdminSessions for session management
 - AdminAudits for audit log viewing

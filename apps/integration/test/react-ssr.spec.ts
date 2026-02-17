@@ -1,5 +1,5 @@
 import { $hook, Alepha, t } from "alepha";
-import { $entity, $repository, pg } from "alepha/orm";
+import { $entity, $repository, db } from "alepha/orm";
 import { $page } from "alepha/react/router";
 import { $action, HttpClient, ServerProvider } from "alepha/server";
 import { $client } from "alepha/server/links";
@@ -9,7 +9,7 @@ describe("React SSR Integration", () => {
   const tasks = $entity({
     name: "tasks",
     schema: t.object({
-      id: pg.primaryKey(t.uuid()),
+      id: db.primaryKey(t.uuid()),
       name: t.text(),
     }),
   });

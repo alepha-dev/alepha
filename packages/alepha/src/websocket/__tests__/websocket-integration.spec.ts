@@ -5,8 +5,8 @@ import WebSocket from "ws";
 import { AlephaWebSocket } from "../index.ts";
 import { $channel } from "../primitives/$channel.ts";
 import { $websocket } from "../primitives/$websocket.ts";
-import { RoomManager } from "../services/RoomManager.ts";
 import { NodeWebSocketServerProvider } from "../providers/NodeWebSocketServerProvider.ts";
+import { RoomManager } from "../services/RoomManager.ts";
 
 // Helpers
 
@@ -25,9 +25,13 @@ function waitForMessage(ws: WebSocket): Promise<any> {
   );
 }
 
-function waitForClose(ws: WebSocket): Promise<{ code: number; reason: string }> {
+function waitForClose(
+  ws: WebSocket,
+): Promise<{ code: number; reason: string }> {
   return new Promise((resolve) =>
-    ws.on("close", (code, reason) => resolve({ code, reason: reason.toString() })),
+    ws.on("close", (code, reason) =>
+      resolve({ code, reason: reason.toString() }),
+    ),
   );
 }
 
@@ -95,7 +99,9 @@ describe("WebSocket integration", () => {
       await alepha.stop();
     });
 
-    test("default room assignment when no roomId provided", async ({ expect }) => {
+    test("default room assignment when no roomId provided", async ({
+      expect,
+    }) => {
       const roomIds: string[] = [];
 
       const alepha = Alepha.create().with(AlephaWebSocket);
@@ -132,7 +138,9 @@ describe("WebSocket integration", () => {
       await alepha.stop();
     });
 
-    test("multiple roomIds via comma-separated query param", async ({ expect }) => {
+    test("multiple roomIds via comma-separated query param", async ({
+      expect,
+    }) => {
       const roomIds: string[] = [];
 
       const alepha = Alepha.create().with(AlephaWebSocket);
@@ -247,7 +255,9 @@ describe("WebSocket integration", () => {
       await waitForOpen(ws);
       await delay(50);
 
-      ws.send(JSON.stringify({ roomId: "lobby", message: { content: "hello" } }));
+      ws.send(
+        JSON.stringify({ roomId: "lobby", message: { content: "hello" } }),
+      );
       await delay(200);
 
       expect(receivedContext).not.toBeNull();
@@ -288,7 +298,9 @@ describe("WebSocket integration", () => {
 
       // Send message that doesn't match the out schema (missing "content")
       const errorPromise = waitForMessage(ws);
-      ws.send(JSON.stringify({ roomId: "test", message: { invalid: "field" } }));
+      ws.send(
+        JSON.stringify({ roomId: "test", message: { invalid: "field" } }),
+      );
 
       const response = await errorPromise;
       expect(response.error).toBeDefined();
@@ -690,7 +702,9 @@ describe("WebSocket integration", () => {
       collectMessages(ws2, msgs2);
       await delay(50);
 
-      ws1.send(JSON.stringify({ roomId: "room", message: { content: "hello" } }));
+      ws1.send(
+        JSON.stringify({ roomId: "room", message: { content: "hello" } }),
+      );
       await delay(200);
 
       // ws1 (sender) should NOT receive, ws2 should
@@ -741,7 +755,12 @@ describe("WebSocket integration", () => {
       collectMessages(wsB, msgsB);
       await delay(50);
 
-      wsA.send(JSON.stringify({ roomId: "room-a", message: { content: "forward me" } }));
+      wsA.send(
+        JSON.stringify({
+          roomId: "room-a",
+          message: { content: "forward me" },
+        }),
+      );
       await delay(200);
 
       // room-a sender should not receive, room-b should
@@ -760,7 +779,9 @@ describe("WebSocket integration", () => {
   // -------------------------------------------------------------------------------------------------------------------
 
   describe("provider API", () => {
-    test("getConnections returns all active connections", async ({ expect }) => {
+    test("getConnections returns all active connections", async ({
+      expect,
+    }) => {
       const alepha = Alepha.create().with(AlephaWebSocket);
 
       class Controller {
@@ -803,7 +824,9 @@ describe("WebSocket integration", () => {
       await alepha.stop();
     });
 
-    test("getRoomConnections returns connections in specific room", async ({ expect }) => {
+    test("getRoomConnections returns connections in specific room", async ({
+      expect,
+    }) => {
       const alepha = Alepha.create().with(AlephaWebSocket);
 
       class Controller {

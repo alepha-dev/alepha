@@ -1,13 +1,13 @@
 import { Alepha, t } from "alepha";
 import { test } from "vitest";
-import { $entity, $repository, pg } from "../index.ts";
+import { $entity, $repository, db } from "../index.ts";
 
 const TestEntity = $entity({
   name: "test_validation",
   schema: t.object({
-    id: pg.primaryKey(),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
+    id: db.primaryKey(),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
     name: t.text(),
     age: t.number(),
     status: t.text(),

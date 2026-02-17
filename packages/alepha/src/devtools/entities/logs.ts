@@ -1,10 +1,10 @@
 import { type Static, t } from "alepha";
-import { $entity, pg } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 
 export const logs = $entity({
   name: "logs",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     level: t.enum(["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]),
     message: t.text({
       size: "rich",

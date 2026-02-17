@@ -1,6 +1,6 @@
 import { $hook, Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, pg } from "../index.ts";
+import { $entity, $repository, db } from "../index.ts";
 
 class HookTracker {
   events: Array<{ name: string; data: any }> = [];
@@ -30,7 +30,7 @@ class App {
     $entity({
       name: "users",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         name: t.text(),
         email: t.text(),
       }),

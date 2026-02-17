@@ -1,13 +1,13 @@
 import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, db, pg } from "../index.ts";
+import { $entity, $repository, db } from "../index.ts";
 
 const productEntity = $entity({
   name: "products",
   schema: t.object({
     id: db.primaryKey(t.uuid()),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
     sku: t.text(),
     name: t.text(),
     price: t.number(),

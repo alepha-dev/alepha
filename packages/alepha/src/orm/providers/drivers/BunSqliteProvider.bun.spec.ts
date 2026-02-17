@@ -1,6 +1,6 @@
-import { describe, expect, it, afterEach } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
 import { Alepha, t } from "alepha";
-import { $entity, $repository, DatabaseProvider, pg } from "../../index.ts";
+import { $entity, $repository, DatabaseProvider, db } from "../../index.ts";
 import { BunSqliteProvider, bunSqliteOptions } from "./BunSqliteProvider.ts";
 
 // -------------------------------------------------------------------------------------------------------------------
@@ -8,7 +8,7 @@ import { BunSqliteProvider, bunSqliteOptions } from "./BunSqliteProvider.ts";
 const users = $entity({
   name: "users",
   schema: t.object({
-    id: pg.primaryKey(t.integer()),
+    id: db.primaryKey(t.integer()),
     name: t.text(),
   }),
 });
@@ -16,7 +16,7 @@ const users = $entity({
 const posts = $entity({
   name: "posts",
   schema: t.object({
-    id: pg.primaryKey(t.bigint()),
+    id: db.primaryKey(t.bigint()),
     title: t.text(),
     body: t.optional(t.text()),
   }),
@@ -67,7 +67,7 @@ describe("BunSqliteProvider", () => {
       where: { name: { eq: "Alice" } },
     });
 
-    expect(alice).toEqual({ id: 1, name: "Alice" });
+    expect(alice).toEqual({ id: 1, name: "Alice" } as any);
 
     const all = await app.userRepo.findMany();
     expect(all).toHaveLength(2);

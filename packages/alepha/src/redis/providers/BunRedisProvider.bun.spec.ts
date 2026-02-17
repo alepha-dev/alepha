@@ -1,10 +1,10 @@
-import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
-import { RedisProvider } from "./RedisProvider.ts";
-import { RedisSubscriberProvider } from "./RedisSubscriberProvider.ts";
 import { BunRedisProvider } from "./BunRedisProvider.ts";
 import { BunRedisSubscriberProvider } from "./BunRedisSubscriberProvider.ts";
+import { RedisProvider } from "./RedisProvider.ts";
+import { RedisSubscriberProvider } from "./RedisSubscriberProvider.ts";
 
 // -------------------------------------------------------------------------------------------------------------------
 
@@ -18,7 +18,10 @@ describe("BunRedisProvider", () => {
       env: { REDIS_URL: "redis://localhost:6379" },
     })
       .with({ provide: RedisProvider, use: BunRedisProvider })
-      .with({ provide: RedisSubscriberProvider, use: BunRedisSubscriberProvider });
+      .with({
+        provide: RedisSubscriberProvider,
+        use: BunRedisSubscriberProvider,
+      });
 
     redis = alepha.inject(RedisProvider);
     sub = alepha.inject(RedisSubscriberProvider);
@@ -141,7 +144,10 @@ describe("BunRedisSubscriberProvider", () => {
       env: { REDIS_URL: "redis://localhost:6379" },
     })
       .with({ provide: RedisProvider, use: BunRedisProvider })
-      .with({ provide: RedisSubscriberProvider, use: BunRedisSubscriberProvider });
+      .with({
+        provide: RedisSubscriberProvider,
+        use: BunRedisSubscriberProvider,
+      });
 
     redis = alepha.inject(RedisProvider);
     sub = alepha.inject(RedisSubscriberProvider);
@@ -206,7 +212,10 @@ describe("BunRedisSubscriberProvider", () => {
       env: { REDIS_URL: "redis://localhost:6379" },
     })
       .with({ provide: RedisProvider, use: BunRedisProvider })
-      .with({ provide: RedisSubscriberProvider, use: BunRedisSubscriberProvider });
+      .with({
+        provide: RedisSubscriberProvider,
+        use: BunRedisSubscriberProvider,
+      });
 
     const freshRedis = fresh.inject(RedisProvider);
     const freshSub = fresh.inject(RedisSubscriberProvider);

@@ -1,34 +1,34 @@
 import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, DrizzleKitProvider, pg } from "../index.ts";
+import { $entity, $repository, DrizzleKitProvider, db } from "../index.ts";
 
 // Test 1: Basic enum using t.enum (should map to TEXT column)
 const textEnumEntity = $entity({
   name: "text_enum_test",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     status: t.enum(["pending", "active", "archived"]),
     role: t.enum(["user", "admin", "moderator"]),
   }),
 });
 
-// Test 2: Basic enum using pg.enum (should create real PG ENUM type)
+// Test 2: Basic enum using db.enum (should create real PG ENUM type)
 const pgEnumEntity = $entity({
   name: "pg_enum_test",
   schema: t.object({
-    id: pg.primaryKey(),
-    status: pg.enum(["draft", "published", "deleted"]),
-    priority: pg.enum(["low", "medium", "high"]),
+    id: db.primaryKey(),
+    status: db.enum(["draft", "published", "deleted"]),
+    priority: db.enum(["low", "medium", "high"]),
   }),
 });
 
-// Test 3: Mixed t.enum and pg.enum in the same table
+// Test 3: Mixed t.enum and db.enum in the same table
 const mixedEnumEntity = $entity({
   name: "mixed_enum_test",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     textStatus: t.enum(["open", "closed"]),
-    pgStatus: pg.enum(["new", "in_progress", "done"]),
+    pgStatus: db.enum(["new", "in_progress", "done"]),
   }),
 });
 
@@ -36,16 +36,16 @@ const mixedEnumEntity = $entity({
 const sharedEnumEntity1 = $entity({
   name: "shared_enum_test_1",
   schema: t.object({
-    id: pg.primaryKey(),
-    status: pg.enum(["enabled", "disabled"], { name: "shared_status_enum" }),
+    id: db.primaryKey(),
+    status: db.enum(["enabled", "disabled"], { name: "shared_status_enum" }),
   }),
 });
 
 const sharedEnumEntity2 = $entity({
   name: "shared_enum_test_2",
   schema: t.object({
-    id: pg.primaryKey(),
-    status: pg.enum(["enabled", "disabled"], { name: "shared_status_enum" }),
+    id: db.primaryKey(),
+    status: db.enum(["enabled", "disabled"], { name: "shared_status_enum" }),
   }),
 });
 
@@ -53,16 +53,16 @@ const sharedEnumEntity2 = $entity({
 const conflictEnumEntity1 = $entity({
   name: "conflict_enum_test_1",
   schema: t.object({
-    id: pg.primaryKey(),
-    status: pg.enum(["a", "b", "c"], { name: "conflict_status_enum" }),
+    id: db.primaryKey(),
+    status: db.enum(["a", "b", "c"], { name: "conflict_status_enum" }),
   }),
 });
 
 const conflictEnumEntity2 = $entity({
   name: "conflict_enum_test_2",
   schema: t.object({
-    id: pg.primaryKey(),
-    status: pg.enum(["a", "b", "d"], { name: "conflict_status_enum" }), // Different value!
+    id: db.primaryKey(),
+    status: db.enum(["a", "b", "d"], { name: "conflict_status_enum" }), // Different value!
   }),
 });
 
@@ -116,8 +116,8 @@ describe("enums - t.enum (TEXT column)", () => {
   });
 });
 
-describe("enums - pg.enum (real PG ENUM type)", () => {
-  it("should create real PostgreSQL ENUM types for pg.enum fields", async () => {
+describe("enums - db.enum (real PG ENUM type)", () => {
+  it("should create real PostgreSQL ENUM types for db.enum fields", async () => {
     const alepha = Alepha.create();
 
     class App {
@@ -136,13 +136,13 @@ describe("enums - pg.enum (real PG ENUM type)", () => {
 
     expect(sql).toContainEqual(expect.stringContaining("CREATE TABLE"));
     expect(sql).toContainEqual(expect.stringContaining("pg_enum_test"));
-    // pg.enum should create real ENUM types
+    // db.enum should create real ENUM types
     expect(
       sql.some((s) => s.includes("CREATE TYPE") || s.includes("DO $$ BEGIN")),
     ).toBe(true);
   });
 
-  it("should allow inserting and querying with pg.enum values", async () => {
+  it("should allow inserting and querying with db.enum values", async () => {
     const alepha = Alepha.create();
 
     class App {
@@ -167,7 +167,7 @@ describe("enums - pg.enum (real PG ENUM type)", () => {
   });
 });
 
-describe("enums - mixed t.enum and pg.enum in same table", () => {
+describe("enums - mixed t.enum and db.enum in same table", () => {
   it("should handle both TEXT and PG ENUM types in the same table", async () => {
     const alepha = Alepha.create();
 

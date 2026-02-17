@@ -19,9 +19,8 @@ User notification management.
 **Features:**
 - Notification definitions
 - Email/SMS notification sending
-- Status tracking
+- Job-based delivery with retry and tracking
 - User preferences
-- Queue integration
 
 ## API Reference
 

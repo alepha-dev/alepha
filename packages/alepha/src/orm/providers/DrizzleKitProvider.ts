@@ -68,7 +68,7 @@ export class DrizzleKitProvider {
   /**
    * Generate SQL migration statements by diffing two schema states.
    *
-   * Used by tests (schema validation) and CLI (`alepha db generate`).
+   * Used by tests (schema validation) and CLI (`alepha db migrations generate`).
    * Not part of the push sync flow.
    */
   public async generateMigration(

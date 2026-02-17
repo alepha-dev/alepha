@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
 import { describe, it } from "vitest";
-import { $entity, $repository, DatabaseProvider, pg, sql } from "../index.ts";
+import { $entity, $repository, DatabaseProvider, db, sql } from "../index.ts";
 import {
   NodeSqliteProvider,
   nodeSqliteOptions,
@@ -22,7 +22,7 @@ describe("SQL Injection Security Tests", () => {
   const users = $entity({
     name: "users",
     schema: t.object({
-      id: pg.primaryKey(),
+      id: db.primaryKey(),
       username: t.text(),
       email: t.text(),
       age: t.integer(),

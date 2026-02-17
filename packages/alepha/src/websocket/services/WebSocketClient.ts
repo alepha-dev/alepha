@@ -343,8 +343,7 @@ export class WebSocketChannelConnection<
 
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       if (
-        this.messageQueue.length >=
-        WebSocketChannelConnection.MAX_QUEUE_SIZE
+        this.messageQueue.length >= WebSocketChannelConnection.MAX_QUEUE_SIZE
       ) {
         this.log.warn("Message queue full, dropping oldest message", {
           roomId,

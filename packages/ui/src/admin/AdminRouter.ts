@@ -1,7 +1,6 @@
 import type { DashboardShellProps, SidebarNode } from "@alepha/ui";
 import { AuthRouter } from "@alepha/ui/auth";
 import {
-
   IconClock,
   IconDevices,
   IconFile,

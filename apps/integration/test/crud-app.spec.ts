@@ -1,6 +1,6 @@
 import { Alepha, t } from "alepha";
 import { dayjs } from "alepha/datetime";
-import { $entity, $repository, pageQuerySchema, pg } from "alepha/orm";
+import { $entity, $repository, db, pageQuerySchema } from "alepha/orm";
 import { $action, HttpError } from "alepha/server";
 import { beforeEach, describe, test } from "vitest";
 
@@ -11,13 +11,13 @@ import { beforeEach, describe, test } from "vitest";
 const userEntity = $entity({
   name: "crud_users",
   schema: t.object({
-    id: pg.primaryKey(t.uuid()),
+    id: db.primaryKey(t.uuid()),
     email: t.text({ format: "email" }),
     name: t.text({ minLength: 1, maxLength: 100 }),
     age: t.number({ minimum: 0, maximum: 150 }),
-    isActive: pg.default(t.boolean(), true),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
+    isActive: db.default(t.boolean(), true),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
   }),
   indexes: [{ column: "email", unique: true }],
 });
@@ -59,8 +59,8 @@ class UserCrudApp {
         });
       }
 
-      // Don't generate UUID - pg.primaryKey() handles it automatically
-      // Don't need to set isActive - pg.default() handles it
+      // Don't generate UUID - db.primaryKey() handles it automatically
+      // Don't need to set isActive - db.default() handles it
       return await this.users.create({
         email: body.email,
         name: body.name,
@@ -97,7 +97,7 @@ class UserCrudApp {
         minAge: t.optional(t.number({ minimum: 0 })),
         maxAge: t.optional(t.number({ maximum: 150 })),
       }),
-      response: pg.page(userResourceSchema),
+      response: db.page(userResourceSchema),
     },
     handler: async ({ query }) => {
       const { page = 0, size = 10, search, isActive, minAge, maxAge } = query;

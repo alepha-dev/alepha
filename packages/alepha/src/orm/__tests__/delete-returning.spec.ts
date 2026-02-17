@@ -2,13 +2,13 @@ import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
 import { DbEntityNotFoundError } from "../errors/DbEntityNotFoundError.ts";
 import { $entity, $repository } from "../index.ts";
-import { pg } from "../providers/DatabaseTypeProvider.ts";
+import { db } from "../providers/DatabaseTypeProvider.ts";
 
 // Test entity
 const userEntity = $entity({
   name: "users",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     name: t.string(),
     email: t.email(),
     active: t.boolean(),
@@ -18,7 +18,7 @@ const userEntity = $entity({
 const postEntity = $entity({
   name: "posts",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     userId: t.integer(),
     title: t.string(),
     content: t.text(),
@@ -193,9 +193,9 @@ describe("Delete methods with returning IDs", () => {
     const softEntity = $entity({
       name: "soft_delete_items",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         name: t.string(),
-        deletedAt: pg.deletedAt(),
+        deletedAt: db.deletedAt(),
       }),
     });
 

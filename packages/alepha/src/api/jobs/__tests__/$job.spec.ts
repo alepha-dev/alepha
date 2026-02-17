@@ -1425,9 +1425,7 @@ describe("$job v2", () => {
       const app = alepha.inject(App);
       await alepha.start();
 
-      await expect(
-        app.myJob.push({ wrong: 123 } as any),
-      ).rejects.toThrow();
+      await expect(app.myJob.push({ wrong: 123 } as any)).rejects.toThrow();
     });
   });
 
@@ -1471,10 +1469,7 @@ describe("$job v2", () => {
       const app = alepha.inject(App);
       await alepha.start();
 
-      const id = await app.myJob.push(
-        { value: "test" },
-        { key: "dead-key" },
-      );
+      const id = await app.myJob.push({ value: "test" }, { key: "dead-key" });
 
       await vi.waitFor(async () => {
         const exec = await app.repo.findById(id as string);
@@ -1785,9 +1780,9 @@ describe("$job v2", () => {
         expect(logEntry).toBeDefined();
         // Default maxEntries is 100, plus 1 truncation warning
         expect(logEntry!.logs.length).toBeLessThanOrEqual(101);
-        expect(
-          logEntry!.logs[logEntry!.logs.length - 1].message,
-        ).toContain("truncated");
+        expect(logEntry!.logs[logEntry!.logs.length - 1].message).toContain(
+          "truncated",
+        );
       });
     });
   });
@@ -1919,9 +1914,9 @@ describe("$job v2", () => {
         expect(exec?.status).toBe("running");
       });
 
-      await expect(
-        app.jobService.retryExecution(id),
-      ).rejects.toThrow(/Cannot retry/);
+      await expect(app.jobService.retryExecution(id)).rejects.toThrow(
+        /Cannot retry/,
+      );
 
       // Cleanup
       await app.myJob.cancel(id);

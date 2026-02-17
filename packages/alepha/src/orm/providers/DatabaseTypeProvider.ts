@@ -267,8 +267,3 @@ export class DatabaseTypeProvider {
  * ```
  */
 export const db = new DatabaseTypeProvider();
-
-/**
- * @deprecated Use `db` instead.
- */
-export const pg = db;

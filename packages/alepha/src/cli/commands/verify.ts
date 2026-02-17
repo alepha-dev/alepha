@@ -36,7 +36,7 @@ export class VerifyCommand {
       }
 
       if (await this.utils.exists(root, "migrations")) {
-        await run("alepha db check-migrations");
+        await run("alepha db migrations check");
       }
 
       const isExpo = await this.pm.hasExpo(root);

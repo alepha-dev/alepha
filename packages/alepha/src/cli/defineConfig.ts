@@ -6,6 +6,7 @@ import {
 } from "./atoms/appEntryOptions.ts";
 import { type BuildOptions, buildOptions } from "./atoms/buildOptions.ts";
 import { type DevOptions, devOptions } from "./atoms/devOptions.ts";
+import { platformOptions } from "./atoms/platformOptions.ts";
 
 export interface AlephaCliConfig {
   entry?: AppEntryOptions;
@@ -31,6 +32,31 @@ export interface AlephaCliConfig {
    * Configure Alepha dev command.
    */
   dev?: DevOptions;
+
+  /**
+   * Project name override. Defaults to root package.json "name".
+   */
+  name?: string;
+
+  /**
+   * Monorepo app paths relative to root. Omit for standalone apps.
+   */
+  apps?: string[];
+
+  /**
+   * Platform deployment configuration.
+   */
+  platform?: {
+    default?: string;
+    environments: Record<
+      string,
+      {
+        adapter: "cloudflare" | "docker-compose" | "aks";
+        domain?: string;
+        vars?: Record<string, string>;
+      }
+    >;
+  };
 
   /**
    * Environment variables to set before running commands.
@@ -71,6 +97,14 @@ export const defineConfig = (
 
     if (config.entry) {
       alepha.set(appEntryOptions, config.entry);
+    }
+
+    if (config.platform || config.name || config.apps) {
+      alepha.set(platformOptions, {
+        name: config.name,
+        apps: config.apps,
+        platform: config.platform,
+      });
     }
 
     return {

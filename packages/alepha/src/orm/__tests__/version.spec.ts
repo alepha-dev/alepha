@@ -2,7 +2,7 @@ import { $inject, Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
 import { DbVersionMismatchError } from "../errors/DbVersionMismatchError.ts";
-import { $entity, $repository, pg, type TransactionContext } from "../index.ts";
+import { $entity, $repository, db, type TransactionContext } from "../index.ts";
 
 class A {
   dt = $inject(DateTimeProvider);
@@ -11,9 +11,9 @@ class A {
     $entity({
       name: "a",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         counter: t.integer(),
-        __v: pg.version(),
+        __v: db.version(),
       }),
     }),
   );

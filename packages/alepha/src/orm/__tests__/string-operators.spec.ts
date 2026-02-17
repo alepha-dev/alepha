@@ -1,13 +1,13 @@
 import { Alepha, t } from "alepha";
 import { test } from "vitest";
-import { $entity, $repository, pg } from "../index.ts";
+import { $entity, $repository, db } from "../index.ts";
 
 const User = $entity({
   name: "users",
   schema: t.object({
-    id: pg.primaryKey(),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
+    id: db.primaryKey(),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
     name: t.text(),
     email: t.text(),
     bio: t.optional(t.text()),

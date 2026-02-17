@@ -1,14 +1,14 @@
 import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, pg } from "../index.ts";
+import { $entity, $repository, db } from "../index.ts";
 
 const users = $entity({
   name: "users",
   schema: t.object({
-    id: pg.identityPrimaryKey(),
-    __v: pg.version(),
+    id: db.identityPrimaryKey(),
+    __v: db.version(),
     name: t.text(),
-    currentPostId: pg.ref(t.optional(t.integer()), () => posts.cols.id, {
+    currentPostId: db.ref(t.optional(t.integer()), () => posts.cols.id, {
       onDelete: "set null",
     }),
   }),
@@ -17,12 +17,12 @@ const users = $entity({
 const posts = $entity({
   name: "posts",
   schema: t.object({
-    id: pg.identityPrimaryKey(),
-    __v: pg.version(),
-    userId: pg.ref(t.integer(), () => users.cols.id, {
+    id: db.identityPrimaryKey(),
+    __v: db.version(),
+    userId: db.ref(t.integer(), () => users.cols.id, {
       onDelete: "cascade",
     }),
-    postParentId: pg.ref(t.optional(t.integer()), () => posts.cols.id, {
+    postParentId: db.ref(t.optional(t.integer()), () => posts.cols.id, {
       onDelete: "cascade",
     }),
   }),

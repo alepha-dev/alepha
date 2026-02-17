@@ -22,7 +22,6 @@ Job execution framework — unified primitive for deferred, scheduled, and queue
 - Retry with exponential backoff
 - Priority, delay, cancellation
 - Deduplication via unique keys
-- Transactional push
 - Per-execution log capture
 
 ## API Reference

@@ -1,6 +1,11 @@
 import { defineConfig } from "alepha/cli";
 
 export default defineConfig({
+  platform: {
+    environments: {
+      prod: { adapter: "cloudflare" },
+    },
+  },
   build: {
     target: "cloudflare",
     sitemap: {

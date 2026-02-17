@@ -353,7 +353,9 @@ export class CliProvider {
     }
 
     // Try to find command with space-separated subcommand path
-    let currentCommand = this.findCommand(firstArg);
+    // Only search top-level commands to avoid child commands shadowing
+    // top-level ones (e.g., "platform > build" shadowing standalone "build")
+    let currentCommand = this.findTopLevelCommand(firstArg);
     const consumedArgs: string[] = [];
 
     if (!currentCommand) {
@@ -475,6 +477,15 @@ export class CliProvider {
   /** Find a command by name or alias */
   protected findCommand(name: string): CommandPrimitive<TObject> | undefined {
     return this.commands.findLast(
+      (command) => command.name === name || command.aliases.includes(name),
+    );
+  }
+
+  /** Find a top-level command by name or alias (excludes child commands) */
+  protected findTopLevelCommand(
+    name: string,
+  ): CommandPrimitive<TObject> | undefined {
+    return this.getTopLevelCommands().findLast(
       (command) => command.name === name || command.aliases.includes(name),
     );
   }
@@ -944,7 +955,7 @@ export class CliProvider {
           const childArgsUsage = this.generateArgsUsage(child.options.args);
           const cmdStr = [child.name, ...child.aliases].join(", ");
           const fullCmdStr = `${cmdStr}${childArgsUsage}`;
-          const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", command.name)} ${c.set("CYAN", fullCmdStr)}`;
+          const coloredCmd = `${c.set("GREY_LIGHT", cliName)} ${c.set("CYAN", commandPath)} ${c.set("CYAN", fullCmdStr)}`;
           const padding = " ".repeat(
             Math.max(0, maxSubCmdLength - fullCmdStr.length),
           );

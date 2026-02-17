@@ -2,7 +2,7 @@ import { t } from "alepha";
 import { sql } from "drizzle-orm";
 import { beforeEach, describe, expect, test } from "vitest";
 import { $entity } from "../primitives/$entity.ts";
-import { pg } from "../providers/DatabaseTypeProvider.ts";
+import { db } from "../providers/DatabaseTypeProvider.ts";
 import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
 import { SqliteModelBuilder } from "../services/SqliteModelBuilder.ts";
 
@@ -30,7 +30,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           name: t.text(),
           email: t.email(),
         }),
@@ -47,7 +47,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           email: t.email(),
           username: t.text(),
         }),
@@ -65,7 +65,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           email: t.email(),
           username: t.text(),
         }),
@@ -89,7 +89,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "posts",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           userId: t.text(),
           createdAt: t.string({ format: "date-time" }),
           title: t.text(),
@@ -113,7 +113,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "user_roles",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           userId: t.text(),
           roleId: t.text(),
         }),
@@ -138,7 +138,7 @@ describe("ModelBuilder", () => {
       const usersEntity = $entity({
         name: "users",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           name: t.text(),
         }),
       });
@@ -151,7 +151,7 @@ describe("ModelBuilder", () => {
       const postsEntity = $entity({
         name: "posts",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           userId: t.text(),
           title: t.text(),
         }),
@@ -175,7 +175,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           email: t.email(),
           username: t.text(),
         }),
@@ -199,7 +199,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           age: t.integer(),
         }),
         constraints: [
@@ -222,7 +222,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "user_settings",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           userId: t.text(),
           settingKey: t.text(),
           settingValue: t.text(),
@@ -249,7 +249,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           name: t.text(),
         }),
         config: customConfig,
@@ -269,7 +269,7 @@ describe("ModelBuilder", () => {
       const rolesEntity = $entity({
         name: "roles",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           name: t.text(),
         }),
       });
@@ -281,7 +281,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           email: t.email(),
           username: t.text(),
           age: t.integer(),
@@ -331,7 +331,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           firstName: t.text(),
           lastName: t.text(),
           emailAddress: t.email(),
@@ -351,7 +351,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           name: t.text(),
         }),
       });
@@ -390,7 +390,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           name: t.text(),
           email: t.email(),
         }),
@@ -407,7 +407,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           email: t.email(),
           username: t.text(),
         }),
@@ -431,7 +431,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "posts",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           userId: t.text(),
           createdAt: t.string({ format: "date-time" }),
         }),
@@ -455,7 +455,7 @@ describe("ModelBuilder", () => {
       const usersEntity = $entity({
         name: "users",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           name: t.text(),
         }),
       });
@@ -468,7 +468,7 @@ describe("ModelBuilder", () => {
       const postsEntity = $entity({
         name: "posts",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           userId: t.text(),
           title: t.text(),
         }),
@@ -491,7 +491,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "products",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           name: t.text(),
           sku: t.text(),
           price: t.number(),
@@ -530,7 +530,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "complex_table",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           name: t.text(),
           email: t.email(),
           status: t.text(),

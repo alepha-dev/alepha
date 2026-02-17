@@ -377,6 +377,8 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
 
     await this.viteDevServer.ssrLoadModule(opts.entry.server);
 
+    delete process.env.ALEPHA_CLI_IMPORT;
+
     const alepha: Alepha = (globalThis as any).__alepha;
     if (!alepha) {
       throw new AlephaError(

@@ -1,18 +1,18 @@
 import type { Static } from "alepha";
 import { t } from "alepha";
-import { $entity, pg } from "../../index.ts";
+import { $entity, db } from "../../index.ts";
 
 export const userEntity = $entity({
   name: "users",
   schema: t.object({
-    id: pg.primaryKey(),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
+    id: db.primaryKey(),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
     name: t.text(),
     profile: t.object({
       age: t.number(),
     }),
-    role: pg.default(t.text(), "user"),
+    role: db.default(t.text(), "user"),
   }),
   indexes: [
     {

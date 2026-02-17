@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
 import { DbError } from "../errors/DbError.ts";
-import { $entity, $repository, pg } from "../index.ts";
+import { $entity, $repository, db } from "../index.ts";
 
 describe("primaryKey", () => {
   it("should handle identity primary key with overflow", async () => {
@@ -10,7 +10,7 @@ describe("primaryKey", () => {
         $entity({
           name: "identity",
           schema: t.object({
-            id: pg.identityPrimaryKey({
+            id: db.identityPrimaryKey({
               mode: "always",
               minValue: 2147483646,
             }),
@@ -38,7 +38,7 @@ describe("primaryKey", () => {
         $entity({
           name: "big",
           schema: t.object({
-            id: pg.bigIdentityPrimaryKey({
+            id: db.bigIdentityPrimaryKey({
               mode: "always",
               minValue: 2147483646,
             }),
@@ -70,7 +70,7 @@ describe("primaryKey", () => {
         $entity({
           name: "uuid",
           schema: t.object({
-            id: pg.uuidPrimaryKey(),
+            id: db.uuidPrimaryKey(),
           }),
         }),
       );

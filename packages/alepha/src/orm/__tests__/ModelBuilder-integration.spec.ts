@@ -2,13 +2,13 @@ import { Alepha, t } from "alepha";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { $entity, $repository } from "../index.ts";
-import { pg } from "../providers/DatabaseTypeProvider.ts";
+import { db } from "../providers/DatabaseTypeProvider.ts";
 
 // Define test entities with all features
 const roleEntity = $entity({
   name: "roles",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     name: t.string(),
     description: t.optional(t.string()),
   }),
@@ -25,7 +25,7 @@ const roleEntity = $entity({
 const userEntity = $entity({
   name: "users",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     email: t.email(),
     username: t.string(),
     age: t.integer(),
@@ -72,7 +72,7 @@ const userEntity = $entity({
 const postEntity = $entity({
   name: "posts",
   schema: t.object({
-    id: pg.primaryKey(),
+    id: db.primaryKey(),
     userId: t.integer(),
     title: t.string(),
     content: t.text(),
@@ -328,7 +328,7 @@ describe("ModelBuilder Integration Tests", () => {
     const customEntity = $entity({
       name: "custom_table",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         data: t.string(),
       }),
       config: (self) => {
@@ -360,7 +360,7 @@ describe("ModelBuilder Integration Tests", () => {
     const customEntity = $entity({
       name: "custom_table_sqlite",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         data: t.string(),
       }),
       config: (self) => {
@@ -396,7 +396,7 @@ describe("ModelBuilder Integration Tests", () => {
       const categoryEntity = $entity({
         name: "categories",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           name: t.string(),
         }),
         indexes: [
@@ -410,7 +410,7 @@ describe("ModelBuilder Integration Tests", () => {
       const productEntity = $entity({
         name: "products",
         schema: t.object({
-          id: pg.primaryKey(),
+          id: db.primaryKey(),
           name: t.string(),
           categoryId: t.integer(),
           price: t.number(),

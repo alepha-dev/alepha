@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { Alepha, t } from "alepha";
-import { $entity, $repository, DatabaseProvider, pg } from "../../index.ts";
+import { $entity, $repository, DatabaseProvider, db } from "../../index.ts";
 import { BunPostgresProvider } from "./BunPostgresProvider.ts";
 
 // -------------------------------------------------------------------------------------------------------------------
@@ -8,11 +8,11 @@ import { BunPostgresProvider } from "./BunPostgresProvider.ts";
 const users = $entity({
   name: "users",
   schema: t.object({
-    id: pg.primaryKey(),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
+    id: db.primaryKey(),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
     name: t.text(),
-    role: pg.default(t.text(), "user"),
+    role: db.default(t.text(), "user"),
   }),
   indexes: [{ column: "name", unique: true }],
 });

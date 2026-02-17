@@ -1,9 +1,9 @@
 import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, pg } from "../index.ts";
+import { $entity, $repository, db } from "../index.ts";
 
 const testSchema = t.object({
-  id: pg.primaryKey(),
+  id: db.primaryKey(),
   name: t.text(),
 });
 
@@ -42,7 +42,7 @@ describe("Repository", () => {
 
   it("should handle uuid id operations", async () => {
     const schema = t.object({
-      uuid: pg.uuidPrimaryKey(),
+      uuid: db.uuidPrimaryKey(),
       name: t.text(),
     });
     const entity = $entity({
@@ -60,7 +60,7 @@ describe("Repository", () => {
     await alepha.start();
 
     expect(app.repository.id.key).toEqual("uuid");
-    expect(app.repository.id.type).toEqual(pg.uuidPrimaryKey());
+    expect(app.repository.id.type).toEqual(db.uuidPrimaryKey());
 
     const it = await app.repository.create({ name: "test" });
 
@@ -77,7 +77,7 @@ describe("Repository", () => {
 
   it("should handle multiple operators (gte & lte)", async () => {
     const schema = t.object({
-      id: pg.primaryKey(),
+      id: db.primaryKey(),
       name: t.text(),
       age: t.number(),
     });

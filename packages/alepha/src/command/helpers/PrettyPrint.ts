@@ -24,6 +24,7 @@ export class PrettyPrint {
       status: "running" | "success" | "error";
       startTime: number;
       duration?: string;
+      message?: string;
     }
   >();
   protected lastLineCount = 0;
@@ -100,12 +101,18 @@ export class PrettyPrint {
   /**
    * Stop the spinner and show success with a tick
    */
-  public success(id: string, taskName?: string, duration?: string): void {
+  public success(
+    id: string,
+    taskName?: string,
+    duration?: string,
+    message?: string,
+  ): void {
     const task = this.tasks.get(id);
     if (task) {
       task.status = "success";
       if (taskName) task.taskName = taskName;
       if (duration) task.duration = duration;
+      if (message) task.message = message;
       this.updateDisplay();
     }
 
@@ -164,7 +171,8 @@ export class PrettyPrint {
         const durationStr = task.duration
           ? `  ${this.colors.dim}${task.duration}${this.colors.reset}`
           : "";
-        line += `${this.colors.green}✓${this.colors.reset} ${task.taskName}${durationStr}`;
+        const messageStr = task.message ? ` - ${task.message}` : "";
+        line += `${this.colors.green}✓${this.colors.reset} ${task.taskName}${durationStr}${messageStr}`;
       } else if (task.status === "error") {
         line += `${this.colors.red}✗${this.colors.reset} ${task.taskName}`;
       }

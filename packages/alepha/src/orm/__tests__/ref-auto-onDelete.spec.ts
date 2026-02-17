@@ -1,13 +1,13 @@
 import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, pg } from "../index.ts";
+import { $entity, $repository, db } from "../index.ts";
 
-describe("pg.ref - automatic onDelete behavior", () => {
+describe("db.ref - automatic onDelete behavior", () => {
   const categories = $entity({
     name: "categories",
     schema: t.object({
-      id: pg.identityPrimaryKey(),
-      __v: pg.version(),
+      id: db.identityPrimaryKey(),
+      __v: db.version(),
       name: t.text(),
     }),
   });
@@ -15,22 +15,22 @@ describe("pg.ref - automatic onDelete behavior", () => {
   const products = $entity({
     name: "products",
     schema: t.object({
-      id: pg.identityPrimaryKey(),
-      __v: pg.version(),
+      id: db.identityPrimaryKey(),
+      __v: db.version(),
       name: t.text(),
       // Optional reference - should automatically set onDelete: "set null"
-      categoryId: pg.ref(t.optional(t.integer()), () => categories.cols.id),
+      categoryId: db.ref(t.optional(t.integer()), () => categories.cols.id),
     }),
   });
 
   const orders = $entity({
     name: "orders",
     schema: t.object({
-      id: pg.identityPrimaryKey(),
-      __v: pg.version(),
+      id: db.identityPrimaryKey(),
+      __v: db.version(),
       orderNumber: t.text(),
       // Required reference - should automatically set onDelete: "cascade"
-      productId: pg.ref(t.integer(), () => products.cols.id),
+      productId: db.ref(t.integer(), () => products.cols.id),
     }),
   });
 
@@ -104,8 +104,8 @@ describe("pg.ref - automatic onDelete behavior", () => {
     const customCategories = $entity({
       name: "custom_categories",
       schema: t.object({
-        id: pg.identityPrimaryKey(),
-        __v: pg.version(),
+        id: db.identityPrimaryKey(),
+        __v: db.version(),
         name: t.text(),
       }),
     });
@@ -113,11 +113,11 @@ describe("pg.ref - automatic onDelete behavior", () => {
     const customProducts = $entity({
       name: "custom_products",
       schema: t.object({
-        id: pg.identityPrimaryKey(),
-        __v: pg.version(),
+        id: db.identityPrimaryKey(),
+        __v: db.version(),
         name: t.text(),
         // Optional reference but explicitly set to cascade
-        categoryId: pg.ref(
+        categoryId: db.ref(
           t.optional(t.integer()),
           () => customCategories.cols.id,
           {

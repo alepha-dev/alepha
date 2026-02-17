@@ -1,13 +1,13 @@
 import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, pg } from "../index.ts";
+import { $entity, $repository, db } from "../index.ts";
 
 describe("$repository - save", () => {
   it("should save an entity with deleted fields", async () => {
     const dummies = $entity({
       name: "dummies",
       schema: t.object({
-        id: pg.primaryKey(),
+        id: db.primaryKey(),
         name: t.optional(t.text()),
       }),
     });

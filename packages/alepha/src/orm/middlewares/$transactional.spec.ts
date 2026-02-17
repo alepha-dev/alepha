@@ -5,13 +5,13 @@ import {
   $repository,
   $transactional,
   DatabaseProvider,
-  pg,
+  db,
 } from "../index.ts";
 
 const item = $entity({
   name: "tx_mw_item",
   schema: t.object({
-    id: pg.primaryKey(t.integer(), {}, { mode: "byDefault" }),
+    id: db.primaryKey(t.integer(), {}, { mode: "byDefault" }),
     name: t.text(),
   }),
 });

@@ -2,19 +2,19 @@ import { $inject, Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
 import { DbConflictError } from "../errors/DbConflictError.ts";
-import { $entity, $repository, $transaction, pg } from "../index.ts";
+import { $entity, $repository, $transaction, db } from "../index.ts";
 
 const a = $entity({
   name: "a",
   schema: t.object({
-    id: pg.primaryKey(
+    id: db.primaryKey(
       t.integer(),
       {},
       {
         mode: "byDefault",
       },
     ),
-    v: pg.version(),
+    v: db.version(),
     counter: t.integer(),
   }),
 });

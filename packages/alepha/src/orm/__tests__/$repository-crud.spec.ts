@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
 import { DbEntityNotFoundError } from "../errors/DbEntityNotFoundError.ts";
-import { $entity, $repository, pg } from "../index.ts";
+import { $entity, $repository, db } from "../index.ts";
 import type { InsertUserEntity } from "./fixtures/userEntitySchema.ts";
 
 class App {
@@ -9,14 +9,14 @@ class App {
     $entity({
       name: "users",
       schema: t.object({
-        id: pg.primaryKey(),
-        createdAt: pg.createdAt(),
-        updatedAt: pg.updatedAt(),
+        id: db.primaryKey(),
+        createdAt: db.createdAt(),
+        updatedAt: db.updatedAt(),
         name: t.text(),
         profile: t.object({
           age: t.number(),
         }),
-        role: pg.default(t.text(), "user"),
+        role: db.default(t.text(), "user"),
       }),
     }),
   );

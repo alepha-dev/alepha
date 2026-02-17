@@ -37,8 +37,8 @@ export class DbCommand {
    * Check if database migrations are up to date.
    */
   protected readonly check = $command({
-    name: "check-migrations",
-    description: "Check if database migration files are up to date",
+    name: "check",
+    description: "Check if migration files are up to date",
     args: t.optional(
       t.text({
         title: "path",
@@ -93,20 +93,8 @@ export class DbCommand {
         );
         const lastSnapshot = JSON.parse(snapshotBuffer.toString("utf-8"));
 
-        const models = drizzleKitProvider.getModels(provider);
-        const kit = drizzleKitProvider.importDrizzleKit();
-        const now = kit.generateDrizzleJson(models, lastSnapshot.id);
-
-        const migrationStatements = await new Promise<Array<any>>((resolve) => {
-          (async () => {
-            const timer = setTimeout(() => {
-              resolve([{ message: "Migration generation timed out." }]);
-            }, 5000);
-            const statements = await kit.generateMigration(lastSnapshot, now);
-            clearTimeout(timer);
-            resolve(statements);
-          })();
-        });
+        const { statements: migrationStatements } =
+          await drizzleKitProvider.generateMigration(provider, lastSnapshot);
 
         if (migrationStatements.length === 0) {
           this.log.info("No changes detected.");
@@ -125,7 +113,7 @@ export class DbCommand {
           `At least ${migrationStatements.length} change(s) detected.`,
         );
         this.log.info(
-          "Please, run 'alepha db:generate' to update the migration files.",
+          "Please, run 'alepha db migrations generate' to update the migration files.",
         );
         this.log.info("");
 
@@ -139,7 +127,7 @@ export class DbCommand {
    */
   protected readonly generate = $command({
     name: "generate",
-    description: "Generate migration files based on current database schema",
+    description: "Generate migration files from current schema",
     args: t.optional(
       t.text({
         title: "path",
@@ -207,9 +195,9 @@ export class DbCommand {
   /**
    * Apply pending database migrations
    */
-  protected readonly migrate = $command({
-    name: "migrate",
-    description: "Apply pending database migrations",
+  protected readonly apply = $command({
+    name: "apply",
+    description: "Apply pending migrations to the database",
     args: t.optional(
       t.text({
         title: "path",
@@ -257,12 +245,25 @@ export class DbCommand {
   });
 
   /**
+   * Parent command for migration operations.
+   */
+  protected readonly migrations = $command({
+    name: "migrations",
+    aliases: ["m"],
+    description: "Manage database migrations",
+    children: [this.check, this.generate, this.apply],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
+  /**
    * Parent command for database operations.
    */
   public readonly db = $command({
     name: "db",
     description: "Database management commands",
-    children: [this.check, this.generate, this.push, this.migrate, this.studio],
+    children: [this.migrations, this.push, this.studio],
     handler: async ({ help }) => {
       help();
     },

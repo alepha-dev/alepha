@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
 import { sql } from "drizzle-orm";
 import { describe, test } from "vitest";
-import { $entity, $repository, pg } from "../index.ts";
+import { $entity, $repository, db } from "../index.ts";
 
 describe("Joins - Comprehensive Tests", () => {
   // ===================================================================================================================
@@ -11,7 +11,7 @@ describe("Joins - Comprehensive Tests", () => {
   const countries = $entity({
     name: "countries",
     schema: t.object({
-      id: pg.primaryKey(),
+      id: db.primaryKey(),
       name: t.text(),
       code: t.text(),
     }),
@@ -20,8 +20,8 @@ describe("Joins - Comprehensive Tests", () => {
   const cities = $entity({
     name: "cities",
     schema: t.object({
-      id: pg.primaryKey(),
-      countryId: pg.ref(t.integer(), () => countries.cols.id),
+      id: db.primaryKey(),
+      countryId: db.ref(t.integer(), () => countries.cols.id),
       name: t.text(),
       population: t.optional(t.integer()),
     }),
@@ -30,19 +30,19 @@ describe("Joins - Comprehensive Tests", () => {
   const users = $entity({
     name: "users",
     schema: t.object({
-      id: pg.primaryKey(),
+      id: db.primaryKey(),
       name: t.text(),
       email: t.text(),
-      cityId: pg.ref(t.optional(t.integer()), () => cities.cols.id),
-      managerId: pg.ref(t.optional(t.integer()), () => users.cols.id),
+      cityId: db.ref(t.optional(t.integer()), () => cities.cols.id),
+      managerId: db.ref(t.optional(t.integer()), () => users.cols.id),
     }),
   });
 
   const profiles = $entity({
     name: "profiles",
     schema: t.object({
-      id: pg.primaryKey(),
-      userId: pg.ref(t.integer(), () => users.cols.id),
+      id: db.primaryKey(),
+      userId: db.ref(t.integer(), () => users.cols.id),
       bio: t.text(),
       website: t.optional(t.text()),
     }),
@@ -51,29 +51,29 @@ describe("Joins - Comprehensive Tests", () => {
   const posts = $entity({
     name: "posts",
     schema: t.object({
-      id: pg.primaryKey(),
-      authorId: pg.ref(t.integer(), () => users.cols.id),
+      id: db.primaryKey(),
+      authorId: db.ref(t.integer(), () => users.cols.id),
       title: t.text(),
       content: t.text(),
-      publishedAt: pg.createdAt(),
+      publishedAt: db.createdAt(),
     }),
   });
 
   const comments = $entity({
     name: "comments",
     schema: t.object({
-      id: pg.primaryKey(),
-      postId: pg.ref(t.integer(), () => posts.cols.id),
-      authorId: pg.ref(t.integer(), () => users.cols.id),
+      id: db.primaryKey(),
+      postId: db.ref(t.integer(), () => posts.cols.id),
+      authorId: db.ref(t.integer(), () => users.cols.id),
       content: t.text(),
-      createdAt: pg.createdAt(),
+      createdAt: db.createdAt(),
     }),
   });
 
   const tags = $entity({
     name: "tags",
     schema: t.object({
-      id: pg.primaryKey(),
+      id: db.primaryKey(),
       name: t.text(),
     }),
   });
@@ -81,9 +81,9 @@ describe("Joins - Comprehensive Tests", () => {
   const postTags = $entity({
     name: "post_tags",
     schema: t.object({
-      id: pg.primaryKey(),
-      postId: pg.ref(t.integer(), () => posts.cols.id),
-      tagId: pg.ref(t.integer(), () => tags.cols.id),
+      id: db.primaryKey(),
+      postId: db.ref(t.integer(), () => posts.cols.id),
+      tagId: db.ref(t.integer(), () => tags.cols.id),
     }),
   });
 
