@@ -266,7 +266,10 @@ export class CloudflareAdapter extends PlatformAdapter {
   // inspect
   // -------------------------------------------------------------------------
 
-  async inspect(ctx: PlatformContext, run: RunnerMethod): Promise<PlatformState> {
+  async inspect(
+    ctx: PlatformContext,
+    run: RunnerMethod,
+  ): Promise<PlatformState> {
     const state: PlatformState = {
       workers: [],
       databases: [],
@@ -616,5 +619,4 @@ export class CloudflareAdapter extends PlatformAdapter {
       createdAt: version?.metadata.created_on,
     };
   }
-
 }

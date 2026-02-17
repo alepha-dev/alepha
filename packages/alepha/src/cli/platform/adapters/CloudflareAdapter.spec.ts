@@ -238,6 +238,13 @@ describe("CloudflareAdapter", () => {
  */
 function createMockRun(): any {
   const run: any = async (task: any) => {
+    if (Array.isArray(task)) {
+      await Promise.all(
+        task.map((t) =>
+          typeof t === "object" && t.handler ? t.handler() : Promise.resolve(),
+        ),
+      );
+    }
     if (typeof task === "object" && task.handler) {
       await task.handler();
     }

@@ -262,7 +262,9 @@ export class PlatformCommand {
           const isLast = i === state.databases.length - 1;
           const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
           if (db.exists) {
-            const id = db.id ? ` ${c.set("GREY_LIGHT", db.id.slice(0, 8))}` : "";
+            const id = db.id
+              ? ` ${c.set("GREY_LIGHT", db.id.slice(0, 8))}`
+              : "";
             process.stdout.write(
               `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", db.name)}  ${c.set("GREEN", "\u2713")}${id}\n`,
             );

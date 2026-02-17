@@ -148,7 +148,10 @@ export abstract class PlatformAdapter {
    * Detect existing resources and their state.
    * Used by `plan` and `status` commands.
    */
-  abstract inspect(ctx: PlatformContext, run: RunnerMethod): Promise<PlatformState>;
+  abstract inspect(
+    ctx: PlatformContext,
+    run: RunnerMethod,
+  ): Promise<PlatformState>;
 
   /**
    * Tear down all resources for an environment.
