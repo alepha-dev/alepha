@@ -1,3 +1,14 @@
+## [0.17.2] - 2026-02-17
+
+### Features
+
+- **cli**: "alepha platform" for managing project infrastructures and instances (only CF for now) (`3dc1b6e9`)
+- **cli**: alepha deploy cloudflare + provision (`97711038`)
+
+### Bug Fixes
+
+- **command**: pretty runner with stdout (`ee59f0ca`)
+
 ## [0.17.1] - 2026-02-15
 
 ### Features
