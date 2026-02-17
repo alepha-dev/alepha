@@ -1,4 +1,4 @@
-import type { RunnerMethod } from "../../../command/helpers/Runner.ts";
+import type { RunnerMethod } from "alepha/command";
 import type { EnvironmentConfig } from "../../atoms/platformOptions.ts";
 import type { AppEntry } from "../../providers/AppEntryProvider.ts";
 import type { NamingContext } from "../services/NamingService.ts";

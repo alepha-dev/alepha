@@ -54,10 +54,11 @@
   },
   "scripts": {
     "dev": "alepha dev",
-    "lint": "alepha lint",
+    "lint": "alepha lint && yarn build:check",
     "typecheck": "alepha typecheck",
     "test": "alepha test",
-    "build": "node scripts/build.ts"
+    "build": "node scripts/build.ts",
+    "build:check": "node scripts/build.ts --check"
   },
   "repository": {
     "type": "git",

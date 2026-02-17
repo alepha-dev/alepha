@@ -1,7 +1,7 @@
 import { $inject, AlephaError } from "alepha";
+import type { RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
-import type { RunnerMethod } from "../../../command/helpers/Runner.ts";
 import { AlephaCliUtils } from "../../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../../services/PackageManagerUtils.ts";
 import { PlatformCacheProvider } from "../providers/PlatformCacheProvider.ts";

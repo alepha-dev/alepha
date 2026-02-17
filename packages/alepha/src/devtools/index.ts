@@ -12,9 +12,9 @@ export * from "./providers/DevToolsMetadataProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | tooling | rare | experimental |
+ * | Stability | Since | Runtime |
+ * |-----------|-------|---------|
+ * | 2 - experimental | 0.10.0 | node, bun |
  *
  * Runtime inspection and debugging UI.
  *

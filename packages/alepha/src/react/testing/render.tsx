@@ -5,8 +5,8 @@ import {
 } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
+import { AlephaContext } from "alepha/react";
 import type { ReactElement, ReactNode } from "react";
-import { AlephaContext } from "../core/contexts/AlephaContext.ts";
 
 /**
  * Options for renderWithAlepha.

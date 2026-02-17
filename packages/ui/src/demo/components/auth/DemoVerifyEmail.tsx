@@ -1,5 +1,5 @@
+import { VerifyEmail } from "@alepha/ui/auth";
 import { t } from "alepha";
-import VerifyEmail from "../../../auth/components/VerifyEmail.tsx";
 import Showcase from "../shared/Showcase.tsx";
 
 const showcaseSchema = t.object({

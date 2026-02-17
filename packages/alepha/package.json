@@ -76,10 +76,11 @@
     "enabled": false
   },
   "scripts": {
-    "lint": "biome check --fix",
+    "lint": "biome check --fix && yarn build:check",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "node scripts/build.ts",
+    "build:check": "yarn build --check",
     "copy": "node scripts/copy-swagger.ts"
   },
   "homepage": "https://github.com/feunard/alepha",

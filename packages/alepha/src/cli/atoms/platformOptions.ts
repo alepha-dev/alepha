@@ -1,5 +1,4 @@
-import { type Static, t } from "alepha";
-import { $atom } from "../../core/primitives/$atom.ts";
+import { $atom, type Static, t } from "alepha";
 
 /**
  * Platform deployment configuration atom.

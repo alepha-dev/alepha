@@ -1,6 +1,6 @@
+import { Login } from "@alepha/ui/auth";
 import { t } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
-import Login from "../../../auth/components/Login.tsx";
 import Showcase from "../shared/Showcase.tsx";
 
 const showcaseSchema = t.object({

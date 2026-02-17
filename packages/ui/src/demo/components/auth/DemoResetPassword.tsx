@@ -1,6 +1,6 @@
+import { ResetPassword } from "@alepha/ui/auth";
 import { t } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
-import ResetPassword from "../../../auth/components/ResetPassword.tsx";
 import Showcase from "../shared/Showcase.tsx";
 
 const showcaseSchema = t.object({

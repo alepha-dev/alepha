@@ -9,6 +9,7 @@ import { WorkerProvider } from "./providers/WorkerProvider.ts";
 
 export * from "./primitives/$consumer.ts";
 export * from "./primitives/$queue.ts";
+export * from "./providers/CloudflareQueueProvider.ts";
 export * from "./providers/MemoryQueueProvider.ts";
 export * from "./providers/QueueProvider.ts";
 export * from "./providers/WorkerProvider.ts";

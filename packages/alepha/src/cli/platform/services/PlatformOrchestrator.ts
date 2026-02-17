@@ -1,6 +1,6 @@
 import { $inject, AlephaError } from "alepha";
+import type { RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
-import type { RunnerMethod } from "../../../command/helpers/Runner.ts";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
 import type {
   AppDefinition,

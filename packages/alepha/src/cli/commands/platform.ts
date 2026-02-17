@@ -1,7 +1,6 @@
 import { $inject, $use, AlephaError, t } from "alepha";
 import { $command } from "alepha/command";
-import { $logger } from "alepha/logger";
-import { ConsoleColorProvider } from "../../logger/providers/ConsoleColorProvider.ts";
+import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { platformOptions } from "../atoms/platformOptions.ts";
 import type {
   AppDefinition,

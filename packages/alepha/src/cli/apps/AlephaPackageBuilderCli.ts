@@ -1,8 +1,9 @@
 import { access, readdir, readFile } from "node:fs/promises";
 import * as os from "node:os";
-import { join } from "node:path";
-import { $inject, AlephaError } from "alepha";
+import { dirname, join, relative, resolve } from "node:path";
+import { $inject, AlephaError, t } from "alepha";
 import { $command } from "alepha/command";
+import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import type { InlineConfig } from "tsdown";
 
@@ -20,10 +21,19 @@ export class AlephaPackageBuilderCli {
   src = "src";
   dist = "dist";
   fs = $inject(FileSystemProvider);
+  log = $logger();
 
   make = $command({
     root: true,
-    handler: async ({ run, root }) => {
+    flags: t.object({
+      check: t.optional(
+        t.boolean({
+          description:
+            "Only analyze modules and refresh configs (package.json exports, tsconfig.json paths) without building",
+        }),
+      ),
+    }),
+    handler: async ({ run, root, flags }) => {
       const modules: Array<Module> = [];
 
       const pkgBuffer = await this.fs.readFile("package.json");
@@ -82,6 +92,46 @@ export class AlephaPackageBuilderCli {
 
       await this.fs.writeFile("package.json", JSON.stringify(pkgData, null, 2));
 
+      // Update tsconfig.json paths for this package
+      const monorepoRoot = this.fs.join(root, "../..");
+      const tsconfigPath = this.fs.join(monorepoRoot, "tsconfig.json");
+      const tsconfigBuffer = await this.fs.readFile(tsconfigPath);
+      const tsconfigData = JSON.parse(tsconfigBuffer.toString("utf-8"));
+      const relativePkgDir = relative(monorepoRoot, root);
+
+      // Preserve paths from other packages
+      const paths: Record<string, string[]> = {};
+      for (const [key, value] of Object.entries(
+        (tsconfigData.compilerOptions.paths ?? {}) as Record<string, string[]>,
+      )) {
+        if (key !== packageName && !key.startsWith(`${packageName}/`)) {
+          paths[key] = value;
+        }
+      }
+
+      // Add paths for this package from module analysis
+      for (const item of modules) {
+        let exportPath = `./${item.name.replace("core", "")}`;
+        if (exportPath.endsWith("/")) exportPath = exportPath.slice(0, -1);
+
+        const tsconfigKey =
+          exportPath === "."
+            ? packageName
+            : `${packageName}/${exportPath.slice(2)}`;
+        paths[tsconfigKey] = [`./${relativePkgDir}/src/${item.name}/index.ts`];
+      }
+
+      tsconfigData.compilerOptions.paths = paths;
+      await this.fs.writeFile(
+        tsconfigPath,
+        `${JSON.stringify(tsconfigData, null, 2)}\n`,
+      );
+
+      if (flags.check) {
+        this.log.info(`Checked ${modules.length} modules, configs refreshed`);
+        return;
+      }
+
       const tmpDir = this.fs.join(root, "node_modules/.alepha");
       await this.fs.mkdir(tmpDir, { recursive: true }).catch(() => {});
 
@@ -90,12 +140,8 @@ export class AlephaPackageBuilderCli {
         JSON.stringify(modules, null, 2),
       );
 
-      const tsconfigBuffer = await this.fs.readFile(
-        this.fs.join(root, "../../tsconfig.json"),
-      );
-
       const external: (string | RegExp)[] = Object.keys(
-        JSON.parse(tsconfigBuffer.toString("utf-8")).compilerOptions.paths,
+        tsconfigData.compilerOptions.paths,
       );
 
       external.push("bun");
@@ -276,6 +322,42 @@ function extractAlephaDependencies(
   return Array.from(deps);
 }
 
+/**
+ * Detect relative imports that escape the module boundary.
+ *
+ * For example, a file in `cli/` importing `../../core/xxx` is invalid —
+ * it must use `"alepha"` or `"alepha/core"` instead. Cross-module relative
+ * imports cause tsdown to inline the dependency, creating duplicate classes,
+ * symbols, and module-scoped state that breaks at runtime.
+ */
+function detectEscapingImports(
+  content: string,
+  filePath: string,
+  modulePath: string,
+  moduleName: string,
+): void {
+  // Skip test files — they are never bundled by tsdown
+  if (/\.spec\.(ts|tsx)$/.test(filePath)) return;
+
+  const cleanedContent = removeComments(content);
+
+  const importRegex = /from\s+["'](\.\.?\/[^"']+)["']/g;
+  const fileDir = dirname(filePath);
+
+  for (const match of cleanedContent.matchAll(importRegex)) {
+    const importPath = match[1];
+    const resolved = resolve(fileDir, importPath);
+
+    if (!resolved.startsWith(modulePath)) {
+      const relative = importPath.replace(/\.(ts|tsx)$/, "");
+      throw new AlephaError(
+        `Cross-module relative import '${relative}' in module '${moduleName}' (${filePath}). ` +
+          `Relative imports must stay within the module boundary. Use a package import instead (e.g., "alepha" or "alepha/xxx").`,
+      );
+    }
+  }
+}
+
 async function fileExists(path: string): Promise<boolean> {
   try {
     await access(path);
@@ -362,6 +444,7 @@ export async function analyzeModules(
 
           for (const file of files) {
             const content = await readFile(file, "utf-8");
+            detectEscapingImports(content, file, modulePath, moduleName);
             const deps = extractAlephaDependencies(
               content,
               packageName,

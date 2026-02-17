@@ -1,5 +1,5 @@
 import { $env, $inject, Alepha, t } from "alepha";
-import { CryptoProvider } from "../../../crypto/index.ts";
+import { CryptoProvider } from "alepha/crypto";
 import { ServerReply } from "../helpers/ServerReply.ts";
 import type {
   RequestGeo,

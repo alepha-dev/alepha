@@ -14,8 +14,7 @@ import {
   TypeBoxError,
   t,
 } from "alepha";
-import { $logger } from "alepha/logger";
-import { ConsoleColorProvider } from "../../logger/providers/ConsoleColorProvider.ts";
+import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { CommandError } from "../errors/CommandError.ts";
 import { Asker } from "../helpers/Asker.ts";
 import { EnvUtils } from "../helpers/EnvUtils.ts";

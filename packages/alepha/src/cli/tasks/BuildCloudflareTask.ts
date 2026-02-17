@@ -3,10 +3,8 @@ import { $inject } from "alepha";
 import { CloudflareR2Provider } from "alepha/bucket";
 import { type CloudflareKVProvider, KV_DEFAULT_BINDING } from "alepha/cache";
 import { FileSystemProvider } from "alepha/system";
-import type { CloudflareQueueProvider } from "../../queue/core/providers/CloudflareQueueProvider.ts";
-import { QUEUE_DEFAULT_BINDING } from "../../queue/core/providers/CloudflareQueueProvider.ts";
-import type { CronProvider } from "../../scheduler/providers/CronProvider.ts";
-import type { WorkerdCronProvider } from "../../scheduler/providers/WorkerdCronProvider.ts";
+import { type CloudflareQueueProvider, QUEUE_DEFAULT_BINDING } from "alepha/queue";
+import type { CronProvider, WorkerdCronProvider } from "alepha/scheduler";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
