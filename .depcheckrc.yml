@@ -24,7 +24,7 @@ ignores:
     - 'surge'
     - 'bun'
     - 'bun:sqlite'
-    - 'bun:test:'
+    - 'bun:test'
     - 'tailwindcss'
     - '@tailwindcss/vite'
     - '@types/react-is'
