@@ -3,7 +3,7 @@ import { FileService } from "alepha/api/files";
 import { $bucket } from "alepha/bucket";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, pageQuerySchema, pg } from "alepha/orm";
+import { $repository, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 import sanitizeHtml from "sanitize-html";
@@ -168,7 +168,7 @@ export class TaskController {
         status: t.optional(t.enum(["new", "accepted", "completed"])),
         search: t.optional(t.string()),
       }),
-      response: pg.page(tasks.schema),
+      response: db.page(tasks.schema),
     },
     handler: async ({ params, query, user }) => {
       await this.security.checkOwnership(params.projectId, user);

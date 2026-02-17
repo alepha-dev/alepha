@@ -1,6 +1,6 @@
 import { type Static, t } from "alepha";
 import { users } from "alepha/api/users";
-import { $entity, pg } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 import { projects } from "./projects.ts";
 
 export const whiteboardElementSchema = t.object({
@@ -28,18 +28,18 @@ export const whiteboardDataSchema = t.object({
 export const whiteboards = $entity({
   name: "whiteboards",
   schema: t.object({
-    id: pg.primaryKey(t.integer()),
-    createdAt: pg.createdAt(),
-    updatedAt: pg.updatedAt(),
-    deletedAt: pg.deletedAt(),
+    id: db.primaryKey(t.integer()),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
+    deletedAt: db.deletedAt(),
     title: t.string({ minLength: 1, maxLength: 50 }),
-    projectId: pg.ref(t.integer(), () => projects.cols.id, {
+    projectId: db.ref(t.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
-    createdBy: pg.ref(t.uuid(), () => users.cols.id, {
+    createdBy: db.ref(t.uuid(), () => users.cols.id, {
       onDelete: "cascade",
     }),
-    data: pg.default(whiteboardDataSchema, { elements: [] }),
+    data: db.default(whiteboardDataSchema, { elements: [] }),
   }),
   indexes: [
     {
