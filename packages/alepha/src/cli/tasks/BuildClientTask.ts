@@ -30,7 +30,8 @@ export class BuildClientTask extends BuildTask {
 
     // Write index.html template for Vite to consume
     const template = this.viteUtils.generateIndexHtml(ctx.entry);
-    const indexHtmlPath = this.fs.join(ctx.root, "index.html");
+    await this.fs.mkdir(this.fs.join(ctx.root, "node_modules/.alepha"));
+    const indexHtmlPath = this.fs.join(ctx.root, "node_modules/.alepha/index.html");
     await this.fs.writeFile(indexHtmlPath, template);
 
     try {
@@ -86,6 +87,7 @@ export class BuildClientTask extends BuildTask {
         manifest: true,
         chunkSizeWarningLimit: 1000,
         rollupOptions: {
+          input: "node_modules/.alepha/index.html",
           output: {
             entryFileNames: "entry.[hash].js",
             chunkFileNames: "chunk.[hash].js",
@@ -100,9 +102,25 @@ export class BuildClientTask extends BuildTask {
 
     try {
       await viteBuild(viteBuildClientConfig);
+      await this.postBuildCleanUpForIndexHtml();
     } catch (error) {
       logger?.flush();
       throw error;
     }
+  }
+
+  /**
+   * Weird cleanup required because we changed input from "index.html" to "node_modules/.alepha/index.html".
+   */
+  public async postBuildCleanUpForIndexHtml() {
+    const manifestPath = "dist/public/.vite/manifest.json";
+    let text = await this.fs.readTextFile(manifestPath);
+    text = text.replaceAll("node_modules/.alepha/index.html", "index.html");
+    await this.fs.writeFile(manifestPath, text);
+    await this.fs.cp(
+      "dist/public/node_modules/.alepha/index.html",
+      "dist/public/index.html",
+    )
+    await this.fs.rm("dist/public/node_modules", { recursive: true });
   }
 }
