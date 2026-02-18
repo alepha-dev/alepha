@@ -528,8 +528,11 @@ describe("WebSocket integration", () => {
         .hostname.replace("http://", "ws://");
 
       const ws1 = new WebSocket(`${hostname}/ws/except-conn?roomId=room`);
+      await waitForOpen(ws1);
+      await delay(100); // ensure server-side onConnect fires for ws1 first
+
       const ws2 = new WebSocket(`${hostname}/ws/except-conn?roomId=room`);
-      await Promise.all([waitForOpen(ws1), waitForOpen(ws2)]);
+      await waitForOpen(ws2);
       await delay(100);
 
       const msgs1: any[] = [];

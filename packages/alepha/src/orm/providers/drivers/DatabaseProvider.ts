@@ -228,24 +228,14 @@ export abstract class DatabaseProvider {
 
   /**
    * For testing purposes, generate a unique schema name.
-   * The schema name will be generated based on the current date and time.
-   * It will be in the format of `test_YYYYMMDD_HHMMSS_randomSuffix`.
+   *
+   * Format: `test_alepha_{epoch_seconds}_{random8}`
+   * Example: `test_alepha_1739871618_k3m9x2p1`
    */
   protected generateTestSchemaName(): string {
-    const pad = (n: number) => n.toString().padStart(2, "0");
+    const epoch = Math.floor(Date.now() / 1000);
+    const random = Math.random().toString(36).slice(2, 10).padEnd(8, "0");
 
-    const now = new Date();
-    const year = now.getUTCFullYear();
-    const month = pad(now.getUTCMonth() + 1);
-    const day = pad(now.getUTCDate());
-    const hours = pad(now.getUTCHours());
-    const minutes = pad(now.getUTCMinutes());
-    const seconds = pad(now.getUTCSeconds());
-
-    const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}`;
-
-    const randomSuffix = Math.random().toString(36).slice(2, 6); // 4 alphanumeric chars
-
-    return `test_${timestamp}_${randomSuffix}`;
+    return `test_alepha_${epoch}_${random}`;
   }
 }

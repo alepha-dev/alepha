@@ -52,15 +52,6 @@ export class BuildCloudflareTask extends BuildTask {
       this.fs.join(root, distDir, "public"),
     );
 
-    let workerdCronProvider: CronProvider | undefined;
-    try {
-      workerdCronProvider = ctx.alepha.inject(
-        "CronProvider",
-      ) as WorkerdCronProvider;
-    } catch {}
-
-    const crons = workerdCronProvider?.getCronJobs();
-
     const wrangler: WranglerConfig = {
       name,
       main: "./main.cloudflare.js",
@@ -83,39 +74,95 @@ export class BuildCloudflareTask extends BuildTask {
       };
     }
 
-    if (crons && crons.length > 0) {
-      const cronExpressions = [...new Set(crons.map((c) => c.expression))];
-      wrangler.triggers ??= {};
-      wrangler.triggers.crons = cronExpressions;
+    this.enhanceCron(ctx, wrangler);
+    this.enhanceD1(wrangler);
+    this.enhanceR2(ctx, wrangler);
+    this.enhanceKV(ctx, wrangler);
+    await this.enhanceQueue(ctx, wrangler, name);
+
+    await this.fs.writeFile(
+      this.fs.join(root, distDir, "wrangler.jsonc"),
+      JSON.stringify(wrangler, null, 2),
+    );
+
+    await this.writeWorkerEntryPoint(root, distDir);
+  }
+
+  protected enhanceCron(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    if (ctx.alepha.primitives("scheduler").length === 0) {
+      return;
     }
 
+    let cronProvider: CronProvider | undefined;
+    try {
+      cronProvider = ctx.alepha.inject(
+        "CronProvider",
+      ) as WorkerdCronProvider;
+    } catch {}
+
+    const crons = cronProvider?.getCronJobs();
+    if (!crons || crons.length === 0) {
+      return;
+    }
+
+    const cronExpressions = [...new Set(crons.map((c) => c.expression))];
+    wrangler.triggers ??= {};
+    wrangler.triggers.crons = cronExpressions;
+  }
+
+  protected enhanceD1(wrangler: WranglerConfig): void {
     const url = process.env.DATABASE_URL;
-    if (url?.startsWith("d1:")) {
-      const [dbName, id] = url
-        .replace("d1://", "")
-        .replace("d1:", "")
-        .split(":");
-      wrangler.d1_databases = wrangler.d1_databases || [];
-      wrangler.d1_databases.push({
-        binding: dbName,
-        database_name: dbName,
-        database_id: id,
-      });
-      wrangler.vars ??= {};
-      wrangler.vars.DATABASE_URL = `d1://${dbName}:${id}`;
+    if (!url?.startsWith("d1:")) {
+      return;
+    }
+
+    const [dbName, id] = url
+      .replace("d1://", "")
+      .replace("d1:", "")
+      .split(":");
+    wrangler.d1_databases = wrangler.d1_databases || [];
+    wrangler.d1_databases.push({
+      binding: dbName,
+      database_name: dbName,
+      database_id: id,
+    });
+    wrangler.vars ??= {};
+    wrangler.vars.DATABASE_URL = `d1://${dbName}:${id}`;
+  }
+
+  protected enhanceR2(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    if (ctx.alepha.primitives("bucket").length === 0) {
+      return;
     }
 
     let r2Provider: CloudflareR2Provider | undefined;
     try {
-      r2Provider = ctx.alepha.inject(CloudflareR2Provider);
+      r2Provider = ctx.alepha.inject<CloudflareR2Provider>("CloudflareR2Provider");
     } catch {}
 
-    if (r2Provider) {
-      wrangler.r2_buckets = wrangler.r2_buckets || [];
-      wrangler.r2_buckets.push({
-        binding: r2Provider.bucketName,
-        bucket_name: r2Provider.bucketName,
-      });
+    if (!r2Provider) {
+      return;
+    }
+
+    wrangler.r2_buckets = wrangler.r2_buckets || [];
+    wrangler.r2_buckets.push({
+      binding: r2Provider.bucketName,
+      bucket_name: r2Provider.bucketName,
+    });
+  }
+
+  protected enhanceKV(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    if (ctx.alepha.primitives("cache").length === 0) {
+      return;
     }
 
     let kvProvider: CloudflareKVProvider | undefined;
@@ -125,41 +172,47 @@ export class BuildCloudflareTask extends BuildTask {
       );
     } catch {}
 
-    if (kvProvider) {
-      wrangler.kv_namespaces = wrangler.kv_namespaces || [];
-      wrangler.kv_namespaces.push({
-        binding: KV_DEFAULT_BINDING,
-      });
+    if (!kvProvider) {
+      return;
+    }
+
+    wrangler.kv_namespaces = wrangler.kv_namespaces || [];
+    wrangler.kv_namespaces.push({
+      binding: KV_DEFAULT_BINDING,
+    });
+  }
+
+  protected async enhanceQueue(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+    name: string,
+  ): Promise<void> {
+    if (ctx.alepha.primitives("queue").length === 0) {
+      return;
     }
 
     let queueProvider: CloudflareQueueProvider | undefined;
-    const queueMod = await this.viteUtils.importModule("alepha/queue");
     try {
       queueProvider = ctx.alepha.inject<CloudflareQueueProvider>(
-        queueMod.CloudflareQueueProvider,
+        "CloudflareQueueProvider",
       );
     } catch {}
 
-    if (queueProvider) {
-      const queueName = `${name}-queue`;
-      wrangler.queues ??= {};
-      wrangler.queues.producers = wrangler.queues.producers || [];
-      wrangler.queues.producers.push({
-        binding: QUEUE_DEFAULT_BINDING,
-        queue: queueName,
-      });
-      wrangler.queues.consumers = wrangler.queues.consumers || [];
-      wrangler.queues.consumers.push({
-        queue: queueName,
-      });
+    if (!queueProvider) {
+      return;
     }
 
-    await this.fs.writeFile(
-      this.fs.join(root, distDir, "wrangler.jsonc"),
-      JSON.stringify(wrangler, null, 2),
-    );
-
-    await this.writeWorkerEntryPoint(root, distDir);
+    const queueName = `${name}-queue`;
+    wrangler.queues ??= {};
+    wrangler.queues.producers = wrangler.queues.producers || [];
+    wrangler.queues.producers.push({
+      binding: QUEUE_DEFAULT_BINDING,
+      queue: queueName,
+    });
+    wrangler.queues.consumers = wrangler.queues.consumers || [];
+    wrangler.queues.consumers.push({
+      queue: queueName,
+    });
   }
 
   protected async writeWorkerEntryPoint(

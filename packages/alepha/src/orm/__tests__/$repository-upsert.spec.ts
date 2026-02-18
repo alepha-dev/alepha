@@ -115,6 +115,7 @@ const testUpsert = async (alepha: Alepha) => {
   // ========================================
 
   const beforeUpdate = gadget.updatedAt;
+  await new Promise((r) => setTimeout(r, 5));
   const gadgetAgain = await app.products.upsert(
     {
       id: "00000000-0000-0000-0000-000000000002",

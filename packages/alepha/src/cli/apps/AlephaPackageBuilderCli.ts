@@ -1,6 +1,6 @@
 import { access, readdir, readFile } from "node:fs/promises";
 import * as os from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { $inject, AlephaError, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
@@ -90,41 +90,9 @@ export class AlephaPackageBuilderCli {
         pkgData.exports["./json/styles"] = "./src/json/styles.css";
       }
 
-      await this.fs.writeFile("package.json", JSON.stringify(pkgData, null, 2));
-
-      // Update tsconfig.json paths for this package
-      const monorepoRoot = this.fs.join(root, "../..");
-      const tsconfigPath = this.fs.join(monorepoRoot, "tsconfig.json");
-      const tsconfigBuffer = await this.fs.readFile(tsconfigPath);
-      const tsconfigData = JSON.parse(tsconfigBuffer.toString("utf-8"));
-      const relativePkgDir = relative(monorepoRoot, root);
-
-      // Preserve paths from other packages
-      const paths: Record<string, string[]> = {};
-      for (const [key, value] of Object.entries(
-        (tsconfigData.compilerOptions.paths ?? {}) as Record<string, string[]>,
-      )) {
-        if (key !== packageName && !key.startsWith(`${packageName}/`)) {
-          paths[key] = value;
-        }
-      }
-
-      // Add paths for this package from module analysis
-      for (const item of modules) {
-        let exportPath = `./${item.name.replace("core", "")}`;
-        if (exportPath.endsWith("/")) exportPath = exportPath.slice(0, -1);
-
-        const tsconfigKey =
-          exportPath === "."
-            ? packageName
-            : `${packageName}/${exportPath.slice(2)}`;
-        paths[tsconfigKey] = [`./${relativePkgDir}/src/${item.name}/index.ts`];
-      }
-
-      tsconfigData.compilerOptions.paths = paths;
       await this.fs.writeFile(
-        tsconfigPath,
-        `${JSON.stringify(tsconfigData, null, 2)}\n`,
+        "package.json",
+        `${JSON.stringify(pkgData, null, 2)}\n`,
       );
 
       if (flags.check) {
@@ -141,7 +109,7 @@ export class AlephaPackageBuilderCli {
       );
 
       const external: (string | RegExp)[] = Object.keys(
-        tsconfigData.compilerOptions.paths,
+        modules.map((it) => it.name),
       );
 
       external.push("bun");
