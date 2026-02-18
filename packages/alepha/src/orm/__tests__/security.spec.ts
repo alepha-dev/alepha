@@ -1,5 +1,5 @@
 import { Alepha, t } from "alepha";
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { $entity, $repository, DatabaseProvider, db, sql } from "../index.ts";
 import {
   NodeSqliteProvider,
@@ -120,7 +120,7 @@ describe("SQL Injection Security Tests", () => {
 
   describe("PostgreSQL", () => {
     describe("Basic Filter Operators", () => {
-      it("should prevent SQL injection in eq operator", async ({ expect }) => {
+      it("should prevent SQL injection in eq operator", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -149,7 +149,7 @@ describe("SQL Injection Security Tests", () => {
         }
       });
 
-      it("should prevent SQL injection in ne operator", async ({ expect }) => {
+      it("should prevent SQL injection in ne operator", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -177,9 +177,7 @@ describe("SQL Injection Security Tests", () => {
         }
       });
 
-      it("should prevent SQL injection in contains operator", async ({
-        expect,
-      }) => {
+      it("should prevent SQL injection in contains operator", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -206,9 +204,7 @@ describe("SQL Injection Security Tests", () => {
         }
       });
 
-      it("should prevent SQL injection in contains operator (email field)", async ({
-        expect,
-      }) => {
+      it("should prevent SQL injection in contains operator (email field)", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -234,9 +230,7 @@ describe("SQL Injection Security Tests", () => {
         }
       });
 
-      it("should prevent SQL injection in gt/gte/lt/lte operators", async ({
-        expect,
-      }) => {
+      it("should prevent SQL injection in gt/gte/lt/lte operators", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -272,9 +266,7 @@ describe("SQL Injection Security Tests", () => {
         }
       });
 
-      it("should prevent SQL injection in inArray operator", async ({
-        expect,
-      }) => {
+      it("should prevent SQL injection in inArray operator", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -303,9 +295,7 @@ describe("SQL Injection Security Tests", () => {
     });
 
     describe("Array Operator Injection", () => {
-      it("should prevent SQL injection in arrayContains", async ({
-        expect,
-      }) => {
+      it("should prevent SQL injection in arrayContains", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -333,9 +323,7 @@ describe("SQL Injection Security Tests", () => {
         }
       });
 
-      it("should prevent SQL injection in arrayOverlaps", async ({
-        expect,
-      }) => {
+      it("should prevent SQL injection in arrayOverlaps", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -361,9 +349,7 @@ describe("SQL Injection Security Tests", () => {
         expect(result).toEqual([]);
       });
 
-      it("should prevent SQL injection in arrayContained", async ({
-        expect,
-      }) => {
+      it("should prevent SQL injection in arrayContained", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -391,7 +377,7 @@ describe("SQL Injection Security Tests", () => {
     });
 
     describe("Raw SQL Injection", () => {
-      it("should safely handle parameterized queries", async ({ expect }) => {
+      it("should safely handle parameterized queries", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -420,9 +406,7 @@ describe("SQL Injection Security Tests", () => {
         }
       });
 
-      it("should prevent injection in complex SQL expressions", async ({
-        expect,
-      }) => {
+      it("should prevent injection in complex SQL expressions", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -454,7 +438,7 @@ describe("SQL Injection Security Tests", () => {
 
   describe("SQLite", () => {
     describe("Basic Filter Operators", () => {
-      it("should prevent SQL injection in eq operator", async ({ expect }) => {
+      it("should prevent SQL injection in eq operator", async () => {
         const alepha = Alepha.create().with({
           provide: DatabaseProvider,
           use: NodeSqliteProvider,
@@ -489,9 +473,7 @@ describe("SQL Injection Security Tests", () => {
         }
       });
 
-      it("should prevent SQL injection in contains operator (SQLite)", async ({
-        expect,
-      }) => {
+      it("should prevent SQL injection in contains operator (SQLite)", async () => {
         const alepha = Alepha.create().with({
           provide: DatabaseProvider,
           use: NodeSqliteProvider,
@@ -526,9 +508,7 @@ describe("SQL Injection Security Tests", () => {
         }
       });
 
-      it("should prevent SQL injection in inArray operator", async ({
-        expect,
-      }) => {
+      it("should prevent SQL injection in inArray operator", async () => {
         const alepha = Alepha.create().with({
           provide: DatabaseProvider,
           use: NodeSqliteProvider,
@@ -565,7 +545,7 @@ describe("SQL Injection Security Tests", () => {
     });
 
     describe("Raw SQL Injection (SQLite)", () => {
-      it("should safely handle parameterized queries", async ({ expect }) => {
+      it("should safely handle parameterized queries", async () => {
         const alepha = Alepha.create().with({
           provide: DatabaseProvider,
           use: NodeSqliteProvider,
@@ -604,9 +584,7 @@ describe("SQL Injection Security Tests", () => {
   });
 
   describe("Edge Cases and Special Characters", () => {
-    it("should handle unicode and special characters safely", async ({
-      expect,
-    }) => {
+    it("should handle unicode and special characters safely", async () => {
       const alepha = Alepha.create();
       const app = alepha.inject(App);
       await alepha.start();
@@ -651,9 +629,7 @@ describe("SQL Injection Security Tests", () => {
       }
     });
 
-    it("should handle long strings with injection attempts safely", async ({
-      expect,
-    }) => {
+    it("should handle long strings with injection attempts safely", async () => {
       const alepha = Alepha.create();
       const app = alepha.inject(App);
       await alepha.start();
@@ -683,7 +659,7 @@ describe("SQL Injection Security Tests", () => {
       expect(found.username).toBe(longString);
     });
 
-    it("should handle empty strings and nulls", async ({ expect }) => {
+    it("should handle empty strings and nulls", async () => {
       const alepha = Alepha.create();
       const app = alepha.inject(App);
       await alepha.start();

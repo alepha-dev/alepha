@@ -1,5 +1,5 @@
 import { Alepha, t } from "alepha";
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   $entity,
   $repository,
@@ -75,9 +75,7 @@ describe("Database Error Tests", () => {
 
   describe("PostgreSQL", () => {
     describe("DbConflictError", () => {
-      it("should throw DbConflictError on unique constraint violation", async ({
-        expect,
-      }) => {
+      it("should throw DbConflictError on unique constraint violation", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -102,9 +100,7 @@ describe("Database Error Tests", () => {
         }
       });
 
-      it("should throw DbConflictError on update causing unique violation", async ({
-        expect,
-      }) => {
+      it("should throw DbConflictError on update causing unique violation", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -134,9 +130,7 @@ describe("Database Error Tests", () => {
     });
 
     describe("DbForeignKeyError", () => {
-      it("should throw DbForeignKeyError when deleting referenced entity", async ({
-        expect,
-      }) => {
+      it("should throw DbForeignKeyError when deleting referenced entity", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -174,9 +168,7 @@ describe("Database Error Tests", () => {
         }
       });
 
-      it("should include constraint name in DbForeignKeyError", async ({
-        expect,
-      }) => {
+      it("should include constraint name in DbForeignKeyError", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -204,9 +196,7 @@ describe("Database Error Tests", () => {
         }
       });
 
-      it("should allow delete after removing referencing entities", async ({
-        expect,
-      }) => {
+      it("should allow delete after removing referencing entities", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -231,9 +221,7 @@ describe("Database Error Tests", () => {
     });
 
     describe("DbNotNullError", () => {
-      it("should throw DbNotNullError when inserting null into required field via raw SQL", async ({
-        expect,
-      }) => {
+      it("should throw DbNotNullError when inserting null into required field via raw SQL", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -256,9 +244,7 @@ describe("Database Error Tests", () => {
     });
 
     describe("DbTableNotFoundError", () => {
-      it("should throw DbTableNotFoundError for non-existent table", async ({
-        expect,
-      }) => {
+      it("should throw DbTableNotFoundError for non-existent table", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -282,9 +268,7 @@ describe("Database Error Tests", () => {
     });
 
     describe("DbColumnNotFoundError", () => {
-      it("should throw DbColumnNotFoundError for non-existent column", async ({
-        expect,
-      }) => {
+      it("should throw DbColumnNotFoundError for non-existent column", async () => {
         const alepha = Alepha.create();
         const app = alepha.inject(App);
         await alepha.start();
@@ -307,9 +291,7 @@ describe("Database Error Tests", () => {
 
   describe("SQLite", () => {
     describe("DbConflictError", () => {
-      it("should throw DbConflictError on unique constraint violation", async ({
-        expect,
-      }) => {
+      it("should throw DbConflictError on unique constraint violation", async () => {
         const alepha = Alepha.create().with({
           provide: DatabaseProvider,
           use: NodeSqliteProvider,
@@ -344,9 +326,7 @@ describe("Database Error Tests", () => {
     });
 
     describe("DbForeignKeyError", () => {
-      it("should throw DbForeignKeyError when deleting referenced entity", async ({
-        expect,
-      }) => {
+      it("should throw DbForeignKeyError when deleting referenced entity", async () => {
         const alepha = Alepha.create().with({
           provide: DatabaseProvider,
           use: NodeSqliteProvider,
@@ -390,9 +370,7 @@ describe("Database Error Tests", () => {
         }
       });
 
-      it("should have generic message for SQLite (no table name available)", async ({
-        expect,
-      }) => {
+      it("should have generic message for SQLite (no table name available)", async () => {
         const alepha = Alepha.create().with({
           provide: DatabaseProvider,
           use: NodeSqliteProvider,
@@ -433,9 +411,7 @@ describe("Database Error Tests", () => {
     });
 
     describe("DbNotNullError", () => {
-      it("should throw DbNotNullError when inserting null into required field via raw SQL", async ({
-        expect,
-      }) => {
+      it("should throw DbNotNullError when inserting null into required field via raw SQL", async () => {
         const alepha = Alepha.create().with({
           provide: DatabaseProvider,
           use: NodeSqliteProvider,
@@ -467,9 +443,7 @@ describe("Database Error Tests", () => {
     });
 
     describe("DbTableNotFoundError", () => {
-      it("should throw DbTableNotFoundError for non-existent table", async ({
-        expect,
-      }) => {
+      it("should throw DbTableNotFoundError for non-existent table", async () => {
         const alepha = Alepha.create().with({
           provide: DatabaseProvider,
           use: NodeSqliteProvider,
@@ -498,9 +472,7 @@ describe("Database Error Tests", () => {
     });
 
     describe("DbColumnNotFoundError", () => {
-      it("should throw DbColumnNotFoundError for non-existent column", async ({
-        expect,
-      }) => {
+      it("should throw DbColumnNotFoundError for non-existent column", async () => {
         const alepha = Alepha.create().with({
           provide: DatabaseProvider,
           use: NodeSqliteProvider,
@@ -530,7 +502,7 @@ describe("Database Error Tests", () => {
   });
 
   describe("Error Properties", () => {
-    it("DbConflictError should have correct properties", async ({ expect }) => {
+    it("DbConflictError should have correct properties", async () => {
       const error = new DbConflictError("Test conflict");
       expect(error.name).toBe("DbConflictError");
       expect(error.status).toBe(409);
@@ -585,7 +557,7 @@ describe("Database Error Tests", () => {
     });
 
     // DbNotNullError tests
-    it("DbNotNullError should have correct properties", async ({ expect }) => {
+    it("DbNotNullError should have correct properties", async () => {
       const error = new DbNotNullError("Test not null", undefined, {
         column: "email",
         table: "users",
@@ -623,7 +595,7 @@ describe("Database Error Tests", () => {
     });
 
     // DbDeadlockError tests
-    it("DbDeadlockError should have correct properties", async ({ expect }) => {
+    it("DbDeadlockError should have correct properties", async () => {
       const error = new DbDeadlockError("Deadlock detected");
       expect(error.name).toBe("DbDeadlockError");
       expect(error.status).toBe(409);

@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
-import { QueryManager } from "./QueryManager.ts";
+import { QueryManager } from "../services/QueryManager.ts";
 
 describe("QueryManager", () => {
   const alepha = Alepha.create();

@@ -26,6 +26,7 @@ export default defineConfig({
       // for testing, let's use Paris timezone as default :)
       TZ: "Europe/Paris",
       // database connection string for tests, installed via docker-compose
+      POSTGRES_URL: "postgres://postgres:postgres@127.0.0.1:5432/postgres",
       DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:5432/postgres",
       // azure blob storage connection string for tests, using azurite via docker-compose
       AZ_STORAGE_CONNECTION_STRING:

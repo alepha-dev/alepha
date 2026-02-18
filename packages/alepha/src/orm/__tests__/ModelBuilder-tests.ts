@@ -1,10 +1,14 @@
-import { Alepha, t } from "alepha";
+import type { Alepha } from "alepha";
+import { t } from "alepha";
 import { sql } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { expect } from "vitest";
 import { $entity, $repository } from "../index.ts";
 import { db } from "../providers/DatabaseTypeProvider.ts";
 
-// Define test entities with all features
+// ---------------------------------------------------------------------------
+// Entities for testModelBuilderFeatures
+// ---------------------------------------------------------------------------
+
 const roleEntity = $entity({
   name: "roles",
   schema: t.object({
@@ -33,15 +37,12 @@ const userEntity = $entity({
     status: t.string(),
   }),
   indexes: [
-    // Simple index
     "email",
-    // Unique index with name
     {
       column: "username",
       unique: true,
       name: "unique_username_idx",
     },
-    // Composite index
     {
       columns: ["roleId", "status"],
       name: "role_status_idx",
@@ -54,13 +55,11 @@ const userEntity = $entity({
     },
   ],
   constraints: [
-    // Check constraint
     {
       columns: ["age"],
       check: sql`age >= 18 AND age <= 120`,
       name: "valid_age_range",
     },
-    // Composite unique constraint
     {
       columns: ["email", "username"],
       unique: true,
@@ -81,7 +80,6 @@ const postEntity = $entity({
     tags: t.optional(t.array(t.string())),
   }),
   indexes: [
-    // Multiple indexes
     "title",
     {
       column: "published",
@@ -113,17 +111,17 @@ const postEntity = $entity({
   ],
 });
 
-// Test app with repositories
 class TestApp {
   roles = $repository(roleEntity);
   users = $repository(userEntity);
   posts = $repository(postEntity);
 }
 
-/**
- * Shared test function that runs on both PostgreSQL and SQLite
- */
-const testModelBuilderFeatures = async (alepha: Alepha) => {
+// ---------------------------------------------------------------------------
+// testModelBuilderFeatures
+// ---------------------------------------------------------------------------
+
+export const testModelBuilderFeatures = async (alepha: Alepha) => {
   const app = alepha.inject(TestApp);
   await alepha.start();
 
@@ -298,193 +296,129 @@ const testModelBuilderFeatures = async (alepha: Alepha) => {
   expect(publishedPosts.length).toBeGreaterThan(0);
   expect(publishedPosts[0].published).toBe(true);
 
-  // Test 5: Foreign key cascade behavior
-  // When we delete a user, their posts should be affected based on FK settings
-  // (Note: The actual cascade behavior depends on the FK configuration)
-
   // Clean up
   await app.posts.clear({ force: true });
   await app.users.clear({ force: true });
   await app.roles.clear({ force: true });
 };
 
-describe("ModelBuilder Integration Tests", () => {
-  it("should handle all entity options correctly in PostgreSQL", async () => {
-    await testModelBuilderFeatures(Alepha.create());
+// ---------------------------------------------------------------------------
+// testCustomConfig
+// ---------------------------------------------------------------------------
+
+export const testCustomConfig = async (alepha: Alepha) => {
+  const customEntity = $entity({
+    name: "custom_table",
+    schema: t.object({
+      id: db.primaryKey(),
+      data: t.string(),
+    }),
+    config: (self) => {
+      return [];
+    },
   });
 
-  it("should handle all entity options correctly in SQLite", async () => {
-    await testModelBuilderFeatures(
-      Alepha.create({
-        env: {
-          DATABASE_URL: "sqlite://:memory:",
-        },
-      }),
-    );
-  });
+  class CustomApp {
+    custom = $repository(customEntity);
+  }
 
-  it("should handle entities with custom config in PostgreSQL", async () => {
-    // Test entity with custom config function
-    const customEntity = $entity({
-      name: "custom_table",
-      schema: t.object({
-        id: db.primaryKey(),
-        data: t.string(),
-      }),
-      config: (self) => {
-        // Custom config could add additional indexes, constraints, etc.
-        // This is called during table creation
-        return [];
+  const app = alepha.inject(CustomApp);
+  await alepha.start();
+
+  const record = await app.custom.create({
+    data: "test data",
+  });
+  expect(record.id).toBeDefined();
+  expect(record.data).toBe("test data");
+
+  await app.custom.clear({ force: true });
+};
+
+// ---------------------------------------------------------------------------
+// testComplexRelationships
+// ---------------------------------------------------------------------------
+
+export const testComplexRelationships = async (alepha: Alepha) => {
+  const categoryEntity = $entity({
+    name: "categories",
+    schema: t.object({
+      id: db.primaryKey(),
+      name: t.string(),
+    }),
+    indexes: [
+      {
+        column: "name",
+        unique: true,
       },
-    });
-
-    class CustomApp {
-      custom = $repository(customEntity);
-    }
-
-    const alepha = Alepha.create();
-    const app = alepha.inject(CustomApp);
-    await alepha.start();
-
-    const record = await app.custom.create({
-      data: "test data",
-    });
-    expect(record.id).toBeDefined();
-    expect(record.data).toBe("test data");
-
-    await app.custom.clear({ force: true });
+    ],
   });
 
-  it("should handle entities with custom config in SQLite", async () => {
-    // Test entity with custom config function
-    const customEntity = $entity({
-      name: "custom_table_sqlite",
-      schema: t.object({
-        id: db.primaryKey(),
-        data: t.string(),
-      }),
-      config: (self) => {
-        // Custom config for SQLite
-        return [];
+  const productEntity = $entity({
+    name: "products",
+    schema: t.object({
+      id: db.primaryKey(),
+      name: t.string(),
+      categoryId: t.integer(),
+      price: t.number(),
+    }),
+    indexes: [
+      "name",
+      {
+        columns: ["categoryId", "price"],
+        name: "category_price_idx",
       },
-    });
-
-    class CustomApp {
-      custom = $repository(customEntity);
-    }
-
-    const alepha = Alepha.create({
-      env: {
-        DATABASE_URL: "sqlite://:memory:",
+    ],
+    foreignKeys: [
+      {
+        columns: ["categoryId"],
+        foreignColumns: [() => categoryEntity.cols.id],
       },
-    });
-    const app = alepha.inject(CustomApp);
-    await alepha.start();
-
-    const record = await app.custom.create({
-      data: "test data sqlite",
-    });
-    expect(record.id).toBeDefined();
-    expect(record.data).toBe("test data sqlite");
-
-    await app.custom.clear({ force: true });
+    ],
+    constraints: [
+      {
+        columns: ["price"],
+        check: sql`price > 0`,
+        name: "positive_price",
+      },
+    ],
   });
 
-  it("should handle complex nested relationships", async () => {
-    const testComplexRelationships = async (alepha: Alepha) => {
-      // Category -> Product -> OrderItem -> Order -> User
-      const categoryEntity = $entity({
-        name: "categories",
-        schema: t.object({
-          id: db.primaryKey(),
-          name: t.string(),
-        }),
-        indexes: [
-          {
-            column: "name",
-            unique: true,
-          },
-        ],
-      });
+  class ComplexApp {
+    categories = $repository(categoryEntity);
+    products = $repository(productEntity);
+  }
 
-      const productEntity = $entity({
-        name: "products",
-        schema: t.object({
-          id: db.primaryKey(),
-          name: t.string(),
-          categoryId: t.integer(),
-          price: t.number(),
-        }),
-        indexes: [
-          "name",
-          {
-            columns: ["categoryId", "price"],
-            name: "category_price_idx",
-          },
-        ],
-        foreignKeys: [
-          {
-            columns: ["categoryId"],
-            foreignColumns: [() => categoryEntity.cols.id],
-          },
-        ],
-        constraints: [
-          {
-            columns: ["price"],
-            check: sql`price > 0`,
-            name: "positive_price",
-          },
-        ],
-      });
+  const app = alepha.inject(ComplexApp);
+  await alepha.start();
 
-      class ComplexApp {
-        categories = $repository(categoryEntity);
-        products = $repository(productEntity);
-      }
-
-      const app = alepha.inject(ComplexApp);
-      await alepha.start();
-
-      // Create test data
-      const electronics = await app.categories.create({
-        name: "Electronics",
-      });
-
-      const laptop = await app.products.create({
-        name: "Laptop",
-        categoryId: electronics.id,
-        price: 999.99,
-      });
-
-      expect(laptop.categoryId).toBe(electronics.id);
-      expect(laptop.price).toBe(999.99);
-
-      // Test constraint
-      try {
-        await app.products.create({
-          name: "Invalid Product",
-          categoryId: electronics.id,
-          price: -10, // Invalid price
-        });
-        expect.fail("Should have thrown check constraint error");
-      } catch (error) {
-        // Expected
-        expect(error).toBeDefined();
-      }
-
-      // Clean up
-      await app.products.clear({ force: true });
-      await app.categories.clear({ force: true });
-    };
-
-    // Test on both databases
-    await testComplexRelationships(Alepha.create());
-    await testComplexRelationships(
-      Alepha.create({
-        env: {
-          DATABASE_URL: "sqlite://:memory:",
-        },
-      }),
-    );
+  // Create test data
+  const electronics = await app.categories.create({
+    name: "Electronics",
   });
-});
+
+  const laptop = await app.products.create({
+    name: "Laptop",
+    categoryId: electronics.id,
+    price: 999.99,
+  });
+
+  expect(laptop.categoryId).toBe(electronics.id);
+  expect(laptop.price).toBe(999.99);
+
+  // Test constraint
+  try {
+    await app.products.create({
+      name: "Invalid Product",
+      categoryId: electronics.id,
+      price: -10, // Invalid price
+    });
+    expect.fail("Should have thrown check constraint error");
+  } catch (error) {
+    // Expected
+    expect(error).toBeDefined();
+  }
+
+  // Clean up
+  await app.products.clear({ force: true });
+  await app.categories.clear({ force: true });
+};

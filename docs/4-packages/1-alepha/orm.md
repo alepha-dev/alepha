@@ -38,7 +38,7 @@ Full-featured database abstraction built on Drizzle ORM with complete type safet
 - [`$repository`](/docs/reference-primitives-$repository) — Get the repository for the given entity.
 - [`$seed`](/docs/reference-primitives-$seed) — * Seed handler, executed inside a database transaction.
 - [`$sequence`](/docs/reference-primitives-$sequence) — Creates a PostgreSQL sequence primitive for generating unique numeric values.
-- [`$transaction`](/docs/reference-primitives-$transaction) — Creates a transaction primitive for database operations requiring atomicity and consistency.
+- [`$transactional`](/docs/reference-primitives-$transactional) — * PostgreSQL transaction configuration (isolation level, access mode, etc.).
 
 ### Environment Variables
 

@@ -1,0 +1,68 @@
+import { type Alepha, TypeBoxError, t } from "alepha";
+import { eq } from "drizzle-orm";
+import { expect } from "vitest";
+import { $entity, $repository, db, sql } from "../index.ts";
+
+const userEntity = $entity({
+  name: "users",
+  schema: t.object({
+    id: db.primaryKey(t.int64()),
+    name: t.text(),
+    guildId: t.optional(t.integer()),
+  }),
+  indexes: [{ column: "name", unique: true }],
+});
+
+class App {
+  users = $repository(userEntity);
+}
+
+export const testExecuteBasicSqlQueries = async (alepha: Alepha) => {
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  const name = "Alepha";
+  await app.users.create({
+    name,
+  });
+
+  expect(
+    await app.users.query(
+      (t) => sql`SELECT * FROM ${t} WHERE ${t.name} = ${name}`,
+      t.pick(userEntity.schema, ["name"]),
+    ),
+  ).toEqual([
+    {
+      name,
+    },
+  ]);
+
+  expect(
+    await app.users.query(
+      (t, db) => db.select({ name: t.name }).from(t).where(eq(t.name, name)),
+      t.pick(userEntity.schema, ["name"]),
+    ),
+  ).toEqual([
+    {
+      name,
+    },
+  ]);
+
+  expect(
+    await app.users.query(
+      (t) => sql`SELECT ${t.name} FROM ${t} WHERE ${t.name} = ${name}`,
+      t.pick(userEntity.schema, ["name"]),
+    ),
+  ).toEqual([
+    {
+      name,
+    },
+  ]);
+
+  // by default execute expects a full schema, so this should throw
+  await expect(() =>
+    app.users.query(
+      (t) => sql`SELECT ${t.name} FROM ${t} WHERE ${t.name} = ${name}`,
+    ),
+  ).rejects.toThrowError(TypeBoxError);
+};
