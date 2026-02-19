@@ -1,4 +1,4 @@
-import { $env, t } from "alepha";
+import { t } from "alepha";
 import { $head, type Head } from "alepha/react/head";
 import { $page, NotFound } from "alepha/react/router";
 import { HttpError, NotFoundError } from "alepha/server";
@@ -15,13 +15,6 @@ declare module "alepha/react/router" {
 }
 
 export class AppRouter {
-  env = $env(
-    t.object({
-      UMAMI_URL: t.optional(t.string()),
-      UMAMI_UUID: t.optional(t.string()),
-    }),
-  );
-
   head = $head(() => {
     const ogTitle = "Alepha Framework - TypeScript Made Easy";
     const head: Head = {
@@ -73,15 +66,6 @@ export class AppRouter {
         },
       ],
     };
-
-    if (this.env.UMAMI_URL && this.env.UMAMI_UUID) {
-      head.script ??= [];
-      head.script.push({
-        defer: true,
-        src: this.env.UMAMI_URL,
-        "data-website-id": this.env.UMAMI_UUID,
-      });
-    }
 
     return head;
   });

@@ -123,9 +123,6 @@ jobs:
 
       - name: Build Documentation
         run: cd apps/docs && yarn build && yarn alepha gen:llms
-        env:
-          UMAMI_URL: ${{ secrets.UMAMI_URL }}
-          UMAMI_UUID: ${{ secrets.UMAMI_UUID }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
