@@ -340,8 +340,9 @@ export class QueryManager {
 
       if (dialect === "sqlite") {
         // SQLite doesn't have ilike, use LOWER() for case-insensitive matching
+        // ESCAPE '\\' is required for SQLite to recognize backslash as escape character
         conditions.push(
-          sql`LOWER(${column}) LIKE LOWER(${encodeValue(`%${escapedValue}%`)})`,
+          sql`LOWER(${column}) LIKE LOWER(${encodeValue(`%${escapedValue}%`)}) ESCAPE '\\'`,
         );
       } else {
         conditions.push(ilike(column, encodeValue(`%${escapedValue}%`)));
@@ -358,7 +359,7 @@ export class QueryManager {
       if (dialect === "sqlite") {
         // SQLite doesn't have ilike, use LOWER() for case-insensitive matching
         conditions.push(
-          sql`LOWER(${column}) LIKE LOWER(${encodeValue(`${escapedValue}%`)})`,
+          sql`LOWER(${column}) LIKE LOWER(${encodeValue(`${escapedValue}%`)}) ESCAPE '\\'`,
         );
       } else {
         conditions.push(ilike(column, encodeValue(`${escapedValue}%`)));
@@ -375,7 +376,7 @@ export class QueryManager {
       if (dialect === "sqlite") {
         // SQLite doesn't have ilike, use LOWER() for case-insensitive matching
         conditions.push(
-          sql`LOWER(${column}) LIKE LOWER(${encodeValue(`%${escapedValue}`)})`,
+          sql`LOWER(${column}) LIKE LOWER(${encodeValue(`%${escapedValue}`)}) ESCAPE '\\'`,
         );
       } else {
         conditions.push(ilike(column, encodeValue(`%${escapedValue}`)));

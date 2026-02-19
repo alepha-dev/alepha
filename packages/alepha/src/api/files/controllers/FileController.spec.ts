@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { $bucket } from "alepha/bucket";
 import { DateTimeProvider } from "alepha/datetime";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 import { FileController, FileService } from "../index.ts";
@@ -17,7 +18,7 @@ describe("FileController", () => {
   ) => any;
 
   const setup = async () => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     const app = alepha.inject(App);
     const ctrl = alepha.inject(FileController);
     const service = alepha.inject(FileService);

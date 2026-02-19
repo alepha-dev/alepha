@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $sequence } from "../index.ts";
+import { $sequence } from "../core/primitives/$sequence.ts";
+import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 describe("$sequence", () => {
   class App {
@@ -8,7 +9,7 @@ describe("$sequence", () => {
     seq2 = $sequence({ startWith: 100, increment: 2 });
   }
 
-  const alepha = Alepha.create();
+  const alepha = Alepha.create().with(AlephaOrmPostgres);
   const app = alepha.inject(App);
 
   it("should generate sequential numbers", async () => {

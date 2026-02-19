@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 import {
   AlephaApiVerification,
@@ -8,7 +9,9 @@ import {
 } from "../index.ts";
 
 const createTest = async () => {
-  const alepha = Alepha.create().with(AlephaApiVerification);
+  const alepha = Alepha.create()
+    .with(AlephaOrmPostgres)
+    .with(AlephaApiVerification);
   const parameters = alepha.inject(VerificationParameters).get("code");
   const controller = alepha.inject(VerificationController);
   const dateTimeProvider = alepha.inject(DateTimeProvider);

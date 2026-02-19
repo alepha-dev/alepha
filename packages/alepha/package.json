@@ -247,12 +247,18 @@
       "default": "./src/mcp/index.ts"
     },
     "./orm": {
-      "types": "./src/orm/index.ts",
-      "react-native": "./src/orm/index.browser.ts",
-      "browser": "./src/orm/index.browser.ts",
-      "bun": "./src/orm/index.bun.ts",
-      "import": "./src/orm/index.ts",
-      "default": "./src/orm/index.ts"
+      "types": "./src/orm/core/index.ts",
+      "react-native": "./src/orm/core/index.browser.ts",
+      "browser": "./src/orm/core/index.browser.ts",
+      "bun": "./src/orm/core/index.bun.ts",
+      "import": "./src/orm/core/index.ts",
+      "default": "./src/orm/core/index.ts"
+    },
+    "./orm/postgres": {
+      "types": "./src/orm/postgres/index.ts",
+      "bun": "./src/orm/postgres/index.bun.ts",
+      "import": "./src/orm/postgres/index.ts",
+      "default": "./src/orm/postgres/index.ts"
     },
     "./queue": {
       "types": "./src/queue/core/index.ts",

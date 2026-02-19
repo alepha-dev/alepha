@@ -161,6 +161,41 @@ export class NodeSqliteProvider extends DatabaseProvider {
     return this.sqlite;
   }
 
+  /**
+   * SQLite transaction override.
+   *
+   * The base class uses `this.db.transaction()` which goes through drizzle's
+   * better-sqlite3 driver. That driver wraps a synchronous `BEGIN`/`COMMIT`
+   * around the callback, so async callbacks commit before the work finishes.
+   *
+   * This override uses direct `BEGIN`/`COMMIT`/`ROLLBACK` on the native
+   * connection with proper `await`, making async transactions safe.
+   */
+  public override async transactional<R>(fn: () => Promise<R>): Promise<R> {
+    const existing = this.alepha.get("alepha.orm.tx");
+    if (existing) {
+      return fn();
+    }
+
+    // Set the tx marker to the drizzle db itself — SQLite transactions are
+    // connection-scoped, so all operations on this connection participate.
+    this.alepha.store.set("alepha.orm.tx", this.db as any, {
+      skipEvents: true,
+    });
+
+    this.sqlite.exec("BEGIN");
+    try {
+      const result = await fn();
+      this.sqlite.exec("COMMIT");
+      return result;
+    } catch (error) {
+      this.sqlite.exec("ROLLBACK");
+      throw error;
+    } finally {
+      this.alepha.store.set("alepha.orm.tx", undefined, { skipEvents: true });
+    }
+  }
+
   public override async execute(
     query: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
@@ -263,10 +298,21 @@ export class NodeSqliteProvider extends DatabaseProvider {
       };
     }
 
-    // Shim prepare() to add stmt.raw() on returned statements
+    // Shim prepare() to add stmt.raw() on returned statements.
+    //
+    // node:sqlite returns objects from stmt.all(), but drizzle's better-sqlite3
+    // driver expects arrays from stmt.raw().all(). We approximate this with
+    // Object.values(row). However, JOIN queries produce duplicate column names
+    // (e.g. "id" from both tables), and JavaScript objects collapse duplicate
+    // keys — losing values and shifting the positional mapping.
+    //
+    // Fix: for SELECT queries containing a JOIN, rewrite the column list with
+    // unique positional aliases (__c0, __c1, ...) so every column gets a
+    // distinct key and Object.values() preserves all values in order.
     const origPrepare = db.prepare.bind(db);
     db.prepare = (sql: string) => {
-      const stmt = origPrepare(sql);
+      const aliased = NodeSqliteProvider.aliasSelectColumns(sql);
+      const stmt = origPrepare(aliased);
       if (!stmt.raw) {
         stmt.raw = () => ({
           all: (...args: any[]) =>
@@ -279,6 +325,77 @@ export class NodeSqliteProvider extends DatabaseProvider {
       }
       return stmt;
     };
+  }
+
+  /**
+   * For SELECT queries with JOINs, add unique positional aliases to each column
+   * so that `Object.values()` preserves all values even when column names collide.
+   *
+   * Only rewrites when the query is a SELECT containing a JOIN keyword and the
+   * column list has duplicate base names.
+   */
+  protected static aliasSelectColumns(sql: string): string {
+    const trimmed = sql.trimStart();
+    const lower = trimmed.toLowerCase();
+
+    // Only rewrite SELECT queries that contain a JOIN
+    if (!lower.startsWith("select ") || !/ join /i.test(trimmed)) {
+      return sql;
+    }
+
+    // Find the FROM clause (word boundary, not inside quotes)
+    const fromIdx = trimmed.search(/\bfrom\b/i);
+    if (fromIdx === -1) return sql;
+
+    const selectPart = trimmed.substring(0, fromIdx);
+    const rest = trimmed.substring(fromIdx);
+
+    // Extract the SELECT keyword (+ optional DISTINCT)
+    const kw = selectPart.match(/^(\s*select\s+(?:distinct\s+)?)/i);
+    if (!kw) return sql;
+
+    const prefix = kw[0];
+    const columnsPart = selectPart.substring(prefix.length).trim();
+
+    // Split by top-level commas (not inside parentheses)
+    const columns: string[] = [];
+    let depth = 0;
+    let cur = "";
+    for (const ch of columnsPart) {
+      if (ch === "(") depth++;
+      else if (ch === ")") depth--;
+      else if (ch === "," && depth === 0) {
+        columns.push(cur.trim());
+        cur = "";
+        continue;
+      }
+      cur += ch;
+    }
+    if (cur.trim()) columns.push(cur.trim());
+
+    if (columns.length <= 1) return sql;
+
+    // Extract the trailing column name from each expression to check for duplicates
+    const baseNames = columns.map((col) => {
+      const m = col.match(/"(\w+)"\s*$/);
+      return m ? m[1] : col;
+    });
+
+    const seen = new Set<string>();
+    let hasDuplicates = false;
+    for (const name of baseNames) {
+      if (seen.has(name)) {
+        hasDuplicates = true;
+        break;
+      }
+      seen.add(name);
+    }
+
+    if (!hasDuplicates) return sql;
+
+    // Alias every column with a unique positional name
+    const aliased = columns.map((col, i) => `${col} as "__c${i}"`).join(", ");
+    return `${prefix}${aliased} ${rest}`;
   }
 
   protected initDrizzle(): void {
@@ -301,7 +418,8 @@ export class NodeSqliteProvider extends DatabaseProvider {
       this.proxyDb = sqliteProxyDrizzle(
         async (sql: string, params: any[], method: string) => {
           const start = performance.now();
-          const statement = this.sqlite.prepare(sql);
+          const aliased = NodeSqliteProvider.aliasSelectColumns(sql);
+          const statement = this.sqlite.prepare(aliased);
 
           try {
             if (method === "get") {

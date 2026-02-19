@@ -1,4 +1,5 @@
 import { $module, Alepha } from "alepha";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 import { $audit, AlephaApiAudits, AuditService } from "../index.ts";
 
@@ -75,6 +76,7 @@ const setup = async () => {
     env: { LOG_LEVEL: "error" },
   });
 
+  alepha.with(AlephaOrmPostgres);
   alepha.with(AlephaApiAudits);
 
   // Create test module with audit types

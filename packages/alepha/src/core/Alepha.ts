@@ -162,8 +162,8 @@ export class Alepha {
     // merge process.env with the state.env
     if (typeof process === "object" && typeof process.env === "object") {
       state.env = {
-        ...state.env,
         ...process.env,
+        ...state.env,
       };
     }
 

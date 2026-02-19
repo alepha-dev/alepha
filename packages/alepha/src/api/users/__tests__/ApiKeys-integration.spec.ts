@@ -4,6 +4,7 @@ import { AdminApiKeyController, ApiKeyController } from "alepha/api/keys";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $secure, AlephaSecurity } from "alepha/security";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
@@ -24,6 +25,7 @@ const setup = async () => {
     env: { LOG_LEVEL: "error" },
   });
 
+  alepha.with(AlephaOrmPostgres);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);

@@ -1,4 +1,5 @@
 import { Alepha, t } from "alepha";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
 import { $parameter, AlephaApiParameters, ParameterStore } from "../index.ts";
 
@@ -17,7 +18,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -39,7 +40,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -77,7 +78,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -110,7 +111,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -138,7 +139,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -171,7 +172,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -191,7 +192,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -218,7 +219,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -245,7 +246,7 @@ describe("$parameter", () => {
 
 describe("ParameterStore", () => {
   it("should build parameter tree from names", async () => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -268,7 +269,7 @@ describe("ParameterStore", () => {
   });
 
   it("should manage status transitions correctly", async () => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -288,7 +289,7 @@ describe("ParameterStore", () => {
   });
 
   it("should get parameters by status", async () => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -306,7 +307,7 @@ describe("ParameterStore", () => {
   });
 
   it("should detect schema migration", async () => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -325,7 +326,7 @@ describe("ParameterStore", () => {
   });
 
   it("should store previous content for rollback", async () => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -338,7 +339,7 @@ describe("ParameterStore", () => {
   });
 
   it("should get all parameter names", async () => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -366,13 +367,13 @@ describe("Cross-instance sync", () => {
     }
 
     // Create first Alepha instance
-    const alepha1 = Alepha.create();
+    const alepha1 = Alepha.create().with(AlephaOrmPostgres);
     alepha1.with(AlephaApiParameters);
     alepha1.with(AppConfig);
     await alepha1.start();
 
     // Create second Alepha instance (shares same in-memory SQLite db in test env)
-    const alepha2 = Alepha.create();
+    const alepha2 = Alepha.create().with(AlephaOrmPostgres);
     alepha2.with(AlephaApiParameters);
     alepha2.with(AppConfig);
     await alepha2.start();
@@ -441,7 +442,7 @@ describe("Cross-instance sync", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -482,7 +483,7 @@ describe("Cross-instance sync", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();

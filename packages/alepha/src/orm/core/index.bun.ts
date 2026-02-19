@@ -3,15 +3,11 @@ import { AlephaDateTime } from "alepha/datetime";
 import { $entity } from "./primitives/$entity.ts";
 import { $sequence } from "./primitives/$sequence.ts";
 import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
-import { BunPostgresProvider } from "./providers/drivers/BunPostgresProvider.ts";
 import { BunSqliteProvider } from "./providers/drivers/BunSqliteProvider.ts";
 import { CloudflareD1Provider } from "./providers/drivers/CloudflareD1Provider.ts";
 import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
-import { PglitePostgresProvider } from "./providers/drivers/PglitePostgresProvider.ts";
-import { PostgresProvider } from "./providers/drivers/PostgresProvider.ts";
 import { RepositoryProvider } from "./providers/RepositoryProvider.ts";
 import { PgRelationManager } from "./services/PgRelationManager.ts";
-import { PostgresModelBuilder } from "./services/PostgresModelBuilder.ts";
 import { QueryManager } from "./services/QueryManager.ts";
 import { Repository } from "./services/Repository.ts";
 import { SqliteModelBuilder } from "./services/SqliteModelBuilder.ts";
@@ -19,7 +15,6 @@ import { SqliteModelBuilder } from "./services/SqliteModelBuilder.ts";
 export const SqliteProvider = BunSqliteProvider;
 
 export * from "./index.shared-server.ts";
-export * from "./providers/drivers/BunPostgresProvider.ts";
 export * from "./providers/drivers/BunSqliteProvider.ts";
 
 export const AlephaOrm = $module({
@@ -28,13 +23,9 @@ export const AlephaOrm = $module({
   services: [
     AlephaDateTime,
     DatabaseProvider,
-    PostgresProvider,
-    BunPostgresProvider,
     BunSqliteProvider,
-    PglitePostgresProvider,
     CloudflareD1Provider,
     SqliteModelBuilder,
-    PostgresModelBuilder,
     DrizzleKitProvider,
     RepositoryProvider,
     Repository,
@@ -52,7 +43,6 @@ export const AlephaOrm = $module({
     alepha.with(RepositoryProvider);
 
     const url = env.DATABASE_URL;
-    const isPostgres = url?.startsWith("postgres:");
 
     if (url?.startsWith("d1:")) {
       alepha.with({
@@ -63,12 +53,8 @@ export const AlephaOrm = $module({
       return;
     }
 
-    if (isPostgres) {
-      alepha.with({
-        optional: true,
-        provide: DatabaseProvider,
-        use: BunPostgresProvider,
-      });
+    // PostgreSQL URLs are handled by AlephaOrmPostgres — skip here
+    if (url?.startsWith("postgres:") || url?.startsWith("pglite:")) {
       return;
     }
 

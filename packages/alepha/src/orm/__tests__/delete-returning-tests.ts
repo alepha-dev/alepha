@@ -1,8 +1,8 @@
 import { type Alepha, t } from "alepha";
 import { expect } from "vitest";
-import { DbEntityNotFoundError } from "../errors/DbEntityNotFoundError.ts";
-import { $entity, $repository } from "../index.ts";
-import { db } from "../providers/DatabaseTypeProvider.ts";
+import { DbEntityNotFoundError } from "../core/errors/DbEntityNotFoundError.ts";
+import { $entity, $repository } from "../core/index.ts";
+import { db } from "../core/providers/DatabaseTypeProvider.ts";
 
 const userEntity = $entity({
   name: "users",

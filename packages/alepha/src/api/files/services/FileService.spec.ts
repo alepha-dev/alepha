@@ -6,6 +6,7 @@ import {
   LocalFileStorageProvider,
   MemoryFileStorageProvider,
 } from "alepha/bucket";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 import { AlephaApiFiles, FileController } from "../index.ts";
@@ -14,6 +15,7 @@ const testFileServiceOperations = async (
   provider: Service<FileStorageProvider>,
 ) => {
   const alepha = Alepha.create()
+    .with(AlephaOrmPostgres)
     .with({
       provide: FileStorageProvider,
       use: provider,

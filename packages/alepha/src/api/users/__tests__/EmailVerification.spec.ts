@@ -2,6 +2,7 @@ import { Alepha } from "alepha";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { AlephaSecurity } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
@@ -18,6 +19,7 @@ const setup = async () => {
     env: { LOG_LEVEL: "error" },
   });
 
+  alepha.with(AlephaOrmPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiVerification);

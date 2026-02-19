@@ -1,7 +1,7 @@
 import { type Alepha, TypeBoxError, t } from "alepha";
 import { eq } from "drizzle-orm";
 import { expect } from "vitest";
-import { $entity, $repository, db, sql } from "../index.ts";
+import { $entity, $repository, db, sql } from "../core/index.ts";
 
 const userEntity = $entity({
   name: "users",

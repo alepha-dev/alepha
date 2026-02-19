@@ -1,6 +1,7 @@
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it, vi } from "vitest";
 import {
   $job,
@@ -31,7 +32,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -61,7 +62,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -82,7 +83,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(MyService);
       await alepha.start();
 
@@ -99,7 +100,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -135,7 +136,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -162,7 +163,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -187,7 +188,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -211,7 +212,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -236,7 +237,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -261,7 +262,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -297,7 +298,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -335,7 +336,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -376,7 +377,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -410,7 +411,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -446,7 +447,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -480,7 +481,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -507,7 +508,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -544,7 +545,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -579,7 +580,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -608,7 +609,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -633,7 +634,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -661,7 +662,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -693,7 +694,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -731,7 +732,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -756,7 +757,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -783,7 +784,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -808,7 +809,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -838,7 +839,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -861,7 +862,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -900,7 +901,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -948,7 +949,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -976,7 +977,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       alepha.events.on("job:begin", beginHandler);
       await alepha.start();
@@ -1004,7 +1005,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       alepha.events.on("job:success", successHandler);
       await alepha.start();
@@ -1028,7 +1029,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       alepha.events.on("job:error", errorHandler);
       await alepha.start();
@@ -1064,7 +1065,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       alepha.events.on("job:end", endHandler);
       await alepha.start();
@@ -1090,7 +1091,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1125,7 +1126,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1145,7 +1146,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1170,7 +1171,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1190,7 +1191,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1224,7 +1225,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1257,7 +1258,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1287,7 +1288,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1308,7 +1309,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1336,7 +1337,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1364,7 +1365,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1389,7 +1390,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1421,7 +1422,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1440,7 +1441,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       alepha.inject(App);
       await alepha.start();
 
@@ -1465,7 +1466,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1487,7 +1488,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1514,7 +1515,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       alepha.inject(App);
 
       const provider = alepha.inject(JobProvider);
@@ -1540,7 +1541,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1580,7 +1581,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1626,7 +1627,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1666,7 +1667,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1725,7 +1726,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1764,7 +1765,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1813,7 +1814,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       alepha.events.on("job:cancel", cancelHandler);
       await alepha.start();
@@ -1857,7 +1858,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -1903,7 +1904,7 @@ describe("$job v2", () => {
         });
       }
 
-      const alepha = Alepha.create();
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 

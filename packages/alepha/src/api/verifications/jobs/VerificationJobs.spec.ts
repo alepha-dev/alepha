@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 import {
   AlephaApiVerification,
@@ -12,7 +13,9 @@ class Db {
   verifications = $repository(verifications);
 }
 
-const alepha = Alepha.create().with(AlephaApiVerification);
+const alepha = Alepha.create()
+  .with(AlephaOrmPostgres)
+  .with(AlephaApiVerification);
 const db = alepha.inject(Db);
 
 describe("VerificationJobs", () => {

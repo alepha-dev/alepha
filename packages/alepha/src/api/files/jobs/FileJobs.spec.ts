@@ -1,12 +1,13 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 import { FileJobs, FileService } from "../index.ts";
 
 describe("FileJobRegistry", () => {
   it("should remove expired files", { retry: 3 }, async () => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     const jobs = alepha.inject(FileJobs);
     const service = alepha.inject(FileService);
     const dtp = alepha.inject(DateTimeProvider);

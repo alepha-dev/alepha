@@ -1,7 +1,7 @@
 import { type Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { expect } from "vitest";
-import { $entity, $repository, db } from "../index.ts";
+import { $entity, $repository, db } from "../core/index.ts";
 
 // ============================================================================
 // testDateFiltersWithDayjs

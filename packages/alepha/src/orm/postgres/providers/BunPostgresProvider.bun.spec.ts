@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { Alepha, t } from "alepha";
-import { $entity, $repository, DatabaseProvider, db } from "../../index.ts";
+import { $entity, $repository, DatabaseProvider, db } from "alepha/orm";
 import { BunPostgresProvider } from "./BunPostgresProvider.ts";
 
 // -------------------------------------------------------------------------------------------------------------------

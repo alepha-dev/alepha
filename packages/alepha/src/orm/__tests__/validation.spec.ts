@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testBetweenValidation,
   testInArrayValidation,
@@ -15,7 +16,7 @@ describe("validation", () => {
       );
     });
     it("should validate between requires exactly 2 values (postgres)", async () => {
-      await testBetweenValidation(Alepha.create());
+      await testBetweenValidation(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 
@@ -26,7 +27,7 @@ describe("validation", () => {
       );
     });
     it("should validate notBetween requires exactly 2 values (postgres)", async () => {
-      await testNotBetweenValidation(Alepha.create());
+      await testNotBetweenValidation(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 
@@ -37,7 +38,7 @@ describe("validation", () => {
       );
     });
     it("should validate inArray requires at least one value (postgres)", async () => {
-      await testInArrayValidation(Alepha.create());
+      await testInArrayValidation(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 
@@ -48,7 +49,7 @@ describe("validation", () => {
       );
     });
     it("should validate notInArray requires at least one value (postgres)", async () => {
-      await testNotInArrayValidation(Alepha.create());
+      await testNotInArrayValidation(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 });

@@ -6,7 +6,7 @@ import {
   $transactional,
   DatabaseProvider,
   db,
-} from "../index.ts";
+} from "../core/index.ts";
 
 const item = $entity({
   name: "tx_mw_item",

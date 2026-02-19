@@ -1,6 +1,6 @@
 import type { Static } from "alepha";
 import { t } from "alepha";
-import { $entity, db } from "../../index.ts";
+import { $entity, db } from "../../core/index.ts";
 
 export const userEntity = $entity({
   name: "users",

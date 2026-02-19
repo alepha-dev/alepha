@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import {
   AlephaSecurity,
   CryptoProvider,
@@ -17,6 +18,7 @@ const setup = async (options?: { usernameEnabled?: boolean }) => {
     env: { LOG_LEVEL: "error" },
   });
 
+  alepha.with(AlephaOrmPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaApiUsers);
 

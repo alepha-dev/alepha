@@ -2,10 +2,10 @@ import { mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import type { PGlite } from "@electric-sql/pglite";
 import { $env, $hook, $inject, AlephaError, t } from "alepha";
+import { DatabaseProvider, type SQLLike } from "alepha/orm";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { PostgresModelBuilder } from "../../services/PostgresModelBuilder.ts";
-import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
+import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
 
 const envSchema = t.object({
   /**

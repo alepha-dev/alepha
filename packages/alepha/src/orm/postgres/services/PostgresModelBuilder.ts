@@ -1,4 +1,21 @@
 import { AlephaError, type TObject, type TSchema, t } from "alepha";
+import {
+  type EntityPrimitive,
+  type FromSchema,
+  ModelBuilder,
+  PG_CREATED_AT,
+  PG_ENUM,
+  PG_IDENTITY,
+  PG_PRIMARY_KEY,
+  PG_REF,
+  PG_SERIAL,
+  PG_UPDATED_AT,
+  type PgEnumOptions,
+  type PgIdentityOptions,
+  type PgRefOptions,
+  type SequencePrimitive,
+  schema,
+} from "alepha/orm";
 import type { BuildExtraConfigColumns } from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";
 import {
@@ -15,23 +32,7 @@ import {
   unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import {
-  PG_CREATED_AT,
-  PG_ENUM,
-  PG_IDENTITY,
-  PG_PRIMARY_KEY,
-  PG_REF,
-  PG_SERIAL,
-  PG_UPDATED_AT,
-  type PgEnumOptions,
-  type PgIdentityOptions,
-  type PgRefOptions,
-} from "../constants/PG_SYMBOLS.ts";
-import type { EntityPrimitive, FromSchema } from "../primitives/$entity.ts";
-import type { SequencePrimitive } from "../primitives/$sequence.ts";
 import { byte } from "../types/byte.ts";
-import { schema } from "../types/schema.ts";
-import { ModelBuilder } from "./ModelBuilder.ts";
 
 export class PostgresModelBuilder extends ModelBuilder {
   protected schemas = new Map<string, PgSchema>();

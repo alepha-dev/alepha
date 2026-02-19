@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 import { AlephaApiAudits, AuditService } from "../index.ts";
 
@@ -7,6 +8,7 @@ const setup = async () => {
     env: { LOG_LEVEL: "error" },
   });
 
+  alepha.with(AlephaOrmPostgres);
   alepha.with(AlephaApiAudits);
 
   await alepha.start();

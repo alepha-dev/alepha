@@ -8,12 +8,15 @@ import {
   t,
 } from "alepha";
 import { $lock } from "alepha/lock";
+import {
+  DatabaseProvider,
+  DbError,
+  DbMigrationError,
+  type SQLLike,
+} from "alepha/orm";
 import { sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { DbError } from "../../errors/DbError.ts";
-import { DbMigrationError } from "../../errors/DbMigrationError.ts";
-import { PostgresModelBuilder } from "../../services/PostgresModelBuilder.ts";
-import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
+import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+import { AlephaOrmPostgres } from "../postgres/index.ts";
 import { testExecuteBasicSqlQueries } from "./execute-tests.ts";
 
 describe("execute", () => {
@@ -9,6 +10,6 @@ describe("execute", () => {
     );
   });
   it("should execute basic SQL queries (postgres)", async () => {
-    await testExecuteBasicSqlQueries(Alepha.create());
+    await testExecuteBasicSqlQueries(Alepha.create().with(AlephaOrmPostgres));
   });
 });

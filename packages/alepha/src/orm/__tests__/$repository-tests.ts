@@ -1,8 +1,8 @@
 import { $hook, type Alepha, type Static, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { expect } from "vitest";
-import { DbEntityNotFoundError } from "../errors/DbEntityNotFoundError.ts";
-import { $entity, $repository, db } from "../index.ts";
+import { DbEntityNotFoundError } from "../core/errors/DbEntityNotFoundError.ts";
+import { $entity, $repository, db } from "../core/index.ts";
 import { bigEntity } from "./fixtures/bigEntitySchema.ts";
 import type { InsertUserEntity } from "./fixtures/userEntitySchema.ts";
 import { userEntity } from "./fixtures/userEntitySchema.ts";
@@ -1275,7 +1275,10 @@ class TimestampsApp {
 
 export const testCrudWithTimestamps = async (alepha: Alepha) => {
   const app = alepha.inject(TimestampsApp);
+  const dt = alepha.inject(DateTimeProvider);
   await alepha.start();
+
+  dt.pause();
 
   await app.users.create({
     name: "John",
@@ -1291,7 +1294,7 @@ export const testCrudWithTimestamps = async (alepha: Alepha) => {
   expect(r1.name).toEqual("John");
   expect(r1.createdAt).toBe(r1.updatedAt);
 
-  await new Promise((resolve) => setTimeout(resolve, 1));
+  dt.travel(1000);
 
   const r2 = await app.users.updateOne(
     { name: { eq: "John" } },

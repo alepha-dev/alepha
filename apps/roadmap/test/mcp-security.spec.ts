@@ -5,6 +5,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
 import { AlephaMcp } from "alepha/mcp";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -37,6 +38,7 @@ const setup = async (): Promise<TestContext> => {
     },
   });
 
+  alepha.with(AlephaOrmPostgres);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);

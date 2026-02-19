@@ -2,8 +2,8 @@ import type { Alepha } from "alepha";
 import { t } from "alepha";
 import { sql } from "drizzle-orm";
 import { expect } from "vitest";
-import { $entity, $repository } from "../index.ts";
-import { db } from "../providers/DatabaseTypeProvider.ts";
+import { $entity, $repository } from "../core/index.ts";
+import { db } from "../core/providers/DatabaseTypeProvider.ts";
 
 // ---------------------------------------------------------------------------
 // Entities for testModelBuilderFeatures

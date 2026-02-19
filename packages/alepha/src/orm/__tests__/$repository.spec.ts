@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testAllTypes,
   testBasicCrud,
@@ -24,7 +25,7 @@ describe("$repository", () => {
       );
     });
     it("should filter out attributes not defined in schema (postgres)", async () => {
-      await testPgAttr(Alepha.create());
+      await testPgAttr(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 
@@ -35,7 +36,7 @@ describe("$repository", () => {
       );
     });
     it("should handle all supported data types (postgres)", async () => {
-      await testAllTypes(Alepha.create());
+      await testAllTypes(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 
@@ -46,7 +47,7 @@ describe("$repository", () => {
       );
     });
     it("should support basic CRUD operations (postgres)", async () => {
-      await testBasicCrud(Alepha.create());
+      await testBasicCrud(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 
@@ -57,7 +58,7 @@ describe("$repository", () => {
       );
     });
     it("should fire hooks for all operations (postgres)", async () => {
-      await testRepositoryHooks(Alepha.create());
+      await testRepositoryHooks(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 
@@ -68,7 +69,7 @@ describe("$repository", () => {
       );
     });
     it("should support all 3 orderBy modes (postgres)", async () => {
-      await testOrderByModes(Alepha.create());
+      await testOrderByModes(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 
@@ -79,7 +80,7 @@ describe("$repository", () => {
       );
     });
     it("should support pagination with sort format (postgres)", async () => {
-      await testPaginationSort(Alepha.create());
+      await testPaginationSort(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 
@@ -90,7 +91,7 @@ describe("$repository", () => {
       );
     });
     it("should save an entity with deleted fields (postgres)", async () => {
-      await testSaveWithDeletedFields(Alepha.create());
+      await testSaveWithDeletedFields(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 
@@ -101,7 +102,7 @@ describe("$repository", () => {
       );
     });
     it("should support upsert operations (postgres)", async () => {
-      await testUpsert(Alepha.create());
+      await testUpsert(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 
@@ -112,7 +113,7 @@ describe("$repository", () => {
       );
     });
     it("should handle serial id operations (postgres)", async () => {
-      await testSerialIdOperations(Alepha.create());
+      await testSerialIdOperations(Alepha.create().with(AlephaOrmPostgres));
     });
     it("should handle uuid id operations (sqlite)", async () => {
       await testUuidIdOperations(
@@ -120,7 +121,7 @@ describe("$repository", () => {
       );
     });
     it("should handle uuid id operations (postgres)", async () => {
-      await testUuidIdOperations(Alepha.create());
+      await testUuidIdOperations(Alepha.create().with(AlephaOrmPostgres));
     });
     it("should handle multiple operators gte & lte (sqlite)", async () => {
       await testMultipleOperators(
@@ -128,7 +129,7 @@ describe("$repository", () => {
       );
     });
     it("should handle multiple operators gte & lte (postgres)", async () => {
-      await testMultipleOperators(Alepha.create());
+      await testMultipleOperators(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 
@@ -139,7 +140,7 @@ describe("$repository", () => {
       );
     });
     it("should handle CRUD with timestamps (postgres)", async () => {
-      await testCrudWithTimestamps(Alepha.create());
+      await testCrudWithTimestamps(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 
@@ -150,7 +151,7 @@ describe("$repository", () => {
       );
     });
     it("should return correct pagination metadata (postgres)", async () => {
-      await testPagination(Alepha.create());
+      await testPagination(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 });

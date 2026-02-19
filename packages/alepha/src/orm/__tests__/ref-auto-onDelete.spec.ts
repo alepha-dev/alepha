@@ -1,6 +1,7 @@
 import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
-import { $entity, $repository, db } from "../index.ts";
+import { $entity, $repository, db } from "../core/index.ts";
+import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 describe("db.ref - automatic onDelete behavior", () => {
   const categories = $entity({
@@ -41,7 +42,7 @@ describe("db.ref - automatic onDelete behavior", () => {
   }
 
   it("should cascade delete for required references", async () => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     const app = alepha.inject(App);
     await alepha.start();
 
@@ -73,7 +74,7 @@ describe("db.ref - automatic onDelete behavior", () => {
   });
 
   it("should set null for optional references", async () => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     const app = alepha.inject(App);
     await alepha.start();
 
@@ -132,7 +133,7 @@ describe("db.ref - automatic onDelete behavior", () => {
       products = $repository(customProducts);
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     const app = alepha.inject(CustomApp);
     await alepha.start();
 

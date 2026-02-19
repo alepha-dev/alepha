@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { DbEntityNotFoundError } from "alepha/orm";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
@@ -18,6 +19,7 @@ const setup = async () => {
     env: { LOG_LEVEL: "error" },
   });
 
+  alepha.with(AlephaOrmPostgres);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaSecurity);
 

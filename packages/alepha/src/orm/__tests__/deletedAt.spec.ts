@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testForceDelete,
   testNoUpdateIfAlreadyDeleted,
@@ -13,7 +14,9 @@ describe("deletedAt", () => {
     );
   });
   it("should update instead of delete (postgres)", async () => {
-    await testSoftDeleteUpdatesInsteadOfDelete(Alepha.create());
+    await testSoftDeleteUpdatesInsteadOfDelete(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
   });
 
   it("should not update if deletedAt is already set (sqlite)", async () => {
@@ -22,7 +25,7 @@ describe("deletedAt", () => {
     );
   });
   it("should not update if deletedAt is already set (postgres)", async () => {
-    await testNoUpdateIfAlreadyDeleted(Alepha.create());
+    await testNoUpdateIfAlreadyDeleted(Alepha.create().with(AlephaOrmPostgres));
   });
 
   it("should force delete (sqlite)", async () => {
@@ -31,6 +34,6 @@ describe("deletedAt", () => {
     );
   });
   it("should force delete (postgres)", async () => {
-    await testForceDelete(Alepha.create());
+    await testForceDelete(Alepha.create().with(AlephaOrmPostgres));
   });
 });

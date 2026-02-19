@@ -1,6 +1,7 @@
 import { Alepha, t } from "alepha";
 import { dayjs } from "alepha/datetime";
 import { $entity, $repository, db, pageQuerySchema } from "alepha/orm";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $action, HttpError } from "alepha/server";
 import { beforeEach, describe, test } from "vitest";
 
@@ -245,7 +246,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
 
   beforeEach(async () => {
     // Let Alepha use the default database configuration
-    alepha = Alepha.create();
+    alepha = Alepha.create().with(AlephaOrmPostgres);
     app = alepha.inject(UserCrudApp);
     await alepha.start();
   });

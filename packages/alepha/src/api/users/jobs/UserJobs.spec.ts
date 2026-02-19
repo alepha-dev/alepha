@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaApiJobs, jobExecutionEntity } from "alepha/api/jobs";
-import { $repository, AlephaOrm } from "alepha/orm";
+import { $repository } from "alepha/orm";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, test, vi } from "vitest";
 import { sessions } from "../entities/sessions.ts";
 import { users } from "../entities/users.ts";
@@ -9,7 +10,9 @@ import { UserJobs } from "./UserJobs.ts";
 describe("UserJobs", () => {
   describe("purgeExpiredSessions", () => {
     test("should delete expired sessions", async ({ expect }) => {
-      const alepha = Alepha.create().with(AlephaOrm).with(AlephaApiJobs);
+      const alepha = Alepha.create()
+        .with(AlephaOrmPostgres)
+        .with(AlephaApiJobs);
 
       class TestRepositories {
         userRepository = $repository(users);
@@ -78,7 +81,9 @@ describe("UserJobs", () => {
     test("should handle case when no expired sessions exist", async ({
       expect,
     }) => {
-      const alepha = Alepha.create().with(AlephaOrm).with(AlephaApiJobs);
+      const alepha = Alepha.create()
+        .with(AlephaOrmPostgres)
+        .with(AlephaApiJobs);
 
       class TestRepositories {
         userRepository = $repository(users);

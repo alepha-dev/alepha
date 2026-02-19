@@ -13,11 +13,12 @@ import {
   DbTableNotFoundError,
   db,
   sql,
-} from "../index.ts";
+} from "../core/index.ts";
 import {
   NodeSqliteProvider,
   nodeSqliteOptions,
-} from "../providers/drivers/NodeSqliteProvider.ts";
+} from "../core/providers/drivers/NodeSqliteProvider.ts";
+import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 /**
  * Database Error Tests
@@ -76,7 +77,7 @@ describe("Database Error Tests", () => {
   describe("PostgreSQL", () => {
     describe("DbConflictError", () => {
       it("should throw DbConflictError on unique constraint violation", async () => {
-        const alepha = Alepha.create();
+        const alepha = Alepha.create().with(AlephaOrmPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -101,7 +102,7 @@ describe("Database Error Tests", () => {
       });
 
       it("should throw DbConflictError on update causing unique violation", async () => {
-        const alepha = Alepha.create();
+        const alepha = Alepha.create().with(AlephaOrmPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -131,7 +132,7 @@ describe("Database Error Tests", () => {
 
     describe("DbForeignKeyError", () => {
       it("should throw DbForeignKeyError when deleting referenced entity", async () => {
-        const alepha = Alepha.create();
+        const alepha = Alepha.create().with(AlephaOrmPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -169,7 +170,7 @@ describe("Database Error Tests", () => {
       });
 
       it("should include constraint name in DbForeignKeyError", async () => {
-        const alepha = Alepha.create();
+        const alepha = Alepha.create().with(AlephaOrmPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -197,7 +198,7 @@ describe("Database Error Tests", () => {
       });
 
       it("should allow delete after removing referencing entities", async () => {
-        const alepha = Alepha.create();
+        const alepha = Alepha.create().with(AlephaOrmPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -222,7 +223,7 @@ describe("Database Error Tests", () => {
 
     describe("DbNotNullError", () => {
       it("should throw DbNotNullError when inserting null into required field via raw SQL", async () => {
-        const alepha = Alepha.create();
+        const alepha = Alepha.create().with(AlephaOrmPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -245,7 +246,7 @@ describe("Database Error Tests", () => {
 
     describe("DbTableNotFoundError", () => {
       it("should throw DbTableNotFoundError for non-existent table", async () => {
-        const alepha = Alepha.create();
+        const alepha = Alepha.create().with(AlephaOrmPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -269,7 +270,7 @@ describe("Database Error Tests", () => {
 
     describe("DbColumnNotFoundError", () => {
       it("should throw DbColumnNotFoundError for non-existent column", async () => {
-        const alepha = Alepha.create();
+        const alepha = Alepha.create().with(AlephaOrmPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 

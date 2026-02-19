@@ -1,10 +1,11 @@
 import { Alepha, t } from "alepha";
 import { sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
-import { $entity } from "../primitives/$entity.ts";
-import { db } from "../providers/DatabaseTypeProvider.ts";
-import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
-import { SqliteModelBuilder } from "../services/SqliteModelBuilder.ts";
+import { $entity } from "../core/primitives/$entity.ts";
+import { db } from "../core/providers/DatabaseTypeProvider.ts";
+import { SqliteModelBuilder } from "../core/services/SqliteModelBuilder.ts";
+import { AlephaOrmPostgres } from "../postgres/index.ts";
+import { PostgresModelBuilder } from "../postgres/services/PostgresModelBuilder.ts";
 import {
   testComplexRelationships,
   testCustomConfig,
@@ -772,7 +773,7 @@ describe("ModelBuilder", () => {
     });
 
     it("should handle all entity options correctly (postgres)", async () => {
-      await testModelBuilderFeatures(Alepha.create());
+      await testModelBuilderFeatures(Alepha.create().with(AlephaOrmPostgres));
     });
 
     it("should handle custom config (sqlite)", async () => {
@@ -782,7 +783,7 @@ describe("ModelBuilder", () => {
     });
 
     it("should handle custom config (postgres)", async () => {
-      await testCustomConfig(Alepha.create());
+      await testCustomConfig(Alepha.create().with(AlephaOrmPostgres));
     });
 
     it("should handle complex nested relationships (sqlite)", async () => {
@@ -792,7 +793,7 @@ describe("ModelBuilder", () => {
     });
 
     it("should handle complex nested relationships (postgres)", async () => {
-      await testComplexRelationships(Alepha.create());
+      await testComplexRelationships(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 });

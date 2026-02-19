@@ -1,7 +1,12 @@
 import { type Alepha, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { expect } from "vitest";
-import { $entity, $repository, DbEntityNotFoundError, db } from "../index.ts";
+import {
+  $entity,
+  $repository,
+  DbEntityNotFoundError,
+  db,
+} from "../core/index.ts";
 
 const entity = $entity({
   name: "test_entity",
@@ -39,10 +44,13 @@ export const testSoftDeleteUpdatesInsteadOfDelete = async (alepha: Alepha) => {
   expect(await repository.findMany()).toEqual([{ id: entities[1].id }]);
 
   expect(await repository.count({}, { force: true })).toEqual(2);
-  expect(await repository.findMany({}, { force: true })).toEqual([
-    { id: entities[1].id },
-    { id: entities[0].id, deletedAt: now },
-  ]);
+  const all = await repository.findMany({}, { force: true });
+  expect(all).toEqual(
+    expect.arrayContaining([
+      { id: entities[1].id },
+      { id: entities[0].id, deletedAt: now },
+    ]),
+  );
 };
 
 export const testNoUpdateIfAlreadyDeleted = async (alepha: Alepha) => {

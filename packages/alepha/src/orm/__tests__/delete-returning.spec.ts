@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testDeleteReturning,
   testSoftDeleteReturning,
@@ -12,7 +13,7 @@ describe("delete-returning", () => {
     );
   });
   it("should return deleted IDs (postgres)", async () => {
-    await testDeleteReturning(Alepha.create());
+    await testDeleteReturning(Alepha.create().with(AlephaOrmPostgres));
   });
 
   it("should handle soft delete with returning IDs (sqlite)", async () => {
@@ -21,6 +22,6 @@ describe("delete-returning", () => {
     );
   });
   it("should handle soft delete with returning IDs (postgres)", async () => {
-    await testSoftDeleteReturning(Alepha.create());
+    await testSoftDeleteReturning(Alepha.create().with(AlephaOrmPostgres));
   });
 });

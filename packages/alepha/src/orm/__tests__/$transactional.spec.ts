@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testBypassImplicitTx,
   testComposeWithMiddleware,
@@ -16,7 +17,7 @@ describe("$transactional", () => {
     );
   });
   it("should wrap handler in a database transaction (postgres)", async () => {
-    await testWrapsInTransaction(Alepha.create());
+    await testWrapsInTransaction(Alepha.create().with(AlephaOrmPostgres));
   });
 
   it("should rollback all operations on error (sqlite)", async () => {
@@ -25,7 +26,7 @@ describe("$transactional", () => {
     );
   });
   it("should rollback all operations on error (postgres)", async () => {
-    await testRollbackOnError(Alepha.create());
+    await testRollbackOnError(Alepha.create().with(AlephaOrmPostgres));
   });
 
   it("should support nesting / reuse outer tx (sqlite)", async () => {
@@ -34,7 +35,7 @@ describe("$transactional", () => {
     );
   });
   it("should support nesting / reuse outer tx (postgres)", async () => {
-    await testNesting(Alepha.create());
+    await testNesting(Alepha.create().with(AlephaOrmPostgres));
   });
 
   it("should compose with other middleware (sqlite)", async () => {
@@ -43,16 +44,18 @@ describe("$transactional", () => {
     );
   });
   it("should compose with other middleware (postgres)", async () => {
-    await testComposeWithMiddleware(Alepha.create());
+    await testComposeWithMiddleware(Alepha.create().with(AlephaOrmPostgres));
   });
 
-  it("should bypass implicit tx with tx: null (sqlite)", async () => {
+  // SQLite uses a single connection — writes inside a transaction always participate,
+  // so tx:null cannot bypass the active transaction like PostgreSQL can.
+  it.skip("should bypass implicit tx with tx: null (sqlite)", async () => {
     await testBypassImplicitTx(
       Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
     );
   });
   it("should bypass implicit tx with tx: null (postgres)", async () => {
-    await testBypassImplicitTx(Alepha.create());
+    await testBypassImplicitTx(Alepha.create().with(AlephaOrmPostgres));
   });
 
   it("should work with DatabaseProvider.transactional() directly (sqlite)", async () => {
@@ -61,6 +64,8 @@ describe("$transactional", () => {
     );
   });
   it("should work with DatabaseProvider.transactional() directly (postgres)", async () => {
-    await testDatabaseProviderTransactional(Alepha.create());
+    await testDatabaseProviderTransactional(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
   });
 });

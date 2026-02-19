@@ -1,5 +1,6 @@
 import { Alepha, createMiddleware, t } from "alepha";
 import { $repository } from "alepha/orm";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, test, vi } from "vitest";
 import { $job, jobExecutionEntity } from "../index.ts";
 
@@ -31,7 +32,7 @@ describe("$job middleware", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     const app = alepha.inject(App);
     await alepha.start();
 
@@ -56,7 +57,7 @@ describe("$job middleware", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     const app = alepha.inject(App);
     await alepha.start();
 
@@ -84,7 +85,7 @@ describe("$job middleware", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     const app = alepha.inject(App);
     await alepha.start();
 
@@ -112,7 +113,7 @@ describe("$job middleware", () => {
       });
     }
 
-    const alepha = Alepha.create();
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
     const app = alepha.inject(App);
     await alepha.start();
 

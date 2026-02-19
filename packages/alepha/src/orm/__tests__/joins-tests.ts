@@ -2,7 +2,7 @@ import type { Alepha } from "alepha";
 import { t } from "alepha";
 import { sql } from "drizzle-orm";
 import { expect } from "vitest";
-import { $entity, $repository, db } from "../index.ts";
+import { $entity, $repository, db } from "../core/index.ts";
 
 // ============================================================================
 // Schema definitions
