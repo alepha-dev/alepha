@@ -1,5 +1,5 @@
 import { AuthRouter } from "@alepha/ui/auth";
-import { $env, $hook, $inject, Alepha, t } from "alepha";
+import { $hook, $inject, Alepha, t } from "alepha";
 import { ReactAuth } from "alepha/react/auth";
 import { $head, type Head } from "alepha/react/head";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
@@ -36,13 +36,6 @@ export class AppRouter {
   meRouter = $inject(MeRouter);
   authRouter = $inject(AuthRouter);
 
-  env = $env(
-    t.object({
-      UMAMI_URL: t.optional(t.string()),
-      UMAMI_UUID: t.optional(t.string()),
-    }),
-  );
-
   head = $head(() => {
     const head: Head = {
       title: "Roadmap",
@@ -62,17 +55,6 @@ export class AppRouter {
         content: "Alepha, Roadmap, open-source, applications, platform",
       },
     ];
-
-    if (this.env.UMAMI_URL && this.env.UMAMI_UUID) {
-      if (this.env.UMAMI_URL && this.env.UMAMI_UUID) {
-        head.script ??= [];
-        head.script.push({
-          defer: true,
-          src: this.env.UMAMI_URL,
-          "data-website-id": this.env.UMAMI_UUID,
-        });
-      }
-    }
 
     return head;
   });
