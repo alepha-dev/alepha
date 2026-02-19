@@ -400,8 +400,8 @@ export class PackageManagerUtils {
     }
 
     if (modes.tailwind) {
-      devDependencies.tailwindcss = alephaDeps.tailwindcss;
-      devDependencies["@tailwindcss/vite"] = alephaDeps["@tailwindcss/vite"];
+      devDependencies.tailwindcss = "^4.2.0";
+      devDependencies["@tailwindcss/vite"] = "^4.2.0";
     }
 
     if (modes.react) {
