@@ -145,6 +145,7 @@ export class ServerLinksProvider {
       ),
       response: t.array(
         t.object({
+          action: t.text(),
           status: t.integer(),
           data: t.optional(t.any()),
           error: t.optional(t.text()),
@@ -168,15 +169,25 @@ export class ServerLinksProvider {
         ),
       );
 
-      return results.map((result) => {
+      return results.map((result, i) => {
+        const action = body[i].action;
+
         if (result.status === "fulfilled") {
-          return { status: 200, data: result.value };
+          return { action, status: 200, data: result.value };
         }
+
         const reason = result.reason;
-        return {
-          status: reason?.status ?? 500,
-          error: reason?.message ?? "Internal error",
-        };
+        const status = reason?.status ?? 500;
+        const message = reason?.message ?? "Internal error";
+
+        this.log.warn("Batch action failed", {
+          action,
+          status,
+          message,
+          error: reason,
+        });
+
+        return { action, status, error: message };
       });
     },
   });

@@ -39,8 +39,16 @@ describe("POST /api/_batch", () => {
     const data = await res.json();
 
     expect(data).toHaveLength(2);
-    expect(data[0]).toStrictEqual({ status: 200, data: "pong" });
-    expect(data[1]).toStrictEqual({ status: 200, data: "hello" });
+    expect(data[0]).toStrictEqual({
+      action: "ping",
+      status: 200,
+      data: "pong",
+    });
+    expect(data[1]).toStrictEqual({
+      action: "echo",
+      status: 200,
+      data: "hello",
+    });
   });
 
   it("should return error for unknown action without affecting others", async ({
@@ -68,7 +76,12 @@ describe("POST /api/_batch", () => {
     const data = await res.json();
 
     expect(data).toHaveLength(2);
-    expect(data[0]).toStrictEqual({ status: 200, data: "pong" });
+    expect(data[0]).toStrictEqual({
+      action: "ping",
+      status: 200,
+      data: "pong",
+    });
+    expect(data[1].action).toBe("nonExistent");
     expect(data[1].status).toBeGreaterThanOrEqual(400);
     expect(data[1].error).toBeDefined();
   });
@@ -105,8 +118,16 @@ describe("POST /api/_batch", () => {
     const data = await res.json();
 
     // Results should maintain input order even though fast finishes first
-    expect(data[0]).toStrictEqual({ status: 200, data: "slow" });
-    expect(data[1]).toStrictEqual({ status: 200, data: "fast" });
+    expect(data[0]).toStrictEqual({
+      action: "slow",
+      status: 200,
+      data: "slow",
+    });
+    expect(data[1]).toStrictEqual({
+      action: "fast",
+      status: 200,
+      data: "fast",
+    });
   });
 
   it("should reject batches exceeding max size", async ({ expect }) => {
@@ -164,10 +185,12 @@ describe("POST /api/_batch", () => {
 
     expect(data).toHaveLength(2);
     expect(data[0]).toStrictEqual({
+      action: "getUser",
       status: 200,
       data: { id: "1", name: "User 1" },
     });
     expect(data[1]).toStrictEqual({
+      action: "getUser",
       status: 200,
       data: { id: "2", name: "User 2" },
     });

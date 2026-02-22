@@ -1,5 +1,6 @@
 import {
   $inject,
+  $use,
   Alepha,
   AlephaError,
   type Async,
@@ -23,6 +24,7 @@ import {
   type TRequestBody,
   UnauthorizedError,
 } from "alepha/server";
+import { linkOptionsAtom } from "../atoms/linkOptionsAtom.ts";
 import {
   type ApiRegistryResponse,
   apiRegistryResponseSchema,
@@ -52,6 +54,8 @@ export class LinkProvider {
 
   // Browser-only: batch collector for coalescing multiple calls
   protected batchCollector?: BatchCollector;
+
+  protected readonly options = $use(linkOptionsAtom);
 
   /**
    * Get applicative links registered on the server.
@@ -264,7 +268,7 @@ export class LinkProvider {
     });
 
     // Browser-only: use batch collector for calls without explicit host
-    if (this.alepha.isBrowser() && !link.host) {
+    if (this.options.batch && this.alepha.isBrowser() && !link.host) {
       this.batchCollector ??= this.alepha.inject(BatchCollector);
       return this.batchCollector.add({
         action: name,

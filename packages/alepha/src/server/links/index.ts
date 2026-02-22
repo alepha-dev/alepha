@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 import { AlephaServer } from "alepha/server";
 import { apiLinksAtom } from "./atoms/apiLinksAtom.ts";
+import { linkOptionsAtom } from "./atoms/linkOptionsAtom.ts";
 import { $client } from "./primitives/$client.ts";
 import { $remote } from "./primitives/$remote.ts";
 import { LinkProvider } from "./providers/LinkProvider.ts";
@@ -12,6 +13,8 @@ import { DefinitionsPool } from "./services/DefinitionsPool.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./atoms/apiLinksAtom.ts";
+export * from "./atoms/linkOptionsAtom.ts";
 export * from "./primitives/$client.ts";
 export * from "./primitives/$remote.ts";
 export * from "./providers/LinkProvider.ts";
@@ -32,6 +35,13 @@ declare module "alepha" {
      * @internal
      */
     "alepha.server.request.apiLinks"?: ApiRegistryResponse;
+
+    /**
+     * Configuration options for the links module.
+     */
+    "alepha.server.links.options": {
+      batch: boolean;
+    };
   }
 }
 
@@ -55,7 +65,7 @@ declare module "alepha" {
  */
 export const AlephaServerLinks = $module({
   name: "alepha.server.links",
-  atoms: [apiLinksAtom],
+  atoms: [apiLinksAtom, linkOptionsAtom],
   primitives: [$remote, $client],
   services: [
     AlephaServer,

@@ -15,9 +15,12 @@ export class ServerLoggerProvider {
 
       request.metadata.now = Date.now();
 
+      const search = request.url.search;
       const data: Record<string, string> = {
         method: request.method,
-        path: request.url.pathname,
+        path: search
+          ? `${request.url.pathname}${search}`
+          : request.url.pathname,
       };
 
       if (this.alepha.isProduction()) {
@@ -49,9 +52,12 @@ export class ServerLoggerProvider {
       }
 
       const ms = Date.now() - request.metadata.now;
+      const search = request.url.search;
       this.log.info("Request completed", {
         method: request.method,
-        path: request.url.pathname,
+        path: search
+          ? `${request.url.pathname}${search}`
+          : request.url.pathname,
         status: response.status,
         duration: ms,
       });

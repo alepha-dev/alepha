@@ -1,5 +1,5 @@
-import { $inject, AlephaError } from "alepha";
-import { HttpClient } from "alepha/server";
+import { $inject } from "alepha";
+import { HttpClient, HttpError } from "alepha/server";
 
 /**
  * Collects browser-side action calls within a microtask and
@@ -63,9 +63,13 @@ export class BatchCollector {
     try {
       const allResults = (
         await Promise.all(
-          chunks.map((chunk) =>
-            this.httpClient
-              .fetch("/api/_batch", {
+          chunks.map((chunk) => {
+            const actions = [...new Set(chunk.map((b) => b.entry.action))].join(
+              ",",
+            );
+
+            return this.httpClient
+              .fetch(`/api/_batch?actions=${actions}`, {
                 method: "POST",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify(
@@ -77,8 +81,8 @@ export class BatchCollector {
                   })),
                 ),
               })
-              .then((res) => res.data as BatchResponse[]),
-          ),
+              .then((res) => res.data as BatchResponse[]);
+          }),
         )
       ).flat();
 
@@ -87,9 +91,11 @@ export class BatchCollector {
         const result = allResults[indexMap[i]];
         if (result.status >= 400) {
           batch[i].reject(
-            new AlephaError(
-              result.error ?? `Batch action failed (${result.status})`,
-            ),
+            new HttpError({
+              message:
+                result.error ?? `${result.action} failed (${result.status})`,
+              status: result.status,
+            }),
           );
         } else {
           batch[i].resolve(result.data);
@@ -158,6 +164,7 @@ interface PendingBatchEntry {
 }
 
 interface BatchResponse {
+  action: string;
   status: number;
   data?: any;
   error?: string;
