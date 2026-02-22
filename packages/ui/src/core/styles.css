@@ -102,16 +102,8 @@
   transition: width 0.2s ease-in-out;
 }
 
-.alepha-sidebar-navbar[data-resizing="true"] {
-  transition: none;
-}
-
 .alepha-sidebar-main {
   transition: padding-left 0.2s ease-in-out;
-}
-
-.alepha-sidebar-main[data-resizing="true"] {
-  transition: none;
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */

@@ -1,8 +1,8 @@
-import type { Parameter } from "alepha/api/parameters";
+import type { ParameterResponse } from "alepha/api/parameters";
 
 export interface ParameterValue {
-  current?: Parameter;
-  next?: Parameter;
+  current?: ParameterResponse;
+  next?: ParameterResponse;
   /**
    * Default value from the registered $parameter primitive.
    */

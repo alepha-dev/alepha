@@ -1,9 +1,10 @@
 import {
-  ActionButton,
   AlephaMantineProvider,
+  Breadcrumbs,
   DashboardShell,
+  SidebarCollapseButton,
+  ui,
 } from "@alepha/ui";
-import { IconArrowLeft } from "@tabler/icons-react";
 import { useRouter } from "alepha/react/router";
 import type { DemoRouter } from "../DemoRouter.ts";
 
@@ -12,13 +13,21 @@ const DemoLayout = () => {
   return (
     <AlephaMantineProvider>
       <DashboardShell
-        appShellMainProps={{ h: "100%" }}
+        appShellProps={{
+          withBorder: false,
+          bg: ui.colors.background,
+        }}
+        appShellHeaderProps={{
+          bg: "transparent",
+        }}
         appBarProps={{
           items: [
             {
-              element: (
-                <ActionButton variant="subtle" icon={IconArrowLeft} href="/" />
-              ),
+              type: "burger",
+              position: "left",
+            },
+            {
+              element: <Breadcrumbs />,
               position: "left",
             },
             {
@@ -33,10 +42,27 @@ const DemoLayout = () => {
             {
               ...router.node("demoCore"),
               children: [
-                router.node("demoTypeForm"),
-                router.node("demoSidebar"),
-                router.node("demoDataTable"),
+                router.node("demoFlex"),
+                router.node("demoText"),
+                router.node("demoHeading"),
+                router.node("demoButton"),
               ],
+            },
+            {
+              ...router.node("demoLayoutSection"),
+              children: [
+                router.node("demoSidebar"),
+                router.node("demoDialog"),
+                router.node("demoToast"),
+              ],
+            },
+            {
+              ...router.node("demoForm"),
+              children: [router.node("demoTypeForm")],
+            },
+            {
+              ...router.node("demoTable"),
+              children: [router.node("demoDataTable")],
             },
             {
               ...router.node("demoJson"),
@@ -45,6 +71,10 @@ const DemoLayout = () => {
             {
               ...router.node("demoAuth"),
               children: [router.node("demoLogin"), router.node("demoRegister")],
+            },
+            {
+              position: "bottom",
+              element: <SidebarCollapseButton />,
             },
           ],
         }}

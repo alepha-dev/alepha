@@ -6,7 +6,7 @@ const LanguageButton = (props: Partial<ActionProps>) => {
   const i18n = useI18n();
   return (
     <ActionButton
-      variant={"default"}
+      variant={"subtle"}
       icon={IconLanguage}
       menu={{
         items: i18n.languages.map((lang) => ({

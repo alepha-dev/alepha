@@ -9,9 +9,9 @@ const BurgerButton = (props: BurgerButtonProps) => {
 
   return (
     <Burger
-      opened={sidebar.opened}
-      onClick={() => setSidebar({ ...sidebar, opened: !sidebar.opened })}
-      hiddenFrom="sm"
+      opened={!sidebar.closed}
+      onClick={() => setSidebar({ ...sidebar, closed: !sidebar.closed })}
+      hiddenFrom="md"
       size="sm"
       {...props}
     />

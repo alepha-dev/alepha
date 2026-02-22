@@ -18,7 +18,8 @@ Application parameter management.
 
 **Features:**
 - Versioned parameter definitions
-- Scheduled activation (FUTURE, NEXT, CURRENT, EXPIRED)
+- Status derived from activationDate at query time
 - Schema validation with migration detection
-- Cross-instance sync via pub/sub
+- Cross-instance notification via pub/sub
+- Async `.get()` with lazy loading (works in Node and Cloudflare Workers)
 

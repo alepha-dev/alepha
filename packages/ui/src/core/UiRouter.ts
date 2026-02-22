@@ -1,5 +1,5 @@
+import { AlephaMantineProvider } from "@alepha/ui/layout";
 import { $page } from "alepha/react/router";
-import AlephaMantineProvider from "./components/layout/AlephaMantineProvider.tsx";
 
 /**
  * UI Router defining the root page with AlephaMantineProvider.

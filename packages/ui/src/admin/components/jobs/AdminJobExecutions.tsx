@@ -1,13 +1,15 @@
-import { ActionButton, DataTable, Text, useDialog, useToast } from "@alepha/ui";
-import { Badge, Code, Flex, Paper, Table } from "@mantine/core";
+import type { DetailListItem } from "@alepha/ui";
 import {
-  IconAlertTriangle,
-  IconCircleCheck,
-  IconCircleX,
-  IconClock,
-  IconPlayerPlay,
-  IconRefresh,
-} from "@tabler/icons-react";
+  ActionButton,
+  DataTable,
+  DetailList,
+  Flex,
+  Text,
+  useDialog,
+  useToast,
+} from "@alepha/ui";
+import { Badge, Code, Paper, Table } from "@mantine/core";
+import { IconCircleX, IconRefresh } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
 import type {
   AdminJobController,
@@ -43,61 +45,6 @@ const formatDuration = (
   return `${Math.floor(duration / 3600000)}h ${Math.floor((duration % 3600000) / 60000)}m`;
 };
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "completed":
-      return "teal";
-    case "running":
-      return "blue";
-    case "failed":
-    case "dead":
-      return "red";
-    case "cancelled":
-      return "orange";
-    case "scheduled":
-      return "violet";
-    case "retrying":
-      return "yellow";
-    case "pending":
-      return "gray";
-    default:
-      return "gray";
-  }
-};
-
-const getStatusIcon = (status: string, size = 14) => {
-  switch (status) {
-    case "completed":
-      return <IconCircleCheck size={size} />;
-    case "failed":
-    case "dead":
-      return <IconCircleX size={size} />;
-    case "running":
-      return <IconPlayerPlay size={size} />;
-    case "cancelled":
-      return <IconAlertTriangle size={size} />;
-    default:
-      return <IconClock size={size} />;
-  }
-};
-
-const getLogLevelColor = (level: string) => {
-  switch (level) {
-    case "ERROR":
-      return "red";
-    case "WARN":
-      return "orange";
-    case "INFO":
-      return "blue";
-    case "DEBUG":
-      return "gray";
-    case "TRACE":
-      return "dimmed";
-    default:
-      return "gray";
-  }
-};
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 const executionFilters = t.object({
@@ -129,7 +76,7 @@ const AdminJobExecutions = () => {
   const handleRetry = useCallback(
     async (id: string) => {
       try {
-        await client.retryExecution({ params: { id } });
+        await client.retryJobExecution({ params: { id } });
         toast.success("Execution retried");
         setRefreshKey((k) => k + 1);
       } catch {
@@ -151,7 +98,7 @@ const AdminJobExecutions = () => {
       if (!confirmed) return;
 
       try {
-        await client.cancelExecution({ params: { id } });
+        await client.cancelJobExecution({ params: { id } });
         toast.success("Execution cancelled");
         setRefreshKey((k) => k + 1);
       } catch {
@@ -184,7 +131,7 @@ const AdminJobExecutions = () => {
         filters={executionFilters}
         defaultFilters={["job", "status"]}
         items={async (filters) => {
-          const response = await client.findExecutions({
+          const response = await client.findJobExecutions({
             query: {
               ...filters,
             },
@@ -196,12 +143,7 @@ const AdminJobExecutions = () => {
             label: "Status",
             fit: true,
             value: (item) => (
-              <Badge
-                size="sm"
-                variant="light"
-                color={getStatusColor(item.status)}
-                leftSection={getStatusIcon(item.status, 12)}
-              >
+              <Badge size="sm" variant="default">
                 {item.status}
               </Badge>
             ),
@@ -238,7 +180,7 @@ const AdminJobExecutions = () => {
             defaultHidden: true,
             value: (item) => (
               <Text size="xs" c="dimmed">
-                {item.triggeredByName ?? "—"}
+                {item.triggeredByName ?? "\u2014"}
               </Text>
             ),
           },
@@ -257,7 +199,9 @@ const AdminJobExecutions = () => {
             fit: true,
             value: (item) => (
               <Text size="xs" c="dimmed">
-                {item.startedAt ? l(item.startedAt, { date: "fromNow" }) : "—"}
+                {item.startedAt
+                  ? l(item.startedAt, { date: "fromNow" })
+                  : "\u2014"}
               </Text>
             ),
           },
@@ -269,7 +213,7 @@ const AdminJobExecutions = () => {
                 {item.startedAt &&
                 (item.completedAt || item.status === "running")
                   ? formatDuration(item.startedAt, item.completedAt)
-                  : "—"}
+                  : "\u2014"}
               </Text>
             ),
           },
@@ -277,8 +221,8 @@ const AdminJobExecutions = () => {
             label: "Error",
             defaultHidden: true,
             value: (item) => (
-              <Text size="xs" c="red" lineClamp={1}>
-                {item.error ?? "—"}
+              <Text size="xs" c="dimmed" lineClamp={1}>
+                {item.error ?? "\u2014"}
               </Text>
             ),
           },
@@ -288,7 +232,7 @@ const AdminJobExecutions = () => {
             defaultHidden: true,
             value: (item) => (
               <Text size="xs" c="dimmed" ff="monospace">
-                {item.key ?? "—"}
+                {item.key ?? "\u2014"}
               </Text>
             ),
           },
@@ -298,7 +242,7 @@ const AdminJobExecutions = () => {
             defaultHidden: true,
             value: (item) => (
               <Text size="xs" c="dimmed" ff="monospace">
-                {item.workerId ?? "—"}
+                {item.workerId ?? "\u2014"}
               </Text>
             ),
           },
@@ -308,14 +252,12 @@ const AdminJobExecutions = () => {
             actions: (item) => [
               {
                 tooltip: "Retry",
-                color: "blue",
                 icon: IconRefresh,
                 onClick: () => handleRetry(item.id),
                 visible: item.can?.retry,
               },
               {
                 tooltip: "Cancel",
-                color: "red",
                 icon: IconCircleX,
                 onClick: () => handleCancel(item.id),
                 visible: item.can?.cancel,
@@ -332,10 +274,9 @@ const AdminJobExecutions = () => {
                   <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
                     Error
                   </Text>
-                  <Paper p="xs" bg="var(--mantine-color-red-light)" radius="sm">
+                  <Paper p="xs" radius="sm" withBorder>
                     <Text
                       size="xs"
-                      c="red"
                       style={{
                         whiteSpace: "pre-wrap",
                         wordBreak: "break-word",
@@ -423,7 +364,7 @@ const ExecutionDetailContent = ({
       setExpandedLogs(new Set());
       setLoading(true);
       try {
-        const data = await client.getExecution({ params: { id: execId } });
+        const data = await client.getJobExecution({ params: { id: execId } });
         setDetail(data);
       } catch {
         toast.danger("Failed to load execution details");
@@ -470,6 +411,91 @@ const ExecutionDetailContent = ({
 
   if (!detail) return null;
 
+  const detailItems: DetailListItem[] = [
+    {
+      label: "ID",
+      value: (
+        <Text size="sm" ff="monospace">
+          {detail.id}
+        </Text>
+      ),
+      copyable: detail.id,
+    },
+    {
+      label: "Status",
+      value: (
+        <Text size="sm" tt="capitalize">
+          {detail.status}
+        </Text>
+      ),
+    },
+    {
+      label: "Priority",
+      value: PRIORITY_LABELS[detail.priority] ?? "Normal",
+    },
+    {
+      label: "Attempt",
+      value: (
+        <Text size="sm" ff="monospace">
+          {detail.attempt}/{detail.maxAttempts}
+        </Text>
+      ),
+    },
+    {
+      label: "Worker",
+      value: (
+        <Text size="sm" ff="monospace">
+          {detail.workerId}
+        </Text>
+      ),
+      hidden: !detail.workerId,
+    },
+    {
+      label: "Key",
+      value: (
+        <Text size="sm" ff="monospace">
+          {detail.key}
+        </Text>
+      ),
+      hidden: !detail.key,
+    },
+    {
+      label: "Created",
+      value: String(l(detail.createdAt, { date: "lll" })),
+    },
+    {
+      label: "Started",
+      value: detail.startedAt
+        ? String(l(detail.startedAt, { date: "lll" }))
+        : undefined,
+      hidden: !detail.startedAt,
+    },
+    {
+      label: "Duration",
+      value:
+        detail.startedAt &&
+        (detail.completedAt || detail.status === "running") ? (
+          <Text size="sm" ff="monospace">
+            {formatDuration(detail.startedAt, detail.completedAt)}
+          </Text>
+        ) : undefined,
+      hidden: !(
+        detail.startedAt &&
+        (detail.completedAt || detail.status === "running")
+      ),
+    },
+    {
+      label: "Triggered By",
+      value: detail.triggeredByName,
+      hidden: !detail.triggeredByName,
+    },
+    {
+      label: "Cancelled By",
+      value: detail.cancelledByName,
+      hidden: !detail.cancelledByName,
+    },
+  ];
+
   return (
     <Flex direction="column" gap="md">
       {/* Header */}
@@ -477,14 +503,9 @@ const ExecutionDetailContent = ({
         <Text fw={600} ff="monospace">
           {detail.jobName}
         </Text>
-        <Badge
-          size="sm"
-          variant="light"
-          color={getStatusColor(detail.status)}
-          leftSection={getStatusIcon(detail.status, 12)}
-        >
+        <Text size="sm" tt="capitalize" c="dimmed">
           {detail.status}
-        </Badge>
+        </Text>
         <Text size="xs" c="dimmed">
           {detail.attempt}/{detail.maxAttempts}
         </Text>
@@ -504,7 +525,6 @@ const ExecutionDetailContent = ({
             tooltip="Retry"
             variant="light"
             size="xs"
-            color="blue"
             icon={IconRefresh}
             onClick={handleRetry}
           />
@@ -514,7 +534,6 @@ const ExecutionDetailContent = ({
             tooltip="Cancel"
             variant="light"
             size="xs"
-            color="red"
             icon={IconCircleX}
             onClick={handleCancel}
           />
@@ -526,49 +545,7 @@ const ExecutionDetailContent = ({
         <Text size="sm" fw={600} mb="xs">
           Details
         </Text>
-        <Flex gap="lg" wrap="wrap">
-          <DetailField label="ID" value={detail.id} monospace copyable />
-          <DetailField label="Status" value={detail.status} capitalize />
-          <DetailField
-            label="Priority"
-            value={PRIORITY_LABELS[detail.priority] ?? "Normal"}
-          />
-          <DetailField
-            label="Attempt"
-            value={`${detail.attempt}/${detail.maxAttempts}`}
-            monospace
-          />
-          {detail.workerId && (
-            <DetailField label="Worker" value={detail.workerId} monospace />
-          )}
-          {detail.key && (
-            <DetailField label="Key" value={detail.key} monospace />
-          )}
-          <DetailField
-            label="Created"
-            value={String(l(detail.createdAt, { date: "lll" }))}
-          />
-          {detail.startedAt && (
-            <DetailField
-              label="Started"
-              value={String(l(detail.startedAt, { date: "lll" }))}
-            />
-          )}
-          {detail.startedAt &&
-            (detail.completedAt || detail.status === "running") && (
-              <DetailField
-                label="Duration"
-                value={formatDuration(detail.startedAt, detail.completedAt)}
-                monospace
-              />
-            )}
-          {detail.triggeredByName && (
-            <DetailField label="Triggered By" value={detail.triggeredByName} />
-          )}
-          {detail.cancelledByName && (
-            <DetailField label="Cancelled By" value={detail.cancelledByName} />
-          )}
-        </Flex>
+        <DetailList items={detailItems} columns={2} />
       </Paper>
 
       {/* Payload */}
@@ -584,13 +561,12 @@ const ExecutionDetailContent = ({
       {/* Error */}
       {detail.error && (
         <Paper p="sm" radius="md" withBorder>
-          <Text size="sm" fw={600} mb="xs" c="red">
+          <Text size="sm" fw={600} mb="xs">
             Error
           </Text>
-          <Paper p="xs" bg="var(--mantine-color-red-light)" radius="sm">
+          <Paper p="xs" radius="sm" withBorder>
             <Text
               size="sm"
-              c="red"
               style={{
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
@@ -628,11 +604,7 @@ const ExecutionDetailContent = ({
                     onClick={log.data ? () => toggleLogExpand(i) : undefined}
                   >
                     <Table.Td>
-                      <Badge
-                        size="xs"
-                        variant="light"
-                        color={getLogLevelColor(log.level)}
-                      >
+                      <Badge size="xs" variant="default">
                         {log.level}
                       </Badge>
                     </Table.Td>
@@ -659,35 +631,5 @@ const ExecutionDetailContent = ({
     </Flex>
   );
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-const DetailField = ({
-  label,
-  value,
-  monospace,
-  capitalize,
-  copyable,
-}: {
-  label: string;
-  value: string;
-  monospace?: boolean;
-  capitalize?: boolean;
-  copyable?: boolean;
-}) => (
-  <Flex direction="column" gap={2}>
-    <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-      {label}
-    </Text>
-    <Text
-      size="sm"
-      ff={monospace ? "monospace" : undefined}
-      tt={capitalize ? "capitalize" : undefined}
-      style={copyable ? { cursor: "pointer", userSelect: "all" } : undefined}
-    >
-      {value}
-    </Text>
-  </Flex>
-);
 
 export default AdminJobExecutions;

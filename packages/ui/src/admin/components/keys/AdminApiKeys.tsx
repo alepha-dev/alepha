@@ -3,28 +3,17 @@ import {
   ClipboardButton,
   DataTable,
   Flex,
+  StatCards,
   Text,
   useDialog,
   useToast,
 } from "@alepha/ui";
+import { Badge, Code, Tooltip } from "@mantine/core";
 import {
-  ActionIcon,
-  Badge,
-  Code,
-  Paper,
-  RingProgress,
-  SimpleGrid,
-  ThemeIcon,
-  Tooltip,
-} from "@mantine/core";
-import {
-  IconCalendarOff,
   IconCheck,
   IconClock,
   IconKey,
   IconNetwork,
-  IconShieldCheck,
-  IconShieldOff,
   IconTrash,
   IconUser,
 } from "@tabler/icons-react";
@@ -76,125 +65,8 @@ const getKeyStatus = (
   return "active";
 };
 
-const getStatusColor = (status: "active" | "revoked" | "expired") => {
-  switch (status) {
-    case "active":
-      return "teal";
-    case "revoked":
-      return "red";
-    case "expired":
-      return "orange";
-  }
-};
-
-const getStatusIcon = (status: "active" | "revoked" | "expired") => {
-  switch (status) {
-    case "active":
-      return <IconShieldCheck size={14} />;
-    case "revoked":
-      return <IconShieldOff size={14} />;
-    case "expired":
-      return <IconCalendarOff size={14} />;
-  }
-};
-
 const formatKeyPreview = (prefix: string, suffix: string) => {
   return `${prefix}...${suffix}`;
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Stats Cards
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface StatsCardsProps {
-  stats: KeyStats;
-  loading: boolean;
-}
-
-const StatsCards = ({ stats, loading }: StatsCardsProps) => {
-  const activePercentage =
-    stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0;
-
-  return (
-    <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
-      <Paper p="md" radius="md" withBorder>
-        <Flex justify="space-between">
-          <Flex>
-            <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-              Total Keys
-            </Text>
-            <Text size="xl" fw={700} ff="monospace">
-              {stats.total}
-            </Text>
-          </Flex>
-          <ThemeIcon size="lg" radius="md" variant="light" color="blue">
-            <IconKey size={20} />
-          </ThemeIcon>
-        </Flex>
-      </Paper>
-
-      <Paper p="md" radius="md" withBorder>
-        <Flex justify="space-between">
-          <Flex>
-            <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-              Active
-            </Text>
-            <Text size="xl" fw={700} ff="monospace" c="teal">
-              {stats.active}
-            </Text>
-          </Flex>
-          <RingProgress
-            size={48}
-            thickness={4}
-            roundCaps
-            sections={[{ value: activePercentage, color: "teal" }]}
-          />
-        </Flex>
-      </Paper>
-
-      <Paper p="md" radius="md" withBorder>
-        <Flex justify="space-between">
-          <Flex>
-            <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-              Revoked
-            </Text>
-            <Text size="xl" fw={700} ff="monospace" c="red">
-              {stats.revoked}
-            </Text>
-          </Flex>
-          <ThemeIcon
-            size="lg"
-            radius="md"
-            variant="light"
-            color={stats.revoked > 0 ? "red" : "gray"}
-          >
-            <IconShieldOff size={20} />
-          </ThemeIcon>
-        </Flex>
-      </Paper>
-
-      <Paper p="md" radius="md" withBorder>
-        <Flex justify="space-between">
-          <Flex>
-            <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-              Never Used
-            </Text>
-            <Text size="xl" fw={700} ff="monospace" c="yellow">
-              {stats.neverUsed}
-            </Text>
-          </Flex>
-          <ThemeIcon
-            size="lg"
-            radius="md"
-            variant="light"
-            color={stats.neverUsed > 0 ? "yellow" : "gray"}
-          >
-            <IconClock size={20} />
-          </ThemeIcon>
-        </Flex>
-      </Paper>
-    </SimpleGrid>
-  );
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -245,7 +117,6 @@ const AdminApiKeys = () => {
     [client, dialog, toast],
   );
 
-  // Calculate stats from loaded data
   const updateStats = useCallback((keys: ApiKeyResource[]) => {
     const now = new Date();
     const newStats: KeyStats = {
@@ -276,10 +147,15 @@ const AdminApiKeys = () => {
 
   return (
     <Flex flex={1} direction="column" gap="md">
-      {/* Stats Header */}
-      <StatsCards stats={stats} loading={loading} />
+      <StatCards
+        items={[
+          { label: "Total Keys", value: stats.total, icon: IconKey },
+          { label: "Active", value: stats.active, icon: IconCheck },
+          { label: "Revoked", value: stats.revoked, icon: IconTrash },
+          { label: "Never Used", value: stats.neverUsed, icon: IconClock },
+        ]}
+      />
 
-      {/* API Keys Table */}
       <DataTable<ApiKeyResource, typeof filters>
         key={refreshKey}
         submitOnInit
@@ -302,13 +178,7 @@ const AdminApiKeys = () => {
         tableTrProps={(item) => {
           const status = getKeyStatus(item);
           if (status === "revoked") {
-            return {
-              opacity: 0.6,
-              style: {
-                textDecoration: "line-through",
-                textDecorationColor: "var(--mantine-color-red-5)",
-              },
-            };
+            return { opacity: 0.6 };
           }
           if (status === "expired") {
             return { opacity: 0.7 };
@@ -323,7 +193,6 @@ const AdminApiKeys = () => {
             },
           });
 
-          // Update stats with all keys (need to fetch all for accurate stats)
           const allKeys = await client.findApiKeys({
             query: { includeRevoked: true, size: 100 },
           });
@@ -336,19 +205,9 @@ const AdminApiKeys = () => {
             label: "Name",
             value: (item) => (
               <Flex direction="column" gap={2}>
-                <Flex gap="xs">
-                  <ThemeIcon
-                    size="xs"
-                    radius="sm"
-                    variant="light"
-                    color={getStatusColor(getKeyStatus(item))}
-                  >
-                    <IconKey size={10} />
-                  </ThemeIcon>
-                  <Text size="sm" fw={600}>
-                    {item.name}
-                  </Text>
-                </Flex>
+                <Text size="sm" fw={600}>
+                  {item.name}
+                </Text>
                 {item.description && (
                   <Text size="xs" c="dimmed" lineClamp={1}>
                     {item.description}
@@ -385,12 +244,7 @@ const AdminApiKeys = () => {
             value: (item) => {
               const status = getKeyStatus(item);
               return (
-                <Badge
-                  size="sm"
-                  variant="light"
-                  color={getStatusColor(status)}
-                  leftSection={getStatusIcon(status)}
-                >
+                <Badge size="sm" variant="default">
                   {status.toUpperCase()}
                 </Badge>
               );
@@ -444,7 +298,7 @@ const AdminApiKeys = () => {
                     )}
                   </Flex>
                 ) : (
-                  <Text size="xs" c="yellow">
+                  <Text size="xs" c="dimmed">
                     Never used
                   </Text>
                 )}
@@ -458,7 +312,7 @@ const AdminApiKeys = () => {
               <ActionButton
                 variant="subtle"
                 size="xs"
-                href={router.path("adminUserDetails", {
+                href={router.path("adminUserProfile", {
                   params: { userId: item.userId },
                 })}
                 leftSection={<IconUser size={12} />}
@@ -490,9 +344,8 @@ const AdminApiKeys = () => {
                 );
               }
 
-              const isExpired = new Date(item.expiresAt) < new Date();
               return (
-                <Text size="xs" c={isExpired ? "orange" : "dimmed"}>
+                <Text size="xs" c="dimmed">
                   {l(item.expiresAt, { date: "fromNow" })}
                 </Text>
               );
@@ -513,14 +366,13 @@ const AdminApiKeys = () => {
 
               return (
                 <Tooltip label="Revoke key">
-                  <ActionIcon
-                    size="sm"
+                  <ActionButton
+                    size="xs"
                     variant="subtle"
-                    color="red"
                     onClick={() => handleRevoke(item)}
                   >
                     <IconTrash size={14} />
-                  </ActionIcon>
+                  </ActionButton>
                 </Tooltip>
               );
             },

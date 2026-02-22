@@ -1,9 +1,9 @@
-import { Text, useToast } from "@alepha/ui";
-import { Card, Flex } from "@mantine/core";
+import { Flex, Text, useToast } from "@alepha/ui";
+import { Card } from "@mantine/core";
 import { IconSettings } from "@tabler/icons-react";
 import type {
   AdminParameterController,
-  Parameter,
+  ParameterResponse,
   ParameterTreeNode,
 } from "alepha/api/parameters";
 import { useClient } from "alepha/react";
@@ -29,7 +29,7 @@ const AdminParameters = ({
     useState<ParameterTreeNode[]>(initialTreeData);
   const [selectedConfig, setSelectedConfig] = useState<string | null>(null);
   const [configValue, setConfigValue] = useState<ParameterValue | null>(null);
-  const [history, setHistory] = useState<Parameter[]>([]);
+  const [history, setHistory] = useState<ParameterResponse[]>([]);
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [saving, setSaving] = useState(false);

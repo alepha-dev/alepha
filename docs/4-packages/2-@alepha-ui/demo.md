@@ -20,3 +20,8 @@ Component showcase and documentation.
 - MacWindow component for showcases
 - Showcase component for component demos
 
+## API Reference
+
+### Primitives
+
+- [`$uiDemo`](/docs/reference-primitives-$uidemo) — Register Demo UI components and get the DemoRouter instance.

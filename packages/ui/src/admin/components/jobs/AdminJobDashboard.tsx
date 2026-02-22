@@ -1,11 +1,9 @@
-import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
+import { ActionButton, Flex, StatCards, Text, useToast } from "@alepha/ui";
 import { AreaChart, BarChart, DonutChart } from "@mantine/charts";
-import { Badge, Paper, SimpleGrid, Table, ThemeIcon } from "@mantine/core";
+import { Paper, SimpleGrid, Table } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconCircleCheck,
-  IconCircleX,
-  IconClock,
   IconPlayerPlay,
   IconRefresh,
   IconTerminal2,
@@ -38,44 +36,6 @@ const formatDuration = (
   return `${Math.floor(duration / 3600000)}h ${Math.floor((duration % 3600000) / 60000)}m`;
 };
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "completed":
-      return "teal";
-    case "running":
-      return "blue";
-    case "failed":
-    case "dead":
-      return "red";
-    case "cancelled":
-      return "orange";
-    case "scheduled":
-      return "violet";
-    case "retrying":
-      return "yellow";
-    case "pending":
-      return "gray";
-    default:
-      return "gray";
-  }
-};
-
-const getStatusIcon = (status: string, size = 14) => {
-  switch (status) {
-    case "completed":
-      return <IconCircleCheck size={size} />;
-    case "failed":
-    case "dead":
-      return <IconCircleX size={size} />;
-    case "running":
-      return <IconPlayerPlay size={size} />;
-    case "cancelled":
-      return <IconAlertTriangle size={size} />;
-    default:
-      return <IconClock size={size} />;
-  }
-};
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface RecentExecution {
@@ -104,10 +64,10 @@ const AdminJobDashboard = () => {
       const [statsData, recentData, failureData, activityData, queueData] =
         await Promise.all([
           client.getJobStats(),
-          client.findExecutions({ query: { sort: "-createdAt", size: 10 } }),
-          client.getTopFailures(),
-          client.getActivity({ query: { days: 14 } }),
-          client.getQueueDepth(),
+          client.findJobExecutions({ query: { sort: "-createdAt", size: 10 } }),
+          client.getJobTopFailures(),
+          client.getJobActivity({ query: { days: 14 } }),
+          client.getJobQueueDepth(),
         ]);
       setStats(statsData);
       setRecent(recentData.content as RecentExecution[]);
@@ -176,91 +136,30 @@ const AdminJobDashboard = () => {
 
       {/* Stats Cards */}
       {stats && (
-        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
-          <Paper p="md" radius="md" withBorder>
-            <Flex justify="space-between">
-              <Flex direction="column">
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Registered
-                </Text>
-                <Text size="xl" fw={700} ff="monospace">
-                  {stats.registered}
-                </Text>
-              </Flex>
-              <ThemeIcon size="lg" radius="md" variant="light" color="blue">
-                <IconTerminal2 size={20} />
-              </ThemeIcon>
-            </Flex>
-          </Paper>
-
-          <Paper p="md" radius="md" withBorder>
-            <Flex justify="space-between">
-              <Flex direction="column">
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Running
-                </Text>
-                <Text
-                  size="xl"
-                  fw={700}
-                  ff="monospace"
-                  c={stats.running > 0 ? "blue" : undefined}
-                >
-                  {stats.running}
-                </Text>
-              </Flex>
-              <ThemeIcon
-                size="lg"
-                radius="md"
-                variant="light"
-                color={stats.running > 0 ? "blue" : "gray"}
-              >
-                <IconPlayerPlay size={20} />
-              </ThemeIcon>
-            </Flex>
-          </Paper>
-
-          <Paper p="md" radius="md" withBorder>
-            <Flex justify="space-between">
-              <Flex direction="column">
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Completed 24h
-                </Text>
-                <Text size="xl" fw={700} ff="monospace" c="teal">
-                  {stats.completed24h}
-                </Text>
-              </Flex>
-              <ThemeIcon size="lg" radius="md" variant="light" color="teal">
-                <IconCircleCheck size={20} />
-              </ThemeIcon>
-            </Flex>
-          </Paper>
-
-          <Paper p="md" radius="md" withBorder>
-            <Flex justify="space-between">
-              <Flex direction="column">
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Failed 24h
-                </Text>
-                <Text
-                  size="xl"
-                  fw={700}
-                  ff="monospace"
-                  c={stats.failed24h > 0 ? "red" : undefined}
-                >
-                  {stats.failed24h}
-                </Text>
-              </Flex>
-              <ThemeIcon
-                size="lg"
-                radius="md"
-                variant="light"
-                color={stats.failed24h > 0 ? "red" : "gray"}
-              >
-                <IconAlertTriangle size={20} />
-              </ThemeIcon>
-            </Flex>
-          </Paper>
-        </SimpleGrid>
+        <StatCards
+          items={[
+            {
+              label: "Registered",
+              value: stats.registered,
+              icon: IconTerminal2,
+            },
+            {
+              label: "Running",
+              value: stats.running,
+              icon: IconPlayerPlay,
+            },
+            {
+              label: "Completed 24h",
+              value: stats.completed24h,
+              icon: IconCircleCheck,
+            },
+            {
+              label: "Failed 24h",
+              value: stats.failed24h,
+              icon: IconAlertTriangle,
+            },
+          ]}
+        />
       )}
 
       {/* Charts Row */}
@@ -366,21 +265,16 @@ const AdminJobDashboard = () => {
                     </Text>
                   </Table.Td>
                   <Table.Td>
-                    <Badge
-                      size="xs"
-                      variant="light"
-                      color={getStatusColor(exec.status)}
-                      leftSection={getStatusIcon(exec.status, 10)}
-                    >
+                    <Text size="xs" ff="monospace">
                       {exec.status}
-                    </Badge>
+                    </Text>
                   </Table.Td>
                   <Table.Td>
                     <Text size="xs" c="dimmed" ff="monospace">
                       {exec.startedAt &&
                       (exec.completedAt || exec.status === "running")
                         ? formatDuration(exec.startedAt, exec.completedAt)
-                        : "—"}
+                        : "\u2014"}
                     </Text>
                   </Table.Td>
                 </Table.Tr>
@@ -421,9 +315,9 @@ const AdminJobDashboard = () => {
                       </Text>
                     </Table.Td>
                     <Table.Td>
-                      <Badge size="xs" variant="light" color="red">
+                      <Text size="xs" fw={600} ff="monospace">
                         {f.failures}
-                      </Badge>
+                      </Text>
                     </Table.Td>
                     <Table.Td>
                       <Text
@@ -432,7 +326,7 @@ const AdminJobDashboard = () => {
                         lineClamp={1}
                         style={{ maxWidth: 200 }}
                       >
-                        {f.lastError ?? "—"}
+                        {f.lastError ?? "\u2014"}
                       </Text>
                     </Table.Td>
                   </Table.Tr>

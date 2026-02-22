@@ -1,24 +1,25 @@
 import {
+  ActionButton,
+  type ActionProps,
+  BurgerButton,
+  DarkModeButton,
+  Flex,
+  LanguageButton,
+  OmnibarButton,
+  type OmnibarButtonProps,
+  Text,
+} from "@alepha/ui";
+import {
   Anchor,
   Container,
   type ContainerProps,
   Divider,
-  Flex,
   type FlexProps,
   Image,
-  Text,
 } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { Link, useRouter } from "alepha/react/router";
 import type { ComponentType, ReactNode } from "react";
-import type { ActionProps } from "../buttons/ActionButton.tsx";
-import ActionButton from "../buttons/ActionButton.tsx";
-import BurgerButton from "../buttons/BurgerButton.tsx";
-import DarkModeButton from "../buttons/DarkModeButton.tsx";
-import LanguageButton from "../buttons/LanguageButton.tsx";
-import OmnibarButton, {
-  type OmnibarButtonProps,
-} from "../buttons/OmnibarButton.tsx";
 
 export type AppBarItem =
   | AppBarElement

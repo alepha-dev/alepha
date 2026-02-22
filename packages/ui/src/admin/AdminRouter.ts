@@ -7,7 +7,6 @@ import {
   IconHistory,
   IconKey,
   IconListDetails,
-  IconPlus,
   IconSettings,
   IconTerminal2,
   IconUser,
@@ -43,7 +42,6 @@ export class AdminRouter {
 
   public configFn?: (adminRouter: AdminRouter) => DashboardShellProps = () => {
     return {
-      sidebarResizable: true,
       sidebarProps: {
         items: this.getDefaultSidebarItems(),
       },
@@ -81,7 +79,7 @@ export class AdminRouter {
           {
             ...this.router.node(this.adminJobDashboard.name),
             href: undefined,
-            can: () => this.jobCtrl.getRegistry.can(),
+            can: () => this.jobCtrl.getJobRegistry.can(),
             children: [
               {
                 ...this.router.node(this.adminJobDashboard.name),
@@ -101,7 +99,6 @@ export class AdminRouter {
           },
         ],
       },
-      { type: "toggle", position: "bottom" },
     ];
   }
 
@@ -155,52 +152,26 @@ export class AdminRouter {
     can: () => this.userCtrl.findUsers.can(),
   });
 
-  public readonly adminUserCreate = $page({
-    icon: IconPlus,
-    parent: this.adminLayout,
-    path: "/users/create",
-    label: "Create User",
-    description: "Create a new user account",
-    lazy: () => import("./components/users/AdminUserCreate.tsx"),
-    can: () => this.userCtrl.createUser.can(),
-  });
-
   public readonly adminUserLayout = $page({
-    icon: IconUser,
     parent: this.adminLayout,
     path: "/users/:userId",
-    label: "User",
     lazy: () => import("./components/users/AdminUserLayout.tsx"),
-    can: () => this.userCtrl.getUser.can(),
   });
 
-  public readonly adminUserDetails = $page({
+  public readonly adminUserProfile = $page({
+    icon: IconUser,
     parent: this.adminUserLayout,
-    path: "/details",
-    label: "Details",
-    lazy: () => import("./components/users/AdminUserDetails.tsx"),
+    path: "/",
+    label: "Profile",
+    lazy: () => import("./components/users/AdminUserProfile.tsx"),
   });
 
   public readonly adminUserSessions = $page({
+    icon: IconDevices,
     parent: this.adminUserLayout,
     path: "/sessions",
     label: "Sessions",
     lazy: () => import("./components/users/AdminUserSessions.tsx"),
-  });
-
-  public readonly adminUserSettings = $page({
-    parent: this.adminUserLayout,
-    path: "/settings",
-    label: "Settings",
-    lazy: () => import("./components/users/AdminUserSettings.tsx"),
-  });
-
-  public readonly adminUserAudits = $page({
-    parent: this.adminUserLayout,
-    path: "/audits",
-    label: "Audit Log",
-    lazy: () => import("./components/users/AdminUserAudits.tsx"),
-    can: () => this.auditCtrl.findByUser.can(),
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -274,7 +245,7 @@ export class AdminRouter {
     label: "Jobs",
     description: "Monitor and manage background jobs and scheduled tasks.",
     lazy: () => import("./components/jobs/AdminJobDashboard.tsx"),
-    can: () => this.jobCtrl.getRegistry.can(),
+    can: () => this.jobCtrl.getJobRegistry.can(),
   });
 
   public readonly adminJobRegistry = $page({
@@ -284,7 +255,7 @@ export class AdminRouter {
     label: "Registry",
     description: "View all registered job definitions.",
     lazy: () => import("./components/jobs/AdminJobRegistry.tsx"),
-    can: () => this.jobCtrl.getRegistry.can(),
+    can: () => this.jobCtrl.getJobRegistry.can(),
   });
 
   public readonly adminJobExecutions = $page({
@@ -294,7 +265,7 @@ export class AdminRouter {
     label: "Executions",
     description: "Browse and filter job execution history.",
     lazy: () => import("./components/jobs/AdminJobExecutions.tsx"),
-    can: () => this.jobCtrl.findExecutions.can(),
+    can: () => this.jobCtrl.findJobExecutions.can(),
   });
 
   // ─────────────────────────────────────────────────────────────────────────────

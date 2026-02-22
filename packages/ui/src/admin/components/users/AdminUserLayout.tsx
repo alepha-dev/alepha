@@ -1,20 +1,22 @@
-import { Center, Flex, Loader, Text } from "@mantine/core";
+import { Flex, Text, useDialog, useToast } from "@alepha/ui";
+import { Loader } from "@mantine/core";
 import {
   IconBan,
-  IconDevices,
-  IconHistory,
-  IconLock,
-  IconMail,
   IconPencil,
-  IconSettings,
   IconShieldCheck,
   IconTrash,
-  IconUser,
 } from "@tabler/icons-react";
+import { t } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useClient } from "alepha/react";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
-import { useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import type { AdminRouter } from "../../AdminRouter.ts";
 import AdminResourceHeader from "../shared/AdminResourceHeader.tsx";
 import AdminResourceTabs from "../shared/AdminResourceTabs.tsx";
@@ -23,198 +25,196 @@ export interface AdminUserLayoutProps {
   userRealmName?: string;
 }
 
+interface UserContextValue {
+  user: UserEntity;
+  reload: () => void;
+}
+
+const UserContext = createContext<UserContextValue | null>(null);
+
+export const useUser = () => {
+  const ctx = useContext(UserContext);
+  if (!ctx) throw new Error("useUser must be used within AdminUserLayout");
+  return ctx;
+};
+
+const updateUserSchema = t.object({
+  email: t.optional(t.email()),
+  phoneNumber: t.optional(t.e164()),
+  firstName: t.optional(t.string()),
+  lastName: t.optional(t.string()),
+  roles: t.optional(t.array(t.string())),
+  enabled: t.optional(t.boolean()),
+});
+
+const displayName = (u: UserEntity) =>
+  u.firstName || u.lastName
+    ? `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim()
+    : u.username || u.email || "User";
+
 const AdminUserLayout = (props: AdminUserLayoutProps) => {
   const router = useRouter<AdminRouter>();
   const state = useRouterState();
   const client = useClient<AdminUserController>();
+  const dialog = useDialog();
+  const toast = useToast();
   const userId = state.params.userId as string;
 
   const [user, setUser] = useState<UserEntity | null>(null);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const realmQuery = { userRealmName: props.userRealmName };
+
+  const loadUser = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await client.getUser({
+        params: { id: userId },
+        query: realmQuery,
+      });
+      setUser(data);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, client]);
 
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const data = await client.getUser({
-          params: { id: userId },
-          query: { userRealmName: props.userRealmName },
-        });
-        setUser(data);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadUser();
-  }, [userId]);
+  }, [loadUser]);
+
+  const handleEdit = async () => {
+    if (!user) return;
+    const data = await dialog.form({
+      title: "Edit User",
+      schema: updateUserSchema,
+      columns: 2,
+      submitLabel: "Save",
+      defaults: {
+        email: user.email ?? "",
+        phoneNumber: user.phoneNumber ?? "",
+        firstName: user.firstName ?? "",
+        lastName: user.lastName ?? "",
+        roles: user.roles ?? [],
+        enabled: user.enabled,
+      },
+    });
+    if (data) {
+      const updated = await client.updateUser({
+        params: { id: user.id },
+        query: realmQuery,
+        body: data,
+      });
+      setUser(updated);
+      toast.success({ title: "User updated" });
+    }
+  };
+
+  const handleToggleEnabled = async () => {
+    if (!user) return;
+    const action = user.enabled ? "disable" : "enable";
+    const confirmed = await dialog.confirm({
+      title: `${user.enabled ? "Disable" : "Enable"} User`,
+      message: `Are you sure you want to ${action} ${displayName(user)}?`,
+    });
+    if (confirmed) {
+      const updated = await client.updateUser({
+        params: { id: user.id },
+        query: realmQuery,
+        body: { enabled: !user.enabled },
+      });
+      setUser(updated);
+      toast.success({ title: `User ${action}d` });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!user) return;
+    const confirmed = await dialog.confirm({
+      title: "Delete User",
+      message: `Are you sure you want to delete ${displayName(user)}? This cannot be undone.`,
+      confirmColor: "red",
+      confirmLabel: "Delete",
+    });
+    if (confirmed) {
+      await client.deleteUser({
+        params: { id: user.id },
+        query: realmQuery,
+      });
+      toast.success({ title: "User deleted" });
+      router.push("adminUsers");
+    }
+  };
 
   if (loading) {
     return (
-      <Center flex={1}>
+      <Flex flex={1} justify="center" align="center">
         <Loader />
-      </Center>
+      </Flex>
     );
   }
 
   if (!user) {
     return (
-      <Center flex={1}>
-        <Flex direction="column" align="center" gap="xs">
-          <IconUser size={48} opacity={0.3} />
-          <Text c="dimmed">User not found</Text>
-        </Flex>
-      </Center>
+      <Flex flex={1} justify="center" align="center">
+        <Text c="dimmed">User not found</Text>
+      </Flex>
     );
   }
 
-  const displayName =
-    user.firstName || user.lastName
-      ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
-      : user.username || user.email || "User";
-
-  const currentPath = state.url.pathname;
-  const getActiveTab = () => {
-    if (currentPath.endsWith("/sessions")) return "sessions";
-    if (currentPath.endsWith("/settings")) return "settings";
-    if (currentPath.endsWith("/audits")) return "audits";
-    return "profile";
-  };
-
-  const handleBlockUser = async () => {
-    setActionLoading("block");
-    try {
-      const updated = await client.updateUser({
-        params: { id: userId },
-        query: { userRealmName: props.userRealmName },
-        body: { enabled: !user.enabled },
-      });
-      setUser(updated);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleSendVerification = async () => {
-    setActionLoading("verify");
-    // TODO: Implement send verification
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setActionLoading(null);
-  };
-
-  const handleResetPassword = async () => {
-    setActionLoading("reset");
-    // TODO: Implement reset password
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setActionLoading(null);
-  };
-
-  const handleDeleteUser = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this user? This action cannot be undone.",
-      )
-    ) {
-      return;
-    }
-    setActionLoading("delete");
-    try {
-      await client.deleteUser({
-        params: { id: userId },
-        query: { userRealmName: props.userRealmName },
-      });
-      await router.push("adminUsers");
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   return (
-    <Flex py="xl" px="xl" flex={1}>
-      <Flex direction="column" gap="lg">
+    <UserContext.Provider value={{ user, reload: loadUser }}>
+      <Flex flex={1} direction="column" gap="lg" p="md">
         <AdminResourceHeader
           backHref={router.path("adminUsers")}
           backLabel="Users"
-          avatar={user.picture || displayName.charAt(0).toUpperCase()}
-          avatarColor={user.enabled ? "blue" : "gray"}
-          title={displayName}
-          subtitle={user.email || user.username || undefined}
+          title={displayName(user)}
+          subtitle={user.email || user.username}
           status={{
             label: user.enabled ? "Active" : "Disabled",
-            color: user.enabled ? "green" : "red",
+            color: user.enabled ? "green" : "gray",
           }}
           menuActions={[
             {
-              label: "Edit Profile",
+              label: "Edit",
               icon: IconPencil,
-              href: router.path("adminUserDetails", { params: { userId } }),
+              onClick: handleEdit,
             },
             {
-              label: user.enabled ? "Disable User" : "Enable User",
+              label: user.enabled ? "Disable" : "Enable",
               icon: user.enabled ? IconBan : IconShieldCheck,
-              color: user.enabled ? "orange" : "green",
-              onClick: handleBlockUser,
-              loading: actionLoading === "block",
-            },
-            ...(user.email && !user.emailVerified
-              ? [
-                  {
-                    label: "Send Verification Email",
-                    icon: IconMail,
-                    onClick: handleSendVerification,
-                    loading: actionLoading === "verify",
-                  },
-                ]
-              : []),
-            {
-              label: "Reset Password",
-              icon: IconLock,
-              onClick: handleResetPassword,
-              loading: actionLoading === "reset",
+              onClick: handleToggleEnabled,
             },
             {
-              label: "Delete User",
+              label: "Delete",
               icon: IconTrash,
               color: "red",
-              onClick: handleDeleteUser,
-              loading: actionLoading === "delete",
+              onClick: handleDelete,
             },
           ]}
         />
 
         <AdminResourceTabs
-          activeTab={getActiveTab()}
           tabs={[
             {
               value: "profile",
               label: "Profile",
-              icon: IconUser,
-              href: router.path("adminUserDetails", { params: { userId } }),
+              href: router.path("adminUserProfile", {
+                params: { userId },
+              }),
             },
             {
               value: "sessions",
               label: "Sessions",
-              icon: IconDevices,
-              href: router.path("adminUserSessions", { params: { userId } }),
-            },
-            {
-              value: "audits",
-              label: "Activity",
-              icon: IconHistory,
-              href: router.path("adminUserAudits", { params: { userId } }),
-            },
-            {
-              value: "settings",
-              label: "Settings",
-              icon: IconSettings,
-              href: router.path("adminUserSettings", { params: { userId } }),
+              href: router.path("adminUserSessions", {
+                params: { userId },
+              }),
             },
           ]}
         />
 
         <NestedView />
       </Flex>
-    </Flex>
+    </UserContext.Provider>
   );
 };
 

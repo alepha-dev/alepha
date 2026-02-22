@@ -164,7 +164,7 @@ const UserButton = (props: UserButtonProps) => {
         items,
       }}
     >
-      {children ?? userLabel}
+      {children}
     </ActionButton>
   );
 };

@@ -27,4 +27,5 @@ within the server request/response cycle.
 | `compress` | `boolean` | No | If true, the cookie value will be compressed using zlib. |
 | `encrypt` | `boolean` | No | If true, the cookie value will be encrypted |
 | `sign` | `boolean` | No | If true, the cookie will be signed to prevent tampering |
+| `key` | `string` | No | Optional key to link this cookie to an Atom, enabling automatic synchronization between the cookie and the Atom's state. |
 

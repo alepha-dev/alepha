@@ -1,8 +1,8 @@
-import { Anchor, Flex, type FlexProps, Text } from "@mantine/core";
+import { ActionButton, Flex, Text, toTitleCase } from "@alepha/ui";
+import type { FlexProps } from "@mantine/core";
 import { IconChevronRight } from "@tabler/icons-react";
-import { Link, useRouter, useRouterState } from "alepha/react/router";
+import { useRouter, useRouterState } from "alepha/react/router";
 import type { ReactNode } from "react";
-import { toTitleCase } from "../../utils/string.ts";
 
 export interface BreadcrumbProps extends FlexProps {
   /**
@@ -37,7 +37,7 @@ export interface BreadcrumbProps extends FlexProps {
 const Breadcrumb = ({
   home = "Home",
   separator,
-  size = "xs",
+  size = "sm",
   ...groupProps
 }: BreadcrumbProps) => {
   const state = useRouterState();
@@ -69,14 +69,14 @@ const Breadcrumb = ({
   const sep = separator ?? <IconChevronRight size={12} color="#9ca3af" />;
 
   return (
-    <Flex gap={4} {...groupProps}>
+    <Flex gap={"sm"} {...groupProps}>
       {crumbs.map((crumb, i) => (
-        <Flex key={crumb.href} gap={4}>
+        <Flex align={"center"} key={crumb.href} gap={"sm"}>
           {i > 0 && sep}
           {i < crumbs.length - 1 ? (
-            <Anchor component={Link} href={crumb.href} size={size} c="dimmed">
+            <ActionButton anchor href={crumb.href} size={size} c="dimmed">
               {crumb.label}
-            </Anchor>
+            </ActionButton>
           ) : (
             <Text size={size} fw={500}>
               {crumb.label}

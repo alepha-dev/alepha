@@ -1,3 +1,4 @@
+import { useTheme, useToast } from "@alepha/ui";
 import {
   ColorSchemeScript,
   type ColorSchemeScriptProps,
@@ -13,8 +14,6 @@ import { useEvents } from "alepha/react";
 import { FormValidationError } from "alepha/react/form";
 import { NestedView } from "alepha/react/router";
 import type { ReactNode } from "react";
-import { useTheme } from "../../hooks/useTheme.ts";
-import { useToast } from "../../hooks/useToast.ts";
 import Omnibar, { type OmnibarProps } from "./Omnibar.tsx";
 
 export interface AlephaMantineProviderProps {

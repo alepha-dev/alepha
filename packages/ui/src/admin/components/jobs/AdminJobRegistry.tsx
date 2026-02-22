@@ -1,4 +1,12 @@
-import { DataTable, Flex, Text, useDialog, useToast } from "@alepha/ui";
+import type { DetailListItem } from "@alepha/ui";
+import {
+  DataTable,
+  DetailList,
+  Flex,
+  Text,
+  useDialog,
+  useToast,
+} from "@alepha/ui";
 import { Badge } from "@mantine/core";
 import {
   IconCircleCheck,
@@ -18,19 +26,6 @@ import { useI18n } from "alepha/react/i18n";
 import { useCallback, useEffect, useState } from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
-
-const getTypeColor = (type: string) => {
-  switch (type) {
-    case "cron":
-      return "violet";
-    case "push":
-      return "blue";
-    case "both":
-      return "teal";
-    default:
-      return "gray";
-  }
-};
 
 const registryFilters = t.object({
   type: t.optional(t.enum(["cron", "push", "both"])),
@@ -58,8 +53,8 @@ const AdminJobRegistry = () => {
     try {
       const [cronData, queueData, failureData] = await Promise.all([
         client.getCronJobs(),
-        client.getQueueDepth(),
-        client.getTopFailures(),
+        client.getJobQueueDepth(),
+        client.getJobTopFailures(),
       ]);
       setCronMap(new Map(cronData.map((c) => [c.name, c])));
       setQueueMap(new Map(queueData.map((q) => [q.jobName, q])));
@@ -109,7 +104,7 @@ const AdminJobRegistry = () => {
         onFilterChange={(_key, _value, form) => form.submit()}
         filters={registryFilters}
         items={async (filters) => {
-          const items = await client.getRegistry();
+          const items = await client.getJobRegistry();
           const filtered = filters.type
             ? items.filter((i) => i.type === filters.type)
             : items;
@@ -128,7 +123,7 @@ const AdminJobRegistry = () => {
             label: "Type",
             fit: true,
             value: (item) => (
-              <Badge size="sm" variant="light" color={getTypeColor(item.type)}>
+              <Badge size="sm" variant="default">
                 {item.type}
               </Badge>
             ),
@@ -169,22 +164,22 @@ const AdminJobRegistry = () => {
               return (
                 <Flex gap={4}>
                   {q.running > 0 && (
-                    <Badge size="xs" variant="light" color="blue">
+                    <Badge size="xs" variant="default">
                       {q.running} run
                     </Badge>
                   )}
                   {q.pending > 0 && (
-                    <Badge size="xs" variant="light" color="gray">
+                    <Badge size="xs" variant="default">
                       {q.pending} pen
                     </Badge>
                   )}
                   {q.retrying > 0 && (
-                    <Badge size="xs" variant="light" color="yellow">
+                    <Badge size="xs" variant="default">
                       {q.retrying} retry
                     </Badge>
                   )}
                   {q.dead > 0 && (
-                    <Badge size="xs" variant="light" color="red">
+                    <Badge size="xs" variant="default">
                       {q.dead} dead
                     </Badge>
                   )}
@@ -209,33 +204,44 @@ const AdminJobRegistry = () => {
           const cron = cronMap.get(item.name);
           const failure = failureMap.get(item.name);
 
+          const detailItems: DetailListItem[] = [
+            {
+              label: "Cron",
+              value: item.cron ? (
+                <Text size="sm" ff="monospace">
+                  {item.cron}
+                </Text>
+              ) : undefined,
+              hidden: !item.cron,
+            },
+            {
+              label: "Timeout",
+              value: item.timeout,
+              hidden: !item.timeout,
+            },
+            {
+              label: "Retry",
+              value: item.retry
+                ? `${item.retry.retries}x${item.retry.hasBackoff ? " (backoff)" : ""}`
+                : undefined,
+              hidden: !item.retry,
+            },
+            {
+              label: "Batch",
+              value: item.batch
+                ? `${item.batch.size} / ${item.batch.window}`
+                : undefined,
+              hidden: !item.batch,
+            },
+            {
+              label: "Schema",
+              value: item.hasSchema ? "Yes" : "No",
+            },
+          ];
+
           return (
             <Flex direction="column" gap="sm" p="sm">
-              {/* Config */}
-              <Flex gap="lg" wrap="wrap">
-                {item.cron && (
-                  <PanelField label="Cron" value={item.cron} monospace />
-                )}
-                {item.timeout && (
-                  <PanelField label="Timeout" value={item.timeout} />
-                )}
-                {item.retry && (
-                  <PanelField
-                    label="Retry"
-                    value={`${item.retry.retries}x${item.retry.hasBackoff ? " (backoff)" : ""}`}
-                  />
-                )}
-                {item.batch && (
-                  <PanelField
-                    label="Batch"
-                    value={`${item.batch.size} / ${item.batch.window}`}
-                  />
-                )}
-                <PanelField
-                  label="Schema"
-                  value={item.hasSchema ? "Yes" : "No"}
-                />
-              </Flex>
+              <DetailList items={detailItems} columns={3} />
 
               {/* Last cron execution */}
               {cron?.lastExecution && (
@@ -247,12 +253,12 @@ const AdminJobRegistry = () => {
                     {cron.lastExecution.status === "completed" ? (
                       <IconCircleCheck
                         size={14}
-                        color="var(--mantine-color-teal-6)"
+                        color="var(--mantine-color-dimmed)"
                       />
                     ) : (
                       <IconCircleX
                         size={14}
-                        color="var(--mantine-color-red-6)"
+                        color="var(--mantine-color-dimmed)"
                       />
                     )}
                     <Text size="xs" tt="capitalize">
@@ -265,7 +271,7 @@ const AdminJobRegistry = () => {
                     </Text>
                   )}
                   {cron.lastExecution.error && (
-                    <Text size="xs" c="red" lineClamp={1}>
+                    <Text size="xs" c="dimmed" lineClamp={1}>
                       {cron.lastExecution.error}
                     </Text>
                   )}
@@ -278,9 +284,9 @@ const AdminJobRegistry = () => {
                   <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
                     Failures (7d)
                   </Text>
-                  <Badge size="xs" variant="light" color="red">
+                  <Text size="xs" fw={500}>
                     {failure.failures}
-                  </Badge>
+                  </Text>
                   {failure.lastError && (
                     <Text
                       size="xs"
@@ -300,26 +306,5 @@ const AdminJobRegistry = () => {
     </Flex>
   );
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-const PanelField = ({
-  label,
-  value,
-  monospace,
-}: {
-  label: string;
-  value: string;
-  monospace?: boolean;
-}) => (
-  <Flex direction="column" gap={2}>
-    <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-      {label}
-    </Text>
-    <Text size="sm" ff={monospace ? "monospace" : undefined}>
-      {value}
-    </Text>
-  </Flex>
-);
 
 export default AdminJobRegistry;

@@ -1,13 +1,13 @@
 import { ActionButton, Flex, Text } from "@alepha/ui";
 import { Badge, Loader, ScrollArea, Timeline } from "@mantine/core";
 import { IconHistory } from "@tabler/icons-react";
-import type { Parameter } from "alepha/api/parameters";
+import type { ParameterResponse } from "alepha/api/parameters";
 import { useI18n } from "alepha/react/i18n";
 import { getStatusColor } from "./types.ts";
 
 export interface ParameterHistoryProps {
   selectedConfig: string | null;
-  history: Parameter[];
+  history: ParameterResponse[];
   loading: boolean;
   onRollback: (version: number) => void;
 }
@@ -106,7 +106,7 @@ const ParameterHistory = ({
 
   return (
     <Flex
-      w={160}
+      w={220}
       h="100%"
       p="xs"
       style={{

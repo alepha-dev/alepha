@@ -1,5 +1,4 @@
 import { DataTable, Flex, Text } from "@alepha/ui";
-import { Badge } from "@mantine/core";
 import { type Page, t } from "alepha";
 import { type FileController, type FileEntity, files } from "alepha/api/files";
 import { useClient } from "alepha/react";
@@ -67,9 +66,9 @@ const AdminFiles = () => {
             label: "Bucket",
             fit: true,
             value: (item) => (
-              <Badge size="sm" variant="light" color="blue">
+              <Text size="xs" ff="monospace">
                 {item.bucket}
-              </Badge>
+              </Text>
             ),
           },
           mimeType: {

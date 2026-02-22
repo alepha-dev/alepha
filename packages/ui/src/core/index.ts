@@ -17,7 +17,40 @@ import { UiRouter } from "./UiRouter.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export { Flex, Text } from "@mantine/core";
+// Layout components — re-exported from @alepha/ui/layout for backward compat
+export {
+  AdminShell,
+  type AdminShellProps,
+  AlephaMantineProvider,
+  AppBar,
+  type AppBarBurger,
+  type AppBarDark,
+  type AppBarDivider,
+  type AppBarElement,
+  type AppBarItem,
+  type AppBarLang,
+  type AppBarProps,
+  type AppBarSearch,
+  type AppBarSpacer,
+  type BreadcrumbProps,
+  Breadcrumbs,
+  DashboardShell,
+  type DashboardShellProps,
+  Omnibar,
+  Sidebar,
+  type SidebarAbstractItem,
+  type SidebarButtonTheme,
+  type SidebarDivider,
+  type SidebarElement,
+  type SidebarItemProps,
+  type SidebarMenuItem,
+  type SidebarNode,
+  type SidebarProps,
+  type SidebarSearch,
+  type SidebarSection,
+  type SidebarSpacer,
+  type SidebarTheme,
+} from "@alepha/ui/layout";
 export * from "./atoms/alephaSidebarAtom.ts";
 export * from "./atoms/alephaThemeAtom.ts";
 export * from "./atoms/alephaThemeListAtom.ts";
@@ -32,18 +65,40 @@ export type {
   ActionProps,
   ActionSubmitButtonProps,
 } from "./components/buttons/ActionButton.tsx";
-export { default as ActionButton } from "./components/buttons/ActionButton.tsx";
+export {
+  default as ActionButton,
+  default as Button,
+} from "./components/buttons/ActionButton.tsx";
 export { default as BurgerButton } from "./components/buttons/BurgerButton.tsx";
 export type { ClipboardButtonProps } from "./components/buttons/ClipboardButton.tsx";
 export { default as ClipboardButton } from "./components/buttons/ClipboardButton.tsx";
 export { default as DarkModeButton } from "./components/buttons/DarkModeButton.tsx";
 export { default as LanguageButton } from "./components/buttons/LanguageButton.tsx";
+export type { OmnibarButtonProps } from "./components/buttons/OmnibarButton.tsx";
 export { default as OmnibarButton } from "./components/buttons/OmnibarButton.tsx";
 export { default as ThemeButton } from "./components/buttons/ThemeButton.tsx";
-export { default as ToggleSidebarButton } from "./components/buttons/ToggleSidebarButton.tsx";
+export { default as SidebarCollapseButton } from "./components/buttons/ToggleSidebarButton.tsx";
+export type {
+  DetailDrawerProps,
+  DetailDrawerStatus,
+  DetailDrawerTab,
+} from "./components/data/DetailDrawer.tsx";
+export { default as DetailDrawer } from "./components/data/DetailDrawer.tsx";
+export type {
+  DetailListItem,
+  DetailListProps,
+} from "./components/data/DetailList.tsx";
+export { default as DetailList } from "./components/data/DetailList.tsx";
+export type {
+  StatCardItem,
+  StatCardsProps,
+} from "./components/data/StatCards.tsx";
+export { default as StatCards } from "./components/data/StatCards.tsx";
 export { default as AlertDialog } from "./components/dialogs/AlertDialog.tsx";
 export { default as ConfirmDialog } from "./components/dialogs/ConfirmDialog.tsx";
 export { default as PromptDialog } from "./components/dialogs/PromptDialog.tsx";
+export type { FlexProps } from "./components/Flex.tsx";
+export { default as Flex } from "./components/Flex.tsx";
 export { default as Control } from "./components/form/Control.tsx";
 export { default as ControlArray } from "./components/form/ControlArray.tsx";
 export { default as ControlDate } from "./components/form/ControlDate.tsx";
@@ -52,43 +107,9 @@ export { default as ControlObject } from "./components/form/ControlObject.tsx";
 export { default as ControlQueryBuilder } from "./components/form/ControlQueryBuilder.tsx";
 export { default as ControlSelect } from "./components/form/ControlSelect.tsx";
 export { default as TypeForm } from "./components/form/TypeForm.tsx";
-export { default as AlephaMantineProvider } from "./components/layout/AlephaMantineProvider.tsx";
-export type {
-  AppBarBurger,
-  AppBarDark,
-  AppBarDivider,
-  AppBarElement,
-  AppBarItem,
-  AppBarLang,
-  AppBarProps,
-  AppBarSearch,
-  AppBarSpacer,
-} from "./components/layout/AppBar.tsx";
-export { default as AppBar } from "./components/layout/AppBar.tsx";
-export type { BreadcrumbProps } from "./components/layout/Breadcrumb.tsx";
-export { default as Breadcrumb } from "./components/layout/Breadcrumb.tsx";
-export {
-  type DashboardShellProps,
-  type DashboardShellProps as AdminShellProps,
-  default as DashboardShell,
-  default as AdminShell,
-} from "./components/layout/DashboardShell.tsx";
-export { default as Omnibar } from "./components/layout/Omnibar.tsx";
-export type {
-  SidebarAbstractItem,
-  SidebarButtonTheme,
-  SidebarDivider,
-  SidebarElement,
-  SidebarItemProps,
-  SidebarMenuItem,
-  SidebarNode,
-  SidebarProps,
-  SidebarSearch,
-  SidebarSection,
-  SidebarSpacer,
-  SidebarTheme,
-} from "./components/layout/Sidebar.tsx";
-export { Sidebar } from "./components/layout/Sidebar.tsx";
+export { default as Heading } from "./components/Heading.tsx";
+export type { TextProps } from "./components/Text.tsx";
+export { default as Text } from "./components/Text.tsx";
 export { default as DataTable } from "./components/table/DataTable.tsx";
 export type {
   CheckboxAction,
@@ -102,8 +123,12 @@ export type {
   MaybePage,
 } from "./components/table/types.ts";
 export * from "./constants/ui.ts";
+export * from "./helpers/isComponentType.ts";
+export * from "./helpers/renderIcon.tsx";
 export { useDialog } from "./hooks/useDialog.ts";
+export { useTheme } from "./hooks/useTheme.ts";
 export { useToast } from "./hooks/useToast.ts";
+export * from "./interfaces/AlephaIntent.ts";
 export * from "./providers/ThemeProvider.ts";
 export type {
   AlertDialogOptions,
@@ -111,6 +136,7 @@ export type {
   BaseDialogOptions,
   ConfirmDialogOptions,
   ConfirmDialogProps,
+  FormDialogOptions,
   PromptDialogOptions,
   PromptDialogProps,
 } from "./services/DialogService.tsx";

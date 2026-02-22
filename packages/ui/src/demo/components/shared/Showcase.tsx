@@ -56,20 +56,18 @@ const Showcase = <T extends TObject>({
         setValues(values as Record<string, any>);
       },
       onChange: (key, value) => {
-        console.log("onChange", key, value);
-        form.submit();
+        return form.submit();
       },
     },
     [schema],
   );
 
   return (
-    <Flex flex={1} h={"100%"}>
+    <Flex flex={1} px={"md"} gap={"md"}>
       <Flex
         flex={1}
         bg={ui.colors.background}
         h={"100%"}
-        p="xl"
         justify="center"
         align="flex-start"
         style={{ flex: 1, minWidth: 0, overflow: "auto" }}
@@ -80,15 +78,13 @@ const Showcase = <T extends TObject>({
       </Flex>
 
       <Flex
-        bg={ui.colors.surface}
         h={"100%"}
-        p={"md"}
         style={{
           flex: "0 0 300px",
           overflow: "auto",
         }}
       >
-        <Card withBorder shadow="sm" radius="md" bg={ui.colors.elevated}>
+        <Card shadow="sm" radius="md">
           <Card.Section withBorder py={"xs"} inheritPadding>
             <Text size={"xs"} fw={500}>
               {title} Props
@@ -98,7 +94,7 @@ const Showcase = <T extends TObject>({
           <Card.Section p={"sm"}>
             <TypeForm
               form={form}
-              columns={columns}
+              columns={{ base: 1, xs: 1, sm: 1, md: 1, lg: 1, xl: 1 }}
               skipSubmitButton
               skipFormElement
             />

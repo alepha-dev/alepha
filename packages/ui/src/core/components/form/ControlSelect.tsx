@@ -192,6 +192,7 @@ const ControlSelect = (props: ControlSelectProps) => {
       size={props.size}
       id={id}
       leftSection={icon}
+      rightSection={null}
       data={data}
       {...props.input.props}
       {...selectProps}

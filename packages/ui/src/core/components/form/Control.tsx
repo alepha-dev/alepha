@@ -268,19 +268,40 @@ const Control = (_props: ControlProps) => {
     "type" in props.input.schema &&
     props.input.schema.type === "boolean"
   ) {
-    const switchProps = typeof props.switch === "object" ? props.switch : {};
+    if (props.switch) {
+      const switchProps = typeof props.switch === "object" ? props.switch : {};
+      return (
+        <Switch
+          {...inputProps}
+          size={props.size}
+          id={id}
+          color={"blue"}
+          defaultChecked={props.input.props.defaultValue}
+          onChange={(event) => {
+            props.input.set(event.currentTarget.checked);
+          }}
+          {...switchProps}
+        />
+      );
+    }
+
+    const opts: ControlSelectProps = {
+      input: props.input,
+      select: {
+        data: [
+          { value: "true", label: "Yes" },
+          { value: "false", label: "No" },
+        ],
+      },
+    };
 
     return (
-      <Switch
-        {...inputProps}
+      <ControlSelect
         size={props.size}
-        id={id}
-        color={"blue"}
-        defaultChecked={props.input.props.defaultValue}
-        onChange={(event) => {
-          props.input.set(event.currentTarget.checked);
-        }}
-        {...switchProps}
+        title={props.title}
+        description={props.description}
+        icon={icon}
+        {...opts}
       />
     );
   }

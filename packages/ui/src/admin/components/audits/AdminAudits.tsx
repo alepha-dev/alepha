@@ -1,12 +1,6 @@
 import { DataTable, Flex, Text } from "@alepha/ui";
 import { Badge, Tooltip } from "@mantine/core";
-import {
-  IconAlertTriangle,
-  IconCheck,
-  IconInfoCircle,
-  IconUser,
-  IconX,
-} from "@tabler/icons-react";
+import { IconCheck, IconUser, IconX } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import { useClient } from "alepha/react";
@@ -17,49 +11,6 @@ import type { AdminRouter } from "../../AdminRouter.ts";
 export interface AdminAuditsProps {
   userRealmName?: string;
 }
-
-const getSeverityColor = (severity: string) => {
-  switch (severity) {
-    case "critical":
-      return "red";
-    case "warning":
-      return "yellow";
-    default:
-      return "blue";
-  }
-};
-
-const getSeverityIcon = (severity: string) => {
-  switch (severity) {
-    case "critical":
-      return <IconAlertTriangle size={12} />;
-    case "warning":
-      return <IconAlertTriangle size={12} />;
-    default:
-      return <IconInfoCircle size={12} />;
-  }
-};
-
-const getTypeColor = (type: string) => {
-  switch (type) {
-    case "auth":
-      return "blue";
-    case "user":
-      return "grape";
-    case "security":
-      return "red";
-    case "system":
-      return "orange";
-    case "access":
-      return "cyan";
-    case "payment":
-      return "green";
-    case "order":
-      return "teal";
-    default:
-      return "gray";
-  }
-};
 
 const AdminAudits = (props: AdminAuditsProps) => {
   const client = useClient<AdminAuditController>();
@@ -100,7 +51,7 @@ const AdminAudits = (props: AdminAuditsProps) => {
           },
           onClick: () => {
             if (item.userId) {
-              router.push("adminUserDetails", {
+              router.push("adminUserProfile", {
                 params: { userId: item.userId },
               });
             }
@@ -120,7 +71,7 @@ const AdminAudits = (props: AdminAuditsProps) => {
             label: "Type",
             fit: true,
             value: (item) => (
-              <Badge size="sm" variant="light" color={getTypeColor(item.type)}>
+              <Badge size="sm" variant="default">
                 {item.type}
               </Badge>
             ),
@@ -129,7 +80,7 @@ const AdminAudits = (props: AdminAuditsProps) => {
             label: "Action",
             fit: true,
             value: (item) => (
-              <Badge size="sm" variant="outline">
+              <Badge size="sm" variant="default">
                 {item.action}
               </Badge>
             ),
@@ -138,14 +89,9 @@ const AdminAudits = (props: AdminAuditsProps) => {
             label: "Severity",
             fit: true,
             value: (item) => (
-              <Badge
-                size="xs"
-                variant="light"
-                color={getSeverityColor(item.severity)}
-                leftSection={getSeverityIcon(item.severity)}
-              >
+              <Text size="xs" tt="capitalize">
                 {item.severity}
-              </Badge>
+              </Text>
             ),
           },
           user: {
@@ -190,9 +136,9 @@ const AdminAudits = (props: AdminAuditsProps) => {
             value: (item) =>
               item.resourceType ? (
                 <Tooltip label={`${item.resourceType}: ${item.resourceId}`}>
-                  <Badge size="xs" variant="dot" color="gray">
+                  <Text size="xs" ff="monospace">
                     {item.resourceType}
-                  </Badge>
+                  </Text>
                 </Tooltip>
               ) : (
                 <Text size="xs" c="dimmed">
@@ -205,10 +151,10 @@ const AdminAudits = (props: AdminAuditsProps) => {
             fit: true,
             value: (item) =>
               item.success ? (
-                <IconCheck size={14} color="var(--mantine-color-green-6)" />
+                <IconCheck size={14} />
               ) : (
                 <Tooltip label={item.errorMessage || "Failed"}>
-                  <IconX size={14} color="var(--mantine-color-red-6)" />
+                  <IconX size={14} />
                 </Tooltip>
               ),
           },

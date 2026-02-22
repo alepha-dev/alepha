@@ -328,6 +328,7 @@ const ActionButton = (_props: ActionProps) => {
 
     delete (restProps as any).classNameActive;
     delete (restProps as any).variantActive;
+    delete (restProps as any).propsActive;
 
     if ("action" in restProps && restProps.action) {
       return (
@@ -550,8 +551,10 @@ export interface ActionNavigationButtonProps extends ButtonProps {
   routerGoOptions?: RouterPushOptions;
   classNameActive?: string;
   variantActive?: ButtonProps["variant"];
+  propsActive?: ButtonProps;
   target?: string;
   anchorProps?: AnchorProps;
+  anchor?: boolean;
 }
 
 /**
@@ -562,8 +565,10 @@ const ActionNavigationButton = (props: ActionNavigationButtonProps) => {
     active: options,
     classNameActive,
     variantActive,
+    propsActive,
     routerGoOptions,
     onClick: propsOnClick,
+    anchor,
     ...buttonProps
   } = props as ActionNavigationButtonProps & { onClick?: (e: any) => void };
   const router = useRouter();
@@ -571,6 +576,10 @@ const ActionNavigationButton = (props: ActionNavigationButtonProps) => {
     options ? { href: props.href, ...options } : { href: props.href },
   );
   const anchorProps = router.anchor(props.href, routerGoOptions);
+
+  if (propsActive && isActive) {
+    Object.assign(buttonProps, propsActive);
+  }
 
   // Combine passed onClick with router's onClick
   const combinedOnClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -583,11 +592,12 @@ const ActionNavigationButton = (props: ActionNavigationButtonProps) => {
     buttonProps.className = `${className} ${classNameActive}`.trim();
   }
 
-  if (props.anchorProps) {
+  if (props.anchorProps || anchor) {
     return (
       <Anchor
         component={"a"}
         {...anchorProps}
+        {...(buttonProps as AnchorProps)}
         {...props.anchorProps}
         onClick={combinedOnClick}
       >
@@ -619,6 +629,7 @@ const ActionHrefButton = (props: ActionNavigationButtonProps) => {
     active: options,
     classNameActive,
     variantActive,
+    propsActive,
     routerGoOptions,
     target,
     ...buttonProps

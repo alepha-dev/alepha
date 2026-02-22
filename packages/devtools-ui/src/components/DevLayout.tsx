@@ -109,9 +109,7 @@ export const DevLayout = () => {
           </ActionButton>
         </Flex>
       }
-      sidebarResizable={false}
       sidebarProps={{
-        expandOnHover: false,
         collapsed: true,
         items: sidebarItems,
       }}

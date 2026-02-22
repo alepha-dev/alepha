@@ -1,9 +1,16 @@
 import {
+  ActionButton,
+  type ActionMenuConfig,
+  type ActionMenuItem,
+  type ActionProps,
   Flex,
-  type FlexProps,
-  type MantineBreakpoint,
+  OmnibarButton,
+  renderIcon,
+  SidebarCollapseButton,
   Text,
-} from "@mantine/core";
+  ui,
+} from "@alepha/ui";
+import type { FlexProps, MantineBreakpoint } from "@mantine/core";
 import {
   IconChevronDown,
   IconChevronRight,
@@ -19,11 +26,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { ui } from "../../constants/ui.ts";
-import { renderIcon } from "../../helpers/renderIcon.tsx";
-import ActionButton, { type ActionProps } from "../buttons/ActionButton.tsx";
-import OmnibarButton from "../buttons/OmnibarButton.tsx";
-import ToggleSidebarButton from "../buttons/ToggleSidebarButton.tsx";
 
 export interface SidebarProps {
   items?: SidebarNode[];
@@ -36,12 +38,6 @@ export interface SidebarProps {
   hide?: {
     paths?: string[];
   };
-
-  /**
-   * Whether the sidebar expands on hover when collapsed.
-   * @default true
-   */
-  expandOnHover?: boolean;
 
   /**
    * Automatically populate the menu from the router's pages.
@@ -57,7 +53,11 @@ export const Sidebar = (props: SidebarProps) => {
   const router = useRouter();
   const { onItemClick } = props;
 
-  const divider = (key: string | number, fill?: boolean) => {
+  const divider = (
+    key: string | number,
+    fill?: boolean,
+    collapsed?: boolean,
+  ) => {
     return (
       <Flex
         key={key}
@@ -65,41 +65,40 @@ export const Sidebar = (props: SidebarProps) => {
         bg={"var(--mantine-color-default-border)"}
         my={"xs"}
         mx={
-          fill
-            ? "calc(-1 * var(--mantine-spacing-md))"
-            : props.collapsed
-              ? 0
-              : "sm"
+          fill ? "calc(-1 * var(--mantine-spacing-md))" : collapsed ? 0 : "sm"
         }
       />
     );
   };
 
-  const renderNode = (item: SidebarNode, key: number | string) => {
+  const renderNode = (
+    item: SidebarNode,
+    key: number | string,
+    collapsed: boolean,
+  ) => {
     if ("type" in item) {
       // Hide spacers when collapsed
       if (item.type === "spacer") {
-        if (props.collapsed) return null;
+        if (collapsed) return null;
         return <Flex key={key} h={16} />;
       }
 
       if (item.type === "divider") {
-        return divider(key, item.fill);
+        return divider(key, item.fill, collapsed);
       }
 
       if (item.type === "search") {
         return (
           <Flex key={key} mb="xs">
-            <OmnibarButton collapsed={props.collapsed} />
+            <OmnibarButton collapsed={collapsed} />
           </Flex>
         );
       }
 
       if (item.type === "toggle") {
-        return <ToggleSidebarButton key={key} />;
+        return <SidebarCollapseButton key={key} />;
       }
 
-      // Replace sections with dividers when collapsed
       // Replace sections with dividers when collapsed
       if (item.type === "section") {
         // Hide section if all children are hidden
@@ -110,16 +109,17 @@ export const Sidebar = (props: SidebarProps) => {
           if (!hasVisibleChild) return null;
         }
 
-        if (props.collapsed) {
+        if (collapsed) {
           return (
             <Fragment key={key}>
-              {divider(`${key}-d`)}
+              {divider(`${key}-d`, undefined, collapsed)}
               {item.children?.map((child, index) =>
-                renderNode(child, `s${key}-${index}`),
+                renderNode(child, `s${key}-${index}`, collapsed),
               )}
             </Fragment>
           );
         }
+
         return (
           <Fragment key={key}>
             <Flex mt={"md"} align={"center"} gap={"xs"}>
@@ -129,7 +129,7 @@ export const Sidebar = (props: SidebarProps) => {
               </Text>
             </Flex>
             {item.children?.map((child, index) =>
-              renderNode(child, `s${key}-${index}`),
+              renderNode(child, `s${key}-${index}`, collapsed),
             )}
           </Fragment>
         );
@@ -155,7 +155,7 @@ export const Sidebar = (props: SidebarProps) => {
       }
     }
 
-    if (props.collapsed) {
+    if (collapsed) {
       return (
         <SidebarCollapsedItem
           key={key}
@@ -208,37 +208,43 @@ export const Sidebar = (props: SidebarProps) => {
     [props.items, props.autoPopulateMenu],
   );
 
-  return (
-    <Flex
-      flex={1}
-      py={padding}
-      direction={"column"}
-      className="alepha-sidebar-scroll"
-      {...props.flexProps}
-    >
+  const renderSidebar = (collapsed: boolean) => (
+    <Flex flex={1} py={padding} direction={"column"} {...props.flexProps}>
       <Flex gap={gap} px={padding} direction={"column"}>
         {menu
           .filter((it) => it.position === "top")
-          .map((item, index) => renderNode(item, index))}
+          .map((item, index) => renderNode(item, index, collapsed))}
       </Flex>
-      <Flex
-        gap={gap}
-        px={padding}
-        direction={"column"}
-        flex={1}
-        className="alepha-sidebar-scroll"
-      >
+      <Flex gap={gap} px={padding} direction={"column"} flex={1}>
         {menu
           .filter((it) => !it.position)
-          .map((item, index) => renderNode(item, index))}
+          .map((item, index) => renderNode(item, index, collapsed))}
       </Flex>
       <Flex gap={gap} px={padding} direction={"column"}>
         {menu
           .filter((it) => it.position === "bottom")
-          .map((item, index) => renderNode(item, index))}
+          .map((item, index) => renderNode(item, index, collapsed))}
       </Flex>
     </Flex>
   );
+
+  // When collapsed, render both versions and use CSS breakpoints:
+  // - Desktop (>=md): show collapsed (icon-only) sidebar
+  // - Mobile (<md): show expanded sidebar (drawer with labels)
+  if (props.collapsed) {
+    return (
+      <>
+        <Flex flex={1} direction={"column"} visibleFrom="md">
+          {renderSidebar(true)}
+        </Flex>
+        <Flex flex={1} direction={"column"} hiddenFrom="md">
+          {renderSidebar(false)}
+        </Flex>
+      </>
+    );
+  }
+
+  return renderSidebar(false);
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -310,14 +316,18 @@ export const SidebarItem = (props: SidebarItemProps) => {
           props.theme.button?.size ??
           (level === 0 ? "sm" : "xs")
         }
-        tooltip={
-          item.description
-            ? { label: item.description, position: "right" }
-            : undefined
-        }
-        color={"gray"}
-        variant={"subtle"}
-        variantActive={"default"}
+        // tooltip={
+        //   item.description
+        //     ? { label: item.description, position: "right" }
+        //     : undefined
+        // }
+        bd={0}
+        fw={"normal"}
+        variant={"default"}
+        propsActive={{
+          variant: "outline",
+          fw: "bold",
+        }}
         radius={props.item.theme?.radius ?? props.theme.button?.radius ?? "md"}
         onClick={handleItemClick}
         leftSection={
@@ -376,20 +386,37 @@ export const SidebarItem = (props: SidebarItemProps) => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface SidebarItemProps {
-  item: SidebarMenuItem;
-  level: number;
-  onItemClick?: (item: SidebarMenuItem) => void;
-  theme: SidebarTheme;
-}
-
 const SidebarCollapsedItem = (props: SidebarItemProps) => {
   const { item, level } = props;
+  const router = useRouter();
 
   const handleItemClick = () => {
     props.onItemClick?.(item);
     item.onClick?.();
   };
+
+  const hasChildren = item.children && item.children.length > 0;
+
+  const menu: ActionMenuConfig | undefined = hasChildren
+    ? {
+        on: "hover",
+        position: "right",
+        items: item
+          .children!.filter((child) => !child.can || child.can())
+          .map(
+            (child): ActionMenuItem => ({
+              label: child.label as string,
+              icon: renderIcon(child.icon, ui.sizes.icon.sm),
+              href: child.href,
+              active: child.href
+                ? router.isActive(child.href, {
+                    startWith: child.activeStartsWith,
+                  })
+                : undefined,
+            }),
+          ),
+      }
+    : undefined;
 
   return (
     <ActionButton
@@ -400,19 +427,24 @@ const SidebarCollapsedItem = (props: SidebarItemProps) => {
       }
       variant={"subtle"}
       variantActive={"default"}
-      tooltip={{
-        label: item.label,
-        position: "right",
-      }}
+      tooltip={
+        hasChildren
+          ? undefined
+          : {
+              label: item.label,
+              position: "right",
+            }
+      }
       radius={props.item.theme?.radius ?? props.theme.button?.radius ?? "md"}
-      onClick={handleItemClick}
+      onClick={hasChildren ? undefined : handleItemClick}
       icon={
         renderIcon(item.icon, ui.sizes.icon.sm) ?? (
           <IconSquareRounded size={ui.sizes.icon.sm} />
         )
       }
-      href={props.item.href as any}
-      target={props.item.target}
+      href={hasChildren ? undefined : (props.item.href as any)}
+      target={hasChildren ? undefined : props.item.target}
+      menu={menu}
       {...props.item.actionProps}
     />
   );

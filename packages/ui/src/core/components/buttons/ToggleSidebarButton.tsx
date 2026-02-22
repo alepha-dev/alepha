@@ -18,16 +18,13 @@ const ToggleSidebarButton = (props: Props) => {
           ? IconLayoutSidebarRightCollapse
           : IconLayoutSidebarLeftCollapse
       }
-      visibleFrom={"sm"}
+      visibleFrom={"md"}
       variant={"subtle"}
       size={"md"}
       onClick={() => {
-        const expanding = sidebar.collapsed;
         setSidebar({
           ...sidebar,
           collapsed: !sidebar.collapsed,
-          // Reset width to defaultWidth when expanding
-          width: expanding ? sidebar.defaultWidth : sidebar.width,
         });
       }}
       tooltip={{

@@ -1,31 +1,69 @@
-import { DataTable, Text } from "@alepha/ui";
-import { Badge, Flex } from "@mantine/core";
-import { IconCheck, IconUsersPlus, IconX } from "@tabler/icons-react";
+import { DataTable, Flex, Text, useDialog, useToast } from "@alepha/ui";
+import { Badge } from "@mantine/core";
+import { IconUsersPlus } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
-import {
-  type AdminUserController,
-  type UserEntity,
-  users,
-} from "alepha/api/users";
+import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
+import { useState } from "react";
 import type { AdminRouter } from "../../AdminRouter.ts";
 
 export interface AdminUsersProps {
   userRealmName?: string;
 }
 
+const createUserSchema = t.object({
+  username: t.optional(
+    t.shortText({
+      minLength: 3,
+      maxLength: 50,
+      pattern: "^[a-zA-Z0-9._-]+$",
+    }),
+  ),
+  email: t.optional(t.email()),
+  phoneNumber: t.optional(t.e164()),
+  firstName: t.optional(t.string()),
+  lastName: t.optional(t.string()),
+  roles: t.optional(t.array(t.string())),
+  enabled: t.optional(t.boolean()),
+  password: t.optional(t.string({ minLength: 8 })),
+});
+
 const AdminUsers = (props: AdminUsersProps) => {
   const client = useClient<AdminUserController>();
   const router = useRouter<AdminRouter>();
   const { l } = useI18n();
+  const dialog = useDialog();
+  const toast = useToast();
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleCreate = async () => {
+    const data = await dialog.form({
+      title: "Create User",
+      schema: createUserSchema,
+      columns: 2,
+      submitLabel: "Create",
+    });
+    if (data) {
+      await client.createUser({
+        query: { userRealmName: props.userRealmName },
+        body: { ...data, enabled: data.enabled ?? true },
+      });
+      toast.success({ title: "User created" });
+      setRefreshKey((k) => k + 1);
+    }
+  };
 
   const filters = t.object({
     query: t.optional(
       t.string({
         $control: {
-          query: t.omit(users.schema, ["id", "version"]),
+          query: t.object({
+            email: t.optional(t.email()),
+            enabled: t.optional(t.boolean()),
+            emailVerified: t.optional(t.boolean()),
+          }),
         },
       }),
     ),
@@ -34,11 +72,12 @@ const AdminUsers = (props: AdminUsersProps) => {
   return (
     <Flex flex={1} direction="column">
       <DataTable<UserEntity, typeof filters>
+        key={refreshKey}
         submitOnInit
         actions={[
           {
             icon: IconUsersPlus,
-            href: router.path("adminUserCreate"),
+            onClick: handleCreate,
             label: "Create User",
           },
         ]}
@@ -53,27 +92,22 @@ const AdminUsers = (props: AdminUsersProps) => {
           striped: false,
           highlightOnHover: true,
         }}
-        onFilterChange={(key, value, form) => {
+        onFilterChange={(key, _value, form) => {
           if (key === "query") {
             return form.submit();
           }
         }}
         filters={filters}
-        tableTrProps={(item) => {
-          const baseProps: Record<string, any> = {
-            style: { cursor: "pointer" },
-            onClick: () =>
-              router.push("adminUserDetails", {
-                params: { userId: item.id },
-              }),
-          };
-
-          if (!item.enabled) {
-            baseProps.opacity = 0.5;
-          }
-
-          return baseProps;
-        }}
+        tableTrProps={(item) => ({
+          style: {
+            cursor: "pointer",
+            opacity: item.enabled ? 1 : 0.5,
+          },
+          onClick: () =>
+            router.push("adminUserProfile", {
+              params: { userId: item.id },
+            }),
+        })}
         items={async (filters) => {
           const response = await client.findUsers({
             query: {
@@ -81,7 +115,6 @@ const AdminUsers = (props: AdminUsersProps) => {
               userRealmName: props.userRealmName,
             },
           });
-
           return response as Page<UserEntity>;
         }}
         columns={{
@@ -89,40 +122,20 @@ const AdminUsers = (props: AdminUsersProps) => {
             label: "Username",
             value: (item) => (
               <Text size="sm" fw={500}>
-                {item.username || "-"}
+                {item.username || "\u2014"}
               </Text>
             ),
           },
           email: {
             label: "Email",
-            value: (item) => (
-              <Flex gap="xs">
-                <Text size="sm">{item.email || "-"}</Text>
-                {item.email && (
-                  <Badge
-                    size="xs"
-                    variant="light"
-                    color={item.emailVerified ? "green" : "gray"}
-                    leftSection={
-                      item.emailVerified ? (
-                        <IconCheck size={10} />
-                      ) : (
-                        <IconX size={10} />
-                      )
-                    }
-                  >
-                    {item.emailVerified ? "Verified" : "Unverified"}
-                  </Badge>
-                )}
-              </Flex>
-            ),
+            value: (item) => <Text size="sm">{item.email || "\u2014"}</Text>,
           },
           roles: {
             label: "Roles",
             value: (item) => (
               <Flex gap={4}>
                 {item.roles.map((role: string) => (
-                  <Badge key={role} size="xs" variant="outline">
+                  <Badge key={role} size="xs" variant="default">
                     {role}
                   </Badge>
                 ))}
@@ -133,13 +146,9 @@ const AdminUsers = (props: AdminUsersProps) => {
             label: "Status",
             fit: true,
             value: (item) => (
-              <Badge
-                size="sm"
-                variant="light"
-                color={item.enabled ? "green" : "red"}
-              >
+              <Text size="sm" c="dimmed">
                 {item.enabled ? "Active" : "Disabled"}
-              </Badge>
+              </Text>
             ),
           },
           createdAt: {

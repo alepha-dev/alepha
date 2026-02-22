@@ -1,5 +1,4 @@
-import { Text } from "@alepha/ui";
-import { Flex } from "@mantine/core";
+import { Flex, Text } from "@alepha/ui";
 import { IconArrowLeft } from "@tabler/icons-react";
 
 /**

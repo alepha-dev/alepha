@@ -132,44 +132,13 @@ describe("TypeForm", () => {
     });
   });
 
-  describe("Boolean/Switch", () => {
-    it("should render switch for boolean type and submit true", async ({
+  describe("Boolean/Select", () => {
+    it("should render select for boolean type by default", async ({
       expect,
     }) => {
-      const calls: Array<any> = [];
-
       const Form = () => {
         const form = useForm({
           id: "bool-test",
-          schema: t.object({
-            subscribe: t.boolean(),
-          }),
-          handler: (values) => {
-            calls.push(values);
-          },
-        });
-
-        return <TypeForm form={form} />;
-      };
-
-      await renderWithAlepha(<Form />);
-
-      // Find the switch input
-      const switchInput = screen.getByRole("switch");
-      expect(switchInput).toBeDefined();
-
-      // Click to toggle on
-      fireEvent.click(switchInput);
-      fireEvent.submit(screen.getByText("Submit"));
-
-      await waitFor(() => expect(calls.length).toBe(1));
-      expect(calls[0]).toEqual({ subscribe: true });
-    });
-
-    it("should render switch unchecked by default", async ({ expect }) => {
-      const Form = () => {
-        const form = useForm({
-          id: "bool-false-test",
           schema: t.object({
             subscribe: t.boolean(),
           }),
@@ -181,40 +150,36 @@ describe("TypeForm", () => {
 
       await renderWithAlepha(<Form />);
 
-      const switchInput = screen.getByRole("switch");
-      // Should not be checked by default (no default value)
-      expect((switchInput as HTMLInputElement).checked).toBe(false);
+      // Boolean renders as Select with Yes/No options by default
+      const selectInput = screen.getByTestId("bool-test-subscribe");
+      expect(selectInput).toBeDefined();
+      expect(selectInput.getAttribute("aria-haspopup")).toBe("listbox");
     });
 
-    it("should handle default true value for boolean", async ({ expect }) => {
-      const calls: Array<any> = [];
-
+    it("should render switch only when explicitly requested", async ({
+      expect,
+    }) => {
       const Form = () => {
         const form = useForm({
-          id: "bool-default-test",
+          id: "bool-switch-test",
           schema: t.object({
-            enabled: t.boolean({ default: true }),
+            subscribe: t.boolean(),
           }),
-          handler: (values) => {
-            calls.push(values);
-          },
+          handler: () => {},
         });
 
-        return <TypeForm form={form} />;
+        return (
+          <TypeForm
+            form={form}
+            fieldControlProps={{ subscribe: { switch: true } }}
+          />
+        );
       };
 
       await renderWithAlepha(<Form />);
 
       const switchInput = screen.getByRole("switch");
-      // Should be checked by default
-      expect((switchInput as HTMLInputElement).checked).toBe(true);
-
-      // Toggle off
-      fireEvent.click(switchInput);
-      fireEvent.submit(screen.getByText("Submit"));
-
-      await waitFor(() => expect(calls.length).toBe(1));
-      expect(calls[0]).toEqual({ enabled: false });
+      expect(switchInput).toBeDefined();
     });
   });
 
@@ -455,9 +420,10 @@ describe("TypeForm", () => {
       const ageInput = screen.getByTestId("combined-test-age");
       expect(ageInput).toBeDefined();
 
-      // Boolean switch
-      const activeSwitch = screen.getByRole("switch");
-      expect(activeSwitch).toBeDefined();
+      // Boolean select (rendered as Select by default, not Switch)
+      const activeSelect = screen.getByTestId("combined-test-active");
+      expect(activeSelect).toBeDefined();
+      expect(activeSelect.getAttribute("aria-haspopup")).toBe("listbox");
 
       // Enum select (Mantine uses textbox with aria-haspopup)
       const roleSelect = screen.getByRole("textbox", { name: "Role" });
@@ -468,9 +434,6 @@ describe("TypeForm", () => {
       expect((nameInput as HTMLInputElement).value).toBe("Alice");
 
       fireEvent.change(ageInput, { target: { value: "30" } });
-
-      fireEvent.click(activeSwitch);
-      expect((activeSwitch as HTMLInputElement).checked).toBe(true);
     });
   });
 
@@ -481,7 +444,6 @@ describe("TypeForm", () => {
           id: "reset-test",
           schema: t.object({
             name: t.text({ default: "default name" }),
-            active: t.boolean({ default: false }),
           }),
           handler: () => {},
         });
@@ -495,16 +457,12 @@ describe("TypeForm", () => {
       const nameInput = screen.getByTestId("reset-test-name");
       fireEvent.change(nameInput, { target: { value: "changed" } });
 
-      const switchInput = screen.getByRole("switch");
-      fireEvent.click(switchInput);
-
       // Click reset
       fireEvent.click(screen.getByText("Reset"));
 
       // Values should be reset
       await waitFor(() => {
         expect((nameInput as HTMLInputElement).value).toBe("default name");
-        expect((switchInput as HTMLInputElement).checked).toBe(false);
       });
     });
   });

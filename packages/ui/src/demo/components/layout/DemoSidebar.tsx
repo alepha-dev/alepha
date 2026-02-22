@@ -61,7 +61,6 @@ const DemoSidebar = () => {
       }}
       columns={1}
       windowProps={{
-        fill: true,
         containerProps: { p: 0 },
       }}
     >

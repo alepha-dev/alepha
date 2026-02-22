@@ -1,4 +1,4 @@
-import { Flex, Text, Title } from "@mantine/core";
+import { Flex, Text } from "@alepha/ui";
 import { IconBraces } from "@tabler/icons-react";
 
 const components = [
@@ -13,15 +13,11 @@ const components = [
 
 const DemoHome = () => {
   return (
-    <Flex direction="column" gap="xl" p="xl">
-      <Flex>
-        <Title order={1} mb="xs">
-          Component Showcase
-        </Title>
-        <Text c="dimmed" size="lg">
-          Interactive demos and documentation for @alepha/ui components.
-        </Text>
-      </Flex>
+    <Flex p={"lg"} col>
+      <Text title>Component Showcase</Text>
+      <Text c="dimmed">
+        Interactive demos and documentation for @alepha/ui components.
+      </Text>
     </Flex>
   );
 };

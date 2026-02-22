@@ -1,5 +1,4 @@
 import { ActionButton, DataTable, Flex, Text } from "@alepha/ui";
-import { Badge } from "@mantine/core";
 import {
   IconDeviceDesktop,
   IconDeviceMobile,
@@ -106,7 +105,7 @@ const AdminSessions = (props: AdminSessionsProps) => {
               <ActionButton
                 variant="subtle"
                 size="xs"
-                href={router.path("adminUserDetails", {
+                href={router.path("adminUserProfile", {
                   params: { userId: item.userId },
                 })}
               >
@@ -120,17 +119,11 @@ const AdminSessions = (props: AdminSessionsProps) => {
             label: "Device",
             fit: true,
             value: (item) => (
-              <Flex gap={4}>
+              <Flex gap={4} align="center">
                 {item.userAgent ? (
                   <>
-                    <Badge
-                      size="xs"
-                      variant="light"
-                      leftSection={getDeviceIcon(item.userAgent.device)}
-                    >
-                      {item.userAgent.device}
-                    </Badge>
-                    <Text size="xs" c="dimmed">
+                    {getDeviceIcon(item.userAgent.device)}
+                    <Text size="xs">
                       {item.userAgent.browser} / {item.userAgent.os}
                     </Text>
                   </>
@@ -155,13 +148,12 @@ const AdminSessions = (props: AdminSessionsProps) => {
             label: "Status",
             fit: true,
             value: (item) => (
-              <Badge
-                size="sm"
-                variant="light"
-                color={isExpired(item.expiresAt) ? "red" : "green"}
+              <Text
+                size="xs"
+                c={isExpired(item.expiresAt) ? "dimmed" : undefined}
               >
                 {isExpired(item.expiresAt) ? "Expired" : "Active"}
-              </Badge>
+              </Text>
             ),
           },
           createdAt: {

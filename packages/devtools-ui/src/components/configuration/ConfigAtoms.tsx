@@ -50,7 +50,15 @@ const buildAtomTree = (atoms: DevAtomMetadata[]): AtomTreeNode[] => {
     }
   }
 
-  return root.children;
+  return root.children.map(collapseChain);
+};
+
+const collapseChain = (node: AtomTreeNode): AtomTreeNode => {
+  while (!node.atom && node.children.length === 1) {
+    const child = node.children[0];
+    node = { ...child, label: `${node.label}.${child.label}` };
+  }
+  return { ...node, children: node.children.map(collapseChain) };
 };
 
 const toTreeViewNode = (node: AtomTreeNode): TreeViewNode => {

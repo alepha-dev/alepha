@@ -1,11 +1,5 @@
-import { ActionButton, Text } from "@alepha/ui";
-import {
-  Collapse,
-  Flex,
-  ScrollArea,
-  TextInput,
-  UnstyledButton,
-} from "@mantine/core";
+import { ActionButton, Flex, Text } from "@alepha/ui";
+import { Collapse, ScrollArea, TextInput, UnstyledButton } from "@mantine/core";
 import {
   IconChevronDown,
   IconChevronRight,
