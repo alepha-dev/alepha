@@ -4,7 +4,7 @@ import { realmAuthSettingsAtom } from "../atoms/realmAuthSettingsAtom.ts";
 /**
  * User-specific parameter service.
  *
- * This service wraps the core ParameterStore to provide realm settings management.
+ * This service wraps the core ParameterProvider to provide realm settings management.
  * It is lazy-loaded when the `parameters` feature is enabled in the realm.
  */
 export class UserParameters {

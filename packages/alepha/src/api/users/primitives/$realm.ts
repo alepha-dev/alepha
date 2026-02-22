@@ -1,5 +1,6 @@
 import { $context } from "alepha";
 import { AlephaApiKeys, ApiKeyService } from "alepha/api/keys";
+import { AlephaApiParameters } from "alepha/api/parameters";
 import type { Repository } from "alepha/orm";
 import {
   $issuer,
@@ -109,6 +110,11 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
   if (features.notifications) {
     alepha.with(UserNotifications);
+  }
+
+  if (features.parameters) {
+    // for now, we don't have $parameter related to users, we just register the module
+    alepha.with(AlephaApiParameters);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
