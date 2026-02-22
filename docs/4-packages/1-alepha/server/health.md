@@ -10,10 +10,6 @@ npm install alepha
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 3 - stable | 0.7.0 | node, bun, workerd|
-
 Application health monitoring endpoints.
 
 **Features:**

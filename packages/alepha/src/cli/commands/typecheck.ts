@@ -18,9 +18,7 @@ export class TypecheckCommand {
     name: "typecheck",
     aliases: ["tc"],
     description: "Check TypeScript types across the codebase",
-    handler: async ({ root }) => {
-      this.log.info("Starting TypeScript type checking...");
-
+    handler: async ({ run, root }) => {
       await this.scaffolder.ensureConfig(root, {
         tsconfigJson: true,
         checkWorkspace: true,
@@ -31,9 +29,7 @@ export class TypecheckCommand {
         exec: (cmd, opts) => this.utils.exec(cmd, opts),
       });
 
-      await this.utils.exec("tsc --noEmit");
-
-      this.log.info("TypeScript type checking completed successfully.");
+      await run("tsc --noEmit");
     },
   });
 }

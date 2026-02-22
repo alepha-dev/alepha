@@ -12,7 +12,7 @@ export class LintCommand {
   public readonly lint = $command({
     name: "lint",
     description: "Run linter across the codebase using Biome",
-    handler: async ({ root }) => {
+    handler: async ({ run, root }) => {
       await this.scaffolder.ensureConfig(root, {
         biomeJson: true,
         checkWorkspace: true,
@@ -23,7 +23,7 @@ export class LintCommand {
         exec: (cmd, opts) => this.utils.exec(cmd, opts),
       });
 
-      await this.utils.exec("biome check --fix");
+      await run("biome check --fix");
     },
   });
 }

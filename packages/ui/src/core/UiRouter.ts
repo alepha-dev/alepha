@@ -1,4 +1,4 @@
-import { AlephaMantineProvider } from "@alepha/ui/layout";
+import { AlephaMantineProvider } from "@alepha/ui";
 import { $page } from "alepha/react/router";
 
 /**

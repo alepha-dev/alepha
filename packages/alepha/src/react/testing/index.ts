@@ -9,10 +9,6 @@ export * from "./setup.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | Stability | Since | Runtime |
- * |-----------|-------|---------|
- * | 2 - experimental | 0.17.0 | node, bun |
- *
  * Testing utilities for Alepha React applications.
  *
  * **Features:**

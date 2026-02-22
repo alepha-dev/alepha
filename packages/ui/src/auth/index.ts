@@ -19,10 +19,6 @@ export * from "./primitives/$uiAuth.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | Stability | Since | Runtime |
- * |-----------|-------|---------|
- * | 2 - beta | 0.12.0 | node, bun, workerd, browser|
- *
  * Authentication UI components.
  *
  * **Features:**

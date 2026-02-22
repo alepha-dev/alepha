@@ -1,4 +1,4 @@
-import { Button, Flex } from "@alepha/ui";
+import { ActionButton, Flex } from "@alepha/ui";
 import {
   IconCheck,
   IconDownload,
@@ -37,10 +37,10 @@ const showcaseSchema = t.object({
   }),
 });
 
-const DemoButton = () => {
+const DemoActionButton = () => {
   return (
     <Showcase
-      title="Button"
+      title="ActionButton"
       schema={showcaseSchema}
       initialValues={{
         variant: "filled",
@@ -54,7 +54,7 @@ const DemoButton = () => {
       {(props) => (
         <Flex col gap="xl" p="md">
           <Flex gap="md" wrap="wrap" centerY>
-            <Button
+            <ActionButton
               variant={props.variant}
               size={props.size}
               intent={props.intent}
@@ -63,8 +63,8 @@ const DemoButton = () => {
               onClick={() => alert("Clicked")}
             >
               Default
-            </Button>
-            <Button
+            </ActionButton>
+            <ActionButton
               variant={props.variant}
               size={props.size}
               intent={props.intent}
@@ -74,8 +74,8 @@ const DemoButton = () => {
               onClick={() => alert("Create")}
             >
               Create
-            </Button>
-            <Button
+            </ActionButton>
+            <ActionButton
               variant={props.variant}
               size={props.size}
               intent={props.intent}
@@ -87,7 +87,7 @@ const DemoButton = () => {
           </Flex>
 
           <Flex gap="md" wrap="wrap" centerY>
-            <Button
+            <ActionButton
               variant="filled"
               size={props.size}
               intent="primary"
@@ -95,8 +95,8 @@ const DemoButton = () => {
               onClick={() => {}}
             >
               Save
-            </Button>
-            <Button
+            </ActionButton>
+            <ActionButton
               variant="filled"
               size={props.size}
               intent="danger"
@@ -105,16 +105,16 @@ const DemoButton = () => {
               onClick={() => alert("Deleted")}
             >
               Delete
-            </Button>
-            <Button
+            </ActionButton>
+            <ActionButton
               variant="light"
               size={props.size}
               icon={IconDownload}
               onClick={() => {}}
             >
               Export
-            </Button>
-            <Button
+            </ActionButton>
+            <ActionButton
               variant="subtle"
               size={props.size}
               icon={IconSettings}
@@ -123,7 +123,7 @@ const DemoButton = () => {
           </Flex>
 
           <Flex gap="md" wrap="wrap" centerY>
-            <Button
+            <ActionButton
               variant={props.variant}
               size={props.size}
               menu={{
@@ -140,8 +140,8 @@ const DemoButton = () => {
               onClick={() => {}}
             >
               With Menu
-            </Button>
-            <Button
+            </ActionButton>
+            <ActionButton
               variant={props.variant}
               size={props.size}
               tooltip="This button has a tooltip"
@@ -149,7 +149,7 @@ const DemoButton = () => {
               onClick={() => {}}
             >
               With Tooltip
-            </Button>
+            </ActionButton>
           </Flex>
         </Flex>
       )}
@@ -157,4 +157,4 @@ const DemoButton = () => {
   );
 };
 
-export default DemoButton;
+export default DemoActionButton;

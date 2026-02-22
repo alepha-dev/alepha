@@ -10,10 +10,6 @@ npm install alepha
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 3 - stable | 0.13.0 | node, bun, workerd|
-
 Email and phone verification workflows.
 
 **Features:**

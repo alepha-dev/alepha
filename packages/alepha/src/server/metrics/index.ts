@@ -9,10 +9,6 @@ export * from "./providers/ServerMetricsProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | Stability | Since | Runtime |
- * |-----------|-------|---------|
- * | 2 - beta | 0.14.0 | node, bun|
- *
  * Prometheus-style metrics collection.
  *
  * **Features:**

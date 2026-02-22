@@ -10,10 +10,6 @@ npm install alepha
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 3 - stable | 0.3.0 | node, bun, workerd|
-
 Cross-Origin Resource Sharing configuration.
 
 **Features:**

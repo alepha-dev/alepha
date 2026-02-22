@@ -12,10 +12,6 @@ npm install alepha
 
 ## Module
 
-| type | quality | stability |
-|------|---------|-----------|
-| backend | standard | stable |
-
 S3-compatible file storage provider.
 
 **Features:**

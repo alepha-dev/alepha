@@ -1,5 +1,4 @@
 @import "@alepha/ui/styles";
-@import "@alepha/ui/json/styles";
 
 .devtools-tree-node:hover {
   background: var(--mantine-color-default-hover) !important;

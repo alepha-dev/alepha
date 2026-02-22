@@ -10,10 +10,6 @@ npm install @alepha/ui
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 2 - beta | 0.12.0 | node, bun, workerd, browser|
-
 Core UI components based on Mantine UI v8.
 
 **Features:**
@@ -31,6 +27,10 @@ Core UI components based on Mantine UI v8.
 - Theme system with dark mode
 
 ## API Reference
+
+### Primitives
+
+- [`$ui`](/docs/reference-primitives-$ui) — Convenience function to configure and inject the UiRouter.
 
 ### React Hooks
 

@@ -10,10 +10,6 @@ npm install alepha
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 1 - experimental | 0.14.0 | node, browser|
-
 Real-time bidirectional communication.
 
 **Features:**

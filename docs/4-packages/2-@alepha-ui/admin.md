@@ -8,10 +8,6 @@ npm install @alepha/ui
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 2 - beta | 0.12.0 | node, bun, workerd, browser|
-
 Admin panel UI components.
 
 **Features:**

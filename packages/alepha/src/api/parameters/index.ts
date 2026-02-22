@@ -30,10 +30,6 @@ export * from "./services/ParameterProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | Stability | Since | Runtime |
- * |-----------|-------|---------|
- * | 3 - stable | 0.9.0 | node, bun, workerd|
- *
  * Application parameter management.
  *
  * **Features:**

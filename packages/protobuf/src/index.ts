@@ -6,10 +6,6 @@ export * from "./providers/ProtobufProvider.ts";
 export * from "./providers/ProtobufSchemaCodec.ts";
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
- *
  * Protocol Buffers support.
  *
  * **Features:**

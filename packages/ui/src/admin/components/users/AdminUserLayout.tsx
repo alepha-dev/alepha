@@ -1,11 +1,6 @@
 import { Flex, Text, useDialog, useToast } from "@alepha/ui";
 import { Loader } from "@mantine/core";
-import {
-  IconBan,
-  IconPencil,
-  IconShieldCheck,
-  IconTrash,
-} from "@tabler/icons-react";
+import { IconBan, IconShieldCheck, IconTrash } from "@tabler/icons-react";
 import { t } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useClient } from "alepha/react";
@@ -82,33 +77,6 @@ const AdminUserLayout = (props: AdminUserLayoutProps) => {
     loadUser();
   }, [loadUser]);
 
-  const handleEdit = async () => {
-    if (!user) return;
-    const data = await dialog.form({
-      title: "Edit User",
-      schema: updateUserSchema,
-      columns: 2,
-      submitLabel: "Save",
-      defaults: {
-        email: user.email ?? "",
-        phoneNumber: user.phoneNumber ?? "",
-        firstName: user.firstName ?? "",
-        lastName: user.lastName ?? "",
-        roles: user.roles ?? [],
-        enabled: user.enabled,
-      },
-    });
-    if (data) {
-      const updated = await client.updateUser({
-        params: { id: user.id },
-        query: realmQuery,
-        body: data,
-      });
-      setUser(updated);
-      toast.success({ title: "User updated" });
-    }
-  };
-
   const handleToggleEnabled = async () => {
     if (!user) return;
     const action = user.enabled ? "disable" : "enable";
@@ -174,11 +142,6 @@ const AdminUserLayout = (props: AdminUserLayoutProps) => {
             color: user.enabled ? "green" : "gray",
           }}
           menuActions={[
-            {
-              label: "Edit",
-              icon: IconPencil,
-              onClick: handleEdit,
-            },
             {
               label: user.enabled ? "Disable" : "Enable",
               icon: user.enabled ? IconBan : IconShieldCheck,

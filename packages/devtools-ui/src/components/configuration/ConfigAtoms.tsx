@@ -1,5 +1,4 @@
-import { ActionButton, Flex, ui } from "@alepha/ui";
-import { JsonViewer } from "@alepha/ui/json";
+import { ActionButton, Flex, JsonViewer, ui } from "@alepha/ui";
 import {
   Badge,
   NumberInput,

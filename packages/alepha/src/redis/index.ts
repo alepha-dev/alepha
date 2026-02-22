@@ -18,10 +18,6 @@ export * from "./providers/RedisSubscriberProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | Stability | Since | Runtime |
- * |-----------|-------|---------|
- * | 3 - stable | 0.1.0 | node, bun|
- *
  * Redis client wrapper.
  *
  * **Features:**

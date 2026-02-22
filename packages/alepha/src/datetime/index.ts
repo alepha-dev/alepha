@@ -11,10 +11,6 @@ export * from "./providers/DateTimeProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | Stability | Since | Runtime |
- * |-----------|-------|---------|
- * | 3 - stable | 0.10.0 | node, bun, workerd, browser, expo|
- *
  * Date and time operations.
  *
  * **Features:**

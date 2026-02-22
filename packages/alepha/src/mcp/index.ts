@@ -91,10 +91,6 @@ export { SseMcpTransport } from "./transports/SseMcpTransport.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | Stability | Since | Runtime |
- * |-----------|-------|---------|
- * | 3 - stable | 0.18.0 | node, bun|
- *
  * Model Context Protocol for AI tool integration.
  *
  * **Features:**

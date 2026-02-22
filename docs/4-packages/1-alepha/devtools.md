@@ -10,10 +10,6 @@ npm install alepha
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 2 - experimental | 0.10.0 | node, bun |
-
 Runtime inspection and debugging UI.
 
 **Features:**

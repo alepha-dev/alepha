@@ -8,10 +8,6 @@ npm install @alepha/ui
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| frontend | standard | experimental |
-
 Component showcase and documentation.
 
 **Features:**

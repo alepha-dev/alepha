@@ -27,10 +27,6 @@ export * from "./services/Logger.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | Stability | Since | Runtime |
- * |-----------|-------|---------|
- * | 3 - stable | 0.5.0 | node, bun, workerd, browser, expo|
- *
  * Configurable logging with multiple outputs.
  *
  * **Features:**

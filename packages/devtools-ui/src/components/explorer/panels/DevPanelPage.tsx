@@ -1,5 +1,4 @@
-import { Flex, ui } from "@alepha/ui";
-import { JsonViewer } from "@alepha/ui/json";
+import { Flex, JsonViewer, ui } from "@alepha/ui";
 import { Badge, Card, Code, Text } from "@mantine/core";
 
 export const DevPanelPage = ({ page }: { page: any }) => {

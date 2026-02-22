@@ -1,6 +1,5 @@
 import { DataTable, Flex, Text, useDialog, useToast } from "@alepha/ui";
 import { Badge } from "@mantine/core";
-import { IconUsersPlus } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useClient } from "alepha/react";
@@ -38,23 +37,6 @@ const AdminUsers = (props: AdminUsersProps) => {
   const toast = useToast();
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleCreate = async () => {
-    const data = await dialog.form({
-      title: "Create User",
-      schema: createUserSchema,
-      columns: 2,
-      submitLabel: "Create",
-    });
-    if (data) {
-      await client.createUser({
-        query: { userRealmName: props.userRealmName },
-        body: { ...data, enabled: data.enabled ?? true },
-      });
-      toast.success({ title: "User created" });
-      setRefreshKey((k) => k + 1);
-    }
-  };
-
   const filters = t.object({
     query: t.optional(
       t.string({
@@ -74,13 +56,6 @@ const AdminUsers = (props: AdminUsersProps) => {
       <DataTable<UserEntity, typeof filters>
         key={refreshKey}
         submitOnInit
-        actions={[
-          {
-            icon: IconUsersPlus,
-            onClick: handleCreate,
-            label: "Create User",
-          },
-        ]}
         defaultSize={10}
         typeFormProps={{
           skipSubmitButton: true,

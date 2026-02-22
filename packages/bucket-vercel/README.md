@@ -12,10 +12,6 @@ npm install alepha
 
 ## Module
 
-| type | quality | stability |
-|------|---------|-----------|
-| backend | standard | stable |
-
 Vercel Blob Storage provider.
 
 **Features:**

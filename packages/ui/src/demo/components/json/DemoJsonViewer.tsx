@@ -1,4 +1,4 @@
-import { JsonViewer } from "@alepha/ui/json";
+import { JsonViewer } from "@alepha/ui";
 import { t } from "alepha";
 import { useI18n } from "alepha/react/i18n";
 import Showcase from "../shared/Showcase.tsx";

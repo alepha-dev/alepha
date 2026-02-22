@@ -10,10 +10,6 @@ npm install alepha
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 3 - stable | 0.9.0 | node, bun, workerd |
-
 Job execution framework — unified primitive for deferred, scheduled, and queued work.
 
 **Features:**

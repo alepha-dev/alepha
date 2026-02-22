@@ -29,7 +29,7 @@ export class TestCommand {
         }),
       ),
     }),
-    handler: async ({ root, flags, env }) => {
+    handler: async ({ run, root, flags, env }) => {
       await this.scaffolder.ensureConfig(root, {
         tsconfigJson: true,
       });
@@ -41,7 +41,7 @@ export class TestCommand {
 
       const config = flags.config ? `--config=${flags.config}` : "";
 
-      await this.utils.exec(`vitest run ${config} ${env.VITEST_ARGS}`);
+      await run(`vitest run ${config} ${env.VITEST_ARGS}`);
     },
   });
 }

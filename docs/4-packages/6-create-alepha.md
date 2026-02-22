@@ -8,10 +8,6 @@ npm install create-alepha
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| tooling | rare | stable |
-
 Quick project setup tool.
 
 **Features:**

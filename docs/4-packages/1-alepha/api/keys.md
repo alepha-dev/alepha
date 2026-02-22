@@ -10,10 +10,6 @@ npm install alepha
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 3 - stable | 0.11.0 | node, bun, workerd|
-
 API key management module for programmatic access.
 
 **Features:**

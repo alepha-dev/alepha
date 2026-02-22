@@ -7,10 +7,6 @@ export * from "./providers/S3FileStorageProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
- *
  * S3-compatible file storage provider.
  *
  * **Features:**

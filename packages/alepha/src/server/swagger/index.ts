@@ -35,10 +35,6 @@ declare module "alepha/server" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | Stability | Since | Runtime |
- * |-----------|-------|---------|
- * | 3 - stable | 0.9.0 | node, bun|
- *
  * Automatic API documentation generation.
  *
  * **Features:**

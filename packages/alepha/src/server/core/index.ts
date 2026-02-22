@@ -126,10 +126,6 @@ export * from "./services/UserAgentParser.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | Stability | Since | Runtime |
- * |-----------|-------|---------|
- * | 3 - stable | 0.1.0 | node, bun, workerd|
- *
  * Convention-driven HTTP server with automatic validation and type inference.
  *
  * **Features:**

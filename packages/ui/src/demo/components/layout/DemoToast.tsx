@@ -1,4 +1,4 @@
-import { Button, Flex, Text, useToast } from "@alepha/ui";
+import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
 import {
   IconCheck,
   IconExclamationMark,
@@ -20,41 +20,41 @@ const DemoToast = () => {
       </Text>
 
       <Flex gap="md" wrap="wrap">
-        <Button
+        <ActionButton
           icon={IconCheck}
           variant="light"
           intent="success"
           onClick={() => toast.success("Operation completed successfully.")}
         >
           Success
-        </Button>
+        </ActionButton>
 
-        <Button
+        <ActionButton
           icon={IconX}
           variant="light"
           intent="danger"
           onClick={() => toast.danger("Something went wrong.")}
         >
           Error
-        </Button>
+        </ActionButton>
 
-        <Button
+        <ActionButton
           icon={IconExclamationMark}
           variant="light"
           intent="warning"
           onClick={() => toast.warning("Please check your input.")}
         >
           Warning
-        </Button>
+        </ActionButton>
 
-        <Button
+        <ActionButton
           icon={IconInfoCircle}
           variant="light"
           intent="info"
           onClick={() => toast.info("Here is some useful information.")}
         >
           Info
-        </Button>
+        </ActionButton>
       </Flex>
 
       <Flex col gap="md">
@@ -62,7 +62,7 @@ const DemoToast = () => {
           With Title
         </Text>
         <Flex gap="md" wrap="wrap">
-          <Button
+          <ActionButton
             variant="light"
             intent="success"
             onClick={() =>
@@ -73,8 +73,8 @@ const DemoToast = () => {
             }
           >
             With Title
-          </Button>
-          <Button
+          </ActionButton>
+          <ActionButton
             variant="light"
             intent="danger"
             onClick={() =>
@@ -86,7 +86,7 @@ const DemoToast = () => {
             }
           >
             Persistent
-          </Button>
+          </ActionButton>
         </Flex>
       </Flex>
     </Flex>

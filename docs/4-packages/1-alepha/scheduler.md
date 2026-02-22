@@ -10,10 +10,6 @@ npm install alepha
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 3 - stable | 0.1.0 | node, bun, workerd|
-
 Cron and interval-based task execution.
 
 **Features:**

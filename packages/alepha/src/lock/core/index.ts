@@ -14,10 +14,6 @@ export * from "./providers/MemoryLockProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | Stability | Since | Runtime |
- * |-----------|-------|---------|
- * | 3 - stable | 0.8.0 | node, bun, workerd|
- *
  * Resource locking for distributed systems.
  *
  * **Features:**

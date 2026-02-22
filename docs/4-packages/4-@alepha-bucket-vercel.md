@@ -8,10 +8,6 @@ npm install @alepha/bucket-vercel
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| backend | standard | stable |
-
 Vercel Blob Storage provider.
 
 **Features:**

@@ -10,10 +10,6 @@ npm install alepha
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 3 - stable | 0.6.0 | node, bun|
-
 Asynchronous message processing with automatic worker management.
 
 **Features:**

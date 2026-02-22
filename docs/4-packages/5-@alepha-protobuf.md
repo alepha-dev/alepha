@@ -8,10 +8,6 @@ npm install @alepha/protobuf
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| backend | standard | stable |
-
 Protocol Buffers support.
 
 **Features:**

@@ -12,10 +12,6 @@ npm install alepha
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 3 - stable | 0.1.0 | node, bun, workerd, browser, expo|
-
 Foundation of the entire framework with dependency injection and lifecycle management.
 
 **Features:**

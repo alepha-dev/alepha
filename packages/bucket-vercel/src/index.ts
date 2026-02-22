@@ -9,10 +9,6 @@ export * from "./providers/VercelFileStorageProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | backend | standard | stable |
- *
  * Vercel Blob Storage provider.
  *
  * **Features:**

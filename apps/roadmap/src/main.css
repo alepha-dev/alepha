@@ -8,8 +8,6 @@
 @import "web/app/styles/code-github-dark.css";
 @import "web/app/components/misc/ExperienceBar.css";
 
-@import "@alepha/ui/json/styles";
-
 :root {
   --color-gold: #db9b05;
   --color-silver: #b9b6b6ff;

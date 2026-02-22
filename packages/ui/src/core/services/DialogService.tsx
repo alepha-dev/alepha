@@ -1,13 +1,9 @@
-import { Flex, type ModalProps } from "@mantine/core";
+import type { ModalProps } from "@mantine/core";
 import { modals } from "@mantine/modals";
-import type { Static, TObject } from "alepha";
 import type { ReactNode } from "react";
-import ErrorViewer from "../components/data/ErrorViewer.tsx";
 import AlertDialog from "../components/dialogs/AlertDialog.tsx";
 import ConfirmDialog from "../components/dialogs/ConfirmDialog.tsx";
 import PromptDialog from "../components/dialogs/PromptDialog.tsx";
-import type { TypeFormProps } from "../components/form/TypeForm.tsx";
-import { ui } from "../constants/ui.ts";
 
 // Base interfaces
 export interface BaseDialogOptions extends Partial<ModalProps> {
@@ -33,17 +29,6 @@ export interface PromptDialogOptions extends BaseDialogOptions {
   required?: boolean;
   submitLabel?: string;
   cancelLabel?: string;
-}
-
-export interface FormDialogOptions<T extends TObject = TObject>
-  extends BaseDialogOptions {
-  schema: T;
-  columns?: TypeFormProps<T>["columns"];
-  fieldControlProps?: TypeFormProps<T>["fieldControlProps"];
-  controlProps?: TypeFormProps<T>["controlProps"];
-  submitLabel?: string;
-  cancelLabel?: string;
-  defaults?: Record<string, unknown>;
 }
 
 // Component prop interfaces
@@ -170,57 +155,5 @@ export class DialogService {
     } else {
       modals.closeAll();
     }
-  }
-
-  /**
-   * Show an error viewer dialog
-   */
-  public error(
-    error: Error | unknown,
-    options?: BaseDialogOptions & { showStack?: boolean },
-  ): void {
-    this.open({
-      size: "lg",
-      title: options?.title || "Error",
-      ...options,
-      content: (
-        <Flex bdrs={"md"} w={"100%"} flex={1} p={"sm"} bg={ui.colors.surface}>
-          <ErrorViewer
-            size={"xs"}
-            error={error}
-            showStack={options?.showStack ?? true}
-          />
-        </Flex>
-      ),
-    });
-  }
-
-  /**
-   * Show a form dialog for structured input.
-   */
-  public form<T extends TObject>(
-    options: FormDialogOptions<T>,
-  ): Promise<Static<T> | null> {
-    return import("../components/dialogs/FormDialog.tsx").then(
-      ({ default: FormDialog }) => {
-        return new Promise((resolve) => {
-          const modalId = this.open({
-            ...options,
-            title: options.title || "Form",
-            closeOnClickOutside: false,
-            closeOnEscape: false,
-            content: (
-              <FormDialog
-                options={options}
-                onSubmit={(value) => {
-                  this.close(modalId);
-                  resolve(value);
-                }}
-              />
-            ),
-          });
-        });
-      },
-    );
   }
 }

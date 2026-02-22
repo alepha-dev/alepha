@@ -86,26 +86,6 @@
       "import": "./src/demo/index.ts",
       "default": "./src/demo/index.ts"
     },
-    "./form": {
-      "types": "./src/form/index.ts",
-      "import": "./src/form/index.ts",
-      "default": "./src/form/index.ts"
-    },
-    "./json": {
-      "types": "./src/json/index.ts",
-      "import": "./src/json/index.ts",
-      "default": "./src/json/index.ts"
-    },
-    "./layout": {
-      "types": "./src/layout/index.ts",
-      "import": "./src/layout/index.ts",
-      "default": "./src/layout/index.ts"
-    },
-    "./table": {
-      "types": "./src/table/index.ts",
-      "import": "./src/table/index.ts",
-      "default": "./src/table/index.ts"
-    },
     "./styles": "./src/core/styles.css",
     "./json/styles": "./src/json/styles.css"
   }

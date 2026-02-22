@@ -1,5 +1,4 @@
-import { ActionButton, Flex, TypeForm, ui } from "@alepha/ui";
-import { JsonViewer } from "@alepha/ui/json";
+import { ActionButton, Flex, JsonViewer, TypeForm, ui } from "@alepha/ui";
 import {
   Badge,
   Card,

@@ -1,4 +1,4 @@
-import { Button, Flex, Text, useDialog } from "@alepha/ui";
+import { ActionButton, Flex, Text, useDialog } from "@alepha/ui";
 import {
   IconAlertCircle,
   IconMessage,
@@ -19,7 +19,7 @@ const DemoDialog = () => {
       </Text>
 
       <Flex gap="md" wrap="wrap">
-        <Button
+        <ActionButton
           icon={IconAlertCircle}
           variant="light"
           onClick={() =>
@@ -30,9 +30,9 @@ const DemoDialog = () => {
           }
         >
           Alert
-        </Button>
+        </ActionButton>
 
-        <Button
+        <ActionButton
           icon={IconQuestionMark}
           variant="light"
           intent="warning"
@@ -50,9 +50,9 @@ const DemoDialog = () => {
           }}
         >
           Confirm
-        </Button>
+        </ActionButton>
 
-        <Button
+        <ActionButton
           icon={IconMessage}
           variant="light"
           intent="primary"
@@ -71,7 +71,7 @@ const DemoDialog = () => {
           }}
         >
           Prompt
-        </Button>
+        </ActionButton>
       </Flex>
 
       <Flex col gap="md">
@@ -79,7 +79,7 @@ const DemoDialog = () => {
           Variants
         </Text>
         <Flex gap="md" wrap="wrap">
-          <Button
+          <ActionButton
             variant="light"
             intent="danger"
             onClick={() =>
@@ -93,7 +93,7 @@ const DemoDialog = () => {
             }
           >
             Danger Confirm
-          </Button>
+          </ActionButton>
         </Flex>
       </Flex>
     </Flex>

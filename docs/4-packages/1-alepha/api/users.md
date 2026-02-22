@@ -10,10 +10,6 @@ npm install alepha
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 3 - stable | 0.5.0 | node, bun, workerd|
-
 Complete user management with multi-realm support for multi-tenant applications.
 
 **Features:**

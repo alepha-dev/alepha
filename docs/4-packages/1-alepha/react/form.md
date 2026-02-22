@@ -10,10 +10,6 @@ npm install alepha
 
 ## Overview
 
-| Stability | Since | Runtime |
-|-----------|-------|---------|
-| 3 - stable | 0.12.0 | node, bun, workerd, browser|
-
 Type-safe forms with validation.
 
 **Features:**

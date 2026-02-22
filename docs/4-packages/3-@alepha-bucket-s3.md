@@ -8,10 +8,6 @@ npm install @alepha/bucket-s3
 
 ## Overview
 
-| type | quality | stability |
-|------|---------|-----------|
-| backend | standard | stable |
-
 S3-compatible file storage provider.
 
 **Features:**

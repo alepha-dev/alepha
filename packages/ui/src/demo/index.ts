@@ -10,10 +10,6 @@ export * from "./primitives/$uiDemo.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * | type | quality | stability |
- * |------|---------|-----------|
- * | frontend | standard | experimental |
- *
  * Component showcase and documentation.
  *
  * **Features:**
