@@ -1,14 +1,11 @@
 import { type Static, t } from "alepha";
 import { $entity, db } from "alepha/orm";
-import { parameterStatusSchema } from "../schemas/parameterStatusSchema.ts";
-
-export type { ParameterStatus } from "../schemas/parameterStatusSchema.ts";
 
 /**
  * Configuration parameter entity for versioned configuration management.
  *
  * Stores all versions of configuration parameters with:
- * - Automatic status management (expired, current, next, future)
+ * - Status derived from activationDate at query time
  * - Schema versioning for migrations
  * - Activation scheduling
  * - Audit trail (creator info)
@@ -38,21 +35,10 @@ export const parameters = $entity({
     schemaHash: t.text(),
 
     /**
-     * Current status of this parameter version.
-     */
-    status: db.default(parameterStatusSchema, "future"),
-
-    /**
      * When this version should become active.
      * Default is immediate (now).
      */
     activationDate: t.datetime(),
-
-    /**
-     * When this version was deactivated (became expired).
-     * Null if still active or scheduled.
-     */
-    expiredAt: t.optional(t.datetime()),
 
     /**
      * Version number for this configuration.
@@ -91,13 +77,10 @@ export const parameters = $entity({
     migrationLog: t.optional(t.text()),
   }),
   indexes: [
-    { columns: ["name", "status"] },
     { columns: ["name", "activationDate"] },
     { columns: ["name", "version"], unique: true },
-    { columns: ["status"] },
     { columns: ["activationDate"] },
   ],
 });
 
 export type Parameter = Static<typeof parameters.schema>;
-export type ParameterInsert = Omit<Parameter, "id" | "createdAt" | "updatedAt">;

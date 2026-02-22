@@ -1,8 +1,0 @@
-import { t } from "alepha";
-import { parameters } from "../entities/parameters.ts";
-
-/**
- * Status param schema.
- * Uses t.pick from entity for consistency.
- */
-export const statusParamSchema = t.pick(parameters.schema, ["status"]);

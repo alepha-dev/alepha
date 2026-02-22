@@ -1,8 +1,7 @@
 import { $module } from "alepha";
 import { AdminParameterController } from "./controllers/AdminParameterController.ts";
 import { $parameter } from "./primitives/$parameter.ts";
-import { ParameterActivationScheduler } from "./schedulers/ParameterActivationScheduler.ts";
-import { ParameterStore } from "./services/ParameterStore.ts";
+import { ParameterProvider } from "./services/ParameterProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -12,12 +11,21 @@ export * from "./controllers/AdminParameterController.ts";
 export * from "./entities/parameters.ts";
 // Primitive exports
 export * from "./primitives/$parameter.ts";
-// Scheduler exports
-export * from "./schedulers/ParameterActivationScheduler.ts";
 // Schema exports (types for UI)
-export * from "./schemas/index.ts";
+export * from "./schemas/activateParameterBodySchema.ts";
+export * from "./schemas/createParameterVersionBodySchema.ts";
+export * from "./schemas/parameterCurrentResponseSchema.ts";
+export * from "./schemas/parameterHistoryResponseSchema.ts";
+export * from "./schemas/parameterNameParamSchema.ts";
+export * from "./schemas/parameterNamesResponseSchema.ts";
+export * from "./schemas/parameterResponseSchema.ts";
+export * from "./schemas/parameterStatusSchema.ts";
+export * from "./schemas/parameterTreeNodeSchema.ts";
+export * from "./schemas/parameterVersionParamSchema.ts";
+export * from "./schemas/parameterVersionResponseSchema.ts";
+export * from "./schemas/rollbackParameterBodySchema.ts";
 // Service exports
-export * from "./services/ParameterStore.ts";
+export * from "./services/ParameterProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -30,18 +38,15 @@ export * from "./services/ParameterStore.ts";
  *
  * **Features:**
  * - Versioned parameter definitions
- * - Scheduled activation (FUTURE, NEXT, CURRENT, EXPIRED)
+ * - Status derived from activationDate at query time
  * - Schema validation with migration detection
- * - Cross-instance sync via pub/sub
+ * - Cross-instance notification via pub/sub
+ * - Async `.get()` with lazy loading (works in Node and Cloudflare Workers)
  *
  * @module alepha.api.parameters
  */
 export const AlephaApiParameters = $module({
   name: "alepha.api.parameters",
   primitives: [$parameter],
-  services: [
-    ParameterStore,
-    AdminParameterController,
-    ParameterActivationScheduler,
-  ],
+  services: [ParameterProvider, AdminParameterController],
 });

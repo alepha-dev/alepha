@@ -1,31 +1,25 @@
-import { $inject, t } from "alepha";
+import { $inject, AlephaError, t } from "alepha";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
-import type { ParameterStatus } from "../entities/parameters.ts";
-import {
-  activateParameterBodySchema,
-  checkScheduledResponseSchema,
-  createParameterVersionBodySchema,
-  parameterCurrentResponseSchema,
-  parameterHistoryResponseSchema,
-  parameterNameParamSchema,
-  parameterNamesResponseSchema,
-  parameterResponseSchema,
-  parametersByStatusResponseSchema,
-  parameterTreeNodeSchema,
-  parameterVersionParamSchema,
-  parameterVersionResponseSchema,
-  rollbackParameterBodySchema,
-  statusParamSchema,
-} from "../schemas/index.ts";
-import { ParameterStore } from "../services/ParameterStore.ts";
+import { activateParameterBodySchema } from "../schemas/activateParameterBodySchema.ts";
+import { createParameterVersionBodySchema } from "../schemas/createParameterVersionBodySchema.ts";
+import { parameterCurrentResponseSchema } from "../schemas/parameterCurrentResponseSchema.ts";
+import { parameterHistoryResponseSchema } from "../schemas/parameterHistoryResponseSchema.ts";
+import { parameterNameParamSchema } from "../schemas/parameterNameParamSchema.ts";
+import { parameterNamesResponseSchema } from "../schemas/parameterNamesResponseSchema.ts";
+import { parameterResponseSchema } from "../schemas/parameterResponseSchema.ts";
+import { parameterTreeNodeSchema } from "../schemas/parameterTreeNodeSchema.ts";
+import { parameterVersionParamSchema } from "../schemas/parameterVersionParamSchema.ts";
+import { parameterVersionResponseSchema } from "../schemas/parameterVersionResponseSchema.ts";
+import { rollbackParameterBodySchema } from "../schemas/rollbackParameterBodySchema.ts";
+import { ParameterProvider } from "../services/ParameterProvider.ts";
 
 /**
  * REST API controller for versioned parameter management.
  *
  * Provides endpoints for:
  * - Listing all parameters (tree view support)
- * - Getting parameter history (all versions)
+ * - Getting parameter history (all versions with calculated status)
  * - Getting current/next parameter values
  * - Creating new parameter versions (immediate or scheduled)
  * - Rolling back to previous versions
@@ -34,7 +28,7 @@ import { ParameterStore } from "../services/ParameterStore.ts";
 export class AdminParameterController {
   protected readonly url = "/parameters";
   protected readonly group = "admin:parameters";
-  protected readonly store = $inject(ParameterStore);
+  protected readonly provider = $inject(ParameterProvider);
 
   /**
    * Get tree structure of all parameter names.
@@ -50,7 +44,7 @@ export class AdminParameterController {
       response: t.array(parameterTreeNodeSchema),
     },
     handler: async () => {
-      return this.store.getParameterTree();
+      return this.provider.getParameterTree();
     },
   });
 
@@ -67,34 +61,14 @@ export class AdminParameterController {
       response: parameterNamesResponseSchema,
     },
     handler: async () => {
-      const names = await this.store.getParameterNames();
+      const names = await this.provider.getParameterNames();
       return { names };
     },
   });
 
   /**
-   * Get parameters by status.
-   */
-  getByStatus = $action({
-    group: this.group,
-    use: [$secure({ permissions: ["admin:parameter:read"] })],
-    description: "Get all parameters with a specific status.",
-    path: "/parameters/status/:status",
-    method: "GET",
-    schema: {
-      params: statusParamSchema,
-      response: parametersByStatusResponseSchema,
-    },
-    handler: async ({ params }) => {
-      const parameters = await this.store.getByStatus(
-        params.status as ParameterStatus,
-      );
-      return { parameters };
-    },
-  });
-
-  /**
    * Get version history for a specific parameter.
+   * Returns all versions with calculated status.
    */
   getHistory = $action({
     group: this.group,
@@ -107,7 +81,8 @@ export class AdminParameterController {
       response: parameterHistoryResponseSchema,
     },
     handler: async ({ params }) => {
-      const versions = await this.store.getHistory(params.name);
+      const rawVersions = await this.provider.getHistory(params.name);
+      const versions = this.provider.calculateStatuses(rawVersions);
       return { versions };
     },
   });
@@ -128,7 +103,7 @@ export class AdminParameterController {
       response: parameterCurrentResponseSchema,
     },
     handler: async ({ params }) => {
-      const result = await this.store.getCurrentWithDefault(params.name);
+      const result = await this.provider.getCurrentWithDefault(params.name);
       return {
         current: result.current ?? undefined,
         next: result.next ?? undefined,
@@ -153,11 +128,15 @@ export class AdminParameterController {
       response: parameterVersionResponseSchema,
     },
     handler: async ({ params }) => {
-      const parameter = await this.store.getVersion(
+      const version = await this.provider.getVersion(
         params.name,
         params.version,
       );
-      return { parameter: parameter ?? undefined };
+      if (!version) {
+        return { parameter: undefined };
+      }
+      const [withStatus] = this.provider.calculateStatuses([version]);
+      return { parameter: withStatus };
     },
   });
 
@@ -177,7 +156,7 @@ export class AdminParameterController {
       response: parameterResponseSchema,
     },
     handler: async ({ params, body }) => {
-      return this.store.save(params.name, body.content, body.schemaHash, {
+      return this.provider.save(params.name, body.content, body.schemaHash, {
         activationDate: body.activationDate
           ? new Date(body.activationDate)
           : undefined,
@@ -205,7 +184,7 @@ export class AdminParameterController {
       response: parameterResponseSchema,
     },
     handler: async ({ params, body }) => {
-      return this.store.rollback(params.name, body.targetVersion, {
+      return this.provider.rollback(params.name, body.targetVersion, {
         changeDescription: body.changeDescription,
         creatorId: body.creatorId,
         creatorName: body.creatorName,
@@ -215,6 +194,7 @@ export class AdminParameterController {
 
   /**
    * Activate a scheduled version immediately.
+   * Creates a new version with the same content but immediate activation.
    */
   activateNow = $action({
     group: this.group,
@@ -228,49 +208,37 @@ export class AdminParameterController {
       response: parameterResponseSchema,
     },
     handler: async ({ params, body }) => {
-      const target = await this.store.getVersion(params.name, body.version);
+      const allVersions = await this.provider.getHistory(params.name);
+      const withStatuses = this.provider.calculateStatuses(allVersions);
+      const target = withStatuses.find((v) => v.version === body.version);
+
       if (!target) {
-        throw new Error(
+        throw new AlephaError(
           `Version ${body.version} not found for parameter ${params.name}`,
         );
       }
 
       if (target.status === "current") {
-        return target; // Already current
+        return target;
       }
 
       if (target.status === "expired") {
-        throw new Error(
+        throw new AlephaError(
           "Cannot activate an expired version. Use rollback instead.",
         );
       }
 
       // Create new version with same content but immediate activation
-      return this.store.save(params.name, target.content, target.schemaHash, {
-        changeDescription: `Early activation of version ${body.version}`,
-        creatorId: body.creatorId,
-        creatorName: body.creatorName,
-      });
-    },
-  });
-
-  /**
-   * Trigger activation check for all scheduled parameters.
-   * Normally called by a scheduler, but exposed for manual triggering.
-   */
-  checkScheduled = $action({
-    group: this.group,
-    use: [$secure({ permissions: ["admin:parameter:activate"] })],
-    description:
-      "Manually trigger activation check for all scheduled parameters.",
-    path: "/parameters/activate-scheduled",
-    method: "POST",
-    schema: {
-      response: checkScheduledResponseSchema,
-    },
-    handler: async () => {
-      await this.store.activateScheduledParameters();
-      return { message: "Scheduled parameter activation check completed" };
+      return this.provider.save(
+        params.name,
+        target.content,
+        target.schemaHash,
+        {
+          changeDescription: `Early activation of version ${body.version}`,
+          creatorId: body.creatorId,
+          creatorName: body.creatorName,
+        },
+      );
     },
   });
 }

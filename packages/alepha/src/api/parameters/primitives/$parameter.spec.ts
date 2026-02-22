@@ -1,7 +1,12 @@
 import { Alepha, t } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
-import { $parameter, AlephaApiParameters, ParameterStore } from "../index.ts";
+import {
+  $parameter,
+  AlephaApiParameters,
+  ParameterProvider,
+} from "../index.ts";
 
 const featureSchema = t.object({
   enableBeta: t.boolean(),
@@ -25,7 +30,7 @@ describe("$parameter", () => {
 
     const config = alepha.inject(AppConfig);
 
-    expect(config.features.current).toEqual({
+    expect(await config.features.get()).toEqual({
       enableBeta: false,
       maxUploadSize: 10485760,
     });
@@ -52,16 +57,15 @@ describe("$parameter", () => {
       maxUploadSize: 20971520,
     });
 
-    expect(config.features.current).toEqual({
+    expect(await config.features.get()).toEqual({
       enableBeta: true,
       maxUploadSize: 20971520,
     });
 
     // Verify persisted to database
-    const store = alepha.inject(ParameterStore);
-    const history = await store.getHistory("app.features.flags");
+    const provider = alepha.inject(ParameterProvider);
+    const history = await provider.getHistory("app.features.flags");
     expect(history.length).toBe(1);
-    expect(history[0].status).toBe("current");
     expect(history[0].content).toEqual({
       enableBeta: true,
       maxUploadSize: 20971520,
@@ -69,7 +73,6 @@ describe("$parameter", () => {
   });
 
   it("should load from database on start", async () => {
-    // Use a single Alepha instance, seed data via store before registering parameter
     class AppConfig {
       features = $parameter({
         name: "app.features.load",
@@ -84,8 +87,8 @@ describe("$parameter", () => {
     await alepha.start();
 
     // First, seed the database with a value different from default
-    const store = alepha.inject(ParameterStore);
-    await store.save(
+    const provider = alepha.inject(ParameterProvider);
+    await provider.save(
       "app.features.load",
       { enableBeta: true, maxUploadSize: 5242880 },
       "test-hash",
@@ -96,7 +99,7 @@ describe("$parameter", () => {
     await config.features.reload();
 
     // Should have loaded from database, not default
-    expect(config.features.current).toEqual({
+    expect(await config.features.get()).toEqual({
       enableBeta: true,
       maxUploadSize: 5242880,
     });
@@ -153,7 +156,7 @@ describe("$parameter", () => {
     // Rollback to version 1
     await config.features.rollback(1);
 
-    expect(config.features.current).toEqual({
+    expect(await config.features.get()).toEqual({
       enableBeta: true,
       maxUploadSize: 100,
     });
@@ -161,26 +164,6 @@ describe("$parameter", () => {
     // Should have created a new version (4)
     const history = await config.features.getHistory();
     expect(history.length).toBe(4);
-  });
-
-  it("should get specific field value", async () => {
-    class AppConfig {
-      features = $parameter({
-        name: "app.features.field",
-        schema: featureSchema,
-        default: { enableBeta: false, maxUploadSize: 10485760 },
-      });
-    }
-
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
-    alepha.with(AlephaApiParameters);
-    alepha.with(AppConfig);
-    await alepha.start();
-
-    const config = alepha.inject(AppConfig);
-
-    expect(config.features.get("enableBeta")).toBe(false);
-    expect(config.features.get("maxUploadSize")).toBe(10485760);
   });
 
   it("should support change description", async () => {
@@ -242,22 +225,103 @@ describe("$parameter", () => {
     expect(history[0].creatorId).toBe(userId);
     expect(history[0].creatorName).toBe("Admin User");
   });
+
+  it("should subscribe and unsubscribe to changes", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "app.features.sub",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+
+    const received: unknown[] = [];
+    const unsub = config.features.sub((value) => {
+      received.push(value);
+    });
+
+    await config.features.set({ enableBeta: true, maxUploadSize: 1 });
+    expect(received.length).toBe(1);
+    expect(received[0]).toEqual({ enableBeta: true, maxUploadSize: 1 });
+
+    // Unsubscribe
+    unsub();
+
+    await config.features.set({ enableBeta: false, maxUploadSize: 2 });
+    // Should not receive after unsubscribe
+    expect(received.length).toBe(1);
+  });
+
+  it("should promote cached next to current when time passes", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+
+    class AppConfig {
+      features = $parameter({
+        name: "app.features.timetravel",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const dateTime = alepha.inject(DateTimeProvider);
+
+    // Set current value
+    await config.features.set({ enableBeta: false, maxUploadSize: 100 });
+
+    // Schedule a future value +1h from now
+    const futureDate = new Date(
+      dateTime.now().toDate().getTime() + 60 * 60 * 1000,
+    );
+    await config.features.set(
+      { enableBeta: true, maxUploadSize: 999 },
+      { activationDate: futureDate },
+    );
+
+    // Reload to pick up the next version
+    await config.features.reload();
+
+    // Currently should still be the old value
+    expect(await config.features.get()).toEqual({
+      enableBeta: false,
+      maxUploadSize: 100,
+    });
+
+    // Travel past the activation date
+    dateTime.travel(2, "hours");
+
+    // Now get() should promote the next to current
+    expect(await config.features.get()).toEqual({
+      enableBeta: true,
+      maxUploadSize: 999,
+    });
+  });
 });
 
-describe("ParameterStore", () => {
+describe("ParameterProvider", () => {
   it("should build parameter tree from names", async () => {
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
-    const store = alepha.inject(ParameterStore);
+    const provider = alepha.inject(ParameterProvider);
 
-    await store.save("app.features.flags", { enabled: true }, "hash1");
-    await store.save("app.features.limits", { max: 100 }, "hash2");
-    await store.save("app.pricing.tiers", { basic: 10 }, "hash3");
-    await store.save("system.logging", { level: "info" }, "hash4");
+    await provider.save("app.features.flags", { enabled: true }, "hash1");
+    await provider.save("app.features.limits", { max: 100 }, "hash2");
+    await provider.save("app.pricing.tiers", { basic: 10 }, "hash3");
+    await provider.save("system.logging", { level: "info" }, "hash4");
 
-    const tree = await store.getParameterTree();
+    const tree = await provider.getParameterTree();
 
     expect(tree.length).toBe(2); // app, system
     expect(tree[0].name).toBe("app");
@@ -268,42 +332,66 @@ describe("ParameterStore", () => {
     expect(features?.children.length).toBe(2); // flags, limits
   });
 
-  it("should manage status transitions correctly", async () => {
+  it("should calculate statuses correctly", async () => {
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
-    const store = alepha.inject(ParameterStore);
+    const provider = alepha.inject(ParameterProvider);
 
-    // Create first version (current)
-    const v1 = await store.save("test.status.param", { value: 1 }, "hash");
+    // Create first version (current — immediate activation)
+    const v1 = await provider.save("test.status.param", { value: 1 }, "hash");
     expect(v1.status).toBe("current");
 
     // Create second version (becomes current, first becomes expired)
-    const v2 = await store.save("test.status.param", { value: 2 }, "hash");
+    const v2 = await provider.save("test.status.param", { value: 2 }, "hash");
     expect(v2.status).toBe("current");
 
-    const history = await store.getHistory("test.status.param");
-    const v1Updated = history.find((v) => v.version === 1);
-    expect(v1Updated?.status).toBe("expired");
+    // Verify calculated statuses
+    const history = await provider.getHistory("test.status.param");
+    const withStatuses = provider.calculateStatuses(history);
+    const v1Status = withStatuses.find((v) => v.version === 1);
+    const v2Status = withStatuses.find((v) => v.version === 2);
+    expect(v1Status?.status).toBe("expired");
+    expect(v2Status?.status).toBe("current");
   });
 
-  it("should get parameters by status", async () => {
+  it("should calculate future and next statuses", async () => {
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
-    const store = alepha.inject(ParameterStore);
+    const provider = alepha.inject(ParameterProvider);
+    const dateTime = alepha.inject(DateTimeProvider);
 
-    await store.save("status.a", { a: 1 }, "h1");
-    await store.save("status.b", { b: 1 }, "h2");
-    await store.save("status.a", { a: 2 }, "h1");
+    // Create current version
+    await provider.save("test.future.param", { value: 1 }, "hash");
 
-    const current = await store.getByStatus("current");
-    const expired = await store.getByStatus("expired");
+    // Create future versions
+    const futureDate1 = new Date(
+      dateTime.now().toDate().getTime() + 60 * 60 * 1000,
+    ); // +1h
+    const futureDate2 = new Date(
+      dateTime.now().toDate().getTime() + 2 * 60 * 60 * 1000,
+    ); // +2h
 
-    expect(current.length).toBe(2);
-    expect(expired.length).toBe(1);
+    await provider.save("test.future.param", { value: 2 }, "hash", {
+      activationDate: futureDate1,
+    });
+    await provider.save("test.future.param", { value: 3 }, "hash", {
+      activationDate: futureDate2,
+    });
+
+    const history = await provider.getHistory("test.future.param");
+    const withStatuses = provider.calculateStatuses(history);
+
+    const v1 = withStatuses.find((v) => v.version === 1);
+    const v2 = withStatuses.find((v) => v.version === 2);
+    const v3 = withStatuses.find((v) => v.version === 3);
+
+    expect(v1?.status).toBe("current");
+    expect(v2?.status).toBe("next");
+    expect(v3?.status).toBe("future");
   });
 
   it("should detect schema migration", async () => {
@@ -311,10 +399,10 @@ describe("ParameterStore", () => {
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
-    const store = alepha.inject(ParameterStore);
+    const provider = alepha.inject(ParameterProvider);
 
-    await store.save("migration.param", { v: 1 }, "hash-v1");
-    const v2 = await store.save(
+    await provider.save("migration.param", { v: 1 }, "hash-v1");
+    const v2 = await provider.save(
       "migration.param",
       { v: 2, extra: true },
       "hash-v2",
@@ -330,10 +418,10 @@ describe("ParameterStore", () => {
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
-    const store = alepha.inject(ParameterStore);
+    const provider = alepha.inject(ParameterProvider);
 
-    await store.save("previous.param", { old: true }, "hash");
-    const v2 = await store.save("previous.param", { new: true }, "hash");
+    await provider.save("previous.param", { old: true }, "hash");
+    const v2 = await provider.save("previous.param", { new: true }, "hash");
 
     expect(v2.previousContent).toEqual({ old: true });
   });
@@ -343,100 +431,50 @@ describe("ParameterStore", () => {
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
-    const store = alepha.inject(ParameterStore);
+    const provider = alepha.inject(ParameterProvider);
 
-    await store.save("names.alpha", { a: 1 }, "h1");
-    await store.save("names.beta", { b: 1 }, "h2");
-    await store.save("names.alpha", { a: 2 }, "h1"); // Second version
+    await provider.save("names.alpha", { a: 1 }, "h1");
+    await provider.save("names.beta", { b: 1 }, "h2");
+    await provider.save("names.alpha", { a: 2 }, "h1"); // Second version
 
-    const names = await store.getParameterNames();
+    const names = await provider.getParameterNames();
 
     expect(names).toContain("names.alpha");
     expect(names).toContain("names.beta");
   });
+
+  it("should load current and next from database", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    const dateTime = alepha.inject(DateTimeProvider);
+
+    // Create current and future versions
+    await provider.save("test.loadcn.param", { value: "current" }, "hash");
+    const futureDate = new Date(
+      dateTime.now().toDate().getTime() + 60 * 60 * 1000,
+    );
+    await provider.save("test.loadcn.param", { value: "next" }, "hash", {
+      activationDate: futureDate,
+    });
+
+    const { current, next } =
+      await provider.loadCurrentAndNext("test.loadcn.param");
+
+    expect(current).not.toBeNull();
+    expect(current?.content).toEqual({ value: "current" });
+    expect(next).not.toBeNull();
+    expect(next?.content).toEqual({ value: "next" });
+  });
 });
 
 describe("Cross-instance sync", () => {
-  it("should sync parameter changes between two Alepha instances sharing same db", async () => {
+  it("should pick up changes via load() when database is updated externally", async () => {
     class AppConfig {
       features = $parameter({
         name: "app.features.sync",
-        schema: featureSchema,
-        default: { enableBeta: false, maxUploadSize: 10485760 },
-      });
-    }
-
-    // Create first Alepha instance
-    const alepha1 = Alepha.create().with(AlephaOrmPostgres);
-    alepha1.with(AlephaApiParameters);
-    alepha1.with(AppConfig);
-    await alepha1.start();
-
-    // Create second Alepha instance (shares same in-memory SQLite db in test env)
-    const alepha2 = Alepha.create().with(AlephaOrmPostgres);
-    alepha2.with(AlephaApiParameters);
-    alepha2.with(AppConfig);
-    await alepha2.start();
-
-    const config1 = alepha1.inject(AppConfig);
-    const config2 = alepha2.inject(AppConfig);
-    const store1 = alepha1.inject(ParameterStore);
-
-    // Both should start with default
-    expect(config1.features.current).toEqual({
-      enableBeta: false,
-      maxUploadSize: 10485760,
-    });
-    expect(config2.features.current).toEqual({
-      enableBeta: false,
-      maxUploadSize: 10485760,
-    });
-
-    // Update parameter on instance 1
-    await config1.features.set({
-      enableBeta: true,
-      maxUploadSize: 20971520,
-    });
-
-    // Instance 1 should have the new value
-    expect(config1.features.current).toEqual({
-      enableBeta: true,
-      maxUploadSize: 20971520,
-    });
-
-    // Instance 2 still has default (hasn't received sync yet)
-    expect(config2.features.current).toEqual({
-      enableBeta: false,
-      maxUploadSize: 10485760,
-    });
-
-    // Simulate instance 2 receiving sync message by calling updateFromSync
-    // In production this would happen via the topic subscription
-    await config2.features.updateFromSync({
-      enableBeta: true,
-      maxUploadSize: 20971520,
-    });
-
-    // Instance 2 should now have the synced value
-    expect(config2.features.current).toEqual({
-      enableBeta: true,
-      maxUploadSize: 20971520,
-    });
-
-    // Verify instance 1 persisted to its database
-    const history = await store1.getHistory("app.features.sync");
-    expect(history.length).toBeGreaterThanOrEqual(1);
-    const current = history.find((v) => v.status === "current");
-    expect(current?.content).toEqual({
-      enableBeta: true,
-      maxUploadSize: 20971520,
-    });
-  });
-
-  it("should update from sync without triggering infinite loop", async () => {
-    class AppConfig {
-      features = $parameter({
-        name: "app.features.noloop",
         schema: featureSchema,
         default: { enableBeta: false, maxUploadSize: 10485760 },
       });
@@ -448,29 +486,34 @@ describe("Cross-instance sync", () => {
     await alepha.start();
 
     const config = alepha.inject(AppConfig);
-    const store = alepha.inject(ParameterStore);
+    const provider = alepha.inject(ParameterProvider);
 
-    // Count how many saves happen
-    let saveCount = 0;
-    const originalSave = store.save.bind(store);
-    store.save = async (...args) => {
-      saveCount++;
-      return originalSave(...args);
-    };
-
-    // Update from sync should NOT trigger a save (it's a sync, not a mutation)
-    await config.features.updateFromSync({
-      enableBeta: true,
-      maxUploadSize: 5000,
+    // Should start with default
+    expect(await config.features.get()).toEqual({
+      enableBeta: false,
+      maxUploadSize: 10485760,
     });
 
-    // Should have zero saves because updateFromSync uses skipEvents
-    expect(saveCount).toBe(0);
+    // Simulate another instance writing to DB (bypass primitive, use provider directly)
+    await provider.save(
+      "app.features.sync",
+      { enableBeta: true, maxUploadSize: 20971520 },
+      "external-hash",
+    );
 
-    // But the value should be updated in memory
-    expect(config.features.current).toEqual({
+    // Primitive still has cached default (hasn't reloaded)
+    expect(config.features.cachedCurrentContent).toEqual({
+      enableBeta: false,
+      maxUploadSize: 10485760,
+    });
+
+    // Call load() to pick up the database change
+    await config.features.load();
+
+    // Should now have the updated value
+    expect(await config.features.get()).toEqual({
       enableBeta: true,
-      maxUploadSize: 5000,
+      maxUploadSize: 20971520,
     });
   });
 
@@ -488,46 +531,1374 @@ describe("Cross-instance sync", () => {
     alepha.with(AppConfig);
     await alepha.start();
 
-    const store = alepha.inject(ParameterStore);
+    const provider = alepha.inject(ParameterProvider);
 
-    // Get the store's instanceId (it's protected but we can access it for testing)
-    const storeAny = store as any;
-    const selfInstanceId = storeAny.instanceId;
+    // Get the provider's instanceId (protected but accessible for testing)
+    const providerAny = provider as any;
+    const selfInstanceId = providerAny.instanceId;
 
-    // Simulate receiving a sync message from self (should be ignored)
+    // Simulate receiving a change notification from self (should be ignored)
     const selfPayload = {
       name: "app.features.selfignore",
-      version: 1,
-      content: { enableBeta: true, maxUploadSize: 999 },
-      status: "current" as const,
       instanceId: selfInstanceId,
     };
 
     // Call the handler directly
-    await storeAny.handleSyncMessage(selfPayload);
+    await providerAny.handleChangeNotification(selfPayload);
 
     // Value should NOT have changed (self-messages are ignored)
     const config = alepha.inject(AppConfig);
-    expect(config.features.current).toEqual({
+    expect(await config.features.get()).toEqual({
       enableBeta: false,
       maxUploadSize: 10485760,
     });
 
-    // Simulate receiving a sync message from another instance (should be processed)
+    // Simulate receiving a change notification from another instance
+    // First, seed a value in the database so load() finds something
+    await provider.save(
+      "app.features.selfignore",
+      { enableBeta: true, maxUploadSize: 999 },
+      "hash",
+    );
+
     const otherPayload = {
       name: "app.features.selfignore",
-      version: 1,
-      content: { enableBeta: true, maxUploadSize: 999 },
-      status: "current" as const,
       instanceId: "other-instance-id",
     };
 
-    await storeAny.handleSyncMessage(otherPayload);
+    await providerAny.handleChangeNotification(otherPayload);
 
-    // Value should now be updated
-    expect(config.features.current).toEqual({
+    // Value should now be updated (loaded from DB)
+    expect(await config.features.get()).toEqual({
       enableBeta: true,
       maxUploadSize: 999,
     });
+  });
+});
+
+describe("Schema migration", () => {
+  it("should keep valid value when schema is compatible", async () => {
+    const schema = t.object({
+      name: t.text(),
+      age: t.optional(t.number()),
+    });
+
+    class AppConfig {
+      param = $parameter({
+        name: "migrate.compatible",
+        schema,
+        default: { name: "default" },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+
+    // Seed database with a value that has a different schema hash
+    await provider.save("migrate.compatible", { name: "jack" }, "old-hash");
+
+    // Reload — the value is still valid against the new schema
+    await config.param.reload();
+
+    expect(await config.param.get()).toEqual({ name: "jack" });
+
+    // No new version should be created (still just 1)
+    const history = await provider.getHistory("migrate.compatible");
+    expect(history.length).toBe(1);
+  });
+
+  it("should merge with defaults when adding a required field", async () => {
+    const schema = t.object({
+      name: t.text(),
+      age: t.number(),
+    });
+
+    class AppConfig {
+      param = $parameter({
+        name: "migrate.add.field",
+        schema,
+        default: { name: "default", age: 25 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+
+    // Seed database with a value missing the "age" field, different schema hash
+    await provider.save("migrate.add.field", { name: "jack" }, "old-hash");
+
+    // Reload — value is invalid (missing required "age"), should merge with defaults
+    await config.param.reload();
+
+    expect(await config.param.get()).toEqual({ name: "jack", age: 25 });
+
+    // A new version should be auto-created
+    const history = await provider.getHistory("migrate.add.field");
+    expect(history.length).toBe(2);
+    expect(history[0].changeDescription).toContain("Auto-migrated");
+    expect(history[0].changeDescription).toContain("merged with defaults");
+  });
+
+  it("should reset to defaults when merge still invalid", async () => {
+    const schema = t.object({
+      items: t.array(
+        t.object({
+          x: t.number(),
+          y: t.number(),
+        }),
+      ),
+    });
+
+    class AppConfig {
+      param = $parameter({
+        name: "migrate.reset.defaults",
+        schema,
+        default: { items: [{ x: 0, y: 0 }] },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+
+    // Seed database with invalid nested value, different schema hash
+    await provider.save(
+      "migrate.reset.defaults",
+      { items: [{ x: 1 }] },
+      "old-hash",
+    );
+
+    // Reload — merge still invalid (nested object missing "y"), should reset to defaults
+    await config.param.reload();
+
+    expect(await config.param.get()).toEqual({ items: [{ x: 0, y: 0 }] });
+
+    // A new version should be auto-created
+    const history = await provider.getHistory("migrate.reset.defaults");
+    expect(history.length).toBe(2);
+    expect(history[0].changeDescription).toContain("reset to defaults");
+  });
+
+  it("should use migrate function when provided", async () => {
+    const schema = t.object({
+      name: t.text(),
+      age: t.number(),
+    });
+
+    class AppConfig {
+      param = $parameter({
+        name: "migrate.function",
+        schema,
+        default: { name: "default", age: 0 },
+        migrate: (old: unknown) => {
+          const prev = old as Record<string, unknown>;
+          return {
+            name: String(prev.firstName ?? "unknown"),
+            age: 30,
+          };
+        },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+
+    // Seed database with old-format value, different schema hash
+    await provider.save("migrate.function", { firstName: "jack" }, "old-hash");
+
+    // Reload — migrate function should transform the value
+    await config.param.reload();
+
+    expect(await config.param.get()).toEqual({ name: "jack", age: 30 });
+
+    // A new version should be auto-created
+    const history = await provider.getHistory("migrate.function");
+    expect(history.length).toBe(2);
+  });
+
+  it("should fall through to merge when migrate returns invalid value", async () => {
+    const schema = t.object({
+      name: t.text(),
+      age: t.number(),
+    });
+
+    class AppConfig {
+      param = $parameter({
+        name: "migrate.fallthrough.merge",
+        schema,
+        default: { name: "default", age: 42 },
+        migrate: (_old: unknown) => {
+          // Returns invalid value (missing required "age")
+          return { name: "migrated" } as any;
+        },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+
+    // Seed database with value missing "age", different schema hash
+    await provider.save(
+      "migrate.fallthrough.merge",
+      { name: "jack" },
+      "old-hash",
+    );
+
+    // Reload — migrate returns invalid, falls through to merge with defaults
+    await config.param.reload();
+
+    expect(await config.param.get()).toEqual({ name: "jack", age: 42 });
+  });
+
+  it("should not migrate when schema hash matches", async () => {
+    const schema = t.object({
+      name: t.text(),
+      age: t.number(),
+    });
+
+    class AppConfig {
+      param = $parameter({
+        name: "migrate.hash.match",
+        schema,
+        default: { name: "default", age: 0 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+
+    // Get the actual schema hash the provider calculated
+    const providerAny = provider as any;
+    const schemaHash = providerAny.schemaHashes.get("migrate.hash.match");
+
+    // Seed database with the SAME schema hash — no migration needed
+    await provider.save(
+      "migrate.hash.match",
+      { name: "jack", age: 99 },
+      schemaHash,
+    );
+
+    // Reload — hash matches, no migration
+    await config.param.reload();
+
+    expect(await config.param.get()).toEqual({ name: "jack", age: 99 });
+
+    // No new version created
+    const history = await provider.getHistory("migrate.hash.match");
+    expect(history.length).toBe(1);
+  });
+
+  it("should handle type change by resetting to defaults", async () => {
+    const schema = t.object({
+      name: t.number(),
+    });
+
+    class AppConfig {
+      param = $parameter({
+        name: "migrate.type.change",
+        schema,
+        default: { name: 42 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+
+    // Seed database with wrong type (string instead of number), different hash
+    await provider.save("migrate.type.change", { name: "jack" }, "old-hash");
+
+    // Reload — merge produces { name: "jack" } which is still invalid (wrong type)
+    // Falls to default
+    await config.param.reload();
+
+    expect(await config.param.get()).toEqual({ name: 42 });
+
+    const history = await provider.getHistory("migrate.type.change");
+    expect(history.length).toBe(2);
+    expect(history[0].changeDescription).toContain("reset to defaults");
+  });
+
+  it("should handle removed fields gracefully", async () => {
+    const schema = t.object({
+      name: t.text(),
+    });
+
+    class AppConfig {
+      param = $parameter({
+        name: "migrate.removed.fields",
+        schema,
+        default: { name: "default" },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+
+    // Seed database with extra fields that no longer exist in schema
+    await provider.save(
+      "migrate.removed.fields",
+      { name: "jack", age: 30 },
+      "old-hash",
+    );
+
+    // Reload — value should still work, "name" is present and valid
+    await config.param.reload();
+
+    const value = await config.param.get();
+    expect((value as any).name).toBe("jack");
+  });
+
+  it("should not migrate when there is no DB value", async () => {
+    const schema = t.object({
+      name: t.text(),
+      age: t.number(),
+    });
+
+    class AppConfig {
+      param = $parameter({
+        name: "migrate.no.db.value",
+        schema,
+        default: { name: "default", age: 0 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+
+    // No seeding — no DB value exists
+    await config.param.reload();
+
+    // Should use default
+    expect(await config.param.get()).toEqual({ name: "default", age: 0 });
+  });
+
+  it("should handle migrate function that throws", async () => {
+    const schema = t.object({
+      name: t.text(),
+      age: t.number(),
+    });
+
+    class AppConfig {
+      param = $parameter({
+        name: "migrate.throws",
+        schema,
+        default: { name: "default", age: 0 },
+        migrate: (_old: unknown) => {
+          throw new Error("migration failed");
+        },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+
+    // Seed database with value missing "age", different schema hash
+    await provider.save("migrate.throws", { name: "jack" }, "old-hash");
+
+    // Reload — migrate throws, falls through to merge with defaults
+    await config.param.reload();
+
+    expect(await config.param.get()).toEqual({ name: "jack", age: 0 });
+  });
+
+  it("should notify subscribers after auto-migration", async () => {
+    const schema = t.object({
+      name: t.text(),
+      age: t.number(),
+    });
+
+    class Config {
+      param = $parameter({
+        name: "migrate.notify.sub",
+        schema,
+        default: { name: "default", age: 0 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(Config);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    const config = alepha.inject(Config);
+
+    // First, set a valid value so cachedCurrent has a previous value
+    await config.param.set({ name: "jack", age: 30 });
+
+    // Subscribe to changes
+    const received: unknown[] = [];
+    config.param.sub((v) => received.push(v));
+
+    // Now save a value with old schema hash to trigger migration
+    // Reset migrationChecked to allow re-migration
+    (provider as any).migrationChecked.delete("migrate.notify.sub");
+    await provider.save(
+      "migrate.notify.sub",
+      { name: "alice" },
+      "old-hash-notify",
+    );
+
+    // Reload triggers migration (merge adds default age)
+    await config.param.reload();
+
+    // Subscriber should have been notified with the migrated value
+    expect(received.length).toBeGreaterThanOrEqual(1);
+    const lastReceived = received[received.length - 1] as any;
+    expect(lastReceived.name).toBe("alice");
+    expect(lastReceived.age).toBe(0);
+  });
+
+  it("should handle completely new shape by resetting to defaults", async () => {
+    const schema = t.object({
+      width: t.number(),
+      height: t.number(),
+    });
+
+    class Config {
+      param = $parameter({
+        name: "migrate.new.shape",
+        schema,
+        default: { width: 100, height: 200 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(Config);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    await provider.save(
+      "migrate.new.shape",
+      { color: "red", opacity: 0.5 },
+      "old-hash",
+    );
+
+    const config = alepha.inject(Config);
+    await config.param.reload();
+
+    // Old shape has no overlapping fields — merge produces { width: 100, height: 200, color: "red", opacity: 0.5 }
+    // After pickSchemaKeys: { width: 100, height: 200 } — which is valid! This is the merge path.
+    // OR: merge invalid -> falls to defaults. Either way, result should have width/height.
+    const value = await config.param.get();
+    expect(value).toEqual({ width: 100, height: 200 });
+  });
+
+  it("should only migrate once per lifecycle in Node.js", async () => {
+    const schema = t.object({
+      name: t.text(),
+      count: t.number(),
+    });
+
+    class Config {
+      param = $parameter({
+        name: "migrate.once",
+        schema,
+        default: { name: "default", count: 0 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(Config);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    const config = alepha.inject(Config);
+
+    // Save with old hash to trigger migration
+    await provider.save("migrate.once", { name: "v1" }, "old-hash-once");
+
+    // First reload triggers migration
+    await config.param.reload();
+    expect(await config.param.get()).toEqual({ name: "v1", count: 0 });
+
+    const historyAfterFirst = await provider.getHistory("migrate.once");
+    const versionCountAfterFirst = historyAfterFirst.length;
+
+    // Save another value with old hash
+    await provider.save("migrate.once", { name: "v2" }, "old-hash-once-2");
+
+    // Second reload should NOT trigger migration (migrationChecked = true)
+    await config.param.reload();
+
+    // Value should be the raw DB value (v2 without count), since migration is skipped
+    // The loaded value from DB is { name: "v2" } which becomes cachedCurrent
+    const historyAfterSecond = await provider.getHistory("migrate.once");
+    // No new migration version should have been created
+    expect(historyAfterSecond.length).toBe(versionCountAfterFirst + 1); // only the provider.save we just did
+  });
+});
+
+describe("getParameterNames (distinct query)", () => {
+  it("should return unique names even with multiple versions", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    // Create multiple versions of the same parameter
+    await provider.save("distinct.alpha", { a: 1 }, "h1");
+    await provider.save("distinct.alpha", { a: 2 }, "h1");
+    await provider.save("distinct.alpha", { a: 3 }, "h1");
+    await provider.save("distinct.beta", { b: 1 }, "h2");
+
+    const names = await provider.getParameterNames();
+
+    // Should deduplicate — "distinct.alpha" appears once despite 3 versions
+    const alphaCount = names.filter((n) => n === "distinct.alpha").length;
+    expect(alphaCount).toBe(1);
+    expect(names).toContain("distinct.alpha");
+    expect(names).toContain("distinct.beta");
+  });
+
+  it("should return names in sorted order", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    await provider.save("sorted.charlie", { c: 1 }, "h");
+    await provider.save("sorted.alpha", { a: 1 }, "h");
+    await provider.save("sorted.bravo", { b: 1 }, "h");
+
+    const names = await provider.getParameterNames();
+    const relevant = names.filter((n) => n.startsWith("sorted."));
+
+    expect(relevant).toEqual([
+      "sorted.alpha",
+      "sorted.bravo",
+      "sorted.charlie",
+    ]);
+  });
+});
+
+describe("getVersion (direct lookup)", () => {
+  it("should return a specific version without loading all history", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    await provider.save("version.lookup", { v: 1 }, "h");
+    await provider.save("version.lookup", { v: 2 }, "h");
+    await provider.save("version.lookup", { v: 3 }, "h");
+
+    const v2 = await provider.getVersion("version.lookup", 2);
+    expect(v2).not.toBeNull();
+    expect(v2!.version).toBe(2);
+    expect(v2!.content).toEqual({ v: 2 });
+  });
+
+  it("should return null for non-existent version", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    await provider.save("version.missing", { v: 1 }, "h");
+
+    const missing = await provider.getVersion("version.missing", 99);
+    expect(missing).toBeNull();
+  });
+
+  it("should allow calculating status for a single version", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    await provider.save("version.status", { v: 1 }, "h");
+    await provider.save("version.status", { v: 2 }, "h");
+
+    const v1 = await provider.getVersion("version.status", 1);
+    const [withStatus] = provider.calculateStatuses([v1!]);
+
+    // A single past version in isolation is both the latest activated and only one
+    expect(withStatus.status).toBe("current");
+    expect(withStatus.version).toBe(1);
+  });
+});
+
+describe("save (status calculation without re-fetch)", () => {
+  it("should return correct status for immediate save", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    const v1 = await provider.save("save.status.imm", { v: 1 }, "h");
+    expect(v1.status).toBe("current");
+
+    const v2 = await provider.save("save.status.imm", { v: 2 }, "h");
+    expect(v2.status).toBe("current");
+  });
+
+  it("should return correct status for scheduled save", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    const dateTime = alepha.inject(DateTimeProvider);
+
+    // Create current version
+    const v1 = await provider.save("save.status.sched", { v: 1 }, "h");
+    expect(v1.status).toBe("current");
+
+    // Create future version
+    const futureDate = new Date(
+      dateTime.now().toDate().getTime() + 60 * 60 * 1000,
+    );
+    const v2 = await provider.save("save.status.sched", { v: 2 }, "h", {
+      activationDate: futureDate,
+    });
+    expect(v2.status).toBe("next");
+  });
+
+  it("should mark older versions as expired after new immediate save", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    await provider.save("save.status.expired", { v: 1 }, "h");
+    await provider.save("save.status.expired", { v: 2 }, "h");
+    const v3 = await provider.save("save.status.expired", { v: 3 }, "h");
+
+    // v3 should be current
+    expect(v3.status).toBe("current");
+
+    // Verify via full history
+    const history = await provider.getHistory("save.status.expired");
+    const withStatuses = provider.calculateStatuses(history);
+    expect(withStatuses.find((v) => v.version === 1)?.status).toBe("expired");
+    expect(withStatuses.find((v) => v.version === 2)?.status).toBe("expired");
+    expect(withStatuses.find((v) => v.version === 3)?.status).toBe("current");
+  });
+
+  it("should resolve empty schema hash from registered primitive", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "save.hash.resolve",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    // Save with empty schema hash (simulates admin UI)
+    const result = await provider.save(
+      "save.hash.resolve",
+      { enableBeta: true, maxUploadSize: 100 },
+      "",
+    );
+
+    // Should have resolved the hash from the registered primitive
+    expect(result.schemaHash).not.toBe("");
+
+    // Save another version — should NOT log a schema migration since hash matches
+    const v2 = await provider.save(
+      "save.hash.resolve",
+      { enableBeta: false, maxUploadSize: 200 },
+      "",
+    );
+    expect(v2.migrationLog).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 1. rollback() error path
+// ---------------------------------------------------------------------------
+
+describe("rollback error path", () => {
+  it("should throw AlephaError when rolling back to non-existent version", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    await provider.save("rollback.err", { v: 1 }, "h");
+
+    await expect(provider.rollback("rollback.err", 99)).rejects.toThrowError(
+      /Parameter version not found: rollback\.err@99/,
+    );
+  });
+
+  it("should throw AlephaError when rolling back a parameter that does not exist", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    await expect(
+      provider.rollback("nonexistent.param", 1),
+    ).rejects.toThrowError(/Parameter version not found/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2. getCurrentWithDefault()
+// ---------------------------------------------------------------------------
+
+describe("getCurrentWithDefault", () => {
+  it("should return nulls for unregistered parameter", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    const result = await provider.getCurrentWithDefault("unregistered.param");
+
+    expect(result.current).toBeNull();
+    expect(result.next).toBeNull();
+    expect(result.defaultValue).toBeNull();
+    expect(result.currentValue).toBeNull();
+    expect(result.schema).toBeNull();
+  });
+
+  it("should return default when primitive registered but no DB value", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "gwd.default.only",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    const result = await provider.getCurrentWithDefault("gwd.default.only");
+
+    expect(result.current).toBeNull();
+    expect(result.next).toBeNull();
+    expect(result.defaultValue).toEqual({
+      enableBeta: false,
+      maxUploadSize: 10485760,
+    });
+    expect(result.currentValue).toEqual({
+      enableBeta: false,
+      maxUploadSize: 10485760,
+    });
+    expect(result.schema).not.toBeNull();
+  });
+
+  it("should return current, next, and defaults when all exist", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "gwd.full",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+    const dateTime = alepha.inject(DateTimeProvider);
+
+    // Set current value
+    await config.features.set({ enableBeta: true, maxUploadSize: 100 });
+
+    // Schedule future value
+    const futureDate = new Date(
+      dateTime.now().toDate().getTime() + 60 * 60 * 1000,
+    );
+    await config.features.set(
+      { enableBeta: false, maxUploadSize: 999 },
+      { activationDate: futureDate },
+    );
+
+    // Reload to pick up the next version in cache
+    await config.features.reload();
+
+    const result = await provider.getCurrentWithDefault("gwd.full");
+
+    expect(result.current).not.toBeNull();
+    expect(result.current!.status).toBe("current");
+    expect(result.current!.content).toEqual({
+      enableBeta: true,
+      maxUploadSize: 100,
+    });
+    expect(result.next).not.toBeNull();
+    expect(result.next!.status).toBe("next");
+    expect(result.next!.content).toEqual({
+      enableBeta: false,
+      maxUploadSize: 999,
+    });
+    expect(result.defaultValue).toEqual({
+      enableBeta: false,
+      maxUploadSize: 10485760,
+    });
+    expect(result.schema).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3. getCurrentValue()
+// ---------------------------------------------------------------------------
+
+describe("getCurrentValue", () => {
+  it("should return null for unregistered parameter", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    expect(provider.getCurrentValue("unregistered.param")).toBeNull();
+  });
+
+  it("should return default value with isDefault=true when no DB value", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "gcv.default",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    const result = provider.getCurrentValue("gcv.default");
+
+    expect(result).not.toBeNull();
+    expect(result!.isDefault).toBe(true);
+    expect(result!.content).toEqual({
+      enableBeta: false,
+      maxUploadSize: 10485760,
+    });
+  });
+
+  it("should return cached value with isDefault=false after set", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "gcv.cached",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+
+    await config.features.set({ enableBeta: true, maxUploadSize: 42 });
+
+    const result = provider.getCurrentValue("gcv.cached");
+    expect(result).not.toBeNull();
+    expect(result!.isDefault).toBe(false);
+    expect(result!.content).toEqual({ enableBeta: true, maxUploadSize: 42 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. activateNow controller logic (tested via provider since controller
+//    needs HTTP layer — we test the equivalent logic directly)
+// ---------------------------------------------------------------------------
+
+describe("activateNow logic", () => {
+  it("should return current version as-is when already current", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    await provider.save("activate.current", { v: 1 }, "h");
+    await provider.save("activate.current", { v: 2 }, "h");
+
+    const history = await provider.getHistory("activate.current");
+    const withStatuses = provider.calculateStatuses(history);
+    const current = withStatuses.find((v) => v.status === "current")!;
+
+    // Already current — no new version needed
+    expect(current.version).toBe(2);
+    expect(current.status).toBe("current");
+  });
+
+  it("should reject activating an expired version", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    await provider.save("activate.expired", { v: 1 }, "h");
+    await provider.save("activate.expired", { v: 2 }, "h");
+
+    const history = await provider.getHistory("activate.expired");
+    const withStatuses = provider.calculateStatuses(history);
+    const expired = withStatuses.find((v) => v.status === "expired")!;
+
+    expect(expired.version).toBe(1);
+    expect(expired.status).toBe("expired");
+    // Controller would throw AlephaError("Cannot activate an expired version...")
+  });
+
+  it("should activate a future version by creating a new immediate version", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    const dateTime = alepha.inject(DateTimeProvider);
+
+    // Current version
+    await provider.save("activate.future", { v: 1 }, "h");
+
+    // Future version
+    const futureDate = new Date(
+      dateTime.now().toDate().getTime() + 60 * 60 * 1000,
+    );
+    await provider.save("activate.future", { v: 2 }, "h", {
+      activationDate: futureDate,
+    });
+
+    // Find the future/next version
+    const history = await provider.getHistory("activate.future");
+    const withStatuses = provider.calculateStatuses(history);
+    const next = withStatuses.find((v) => v.status === "next")!;
+
+    expect(next.version).toBe(2);
+    expect(next.content).toEqual({ v: 2 });
+
+    // Activate it now (same as what the controller does)
+    const activated = await provider.save(
+      "activate.future",
+      next.content,
+      next.schemaHash,
+      {
+        changeDescription: `Early activation of version ${next.version}`,
+      },
+    );
+
+    expect(activated.status).toBe("current");
+    expect(activated.content).toEqual({ v: 2 });
+
+    // Should have created version 3
+    const updatedHistory = await provider.getHistory("activate.future");
+    expect(updatedHistory.length).toBe(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. set() with scheduled activation — cache and subscriber behavior
+// ---------------------------------------------------------------------------
+
+describe("set with scheduled activation", () => {
+  it("should not notify subscribers when scheduling a future value", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "set.sched.nosub",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const dateTime = alepha.inject(DateTimeProvider);
+
+    // Set an initial current value
+    await config.features.set({ enableBeta: false, maxUploadSize: 100 });
+
+    const received: unknown[] = [];
+    config.features.sub((v) => received.push(v));
+
+    // Schedule a future value — should NOT notify
+    const futureDate = new Date(
+      dateTime.now().toDate().getTime() + 60 * 60 * 1000,
+    );
+    await config.features.set(
+      { enableBeta: true, maxUploadSize: 999 },
+      { activationDate: futureDate },
+    );
+
+    expect(received.length).toBe(0);
+
+    // Current value should still be the old one
+    expect(await config.features.get()).toEqual({
+      enableBeta: false,
+      maxUploadSize: 100,
+    });
+  });
+
+  it("should update cachedNext when scheduling a future value via set()", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "set.sched.cache",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+    const dateTime = alepha.inject(DateTimeProvider);
+
+    await config.features.set({ enableBeta: false, maxUploadSize: 100 });
+
+    const futureDate = new Date(
+      dateTime.now().toDate().getTime() + 60 * 60 * 1000,
+    );
+    await config.features.set(
+      { enableBeta: true, maxUploadSize: 999 },
+      { activationDate: futureDate },
+    );
+
+    // cachedNext should be populated
+    const providerAny = provider as any;
+    const cachedNext = providerAny.cachedNext.get("set.sched.cache");
+    expect(cachedNext).not.toBeUndefined();
+    expect(cachedNext.content).toEqual({
+      enableBeta: true,
+      maxUploadSize: 999,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. buildTree edge cases
+// ---------------------------------------------------------------------------
+
+describe("buildTree edge cases", () => {
+  it("should handle single-segment name (no dots)", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    await provider.save("logging", { level: "info" }, "h");
+
+    const tree = await provider.getParameterTree();
+    const logging = tree.find((n) => n.name === "logging");
+
+    expect(logging).toBeDefined();
+    expect(logging!.isLeaf).toBe(true);
+    expect(logging!.path).toBe("logging");
+    expect(logging!.children.length).toBe(0);
+  });
+
+  it("should handle name that is both a folder and a leaf", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    // "app.features" is a leaf, "app.features.flags" makes "features" also a folder
+    await provider.save("app.features", { enabled: true }, "h1");
+    await provider.save("app.features.flags", { beta: true }, "h2");
+
+    const tree = await provider.getParameterTree();
+    const app = tree.find((n) => n.name === "app");
+    expect(app).toBeDefined();
+
+    const features = app!.children.find((n) => n.name === "features");
+    expect(features).toBeDefined();
+    // Should be marked as leaf (since "app.features" exists as a parameter)
+    expect(features!.isLeaf).toBe(true);
+    // And also have children (since "app.features.flags" exists)
+    expect(features!.children.length).toBe(1);
+    expect(features!.children[0].name).toBe("flags");
+  });
+
+  it("should handle deeply nested names", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    await provider.save("a.b.c.d.e", { deep: true }, "h");
+
+    const tree = await provider.getParameterTree();
+    const a = tree.find((n) => n.name === "a");
+    expect(a).toBeDefined();
+    expect(a!.isLeaf).toBe(false);
+
+    const b = a!.children[0];
+    expect(b.name).toBe("b");
+    expect(b.isLeaf).toBe(false);
+
+    const e = b.children[0].children[0].children[0];
+    expect(e.name).toBe("e");
+    expect(e.isLeaf).toBe(true);
+    expect(e.path).toBe("a.b.c.d.e");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 7. loadCurrentAndNext tie-breaking (same-millisecond activationDate)
+// ---------------------------------------------------------------------------
+
+describe("loadCurrentAndNext tie-breaking", () => {
+  it("should pick highest version when multiple versions have the same activationDate", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    // Create two immediate versions — they will have the same (or very close) activationDate
+    await provider.save("tie.break", { v: 1 }, "h");
+    await provider.save("tie.break", { v: 2 }, "h");
+
+    const { current } = await provider.loadCurrentAndNext("tie.break");
+
+    expect(current).not.toBeNull();
+    // Should pick version 2 (highest version in same-millisecond tie)
+    expect(current!.version).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8. doLoad subscriber notification on value change
+// ---------------------------------------------------------------------------
+
+describe("doLoad subscriber notification", () => {
+  it("should notify subscribers when DB value changes on reload", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "doload.notify",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+
+    // Set initial value so cachedCurrent is populated
+    await config.features.set({ enableBeta: false, maxUploadSize: 100 });
+
+    const received: unknown[] = [];
+    config.features.sub((v) => received.push(v));
+
+    // Externally save a different value (simulating another instance)
+    await provider.save(
+      "doload.notify",
+      { enableBeta: true, maxUploadSize: 999 },
+      "ext-hash",
+    );
+
+    // Reload — should detect change and notify
+    await config.features.reload();
+
+    expect(received.length).toBe(1);
+    expect(received[0]).toEqual({ enableBeta: true, maxUploadSize: 999 });
+  });
+
+  it("should NOT notify subscribers when DB value is the same on reload", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "doload.nonotify",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+
+    // Set value
+    await config.features.set({ enableBeta: true, maxUploadSize: 42 });
+
+    const received: unknown[] = [];
+    config.features.sub((v) => received.push(v));
+
+    // Reload — same value, should NOT notify
+    await config.features.reload();
+
+    expect(received.length).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 9. reloadNextInBackground error resilience
+// ---------------------------------------------------------------------------
+
+describe("reloadNextInBackground", () => {
+  it("should not throw when next promotion triggers background reload", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "bgreload.resilience",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const dateTime = alepha.inject(DateTimeProvider);
+
+    // Set current + scheduled
+    await config.features.set({ enableBeta: false, maxUploadSize: 100 });
+
+    const futureDate = new Date(
+      dateTime.now().toDate().getTime() + 60 * 60 * 1000,
+    );
+    await config.features.set(
+      { enableBeta: true, maxUploadSize: 999 },
+      { activationDate: futureDate },
+    );
+
+    await config.features.reload();
+
+    // Travel past activation — get() triggers promotion + background reload
+    dateTime.travel(2, "hours");
+
+    // This should not throw even though background reload runs
+    const value = await config.features.get();
+    expect(value).toEqual({ enableBeta: true, maxUploadSize: 999 });
+
+    // Wait a tick to let the background promise settle
+    await new Promise((r) => setTimeout(r, 50));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 10. ParameterTreeNode schema uses t.any() for children
+// ---------------------------------------------------------------------------
+
+describe("ParameterTreeNode children structure", () => {
+  it("should produce correctly typed children at runtime despite t.any() schema", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    await provider.save("typed.tree.a.b", { v: 1 }, "h");
+    await provider.save("typed.tree.a.c", { v: 2 }, "h");
+
+    const tree = await provider.getParameterTree();
+    const typed = tree.find((n) => n.name === "typed");
+
+    expect(typed).toBeDefined();
+    expect(typed!.children.length).toBe(1); // "tree"
+
+    const treeNode = typed!.children[0];
+    expect(treeNode.name).toBe("tree");
+    expect(treeNode.children.length).toBe(1); // "a"
+
+    const aNode = treeNode.children[0];
+    expect(aNode.name).toBe("a");
+    expect(aNode.children.length).toBe(2); // "b", "c"
+
+    // Verify children have the correct shape (name, path, isLeaf, children)
+    for (const child of aNode.children) {
+      expect(child).toHaveProperty("name");
+      expect(child).toHaveProperty("path");
+      expect(child).toHaveProperty("isLeaf");
+      expect(child).toHaveProperty("children");
+      expect(child.isLeaf).toBe(true);
+      expect(child.children).toEqual([]);
+    }
+
+    expect(aNode.children.map((c: any) => c.name).sort()).toEqual(["b", "c"]);
   });
 });

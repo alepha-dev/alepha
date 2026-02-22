@@ -1,5 +1,4 @@
 import {
-  $hook,
   $inject,
   createPrimitive,
   KIND,
@@ -7,9 +6,8 @@ import {
   type Static,
   type TObject,
 } from "alepha";
-import { $logger } from "alepha/logger";
 import type { UserAccount } from "alepha/security";
-import { ParameterStore } from "../services/ParameterStore.ts";
+import { ParameterProvider } from "../services/ParameterProvider.ts";
 
 /**
  * Creates a versioned parameter primitive for managing application settings.
@@ -17,16 +15,11 @@ import { ParameterStore } from "../services/ParameterStore.ts";
  * Provides type-safe, versioned configuration with:
  * - Schema validation with auto-migration detection
  * - Default values for initial state
- * - Scheduled activation (FUTURE, NEXT, CURRENT, EXPIRED statuses)
- * - PostgreSQL persistence with full version history
- * - Cross-instance synchronization via topic
+ * - Status derived from activationDate (no stored status)
+ * - Database persistence with full version history
+ * - Cross-instance notification via topic
  * - Tree view support via dot-notation naming (e.g., "app.features.flags")
- *
- * Integrates with Alepha's atom system for state management:
- * - Uses `alepha.set(atom, value)` for mutations
- * - Listens to `state:mutate` events to detect changes
- * - Auto-persists changes to database
- * - Syncs across instances via topic
+ * - Async `.get()` with lazy loading (works in Node and Cloudflare Workers)
  *
  * @example
  * ```ts
@@ -40,17 +33,13 @@ import { ParameterStore } from "../services/ParameterStore.ts";
  *     default: { enableBeta: false, maxUploadSize: 10485760 }
  *   });
  *
- *   async enableBeta() {
- *     // Immediate activation
- *     await this.features.set({ enableBeta: true, maxUploadSize: 20971520 });
+ *   async checkBeta() {
+ *     const config = await this.features.get();
+ *     return config.enableBeta;
  *   }
  *
- *   async scheduleBetaRelease() {
- *     // Schedule for future activation
- *     await this.features.set(
- *       { enableBeta: true, maxUploadSize: 20971520 },
- *       { activationDate: new Date('2024-03-01') }
- *     );
+ *   async enableBeta() {
+ *     await this.features.set({ enableBeta: true, maxUploadSize: 20971520 });
  *   }
  * }
  * ```
@@ -76,33 +65,20 @@ export interface ParameterPrimitiveOptions<T extends TObject> {
    * Default value used when no parameter exists in database.
    */
   default: Static<T>;
+
+  /**
+   * Optional migration function for schema changes.
+   * Receives the raw DB value and returns a transformed value matching the new schema.
+   * Runs before validation — if the result is valid, it's used directly.
+   * If not provided or returns an invalid value, falls through to merge/default cascade.
+   */
+  migrate?: (old: unknown) => Static<T>;
 }
 
 export class ParameterPrimitive<T extends TObject> extends Primitive<
   ParameterPrimitiveOptions<T>
 > {
-  protected readonly log = $logger();
-  protected readonly store = $inject(ParameterStore);
-
-  /**
-   * Internal atom key for state management.
-   */
-  protected atomKey!: string;
-
-  /**
-   * Schema hash for migration detection.
-   */
-  protected schemaHash!: string;
-
-  /**
-   * Whether we're currently syncing (to avoid loops).
-   */
-  protected syncing = false;
-
-  /**
-   * Whether initial load has completed.
-   */
-  protected loaded = false;
+  protected readonly provider = $inject(ParameterProvider);
 
   /**
    * Parameter name (uses property key if not specified).
@@ -119,20 +95,34 @@ export class ParameterPrimitive<T extends TObject> extends Primitive<
   }
 
   /**
-   * Get the current parameter value.
+   * Get the cached current content, falling back to default.
+   * Synchronous access for admin API.
    */
-  public get current(): Static<T> {
-    return (
-      (this.alepha.store.get(this.atomKey as any) as Static<T>) ??
-      this.options.default
-    );
+  public get cachedCurrentContent(): Static<T> {
+    return this.provider.getCachedCurrentContent(this.name) as Static<T>;
   }
 
   /**
-   * Get a specific field from the current parameter.
+   * Whether the parameter is using its default value (no DB value loaded).
    */
-  public get<Key extends keyof Static<T>>(key: Key): Static<T>[Key] {
-    return this.current[key];
+  public get isUsingDefault(): boolean {
+    return this.provider.isUsingDefault(this.name);
+  }
+
+  /**
+   * Get the current parameter value asynchronously.
+   * Lazy-loads from database on first call.
+   * Checks if a cached next version has become current.
+   */
+  public get(): Promise<Static<T>> {
+    return this.provider.get(this.name) as Promise<Static<T>>;
+  }
+
+  /**
+   * Load current and next values from database.
+   */
+  public async load(): Promise<void> {
+    await this.provider.load(this.name);
   }
 
   /**
@@ -145,76 +135,36 @@ export class ParameterPrimitive<T extends TObject> extends Primitive<
     value: Static<T>,
     options: SetParameterOptions = {},
   ): Promise<void> {
-    // Save to database
-    await this.store.save(this.name, value, this.schemaHash, {
+    await this.provider.set(this.name, value, {
       activationDate: options.activationDate,
       changeDescription: options.changeDescription,
       tags: options.tags,
       creatorId: options.user?.id,
       creatorName: options.user?.name ?? options.user?.email,
     });
-
-    // If immediate activation (no future date), update state
-    const now = new Date();
-    if (!options.activationDate || options.activationDate <= now) {
-      this.syncing = true;
-      try {
-        this.alepha.store.set(this.atomKey as any, value);
-      } finally {
-        this.syncing = false;
-      }
-    }
   }
 
   /**
    * Subscribe to parameter changes.
+   * Returns an unsubscribe function.
    */
   public sub(fn: (curr: Static<T>) => void): () => void {
-    return this.alepha.events.on("state:mutate", {
-      callback: ({ key, value }) => {
-        if (key === this.atomKey) {
-          fn(value as Static<T>);
-        }
-      },
-    });
+    return this.provider.sub(this.name, fn as (v: unknown) => void);
   }
 
   /**
    * Reload parameter from database.
-   * Called when scheduled parameter activates or sync message received.
+   * Called when sync notification received or for manual refresh.
    */
   public async reload(): Promise<void> {
-    const value = await this.store.load<T>(this.name);
-    if (value !== null) {
-      this.syncing = true;
-      try {
-        this.alepha.store.set(this.atomKey as any, value, { skipEvents: true });
-      } finally {
-        this.syncing = false;
-      }
-    }
-  }
-
-  /**
-   * Update from sync message (called by ParameterStore).
-   * Uses skipEvents to avoid infinite loops.
-   */
-  public async updateFromSync(content: unknown): Promise<void> {
-    this.syncing = true;
-    try {
-      this.alepha.store.set(this.atomKey as any, content as Static<T>, {
-        skipEvents: true,
-      });
-    } finally {
-      this.syncing = false;
-    }
+    await this.provider.load(this.name);
   }
 
   /**
    * Get version history for this parameter.
    */
   public async getHistory() {
-    return this.store.getHistory(this.name);
+    return this.provider.getHistory(this.name);
   }
 
   /**
@@ -224,106 +174,19 @@ export class ParameterPrimitive<T extends TObject> extends Primitive<
     version: number,
     options?: SetParameterOptions,
   ): Promise<void> {
-    await this.store.rollback(this.name, version, {
+    await this.provider.rollback(this.name, version, {
       changeDescription: options?.changeDescription,
       creatorId: options?.user?.id,
       creatorName: options?.user?.name ?? options?.user?.email,
     });
-    await this.reload();
+    await this.provider.load(this.name);
   }
 
   /**
-   * Hook to load initial value from database on start.
-   */
-  protected readonly onStart = $hook({
-    on: "start",
-    handler: async () => {
-      await this.loadInitial();
-    },
-  });
-
-  /**
-   * Called after primitive creation to initialize.
+   * Called after primitive creation to register with provider.
    */
   protected onInit(): void {
-    // Create unique key for state management
-    this.atomKey = `parameter:${this.name}`;
-
-    // Calculate schema hash for migration detection
-    this.schemaHash = this.calculateSchemaHash();
-
-    // Register with store
-    this.store.register(this);
-
-    // Set initial default using key-based state
-    this.alepha.store.set(this.atomKey as any, this.options.default, {
-      skipEvents: true,
-    });
-
-    // Listen for state mutations to detect external changes via alepha.set()
-    // Note: state:mutate is not in Hooks interface, so we use events.on() directly
-    this.alepha.events.on("state:mutate", {
-      caller: this.config.service,
-      callback: async ({ key, value, prevValue }) => {
-        // Only handle our key
-        if (key !== this.atomKey) {
-          return;
-        }
-
-        // Skip if we're syncing (to avoid infinite loop)
-        if (this.syncing) {
-          return;
-        }
-
-        // Skip if value hasn't actually changed
-        if (JSON.stringify(value) === JSON.stringify(prevValue)) {
-          return;
-        }
-
-        // Auto-save to database when state is mutated via alepha.set()
-        this.log.debug("Parameter state mutated, persisting to database", {
-          name: this.name,
-        });
-        await this.store.save(this.name, value as Static<T>, this.schemaHash);
-      },
-    });
-  }
-
-  /**
-   * Load initial value from database.
-   */
-  protected async loadInitial(): Promise<void> {
-    if (this.loaded) {
-      return;
-    }
-
-    const value = await this.store.load<T>(this.name);
-
-    if (value !== null) {
-      this.syncing = true;
-      try {
-        this.alepha.store.set(this.atomKey as any, value, { skipEvents: true });
-      } finally {
-        this.syncing = false;
-      }
-    }
-
-    this.loaded = true;
-  }
-
-  /**
-   * Calculate a hash of the schema for migration detection.
-   */
-  protected calculateSchemaHash(): string {
-    const schemaJson = JSON.stringify(this.options.schema);
-    // Simple hash - in production you might want a proper hash function
-    let hash = 0;
-    for (let i = 0; i < schemaJson.length; i++) {
-      const char = schemaJson.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    return hash.toString(16);
+    this.provider.register(this);
   }
 }
 
