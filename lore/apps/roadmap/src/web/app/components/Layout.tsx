@@ -1,5 +1,4 @@
-import { AlephaMantineProvider } from "@alepha/ui";
-import { Flex } from "@mantine/core";
+import { AlephaMantineProvider, Flex } from "@alepha/ui";
 import { NestedView } from "alepha/react/router";
 import { theme } from "../constants/theme.ts";
 import Header from "./shared/Header.tsx";
