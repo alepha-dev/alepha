@@ -16,7 +16,15 @@ import { ServerCookiesProvider } from "../providers/ServerCookiesProvider.ts";
  */
 export const $cookie = <T extends TSchema>(
   options: CookiePrimitiveOptions<T>,
+  extendedOptions?: Omit<CookiePrimitiveOptions<T>, "schema">,
 ): AbstractCookiePrimitive<T> => {
+  if (extendedOptions) {
+    options = {
+      key: options.key,
+      schema: options.schema,
+      ...extendedOptions,
+    };
+  }
   return createPrimitive(CookiePrimitive<T>, options);
 };
 
@@ -77,6 +85,11 @@ export interface CookiePrimitiveOptions<T extends TSchema> {
    * If true, the cookie will be signed to prevent tampering. Requires `COOKIE_SECRET` env var.
    */
   sign?: boolean;
+
+  /**
+   * Optional key to link this cookie to an Atom, enabling automatic synchronization between the cookie and the Atom's state.
+   */
+  key?: string;
 }
 
 export interface AbstractCookiePrimitive<T extends TSchema> {
@@ -95,6 +108,26 @@ export class CookiePrimitive<T extends TSchema>
   implements AbstractCookiePrimitive<T>
 {
   protected readonly serverCookiesProvider = $inject(ServerCookiesProvider);
+
+  protected onInit() {
+    if (this.options.key) {
+      this.alepha.events.on("state:mutate", ({ key, value }) => {
+        if (key === this.options.key) {
+          this.set(value);
+        }
+      });
+      this.alepha.events.on("server:onRequest", ({ request }) => {
+        try {
+          const value = this.get(request);
+          if (value !== undefined) {
+            this.alepha.store.set(this.options.key as any, value, {
+              skipEvents: true,
+            });
+          }
+        } catch {}
+      });
+    }
+  }
 
   public get schema(): T {
     return this.options.schema;

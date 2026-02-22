@@ -47,7 +47,15 @@ import type {
  */
 export const $cookie = <T extends TSchema>(
   options: CookiePrimitiveOptions<T>,
+  extendedOptions?: Omit<CookiePrimitiveOptions<T>, "schema">,
 ): AbstractCookiePrimitive<T> => {
+  if (extendedOptions) {
+    options = {
+      key: options.key,
+      schema: options.schema,
+      ...extendedOptions,
+    };
+  }
   return createPrimitive(BrowserCookiePrimitive<T>, options);
 };
 
@@ -62,14 +70,34 @@ export class BrowserCookiePrimitive<T extends TSchema>
   protected dateTimeProvider = $inject(DateTimeProvider);
   protected cookie?: Cookie;
 
+  protected onInit() {
+    if (this.options.key) {
+      this.alepha.events.on("state:mutate", ({ key, value }) => {
+        if (key === this.options.key) {
+          this.set(value);
+        }
+      });
+      this.alepha.events.on("configure", () => {
+        try {
+          const value = this.get();
+          if (value !== undefined) {
+            this.alepha.set(this.options.key as any, value);
+          }
+        } catch {}
+      });
+    }
+  }
+
+  public get schema(): T {
+    return this.options.schema;
+  }
+
   public get name(): string {
     return this.options.name ?? `${this.config.propertyKey}`;
   }
 
   public set(data: Static<T>): void {
-    const value = JSON.stringify(
-      this.alepha.codec.decode(this.options.schema, data),
-    );
+    const value = JSON.stringify(this.alepha.codec.decode(this.schema, data));
     const options = this.options;
 
     if (options.compress) {
@@ -123,7 +151,7 @@ export class BrowserCookiePrimitive<T extends TSchema>
       throw new AlephaError("Signing is not supported in browser cookies.");
     }
 
-    return this.alepha.codec.decode(this.options.schema, JSON.parse(rawValue));
+    return this.alepha.codec.decode(this.schema, JSON.parse(rawValue));
   }
 
   public del(): void {
