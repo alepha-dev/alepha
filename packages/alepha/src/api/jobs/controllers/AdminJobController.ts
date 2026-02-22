@@ -31,7 +31,7 @@ export class AdminJobController {
     handler: () => this.jobService.getStats(),
   });
 
-  public readonly getRegistry = $action({
+  public readonly getJobRegistry = $action({
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
@@ -41,7 +41,7 @@ export class AdminJobController {
     handler: () => this.jobService.getRegistry(),
   });
 
-  public readonly findExecutions = $action({
+  public readonly findJobExecutions = $action({
     path: `${this.url}/executions`,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
@@ -52,7 +52,7 @@ export class AdminJobController {
     handler: ({ query }) => this.jobService.findExecutions(query),
   });
 
-  public readonly getExecution = $action({
+  public readonly getJobExecution = $action({
     path: `${this.url}/executions/:id`,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
@@ -83,7 +83,7 @@ export class AdminJobController {
     },
   });
 
-  public readonly retryExecution = $action({
+  public readonly retryJobExecution = $action({
     method: "POST",
     path: `${this.url}/executions/:id/retry`,
     group: this.group,
@@ -102,7 +102,7 @@ export class AdminJobController {
     },
   });
 
-  public readonly cancelExecution = $action({
+  public readonly cancelJobExecution = $action({
     method: "POST",
     path: `${this.url}/executions/:id/cancel`,
     group: this.group,
@@ -121,7 +121,7 @@ export class AdminJobController {
     },
   });
 
-  public readonly getActivity = $action({
+  public readonly getJobActivity = $action({
     path: `${this.url}/activity`,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
@@ -142,7 +142,7 @@ export class AdminJobController {
     handler: () => this.jobService.getCronJobs(),
   });
 
-  public readonly getQueueDepth = $action({
+  public readonly getJobQueueDepth = $action({
     path: `${this.url}/queue`,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
@@ -152,7 +152,7 @@ export class AdminJobController {
     handler: () => this.jobService.getQueueDepth(),
   });
 
-  public readonly getTopFailures = $action({
+  public readonly getJobTopFailures = $action({
     path: `${this.url}/failures`,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],

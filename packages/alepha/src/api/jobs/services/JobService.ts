@@ -1,6 +1,6 @@
 import { $inject, Alepha, AlephaError, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, sql } from "alepha/orm";
+import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { NotFoundError } from "alepha/server";
 import type { JobExecutionEntity } from "../entities/jobExecutionEntity.ts";
 import { jobExecutionEntity } from "../entities/jobExecutionEntity.ts";
@@ -22,6 +22,7 @@ export class JobService {
   protected readonly alepha = $inject(Alepha);
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly jobProvider = $inject(JobProvider);
+  protected readonly database = $inject(DatabaseProvider);
   protected readonly executions = $repository(jobExecutionEntity);
   protected readonly executionLogs = $repository(jobExecutionLogEntity);
 
@@ -36,9 +37,22 @@ export class JobService {
     };
   }
 
+  /**
+   * Convert an ISO date string to the raw SQL parameter format
+   * expected by the current database dialect.
+   *
+   * - PostgreSQL: ISO string (timestamp comparison)
+   * - SQLite: epoch milliseconds (integer comparison)
+   */
+  protected toRawDate(iso: string): string | number {
+    return this.database.dialect === "sqlite" ? new Date(iso).getTime() : iso;
+  }
+
   public async getStats(): Promise<JobStats> {
     const jobs = this.jobProvider.getRegisteredJobs();
-    const twentyFourHoursAgo = this.dt.now().subtract(24, "hour").toISOString();
+    const twentyFourHoursAgo = this.toRawDate(
+      this.dt.now().subtract(24, "hour").toISOString(),
+    );
 
     const rows = await this.executions.query(
       (e) => sql`
@@ -253,33 +267,7 @@ export class JobService {
       if (reg.options.cron) cronJobNames.push(name);
     }
 
-    // Single query: fetch the latest execution per cron job using DISTINCT ON
-    const lastExecutions =
-      cronJobNames.length > 0
-        ? await this.executions.query(
-            (e) => sql`
-              SELECT DISTINCT ON (${e.jobName})
-                ${e.id}, ${e.jobName} AS job_name, ${e.status},
-                ${e.startedAt} AS started_at, ${e.completedAt} AS completed_at, ${e.error}
-              FROM ${e}
-              WHERE ${e.jobName} IN (${sql.join(
-                cronJobNames.map((n) => sql`${n}`),
-                sql`, `,
-              )})
-              ORDER BY ${e.jobName}, ${e.createdAt} DESC
-            `,
-            t.object({
-              id: t.string(),
-              job_name: t.string(),
-              status: t.string(),
-              started_at: t.optional(t.nullable(t.string())),
-              completed_at: t.optional(t.nullable(t.string())),
-              error: t.optional(t.nullable(t.string())),
-            }),
-          )
-        : [];
-
-    const lastByJob = new Map(lastExecutions.map((r) => [r.job_name, r]));
+    const lastByJob = await this.getLastExecutionPerJob(cronJobNames);
 
     const result: JobCronInfo[] = [];
     for (const name of cronJobNames) {
@@ -355,6 +343,10 @@ export class JobService {
   }
 
   public async getActivity(days = 14): Promise<JobActivityPoint[]> {
+    if (this.database.dialect === "sqlite") {
+      return this.getActivitySqlite(days);
+    }
+
     const rows = await this.executions.query(
       (e) => sql`
         WITH date_series AS (
@@ -388,8 +380,44 @@ export class JobService {
     }));
   }
 
+  protected async getActivitySqlite(days = 14): Promise<JobActivityPoint[]> {
+    const now = this.dt.now();
+    const startDate = now.subtract(days - 1, "day");
+
+    const where = this.executions.createQueryWhere();
+    where.status = { inArray: ["completed", "dead", "failed"] };
+    where.completedAt = { gte: startDate.startOf("day").toISOString() };
+
+    const executions = await this.executions.findMany({ where });
+
+    // Build date → counts map
+    const byDate = new Map<string, { completed: number; failed: number }>();
+    for (let i = 0; i < days; i++) {
+      const date = startDate.add(i, "day").format("YYYY-MM-DD");
+      byDate.set(date, { completed: 0, failed: 0 });
+    }
+
+    for (const exec of executions) {
+      if (!exec.completedAt) continue;
+      const date = this.dt.of(exec.completedAt).format("YYYY-MM-DD");
+      const entry = byDate.get(date);
+      if (!entry) continue;
+      if (exec.status === "completed") entry.completed++;
+      else entry.failed++;
+    }
+
+    return [...byDate.entries()].map(([date, counts]) => ({
+      date,
+      ...counts,
+    }));
+  }
+
   public async getTopFailures(): Promise<JobFailure[]> {
-    const sevenDaysAgo = this.dt.now().subtract(7, "day").toISOString();
+    const sevenDaysAgoIso = this.dt.now().subtract(7, "day").toISOString();
+
+    if (this.database.dialect === "sqlite") {
+      return this.getTopFailuresSqlite(sevenDaysAgoIso);
+    }
 
     const rows = await this.executions.query(
       (e) => sql`
@@ -399,7 +427,7 @@ export class JobService {
           (ARRAY_AGG(${e.error} ORDER BY ${e.completedAt} DESC))[1] AS last_error
         FROM ${e}
         WHERE ${e.status} IN ('dead', 'failed')
-          AND ${e.completedAt} >= ${sevenDaysAgo}
+          AND ${e.completedAt} >= ${sevenDaysAgoIso}
         GROUP BY ${e.jobName}
         ORDER BY failures DESC
       `,
@@ -415,5 +443,106 @@ export class JobService {
       failures: Number(row.failures),
       lastError: row.last_error ?? undefined,
     }));
+  }
+
+  protected async getTopFailuresSqlite(
+    sevenDaysAgoIso: string,
+  ): Promise<JobFailure[]> {
+    const where = this.executions.createQueryWhere();
+    where.status = { inArray: ["dead", "failed"] };
+    where.completedAt = { gte: sevenDaysAgoIso };
+
+    const failures = await this.executions.findMany({
+      where,
+      orderBy: { column: "completedAt", direction: "desc" },
+    });
+
+    const byJob = new Map<string, { failures: number; lastError?: string }>();
+    for (const exec of failures) {
+      const entry = byJob.get(exec.jobName) ?? { failures: 0 };
+      entry.failures++;
+      if (!entry.lastError) entry.lastError = exec.error ?? undefined;
+      byJob.set(exec.jobName, entry);
+    }
+
+    return [...byJob.entries()]
+      .map(([jobName, data]) => ({
+        jobName,
+        failures: data.failures,
+        lastError: data.lastError,
+      }))
+      .sort((a, b) => b.failures - a.failures);
+  }
+
+  /**
+   * Fetch the most recent execution per job name.
+   *
+   * - PostgreSQL: uses `DISTINCT ON` for a single-pass query
+   * - SQLite: uses ORM queries (one per job name) since `DISTINCT ON` is not supported
+   */
+  protected async getLastExecutionPerJob(jobNames: string[]): Promise<
+    Map<
+      string,
+      {
+        id: string;
+        job_name: string;
+        status: string;
+        started_at?: string | null;
+        completed_at?: string | null;
+        error?: string | null;
+      }
+    >
+  > {
+    if (jobNames.length === 0) {
+      return new Map();
+    }
+
+    if (this.database.dialect === "sqlite") {
+      const result = new Map<string, any>();
+      for (const name of jobNames) {
+        const rows = await this.executions.findMany({
+          where: { jobName: { eq: name } },
+          orderBy: { column: "createdAt", direction: "desc" },
+          limit: 1,
+        });
+        if (rows[0]) {
+          result.set(name, {
+            id: rows[0].id,
+            job_name: rows[0].jobName,
+            status: rows[0].status,
+            started_at: rows[0].startedAt,
+            completed_at: rows[0].completedAt,
+            error: rows[0].error,
+          });
+        }
+      }
+      return result;
+    }
+
+    const schema = t.object({
+      id: t.string(),
+      job_name: t.string(),
+      status: t.string(),
+      started_at: t.optional(t.nullable(t.string())),
+      completed_at: t.optional(t.nullable(t.string())),
+      error: t.optional(t.nullable(t.string())),
+    });
+
+    const rows = await this.executions.query(
+      (e) => sql`
+        SELECT DISTINCT ON (${e.jobName})
+          ${e.id}, ${e.jobName} AS job_name, ${e.status},
+          ${e.startedAt} AS started_at, ${e.completedAt} AS completed_at, ${e.error}
+        FROM ${e}
+        WHERE ${e.jobName} IN (${sql.join(
+          jobNames.map((n) => sql`${n}`),
+          sql`, `,
+        )})
+        ORDER BY ${e.jobName}, ${e.createdAt} DESC
+      `,
+      schema,
+    );
+
+    return new Map(rows.map((r) => [r.job_name, r]));
   }
 }
