@@ -26,13 +26,16 @@ import type {
 } from "typebox";
 import { Type } from "typebox";
 import Format from "typebox/format";
+import { Settings } from "typebox/system";
 import * as Value from "typebox/value";
 import { OPTIONS } from "../constants/OPTIONS.ts";
 import type { TypeBoxError } from "../errors/TypeBoxError.ts";
 import { isTypeFile, type TFile, type TStream } from "../helpers/FileLike.ts";
 
 export { Type, Value, Format };
-export const isUUID = Format.IsUuid;
+
+// https://github.com/sinclairzx81/typebox/blob/main/changelog/1.1.0.md
+Settings.Set({ correctiveParse: true });
 
 export type {
   StaticDecode,
