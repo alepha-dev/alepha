@@ -121,6 +121,9 @@ jobs:
       - name: Install Dependencies
         run: yarn
 
+      - name: Prepare
+        run: yarn copy
+
       - name: Build Documentation
         run: cd apps/docs && yarn build && yarn alepha gen:llms
 
@@ -189,6 +192,9 @@ jobs:
 
       - name: Clean
         run: yarn clean
+
+      - name: Prepare
+        run: yarn copy
 
       - name: Lint Project
         run: yarn lint
