@@ -241,7 +241,7 @@ export class CloudflareAdapter extends PlatformAdapter {
             env,
           });
         } else {
-          await this.shell.run("alepha db migrations generate --mode toto", {
+          await this.shell.run("alepha db migrations generate", {
             resolve: true,
             capture: true,
             env,

@@ -15,7 +15,7 @@ export class DrizzleKitProvider {
    * Reads the actual database state, diffs against current entity definitions,
    * and applies changes. No stored snapshots — no drift, no corruption.
    *
-   * - SQLite: uses `pushSQLiteSchema` (requires better-sqlite3 or bun-sqlite driver)
+   * - SQLite: uses `pushSQLiteSchema` (requires sync driver — node:sqlite shim or bun-sqlite)
    * - PostgreSQL: uses `pushSchema` with schema filters
    *
    * Does nothing in production mode — use file-based migrations instead.

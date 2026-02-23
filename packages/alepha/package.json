@@ -21,7 +21,6 @@
   ],
   "dependencies": {
     "@redis/client": "^5.11.0",
-    "better-sqlite3": "^12.6.2",
     "dayjs": "^1.11.19",
     "drizzle-kit": "^0.31.9",
     "drizzle-orm": "^0.45.1",

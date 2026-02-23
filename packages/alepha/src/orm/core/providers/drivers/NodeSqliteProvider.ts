@@ -12,10 +12,7 @@ import {
   type Static,
   t,
 } from "alepha";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { drizzle as sqliteProxyDrizzle } from "drizzle-orm/sqlite-proxy";
-import { migrate as sqliteProxyMigrate } from "drizzle-orm/sqlite-proxy/migrator";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
@@ -72,56 +69,23 @@ declare module "alepha" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface BetterSqlite3Module {
-  drizzle: (client: any, config?: any) => BetterSQLite3Database;
-}
-
-export interface BetterSqlite3MigratorModule {
-  migrate: (
-    db: BetterSQLite3Database,
-    config: { migrationsFolder: string },
-  ) => void;
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
  * Node.js SQLite provider using `node:sqlite` (DatabaseSync).
  *
- * Automatically selects the best Drizzle driver at startup:
- * - `better-sqlite3` driver when available (enables push sync + studio in dev)
- * - `sqlite-proxy` driver as fallback (zero native deps, suitable for prod)
+ * Uses drizzle-orm's `BetterSQLiteSession` (sync driver) with a shimmed
+ * `node:sqlite` DatabaseSync — no native `better-sqlite3` package required.
+ *
+ * The session and migrator sub-modules of `drizzle-orm/better-sqlite3` are
+ * imported directly, bypassing `driver.cjs` which has a top-level
+ * `require("better-sqlite3")`.
  */
 export class NodeSqliteProvider extends DatabaseProvider {
-  public static importBetterSqlite3(): BetterSqlite3Module | undefined {
-    try {
-      return createRequire(import.meta.url)("drizzle-orm/better-sqlite3");
-    } catch {
-      // ignored
-    }
-  }
-
-  public static importBetterSqlite3Migrator():
-    | BetterSqlite3MigratorModule
-    | undefined {
-    try {
-      return createRequire(import.meta.url)(
-        "drizzle-orm/better-sqlite3/migrator",
-      );
-    } catch {
-      // ignored
-    }
-  }
-
-  // -------------------------------------------------------------------------------------------------------------------
-
   protected readonly env = $env(envSchema);
   protected readonly builder = $inject(SqliteModelBuilder);
   protected readonly options = $use(nodeSqliteOptions);
 
   protected sqlite!: DatabaseSync;
-  protected betterDb?: BetterSQLite3Database;
-  protected proxyDb?: ReturnType<typeof sqliteProxyDrizzle>;
+  protected drizzleDb!: any;
 
   public get name() {
     return "sqlite";
@@ -148,13 +112,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
   }
 
   public override get db(): PgDatabase<any> {
-    if (this.betterDb) {
-      return this.betterDb as unknown as PgDatabase<any>;
-    }
-    if (this.proxyDb) {
-      return this.proxyDb as unknown as PgDatabase<any>;
-    }
-    throw new AlephaError("Database not initialized");
+    return this.drizzleDb as unknown as PgDatabase<any>;
   }
 
   public override get nativeConnection(): unknown {
@@ -199,46 +157,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
   public override async execute(
     query: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
-    if (this.betterDb) {
-      return this.betterDb.all(query);
-    }
-
-    // Proxy driver fallback: manually extract query and run through DatabaseSync
-    const all = this.proxyDb!.all(query);
-    const { sql, params, method } = all.getQuery();
-
-    const start = performance.now();
-    let result: Array<Record<string, unknown>> = [];
-
-    try {
-      const statement = this.sqlite.prepare(sql);
-      if (method === "run") {
-        statement.run(...(params as any[]));
-        result = [];
-      } else if (method === "get") {
-        const data = statement.get(...(params as any[]));
-        result = data ? [{ ...data }] : [];
-      } else {
-        result = statement.all(...(params as any[]));
-      }
-
-      this.logQuery(
-        sql,
-        params as unknown[],
-        performance.now() - start,
-        result.length,
-      );
-      return result;
-    } catch (error) {
-      this.logQuery(
-        sql,
-        params as unknown[],
-        performance.now() - start,
-        0,
-        (error as Error).message,
-      );
-      throw error;
-    }
+    return this.drizzleDb.all(query);
   }
 
   protected readonly onStart = $hook({
@@ -257,8 +176,6 @@ export class NodeSqliteProvider extends DatabaseProvider {
 
       this.sqlite = new DatabaseSync(filepath);
 
-      // Try better-sqlite3 driver first (enables push sync + studio)
-      // Falls back to sqlite-proxy when better-sqlite3 is not installed
       this.initDrizzle();
 
       // Never migrate in serverless mode - migrations should be applied during deployment
@@ -398,95 +315,39 @@ export class NodeSqliteProvider extends DatabaseProvider {
     return `${prefix}${aliased} ${rest}`;
   }
 
+  /**
+   * Initialize Drizzle using the sync session from `drizzle-orm/better-sqlite3/session`
+   * directly, bypassing `drizzle-orm/better-sqlite3/driver` which has a top-level
+   * `require("better-sqlite3")`. The shimmed `node:sqlite` DatabaseSync is fully
+   * compatible with the sync session — no native `better-sqlite3` package required.
+   */
   protected initDrizzle(): void {
-    const bs3 = NodeSqliteProvider.importBetterSqlite3();
+    this.shimDatabaseSync();
 
-    if (bs3) {
-      this.shimDatabaseSync();
-      this.betterDb = bs3.drizzle(this.sqlite as any, {
-        logger: {
-          logQuery: (query: string, params: unknown[]) => {
-            this.log.trace(query, { params });
-          },
+    const require = createRequire(import.meta.url);
+    const {
+      BetterSQLiteSession,
+    } = require("drizzle-orm/better-sqlite3/session");
+    const { SQLiteSyncDialect } = require("drizzle-orm/sqlite-core/dialect");
+    const { BaseSQLiteDatabase } = require("drizzle-orm/sqlite-core/db");
+
+    const dialect = new SQLiteSyncDialect();
+    const session = new BetterSQLiteSession(this.sqlite, dialect, undefined, {
+      logger: {
+        logQuery: (query: string, params: unknown[]) => {
+          this.log.trace(query, { params });
         },
-      });
-      this.log.debug("Using better-sqlite3 driver");
-    } else {
-      this.log.debug(
-        "better-sqlite3 not available, falling back to sqlite-proxy driver",
-      );
-      this.proxyDb = sqliteProxyDrizzle(
-        async (sql: string, params: any[], method: string) => {
-          const start = performance.now();
-          const aliased = NodeSqliteProvider.aliasSelectColumns(sql);
-          const statement = this.sqlite.prepare(aliased);
+      },
+    });
 
-          try {
-            if (method === "get") {
-              const data = statement.get(...params);
-              const rows = data ? [{ ...data }] : [];
-              this.logQuery(
-                sql,
-                params,
-                performance.now() - start,
-                rows.length,
-              );
-              return { rows };
-            }
-
-            if (method === "run") {
-              statement.run(...params);
-              this.logQuery(sql, params, performance.now() - start, 0);
-              return { rows: [] };
-            }
-
-            if (method === "all" || method === "values") {
-              const rows = statement.all(...params);
-              this.logQuery(
-                sql,
-                params,
-                performance.now() - start,
-                rows.length,
-              );
-              return {
-                rows: rows.map((row) => Object.values(row)),
-              };
-            }
-
-            throw new AlephaError(`Unsupported method: ${method}`);
-          } catch (error) {
-            this.logQuery(
-              sql,
-              params,
-              performance.now() - start,
-              0,
-              (error as Error).message,
-            );
-            throw error;
-          }
-        },
-      );
-    }
+    this.drizzleDb = new BaseSQLiteDatabase("sync", dialect, session);
+    this.log.debug("Using node:sqlite with sync driver");
   }
 
   protected async executeMigrations(migrationsFolder: string): Promise<void> {
-    if (this.betterDb) {
-      const bs3Migrator = NodeSqliteProvider.importBetterSqlite3Migrator();
-      if (bs3Migrator) {
-        bs3Migrator.migrate(this.betterDb, { migrationsFolder });
-        return;
-      }
-    }
-
-    await sqliteProxyMigrate(
-      this.proxyDb!,
-      async (migrationQueries: string[]) => {
-        this.log.debug("Executing migration queries", { migrationQueries });
-        for (const query of migrationQueries) {
-          this.sqlite.prepare(query).run();
-        }
-      },
-      { migrationsFolder },
+    const { migrate } = createRequire(import.meta.url)(
+      "drizzle-orm/better-sqlite3/migrator",
     );
+    migrate(this.drizzleDb, { migrationsFolder });
   }
 }

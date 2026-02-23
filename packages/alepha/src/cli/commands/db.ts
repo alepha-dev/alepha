@@ -329,13 +329,6 @@ export class DbCommand {
       this.log.info("");
       this.log.info(options.logMessage(providerName, dialect));
 
-      if (dialect === "sqlite") {
-        await this.pm.ensureDependency(options.root, "better-sqlite3", {
-          dev: true,
-          exec: (cmd, opts) => this.utils.exec(cmd, opts),
-        });
-      }
-
       const drizzleConfigJsPath = await this.prepareDrizzleConfig({
         kit: drizzleKitProvider,
         provider,
