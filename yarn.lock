@@ -5845,7 +5845,6 @@ __metadata:
     "@types/react-dom": "npm:^19.2.3"
     "@types/ws": "npm:^8.18.1"
     "@vitejs/plugin-react": "npm:^5.1.4"
-    better-sqlite3: "npm:^12.6.2"
     cron-schedule: "npm:^6.0.0"
     dayjs: "npm:^1.11.19"
     drizzle-kit: "npm:^0.31.9"
