@@ -6,6 +6,11 @@ const env = loadEnv();
 export default defineConfig({
   test: {
     globals: true,
+    onConsoleLog(log) {
+      if (log.includes("was not wrapped in act(")) {
+        return false;
+      }
+    },
     coverage: {
       reporter: ["cobertura", "html"],
       include: ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"],
