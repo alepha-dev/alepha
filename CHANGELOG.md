@@ -1,3 +1,13 @@
+## [0.17.3] - 2026-02-23
+
+### Features
+
+- **server/cookies**: allow $atom inside $cookie for state sync across requests (`18e4797b`)
+
+### Bug Fixes
+
+- **alepha**: fix some duplicate bundles (`a35e23ac`)
+
 ## [0.17.2] - 2026-02-17
 
 ### Features
