@@ -108,8 +108,8 @@ export class AlephaPackageBuilderCli {
         JSON.stringify(modules, null, 2),
       );
 
-      const external: (string | RegExp)[] = Object.keys(
-        modules.map((it) => it.name),
+      const external: (string | RegExp)[] = modules.map((it) =>
+        `alepha/${it.name}`.replace("/core", ""),
       );
 
       external.push("bun");
