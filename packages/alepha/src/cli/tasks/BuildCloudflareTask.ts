@@ -155,6 +155,8 @@ export class BuildCloudflareTask extends BuildTask {
       binding: r2Provider.bucketName,
       bucket_name: r2Provider.bucketName,
     });
+    wrangler.vars ??= {};
+    wrangler.vars.R2_BUCKET_NAME = r2Provider.bucketName;
   }
 
   protected enhanceKV(
