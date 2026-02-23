@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 import { Asker } from "./helpers/Asker.ts";
 import { EnvUtils } from "./helpers/EnvUtils.ts";
+import { PrettyAsker } from "./helpers/PrettyAsker.ts";
 import { PrettyPrint } from "./helpers/PrettyPrint.ts";
 import { Runner } from "./helpers/Runner.ts";
 import { $command } from "./primitives/$command.ts";
@@ -11,6 +12,7 @@ import { CliProvider } from "./providers/CliProvider.ts";
 export * from "./errors/CommandError.ts";
 export * from "./helpers/Asker.ts";
 export * from "./helpers/EnvUtils.ts";
+export * from "./helpers/PrettyAsker.ts";
 export * from "./helpers/PrettyPrint.ts";
 export * from "./helpers/Runner.ts";
 export * from "./primitives/$command.ts";
@@ -34,7 +36,7 @@ export * from "./providers/CliProvider.ts";
 export const AlephaCommand = $module({
   name: "alepha.command",
   primitives: [$command],
-  services: [CliProvider, Runner, Asker, PrettyPrint, EnvUtils],
+  services: [CliProvider, Runner, Asker, PrettyAsker, PrettyPrint, EnvUtils],
 });
 
 // ---------------------------------------------------------------------------------------------------------------------

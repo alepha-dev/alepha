@@ -28,6 +28,10 @@ export class ConsoleColorProvider {
     GREY_DARK_BOLD: "\x1b[1;90m",
     WHITE: "\x1b[97m",
     WHITE_BOLD: "\x1b[1;97m",
+    // modifiers
+    DIM: "\x1b[2m",
+    BOLD: "\x1b[1m",
+    INVERSE: "\x1b[7m",
     // levels
     SILENT: "",
     ERROR: "\x1b[31m",

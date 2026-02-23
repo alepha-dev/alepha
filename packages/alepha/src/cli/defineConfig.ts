@@ -6,7 +6,10 @@ import {
 } from "./atoms/appEntryOptions.ts";
 import { type BuildOptions, buildOptions } from "./atoms/buildOptions.ts";
 import { type DevOptions, devOptions } from "./atoms/devOptions.ts";
-import { platformOptions } from "./atoms/platformOptions.ts";
+import {
+  type PlatformOptions,
+  platformOptions,
+} from "./atoms/platformOptions.ts";
 
 export interface AlephaCliConfig {
   entry?: AppEntryOptions;
@@ -46,17 +49,7 @@ export interface AlephaCliConfig {
   /**
    * Platform deployment configuration.
    */
-  platform?: {
-    default?: string;
-    environments: Record<
-      string,
-      {
-        adapter: "cloudflare" | "docker-compose" | "aks";
-        domain?: string;
-        vars?: Record<string, string>;
-      }
-    >;
-  };
+  platform?: PlatformOptions["platform"];
 
   /**
    * Environment variables to set before running commands.

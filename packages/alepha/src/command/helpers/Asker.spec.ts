@@ -4,7 +4,13 @@ import {
   MemoryDestinationProvider,
 } from "alepha/logger";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { Asker } from "../index.ts";
+import { Asker, PrettyAsker } from "../index.ts";
+
+class DisabledPrettyAsker extends PrettyAsker {
+  public override get enabled(): boolean {
+    return false;
+  }
+}
 
 describe("Asker", () => {
   let alepha: Alepha;
@@ -39,6 +45,7 @@ describe("Asker", () => {
         provide: LogDestinationProvider,
         use: MemoryDestinationProvider,
       })
+      .with({ provide: PrettyAsker, use: DisabledPrettyAsker })
       .with(Asker);
 
     asker = alepha.inject(Asker);
@@ -57,7 +64,7 @@ describe("Asker", () => {
 
     expect(result).toBe("hello world");
     expect(question).toHaveBeenCalledTimes(1);
-    expect(question).toHaveBeenCalledWith("What is your name?\n> ");
+    expect(question).toHaveBeenCalledWith("> ");
     expect(close).toHaveBeenCalledTimes(1);
   });
 
