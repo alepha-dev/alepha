@@ -35,7 +35,7 @@
     "typecheck": "yarn alepha typecheck",
     "test": "yarn vitest run",
     "check-dependencies": "yarn workspaces foreach -Apt exec depcheck .",
-    "build": "yarn workspaces foreach -A run build",
+    "build": "yarn workspaces foreach -Apt run build",
     "test:bun": "bun test ./**/*.bun.spec.ts",
     "e2e": "yarn workspaces foreach -Apt run e2e",
     "e2e-cli": "yarn w e2e-cli test"
