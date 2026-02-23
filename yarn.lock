@@ -154,7 +154,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/ui@npm:0.18.0, @alepha/ui@workspace:packages/ui":
+"@alepha/ui@npm:0.18.0, @alepha/ui@npm:^0.18.0, @alepha/ui@workspace:packages/ui":
   version: 0.0.0-use.local
   resolution: "@alepha/ui@workspace:packages/ui"
   dependencies:
@@ -13106,6 +13106,20 @@ __metadata:
   checksum: 10c0/10187b8144b112fcdfd3a5e4e9068efa42c990b1e30cd0d4f35ee8f58f16d1b41bc587e668fa7a6f6ca31308961cbd06cd5d4a4ae1dc388335902ae04f7d57df
   languageName: node
   linkType: hard
+
+"test123-da40a8@workspace:apps/test123":
+  version: 0.0.0-use.local
+  resolution: "test123-da40a8@workspace:apps/test123"
+  dependencies:
+    "@alepha/ui": "npm:^0.18.0"
+    "@types/react": "npm:^19.2.14"
+    "@vitejs/plugin-react": "npm:^5.1.4"
+    alepha: "npm:^0.18.0"
+    react: "npm:^19.2.4"
+    react-dom: "npm:^19.2.4"
+    vite: "npm:^7.3.1"
+  languageName: unknown
+  linkType: soft
 
 "thread-stream@npm:^4.0.0":
   version: 4.0.0

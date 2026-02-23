@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { $inject, Alepha } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
@@ -337,7 +338,12 @@ export class PackageManagerUtils {
     const packageJsonPath = this.fs.join(root, "package.json");
 
     if (!(await this.fs.exists(packageJsonPath))) {
-      const content = this.generatePackageJsonContent(modes);
+      const dirName = basename(root) || "app";
+      const content = {
+        name: dirName,
+        private: true,
+        ...this.generatePackageJsonContent(modes),
+      };
       await this.writePackageJson(root, content);
       return content;
     }

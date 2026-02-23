@@ -1,4 +1,6 @@
-import { $inject, $use, AlephaError } from "alepha";
+import { $inject, $use, Alepha, AlephaError, t } from "alepha";
+import { Asker } from "alepha/command";
+import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import {
   type EnvironmentConfig,
@@ -23,7 +25,10 @@ export interface ResolvedPlatformConfig {
  * via ViteBuildProvider.
  */
 export class PlatformInspector {
+  protected readonly log = $logger();
+  protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly asker = $inject(Asker);
   protected readonly options = $use(platformOptions);
   protected readonly naming = $inject(NamingService);
 
@@ -31,20 +36,26 @@ export class PlatformInspector {
    * Resolve and validate the full platform configuration.
    */
   public async resolveConfig(root: string): Promise<ResolvedPlatformConfig> {
-    const opts = this.options;
+    if (!this.options.platform) {
+      if (this.alepha.isCI()) {
+        throw new AlephaError(
+          'Platform is not configured. Add a "platform" section to alepha.config.ts:\n\n' +
+            "  export default defineConfig({\n" +
+            "    platform: {\n" +
+            "      environments: {\n" +
+            '        prod: { adapter: "cloudflare" },\n' +
+            "      },\n" +
+            "    },\n" +
+            "  });",
+        );
+      }
 
-    if (!opts.platform) {
-      throw new AlephaError(
-        'Platform is not configured. Add a "platform" section to alepha.config.ts:\n\n' +
-          "  export default defineConfig({\n" +
-          "    platform: {\n" +
-          "      environments: {\n" +
-          '        prod: { adapter: "cloudflare" },\n' +
-          "      },\n" +
-          "    },\n" +
-          "  });",
-      );
+      await this.setupWizard(root);
     }
+
+    // Re-read after potential wizard
+    const opts = this.options;
+    const platform = opts.platform!;
 
     // Resolve project name
     const project = await this.resolveProjectName(root, opts.name);
@@ -61,15 +72,70 @@ export class PlatformInspector {
 
     return {
       project: this.naming.slugify(project),
-      defaultEnv: opts.platform.default ?? "prod",
-      environments: opts.platform.environments as Record<
-        string,
-        EnvironmentConfig
-      >,
+      defaultEnv: platform.default ?? "prod",
+      environments: platform.environments as Record<string, EnvironmentConfig>,
       isMonorepo,
       appPaths,
       appNames,
     };
+  }
+
+  /**
+   * Interactive wizard to create alepha.config.ts when missing.
+   *
+   * Asks for adapter and project name, writes the config file,
+   * and sets the platformOptions atom in memory.
+   */
+  protected async setupWizard(root: string): Promise<void> {
+    const { ask } = this.asker;
+
+    this.log.info("No alepha.config.ts found. Let's set one up.\n");
+
+    // Adapter
+    const adapter = await ask("Which platform adapter?", {
+      schema: t.enum(["cloudflare"]),
+    });
+
+    // Name — try package.json first
+    let name: string | undefined;
+    try {
+      const pkgPath = this.fs.join(root, "package.json");
+      const pkg = await this.fs.readJsonFile<{ name?: string }>(pkgPath);
+      name = pkg.name;
+    } catch {}
+
+    if (!name) {
+      name = await ask("Project name?", { schema: t.text() });
+    }
+
+    // Write alepha.config.ts
+    const configPath = this.fs.join(root, "alepha.config.ts");
+    const content = [
+      'import { defineConfig } from "alepha/cli";',
+      "",
+      "export default defineConfig({",
+      `  name: "${name}",`,
+      "  platform: {",
+      "    environments: {",
+      `      prod: { adapter: "${adapter}" },`,
+      "    },",
+      "  },",
+      "});",
+      "",
+    ].join("\n");
+
+    await this.fs.writeFile(configPath, content);
+    this.log.info(`Created ${configPath}\n`);
+
+    // Set atom in memory so resolveConfig() can continue
+    this.alepha.set(platformOptions, {
+      name,
+      platform: {
+        environments: {
+          prod: { adapter },
+        },
+      },
+    });
   }
 
   /**
