@@ -1,3 +1,7 @@
+## [0.18.0] - 2026-02-23
+
+No public changes in range 0.17.3..HEAD
+
 ## [0.17.3] - 2026-02-23
 
 ### Features
