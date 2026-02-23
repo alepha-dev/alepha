@@ -109,6 +109,9 @@ jobs:
       - name: Clean
         run: yarn clean
 
+      - name: Prepare
+        run: yarn copy
+
       - name: Build
         run: yarn build
 
