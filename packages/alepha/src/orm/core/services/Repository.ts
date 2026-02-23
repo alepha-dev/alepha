@@ -725,9 +725,8 @@ export abstract class Repository<T extends TObject> {
     )?.[0];
 
     if (updatedAtField) {
-      setData[updatedAtField.key] = this.dateTimeProvider
-        .of(opts.now)
-        .toISOString();
+      setData[updatedAtField.key] =
+        opts.now ?? this.dateTimeProvider.nowISOString();
     }
 
     //setData = this.cast(setData, false) as any;
@@ -778,9 +777,8 @@ export abstract class Repository<T extends TObject> {
     )?.[0];
 
     if (updatedAtField) {
-      row[updatedAtField.key] = this.dateTimeProvider
-        .of(opts.now)
-        .toISOString();
+      row[updatedAtField.key] =
+        opts.now ?? this.dateTimeProvider.nowISOString();
     }
 
     where = this.withDeletedAt(where, opts);
@@ -938,9 +936,8 @@ export abstract class Repository<T extends TObject> {
     )?.[0];
 
     if (updatedAtField) {
-      (data as any)[updatedAtField.key] = this.dateTimeProvider
-        .of(opts.now)
-        .toISOString();
+      (data as any)[updatedAtField.key] =
+        opts.now ?? this.dateTimeProvider.nowISOString();
     }
 
     where = this.withDeletedAt(where, opts);
