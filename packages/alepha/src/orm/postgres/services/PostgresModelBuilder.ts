@@ -28,6 +28,7 @@ import {
   type PgTableWithColumns,
   pgEnum,
   pgSchema,
+  pgSequence,
   pgTable,
   unique,
   uniqueIndex,
@@ -48,6 +49,7 @@ export class PostgresModelBuilder extends ModelBuilder {
         : ({
             enum: pgEnum,
             table: pgTable,
+            sequence: pgSequence,
           } as any);
 
     if (!nsp) {

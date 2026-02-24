@@ -1,6 +1,7 @@
 import { $module, type Alepha, t } from "alepha";
 import { AlephaOrm, DatabaseProvider } from "alepha/orm";
 import { BunPostgresProvider } from "./providers/BunPostgresProvider.ts";
+import { CloudflareHyperdriveProvider } from "./providers/CloudflareHyperdriveProvider.ts";
 import { NodePostgresProvider } from "./providers/NodePostgresProvider.ts";
 import { PglitePostgresProvider } from "./providers/PglitePostgresProvider.ts";
 import { PostgresProvider } from "./providers/PostgresProvider.ts";
@@ -9,6 +10,7 @@ import { PostgresModelBuilder } from "./services/PostgresModelBuilder.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./providers/BunPostgresProvider.ts";
+export * from "./providers/CloudflareHyperdriveProvider.ts";
 export * from "./providers/NodePostgresProvider.ts";
 export * from "./providers/PglitePostgresProvider.ts";
 export * from "./providers/PostgresProvider.ts";
@@ -22,6 +24,7 @@ export const AlephaOrmPostgres = $module({
   primitives: [],
   services: [
     PostgresProvider,
+    CloudflareHyperdriveProvider,
     NodePostgresProvider,
     BunPostgresProvider,
     PglitePostgresProvider,
@@ -36,6 +39,15 @@ export const AlephaOrmPostgres = $module({
 
     const url = env.DATABASE_URL;
     const isBun = alepha.isBun();
+
+    if (url?.startsWith("hyperdrive:")) {
+      alepha.with({
+        optional: true,
+        provide: DatabaseProvider,
+        use: CloudflareHyperdriveProvider,
+      });
+      return;
+    }
 
     if (url?.startsWith("pglite:")) {
       alepha.with({

@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import type { PGlite } from "@electric-sql/pglite";
 import { $env, $hook, $inject, AlephaError, t } from "alepha";
 import { DatabaseProvider, type SQLLike } from "alepha/orm";
+import { sql } from "drizzle-orm";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
@@ -17,6 +18,7 @@ const envSchema = t.object({
    * DATABASE_URL=file://absolute/path/to/db
    */
   DATABASE_URL: t.optional(t.text()),
+  POSTGRES_SCHEMA: t.optional(t.text()),
 });
 
 export interface PgLiteModule {
@@ -30,6 +32,10 @@ export class PglitePostgresProvider extends DatabaseProvider {
     } catch {
       // ignored
     }
+  }
+
+  public override get schema(): string {
+    return this.env.POSTGRES_SCHEMA ?? "public";
   }
 
   protected readonly env = $env(envSchema);
@@ -132,6 +138,13 @@ export class PglitePostgresProvider extends DatabaseProvider {
   });
 
   protected async executeMigrations(migrationsFolder: string): Promise<void> {
+    // Set search_path so schema-free migration SQL resolves to the correct schema.
+    // PGlite uses a single connection, so SET persists through the migration.
+    if (this.schema !== "public") {
+      await this.db.execute(
+        sql.raw(`SET search_path TO ${this.schema}, public`),
+      );
+    }
     await migrate(this.db, { migrationsFolder });
   }
 }

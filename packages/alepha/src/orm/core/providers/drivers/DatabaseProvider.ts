@@ -7,7 +7,7 @@ import {
   type TObject,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import type { SQLWrapper } from "drizzle-orm";
+import { type SQLWrapper, sql } from "drizzle-orm";
 import {
   alias,
   type PgDatabase,
@@ -39,6 +39,9 @@ export abstract class DatabaseProvider {
   public readonly tables = new Map<string, unknown>();
   public readonly sequences = new Map<string, unknown>();
   public readonly schemas = new Map<string, unknown>();
+
+  protected readonly entityPrimitives: EntityPrimitive[] = [];
+  protected readonly sequencePrimitives: SequencePrimitive[] = [];
 
   public get name() {
     return "default";
@@ -125,11 +128,43 @@ export abstract class DatabaseProvider {
   }
 
   public registerEntity(entity: EntityPrimitive) {
+    this.entityPrimitives.push(entity);
     this.builder.buildTable(entity, this);
   }
 
   public registerSequence(sequence: SequencePrimitive) {
+    this.sequencePrimitives.push(sequence);
     this.builder.buildSequence(sequence, this);
+  }
+
+  /**
+   * Rebuild all models into fresh maps using a different schema.
+   *
+   * When called with `"public"`, produces schema-free models suitable for
+   * migration generation (no schema qualifiers in the SQL output).
+   */
+  public rebuildModels(targetSchema: string): {
+    tables: Map<string, unknown>;
+    enums: Map<string, unknown>;
+    sequences: Map<string, unknown>;
+    schemas: Map<string, unknown>;
+  } {
+    const result = {
+      tables: new Map<string, unknown>(),
+      enums: new Map<string, unknown>(),
+      sequences: new Map<string, unknown>(),
+      schemas: new Map<string, unknown>(),
+      schema: targetSchema,
+    };
+
+    for (const entity of this.entityPrimitives) {
+      this.builder.buildTable(entity, result);
+    }
+    for (const seq of this.sequencePrimitives) {
+      this.builder.buildSequence(seq, result);
+    }
+
+    return result;
   }
 
   /**
@@ -201,6 +236,16 @@ export abstract class DatabaseProvider {
       if (!exists) {
         this.log.warn("Migration SKIPPED - no migrations found");
         return;
+      }
+
+      // For schema-free migrations, ensure the target schema exists
+      // before running migration files. The schema is applied via
+      // search_path set at the provider's connection level.
+      if (this.dialect === "postgresql" && this.schema !== "public") {
+        this.log.debug(`Ensuring schema '${this.schema}' exists ...`);
+        await this.execute(
+          sql`CREATE SCHEMA IF NOT EXISTS ${sql.raw(this.schema)}`,
+        );
       }
 
       this.log.debug(`Migrate from '${migrationsFolder}' directory ...`);

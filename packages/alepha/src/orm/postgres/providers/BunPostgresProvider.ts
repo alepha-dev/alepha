@@ -72,6 +72,11 @@ export class BunPostgresProvider extends PostgresProvider {
       },
     });
 
+    // Set search_path so schema-free migration SQL resolves to the correct schema.
+    if (this.schema !== "public") {
+      await this.client.unsafe(`SET search_path TO ${this.schema}, public`);
+    }
+
     this.log.info("Connection OK");
   }
 

@@ -45,22 +45,13 @@ export interface D1ExecResult {
 
 /**
  * Cloudflare D1 SQLite provider using Drizzle ORM.
- *
- * This provider requires a D1 binding to be set via `cloudflareD1Options` before starting.
- * The binding is typically obtained from the Cloudflare Workers environment.
- *
- * @example
- * ```ts
- * // In your Cloudflare Worker
- * alepha.set(cloudflareD1Options, { binding: env.DB });
- * ```
  */
 export class CloudflareD1Provider extends DatabaseProvider {
   protected readonly builder = $inject(SqliteModelBuilder);
   protected readonly env = $env(
     t.object({
       DATABASE_URL: t.string({
-        description: "Expect to be 'd1://name:id'",
+        description: "Expect to be 'd1://binding'",
       }),
     }),
   );

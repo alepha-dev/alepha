@@ -1,4 +1,3 @@
-import { AlephaBucketVercel } from "@alepha/bucket-vercel";
 import { Alepha, run } from "alepha";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { RoadmapApi } from "./api/index.ts";
@@ -13,10 +12,6 @@ const alepha = Alepha.create({
 });
 
 alepha.with(AlephaOrmPostgres);
-
-if (alepha.isProduction() && alepha.env.BLOB_READ_WRITE_TOKEN) {
-  alepha.with(AlephaBucketVercel);
-}
 
 alepha.with(RoadmapApi);
 alepha.with(RoadmapMcp);

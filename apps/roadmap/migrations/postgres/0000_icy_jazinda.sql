@@ -1,3 +1,21 @@
+CREATE TABLE "api_keys" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"name" text NOT NULL,
+	"description" text,
+	"token_hash" text NOT NULL,
+	"token_prefix" text NOT NULL,
+	"token_suffix" text NOT NULL,
+	"roles" text[] DEFAULT '{}' NOT NULL,
+	"last_used_at" timestamp with time zone,
+	"last_used_ip" text,
+	"usage_count" integer DEFAULT 0 NOT NULL,
+	"expires_at" timestamp with time zone,
+	"revoked_at" timestamp with time zone
+);
+--> statement-breakpoint
 CREATE TABLE "audits" (
 	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "audits_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -70,34 +88,32 @@ CREATE TABLE "invitations" (
 	"status" text DEFAULT 'pending' NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "mcp_api_keys" (
+CREATE TABLE "job_execution_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"user_id" uuid NOT NULL,
-	"name" text NOT NULL,
-	"token_hash" text NOT NULL,
-	"token_suffix" text NOT NULL,
-	"roles" text[] NOT NULL,
-	"last_used_at" timestamp with time zone,
-	"expires_at" timestamp with time zone
+	"logs" jsonb NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "notifications" (
+CREATE TABLE "job_executions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"version" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"type" text NOT NULL,
-	"template" text NOT NULL,
-	"category" text,
-	"critical" boolean,
-	"sensitive" boolean,
-	"contact" text NOT NULL,
-	"variables" jsonb,
+	"job_name" text NOT NULL,
+	"key" text,
+	"payload" jsonb,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"priority" integer DEFAULT 2 NOT NULL,
+	"attempt" integer DEFAULT 0 NOT NULL,
+	"max_attempts" integer DEFAULT 1 NOT NULL,
 	"scheduled_at" timestamp with time zone,
-	"sent_at" timestamp with time zone,
-	"error" jsonb
+	"started_at" timestamp with time zone,
+	"completed_at" timestamp with time zone,
+	"result" jsonb,
+	"error" text,
+	"worker_id" text,
+	"triggered_by" text,
+	"triggered_by_name" text,
+	"cancelled_by" text,
+	"cancelled_by_name" text
 );
 --> statement-breakpoint
 CREATE TABLE "projects" (
@@ -123,13 +139,6 @@ CREATE TABLE "sessions" (
 	"user_agent" jsonb
 );
 --> statement-breakpoint
-CREATE TABLE "task_votes" (
-	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "task_votes_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"task_id" integer NOT NULL,
-	"user_id" uuid NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "tasks" (
 	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "tasks_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -149,7 +158,8 @@ CREATE TABLE "tasks" (
 	"completed_by" uuid,
 	"history" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"note" text DEFAULT '' NOT NULL,
-	"timer_sessions" jsonb DEFAULT '[]'::jsonb NOT NULL
+	"timer_sessions" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"attachments" text[] DEFAULT '{}' NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "users" (
@@ -197,16 +207,15 @@ ALTER TABLE "characters" ADD CONSTRAINT "characters_project_id_projects_id_fk" F
 ALTER TABLE "identities" ADD CONSTRAINT "identities_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invitations" ADD CONSTRAINT "invitations_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invitations" ADD CONSTRAINT "invitations_invited_by_users_id_fk" FOREIGN KEY ("invited_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "mcp_api_keys" ADD CONSTRAINT "mcp_api_keys_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "task_votes" ADD CONSTRAINT "task_votes_task_id_tasks_id_fk" FOREIGN KEY ("task_id") REFERENCES "public"."tasks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "task_votes" ADD CONSTRAINT "task_votes_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_accepted_by_users_id_fk" FOREIGN KEY ("accepted_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_completed_by_users_id_fk" FOREIGN KEY ("completed_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "whiteboards" ADD CONSTRAINT "whiteboards_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "whiteboards" ADD CONSTRAINT "whiteboards_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "api_keys_user_id_name_idx" ON "api_keys" USING btree ("user_id","name");--> statement-breakpoint
+CREATE UNIQUE INDEX "api_keys_token_hash_idx" ON "api_keys" USING btree ("token_hash");--> statement-breakpoint
 CREATE INDEX "audits_created_at_idx" ON "audits" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "audits_type_idx" ON "audits" USING btree ("type");--> statement-breakpoint
 CREATE INDEX "audits_action_idx" ON "audits" USING btree ("action");--> statement-breakpoint
@@ -224,10 +233,18 @@ CREATE INDEX "files_creator_idx" ON "files" USING btree ("creator");--> statemen
 CREATE INDEX "files_created_at_idx" ON "files" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "files_mime_type_idx" ON "files" USING btree ("mime_type");--> statement-breakpoint
 CREATE INDEX "files_bucket_created_at_idx" ON "files" USING btree ("bucket","created_at");--> statement-breakpoint
+CREATE INDEX "identities_user_id_idx" ON "identities" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "identities_provider_idx" ON "identities" USING btree ("provider");--> statement-breakpoint
+CREATE INDEX "identities_user_id_provider_idx" ON "identities" USING btree ("user_id","provider");--> statement-breakpoint
+CREATE UNIQUE INDEX "identities_provider_provider_user_id_idx" ON "identities" USING btree ("provider","provider_user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "invitations_project_id_invited_email_idx" ON "invitations" USING btree ("project_id","invited_email");--> statement-breakpoint
-CREATE UNIQUE INDEX "mcp_api_keys_user_id_name_idx" ON "mcp_api_keys" USING btree ("user_id","name");--> statement-breakpoint
-CREATE UNIQUE INDEX "mcp_api_keys_token_hash_idx" ON "mcp_api_keys" USING btree ("token_hash");--> statement-breakpoint
-CREATE UNIQUE INDEX "task_votes_task_id_user_id_idx" ON "task_votes" USING btree ("task_id","user_id");--> statement-breakpoint
+CREATE INDEX "job_executions_job_name_status_priority_scheduled_at_idx" ON "job_executions" USING btree ("job_name","status","priority","scheduled_at");--> statement-breakpoint
+CREATE INDEX "job_executions_job_name_status_started_at_idx" ON "job_executions" USING btree ("job_name","status","started_at");--> statement-breakpoint
+CREATE INDEX "job_executions_job_name_completed_at_idx" ON "job_executions" USING btree ("job_name","completed_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "job_executions_job_name_key_idx" ON "job_executions" USING btree ("job_name","key");--> statement-breakpoint
+CREATE INDEX "sessions_user_id_idx" ON "sessions" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "sessions_expires_at_idx" ON "sessions" USING btree ("expires_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "sessions_refresh_token_idx" ON "sessions" USING btree ("refresh_token");--> statement-breakpoint
 CREATE INDEX "tasks_project_id_deleted_at_idx" ON "tasks" USING btree ("project_id","deleted_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "users_realm_username_idx" ON "users" USING btree ("realm","username");--> statement-breakpoint
 CREATE UNIQUE INDEX "users_realm_email_idx" ON "users" USING btree ("realm","email");--> statement-breakpoint

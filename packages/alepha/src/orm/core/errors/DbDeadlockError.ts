@@ -19,10 +19,6 @@ export class DbDeadlockError extends DbError {
    */
   readonly retryable = true;
 
-  constructor(message: string, cause?: unknown) {
-    super(message, cause);
-  }
-
   /**
    * Parse a database deadlock error message and create a DbDeadlockError.
    * Supports PostgreSQL. SQLite doesn't have true deadlocks (uses SQLITE_BUSY instead).

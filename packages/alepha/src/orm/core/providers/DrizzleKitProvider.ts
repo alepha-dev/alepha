@@ -70,17 +70,23 @@ export class DrizzleKitProvider {
    *
    * Used by tests (schema validation) and CLI (`alepha db migrations generate`).
    * Not part of the push sync flow.
+   *
+   * When `withoutSchema` is true, models are rebuilt without schema qualifiers
+   * so the generated SQL is portable across different PostgreSQL schemas.
    */
   public async generateMigration(
     provider: DatabaseProvider,
     prevSnapshot?: any,
+    options?: { withoutSchema?: boolean },
   ): Promise<{
     statements: string[];
     models: Record<string, unknown>;
     snapshot?: any;
   }> {
     const kit = this.importDrizzleKit();
-    const models = this.getModels(provider);
+    const models = options?.withoutSchema
+      ? this.getModelsWithoutSchema(provider)
+      : this.getModels(provider);
 
     if (Object.keys(models).length > 0) {
       if (provider.dialect === "sqlite") {
@@ -141,6 +147,51 @@ export class DrizzleKitProvider {
     }
 
     for (const [key, value] of provider.sequences.entries()) {
+      if (models[key]) {
+        throw new AlephaError(
+          `Model name conflict: '${key}' is already defined.`,
+        );
+      }
+      models[key] = value;
+    }
+
+    return models;
+  }
+
+  /**
+   * Build schema-free models for migration generation.
+   *
+   * Rebuilds all entities with `schema = "public"` so Drizzle produces
+   * SQL without schema qualifiers (e.g. `CREATE TABLE "users"` instead
+   * of `CREATE TABLE "myschema"."users"`).
+   *
+   * The actual schema is applied at migration execution time via `search_path`.
+   */
+  public getModelsWithoutSchema(
+    provider: DatabaseProvider,
+  ): Record<string, unknown> {
+    const maps = provider.rebuildModels("public");
+    const models: Record<string, unknown> = {};
+
+    for (const [key, value] of maps.tables.entries()) {
+      if (models[key]) {
+        throw new AlephaError(
+          `Model name conflict: '${key}' is already defined.`,
+        );
+      }
+      models[key] = value;
+    }
+
+    for (const [key, value] of maps.enums.entries()) {
+      if (models[key]) {
+        throw new AlephaError(
+          `Model name conflict: '${key}' is already defined.`,
+        );
+      }
+      models[key] = value;
+    }
+
+    for (const [key, value] of maps.sequences.entries()) {
       if (models[key]) {
         throw new AlephaError(
           `Model name conflict: '${key}' is already defined.`,

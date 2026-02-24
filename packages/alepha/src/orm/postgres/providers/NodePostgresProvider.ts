@@ -75,7 +75,7 @@ export class NodePostgresProvider extends PostgresProvider {
   protected getClientOptions(): postgres.Options<any> {
     const url = new URL(this.url);
 
-    return {
+    const options: postgres.Options<any> = {
       host: url.hostname,
       user: decodeURIComponent(url.username),
       database: decodeURIComponent(url.pathname.replace("/", "")),
@@ -86,6 +86,14 @@ export class NodePostgresProvider extends PostgresProvider {
         // let drizzle handle logs
       },
     };
+
+    // Set search_path at connection level so schema-free migration SQL
+    // resolves to the correct PostgreSQL schema across all pool connections.
+    if (this.schema !== "public") {
+      options.connection = { search_path: `${this.schema}, public` };
+    }
+
+    return options;
   }
 
   protected ssl(
