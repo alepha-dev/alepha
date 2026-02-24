@@ -1,3 +1,15 @@
+## [0.18.1] - 2026-02-24
+
+### Features
+
+- **orm/postgres**: don't write schema in migration files (`9c87a892`)
+- **cli**: add pretty prompt (`861621f8`)
+
+### Bug Fixes
+
+- **cli**: fix r2 mapping (`5eff4d7b`)
+- **orm**: override of now (`63d6574e`)
+
 ## [0.18.0] - 2026-02-23
 
 No public changes in range 0.17.3..HEAD
