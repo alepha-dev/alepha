@@ -1,9 +1,8 @@
 import { basename } from "node:path";
 import { $inject } from "alepha";
-import { CloudflareR2Provider } from "alepha/bucket";
-import { type CloudflareKVProvider, KV_DEFAULT_BINDING } from "alepha/cache";
+import { KV_DEFAULT_BINDING } from "alepha/cache";
 import { FileSystemProvider } from "alepha/system";
-import { type CloudflareQueueProvider, QUEUE_DEFAULT_BINDING } from "alepha/queue";
+import { QUEUE_DEFAULT_BINDING } from "alepha/queue";
 import type { CronProvider, WorkerdCronProvider } from "alepha/scheduler";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
@@ -74,11 +73,12 @@ export class BuildCloudflareTask extends BuildTask {
       };
     }
 
+    this.enhanceDomain(wrangler);
     this.enhanceCron(ctx, wrangler);
-    this.enhanceD1(wrangler);
-    this.enhanceR2(ctx, wrangler);
-    this.enhanceKV(ctx, wrangler);
-    await this.enhanceQueue(ctx, wrangler, name);
+    this.enhanceDatabase(wrangler);
+    this.enhanceR2(wrangler);
+    this.enhanceKV(wrangler);
+    this.enhanceQueue(wrangler);
 
     await this.fs.writeFile(
       this.fs.join(root, distDir, "wrangler.jsonc"),
@@ -86,6 +86,20 @@ export class BuildCloudflareTask extends BuildTask {
     );
 
     await this.writeWorkerEntryPoint(root, distDir);
+  }
+
+  protected enhanceDomain(wrangler: WranglerConfig): void {
+    const domain = process.env.CLOUDFLARE_DOMAIN;
+    if (!domain) {
+      return;
+    }
+
+    wrangler.routes = [
+      {
+        pattern: domain,
+        custom_domain: true,
+      },
+    ];
   }
 
   protected enhanceCron(
@@ -113,6 +127,15 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler.triggers.crons = cronExpressions;
   }
 
+  protected enhanceDatabase(wrangler: WranglerConfig): void {
+    if (process.env.HYPERDRIVE_ID) {
+      this.enhanceHyperdrive(wrangler);
+      return;
+    }
+
+    this.enhanceD1(wrangler);
+  }
+
   protected enhanceD1(wrangler: WranglerConfig): void {
     const url = process.env.DATABASE_URL;
     if (!url?.startsWith("d1:")) {
@@ -130,81 +153,65 @@ export class BuildCloudflareTask extends BuildTask {
       database_id: id,
     });
     wrangler.vars ??= {};
-    wrangler.vars.DATABASE_URL = `d1://${dbName}:${id}`;
+    wrangler.vars.DATABASE_URL = `d1://${dbName}`;
   }
 
-  protected enhanceR2(
-    ctx: BuildTaskContext,
-    wrangler: WranglerConfig,
-  ): void {
-    if (ctx.alepha.primitives("bucket").length === 0) {
+  protected enhanceHyperdrive(wrangler: WranglerConfig): void {
+    const hyperdriveId = process.env.HYPERDRIVE_ID;
+    if (!hyperdriveId) {
       return;
     }
 
-    let r2Provider: CloudflareR2Provider | undefined;
-    try {
-      r2Provider = ctx.alepha.inject<CloudflareR2Provider>("CloudflareR2Provider");
-    } catch {}
+    const binding = "HYPERDRIVE";
+    wrangler.hyperdrive = wrangler.hyperdrive || [];
+    wrangler.hyperdrive.push({
+      binding,
+      id: hyperdriveId,
+    });
+    wrangler.vars ??= {};
+    wrangler.vars.DATABASE_URL = `hyperdrive://${binding}`;
 
-    if (!r2Provider) {
+    if (process.env.POSTGRES_SCHEMA) {
+      wrangler.vars.POSTGRES_SCHEMA = process.env.POSTGRES_SCHEMA;
+    }
+  }
+
+  protected enhanceR2(wrangler: WranglerConfig): void {
+    const bucketName = process.env.R2_BUCKET_NAME;
+    if (!bucketName) {
       return;
     }
 
     wrangler.r2_buckets = wrangler.r2_buckets || [];
     wrangler.r2_buckets.push({
-      binding: r2Provider.bucketName,
-      bucket_name: r2Provider.bucketName,
+      binding: bucketName,
+      bucket_name: bucketName,
     });
     wrangler.vars ??= {};
-    wrangler.vars.R2_BUCKET_NAME = r2Provider.bucketName;
+    wrangler.vars.R2_BUCKET_NAME = bucketName;
   }
 
-  protected enhanceKV(
-    ctx: BuildTaskContext,
-    wrangler: WranglerConfig,
-  ): void {
-    if (ctx.alepha.primitives("cache").length === 0) {
+  protected enhanceKV(wrangler: WranglerConfig): void {
+    const kvName = process.env.CLOUDFLARE_KV_NAME;
+    if (!kvName) {
       return;
     }
 
-    let kvProvider: CloudflareKVProvider | undefined;
-    try {
-      kvProvider = ctx.alepha.inject<CloudflareKVProvider>(
-        "CloudflareKVProvider",
-      );
-    } catch {}
-
-    if (!kvProvider) {
-      return;
-    }
+    const kvId = process.env.CLOUDFLARE_KV_ID;
 
     wrangler.kv_namespaces = wrangler.kv_namespaces || [];
     wrangler.kv_namespaces.push({
       binding: KV_DEFAULT_BINDING,
+      id: kvId ?? "",
     });
   }
 
-  protected async enhanceQueue(
-    ctx: BuildTaskContext,
-    wrangler: WranglerConfig,
-    name: string,
-  ): Promise<void> {
-    if (ctx.alepha.primitives("queue").length === 0) {
+  protected enhanceQueue(wrangler: WranglerConfig): void {
+    const queueName = process.env.CLOUDFLARE_QUEUE_NAME;
+    if (!queueName) {
       return;
     }
 
-    let queueProvider: CloudflareQueueProvider | undefined;
-    try {
-      queueProvider = ctx.alepha.inject<CloudflareQueueProvider>(
-        "CloudflareQueueProvider",
-      );
-    } catch {}
-
-    if (!queueProvider) {
-      return;
-    }
-
-    const queueName = `${name}-queue`;
     wrangler.queues ??= {};
     wrangler.queues.producers = wrangler.queues.producers || [];
     wrangler.queues.producers.push({
@@ -233,7 +240,7 @@ export default {
     try {
       await __alepha.start();
     } catch (err) {
-      console.error("Failed to start Alepha for fetch event", err);
+      __alepha.log.error("Failed to start Alepha for fetch event", err);
       return new Response("Internal Server Error", { status: 500 });
     }
 
@@ -248,7 +255,7 @@ export default {
     try {
       await __alepha.start();
     } catch (err) {
-      console.error("Failed to start Alepha for scheduled event", err);
+      __alepha.log.error("Failed to start Alepha for scheduled event", err);
       throw err;
     }
 
@@ -264,7 +271,7 @@ export default {
     try {
       await __alepha.start();
     } catch (err) {
-      console.error("Failed to start Alepha for queue event", err);
+      __alepha.log.error("Failed to start Alepha for queue event", err);
       throw err;
     }
 

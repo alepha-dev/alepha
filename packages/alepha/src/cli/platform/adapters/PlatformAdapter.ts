@@ -1,6 +1,6 @@
+import type { AppEntry } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
-import type { EnvironmentConfig } from "../../atoms/platformOptions.ts";
-import type { AppEntry } from "../../providers/AppEntryProvider.ts";
+import type { EnvironmentConfig } from "../atoms/platformOptions.ts";
 import type { NamingContext } from "../services/NamingService.ts";
 
 // ---------------------------------------------------------------------------
@@ -45,7 +45,7 @@ export interface PlatformContext {
   project: string;
 
   /**
-   * Environment key (e.g., "prod", "staging", "tmp-bug001").
+   * Environment key (e.g., "production", "staging", "tmp-bug001").
    */
   env: string;
 
@@ -93,12 +93,18 @@ export interface WorkerState extends ResourceState {
   createdAt?: string;
 }
 
+export interface SecretState {
+  name: string;
+  deployed: boolean;
+}
+
 export interface PlatformState {
   workers: WorkerState[];
   databases: ResourceState[];
   buckets: ResourceState[];
   kvNamespaces: ResourceState[];
   queues: ResourceState[];
+  secrets: SecretState[];
 }
 
 // ---------------------------------------------------------------------------
@@ -124,14 +130,13 @@ export abstract class PlatformAdapter {
   abstract build(ctx: AppContext, run: RunnerMethod): Promise<void>;
 
   /**
-   * Upload artifacts without activating (e.g., wrangler versions upload).
+   * Deploy a single app (upload + activate atomically, e.g., wrangler deploy).
+   * Returns the live URL if the platform provides one.
    */
-  abstract push(ctx: AppContext, run: RunnerMethod): Promise<void>;
-
-  /**
-   * Activate the latest pushed version (e.g., wrangler versions deploy).
-   */
-  abstract activate(ctx: AppContext, run: RunnerMethod): Promise<void>;
+  abstract deploy(
+    ctx: AppContext,
+    run: RunnerMethod,
+  ): Promise<string | undefined>;
 
   /**
    * Create/ensure cloud resources exist (DB, buckets, queues).
@@ -143,6 +148,15 @@ export abstract class PlatformAdapter {
    * Run database migrations.
    */
   async migrate(_ctx: PlatformContext, _run: RunnerMethod): Promise<void> {}
+
+  /**
+   * Push runtime secrets to the deployed worker(s).
+   *
+   * Reads secrets from `.env.{env}` files (parsed, not from process.env),
+   * filters out vars already handled by bindings (DATABASE_URL, R2, etc.),
+   * and pushes the rest via the platform's secret management.
+   */
+  async secrets(_ctx: PlatformContext, _run: RunnerMethod): Promise<void> {}
 
   /**
    * Detect existing resources and their state.

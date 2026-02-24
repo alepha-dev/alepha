@@ -1,9 +1,8 @@
-import { $inject, AlephaError } from "alepha";
-import type { RunnerMethod } from "alepha/command";
+import { $inject, Alepha, AlephaError } from "alepha";
+import { AlephaCliUtils, PackageManagerUtils } from "alepha/cli";
+import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
-import { AlephaCliUtils } from "../../services/AlephaCliUtils.ts";
-import { PackageManagerUtils } from "../../services/PackageManagerUtils.ts";
 import { PlatformCacheProvider } from "../providers/PlatformCacheProvider.ts";
 import {
   type AppContext,
@@ -24,9 +23,42 @@ export class CloudflareAdapter extends PlatformAdapter {
   protected readonly utils = $inject(AlephaCliUtils);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly cache = $inject(PlatformCacheProvider);
+  protected readonly alepha = $inject(Alepha);
+  protected readonly runner = $inject(Runner);
+  protected readonly envUtils = $inject(EnvUtils);
 
   protected provisionedD1Id?: string;
-  protected uploadedVersions = new Map<string, string>();
+  protected provisionedHyperdriveId?: string;
+  protected provisionedKVId?: string;
+
+  /**
+   * Check if the user's DATABASE_URL points to an external Postgres database.
+   * If so, we use Hyperdrive instead of D1.
+   *
+   * Reads from `.env.{env}` first, falls back to `process.env`.
+   */
+  protected async isPostgres(ctx: PlatformContext): Promise<boolean> {
+    const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
+    const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
+    return !!dbUrl?.startsWith("postgres:");
+  }
+
+  protected async runShell(
+    command: string,
+    options: Parameters<ShellProvider["run"]>[1] = {},
+  ) {
+    const capture = options.capture;
+    const output = await this.shell.run(command, {
+      ...options,
+      capture: capture ?? this.runner.useDynamicLogger,
+    });
+
+    if (capture && !this.runner.useDynamicLogger) {
+      this.log.info(output);
+    }
+
+    return output;
+  }
 
   // -------------------------------------------------------------------------
   // authenticate
@@ -38,21 +70,28 @@ export class CloudflareAdapter extends PlatformAdapter {
       handler: async () => {
         await this.pm.ensureDependency(ctx.root, "wrangler", {
           dev: true,
-          exec: (cmd, opts) => this.utils.exec(cmd, opts),
+          exec: async (cmd, opts) => {
+            run.pause();
+            try {
+              await this.utils.exec(cmd, opts);
+            } finally {
+              run.resume();
+            }
+          },
         });
 
         if (await this.cache.isLoginFresh(ctx.root, "cloudflare")) {
           return;
         }
 
-        const output = await this.shell.run("wrangler whoami", {
+        const output = await this.runShell("wrangler whoami", {
           resolve: true,
           capture: true,
         });
 
         if (output.includes("not authenticated")) {
           run.pause();
-          await this.shell.run("wrangler login", { resolve: true });
+          await this.runShell("wrangler login", { resolve: true });
           run.resume();
         }
 
@@ -75,21 +114,50 @@ export class CloudflareAdapter extends PlatformAdapter {
 
     const env: Record<string, string> = {};
 
-    if (ctx.app.resources.hasDatabase && this.provisionedD1Id) {
-      const dbName = ctx.naming.d1();
-      env.DATABASE_URL = `d1://${dbName}:${this.provisionedD1Id}`;
+    if (ctx.app.resources.hasDatabase) {
+      if (this.provisionedHyperdriveId) {
+        env.HYPERDRIVE_ID = this.provisionedHyperdriveId;
+        const envVars = await this.envUtils.parseEnv(ctx.root, [
+          `.env.${ctx.env}`,
+        ]);
+        const pgSchema = envVars.POSTGRES_SCHEMA ?? process.env.POSTGRES_SCHEMA;
+        if (pgSchema) {
+          env.POSTGRES_SCHEMA = pgSchema;
+        }
+      } else if (this.provisionedD1Id) {
+        const dbName = ctx.naming.d1();
+        env.DATABASE_URL = `d1://${dbName}:${this.provisionedD1Id}`;
+      }
     }
 
     if (ctx.app.resources.hasBucket) {
       env.R2_BUCKET_NAME = ctx.naming.r2();
     }
 
+    if (ctx.app.resources.hasKV) {
+      env.CLOUDFLARE_KV_NAME = ctx.naming.kv(
+        ctx.apps.length > 1 ? ctx.app.name : undefined,
+      );
+      if (this.provisionedKVId) {
+        env.CLOUDFLARE_KV_ID = this.provisionedKVId;
+      }
+    }
+
+    if (ctx.app.resources.hasQueue) {
+      env.CLOUDFLARE_QUEUE_NAME = ctx.naming.queue(
+        ctx.apps.length > 1 ? ctx.app.name : undefined,
+      );
+    }
+
+    if (ctx.envConfig.domain) {
+      env.CLOUDFLARE_DOMAIN = ctx.envConfig.domain;
+    }
+
     await run({
       name: "alepha build -t cloudflare",
       handler: async () => {
-        await this.shell.run("alepha build -t cloudflare", {
+        await this.runShell("alepha build -t cloudflare", {
           root: appDir,
-          capture: true,
           env,
         });
       },
@@ -97,10 +165,13 @@ export class CloudflareAdapter extends PlatformAdapter {
   }
 
   // -------------------------------------------------------------------------
-  // push
+  // deploy
   // -------------------------------------------------------------------------
 
-  async push(ctx: AppContext, run: RunnerMethod): Promise<void> {
+  async deploy(
+    ctx: AppContext,
+    run: RunnerMethod,
+  ): Promise<string | undefined> {
     const workerName = ctx.naming.worker(
       ctx.apps.length > 1 ? ctx.app.name : undefined,
     );
@@ -108,44 +179,84 @@ export class CloudflareAdapter extends PlatformAdapter {
       ? this.fs.join(ctx.root, ctx.app.path, "dist")
       : this.fs.join(ctx.root, "dist");
 
+    let url: string | undefined;
+
     await run({
-      name: `push ${ctx.app.name}`,
+      name: `deploy worker ${ctx.app.name}`,
       handler: async () => {
-        const output = await this.shell.run(
-          `wrangler versions upload --name=${workerName} --no-bundle --tag=latest --config=${distDir}/wrangler.jsonc`,
+        const output = await this.runShell(
+          `wrangler deploy --name=${workerName} --no-bundle --config=${distDir}/wrangler.jsonc`,
           { resolve: true, capture: true },
         );
 
-        const versionId = this.parseVersionId(output);
-        if (versionId) {
-          this.uploadedVersions.set(workerName, versionId);
+        const match = output.match(/https:\/\/[^\s]*\.workers\.dev/);
+        if (match) {
+          url = match[0];
         }
       },
     });
+
+    return url;
   }
 
   // -------------------------------------------------------------------------
-  // activate
+  // secrets
   // -------------------------------------------------------------------------
 
-  async activate(ctx: AppContext, run: RunnerMethod): Promise<void> {
-    const workerName = ctx.naming.worker(
-      ctx.apps.length > 1 ? ctx.app.name : undefined,
-    );
+  /**
+   * Vars that are handled by wrangler bindings or build config.
+   * These should not be pushed as secrets.
+   */
+  static readonly EXCLUDED_SECRET_KEYS = new Set([
+    "DATABASE_URL",
+    "R2_BUCKET_NAME",
+    "CLOUDFLARE_DOMAIN",
+    "HYPERDRIVE_ID",
+    "POSTGRES_SCHEMA",
+    "NODE_ENV",
+  ]);
 
-    await run({
-      name: `activate ${ctx.app.name}`,
-      handler: async () => {
-        const versionId =
-          this.uploadedVersions.get(workerName) ??
-          (await this.getLatestVersionId(workerName));
+  override async secrets(
+    ctx: PlatformContext,
+    run: RunnerMethod,
+  ): Promise<void> {
+    const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
 
-        await this.shell.run(
-          `wrangler versions deploy ${versionId}@100 --name=${workerName} --yes`,
-          { resolve: true, capture: true },
-        );
-      },
-    });
+    // Filter out binding/build vars, VITE_* vars, and empty values
+    const secrets: Record<string, string> = {};
+    for (const [key, value] of Object.entries(envVars)) {
+      if (!value) continue;
+      if (CloudflareAdapter.EXCLUDED_SECRET_KEYS.has(key)) continue;
+      if (key.startsWith("VITE_")) continue;
+      secrets[key] = value;
+    }
+
+    if (Object.keys(secrets).length === 0) {
+      return;
+    }
+
+    // Push secrets to each worker
+    for (const app of ctx.apps) {
+      const workerName = ctx.naming.worker(
+        ctx.apps.length > 1 ? app.name : undefined,
+      );
+
+      await run({
+        name: `push secrets to ${workerName}`,
+        handler: async () => {
+          const secretsPath = await this.utils.writeConfigFile(
+            "secrets.json",
+            JSON.stringify(secrets),
+            ctx.root,
+          );
+
+          await this.runShell(
+            `wrangler secret bulk ${secretsPath} --name=${workerName}`,
+            { resolve: true },
+          );
+        },
+      });
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -158,20 +269,40 @@ export class CloudflareAdapter extends PlatformAdapter {
   ): Promise<void> {
     const needsDB = ctx.apps.some((a) => a.resources.hasDatabase);
     const needsBucket = ctx.apps.some((a) => a.resources.hasBucket);
+    const postgres = needsDB && (await this.isPostgres(ctx));
+
+    const tasks: Array<{ name: string; handler: () => Promise<void> }> = [];
 
     if (needsDB) {
-      const dbName = ctx.naming.d1();
-      await run({
-        name: `provision d1 (${dbName})`,
-        handler: async () => {
-          this.provisionedD1Id = await this.ensureD1(dbName);
-        },
-      });
+      if (postgres) {
+        const hdName = ctx.naming.hyperdrive();
+        const envVars = await this.envUtils.parseEnv(ctx.root, [
+          `.env.${ctx.env}`,
+        ]);
+        const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL!;
+        tasks.push({
+          name: `provision hyperdrive (${hdName})`,
+          handler: async () => {
+            this.provisionedHyperdriveId = await this.ensureHyperdrive(
+              hdName,
+              dbUrl,
+            );
+          },
+        });
+      } else {
+        const dbName = ctx.naming.d1();
+        tasks.push({
+          name: `provision d1 (${dbName})`,
+          handler: async () => {
+            this.provisionedD1Id = await this.ensureD1(dbName);
+          },
+        });
+      }
     }
 
     if (needsBucket) {
       const bucketName = ctx.naming.r2();
-      await run({
+      tasks.push({
         name: `provision r2 (${bucketName})`,
         handler: async () => {
           await this.ensureR2(bucketName);
@@ -179,28 +310,24 @@ export class CloudflareAdapter extends PlatformAdapter {
       });
     }
 
-    // KV -- per app
     for (const app of ctx.apps) {
       if (app.resources.hasKV) {
         const kvName = ctx.naming.kv(
           ctx.apps.length > 1 ? app.name : undefined,
         );
-        await run({
+        tasks.push({
           name: `provision kv (${kvName})`,
           handler: async () => {
-            await this.ensureKV(kvName);
+            this.provisionedKVId = await this.ensureKV(kvName);
           },
         });
       }
-    }
 
-    // Queue -- per app
-    for (const app of ctx.apps) {
       if (app.resources.hasQueue) {
         const queueName = ctx.naming.queue(
           ctx.apps.length > 1 ? app.name : undefined,
         );
-        await run({
+        tasks.push({
           name: `provision queue (${queueName})`,
           handler: async () => {
             await this.ensureQueue(queueName);
@@ -208,6 +335,8 @@ export class CloudflareAdapter extends PlatformAdapter {
         });
       }
     }
+
+    await run(tasks);
   }
 
   // -------------------------------------------------------------------------
@@ -223,10 +352,21 @@ export class CloudflareAdapter extends PlatformAdapter {
       return;
     }
 
+    if (await this.isPostgres(ctx)) {
+      await this.migratePostgres(ctx, run);
+    } else {
+      await this.migrateD1(ctx, run);
+    }
+  }
+
+  protected async migrateD1(
+    ctx: PlatformContext,
+    run: RunnerMethod,
+  ): Promise<void> {
     const dbName = ctx.naming.d1();
 
     await run({
-      name: "migrate",
+      name: "migrate d1",
       handler: async () => {
         const migrationsDir = this.fs.join(ctx.root, "migrations", "sqlite");
         const dbUrl = this.provisionedD1Id
@@ -235,15 +375,13 @@ export class CloudflareAdapter extends PlatformAdapter {
         const env = { DATABASE_URL: dbUrl };
 
         if (await this.fs.exists(migrationsDir)) {
-          await this.shell.run("alepha db migrations check", {
+          await this.runShell("alepha db migrations check", {
             resolve: true,
-            capture: true,
             env,
           });
         } else {
-          await this.shell.run("alepha db migrations generate", {
+          await this.runShell("alepha db migrations generate", {
             resolve: true,
-            capture: true,
             env,
           });
         }
@@ -252,12 +390,42 @@ export class CloudflareAdapter extends PlatformAdapter {
         const distMigrations = this.fs.join(ctx.root, "dist", "migrations");
         await this.fs.cp(migrationsDir, distMigrations);
 
-        await this.shell.run(
+        await this.runShell(
           `wrangler d1 migrations apply ${dbName} --remote --config=dist/wrangler.jsonc`,
-          { resolve: true, capture: true, env: { CI: "1" } },
+          { resolve: true, env: { CI: "1" } },
         );
 
         await this.fs.rm(distMigrations, { recursive: true });
+      },
+    });
+  }
+
+  protected async migratePostgres(
+    ctx: PlatformContext,
+    run: RunnerMethod,
+  ): Promise<void> {
+    await run({
+      name: "migrate postgres",
+      handler: async () => {
+        const migrationsDir = this.fs.join(ctx.root, "migrations", "postgres");
+        const env = { DATABASE_URL: process.env.DATABASE_URL! };
+
+        if (await this.fs.exists(migrationsDir)) {
+          await this.runShell("alepha db migrations check", {
+            resolve: true,
+            env,
+          });
+        } else {
+          await this.runShell("alepha db migrations generate", {
+            resolve: true,
+            env,
+          });
+        }
+
+        await this.runShell("alepha db migrations apply", {
+          resolve: true,
+          env,
+        });
       },
     });
   }
@@ -276,6 +444,7 @@ export class CloudflareAdapter extends PlatformAdapter {
       buckets: [],
       kvNamespaces: [],
       queues: [],
+      secrets: [],
     };
 
     const tasks: Array<{ name: string; handler: () => Promise<void> }> = [];
@@ -309,22 +478,38 @@ export class CloudflareAdapter extends PlatformAdapter {
       });
     }
 
-    // D1
+    // Database
     const needsDB = ctx.apps.some((a) => a.resources.hasDatabase);
     if (needsDB) {
-      const dbName = ctx.naming.d1();
-      tasks.push({
-        name: `inspect d1 (${dbName})`,
-        handler: async () => {
-          const databases = await this.listD1();
-          const existing = databases.find((db) => db.name === dbName);
-          state.databases.push({
-            name: dbName,
-            exists: !!existing,
-            id: existing?.uuid,
-          });
-        },
-      });
+      if (await this.isPostgres(ctx)) {
+        const hdName = ctx.naming.hyperdrive();
+        tasks.push({
+          name: `inspect hyperdrive (${hdName})`,
+          handler: async () => {
+            const configs = await this.listHyperdrive();
+            const existing = configs.find((c) => c.name === hdName);
+            state.databases.push({
+              name: hdName,
+              exists: !!existing,
+              id: existing?.id,
+            });
+          },
+        });
+      } else {
+        const dbName = ctx.naming.d1();
+        tasks.push({
+          name: `inspect d1 (${dbName})`,
+          handler: async () => {
+            const databases = await this.listD1();
+            const existing = databases.find((db) => db.name === dbName);
+            state.databases.push({
+              name: dbName,
+              exists: !!existing,
+              id: existing?.uuid,
+            });
+          },
+        });
+      }
     }
 
     // R2
@@ -334,7 +519,7 @@ export class CloudflareAdapter extends PlatformAdapter {
       tasks.push({
         name: `inspect r2 (${bucketName})`,
         handler: async () => {
-          const output = await this.shell.run("wrangler r2 bucket list", {
+          const output = await this.runShell("wrangler r2 bucket list", {
             resolve: true,
             capture: true,
           });
@@ -342,6 +527,44 @@ export class CloudflareAdapter extends PlatformAdapter {
             name: bucketName,
             exists: output.includes(bucketName),
           });
+        },
+      });
+    }
+
+    // Secrets
+    const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
+    const expectedSecrets = Object.keys(envVars).filter(
+      (key) =>
+        envVars[key] &&
+        !CloudflareAdapter.EXCLUDED_SECRET_KEYS.has(key) &&
+        !key.startsWith("VITE_"),
+    );
+
+    if (expectedSecrets.length > 0) {
+      const workerName = ctx.naming.worker(
+        ctx.apps.length > 1 ? ctx.apps[0].name : undefined,
+      );
+      tasks.push({
+        name: "inspect secrets",
+        handler: async () => {
+          try {
+            const output = await this.runShell(
+              `wrangler secret list --name=${workerName} --format=json`,
+              { resolve: true, capture: true },
+            );
+            const deployed = JSON.parse(output) as Array<{ name: string }>;
+            const deployedNames = new Set(deployed.map((s) => s.name));
+            for (const key of expectedSecrets) {
+              state.secrets.push({
+                name: key,
+                deployed: deployedNames.has(key),
+              });
+            }
+          } catch {
+            for (const key of expectedSecrets) {
+              state.secrets.push({ name: key, deployed: false });
+            }
+          }
         },
       });
     }
@@ -356,7 +579,34 @@ export class CloudflareAdapter extends PlatformAdapter {
   // -------------------------------------------------------------------------
 
   async teardown(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
-    // Delete workers
+    // 1. Remove queue consumers from workers (must happen before worker or queue deletion)
+    for (const app of ctx.apps) {
+      if (app.resources.hasQueue) {
+        const workerName = ctx.naming.worker(
+          ctx.apps.length > 1 ? app.name : undefined,
+        );
+        const queueName = ctx.naming.queue(
+          ctx.apps.length > 1 ? app.name : undefined,
+        );
+        await run({
+          name: `unbind queue consumer ${queueName}`,
+          handler: async () => {
+            try {
+              await this.runShell(
+                `wrangler queues consumer remove ${queueName} ${workerName}`,
+                { resolve: true },
+              );
+            } catch (error: any) {
+              this.log.warn(
+                `Failed to unbind queue consumer: ${String(error.stderr || error.message || "")}`,
+              );
+            }
+          },
+        });
+      }
+    }
+
+    // 2. Delete workers
     for (const app of ctx.apps) {
       const name = ctx.naming.worker(
         ctx.apps.length > 1 ? app.name : undefined,
@@ -365,16 +615,19 @@ export class CloudflareAdapter extends PlatformAdapter {
         name: `delete worker ${name}`,
         handler: async () => {
           try {
-            await this.shell.run(`wrangler delete --name=${name} --force`, {
+            await this.runShell(`wrangler delete --name=${name} --force`, {
               resolve: true,
-              capture: true,
             });
-          } catch {}
+          } catch (error: any) {
+            this.log.warn(
+              `Failed to delete worker ${name}: ${String(error.stderr || error.message || "")}`,
+            );
+          }
         },
       });
     }
 
-    // Delete queues
+    // 3. Delete queues (after worker is gone)
     for (const app of ctx.apps) {
       if (app.resources.hasQueue) {
         const name = ctx.naming.queue(
@@ -384,35 +637,48 @@ export class CloudflareAdapter extends PlatformAdapter {
           name: `delete queue ${name}`,
           handler: async () => {
             try {
-              await this.shell.run(`wrangler queues delete ${name}`, {
+              await this.runShell(`wrangler queues delete ${name}`, {
                 resolve: true,
-                capture: true,
               });
-            } catch {}
+            } catch (error: any) {
+              this.log.warn(
+                `Failed to delete queue ${name}: ${String(error.stderr || error.message || "")}`,
+              );
+            }
           },
         });
       }
     }
 
-    // Delete KV
+    // 4. Delete KV (lookup namespace ID by title first)
     for (const app of ctx.apps) {
       if (app.resources.hasKV) {
         const name = ctx.naming.kv(ctx.apps.length > 1 ? app.name : undefined);
         await run({
           name: `delete kv ${name}`,
           handler: async () => {
+            const namespaces = await this.listKV();
+            const existing = namespaces.find((ns) => ns.title === name);
+            if (!existing) {
+              this.log.debug(`KV namespace ${name} not found — skipping.`);
+              return;
+            }
             try {
-              await this.shell.run(
-                `wrangler kv namespace delete --namespace-id=${name}`,
-                { resolve: true, capture: true },
+              await this.runShell(
+                `wrangler kv namespace delete --namespace-id=${existing.id}`,
+                { resolve: true },
               );
-            } catch {}
+            } catch (error: any) {
+              this.log.warn(
+                `Failed to delete kv ${name}: ${String(error.stderr || error.message || "")}`,
+              );
+            }
           },
         });
       }
     }
 
-    // Delete R2 (only if no objects -- warn otherwise)
+    // 5. Delete R2 (only if no objects -- warn otherwise)
     const needsBucket = ctx.apps.some((a) => a.resources.hasBucket);
     if (needsBucket) {
       const name = ctx.naming.r2();
@@ -422,14 +688,13 @@ export class CloudflareAdapter extends PlatformAdapter {
         handler: async () => {
           try {
             if (isTmp) {
-              await this.shell.run(
+              await this.runShell(
                 `wrangler r2 object delete ${name} --recursive`,
-                { resolve: true, capture: true },
+                { resolve: true },
               );
             }
-            await this.shell.run(`wrangler r2 bucket delete ${name}`, {
+            await this.runShell(`wrangler r2 bucket delete ${name}`, {
               resolve: true,
-              capture: true,
             });
           } catch (error: any) {
             const msg = String(error.stderr || error.message || "");
@@ -443,21 +708,48 @@ export class CloudflareAdapter extends PlatformAdapter {
       });
     }
 
-    // Delete D1
+    // 6. Delete D1 or Hyperdrive
     const needsDB = ctx.apps.some((a) => a.resources.hasDatabase);
     if (needsDB) {
-      const name = ctx.naming.d1();
-      await run({
-        name: `delete d1 ${name}`,
-        handler: async () => {
-          try {
-            await this.shell.run(`wrangler d1 delete ${name} -y`, {
-              resolve: true,
-              capture: true,
-            });
-          } catch {}
-        },
-      });
+      if (await this.isPostgres(ctx)) {
+        const name = ctx.naming.hyperdrive();
+        await run({
+          name: `delete hyperdrive ${name}`,
+          handler: async () => {
+            const configs = await this.listHyperdrive();
+            const existing = configs.find((c) => c.name === name);
+            if (!existing) {
+              this.log.debug(`Hyperdrive ${name} not found — skipping.`);
+              return;
+            }
+            try {
+              await this.runShell(`wrangler hyperdrive delete ${existing.id}`, {
+                resolve: true,
+              });
+            } catch (error: any) {
+              this.log.warn(
+                `Failed to delete hyperdrive ${name}: ${String(error.stderr || error.message || "")}`,
+              );
+            }
+          },
+        });
+      } else {
+        const name = ctx.naming.d1();
+        await run({
+          name: `delete d1 ${name}`,
+          handler: async () => {
+            try {
+              await this.runShell(`wrangler d1 delete ${name} -y`, {
+                resolve: true,
+              });
+            } catch (error: any) {
+              this.log.warn(
+                `Failed to delete d1 ${name}: ${String(error.stderr || error.message || "")}`,
+              );
+            }
+          },
+        });
+      }
     }
   }
 
@@ -472,7 +764,7 @@ export class CloudflareAdapter extends PlatformAdapter {
       return existing.uuid;
     }
 
-    const output = await this.shell.run(`wrangler d1 create ${name}`, {
+    const output = await this.runShell(`wrangler d1 create ${name}`, {
       resolve: true,
       capture: true,
     });
@@ -488,18 +780,77 @@ export class CloudflareAdapter extends PlatformAdapter {
   }
 
   protected async listD1(): Promise<Array<{ name: string; uuid: string }>> {
-    const output = await this.shell.run("wrangler d1 list --json", {
+    const output = await this.runShell("wrangler d1 list --json", {
       resolve: true,
       capture: true,
     });
     return JSON.parse(output) as Array<{ name: string; uuid: string }>;
   }
 
+  protected async ensureHyperdrive(
+    name: string,
+    connectionString: string,
+  ): Promise<string> {
+    const configs = await this.listHyperdrive();
+    const existing = configs.find((c) => c.name === name);
+    if (existing) {
+      return existing.id;
+    }
+
+    const output = await this.runShell(
+      `wrangler hyperdrive create ${name} --connection-string="${connectionString}"`,
+      { resolve: true, capture: true },
+    );
+
+    const match = output.match(
+      /([0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
+    );
+    if (!match) {
+      throw new AlephaError(
+        `Failed to parse Hyperdrive config ID from wrangler output:\n${output}`,
+      );
+    }
+
+    return match[1];
+  }
+
+  protected async listHyperdrive(): Promise<
+    Array<{ id: string; name: string }>
+  > {
+    const output = await this.runShell("wrangler hyperdrive list", {
+      resolve: true,
+      capture: true,
+    });
+
+    // Parse table output — columns separated by │
+    // Format: │ <id> │ <name> │ ...
+    const configs: Array<{ id: string; name: string }> = [];
+    const lines = output.split("\n");
+    for (const line of lines) {
+      const cells = line.split("│").map((c) => c.trim());
+      if (cells.length < 3) continue;
+      const id = cells[1];
+      const name = cells[2];
+      if (id && name && /^[0-9a-f]{32}$/i.test(id)) {
+        configs.push({ id, name });
+      }
+    }
+
+    return configs;
+  }
+
+  protected async listKV(): Promise<Array<{ id: string; title: string }>> {
+    const output = await this.runShell("wrangler kv namespace list", {
+      resolve: true,
+      capture: true,
+    });
+    return JSON.parse(output) as Array<{ id: string; title: string }>;
+  }
+
   protected async ensureR2(name: string): Promise<void> {
     try {
-      await this.shell.run(`wrangler r2 bucket create ${name}`, {
+      await this.runShell(`wrangler r2 bucket create ${name}`, {
         resolve: true,
-        capture: true,
       });
     } catch (error: any) {
       const msg = String(error.stderr || error.message || "");
@@ -509,66 +860,39 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
   }
 
-  protected async ensureKV(name: string): Promise<void> {
-    try {
-      await this.shell.run(`wrangler kv namespace create ${name}`, {
-        resolve: true,
-        capture: true,
-      });
-    } catch (error: any) {
-      const msg = String(error.stderr || error.message || "");
-      if (!msg.includes("already exists")) {
-        throw error;
-      }
+  protected async ensureKV(name: string): Promise<string> {
+    const namespaces = await this.listKV();
+    const existing = namespaces.find((ns) => ns.title === name);
+    if (existing) {
+      return existing.id;
     }
+
+    const output = await this.runShell(`wrangler kv namespace create ${name}`, {
+      resolve: true,
+      capture: true,
+    });
+
+    const match = output.match(/"id"\s*:\s*"([0-9a-f]{32})"/i);
+    if (!match) {
+      throw new AlephaError(
+        `Failed to parse KV namespace ID from wrangler output:\n${output}`,
+      );
+    }
+
+    return match[1];
   }
 
   protected async ensureQueue(name: string): Promise<void> {
     try {
-      await this.shell.run(`wrangler queues create ${name}`, {
+      await this.runShell(`wrangler queues create ${name}`, {
         resolve: true,
-        capture: true,
       });
     } catch (error: any) {
       const msg = String(error.stderr || error.message || "");
-      if (!msg.includes("already exists")) {
+      if (!msg.includes("already exists") && !msg.includes("already taken")) {
         throw error;
       }
     }
-  }
-
-  // -------------------------------------------------------------------------
-  // Version helpers
-  // -------------------------------------------------------------------------
-
-  /**
-   * Parse version ID (UUID) from `wrangler versions upload` output.
-   */
-  protected parseVersionId(output: string): string | undefined {
-    const match = output.match(
-      /(?:Worker Version ID|Version ID|Uploaded).*?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
-    );
-    return match?.[1];
-  }
-
-  /**
-   * Get the latest uploaded version ID for a worker via `wrangler versions list`.
-   */
-  protected async getLatestVersionId(workerName: string): Promise<string> {
-    const output = await this.shell.run(
-      `wrangler versions list --name=${workerName} --json`,
-      { resolve: true, capture: true },
-    );
-
-    const versions = JSON.parse(output) as Array<{ id: string }>;
-    const latest = versions.at(-1);
-    if (!latest?.id) {
-      throw new AlephaError(
-        `No versions found for worker '${workerName}'. Run push first.`,
-      );
-    }
-
-    return latest.id;
   }
 
   /**
@@ -582,7 +906,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   ): Promise<
     { versionId: string; tag?: string; createdAt?: string } | undefined
   > {
-    const output = await this.shell.run(
+    const output = await this.runShell(
       `wrangler deployments list --name=${workerName} --json`,
       { resolve: true, capture: true },
     );
@@ -600,7 +924,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     const activeVersionId = latest.versions[0].version_id;
 
     // Look up the version to get tag/metadata
-    const versionsOutput = await this.shell.run(
+    const versionsOutput = await this.runShell(
       `wrangler versions list --name=${workerName} --json`,
       { resolve: true, capture: true },
     );

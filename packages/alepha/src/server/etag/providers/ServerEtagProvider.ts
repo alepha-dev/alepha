@@ -14,8 +14,8 @@ export class ServerEtagProvider {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly time = $inject(DateTimeProvider);
   protected readonly cache = $cache<RouteCacheEntry>({
-    name: "http:server:request",
     provider: "memory",
+    name: "http:server",
   });
 
   public generateETag(content: string | Buffer): string {

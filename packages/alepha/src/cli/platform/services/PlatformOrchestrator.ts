@@ -1,6 +1,6 @@
 import { $inject, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
-import { $logger } from "alepha/logger";
+import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
 import type {
   AppDefinition,
@@ -18,10 +18,11 @@ import {
  * Orchestrates platform lifecycle operations.
  *
  * Coordinates adapter calls in the correct order for
- * up (build -> push -> migrate -> activate), down, plan, and status.
+ * up (build -> migrate -> deploy), down, plan, and status.
  */
 export class PlatformOrchestrator {
   protected readonly log = $logger();
+  protected readonly color = $inject(ConsoleColorProvider);
   protected readonly inspector = $inject(PlatformInspector);
   protected readonly naming = $inject(NamingService);
   protected readonly cloudflareAdapter = $inject(CloudflareAdapter);
@@ -92,27 +93,38 @@ export class PlatformOrchestrator {
       await adapter.build({ ...ctx, app: a }, run);
     }
 
-    // 5. Detect if migrations needed
-    const hasMigrations = apps.some((a) => a.resources.hasDatabase);
+    // 5. Migrate
+    await adapter.migrate(ctx, run);
 
-    if (hasMigrations) {
-      // Blue/green: push all -> migrate -> activate all
-      for (const a of targetApps) {
-        await adapter.push({ ...ctx, app: a }, run);
-      }
-      await adapter.migrate(ctx, run);
-      for (const a of targetApps) {
-        await adapter.activate({ ...ctx, app: a }, run);
-      }
-    } else {
-      // Simple: push + activate each app
-      for (const a of targetApps) {
-        await adapter.push({ ...ctx, app: a }, run);
-        await adapter.activate({ ...ctx, app: a }, run);
+    // 6. Deploy
+    const urls: string[] = [];
+    for (const a of targetApps) {
+      const url = await adapter.deploy({ ...ctx, app: a }, run);
+      if (url) {
+        urls.push(url);
       }
     }
 
+    // 7. Secrets (push .env.{env} secrets to deployed workers)
+    await adapter.secrets(ctx, run);
+
     run.end();
+
+    const c = this.color;
+
+    if (envConfig.domain) {
+      this.log.info("");
+      this.log.info(
+        `  ${c.set("GREEN", "\u2192")} ${c.set("CYAN", `https://${envConfig.domain}`)}`,
+      );
+      this.log.info("");
+    } else {
+      for (const url of urls) {
+        this.log.info("");
+        this.log.info(`  ${c.set("GREEN", "\u2192")} ${c.set("CYAN", url)}`);
+        this.log.info("");
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -145,6 +157,7 @@ export class PlatformOrchestrator {
     // Confirm (skip for tmp envs)
     if (!this.isTmpEnv(env)) {
       const answer = await confirm(`Type "${env}" to confirm teardown:`);
+
       if (answer !== env) {
         this.log.info("Aborted.");
         return false;
@@ -157,6 +170,7 @@ export class PlatformOrchestrator {
     // Teardown
     await adapter.teardown(ctx, run);
     run.end();
+
     return true;
   }
 

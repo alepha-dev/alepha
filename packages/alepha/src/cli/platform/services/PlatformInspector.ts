@@ -5,7 +5,7 @@ import { FileSystemProvider } from "alepha/system";
 import {
   type EnvironmentConfig,
   platformOptions,
-} from "../../atoms/platformOptions.ts";
+} from "../atoms/platformOptions.ts";
 import { NamingService } from "./NamingService.ts";
 
 export interface ResolvedPlatformConfig {
@@ -36,7 +36,7 @@ export class PlatformInspector {
    * Resolve and validate the full platform configuration.
    */
   public async resolveConfig(root: string): Promise<ResolvedPlatformConfig> {
-    if (!this.options.platform) {
+    if (!this.options) {
       this.log.warn(` alepha.config.ts not found or missing platform config.
 
 Please add a "platform" section to alepha.config.ts:
@@ -44,7 +44,7 @@ Please add a "platform" section to alepha.config.ts:
 export default defineConfig({
   platform: {
     environments: {
-      prod: { adapter: "cloudflare" },
+      production: { adapter: "cloudflare" },
     },
   },
 });
@@ -54,7 +54,7 @@ export default defineConfig({
 
     // Re-read after potential wizard
     const opts = this.options;
-    const platform = opts.platform!;
+    const platform = opts;
 
     // Resolve project name
     const project = await this.resolveProjectName(root, opts.name);
@@ -71,7 +71,7 @@ export default defineConfig({
 
     return {
       project: this.naming.slugify(project),
-      defaultEnv: platform.default ?? "prod",
+      defaultEnv: platform.default ?? "production",
       environments: platform.environments as Record<string, EnvironmentConfig>,
       isMonorepo,
       appPaths,

@@ -1,19 +1,19 @@
 import { $inject, $use, AlephaError, t } from "alepha";
-import { $command } from "alepha/command";
+import { AppEntryProvider, ViteBuildProvider } from "alepha/cli";
+import { $command, EnvUtils } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
-import { platformOptions } from "../atoms/platformOptions.ts";
+import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
 import type {
   AppDefinition,
   DetectedResources,
-} from "../platform/adapters/PlatformAdapter.ts";
-import { NamingService } from "../platform/services/NamingService.ts";
+} from "../adapters/PlatformAdapter.ts";
+import { platformOptions } from "../atoms/platformOptions.ts";
+import { NamingService } from "../services/NamingService.ts";
 import {
   PlatformInspector,
   type ResolvedPlatformConfig,
-} from "../platform/services/PlatformInspector.ts";
-import { PlatformOrchestrator } from "../platform/services/PlatformOrchestrator.ts";
-import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
-import { ViteBuildProvider } from "../providers/ViteBuildProvider.ts";
+} from "../services/PlatformInspector.ts";
+import { PlatformOrchestrator } from "../services/PlatformOrchestrator.ts";
 
 export class PlatformCommand {
   protected readonly log = $logger();
@@ -24,6 +24,7 @@ export class PlatformCommand {
   protected readonly boot = $inject(AppEntryProvider);
   protected readonly viteBuild = $inject(ViteBuildProvider);
   protected readonly color = $inject(ConsoleColorProvider);
+  protected readonly envUtils = $inject(EnvUtils);
 
   /**
    * Common flags for env/app targeting.
@@ -66,7 +67,7 @@ export class PlatformCommand {
 
       // Header
       process.stdout.write(
-        `\n\u{1F4E6} ${c.set("WHITE_BOLD", config.project)}\n\n`,
+        `\n\u{1F4E6} ${c.set("WHITE_BOLD", config.project)} ${c.set("GREY_DARK", "\u2014")} ${c.set("CYAN", env)}\n\n`,
       );
 
       // Apps
@@ -100,8 +101,9 @@ export class PlatformCommand {
         const domain = envConfig.domain
           ? `     ${c.set("GREY_DARK", envConfig.domain)}`
           : "";
+        const marker = envKey === env ? `  ${c.set("GREEN", "\u25C0")}` : "";
         process.stdout.write(
-          `   ${c.set("GREY_DARK", prefix)} ${c.set("CYAN", envKey.padEnd(10))} ${c.set("GREY_LIGHT", envConfig.adapter)}${domain}\n`,
+          `   ${c.set("GREY_DARK", prefix)} ${c.set("CYAN", envKey.padEnd(10))} ${c.set("GREY_LIGHT", envConfig.adapter)}${domain}${marker}\n`,
         );
       }
 
@@ -109,9 +111,10 @@ export class PlatformCommand {
       const hasDB = apps.some((a) => a.resources.hasDatabase);
       const hasBucket = apps.some((a) => a.resources.hasBucket);
 
-      process.stdout.write(
-        `\n   ${c.set("GREY_LIGHT", `Resources for "${env}":`)}\n`,
-      );
+      // Parse env file early — needed for both DB detection and secrets count
+      const envVars = await this.envUtils.parseEnv(root, [`.env.${env}`]);
+
+      process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Resources:")}\n`);
 
       // Collect resource lines to determine last item
       const resources: Array<{ label: string; value: string }> = [];
@@ -128,18 +131,39 @@ export class PlatformCommand {
       }
 
       if (hasDB) {
-        resources.push({ label: "D1", value: namingCtx.d1() });
+        const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
+        if (dbUrl?.startsWith("postgres:")) {
+          resources.push({
+            label: "Hyperdrive",
+            value: namingCtx.hyperdrive(),
+          });
+        } else {
+          resources.push({ label: "D1", value: namingCtx.d1() });
+        }
       }
 
       if (hasBucket) {
         resources.push({ label: "R2", value: namingCtx.r2() });
+      }
+      const secretCount = Object.entries(envVars).filter(
+        ([key, value]) =>
+          value &&
+          !CloudflareAdapter.EXCLUDED_SECRET_KEYS.has(key) &&
+          !key.startsWith("VITE_"),
+      ).length;
+
+      if (secretCount > 0) {
+        resources.push({
+          label: "Secrets",
+          value: `${secretCount} from .env.${env}`,
+        });
       }
 
       for (const [i, res] of resources.entries()) {
         const isLast = i === resources.length - 1;
         const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
         process.stdout.write(
-          `   ${c.set("GREY_DARK", branch)} ${c.set("GREY_LIGHT", res.label.padEnd(9))} ${c.set("CYAN", res.value)}\n`,
+          `   ${c.set("GREY_DARK", branch)} ${c.set("GREY_LIGHT", res.label.padEnd(11))} ${c.set("CYAN", res.value)}\n`,
         );
       }
 
@@ -154,7 +178,7 @@ export class PlatformCommand {
   protected readonly up = $command({
     name: "up",
     mode: "production",
-    description: "Build, push, migrate, and activate",
+    description: "Build, migrate, and deploy",
     flags: this.envFlags,
     handler: async ({ flags, root, run }) => {
       process.env.NODE_ENV = "production";
@@ -197,7 +221,12 @@ export class PlatformCommand {
         app: flags.app,
         apps,
         run,
-        confirm: (prompt) => ask(prompt),
+        confirm: async (prompt) => {
+          ask.intro("Confirm teardown");
+          const value = await ask(prompt);
+          ask.outro("");
+          return value;
+        },
       });
     },
   });
@@ -256,7 +285,12 @@ export class PlatformCommand {
       }
 
       if (hasDB) {
-        process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Database:")}\n`);
+        const envVars = await this.envUtils.parseEnv(root, [`.env.${env}`]);
+        const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
+        const dbLabel = dbUrl?.startsWith("postgres:")
+          ? "Hyperdrive:"
+          : "Database:";
+        process.stdout.write(`\n   ${c.set("GREY_LIGHT", dbLabel)}\n`);
         for (const [i, db] of state.databases.entries()) {
           const isLast = i === state.databases.length - 1;
           const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
@@ -289,6 +323,20 @@ export class PlatformCommand {
               `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", b.name)}  ${c.set("RED", "\u2717")} ${c.set("RED", "not provisioned")}\n`,
             );
           }
+        }
+      }
+
+      if (state.secrets.length > 0) {
+        process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Secrets:")}\n`);
+        for (const [i, s] of state.secrets.entries()) {
+          const isLast = i === state.secrets.length - 1;
+          const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
+          const icon = s.deployed
+            ? c.set("GREEN", "\u2713")
+            : c.set("RED", "\u2717");
+          process.stdout.write(
+            `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", s.name)}  ${icon}\n`,
+          );
         }
       }
 
@@ -333,9 +381,9 @@ export class PlatformCommand {
     },
   });
 
-  protected readonly push = $command({
-    name: "push",
-    description: "Upload artifacts to cloud",
+  protected readonly deploy = $command({
+    name: "deploy",
+    description: "Deploy apps to cloud",
     flags: this.envFlags,
     handler: async ({ flags, root, run }) => {
       const config = await this.inspector.resolveConfig(root);
@@ -361,7 +409,7 @@ export class PlatformCommand {
         : apps;
 
       for (const app of targets) {
-        await adapter.push({ ...ctx, app }, run);
+        await adapter.deploy({ ...ctx, app }, run);
       }
     },
   });
@@ -392,39 +440,6 @@ export class PlatformCommand {
     },
   });
 
-  protected readonly restart = $command({
-    name: "restart",
-    description: "Activate latest pushed version",
-    flags: this.envFlags,
-    handler: async ({ flags, root, run }) => {
-      const config = await this.inspector.resolveConfig(root);
-      const env = flags.env ?? config.defaultEnv;
-      const envConfig = config.environments[env];
-      const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
-      const apps = await this.resolveApps(root, config);
-      const namingCtx = this.naming.forContext(config.project, env);
-
-      const ctx = {
-        project: config.project,
-        env,
-        envConfig,
-        apps,
-        root,
-        naming: namingCtx,
-      };
-
-      await adapter.authenticate(ctx, run);
-
-      const targets = flags.app
-        ? apps.filter((a) => a.name === flags.app)
-        : apps;
-
-      for (const app of targets) {
-        await adapter.activate({ ...ctx, app }, run);
-      }
-    },
-  });
-
   // -----------------------------------------------------------------------
   // Parent command
   // -----------------------------------------------------------------------
@@ -439,9 +454,8 @@ export class PlatformCommand {
       this.down,
       this.status,
       this.build,
-      this.push,
+      this.deploy,
       this.migrate,
-      this.restart,
     ],
     handler: async ({ help, root }) => {
       await this.inspector.resolveConfig(root);
@@ -514,13 +528,11 @@ export class PlatformCommand {
     } catch {}
 
     try {
-      alepha.inject("CloudflareKVProvider");
-      hasKV = true;
+      hasKV = alepha.primitives("cache").length > 0;
     } catch {}
 
     try {
-      alepha.inject("CloudflareQueueProvider");
-      hasQueue = true;
+      hasQueue = alepha.primitives("queue").length > 0;
     } catch {}
 
     try {

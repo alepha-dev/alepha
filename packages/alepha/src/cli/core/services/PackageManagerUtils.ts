@@ -378,6 +378,7 @@ export class PackageManagerUtils {
 
     const devDependencies: Record<string, string> = {
       vite: alephaDeps.vite,
+      "drizzle-kit": alephaDeps["drizzle-kit"],
     };
 
     // Add biome/vitest only if not a workspace package (workspace root has them)

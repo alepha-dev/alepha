@@ -1,0 +1,113 @@
+import { $module } from "alepha";
+import { BuildCommand } from "./commands/build.ts";
+import { CleanCommand } from "./commands/clean.ts";
+import { DbCommand } from "./commands/db.ts";
+import { DevCommand } from "./commands/dev.ts";
+import { GitMessageParser, GitProvider } from "./commands/gen/changelog.ts";
+import { GenCommand } from "./commands/gen.ts";
+import { InitCommand } from "./commands/init.ts";
+import { LintCommand } from "./commands/lint.ts";
+import { RootCommand } from "./commands/root.ts";
+import { TestCommand } from "./commands/test.ts";
+import { TypecheckCommand } from "./commands/typecheck.ts";
+import { VerifyCommand } from "./commands/verify.ts";
+import { AlephaCliExtensionProvider } from "./providers/AlephaCliExtensionProvider.ts";
+import { AppEntryProvider } from "./providers/AppEntryProvider.ts";
+import { ViteBuildProvider } from "./providers/ViteBuildProvider.ts";
+import { ViteDevServerProvider } from "./providers/ViteDevServerProvider.ts";
+import { AlephaCliUtils } from "./services/AlephaCliUtils.ts";
+import { PackageManagerUtils } from "./services/PackageManagerUtils.ts";
+import { ProjectScaffolder } from "./services/ProjectScaffolder.ts";
+import { ViteUtils } from "./services/ViteUtils.ts";
+import { BuildAssetsTask } from "./tasks/BuildAssetsTask.ts";
+import { BuildClientTask } from "./tasks/BuildClientTask.ts";
+import { BuildCloudflareTask } from "./tasks/BuildCloudflareTask.ts";
+import { BuildCompressTask } from "./tasks/BuildCompressTask.ts";
+import { BuildDockerTask } from "./tasks/BuildDockerTask.ts";
+import { BuildPrerenderTask } from "./tasks/BuildPrerenderTask.ts";
+import { BuildServerTask } from "./tasks/BuildServerTask.ts";
+import { BuildSitemapTask } from "./tasks/BuildSitemapTask.ts";
+import { BuildStaticTask } from "./tasks/BuildStaticTask.ts";
+import { BuildVercelTask } from "./tasks/BuildVercelTask.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export * from "./atoms/appEntryOptions.ts";
+export * from "./atoms/buildOptions.ts";
+export * from "./atoms/changelogOptions.ts";
+export * from "./atoms/devOptions.ts";
+export * from "./commands/build.ts";
+export * from "./commands/clean.ts";
+export * from "./commands/db.ts";
+export * from "./commands/dev.ts";
+export * from "./commands/gen/changelog.ts";
+export * from "./commands/gen/openapi.ts";
+export * from "./commands/init.ts";
+export * from "./commands/lint.ts";
+export * from "./commands/root.ts";
+export * from "./commands/test.ts";
+export * from "./commands/typecheck.ts";
+export * from "./commands/verify.ts";
+export * from "./defineConfig.ts";
+export * from "./providers/AlephaCliExtensionProvider.ts";
+export * from "./providers/AppEntryProvider.ts";
+export * from "./providers/ViteBuildProvider.ts";
+export * from "./providers/ViteDevServerProvider.ts";
+export * from "./services/AlephaCliUtils.ts";
+export * from "./services/GitMessageParser.ts";
+export * from "./services/PackageManagerUtils.ts";
+export * from "./services/ViteUtils.ts";
+export * from "./tasks/BuildAssetsTask.ts";
+export * from "./tasks/BuildClientTask.ts";
+export * from "./tasks/BuildCloudflareTask.ts";
+export * from "./tasks/BuildCompressTask.ts";
+export * from "./tasks/BuildDockerTask.ts";
+export * from "./tasks/BuildPrerenderTask.ts";
+export * from "./tasks/BuildServerTask.ts";
+export * from "./tasks/BuildSitemapTask.ts";
+export * from "./tasks/BuildStaticTask.ts";
+export * from "./tasks/BuildTask.ts";
+export * from "./tasks/BuildVercelTask.ts";
+export * from "./version.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export const AlephaCli = $module({
+  name: "alepha.cli",
+  services: [
+    AlephaCliUtils,
+    PackageManagerUtils,
+    ViteUtils,
+    ProjectScaffolder,
+    // Commands
+    BuildCommand,
+    CleanCommand,
+    DbCommand,
+    DevCommand,
+    InitCommand,
+    LintCommand,
+    RootCommand,
+    TestCommand,
+    TypecheckCommand,
+    VerifyCommand,
+    GenCommand,
+    // Support services
+    AlephaCliExtensionProvider,
+    AppEntryProvider,
+    GitMessageParser,
+    GitProvider,
+    ViteDevServerProvider,
+    ViteBuildProvider,
+    // Build tasks
+    BuildAssetsTask,
+    BuildClientTask,
+    BuildCloudflareTask,
+    BuildCompressTask,
+    BuildDockerTask,
+    BuildPrerenderTask,
+    BuildServerTask,
+    BuildSitemapTask,
+    BuildStaticTask,
+    BuildVercelTask,
+  ],
+});

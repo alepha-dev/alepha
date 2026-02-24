@@ -71,7 +71,7 @@ export class Runner {
     this.run = this.createRunMethod();
   }
 
-  protected get useDynamicLogger() {
+  public get useDynamicLogger() {
     if (this.alepha.isCI() || this.alepha.env.CLAUDECODE) {
       return false;
     }

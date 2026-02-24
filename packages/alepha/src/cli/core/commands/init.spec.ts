@@ -84,15 +84,12 @@ describe("alepha init", () => {
       expect(
         fs.wasWrittenMatching("/project/alepha.config.ts", /defineConfig/),
       ).toBe(true);
-      expect(
-        fs.wasWrittenMatching("/project/alepha.config.ts", /Entry Points/),
-      ).toBe(true);
-      expect(
-        fs.wasWrittenMatching(
-          "/project/alepha.config.ts",
-          /Build Configuration/,
-        ),
-      ).toBe(true);
+      expect(fs.wasWrittenMatching("/project/alepha.config.ts", /entry:/)).toBe(
+        true,
+      );
+      expect(fs.wasWrittenMatching("/project/alepha.config.ts", /build:/)).toBe(
+        true,
+      );
     });
   });
 

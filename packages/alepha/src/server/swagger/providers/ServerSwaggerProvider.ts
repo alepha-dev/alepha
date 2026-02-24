@@ -479,26 +479,28 @@ window.onload = function() {
 };
 		`.trim();
 
-    const dirname = fileURLToPath(import.meta.url);
+    if (!this.alepha.isServerless()) {
+      const dirname = fileURLToPath(import.meta.url);
 
-    const root = await this.getAssetPath(
-      ui.root,
-      // TODO: this is shitty, take time to get the correct path
-      join(dirname, "../../assets/swagger-ui"),
-      join(dirname, "../../../assets/swagger-ui"),
-      join(dirname, "../../../../assets/swagger-ui"),
-      join(dirname, "../../../../../assets/swagger-ui"),
-    );
+      const root = await this.getAssetPath(
+        ui.root,
+        // TODO: this is shitty, take time to get the correct path
+        join(dirname, "../../assets/swagger-ui"),
+        join(dirname, "../../../assets/swagger-ui"),
+        join(dirname, "../../../../assets/swagger-ui"),
+        join(dirname, "../../../../../assets/swagger-ui"),
+      );
 
-    if (!root) {
-      this.log.warn(`Failed to locate Swagger UI assets for path ${prefix}`);
-      return;
+      if (!root) {
+        this.log.warn(`Failed to locate Swagger UI assets for path ${prefix}`);
+        return;
+      }
+
+      await this.serverStaticProvider.createStaticServer({
+        path: prefix,
+        root,
+      });
     }
-
-    await this.serverStaticProvider.createStaticServer({
-      path: prefix,
-      root,
-    });
 
     this.serverRouterProvider.createRoute({
       method: "GET",

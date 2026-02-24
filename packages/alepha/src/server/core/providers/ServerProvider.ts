@@ -316,11 +316,13 @@ export class ServerProvider {
       .handler(request)
       .catch(this.handleInternalError);
 
+    const webHeaders = this.toWebHeaders(response.headers);
+
     // empty body - just send status & headers
     if (!response.body) {
       ev.res = new Response(null, {
         status: response.status,
-        headers: response.headers,
+        headers: webHeaders,
       });
       return;
     }
@@ -329,7 +331,7 @@ export class ServerProvider {
     if (typeof response.body === "string") {
       ev.res = new Response(response.body, {
         status: response.status,
-        headers: response.headers,
+        headers: webHeaders,
       });
       return;
     }
@@ -339,7 +341,7 @@ export class ServerProvider {
       // the entire underlying ArrayBuffer which may be larger than the actual data
       ev.res = new Response(new Uint8Array(response.body), {
         status: response.status,
-        headers: response.headers,
+        headers: webHeaders,
       });
       return;
     }
@@ -350,7 +352,7 @@ export class ServerProvider {
         Readable.toWeb(response.body) as unknown as ReadableStream,
         {
           status: response.status,
-          headers: response.headers,
+          headers: webHeaders,
         },
       );
       return;
@@ -360,7 +362,7 @@ export class ServerProvider {
     if (response.body instanceof ReadableStream) {
       ev.res = new Response(response.body, {
         status: response.status,
-        headers: response.headers,
+        headers: webHeaders,
       });
       return;
     }
@@ -371,6 +373,28 @@ export class ServerProvider {
       status: 500,
       headers: { "content-type": "text/plain" },
     });
+  }
+
+  /**
+   * Convert response headers to Web API Headers.
+   *
+   * The `set-cookie` header requires special handling because it's stored
+   * as `string[]` (one entry per cookie) but the `Response` constructor
+   * would comma-join arrays, which breaks cookie parsing. We use
+   * `Headers.append()` to emit each cookie as a separate header.
+   */
+  protected toWebHeaders(headers: Record<string, string | string[]>): Headers {
+    const webHeaders = new Headers();
+    for (const [key, value] of Object.entries(headers)) {
+      if (Array.isArray(value)) {
+        for (const v of value) {
+          webHeaders.append(key, v);
+        }
+      } else {
+        webHeaders.set(key, value);
+      }
+    }
+    return webHeaders;
   }
 
   /**

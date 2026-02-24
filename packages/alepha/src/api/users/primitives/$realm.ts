@@ -1,6 +1,7 @@
 import { $context } from "alepha";
 import { AlephaApiKeys, ApiKeyService } from "alepha/api/keys";
 import { AlephaApiParameters } from "alepha/api/parameters";
+import { AlephaApiVerification } from "alepha/api/verifications";
 import type { Repository } from "alepha/orm";
 import {
   $issuer,
@@ -110,6 +111,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
   if (features.notifications) {
     alepha.with(UserNotifications);
+    alepha.with(AlephaApiVerification);
   }
 
   if (features.parameters) {

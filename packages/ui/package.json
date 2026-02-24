@@ -57,7 +57,7 @@
     "lint": "alepha lint && yarn build:check",
     "typecheck": "alepha typecheck",
     "test": "alepha test",
-    "build": "node scripts/build.ts",
+    "build": "node ../alepha/scripts/build.ts",
     "build:check": "node scripts/build.ts --check"
   },
   "repository": {

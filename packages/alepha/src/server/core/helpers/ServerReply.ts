@@ -12,9 +12,9 @@ export class ServerReply {
   public body?: any;
 
   /**
-   * Redirect to a given URL with optional status code (default 301).
+   * Redirect to a given URL with optional status code (default 302).
    */
-  public redirect(url: string, status: number = 301): void {
+  public redirect(url: string, status: number = 302): void {
     this.status = status;
     this.headers.location = url;
   }

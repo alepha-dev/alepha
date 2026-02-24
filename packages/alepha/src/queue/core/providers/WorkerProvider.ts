@@ -68,7 +68,7 @@ export class WorkerProvider {
 
   protected workerPromises: Array<Promise<void>> = [];
   protected workersRunning = 0;
-  protected abortController = new AbortController();
+  protected abortController: AbortController | undefined;
   protected workerIntervals: Record<number, number> = {};
   protected consumers: Array<Consumer> = [];
 
@@ -117,6 +117,7 @@ export class WorkerProvider {
    * This method will create an endless loop that will check for new messages!
    */
   protected startWorkers(): void {
+    this.abortController ??= new AbortController();
     const workerToStart = this.options.concurrency - this.workersRunning;
 
     for (let i = 0; i < workerToStart; i++) {
@@ -171,13 +172,13 @@ export class WorkerProvider {
 
     this.log.trace(`Worker n-${n} is waiting for ${milliseconds}ms.`);
 
-    if (this.abortController.signal.aborted) {
+    if (this.abortController?.signal.aborted) {
       this.log.warn(`Worker n-${n} aborted.`);
       return;
     }
 
     await this.dateTimeProvider.wait(milliseconds, {
-      signal: this.abortController.signal,
+      signal: this.abortController?.signal,
     });
 
     if (intervals[n]) {
@@ -232,7 +233,7 @@ export class WorkerProvider {
     this.workersRunning = 0;
 
     this.log.trace("Stopping workers...");
-    this.abortController.abort();
+    this.abortController?.abort();
 
     this.log.trace("Waiting for workers to finish...");
     await Promise.all(this.workerPromises);
@@ -243,7 +244,7 @@ export class WorkerProvider {
    */
   public wakeUp(): void {
     this.log.debug("Waking up workers...");
-    this.abortController.abort();
+    this.abortController?.abort();
     this.abortController = new AbortController();
 
     // if no workers are running, start them, (should not happen, but just in case)

@@ -13,6 +13,9 @@ import type { PlatformContext } from "./PlatformAdapter.ts";
 
 describe("CloudflareAdapter", () => {
   const createTestEnv = () => {
+    // Ensure D1 path (not Hyperdrive) — isPostgres() checks process.env.DATABASE_URL
+    delete process.env.DATABASE_URL;
+
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider });
@@ -42,11 +45,11 @@ describe("CloudflareAdapter", () => {
     overrides: Partial<PlatformContext> = {},
   ): PlatformContext => ({
     project: "acme-portal",
-    env: "prod",
+    env: "production",
     envConfig: { adapter: "cloudflare" },
     apps: [],
     root: "/project",
-    naming: naming.forContext("acme-portal", "prod"),
+    naming: naming.forContext("acme-portal", "production"),
     ...overrides,
   });
 
@@ -110,7 +113,7 @@ describe("CloudflareAdapter", () => {
 
       shell.outputs.set("wrangler d1 list --json", "[]");
       shell.outputs.set(
-        "wrangler d1 create alepha-prod-acme-portal-d1-main",
+        "wrangler d1 create acme-portal-production",
         '{ "database_id": "uuid-123" }',
       );
 
@@ -118,9 +121,7 @@ describe("CloudflareAdapter", () => {
       await adapter.provision(ctx, run);
 
       expect(
-        shell.wasCalledMatching(
-          /wrangler d1 create alepha-prod-acme-portal-d1-main/,
-        ),
+        shell.wasCalledMatching(/wrangler d1 create acme-portal-production/),
       ).toBe(true);
     });
 
@@ -148,7 +149,10 @@ describe("CloudflareAdapter", () => {
       shell.outputs.set(
         "wrangler d1 list --json",
         JSON.stringify([
-          { name: "alepha-prod-acme-portal-d1-main", uuid: "existing-uuid" },
+          {
+            name: "acme-portal-production",
+            uuid: "existing-uuid",
+          },
         ]),
       );
 
@@ -182,9 +186,171 @@ describe("CloudflareAdapter", () => {
 
       expect(
         shell.wasCalledMatching(
-          /wrangler r2 bucket create alepha-prod-acme-portal-r2/,
+          /wrangler r2 bucket create acme-portal-production/,
         ),
       ).toBe(true);
+    });
+  });
+
+  describe("secrets", () => {
+    test("pushes non-binding env vars via wrangler secret bulk", async ({
+      expect,
+    }) => {
+      const { adapter, fs, shell, naming } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        apps: [
+          {
+            name: "api",
+            path: "apps/api",
+            entry: { root: "/project/apps/api", server: "src/main.ts" },
+            resources: {
+              hasDatabase: false,
+              hasBucket: false,
+              hasKV: false,
+              hasQueue: false,
+              hasCron: false,
+            },
+          },
+        ],
+      });
+
+      // Write .env.production with a mix of secrets and excluded vars
+      await fs.writeFile(
+        "/project/.env.production",
+        [
+          "GOOGLE_API_KEY=sk-123",
+          "APP_SECRET=my-secret",
+          "DATABASE_URL=d1://mydb",
+          "R2_BUCKET_NAME=my-bucket",
+          "CLOUDFLARE_DOMAIN=example.com",
+          "VITE_PUBLIC_KEY=public-abc",
+          "NODE_ENV=production",
+          "",
+        ].join("\n"),
+      );
+
+      const run = createMockRun();
+      await adapter.secrets(ctx, run);
+
+      // Should call wrangler secret bulk with the worker name
+      expect(
+        shell.wasCalledMatching(
+          /wrangler secret bulk.*--name=acme-portal-production/,
+        ),
+      ).toBe(true);
+
+      // Verify the secrets JSON was written (only non-excluded vars)
+      expect(
+        fs.wasWrittenMatching(
+          "/project/node_modules/.alepha/secrets.json",
+          /GOOGLE_API_KEY/,
+        ),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/node_modules/.alepha/secrets.json",
+          /APP_SECRET/,
+        ),
+      ).toBe(true);
+
+      // Excluded vars should NOT be in the secrets file
+      expect(
+        fs.wasWrittenMatching(
+          "/project/node_modules/.alepha/secrets.json",
+          /DATABASE_URL/,
+        ),
+      ).toBe(false);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/node_modules/.alepha/secrets.json",
+          /R2_BUCKET_NAME/,
+        ),
+      ).toBe(false);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/node_modules/.alepha/secrets.json",
+          /CLOUDFLARE_DOMAIN/,
+        ),
+      ).toBe(false);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/node_modules/.alepha/secrets.json",
+          /VITE_PUBLIC_KEY/,
+        ),
+      ).toBe(false);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/node_modules/.alepha/secrets.json",
+          /NODE_ENV/,
+        ),
+      ).toBe(false);
+    });
+
+    test("skips when no env file exists", async ({ expect }) => {
+      const { adapter, shell, naming } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        apps: [
+          {
+            name: "api",
+            path: "apps/api",
+            entry: { root: "/project/apps/api", server: "src/main.ts" },
+            resources: {
+              hasDatabase: false,
+              hasBucket: false,
+              hasKV: false,
+              hasQueue: false,
+              hasCron: false,
+            },
+          },
+        ],
+      });
+
+      const run = createMockRun();
+      await adapter.secrets(ctx, run);
+
+      expect(shell.wasCalledMatching(/wrangler secret/)).toBe(false);
+    });
+
+    test("skips comments and empty lines", async ({ expect }) => {
+      const { adapter, fs, shell, naming } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        apps: [
+          {
+            name: "api",
+            path: "apps/api",
+            entry: { root: "/project/apps/api", server: "src/main.ts" },
+            resources: {
+              hasDatabase: false,
+              hasBucket: false,
+              hasKV: false,
+              hasQueue: false,
+              hasCron: false,
+            },
+          },
+        ],
+      });
+
+      await fs.writeFile(
+        "/project/.env.production",
+        ["# This is a comment", "", "ONLY_SECRET=value"].join("\n"),
+      );
+
+      const run = createMockRun();
+      await adapter.secrets(ctx, run);
+
+      expect(shell.wasCalledMatching(/wrangler secret bulk/)).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/node_modules/.alepha/secrets.json",
+          /ONLY_SECRET/,
+        ),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/node_modules/.alepha/secrets.json",
+          /comment/,
+        ),
+      ).toBe(false);
     });
   });
 
@@ -210,21 +376,16 @@ describe("CloudflareAdapter", () => {
 
       shell.outputs.set(
         "wrangler d1 list --json",
-        JSON.stringify([
-          { name: "alepha-prod-acme-portal-d1-main", uuid: "db-uuid" },
-        ]),
+        JSON.stringify([{ name: "acme-portal-production", uuid: "db-uuid" }]),
       );
-      shell.outputs.set(
-        "wrangler r2 bucket list",
-        "alepha-prod-acme-portal-r2",
-      );
+      shell.outputs.set("wrangler r2 bucket list", "acme-portal-production");
 
       const run = createMockRun();
       const state = await adapter.inspect(ctx, run);
 
       expect(state.databases).toEqual([
         {
-          name: "alepha-prod-acme-portal-d1-main",
+          name: "acme-portal-production",
           exists: true,
           id: "db-uuid",
         },

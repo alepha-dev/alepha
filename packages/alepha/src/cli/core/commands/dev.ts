@@ -25,6 +25,7 @@ export class DevCommand {
    */
   public readonly dev = $command({
     name: "dev",
+    mode: true,
     description: "Run the project in development mode",
     flags: t.object({
       "no-devtools": t.optional(

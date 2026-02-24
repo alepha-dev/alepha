@@ -451,7 +451,10 @@ export class ServerAuthProvider {
           realm: query.realm,
         });
 
-        reply.redirect(buildAuthorizationUrl(oauth, parameters).toString());
+        reply.redirect(
+          buildAuthorizationUrl(oauth, parameters).toString(),
+          302,
+        );
         return;
       }
 
@@ -475,7 +478,7 @@ export class ServerAuthProvider {
         realm: query.realm,
       });
 
-      reply.redirect(buildAuthorizationUrl(oauth, parameters).toString());
+      reply.redirect(buildAuthorizationUrl(oauth, parameters).toString(), 302);
     },
   });
 
@@ -525,7 +528,7 @@ export class ServerAuthProvider {
       // external, full OIDC System (e.g. Keycloak, Auth0)
       if (!issuer) {
         this.setTokens(externalTokens, cookies);
-        reply.redirect(redirectUri);
+        reply.redirect(redirectUri, 302);
         return;
       }
 
@@ -543,7 +546,7 @@ export class ServerAuthProvider {
         cookies,
       );
 
-      reply.redirect(redirectUri);
+      reply.redirect(redirectUri, 302);
     },
   });
 
@@ -562,7 +565,7 @@ export class ServerAuthProvider {
       const redirect = query.post_logout_redirect_uri ?? "/";
       const tokens = this.getTokens(cookies);
       if (!tokens) {
-        reply.redirect(redirect);
+        reply.redirect(redirect, 302);
         return;
       }
 
@@ -585,7 +588,7 @@ export class ServerAuthProvider {
 
       const oauth = provider.oauth;
       if (!oauth) {
-        reply.redirect(redirect);
+        reply.redirect(redirect, 302);
         return;
       }
 
@@ -603,7 +606,7 @@ export class ServerAuthProvider {
           : undefined;
 
       if (customLogoutUri) {
-        reply.redirect(`${customLogoutUri}?${params}`);
+        reply.redirect(`${customLogoutUri}?${params}`, 302);
         return;
       }
 
@@ -612,11 +615,11 @@ export class ServerAuthProvider {
         // 	oauth,
         // 	tokens?.refresh_token ?? tokens.access_token,
         // );
-        reply.redirect(redirect);
+        reply.redirect(redirect, 302);
         return;
       }
 
-      reply.redirect(buildEndSessionUrl(oauth, params).toString());
+      reply.redirect(buildEndSessionUrl(oauth, params).toString(), 302);
     },
   });
 

@@ -19,7 +19,7 @@ export default defineConfig({
   //
   // platform: {
   //   environments: {
-  //     prod: { adapter: "cloudflare" },
+  //     production: { adapter: "cloudflare" },
   //   },
   // },
   //

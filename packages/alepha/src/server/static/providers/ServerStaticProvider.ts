@@ -148,7 +148,7 @@ export class ServerStaticProvider {
         options.path === request.url.pathname &&
         !options.path.endsWith("/")
       ) {
-        reply.redirect(`${options.path}/`);
+        reply.redirect(`${options.path}/`, 301);
         return;
       }
 

@@ -32,11 +32,6 @@ export class AlephaCliUtils {
 
   /**
    * Execute a command with inherited stdio.
-   *
-   * @param command - The command to execute
-   * @param options.root - Working directory
-   * @param options.env - Additional environment variables
-   * @param options.global - If true, run command directly without resolving from node_modules
    */
   public async exec(
     command: string,
@@ -44,13 +39,14 @@ export class AlephaCliUtils {
       root?: string;
       env?: Record<string, string>;
       global?: boolean;
+      capture?: boolean;
     } = {},
   ): Promise<void> {
     await this.shell.run(command, {
       root: options.root,
       env: options.env,
       resolve: !options.global,
-      capture: !this.alepha.isCI(),
+      capture: options.capture,
     });
   }
 
@@ -90,32 +86,6 @@ export class AlephaCliUtils {
       entry,
       mode: opts.mode,
     });
-  }
-
-  // ===========================================
-  // Drizzle ORM & Kit Utilities
-  // ===========================================
-
-  /**
-   * Generate JavaScript code for Drizzle entities export.
-   */
-  public generateEntitiesJs(
-    entry: string,
-    provider: string,
-    models: string[] = [],
-  ): string {
-    return `
-import "${entry}";
-import { DrizzleKitProvider, Repository } from "alepha/orm";
-
-const alepha = globalThis.__alepha;
-const kit = alepha.inject(DrizzleKitProvider);
-const provider = alepha.services(Repository).find((it) => it.provider.name === "${provider}").provider;
-const models = kit.getModels(provider);
-
-${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")}
-
-`.trim();
   }
 
   // ===========================================

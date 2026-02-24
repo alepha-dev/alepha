@@ -6,8 +6,8 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, test } from "vitest";
-import { platformOptions } from "../../atoms/platformOptions.ts";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
+import { platformOptions } from "../atoms/platformOptions.ts";
 import { PlatformOrchestrator } from "./PlatformOrchestrator.ts";
 
 describe("PlatformOrchestrator", () => {
@@ -22,11 +22,9 @@ describe("PlatformOrchestrator", () => {
 
     // Default config
     alepha.set(platformOptions, {
-      platform: {
-        environments: {
-          prod: { adapter: "cloudflare" },
-          staging: { adapter: "cloudflare" },
-        },
+      environments: {
+        production: { adapter: "cloudflare" },
+        staging: { adapter: "cloudflare" },
       },
     });
 
@@ -70,7 +68,7 @@ describe("PlatformOrchestrator", () => {
 
     test("isTmpEnv returns false for named envs", ({ expect }) => {
       const { orchestrator } = createTestEnv();
-      expect(orchestrator.isTmpEnv("prod")).toBe(false);
+      expect(orchestrator.isTmpEnv("production")).toBe(false);
       expect(orchestrator.isTmpEnv("staging")).toBe(false);
     });
   });

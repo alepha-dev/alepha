@@ -22,7 +22,6 @@
   "dependencies": {
     "@redis/client": "^5.11.0",
     "dayjs": "^1.11.19",
-    "drizzle-kit": "^0.31.9",
     "drizzle-orm": "^0.45.1",
     "postgres": "^3.4.8",
     "tsx": "^4.21.0",
@@ -44,6 +43,7 @@
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.1.4",
     "cron-schedule": "^6.0.0",
+    "drizzle-kit": "^0.31.9",
     "jose": "^6.1.3",
     "jsdom": "^28.1.0",
     "nodemailer": "^8.0.1",
@@ -176,9 +176,14 @@
       "default": "./src/cache/redis/index.ts"
     },
     "./cli": {
-      "types": "./src/cli/index.ts",
-      "import": "./src/cli/index.ts",
-      "default": "./src/cli/index.ts"
+      "types": "./src/cli/core/index.ts",
+      "import": "./src/cli/core/index.ts",
+      "default": "./src/cli/core/index.ts"
+    },
+    "./cli/platform": {
+      "types": "./src/cli/platform/index.ts",
+      "import": "./src/cli/platform/index.ts",
+      "default": "./src/cli/platform/index.ts"
     },
     "./command": {
       "types": "./src/command/index.ts",

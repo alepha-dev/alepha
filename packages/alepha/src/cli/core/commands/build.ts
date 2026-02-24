@@ -136,8 +136,6 @@ export class BuildCommand {
       const entry = await this.boot.getAppEntry(root);
       this.log.trace("Entry file found", { entry });
 
-      await this.utils.loadEnv(root, [".env", ".env.production"]);
-
       // Resolve flags → mutate the atom (single source of truth)
       this.alepha.store.mut(buildOptions, (current) => ({
         ...current,

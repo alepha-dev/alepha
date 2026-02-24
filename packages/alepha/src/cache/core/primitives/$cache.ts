@@ -174,7 +174,7 @@ export class CachePrimitive<
 > extends Primitive<CachePrimitiveOptions<TReturn, TParameter>> {
   protected readonly settings = $use(cacheOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
-  protected readonly provider = this.$provider();
+  public readonly provider = this.$provider();
 
   public get container(): string {
     return (

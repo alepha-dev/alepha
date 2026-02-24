@@ -71,33 +71,33 @@ describe("NamingService", () => {
 
   describe("standalone (no app)", () => {
     it("should generate correct worker name", () => {
-      const ctx = createNaming("acme-portal", "prod");
+      const ctx = createNaming("acme-portal", "production");
 
-      expect(ctx.worker()).toBe("alepha-prod-acme-portal-worker");
+      expect(ctx.worker()).toBe("acme-portal-production");
     });
 
     it("should generate correct d1 name", () => {
-      const ctx = createNaming("acme-portal", "prod");
+      const ctx = createNaming("acme-portal", "production");
 
-      expect(ctx.d1()).toBe("alepha-prod-acme-portal-d1-main");
+      expect(ctx.d1()).toBe("acme-portal-production");
     });
 
     it("should generate correct r2 name", () => {
-      const ctx = createNaming("acme-portal", "prod");
+      const ctx = createNaming("acme-portal", "production");
 
-      expect(ctx.r2()).toBe("alepha-prod-acme-portal-r2");
+      expect(ctx.r2()).toBe("acme-portal-production");
     });
 
     it("should generate correct kv name", () => {
-      const ctx = createNaming("acme-portal", "prod");
+      const ctx = createNaming("acme-portal", "production");
 
-      expect(ctx.kv()).toBe("alepha-prod-acme-portal-kv");
+      expect(ctx.kv()).toBe("acme-portal-production");
     });
 
     it("should generate correct queue name", () => {
-      const ctx = createNaming("acme-portal", "prod");
+      const ctx = createNaming("acme-portal", "production");
 
-      expect(ctx.queue()).toBe("alepha-prod-acme-portal-queue");
+      expect(ctx.queue()).toBe("acme-portal-production");
     });
   });
 
@@ -107,41 +107,39 @@ describe("NamingService", () => {
 
   describe("monorepo (with app)", () => {
     it("should generate worker name with app suffix", () => {
-      const ctx = createNaming("acme-portal", "prod");
+      const ctx = createNaming("acme-portal", "production");
 
-      expect(ctx.worker("api")).toBe("alepha-prod-acme-portal-worker-api");
+      expect(ctx.worker("api")).toBe("acme-portal-production-api");
     });
 
     it("should generate kv name with app suffix", () => {
-      const ctx = createNaming("acme-portal", "prod");
+      const ctx = createNaming("acme-portal", "production");
 
-      expect(ctx.kv("api")).toBe("alepha-prod-acme-portal-kv-api");
+      expect(ctx.kv("api")).toBe("acme-portal-production-api");
     });
 
     it("should generate queue name with app suffix", () => {
-      const ctx = createNaming("acme-portal", "prod");
+      const ctx = createNaming("acme-portal", "production");
 
-      expect(ctx.queue("api")).toBe("alepha-prod-acme-portal-queue-api");
+      expect(ctx.queue("api")).toBe("acme-portal-production-api");
     });
 
     it("should keep d1 as shared resource without app suffix", () => {
-      const ctx = createNaming("acme-portal", "prod");
+      const ctx = createNaming("acme-portal", "production");
 
-      expect(ctx.d1()).toBe("alepha-prod-acme-portal-d1-main");
+      expect(ctx.d1()).toBe("acme-portal-production");
     });
 
     it("should keep r2 as shared resource without app suffix", () => {
-      const ctx = createNaming("acme-portal", "prod");
+      const ctx = createNaming("acme-portal", "production");
 
-      expect(ctx.r2()).toBe("alepha-prod-acme-portal-r2");
+      expect(ctx.r2()).toBe("acme-portal-production");
     });
 
     it("should slugify the app name", () => {
-      const ctx = createNaming("acme-portal", "prod");
+      const ctx = createNaming("acme-portal", "production");
 
-      expect(ctx.worker("My App")).toBe(
-        "alepha-prod-acme-portal-worker-my-app",
-      );
+      expect(ctx.worker("My App")).toBe("acme-portal-production-my-app");
     });
   });
 
@@ -153,17 +151,17 @@ describe("NamingService", () => {
     it("should slugify env with path-like characters", () => {
       const ctx = createNaming("acme-portal", "tmp/bug001");
 
-      expect(ctx.worker()).toBe("alepha-tmp-bug001-acme-portal-worker");
-      expect(ctx.d1()).toBe("alepha-tmp-bug001-acme-portal-d1-main");
-      expect(ctx.r2()).toBe("alepha-tmp-bug001-acme-portal-r2");
-      expect(ctx.kv()).toBe("alepha-tmp-bug001-acme-portal-kv");
-      expect(ctx.queue()).toBe("alepha-tmp-bug001-acme-portal-queue");
+      expect(ctx.worker()).toBe("acme-portal-tmp-bug001");
+      expect(ctx.d1()).toBe("acme-portal-tmp-bug001");
+      expect(ctx.r2()).toBe("acme-portal-tmp-bug001");
+      expect(ctx.kv()).toBe("acme-portal-tmp-bug001");
+      expect(ctx.queue()).toBe("acme-portal-tmp-bug001");
     });
 
     it("should slugify env with uppercase characters", () => {
       const ctx = createNaming("acme-portal", "STAGING");
 
-      expect(ctx.worker()).toBe("alepha-staging-acme-portal-worker");
+      expect(ctx.worker()).toBe("acme-portal-staging");
     });
   });
 });

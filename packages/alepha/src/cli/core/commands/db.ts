@@ -18,12 +18,6 @@ const drizzleCommandFlags = t.object({
         "Database provider name to target (e.g., 'postgres', 'sqlite')",
     }),
   ),
-  mode: t.optional(
-    t.text({
-      description:
-        "Environment variable file(s) to load (e.g., 'production' to load .env.production) https://vite.dev/guide/env-and-mode",
-    }),
-  ),
 });
 
 export class DbCommand {
@@ -38,6 +32,7 @@ export class DbCommand {
    */
   protected readonly check = $command({
     name: "check",
+    mode: true,
     description: "Check if migration files are up to date",
     args: t.optional(
       t.text({
@@ -94,7 +89,9 @@ export class DbCommand {
         const lastSnapshot = JSON.parse(snapshotBuffer.toString("utf-8"));
 
         const { statements: migrationStatements } =
-          await drizzleKitProvider.generateMigration(provider, lastSnapshot);
+          await drizzleKitProvider.generateMigration(provider, lastSnapshot, {
+            withoutSchema: true,
+          });
 
         if (migrationStatements.length === 0) {
           this.log.info("No changes detected.");
@@ -127,6 +124,7 @@ export class DbCommand {
    */
   protected readonly generate = $command({
     name: "generate",
+    mode: true,
     description: "Generate migration files from current schema",
     args: t.optional(
       t.text({
@@ -159,7 +157,6 @@ export class DbCommand {
         command: "generate",
         commandFlags,
         provider: flags.provider,
-        env: flags.mode,
         logMessage: (providerName, dialect) =>
           `Generate '${providerName}' migrations (${dialect}) ...`,
       });
@@ -171,6 +168,7 @@ export class DbCommand {
    */
   protected readonly push = $command({
     name: "push",
+    mode: true,
     description: "Push database schema changes directly to the database",
     args: t.optional(
       t.text({
@@ -185,7 +183,6 @@ export class DbCommand {
         args,
         command: "push",
         provider: flags.provider,
-        env: flags.mode,
         logMessage: (providerName, dialect) =>
           `Push '${providerName}' schema (${dialect}) ...`,
       });
@@ -197,6 +194,7 @@ export class DbCommand {
    */
   protected readonly apply = $command({
     name: "apply",
+    mode: true,
     description: "Apply pending migrations to the database",
     args: t.optional(
       t.text({
@@ -211,7 +209,6 @@ export class DbCommand {
         args,
         command: "migrate",
         provider: flags.provider,
-        env: flags.mode,
         logMessage: (providerName, dialect) =>
           `Migrate '${providerName}' database (${dialect}) ...`,
       });
@@ -223,6 +220,7 @@ export class DbCommand {
    */
   protected readonly studio = $command({
     name: "studio",
+    mode: true,
     description: "Launch Drizzle Studio database browser",
     args: t.optional(
       t.text({
@@ -237,7 +235,6 @@ export class DbCommand {
         args,
         command: "studio",
         provider: flags.provider,
-        env: flags.mode,
         logMessage: (providerName, dialect) =>
           `Launch Studio for '${providerName}' (${dialect}) ...`,
       });
@@ -279,16 +276,8 @@ export class DbCommand {
     commandFlags?: string;
     provider?: string;
     logMessage: (providerName: string, dialect: string) => string;
-    env?: string;
   }): Promise<void> {
     const rootDir = options.root;
-
-    const envFiles = [".env"];
-    if (options.env) {
-      envFiles.push(`.env.${options.env}`);
-    }
-
-    await this.utils.loadEnv(rootDir, envFiles);
 
     this.log.debug(`Using project root: ${rootDir}`);
 
@@ -338,6 +327,7 @@ export class DbCommand {
         dialect,
         entry: this.fs.join(rootDir, entry.server),
         rootDir,
+        command: options.command,
       });
 
       const flags = options.commandFlags ? ` ${options.commandFlags}` : "";
@@ -345,6 +335,7 @@ export class DbCommand {
         `drizzle-kit ${options.command} --config=${drizzleConfigJsPath}${flags}`,
         {
           env: {
+            ALEPHA_CLI_IMPORT: "true",
             NODE_OPTIONS: [process.env.NODE_OPTIONS, "--import tsx"]
               .filter(Boolean)
               .join(" "),
@@ -366,12 +357,20 @@ export class DbCommand {
     dialect: string;
     entry: string;
     rootDir: string;
+    command?: string;
   }): Promise<string> {
-    const models = Object.keys(options.kit.getModels(options.provider));
-    const entitiesJs = this.utils.generateEntitiesJs(
+    // For migration generation, use schema-free models so the SQL output
+    // doesn't contain hardcoded schema qualifiers (e.g. "myschema"."users").
+    // The schema is applied at runtime via search_path.
+    const withoutSchema = options.command === "generate";
+    const models = withoutSchema
+      ? Object.keys(options.kit.getModelsWithoutSchema(options.provider))
+      : Object.keys(options.kit.getModels(options.provider));
+    const entitiesJs = this.generateEntitiesJs(
       options.entry,
       options.providerName,
       models,
+      withoutSchema,
     );
 
     const entitiesJsPath = await this.utils.writeConfigFile(
@@ -389,7 +388,9 @@ export class DbCommand {
       },
     };
 
-    if (options.provider.schema) {
+    // Schema filter is only needed for push/studio (introspection).
+    // For generate, models are already schema-free.
+    if (options.provider.schema && !withoutSchema) {
       config.schemaFilter = options.provider.schema;
     }
 
@@ -403,41 +404,7 @@ export class DbCommand {
 
     if (options.dialect === "sqlite") {
       if (options.providerDriver === "d1") {
-        const token = process.env.CLOUDFLARE_API_TOKEN;
-        if (!token) {
-          throw new AlephaError(
-            "CLOUDFLARE_API_TOKEN environment variable is not set. https://orm.drizzle.team/docs/guides/d1-http-with-drizzle-kit",
-          );
-        }
-
-        const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-        if (!accountId) {
-          throw new AlephaError(
-            "CLOUDFLARE_ACCOUNT_ID environment variable is not set. https://orm.drizzle.team/docs/guides/d1-http-with-drizzle-kit",
-          );
-        }
-
-        const url = options.providerUrl;
-        if (!url.startsWith("d1://")) {
-          throw new AlephaError("D1 provider URL must start with 'd1://'.");
-        }
-
-        const [, databaseId] = url
-          .replace("d1://", "")
-          .replace("d1:", "")
-          .split(":");
-
-        if (!databaseId) {
-          throw new AlephaError(
-            "Database ID is missing in the D1 provider URL. Cloudflare D1 URL format: d1://<database_name>:<database_id>",
-          );
-        }
-
-        config.dbCredentials = {
-          accountId,
-          databaseId,
-          token,
-        };
+        // For D1, we need to fill D1 bindings in a way that drizzle-kit can use it, since D1 doesn't use a traditional connection URL
       } else {
         let url = options.providerUrl;
         url = url.replace("sqlite://", "").replace("file://", "");
@@ -456,5 +423,39 @@ export class DbCommand {
       drizzleConfigJs,
       options.rootDir,
     );
+  }
+
+  // ===========================================
+  // Drizzle ORM & Kit Utilities
+  // ===========================================
+
+  /**
+   * Generate JavaScript code for Drizzle entities export.
+   *
+   * When `withoutSchema` is true, uses `getModelsWithoutSchema()` to produce
+   * schema-free models for migration generation.
+   */
+  public generateEntitiesJs(
+    entry: string,
+    provider: string,
+    models: string[] = [],
+    withoutSchema = false,
+  ): string {
+    const getModelsCall = withoutSchema
+      ? "kit.getModelsWithoutSchema(provider)"
+      : "kit.getModels(provider)";
+
+    return `
+import "${entry}";
+import { DrizzleKitProvider, Repository } from "alepha/orm";
+
+const alepha = globalThis.__alepha;
+const kit = alepha.inject(DrizzleKitProvider);
+const provider = alepha.services(Repository).find((it) => it.provider.name === "${provider}").provider;
+const models = ${getModelsCall};
+
+${models.map((it: string) => `export const ${it} = models["${it}"];`).join("\n")}
+
+`.trim();
   }
 }

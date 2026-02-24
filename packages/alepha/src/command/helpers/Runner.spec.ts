@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { Runner } from "../index.ts";
 
 class TestRunner extends Runner {
-  protected override get useDynamicLogger() {
+  public override get useDynamicLogger() {
     return true;
   }
 }

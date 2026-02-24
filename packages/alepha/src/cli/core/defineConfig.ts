@@ -6,10 +6,6 @@ import {
 } from "./atoms/appEntryOptions.ts";
 import { type BuildOptions, buildOptions } from "./atoms/buildOptions.ts";
 import { type DevOptions, devOptions } from "./atoms/devOptions.ts";
-import {
-  type PlatformOptions,
-  platformOptions,
-} from "./atoms/platformOptions.ts";
 
 export interface AlephaCliConfig {
   entry?: AppEntryOptions;
@@ -37,21 +33,6 @@ export interface AlephaCliConfig {
   dev?: DevOptions;
 
   /**
-   * Project name override. Defaults to root package.json "name".
-   */
-  name?: string;
-
-  /**
-   * Monorepo app paths relative to root. Omit for standalone apps.
-   */
-  apps?: string[];
-
-  /**
-   * Platform deployment configuration.
-   */
-  platform?: PlatformOptions["platform"];
-
-  /**
    * Environment variables to set before running commands.
    *
    * Always use .env files by default, this is only for dynamic values.
@@ -60,6 +41,22 @@ export interface AlephaCliConfig {
 }
 
 export type AlephaCliConfigFn = (alepha: Alepha) => AlephaCliConfig;
+
+type ConfigProcessor = (alepha: Alepha, config: AlephaCliConfig) => void;
+
+const configProcessors: ConfigProcessor[] = [];
+
+/**
+ * Register a processor that runs during config resolution.
+ *
+ * Used by submodules (e.g. platform) to handle their own config keys
+ * without core needing to know about them.
+ */
+export function registerConfigProcessor(processor: ConfigProcessor) {
+  configProcessors.push(processor);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export const defineConfig = (
   runConfig: AlephaCliConfig | AlephaCliConfigFn,
@@ -92,12 +89,8 @@ export const defineConfig = (
       alepha.set(appEntryOptions, config.entry);
     }
 
-    if (config.platform || config.name || config.apps) {
-      alepha.set(platformOptions, {
-        name: config.name,
-        apps: config.apps,
-        platform: config.platform,
-      });
+    for (const processor of configProcessors) {
+      processor(alepha, config);
     }
 
     return {
@@ -105,8 +98,3 @@ export const defineConfig = (
     };
   };
 };
-
-/**
- * @alias defineConfig
- */
-export const defineAlephaConfig = defineConfig;

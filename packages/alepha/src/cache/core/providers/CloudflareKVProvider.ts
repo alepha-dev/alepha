@@ -1,5 +1,6 @@
 import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
+import type { CachePrimitive } from "../primitives/$cache.ts";
 import { CacheProvider } from "./CacheProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -79,6 +80,17 @@ export class CloudflareKVProvider extends CacheProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
+      const caches = this.alepha
+        .primitives<CachePrimitive>("cache")
+        .filter((it) => it.provider === this);
+
+      if (caches.length === 0) {
+        this.log.info(
+          "CloudflareKVProvider is registered but no cache primitives are using it. Skipping KV initialization.",
+        );
+        return;
+      }
+
       const cloudflareEnv = this.alepha.get("cloudflare.env") as
         | Record<string, unknown>
         | undefined;
