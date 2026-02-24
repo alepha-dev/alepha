@@ -1,19 +1,20 @@
 import { defineConfig } from "alepha/cli";
 
 export default defineConfig({
-  build: {
-    target: "vercel",
-    vercel: {
-      projectName: "alepha-roadmap",
-      config: {
-        crons: [
-          {
-            path: "/session/cleanup",
-            schedule: "0 0 * * *",
-          },
-        ],
+  platform: {
+    name: "roadmap",
+    environments: {
+      production: {
+        domain: "roadmap.alepha.dev",
+        adapter: "cloudflare",
+      },
+      staging: {
+        domain: "roadmap-staging.alepha.dev",
+        adapter: "cloudflare",
       },
     },
+  },
+  build: {
     cloudflare: {
       config: {
         observability: {
