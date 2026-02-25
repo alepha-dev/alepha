@@ -73,15 +73,22 @@ export class DialogService {
    */
   public alert(options?: AlertDialogOptions): Promise<void> {
     return new Promise((resolve) => {
+      let resolved = false;
+      const done = () => {
+        if (resolved) return;
+        resolved = true;
+        resolve();
+      };
       const modalId = this.open({
         ...options,
         title: options?.title || "Alert",
+        onClose: done,
         content: (
           <AlertDialog
             options={options}
             onClose={() => {
               this.close(modalId);
-              resolve();
+              done();
             }}
           />
         ),
@@ -94,17 +101,24 @@ export class DialogService {
    */
   public confirm(options?: ConfirmDialogOptions): Promise<boolean> {
     return new Promise((resolve) => {
+      let resolved = false;
+      const done = (confirmed: boolean) => {
+        if (resolved) return;
+        resolved = true;
+        resolve(confirmed);
+      };
       const modalId = this.open({
         ...options,
         title: options?.title || "Confirm",
         closeOnClickOutside: false,
         closeOnEscape: false,
+        onClose: () => done(false),
         content: (
           <ConfirmDialog
             options={options}
             onConfirm={(confirmed) => {
               this.close(modalId);
-              resolve(confirmed);
+              done(confirmed);
             }}
           />
         ),
@@ -117,17 +131,24 @@ export class DialogService {
    */
   public prompt(options?: PromptDialogOptions): Promise<string | null> {
     return new Promise((resolve) => {
+      let resolved = false;
+      const done = (value: string | null) => {
+        if (resolved) return;
+        resolved = true;
+        resolve(value);
+      };
       const modalId = this.open({
         ...options,
         title: options?.title || "Input",
         closeOnClickOutside: false,
         closeOnEscape: false,
+        onClose: () => done(null),
         content: (
           <PromptDialog
             options={options}
             onSubmit={(value) => {
               this.close(modalId);
-              resolve(value);
+              done(value);
             }}
           />
         ),

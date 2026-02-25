@@ -20,14 +20,14 @@ const DarkModeButton = (props: Partial<ActionProps>) => {
     setColorScheme(current === "dark" ? "light" : "dark");
   };
 
-  const size = props.size ?? "md";
+  const size = props.size ?? "sm";
   const iconSize =
-    (ui.sizes.icon as Record<string, number>)[size] ?? ui.sizes.icon.md;
+    (ui.sizes.icon as Record<string, number>)[size] ?? ui.sizes.icon.sm;
 
   return (
     <ActionButton
       onClick={toggleColorScheme}
-      variant={props.variant ?? "subtle"}
+      variant={props.variant ?? "default"}
       size={size}
       aria-label="Toggle color scheme"
       icon={

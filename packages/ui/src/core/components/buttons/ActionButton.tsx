@@ -8,7 +8,6 @@ import {
   type MenuItemProps,
   type MenuProps,
   type MenuTargetProps,
-  ThemeIcon,
   type ThemeIconProps,
   Tooltip,
   type TooltipProps,
@@ -221,16 +220,16 @@ const ActionMenuItem = (props: {
   return (
     <Menu.Item
       key={index}
-      leftSection={item.icon}
+      leftSection={
+        item.icon ??
+        (item.active ? (
+          <IconCheck size={ui.sizes.icon.sm} />
+        ) : (
+          <Flex w={ui.sizes.icon.sm} />
+        ))
+      }
       onClick={item.onClick}
       color={item.color}
-      rightSection={
-        item.active ? (
-          <ThemeIcon size={"xs"} variant={"transparent"}>
-            <IconCheck />
-          </ThemeIcon>
-        ) : undefined
-      }
       {...menuItemProps}
     >
       {item.label}
@@ -244,12 +243,12 @@ const ActionButton = (_props: ActionProps) => {
   const { tooltip, menu, icon, ...restProps } = props;
 
   if (props.variant === "subtle" || props.variant === "outline") {
-    restProps.color ??= "gray";
+    //  restProps.color ??= "gray";
   }
 
   if (props.intent) {
     if (props.intent === "none") {
-      restProps.color ??= "gray";
+      //  restProps.color ??= "gray";
     } else if (props.intent === "primary") {
       restProps.color ??= theme.primaryColor;
     } else if (props.intent === "success") {
@@ -269,7 +268,7 @@ const ActionButton = (_props: ActionProps) => {
   if (props.icon) {
     const sizes = ui.sizes.icon as Record<string, number>;
     const icon = isComponentType(props.icon) ? (
-      <props.icon size={sizes[props.size || "md"]} />
+      <props.icon size={sizes[props.size || "sm"]} />
     ) : (
       <span>{props.icon as ReactNode}</span>
     );

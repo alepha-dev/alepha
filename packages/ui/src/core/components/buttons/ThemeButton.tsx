@@ -10,7 +10,7 @@ const ThemeButton = (props: Partial<ActionProps>) => {
 
   return (
     <ActionButton
-      variant="subtle"
+      variant="default"
       icon={IconPalette}
       menu={{
         items: themeList.map((it, index) => ({

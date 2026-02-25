@@ -31,14 +31,6 @@
   --alepha-text: var(--alepha-text-light);
 }
 
-/*#root {*/
-/*  display: flex;*/
-/*  background-color: var(--alepha-background);*/
-/*  color: var(--alepha-text);*/
-/*  min-height: 100dvh;*/
-/*  flex-direction: column;*/
-/*}*/
-
 /* ------------------------------------------------------------------------------------------------------------------ */
 
 [data-mantine-color-scheme="dark"] {
@@ -94,17 +86,6 @@
 [data-mantine-color-scheme="dark"]
   .alepha-sidebar-scroll:hover::-webkit-scrollbar-thumb {
   background: var(--mantine-color-dark-4);
-}
-
-/* ------------------------------------------------------------------------------------------------------------------ */
-/* Sidebar Transitions */
-
-.alepha-sidebar-navbar {
-  transition: width 0.2s ease-in-out;
-}
-
-.alepha-sidebar-main {
-  transition: padding-left 0.2s ease-in-out;
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */

@@ -136,6 +136,7 @@ const DashboardShell = (props: DashboardShellProps) => {
     <AppShell
       layout={"alt"}
       w={"100%"}
+      h={"100vh"}
       flex={1}
       header={hasAppBar ? { height: hHeight } : undefined}
       navbar={
@@ -159,10 +160,7 @@ const DashboardShell = (props: DashboardShellProps) => {
       )}
 
       {hasSidebar && (
-        <AppShell.Navbar
-          className="alepha-sidebar-navbar"
-          {...props.appShellNavbarProps}
-        >
+        <AppShell.Navbar {...props.appShellNavbarProps}>
           {props.navbarHeader ? (
             <Flex
               style={{
@@ -187,7 +185,11 @@ const DashboardShell = (props: DashboardShellProps) => {
         </AppShell.Navbar>
       )}
 
-      <AppShell.Main pos={"relative"} {...props.appShellMainProps}>
+      <AppShell.Main
+        display={"flex"}
+        pos={"relative"}
+        {...props.appShellMainProps}
+      >
         {props.children ?? <NestedView />}
       </AppShell.Main>
 

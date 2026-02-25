@@ -202,7 +202,7 @@ export const Sidebar = (props: SidebarProps) => {
   };
 
   const padding = "md";
-  const gap = props.items ? (props.gap ?? 4) : "xs";
+  const gap = props.items ? (props.gap ?? 8) : "xs";
   const menu = useMemo(
     () => getSidebarNodes(),
     [props.items, props.autoPopulateMenu],

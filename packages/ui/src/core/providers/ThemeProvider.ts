@@ -1,5 +1,5 @@
 import { $inject, Alepha, AlephaError } from "alepha";
-import { $head } from "alepha/react/head";
+import { $head, BrowserHeadProvider } from "alepha/react/head";
 import { $cookie } from "alepha/server/cookies";
 import { alephaThemeAtom } from "../atoms/alephaThemeAtom.ts";
 import { alephaThemeListAtom } from "../atoms/alephaThemeListAtom.ts";
@@ -21,8 +21,9 @@ export class ThemeProvider {
     }
     return {
       htmlAttributes: {
-        "data-theme": theme.name,
+        "data-theme": this.slugify(theme.name),
       },
+      ...theme.head,
     };
   });
 
@@ -38,15 +39,15 @@ export class ThemeProvider {
     this.cookie.set({ index });
     this.alepha.store.set(alephaThemeAtom, { index });
 
-    if (typeof document === "undefined") {
+    if (!this.alepha.isBrowser()) {
       return;
     }
 
-    document.documentElement.removeAttribute("data-theme");
+    this.alepha.inject(BrowserHeadProvider).refreshGlobalHead();
+  }
 
-    if (newTheme.name) {
-      document.documentElement.setAttribute("data-theme", newTheme.name);
-    }
+  protected slugify(name: string): string {
+    return name.toLowerCase().replace(/\s+/g, "-");
   }
 
   public getTheme() {

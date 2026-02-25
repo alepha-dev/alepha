@@ -8,6 +8,7 @@ import {
   OmnibarButton,
   type OmnibarButtonProps,
   Text,
+  ThemeButton,
 } from "@alepha/ui";
 import {
   Anchor,
@@ -25,6 +26,7 @@ export type AppBarItem =
   | AppBarElement
   | AppBarBurger
   | AppBarDark
+  | AppBarTheme
   | AppBarSearch
   | AppBarLang
   | AppBarSpacer
@@ -51,6 +53,11 @@ export interface AppBarBurger extends AppBarAbstractItem {
 
 export interface AppBarDark extends AppBarAbstractItem {
   type: "dark";
+  props?: Partial<ActionProps>;
+}
+
+export interface AppBarTheme extends AppBarAbstractItem {
+  type: "theme";
   props?: Partial<ActionProps>;
 }
 
@@ -174,6 +181,9 @@ const AppBar = (props: AppBarProps) => {
       }
       if (item.type === "dark") {
         return <DarkModeButton key={index} {...item.props} />;
+      }
+      if (item.type === "theme") {
+        return <ThemeButton key={index} {...item.props} />;
       }
       if (item.type === "search") {
         return <OmnibarButton key={index} {...item.props} />;
