@@ -11,9 +11,11 @@ import {
 } from "./atoms/platformOptions.ts";
 import { PlatformCommand } from "./commands/platform.ts";
 import { PlatformCacheProvider } from "./providers/PlatformCacheProvider.ts";
+import { CloudflareApi } from "./services/CloudflareApi.ts";
 import { NamingService } from "./services/NamingService.ts";
 import { PlatformInspector } from "./services/PlatformInspector.ts";
 import { PlatformOrchestrator } from "./services/PlatformOrchestrator.ts";
+import { WranglerApi } from "./services/WranglerApi.ts";
 
 // ---------------------------------------------------------------------------
 // Module augmentation — extends AlephaCliConfig with platform options
@@ -42,6 +44,8 @@ export const AlephaCliPlatform = $module({
     AlephaCli,
     PlatformCommand,
     CloudflareAdapter,
+    CloudflareApi,
+    WranglerApi,
     PlatformCacheProvider,
     NamingService,
     PlatformInspector,
@@ -56,6 +60,10 @@ export * from "./adapters/PlatformAdapter.ts";
 export * from "./atoms/platformOptions.ts";
 export * from "./commands/platform.ts";
 export * from "./providers/PlatformCacheProvider.ts";
+export * from "./schemas/cloudflare.ts";
+export * from "./schemas/platform.ts";
+export * from "./services/CloudflareApi.ts";
 export * from "./services/NamingService.ts";
 export * from "./services/PlatformInspector.ts";
 export * from "./services/PlatformOrchestrator.ts";
+export * from "./services/WranglerApi.ts";

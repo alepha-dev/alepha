@@ -8,6 +8,10 @@ import type {
   DetectedResources,
 } from "../adapters/PlatformAdapter.ts";
 import { platformOptions } from "../atoms/platformOptions.ts";
+import type {
+  PlatformPlanOutput,
+  PlatformStatusOutput,
+} from "../schemas/platform.ts";
 import { NamingService } from "../services/NamingService.ts";
 import {
   PlatformInspector,
@@ -48,6 +52,11 @@ export class PlatformCommand {
         description: "Verbose output",
       }),
     ),
+    json: t.optional(
+      t.boolean({
+        description: "Output as JSON",
+      }),
+    ),
   });
 
   // -----------------------------------------------------------------------
@@ -63,60 +72,13 @@ export class PlatformCommand {
       const env = flags.env ?? config.defaultEnv;
       const apps = await this.resolveApps(root, config);
       const namingCtx = this.naming.forContext(config.project, env);
-      const c = this.color;
 
-      // Header
-      process.stdout.write(
-        `\n\u{1F4E6} ${c.set("WHITE_BOLD", config.project)} ${c.set("GREY_DARK", "\u2014")} ${c.set("CYAN", env)}\n\n`,
-      );
+      // --- Data collection ---
 
-      // Apps
-      if (config.isMonorepo) {
-        process.stdout.write(
-          `   ${c.set("GREY_LIGHT", "Mode:")} monorepo (${config.appPaths.length} apps)\n`,
-        );
-        for (const [i, appPath] of config.appPaths.entries()) {
-          const appName = config.appNames.get(appPath) ?? appPath;
-          const prefix =
-            i === config.appPaths.length - 1
-              ? "\u2514\u2500\u2500"
-              : "\u251C\u2500\u2500";
-          process.stdout.write(
-            `   ${c.set("GREY_DARK", prefix)} ${c.set("CYAN", appName.padEnd(10))} ${c.set("GREY_DARK", appPath)}\n`,
-          );
-        }
-      } else {
-        process.stdout.write(`   ${c.set("GREY_LIGHT", "Mode:")} standalone\n`);
-      }
-
-      // Environments
-      process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Environments:")}\n`);
-      const envKeys = Object.keys(config.environments);
-      for (const [i, envKey] of envKeys.entries()) {
-        const envConfig = config.environments[envKey];
-        const prefix =
-          i === envKeys.length - 1
-            ? "\u2514\u2500\u2500"
-            : "\u251C\u2500\u2500";
-        const domain = envConfig.domain
-          ? `     ${c.set("GREY_DARK", envConfig.domain)}`
-          : "";
-        const marker = envKey === env ? `  ${c.set("GREEN", "\u25C0")}` : "";
-        process.stdout.write(
-          `   ${c.set("GREY_DARK", prefix)} ${c.set("CYAN", envKey.padEnd(10))} ${c.set("GREY_LIGHT", envConfig.adapter)}${domain}${marker}\n`,
-        );
-      }
-
-      // Resources for target env
       const hasDB = apps.some((a) => a.resources.hasDatabase);
       const hasBucket = apps.some((a) => a.resources.hasBucket);
-
-      // Parse env file early — needed for both DB detection and secrets count
       const envVars = await this.envUtils.parseEnv(root, [`.env.${env}`]);
 
-      process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Resources:")}\n`);
-
-      // Collect resource lines to determine last item
       const resources: Array<{ label: string; value: string }> = [];
 
       if (config.isMonorepo) {
@@ -145,12 +107,105 @@ export class PlatformCommand {
       if (hasBucket) {
         resources.push({ label: "R2", value: namingCtx.r2() });
       }
+
+      for (const app of apps) {
+        if (app.resources.hasKV) {
+          resources.push({
+            label: "KV",
+            value: namingCtx.kv(config.isMonorepo ? app.name : undefined),
+          });
+        }
+        if (app.resources.hasQueue) {
+          resources.push({
+            label: "Queue",
+            value: namingCtx.queue(config.isMonorepo ? app.name : undefined),
+          });
+        }
+      }
+
       const secretCount = Object.entries(envVars).filter(
         ([key, value]) =>
           value &&
           !CloudflareAdapter.EXCLUDED_SECRET_KEYS.has(key) &&
           !key.startsWith("VITE_"),
       ).length;
+
+      // --- JSON output ---
+
+      if (flags.json) {
+        const environments: Record<
+          string,
+          { adapter: string; domain?: string }
+        > = {};
+        for (const [key, val] of Object.entries(config.environments)) {
+          environments[key] = {
+            adapter: val.adapter,
+            ...(val.domain ? { domain: val.domain } : {}),
+          };
+        }
+
+        const output: PlatformPlanOutput = {
+          project: config.project,
+          env,
+          mode: config.isMonorepo ? "monorepo" : "standalone",
+          apps: apps.map((a) => ({
+            name: a.name,
+            path: a.path,
+            resources: a.resources,
+          })),
+          environments,
+          resources,
+          secretCount,
+        };
+
+        process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+        return;
+      }
+
+      // --- Tree output ---
+
+      const c = this.color;
+
+      process.stdout.write(
+        `\n\u{1F4E6} ${c.set("WHITE_BOLD", config.project)} ${c.set("GREY_DARK", "\u2014")} ${c.set("CYAN", env)}\n\n`,
+      );
+
+      if (config.isMonorepo) {
+        process.stdout.write(
+          `   ${c.set("GREY_LIGHT", "Mode:")} monorepo (${config.appPaths.length} apps)\n`,
+        );
+        for (const [i, appPath] of config.appPaths.entries()) {
+          const appName = config.appNames.get(appPath) ?? appPath;
+          const prefix =
+            i === config.appPaths.length - 1
+              ? "\u2514\u2500\u2500"
+              : "\u251C\u2500\u2500";
+          process.stdout.write(
+            `   ${c.set("GREY_DARK", prefix)} ${c.set("CYAN", appName.padEnd(10))} ${c.set("GREY_DARK", appPath)}\n`,
+          );
+        }
+      } else {
+        process.stdout.write(`   ${c.set("GREY_LIGHT", "Mode:")} standalone\n`);
+      }
+
+      process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Environments:")}\n`);
+      const envKeys = Object.keys(config.environments);
+      for (const [i, envKey] of envKeys.entries()) {
+        const envConfig = config.environments[envKey];
+        const prefix =
+          i === envKeys.length - 1
+            ? "\u2514\u2500\u2500"
+            : "\u251C\u2500\u2500";
+        const domain = envConfig.domain
+          ? `     ${c.set("GREY_DARK", envConfig.domain)}`
+          : "";
+        const marker = envKey === env ? `  ${c.set("GREEN", "\u25C0")}` : "";
+        process.stdout.write(
+          `   ${c.set("GREY_DARK", prefix)} ${c.set("CYAN", envKey.padEnd(10))} ${c.set("GREY_LIGHT", envConfig.adapter)}${domain}${marker}\n`,
+        );
+      }
+
+      process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Resources:")}\n`);
 
       if (secretCount > 0) {
         resources.push({
@@ -252,11 +307,28 @@ export class PlatformCommand {
         run,
       });
 
+      // --- JSON output ---
+
+      if (flags.json) {
+        run.end();
+
+        const output: PlatformStatusOutput = {
+          project: config.project,
+          env,
+          adapter: config.environments[env].adapter,
+          ...state,
+        };
+
+        process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+        return;
+      }
+
+      // --- Tree output ---
+
       run.end();
 
       const c = this.color;
 
-      // Print state
       process.stdout.write(
         `\n\u{1F4E6} ${c.set("WHITE_BOLD", config.project)} ${c.set("GREY_DARK", "\u2014")} ${c.set("CYAN", env)} ${c.set("GREY_DARK", `(${config.environments[env].adapter})`)}\n\n`,
       );
@@ -298,8 +370,11 @@ export class PlatformCommand {
             const id = db.id
               ? ` ${c.set("GREY_LIGHT", db.id.slice(0, 8))}`
               : "";
+            const detail = db.detail
+              ? ` ${c.set("GREY_DARK", "\u2014")} ${c.set("GREY_DARK", db.detail.slice(0, 40))}`
+              : "";
             process.stdout.write(
-              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", db.name)}  ${c.set("GREEN", "\u2713")}${id}\n`,
+              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", db.name)}  ${c.set("GREEN", "\u2713")}${id}${detail}\n`,
             );
           } else {
             process.stdout.write(
@@ -321,6 +396,44 @@ export class PlatformCommand {
           } else {
             process.stdout.write(
               `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", b.name)}  ${c.set("RED", "\u2717")} ${c.set("RED", "not provisioned")}\n`,
+            );
+          }
+        }
+      }
+
+      if (state.kvNamespaces.length > 0) {
+        process.stdout.write(`\n   ${c.set("GREY_LIGHT", "KV:")}\n`);
+        for (const [i, kv] of state.kvNamespaces.entries()) {
+          const isLast = i === state.kvNamespaces.length - 1;
+          const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
+          if (kv.exists) {
+            const id = kv.id
+              ? ` ${c.set("GREY_LIGHT", kv.id.slice(0, 8))}`
+              : "";
+            process.stdout.write(
+              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", kv.name)}  ${c.set("GREEN", "\u2713")}${id}\n`,
+            );
+          } else {
+            process.stdout.write(
+              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", kv.name)}  ${c.set("RED", "\u2717")} ${c.set("RED", "not provisioned")}\n`,
+            );
+          }
+        }
+      }
+
+      if (state.queues.length > 0) {
+        process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Queues:")}\n`);
+        for (const [i, q] of state.queues.entries()) {
+          const isLast = i === state.queues.length - 1;
+          const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
+          if (q.exists) {
+            const id = q.id ? ` ${c.set("GREY_LIGHT", q.id.slice(0, 8))}` : "";
+            process.stdout.write(
+              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", q.name)}  ${c.set("GREEN", "\u2713")}${id}\n`,
+            );
+          } else {
+            process.stdout.write(
+              `   ${c.set("GREY_DARK", branch)} ${c.set("CYAN", q.name)}  ${c.set("RED", "\u2717")} ${c.set("RED", "not provisioned")}\n`,
             );
           }
         }

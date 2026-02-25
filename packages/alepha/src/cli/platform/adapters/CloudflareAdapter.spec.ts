@@ -7,9 +7,128 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, test } from "vitest";
+import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { NamingService } from "../services/NamingService.ts";
 import { CloudflareAdapter } from "./CloudflareAdapter.ts";
 import type { PlatformContext } from "./PlatformAdapter.ts";
+
+/**
+ * In-memory CloudflareApi for testing.
+ *
+ * Stores resources in maps and implements the same interface
+ * without making any HTTP calls.
+ */
+class MemoryCloudflareApi extends CloudflareApi {
+  public d1Databases: Array<{ uuid: string; name: string }> = [];
+  public kvNamespaces: Array<{ id: string; title: string }> = [];
+  public r2Buckets: Array<{ name: string; creation_date: string }> = [];
+  public queues: Array<{ queue_id: string; queue_name: string }> = [];
+  public hyperdriveConfigs: Array<{
+    id: string;
+    name: string;
+    origin: { host: string };
+  }> = [];
+  public secrets: Map<string, Array<{ name: string; type: string }>> =
+    new Map();
+
+  public override async resolveToken(): Promise<string> {
+    return "test-token";
+  }
+
+  public override async resolveAccountId(): Promise<string> {
+    return "test-account-id";
+  }
+
+  public override async listD1() {
+    return this.d1Databases;
+  }
+
+  public override async createD1(name: string) {
+    const db = { uuid: `d1-${name}-uuid`, name };
+    this.d1Databases.push(db);
+    return db;
+  }
+
+  public override async deleteD1(databaseId: string) {
+    this.d1Databases = this.d1Databases.filter((db) => db.uuid !== databaseId);
+  }
+
+  public override async listKV() {
+    return this.kvNamespaces;
+  }
+
+  public override async createKV(title: string) {
+    const ns = { id: `kv-${title}-id`, title };
+    this.kvNamespaces.push(ns);
+    return ns;
+  }
+
+  public override async deleteKV(namespaceId: string) {
+    this.kvNamespaces = this.kvNamespaces.filter((ns) => ns.id !== namespaceId);
+  }
+
+  public override async listR2() {
+    return this.r2Buckets;
+  }
+
+  public override async createR2(name: string) {
+    this.r2Buckets.push({ name, creation_date: new Date().toISOString() });
+  }
+
+  public override async deleteR2(name: string) {
+    this.r2Buckets = this.r2Buckets.filter((b) => b.name !== name);
+  }
+
+  public override async listQueues() {
+    return this.queues;
+  }
+
+  public override async createQueue(name: string) {
+    const queue = { queue_id: `q-${name}-id`, queue_name: name };
+    this.queues.push(queue);
+    return queue;
+  }
+
+  public override async deleteQueue(queueId: string) {
+    this.queues = this.queues.filter((q) => q.queue_id !== queueId);
+  }
+
+  public override async listQueueConsumers() {
+    return [];
+  }
+
+  public override async deleteQueueConsumer() {}
+
+  public override async listHyperdrive() {
+    return this.hyperdriveConfigs;
+  }
+
+  public override async createHyperdrive(name: string) {
+    const config = { id: `hd-${name}-id`, name, origin: { host: "localhost" } };
+    this.hyperdriveConfigs.push(config);
+    return config;
+  }
+
+  public override async deleteHyperdrive(configId: string) {
+    this.hyperdriveConfigs = this.hyperdriveConfigs.filter(
+      (c) => c.id !== configId,
+    );
+  }
+
+  public override async listSecrets(scriptName: string) {
+    return this.secrets.get(scriptName) ?? [];
+  }
+
+  public override async listDeployments() {
+    return [];
+  }
+
+  public override async listVersions() {
+    return [];
+  }
+
+  public override async deleteWorker() {}
+}
 
 describe("CloudflareAdapter", () => {
   const createTestEnv = () => {
@@ -18,13 +137,15 @@ describe("CloudflareAdapter", () => {
 
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-      .with({ provide: ShellProvider, use: MemoryShellProvider });
+      .with({ provide: ShellProvider, use: MemoryShellProvider })
+      .with({ provide: CloudflareApi, use: MemoryCloudflareApi });
 
     const fs = alepha.inject(MemoryFileSystemProvider);
     const shell = alepha.inject(MemoryShellProvider);
     const dateTime = alepha.inject(DateTimeProvider);
     const adapter = alepha.inject(CloudflareAdapter);
     const naming = alepha.inject(NamingService);
+    const api = alepha.inject(MemoryCloudflareApi);
 
     // Pre-seed package.json so ensureDependency finds wrangler already installed
     fs.files.set(
@@ -37,7 +158,7 @@ describe("CloudflareAdapter", () => {
       ),
     );
 
-    return { alepha, fs, shell, dateTime, adapter, naming };
+    return { alepha, fs, shell, dateTime, adapter, naming, api };
   };
 
   const makeCtx = (
@@ -54,13 +175,16 @@ describe("CloudflareAdapter", () => {
   });
 
   describe("authenticate", () => {
-    test("skips wrangler whoami when cache is fresh", async ({ expect }) => {
+    test("skips auth token check when cache is fresh", async ({ expect }) => {
       const { adapter, shell, dateTime, naming } = createTestEnv();
       const ctx = makeCtx(naming);
 
       // Pre-warm cache
       dateTime.pause();
-      shell.outputs.set("wrangler whoami", "Account Name | abc123");
+      shell.outputs.set(
+        "wrangler auth token --json",
+        JSON.stringify({ type: "oauth", token: "test-token" }),
+      );
 
       const run = createMockRun();
       await adapter.authenticate(ctx, run);
@@ -69,14 +193,17 @@ describe("CloudflareAdapter", () => {
       shell.calls.length = 0;
       await adapter.authenticate(ctx, run);
 
-      expect(shell.wasCalled("wrangler whoami")).toBe(false);
+      expect(shell.wasCalled("wrangler auth token --json")).toBe(false);
     });
 
-    test("calls wrangler whoami when cache is stale", async ({ expect }) => {
+    test("checks auth token when cache is stale", async ({ expect }) => {
       const { adapter, shell, dateTime, naming } = createTestEnv();
       const ctx = makeCtx(naming);
 
-      shell.outputs.set("wrangler whoami", "Account Name | abc123");
+      shell.outputs.set(
+        "wrangler auth token --json",
+        JSON.stringify({ type: "oauth", token: "test-token" }),
+      );
       dateTime.pause();
 
       const run = createMockRun();
@@ -87,13 +214,15 @@ describe("CloudflareAdapter", () => {
 
       await adapter.authenticate(ctx, run);
 
-      expect(shell.wasCalled("wrangler whoami")).toBe(true);
+      expect(shell.wasCalled("wrangler auth token --json")).toBe(true);
     });
   });
 
   describe("provision", () => {
-    test("creates D1 database when app has database", async ({ expect }) => {
-      const { adapter, shell, naming } = createTestEnv();
+    test("creates D1 database via REST API when app has database", async ({
+      expect,
+    }) => {
+      const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
         apps: [
           {
@@ -111,24 +240,17 @@ describe("CloudflareAdapter", () => {
         ],
       });
 
-      shell.outputs.set("wrangler d1 list --json", "[]");
-      shell.outputs.set(
-        "wrangler d1 create acme-portal-production",
-        '{ "database_id": "uuid-123" }',
-      );
-
       const run = createMockRun();
       await adapter.provision(ctx, run);
 
-      expect(
-        shell.wasCalledMatching(/wrangler d1 create acme-portal-production/),
-      ).toBe(true);
+      expect(api.d1Databases).toHaveLength(1);
+      expect(api.d1Databases[0].name).toBe("acme-portal-production");
     });
 
     test("skips D1 creation when database already exists", async ({
       expect,
     }) => {
-      const { adapter, shell, naming } = createTestEnv();
+      const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
         apps: [
           {
@@ -146,24 +268,24 @@ describe("CloudflareAdapter", () => {
         ],
       });
 
-      shell.outputs.set(
-        "wrangler d1 list --json",
-        JSON.stringify([
-          {
-            name: "acme-portal-production",
-            uuid: "existing-uuid",
-          },
-        ]),
-      );
+      // Pre-seed existing database
+      api.d1Databases.push({
+        name: "acme-portal-production",
+        uuid: "existing-uuid",
+      });
 
       const run = createMockRun();
       await adapter.provision(ctx, run);
 
-      expect(shell.wasCalledMatching(/wrangler d1 create/)).toBe(false);
+      // Should still be 1 (not 2)
+      expect(api.d1Databases).toHaveLength(1);
+      expect(api.d1Databases[0].uuid).toBe("existing-uuid");
     });
 
-    test("creates R2 bucket when app has bucket", async ({ expect }) => {
-      const { adapter, shell, naming } = createTestEnv();
+    test("creates R2 bucket via REST API when app has bucket", async ({
+      expect,
+    }) => {
+      const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
         apps: [
           {
@@ -184,11 +306,64 @@ describe("CloudflareAdapter", () => {
       const run = createMockRun();
       await adapter.provision(ctx, run);
 
-      expect(
-        shell.wasCalledMatching(
-          /wrangler r2 bucket create acme-portal-production/,
-        ),
-      ).toBe(true);
+      expect(api.r2Buckets).toHaveLength(1);
+      expect(api.r2Buckets[0].name).toBe("acme-portal-production");
+    });
+
+    test("creates KV namespace via REST API when app has KV", async ({
+      expect,
+    }) => {
+      const { adapter, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        apps: [
+          {
+            name: "api",
+            path: "apps/api",
+            entry: { root: "/project/apps/api", server: "src/main.ts" },
+            resources: {
+              hasDatabase: false,
+              hasBucket: false,
+              hasKV: true,
+              hasQueue: false,
+              hasCron: false,
+            },
+          },
+        ],
+      });
+
+      const run = createMockRun();
+      await adapter.provision(ctx, run);
+
+      expect(api.kvNamespaces).toHaveLength(1);
+      expect(api.kvNamespaces[0].title).toBe("acme-portal-production");
+    });
+
+    test("creates queue via REST API when app has queue", async ({
+      expect,
+    }) => {
+      const { adapter, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        apps: [
+          {
+            name: "api",
+            path: "apps/api",
+            entry: { root: "/project/apps/api", server: "src/main.ts" },
+            resources: {
+              hasDatabase: false,
+              hasBucket: false,
+              hasKV: false,
+              hasQueue: true,
+              hasCron: false,
+            },
+          },
+        ],
+      });
+
+      const run = createMockRun();
+      await adapter.provision(ctx, run);
+
+      expect(api.queues).toHaveLength(1);
+      expect(api.queues[0].queue_name).toBe("acme-portal-production");
     });
   });
 
@@ -355,8 +530,10 @@ describe("CloudflareAdapter", () => {
   });
 
   describe("inspect", () => {
-    test("returns state of all expected resources", async ({ expect }) => {
-      const { adapter, shell, naming } = createTestEnv();
+    test("returns state of all expected resources via REST API", async ({
+      expect,
+    }) => {
+      const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
         apps: [
           {
@@ -374,11 +551,15 @@ describe("CloudflareAdapter", () => {
         ],
       });
 
-      shell.outputs.set(
-        "wrangler d1 list --json",
-        JSON.stringify([{ name: "acme-portal-production", uuid: "db-uuid" }]),
-      );
-      shell.outputs.set("wrangler r2 bucket list", "acme-portal-production");
+      // Pre-seed existing resources
+      api.d1Databases.push({
+        name: "acme-portal-production",
+        uuid: "db-uuid",
+      });
+      api.r2Buckets.push({
+        name: "acme-portal-production",
+        creation_date: "2025-01-01",
+      });
 
       const run = createMockRun();
       const state = await adapter.inspect(ctx, run);
@@ -390,6 +571,56 @@ describe("CloudflareAdapter", () => {
           id: "db-uuid",
         },
       ]);
+      expect(state.buckets).toEqual([
+        {
+          name: "acme-portal-production",
+          exists: true,
+          id: "2025-01-01",
+        },
+      ]);
+    });
+  });
+
+  describe("teardown", () => {
+    test("deletes resources via REST API", async ({ expect }) => {
+      const { adapter, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        apps: [
+          {
+            name: "api",
+            path: "apps/api",
+            entry: { root: "/project/apps/api", server: "src/main.ts" },
+            resources: {
+              hasDatabase: true,
+              hasBucket: true,
+              hasKV: true,
+              hasQueue: false,
+              hasCron: false,
+            },
+          },
+        ],
+      });
+
+      // Pre-seed existing resources
+      api.d1Databases.push({
+        name: "acme-portal-production",
+        uuid: "db-uuid",
+      });
+      api.r2Buckets.push({
+        name: "acme-portal-production",
+        creation_date: "2025-01-01",
+      });
+      api.kvNamespaces.push({
+        id: "kv-id",
+        title: "acme-portal-production",
+      });
+
+      const run = createMockRun();
+      await adapter.teardown(ctx, run);
+
+      expect(api.d1Databases).toHaveLength(0);
+      expect(api.r2Buckets).toHaveLength(0);
+      expect(api.kvNamespaces).toHaveLength(0);
     });
   });
 });

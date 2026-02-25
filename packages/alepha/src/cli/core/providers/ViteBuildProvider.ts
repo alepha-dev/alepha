@@ -30,11 +30,4 @@ export class ViteBuildProvider {
       return false;
     }
   }
-
-  public generateIndexHtml(): string {
-    if (!this.appEntry) {
-      throw new AlephaError("ViteBuildProvider not initialized");
-    }
-    return this.viteUtils.generateIndexHtml(this.appEntry);
-  }
 }

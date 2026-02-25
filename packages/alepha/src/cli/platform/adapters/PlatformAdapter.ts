@@ -85,6 +85,7 @@ export interface ResourceState {
   name: string;
   exists: boolean;
   id?: string;
+  detail?: string;
 }
 
 export interface WorkerState extends ResourceState {
