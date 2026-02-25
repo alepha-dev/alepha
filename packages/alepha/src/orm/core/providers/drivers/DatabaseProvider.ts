@@ -64,6 +64,17 @@ export abstract class DatabaseProvider {
   }
 
   /**
+   * Migration tracking table name, scoped by schema.
+   *
+   * Returns `migrations_{schema}` so that multiple schemas sharing the same
+   * database each get their own migration history (e.g. `migrations_roadmap`,
+   * `migrations_public`).
+   */
+  public get migrationsTable(): string {
+    return `migrations_${this.schema}`;
+  }
+
+  /**
    * Log a database query with structured metadata for devtools inspection.
    */
   protected logQuery(

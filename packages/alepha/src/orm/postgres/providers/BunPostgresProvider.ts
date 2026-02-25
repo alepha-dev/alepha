@@ -1,4 +1,5 @@
 import { AlephaError } from "alepha";
+import { sql } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { PostgresProvider } from "./PostgresProvider.ts";
@@ -39,8 +40,16 @@ export class BunPostgresProvider extends PostgresProvider {
   protected override async executeMigrations(
     migrationsFolder: string,
   ): Promise<void> {
+    if (this.schema !== "public") {
+      await this.db.execute(
+        sql.raw(`SET search_path TO ${this.schema}, public`),
+      );
+    }
     const { migrate } = await import("drizzle-orm/bun-sql/migrator");
-    await migrate(this.bunDb!, { migrationsFolder });
+    await migrate(this.bunDb!, {
+      migrationsFolder,
+      migrationsTable: this.migrationsTable,
+    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------

@@ -46,25 +46,18 @@ export const AlephaOrmPostgres = $module({
         provide: DatabaseProvider,
         use: CloudflareHyperdriveProvider,
       });
-      return;
-    }
-
-    if (url?.startsWith("pglite:")) {
+    } else if (url?.startsWith("pglite:")) {
       alepha.with({
         optional: true,
         provide: DatabaseProvider,
         use: PglitePostgresProvider,
       });
-      return;
-    }
-
-    if (url?.startsWith("postgres:")) {
+    } else if (url?.startsWith("postgres:")) {
       alepha.with({
         optional: true,
         provide: DatabaseProvider,
         use: isBun ? BunPostgresProvider : NodePostgresProvider,
       });
-      return;
     }
 
     // Also chain core ORM module

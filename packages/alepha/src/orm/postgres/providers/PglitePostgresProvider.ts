@@ -145,6 +145,9 @@ export class PglitePostgresProvider extends DatabaseProvider {
         sql.raw(`SET search_path TO ${this.schema}, public`),
       );
     }
-    await migrate(this.db, { migrationsFolder });
+    await migrate(this.db, {
+      migrationsFolder,
+      migrationsTable: this.migrationsTable,
+    });
   }
 }

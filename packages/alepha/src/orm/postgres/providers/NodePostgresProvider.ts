@@ -1,4 +1,5 @@
 import { AlephaError } from "alepha";
+import { sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -30,15 +31,31 @@ export class NodePostgresProvider extends PostgresProvider {
   protected override async executeMigrations(
     migrationsFolder: string,
   ): Promise<void> {
-    await migrate(this.db, { migrationsFolder });
+    // Set search_path so schema-free migration SQL resolves to the correct schema.
+    // postgres.js doesn't support the `connection` startup parameter with pooled
+    // connections (e.g. Neon), so we SET it explicitly before running migrations.
+    if (this.schema !== "public") {
+      await this.db.execute(
+        sql.raw(`SET search_path TO ${this.schema}, public`),
+      );
+    }
+    await migrate(this.db, {
+      migrationsFolder,
+      migrationsTable: this.migrationsTable,
+    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
   public async connect(): Promise<void> {
-    this.log.debug("Connect ..");
+    const options = this.getClientOptions();
 
-    const client = postgres(this.getClientOptions());
+    this.log.debug("Connect ..", {
+      ...options,
+      password: options.password ? "****" : undefined, // hide password
+    });
+
+    const client = postgres(options);
     await client`SELECT 1`; // test connection
 
     this.client = client;

@@ -122,9 +122,6 @@ export const AlephaOrm = $module({
       }),
     );
 
-    alepha.with(DrizzleKitProvider);
-    alepha.with(RepositoryProvider);
-
     const url = env.DATABASE_URL;
     const isBun = alepha.isBun();
 
@@ -134,19 +131,17 @@ export const AlephaOrm = $module({
         provide: DatabaseProvider,
         use: CloudflareD1Provider,
       });
-      return;
+    } else {
+      // SQLite is the default for core
+      alepha.with({
+        optional: true,
+        provide: DatabaseProvider,
+        use: isBun ? BunSqliteProvider : NodeSqliteProvider,
+      });
     }
 
-    // PostgreSQL URLs are handled by AlephaOrmPostgres — skip here
-    if (url?.startsWith("postgres:") || url?.startsWith("pglite:")) {
-      return;
-    }
-
-    // SQLite is the default for core
-    alepha.with({
-      optional: true,
-      provide: DatabaseProvider,
-      use: isBun ? BunSqliteProvider : NodeSqliteProvider,
-    });
+    alepha.with(DbMigrationMode);
+    alepha.with(DrizzleKitProvider);
+    alepha.with(RepositoryProvider);
   },
 });

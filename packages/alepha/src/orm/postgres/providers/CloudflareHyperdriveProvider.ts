@@ -1,5 +1,6 @@
 import { $env, $hook, $inject, AlephaError, t } from "alepha";
 import { DatabaseProvider, type SQLLike } from "alepha/orm";
+import { sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
 
@@ -112,8 +113,16 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
   protected async executeMigrations(migrationsFolder: string): Promise<void> {
     this.log.debug(`Running Postgres migrations from '${migrationsFolder}'...`);
     try {
+      if (this.schema !== "public") {
+        await this.db.execute(
+          sql.raw(`SET search_path TO ${this.schema}, public`),
+        );
+      }
       const { migrate } = await import("drizzle-orm/postgres-js/migrator");
-      await migrate(this.db as any, { migrationsFolder });
+      await migrate(this.db as any, {
+        migrationsFolder,
+        migrationsTable: this.migrationsTable,
+      });
       this.log.debug("Postgres migrations completed successfully");
     } catch (error) {
       const errorMessage =
