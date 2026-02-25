@@ -1,9 +1,12 @@
 import { $atom, $env, $hook, $use, type Static, t } from "alepha";
+import {
+  EmailError,
+  type EmailProvider,
+  type EmailSendOptions,
+} from "alepha/email";
 import { $logger } from "alepha/logger";
 import type { Transporter } from "nodemailer";
 import nodemailer from "nodemailer";
-import { EmailError } from "../errors/EmailError.ts";
-import type { EmailProvider, EmailSendOptions } from "./EmailProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

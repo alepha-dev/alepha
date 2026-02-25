@@ -1,4 +1,5 @@
 import { Alepha, run } from "alepha";
+import { AlephaEmailBrevo } from "alepha/email/brevo";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { RoadmapApi } from "./api/index.ts";
 import { RoadmapMcp } from "./mcp/index.ts";
@@ -10,6 +11,10 @@ const alepha = Alepha.create({
     APP_NAME: "RDM",
   },
 });
+
+if (alepha.env.BREVO_API_KEY) {
+  alepha.with(AlephaEmailBrevo);
+}
 
 alepha.with(AlephaOrmPostgres);
 

@@ -3,19 +3,15 @@ import { $email } from "./primitives/$email.ts";
 import { EmailProvider } from "./providers/EmailProvider.ts";
 import { LocalEmailProvider } from "./providers/LocalEmailProvider.ts";
 import { MemoryEmailProvider } from "./providers/MemoryEmailProvider.ts";
-import { NodemailerEmailProvider } from "./providers/NodemailerEmailProvider.ts";
 
-// ---------------------------------------------------------------------------------------------------------------------
-
+// Exports
 export * from "./errors/EmailError.ts";
 export * from "./primitives/$email.ts";
 export * from "./providers/EmailProvider.ts";
 export * from "./providers/LocalEmailProvider.ts";
 export * from "./providers/MemoryEmailProvider.ts";
-export * from "./providers/NodemailerEmailProvider.ts";
 
-// ---------------------------------------------------------------------------------------------------------------------
-
+// Hook declarations
 declare module "alepha" {
   interface Hooks {
     "email:sending": {
@@ -33,28 +29,24 @@ declare module "alepha" {
   }
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
  * Email delivery with template support.
  *
  * **Features:**
  * - Send emails with templates
  * - Multiple recipients
- * - SMTP via Nodemailer
  * - Local file provider for development
+ * - Memory provider for testing
+ *
+ * For SMTP support, use `AlephaEmailSmtp` from `alepha/email/smtp`.
+ * For Brevo support, use `AlephaEmailBrevo` from `alepha/email/brevo`.
  *
  * @module alepha.email
  */
 export const AlephaEmail = $module({
   name: "alepha.email",
   primitives: [$email],
-  services: [
-    EmailProvider,
-    MemoryEmailProvider,
-    LocalEmailProvider,
-    NodemailerEmailProvider,
-  ],
+  services: [EmailProvider, MemoryEmailProvider, LocalEmailProvider],
   register: (alepha) => {
     if (alepha.isTest()) {
       alepha.with({
@@ -62,26 +54,12 @@ export const AlephaEmail = $module({
         provide: EmailProvider,
         use: MemoryEmailProvider,
       });
-    } else if (alepha.env.EMAIL_HOST) {
+    } else {
       alepha.with({
         optional: true,
         provide: EmailProvider,
-        use: NodemailerEmailProvider,
+        use: LocalEmailProvider,
       });
-    } else {
-      if (alepha.isServerless()) {
-        alepha.with({
-          optional: true,
-          provide: EmailProvider,
-          use: MemoryEmailProvider,
-        });
-      } else {
-        alepha.with({
-          optional: true,
-          provide: EmailProvider,
-          use: LocalEmailProvider,
-        });
-      }
     }
   },
 });
