@@ -68,7 +68,7 @@ export class DateTimeProvider {
   protected readonly onStop = $hook({
     on: "stop",
     handler: () => {
-      for (const timeout of this.timeouts) {
+      for (const timeout of [...this.timeouts]) {
         this.clearTimeout(timeout);
       }
 
@@ -174,7 +174,11 @@ export class DateTimeProvider {
   };
 
   public isDurationLike(value: unknown): value is DurationLike {
-    return dayjs.isDuration(this.duration(value as DurationLike));
+    try {
+      return dayjs.isDuration(this.duration(value as DurationLike));
+    } catch {
+      return false;
+    }
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -276,6 +280,10 @@ export class DateTimeProvider {
     };
 
     timeout.timer = setTimeout(() => {
+      const index = this.timeouts.indexOf(timeout);
+      if (index !== -1) {
+        this.timeouts.splice(index, 1);
+      }
       timeout.callback();
     }, timeout.duration);
 
@@ -288,6 +296,10 @@ export class DateTimeProvider {
     clearTimeout(timeout.timer);
     timeout.duration = 0;
     timeout.timer = null;
+    const index = this.timeouts.indexOf(timeout);
+    if (index !== -1) {
+      this.timeouts.splice(index, 1);
+    }
   }
 
   public clearInterval(interval: Interval): void {
@@ -328,7 +340,7 @@ export class DateTimeProvider {
     const ms = this.duration(duration, unit).asMilliseconds();
     const now = Date.now();
 
-    for (const timeout of this.timeouts) {
+    for (const timeout of [...this.timeouts]) {
       if (!timeout.timer) {
         continue;
       }
@@ -340,9 +352,17 @@ export class DateTimeProvider {
       timeout.duration = timeout.duration - spent - ms;
 
       if (timeout.duration <= 0) {
+        const index = this.timeouts.indexOf(timeout);
+        if (index !== -1) {
+          this.timeouts.splice(index, 1);
+        }
         timeout.callback();
       } else {
         timeout.timer = setTimeout(() => {
+          const index = this.timeouts.indexOf(timeout);
+          if (index !== -1) {
+            this.timeouts.splice(index, 1);
+          }
           timeout.callback();
         }, timeout.duration);
       }
@@ -354,12 +374,13 @@ export class DateTimeProvider {
       }
 
       clearInterval(interval.timer);
-      interval.timer = null;
 
       const repeat = Math.floor(ms / interval.duration);
       for (let i = 0; i < repeat; i++) {
         await interval.run();
       }
+
+      interval.timer = -1;
     }
 
     await this.tick();

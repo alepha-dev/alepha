@@ -44,10 +44,10 @@ export const $throttle = (options: ThrottleOptions): Middleware => {
         .asMilliseconds();
 
       let tokens = options.rate;
-      let lastRefill = Date.now();
+      let lastRefill = dateTimeProvider.nowMillis();
 
       return async (...args) => {
-        const now = Date.now();
+        const now = dateTimeProvider.nowMillis();
         const elapsed = now - lastRefill;
         const refill = Math.floor(elapsed / intervalMs) * options.rate;
 
@@ -60,7 +60,7 @@ export const $throttle = (options: ThrottleOptions): Middleware => {
           const waitMs = intervalMs - (now - lastRefill);
           await dateTimeProvider.wait(waitMs);
           tokens = options.rate;
-          lastRefill = Date.now();
+          lastRefill = dateTimeProvider.nowMillis();
         }
 
         tokens--;

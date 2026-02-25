@@ -41,21 +41,14 @@ export const $debounce = (options: DebounceOptions): Middleware => {
     options: options as unknown as Record<string, unknown>,
     handler: ({ alepha, next }) => {
       const dateTimeProvider = alepha.inject(DateTimeProvider);
-      const windowMs = dateTimeProvider
-        .duration(options.delay)
-        .asMilliseconds();
-
-      const pending = new Map<
-        string,
-        { promise: Promise<any>; timer: ReturnType<typeof setTimeout> }
-      >();
+      const pending = new Map<string, Promise<any>>();
 
       return async (...args) => {
         const key = options.key?.(...args) ?? JSON.stringify(args);
 
         const existing = pending.get(key);
         if (existing) {
-          return existing.promise;
+          return existing;
         }
 
         let resolve: (value: any) => void;
@@ -65,7 +58,7 @@ export const $debounce = (options: DebounceOptions): Middleware => {
           reject = rej;
         });
 
-        const timer = setTimeout(async () => {
+        dateTimeProvider.createTimeout(async () => {
           try {
             const result = await next(...args);
             resolve!(result);
@@ -74,9 +67,9 @@ export const $debounce = (options: DebounceOptions): Middleware => {
           } finally {
             pending.delete(key);
           }
-        }, windowMs);
+        }, options.delay);
 
-        pending.set(key, { promise, timer });
+        pending.set(key, promise);
         return promise;
       };
     },
