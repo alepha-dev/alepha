@@ -1,7 +1,7 @@
 <div align="center">
 <h1>
 <img
-  src="https://raw.githubusercontent.com/feunard/alepha/main/apps/docs/public/icon-512.png"
+  src="https://raw.githubusercontent.com/feunard/alepha/main/packages/alepha/assets/logo.svg"
   width="128"
   height="128"
   alt="Alepha logo"
