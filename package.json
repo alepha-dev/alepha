@@ -33,7 +33,7 @@
     "convert": "node scripts/convert.ts",
     "lint": "yarn alepha lint",
     "typecheck": "yarn alepha typecheck",
-    "test": "yarn alepha test",
+    "test": "yarn vitest run",
     "check-dependencies": "yarn workspaces foreach -Apt exec depcheck .",
     "build": "yarn workspaces foreach -Apt run build",
     "test:bun": "bun test ./**/*.bun.spec.ts",

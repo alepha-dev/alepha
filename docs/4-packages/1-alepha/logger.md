@@ -27,12 +27,3 @@ Configurable logging with multiple outputs.
 ### Primitives
 
 - [`$logger`](/docs/reference-primitives-$logger) — Create a logger.
-
-### Environment Variables
-
-Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `FORCE_COLOR` | text | - |  |
-| `NO_COLOR` | text | - |  |

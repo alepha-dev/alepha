@@ -1,6 +1,6 @@
 import { $inject, Alepha } from "alepha";
 import { AlephaCliUtils } from "alepha/cli";
-import { EnvUtils, type RunnerMethod } from "alepha/command";
+import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 import { PlatformCacheProvider } from "../providers/PlatformCacheProvider.ts";
@@ -30,6 +30,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly api = $inject(CloudflareApi);
   protected readonly wrangler = $inject(WranglerApi);
+  protected readonly runner = $inject(Runner);
 
   protected provisionedD1Id?: string;
   protected provisionedHyperdriveId?: string;
@@ -47,6 +48,23 @@ export class CloudflareAdapter extends PlatformAdapter {
     return !!dbUrl?.startsWith("postgres:");
   }
 
+  protected async runShell(
+    command: string,
+    options: Parameters<ShellProvider["run"]>[1] = {},
+  ) {
+    const capture = options.capture;
+    const output = await this.shell.run(command, {
+      ...options,
+      capture: capture ?? this.runner.useDynamicLogger,
+    });
+
+    if (capture && !this.runner.useDynamicLogger) {
+      this.log.info(output);
+    }
+
+    return output;
+  }
+
   // -------------------------------------------------------------------------
   // authenticate
   // -------------------------------------------------------------------------
@@ -57,10 +75,8 @@ export class CloudflareAdapter extends PlatformAdapter {
       handler: async () => {
         await this.wrangler.ensureInstalled(ctx.root, run);
 
-        if (await this.cache.isLoginFresh(ctx.root, "cloudflare")) {
-          return;
-        }
-
+        // Always validate the token — refresh tokens can expire between runs
+        // even when the cache TTL hasn't elapsed.
         let needsLogin = false;
 
         try {
@@ -73,6 +89,11 @@ export class CloudflareAdapter extends PlatformAdapter {
           run.pause();
           await this.wrangler.login();
           run.resume();
+        }
+
+        // Skip account resolution if cache is fresh
+        if (await this.cache.isLoginFresh(ctx.root, "cloudflare")) {
+          return;
         }
 
         // Resolve account ID via REST API (typed, no regex)
@@ -139,7 +160,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     await run({
       name: "alepha build -t cloudflare",
       handler: async () => {
-        await this.shell.run("alepha build -t cloudflare", {
+        await this.runShell("alepha build -t cloudflare", {
           root: appDir,
           env,
         });
@@ -350,12 +371,12 @@ export class CloudflareAdapter extends PlatformAdapter {
         const env = { DATABASE_URL: dbUrl };
 
         if (await this.fs.exists(migrationsDir)) {
-          await this.shell.run("alepha db migrations check", {
+          await this.runShell("alepha db migrations check", {
             resolve: true,
             env,
           });
         } else {
-          await this.shell.run("alepha db migrations generate", {
+          await this.runShell("alepha db migrations create", {
             resolve: true,
             env,
           });
@@ -392,7 +413,7 @@ export class CloudflareAdapter extends PlatformAdapter {
             process.env.POSTGRES_SCHEMA)!;
         }
 
-        await this.shell.run(`alepha db migrations apply --mode ${ctx.env}`, {
+        await this.runShell(`alepha db migrations apply --mode ${ctx.env}`, {
           resolve: true,
           env,
         });

@@ -43,7 +43,7 @@ wrangler dev --config=dist/wrangler.jsonc
 The build produces:
 
 - `dist/wrangler.jsonc` -- Wrangler configuration with worker name, compatibility flags, and bindings
-- `dist/main.cloudflare.js` -- Worker entry point that bootstraps Alepha and handles `fetch` and `scheduled` events
+- `dist/main.cloudflare.js` -- Worker entry point that bootstraps Alepha and handles `fetch`, `scheduled`, and `queue` events
 
 The `wrangler.jsonc` includes `nodejs_compat` compatibility flag and `no_bundle: true` (Alepha bundles the code itself).
 
@@ -101,9 +101,14 @@ This loads `.env` and `.env.production` before building.
 
 If your project has a React frontend, the built client assets are placed in `dist/public/` and served via Cloudflare's asset binding.
 
+## Queue
+
+`$queue` and `$job` are supported via [Cloudflare Queues](https://developers.cloudflare.com/queues/). The build automatically adds the `JOBS_QUEUE` binding and `queue` consumer to `wrangler.jsonc` when queue primitives are detected.
+
+At runtime, `CloudflareQueueProvider` replaces the default queue provider and `WorkerdWorkerProvider` handles message consumption via push-based `queue` events (no polling).
+
 ## Limitations
 
-- **Queue** (`$queue`) is not supported on Cloudflare Workers
 - **Redis-based features** (`$lock` with Redis, `$cache` with Redis, `$topic` with Redis) are not available
 
 ## Configuration

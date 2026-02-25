@@ -20,11 +20,3 @@ Server and browser-safe cookie handling.
 ### Primitives
 
 - [`$cookie`](/docs/reference-primitives-$cookie) — Declares a type-safe, configurable HTTP cookie.
-
-### Environment Variables
-
-Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `APP_SECRET` | text | DEFAULT_APP_SECRET |  |

@@ -1,5 +1,5 @@
 import { $inject, AlephaError, t } from "alepha";
-import { $command } from "alepha/command";
+import { $command, Runner } from "alepha/command";
 import { $logger } from "alepha/logger";
 import type {
   DatabaseProvider,
@@ -10,6 +10,7 @@ import { FileSystemProvider } from "alepha/system";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
+import { ViteUtils } from "../services/ViteUtils.ts";
 
 const drizzleCommandFlags = t.object({
   provider: t.optional(
@@ -26,6 +27,8 @@ export class DbCommand {
   protected readonly utils = $inject(AlephaCliUtils);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly entryProvider = $inject(AppEntryProvider);
+  protected readonly viteUtil = $inject(ViteUtils);
+  protected readonly runner = $inject(Runner);
 
   /**
    * Check if database migrations are up to date.
@@ -122,8 +125,8 @@ export class DbCommand {
   /**
    * Generate database migration files
    */
-  protected readonly generate = $command({
-    name: "generate",
+  protected readonly create = $command({
+    name: "create",
     mode: true,
     description: "Generate migration files from current schema",
     args: t.optional(
@@ -134,9 +137,9 @@ export class DbCommand {
     ),
     flags: t.extend(drizzleCommandFlags, {
       custom: t.optional(
-        t.text({
+        t.boolean({
           description:
-            "Custom migration name for drizzle-kit generate --custom",
+            "Generate an empty migration file for custom SQL (e.g., for data migrations or manual adjustments)",
         }),
       ),
       name: t.optional(
@@ -147,7 +150,7 @@ export class DbCommand {
     }),
     handler: async ({ args, flags, root }) => {
       const parts: string[] = [];
-      if (flags.custom) parts.push(`--custom=${flags.custom}`);
+      if (flags.custom) parts.push(`--custom=1`);
       if (flags.name) parts.push(`--name=${flags.name}`);
       const commandFlags = parts.length > 0 ? parts.join(" ") : undefined;
 
@@ -203,16 +206,42 @@ export class DbCommand {
       }),
     ),
     flags: drizzleCommandFlags,
-    handler: async ({ root, args, flags }) => {
-      await this.runDrizzleKitCommand({
-        root,
-        args,
-        command: "migrate",
-        provider: flags.provider,
-        logMessage: (providerName, dialect) =>
-          `Migrate '${providerName}' database (${dialect}) ...`,
+    handler: async ({ root, run, mode }) => {
+      const entry = await this.entryProvider.getAppEntry(root);
+
+      await run({
+        name: `db migrate (${mode || "development"})`,
+        handler: async () => {
+          process.env.MIGRATE = "true";
+
+          if (this.runner.useDynamicLogger) {
+            process.env.LOG_LEVEL = "warn";
+          }
+
+          const alepha = await this.viteUtil.runAlepha({
+            entry,
+            mode: "production",
+          });
+
+          await alepha.start();
+        },
       });
     },
+
+    //   await run({
+    //     name: `db migrate (${mode || "development"})`,
+    //     handler: async () => {
+    //       await this.utils.exec(`tsx ${entry.server}`, {
+    //         capture: this.runner.useDynamicLogger,
+    //         env: {
+    //           ...process.env,
+    //           NODE_ENV: "production",
+    //           MIGRATE: "true",
+    //         },
+    //       });
+    //     },
+    //   });
+    // },
   });
 
   /**
@@ -248,7 +277,7 @@ export class DbCommand {
     name: "migrations",
     aliases: ["m"],
     description: "Manage database migrations",
-    children: [this.check, this.generate, this.apply],
+    children: [this.check, this.create, this.apply],
     handler: async ({ help }) => {
       help();
     },
@@ -342,6 +371,41 @@ export class DbCommand {
           },
         },
       );
+
+      // Post-process generated SQL: strip explicit "public". schema qualifiers
+      // from FK REFERENCES so migration files stay truly schema-free.
+      // search_path handles resolution at runtime.
+      if (options.command === "generate" && dialect === "postgresql") {
+        await this.stripPublicSchemaFromMigrations(
+          this.fs.join(rootDir, "migrations", providerName),
+        );
+      }
+    }
+  }
+
+  /**
+   * Remove `"public".` schema qualifiers from FK REFERENCES in SQL migration files.
+   *
+   * drizzle-kit generates `REFERENCES "public"."table"(...)` even for schema-free
+   * models. This breaks when deploying to a non-public schema via search_path.
+   */
+  protected async stripPublicSchemaFromMigrations(
+    migrationsDir: string,
+  ): Promise<void> {
+    const files = await this.fs.ls(migrationsDir).catch(() => []);
+
+    for (const file of files) {
+      if (!file.endsWith(".sql")) continue;
+
+      const filePath = this.fs.join(migrationsDir, file);
+      const content = await this.fs.readFile(filePath);
+      const sql = content.toString("utf-8");
+      const cleaned = sql.replaceAll('"public".', "");
+
+      if (cleaned !== sql) {
+        await this.fs.writeFile(filePath, cleaned);
+        this.log.debug(`Stripped "public". qualifiers from ${file}`);
+      }
     }
   }
 
@@ -387,6 +451,14 @@ export class DbCommand {
         url: options.providerUrl,
       },
     };
+
+    // Use schema-specific migration table so multiple schemas sharing
+    // the same database each track their own migration history.
+    if (options.dialect === "postgresql") {
+      config.migrations = {
+        table: options.provider.migrationsTable,
+      };
+    }
 
     // Schema filter is only needed for push/studio (introspection).
     // For generate, models are already schema-free.

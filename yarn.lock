@@ -5851,7 +5851,6 @@ __metadata:
     vite: "npm:^7.3.1"
     vite-bundle-analyzer: "npm:^1.3.6"
     vitest: "npm:^4.0.18"
-    worker-mailer: "npm:^1.2.1"
     ws: "npm:^8.19.0"
   peerDependencies:
     react: ^19
@@ -14089,13 +14088,6 @@ __metadata:
   bin:
     why-is-node-running: cli.js
   checksum: 10c0/1cde0b01b827d2cf4cb11db962f3958b9175d5d9e7ac7361d1a7b0e2dc6069a263e69118bd974c4f6d0a890ef4eedfe34cf3d5167ec14203dbc9a18620537054
-  languageName: node
-  linkType: hard
-
-"worker-mailer@npm:^1.2.1":
-  version: 1.2.1
-  resolution: "worker-mailer@npm:1.2.1"
-  checksum: 10c0/6009e35e51c47afff13e90d4e84300599451912d0fc33f249793566e87056ddb373dfc3a9ac7bd1a95d05990019005f10f20c003889586785159c9184f1a6145
   languageName: node
   linkType: hard
 

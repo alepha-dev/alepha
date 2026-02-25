@@ -28,20 +28,12 @@ export default defineConfig({
       ],
     },
     env: {
+      LOG_LEVEL: "warn",
       // for testing, let's use Paris timezone as default :)
       TZ: "Europe/Paris",
       // database connection string for tests, installed via docker-compose
       POSTGRES_URL: "postgres://postgres:postgres@127.0.0.1:5432/postgres",
       DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:5432/postgres",
-      // azure blob storage connection string for tests, using azurite via docker-compose
-      AZ_STORAGE_CONNECTION_STRING:
-        "DefaultEndpointsProtocol=http;" +
-        "AccountName=devstoreaccount1;" +
-        "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;" +
-        "BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;",
-      // used for testing @bucket/vercel
-      BLOB_READ_WRITE_TOKEN:
-        env.BLOB_READ_WRITE_TOKEN ?? "vercel_blob_rw_mock_token_123456789",
       // S3-compatible storage (MinIO via docker-compose) for testing @alepha/bucket-s3
       S3_ENDPOINT: "http://127.0.0.1:9090",
       S3_REGION: "us-east-1",

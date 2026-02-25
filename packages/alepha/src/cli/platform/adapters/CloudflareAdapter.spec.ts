@@ -175,25 +175,36 @@ describe("CloudflareAdapter", () => {
   });
 
   describe("authenticate", () => {
-    test("skips auth token check when cache is fresh", async ({ expect }) => {
-      const { adapter, shell, dateTime, naming } = createTestEnv();
+    test("always validates token but skips account resolution when cache is fresh", async ({
+      expect,
+    }) => {
+      const { adapter, shell, dateTime, naming, api } = createTestEnv();
       const ctx = makeCtx(naming);
 
-      // Pre-warm cache
       dateTime.pause();
       shell.outputs.set(
         "wrangler auth token --json",
         JSON.stringify({ type: "oauth", token: "test-token" }),
       );
 
+      let resolveAccountCalls = 0;
+      const originalResolve = api.resolveAccountId.bind(api);
+      api.resolveAccountId = async () => {
+        resolveAccountCalls++;
+        return originalResolve();
+      };
+
       const run = createMockRun();
       await adapter.authenticate(ctx, run);
+      expect(resolveAccountCalls).toBe(1);
 
-      // Reset shell calls, call again -- should use cache
+      // Second call — token still validated, but account resolution skipped
       shell.calls.length = 0;
+      resolveAccountCalls = 0;
       await adapter.authenticate(ctx, run);
 
-      expect(shell.wasCalled("wrangler auth token --json")).toBe(false);
+      expect(shell.wasCalled("wrangler auth token --json")).toBe(true);
+      expect(resolveAccountCalls).toBe(0);
     });
 
     test("checks auth token when cache is stale", async ({ expect }) => {

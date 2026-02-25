@@ -48,5 +48,4 @@ Environment variables used to configure this module. These can be set in your `.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `REACT_SSR_ENABLED` | boolean | - |  |
-| `REACT_STRICT_MODE` | boolean | true |  |
+| `REACT_SSR_ENABLED` | boolean | - | Enable or disable server-side rendering (SSR) for React pages. When set to false, pages are rendered client-side only. |

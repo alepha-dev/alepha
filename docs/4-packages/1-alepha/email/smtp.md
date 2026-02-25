@@ -1,8 +1,8 @@
-# Alepha - Email
+# Alepha - Email Smtp
 
 ## Installation
 
-Part of the `alepha` package. Import from `alepha/email`.
+Part of the `alepha` package. Import from `alepha/email/smtp`.
 
 ```bash
 npm install alepha
@@ -10,20 +10,13 @@ npm install alepha
 
 ## Overview
 
-Email delivery with template support.
-
-**Features:**
-- Send emails with templates
-- Multiple recipients
-- SMTP via Nodemailer
-- Local file provider for development
+Plugin for Alepha Email that provides SMTP capabilities via Nodemailer.
 
 ## API Reference
 
 ### Providers
 
 - [`NodemailerEmailProvider`](/docs/reference-providers-nodemaileremailprovider) — Email provider using Nodemailer for SMTP transport.
-- [`WorkermailerEmailProvider`](/docs/reference-providers-workermaileremailprovider) — Email provider using worker-mailer for Cloudflare Workers.
 
 ### Environment Variables
 
@@ -31,9 +24,7 @@ Environment variables used to configure this module. These can be set in your `.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `EMAIL_AUTH_TYPE` | enum | plain | SMTP authentication type |
 | `EMAIL_FROM` | text | - | Default from email address |
-| `EMAIL_FROM_NAME` | text | - | Default from name |
 | `EMAIL_HOST` | text | - | SMTP server host |
 | `EMAIL_PASS` | text | - | SMTP authentication password |
 | `EMAIL_PORT` | number | 587 | SMTP server port |

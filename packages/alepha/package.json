@@ -54,8 +54,7 @@
     "swagger-ui-dist": "^5.31.2",
     "tsdown": "^0.20.3",
     "vite": "^7.3.1",
-    "vitest": "^4.0.18",
-    "worker-mailer": "^1.2.1"
+    "vitest": "^4.0.18"
   },
   "peerDependencies": {
     "react": "^19",
@@ -217,6 +216,11 @@
       "import": "./src/devtools/index.ts",
       "default": "./src/devtools/index.ts"
     },
+    "./email/brevo": {
+      "types": "./src/email/brevo/index.ts",
+      "import": "./src/email/brevo/index.ts",
+      "default": "./src/email/brevo/index.ts"
+    },
     "./email": {
       "types": "./src/email/core/index.ts",
       "workerd": "./src/email/core/index.workerd.ts",
@@ -227,11 +231,6 @@
       "types": "./src/email/smtp/index.ts",
       "import": "./src/email/smtp/index.ts",
       "default": "./src/email/smtp/index.ts"
-    },
-    "./email/brevo": {
-      "types": "./src/email/brevo/index.ts",
-      "import": "./src/email/brevo/index.ts",
-      "default": "./src/email/brevo/index.ts"
     },
     "./fake": {
       "types": "./src/fake/index.ts",

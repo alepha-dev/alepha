@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { NodemailerEmailProvider } from "alepha/email";
+import { NodemailerEmailProvider } from "alepha/email/smtp";
 ```
 
 ## Overview

@@ -30,11 +30,3 @@ Model Context Protocol for AI tool integration.
 ### Providers
 
 - [`McpServerProvider`](/docs/reference-providers-mcpserverprovider) — Core MCP server provider that handles protocol messages.
-
-### Environment Variables
-
-Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `MCP_SSE_PATH` | text | /mcp | Path for MCP SSE endpoint |
