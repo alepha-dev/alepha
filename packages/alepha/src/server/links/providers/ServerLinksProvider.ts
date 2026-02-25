@@ -78,7 +78,7 @@ export class ServerLinksProvider {
         this.securityProvider =
           this.alepha.inject<SecurityProvider>("SecurityProvider");
       } catch {
-        this.log.info(
+        this.log.debug(
           "Security module is not loaded — permission checks are disabled",
         );
       }

@@ -91,6 +91,11 @@ export class TypeGuard {
   isVoid = Type.IsVoid;
   isLiteral = Type.IsLiteral;
   isSchema = Type.IsSchema;
+  isScalar = (schema: TSchema): boolean =>
+    this.isString(schema) ||
+    this.isNumber(schema) ||
+    this.isInteger(schema) ||
+    this.isBoolean(schema);
   // -------------------------------------------------------------------------------------------------------------------
   isFile = isTypeFile;
   isDateTime = (schema: unknown) => {
@@ -128,32 +133,11 @@ export class TypeProvider {
     );
   }
 
-  static translateError(error: TypeBoxError, locale?: string): string {
-    // if (!locale) {
-    //   return error.cause.message;
-    // }
-    //
-    // for (const [key, value] of Object.entries(Locale)) {
-    //   if (key === "Set" || key === "Get" || key === "Reset") continue;
-    //   if (key === locale || key.startsWith(`${locale}_`)) {
-    //     return (value as (error: TLocalizedValidationError) => string)(
-    //       error.cause,
-    //     );
-    //   }
-    // }
+  static translateError(error: TypeBoxError, _locale?: string): string {
     return error.cause.message;
   }
 
-  static setLocale(locale: string) {
-    // for (const [key, value] of Object.entries(Locale)) {
-    //   if (key === "Set" || key === "Get" || key === "Reset") continue;
-    //   if (key === locale || key.startsWith(`${locale}_`)) {
-    //     Locale.Set(value as TLocalizedValidationMessageCallback);
-    //     return;
-    //   }
-    // }
-    // throw new AlephaError(`Locale not found: ${locale}`);
-  }
+  static setLocale(_locale: string) {}
 
   static isValidBigInt(value: string | number) {
     if (typeof value === "number") {
@@ -516,7 +500,7 @@ export class TypeProvider {
   /**
    * Create a schema for binary data represented as a base64 string.
    */
-  public binary(options: TStringOptions) {
+  public binary(options: TStringOptions = {}) {
     return this.string({
       ...options,
       format: "binary",
@@ -623,9 +607,9 @@ export class TypeProvider {
   }
 
   /**
-   * Create a schema for a string enum e.g. LIKE_THIS.
+   * Create a schema for a constant case string e.g. LIKE_THIS.
    */
-  public snakeCase = (options?: TStringOptions) =>
+  public constantCase = (options?: TStringOptions) =>
     this.text({
       pattern: "^[A-Z_-]+$",
       ...options,
@@ -637,7 +621,7 @@ export class TypeProvider {
   public valueLabel = (options?: TObjectOptions) =>
     this.object(
       {
-        value: this.snakeCase({
+        value: this.constantCase({
           description: "Machine-readable value.",
         }),
         label: this.text({

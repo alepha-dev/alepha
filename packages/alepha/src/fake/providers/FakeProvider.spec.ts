@@ -132,9 +132,9 @@ describe("FakeProvider", () => {
     expect(result).toMatch(/^[a-z]{2,3}(?:-[A-Z]{2})?$/);
   });
 
-  test("generates snake_case string", ({ expect }) => {
+  test("generates constantCase string", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = t.snakeCase();
+    const schema = t.constantCase();
     const result = fake.generate(schema);
 
     expect(typeof result).toBe("string");

@@ -168,7 +168,7 @@ export class Alepha {
     }
 
     // force production mode when building with vite
-    if (process.env.NODE_ENV === "production") {
+    if (typeof process === "object" && process.env?.NODE_ENV === "production") {
       state.env ??= {};
       Object.assign(state.env, {
         NODE_ENV: "production",
@@ -500,7 +500,7 @@ export class Alepha {
     this.starting = Promise.withResolvers();
 
     try {
-      const now = Date.now();
+      const now = performance.now();
 
       this.log?.info("Starting App...");
 
@@ -535,7 +535,9 @@ export class Alepha {
 
       await this.events.emit("ready", this, { log: true });
 
-      this.log?.info(`App is now ready [${Date.now() - now}ms]`);
+      this.log?.info(
+        `App is now ready [${Math.round(performance.now() - now)}ms]`,
+      );
 
       this.ready = true;
     } catch (error) {
@@ -890,9 +892,9 @@ export class Alepha {
     for (const key in config) {
       if (typeof config[key] === "string") {
         for (const env in config) {
-          config[key] = config[key].replace(
-            new RegExp(`\\$${env}`, "gim"),
-            config[env],
+          config[key] = (config[key] as string).replaceAll(
+            `$${env}`,
+            String(config[env] ?? ""),
           );
         }
       }
@@ -1084,8 +1086,12 @@ export class Alepha {
     (value as any).onInit();
 
     const kind = value.constructor as Service;
-    const list = this.primitiveRegistry.get(kind) ?? [];
-    this.primitiveRegistry.set(kind, [...list, value]);
+    const existing = this.primitiveRegistry.get(kind);
+    if (existing) {
+      existing.push(value);
+    } else {
+      this.primitiveRegistry.set(kind, [value]);
+    }
   }
 }
 

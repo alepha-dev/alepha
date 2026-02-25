@@ -303,13 +303,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   // ===========================================================================
 
   protected interpretEncode(schema: TSchema, value: any): any {
-    if (
-      t.schema.isString(schema) ||
-      t.schema.isNumber(schema) ||
-      t.schema.isInteger(schema) ||
-      t.schema.isBoolean(schema) ||
-      this.isEnum(schema)
-    ) {
+    if (this.isLeaf(schema)) {
       return value;
     }
 
@@ -321,30 +315,18 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       const arrSchema = schema as TArray;
       if (!Array.isArray(value)) return value;
 
-      if (
-        t.schema.isString(arrSchema.items) ||
-        t.schema.isNumber(arrSchema.items) ||
-        t.schema.isInteger(arrSchema.items) ||
-        t.schema.isBoolean(arrSchema.items)
-      ) {
+      if (t.schema.isScalar(arrSchema.items)) {
         return value;
       }
       return value.map((e) => this.interpretEncode(arrSchema.items, e));
     }
 
     if (t.schema.isObject(schema)) {
-      const objSchema = schema as TObject;
-      const props = objSchema.properties as Record<string, TSchema>;
-      const keys = Object.keys(props);
-      const req = new Set((objSchema.required as string[]) || []);
-
       const result: any[] = [];
-      for (const k of keys) {
-        const ps = props[k];
-        const isOpt = !req.has(k) || t.schema.isOptional(ps);
-        const isNullable = this.isNullable(ps);
-        const inner = this.unwrap(ps);
-        const v = value[k];
+      for (const { key, isOpt, isNullable, inner } of this.getObjectFields(
+        schema as TObject,
+      )) {
+        const v = value[key];
 
         if (isOpt) {
           result.push(v !== undefined ? this.interpretEncode(inner, v) : null);
@@ -376,13 +358,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     schema: TSchema,
     ctx: { arr: any[]; i: number },
   ): any {
-    if (
-      t.schema.isString(schema) ||
-      t.schema.isNumber(schema) ||
-      t.schema.isInteger(schema) ||
-      t.schema.isBoolean(schema) ||
-      this.isEnum(schema)
-    ) {
+    if (this.isLeaf(schema)) {
       return ctx.arr[ctx.i++];
     }
 
@@ -404,29 +380,22 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     }
 
     if (t.schema.isObject(schema)) {
-      const objSchema = schema as TObject;
-      const props = objSchema.properties as Record<string, TSchema>;
-      const keys = Object.keys(props);
-      const req = new Set((objSchema.required as string[]) || []);
-
       const result: Record<string, any> = {};
 
-      for (const k of keys) {
-        const ps = props[k];
-        const isOpt = !req.has(k) || t.schema.isOptional(ps);
-        const isNullable = this.isNullable(ps);
-        const inner = this.unwrap(ps);
+      for (const { key, isOpt, isNullable, inner } of this.getObjectFields(
+        schema as TObject,
+      )) {
         const val = ctx.arr[ctx.i++];
 
         if (isOpt) {
           if (val !== null) {
-            result[k] = this.interpretDecodeFromValue(inner, val);
+            result[key] = this.interpretDecodeFromValue(inner, val);
           }
         } else if (isNullable) {
-          result[k] =
+          result[key] =
             val === null ? null : this.interpretDecodeFromValue(inner, val);
         } else {
-          result[k] = this.interpretDecodeFromValue(inner, val);
+          result[key] = this.interpretDecodeFromValue(inner, val);
         }
       }
 
@@ -452,13 +421,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   }
 
   protected interpretDecodeFromValue(schema: TSchema, value: any): any {
-    if (
-      t.schema.isString(schema) ||
-      t.schema.isNumber(schema) ||
-      t.schema.isInteger(schema) ||
-      t.schema.isBoolean(schema) ||
-      this.isEnum(schema)
-    ) {
+    if (this.isLeaf(schema)) {
       return value;
     }
 
@@ -508,13 +471,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   // ===========================================================================
 
   protected genEnc(schema: TSchema, ve: string): string {
-    if (
-      t.schema.isString(schema) ||
-      t.schema.isNumber(schema) ||
-      t.schema.isInteger(schema) ||
-      t.schema.isBoolean(schema) ||
-      this.isEnum(schema)
-    ) {
+    if (this.isLeaf(schema)) {
       return ve;
     }
 
@@ -525,35 +482,23 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     if (t.schema.isArray(schema)) {
       const arrSchema = schema as TArray;
       const itemEnc = this.genEnc(arrSchema.items, "e");
-      if (
-        t.schema.isString(arrSchema.items) ||
-        t.schema.isNumber(arrSchema.items) ||
-        t.schema.isInteger(arrSchema.items) ||
-        t.schema.isBoolean(arrSchema.items)
-      ) {
+      if (t.schema.isScalar(arrSchema.items)) {
         return ve;
       }
       return `${ve}.map(e=>${itemEnc})`;
     }
 
     if (t.schema.isObject(schema)) {
-      const objSchema = schema as TObject;
-      const props = objSchema.properties as Record<string, TSchema>;
-      const keys = Object.keys(props);
-      const req = new Set((objSchema.required as string[]) || []);
-
       const parts: string[] = [];
-      for (const k of keys) {
-        const ps = props[k];
-        const isOpt = !req.has(k) || t.schema.isOptional(ps);
-        const isNullable = this.isNullable(ps);
-        const inner = this.unwrap(ps);
-        const innerEnc = this.genEnc(inner, `${ve}.${k}`);
+      for (const { key, isOpt, isNullable, inner } of this.getObjectFields(
+        schema as TObject,
+      )) {
+        const innerEnc = this.genEnc(inner, `${ve}.${key}`);
 
         if (isOpt) {
-          parts.push(`${ve}.${k}!==undefined?${innerEnc}:null`);
+          parts.push(`${ve}.${key}!==undefined?${innerEnc}:null`);
         } else if (isNullable) {
-          parts.push(`${ve}.${k}!==null?${innerEnc}:null`);
+          parts.push(`${ve}.${key}!==null?${innerEnc}:null`);
         } else {
           parts.push(innerEnc);
         }
@@ -581,13 +526,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   protected genDec(schema: TSchema): { code: string; result: string } {
     const v = this.nextVar();
 
-    if (
-      t.schema.isString(schema) ||
-      t.schema.isNumber(schema) ||
-      t.schema.isInteger(schema) ||
-      t.schema.isBoolean(schema) ||
-      this.isEnum(schema)
-    ) {
+    if (this.isLeaf(schema)) {
       return { code: "", result: "a[i++]" };
     }
 
@@ -606,61 +545,44 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     }
 
     if (t.schema.isObject(schema)) {
-      const objSchema = schema as TObject;
-      const props = objSchema.properties as Record<string, TSchema>;
-      const keys = Object.keys(props);
-      const req = new Set((objSchema.required as string[]) || []);
+      const fields = this.getObjectFields(schema as TObject);
 
       // Check if simple (all required primitives)
-      let simple = true;
-      for (const k of keys) {
-        const ps = props[k];
-        const isOpt = !req.has(k) || t.schema.isOptional(ps);
-        const isNullable = this.isNullable(ps);
-        const inner = this.unwrap(ps);
-        if (
-          isOpt ||
-          isNullable ||
-          t.schema.isObject(inner) ||
-          t.schema.isArray(inner)
-        ) {
-          simple = false;
-          break;
-        }
-      }
+      const simple = fields.every(
+        ({ isOpt, isNullable, inner }) =>
+          !isOpt &&
+          !isNullable &&
+          !t.schema.isObject(inner) &&
+          !t.schema.isArray(inner),
+      );
 
       if (simple) {
-        const fields = keys.map((k) => `${k}:a[i++]`);
-        return { code: "", result: `{${fields.join(",")}}` };
+        const fieldExprs = fields.map(({ key }) => `${key}:a[i++]`);
+        return { code: "", result: `{${fieldExprs.join(",")}}` };
       }
 
       let code = `const ${v}={};`;
-      for (const k of keys) {
-        const ps = props[k];
-        const isOpt = !req.has(k) || t.schema.isOptional(ps);
-        const isNullable = this.isNullable(ps);
-        const inner = this.unwrap(ps);
-
+      for (const { key, isOpt, isNullable, inner } of fields) {
         if (isOpt) {
           const nested = this.genDecFromValue(inner, "t");
-          code += `{const t=a[i++];if(t!==null){${v}.${k}=${nested};}}`;
+          code += `{const t=a[i++];if(t!==null){${v}.${key}=${nested};}}`;
         } else if (isNullable) {
           const nested = this.genDecFromValue(inner, "t");
-          code += `{const t=a[i++];if(t===null){${v}.${k}=null;}else{${v}.${k}=${nested};}}`;
+          code += `{const t=a[i++];if(t===null){${v}.${key}=null;}else{${v}.${key}=${nested};}}`;
         } else if (t.schema.isObject(inner)) {
           const nested = this.genDecFromValue(inner, "a[i++]");
-          code += `${v}.${k}=${nested};`;
+          code += `${v}.${key}=${nested};`;
         } else if (t.schema.isArray(inner)) {
           // Handle arrays - check if items need transformation
           const arrSchema = inner as TArray;
           if (t.schema.isObject(arrSchema.items)) {
             const itemTransform = this.genDecFromValue(arrSchema.items, "e");
-            code += `${v}.${k}=a[i++].map(e=>${itemTransform});`;
+            code += `${v}.${key}=a[i++].map(e=>${itemTransform});`;
           } else {
-            code += `${v}.${k}=a[i++];`;
+            code += `${v}.${key}=a[i++];`;
           }
         } else {
-          code += `${v}.${k}=a[i++];`;
+          code += `${v}.${key}=a[i++];`;
         }
       }
 
@@ -681,13 +603,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   }
 
   protected genDecFromValue(schema: TSchema, expr: string): string {
-    if (
-      t.schema.isString(schema) ||
-      t.schema.isNumber(schema) ||
-      t.schema.isInteger(schema) ||
-      t.schema.isBoolean(schema) ||
-      this.isEnum(schema)
-    ) {
+    if (this.isLeaf(schema)) {
       return expr;
     }
     if (t.schema.isBigInt(schema)) {
@@ -721,6 +637,29 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   // Helpers
   // ===========================================================================
 
+  protected isLeaf(schema: TSchema): boolean {
+    return t.schema.isScalar(schema) || this.isEnum(schema);
+  }
+
+  protected getObjectFields(schema: TObject): Array<{
+    key: string;
+    isOpt: boolean;
+    isNullable: boolean;
+    inner: TSchema;
+  }> {
+    const props = schema.properties as Record<string, TSchema>;
+    const req = new Set((schema.required as string[]) || []);
+    return Object.keys(props).map((key) => {
+      const ps = props[key];
+      return {
+        key,
+        isOpt: !req.has(key) || t.schema.isOptional(ps),
+        isNullable: this.isNullable(ps),
+        inner: this.unwrap(ps),
+      };
+    });
+  }
+
   protected isEnum(schema: TSchema): boolean {
     return (
       "enum" in schema &&
@@ -751,34 +690,29 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   protected reconstructObject(schema: TSchema, arr: any[]): any {
     if (!t.schema.isObject(schema)) return arr;
 
-    const objSchema = schema as TObject;
-    const props = objSchema.properties as Record<string, TSchema>;
-    const keys = Object.keys(props);
     const result: Record<string, any> = {};
     let i = 0;
 
-    for (const k of keys) {
-      const ps = props[k];
-      const isOpt = t.schema.isOptional(ps);
-      const isNullable = this.isNullable(ps);
-      const inner = this.unwrap(ps);
+    for (const { key, isOpt, isNullable, inner } of this.getObjectFields(
+      schema as TObject,
+    )) {
       const val = arr[i++];
 
       if (isOpt) {
         if (val !== null) {
-          result[k] = t.schema.isObject(inner)
+          result[key] = t.schema.isObject(inner)
             ? this.reconstructObject(inner, val)
             : val;
         }
       } else if (isNullable) {
-        result[k] =
+        result[key] =
           val === null
             ? null
             : t.schema.isObject(inner)
               ? this.reconstructObject(inner, val)
               : val;
       } else {
-        result[k] = t.schema.isObject(inner)
+        result[key] = t.schema.isObject(inner)
           ? this.reconstructObject(inner, val)
           : val;
       }

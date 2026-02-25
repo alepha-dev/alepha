@@ -658,11 +658,11 @@ describe("TypeProvider", () => {
       });
     });
 
-    describe("snakeCase", () => {
-      it("should accept valid snake_case strings", async () => {
+    describe("constantCase", () => {
+      it("should accept valid constantCase strings", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.snakeCase();
+        const schema = t.constantCase();
 
         expect(alepha.codec.decode(schema, "HELLO")).toBe("HELLO");
         expect(alepha.codec.decode(schema, "HELLO_WORLD")).toBe("HELLO_WORLD");
@@ -670,10 +670,10 @@ describe("TypeProvider", () => {
         expect(alepha.codec.decode(schema, "A_B_C_D")).toBe("A_B_C_D");
       });
 
-      it("should reject invalid snake_case", async () => {
+      it("should reject invalid constantCase", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = t.snakeCase();
+        const schema = t.constantCase();
 
         expect(() => alepha.codec.validate(schema, "hello")).toThrow(); // Lowercase
         expect(() => alepha.codec.validate(schema, "Hello_World")).toThrow(); // Mixed case
@@ -1318,14 +1318,14 @@ describe("TypeProvider", () => {
         expect(alepha.codec.decode(schema, withDesc)).toEqual(withDesc);
       });
 
-      it("should validate value is snake_case", async () => {
+      it("should validate value is constantCase", async () => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = t.valueLabel();
 
         expect(() =>
           alepha.codec.decode(schema, {
-            value: "not-snake-case",
+            value: "not-constant-case",
             label: "Label",
           }),
         ).toThrow();
@@ -1575,6 +1575,17 @@ describe("TypeProvider", () => {
 
       expect(schema.isBigInt(t.bigint())).toBe(true);
       expect(schema.isBigInt(t.integer())).toBe(false);
+    });
+
+    it("should correctly identify scalar schemas", () => {
+      const { schema } = t;
+
+      expect(schema.isScalar(t.string())).toBe(true);
+      expect(schema.isScalar(t.number())).toBe(true);
+      expect(schema.isScalar(t.integer())).toBe(true);
+      expect(schema.isScalar(t.boolean())).toBe(true);
+      expect(schema.isScalar(t.object({}))).toBe(false);
+      expect(schema.isScalar(t.array(t.string()))).toBe(false);
     });
   });
 
