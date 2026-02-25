@@ -26,8 +26,18 @@ export const $authGithub = (
 
   const env = alepha.parseEnv(
     t.object({
-      GITHUB_CLIENT_ID: t.optional(t.text()),
-      GITHUB_CLIENT_SECRET: t.optional(t.text()),
+      GITHUB_CLIENT_ID: t.optional(
+        t.text({
+          description:
+            "The OAuth App client ID obtained from GitHub Developer Settings.",
+        }),
+      ),
+      GITHUB_CLIENT_SECRET: t.optional(
+        t.text({
+          description:
+            "The OAuth App client secret obtained from GitHub Developer Settings.",
+        }),
+      ),
     }),
   );
 

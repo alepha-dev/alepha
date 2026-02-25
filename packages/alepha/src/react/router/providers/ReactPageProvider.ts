@@ -1,10 +1,10 @@
 import {
-  $env,
+  $atom,
   $hook,
   $inject,
+  $use,
   Alepha,
   AlephaError,
-  type Static,
   type TSchema,
   t,
 } from "alepha";
@@ -24,20 +24,26 @@ import {
   type PagePrimitiveOptions,
 } from "../primitives/$page.ts";
 
-const envSchema = t.object({
-  REACT_STRICT_MODE: t.boolean({ default: true }),
+export const reactPageOptions = $atom({
+  name: "alepha.react.page.options",
+  description: "Configuration options for the React page provider.",
+  schema: t.object({
+    /**
+     * Enable React StrictMode wrapper.
+     */
+    strictMode: t.boolean({ default: true }),
+  }),
+  default: {
+    strictMode: true,
+  },
 });
-
-declare module "alepha" {
-  export interface Env extends Partial<Static<typeof envSchema>> {}
-}
 
 /**
  * Handle page routes for React applications. (Browser and Server)
  */
 export class ReactPageProvider {
   protected readonly log = $logger();
-  protected readonly env = $env(envSchema);
+  protected readonly options = $use(reactPageOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly pages: PageRoute[] = [];
 
@@ -141,7 +147,7 @@ export class ReactPageProvider {
       createElement(NestedView, {}, state.layers[0]?.element),
     );
 
-    if (this.env.REACT_STRICT_MODE) {
+    if (this.options.strictMode) {
       return createElement(StrictMode, {}, root);
     }
 

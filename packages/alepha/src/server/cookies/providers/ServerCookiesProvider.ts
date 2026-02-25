@@ -14,11 +14,10 @@ import {
   AlephaError,
   type Static,
   type TSchema,
-  t,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { DEFAULT_APP_SECRET } from "alepha/security";
+import { alephaSecurityEnvSchema } from "alepha/security";
 import type {
   Cookie,
   CookiePrimitiveOptions,
@@ -26,18 +25,12 @@ import type {
 } from "../primitives/$cookie.ts";
 import { CookieParser } from "../services/CookieParser.ts";
 
-const envSchema = t.object({
-  APP_SECRET: t.text({
-    default: DEFAULT_APP_SECRET,
-  }),
-});
-
 export class ServerCookiesProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly cookieParser = $inject(CookieParser);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
-  protected readonly env = $env(envSchema);
+  protected readonly env = $env(alephaSecurityEnvSchema);
 
   // crypto constants
   protected readonly ALGORITHM = "aes-256-gcm";

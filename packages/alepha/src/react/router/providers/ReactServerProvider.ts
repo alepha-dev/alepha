@@ -528,7 +528,12 @@ export class ReactServerProvider {
 // ---------------------------------------------------------------------------------------------------------------------
 
 const envSchema = t.object({
-  REACT_SSR_ENABLED: t.optional(t.boolean()),
+  REACT_SSR_ENABLED: t.optional(
+    t.boolean({
+      description:
+        "Enable or disable server-side rendering (SSR) for React pages. When set to false, pages are rendered client-side only.",
+    }),
+  ),
 });
 
 declare module "alepha" {

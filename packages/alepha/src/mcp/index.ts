@@ -86,7 +86,10 @@ export { $resource, ResourcePrimitive } from "./primitives/$resource.ts";
 export type { ToolPrimitiveOptions } from "./primitives/$tool.ts";
 export { $tool, ToolPrimitive } from "./primitives/$tool.ts";
 export { McpServerProvider } from "./providers/McpServerProvider.ts";
-export { SseMcpTransport } from "./transports/SseMcpTransport.ts";
+export {
+  mcpSseOptions,
+  SseMcpTransport,
+} from "./transports/SseMcpTransport.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

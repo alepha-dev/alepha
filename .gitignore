@@ -15,9 +15,7 @@ playwright-report
 .gen
 .playwright-mcp
 
-**/.env.production
-**/.env.local
-**/.env.*.local
+**/.env.*
 
 CLAUDE.md
 AGENTS.md

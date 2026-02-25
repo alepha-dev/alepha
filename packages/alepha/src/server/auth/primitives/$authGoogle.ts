@@ -25,8 +25,18 @@ export const $authGoogle = (
 
   const env = alepha.parseEnv(
     t.object({
-      GOOGLE_CLIENT_ID: t.optional(t.text()),
-      GOOGLE_CLIENT_SECRET: t.optional(t.text()),
+      GOOGLE_CLIENT_ID: t.optional(
+        t.text({
+          description:
+            "The OAuth 2.0 client ID obtained from the Google Developer Console.",
+        }),
+      ),
+      GOOGLE_CLIENT_SECRET: t.optional(
+        t.text({
+          description:
+            "The OAuth 2.0 client secret obtained from the Google Developer Console.",
+        }),
+      ),
     }),
   );
 

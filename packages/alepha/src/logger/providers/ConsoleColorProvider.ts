@@ -1,16 +1,4 @@
-import { $env, $inject, Alepha, t } from "alepha";
-
-const envSchema = t.object({
-  /**
-   * Disable colors in the console output.
-   */
-  NO_COLOR: t.optional(t.text()),
-
-  /**
-   * Force color output for the application.
-   */
-  FORCE_COLOR: t.optional(t.text()),
-});
+import { $inject, Alepha } from "alepha";
 
 export class ConsoleColorProvider {
   static readonly COLORS = {
@@ -41,7 +29,6 @@ export class ConsoleColorProvider {
     TRACE: "\x1b[90m",
   };
 
-  protected readonly env = $env(envSchema);
   protected readonly alepha = $inject(Alepha);
 
   protected enabled = true;
@@ -51,11 +38,11 @@ export class ConsoleColorProvider {
   }
 
   public isEnabled(): boolean {
-    if (this.env.NO_COLOR) {
+    if (this.alepha.env.NO_COLOR) {
       return false;
     }
 
-    if (this.env.FORCE_COLOR) {
+    if (this.alepha.env.FORCE_COLOR) {
       return true;
     }
 

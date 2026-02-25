@@ -1,4 +1,4 @@
-import { $env, $inject, t } from "alepha";
+import { $atom, $inject, $use, t } from "alepha";
 import { $logger } from "alepha/logger";
 import { $route } from "alepha/server";
 import {
@@ -13,11 +13,18 @@ import { McpServerProvider } from "../providers/McpServerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const envSchema = t.object({
-  MCP_SSE_PATH: t.text({
-    description: "Path for MCP SSE endpoint",
-    default: "/mcp",
+export const mcpSseOptions = $atom({
+  name: "alepha.mcp.sse.options",
+  description: "Configuration options for the MCP SSE transport.",
+  schema: t.object({
+    /**
+     * Path for the MCP SSE endpoint.
+     */
+    path: t.text({ default: "/mcp" }),
   }),
+  default: {
+    path: "/mcp",
+  },
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -53,7 +60,7 @@ const envSchema = t.object({
  */
 export class SseMcpTransport {
   protected readonly log = $logger();
-  protected readonly env = $env(envSchema);
+  protected readonly options = $use(mcpSseOptions);
   protected readonly mcpServer = $inject(McpServerProvider);
 
   /**
@@ -64,7 +71,7 @@ export class SseMcpTransport {
    */
   sse = $route({
     method: "GET",
-    path: this.env.MCP_SSE_PATH,
+    path: this.options.path,
     handler: async (request) => {
       this.log.debug("MCP SSE connection established");
 
@@ -76,7 +83,7 @@ export class SseMcpTransport {
           // Send initial endpoint info
           const endpointEvent = this.formatSseEvent(
             "endpoint",
-            `${this.env.MCP_SSE_PATH}`,
+            `${this.options.path}`,
           );
           controller.enqueue(encoder.encode(endpointEvent));
 
@@ -111,7 +118,7 @@ export class SseMcpTransport {
    */
   message = $route({
     method: "POST",
-    path: this.env.MCP_SSE_PATH,
+    path: this.options.path,
     schema: {
       body: t.json(),
     },

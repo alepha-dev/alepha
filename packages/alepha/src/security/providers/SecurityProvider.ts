@@ -29,14 +29,16 @@ import { JwtProvider } from "./JwtProvider.ts";
 
 export const DEFAULT_APP_SECRET = "05759934015388327323179852515731"; // (32)
 
-const envSchema = t.object({
+export const alephaSecurityEnvSchema = t.object({
   APP_SECRET: t.text({
+    description:
+      "The secret key used for signing JWTs and other security features. It should be a strong, random string of at least 32 characters for HS256. Do not use the default value in production.",
     default: DEFAULT_APP_SECRET,
   }),
 });
 
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
+  interface Env extends Partial<Static<typeof alephaSecurityEnvSchema>> {}
 }
 
 export class SecurityProvider {
@@ -47,7 +49,7 @@ export class SecurityProvider {
 
   protected readonly log = $logger();
   protected readonly jwt = $inject(JwtProvider);
-  protected readonly env = $env(envSchema);
+  protected readonly env = $env(alephaSecurityEnvSchema);
   protected readonly alepha = $inject(Alepha);
 
   public get secretKey() {

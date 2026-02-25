@@ -218,10 +218,20 @@
       "default": "./src/devtools/index.ts"
     },
     "./email": {
-      "types": "./src/email/index.ts",
-      "workerd": "./src/email/index.workerd.ts",
-      "import": "./src/email/index.ts",
-      "default": "./src/email/index.ts"
+      "types": "./src/email/core/index.ts",
+      "workerd": "./src/email/core/index.workerd.ts",
+      "import": "./src/email/core/index.ts",
+      "default": "./src/email/core/index.ts"
+    },
+    "./email/smtp": {
+      "types": "./src/email/smtp/index.ts",
+      "import": "./src/email/smtp/index.ts",
+      "default": "./src/email/smtp/index.ts"
+    },
+    "./email/brevo": {
+      "types": "./src/email/brevo/index.ts",
+      "import": "./src/email/brevo/index.ts",
+      "default": "./src/email/brevo/index.ts"
     },
     "./fake": {
       "types": "./src/fake/index.ts",
