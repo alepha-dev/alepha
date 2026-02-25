@@ -50,6 +50,32 @@ export class HeadProvider {
     return head;
   }
 
+  /**
+   * Fully resolve all global $head entries (functions re-evaluated, objects kept as-is).
+   *
+   * Unlike resolveGlobalHead() which only extracts htmlAttributes for streaming,
+   * this resolves all head properties (meta, link, script, htmlAttributes, etc.).
+   *
+   * Used by BrowserHeadProvider.refreshGlobalHead() to re-apply global head to the DOM.
+   */
+  public resolveGlobal(): Head {
+    let head: Head = {};
+
+    for (const h of this.global ?? []) {
+      const resolved = typeof h === "function" ? h() : h;
+      const { meta, link } = this.seoExpander.expand(resolved);
+      head = {
+        ...head,
+        ...resolved,
+        meta: [...(head.meta ?? []), ...meta, ...(resolved.meta ?? [])],
+        link: [...(head.link ?? []), ...link, ...(resolved.link ?? [])],
+        script: [...(head.script ?? []), ...(resolved.script ?? [])],
+      };
+    }
+
+    return head;
+  }
+
   public fillHead(state: HeadState) {
     state.head = {
       ...state.head,

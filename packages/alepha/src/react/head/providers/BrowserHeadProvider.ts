@@ -35,6 +35,17 @@ export class BrowserHeadProvider {
     }
   }
 
+  /**
+   * Re-evaluate all global $head entries and apply the result to the DOM.
+   *
+   * Call this when something that affects global $head output changes at runtime
+   * (e.g., theme switch). Page-level head (title, meta from routes) is not touched.
+   */
+  public refreshGlobalHead(): void {
+    const head = this.headProvider.resolveGlobal();
+    this.renderHead(this.document, head);
+  }
+
   public getHead(document: Document): Head {
     return {
       get title() {
