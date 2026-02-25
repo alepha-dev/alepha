@@ -452,7 +452,28 @@ export class ViteDevServerProvider {
     }
 
     const devHead = await this.generateDevHead();
-    this.alepha.store.set("alepha.react.ssr.manifest", { devHead });
+    const favicon = await this.detectFavicon(join(this.options.root, "public"));
+    this.alepha.store.set("alepha.react.ssr.manifest", { devHead, favicon });
+  }
+
+  /**
+   * Detect a favicon file in the given directory.
+   * Returns "mimeType:/path" if found, undefined otherwise.
+   */
+  protected async detectFavicon(
+    publicDir: string,
+  ): Promise<string | undefined> {
+    const candidates: [string, string][] = [
+      ["favicon.svg", "image/svg+xml"],
+      ["favicon.png", "image/png"],
+      ["favicon.ico", "image/x-icon"],
+    ];
+    for (const [file, mime] of candidates) {
+      if (await this.fs.exists(join(publicDir, file))) {
+        return `${mime}:/${file}`;
+      }
+    }
+    return undefined;
   }
 
   /**

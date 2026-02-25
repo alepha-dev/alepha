@@ -29,10 +29,35 @@ export interface FlexProps extends MantineFlexProps {
    * Shorthand for direction="column".
    */
   col?: boolean;
+
+  /**
+   * Set ground to `var(--alepha-ground)`.
+   */
+  ground?: boolean;
+
+  /**
+   * Set ground to `var(--alepha-surface)`.
+   */
+  surface?: boolean;
+
+  /**
+   * Set ground to `var(--alepha-elevated)`.
+   */
+  elevated?: boolean;
 }
 
 const Flex = forwardRef<HTMLDivElement, FlexProps>((props, ref) => {
-  const { fill, center, centerX, centerY, col, ...rest } = props;
+  const {
+    fill,
+    center,
+    centerX,
+    centerY,
+    col,
+    ground,
+    surface,
+    elevated,
+    ...rest
+  } = props;
 
   if (fill) {
     rest.flex ??= 1;
@@ -53,6 +78,14 @@ const Flex = forwardRef<HTMLDivElement, FlexProps>((props, ref) => {
 
   if (centerY) {
     rest.align ??= "center";
+  }
+
+  if (ground) {
+    rest.bg = "var(--alepha-ground)";
+  } else if (surface) {
+    rest.bg = "var(--alepha-surface)";
+  } else if (elevated) {
+    rest.bg = "var(--alepha-elevated)";
   }
 
   return <MantineFlex ref={ref} {...rest} />;

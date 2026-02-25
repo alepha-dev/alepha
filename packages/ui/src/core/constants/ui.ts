@@ -1,7 +1,7 @@
 export const ui = {
   colors: {
     transparent: "transparent",
-    background: "var(--alepha-background)",
+    background: "var(--alepha-ground)",
     surface: "var(--alepha-surface)",
     elevated: "var(--alepha-elevated)",
     border: "var(--alepha-border)",

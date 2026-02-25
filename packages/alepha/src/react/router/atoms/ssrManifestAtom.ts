@@ -39,6 +39,13 @@ export const ssrManifestAtomSchema = t.object({
    * Only set in dev mode via ViteDevServerProvider.
    */
   devHead: t.optional(t.string()),
+
+  /**
+   * Auto-detected favicon path and MIME type.
+   * Format: "type:path" (e.g., "image/svg+xml:/favicon.svg").
+   * Set at build/dev time by scanning the public directory.
+   */
+  favicon: t.optional(t.string()),
 });
 
 /**

@@ -102,7 +102,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
   if (!invitations || invitations.length === 0) {
     return (
       <Flex
-        bg={"var(--alepha-background)"}
+        bg={"var(--alepha-ground)"}
         flex={1}
         align="center"
         justify="center"
@@ -121,7 +121,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
   }
 
   return (
-    <Flex bg={"var(--alepha-background)"} flex={1} p="lg">
+    <Flex bg={"var(--alepha-ground)"} flex={1} p="lg">
       <Stack w="100%" maw={800}>
         <Group gap="sm" align="center">
           <IconMail size={24} />

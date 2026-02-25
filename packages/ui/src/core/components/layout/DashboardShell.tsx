@@ -187,6 +187,7 @@ const DashboardShell = (props: DashboardShellProps) => {
 
       <AppShell.Main
         display={"flex"}
+        bg={"var(--alepha-ground)"}
         pos={"relative"}
         {...props.appShellMainProps}
       >

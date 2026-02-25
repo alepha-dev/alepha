@@ -1,7 +1,9 @@
+import { readFile } from "node:fs/promises";
 import { basename, dirname } from "node:path";
 import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
+import { cliAssets } from "../assets.ts";
 import { type AgentMdType, agentMd } from "../templates/agentMd.ts";
 import { alephaConfigTs } from "../templates/alephaConfigTs.ts";
 import { apiAppSecurityTs } from "../templates/apiAppSecurityTs.ts";
@@ -309,6 +311,11 @@ export class ProjectScaffolder {
     await this.fs.mkdir(this.fs.join(root, "src/web/components"), {
       recursive: true,
     });
+
+    // public/favicon.svg
+    await this.fs.mkdir(this.fs.join(root, "public"), { recursive: true });
+    const logoSvg = (await readFile(cliAssets.logo)).toString();
+    await this.ensureFile(root, "public/favicon.svg", logoSvg, opts.force);
 
     // src/main.css
     await this.ensureFile(

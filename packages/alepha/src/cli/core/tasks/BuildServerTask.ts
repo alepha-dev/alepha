@@ -159,6 +159,7 @@ export class BuildServerTask extends BuildTask {
           base?: string;
           client?: Record<string, any>;
           preload?: Record<string, string>;
+          favicon?: string;
         }
       | undefined;
 
@@ -181,10 +182,15 @@ export class BuildServerTask extends BuildTask {
         base = base.slice(0, -1);
       }
 
+      const favicon = await this.detectFavicon(
+        `${opts.distDir}/${opts.clientDir}`,
+      );
+
       manifestData = {
         base: base !== "/" ? base : undefined,
         client: strippedClientManifest,
         preload: preloadManifest,
+        favicon,
       };
 
       manifest = `__alepha.set("alepha.react.ssr.manifest", ${JSON.stringify(manifestData, null, "  ")});\n`;
@@ -203,6 +209,26 @@ export class BuildServerTask extends BuildTask {
       `${opts.distDir}/index.js`,
       `${warning}\nimport './server/${entryFile}';\n\n${manifest}`.trim(),
     );
+  }
+
+  /**
+   * Detect a favicon file in the given directory.
+   * Returns "mimeType:/path" if found, undefined otherwise.
+   */
+  protected async detectFavicon(
+    publicDir: string,
+  ): Promise<string | undefined> {
+    const candidates: [string, string][] = [
+      ["favicon.svg", "image/svg+xml"],
+      ["favicon.png", "image/png"],
+      ["favicon.ico", "image/x-icon"],
+    ];
+    for (const [file, mime] of candidates) {
+      if (await this.fs.exists(join(publicDir, file))) {
+        return `${mime}:/${file}`;
+      }
+    }
+    return undefined;
   }
 
   protected async generateExternals(

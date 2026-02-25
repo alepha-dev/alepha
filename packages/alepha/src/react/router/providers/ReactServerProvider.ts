@@ -162,19 +162,23 @@ export class ReactServerProvider {
   protected setupEarlyHeadContent(): void {
     const globalHead = this.serverHeadProvider.resolveGlobalHead();
     const manifest = this.ssrManifestProvider.getManifest();
+    const faviconTag = this.buildFaviconTag(manifest.favicon);
 
     // Dev mode: use pre-transformed head content from Vite
     if (manifest.devHead) {
-      this.templateProvider.setEarlyHeadContent(
-        `${manifest.devHead}\n`,
-        globalHead,
-      );
+      const devContent = faviconTag
+        ? `${faviconTag}\n${manifest.devHead}\n`
+        : `${manifest.devHead}\n`;
+      this.templateProvider.setEarlyHeadContent(devContent, globalHead);
       this.log.debug("Early head content set (dev mode)");
       return;
     }
 
     // Production: build from SSR manifest entry assets
     const parts: string[] = [];
+    if (faviconTag) {
+      parts.push(faviconTag);
+    }
     const assets = this.ssrManifestProvider.getEntryAssets();
     if (assets) {
       for (const css of assets.css) {
@@ -195,6 +199,23 @@ export class ReactServerProvider {
     this.log.debug("Early head content set", {
       parts: parts.length,
     });
+  }
+
+  /**
+   * Build a favicon link tag from the manifest favicon value.
+   * Format is "mimeType:/path" (e.g., "image/svg+xml:/favicon.svg").
+   */
+  protected buildFaviconTag(favicon: string | undefined): string | undefined {
+    if (!favicon) {
+      return undefined;
+    }
+    const colonIndex = favicon.indexOf(":");
+    if (colonIndex === -1) {
+      return undefined;
+    }
+    const type = favicon.slice(0, colonIndex);
+    const href = favicon.slice(colonIndex + 1);
+    return `<link rel="icon" type="${type}" href="${href}">`;
   }
 
   /**

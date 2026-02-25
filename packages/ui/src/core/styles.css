@@ -8,9 +8,9 @@
 @import "./json/components/JsonViewer.css";
 
 :root {
-  --alepha-background-light: var(--mantine-color-gray-1);
-  --alepha-background-dark: var(--mantine-color-dark-9);
-  --alepha-background: var(--alepha-background-light);
+  --alepha-ground-light: var(--mantine-color-gray-1);
+  --alepha-ground-dark: var(--mantine-color-dark-9);
+  --alepha-ground: var(--alepha-ground-light);
 
   --alepha-surface-light: var(--mantine-color-gray-0);
   --alepha-surface-dark: var(--mantine-color-dark-8);
@@ -37,7 +37,7 @@
   --alepha-surface: var(--alepha-surface-dark);
   --alepha-elevated: var(--alepha-elevated-dark);
   --alepha-elevated-hover: var(--alepha-elevated-hover-dark);
-  --alepha-background: var(--alepha-background-dark);
+  --alepha-ground: var(--alepha-ground-dark);
   --alepha-text: var(--alepha-text-dark);
 }
 
@@ -48,6 +48,8 @@
   scrollbar-color: var(--alepha-text-muted) transparent;
   scrollbar-width: thin;
 }
+
+/* ------------------------------------------------------------------------------------------------------------------ */
 
 /* Sidebar scroll area - subtle scrollbar that appears on hover */
 .alepha-sidebar-scroll {
