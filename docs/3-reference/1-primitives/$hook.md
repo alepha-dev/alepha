@@ -52,6 +52,6 @@ await alepha.events.emit("my:custom:hook", { arg1: "value" });
 | `on` | `T` | Yes | The name of the hook |
 | `handler` | `Object` | Yes | The handler to run when the hook is triggered. |
 | `priority` | `"first" \| "last"` | No | Force the hook to run first or last on the list of hooks. |
-| `before` | `object \| Array&lt;object&gt;` | No | Empty placeholder, not implemented yet |
-| `after` | `object \| Array&lt;object&gt;` | No | Empty placeholder, not implemented yet |
+| `before` | `object \| Array&lt;object&gt;` | No | Run this hook before the hooks owned by the specified services. |
+| `after` | `object \| Array&lt;object&gt;` | No | Run this hook after the hooks owned by the specified services. |
 

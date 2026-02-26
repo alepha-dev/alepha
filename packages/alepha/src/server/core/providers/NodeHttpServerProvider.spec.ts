@@ -12,7 +12,9 @@ describe("NodeHttpServerProvider", () => {
     });
 
     test("dev mode: destroys connections immediately on close", async () => {
-      alepha = Alepha.create({ env: { NODE_ENV: "development" } });
+      alepha = Alepha.create({
+        env: { NODE_ENV: "development", SERVER_PORT: 0 },
+      });
       alepha.with(NodeHttpServerProvider);
 
       await alepha.start();
@@ -76,7 +78,9 @@ describe("NodeHttpServerProvider", () => {
     });
 
     test("connections are tracked and cleared", async () => {
-      alepha = Alepha.create({ env: { NODE_ENV: "development" } });
+      alepha = Alepha.create({
+        env: { NODE_ENV: "development", SERVER_PORT: 0 },
+      });
       alepha.with(NodeHttpServerProvider);
 
       await alepha.start();

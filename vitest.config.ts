@@ -51,7 +51,7 @@ export default defineConfig({
           exclude: [
             "**/*.browser.spec.{ts,tsx}",
             "**/*.bun.spec.{ts,tsx}",
-            "node_modules",
+            "**/node_modules/**",
             "**/e2e/**",
             "apps/e2e-cli/**",
             "apps/tmp/**",

@@ -45,7 +45,7 @@ export class BrevoEmailProvider implements EmailProvider {
 
   public async send(options: EmailSendOptions): Promise<void> {
     const { to, subject, body } = options;
-    this.log.debug("Sending email via Brevo", { to, subject });
+    this.log.info("Sending email via Brevo", { to, subject });
 
     const recipients = Array.isArray(to) ? to : [to];
 
