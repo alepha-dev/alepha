@@ -278,9 +278,6 @@ export class ReactBrowserProvider {
         state: this.state,
       });
 
-      // Fill and render head from route configurations
-      this.browserHeadProvider.fillAndRenderHead(this.state);
-
       window.addEventListener("popstate", () => {
         // when you update silently queryParams or hash, skip rendering
         // if you want to force a rendering, use #go()
