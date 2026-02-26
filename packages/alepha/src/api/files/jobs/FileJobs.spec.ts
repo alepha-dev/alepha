@@ -54,7 +54,8 @@ describe("FileJobRegistry", () => {
     expect(await list()).toHaveLength(3);
 
     await dtp.travel(2, "hours");
+    await jobs.purgeFiles.trigger();
 
-    expect(await list()).toHaveLength(2); // TODO: fail sometimes here
+    expect(await list()).toHaveLength(2);
   });
 });

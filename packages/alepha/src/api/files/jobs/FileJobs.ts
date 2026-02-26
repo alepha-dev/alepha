@@ -7,7 +7,7 @@ export class FileJobs {
 
   public readonly purgeFiles = $scheduler({
     description: "Purge files that are marked for deletion",
-    cron: "*/15 * * * *", // Every 15 minutes
+    cron: "0 0 * * *", // Every day at midnight
     handler: async () => {
       const files = await this.fileService.findExpiredFiles();
 

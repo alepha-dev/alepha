@@ -6,17 +6,11 @@ import {
   AlephaError,
   type Static,
   type TSchema,
-  t,
 } from "alepha";
-import {
-  DateTimeProvider,
-  type DurationLike,
-  type Interval,
-} from "alepha/datetime";
+import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import type { LogEntry } from "alepha/logger";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
-import { $queue } from "alepha/queue";
 import { CronProvider } from "alepha/scheduler";
 import {
   type JobStatus,
@@ -92,18 +86,18 @@ export class JobProvider {
   protected readonly executions = $repository(jobExecutionEntity);
   protected readonly executionLogs = $repository(jobExecutionLogEntity);
 
-  protected readonly dispatchQueue = $queue({
-    name: "_alepha:jobs:dispatch",
-    schema: t.object({ jobName: t.text(), executionId: t.text() }),
-    handler: async (msg) => {
-      await this.processExecution(msg.payload.jobName, msg.payload.executionId);
-    },
-  });
-
   protected readonly jobs = new Map<string, JobRegistration>();
+
+  /**
+   * When set, job executions are dispatched through a queue (e.g. `JobQueueProvider`).
+   * When null, jobs execute inline (fire-and-forget). Useful for serverless environments.
+   */
+  public queueDispatch:
+    | ((jobName: string, executionId: string) => Promise<void>)
+    | null = null;
   protected readonly logs = new Map<string, LogEntry[]>();
   protected readonly abortControllers = new Map<string, AbortController>();
-  protected readonly sweepIntervals: Interval[] = [];
+  protected static readonly SWEEP_CRON = "*/5 * * * *";
   protected stopping = false;
   protected workerId = "";
 
@@ -115,6 +109,11 @@ export class JobProvider {
     }
 
     this.jobs.set(name, { name, options });
+    this.log.debug(`Registered job '${name}'`, {
+      cron: options.cron,
+      priority: options.priority ?? "normal",
+      retries: options.retry?.retries ?? 0,
+    });
 
     if (options.cron) {
       this.cronProvider.createCronJob(name, options.cron, () =>
@@ -191,7 +190,7 @@ export class JobProvider {
         status === "pending" &&
         !this.stopping
       ) {
-        this.scheduleProcessing(name, execution.id);
+        await this.scheduleProcessing(name, execution.id);
       }
 
       return execution.id;
@@ -206,9 +205,15 @@ export class JobProvider {
       scheduledAt,
     });
 
+    this.log.debug(`Pushed job '${name}'`, {
+      executionId: execution.id,
+      status,
+      priority: PRIORITY_REVERSE[priority],
+    });
+
     // Dispatch to processing if immediate
     if (status === "pending" && !this.stopping) {
-      this.scheduleProcessing(name, execution.id);
+      await this.scheduleProcessing(name, execution.id);
     }
 
     return execution.id;
@@ -264,8 +269,13 @@ export class JobProvider {
       triggeredByName: context?.triggeredByName,
     });
 
+    this.log.debug(`Triggered job '${name}'`, {
+      executionId: execution.id,
+      triggeredBy: context?.triggeredByName ?? context?.triggeredBy,
+    });
+
     if (!this.stopping) {
-      this.scheduleProcessing(name, execution.id);
+      await this.scheduleProcessing(name, execution.id);
     }
   }
 
@@ -303,17 +313,29 @@ export class JobProvider {
       cancelledByName: context?.cancelledByName,
       completedAt: this.dt.nowISOString(),
     });
+
+    this.log.info(`Cancelled execution ${executionId}`, {
+      jobName: execution.jobName,
+      cancelledBy: context?.cancelledByName ?? context?.cancelledBy,
+    });
   }
 
   // --- Execution ---
 
-  protected scheduleProcessing(jobName: string, executionId: string): void {
-    this.dispatchQueue.push({ jobName, executionId }).catch((error) => {
-      this.log.error(`Failed to dispatch job ${jobName}`, { error });
-    });
+  protected async scheduleProcessing(
+    jobName: string,
+    executionId: string,
+  ): Promise<void> {
+    if (this.queueDispatch) {
+      this.log.debug(`Dispatching job '${jobName}' via queue`, { executionId });
+      await this.queueDispatch(jobName, executionId);
+    } else {
+      this.log.debug(`Executing job '${jobName}' inline`, { executionId });
+      await this.processExecution(jobName, executionId);
+    }
   }
 
-  protected async processExecution(
+  public async processExecution(
     jobName: string,
     executionId: string,
   ): Promise<void> {
@@ -322,11 +344,14 @@ export class JobProvider {
     // Claim the execution atomically
     const claimed = await this.claim(executionId);
     if (!claimed) {
-      return; // Already claimed by another worker
+      this.log.debug(`Execution ${executionId} already claimed, skipping`);
+      return;
     }
 
     const context = this.alepha.context.createContextId();
     this.logs.set(context, []);
+
+    this.log.debug(`Started processing job '${jobName}'`, { executionId });
 
     try {
       await this.alepha.context.run(
@@ -364,6 +389,12 @@ export class JobProvider {
             }
 
             // Execute handler
+            this.log.debug(`Running job '${jobName}'`, {
+              executionId,
+              attempt: execution?.attempt,
+              items: items.length,
+            });
+
             await opts.handler({
               items,
               now,
@@ -376,6 +407,8 @@ export class JobProvider {
               completedAt: this.dt.nowISOString(),
               key: null,
             });
+
+            this.log.info(`Job '${jobName}' completed`, { executionId });
 
             // Write logs to cold table
             await this.writeLogs(executionId, context);
@@ -469,6 +502,11 @@ export class JobProvider {
       // Compute next scheduledAt from backoff
       const nextScheduledAt = this.computeBackoff(retryOpts, execution.attempt);
 
+      this.log.info(
+        `Job '${jobName}' failed, scheduling retry ${execution.attempt}/${execution.maxAttempts}`,
+        { executionId, error: error.message, nextScheduledAt },
+      );
+
       await this.executions.updateById(executionId, {
         status: "retrying",
         error: error.message,
@@ -481,7 +519,7 @@ export class JobProvider {
       // The delayed dispatch sweep is the safety net in case of crash.
       const delayMs = Math.max(
         0,
-        new Date(nextScheduledAt).getTime() - Date.now(),
+        new Date(nextScheduledAt).getTime() - this.dt.nowMillis(),
       );
       this.dt.createTimeout(
         () => void this.dispatchRetrying(jobName, executionId),
@@ -489,6 +527,11 @@ export class JobProvider {
       );
     } else {
       // Dead — all retries exhausted or predicate returned false
+      this.log.info(
+        `Job '${jobName}' is dead after ${execution.attempt} attempt(s)`,
+        { executionId, error: error.message },
+      );
+
       await this.executions.updateById(executionId, {
         status: "dead",
         error: error.message,
@@ -558,7 +601,7 @@ export class JobProvider {
       logs.push({
         level: "WARN",
         message: `Log entries truncated at ${maxEntries}`,
-        timestamp: Date.now(),
+        timestamp: this.dt.nowMillis(),
         service: "alepha.jobs",
         module: "JobProvider",
       } as LogEntry);
@@ -585,7 +628,7 @@ export class JobProvider {
         { id: { eq: executionId }, status: { eq: "retrying" } },
         { status: "pending" },
       );
-      this.scheduleProcessing(jobName, executionId);
+      await this.scheduleProcessing(jobName, executionId);
     } catch {
       // Already transitioned by another worker or sweep
     }
@@ -624,7 +667,7 @@ export class JobProvider {
         this.log.debug(
           `Recovery sweep: re-dispatching stale pending job ${exec.jobName} (${exec.id})`,
         );
-        this.scheduleProcessing(exec.jobName, exec.id);
+        await this.scheduleProcessing(exec.jobName, exec.id);
       }
 
       // 2. Crashed running jobs
@@ -690,7 +733,7 @@ export class JobProvider {
       for (const exec of ready) {
         if (!this.jobs.has(exec.jobName)) continue;
         await this.executions.updateById(exec.id, { status: "pending" });
-        this.scheduleProcessing(exec.jobName, exec.id);
+        await this.scheduleProcessing(exec.jobName, exec.id);
       }
     } catch (e) {
       this.log.error("Delayed dispatch sweep failed", { error: e });
@@ -740,6 +783,9 @@ export class JobProvider {
     on: "start",
     handler: async () => {
       this.workerId = crypto.randomUUID().slice(0, 12);
+      this.log.info(
+        `Job system started (worker=${this.workerId}, dispatch=${this.queueDispatch ? "queue" : "inline"})`,
+      );
 
       // Set up log capture listener (once)
       this.alepha.events.on("log", ({ entry }) => {
@@ -754,29 +800,32 @@ export class JobProvider {
       await this.delayedDispatchSweep();
       await this.recoverySweep();
 
-      // Start periodic sweeps (start = true since DateTimeProvider.onStart already fired)
-      this.sweepIntervals.push(
-        this.dt.createInterval(
-          () => this.recoverySweep(),
-          this.config.recovery.interval,
-          true,
-        ),
+      // Periodic sweeps via cron (works in serverless environments like Cloudflare Workers)
+      this.cronProvider.createCronJob(
+        "_alepha:jobs:recovery",
+        JobProvider.SWEEP_CRON,
+        async () => {
+          await this.recoverySweep();
+        },
+        true,
       );
-      this.sweepIntervals.push(
-        this.dt.createInterval(
-          () => this.delayedDispatchSweep(),
-          this.config.delayed.interval,
-          true,
-        ),
+      this.cronProvider.createCronJob(
+        "_alepha:jobs:dispatch",
+        JobProvider.SWEEP_CRON,
+        async () => {
+          await this.delayedDispatchSweep();
+        },
+        true,
       );
 
-      // Daily log purge at 03:00
+      // Daily log purge
       this.cronProvider.createCronJob(
         "_alepha:jobs:log-purge",
-        "0 3 * * *",
+        "0 0 * * *",
         async () => {
           await this.logPurge();
         },
+        true,
       );
     },
   });
@@ -785,12 +834,6 @@ export class JobProvider {
     on: "stop",
     handler: async () => {
       this.stopping = true;
-
-      // Clear sweep intervals
-      for (const interval of this.sweepIntervals) {
-        this.dt.clearInterval(interval);
-      }
-      this.sweepIntervals.length = 0;
 
       // Abort any running executions
       for (const controller of this.abortControllers.values()) {

@@ -27,7 +27,7 @@ export class UserJobs {
    * where the `expiresAt` timestamp has passed.
    */
   public readonly purgeExpiredSessions = $job({
-    cron: "0 3 * * *", // Daily at 3:00 AM
+    cron: "0 0 * * *", // Daily at 3:00 AM
     handler: async () => {
       const now = this.dateTimeProvider.nowISOString();
 

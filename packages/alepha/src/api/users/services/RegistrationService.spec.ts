@@ -391,6 +391,9 @@ describe("alepha/api/users - RegistrationService", () => {
       const { registrationService, realmProvider } = await setup();
 
       realmProvider.register("email-required-realm", {
+        features: {
+          notifications: true,
+        },
         settings: {
           verifyEmailRequired: true,
         } as never,
@@ -416,6 +419,9 @@ describe("alepha/api/users - RegistrationService", () => {
       const { registrationService, realmProvider } = await setup();
 
       realmProvider.register("email-verify-realm", {
+        features: {
+          notifications: true,
+        },
         settings: {
           verifyEmailRequired: true,
         } as never,

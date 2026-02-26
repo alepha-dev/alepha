@@ -1,4 +1,4 @@
-import { $module } from "alepha";
+import { $module, type Alepha, type Static, t } from "alepha";
 import { AlephaBatch } from "alepha/batch";
 import type { DateTime } from "alepha/datetime";
 import { AlephaLock } from "alepha/lock";
@@ -6,6 +6,7 @@ import { AlephaQueue } from "alepha/queue";
 import { AlephaScheduler } from "alepha/scheduler";
 import { AdminJobController } from "./controllers/AdminJobController.ts";
 import { JobProvider } from "./providers/JobProvider.ts";
+import { JobQueueProvider } from "./providers/JobQueueProvider.ts";
 import { JobService } from "./services/JobService.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -15,6 +16,7 @@ export * from "./entities/jobExecutionEntity.ts";
 export * from "./entities/jobExecutionLogEntity.ts";
 export * from "./primitives/$job.ts";
 export * from "./providers/JobProvider.ts";
+export * from "./providers/JobQueueProvider.ts";
 export * from "./schemas/jobActivitySchema.ts";
 export * from "./schemas/jobConfigAtom.ts";
 export * from "./schemas/jobCronInfoSchema.ts";
@@ -31,6 +33,8 @@ export * from "./services/JobService.ts";
 // -----------------------------------------------------------------------------------------------------------------
 
 declare module "alepha" {
+  interface Env extends Partial<Static<typeof jobEnvSchema>> {}
+
   interface Hooks {
     "job:begin": { name: string; now: DateTime; executionId: string };
     "job:success": { name: string; executionId: string };
@@ -39,6 +43,24 @@ declare module "alepha" {
     "job:end": { name: string; executionId: string };
   }
 }
+
+// -----------------------------------------------------------------------------------------------------------------
+
+const jobEnvSchema = t.object({
+  /**
+   * Controls whether the job system dispatches work through a queue or executes inline.
+   *
+   * - `1` — always use queue (force queue even in serverless)
+   * - `0` — never use queue (force inline, useful for testing)
+   * - not set — auto: use queue when NOT serverless (default)
+   */
+  ALEPHA_JOBS_QUEUE: t.optional(
+    t.integer({
+      description:
+        "Set to 1 to always use queue, 0 to disable queue (default: auto-detect based on environment)",
+    }),
+  ),
+});
 
 // -----------------------------------------------------------------------------------------------------------------
 
@@ -63,7 +85,29 @@ export const AlephaApiJobs = $module({
     AlephaLock,
     AlephaBatch,
     JobProvider,
+    JobQueueProvider,
     JobService,
     AdminJobController,
   ],
+  register: (alepha: Alepha) => {
+    const env = alepha.parseEnv(jobEnvSchema);
+    const useQueue =
+      env.ALEPHA_JOBS_QUEUE === 1
+        ? true
+        : env.ALEPHA_JOBS_QUEUE === 0
+          ? false
+          : !alepha.isServerless();
+
+    alepha.with(AlephaScheduler);
+    alepha.with(AlephaLock);
+    alepha.with(AlephaBatch);
+    alepha.with(JobProvider);
+    alepha.with(JobService);
+    alepha.with(AdminJobController);
+
+    if (useQueue) {
+      alepha.with(AlephaQueue);
+      alepha.with(JobQueueProvider);
+    }
+  },
 });

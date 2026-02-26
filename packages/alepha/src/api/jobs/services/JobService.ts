@@ -1,5 +1,6 @@
 import { $inject, Alepha, AlephaError, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { NotFoundError } from "alepha/server";
 import type { JobExecutionEntity } from "../entities/jobExecutionEntity.ts";
@@ -21,6 +22,7 @@ import type { JobStats } from "../schemas/jobStatsSchema.ts";
 export class JobService {
   protected readonly alepha = $inject(Alepha);
   protected readonly dt = $inject(DateTimeProvider);
+  protected readonly log = $logger();
   protected readonly jobProvider = $inject(JobProvider);
   protected readonly database = $inject(DatabaseProvider);
   protected readonly executions = $repository(jobExecutionEntity);
@@ -210,6 +212,10 @@ export class JobService {
       throw new NotFoundError(`Job not found: ${name}`);
     }
 
+    this.log.info(`Triggering job '${name}'`, {
+      triggeredBy: context?.triggeredByName ?? context?.triggeredBy,
+    });
+
     await job.trigger(context);
     return { ok: true };
   }
@@ -228,6 +234,12 @@ export class JobService {
         `Cannot retry execution in '${execution.status}' status`,
       );
     }
+
+    this.log.info(`Retrying execution ${id}`, {
+      jobName: execution.jobName,
+      previousStatus: execution.status,
+      triggeredBy: context?.triggeredByName ?? context?.triggeredBy,
+    });
 
     const jobPrimitives = this.alepha.primitives($job);
     const job = jobPrimitives.find((j) => j.name === execution.jobName);
@@ -252,6 +264,10 @@ export class JobService {
     id: string,
     context?: { cancelledBy?: string; cancelledByName?: string },
   ): Promise<{ ok: boolean }> {
+    this.log.info(`Cancelling execution ${id}`, {
+      cancelledBy: context?.cancelledByName ?? context?.cancelledBy,
+    });
+
     await this.jobProvider.cancel(id, {
       cancelledBy: context?.cancelledBy,
       cancelledByName: context?.cancelledByName,

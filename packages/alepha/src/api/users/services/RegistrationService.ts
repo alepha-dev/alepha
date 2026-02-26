@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import type { VerificationController } from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
@@ -62,10 +62,14 @@ export class RegistrationService {
 
   protected userNotifications(realmName?: string) {
     const realm = this.realmProvider.getRealm(realmName);
+
     if (realm.features.notifications) {
       return this.alepha.inject(UserNotifications);
     }
-    return undefined;
+
+    throw new AlephaError(
+      `Notifications feature is not enabled for realm "${realmName}". Please enable it in the realm settings to use registration notifications.`,
+    );
   }
 
   /**
@@ -380,7 +384,7 @@ export class RegistrationService {
         body: { target: email },
       });
 
-    await this.userNotifications(realmName)?.emailVerification.push({
+    await this.userNotifications(realmName).emailVerification.push({
       contact: email,
       variables: {
         email,
@@ -407,7 +411,7 @@ export class RegistrationService {
           body: { target: phoneNumber },
         });
 
-      await this.userNotifications(realmName)?.phoneVerification.push({
+      await this.userNotifications(realmName).phoneVerification.push({
         contact: phoneNumber,
         variables: {
           phoneNumber,
