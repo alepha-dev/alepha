@@ -371,12 +371,12 @@ export class CloudflareAdapter extends PlatformAdapter {
         const env = { DATABASE_URL: dbUrl };
 
         if (await this.fs.exists(migrationsDir)) {
-          await this.runShell("alepha db migrations check", {
+          await this.runShell(`alepha db migrations check --mode ${ctx.env}`, {
             resolve: true,
             env,
           });
         } else {
-          await this.runShell("alepha db migrations create", {
+          await this.runShell(`alepha db migrations create --mode ${ctx.env}`, {
             resolve: true,
             env,
           });
@@ -718,7 +718,15 @@ export class CloudflareAdapter extends PlatformAdapter {
             await this.api.deleteR2(name);
           } catch (error: any) {
             const msg = String(error.message || "");
-            if (msg.includes("not empty") || msg.includes("BucketNotEmpty")) {
+            if (
+              msg.includes("does not exist") ||
+              msg.includes("NoSuchBucket")
+            ) {
+              // Already gone, nothing to do
+            } else if (
+              msg.includes("not empty") ||
+              msg.includes("BucketNotEmpty")
+            ) {
               this.log.warn(
                 `Bucket ${name} is not empty -- skipped. Empty it manually.`,
               );

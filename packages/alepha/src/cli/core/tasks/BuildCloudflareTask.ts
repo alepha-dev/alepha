@@ -136,6 +136,8 @@ export class BuildCloudflareTask extends BuildTask {
     this.enhanceD1(wrangler);
   }
 
+  protected static readonly D1_BINDING = "DB";
+
   protected enhanceD1(wrangler: WranglerConfig): void {
     const url = process.env.DATABASE_URL;
     if (!url?.startsWith("d1:")) {
@@ -146,14 +148,15 @@ export class BuildCloudflareTask extends BuildTask {
       .replace("d1://", "")
       .replace("d1:", "")
       .split(":");
+    const binding = BuildCloudflareTask.D1_BINDING;
     wrangler.d1_databases = wrangler.d1_databases || [];
     wrangler.d1_databases.push({
-      binding: dbName,
+      binding,
       database_name: dbName,
       database_id: id,
     });
     wrangler.vars ??= {};
-    wrangler.vars.DATABASE_URL = `d1://${dbName}`;
+    wrangler.vars.DATABASE_URL = `d1://${binding}`;
   }
 
   protected enhanceHyperdrive(wrangler: WranglerConfig): void {

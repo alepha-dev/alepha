@@ -7,6 +7,7 @@ import type {
   AppDefinition,
   DetectedResources,
 } from "../adapters/PlatformAdapter.ts";
+import { VercelAdapter } from "../adapters/VercelAdapter.ts";
 import { platformOptions } from "../atoms/platformOptions.ts";
 import type {
   PlatformPlanOutput,
@@ -70,7 +71,14 @@ export class PlatformCommand {
     handler: async ({ flags, root }) => {
       const config = await this.inspector.resolveConfig(root);
       const env = flags.env ?? config.defaultEnv;
-      const apps = await this.resolveApps(root, config);
+      const envConfig = config.environments[env];
+      const adapterName = envConfig?.adapter ?? "cloudflare";
+
+      const apps = await this.resolveApps(
+        root,
+        config,
+        this.isServerless(adapterName),
+      );
       const namingCtx = this.naming.forContext(config.project, env);
 
       // --- Data collection ---
@@ -81,53 +89,58 @@ export class PlatformCommand {
 
       const resources: Array<{ label: string; value: string }> = [];
 
+      const deployLabel = adapterName === "vercel" ? "Project" : "Worker";
       if (config.isMonorepo) {
         for (const app of apps) {
           resources.push({
-            label: "Worker",
+            label: deployLabel,
             value: namingCtx.worker(app.name),
           });
         }
       } else {
-        resources.push({ label: "Worker", value: namingCtx.worker() });
+        resources.push({ label: deployLabel, value: namingCtx.worker() });
       }
 
-      if (hasDB) {
-        const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
-        if (dbUrl?.startsWith("postgres:")) {
-          resources.push({
-            label: "Hyperdrive",
-            value: namingCtx.hyperdrive(),
-          });
-        } else {
-          resources.push({ label: "D1", value: namingCtx.d1() });
+      if (adapterName === "cloudflare") {
+        if (hasDB) {
+          const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
+          if (dbUrl?.startsWith("postgres:")) {
+            resources.push({
+              label: "Hyperdrive",
+              value: namingCtx.hyperdrive(),
+            });
+          } else {
+            resources.push({ label: "D1", value: namingCtx.d1() });
+          }
+        }
+
+        if (hasBucket) {
+          resources.push({ label: "R2", value: namingCtx.r2() });
+        }
+
+        for (const app of apps) {
+          if (app.resources.hasKV) {
+            resources.push({
+              label: "KV",
+              value: namingCtx.kv(config.isMonorepo ? app.name : undefined),
+            });
+          }
+          if (app.resources.hasQueue) {
+            resources.push({
+              label: "Queue",
+              value: namingCtx.queue(config.isMonorepo ? app.name : undefined),
+            });
+          }
         }
       }
 
-      if (hasBucket) {
-        resources.push({ label: "R2", value: namingCtx.r2() });
-      }
-
-      for (const app of apps) {
-        if (app.resources.hasKV) {
-          resources.push({
-            label: "KV",
-            value: namingCtx.kv(config.isMonorepo ? app.name : undefined),
-          });
-        }
-        if (app.resources.hasQueue) {
-          resources.push({
-            label: "Queue",
-            value: namingCtx.queue(config.isMonorepo ? app.name : undefined),
-          });
-        }
-      }
-
+      const excludedKeys =
+        adapterName === "vercel"
+          ? VercelAdapter.EXCLUDED_SECRET_KEYS
+          : CloudflareAdapter.EXCLUDED_SECRET_KEYS;
       const secretCount = Object.entries(envVars).filter(
         ([key, value]) =>
-          value &&
-          !CloudflareAdapter.EXCLUDED_SECRET_KEYS.has(key) &&
-          !key.startsWith("VITE_"),
+          value && !excludedKeys.has(key) && !key.startsWith("VITE_"),
       ).length;
 
       // --- JSON output ---
@@ -240,7 +253,12 @@ export class PlatformCommand {
 
       const config = await this.inspector.resolveConfig(root);
       const env = flags.env ?? config.defaultEnv;
-      const apps = await this.resolveApps(root, config);
+      const adapter = config.environments[env]?.adapter ?? "cloudflare";
+      const apps = await this.resolveApps(
+        root,
+        config,
+        this.isServerless(adapter),
+      );
 
       await this.orchestrator.up({
         root,
@@ -268,7 +286,12 @@ export class PlatformCommand {
       }
 
       const config = await this.inspector.resolveConfig(root);
-      const apps = await this.resolveApps(root, config);
+      const adapter = config.environments[flags.env]?.adapter ?? "cloudflare";
+      const apps = await this.resolveApps(
+        root,
+        config,
+        this.isServerless(adapter),
+      );
 
       await this.orchestrator.down({
         root,
@@ -298,7 +321,12 @@ export class PlatformCommand {
     handler: async ({ flags, root, run }) => {
       const config = await this.inspector.resolveConfig(root);
       const env = flags.env ?? config.defaultEnv;
-      const apps = await this.resolveApps(root, config);
+      const adapter = config.environments[env]?.adapter ?? "cloudflare";
+      const apps = await this.resolveApps(
+        root,
+        config,
+        this.isServerless(adapter),
+      );
 
       const { state } = await this.orchestrator.status({
         root,
@@ -472,7 +500,11 @@ export class PlatformCommand {
       const env = flags.env ?? config.defaultEnv;
       const envConfig = config.environments[env];
       const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
-      const apps = await this.resolveApps(root, config);
+      const apps = await this.resolveApps(
+        root,
+        config,
+        this.isServerless(envConfig.adapter),
+      );
       const namingCtx = this.naming.forContext(config.project, env);
 
       const ctx = {
@@ -503,7 +535,11 @@ export class PlatformCommand {
       const env = flags.env ?? config.defaultEnv;
       const envConfig = config.environments[env];
       const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
-      const apps = await this.resolveApps(root, config);
+      const apps = await this.resolveApps(
+        root,
+        config,
+        this.isServerless(envConfig.adapter),
+      );
       const namingCtx = this.naming.forContext(config.project, env);
 
       const ctx = {
@@ -536,7 +572,11 @@ export class PlatformCommand {
       const env = flags.env ?? config.defaultEnv;
       const envConfig = config.environments[env];
       const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
-      const apps = await this.resolveApps(root, config);
+      const apps = await this.resolveApps(
+        root,
+        config,
+        this.isServerless(envConfig.adapter),
+      );
       const namingCtx = this.naming.forContext(config.project, env);
 
       const ctx = {
@@ -593,10 +633,15 @@ export class PlatformCommand {
   protected async resolveApps(
     root: string,
     config: ResolvedPlatformConfig,
+    isServerless: boolean,
   ): Promise<AppDefinition[]> {
     if (!config.isMonorepo) {
       const entry = await this.boot.getAppEntry(root);
+      if (isServerless) {
+        process.env.ALEPHA_SERVERLESS = "true";
+      }
       const appAlepha = await this.viteBuild.init({ entry });
+      delete process.env.ALEPHA_SERVERLESS;
       const resources = this.detectResources(appAlepha);
 
       return [
@@ -613,7 +658,11 @@ export class PlatformCommand {
     for (const appPath of config.appPaths) {
       const appRoot = `${root}/${appPath}`;
       const entry = await this.boot.getAppEntry(appRoot);
+      if (isServerless) {
+        process.env.ALEPHA_SERVERLESS = "true";
+      }
       const appAlepha = await this.viteBuild.init({ entry });
+      delete process.env.ALEPHA_SERVERLESS;
       const name = config.appNames.get(appPath) ?? appPath;
       const resources = this.detectResources(appAlepha);
 
@@ -621,6 +670,10 @@ export class PlatformCommand {
     }
 
     return apps;
+  }
+
+  protected isServerless(adapter: string): boolean {
+    return adapter === "vercel" || adapter === "cloudflare";
   }
 
   protected detectResources(alepha: any): DetectedResources {
@@ -641,7 +694,10 @@ export class PlatformCommand {
     } catch {}
 
     try {
-      hasKV = alepha.primitives("cache").length > 0;
+      hasKV =
+        alepha
+          .primitives("cache")
+          .filter((it: any) => it.options?.provider !== "memory").length > 0;
     } catch {}
 
     try {

@@ -8,6 +8,7 @@ import type {
   PlatformContext,
   PlatformState,
 } from "../adapters/PlatformAdapter.ts";
+import { VercelAdapter } from "../adapters/VercelAdapter.ts";
 import { type NamingContext, NamingService } from "./NamingService.ts";
 import {
   PlatformInspector,
@@ -26,6 +27,7 @@ export class PlatformOrchestrator {
   protected readonly inspector = $inject(PlatformInspector);
   protected readonly naming = $inject(NamingService);
   protected readonly cloudflareAdapter = $inject(CloudflareAdapter);
+  protected readonly vercelAdapter = $inject(VercelAdapter);
 
   // -------------------------------------------------------------------------
   // Adapter resolution
@@ -35,10 +37,12 @@ export class PlatformOrchestrator {
     switch (adapterName) {
       case "cloudflare":
         return this.cloudflareAdapter;
+      case "vercel":
+        return this.vercelAdapter;
       case "docker-compose":
       case "aks":
         throw new AlephaError(
-          `Adapter "${adapterName}" is not yet available. Currently supported: cloudflare`,
+          `Adapter "${adapterName}" is not yet available. Currently supported: cloudflare, vercel`,
         );
       default:
         throw new AlephaError(`Unknown adapter: "${adapterName}"`);

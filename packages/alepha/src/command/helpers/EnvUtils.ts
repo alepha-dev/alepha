@@ -8,6 +8,11 @@ export class EnvUtils {
 
   /**
    * Load environment variables from .env files into process.env.
+   *
+   * Variables that already exist in process.env are NOT overwritten,
+   * matching the standard dotenv convention where the shell environment
+   * takes precedence over .env file values.
+   *
    * By default, it loads from ".env" and ".env.local".
    * You can specify additional files to load, e.g. [".env", ".env.production"].
    */
@@ -17,7 +22,9 @@ export class EnvUtils {
   ): Promise<void> {
     const vars = await this.parseEnv(root, files);
     for (const [key, value] of Object.entries(vars)) {
-      process.env[key] = value;
+      if (process.env[key] === undefined) {
+        process.env[key] = value;
+      }
     }
   }
 

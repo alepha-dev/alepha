@@ -34,7 +34,7 @@ export const platformOptions = $atom({
       environments: t.record(
         t.text(),
         t.object({
-          adapter: t.enum(["cloudflare", "docker-compose", "aks"]),
+          adapter: t.enum(["cloudflare", "vercel", "docker-compose", "aks"]),
           domain: t.optional(t.text()),
         }),
       ),
@@ -51,7 +51,7 @@ export type PlatformOptions = Static<typeof platformOptions.schema>;
  * Configuration for a single named environment.
  */
 export interface EnvironmentConfig {
-  adapter: "cloudflare" | "docker-compose" | "aks";
+  adapter: "cloudflare" | "vercel" | "docker-compose" | "aks";
   domain?: string;
   vars?: Record<string, string>;
 }
