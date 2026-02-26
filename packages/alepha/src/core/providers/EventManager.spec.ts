@@ -257,10 +257,9 @@ describe("EventManager", () => {
 
       await eventManager.emit("echo", {});
 
-      // First hooks are prepended (reverse order of registration)
-      // Then normal hooks, then last hooks (in order of registration)
-      expect(order[0]).toBe("first2");
-      expect(order[1]).toBe("first1");
+      // First hooks preserve registration order, then normal, then last
+      expect(order[0]).toBe("first1");
+      expect(order[1]).toBe("first2");
       expect(order[order.length - 2]).toBe("last1");
       expect(order[order.length - 1]).toBe("last2");
     });
@@ -686,6 +685,273 @@ describe("EventManager", () => {
       await expect(eventManager.emit("echo", {})).rejects.toThrow(
         "Async error",
       );
+    });
+  });
+
+  describe("before/after ordering", () => {
+    it("should run hook with after constraint after the referenced service", async () => {
+      const eventManager = new EventManager();
+      const order: string[] = [];
+
+      class ServiceA {}
+      class ServiceB {}
+
+      eventManager.on("echo", {
+        caller: ServiceA,
+        callback: async () => {
+          order.push("A");
+        },
+      });
+      eventManager.on("echo", {
+        caller: ServiceB,
+        after: [ServiceA],
+        callback: async () => {
+          order.push("B");
+        },
+      });
+
+      await eventManager.emit("echo", {});
+
+      expect(order).toEqual(["A", "B"]);
+    });
+
+    it("should run hook with after constraint after the referenced service (reverse registration)", async () => {
+      const eventManager = new EventManager();
+      const order: string[] = [];
+
+      class ServiceA {}
+      class ServiceB {}
+
+      // Register B first, but it has after: [ServiceA]
+      eventManager.on("echo", {
+        caller: ServiceB,
+        after: [ServiceA],
+        callback: async () => {
+          order.push("B");
+        },
+      });
+      eventManager.on("echo", {
+        caller: ServiceA,
+        callback: async () => {
+          order.push("A");
+        },
+      });
+
+      await eventManager.emit("echo", {});
+
+      expect(order).toEqual(["A", "B"]);
+    });
+
+    it("should run hook with before constraint before the referenced service", async () => {
+      const eventManager = new EventManager();
+      const order: string[] = [];
+
+      class ServiceA {}
+      class ServiceB {}
+
+      // Register B first, then A with before: [ServiceB]
+      eventManager.on("echo", {
+        caller: ServiceB,
+        callback: async () => {
+          order.push("B");
+        },
+      });
+      eventManager.on("echo", {
+        caller: ServiceA,
+        before: [ServiceB],
+        callback: async () => {
+          order.push("A");
+        },
+      });
+
+      await eventManager.emit("echo", {});
+
+      expect(order).toEqual(["A", "B"]);
+    });
+
+    it("should handle combined before and after on same hook", async () => {
+      const eventManager = new EventManager();
+      const order: string[] = [];
+
+      class ServiceA {}
+      class ServiceB {}
+      class ServiceC {}
+
+      eventManager.on("echo", {
+        caller: ServiceC,
+        callback: async () => {
+          order.push("C");
+        },
+      });
+      eventManager.on("echo", {
+        caller: ServiceA,
+        callback: async () => {
+          order.push("A");
+        },
+      });
+      // B runs after A and before C
+      eventManager.on("echo", {
+        caller: ServiceB,
+        after: [ServiceA],
+        before: [ServiceC],
+        callback: async () => {
+          order.push("B");
+        },
+      });
+
+      await eventManager.emit("echo", {});
+
+      expect(order).toEqual(["A", "B", "C"]);
+    });
+
+    it("should detect circular dependencies", async () => {
+      const eventManager = new EventManager();
+
+      class ServiceA {}
+      class ServiceB {}
+
+      eventManager.on("echo", {
+        caller: ServiceA,
+        after: [ServiceB],
+        callback: async () => {},
+      });
+      eventManager.on("echo", {
+        caller: ServiceB,
+        after: [ServiceA],
+        callback: async () => {},
+      });
+
+      await expect(eventManager.emit("echo", {})).rejects.toThrow(
+        "Circular dependency detected in hook before/after constraints",
+      );
+    });
+
+    it("should preserve registration order for unconstrained hooks", async () => {
+      const eventManager = new EventManager();
+      const order: string[] = [];
+
+      class ServiceA {}
+      class ServiceB {}
+      class ServiceC {}
+
+      eventManager.on("echo", {
+        caller: ServiceA,
+        callback: async () => {
+          order.push("A");
+        },
+      });
+      eventManager.on("echo", {
+        caller: ServiceB,
+        callback: async () => {
+          order.push("B");
+        },
+      });
+      eventManager.on("echo", {
+        caller: ServiceC,
+        callback: async () => {
+          order.push("C");
+        },
+      });
+
+      await eventManager.emit("echo", {});
+
+      expect(order).toEqual(["A", "B", "C"]);
+    });
+
+    it("should handle multiple hooks from the same service with constraints", async () => {
+      const eventManager = new EventManager();
+      const order: string[] = [];
+
+      class ServiceA {}
+      class ServiceB {}
+
+      eventManager.on("echo", {
+        caller: ServiceA,
+        callback: async () => {
+          order.push("A1");
+        },
+      });
+      eventManager.on("echo", {
+        caller: ServiceA,
+        callback: async () => {
+          order.push("A2");
+        },
+      });
+      eventManager.on("echo", {
+        caller: ServiceB,
+        after: [ServiceA],
+        callback: async () => {
+          order.push("B");
+        },
+      });
+
+      await eventManager.emit("echo", {});
+
+      expect(order).toEqual(["A1", "A2", "B"]);
+    });
+
+    it("should sort within priority tiers independently", async () => {
+      const eventManager = new EventManager();
+      const order: string[] = [];
+
+      class ServiceA {}
+      class ServiceB {}
+
+      eventManager.on("echo", {
+        caller: ServiceB,
+        priority: "first",
+        callback: async () => {
+          order.push("first-B");
+        },
+      });
+      eventManager.on("echo", {
+        caller: ServiceA,
+        priority: "first",
+        before: [ServiceB],
+        callback: async () => {
+          order.push("first-A");
+        },
+      });
+      eventManager.on("echo", {
+        caller: ServiceA,
+        callback: async () => {
+          order.push("normal");
+        },
+      });
+
+      await eventManager.emit("echo", {});
+
+      expect(order).toEqual(["first-A", "first-B", "normal"]);
+    });
+
+    it("should ignore after constraints referencing services not in the same tier", async () => {
+      const eventManager = new EventManager();
+      const order: string[] = [];
+
+      class ServiceA {}
+      class ServiceB {}
+
+      // A is in normal tier, B is in last tier with after: [ServiceA]
+      // The constraint targets a service not in the same tier, so it's ignored
+      eventManager.on("echo", {
+        caller: ServiceA,
+        callback: async () => {
+          order.push("A");
+        },
+      });
+      eventManager.on("echo", {
+        caller: ServiceB,
+        priority: "last",
+        after: [ServiceA],
+        callback: async () => {
+          order.push("B");
+        },
+      });
+
+      await eventManager.emit("echo", {});
+
+      // A runs first (normal tier), B runs after (last tier)
+      expect(order).toEqual(["A", "B"]);
     });
   });
 });

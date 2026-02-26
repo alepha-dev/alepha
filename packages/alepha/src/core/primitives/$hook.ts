@@ -2,6 +2,7 @@ import type { Hooks } from "../Alepha.ts";
 import { KIND } from "../constants/KIND.ts";
 import { createPrimitive, Primitive } from "../helpers/primitive.ts";
 import type { Async } from "../interfaces/Async.ts";
+import type { Service } from "../interfaces/Service.ts";
 
 /**
  * Registers a new hook.
@@ -64,12 +65,12 @@ export interface HookOptions<T extends keyof Hooks> {
   priority?: "first" | "last";
 
   /**
-   * Empty placeholder, not implemented yet. :-)
+   * Run this hook before the hooks owned by the specified services.
    */
   before?: object | Array<object>;
 
   /**
-   * Empty placeholder, not implemented yet. :-)
+   * Run this hook after the hooks owned by the specified services.
    */
   after?: object | Array<object>;
 }
@@ -82,13 +83,21 @@ export class HookPrimitive<T extends keyof Hooks> extends Primitive<
   public called = 0;
 
   protected onInit() {
-    // Store reference to handler to avoid property access in hot path
     const handler = this.options.handler;
+
+    const resolveDeps = (
+      deps?: object | Array<object>,
+    ): Service[] | undefined => {
+      if (!deps) return undefined;
+      const arr = Array.isArray(deps) ? deps : [deps];
+      return arr.map((dep) => dep.constructor as Service);
+    };
 
     this.alepha.events.on(this.options.on, {
       caller: this.config.service,
       priority: this.options.priority,
-      // Return handler result directly - EventManager checks if it's a promise
+      before: resolveDeps(this.options.before),
+      after: resolveDeps(this.options.after),
       callback: (args: any) => {
         this.called += 1;
         return handler(args);

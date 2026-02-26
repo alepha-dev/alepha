@@ -437,6 +437,10 @@ export class Alepha {
       return false;
     }
 
+    if (this.env.ALEPHA_SERVERLESS) {
+      return true;
+    }
+
     // Vercel support
     if (this.env.VERCEL_REGION) {
       return true;
@@ -1100,6 +1104,8 @@ export class Alepha {
 export interface Hook<T extends keyof Hooks = any> {
   caller?: Service;
   priority?: "first" | "last";
+  before?: Service[];
+  after?: Service[];
   callback: (payload: Hooks[T]) => Async<void>;
 }
 

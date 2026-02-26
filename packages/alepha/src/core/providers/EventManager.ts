@@ -2,6 +2,7 @@ import type { Hook, Hooks } from "../Alepha.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
 import type { Async } from "../interfaces/Async.ts";
 import type { LoggerInterface } from "../interfaces/LoggerInterface.ts";
+import type { Service } from "../interfaces/Service.ts";
 
 /**
  * Compiled event executor - optimized for hot paths.
@@ -26,14 +27,22 @@ export class EventManager {
   public logFn?: () => LoggerInterface | undefined;
 
   /**
-   * List of events that can be triggered. Powered by $hook().
+   * Three-list storage for hooks, split by priority tier.
    */
-  protected events: Record<string, Array<Hook>> = {};
+  protected events: Record<
+    string,
+    { first: Array<Hook>; normal: Array<Hook>; last: Array<Hook> }
+  > = {};
 
   /**
    * Cache of compiled executors, auto-built on first emit per event.
    */
   protected cache = new Map<string, CompiledEventExecutor<any>>();
+
+  /**
+   * Cache of resolved (topo-sorted) hook arrays per event.
+   */
+  protected sortedCache = new Map<string, Array<Hook>>();
 
   constructor(logFn?: () => LoggerInterface | undefined) {
     this.logFn = logFn;
@@ -46,6 +55,7 @@ export class EventManager {
   public clear(): void {
     this.events = {};
     this.cache.clear();
+    this.sortedCache.clear();
   }
 
   /**
@@ -56,36 +66,30 @@ export class EventManager {
     hookOrFunc: Hook<T> | ((payload: Hooks[T]) => Async<void>),
   ): () => void {
     if (!this.events[event]) {
-      this.events[event] = [];
+      this.events[event] = { first: [], normal: [], last: [] };
     }
 
     const hook =
       typeof hookOrFunc === "function" ? { callback: hookOrFunc } : hookOrFunc;
 
-    // Insert hook respecting priority: "first" → front, "last" → back,
-    // default → before any "last" hooks (preserves registration order)
+    const lists = this.events[event];
+
     if (hook.priority === "first") {
-      this.events[event].unshift(hook);
+      lists.first.push(hook);
     } else if (hook.priority === "last") {
-      this.events[event].push(hook);
+      lists.last.push(hook);
     } else {
-      const index = this.events[event].findIndex(
-        (it) => it.priority === "last",
-      );
-      if (index !== -1) {
-        this.events[event].splice(index, 0, hook);
-      } else {
-        this.events[event].push(hook);
-      }
+      lists.normal.push(hook);
     }
 
-    // Invalidate cached executors — hook list changed
     this.invalidateCache(event as string);
 
     return () => {
-      this.events[event] = this.events[event].filter(
-        (it) => it.callback !== hook.callback,
-      );
+      const lists = this.events[event];
+      if (!lists) return;
+      for (const key of ["first", "normal", "last"] as const) {
+        lists[key] = lists[key].filter((it) => it.callback !== hook.callback);
+      }
       this.invalidateCache(event as string);
     };
   }
@@ -93,6 +97,128 @@ export class EventManager {
   protected invalidateCache(event: string): void {
     this.cache.delete(event);
     this.cache.delete(`${event}:catch`);
+    this.sortedCache.delete(event);
+  }
+
+  /**
+   * Resolves the final ordered hook list for an event.
+   * Applies topological sort (Kahn's algorithm) within each priority tier
+   * based on before/after constraints.
+   */
+  protected resolve(event: string): Array<Hook> {
+    const cached = this.sortedCache.get(event);
+    if (cached) return cached;
+
+    const lists = this.events[event];
+    if (!lists) return [];
+
+    const sorted = [
+      ...this.topoSort(lists.first),
+      ...this.topoSort(lists.normal),
+      ...this.topoSort(lists.last),
+    ];
+
+    this.sortedCache.set(event, sorted);
+    return sorted;
+  }
+
+  /**
+   * Topological sort using Kahn's algorithm.
+   * Hooks with no constraints maintain registration order (stable).
+   */
+  protected topoSort(hooks: Array<Hook>): Array<Hook> {
+    if (hooks.length <= 1) return hooks;
+
+    // Check if any hook has constraints — skip sort if none
+    const hasConstraints = hooks.some(
+      (h) =>
+        (h.before && h.before.length > 0) || (h.after && h.after.length > 0),
+    );
+    if (!hasConstraints) return hooks;
+
+    // Build adjacency: edge from A → B means A must run before B
+    const inDegree = new Map<Hook, number>();
+    const adjacency = new Map<Hook, Set<Hook>>();
+
+    for (const hook of hooks) {
+      inDegree.set(hook, 0);
+      adjacency.set(hook, new Set());
+    }
+
+    // Build a map from service class → hooks in this list owned by that service
+    const serviceToHooks = new Map<Service, Array<Hook>>();
+    for (const hook of hooks) {
+      if (hook.caller) {
+        let arr = serviceToHooks.get(hook.caller);
+        if (!arr) {
+          arr = [];
+          serviceToHooks.set(hook.caller, arr);
+        }
+        arr.push(hook);
+      }
+    }
+
+    // "after: [ServiceA]" means this hook runs after ServiceA's hooks → edge from ServiceA's hooks → this hook
+    for (const hook of hooks) {
+      if (hook.after) {
+        for (const dep of hook.after) {
+          const depHooks = serviceToHooks.get(dep);
+          if (depHooks) {
+            for (const depHook of depHooks) {
+              if (depHook !== hook && !adjacency.get(depHook)!.has(hook)) {
+                adjacency.get(depHook)!.add(hook);
+                inDegree.set(hook, inDegree.get(hook)! + 1);
+              }
+            }
+          }
+        }
+      }
+
+      // "before: [ServiceB]" means this hook runs before ServiceB's hooks → edge from this hook → ServiceB's hooks
+      if (hook.before) {
+        for (const dep of hook.before) {
+          const depHooks = serviceToHooks.get(dep);
+          if (depHooks) {
+            for (const depHook of depHooks) {
+              if (depHook !== hook && !adjacency.get(hook)!.has(depHook)) {
+                adjacency.get(hook)!.add(depHook);
+                inDegree.set(depHook, inDegree.get(depHook)! + 1);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Kahn's algorithm with stable ordering (registration order as tiebreaker)
+    const queue: Array<Hook> = [];
+    for (const hook of hooks) {
+      if (inDegree.get(hook)! === 0) {
+        queue.push(hook);
+      }
+    }
+
+    const result: Array<Hook> = [];
+    while (queue.length > 0) {
+      const hook = queue.shift()!;
+      result.push(hook);
+
+      for (const neighbor of adjacency.get(hook)!) {
+        const deg = inDegree.get(neighbor)! - 1;
+        inDegree.set(neighbor, deg);
+        if (deg === 0) {
+          queue.push(neighbor);
+        }
+      }
+    }
+
+    if (result.length !== hooks.length) {
+      throw new AlephaError(
+        "Circular dependency detected in hook before/after constraints",
+      );
+    }
+
+    return result;
   }
 
   /**
@@ -105,9 +231,9 @@ export class EventManager {
     event: T,
     options: CompileOptions = {},
   ): CompiledEventExecutor<T> {
-    const hooks = this.events[event];
+    const hooks = this.resolve(event as string);
 
-    if (!hooks || hooks.length === 0) {
+    if (hooks.length === 0) {
       return () => {};
     }
 
@@ -225,8 +351,8 @@ export class EventManager {
     }
 
     // Slow path with logging (startup only)
-    const events = this.events[event];
-    if (!events || events.length === 0) return;
+    const events = this.resolve(event as string);
+    if (events.length === 0) return;
 
     const now = performance.now();
     this.log?.trace(`${String(event)} ...`);
