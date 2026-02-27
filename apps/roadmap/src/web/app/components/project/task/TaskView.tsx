@@ -45,6 +45,8 @@ import TaskViewObjectives from "./TaskViewObjectives.tsx";
 
 export interface TaskViewProps {
   task: Task;
+  onClose?: () => void;
+  onTaskChange?: (task: Task) => void;
 }
 
 const TaskView = (props: TaskViewProps) => {
@@ -61,9 +63,19 @@ const TaskView = (props: TaskViewProps) => {
   }, [props.task]);
 
   const [project] = useStore(currentProjectAtom);
-  if (!project) {
-    return null;
-  }
+
+  const updateTask = (updated: Task) => {
+    setTask(updated);
+    props.onTaskChange?.(updated);
+  };
+
+  const handleClose = () => {
+    if (props.onClose) {
+      props.onClose();
+    } else if (project) {
+      router.push("projectBoard", { meta: { deleted: true } });
+    }
+  };
 
   const money = info.getMoneyFromTask(task);
 
@@ -104,11 +116,7 @@ const TaskView = (props: TaskViewProps) => {
           (t) => t.id !== task.id,
         ),
       );
-      await router.push("projectBoard", {
-        meta: {
-          deleted: true,
-        },
-      });
+      handleClose();
     },
   };
 
@@ -142,12 +150,12 @@ const TaskView = (props: TaskViewProps) => {
               >
                 {task.title}
               </Text>
-              {!task.completedAt && (
+              {!task.completedAt && project && (
                 <>
                   <EditTaskButton
                     task={task}
                     onUpdate={(it) => {
-                      setTask(it);
+                      updateTask(it);
                       alepha.store.set(currentTaskAtom, it);
                     }}
                     showDialog={showDialog}
@@ -156,7 +164,7 @@ const TaskView = (props: TaskViewProps) => {
                   <NoteButton
                     task={task}
                     onUpdate={(it) => {
-                      setTask(it);
+                      updateTask(it);
                       alepha.store.set(currentTaskAtom, it);
                     }}
                   />
@@ -174,7 +182,7 @@ const TaskView = (props: TaskViewProps) => {
               <TaskTimer
                 task={task}
                 onUpdate={(it) => {
-                  setTask(it);
+                  updateTask(it);
                   alepha.store.set(currentTaskAtom, it);
                   const tasks =
                     alepha.store.get(currentAssignedTasksAtom) ?? [];
@@ -186,9 +194,15 @@ const TaskView = (props: TaskViewProps) => {
               />
               <ActionButton
                 px={"xs"}
-                href={router.path("projectBoard", {
-                  params: { projectId: String(project.id) },
-                })}
+                {...(props.onClose
+                  ? { onClick: props.onClose }
+                  : project
+                    ? {
+                        href: router.path("projectBoard", {
+                          params: { projectId: String(project.id) },
+                        }),
+                      }
+                    : {})}
               >
                 <IconX size={theme.icon.size.md} />
               </ActionButton>
@@ -221,7 +235,7 @@ const TaskView = (props: TaskViewProps) => {
             <TaskViewObjectives
               task={task}
               onTaskUpdate={(updatedTask) => {
-                setTask(updatedTask);
+                updateTask(updatedTask);
                 alepha.store.set(currentTaskAtom, updatedTask);
               }}
             />
@@ -313,7 +327,7 @@ const TaskView = (props: TaskViewProps) => {
                       const updatedTask = await taskApi.acceptTask({
                         params: { id: task.id },
                       });
-                      setTask(updatedTask);
+                      updateTask(updatedTask);
                       alepha.store.set(currentTaskAtom, updatedTask);
                       alepha.store.set(currentAssignedTasksAtom, [
                         ...(alepha.store.get(currentAssignedTasksAtom) ?? []),
@@ -358,11 +372,7 @@ const TaskView = (props: TaskViewProps) => {
                           alepha.store.get(currentAssignedTasksAtom) ?? []
                         ).filter((t) => t.id !== task.id),
                       );
-                      await router.push("projectBoard", {
-                        meta: {
-                          completed: true,
-                        },
-                      });
+                      handleClose();
                     }}
                   >
                     {tr("task.view.actions.complete")}
