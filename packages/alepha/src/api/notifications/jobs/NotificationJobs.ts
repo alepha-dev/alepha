@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
-import { $job } from "alepha/api/jobs";
+import { $job, jobExecutionEntity } from "alepha/api/jobs";
+import { $repository } from "alepha/orm";
 import { notificationPayloadSchema } from "../schemas/notificationPayloadSchema.ts";
 import { NotificationSenderService } from "../services/NotificationSenderService.ts";
 
@@ -7,6 +8,7 @@ export class NotificationJobs {
   protected readonly notificationSenderService = $inject(
     NotificationSenderService,
   );
+  protected readonly executions = $repository(jobExecutionEntity);
 
   public readonly sendNotification = $job({
     schema: notificationPayloadSchema,
@@ -23,7 +25,14 @@ export class NotificationJobs {
     concurrency: 5,
     handler: async ({ items }) => {
       for (const item of items) {
-        await this.notificationSenderService.send(item.payload);
+        const rendered = await this.notificationSenderService.send(
+          item.payload,
+        );
+        if (rendered) {
+          await this.executions.updateById(item.id, {
+            result: rendered as Record<string, unknown>,
+          });
+        }
       }
     },
   });

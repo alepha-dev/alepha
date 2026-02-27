@@ -19,19 +19,32 @@ export class NotificationSenderService {
     });
 
     if (payload.type === "email") {
-      await this.emailProvider.send(this.renderEmail(payload));
+      const rendered = this.renderEmail(payload);
+      await this.emailProvider.send(rendered);
       this.log.info("Email notification sent", {
         template: payload.template,
         contact: payload.contact,
       });
+      return {
+        type: "email" as const,
+        to: rendered.to,
+        subject: rendered.subject,
+        body: rendered.body,
+      };
     }
 
     if (payload.type === "sms") {
-      await this.smsProvider.send(this.renderSms(payload));
+      const rendered = this.renderSms(payload);
+      await this.smsProvider.send(rendered);
       this.log.info("SMS notification sent", {
         template: payload.template,
         contact: payload.contact,
       });
+      return {
+        type: "sms" as const,
+        to: rendered.to,
+        message: rendered.message,
+      };
     }
   }
 

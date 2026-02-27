@@ -9,6 +9,7 @@ import {
 } from "@alepha/ui";
 import { AuthRouter, UserButton } from "@alepha/ui/auth";
 import {
+  IconBell,
   IconClock,
   IconDashboard,
   IconDevices,
@@ -28,7 +29,7 @@ import type { AdminAuditController } from "alepha/api/audits";
 import type { FileController } from "alepha/api/files";
 import type { AdminJobController } from "alepha/api/jobs";
 import type { AdminApiKeyController } from "alepha/api/keys";
-
+import type { AdminNotificationController } from "alepha/api/notifications";
 import type { AdminParameterController } from "alepha/api/parameters";
 import type {
   AdminSessionController,
@@ -51,6 +52,7 @@ export class AdminRouter {
   protected readonly auditCtrl = $client<AdminAuditController>();
   protected readonly jobCtrl = $client<AdminJobController>();
   protected readonly apiKeyCtrl = $client<AdminApiKeyController>();
+  protected readonly notificationCtrl = $client<AdminNotificationController>();
 
   public readonly adminCookie = $cookie(alephaSidebarAtom, {
     name: "admin.sidebar",
@@ -158,6 +160,10 @@ export class AdminRouter {
               { ...this.router.node(this.adminJobRegistry.name) },
               { ...this.router.node(this.adminJobExecutions.name) },
             ],
+          },
+          {
+            ...this.router.node(this.adminNotifications.name),
+            can: () => this.notificationCtrl.findNotifications.can(),
           },
           {
             ...this.router.node(this.adminParameters.name),
@@ -389,5 +395,22 @@ export class AdminRouter {
     description: "View and manage API keys for programmatic access.",
     lazy: () => import("./components/keys/AdminApiKeys.tsx"),
     can: () => this.apiKeyCtrl.findApiKeys.can(),
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Notifications
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  public readonly adminNotifications = $page({
+    icon: IconBell,
+    parent: this.adminLayout,
+    path: "/notifications",
+    label: "Notifications",
+    description: "View sent notifications and their delivery status.",
+    head: {
+      title: "Notifications",
+    },
+    lazy: () => import("./components/notifications/AdminNotifications.tsx"),
+    can: () => this.notificationCtrl.findNotifications.can(),
   });
 }
