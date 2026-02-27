@@ -29,6 +29,27 @@ export const platformOptions = $atom({
       default: t.optional(t.text()),
 
       /**
+       * Secret store configuration for syncing .env secrets
+       * to external providers (e.g. GitHub Actions environments).
+       */
+      secrets: t.optional(
+        t.object({
+          /**
+           * Secret store backend.
+           */
+          store: t.enum(["github"]),
+
+          /**
+           * Pattern for resolving environment names in the store.
+           * Placeholders: {project}, {env}.
+           *
+           * @default "{project}-{env}"
+           */
+          environmentPattern: t.optional(t.text()),
+        }),
+      ),
+
+      /**
        * Named environments with their adapter and configuration.
        */
       environments: t.record(

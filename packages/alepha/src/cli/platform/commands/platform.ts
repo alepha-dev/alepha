@@ -19,6 +19,7 @@ import {
   type ResolvedPlatformConfig,
 } from "../services/PlatformInspector.ts";
 import { PlatformOrchestrator } from "../services/PlatformOrchestrator.ts";
+import { SecretsCommand } from "./SecretsCommand.ts";
 
 export class PlatformCommand {
   protected readonly log = $logger();
@@ -30,6 +31,7 @@ export class PlatformCommand {
   protected readonly viteBuild = $inject(ViteBuildProvider);
   protected readonly color = $inject(ConsoleColorProvider);
   protected readonly envUtils = $inject(EnvUtils);
+  protected readonly secretsCommand = $inject(SecretsCommand);
 
   /**
    * Common flags for env/app targeting.
@@ -618,6 +620,7 @@ export class PlatformCommand {
       this.build,
       this.deploy,
       this.migrate,
+      this.secretsCommand.secrets,
     ],
     handler: async ({ help, root }) => {
       await this.inspector.resolveConfig(root);
