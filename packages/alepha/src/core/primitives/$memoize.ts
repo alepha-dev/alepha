@@ -1,21 +1,5 @@
 import { createMiddleware, type Middleware } from "alepha";
 
-export interface MemoizeOptions {
-  /**
-   * Maximum number of entries to keep in the cache.
-   * When exceeded, the oldest entry is evicted (FIFO).
-   *
-   * @default 1000
-   */
-  max?: number;
-
-  /**
-   * Custom key function. Receives the handler's arguments.
-   * By default, `JSON.stringify(args)` is used.
-   */
-  key?: (...args: any[]) => string;
-}
-
 /**
  * Lightweight in-process memoization middleware.
  *
@@ -65,3 +49,19 @@ export const $memoize = (options?: MemoizeOptions): Middleware => {
     },
   });
 };
+
+export interface MemoizeOptions {
+  /**
+   * Maximum number of entries to keep in the cache.
+   * When exceeded, the oldest entry is evicted (FIFO).
+   *
+   * @default 1000
+   */
+  max?: number;
+
+  /**
+   * Custom key function. Receives the handler's arguments.
+   * By default, `JSON.stringify(args)` is used.
+   */
+  key?: (...args: any[]) => string;
+}

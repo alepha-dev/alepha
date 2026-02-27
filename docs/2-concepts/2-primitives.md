@@ -41,7 +41,7 @@ When you run your app, Alepha scans your classes. It sees `$action`, so it creat
 
 ## The Standard Library
 
-Alepha comes with over 30 Primitives out of the box. Here are the ones you will use every day.
+Alepha comes with over 50 Primitives out of the box. Here are the ones you will use every day.
 
 ### Core & Dependency Injection
 The glue that holds your app together.

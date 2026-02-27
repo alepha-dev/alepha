@@ -8,21 +8,6 @@ import { $memoize } from "alepha";
 
 ## Overview
 
-* Maximum number of entries to keep in the cache.
-   * When exceeded, the oldest entry is evicted (FIFO).
-   *
-   * @default 1000
-   */
-  max?: number;
-
-  /**
-   * Custom key function. Receives the handler's arguments.
-   * By default, `JSON.stringify(args)` is used.
-   */
-  key?: (...args: any[]) => string;
-}
-
-/**
 Lightweight in-process memoization middleware.
 
 Caches handler results in a plain `Map` — no external store, no serialization,

@@ -187,5 +187,5 @@ bun dist     # Bun
 ## What Alepha is Not
 
 - **Not a React meta-framework.** React is one optional layer. Alepha works fine as a pure API server.
-- **Not a wrapper around Express/Fastify.** The HTTP server is built-in. There is no middleware chain.
+- **Not a wrapper around Express/Fastify.** The HTTP server is built-in. There is no Express-style middleware chain to configure.
 - **Not a micro-framework.** It ships with ORM, auth, queues, storage, scheduling, and more. You opt in to what you need.

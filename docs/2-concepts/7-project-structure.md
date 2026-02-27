@@ -154,12 +154,15 @@ import { WebModule } from "./web/index.ts"; // React only
 run(ApiModule, WebModule);
 ```
 
-For React apps, `main.browser.ts` hydrates the client:
+For React apps, `main.browser.ts` bootstraps the client:
 
 ```typescript
 // src/main.browser.ts
-import { hydrate } from "alepha/react/router";
+import { Alepha, run } from "alepha";
 import { WebModule } from "./web/index.ts";
 
-hydrate(WebModule);
+const alepha = Alepha.create();
+alepha.with(WebModule);
+
+run(alepha);
 ```
