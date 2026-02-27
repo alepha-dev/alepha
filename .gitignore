@@ -17,9 +17,6 @@ playwright-report
 
 **/.env.*
 
-CLAUDE.md
-AGENTS.md
-
 deno.lock
 apps/tmp
 tasks
