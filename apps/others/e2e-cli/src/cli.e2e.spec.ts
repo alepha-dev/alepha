@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 const thisFile = fileURLToPath(import.meta.url);
-const ROOT = resolve(dirname(thisFile), "../../.."); // apps/e2e-cli/src -> monorepo root
+const ROOT = resolve(dirname(thisFile), "../../../.."); // apps/others/e2e-cli/src -> monorepo root
 const PROJECT_DIR = join(ROOT, "apps/tmp");
 const isWindows = process.platform === "win32";
 

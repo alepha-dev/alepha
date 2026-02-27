@@ -144,8 +144,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
     steps:
       - name: Git Checkout
@@ -163,11 +163,10 @@ jobs:
       - name: Install Dependencies
         run: yarn
 
-      - name: Build Roadmap
-        run: yarn w @alepha/roadmap build
-
-      - name: Deploy to Vercel
-        run: cd apps/roadmap/dist && npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod
+      - name: Deploy Roadmap
+        run: yarn w roadmap alepha platform up --env production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
   verify-windows:
     runs-on: windows-latest

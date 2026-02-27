@@ -1,5 +1,6 @@
 {
   "type": "module",
+  "name": "benchmark",
   "private": true,
   "devDependencies": {
     "@types/autocannon": "^7.12.7",

@@ -2,7 +2,6 @@ import { defineConfig } from "alepha/cli";
 
 export default defineConfig({
   platform: {
-    name: "roadmap",
     environments: {
       production: {
         domain: "roadmap.alepha.dev",

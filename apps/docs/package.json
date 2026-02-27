@@ -1,5 +1,5 @@
 {
-  "name": "@alepha/docs",
+  "name": "docs",
   "private": true,
   "type": "module",
   "dependencies": {

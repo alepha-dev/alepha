@@ -6,9 +6,9 @@
   "packageManager": "yarn@4.12.0",
   "workspaces": {
     "packages": [
-      "apps/*",
-      "packages/*",
-      "!apps/*/dist"
+      "packages/**/*",
+      "apps/**/*",
+      "!apps/**/*/dist"
     ]
   },
   "devDependencies": {

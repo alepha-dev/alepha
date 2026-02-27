@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "@alepha/integration",
+  "name": "integration",
   "type": "module",
   "scripts": {
     "test": "alepha test",

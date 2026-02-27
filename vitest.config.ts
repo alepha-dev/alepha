@@ -53,7 +53,7 @@ export default defineConfig({
             "**/*.bun.spec.{ts,tsx}",
             "**/node_modules/**",
             "**/e2e/**",
-            "apps/e2e-cli/**",
+            "apps/others/e2e-cli/**",
             "apps/tmp/**",
           ],
         },

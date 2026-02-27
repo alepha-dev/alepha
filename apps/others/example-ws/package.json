@@ -1,6 +1,7 @@
 {
   "private": true,
   "type": "module",
+  "name": "example-ws",
   "scripts": {
     "dev": "alepha dev",
     "start": "alepha build && node dist"
