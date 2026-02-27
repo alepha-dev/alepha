@@ -4,9 +4,8 @@ import {
   $inject,
   Alepha,
   AppNotStartedError,
+  alephaSecretEnvSchema,
   ContainerLockedError,
-  type Static,
-  t,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import { ForbiddenError } from "alepha/server";
@@ -27,20 +26,6 @@ import {
 } from "../schemas/userAccountInfoSchema.ts";
 import { JwtProvider } from "./JwtProvider.ts";
 
-export const DEFAULT_APP_SECRET = "05759934015388327323179852515731"; // (32)
-
-export const alephaSecurityEnvSchema = t.object({
-  APP_SECRET: t.text({
-    description:
-      "The secret key used for signing JWTs and other security features. It should be a strong, random string of at least 32 characters for HS256. Do not use the default value in production.",
-    default: DEFAULT_APP_SECRET,
-  }),
-});
-
-declare module "alepha" {
-  interface Env extends Partial<Static<typeof alephaSecurityEnvSchema>> {}
-}
-
 export class SecurityProvider {
   protected readonly UNKNOWN_USER_NAME = "Anonymous User";
   protected readonly PERMISSION_REGEXP = /^[\w-]+((:[\w-]+)+)?$/;
@@ -49,10 +34,10 @@ export class SecurityProvider {
 
   protected readonly log = $logger();
   protected readonly jwt = $inject(JwtProvider);
-  protected readonly env = $env(alephaSecurityEnvSchema);
+  protected readonly env = $env(alephaSecretEnvSchema);
   protected readonly alepha = $inject(Alepha);
 
-  public get secretKey() {
+  public get secretKey(): string {
     return this.env.APP_SECRET;
   }
 
@@ -86,12 +71,6 @@ export class SecurityProvider {
   protected start = $hook({
     on: "start",
     handler: async () => {
-      if (this.alepha.isProduction() && this.secretKey === DEFAULT_APP_SECRET) {
-        this.log.warn(
-          "Using default APP_SECRET in production is not recommended. Please set a strong APP_SECRET value.",
-        );
-      }
-
       for (const realm of this.realms) {
         if (realm.secret) {
           const secret =

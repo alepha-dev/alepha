@@ -1,6 +1,7 @@
 import {
   createCipheriv,
   createDecipheriv,
+  createHash,
   createHmac,
   randomBytes,
   timingSafeEqual,
@@ -12,12 +13,12 @@ import {
   $inject,
   Alepha,
   AlephaError,
+  alephaSecretEnvSchema,
   type Static,
   type TSchema,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { alephaSecurityEnvSchema } from "alepha/security";
 import type {
   Cookie,
   CookiePrimitiveOptions,
@@ -30,7 +31,7 @@ export class ServerCookiesProvider {
   protected readonly log = $logger();
   protected readonly cookieParser = $inject(CookieParser);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
-  protected readonly env = $env(alephaSecurityEnvSchema);
+  protected readonly env = $env(alephaSecretEnvSchema);
 
   // crypto constants
   protected readonly ALGORITHM = "aes-256-gcm";
@@ -186,11 +187,7 @@ export class ServerCookiesProvider {
 
   protected encrypt(text: string): string {
     const iv = randomBytes(this.IV_LENGTH);
-    const cipher = createCipheriv(
-      this.ALGORITHM,
-      Buffer.from(this.secretKey()),
-      iv,
-    );
+    const cipher = createCipheriv(this.ALGORITHM, this.deriveKey(), iv);
     const encrypted = Buffer.concat([
       cipher.update(text, "utf8"),
       cipher.final(),
@@ -208,11 +205,7 @@ export class ServerCookiesProvider {
     );
 
     const encrypted = data.subarray(this.IV_LENGTH + this.AUTH_TAG_LENGTH);
-    const decipher = createDecipheriv(
-      this.ALGORITHM,
-      Buffer.from(this.secretKey()),
-      iv,
-    );
+    const decipher = createDecipheriv(this.ALGORITHM, this.deriveKey(), iv);
 
     decipher.setAuthTag(authTag);
 
@@ -224,19 +217,15 @@ export class ServerCookiesProvider {
     return decrypted.toString("utf8");
   }
 
-  public secretKey(): string {
-    let secret = this.env.APP_SECRET;
-    if (secret.length < 32) {
-      // pad secret to 32 bytes
-      secret = secret.padEnd(32, "0");
-    } else if (secret.length > 32) {
-      // truncate secret to 32 bytes
-      secret = secret.substring(0, 32);
-    }
-    return secret;
+  /**
+   * Derives a 32-byte key from APP_SECRET via SHA-256.
+   * Accepts any string length — no padding or truncation needed.
+   */
+  protected deriveKey(): Buffer {
+    return createHash("sha256").update(this.env.APP_SECRET).digest();
   }
 
   protected sign(data: string): string {
-    return createHmac("sha256", this.secretKey()).update(data).digest("hex");
+    return createHmac("sha256", this.deriveKey()).update(data).digest("hex");
   }
 }

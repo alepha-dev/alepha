@@ -51,7 +51,7 @@ export class ViteDevServerProvider {
 
   protected server!: ViteDevServer;
   protected options!: DevServerOptions;
-  protected alepha: Alepha | null = null;
+  public alepha: Alepha | null = null;
   protected hasError = false;
   protected currentError: Error | null = null;
   protected changedFiles = new Set<string>();
