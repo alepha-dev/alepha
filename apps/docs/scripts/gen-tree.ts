@@ -536,6 +536,8 @@ export class TreeCommand {
     ).map((e) => e.entry);
 
     for (const entry of sortedEntries) {
+      if (entry.name === "plans") continue;
+
       const entryPath = join(dir, entry.name);
       const cleanedName = this.cleanName(entry.name);
 
