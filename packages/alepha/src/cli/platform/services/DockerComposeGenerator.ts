@@ -82,6 +82,9 @@ export class DockerComposeGenerator {
         this.anyAppHas(options.apps, "hasQueue")) &&
       !options.envVars.REDIS_URL;
 
+    const needsRustFS =
+      this.anyAppHas(options.apps, "hasBucket") && !options.envVars.S3_ENDPOINT;
+
     if (needsPostgres) {
       const dbName = `${options.project}_${options.env}`.replace(/-/g, "_");
       services.push(
@@ -108,6 +111,22 @@ export class DockerComposeGenerator {
           '    ports: ["6379:6379"]',
         ].join("\n"),
       );
+    }
+
+    if (needsRustFS) {
+      services.push(
+        [
+          "  rustfs:",
+          "    image: rustfs/rustfs:latest",
+          '    ports: ["9000:9000"]',
+          "    environment:",
+          "      RUSTFS_ROOT_USER: alepha",
+          "      RUSTFS_ROOT_PASSWORD: alepha",
+          "    volumes:",
+          "      - rustfs_data:/data",
+        ].join("\n"),
+      );
+      volumes.push("  rustfs_data:");
     }
 
     if (services.length === 0) {
@@ -197,6 +216,9 @@ export class DockerComposeGenerator {
       ) {
         deps.push("      - redis");
       }
+      if (app.resources.hasBucket && !options.envVars.S3_ENDPOINT) {
+        deps.push("      - rustfs");
+      }
       if (deps.length > 0) {
         appLines.push("    depends_on:", ...deps);
       }
@@ -242,6 +264,28 @@ export class DockerComposeGenerator {
       }
       redisLines.push("    restart: unless-stopped");
       services.push(redisLines.join("\n"));
+    }
+
+    // RustFS (S3-compatible object storage)
+    const needsRustFS =
+      this.anyAppHas(options.apps, "hasBucket") && !options.envVars.S3_ENDPOINT;
+
+    if (needsRustFS) {
+      const rustfsLines = [
+        "  rustfs:",
+        "    image: rustfs/rustfs:latest",
+        "    environment:",
+        "      RUSTFS_ROOT_USER: alepha",
+        "      RUSTFS_ROOT_PASSWORD: ${S3_SECRET_KEY}",
+        "    volumes:",
+        "      - rustfs_data:/data",
+      ];
+      if (hasDomain) {
+        rustfsLines.push("    networks:", "      - internal");
+      }
+      rustfsLines.push("    restart: unless-stopped");
+      services.push(rustfsLines.join("\n"));
+      volumes.push("  rustfs_data:");
     }
 
     const parts = [
@@ -302,7 +346,8 @@ export class DockerComposeGenerator {
     return (
       (this.anyAppHas(apps, "hasDatabase") && !envVars.DATABASE_URL) ||
       ((this.anyAppHas(apps, "hasKV") || this.anyAppHas(apps, "hasQueue")) &&
-        !envVars.REDIS_URL)
+        !envVars.REDIS_URL) ||
+      (this.anyAppHas(apps, "hasBucket") && !envVars.S3_ENDPOINT)
     );
   }
 }

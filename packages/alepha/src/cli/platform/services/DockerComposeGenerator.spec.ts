@@ -154,6 +154,62 @@ describe("DockerComposeGenerator", () => {
       expect(result).toBeNull();
     });
 
+    test("generates rustfs service when app has bucket and no S3_ENDPOINT", ({
+      expect,
+    }) => {
+      const { generator, naming } = createTestEnv();
+      const namingCtx = naming.forContext("myapp", "local");
+
+      const result = generator.generateLocal({
+        project: "myapp",
+        env: "local",
+        naming: namingCtx,
+        apps: [
+          makeApp({
+            resources: {
+              hasDatabase: false,
+              hasBucket: true,
+              hasKV: false,
+              hasQueue: false,
+              hasCron: false,
+            },
+          }),
+        ],
+        envVars: {},
+      });
+
+      expect(result).toContain("rustfs:");
+      expect(result).toContain("image: rustfs/rustfs:latest");
+      expect(result).toContain("9000:9000");
+      expect(result).toContain("RUSTFS_ROOT_USER: alepha");
+      expect(result).toContain("rustfs_data:");
+    });
+
+    test("skips rustfs when S3_ENDPOINT is present", ({ expect }) => {
+      const { generator, naming } = createTestEnv();
+      const namingCtx = naming.forContext("myapp", "local");
+
+      const result = generator.generateLocal({
+        project: "myapp",
+        env: "local",
+        naming: namingCtx,
+        apps: [
+          makeApp({
+            resources: {
+              hasDatabase: false,
+              hasBucket: true,
+              hasKV: false,
+              hasQueue: false,
+              hasCron: false,
+            },
+          }),
+        ],
+        envVars: { S3_ENDPOINT: "https://xxx.r2.cloudflarestorage.com" },
+      });
+
+      expect(result).toBeNull();
+    });
+
     test("returns null when no services needed", ({ expect }) => {
       const { generator, naming } = createTestEnv();
       const namingCtx = naming.forContext("myapp", "local");
@@ -310,6 +366,65 @@ describe("DockerComposeGenerator", () => {
       expect(result).toContain("Host(`api.company.com`)");
       expect(result).toContain("Host(`admin.company.com`)");
       expect(result).toContain("Host(`myshop.com`)");
+    });
+
+    test("generates rustfs service when app has bucket", ({ expect }) => {
+      const { generator, naming } = createTestEnv();
+      const namingCtx = naming.forContext("myapp", "production");
+
+      const result = generator.generateRemote({
+        project: "myapp",
+        env: "production",
+        naming: namingCtx,
+        domain: "myapp.com",
+        apps: [
+          makeApp({
+            resources: {
+              hasDatabase: false,
+              hasBucket: true,
+              hasKV: false,
+              hasQueue: false,
+              hasCron: false,
+            },
+          }),
+        ],
+        envVars: {},
+      });
+
+      expect(result).toContain("rustfs:");
+      expect(result).toContain("image: rustfs/rustfs:latest");
+      expect(result).toContain("RUSTFS_ROOT_PASSWORD: ${S3_SECRET_KEY}");
+      expect(result).toContain("rustfs_data:");
+      expect(result).toContain("depends_on:");
+      expect(result).toContain("- rustfs");
+      // RustFS on internal network when domain is set
+      expect(result).toContain("internal");
+    });
+
+    test("skips rustfs when S3_ENDPOINT present", ({ expect }) => {
+      const { generator, naming } = createTestEnv();
+      const namingCtx = naming.forContext("myapp", "production");
+
+      const result = generator.generateRemote({
+        project: "myapp",
+        env: "production",
+        naming: namingCtx,
+        domain: "myapp.com",
+        apps: [
+          makeApp({
+            resources: {
+              hasDatabase: false,
+              hasBucket: true,
+              hasKV: false,
+              hasQueue: false,
+              hasCron: false,
+            },
+          }),
+        ],
+        envVars: { S3_ENDPOINT: "https://xxx.r2.cloudflarestorage.com" },
+      });
+
+      expect(result).not.toContain("rustfs:");
     });
 
     test("multi-app without domain exposes incremental ports", ({ expect }) => {
