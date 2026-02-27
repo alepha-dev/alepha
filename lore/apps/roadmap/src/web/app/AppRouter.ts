@@ -8,6 +8,7 @@ import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
+import type { KanbanController } from "../../api/controllers/KanbanController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectStatsController } from "../../api/controllers/ProjectStatsController.ts";
 import type { TaskController } from "../../api/controllers/TaskController.ts";
@@ -31,6 +32,7 @@ export class AppRouter {
   projectStatsApi = $client<ProjectStatsController>();
   whiteboardApi = $client<WhiteboardController>();
   invitationApi = $client<InvitationController>();
+  kanbanApi = $client<KanbanController>();
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
   meRouter = $inject(MeRouter);
@@ -64,6 +66,7 @@ export class AppRouter {
       this.home, //
       this.project,
       this.projectCreate,
+      this.kanban,
       this.meRouter.me,
       this.notFound,
     ],
@@ -127,6 +130,25 @@ export class AppRouter {
   projectCreate = $page({
     path: "/p-new",
     lazy: () => import("./components/project/ProjectCreate.tsx"),
+  });
+
+  kanban = $page({
+    path: "/kanban/:projectId",
+    schema: {
+      params: t.object({
+        projectId: t.integer(),
+      }),
+    },
+    head: {
+      title: "Kanban",
+    },
+    lazy: () => import("./components/kanban/KanbanBoard.tsx"),
+    loader: async ({ params }) => {
+      const data = await this.kanbanApi.getBoard({
+        params: { projectId: params.projectId },
+      });
+      return data;
+    },
   });
 
   project = $page({
