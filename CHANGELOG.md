@@ -1,3 +1,16 @@
+## [0.18.2] - 2026-02-27
+
+### Features
+
+- **cli**: platform - add vercel adapter (`ca0c9ec1`)
+- **cli**: add favicon support (`5bc8ceb6`)
+- **react/head**: allow to refresh a $head (`4fc71bd9`)
+- **email**: add brevo provider (`24c0d340`)
+
+### Bug Fixes
+
+- **core**: fix event order (`64cad5bd`)
+
 ## [0.18.1] - 2026-02-24
 
 ### Features
