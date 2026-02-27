@@ -1,6 +1,6 @@
 import type { DashboardShellProps } from "@alepha/ui";
 import { $context } from "alepha";
-import { AdminRouter } from "../AdminRouter.ts";
+import { AdminRouter } from "../AdminRouter.tsx";
 
 /**
  * Register Admin UI components and get the AdminRouter instance.

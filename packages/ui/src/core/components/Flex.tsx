@@ -44,6 +44,31 @@ export interface FlexProps extends MantineFlexProps {
    * Set ground to `var(--alepha-elevated)`.
    */
   elevated?: boolean;
+
+  /**
+   * Add rounded corners to the container. If `true`, a default border radius will be applied. You can also specify a custom border radius value (e.g., "sm", "md", "lg", or any valid CSS border-radius value).
+   */
+  rounded?: boolean | number | string;
+
+  /**
+   * Add a border to the container. The color will be determined by the current theme.
+   */
+  bordered?: boolean;
+
+  /**
+   * Add a top border only.
+   */
+  borderedTop?: boolean;
+
+  /**
+   * Add a bottom border only.
+   */
+  borderedBottom?: boolean;
+
+  /**
+   * Add a shadow to the container. The intensity will be determined by the current theme.
+   */
+  shadowed?: boolean | number | string;
 }
 
 const Flex = forwardRef<HTMLDivElement, FlexProps>((props, ref) => {
@@ -56,6 +81,11 @@ const Flex = forwardRef<HTMLDivElement, FlexProps>((props, ref) => {
     ground,
     surface,
     elevated,
+    rounded,
+    bordered,
+    borderedTop,
+    borderedBottom,
+    shadowed,
     ...rest
   } = props;
 
@@ -86,6 +116,33 @@ const Flex = forwardRef<HTMLDivElement, FlexProps>((props, ref) => {
     rest.bg = "var(--alepha-surface)";
   } else if (elevated) {
     rest.bg = "var(--alepha-elevated)";
+  }
+
+  if (rounded) {
+    rest.bdrs = rounded === true ? "md" : rounded;
+  }
+
+  if (bordered) {
+    rest.bd = "1px solid var(--alepha-border)";
+  }
+
+  if (borderedTop) {
+    rest.style = {
+      borderTop: "1px solid var(--alepha-border)",
+      ...((rest.style as object) ?? {}),
+    };
+  }
+
+  if (borderedBottom) {
+    rest.style = {
+      borderBottom: "1px solid var(--alepha-border)",
+      ...((rest.style as object) ?? {}),
+    };
+  }
+
+  if (shadowed) {
+    rest.className =
+      `${rest.className ?? ""} shadow-${shadowed === true ? "md" : shadowed}`.trim();
   }
 
   return <MantineFlex ref={ref} {...rest} />;

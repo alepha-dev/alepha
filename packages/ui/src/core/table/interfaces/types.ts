@@ -24,6 +24,10 @@ export const DEFAULT_MAX_VISIBLE_COLUMNS = 8;
 // -----------------------------------------------------------------------------
 
 export type DataTableRowAction = ActionProps & {
+  /**
+   * Label for the action shown in the row menu.
+   */
+  label?: string;
   visible?: boolean;
 };
 
@@ -62,15 +66,6 @@ export interface DataTableColumn<T extends object, Filters extends TObject> {
    * Follows Alepha sort convention: 'field' for ASC, '-field' for DESC.
    */
   sortKey?: string;
-  /**
-   * Row-level actions rendered as ActionButtons.
-   * Defaults: variant="subtle", size="xs", preventDefault=true.
-   * Use `visible` on each action to conditionally show/hide.
-   */
-  actions?: (
-    item: T,
-    ctx: DataTableColumnContext<Filters>,
-  ) => DataTableRowAction[];
   /**
    * Hide this column by default. Users can show it via the column picker.
    */
@@ -187,6 +182,15 @@ export interface DataTableProps<T extends object, Filters extends TObject> {
   checkboxActions?: Array<CheckboxAction<T>>;
 
   actions?: Array<ActionProps & { label?: ReactNode }>;
+
+  /**
+   * Row-level actions rendered as a 3-dot menu on each row.
+   * Use `visible` on each action to conditionally show/hide.
+   */
+  rowActions?: (
+    item: T,
+    ctx: DataTableColumnContext<Filters>,
+  ) => DataTableRowAction[];
 
   /**
    * Enable infinity scroll mode. When true, pagination controls are hidden and new items are loaded automatically when scrolling to the bottom.

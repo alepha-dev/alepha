@@ -1,4 +1,12 @@
-import { ActionButton, DataTable, Flex, Text } from "@alepha/ui";
+import {
+  ActionButton,
+  DataTable,
+  Flex,
+  Text,
+  useDialog,
+  useToast,
+} from "@alepha/ui";
+import { Badge } from "@mantine/core";
 import {
   IconDeviceDesktop,
   IconDeviceMobile,
@@ -15,53 +23,61 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useState } from "react";
-import type { AdminRouter } from "../../AdminRouter.ts";
+import type { AdminRouter } from "../../AdminRouter.tsx";
 
 export interface AdminSessionsProps {
   userRealmName?: string;
 }
 
+const filters = t.object({
+  userId: t.optional(
+    t.uuid({
+      $control: {
+        query: t.pick(sessions.schema, ["userId"]),
+      },
+    }),
+  ),
+});
+
+const getDeviceIcon = (device?: string) => {
+  switch (device) {
+    case "MOBILE":
+      return <IconDeviceMobile size={14} />;
+    case "TABLET":
+      return <IconDeviceTablet size={14} />;
+    default:
+      return <IconDeviceDesktop size={14} />;
+  }
+};
+
+const isExpired = (expiresAt: Date | string) =>
+  new Date(expiresAt) < new Date();
+
 const AdminSessions = (props: AdminSessionsProps) => {
   const client = useClient<AdminSessionController>();
   const router = useRouter<AdminRouter>();
   const { l } = useI18n();
+  const dialog = useDialog();
+  const toast = useToast();
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const filters = t.object({
-    userId: t.optional(
-      t.uuid({
-        $control: {
-          query: t.pick(sessions.schema, ["userId"]),
-        },
-      }),
-    ),
-  });
-
-  const getDeviceIcon = (device?: string) => {
-    switch (device) {
-      case "MOBILE":
-        return <IconDeviceMobile size={14} />;
-      case "TABLET":
-        return <IconDeviceTablet size={14} />;
-      default:
-        return <IconDeviceDesktop size={14} />;
-    }
-  };
-
-  const isExpired = (expiresAt: Date | string) => {
-    return new Date(expiresAt) < new Date();
-  };
-
-  const handleDelete = async (sessionId: string) => {
+  const handleDelete = async (session: SessionEntity) => {
+    const confirmed = await dialog.confirm({
+      title: "Revoke session",
+      message:
+        "Are you sure you want to revoke this session? The user will be signed out.",
+    });
+    if (!confirmed) return;
     await client.deleteSession({
-      params: { id: sessionId },
+      params: { id: session.id },
       query: { userRealmName: props.userRealmName },
     });
+    toast.success("Session revoked");
     setRefreshKey((k) => k + 1);
   };
 
   return (
-    <Flex flex={1} direction="column">
+    <Flex p="md" flex={1} direction="column">
       <DataTable<SessionEntity, typeof filters>
         key={refreshKey}
         submitOnInit
@@ -74,20 +90,13 @@ const AdminSessions = (props: AdminSessionsProps) => {
           horizontalSpacing: "xs",
           verticalSpacing: "xs",
         }}
-        onFilterChange={(key, _value, form) => {
-          if (key === "userId") {
-            return form.submit();
-          }
-        }}
+        onFilterChange={(_key, _value, form) => form.submit()}
         filters={filters}
-        tableTrProps={(item) => {
-          if (isExpired(item.expiresAt)) {
-            return {
-              opacity: 0.5,
-            };
-          }
-          return {};
-        }}
+        tableTrProps={(item) => ({
+          style: {
+            opacity: isExpired(item.expiresAt) ? 0.5 : 1,
+          },
+        })}
         items={async (filters) => {
           const response = await client.findSessions({
             query: {
@@ -95,7 +104,6 @@ const AdminSessions = (props: AdminSessionsProps) => {
               userRealmName: props.userRealmName,
             },
           });
-
           return response as Page<SessionEntity>;
         }}
         columns={{
@@ -117,7 +125,6 @@ const AdminSessions = (props: AdminSessionsProps) => {
           },
           userAgent: {
             label: "Device",
-            fit: true,
             value: (item) => (
               <Flex gap={4} align="center">
                 {item.userAgent ? (
@@ -128,8 +135,8 @@ const AdminSessions = (props: AdminSessionsProps) => {
                     </Text>
                   </>
                 ) : (
-                  <Text size="xs" c="dimmed">
-                    -
+                  <Text size="xs" muted>
+                    —
                   </Text>
                 )}
               </Flex>
@@ -137,49 +144,42 @@ const AdminSessions = (props: AdminSessionsProps) => {
           },
           ip: {
             label: "IP",
-            fit: true,
             value: (item) => (
-              <Text size="xs" ff="monospace" c="dimmed">
-                {item.ip || "-"}
+              <Text size="xs" ff="monospace" muted>
+                {item.ip || "—"}
               </Text>
             ),
           },
           expiresAt: {
             label: "Status",
-            fit: true,
             value: (item) => (
-              <Text
-                size="xs"
-                c={isExpired(item.expiresAt) ? "dimmed" : undefined}
+              <Badge
+                size="sm"
+                variant="light"
+                color={isExpired(item.expiresAt) ? "gray" : "green"}
               >
                 {isExpired(item.expiresAt) ? "Expired" : "Active"}
-              </Text>
+              </Badge>
             ),
           },
           createdAt: {
             label: "Created",
-            fit: true,
             value: (item) => (
-              <Text size="xs" c="dimmed">
+              <Text size="xs" muted>
                 {l(item.createdAt, { date: "fromNow" })}
               </Text>
             ),
           },
-          actions: {
-            label: "",
-            fit: true,
-            value: (item) => (
-              <ActionButton
-                size="xs"
-                variant="subtle"
-                color="red"
-                onClick={() => handleDelete(item.id)}
-              >
-                <IconTrash size={14} />
-              </ActionButton>
-            ),
-          },
         }}
+        rowActions={(item) => [
+          {
+            label: "Revoke session",
+            icon: IconTrash,
+            color: "red",
+            onClick: () => handleDelete(item),
+            visible: !isExpired(item.expiresAt),
+          },
+        ]}
       />
     </Flex>
   );

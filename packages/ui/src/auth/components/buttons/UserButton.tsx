@@ -64,7 +64,7 @@ const UserButton = (props: UserButtonProps) => {
     ...buttonProps
   } = props;
 
-  buttonProps.variant ??= "subtle";
+  buttonProps.variant ??= "default";
 
   const adminUserCtrl = useClient<AdminUserController>();
   const pages = useInject(ReactPageProvider);
@@ -92,8 +92,6 @@ const UserButton = (props: UserButtonProps) => {
       </ActionButton>
     );
   }
-
-  const userLabel = auth.user.username || auth.user.email;
 
   const items: ActionMenuItem[] = [];
 

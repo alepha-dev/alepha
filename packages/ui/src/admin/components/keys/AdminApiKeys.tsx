@@ -146,7 +146,7 @@ const AdminApiKeys = () => {
   }, []);
 
   return (
-    <Flex flex={1} direction="column" gap="md">
+    <Flex p="md" flex={1} direction="column" gap="md">
       <StatCards
         items={[
           { label: "Total Keys", value: stats.total, icon: IconKey },
@@ -167,13 +167,8 @@ const AdminApiKeys = () => {
         tableProps={{
           horizontalSpacing: "sm",
           verticalSpacing: "sm",
-          highlightOnHover: true,
         }}
-        onFilterChange={(key, _value, form) => {
-          if (key === "userId" || key === "includeRevoked") {
-            return form.submit();
-          }
-        }}
+        onFilterChange={(_key, _value, form) => form.submit()}
         filters={filters}
         tableTrProps={(item) => {
           const status = getKeyStatus(item);
@@ -218,7 +213,6 @@ const AdminApiKeys = () => {
           },
           token: {
             label: "Key",
-            fit: true,
             value: (item) => (
               <Flex gap={4}>
                 <Code
@@ -240,12 +234,21 @@ const AdminApiKeys = () => {
           },
           status: {
             label: "Status",
-            fit: true,
             value: (item) => {
               const status = getKeyStatus(item);
               return (
-                <Badge size="sm" variant="default">
-                  {status.toUpperCase()}
+                <Badge
+                  size="sm"
+                  variant="light"
+                  color={
+                    status === "active"
+                      ? "green"
+                      : status === "expired"
+                        ? "yellow"
+                        : "red"
+                  }
+                >
+                  {status}
                 </Badge>
               );
             },
@@ -277,7 +280,6 @@ const AdminApiKeys = () => {
           },
           usage: {
             label: "Usage",
-            fit: true,
             value: (item) => (
               <Flex direction="column" gap={2}>
                 <Text size="xs" ff="monospace" fw={500}>
@@ -307,7 +309,6 @@ const AdminApiKeys = () => {
           },
           userId: {
             label: "Owner",
-            fit: true,
             value: (item) => (
               <ActionButton
                 variant="subtle"
@@ -325,7 +326,6 @@ const AdminApiKeys = () => {
           },
           createdAt: {
             label: "Created",
-            fit: true,
             value: (item) => (
               <Text size="xs" c="dimmed">
                 {l(item.createdAt, { date: "fromNow" })}
@@ -334,7 +334,6 @@ const AdminApiKeys = () => {
           },
           expiresAt: {
             label: "Expires",
-            fit: true,
             value: (item) => {
               if (!item.expiresAt) {
                 return (
@@ -351,33 +350,16 @@ const AdminApiKeys = () => {
               );
             },
           },
-          actions: {
-            label: "",
-            fit: true,
-            value: (item) => {
-              const status = getKeyStatus(item);
-              if (status === "revoked") {
-                return (
-                  <Tooltip label="Already revoked">
-                    <IconCheck size={14} color="var(--mantine-color-dimmed)" />
-                  </Tooltip>
-                );
-              }
-
-              return (
-                <Tooltip label="Revoke key">
-                  <ActionButton
-                    size="xs"
-                    variant="subtle"
-                    onClick={() => handleRevoke(item)}
-                  >
-                    <IconTrash size={14} />
-                  </ActionButton>
-                </Tooltip>
-              );
-            },
-          },
         }}
+        rowActions={(item) => [
+          {
+            label: "Revoke key",
+            icon: IconTrash,
+            color: "red",
+            onClick: () => handleRevoke(item),
+            visible: getKeyStatus(item) === "active",
+          },
+        ]}
       />
     </Flex>
   );

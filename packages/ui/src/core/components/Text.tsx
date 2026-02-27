@@ -109,7 +109,7 @@ const Text = forwardRef<HTMLParagraphElement, TextProps>((props, ref) => {
   }
 
   if (small) {
-    rest.size ??= "sm";
+    rest.size ??= "xs";
   }
 
   if (uppercase) {

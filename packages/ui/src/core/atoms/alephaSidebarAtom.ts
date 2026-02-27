@@ -26,7 +26,7 @@ export const alephaSidebarAtom = $atom({
     closed: true,
     collapsed: false,
     expandedWidth: 300,
-    collapsedWidth: 78,
+    collapsedWidth: 72,
   },
 });
 

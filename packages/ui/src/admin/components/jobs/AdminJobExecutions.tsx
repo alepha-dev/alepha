@@ -109,7 +109,7 @@ const AdminJobExecutions = () => {
   );
 
   return (
-    <Flex flex={1} direction="column" gap="md">
+    <Flex p="md" flex={1} direction="column" gap="md">
       <DataTable<JobExecutionResource, typeof executionFilters>
         key={`executions-${refreshKey}`}
         submitOnInit
@@ -121,13 +121,8 @@ const AdminJobExecutions = () => {
         tableProps={{
           horizontalSpacing: "sm",
           verticalSpacing: "sm",
-          highlightOnHover: true,
         }}
-        onFilterChange={(key, _value, form) => {
-          if (key === "job" || key === "status" || key === "priority") {
-            return form.submit();
-          }
-        }}
+        onFilterChange={(_key, _value, form) => form.submit()}
         filters={executionFilters}
         defaultFilters={["job", "status"]}
         items={async (filters) => {
@@ -141,12 +136,23 @@ const AdminJobExecutions = () => {
         columns={{
           status: {
             label: "Status",
-            fit: true,
-            value: (item) => (
-              <Badge size="sm" variant="default">
-                {item.status}
-              </Badge>
-            ),
+            value: (item) => {
+              const color =
+                item.status === "completed"
+                  ? "green"
+                  : item.status === "running"
+                    ? "blue"
+                    : item.status === "failed" || item.status === "dead"
+                      ? "red"
+                      : item.status === "cancelled"
+                        ? "yellow"
+                        : "gray";
+              return (
+                <Badge size="sm" variant="light" color={color}>
+                  {item.status}
+                </Badge>
+              );
+            },
           },
           jobName: {
             label: "Job",
@@ -158,7 +164,6 @@ const AdminJobExecutions = () => {
           },
           priority: {
             label: "Priority",
-            fit: true,
             value: (item) => (
               <Text size="xs" c="dimmed">
                 {PRIORITY_LABELS[item.priority] ?? item.priority}
@@ -167,7 +172,6 @@ const AdminJobExecutions = () => {
           },
           attempt: {
             label: "Attempt",
-            fit: true,
             value: (item) => (
               <Text size="sm" ff="monospace">
                 {item.attempt}/{item.maxAttempts}
@@ -176,7 +180,6 @@ const AdminJobExecutions = () => {
           },
           triggeredByName: {
             label: "Trigger",
-            fit: true,
             defaultHidden: true,
             value: (item) => (
               <Text size="xs" c="dimmed">
@@ -186,7 +189,6 @@ const AdminJobExecutions = () => {
           },
           createdAt: {
             label: "Created",
-            fit: true,
             defaultHidden: true,
             value: (item) => (
               <Text size="xs" c="dimmed">
@@ -196,7 +198,6 @@ const AdminJobExecutions = () => {
           },
           startedAt: {
             label: "Started",
-            fit: true,
             value: (item) => (
               <Text size="xs" c="dimmed">
                 {item.startedAt
@@ -207,7 +208,6 @@ const AdminJobExecutions = () => {
           },
           duration: {
             label: "Duration",
-            fit: true,
             value: (item) => (
               <Text size="xs" c="dimmed" ff="monospace">
                 {item.startedAt &&
@@ -228,7 +228,6 @@ const AdminJobExecutions = () => {
           },
           key: {
             label: "Key",
-            fit: true,
             defaultHidden: true,
             value: (item) => (
               <Text size="xs" c="dimmed" ff="monospace">
@@ -238,7 +237,6 @@ const AdminJobExecutions = () => {
           },
           workerId: {
             label: "Worker",
-            fit: true,
             defaultHidden: true,
             value: (item) => (
               <Text size="xs" c="dimmed" ff="monospace">
@@ -246,25 +244,21 @@ const AdminJobExecutions = () => {
               </Text>
             ),
           },
-          actions: {
-            label: "",
-            fit: true,
-            actions: (item) => [
-              {
-                tooltip: "Retry",
-                icon: IconRefresh,
-                onClick: () => handleRetry(item.id),
-                visible: item.can?.retry,
-              },
-              {
-                tooltip: "Cancel",
-                icon: IconCircleX,
-                onClick: () => handleCancel(item.id),
-                visible: item.can?.cancel,
-              },
-            ],
-          },
         }}
+        rowActions={(item) => [
+          {
+            label: "Retry",
+            icon: IconRefresh,
+            onClick: () => handleRetry(item.id),
+            visible: item.can?.retry,
+          },
+          {
+            label: "Cancel",
+            icon: IconCircleX,
+            onClick: () => handleCancel(item.id),
+            visible: item.can?.cancel,
+          },
+        ]}
         panel={{
           can: (item) => Boolean(item.error || item.key || item.workerId),
           render: (item) => (

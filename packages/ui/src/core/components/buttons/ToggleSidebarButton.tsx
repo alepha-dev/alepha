@@ -19,8 +19,7 @@ const ToggleSidebarButton = (props: Props) => {
           : IconLayoutSidebarLeftCollapse
       }
       visibleFrom={"md"}
-      variant={"subtle"}
-      size={"md"}
+      variant={"default"}
       onClick={() => {
         setSidebar({
           ...sidebar,

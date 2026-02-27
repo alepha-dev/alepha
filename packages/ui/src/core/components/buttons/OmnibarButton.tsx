@@ -20,8 +20,7 @@ const OmnibarButton = (props: OmnibarButtonProps) => {
       <ActionButton
         variant={"subtle"}
         onClick={spotlight.open}
-        radius={"md"}
-        icon={<IconSearch size={16} />}
+        icon={IconSearch}
         tooltip={{ label: "Search", position: "right" }}
         {...props.actionProps}
       />

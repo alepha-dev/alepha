@@ -1,12 +1,23 @@
-import type { DashboardShellProps, SidebarNode } from "@alepha/ui";
-import { AuthRouter } from "@alepha/ui/auth";
+import {
+  type AppBarItem,
+  alephaSidebarAtom,
+  Breadcrumbs,
+  type DashboardShellProps,
+  LanguageButton,
+  type SidebarNode,
+  ThemeButton,
+} from "@alepha/ui";
+import { AuthRouter, UserButton } from "@alepha/ui/auth";
 import {
   IconClock,
+  IconDashboard,
   IconDevices,
   IconFile,
   IconHistory,
   IconKey,
+  IconLayoutDashboard,
   IconListDetails,
+  IconLockPassword,
   IconSettings,
   IconTerminal2,
   IconUser,
@@ -25,6 +36,7 @@ import type {
 } from "alepha/api/users";
 import { ReactAuth } from "alepha/react/auth";
 import { $page, ReactRouter, Redirection } from "alepha/react/router";
+import { $cookie } from "alepha/server/cookies";
 import { $client } from "alepha/server/links";
 
 export class AdminRouter {
@@ -40,31 +52,90 @@ export class AdminRouter {
   protected readonly jobCtrl = $client<AdminJobController>();
   protected readonly apiKeyCtrl = $client<AdminApiKeyController>();
 
+  public readonly adminCookie = $cookie(alephaSidebarAtom, {
+    name: "admin.sidebar",
+  });
+
   public configFn?: (adminRouter: AdminRouter) => DashboardShellProps = () => {
     return {
       sidebarProps: {
         items: this.getDefaultSidebarItems(),
       },
+      appBarProps: {
+        items: this.getDefaultAppBarItems(),
+      },
     };
   };
+
+  public getDefaultAppBarItems(): AppBarItem[] {
+    return [
+      {
+        type: "burger",
+        position: "left",
+      },
+      {
+        element: <Breadcrumbs />,
+        position: "left",
+      },
+      {
+        element: <UserButton />,
+        position: "right",
+      },
+      {
+        element: <ThemeButton expert />,
+        position: "right",
+      },
+      {
+        element: <LanguageButton />,
+        position: "right",
+      },
+      {
+        type: "dark",
+        position: "right",
+      },
+    ];
+  }
 
   public getDefaultSidebarItems(): SidebarNode[] {
     return [
       {
+        position: "top",
+        type: "search",
+      },
+      {
+        position: "top",
+        type: "spacer",
+      },
+      {
+        label: "Dashboard",
+        href: "/admin",
+        icon: IconLayoutDashboard,
+      },
+      {
         type: "section",
-        label: "Identity",
+        label: "Security",
         children: [
           {
-            ...this.router.node(this.adminUsers.name),
-            can: () => this.userCtrl.findUsers.can(),
+            label: "Identity",
+            icon: IconLockPassword,
+            children: [
+              {
+                ...this.router.node(this.adminUsers.name),
+                can: () => this.userCtrl.findUsers.can(),
+              },
+              {
+                ...this.router.node(this.adminSessions.name),
+                can: () => this.sessionCtrl.findSessions.can(),
+              },
+              {
+                ...this.router.node(this.adminApiKeys.name),
+                can: () => this.apiKeyCtrl.findApiKeys.can(),
+              },
+            ],
           },
           {
-            ...this.router.node(this.adminSessions.name),
-            can: () => this.sessionCtrl.findSessions.can(),
-          },
-          {
-            ...this.router.node(this.adminApiKeys.name),
-            can: () => this.apiKeyCtrl.findApiKeys.can(),
+            ...this.router.node(this.adminAudits.name),
+            can: () => this.auditCtrl.findAudits.can(),
           },
         ],
       },
@@ -77,9 +148,8 @@ export class AdminRouter {
             can: () => this.fileCtrl.findFiles.can(),
           },
           {
-            ...this.router.node(this.adminJobDashboard.name),
-            href: undefined,
-            can: () => this.jobCtrl.getJobRegistry.can(),
+            label: "Jobs",
+            icon: IconTerminal2,
             children: [
               {
                 ...this.router.node(this.adminJobDashboard.name),
@@ -88,10 +158,6 @@ export class AdminRouter {
               { ...this.router.node(this.adminJobRegistry.name) },
               { ...this.router.node(this.adminJobExecutions.name) },
             ],
-          },
-          {
-            ...this.router.node(this.adminAudits.name),
-            can: () => this.auditCtrl.findAudits.can(),
           },
           {
             ...this.router.node(this.adminParameters.name),
@@ -126,6 +192,10 @@ export class AdminRouter {
   public readonly adminLayout = $page({
     path: "/admin",
     label: "Admin",
+    head: {
+      title: "Admin Panel",
+      titleSeparator: " | ",
+    },
     lazy: () => import("./components/AdminLayout.tsx"),
     props: () => ({
       adminShellProps: this.adminShellProps(),
@@ -139,6 +209,18 @@ export class AdminRouter {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Dashboard
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  public readonly adminDashboard = $page({
+    icon: IconLayoutDashboard,
+    parent: this.adminLayout,
+    path: "/",
+    label: "Dashboard",
+    lazy: () => import("./components/AdminDashboard.tsx"),
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Users
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -147,6 +229,9 @@ export class AdminRouter {
     parent: this.adminLayout,
     path: "/users",
     label: "Users",
+    head: {
+      title: "Users",
+    },
     description: "Manage application users and their roles.",
     lazy: () => import("./components/users/AdminUsers.tsx"),
     can: () => this.userCtrl.findUsers.can(),
@@ -155,6 +240,9 @@ export class AdminRouter {
   public readonly adminUserLayout = $page({
     parent: this.adminLayout,
     path: "/users/:userId",
+    head: {
+      title: "Users",
+    },
     lazy: () => import("./components/users/AdminUserLayout.tsx"),
   });
 
@@ -163,6 +251,9 @@ export class AdminRouter {
     parent: this.adminUserLayout,
     path: "/",
     label: "Profile",
+    head: {
+      title: "User Profile",
+    },
     lazy: () => import("./components/users/AdminUserProfile.tsx"),
   });
 
@@ -171,6 +262,9 @@ export class AdminRouter {
     parent: this.adminUserLayout,
     path: "/sessions",
     label: "Sessions",
+    head: {
+      title: "User Sessions",
+    },
     lazy: () => import("./components/users/AdminUserSessions.tsx"),
   });
 
@@ -183,6 +277,9 @@ export class AdminRouter {
     parent: this.adminLayout,
     path: "/audits",
     label: "Audit Log",
+    head: {
+      title: "Audit Logs",
+    },
     description: "View system-wide audit trail and activity logs.",
     lazy: () => import("./components/audits/AdminAudits.tsx"),
     can: () => this.auditCtrl.findAudits.can(),
@@ -198,6 +295,9 @@ export class AdminRouter {
     path: "/sessions",
     label: "Sessions",
     description: "View and manage all active sessions.",
+    head: {
+      title: "Sessions",
+    },
     lazy: () => import("./components/sessions/AdminSessions.tsx"),
     can: () => this.sessionCtrl.findSessions.can(),
   });
@@ -212,6 +312,9 @@ export class AdminRouter {
     path: "/files",
     label: "Files",
     description: "Manage uploaded files and storage.",
+    head: {
+      title: "Files",
+    },
     lazy: () => import("./components/files/AdminFiles.tsx"),
     can: () => this.fileCtrl.findFiles.can(),
   });
@@ -228,6 +331,9 @@ export class AdminRouter {
     description: "View and manage application parameters.",
     lazy: () => import("./components/parameters/AdminParameters.tsx"),
     can: () => this.paramCtrl.getParameterTree.can(),
+    head: {
+      title: "Parameters",
+    },
     loader: async () => {
       const treeData = await this.paramCtrl.getParameterTree({});
       return { treeData };
@@ -239,7 +345,7 @@ export class AdminRouter {
   // ─────────────────────────────────────────────────────────────────────────────
 
   public readonly adminJobDashboard = $page({
-    icon: IconTerminal2,
+    icon: IconDashboard,
     parent: this.adminLayout,
     path: "/jobs",
     label: "Jobs",
@@ -277,6 +383,9 @@ export class AdminRouter {
     parent: this.adminLayout,
     path: "/api-keys",
     label: "API Keys",
+    head: {
+      title: "API Keys",
+    },
     description: "View and manage API keys for programmatic access.",
     lazy: () => import("./components/keys/AdminApiKeys.tsx"),
     can: () => this.apiKeyCtrl.findApiKeys.can(),

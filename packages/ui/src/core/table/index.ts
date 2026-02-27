@@ -6,6 +6,7 @@ export type {
   DataTableColumn,
   DataTableColumnContext,
   DataTableProps,
+  DataTableRowAction,
   DataTableSubmitContext,
   FilterVisibility,
   MaybePage,

@@ -1,24 +1,25 @@
-import { ActionButton, ui } from "@alepha/ui";
-import {
-  Checkbox,
-  Drawer,
-  Flex,
-  Table,
-  Text,
-  UnstyledButton,
-} from "@mantine/core";
+import { ActionButton, Flex, isComponentType, Text, ui } from "@alepha/ui";
+import { Checkbox, Drawer, Table, UnstyledButton } from "@mantine/core";
 import {
   IconArrowDown,
   IconArrowsSort,
   IconArrowUp,
   IconChevronDown,
   IconChevronRight,
+  IconDotsVertical,
 } from "@tabler/icons-react";
 import { Alepha, type Static, type TObject, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { type FormModel, useForm } from "alepha/react/form";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type {
   ColumnVisibility,
   DataTableColumnContext,
@@ -318,7 +319,8 @@ const DataTable = <T extends object, Filters extends TObject>(
   const totalColumns =
     visibleColumns.length +
     (panelConfig ? 1 : 0) +
-    (props.withCheckbox ? 1 : 0);
+    (props.withCheckbox ? 1 : 0) +
+    (props.rowActions ? 1 : 0);
 
   // Checkbox header column
   const checkboxHeader = props.withCheckbox ? (
@@ -351,7 +353,9 @@ const DataTable = <T extends object, Filters extends TObject>(
         }}
       >
         <Flex align="center" gap={4}>
-          <Text size="xs">{col.label}</Text>
+          <Text bold muted size="xs">
+            {col.label}
+          </Text>
           {col.sortable && (
             <Flex c="dimmed">
               {sortDir === "asc" && <IconArrowUp size={ui.sizes.icon.sm} />}
@@ -424,45 +428,58 @@ const DataTable = <T extends object, Filters extends TObject>(
             alepha,
           } as DataTableColumnContext<Filters>;
 
-          if (col.actions) {
-            const rowActions = col
-              .actions(item as T, ctx)
-              .filter((a) => a.visible !== false);
-            return (
-              <Table.Td
-                py={2}
-                px={4}
-                key={key}
-                style={col.fit ? FIT_STYLE : undefined}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Flex gap={4}>
-                  {rowActions.map(({ visible: _, ...actionProps }, i) => (
-                    <ActionButton
-                      key={i}
-                      variant="subtle"
-                      size="xs"
-                      preventDefault
-                      h={20}
-                      {...actionProps}
-                    />
-                  ))}
-                </Flex>
-              </Table.Td>
-            );
-          }
-
           return (
-            <Table.Td
-              py={2}
-              px={4}
-              key={key}
-              style={col.fit ? FIT_STYLE : undefined}
-            >
+            <Table.Td key={key} style={col.fit ? FIT_STYLE : undefined}>
               {col.value?.(item as T, ctx)}
             </Table.Td>
           );
         })}
+        {props.rowActions &&
+          (() => {
+            const ctx = {
+              index,
+              form: form as unknown as FormModel<Filters>,
+              alepha,
+            } as DataTableColumnContext<Filters>;
+            const actions = props.rowActions!(item as T, ctx).filter(
+              (a) => a.visible !== false,
+            );
+            if (actions.length === 0) return <Table.Td style={FIT_STYLE} />;
+            return (
+              <Table.Td
+                py={2}
+                px={4}
+                style={FIT_STYLE}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ActionButton
+                  variant="subtle"
+                  size="xs"
+                  icon={IconDotsVertical}
+                  menu={{
+                    items: actions.map((action) => {
+                      const Icon = action.icon;
+                      return {
+                        label:
+                          action.label ??
+                          (typeof action.tooltip === "string"
+                            ? action.tooltip
+                            : undefined),
+                        icon:
+                          Icon && isComponentType(Icon) ? (
+                            <Icon size={14} />
+                          ) : (
+                            (Icon as ReactNode)
+                          ),
+                        onClick: (action as any).onClick,
+                        color: action.color,
+                      };
+                    }),
+                  }}
+                />
+              </Table.Td>
+            );
+          })()}
       </Table.Tr>,
     ];
 
@@ -485,106 +502,119 @@ const DataTable = <T extends object, Filters extends TObject>(
   }, [props.filters, form.options.schema]);
 
   return (
-    <Flex flex={1} p={0} bdrs="sm" direction="column">
-      <DataTableToolbar
-        columns={props.columns}
-        filters={props.filters}
-        columnVisibility={columnVisibility}
-        filterVisibility={filterVisibility}
-        onColumnVisibilityChange={setColumnVisibility}
-        onFilterVisibilityChange={setFilterVisibility}
-        actions={props.actions}
-        onRefresh={() => form.submit()}
-        items={items.content as T[]}
-        withExport={props.withExport}
-        selectedItems={selection.selectedItems}
-        checkboxActions={props.checkboxActions}
-        onClearSelection={selection.clear}
-      />
-
-      {filterSchema && props.filters && (
-        <DataTableFilters
-          schema={filterSchema}
-          form={form as unknown as FormModel<TObject>}
-          typeFormProps={
-            props.typeFormProps as DataTableFiltersProps["typeFormProps"]
-          }
+    <Flex
+      gap={"xs"}
+      flex={1}
+      p={0}
+      direction="column"
+      style={{ overflow: "hidden" }}
+    >
+      <Flex rounded bordered elevated shadowed={"xs"} col>
+        <DataTableToolbar
+          columns={props.columns}
+          filters={props.filters}
+          columnVisibility={columnVisibility}
           filterVisibility={filterVisibility}
+          onColumnVisibilityChange={setColumnVisibility}
+          onFilterVisibilityChange={setFilterVisibility}
+          actions={props.actions}
+          onRefresh={() => form.submit()}
+          items={items.content as T[]}
+          withExport={props.withExport}
+          selectedItems={selection.selectedItems}
+          checkboxActions={props.checkboxActions}
+          onClearSelection={selection.clear}
         />
-      )}
 
-      <Flex className="overflow-auto">
-        <Table
-          aria-label="Data table"
-          withColumnBorders
-          withRowBorders
-          {...props.tableProps}
-        >
-          <Table.Thead
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 1,
-              backgroundColor: "var(--mantine-color-body)",
-            }}
-          >
-            <Table.Tr>
-              {panelConfig && <Table.Th style={{ width: 36 }} />}
-              {checkboxHeader}
-              {head}
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody
-            style={{
-              opacity: form.submitting ? 0.5 : 1,
-              transition: "opacity 150ms ease",
-            }}
-          >
-            {rows}
-            {items.content.length === 0 && (
-              <Table.Tr>
-                <Table.Td
-                  colSpan={totalColumns || 1}
-                  py="xl"
-                  style={{ textAlign: "center" }}
-                >
-                  <Text c="dimmed" size="sm">
-                    {form.submitting ? "Loading…" : "No results"}
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
+        {filterSchema && props.filters && (
+          <DataTableFilters
+            schema={filterSchema}
+            form={form as unknown as FormModel<TObject>}
+            typeFormProps={
+              props.typeFormProps as DataTableFiltersProps["typeFormProps"]
+            }
+            filterVisibility={filterVisibility}
+          />
+        )}
       </Flex>
 
-      {props.infinityScroll && <div ref={sentinelRef} />}
+      <Flex col rounded bordered elevated shadowed={"xs"}>
+        <Flex className="overflow-auto">
+          <Table
+            aria-label="Data table"
+            withRowBorders
+            highlightOnHover
+            {...props.tableProps}
+          >
+            <Table.Thead
+              style={{
+                position: "sticky",
+                top: 0,
+                zIndex: 1,
+              }}
+            >
+              <Table.Tr>
+                {panelConfig && <Table.Th style={{ width: 36 }} />}
+                {checkboxHeader}
+                {head}
+                {props.rowActions && <Table.Th style={FIT_STYLE} />}
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody
+              style={{
+                opacity: form.submitting ? 0.5 : 1,
+                transition: "opacity 150ms ease",
+              }}
+            >
+              {rows}
+              {items.content.length === 0 && (
+                <Table.Tr>
+                  <Table.Td
+                    colSpan={totalColumns || 1}
+                    py="xl"
+                    style={{ textAlign: "center" }}
+                  >
+                    <Text c="dimmed" size="sm">
+                      {form.submitting ? "Loading…" : "No results"}
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              )}
+            </Table.Tbody>
+          </Table>
+        </Flex>
 
-      {!props.infinityScroll && (
-        <DataTablePagination
-          page={page}
-          size={size}
-          totalPages={items.page?.totalPages ?? 1}
-          onPageChange={(value) => {
-            form.input.page.set(value - 1);
-          }}
-          onSizeChange={(value) => {
-            form.input.size.set(value);
-          }}
-        />
-      )}
+        {props.infinityScroll && <div ref={sentinelRef} />}
 
-      {drawerConfig && (
-        <Drawer
-          opened={drawerItem !== null}
-          onClose={() => setDrawerItem(null)}
-          position="right"
-          size="xl"
-          {...drawerConfig.props}
-        >
-          {drawerItem && drawerConfig.render(drawerItem)}
-        </Drawer>
-      )}
+        {!props.infinityScroll && (
+          <DataTablePagination
+            page={page}
+            size={size}
+            totalPages={items.page?.totalPages ?? 1}
+            totalElements={items.page?.totalElements}
+            offset={items.page?.offset ?? 0}
+            numberOfElements={items.content.length}
+            onPageChange={(value) => {
+              form.input.page.set(value - 1);
+            }}
+            onSizeChange={(value) => {
+              form.input.size.set(value);
+            }}
+          />
+        )}
+
+        {drawerConfig && (
+          <Drawer
+            opened={drawerItem !== null}
+            onClose={() => setDrawerItem(null)}
+            position="right"
+            size="xl"
+            {...drawerConfig.props}
+          >
+            {drawerItem && drawerConfig.render(drawerItem)}
+          </Drawer>
+        )}
+      </Flex>
     </Flex>
   );
 };

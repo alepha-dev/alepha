@@ -1,15 +1,13 @@
 import {
   ActionButton,
   AlephaMantineProvider,
-  Breadcrumbs,
   DashboardShell,
   type DashboardShellProps,
-  LanguageButton,
   SidebarCollapseButton,
-  ThemeButton,
+  Text,
+  ui,
 } from "@alepha/ui";
-import { UserButton } from "@alepha/ui/auth";
-import { Flex } from "@mantine/core";
+import { Flex, Image } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 
 export interface AdminLayoutProps {
@@ -33,45 +31,39 @@ const AdminLayout = (props: AdminLayoutProps) => {
     >
       <DashboardShell
         layout={"alt"}
-        navbarHeader={
-          <Flex px={"lg"} align={"center"} justify={"center"}>
-            <ActionButton variant={"subtle"} icon={IconArrowLeft} href={"/"} />
+        navbarHeader={(props) => (
+          <Flex gap={"md"} flex={1} px={"lg"} align={"center"}>
+            <ActionButton
+              href={"/"}
+              variant={"default"}
+              bd={0}
+              icon={IconArrowLeft}
+            />
+            {!props.collapsed && (
+              <>
+                <Image pt={4} src={"/favicon.svg"} h={36} w={36} />
+                <Flex direction={"column"}>
+                  <Text bold>Blog</Text>
+                  <Text small muted mt={-4}>
+                    Admin Panel
+                  </Text>
+                </Flex>
+              </>
+            )}
           </Flex>
-        }
-        footerHeight={50}
+        )}
+        footerHeight={48}
         navbarFooter={
-          <Flex flex={1} px={"lg"} gap={"md"} align={"center"}>
-            <SidebarCollapseButton />
+          <Flex flex={1} px={"lg"} align={"center"}>
+            <SidebarCollapseButton
+              c={"gray"}
+              size={"xs"}
+              iconSize={ui.sizes.icon.sm}
+              p={8}
+              bd={0}
+            />
           </Flex>
         }
-        appBarProps={{
-          items: [
-            {
-              type: "burger",
-              position: "left",
-            },
-            {
-              element: <Breadcrumbs />,
-              position: "left",
-            },
-            {
-              element: <UserButton />,
-              position: "right",
-            },
-            {
-              element: <ThemeButton />,
-              position: "right",
-            },
-            {
-              element: <LanguageButton />,
-              position: "right",
-            },
-            {
-              type: "dark",
-              position: "right",
-            },
-          ],
-        }}
         sidebarProps={{
           autoPopulateMenu: {
             startsWith: "/admin",

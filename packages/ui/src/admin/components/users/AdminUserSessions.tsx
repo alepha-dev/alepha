@@ -1,4 +1,5 @@
-import { DataTable, Flex, Text, useDialog } from "@alepha/ui";
+import { DataTable, Flex, Text, useDialog, useToast } from "@alepha/ui";
+import { Badge } from "@mantine/core";
 import {
   IconDeviceDesktop,
   IconDeviceMobile,
@@ -38,20 +39,22 @@ const AdminUserSessions = (props: AdminUserSessionsProps) => {
   const client = useClient<AdminSessionController>();
   const { l } = useI18n();
   const dialog = useDialog();
+  const toast = useToast();
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleDeleteSession = async (sessionId: string) => {
+  const handleDeleteSession = async (session: SessionEntity) => {
     const confirmed = await dialog.confirm({
-      title: "Revoke Session",
-      message: "Are you sure you want to revoke this session?",
+      title: "Revoke session",
+      message:
+        "Are you sure you want to revoke this session? The user will be signed out on this device.",
     });
-    if (confirmed) {
-      await client.deleteSession({
-        params: { id: sessionId },
-        query: { userRealmName: props.userRealmName },
-      });
-      setRefreshKey((k) => k + 1);
-    }
+    if (!confirmed) return;
+    await client.deleteSession({
+      params: { id: session.id },
+      query: { userRealmName: props.userRealmName },
+    });
+    toast.success("Session revoked");
+    setRefreshKey((k) => k + 1);
   };
 
   return (
@@ -88,50 +91,49 @@ const AdminUserSessions = (props: AdminUserSessionsProps) => {
               <Text size="xs">
                 {item.userAgent
                   ? `${item.userAgent.browser} / ${item.userAgent.os}`
-                  : "\u2014"}
+                  : "—"}
               </Text>
             </Flex>
           ),
         },
         ip: {
           label: "IP",
-          fit: true,
           value: (item) => (
-            <Text size="xs" ff="monospace" c="dimmed">
-              {item.ip || "\u2014"}
+            <Text size="xs" ff="monospace" muted>
+              {item.ip || "—"}
             </Text>
           ),
         },
         status: {
           label: "Status",
-          fit: true,
           value: (item) => (
-            <Text size="xs" c="dimmed">
+            <Badge
+              size="sm"
+              variant="light"
+              color={isExpired(item.expiresAt) ? "gray" : "green"}
+            >
               {isExpired(item.expiresAt) ? "Expired" : "Active"}
-            </Text>
+            </Badge>
           ),
         },
         createdAt: {
           label: "Created",
-          fit: true,
           value: (item) => (
-            <Text size="xs" c="dimmed">
+            <Text size="xs" muted>
               {l(item.createdAt, { date: "fromNow" })}
             </Text>
           ),
         },
-        actions: {
-          label: "",
-          fit: true,
-          actions: (item) => [
-            {
-              icon: <IconTrash size={14} />,
-              onClick: () => handleDeleteSession(item.id),
-              tooltip: "Revoke session",
-            },
-          ],
-        },
       }}
+      rowActions={(item) => [
+        {
+          label: "Revoke session",
+          icon: IconTrash,
+          color: "red",
+          onClick: () => handleDeleteSession(item),
+          visible: !isExpired(item.expiresAt),
+        },
+      ]}
     />
   );
 };

@@ -1,5 +1,10 @@
-import { ActionButton, type ActionProps, isComponentType } from "@alepha/ui";
-import { Badge, Divider, Flex } from "@mantine/core";
+import {
+  ActionButton,
+  type ActionProps,
+  Flex,
+  isComponentType,
+} from "@alepha/ui";
+import { Badge, Divider } from "@mantine/core";
 import {
   IconClipboard,
   IconDownload,
@@ -78,7 +83,7 @@ const DataTableToolbar = <T extends object, Filters extends TObject>({
 
   const exportableColumns = useCallback(() => {
     return Object.entries(columns).filter(
-      ([key, col]) => !col.actions && columnVisibility[key] !== false,
+      ([key]) => columnVisibility[key] !== false,
     );
   }, [columns, columnVisibility]);
 
@@ -130,7 +135,7 @@ const DataTableToolbar = <T extends object, Filters extends TObject>({
   };
 
   return (
-    <Flex p="xs" style={{ borderBottom: "1px solid var(--alepha-border)" }}>
+    <Flex p="xs">
       <Flex gap={4} align="center">
         {filters && (
           <FilterPicker

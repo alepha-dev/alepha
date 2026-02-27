@@ -8,10 +8,10 @@ export const ui = {
   },
   sizes: {
     icon: {
-      xs: 14,
-      sm: 16,
-      md: 20,
-      lg: 24,
+      xs: 16,
+      sm: 20,
+      md: 24,
+      lg: 28,
       xl: 32,
     },
   },

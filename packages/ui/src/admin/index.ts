@@ -1,11 +1,11 @@
 import { AlephaUI } from "@alepha/ui";
 import { AlephaUIAuth } from "@alepha/ui/auth";
 import { $module } from "alepha";
-import { AdminRouter } from "./AdminRouter.ts";
+import { AdminRouter } from "./AdminRouter.tsx";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export { AdminRouter } from "./AdminRouter.ts";
+export { AdminRouter } from "./AdminRouter.tsx";
 export * from "./primitives/$uiAdmin.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -43,6 +43,26 @@
 
 /* ------------------------------------------------------------------------------------------------------------------ */
 
+.shadow-xs {
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+.shadow-sm {
+  box-shadow: var(--mantine-shadow-sm);
+}
+
+.shadow-md {
+  box-shadow: var(--mantine-shadow-md);
+}
+
+.shadow-lg {
+  box-shadow: var(--mantine-shadow-lg);
+}
+
+.shadow-xl {
+  box-shadow: var(--mantine-shadow-xl);
+}
+
 .overflow-auto {
   overflow: auto;
   scrollbar-color: var(--alepha-text-muted) transparent;

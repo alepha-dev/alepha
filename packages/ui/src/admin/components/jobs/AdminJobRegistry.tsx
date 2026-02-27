@@ -88,7 +88,7 @@ const AdminJobRegistry = () => {
   );
 
   return (
-    <Flex flex={1} direction="column" gap="md">
+    <Flex p="md" flex={1} direction="column" gap="md">
       <DataTable<JobRegistration, typeof registryFilters>
         key={`registry-${refreshKey}`}
         submitOnInit
@@ -99,7 +99,6 @@ const AdminJobRegistry = () => {
         tableProps={{
           horizontalSpacing: "sm",
           verticalSpacing: "sm",
-          highlightOnHover: true,
         }}
         onFilterChange={(_key, _value, form) => form.submit()}
         filters={registryFilters}
@@ -121,7 +120,6 @@ const AdminJobRegistry = () => {
           },
           type: {
             label: "Type",
-            fit: true,
             value: (item) => (
               <Badge size="sm" variant="default">
                 {item.type}
@@ -130,7 +128,6 @@ const AdminJobRegistry = () => {
           },
           priority: {
             label: "Priority",
-            fit: true,
             value: (item) => (
               <Text size="sm" tt="capitalize">
                 {item.priority}
@@ -139,7 +136,6 @@ const AdminJobRegistry = () => {
           },
           concurrency: {
             label: "Concurrency",
-            fit: true,
             value: (item) => (
               <Text size="sm" ff="monospace">
                 {item.concurrency}
@@ -148,7 +144,6 @@ const AdminJobRegistry = () => {
           },
           queue: {
             label: "Queue",
-            fit: true,
             value: (item) => {
               const q = queueMap.get(item.name);
               if (
@@ -187,19 +182,15 @@ const AdminJobRegistry = () => {
               );
             },
           },
-          actions: {
-            label: "",
-            fit: true,
-            actions: (item) => [
-              {
-                tooltip: "Trigger",
-                color: "blue",
-                icon: IconPlayerPlay,
-                onClick: () => handleTriggerJob(item.name),
-              },
-            ],
-          },
         }}
+        rowActions={(item) => [
+          {
+            label: "Trigger",
+            color: "blue",
+            icon: IconPlayerPlay,
+            onClick: () => handleTriggerJob(item.name),
+          },
+        ]}
         panel={(item) => {
           const cron = cronMap.get(item.name);
           const failure = failureMap.get(item.name);

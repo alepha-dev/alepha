@@ -267,26 +267,22 @@ const DemoDataTable = () => {
                 </Text>
               ),
             },
-            actions: {
-              label: "",
-              fit: true,
-              actions: (u) => [
-                {
-                  tooltip: "Edit",
-                  icon: IconEdit,
-                  color: "blue",
-                  onClick: () => alert(`Edit ${u.name}`),
-                },
-                {
-                  tooltip: "Delete",
-                  icon: IconTrash,
-                  color: "red",
-                  onClick: () => alert(`Delete ${u.name}`),
-                  visible: u.role !== "admin",
-                },
-              ],
-            },
           }}
+          rowActions={(u) => [
+            {
+              label: "Edit",
+              icon: IconEdit,
+              color: "blue",
+              onClick: () => alert(`Edit ${u.name}`),
+            },
+            {
+              label: "Delete",
+              icon: IconTrash,
+              color: "red",
+              onClick: () => alert(`Delete ${u.name}`),
+              visible: u.role !== "admin",
+            },
+          ]}
           panel={
             props.withPanel
               ? {

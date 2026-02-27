@@ -139,6 +139,8 @@ export interface ActionCommonProps extends ButtonProps {
    */
   icon?: ReactNode | ComponentType;
 
+  iconSize?: number | string;
+
   /**
    * Additional props to pass to the ThemeIcon wrapping the icon.
    */
@@ -240,16 +242,10 @@ const ActionMenuItem = (props: {
 const ActionButton = (_props: ActionProps) => {
   const theme = useMantineTheme();
   const props = { ..._props };
-  const { tooltip, menu, icon, ...restProps } = props;
-
-  if (props.variant === "subtle" || props.variant === "outline") {
-    //  restProps.color ??= "gray";
-  }
+  const { tooltip, menu, icon, iconSize, ...restProps } = props;
 
   if (props.intent) {
-    if (props.intent === "none") {
-      //  restProps.color ??= "gray";
-    } else if (props.intent === "primary") {
+    if (props.intent === "primary") {
       restProps.color ??= theme.primaryColor;
     } else if (props.intent === "success") {
       restProps.c ??= "white";
@@ -267,15 +263,16 @@ const ActionButton = (_props: ActionProps) => {
 
   if (props.icon) {
     const sizes = ui.sizes.icon as Record<string, number>;
+    const iconSize = props.iconSize ?? sizes[props.size || "sm"];
     const icon = isComponentType(props.icon) ? (
-      <props.icon size={sizes[props.size || "sm"]} />
+      <props.icon size={iconSize} />
     ) : (
       <span>{props.icon as ReactNode}</span>
     );
 
     if (!props.children) {
       restProps.children = Children.only(icon);
-      restProps.px ??= "xs"; // TODO: change based on props.size ?
+      restProps.p ??= 8;
     } else {
       restProps.leftSection = icon;
     }

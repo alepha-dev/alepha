@@ -5,6 +5,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import type { ComponentType, ReactNode } from "react";
 import { alephaSidebarAtom } from "./atoms/alephaSidebarAtom.ts";
 import { alephaThemeAtom } from "./atoms/alephaThemeAtom.ts";
+import { alephaThemeOverridesAtom } from "./atoms/alephaThemeOverridesAtom.ts";
 import { ThemeProvider } from "./providers/ThemeProvider.ts";
 import { DialogService } from "./services/DialogService.tsx";
 import { ToastService } from "./services/ToastService.tsx";
@@ -15,6 +16,7 @@ import { UiRouter } from "./UiRouter.ts";
 export * from "./atoms/alephaSidebarAtom.ts";
 export * from "./atoms/alephaThemeAtom.ts";
 export * from "./atoms/alephaThemeListAtom.ts";
+export * from "./atoms/alephaThemeOverridesAtom.ts";
 export * from "./atoms/themes/default.ts";
 export * from "./atoms/themes/midnight.ts";
 export type { AlephaMantineProviderProps } from "./components/AlephaMantineProvider.tsx";
@@ -109,7 +111,7 @@ export * from "./form/index.ts";
 export * from "./helpers/isComponentType.ts";
 export * from "./helpers/renderIcon.tsx";
 export { useDialog } from "./hooks/useDialog.ts";
-export { useTheme } from "./hooks/useTheme.ts";
+export { type ThemeExpert, useTheme } from "./hooks/useTheme.ts";
 export { useToast } from "./hooks/useToast.ts";
 export * from "./interfaces/AlephaIntent.ts";
 // JSON
@@ -140,6 +142,9 @@ declare module "alepha" {
   interface State {
     [alephaSidebarAtom.key]?: Static<typeof alephaSidebarAtom.schema>;
     [alephaThemeAtom.key]?: Static<typeof alephaThemeAtom.schema>;
+    [alephaThemeOverridesAtom.key]?: Static<
+      typeof alephaThemeOverridesAtom.schema
+    >;
   }
 }
 

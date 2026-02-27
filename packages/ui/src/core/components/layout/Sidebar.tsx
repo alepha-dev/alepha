@@ -89,7 +89,7 @@ export const Sidebar = (props: SidebarProps) => {
 
       if (item.type === "search") {
         return (
-          <Flex key={key} mb="xs">
+          <Flex key={key} mb="xs" w={"100%"} justify="center" pos={"relative"}>
             <OmnibarButton collapsed={collapsed} />
           </Flex>
         );
@@ -112,7 +112,6 @@ export const Sidebar = (props: SidebarProps) => {
         if (collapsed) {
           return (
             <Fragment key={key}>
-              {divider(`${key}-d`, undefined, collapsed)}
               {item.children?.map((child, index) =>
                 renderNode(child, `s${key}-${index}`, collapsed),
               )}
@@ -316,17 +315,11 @@ export const SidebarItem = (props: SidebarItemProps) => {
           props.theme.button?.size ??
           (level === 0 ? "sm" : "xs")
         }
-        // tooltip={
-        //   item.description
-        //     ? { label: item.description, position: "right" }
-        //     : undefined
-        // }
         bd={0}
         fw={"normal"}
         variant={"default"}
         propsActive={{
           variant: "outline",
-          fw: "bold",
         }}
         radius={props.item.theme?.radius ?? props.theme.button?.radius ?? "md"}
         onClick={handleItemClick}
@@ -355,7 +348,7 @@ export const SidebarItem = (props: SidebarItemProps) => {
       />
 
       {item.children && isOpen && (
-        <Flex direction={"column"} data-parent-level={level}>
+        <Flex direction={"column"} data-parent-level={level} gap={2} py={2}>
           <Flex
             style={{
               position: "absolute",
@@ -401,52 +394,67 @@ const SidebarCollapsedItem = (props: SidebarItemProps) => {
     ? {
         on: "hover",
         position: "right",
-        items: item
-          .children!.filter((child) => !child.can || child.can())
-          .map(
-            (child): ActionMenuItem => ({
-              label: child.label as string,
-              icon: renderIcon(child.icon, ui.sizes.icon.sm),
-              href: child.href,
-              active: child.href
-                ? router.isActive(child.href, {
-                    startWith: child.activeStartsWith,
-                  })
-                : undefined,
-            }),
-          ),
+        menuProps: {
+          arrowPosition: "center",
+          arrowSize: 10,
+          withArrow: true,
+        },
+        items: [
+          {
+            type: "label",
+            label: item.label,
+          },
+          ...item
+            .children!.filter((child) => !child.can || child.can())
+            .map(
+              (child): ActionMenuItem => ({
+                label: child.label as string,
+                icon: renderIcon(child.icon, ui.sizes.icon.sm),
+                href: child.href,
+                active: child.href
+                  ? router.isActive(child.href, {
+                      startWith: child.activeStartsWith,
+                    })
+                  : undefined,
+              }),
+            ),
+        ],
       }
     : undefined;
 
   return (
-    <ActionButton
-      size={
-        props.item.theme?.size ??
-        props.theme.button?.size ??
-        (level === 0 ? "sm" : "xs")
-      }
-      variant={"subtle"}
-      variantActive={"default"}
-      tooltip={
-        hasChildren
-          ? undefined
-          : {
-              label: item.label,
-              position: "right",
-            }
-      }
-      radius={props.item.theme?.radius ?? props.theme.button?.radius ?? "md"}
-      onClick={hasChildren ? undefined : handleItemClick}
-      icon={
-        renderIcon(item.icon, ui.sizes.icon.sm) ?? (
-          <IconSquareRounded size={ui.sizes.icon.sm} />
-        )
-      }
-      href={hasChildren ? undefined : (props.item.href as any)}
-      target={hasChildren ? undefined : props.item.target}
-      menu={menu}
-      {...props.item.actionProps}
-    />
+    <Flex w={"100%"} justify="center" pos={"relative"}>
+      <ActionButton
+        size={
+          props.item.theme?.size ??
+          props.theme.button?.size ??
+          (level === 0 ? "sm" : "xs")
+        }
+        bd={0}
+        variant={"default"}
+        propsActive={{
+          variant: "outline",
+        }}
+        tooltip={
+          hasChildren
+            ? undefined
+            : {
+                label: item.label,
+                position: "right",
+              }
+        }
+        onClick={hasChildren ? undefined : handleItemClick}
+        icon={
+          renderIcon(item.icon, ui.sizes.icon.sm) ?? (
+            <IconSquareRounded size={ui.sizes.icon.sm} />
+          )
+        }
+        href={hasChildren ? undefined : (props.item.href as any)}
+        target={hasChildren ? undefined : props.item.target}
+        menu={menu}
+        {...props.item.actionProps}
+      />
+    </Flex>
   );
 };
 

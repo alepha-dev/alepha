@@ -47,12 +47,7 @@ const DataTableFilters = ({
   }
 
   return (
-    <Flex
-      w="100%"
-      p="xs"
-      bg={ui.colors.surface}
-      style={{ borderBottom: "1px solid var(--alepha-border)" }}
-    >
+    <Flex w="100%" p="xs" m="xs" bdrs="md" bg={ui.colors.surface}>
       <TypeForm
         size={"xs"}
         {...typeFormProps}

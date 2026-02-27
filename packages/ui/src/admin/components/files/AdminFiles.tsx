@@ -28,7 +28,7 @@ const AdminFiles = () => {
   };
 
   return (
-    <Flex flex={1} direction={"column"}>
+    <Flex p="md" flex={1} direction={"column"}>
       <DataTable<FileEntity, typeof filters>
         submitOnInit
         defaultSize={10}
@@ -64,7 +64,6 @@ const AdminFiles = () => {
           },
           bucket: {
             label: "Bucket",
-            fit: true,
             value: (item) => (
               <Text size="xs" ff="monospace">
                 {item.bucket}
@@ -73,7 +72,6 @@ const AdminFiles = () => {
           },
           mimeType: {
             label: "Type",
-            fit: true,
             value: (item) => (
               <Text size="xs" c="dimmed">
                 {item.mimeType}
@@ -82,7 +80,6 @@ const AdminFiles = () => {
           },
           size: {
             label: "Size",
-            fit: true,
             value: (item) => (
               <Text size="xs" c="dimmed">
                 {formatFileSize(item.size)}
@@ -91,7 +88,6 @@ const AdminFiles = () => {
           },
           creatorName: {
             label: "Creator",
-            fit: true,
             value: (item) => (
               <Text size="xs" c="dimmed">
                 {item.creatorName || "-"}
@@ -100,7 +96,6 @@ const AdminFiles = () => {
           },
           createdAt: {
             label: "Created",
-            fit: true,
             value: (item) => (
               <Text size="xs" c="dimmed">
                 {l(item.createdAt, { date: "fromNow" })}

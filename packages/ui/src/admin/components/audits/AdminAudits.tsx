@@ -1,6 +1,6 @@
 import { DataTable, Flex, Text } from "@alepha/ui";
 import { Badge, Tooltip } from "@mantine/core";
-import { IconCheck, IconUser, IconX } from "@tabler/icons-react";
+import { IconUser } from "@tabler/icons-react";
 import { type Page, t } from "alepha";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import { useClient } from "alepha/react";
@@ -29,10 +29,11 @@ const AdminAudits = (props: AdminAuditsProps) => {
   });
 
   return (
-    <Flex flex={1} direction="column">
+    <Flex p="md" flex={1} direction="column">
       <DataTable<AuditEntity, typeof filters>
         submitOnInit
         defaultSize={20}
+        defaultFilters={["search", "severity"]}
         typeFormProps={{
           skipSubmitButton: true,
           columns: 4,
@@ -40,9 +41,8 @@ const AdminAudits = (props: AdminAuditsProps) => {
         tableProps={{
           horizontalSpacing: "xs",
           verticalSpacing: "xs",
-          striped: false,
-          highlightOnHover: true,
         }}
+        onFilterChange={(_key, _value, form) => form.submit()}
         filters={filters}
         tableTrProps={(item) => ({
           style: {
@@ -69,7 +69,6 @@ const AdminAudits = (props: AdminAuditsProps) => {
         columns={{
           type: {
             label: "Type",
-            fit: true,
             value: (item) => (
               <Badge size="sm" variant="default">
                 {item.type}
@@ -78,7 +77,6 @@ const AdminAudits = (props: AdminAuditsProps) => {
           },
           action: {
             label: "Action",
-            fit: true,
             value: (item) => (
               <Badge size="sm" variant="default">
                 {item.action}
@@ -87,16 +85,24 @@ const AdminAudits = (props: AdminAuditsProps) => {
           },
           severity: {
             label: "Severity",
-            fit: true,
             value: (item) => (
-              <Text size="xs" tt="capitalize">
+              <Badge
+                size="sm"
+                variant="light"
+                color={
+                  item.severity === "critical"
+                    ? "red"
+                    : item.severity === "warning"
+                      ? "yellow"
+                      : "gray"
+                }
+              >
                 {item.severity}
-              </Text>
+              </Badge>
             ),
           },
           user: {
             label: "User",
-            fit: true,
             value: (item) =>
               item.userId ? (
                 <Tooltip
@@ -132,7 +138,6 @@ const AdminAudits = (props: AdminAuditsProps) => {
           },
           resource: {
             label: "Resource",
-            fit: true,
             value: (item) =>
               item.resourceType ? (
                 <Tooltip label={`${item.resourceType}: ${item.resourceId}`}>
@@ -148,19 +153,21 @@ const AdminAudits = (props: AdminAuditsProps) => {
           },
           success: {
             label: "Status",
-            fit: true,
             value: (item) =>
               item.success ? (
-                <IconCheck size={14} />
+                <Badge size="sm" variant="light" color="green">
+                  OK
+                </Badge>
               ) : (
                 <Tooltip label={item.errorMessage || "Failed"}>
-                  <IconX size={14} />
+                  <Badge size="sm" variant="light" color="red">
+                    Failed
+                  </Badge>
                 </Tooltip>
               ),
           },
           ipAddress: {
             label: "IP",
-            fit: true,
             value: (item) => (
               <Text size="xs" c="dimmed" ff="monospace">
                 {item.ipAddress || "-"}
@@ -169,7 +176,6 @@ const AdminAudits = (props: AdminAuditsProps) => {
           },
           createdAt: {
             label: "Time",
-            fit: true,
             value: (item) => (
               <Tooltip label={l(item.createdAt, { date: "medium" })}>
                 <Text size="xs" c="dimmed">

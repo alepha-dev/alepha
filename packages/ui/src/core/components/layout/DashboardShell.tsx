@@ -37,7 +37,7 @@ export interface DashboardShellProps {
   /**
    * Content rendered above the Sidebar inside the navbar (e.g. logo).
    */
-  navbarHeader?: ReactNode;
+  navbarHeader?: (props: { collapsed: boolean }) => ReactNode;
 
   /**
    * Content rendered below the Sidebar inside the navbar (e.g. toggle button).
@@ -168,7 +168,7 @@ const DashboardShell = (props: DashboardShellProps) => {
               }}
               h={headerHeight}
             >
-              {props.navbarHeader}
+              {props.navbarHeader({ collapsed })}
             </Flex>
           ) : null}
           <Sidebar {...(props.sidebarProps ?? {})} collapsed={collapsed} />

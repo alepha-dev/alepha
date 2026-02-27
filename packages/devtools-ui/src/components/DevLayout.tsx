@@ -96,7 +96,7 @@ export const DevLayout = () => {
       navbarFooter={<Flex />}
       footerHeight={24}
       headerHeight={60}
-      navbarHeader={
+      navbarHeader={() => (
         <Flex align="center" justify="center" h="100%" w="100%">
           <ActionButton
             href="/"
@@ -108,7 +108,7 @@ export const DevLayout = () => {
             <IconArrowLeft size={18} />
           </ActionButton>
         </Flex>
-      }
+      )}
       sidebarProps={{
         collapsed: true,
         items: sidebarItems,
