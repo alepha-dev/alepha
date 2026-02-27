@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           # Fetch full history for proper versioning
           fetch-depth: 0
@@ -39,7 +39,7 @@ jobs:
         run: corepack enable
 
       - name: Prepare Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24.x"
           cache: "yarn"
@@ -49,8 +49,10 @@ jobs:
         run: yarn
 
       - name: Bump Version
+        env:
+          VERSION_BUMP: ${{ inputs.version_bump }}
         run: |
-          yarn workspaces foreach --no-private --all version ${{ inputs.version_bump }}
+          yarn workspaces foreach --no-private --all version "${VERSION_BUMP}"
 
       - name: Get New Version
         id: version
@@ -73,8 +75,9 @@ jobs:
           } >> $GITHUB_OUTPUT
 
       - name: Update CHANGELOG.md
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION=${{ steps.version.outputs.version }}
           DATE=$(date +%Y-%m-%d)
 
           # Prepend new changelog entry (use cat to preserve backticks in commit hashes)
@@ -88,17 +91,19 @@ jobs:
           mv CHANGELOG.tmp CHANGELOG.md
 
       - name: Commit and Tag Release
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           git add -A
-          git commit -m "release: ${{ steps.version.outputs.version }}"
-          git tag -a ${{ steps.version.outputs.version }} -m "release: ${{ steps.version.outputs.version }}"
+          git commit -m "release: ${VERSION}"
+          git tag -a "${VERSION}" -m "release: ${VERSION}"
 
       - name: Push Changes and Tags
         run: |
           git push --follow-tags
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           tag_name: ${{ steps.version.outputs.version }}
           name: ${{ steps.version.outputs.version }}

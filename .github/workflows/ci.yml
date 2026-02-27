@@ -1,5 +1,7 @@
 name: Build
-permissions: write-all
+
+permissions:
+  contents: read
 
 on:
   push:
@@ -10,9 +12,14 @@ on:
     types:
       - completed
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify-linux:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
 
       redis:
@@ -36,19 +43,10 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Prepare Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24.x"
-          cache: "yarn"
-
-      - name: Install Dependencies
-        run: yarn
+      - name: Setup
+        uses: ./.github/actions/setup
 
       - name: Clean
         run: yarn clean
@@ -83,18 +81,19 @@ jobs:
         run: yarn e2e-cli
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload test results to Codecov
-        uses: codecov/test-results-action@v1
+        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   deploy-docs:
     needs: verify-linux
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     permissions:
       contents: read
@@ -107,19 +106,10 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Prepare Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24.x"
-          cache: "yarn"
-
-      - name: Install Dependencies
-        run: yarn
+      - name: Setup
+        uses: ./.github/actions/setup
 
       - name: Prepare
         run: yarn copy
@@ -128,20 +118,21 @@ jobs:
         run: cd apps/docs && yarn build && yarn alepha gen:llms
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: './apps/docs/dist/public'
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
 
   deploy-roadmap:
     needs: verify-linux
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment: roadmap-production
 
     env:
@@ -150,19 +141,10 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Prepare Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24.x"
-          cache: "yarn"
-
-      - name: Install Dependencies
-        run: yarn
+      - name: Setup
+        uses: ./.github/actions/setup
 
       - name: Deploy Roadmap
         run: yarn w roadmap alepha platform up --env production
@@ -179,12 +161,16 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           POSTGRES_SCHEMA: ${{ secrets.POSTGRES_SCHEMA }}
 
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
   verify-windows:
     runs-on: windows-latest
+    timeout-minutes: 15
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Enable Corepack
         run: |
@@ -192,7 +178,7 @@ jobs:
           corepack enable
 
       - name: Prepare Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24.x"
           cache: "yarn"
@@ -220,4 +206,3 @@ jobs:
 
       - name: Run CLI E2E Tests
         run: yarn e2e-cli
-
