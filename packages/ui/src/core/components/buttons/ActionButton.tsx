@@ -564,6 +564,7 @@ const ActionNavigationButton = (props: ActionNavigationButtonProps) => {
     propsActive,
     routerGoOptions,
     onClick: propsOnClick,
+    anchorProps: buttonAnchorProps,
     anchor,
     ...buttonProps
   } = props as ActionNavigationButtonProps & { onClick?: (e: any) => void };
@@ -588,13 +589,13 @@ const ActionNavigationButton = (props: ActionNavigationButtonProps) => {
     buttonProps.className = `${className} ${classNameActive}`.trim();
   }
 
-  if (props.anchorProps || anchor) {
+  if (buttonAnchorProps || anchor) {
     return (
       <Anchor
         component={"a"}
         {...anchorProps}
         {...(buttonProps as AnchorProps)}
-        {...props.anchorProps}
+        {...buttonAnchorProps}
         onClick={combinedOnClick}
       >
         {props.children}

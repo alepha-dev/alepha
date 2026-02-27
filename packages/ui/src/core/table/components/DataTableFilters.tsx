@@ -1,5 +1,4 @@
-import { ui } from "@alepha/ui";
-import { Flex } from "@mantine/core";
+import { Flex } from "@alepha/ui";
 import { type TObject, t } from "alepha";
 import type { FormModel } from "alepha/react/form";
 import { useMemo } from "react";
@@ -47,9 +46,8 @@ const DataTableFilters = ({
   }
 
   return (
-    <Flex w="100%" p="xs" m="xs" bdrs="md" bg={ui.colors.surface}>
+    <Flex surface flex={1} mt={-4} p="xs" m="xs" bdrs="md">
       <TypeForm
-        size={"xs"}
         {...typeFormProps}
         skipSubmitButton
         fill
@@ -60,7 +58,7 @@ const DataTableFilters = ({
           sm: 2,
           md: 3,
           lg: 4,
-          xl: 6,
+          xl: 5,
         }}
       />
     </Flex>

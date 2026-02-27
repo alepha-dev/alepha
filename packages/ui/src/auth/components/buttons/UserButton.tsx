@@ -42,14 +42,14 @@ export interface UserButtonProps
   menuConfig?: Partial<Omit<ActionMenuConfig, "items">>;
 
   /**
-   * Whether to show a divider before logout (default: true when menuItems provided)
-   */
-  showLogoutDivider?: boolean;
-
-  /**
    * Custom icon to use instead of user avatar (default: IconUser)
    */
   icon?: ReactNode;
+
+  /**
+   * If true, the profile link will not be shown in the menu even if a userProfile page exists and the user is authenticated.
+   */
+  skipProfile?: boolean;
 }
 
 const UserButton = (props: UserButtonProps) => {
@@ -58,8 +58,8 @@ const UserButton = (props: UserButtonProps) => {
     logoutLabel = "Sign out",
     loginLabel,
     menuConfig,
-    showLogoutDivider = menuItems.length > 0,
     icon,
+    skipProfile = false,
     children,
     ...buttonProps
   } = props;
@@ -104,10 +104,10 @@ const UserButton = (props: UserButtonProps) => {
   }
 
   // Add profile page link if available
-  if (userPage && isConnected) {
+  if (userPage && isConnected && !skipProfile) {
     items.push({
       label: "Profile",
-      icon: <IconUser size={ui.sizes.icon.md} />,
+      icon: <IconUser size={ui.sizes.icon.sm} />,
       href: authRouter.path("userProfile"),
     });
   }
@@ -116,7 +116,7 @@ const UserButton = (props: UserButtonProps) => {
   if (adminPage && isAdmin) {
     items.push({
       label: "Admin",
-      icon: <IconSettings size={ui.sizes.icon.md} />,
+      icon: <IconSettings size={ui.sizes.icon.sm} />,
       href: authRouter.path("adminLayout"),
     });
   }
@@ -125,14 +125,14 @@ const UserButton = (props: UserButtonProps) => {
   items.push(...menuItems);
 
   // Add divider before logout if needed
-  if (showLogoutDivider && items.length > 0) {
+  if (items.length > 0) {
     items.push({ type: "divider" });
   }
 
   // Add logout item
   items.push({
     label: logoutLabel,
-    icon: <IconLogout size={ui.sizes.icon.md} />,
+    icon: <IconLogout size={ui.sizes.icon.sm} />,
     color: "red",
     onClick: () => auth.logout(),
   });
@@ -156,7 +156,12 @@ const UserButton = (props: UserButtonProps) => {
         ) : undefined
       }
       menu={{
-        position: "bottom-end",
+        menuProps: {
+          withArrow: true,
+          arrowSize: 12,
+        },
+
+        position: "bottom",
         width: 200,
         ...menuConfig,
         items,
