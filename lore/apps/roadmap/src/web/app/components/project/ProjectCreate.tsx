@@ -1,4 +1,4 @@
-import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
+import { ActionButton, Control, Flex, Text, useToast } from "@alepha/ui";
 import { Card, Container } from "@mantine/core";
 import { IconHammer, IconTag, IconUpload } from "@tabler/icons-react";
 import { t } from "alepha";
@@ -13,7 +13,6 @@ import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Control from "../ui/Control.tsx";
 
 const ProjectCreate = () => {
   const client = useClient<ProjectController>();
@@ -150,12 +149,12 @@ const ProjectCreate = () => {
                     autoFocus: true,
                   }}
                   icon={<IconTag />}
-                  title={tr("project.create.name")}
+                  label={tr("project.create.name")}
                   description={tr("project.create.name.helper")}
                 />
                 <Control
                   input={form.input.public}
-                  title={tr("project.create.public")}
+                  label={tr("project.create.public")}
                   description={tr("project.create.public.helper")}
                 />
                 <Flex gap={"md"}>

@@ -1,4 +1,4 @@
-import { ActionButton, Flex } from "@alepha/ui";
+import { ActionButton, Control, Flex } from "@alepha/ui";
 import { modals } from "@mantine/modals";
 import { IconTag } from "@tabler/icons-react";
 import { t } from "alepha";
@@ -9,7 +9,6 @@ import { useRouter } from "alepha/react/router";
 import type { ProjectController } from "../../../../../api/controllers/ProjectController.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import Control from "../../ui/Control.tsx";
 
 interface RenameZoneModalProps {
   currentZoneName: string;
@@ -63,7 +62,7 @@ export const RenameZoneModal = (props: RenameZoneModalProps) => {
             placeholder: tr("zone.rename.placeholder"),
           }}
           icon={<IconTag />}
-          title={tr("zone.rename.name")}
+          label={tr("zone.rename.name")}
         />
         <Flex direction="column" gap="sm">
           <ActionButton type="submit" fullWidth loading={formState.loading}>

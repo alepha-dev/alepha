@@ -1,10 +1,10 @@
+import type { CustomControlProps } from "@alepha/ui";
 import { ActionButton, Flex, useToast } from "@alepha/ui";
 import { Loader } from "@mantine/core";
 import { IconUpload } from "@tabler/icons-react";
 import { useClient } from "alepha/react";
 import { type ChangeEvent, useRef, useState } from "react";
 import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
-import type { CustomControlProps } from "../../ui/Control.tsx";
 import AttachmentBadge from "./AttachmentBadge.tsx";
 
 const ACCEPTED_TYPES =

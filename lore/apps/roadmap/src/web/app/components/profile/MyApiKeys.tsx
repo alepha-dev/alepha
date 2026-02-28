@@ -1,4 +1,4 @@
-import { ActionButton, Flex, Text } from "@alepha/ui";
+import { ActionButton, Control, Flex, Text } from "@alepha/ui";
 import { Badge, Card, Code, CopyButton, Modal, Tooltip } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -15,7 +15,6 @@ import { useClient, useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useState } from "react";
 import { theme } from "../../constants/theme.ts";
-import Control from "../ui/Control.tsx";
 
 interface ApiKey {
   id: string;
@@ -155,7 +154,7 @@ const MyApiKeys = (props: MyApiKeysProps) => {
           <Flex direction="column" gap="md">
             <Control
               input={form.input.name}
-              title="Key Name"
+              label="Key Name"
               text={{ placeholder: "e.g., Claude Desktop" }}
             />
             <Flex justify="flex-end">
