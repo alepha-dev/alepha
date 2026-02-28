@@ -1,7 +1,7 @@
-import { ActionButton } from "@alepha/ui";
+import { ActionButton, Flex, Text } from "@alepha/ui";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Badge, Flex, Text } from "@mantine/core";
+import { Badge } from "@mantine/core";
 import { IconExclamationMark, IconSparkles } from "@tabler/icons-react";
 import type { Task } from "../../../../api/entities/tasks.ts";
 import { theme } from "../../constants/theme.ts";
@@ -39,6 +39,7 @@ const KanbanCard = ({
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : undefined,
+    padding: 4,
   };
 
   return (
@@ -48,8 +49,9 @@ const KanbanCard = ({
         h="auto"
         px="xs"
         py={6}
+        mb={2}
         justify="start"
-        variant="subtle"
+        variant="default"
         onClick={() => onSelect(task)}
         {...(readOnly ? {} : { ...attributes, ...listeners })}
         style={{

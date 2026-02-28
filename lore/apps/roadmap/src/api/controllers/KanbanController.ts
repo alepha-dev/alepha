@@ -29,12 +29,7 @@ export class KanbanController {
         projectId: t.integer(),
       }),
       response: t.object({
-        project: t.object({
-          id: t.integer(),
-          title: t.string(),
-          packages: t.array(t.string()),
-          public: t.optional(t.boolean()),
-        }),
+        project: projects.schema,
         tasks: t.array(tasks.schema),
         readOnly: t.boolean(),
       }),
@@ -108,12 +103,7 @@ export class KanbanController {
       });
 
       return {
-        project: {
-          id: project.id,
-          title: project.title,
-          packages: project.packages,
-          public: project.public,
-        },
+        project,
         tasks: allTasks,
         readOnly,
       };

@@ -31,7 +31,6 @@ export const whiteboards = $entity({
     id: db.primaryKey(t.integer()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    deletedAt: db.deletedAt(),
     title: t.string({ minLength: 1, maxLength: 50 }),
     projectId: db.ref(t.integer(), () => projects.cols.id, {
       onDelete: "cascade",
@@ -43,7 +42,7 @@ export const whiteboards = $entity({
   }),
   indexes: [
     {
-      columns: ["projectId", "deletedAt"],
+      columns: ["projectId"],
     },
   ],
 });

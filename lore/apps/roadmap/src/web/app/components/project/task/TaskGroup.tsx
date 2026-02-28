@@ -1,8 +1,10 @@
+import { ActionButton, Flex, Text } from "@alepha/ui";
 import { useDroppable } from "@dnd-kit/core";
-import { ActionIcon, Button, Flex, Stack, Text } from "@mantine/core";
 import { IconMinus, IconPlus } from "@tabler/icons-react";
+import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 import type { Task } from "../../../../../api/entities/tasks.ts";
+import type { I18n } from "../../../services/I18n.ts";
 import { openRenameZoneModal } from "./RenameZoneModal.tsx";
 import TaskItem from "./TaskItem.tsx";
 
@@ -12,6 +14,7 @@ interface TaskGroupProps {
 }
 
 const TaskGroup = (props: TaskGroupProps) => {
+  const { tr } = useI18n<I18n, "en">();
   const [isCollapsed, setIsCollapsed] = useState(true);
 
   const { setNodeRef, isOver } = useDroppable({
@@ -33,7 +36,8 @@ const TaskGroup = (props: TaskGroupProps) => {
   };
 
   return (
-    <Stack
+    <Flex
+      direction="column"
       gap={0}
       ref={setNodeRef}
       style={{
@@ -44,21 +48,22 @@ const TaskGroup = (props: TaskGroupProps) => {
     >
       <Flex p={0} align="center" justify="center" gap={"xs"}>
         <Flex align="center" justify="center">
-          <ActionIcon
+          <ActionButton
             size={"xs"}
-            variant={"subtle"}
+            variant={"minimal"}
             onClick={() => setIsCollapsed(!isCollapsed)}
+            px="xs"
           >
             {isCollapsed ? <IconMinus size={10} /> : <IconPlus size={10} />}
-          </ActionIcon>
-          <Button
+          </ActionButton>
+          <ActionButton
             px={"xs"}
             size={"xs"}
-            variant={"subtle"}
+            variant={"minimal"}
             onClick={handleRenameZone}
           >
             <Text fw={"bold"}>{props.name}</Text>
-          </Button>
+          </ActionButton>
         </Flex>
         <Flex flex={1} align="center" justify="center" px={2}>
           <Flex
@@ -72,18 +77,18 @@ const TaskGroup = (props: TaskGroupProps) => {
         </Flex>
         <Flex>
           <Text c={"dimmed"} size="sm">
-            {props.tasks.length} task{props.tasks.length > 1 ? "s" : ""}
+            {tr("task.group.quests", { args: [String(props.tasks.length)] })}
           </Text>
         </Flex>
       </Flex>
       {isCollapsed && (
-        <Stack gap={0}>
+        <Flex direction="column" gap={0}>
           {tasks.map((item, index) => (
             <TaskItem key={item.id} task={item} index={index} />
           ))}
-        </Stack>
+        </Flex>
       )}
-    </Stack>
+    </Flex>
   );
 };
 

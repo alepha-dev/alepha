@@ -1,5 +1,5 @@
-import { ActionButton } from "@alepha/ui";
-import { Card, Flex, Group, Stack, Text } from "@mantine/core";
+import { ActionButton, Flex, Text } from "@alepha/ui";
+import { Card } from "@mantine/core";
 import {
   IconCircleFilled,
   IconDeviceDesktop,
@@ -26,8 +26,8 @@ const MySessions = (props: MySessionsProps) => {
   const sessionApi = useClient<SessionController>();
 
   return (
-    <Stack w="100%" p={"xs"} gap={0}>
-      <Group p={"xs"} justify={"space-between"}>
+    <Flex direction="column" w="100%" p={"xs"} gap={0}>
+      <Flex p={"xs"} justify={"space-between"}>
         <Flex px={1}>
           <Text size="xs" c={"dimmed"}>
             You can revoke any session to log out from it.
@@ -37,7 +37,7 @@ const MySessions = (props: MySessionsProps) => {
         <Flex align="center" justify="center">
           <ActionButton
             c={"red"}
-            variant={"subtle"}
+            variant={"minimal"}
             onClick={async () => {
               await sessionApi.revokeAllSessions();
               auth.logout();
@@ -46,10 +46,10 @@ const MySessions = (props: MySessionsProps) => {
             Revoke All
           </ActionButton>
         </Flex>
-      </Group>
+      </Flex>
 
       <Card withBorder bg={theme.colors.panel} w="100%" p={"xs"} radius={"md"}>
-        <Stack gap={"xs"}>
+        <Flex direction="column" gap={"xs"}>
           {sessions.map((session) => (
             <Card
               radius="md"
@@ -60,7 +60,7 @@ const MySessions = (props: MySessionsProps) => {
               w={"100%"}
               key={session.id}
             >
-              <Group px={"sm"}>
+              <Flex px={"sm"}>
                 <IconCircleFilled
                   size={12}
                   color={session.current ? "green" : "gray"}
@@ -74,23 +74,23 @@ const MySessions = (props: MySessionsProps) => {
                   )}
                 </Flex>
 
-                <Stack gap={0}>
-                  <Group align="center" gap={"xs"}>
+                <Flex direction="column" gap={0}>
+                  <Flex align="center" gap={"xs"}>
                     <Text size="sm">
                       {session.userAgent?.browser} ({session.userAgent?.os}){" "}
                     </Text>
                     <Text size="xs">{session.ip}</Text>
-                  </Group>
+                  </Flex>
                   <Text size="xs" c={"dimmed"}>
                     Signed in {dt.of(session.createdAt).fromNow()}
                   </Text>
-                </Stack>
+                </Flex>
 
                 <Flex flex={1} />
 
                 <Flex align="center" justify="center" visibleFrom={"sm"}>
                   <ActionButton
-                    variant={"subtle"}
+                    variant={"minimal"}
                     onClick={async () => {
                       if (session.current) {
                         auth.logout();
@@ -109,12 +109,12 @@ const MySessions = (props: MySessionsProps) => {
                     {session.current ? "Sign out" : "Revoke"}
                   </ActionButton>
                 </Flex>
-              </Group>
+              </Flex>
             </Card>
           ))}
-        </Stack>
+        </Flex>
       </Card>
-    </Stack>
+    </Flex>
   );
 };
 

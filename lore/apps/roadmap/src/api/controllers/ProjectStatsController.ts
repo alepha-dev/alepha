@@ -275,18 +275,10 @@ export class ProjectStatsController {
       response: t.file(),
     },
     handler: async ({ params, user }) => {
-      // Verify project access
-      const project = await this.projects.getOne({
-        where: {
-          id: { eq: params.id },
-        },
-      });
+      await this.security.checkOwnership(params.id, user);
 
-      await this.characters.getOne({
-        where: {
-          userId: { eq: user.id },
-          projectId: { eq: project.id },
-        },
+      const project = await this.projects.getOne({
+        where: { id: { eq: params.id } },
       });
 
       const projectTasks = await this.tasks.findMany({

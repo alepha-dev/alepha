@@ -1,16 +1,6 @@
-import { ActionButton } from "@alepha/ui";
-import {
-  Badge,
-  Card,
-  Flex,
-  Group,
-  Modal,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
+import { Badge, Card, Modal, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { notifications } from "@mantine/notifications";
 import {
   IconBrandGithub,
   IconBrandGoogle,
@@ -40,6 +30,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
   const [opened, { open, close }] = useDisclosure(false);
   const [localIdentities, setLocalIdentities] = useState(identities);
   const identityApi = useClient<IdentityController>();
+  const toast = useToast();
 
   const hasPasswordIdentity = localIdentities.some(
     (identity) => identity.provider === "usernamePassword",
@@ -74,20 +65,12 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 
       setLocalIdentities((prev) => [...prev, newIdentity]);
 
-      notifications.show({
-        title: "Success",
-        message: "Password has been set successfully",
-        color: "green",
-      });
+      toast.success({ message: "Password has been set successfully" });
 
       close();
     },
     onError: (error) => {
-      notifications.show({
-        title: "Error",
-        message: error.message || "Failed to set password",
-        color: "red",
-      });
+      toast.danger({ message: error.message || "Failed to set password" });
     },
   });
 
@@ -132,8 +115,8 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 
   return (
     <Flex bg={"var(--alepha-ground)"} flex={1} p="lg">
-      <Stack w="100%" maw={800}>
-        <Group justify="space-between">
+      <Flex direction="column" w="100%" maw={800}>
+        <Flex justify="space-between">
           <Title order={2}>My Identities</Title>
           {!hasPasswordIdentity && (
             <ActionButton
@@ -144,13 +127,13 @@ const MyIdentities = (props: MyIdentitiesProps) => {
               Set Password
             </ActionButton>
           )}
-        </Group>
+        </Flex>
 
         <Text c="dimmed" size="sm">
           Manage your account identities and authentication methods.
         </Text>
 
-        <Stack gap="md">
+        <Flex direction="column" gap="md">
           {localIdentities.map((identity) => (
             <Card
               key={identity.id}
@@ -159,11 +142,11 @@ const MyIdentities = (props: MyIdentitiesProps) => {
               radius="md"
               withBorder
             >
-              <Group justify="space-between" align="center">
-                <Group gap="md">
+              <Flex justify="space-between" align="center">
+                <Flex gap="md">
                   {getProviderIcon(identity.provider)}
-                  <Stack gap={0}>
-                    <Group gap="sm">
+                  <Flex direction="column" gap={0}>
+                    <Flex gap="sm">
                       <Text fw={500}>{getProviderName(identity.provider)}</Text>
                       <Badge
                         variant="light"
@@ -171,7 +154,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
                       >
                         {identity.provider}
                       </Badge>
-                    </Group>
+                    </Flex>
                     <Text size="sm" c="dimmed">
                       {identity.provider === "usernamePassword"
                         ? `Username: ${identity.providerUserId}`
@@ -180,16 +163,16 @@ const MyIdentities = (props: MyIdentitiesProps) => {
                     <Text size="xs" c="dimmed">
                       Added: {new Date(identity.createdAt).toLocaleDateString()}
                     </Text>
-                  </Stack>
-                </Group>
-              </Group>
+                  </Flex>
+                </Flex>
+              </Flex>
             </Card>
           ))}
 
           {localIdentities.length === 0 && (
             <Card shadow="sm" padding="lg" radius="md" withBorder>
               <Flex align="center" justify="center" py="xl">
-                <Stack align="center" gap="md">
+                <Flex direction="column" align="center" gap="md">
                   <IconUser size={48} opacity={0.5} />
                   <Text c="dimmed" size="lg" ta="center">
                     No identities found
@@ -198,15 +181,15 @@ const MyIdentities = (props: MyIdentitiesProps) => {
                     This shouldn't normally happen. Please contact support if
                     you see this.
                   </Text>
-                </Stack>
+                </Flex>
               </Flex>
             </Card>
           )}
-        </Stack>
+        </Flex>
 
         <Modal opened={opened} onClose={close} title="Set Password" centered>
           <form {...passwordForm.props}>
-            <Stack gap="md">
+            <Flex direction="column" gap="md">
               <Text size="sm" c="dimmed">
                 Set up a username and password to sign in without external
                 providers.
@@ -242,16 +225,16 @@ const MyIdentities = (props: MyIdentitiesProps) => {
                 }}
               />
 
-              <Group justify="flex-end" gap="sm">
+              <Flex justify="flex-end" gap="sm">
                 <ActionButton variant="subtle" onClick={close}>
                   Cancel
                 </ActionButton>
                 <ActionButton form={passwordForm}>Set Password</ActionButton>
-              </Group>
-            </Stack>
+              </Flex>
+            </Flex>
           </form>
         </Modal>
-      </Stack>
+      </Flex>
     </Flex>
   );
 };

@@ -1,5 +1,8 @@
-import { Box, Flex, Paper, Text } from "@mantine/core";
+import { Flex, Text } from "@alepha/ui";
+import { Paper } from "@mantine/core";
+import { useI18n } from "alepha/react/i18n";
 import type { WhiteboardElement } from "../../../../../api/entities/whiteboards.ts";
+import type { I18n } from "../../../services/I18n.ts";
 import type { Position, Size } from "./types.ts";
 import classes from "./WhiteboardCanvas.module.css";
 
@@ -16,6 +19,8 @@ const CanvasMinimap = ({
   stageSize,
   zoom,
 }: CanvasMinimapProps) => {
+  const { tr } = useI18n<I18n, "en">();
+
   if (elements.length === 0) {
     return (
       <Paper
@@ -36,7 +41,7 @@ const CanvasMinimap = ({
       >
         <Flex h="100%" align="center" justify="center">
           <Text size="xs" c="dimmed">
-            Empty canvas
+            {tr("whiteboard.emptyCanvas")}
           </Text>
         </Flex>
       </Paper>
@@ -98,7 +103,7 @@ const CanvasMinimap = ({
         background: "var(--mantine-color-body)",
       }}
     >
-      <Box style={{ position: "relative", width: "100%", height: "100%" }}>
+      <Flex style={{ position: "relative", width: "100%", height: "100%" }}>
         {/* Elements as dots */}
         {elements.map((el) => {
           const x = (el.x - minX) * scale;
@@ -112,7 +117,7 @@ const CanvasMinimap = ({
             (el.height ?? (el.type === "task" ? 48 : 50)) * scale,
           );
           return (
-            <Box
+            <Flex
               key={el.id}
               style={{
                 position: "absolute",
@@ -130,7 +135,7 @@ const CanvasMinimap = ({
           );
         })}
         {/* Viewport rectangle */}
-        <Box
+        <Flex
           style={{
             position: "absolute",
             left: viewX,
@@ -142,7 +147,7 @@ const CanvasMinimap = ({
             pointerEvents: "none",
           }}
         />
-      </Box>
+      </Flex>
     </Paper>
   );
 };

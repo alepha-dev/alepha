@@ -1,6 +1,5 @@
-import { ActionButton } from "@alepha/ui";
-import { Flex, Loader, Stack } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
+import { ActionButton, Flex, useToast } from "@alepha/ui";
+import { Loader } from "@mantine/core";
 import { IconUpload } from "@tabler/icons-react";
 import { useClient } from "alepha/react";
 import { type ChangeEvent, useRef, useState } from "react";
@@ -18,6 +17,7 @@ interface TaskAttachmentsProps extends CustomControlProps {
 const TaskAttachments = (props: TaskAttachmentsProps) => {
   const { defaultValue, onChange, disabled } = props;
   const attachments: string[] = defaultValue || [];
+  const toast = useToast();
   const taskApi = useClient<TaskController>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -46,16 +46,12 @@ const TaskAttachments = (props: TaskAttachmentsProps) => {
       setLocalAttachments(updated);
       onChange(updated);
 
-      notifications.show({
-        title: "Success",
+      toast.success({
         message: `${files.length} file(s) uploaded successfully`,
-        color: "green",
       });
     } catch (error) {
-      notifications.show({
-        title: "Upload Failed",
+      toast.danger({
         message: (error as Error)?.message || "Failed to upload file(s)",
-        color: "red",
       });
     } finally {
       setUploading(false);
@@ -72,7 +68,7 @@ const TaskAttachments = (props: TaskAttachmentsProps) => {
   };
 
   return (
-    <Stack gap="xs" w="100%">
+    <Flex direction="column" gap="xs" w="100%">
       <input
         type="file"
         ref={fileInputRef}
@@ -109,7 +105,7 @@ const TaskAttachments = (props: TaskAttachmentsProps) => {
           {uploading ? "Uploading..." : "Attach Files"}
         </ActionButton>
       )}
-    </Stack>
+    </Flex>
   );
 };
 

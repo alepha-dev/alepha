@@ -1,15 +1,18 @@
+import { Flex, Text } from "@alepha/ui";
 import { useDroppable } from "@dnd-kit/core";
-import { Flex, ScrollArea, Text } from "@mantine/core";
+import { ScrollArea } from "@mantine/core";
+import { useI18n } from "alepha/react/i18n";
 import type { Task } from "../../../../api/entities/tasks.ts";
+import type { I18n } from "../../services/I18n.ts";
 import KanbanCard from "./KanbanCard.tsx";
 
 type ColumnStatus = "new" | "accepted" | "completed";
 
-const columnLabels: Record<ColumnStatus, string> = {
-  new: "New",
-  accepted: "In Progress",
-  completed: "Completed",
-};
+const columnKeys = {
+  new: "kanban.column.new",
+  accepted: "kanban.column.accepted",
+  completed: "kanban.column.completed",
+} as const;
 
 const columnColors: Record<ColumnStatus, string> = {
   new: "var(--mantine-color-blue-5)",
@@ -30,6 +33,7 @@ const KanbanColumn = ({
   last?: boolean;
   onSelect: (task: Task) => void;
 }) => {
+  const { tr } = useI18n<I18n, "en">();
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${status}`,
     data: { type: "column", status },
@@ -39,38 +43,49 @@ const KanbanColumn = ({
     <Flex
       direction="column"
       flex={1}
-      gap={0}
       miw={280}
       style={{
         borderRight: last
           ? undefined
           : "1px solid var(--mantine-color-default-border)",
+        overflow: "hidden",
       }}
     >
-      <Flex align="center" gap="xs" px="sm" py="xs">
+      {/* Column header */}
+      <Flex
+        align="center"
+        gap="xs"
+        px="sm"
+        py="xs"
+        style={{
+          borderBottom: "1px solid var(--mantine-color-default-border)",
+        }}
+      >
         <Flex
           w={8}
           h={8}
           style={{
             borderRadius: "50%",
             backgroundColor: columnColors[status],
+            flexShrink: 0,
           }}
         />
         <Text fw={600} size="sm">
-          {columnLabels[status]}
+          {tr(columnKeys[status])}
         </Text>
         <Text size="xs" c="dimmed">
           {tasks.length}
         </Text>
       </Flex>
 
+      {/* Column body — scrollable */}
       <ScrollArea
         flex={1}
         type="auto"
         ref={setNodeRef}
+        scrollbarSize={6}
         style={{
           backgroundColor: isOver ? "rgba(64, 192, 87, 0.08)" : undefined,
-          borderRadius: 8,
           transition: "background-color 0.2s ease",
         }}
       >
@@ -83,7 +98,7 @@ const KanbanColumn = ({
               style={{ opacity: 0.4 }}
             >
               <Text size="sm" c="dimmed">
-                No tasks
+                {tr("kanban.empty")}
               </Text>
             </Flex>
           )}

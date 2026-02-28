@@ -23,6 +23,9 @@ export const invitations = $entity({
       columns: ["projectId", "invitedEmail"],
       unique: true,
     },
+    {
+      columns: ["invitedEmail"],
+    },
   ],
 });
 

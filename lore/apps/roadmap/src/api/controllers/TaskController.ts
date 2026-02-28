@@ -5,8 +5,14 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action, BadRequestError, okSchema } from "alepha/server";
+import {
+  $action,
+  BadRequestError,
+  ForbiddenError,
+  okSchema,
+} from "alepha/server";
 import sanitizeHtml from "sanitize-html";
+import { chapters } from "../entities/chapters.ts";
 import { characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
 import { tasks } from "../entities/tasks.ts";
@@ -19,6 +25,7 @@ export class TaskController {
   tasks = $repository(tasks);
   projects = $repository(projects);
   characters = $repository(characters);
+  chapters = $repository(chapters);
   characterInfo = $inject(CharacterInfo);
   dt = $inject(DateTimeProvider);
   security = $inject(AppSecurityProvider);
@@ -167,6 +174,7 @@ export class TaskController {
       query: t.extend(pageQuerySchema, {
         status: t.optional(t.enum(["new", "accepted", "completed"])),
         search: t.optional(t.string()),
+        chapterId: t.optional(t.integer()),
       }),
       response: db.page(tasks.schema),
     },
@@ -178,6 +186,10 @@ export class TaskController {
 
       if (query.search) {
         where.title = { ilike: `%${query.search}%` };
+      }
+
+      if (query.chapterId) {
+        where.chapterId = { eq: query.chapterId };
       }
 
       if (query.status === "new") {
@@ -318,6 +330,22 @@ export class TaskController {
         task.completedAt = this.dt.nowISOString();
         task.completedBy = user.id;
 
+        // Auto-attach to active chapter
+        const activeChapters = await this.chapters.findMany(
+          {
+            where: {
+              projectId: { eq: task.projectId },
+              closedAt: { isNull: true },
+            },
+            limit: 1,
+          },
+          { tx },
+        );
+
+        if (activeChapters.length > 0) {
+          task.chapterId = activeChapters[0].id;
+        }
+
         await Promise.all([
           this.characters.save(character, { tx }),
           this.tasks.save(task, { tx }),
@@ -379,9 +407,16 @@ export class TaskController {
         },
       });
 
-      await this.security.checkOwnership(task.projectId, user);
+      const { project } = await this.security.checkOwnership(
+        task.projectId,
+        user,
+      );
 
-      // TODO: character.can("edit:task", projectId)
+      if (task.createdBy !== user.id && project.createdBy !== user.id) {
+        throw new ForbiddenError(
+          "Only the quest creator or campaign owner can edit this quest",
+        );
+      }
 
       if (body.description) {
         // sanitize HTML content
@@ -472,9 +507,16 @@ export class TaskController {
         },
       });
 
-      await this.security.checkOwnership(task.projectId, user);
+      const { project } = await this.security.checkOwnership(
+        task.projectId,
+        user,
+      );
 
-      // TODO: character.can("edit:task", projectId)
+      if (task.createdBy !== user.id && project.createdBy !== user.id) {
+        throw new ForbiddenError(
+          "Only the quest creator or campaign owner can edit objectives",
+        );
+      }
 
       return await this.tasks.updateById(params.id, {
         objectives: body.objectives,
@@ -505,9 +547,16 @@ export class TaskController {
         },
       });
 
-      await this.security.checkOwnership(task.projectId, user);
+      const { project } = await this.security.checkOwnership(
+        task.projectId,
+        user,
+      );
 
-      // TODO: character.can("delete:task", projectId)
+      if (task.createdBy !== user.id && project.createdBy !== user.id) {
+        throw new ForbiddenError(
+          "Only the quest creator or campaign owner can delete this quest",
+        );
+      }
 
       await this.tasks.deleteById(params.id);
 

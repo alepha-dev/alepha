@@ -1,19 +1,18 @@
-import { ActionButton } from "@alepha/ui";
-import { Card, Container, Flex, Stack, Text } from "@mantine/core";
-import { IconHammer, IconTag } from "@tabler/icons-react";
+import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
+import { Card, Container } from "@mantine/core";
+import { IconHammer, IconTag, IconUpload } from "@tabler/icons-react";
 import { t } from "alepha";
-import { useAlepha, useClient, useInject } from "alepha/react";
+import { useAlepha, useClient } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-import { Toaster } from "../../services/Toaster.ts";
 import Control from "../ui/Control.tsx";
 
 const ProjectCreate = () => {
@@ -22,7 +21,8 @@ const ProjectCreate = () => {
   const auth = useAuth();
   const alepha = useAlepha();
   const { tr } = useI18n<I18n, "en">();
-  const toaster = useInject(Toaster);
+  const toast = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const initialValues = useMemo(() => {
     try {
@@ -44,7 +44,7 @@ const ProjectCreate = () => {
       public: t.optional(t.boolean()),
     }),
     onError: (error) => {
-      toaster.show(error.message, "danger");
+      toast.danger({ message: error.message });
     },
     handler: async (body) => {
       if (!auth.user) {
@@ -73,6 +73,41 @@ const ProjectCreate = () => {
     },
   });
 
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const body = JSON.parse(text);
+
+      if (!body.version || !body.project || !body.tasks) {
+        toast.danger({ message: tr("project.create.import.error") });
+        return;
+      }
+
+      const project = await client.importProject({ body });
+
+      await router.push("project", {
+        params: { projectId: String(project.id) },
+      });
+
+      alepha.store.set(userProjectsAtom, [
+        ...(alepha.store.get(userProjectsAtom) || []),
+        project,
+      ]);
+    } catch (e) {
+      toast.danger({
+        message:
+          e instanceof Error ? e.message : tr("project.create.import.error"),
+      });
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   return (
     <Card
       withBorder
@@ -87,15 +122,15 @@ const ProjectCreate = () => {
     >
       <Container w={theme.container}>
         <form {...form.props}>
-          <Stack p={"lg"}>
-            <Stack gap={0}>
+          <Flex direction="column" p={"lg"}>
+            <Flex direction="column" gap={0}>
               <Text size="lg" fw={"bold"}>
                 {tr("project.create.title")}
               </Text>
               <Text size={"sm"} c={"dimmed"}>
                 {tr("project.create.description")}
               </Text>
-            </Stack>
+            </Flex>
             <Card
               withBorder
               radius={"md"}
@@ -103,7 +138,12 @@ const ProjectCreate = () => {
               bg={theme.colors.card}
               shadow={"md"}
             >
-              <Stack p={"sm"} style={{ maxWidth: 600 }} gap={"xl"}>
+              <Flex
+                direction="column"
+                p={"sm"}
+                style={{ maxWidth: 600 }}
+                gap={"xl"}
+              >
                 <Control
                   input={form.input.title}
                   text={{
@@ -118,7 +158,7 @@ const ProjectCreate = () => {
                   title={tr("project.create.public")}
                   description={tr("project.create.public.helper")}
                 />
-                <Flex>
+                <Flex gap={"md"}>
                   <ActionButton
                     leftSection={<IconHammer />}
                     form={form}
@@ -127,10 +167,24 @@ const ProjectCreate = () => {
                   >
                     {tr("project.create.submit")}
                   </ActionButton>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json"
+                    onChange={handleImport}
+                    style={{ display: "none" }}
+                  />
+                  <ActionButton
+                    leftSection={<IconUpload />}
+                    variant={"light"}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {tr("project.create.import")}
+                  </ActionButton>
                 </Flex>
-              </Stack>
+              </Flex>
             </Card>
-          </Stack>
+          </Flex>
         </form>
       </Container>
     </Card>

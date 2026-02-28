@@ -1,4 +1,5 @@
-import { ActionIcon, Divider, Flex, Paper, Text, Tooltip } from "@mantine/core";
+import { ActionButton, Flex, Text } from "@alepha/ui";
+import { Divider, Paper, Tooltip } from "@mantine/core";
 import {
   IconFocusCentered,
   IconHandStop,
@@ -43,28 +44,28 @@ const ViewControls = ({
     >
       <Flex align="center" gap={4}>
         <Tooltip label="Reset view (Ctrl+0)">
-          <ActionIcon
+          <ActionButton
             variant="subtle"
             color="gray"
             size="sm"
             onClick={onZoomReset}
           >
             <IconHome size={14} />
-          </ActionIcon>
+          </ActionButton>
         </Tooltip>
         <Tooltip label="Fit to content">
-          <ActionIcon
+          <ActionButton
             variant="subtle"
             color="gray"
             size="sm"
             onClick={onFitToContent}
           >
             <IconFocusCentered size={14} />
-          </ActionIcon>
+          </ActionButton>
         </Tooltip>
         <Divider orientation="vertical" />
         <Tooltip label="Zoom out (Ctrl+-)">
-          <ActionIcon
+          <ActionButton
             variant="subtle"
             color="gray"
             size="sm"
@@ -72,20 +73,21 @@ const ViewControls = ({
             disabled={zoom <= 0.1}
           >
             <IconMinus size={14} />
-          </ActionIcon>
+          </ActionButton>
         </Tooltip>
         <Tooltip label="Click to reset zoom">
-          <Text
-            size="xs"
-            fw={500}
+          <Flex
             style={{ cursor: "pointer", minWidth: 40, textAlign: "center" }}
             onClick={() => onSetZoom(1)}
+            justify="center"
           >
-            {Math.round(zoom * 100)}%
-          </Text>
+            <Text size="xs" fw={500}>
+              {Math.round(zoom * 100)}%
+            </Text>
+          </Flex>
         </Tooltip>
         <Tooltip label="Zoom in (Ctrl++)">
-          <ActionIcon
+          <ActionButton
             variant="subtle"
             color="gray"
             size="sm"
@@ -93,7 +95,7 @@ const ViewControls = ({
             disabled={zoom >= 3}
           >
             <IconPlus size={14} />
-          </ActionIcon>
+          </ActionButton>
         </Tooltip>
         {spacePressed && (
           <>

@@ -1,11 +1,8 @@
-import { useToast } from "@alepha/ui";
+import { ActionButton, Flex, useToast } from "@alepha/ui";
 import {
-  ActionIcon,
-  Box,
   Card,
   Divider,
   Drawer,
-  Flex,
   Paper,
   TextInput,
   Tooltip,
@@ -13,6 +10,7 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import { IconDeviceFloppy, IconHelp } from "@tabler/icons-react";
 import { useClient, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Arrow,
@@ -29,6 +27,7 @@ import type { Task } from "../../../../../api/entities/tasks.ts";
 import type { WhiteboardElement } from "../../../../../api/entities/whiteboards.ts";
 import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import type { I18n } from "../../../services/I18n.ts";
 import TaskCreate from "../task/TaskCreate.tsx";
 import CanvasGrid from "./CanvasGrid.tsx";
 import CanvasImage from "./CanvasImage.tsx";
@@ -49,6 +48,7 @@ import WhiteboardTaskCard from "./WhiteboardTaskCard.tsx";
 import WhiteboardToolbar from "./WhiteboardToolbar.tsx";
 
 const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
+  const { tr } = useI18n<I18n, "en">();
   const toast = useToast();
   const whiteboardApi = useClient<WhiteboardController>();
   const [project] = useStore(currentProjectAtom);
@@ -152,7 +152,7 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
     try {
       await onSave({ elements });
       setIsDirty(false);
-      toast.success({ message: "Drawing saved" });
+      toast.success({ message: tr("whiteboard.drawingSaved") });
     } finally {
       setIsSaving(false);
     }
@@ -445,7 +445,7 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
     async (file: File) => {
       const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
       if (!validTypes.includes(file.type)) {
-        toast.danger({ message: "Invalid image type" });
+        toast.danger({ message: tr("whiteboard.invalidImage") });
         return;
       }
 
@@ -473,9 +473,9 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
         pushHistory(newElements);
         setSelectedIds([newElement.id]);
 
-        toast.success({ message: "Image added" });
+        toast.success({ message: tr("whiteboard.imageAdded") });
       } catch (error) {
-        toast.danger({ message: "Failed to upload image" });
+        toast.danger({ message: tr("whiteboard.uploadFailed") });
       } finally {
         setIsUploadingImage(false);
       }
@@ -938,9 +938,15 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
   }, [handleZoomIn, handleZoomOut, handleZoomReset]);
 
   return (
-    <Box h="100%" style={{ display: "flex", flexDirection: "column" }}>
+    <Flex
+      w={"100%"}
+      h="100%"
+      flex={1}
+      style={{ display: "flex", flexDirection: "column" }}
+    >
       {/* Toolbar */}
       <Paper
+        w={"100%"}
         p="xs"
         withBorder={false}
         style={{
@@ -967,35 +973,40 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
           <Divider orientation="vertical" />
 
           <Tooltip label="Save (Ctrl+S)">
-            <ActionIcon
-              variant={isDirty ? "filled" : "subtle"}
+            <ActionButton
+              variant={isDirty ? "filled" : "default"}
               color={isDirty ? "blue" : "gray"}
-              size="md"
+              size="sm"
               onClick={handleSave}
               disabled={!isDirty || isSaving}
               loading={isSaving}
             >
               <IconDeviceFloppy size={18} />
-            </ActionIcon>
+            </ActionButton>
           </Tooltip>
 
           <Divider orientation="vertical" />
 
           <Tooltip label="Help">
-            <ActionIcon
-              variant="subtle"
+            <ActionButton
+              variant="default"
               color="gray"
-              size="md"
+              size="sm"
               onClick={openHelp}
             >
               <IconHelp size={18} />
-            </ActionIcon>
+            </ActionButton>
           </Tooltip>
         </Flex>
       </Paper>
 
       {/* Main content */}
-      <Box style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+      <Flex
+        w={"100%"}
+        h="100%"
+        flex={1}
+        style={{ overflow: "hidden", position: "relative" }}
+      >
         {/* Floating task panel */}
         <TaskPanel
           availableTasks={availableTasks}
@@ -1004,7 +1015,8 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
         />
 
         {/* Canvas */}
-        <Box
+        <Flex
+          flex={1}
           ref={canvasRef}
           onDrop={handleCanvasDrop}
           onDragOver={handleCanvasDragOver}
@@ -1114,7 +1126,7 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
               />
             </Layer>
           </Stage>
-        </Box>
+        </Flex>
 
         {/* Text editing overlay */}
         {editingTextId && (
@@ -1165,7 +1177,7 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
           onFitToContent={handleFitToContent}
           onSetZoom={setZoom}
         />
-      </Box>
+      </Flex>
 
       {/* Help Modal */}
       <HelpModal opened={helpOpened} onClose={closeHelp} />
@@ -1173,7 +1185,7 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
       {/* Task Edit Drawer */}
       {project && (
         <Drawer
-          title="Edit Task"
+          title={tr("whiteboard.editTask")}
           size="xl"
           position="right"
           opened={!!editingTask}
@@ -1199,7 +1211,7 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
         style={{ display: "none" }}
         onChange={handleFileSelect}
       />
-    </Box>
+    </Flex>
   );
 };
 

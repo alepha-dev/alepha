@@ -1,9 +1,8 @@
-import { $inject, type Static, t } from "alepha";
+import { type Static, t } from "alepha";
 import { sessions } from "alepha/api/users";
-import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action, $route } from "alepha/server";
+import { $action } from "alepha/server";
 
 export const userSession = t.extend(sessions.schema, {
   current: t.boolean(),
@@ -13,21 +12,6 @@ export type UserSession = Static<typeof userSession>;
 
 export class SessionController {
   sessions = $repository(sessions);
-  dt = $inject(DateTimeProvider);
-
-  cleanup = $route({
-    path: "/session/cleanup",
-    schema: {
-      response: t.string(),
-    },
-    handler: async () => {
-      await this.sessions.deleteMany({
-        expiresAt: { lt: this.dt.nowISOString() },
-      });
-
-      return "OK";
-    },
-  });
 
   getMySessions = $action({
     use: [$secure({ permissions: ["session:read"] })],

@@ -1,4 +1,5 @@
-import { List, Modal, Text } from "@mantine/core";
+import { Text } from "@alepha/ui";
+import { List, Modal } from "@mantine/core";
 
 export interface HelpModalProps {
   opened: boolean;

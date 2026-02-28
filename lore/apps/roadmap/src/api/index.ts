@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { ChapterController } from "./controllers/ChapterController.ts";
 import { CharacterController } from "./controllers/CharacterController.ts";
 import { IdentityController } from "./controllers/IdentityController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
@@ -23,6 +24,7 @@ export const RoadmapApi = $module({
     UserController,
     SessionController,
     CharacterController,
+    ChapterController,
     IdentityController,
     ProjectStatsController,
     InvitationController,

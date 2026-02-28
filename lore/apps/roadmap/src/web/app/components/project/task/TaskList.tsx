@@ -1,3 +1,4 @@
+import { Flex, Text } from "@alepha/ui";
 import {
   DndContext,
   type DragEndEvent,
@@ -5,7 +6,6 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { Flex, Stack, Text } from "@mantine/core";
 import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useId, useMemo } from "react";
@@ -107,11 +107,11 @@ const TaskList = (props: TaskListProps) => {
 
   return (
     <DndContext id={id} sensors={sensors} onDragEnd={handleDragEnd}>
-      <Stack gap={0}>
+      <Flex direction="column" gap={0}>
         {packageList.map((key) => (
           <TaskGroup name={key} tasks={groupByPackage[key]} key={key} />
         ))}
-      </Stack>
+      </Flex>
     </DndContext>
   );
 };

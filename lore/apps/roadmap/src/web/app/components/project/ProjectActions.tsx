@@ -1,20 +1,18 @@
-import { ActionButton } from "@alepha/ui";
+import { ActionButton, Flex, Text } from "@alepha/ui";
 import {
   Card,
   Center,
   Drawer,
-  Flex,
-  Group,
   SegmentedControl,
   Transition,
 } from "@mantine/core";
 import {
+  IconBook2,
   IconBrush,
   IconChartLine,
   IconPlus,
   IconSettings,
   IconTable,
-  IconUsers,
 } from "@tabler/icons-react";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -29,7 +27,7 @@ import TaskCreate from "./task/TaskCreate.tsx";
 
 type TabValue =
   | "projectBoard"
-  | "projectPlayers"
+  | "projectChapters"
   | "projectAnalytics"
   | "projectWhiteboards"
   | "projectSettings";
@@ -50,7 +48,20 @@ const ProjectActions = () => {
       label: (
         <Center style={{ gap: 6 }}>
           <IconTable size={theme.icon.size.sm} />
-          <span>{tr("project.menu.board")}</span>
+          <Flex visibleFrom={"sm"}>
+            <Text size={"sm"}>{tr("project.menu.board")}</Text>
+          </Flex>
+        </Center>
+      ),
+    },
+    {
+      value: "projectChapters",
+      label: (
+        <Center style={{ gap: 6 }}>
+          <IconBook2 size={theme.icon.size.sm} />
+          <Flex visibleFrom={"sm"}>
+            <Text size={"sm"}>{tr("project.menu.chapters")}</Text>
+          </Flex>
         </Center>
       ),
     },
@@ -59,16 +70,9 @@ const ProjectActions = () => {
       label: (
         <Center style={{ gap: 6 }}>
           <IconBrush size={theme.icon.size.sm} />
-          <span>{tr("project.menu.whiteboards")}</span>
-        </Center>
-      ),
-    },
-    {
-      value: "projectPlayers",
-      label: (
-        <Center style={{ gap: 6 }}>
-          <IconUsers size={theme.icon.size.sm} />
-          <span>{tr("project.menu.players")}</span>
+          <Flex visibleFrom={"sm"}>
+            <Text size={"sm"}>{tr("project.menu.whiteboards")}</Text>
+          </Flex>
         </Center>
       ),
     },
@@ -77,7 +81,9 @@ const ProjectActions = () => {
       label: (
         <Center style={{ gap: 6 }}>
           <IconChartLine size={theme.icon.size.sm} />
-          <span>{tr("project.menu.analytics")}</span>
+          <Flex visibleFrom={"sm"}>
+            <Text size={"sm"}>{tr("project.menu.analytics")}</Text>
+          </Flex>
         </Center>
       ),
     },
@@ -86,11 +92,18 @@ const ProjectActions = () => {
       label: (
         <Center style={{ gap: 6 }}>
           <IconSettings size={theme.icon.size.sm} />
-          <span>{tr("project.menu.settings")}</span>
+          <Flex visibleFrom={"sm"}>
+            <Text size={"sm"}>{tr("project.menu.settings")}</Text>
+          </Flex>
         </Center>
       ),
     },
   ];
+
+  let name = routerState.name;
+  if (name === "projectBoardTable") {
+    name = "projectBoard";
+  }
 
   return (
     <Transition mounted={!!project} transition={"fade-down"}>
@@ -108,16 +121,16 @@ const ProjectActions = () => {
               background: "#ffffff",
             }}
           />
-          <Group flex={1}>
+          <Flex centerY flex={1}>
             <SegmentedControl
               size={"md"}
-              value={routerState.name}
+              value={name}
               onChange={(value) => router.push(value as TabValue, opts)}
               data={tabs}
             />
             <Flex flex={1} />
             <CreateTaskButton />
-          </Group>
+          </Flex>
         </Card>
       )}
     </Transition>
@@ -137,13 +150,14 @@ const CreateTaskButton = () => {
   }
 
   return (
-    <Flex>
+    <Flex px={"xs"}>
       <ActionButton
-        textVisibleFrom={"sm"}
+        size={"xs"}
+        textVisibleFrom={"xl"}
         variant={"filled"}
         color={"green"}
         disabled={!client.createTask.can()}
-        leftSection={<IconPlus />}
+        icon={IconPlus}
         onClick={() => setShowDialog(true)}
       >
         {tr("project.menu.create-task")}

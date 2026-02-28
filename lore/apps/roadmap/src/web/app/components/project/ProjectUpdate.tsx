@@ -1,5 +1,5 @@
-import { ActionButton } from "@alepha/ui";
-import { Card, Flex } from "@mantine/core";
+import { ActionButton, Flex } from "@alepha/ui";
+import { Card } from "@mantine/core";
 import { IconDeviceFloppy, IconTag } from "@tabler/icons-react";
 import { t } from "alepha";
 import { useAlepha, useClient } from "alepha/react";
@@ -51,23 +51,25 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
 
   return (
     <Card radius={0} withBorder className={"shadow"} bg={theme.colors.card}>
-      <Flex component={"form"} {...form.props} direction={"column"} gap={"xl"}>
-        <Control
-          title={tr("project.create.name")}
-          icon={<IconTag />}
-          input={form.input.title}
-        />
-        <Control
-          input={form.input.public}
-          title={tr("project.create.public")}
-          description={tr("project.create.public.helper")}
-        />
-        <Flex>
-          <ActionButton leftSection={<IconDeviceFloppy />} form={form}>
-            {tr("project.update.submit")}
-          </ActionButton>
+      <form {...form.props}>
+        <Flex direction={"column"} gap={"xl"}>
+          <Control
+            title={tr("project.create.name")}
+            icon={<IconTag />}
+            input={form.input.title}
+          />
+          <Control
+            input={form.input.public}
+            title={tr("project.create.public")}
+            description={tr("project.create.public.helper")}
+          />
+          <Flex>
+            <ActionButton leftSection={<IconDeviceFloppy />} form={form}>
+              {tr("project.update.submit")}
+            </ActionButton>
+          </Flex>
         </Flex>
-      </Flex>
+      </form>
     </Card>
   );
 };

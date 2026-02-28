@@ -103,33 +103,37 @@ export class InvitationController {
         where: { invitedEmail: { eq: user.email } },
       });
 
-      return await Promise.all(
-        userInvitations.map(async (invitation) => {
-          const [project, inviter] = await Promise.all([
-            this.projects.getOne({
-              where: {
-                id: { eq: invitation.projectId },
-              },
-            }),
-            this.users.getOne({
-              where: {
-                id: { eq: invitation.invitedBy },
-              },
-            }),
-          ]);
+      const projectIds = [...new Set(userInvitations.map((i) => i.projectId))];
+      const inviterIds = [...new Set(userInvitations.map((i) => i.invitedBy))];
 
-          return {
-            id: invitation.id,
-            projectId: invitation.projectId,
-            projectTitle: project.title,
-            invitedBy: invitation.invitedBy,
-            inviterName: inviter.username,
-            inviterEmail: inviter.email,
-            status: invitation.status,
-            createdAt: invitation.createdAt,
-          };
-        }),
-      );
+      const [allProjects, allInviters] = await Promise.all([
+        projectIds.length > 0
+          ? this.projects.findMany({
+              where: { id: { inArray: projectIds } },
+            })
+          : [],
+        inviterIds.length > 0
+          ? this.users.findMany({ where: { id: { inArray: inviterIds } } })
+          : [],
+      ]);
+
+      const projectMap = new Map(allProjects.map((p) => [p.id, p]));
+      const inviterMap = new Map(allInviters.map((u) => [u.id, u]));
+
+      return userInvitations.map((invitation) => {
+        const project = projectMap.get(invitation.projectId);
+        const inviter = inviterMap.get(invitation.invitedBy);
+        return {
+          id: invitation.id,
+          projectId: invitation.projectId,
+          projectTitle: project?.title ?? "",
+          invitedBy: invitation.invitedBy,
+          inviterName: inviter?.username,
+          inviterEmail: inviter?.email,
+          status: invitation.status,
+          createdAt: invitation.createdAt,
+        };
+      });
     },
   });
 

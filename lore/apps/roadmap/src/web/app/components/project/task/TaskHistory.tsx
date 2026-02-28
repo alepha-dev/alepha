@@ -1,4 +1,5 @@
-import { Flex, Text, Timeline, Transition } from "@mantine/core";
+import { Flex, Text, ui } from "@alepha/ui";
+import { Timeline, Transition } from "@mantine/core";
 import {
   IconCheckbox,
   IconCross,
@@ -8,20 +9,15 @@ import {
   IconSwords,
 } from "@tabler/icons-react";
 import { DateTimeProvider } from "alepha/datetime";
-import { useInject, useStore } from "alepha/react";
+import { useInject } from "alepha/react";
+import type { ReactNode } from "react";
 import type { Task } from "../../../../../api/entities/tasks.ts";
-import { currentTaskAtom } from "../../../atoms/currentTaskAtom.ts";
 
-const TaskHistory = () => {
-  const [task] = useStore(currentTaskAtom);
+const TaskHistory = (props: { task: Task }) => {
+  const task = props.task;
 
   return (
-    <Flex
-      flex={1}
-      p={"xs"}
-      style={{ paddingLeft: 0, perspective: 1000 }}
-      className={"overflow-auto"}
-    >
+    <Flex>
       <Transition
         mounted={!!task}
         transition="fade-right"
@@ -29,14 +25,7 @@ const TaskHistory = () => {
         timingFunction="ease"
       >
         {(styles) => (
-          <Flex
-            flex={1}
-            gap={"sm"}
-            px="md"
-            py={"xl"}
-            direction={"column"}
-            style={styles}
-          >
+          <Flex flex={1} py={"md"} direction={"column"} style={styles}>
             {task ? <TaskTimeline task={task} /> : null}
           </Flex>
         )}
@@ -77,7 +66,7 @@ const TaskTimeline = ({ task }: { task: Task }) => {
       return (
         <Text c="dimmed" size="sm">
           Objective has been completed by
-          <Text variant="link" component="span" inherit>
+          <Text span bold inherit>
             {" "}
             You
           </Text>
@@ -88,7 +77,7 @@ const TaskTimeline = ({ task }: { task: Task }) => {
     return (
       <Text c="dimmed" size="sm">
         Quest has been {action} by
-        <Text variant="link" component="span" inherit>
+        <Text span bold inherit>
           {" "}
           You
         </Text>
@@ -97,67 +86,77 @@ const TaskTimeline = ({ task }: { task: Task }) => {
     );
   };
 
+  const renderItem = (
+    action: string,
+    icon: ReactNode,
+    when: string,
+    description: ReactNode,
+  ) => {
+    return (
+      <Timeline.Item mt={8} key={when} style={style} bullet={icon}>
+        <Flex>
+          <Flex w={"100%"} col fill>
+            <Text>{title(action)}</Text>
+            <Flex>{description}</Flex>
+          </Flex>
+          <Text size="xs" mt={4}>
+            {dt.of(when).fromNow()}
+          </Text>
+        </Flex>
+      </Timeline.Item>
+    );
+  };
+
+  const iconSize = ui.sizes.icon.xs;
+
   return (
-    <Timeline active={1} bulletSize={24} lineWidth={2}>
-      {task.completedAt && (
-        <Timeline.Item
-          style={style}
-          title={title("completed")}
-          bullet={<IconSwords size={12} />}
-        >
-          <Text c="dimmed" size="sm">
+    <Timeline w={"100%"} active={1} bulletSize={24} lineWidth={2}>
+      {task.completedAt &&
+        renderItem(
+          "completed",
+          <IconSwords size={iconSize} />,
+          task.completedAt,
+          <Text c="dimmed" size="xs">
             Quest has been completed by
-            <Text variant="link" component="span" inherit>
+            <Text span variant="link" inherit>
               {" "}
               You
             </Text>
             .
-          </Text>
-          <Text size="xs" mt={4}>
-            {dt.of(task.completedAt).fromNow()}
-          </Text>
-        </Timeline.Item>
-      )}
-      {task.history.toReversed().map((it) => (
-        <Timeline.Item
-          key={it.at}
-          style={style}
-          title={title(it.action)}
-          bullet={
+          </Text>,
+        )}
+      {task.history
+        .toReversed()
+        .map((it) =>
+          renderItem(
+            it.action,
             it.action === "assigned" ? (
-              <IconSignature size={12} />
+              <IconSignature size={iconSize} />
             ) : it.action === "objective_completed" ? (
-              <IconCheckbox size={12} />
+              <IconCheckbox size={iconSize} />
             ) : it.action === "unassigned" ? (
-              <IconCross size={12} />
+              <IconCross size={iconSize} />
             ) : (
-              <IconEdit size={12} />
-            )
-          }
-        >
-          {description(it.action)}
-          <Text size="xs" mt={4}>
-            {dt.of(it.at).fromNow()}
-          </Text>
-        </Timeline.Item>
-      ))}
-      <Timeline.Item
-        style={style}
-        bullet={<IconSunset2 size={12} />}
-        title={title("created")}
-      >
+              <IconEdit size={iconSize} />
+            ),
+            it.at,
+            description(it.action),
+          ),
+        )}
+
+      {renderItem(
+        "created",
+        <IconSunset2 size={iconSize} />,
+        task.createdAt,
         <Text c="dimmed" size="sm">
           Quest has been created by
-          <Text variant="link" component="span" inherit>
+          <Text span bold inherit>
             {" "}
             You
           </Text>
           .
-        </Text>
-        <Text size="xs" mt={4}>
-          {dt.of(task.createdAt).fromNow()}
-        </Text>
-      </Timeline.Item>
+        </Text>,
+      )}
     </Timeline>
   );
 };

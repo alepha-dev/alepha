@@ -1,18 +1,14 @@
-import {
-  ActionIcon,
-  Collapse,
-  Flex,
-  Paper,
-  ScrollArea,
-  Text,
-} from "@mantine/core";
+import { ActionButton, Flex, Text } from "@alepha/ui";
+import { Collapse, Paper, ScrollArea } from "@mantine/core";
 import {
   IconChevronDown,
   IconChevronUp,
   IconGripHorizontal,
 } from "@tabler/icons-react";
+import { useI18n } from "alepha/react/i18n";
 import { useCallback, useState } from "react";
 import type { Task } from "../../../../../api/entities/tasks.ts";
+import type { I18n } from "../../../services/I18n.ts";
 import TaskComplexity from "../task/TaskComplexity.tsx";
 import classes from "./WhiteboardCanvas.module.css";
 
@@ -27,6 +23,7 @@ const TaskPanel = ({
   onAddTask,
   onDragStart,
 }: TaskPanelProps) => {
+  const { tr } = useI18n<I18n, "en">();
   const [isOpen, setIsOpen] = useState(true);
   const [panelHeight, setPanelHeight] = useState(300);
   const [isResizing, setIsResizing] = useState(false);
@@ -87,11 +84,11 @@ const TaskPanel = ({
         onClick={() => setIsOpen(!isOpen)}
       >
         <Text size="sm" fw={500}>
-          Quests ({availableTasks.length})
+          {tr("whiteboard.quests")} ({availableTasks.length})
         </Text>
-        <ActionIcon variant="subtle" size="xs">
+        <ActionButton variant="subtle" size="xs">
           {isOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
-        </ActionIcon>
+        </ActionButton>
       </Flex>
 
       {/* Collapsible content */}
@@ -100,7 +97,7 @@ const TaskPanel = ({
           <Flex direction="column" gap={4}>
             {availableTasks.length === 0 ? (
               <Text size="xs" c="dimmed" ta="center" py="md">
-                All quests on board
+                {tr("whiteboard.allOnBoard")}
               </Text>
             ) : (
               availableTasks.map((task) => (

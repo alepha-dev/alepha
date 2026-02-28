@@ -1,4 +1,5 @@
-import { Checkbox, Flex, Stack, Text } from "@mantine/core";
+import { Flex, Text } from "@alepha/ui";
+import { Checkbox } from "@mantine/core";
 import { IconListCheck } from "@tabler/icons-react";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -62,7 +63,7 @@ const TaskViewObjectives = ({
       </Flex>
 
       {task.objectives.length > 0 ? (
-        <Stack py={"xs"} px={"sm"}>
+        <Flex direction="column" py={"xs"} px={"sm"}>
           {task.objectives.map((objective, index) => (
             <Checkbox
               style={{
@@ -89,7 +90,7 @@ const TaskViewObjectives = ({
               }
             />
           ))}
-        </Stack>
+        </Flex>
       ) : (
         <Text size={"sm"}>{tr("task.view.noObjectives")}</Text>
       )}

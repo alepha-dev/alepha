@@ -1,5 +1,5 @@
-import { ActionButton, type ActionProps } from "@alepha/ui";
-import { Card, Container, Flex, Stack, Text } from "@mantine/core";
+import { ActionButton, type ActionProps, Flex, Text } from "@alepha/ui";
+import { Card, Container } from "@mantine/core";
 import {
   IconAntenna,
   IconKey,
@@ -17,7 +17,7 @@ const MeLayout = () => {
   const auth = useAuth();
   return (
     <Container w={theme.container} flex={1} className={"overflow-auto"}>
-      <Stack flex={1} w={"100%"}>
+      <Flex direction="column" flex={1} w={"100%"}>
         <Card
           withBorder
           className={"shadow"}
@@ -51,7 +51,7 @@ const MeLayout = () => {
             <NestedView />
           </Flex>
         </Flex>
-      </Stack>
+      </Flex>
     </Container>
   );
 };
@@ -132,7 +132,7 @@ const ActionNavLink = (props: ActionProps & { href: string }) => {
       size={"xs"}
       textVisibleFrom={"sm"}
       justify={"flex-start"}
-      variant={"subtle"}
+      variant={"minimal"}
       {...props}
     >
       {props.children}

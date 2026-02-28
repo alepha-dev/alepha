@@ -1,4 +1,5 @@
-import { ActionIcon, Card, Flex, Menu, Text, TextInput } from "@mantine/core";
+import { ActionButton, Flex, Text } from "@alepha/ui";
+import { Card, Menu, TextInput } from "@mantine/core";
 import {
   IconBook2,
   IconDots,
@@ -80,9 +81,9 @@ const QuestLog = () => {
             </Flex>
             <Flex flex={1} />
             <Flex px={1}>
-              <ActionIcon variant={"subtle"}>
+              <ActionButton variant={"minimal"} px="xs">
                 <IconSelector size={theme.icon.size.md} />
-              </ActionIcon>
+              </ActionButton>
               <Menu
                 withArrow
                 arrowSize={12}
@@ -90,9 +91,9 @@ const QuestLog = () => {
                 position="bottom-start"
               >
                 <Menu.Target>
-                  <ActionIcon variant={"subtle"}>
+                  <ActionButton variant={"minimal"} px="xs">
                     <IconDots size={theme.icon.size.md} />
-                  </ActionIcon>
+                  </ActionButton>
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Label>Sort by</Menu.Label>
@@ -118,14 +119,15 @@ const QuestLog = () => {
           leftSection={<IconSearch size={theme.icon.size.xs} />}
           rightSection={
             searchValue && (
-              <ActionIcon
+              <ActionButton
                 size="xs"
                 variant="subtle"
                 onClick={handleClearSearch}
                 color="gray"
+                px="xs"
               >
                 <IconX size={theme.icon.size.xs} />
-              </ActionIcon>
+              </ActionButton>
             )
           }
         />

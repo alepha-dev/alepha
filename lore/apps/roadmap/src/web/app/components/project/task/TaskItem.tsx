@@ -1,7 +1,7 @@
-import { ActionButton } from "@alepha/ui";
+import { ActionButton, Flex, Text } from "@alepha/ui";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { ActionIcon, Box, Flex, HoverCard, Text } from "@mantine/core";
+import { HoverCard } from "@mantine/core";
 import {
   IconClock,
   IconExclamationMark,
@@ -10,17 +10,20 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useAlepha, useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { useActive, useRouter } from "alepha/react/router";
 import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
 import type { Task } from "../../../../../api/entities/tasks.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
+import type { I18n } from "../../../services/I18n.ts";
 import TaskComplexity from "./TaskComplexity.tsx";
 
 const TaskItem = (props: { task: Task; index: number }) => {
   const { task } = props;
 
   const alepha = useAlepha();
+  const { tr } = useI18n<I18n, "en">();
   const client = useClient<TaskController>();
   const router = useRouter<AppRouter>();
   const { isActive, anchorProps } = useActive(
@@ -74,7 +77,7 @@ const TaskItem = (props: { task: Task; index: number }) => {
         active={{
           href: anchorProps.href,
         }}
-        variant={isActive ? "light" : "subtle"}
+        variant={isActive ? "default" : "minimal"}
         justify={"space-between"}
         {...attributes}
         {...listeners}
@@ -87,7 +90,7 @@ const TaskItem = (props: { task: Task; index: number }) => {
             {isTimerRunning() && (
               <HoverCard openDelay={600} position="bottom-end">
                 <HoverCard.Target>
-                  <Box
+                  <Flex
                     px={1}
                     className="timer-active-indicator"
                     style={{
@@ -100,16 +103,14 @@ const TaskItem = (props: { task: Task; index: number }) => {
                       fill="var(--mantine-color-blue-5)"
                       fillOpacity={0.2}
                     />
-                  </Box>
+                  </Flex>
                 </HoverCard.Target>
                 <HoverCard.Dropdown>
                   <Flex p={"xs"} direction={"column"}>
                     <Text fw={"bold"} size="sm">
-                      Timer Running
+                      {tr("task.view.timer.running")}
                     </Text>
-                    <Text size="xs">
-                      Time tracking is active for this quest.
-                    </Text>
+                    <Text size="xs">{tr("task.view.timer.description")}</Text>
                   </Flex>
                 </HoverCard.Dropdown>
               </HoverCard>
@@ -146,7 +147,7 @@ const TaskItem = (props: { task: Task; index: number }) => {
                         {task.note}
                       </Text>
                       {client.updateTaskNote.can() && (
-                        <ActionIcon
+                        <ActionButton
                           size="xs"
                           variant="subtle"
                           color="dark"
@@ -154,7 +155,7 @@ const TaskItem = (props: { task: Task; index: number }) => {
                           style={{ flexShrink: 0 }}
                         >
                           <IconTrash size={14} />
-                        </ActionIcon>
+                        </ActionButton>
                       )}
                     </Flex>
                   </Flex>
@@ -170,8 +171,8 @@ const TaskItem = (props: { task: Task; index: number }) => {
                 </HoverCard.Target>
                 <HoverCard.Dropdown>
                   <Flex p={"xs"} direction={"column"}>
-                    <Text fw={"bold"}>Bonus</Text>
-                    <Text size="sm">This quest is optional.</Text>
+                    <Text fw={"bold"}>{tr("task.item.bonus")}</Text>
+                    <Text size="sm">{tr("task.item.bonus.description")}</Text>
                   </Flex>
                 </HoverCard.Dropdown>
               </HoverCard>
@@ -184,8 +185,10 @@ const TaskItem = (props: { task: Task; index: number }) => {
                 </HoverCard.Target>
                 <HoverCard.Dropdown>
                   <Flex p={"xs"} direction={"column"}>
-                    <Text fw={"bold"}>High Priority !</Text>
-                    <Text size="sm">Which means more rewards.</Text>
+                    <Text fw={"bold"}>{tr("task.item.highPriority")}</Text>
+                    <Text size="sm">
+                      {tr("task.item.highPriority.description")}
+                    </Text>
                   </Flex>
                 </HoverCard.Dropdown>
               </HoverCard>

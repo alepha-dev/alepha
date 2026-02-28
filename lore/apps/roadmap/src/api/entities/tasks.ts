@@ -1,6 +1,7 @@
 import { type Static, t } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
+import { chapters } from "./chapters.ts";
 import { projects } from "./projects.ts";
 
 export const tasks = $entity({
@@ -28,6 +29,9 @@ export const tasks = $entity({
     ),
     projectId: db.ref(t.integer(), () => projects.cols.id, {
       onDelete: "cascade",
+    }),
+    chapterId: db.ref(t.optional(t.integer()), () => chapters.cols.id, {
+      onDelete: "set null",
     }),
     createdBy: db.ref(t.uuid(), () => users.cols.id, {
       onDelete: "cascade",
@@ -66,6 +70,15 @@ export const tasks = $entity({
   indexes: [
     {
       columns: ["projectId", "deletedAt"],
+    },
+    {
+      columns: ["acceptedBy"],
+    },
+    {
+      columns: ["completedBy"],
+    },
+    {
+      columns: ["chapterId"],
     },
   ],
 });

@@ -1,5 +1,5 @@
-import { ActionButton } from "@alepha/ui";
-import { Flex, SimpleGrid, Space, Stack } from "@mantine/core";
+import { ActionButton, Flex } from "@alepha/ui";
+import { SimpleGrid } from "@mantine/core";
 import {
   IconDeviceFloppy,
   IconFileText,
@@ -29,6 +29,7 @@ import TaskCreateObjectives from "./TaskCreateObjectives.tsx";
 
 export interface TaskCreateProps {
   onSubmit: (task: Task) => void;
+  onCreated?: (task: Task) => void;
   task?: Partial<Task>;
   project: Project;
 }
@@ -83,18 +84,22 @@ const TaskCreate = (props: TaskCreateProps) => {
 
       props.onSubmit(task);
 
-      await router.push("projectTask", {
-        params: {
-          projectId: String(props.project.id),
-          taskId: String(task.id),
-        },
-      });
+      if (props.onCreated) {
+        props.onCreated(task);
+      } else {
+        await router.push("projectTask", {
+          params: {
+            projectId: String(props.project.id),
+            taskId: String(task.id),
+          },
+        });
+      }
     },
   });
 
   return (
     <form {...form.props}>
-      <Stack>
+      <Flex direction="column" gap="md">
         <SimpleGrid
           cols={{
             base: 1,
@@ -208,8 +213,6 @@ const TaskCreate = (props: TaskCreateProps) => {
           icon={<IconPaperclip />}
         />
 
-        <Space />
-
         <Flex>
           {update ? (
             <ActionButton
@@ -218,7 +221,7 @@ const TaskCreate = (props: TaskCreateProps) => {
               form={form}
               leftSection={<IconDeviceFloppy />}
             >
-              Update Quest
+              {tr("task.create.update")}
             </ActionButton>
           ) : (
             <ActionButton
@@ -231,7 +234,7 @@ const TaskCreate = (props: TaskCreateProps) => {
             </ActionButton>
           )}
         </Flex>
-      </Stack>
+      </Flex>
     </form>
   );
 };

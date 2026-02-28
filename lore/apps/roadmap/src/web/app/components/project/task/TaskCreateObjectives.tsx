@@ -1,4 +1,5 @@
-import { ActionIcon, Flex, Stack, TextInput } from "@mantine/core";
+import { ActionButton, Flex } from "@alepha/ui";
+import { TextInput } from "@mantine/core";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 import { theme } from "../../../constants/theme.ts";
@@ -43,7 +44,7 @@ const TaskCreateObjectives = (props: ObjectiveEditorProps) => {
   };
 
   return (
-    <Stack gap={2}>
+    <Flex direction="column" gap={2}>
       {objectives.map((objective, index) => (
         <Flex key={index} gap="xs" align="center">
           <TextInput
@@ -53,13 +54,13 @@ const TaskCreateObjectives = (props: ObjectiveEditorProps) => {
             onChange={(e) => updateObjective(index, e.currentTarget.value)}
             placeholder="Objective description"
             rightSection={
-              <ActionIcon
+              <ActionButton
                 color="red"
                 variant="subtle"
                 onClick={() => removeObjective(index)}
               >
                 <IconTrash size={theme.icon.size.sm} />
-              </ActionIcon>
+              </ActionButton>
             }
           />
         </Flex>
@@ -80,17 +81,17 @@ const TaskCreateObjectives = (props: ObjectiveEditorProps) => {
             }
           }}
           rightSection={
-            <ActionIcon
+            <ActionButton
               variant="subtle"
               onClick={addObjective}
               disabled={!newObjective.trim()}
             >
               <IconPlus size={theme.icon.size.sm} />
-            </ActionIcon>
+            </ActionButton>
           }
         />
       </Flex>
-    </Stack>
+    </Flex>
   );
 };
 

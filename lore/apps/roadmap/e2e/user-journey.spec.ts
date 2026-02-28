@@ -402,9 +402,9 @@ test.describe("User Journey", () => {
       // Wait for UI to update
       await page.waitForTimeout(2000);
 
-      // Verify "Mark as Completed" button appears
+      // Verify "Complete Quest" button appears
       await expect(
-        page.getByRole("button", { name: /mark.*completed|complete/i }),
+        page.getByRole("button", { name: /complete.*quest/i }),
       ).toBeVisible({ timeout: 5000 });
     });
 
@@ -412,9 +412,9 @@ test.describe("User Journey", () => {
     // STEP 7: Complete the task
     // ==========================================
     await test.step("Complete task", async () => {
-      // Find and click complete button - actual text is "Mark as Completed"
+      // Find and click complete button - actual text is "Complete Quest"
       const completeButton = page.getByRole("button", {
-        name: /mark.*completed/i,
+        name: /complete.*quest/i,
       });
       await expect(completeButton).toBeVisible({ timeout: 5000 });
       await completeButton.click();
