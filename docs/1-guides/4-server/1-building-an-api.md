@@ -188,3 +188,46 @@ const result = await this.list({ query: { page: 1, limit: 10 } });
 ```
 
 > Calling controllers directly are not recommended for shared libraries. Use `$client` links instead, which work across process and network boundaries (see [HTTP Links](/docs/guides-server-http-links)).
+
+## Streaming with SSE
+
+For endpoints that stream data progressively (AI chat, progress updates, live feeds), use `$sse` instead of `$action`. It returns a `text/event-stream` response that the client consumes as an async iterable.
+
+```typescript
+import { t } from "alepha";
+import { $sse } from "alepha/server";
+
+class AiController {
+  chat = $sse({
+    schema: {
+      body: t.object({ prompt: t.text() }),
+      data: t.object({ token: t.text() }),
+    },
+    handler: async ({ body, emit }) => {
+      for await (const token of generateTokens(body.prompt)) {
+        emit({ token });
+      }
+      // stream auto-closes when handler returns
+    },
+  });
+}
+```
+
+The handler receives `emit()` to push typed events and `close()` to end the stream early. The stream closes automatically when the handler returns.
+
+On the client, SSE endpoints are consumed through the same `$client` proxy as actions:
+
+```typescript
+const ctrl = $client<AiController>();
+const stream = await ctrl.chat({ body: { prompt: "hello" } });
+
+for await (const chunk of stream) {
+  console.log(chunk.token);
+}
+```
+
+Key differences from `$action`:
+- Method is always POST
+- Response is `text/event-stream` (not JSON)
+- Schema uses `data` (event shape) instead of `response`
+- Client receives an async iterable instead of a single value

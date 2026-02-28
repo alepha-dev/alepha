@@ -21,6 +21,11 @@ import {
   type ServerRequest,
   type ServerRequestConfigEntry,
   type ServerResponseBody,
+  type SseConfigSchema,
+  type SseEventData,
+  type SsePrimitive,
+  type SseRequestEntry,
+  type SseStream,
   type TRequestBody,
   UnauthorizedError,
 } from "alepha/server";
@@ -114,6 +119,7 @@ export class LinkProvider {
       this.actionMap.set(name, {
         name,
         path: action.path,
+        kind: action.kind,
         method: action.method,
         contentType: action.contentType,
         service: action.service,
@@ -441,6 +447,7 @@ export interface HttpClientLink {
   name: string;
   path: string;
   method?: string;
+  kind?: string;
   contentType?: string;
   service?: string;
   secured?: boolean | SecureOptions;
@@ -469,6 +476,12 @@ export type HttpVirtualClient<T> = {
     : never]: T[K] extends ActionPrimitive<infer Schema>
     ? VirtualAction<Schema>
     : never;
+} & {
+  [K in keyof T as T[K] extends SsePrimitive<SseConfigSchema>
+    ? K
+    : never]: T[K] extends SsePrimitive<infer Schema>
+    ? VirtualSse<Schema>
+    : never;
 };
 
 export interface VirtualAction<T extends RequestConfigSchema>
@@ -482,4 +495,10 @@ export interface VirtualAction<T extends RequestConfigSchema>
     body: T["body"];
     response: T["response"];
   };
+}
+
+export interface VirtualSse<T extends SseConfigSchema> {
+  (config?: SseRequestEntry<T>): Promise<SseStream<SseEventData<T>>>;
+  name: string;
+  can: () => boolean;
 }

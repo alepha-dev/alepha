@@ -33,6 +33,7 @@ Convention-driven HTTP server with automatic validation and type inference.
 - [`$action`](/docs/reference-primitives-$action) — Creates a server action primitive for defining type-safe HTTP endpoints.
 - [`$circuit`](/docs/reference-primitives-$circuit) — * Consecutive failures before opening the circuit.
 - [`$route`](/docs/reference-primitives-$route) — Create a basic endpoint.
+- [`$sse`](/docs/reference-primitives-$sse) — Schema configuration for an SSE endpoint.
 
 ### Providers
 

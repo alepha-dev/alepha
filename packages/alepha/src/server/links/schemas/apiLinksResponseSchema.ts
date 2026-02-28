@@ -34,6 +34,13 @@ export const apiActionSchema = t.object({
     }),
   ),
 
+  kind: t.optional(
+    t.text({
+      description:
+        "Action kind. Used to distinguish special action types (e.g. 'sse' for Server-Sent Events streams).",
+    }),
+  ),
+
   service: t.optional(
     t.text({
       description:

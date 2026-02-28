@@ -5,6 +5,7 @@ import type { SecurityProvider, UserAccountToken } from "alepha/security";
 import {
   $action,
   $route,
+  $sse,
   type ClientRequestEntry,
   type ClientRequestOptions,
   type RequestConfigSchema,
@@ -66,6 +67,24 @@ export class ServerLinksProvider {
             config: ClientRequestEntry<RequestConfigSchema>,
             options: ClientRequestOptions = {},
           ) => action.run(config, options),
+        });
+      }
+
+      // convert all $sse to local links
+      for (const sse of this.alepha.primitives($sse)) {
+        this.linkProvider.registerLink({
+          name: sse.name,
+          group: sse.group,
+          kind: "sse",
+          schema: {
+            body: sse.schema?.body,
+          },
+          method: "POST",
+          prefix: sse.prefix,
+          path: sse.path,
+          handler: async (config) => {
+            return sse.run(config as any) as any;
+          },
         });
       }
     },
@@ -276,6 +295,7 @@ export class ServerLinksProvider {
       actions[link.name] = {
         path: link.path,
         method: link.method || undefined,
+        kind: link.kind,
         body: pool.ref(link.schema?.body),
         response: pool.ref(link.schema?.response),
         contentType: link.contentType,

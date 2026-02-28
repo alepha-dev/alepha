@@ -17,6 +17,7 @@ import {
 } from "./primitives/$action.ts";
 import { $middleware } from "./primitives/$middleware.ts";
 import { $route } from "./primitives/$route.ts";
+import { $sse } from "./primitives/$sse.ts";
 import { BunHttpServerProvider } from "./providers/BunHttpServerProvider.ts";
 import { NodeHttpServerProvider } from "./providers/NodeHttpServerProvider.ts";
 import { ServerBodyParserProvider } from "./providers/ServerBodyParserProvider.ts";
@@ -111,6 +112,7 @@ export * from "./primitives/$action.ts";
 export * from "./primitives/$circuit.ts";
 export * from "./primitives/$middleware.ts";
 export * from "./primitives/$route.ts";
+export * from "./primitives/$sse.ts";
 export * from "./providers/BunHttpServerProvider.ts";
 export * from "./providers/NodeHttpServerProvider.ts";
 export * from "./providers/ServerCompressProvider.ts";
@@ -146,7 +148,7 @@ export * from "./services/UserAgentParser.ts";
  */
 export const AlephaServer = $module({
   name: "alepha.server",
-  primitives: [$route, $action, $middleware],
+  primitives: [$route, $action, $middleware, $sse],
   services: [
     ServerProvider,
     BunHttpServerProvider,
