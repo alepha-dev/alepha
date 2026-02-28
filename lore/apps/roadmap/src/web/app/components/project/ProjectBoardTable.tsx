@@ -7,6 +7,7 @@ import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useEffect, useState } from "react";
+import type { ChapterController } from "../../../../api/controllers/ChapterController.ts";
 import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
 import type { TaskController } from "../../../../api/controllers/TaskController.ts";
 import type { User } from "../../../../api/entities/users.ts";
@@ -20,6 +21,7 @@ const filtersSchema = t.object({
   status: t.optional(t.enum(["new", "accepted", "completed"])),
   search: t.optional(t.string()),
   chapterId: t.optional(t.integer()),
+  package: t.optional(t.string()),
 });
 
 const getPriorityColor = (priority: string) => {
@@ -43,6 +45,7 @@ const ProjectBoardTable = () => {
   const [project] = useStore(currentProjectAtom);
   const taskApi = useClient<TaskController>();
   const projectApi = useClient<ProjectController>();
+  const chapterApi = useClient<ChapterController>();
   const dateFormatter = useInject(DateTimeProvider);
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
@@ -84,48 +87,78 @@ const ProjectBoardTable = () => {
       defaultSize={10}
       emptyLabel={tr("common.noResults")}
       filters={filtersSchema}
-      items={async (filters) => {
+      defaultFilters={["status", "search"]}
+      typeFormProps={{
+        fieldControlProps: {
+          chapterId: {
+            select: {
+              loader: async (search) => {
+                const chapters = await chapterApi.getChapters({
+                  params: { projectId: project.id },
+                });
+                return chapters.map((ch) => ({
+                  value: String(ch.id),
+                  label: `Ch.${ch.number}: ${ch.title} (${ch.questCount} quests)`,
+                }));
+              },
+            },
+          },
+          package: {
+            select: {
+              loader: async () =>
+                project.packages.map((p) => ({ value: p, label: p })),
+            },
+          },
+        },
+      }}
+      items={async (query) => {
         return taskApi.getTasks({
           params: { projectId: project.id },
-          query: {
-            status: filters.status || undefined,
-            search: filters.search || undefined,
-            chapterId: filters.chapterId || undefined,
-            page: filters.page,
-            size: filters.size,
-            sort: filters.sort || undefined,
-          },
+          query,
         });
       }}
       columns={{
         assignedTo: {
           label: "Assigned",
-          value: (task) => (
-            <Flex gap={"xs"}>
-              {renderAvatar(task.acceptedBy)}
-              {users.find((u) => u.id === task.acceptedBy)?.username}
-            </Flex>
-          ),
+          value: (task) =>
+            task.acceptedBy ? (
+              <Flex gap={"xs"}>
+                {renderAvatar(task.acceptedBy)}
+                {users.find((u) => u.id === task.acceptedBy)?.username}
+              </Flex>
+            ) : (
+              "-"
+            ),
         },
         status: {
           label: "Status",
           value: (task) => {
-            const color =
-              task.metadata.status === "completed"
-                ? "green"
-                : task.metadata.status === "accepted"
-                  ? "blue"
-                  : "gray";
+            const columnColors: Record<string, string> = {
+              new: "var(--mantine-color-blue-5)",
+              accepted: "var(--mantine-color-orange-5)",
+              completed: "var(--mantine-color-green-5)",
+            };
+            const color = columnColors[task.metadata.status];
             return (
-              <Badge size="sm" color={color} variant="light">
-                {task.metadata.status}
-              </Badge>
+              <Flex
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  backgroundColor: color,
+                }}
+              />
             );
           },
         },
         title: {
           label: "Quest",
           sortable: true,
+          action: (task) => ({
+            href: router.path("projectTask", {
+              params: { taskId: String(task.id) },
+            }),
+          }),
           value: (task) => (
             <Flex
               direction="column"
@@ -180,7 +213,17 @@ const ProjectBoardTable = () => {
 
           value: (task) => (
             <Text size="xs" c="dimmed">
-              {dateFormatter.of(task.completedAt ?? task.createdAt).fromNow()}
+              {dateFormatter.of(task.createdAt).fromNow()}
+            </Text>
+          ),
+        },
+        updatedAt: {
+          label: "UpdatedAt",
+          sortable: true,
+
+          value: (task) => (
+            <Text size="xs" c="dimmed">
+              {dateFormatter.of(task.updatedAt).fromNow()}
             </Text>
           ),
         },
@@ -205,14 +248,6 @@ const ProjectBoardTable = () => {
           },
         },
       ]}
-      tableTrProps={(task) => ({
-        style: { cursor: "pointer" },
-        onClick: () =>
-          router.push("projectTask", {
-            params: { taskId: String(task.id) },
-            meta: { transition: "fadeInUp" },
-          }),
-      })}
     />
   );
 };
