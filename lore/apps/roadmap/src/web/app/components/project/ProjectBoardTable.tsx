@@ -109,7 +109,6 @@ const ProjectBoardTable = () => {
         },
         status: {
           label: "Status",
-          fit: true,
           value: (task) => {
             const color =
               task.metadata.status === "completed"

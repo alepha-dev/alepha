@@ -1,4 +1,4 @@
-import { ActionButton, Flex, useToast } from "@alepha/ui";
+import { Flex, useToast } from "@alepha/ui";
 import {
   DndContext,
   type DragEndEvent,
@@ -6,8 +6,10 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { Badge, Drawer, Loader, ScrollArea } from "@mantine/core";
+import { Badge, Drawer, Loader } from "@mantine/core";
+import { t } from "alepha";
 import { useClient, useStore } from "alepha/react";
+import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useId, useMemo, useState } from "react";
 import type { KanbanController } from "../../../../api/controllers/KanbanController.ts";
@@ -20,6 +22,7 @@ import {
 } from "../../atoms/kanbanProjectAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import TaskView from "../project/task/TaskView.tsx";
+import Control from "../ui/Control.tsx";
 import KanbanColumn from "./KanbanColumn.tsx";
 
 type TaskStatus = "new" | "accepted" | "completed";
@@ -36,7 +39,7 @@ const KanbanBoard = ({
   readOnly,
 }: KanbanBoardProps) => {
   const [tasks, setTasks] = useState<TaskResource[]>(initialTasks);
-  const [activeZone, setActiveZone] = useState<string | null>(null);
+  const [activeZones, setActiveZones] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskResource | null>(null);
   const [, setKanbanProject] = useStore(kanbanProjectAtom);
@@ -62,10 +65,22 @@ const KanbanBoard = ({
     }),
   );
 
+  const filterForm = useForm({
+    schema: t.object({
+      zones: t.array(t.string(), { default: [] }),
+    }),
+    handler: async (values) => {
+      setActiveZones(values.zones);
+    },
+    onChange: async () => {
+      await filterForm.submit();
+    },
+  });
+
   const filteredTasks = useMemo(() => {
-    if (!activeZone) return tasks;
-    return tasks.filter((t) => t.package === activeZone);
-  }, [tasks, activeZone]);
+    if (activeZones.length === 0) return tasks;
+    return tasks.filter((t) => activeZones.includes(t.package));
+  }, [tasks, activeZones]);
 
   const grouped = useMemo(() => {
     const result: Record<TaskStatus, TaskResource[]> = {
@@ -139,34 +154,25 @@ const KanbanBoard = ({
   return (
     <Flex direction="column" flex={1} style={{ overflow: "hidden" }}>
       {/* Zone filter nav */}
-      <Flex surface borderedBottom centerY gap={4} px="sm" py={6}>
-        <ScrollArea type="auto" scrollbars="x" style={{ flex: 1 }}>
-          <Flex gap={4} align="center">
-            {readOnly && (
-              <Badge size="xs" variant="light" color="gray" mr={4}>
-                {tr("kanban.readOnly")}
-              </Badge>
-            )}
-            {loading && <Loader type="dots" size="xs" />}
-            <ActionButton
-              size="xs"
-              variant={activeZone === null ? "filled" : "default"}
-              onClick={() => setActiveZone(null)}
-            >
-              {tr("kanban.filter.all")}
-            </ActionButton>
-            {project.packages.map((zone: string) => (
-              <ActionButton
-                key={zone}
-                size="xs"
-                variant={activeZone === zone ? "filled" : "default"}
-                onClick={() => setActiveZone(activeZone === zone ? null : zone)}
-              >
-                {zone}
-              </ActionButton>
-            ))}
-          </Flex>
-        </ScrollArea>
+      <Flex surface borderedBottom centerY gap="xs" px="sm" py={6}>
+        {readOnly && (
+          <Badge size="xs" variant="light" color="gray">
+            {tr("kanban.readOnly")}
+          </Badge>
+        )}
+        {loading && <Loader type="dots" size="xs" />}
+        <Flex flex={1}>
+          <Control
+            input={filterForm.input.zones}
+            size="xs"
+            multi={{
+              placeholder: String(tr("kanban.filter.all")),
+              data: project.packages,
+              clearable: true,
+              searchable: true,
+            }}
+          />
+        </Flex>
       </Flex>
 
       {/* Columns */}
