@@ -16,6 +16,11 @@ export const projects = $entity({
     public: t.optional(t.boolean()),
     packages: db.default(t.array(t.string()), []),
   }),
+  indexes: [
+    {
+      columns: ["createdBy"],
+    },
+  ],
 });
 
 export type Project = Static<typeof projects.schema>;

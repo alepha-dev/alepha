@@ -1,14 +1,18 @@
-import { Card, Flex, HoverCard, Stack, Text } from "@mantine/core";
+import { Flex, Text } from "@alepha/ui";
+import { Card, HoverCard } from "@mantine/core";
 import { useInject, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
+import { useI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 import { CharacterInfo } from "../../../../api/services/CharacterInfo.ts";
 import { currentProjectCharacterAtom } from "../../atoms/currentProjectCharacterAtom.ts";
 import { theme } from "../../constants/theme.ts";
+import type { I18n } from "../../services/I18n.ts";
 import LevelUpAnimation from "./LevelUpAnimation.tsx";
 
 const ExperienceBar = () => {
   const auth = useAuth();
+  const { tr } = useI18n<I18n, "en">();
   const [character] = useStore(currentProjectCharacterAtom);
   const info = useInject(CharacterInfo);
 
@@ -81,13 +85,10 @@ const ExperienceBar = () => {
                 </Text>
               </HoverCard.Target>
               <HoverCard.Dropdown>
-                <Stack style={{ maxWidth: 256 }}>
-                  <Text>Experience Bar</Text>
-                  <Text size="sm">
-                    Shows your current experience progress towards the next
-                    level.
-                  </Text>
-                </Stack>
+                <Flex direction="column" style={{ maxWidth: 256 }}>
+                  <Text>{tr("xp.bar.title")}</Text>
+                  <Text size="sm">{tr("xp.bar.description")}</Text>
+                </Flex>
               </HoverCard.Dropdown>
             </HoverCard>
           </Flex>

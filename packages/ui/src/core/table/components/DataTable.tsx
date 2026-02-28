@@ -1,5 +1,5 @@
 import { ActionButton, Flex, isComponentType, Text, ui } from "@alepha/ui";
-import { Checkbox, Drawer, Table, UnstyledButton } from "@mantine/core";
+import { Checkbox, Drawer, Loader, Table, UnstyledButton } from "@mantine/core";
 import {
   IconArrowDown,
   IconArrowsSort,
@@ -97,6 +97,9 @@ const DataTable = <T extends object, Filters extends TObject>(
 ) => {
   const [items, setItems] = useState<MaybePage<T>>(
     typeof props.items === "function" ? { content: [] } : props.items,
+  );
+  const [loaded, setLoaded] = useState(
+    typeof props.items !== "function" || !props.submitOnInit,
   );
 
   const defaultSize = props.infinityScroll ? 100 : props.defaultSize || 10;
@@ -236,6 +239,7 @@ const DataTable = <T extends object, Filters extends TObject>(
           }
 
           setCurrentPage(values.page);
+          if (!loaded) setLoaded(true);
         }
       },
       onReset: async () => {
@@ -453,7 +457,7 @@ const DataTable = <T extends object, Filters extends TObject>(
                 onClick={(e) => e.stopPropagation()}
               >
                 <ActionButton
-                  variant="subtle"
+                  variant={"minimal"}
                   size="xs"
                   icon={IconDotsVertical}
                   menu={{
@@ -560,25 +564,27 @@ const DataTable = <T extends object, Filters extends TObject>(
                 {props.rowActions && <Table.Th style={FIT_STYLE} />}
               </Table.Tr>
             </Table.Thead>
-            <Table.Tbody
-              style={{
-                opacity: form.submitting ? 0.5 : 1,
-                transition: "opacity 150ms ease",
-              }}
-            >
-              {rows}
-              {items.content.length === 0 && (
+            <Table.Tbody>
+              {!loaded || form.submitting ? (
                 <Table.Tr>
-                  <Table.Td
-                    colSpan={totalColumns || 1}
-                    py="xl"
-                    style={{ textAlign: "center" }}
-                  >
-                    <Text c="dimmed" size="sm">
-                      {form.submitting ? "Loading…" : "No results"}
-                    </Text>
+                  <Table.Td colSpan={totalColumns || 1} py="sm">
+                    <Flex justify="center">
+                      <Loader size="sm" type="dots" />
+                    </Flex>
                   </Table.Td>
                 </Table.Tr>
+              ) : rows.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={totalColumns || 1} py="xl">
+                    <Flex justify="center">
+                      <Text c="dimmed" size="sm">
+                        {props.emptyLabel ?? "No results"}
+                      </Text>
+                    </Flex>
+                  </Table.Td>
+                </Table.Tr>
+              ) : (
+                rows
               )}
             </Table.Tbody>
           </Table>

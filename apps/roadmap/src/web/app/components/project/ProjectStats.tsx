@@ -1,17 +1,13 @@
-import { ActionButton } from "@alepha/ui";
+import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
 import { AreaChart, BarChart } from "@mantine/charts";
 import {
   Card,
-  Flex,
+  Container,
   Grid,
-  Group,
   Select,
   SimpleGrid,
-  Stack,
-  Text,
   Title,
 } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
 import {
   IconChartBar,
   IconDownload,
@@ -22,9 +18,11 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { useAlepha, useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 import type { ProjectStatsController } from "../../../../api/controllers/ProjectStatsController.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import type { I18n } from "../../services/I18n.ts";
 
 export interface ProjectStatsProps {
   stats: {
@@ -63,6 +61,8 @@ export interface ProjectStatsProps {
 
 const ProjectStats = (props: ProjectStatsProps) => {
   const { stats } = props;
+  const { tr } = useI18n<I18n, "en">();
+  const toast = useToast();
   const alepha = useAlepha();
   const projectStatsApi = useClient<ProjectStatsController>();
   const currentProject = alepha.store.get(currentProjectAtom);
@@ -70,11 +70,7 @@ const ProjectStats = (props: ProjectStatsProps) => {
 
   const handleExportCsv = async () => {
     if (!currentProject) {
-      notifications.show({
-        title: "Error",
-        message: "No project selected",
-        color: "red",
-      });
+      toast.danger({ message: "No project selected" });
       return;
     }
 
@@ -95,17 +91,9 @@ const ProjectStats = (props: ProjectStatsProps) => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
-      notifications.show({
-        title: "Success",
-        message: "Tasks exported to CSV successfully",
-        color: "green",
-      });
+      toast.success({ message: "Tasks exported to CSV successfully" });
     } catch (error: any) {
-      notifications.show({
-        title: "Export Failed",
-        message: error?.message || "Failed to export tasks",
-        color: "red",
-      });
+      toast.danger({ message: error?.message || "Failed to export tasks" });
     }
   };
 
@@ -244,25 +232,25 @@ const ProjectStats = (props: ProjectStatsProps) => {
   const timelineData = getFilteredTimelineData();
 
   return (
-    <Flex flex={1} p="lg" className={"overflow-auto"}>
-      <Stack w="100%" maw={1200}>
-        <Group justify="space-between" align="center">
-          <Group gap="sm" align="center">
+    <Container size="md" w="100%" px={{ base: 0, md: "xs" }}>
+      <Flex direction="column" w="100%" p="lg" gap="lg" style={{ minWidth: 0 }}>
+        <Flex justify="space-between" align="center">
+          <Flex gap="sm" align="center">
             <IconChartBar size={24} />
-            <Title order={2}>Project Analytics</Title>
-          </Group>
+            <Title order={2}>{tr("stats.title")}</Title>
+          </Flex>
           <ActionButton
             variant="light"
             leftSection={<IconDownload size={16} />}
             onClick={handleExportCsv}
             size="sm"
           >
-            Export CSV
+            {tr("stats.export")}
           </ActionButton>
-        </Group>
+        </Flex>
 
         <Text c="dimmed" size="sm">
-          Comprehensive insights into project progress and team performance
+          {tr("stats.subtitle")}
         </Text>
 
         {/* Overview Cards */}
@@ -274,17 +262,17 @@ const ProjectStats = (props: ProjectStatsProps) => {
             withBorder
             bg={"var(--alepha-elevated)"}
           >
-            <Group gap="sm">
+            <Flex gap="sm">
               <IconTarget size={20} opacity={0.6} />
-              <Stack gap={0} flex={1}>
+              <Flex direction="column" gap={0} flex={1}>
                 <Text size="xl" fw={700}>
                   {stats.overview.totalTasks}
                 </Text>
                 <Text size="sm" c="dimmed">
-                  Total Tasks
+                  {tr("stats.totalQuests")}
                 </Text>
-              </Stack>
-            </Group>
+              </Flex>
+            </Flex>
           </Card>
 
           <Card
@@ -294,17 +282,17 @@ const ProjectStats = (props: ProjectStatsProps) => {
             withBorder
             bg={"var(--alepha-elevated)"}
           >
-            <Group gap="sm">
+            <Flex gap="sm">
               <IconTrophy size={20} opacity={0.6} />
-              <Stack gap={0} flex={1}>
+              <Flex direction="column" gap={0} flex={1}>
                 <Text size="xl" fw={700}>
                   {stats.overview.completedTasks}
                 </Text>
                 <Text size="sm" c="dimmed">
-                  Completed
+                  {tr("stats.completed")}
                 </Text>
-              </Stack>
-            </Group>
+              </Flex>
+            </Flex>
           </Card>
 
           <Card
@@ -314,17 +302,17 @@ const ProjectStats = (props: ProjectStatsProps) => {
             withBorder
             bg={"var(--alepha-elevated)"}
           >
-            <Group gap="sm">
+            <Flex gap="sm">
               <IconUsers size={20} opacity={0.6} />
-              <Stack gap={0} flex={1}>
+              <Flex direction="column" gap={0} flex={1}>
                 <Text size="xl" fw={700}>
                   {stats.overview.activePlayers}
                 </Text>
                 <Text size="sm" c="dimmed">
-                  Active Players
+                  {tr("stats.activeAdventurers")}
                 </Text>
-              </Stack>
-            </Group>
+              </Flex>
+            </Flex>
           </Card>
 
           <Card
@@ -334,17 +322,17 @@ const ProjectStats = (props: ProjectStatsProps) => {
             withBorder
             bg={"var(--alepha-elevated)"}
           >
-            <Group gap="sm">
+            <Flex gap="sm">
               <IconStar size={20} opacity={0.6} />
-              <Stack gap={0} flex={1}>
+              <Flex direction="column" gap={0} flex={1}>
                 <Text size="xl" fw={700}>
                   {stats.overview.totalXP.toLocaleString()}
                 </Text>
                 <Text size="sm" c="dimmed">
-                  Total XP
+                  {tr("stats.totalXp")}
                 </Text>
-              </Stack>
-            </Group>
+              </Flex>
+            </Flex>
           </Card>
         </SimpleGrid>
 
@@ -352,12 +340,12 @@ const ProjectStats = (props: ProjectStatsProps) => {
           {/* Activity Timeline */}
           <Grid.Col span={12}>
             <Card shadow="sm" padding="lg" radius="md" withBorder>
-              <Stack gap="md">
-                <Group justify="space-between" align="center">
-                  <Group gap="sm">
+              <Flex direction="column" gap="md">
+                <Flex justify="space-between" align="center">
+                  <Flex gap="sm">
                     <IconTrendingUp size={20} />
-                    <Title order={4}>Activity Timeline</Title>
-                  </Group>
+                    <Title order={4}>{tr("stats.timeline")}</Title>
+                  </Flex>
                   <Select
                     value={timelineRange}
                     onChange={(value) => setTimelineRange(value || "14days")}
@@ -372,7 +360,7 @@ const ProjectStats = (props: ProjectStatsProps) => {
                     size="xs"
                     w={140}
                   />
-                </Group>
+                </Flex>
                 {timelineData.length > 0 ? (
                   <AreaChart
                     h={250}
@@ -391,18 +379,18 @@ const ProjectStats = (props: ProjectStatsProps) => {
                   />
                 ) : (
                   <Text c="dimmed" ta="center" py="xl">
-                    No recent activity
+                    {tr("stats.noActivity")}
                   </Text>
                 )}
-              </Stack>
+              </Flex>
             </Card>
           </Grid.Col>
 
           {/* Top 6 Zones */}
           <Grid.Col span={12}>
             <Card shadow="sm" padding="lg" radius="md" withBorder h="100%">
-              <Stack gap="md">
-                <Title order={4}>Top 6 Zones</Title>
+              <Flex direction="column" gap="md">
+                <Title order={4}>{tr("stats.topZones")}</Title>
                 {zonesData.length > 0 ? (
                   <BarChart
                     h={200}
@@ -419,18 +407,18 @@ const ProjectStats = (props: ProjectStatsProps) => {
                   />
                 ) : (
                   <Text c="dimmed" ta="center" py="xl">
-                    No zones yet
+                    {tr("stats.noZones")}
                   </Text>
                 )}
-              </Stack>
+              </Flex>
             </Card>
           </Grid.Col>
 
           {/* Tasks by Priority */}
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card shadow="sm" padding="lg" radius="md" withBorder h="100%">
-              <Stack gap="md">
-                <Title order={4}>Tasks by Priority</Title>
+              <Flex direction="column" gap="md">
+                <Title order={4}>{tr("stats.byPriority")}</Title>
                 {priorityData.length > 0 ? (
                   <BarChart
                     h={200}
@@ -445,18 +433,18 @@ const ProjectStats = (props: ProjectStatsProps) => {
                   />
                 ) : (
                   <Text c="dimmed" ta="center" py="xl">
-                    No data available
+                    {tr("stats.noData")}
                   </Text>
                 )}
-              </Stack>
+              </Flex>
             </Card>
           </Grid.Col>
 
           {/* Task Complexity Distribution */}
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card shadow="sm" padding="lg" radius="md" withBorder h="100%">
-              <Stack gap="md">
-                <Title order={4}>Task Complexity</Title>
+              <Flex direction="column" gap="md">
+                <Title order={4}>{tr("stats.byComplexity")}</Title>
                 {complexityData.length > 0 ? (
                   <BarChart
                     h={200}
@@ -469,15 +457,15 @@ const ProjectStats = (props: ProjectStatsProps) => {
                   />
                 ) : (
                   <Text c="dimmed" ta="center" py="xl">
-                    No data available
+                    {tr("stats.noData")}
                   </Text>
                 )}
-              </Stack>
+              </Flex>
             </Card>
           </Grid.Col>
         </Grid>
-      </Stack>
-    </Flex>
+      </Flex>
+    </Container>
   );
 };
 

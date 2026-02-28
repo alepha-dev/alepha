@@ -151,7 +151,7 @@ const DataTableToolbar = <T extends object, Filters extends TObject>({
         />
         {withExport && (
           <ActionButton
-            variant="subtle"
+            variant={"minimal"}
             icon={IconDownload}
             menu={{
               items: [
@@ -177,7 +177,7 @@ const DataTableToolbar = <T extends object, Filters extends TObject>({
               {selectedItems.length} selected
             </Badge>
             <ActionButton
-              variant="subtle"
+              variant={"minimal"}
               size="compact-sm"
               icon={IconX}
               onClick={onClearSelection}
@@ -214,7 +214,11 @@ const DataTableToolbar = <T extends object, Filters extends TObject>({
             props
           ),
         )}
-        <ActionButton variant="subtle" icon={IconRefresh} onClick={onRefresh} />
+        <ActionButton
+          variant={"minimal"}
+          icon={IconRefresh}
+          onClick={onRefresh}
+        />
       </Flex>
     </Flex>
   );

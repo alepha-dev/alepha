@@ -1,12 +1,12 @@
 import {
-  ActionButton,
+  type ActionMenuItem,
   DarkModeButton,
+  Flex,
   LanguageButton,
   ThemeButton,
 } from "@alepha/ui";
-import type { AuthRouter } from "@alepha/ui/auth";
-import { Flex, Menu } from "@mantine/core";
-import { IconLogout, IconSettings, IconUser } from "@tabler/icons-react";
+import { UserButton } from "@alepha/ui/auth";
+import { IconSettings } from "@tabler/icons-react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -16,90 +16,32 @@ import type { I18n } from "../../services/I18n.ts";
 import type { MeRouter } from "../profile/MeRouter.ts";
 
 const HeaderActions = () => {
+  const items: ActionMenuItem[] = [];
+  const auth = useAuth<AppSecurityProvider>();
+  const meRouter = useRouter<MeRouter>();
+  const { tr } = useI18n<I18n, "en">();
+
+  if (auth.user) {
+    items.push({
+      label: tr("header.actions.profile"),
+      icon: <IconSettings size={theme.icon.size.sm} />,
+      onClick: () => meRouter.push("profile"),
+    });
+  }
+
   return (
     <Flex gap={"xs"} align="center" justify="center">
-      <AuthButton />
-      <ThemeButton />
-      <LanguageButton variant="subtle" />
-      <DarkModeButton variant="subtle" />
+      <UserButton
+        loginLabel={tr("header.actions.login")}
+        menuItems={items}
+        skipProfile
+        bd={0}
+      />
+      <ThemeButton bd={0} expert />
+      <LanguageButton bd={0} />
+      <DarkModeButton bd={0} />
     </Flex>
   );
 };
 
 export default HeaderActions;
-
-const AuthButton = () => {
-  const auth = useAuth<AppSecurityProvider>();
-  const meRouter = useRouter<MeRouter>();
-  const authRouter = useRouter<AuthRouter>();
-  const { tr } = useI18n<I18n, "en">();
-
-  if (auth.user) {
-    return (
-      <Menu
-        width={"196px"}
-        arrowSize={12}
-        trigger="click"
-        position="bottom"
-        withArrow
-      >
-        <Menu.Target>
-          <ActionButton
-            ta={"left"}
-            variant={"subtle"}
-            leftSection={
-              auth.user.picture ? (
-                <img
-                  alt={"user avatar"}
-                  style={{
-                    height: "24px",
-                    width: "24px",
-                    borderRadius: "50%",
-                  }}
-                  src={`/api/files/${auth.user.picture}`}
-                />
-              ) : (
-                <IconUser size={theme.icon.size.sm} />
-              )
-            }
-          >
-            {auth.user.username}
-          </ActionButton>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Menu.Label>{auth.user.email}</Menu.Label>
-          <Menu.Item
-            component={"a"}
-            {...meRouter.anchor("profile")}
-            leftSection={<IconSettings size={theme.icon.size.sm} />}
-          >
-            Settings
-          </Menu.Item>
-          <Menu.Divider />
-          <Menu.Item
-            color={"red"}
-            onClick={() => auth.logout()}
-            leftSection={<IconLogout size={theme.icon.size.sm} />}
-          >
-            Sign out
-          </Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
-    );
-  }
-
-  return (
-    <ActionButton
-      style={{ textWrap: "nowrap" }}
-      variant={"subtle"}
-      leftSection={<IconUser />}
-      href={authRouter.path("login", {
-        query: {
-          r: authRouter.pathname,
-        },
-      })}
-    >
-      {tr("header.actions.login")}
-    </ActionButton>
-  );
-};

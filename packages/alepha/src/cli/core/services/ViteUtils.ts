@@ -355,6 +355,7 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
     process.env.NODE_ENV = opts.mode;
     process.env.ALEPHA_CLI_IMPORT = "true"; // signal Alepha App about CLI import, run(alepha) won't start server
     process.env.LOG_LEVEL ??= "warn"; // reduce log noise
+    process.env.APP_SECRET ??= "123456"; // avoid warning about missing secret, not used in CLI context
 
     /**
      * 01/26 Vite 7

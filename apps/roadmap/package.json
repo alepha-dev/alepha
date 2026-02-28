@@ -7,7 +7,7 @@
     "build": "alepha build",
     "db:generate": "alepha db generate",
     "build:docker": "alepha build --docker && cd dist && docker build -t alepha/roadmap .",
-    "deploy": "alepha deploy --build --mode=production",
+    "deploy": "alepha platform up -e production",
     "typecheck": "alepha typecheck",
     "studio": "alepha db studio",
     "start": "yarn build && LOG_LEVEL=trace LOG_FORMAT=pretty DATABASE_URL=pglite://:memory: node dist",

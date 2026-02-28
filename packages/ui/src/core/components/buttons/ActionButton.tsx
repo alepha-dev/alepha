@@ -112,6 +112,9 @@ export interface ActionMenuConfig {
 export interface ActionCommonProps extends ButtonProps {
   children?: ReactNode;
 
+  /**
+   * If set, the button will show only the icon on smaller screens and reveal the text from the specified breakpoint and up.
+   */
   textVisibleFrom?: "xs" | "sm" | "md" | "lg" | "xl";
 
   /**
@@ -139,6 +142,9 @@ export interface ActionCommonProps extends ButtonProps {
    */
   icon?: ReactNode | ComponentType;
 
+  /**
+   * Size of the icon. Can be a number (pixels) or a string (e.g., "1em", "20px").
+   */
   iconSize?: number | string;
 
   /**
@@ -150,6 +156,11 @@ export interface ActionCommonProps extends ButtonProps {
    * Visual intent of the action button.
    */
   intent?: "primary" | "success" | "danger" | "warning" | "info" | "none";
+
+  /**
+   * Active state styling for navigation actions. When set, the button will apply active styles based on the current route.
+   */
+  variant?: ButtonProps["variant"] | "minimal";
 }
 
 export type ActionProps = ActionCommonProps &
@@ -242,6 +253,12 @@ const ActionMenuItem = (props: {
 const ActionButton = (_props: ActionProps) => {
   const theme = useMantineTheme();
   const props = { ..._props };
+
+  if (props.variant === "minimal") {
+    props.variant = "default";
+    props.bd = 0;
+  }
+
   const { tooltip, menu, icon, iconSize, ...restProps } = props;
 
   if (props.intent) {
@@ -298,7 +315,13 @@ const ActionButton = (_props: ActionProps) => {
           </ActionButton>
         </Flex>
         <Flex w={"100%"} hiddenFrom={textVisibleFrom}>
-          <ActionButton px={"xs"} {...rest} tooltip={tooltip} menu={menu}>
+          <ActionButton
+            px={"xs"}
+            {...rest}
+            aria-label={typeof children === "string" ? children : undefined}
+            tooltip={tooltip}
+            menu={menu}
+          >
             {leftSection}
           </ActionButton>
         </Flex>

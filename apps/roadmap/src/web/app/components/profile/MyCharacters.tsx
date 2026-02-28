@@ -1,13 +1,5 @@
-import {
-  Badge,
-  Card,
-  Flex,
-  Group,
-  Progress,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Flex, Text } from "@alepha/ui";
+import { Badge, Card, Progress, Title } from "@mantine/core";
 import { IconCircleFilled, IconCrown } from "@tabler/icons-react";
 import { useInject } from "alepha/react";
 import { Localize, useI18n } from "alepha/react/i18n";
@@ -49,15 +41,15 @@ const CharacterXPBar = ({
   const { l } = useI18n();
 
   return (
-    <Stack gap="xs">
-      <Group justify="space-between">
+    <Flex direction="column" gap="xs">
+      <Flex justify="space-between">
         <Text size="xs" c="dimmed" fw={500}>
           Experience Progress
         </Text>
         <Text size="xs" c="dimmed">
           {l(currentXp)} / {l(maxXp)} XP
         </Text>
-      </Group>
+      </Flex>
 
       <Progress
         value={percentage}
@@ -74,7 +66,7 @@ const CharacterXPBar = ({
       <Text size="xs" c="dimmed">
         Level {level} • {percentage}% to Level {level + 1}
       </Text>
-    </Stack>
+    </Flex>
   );
 };
 
@@ -100,17 +92,17 @@ const MyCharacters = (props: MyCharactersProps) => {
 
   return (
     <Flex bg={"var(--alepha-ground)"} flex={1} p="lg">
-      <Stack w="100%" maw={800}>
-        <Group gap="sm" align="center">
+      <Flex direction="column" w="100%" maw={800}>
+        <Flex gap="sm" align="center">
           <Title order={2}>My Characters</Title>
           <Badge variant="light">{characters.length}</Badge>
-        </Group>
+        </Flex>
 
         <Text c="dimmed" size="sm">
           Your active characters across all projects
         </Text>
 
-        <Stack gap="md">
+        <Flex direction="column" gap="md">
           {characters.map((character) => {
             const level = characterInfo.getLevelByXp(character.xp);
             const gold = characterInfo.getGold(character.balance);
@@ -124,10 +116,10 @@ const MyCharacters = (props: MyCharactersProps) => {
                 radius="md"
                 withBorder
               >
-                <Stack gap="md">
-                  <Group justify="space-between" align="flex-start">
-                    <Stack gap="xs">
-                      <Group gap="sm">
+                <Flex direction="column" gap="md">
+                  <Flex justify="space-between" align="flex-start">
+                    <Flex direction="column" gap="xs">
+                      <Flex gap="sm">
                         <Text fw={500} size="lg">
                           {character.projectTitle}
                         </Text>
@@ -139,27 +131,27 @@ const MyCharacters = (props: MyCharactersProps) => {
                             Owner
                           </Badge>
                         )}
-                      </Group>
+                      </Flex>
                       <Text size="sm" c="dimmed">
                         Created{" "}
                         <Localize value={character.createdAt} date="fromNow" />
                       </Text>
-                    </Stack>
+                    </Flex>
 
-                    <Group gap="xl">
-                      <Stack gap={2}>
+                    <Flex gap="xl">
+                      <Flex direction="column" gap={2}>
                         <Text size="xs" c="dimmed" fw={500}>
                           Level
                         </Text>
                         <Text size="sm" fw={500}>
                           {level}
                         </Text>
-                      </Stack>
-                      <Stack gap={2}>
+                      </Flex>
+                      <Flex direction="column" gap={2}>
                         <Text size="xs" c="dimmed" fw={500}>
                           Balance
                         </Text>
-                        <Group gap={2}>
+                        <Flex gap={2}>
                           {gold > 0 && (
                             <>
                               <Text size="sm" fw={500}>
@@ -187,29 +179,29 @@ const MyCharacters = (props: MyCharactersProps) => {
                               0
                             </Text>
                           )}
-                        </Group>
-                      </Stack>
-                      <Stack gap={2}>
+                        </Flex>
+                      </Flex>
+                      <Flex direction="column" gap={2}>
                         <Text size="xs" c="dimmed" fw={500}>
                           Total XP
                         </Text>
                         <Text size="sm" fw={500}>
                           {l(character.xp)}
                         </Text>
-                      </Stack>
-                    </Group>
-                  </Group>
+                      </Flex>
+                    </Flex>
+                  </Flex>
 
                   <CharacterXPBar
                     character={character}
                     characterInfo={characterInfo}
                   />
-                </Stack>
+                </Flex>
               </Card>
             );
           })}
-        </Stack>
-      </Stack>
+        </Flex>
+      </Flex>
     </Flex>
   );
 };

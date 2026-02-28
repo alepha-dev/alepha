@@ -1,16 +1,5 @@
-import {
-  Avatar,
-  Badge,
-  Button,
-  Card,
-  Flex,
-  Grid,
-  Group,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
-import { notifications } from "@mantine/notifications";
+import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
+import { Avatar, Badge, Card, Grid, Title } from "@mantine/core";
 import {
   IconBrandGithub,
   IconBrandGoogle,
@@ -57,6 +46,7 @@ const MyProfile = (props: ProfileProps) => {
   const characterInfo = useInject(CharacterInfo);
   const userApi = useClient<UserController>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
   const [uploading, setUploading] = useState(false);
   const [currentUser, setCurrentUser] = useState(user);
   const { l } = useI18n();
@@ -114,16 +104,10 @@ const MyProfile = (props: ProfileProps) => {
         ...user,
         picture: updatedUser.picture,
       });
-      notifications.show({
-        title: "Success",
-        message: "Avatar updated successfully",
-        color: "green",
-      });
+      toast.success({ message: "Avatar updated successfully" });
     } catch (error) {
-      notifications.show({
-        title: "Upload Failed",
+      toast.danger({
         message: (error as Error)?.message || "Failed to update avatar",
-        color: "red",
       });
     } finally {
       setUploading(false);
@@ -136,11 +120,11 @@ const MyProfile = (props: ProfileProps) => {
 
   return (
     <Flex bg={"var(--alepha-ground)"} flex={1} p="lg">
-      <Stack w="100%" maw={1000}>
+      <Flex direction="column" w="100%" maw={1000}>
         {/* Header Card */}
         <Card shadow="sm" padding="xl" radius="md" withBorder>
-          <Group gap="xl" align="flex-start">
-            <Stack gap="xs" align="center">
+          <Flex gap="xl" align="flex-start">
+            <Flex direction="column" gap="xs" align="center">
               <Avatar
                 src={
                   currentUser.picture
@@ -159,7 +143,7 @@ const MyProfile = (props: ProfileProps) => {
                 accept="image/jpeg,image/png,image/webp,image/gif"
                 style={{ display: "none" }}
               />
-              <Button
+              <ActionButton
                 size="xs"
                 variant="light"
                 leftSection={<IconCamera size={16} />}
@@ -167,23 +151,23 @@ const MyProfile = (props: ProfileProps) => {
                 loading={uploading}
               >
                 {uploading ? "Uploading..." : "Change Avatar"}
-              </Button>
-            </Stack>
+              </ActionButton>
+            </Flex>
 
-            <Stack gap="md" flex={1}>
-              <Stack gap="xs">
+            <Flex direction="column" gap="md" flex={1}>
+              <Flex direction="column" gap="xs">
                 <Title order={2}>{user.username || "Anonymous User"}</Title>
-                <Group gap="sm">
+                <Flex gap="sm">
                   <IconMail size={16} />
                   <Text c="dimmed">{user.email}</Text>
-                </Group>
-                <Group gap="sm">
+                </Flex>
+                <Flex gap="sm">
                   <IconCalendar size={16} />
                   <Text c="dimmed">Member since {l(user.createdAt)}</Text>
-                </Group>
-              </Stack>
+                </Flex>
+              </Flex>
 
-              <Group gap="sm">
+              <Flex gap="sm">
                 {user.roles.map((role) => (
                   <Badge
                     key={role}
@@ -194,92 +178,92 @@ const MyProfile = (props: ProfileProps) => {
                     {role.charAt(0).toUpperCase() + role.slice(1)}
                   </Badge>
                 ))}
-              </Group>
-            </Stack>
-          </Group>
+              </Flex>
+            </Flex>
+          </Flex>
         </Card>
 
         <Grid>
           {/* Gaming Statistics */}
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card shadow="sm" padding="lg" radius="md" withBorder h="100%">
-              <Stack gap="md">
-                <Group gap="sm">
+              <Flex direction="column" gap="md">
+                <Flex gap="sm">
                   <IconTrophy size={20} />
                   <Title order={4}>Gaming Statistics</Title>
-                </Group>
+                </Flex>
 
-                <Stack gap="sm">
-                  <Group justify="space-between">
+                <Flex direction="column" gap="sm">
+                  <Flex justify="space-between">
                     <Text size="sm" fw={500}>
                       Total Experience
                     </Text>
                     <Text size="sm" fw={600}>
                       {l(totalXP)} XP
                     </Text>
-                  </Group>
+                  </Flex>
 
-                  <Group justify="space-between">
+                  <Flex justify="space-between">
                     <Text size="sm" fw={500}>
                       Total Gold
                     </Text>
                     <Text size="sm" c="yellow.6" fw={600}>
                       {l(totalGold)}g
                     </Text>
-                  </Group>
+                  </Flex>
 
-                  <Group justify="space-between">
+                  <Flex justify="space-between">
                     <Text size="sm" fw={500}>
                       Active Characters
                     </Text>
                     <Text size="sm" fw={600}>
                       {characters.length}
                     </Text>
-                  </Group>
+                  </Flex>
 
-                  <Group justify="space-between">
+                  <Flex justify="space-between">
                     <Text size="sm" fw={500}>
                       Highest Level
                     </Text>
                     <Badge variant="light">Level {highestLevel}</Badge>
-                  </Group>
+                  </Flex>
 
                   {characters.length > 1 && (
-                    <Group justify="space-between">
+                    <Flex justify="space-between">
                       <Text size="sm" fw={500}>
                         Average Level
                       </Text>
                       <Badge variant="light">Level {averageLevel}</Badge>
-                    </Group>
+                    </Flex>
                   )}
-                </Stack>
-              </Stack>
+                </Flex>
+              </Flex>
             </Card>
           </Grid.Col>
 
           {/* Account Security */}
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card shadow="sm" padding="lg" radius="md" withBorder h="100%">
-              <Stack gap="md">
-                <Group gap="sm">
+              <Flex direction="column" gap="md">
+                <Flex gap="sm">
                   <IconShield size={20} />
                   <Title order={4}>Account Security</Title>
-                </Group>
+                </Flex>
 
-                <Stack gap="sm">
-                  <Group justify="space-between">
+                <Flex direction="column" gap="sm">
+                  <Flex justify="space-between">
                     <Text size="sm" fw={500}>
                       Connected Providers
                     </Text>
                     <Text size="sm" fw={600}>
                       {identities.length}
                     </Text>
-                  </Group>
+                  </Flex>
 
-                  <Stack gap="xs">
+                  <Flex direction="column" gap="xs">
                     {identities.map((identity) => (
-                      <Group key={identity.id} justify="space-between">
-                        <Group gap="xs">
+                      <Flex key={identity.id} justify="space-between">
+                        <Flex gap="xs">
                           {getProviderIcon(identity.provider)}
                           <Text size="sm">
                             {identity.provider === "usernamePassword"
@@ -287,23 +271,23 @@ const MyProfile = (props: ProfileProps) => {
                               : identity.provider.charAt(0).toUpperCase() +
                                 identity.provider.slice(1)}
                           </Text>
-                        </Group>
+                        </Flex>
                         <Badge variant="light" size="xs">
                           Active
                         </Badge>
-                      </Group>
+                      </Flex>
                     ))}
-                  </Stack>
+                  </Flex>
 
                   <Text size="xs" c="dimmed" mt="xs">
                     Last updated: {l(user.updatedAt)}
                   </Text>
-                </Stack>
-              </Stack>
+                </Flex>
+              </Flex>
             </Card>
           </Grid.Col>
         </Grid>
-      </Stack>
+      </Flex>
     </Flex>
   );
 };

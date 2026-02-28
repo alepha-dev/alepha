@@ -1,4 +1,5 @@
-import { ActionIcon, ColorInput, Divider, Group, Tooltip } from "@mantine/core";
+import { ActionButton, Flex } from "@alepha/ui";
+import { ColorInput, Divider, Tooltip } from "@mantine/core";
 import {
   IconArrowBackUp,
   IconArrowForwardUp,
@@ -58,11 +59,11 @@ const WhiteboardToolbar = ({
   isUploadingImage,
 }: WhiteboardToolbarProps) => {
   return (
-    <Group gap="xs">
+    <Flex gap="xs" align={"center"}>
       {tools.map((t) => (
         <Tooltip key={t.id} label={t.label} position="bottom">
-          <ActionIcon
-            variant={tool === t.id ? "filled" : "subtle"}
+          <ActionButton
+            variant={tool === t.id ? "filled" : "default"}
             color={tool === t.id ? "blue" : "gray"}
             onClick={() => {
               if (t.id === "image") {
@@ -71,11 +72,10 @@ const WhiteboardToolbar = ({
                 onToolChange(t.id);
               }
             }}
-            size="md"
             loading={t.id === "image" && isUploadingImage}
           >
             {t.icon}
-          </ActionIcon>
+          </ActionButton>
         </Tooltip>
       ))}
 
@@ -83,8 +83,7 @@ const WhiteboardToolbar = ({
 
       <Tooltip label="Stroke color" position="bottom">
         <ColorInput
-          size="xs"
-          w={100}
+          size="sm"
           value={strokeColor}
           onChange={onStrokeColorChange}
           format="hex"
@@ -109,8 +108,7 @@ const WhiteboardToolbar = ({
 
       <Tooltip label="Fill color" position="bottom">
         <ColorInput
-          size="xs"
-          w={100}
+          size="sm"
           value={fillColor}
           onChange={onFillColorChange}
           format="hex"
@@ -136,29 +134,27 @@ const WhiteboardToolbar = ({
       <Divider orientation="vertical" />
 
       <Tooltip label="Undo (Ctrl+Z)" position="bottom">
-        <ActionIcon
-          variant="subtle"
+        <ActionButton
+          variant="default"
           color="gray"
           onClick={onUndo}
           disabled={!canUndo}
-          size="md"
         >
           <IconArrowBackUp size={18} />
-        </ActionIcon>
+        </ActionButton>
       </Tooltip>
 
       <Tooltip label="Redo (Ctrl+Shift+Z)" position="bottom">
-        <ActionIcon
-          variant="subtle"
+        <ActionButton
+          variant="default"
           color="gray"
           onClick={onRedo}
           disabled={!canRedo}
-          size="md"
         >
           <IconArrowForwardUp size={18} />
-        </ActionIcon>
+        </ActionButton>
       </Tooltip>
-    </Group>
+    </Flex>
   );
 };
 

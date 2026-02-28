@@ -207,6 +207,11 @@ export interface DataTableProps<T extends object, Filters extends TObject> {
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
+   * Label shown when the table has no results. Defaults to "No results".
+   */
+  emptyLabel?: string;
+
+  /**
    * Props to pass to the Mantine Table component.
    */
   tableProps?: TableProps;

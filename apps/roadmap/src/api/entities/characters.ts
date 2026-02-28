@@ -19,6 +19,12 @@ export const characters = $entity({
     balance: db.default(t.integer(), 0),
     owner: db.default(t.boolean(), true),
   }),
+  indexes: [
+    {
+      columns: ["userId", "projectId"],
+      unique: true,
+    },
+  ],
 });
 
 export type Character = Static<typeof characters.schema>;

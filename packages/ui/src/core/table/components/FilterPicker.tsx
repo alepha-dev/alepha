@@ -74,7 +74,7 @@ const FilterPicker = ({
       <Popover.Target>
         <div>
           <ActionButton
-            variant="subtle"
+            variant={"minimal"}
             icon={IconFilter}
             onClick={() => setOpened((o) => !o)}
           />
@@ -102,14 +102,14 @@ const FilterPicker = ({
             <Flex gap={4}>
               <ActionButton
                 size="compact-xs"
-                variant="subtle"
+                variant={"minimal"}
                 onClick={handleShowAll}
               >
                 All
               </ActionButton>
               <ActionButton
                 size="compact-xs"
-                variant="subtle"
+                variant={"minimal"}
                 onClick={handleHideAll}
               >
                 None

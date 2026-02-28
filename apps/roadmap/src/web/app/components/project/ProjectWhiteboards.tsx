@@ -1,5 +1,5 @@
-import { useDialog } from "@alepha/ui";
-import { ActionIcon, Box, Flex, Loader, Text } from "@mantine/core";
+import { ActionButton, Flex, Text, useDialog } from "@alepha/ui";
+import { Loader } from "@mantine/core";
 import { IconBrush, IconPlus } from "@tabler/icons-react";
 import { useClient, useStore } from "alepha/react";
 import { type ComponentType, useEffect, useState } from "react";
@@ -125,16 +125,10 @@ const ProjectWhiteboards = (props: ProjectWhiteboardsProps) => {
   };
 
   return (
-    <Box
-      h="100%"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Box style={{ flex: 1, overflow: "hidden" }}>
+    <Flex w={"100%"} flex={1} h="100%" align={"center"}>
+      <Flex w={"100%"} h={"100%"} flex={1}>
         {!CanvasComponent ? (
-          <Flex h="100%" align="center" justify="center">
+          <Flex w={"100%"} flex={1} h="100%" align="center" justify="center">
             <Loader size="lg" />
           </Flex>
         ) : currentWhiteboard ? (
@@ -155,19 +149,19 @@ const ProjectWhiteboards = (props: ProjectWhiteboardsProps) => {
             <Text c="dimmed" size="lg" ta="center">
               No drawings yet
             </Text>
-            <ActionIcon
+            <ActionButton
               variant="light"
               color="green"
               size="lg"
               onClick={handleCreateWhiteboard}
-              title="Create drawing"
+              tooltip="Create drawing"
             >
               <IconPlus size={20} />
-            </ActionIcon>
+            </ActionButton>
           </Flex>
         )}
-      </Box>
-    </Box>
+      </Flex>
+    </Flex>
   );
 };
 

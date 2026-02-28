@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { $inject, $use, Alepha, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
@@ -41,8 +40,6 @@ export class DevCommand {
       ),
     }),
     handler: async ({ root, flags }) => {
-      await this.ensureDevSecret(root);
-
       await this.scaffolder.ensureConfig(root, {
         tsconfigJson: true,
       });
@@ -65,35 +62,4 @@ export class DevCommand {
       await this.viteDevServer.start();
     },
   });
-
-  protected async ensureDevSecret(root: string) {
-    if (process.env.APP_SECRET) return;
-
-    const dir = this.fs.join(root, "node_modules", ".alepha");
-    const secretPath = this.fs.join(dir, "secret.txt");
-
-    try {
-      if (await this.fs.exists(secretPath)) {
-        process.env.APP_SECRET = (
-          await this.fs.readTextFile(secretPath)
-        ).trim();
-        return;
-      }
-    } catch {
-      // fall through
-    }
-
-    const secret = randomBytes(32).toString("hex");
-
-    try {
-      await this.fs.mkdir(dir, { recursive: true });
-      await this.fs.writeFile(secretPath, secret);
-    } catch {
-      // write failed, use in-memory
-    }
-
-    process.env.APP_SECRET = secret;
-
-    return true;
-  }
 }

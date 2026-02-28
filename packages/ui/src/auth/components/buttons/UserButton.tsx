@@ -146,28 +146,21 @@ const UserButton = (props: UserButtonProps) => {
       icon={
         hasAvatar ? undefined : icon === null ? undefined : (icon ?? IconUser)
       }
-      leftSection={
-        hasAvatar ? (
-          <Avatar
-            src={`/api/files/${auth.user.picture}`}
-            size={24}
-            radius="xl"
-          />
-        ) : undefined
-      }
+      px={8}
       menu={{
         menuProps: {
           withArrow: true,
           arrowSize: 12,
         },
-
         position: "bottom",
         width: 200,
         ...menuConfig,
         items,
       }}
     >
-      {children}
+      {hasAvatar ? (
+        <Avatar src={`/api/files/${auth.user.picture}`} size={24} radius="xl" />
+      ) : undefined}
     </ActionButton>
   );
 };

@@ -1,4 +1,4 @@
-import { ActionButton } from "@alepha/ui";
+import { ActionButton, Flex, useToast } from "@alepha/ui";
 import {
   DndContext,
   type DragEndEvent,
@@ -6,26 +6,26 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { Badge, Card, Drawer, Flex, Loader, Text } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
-import { useClient } from "alepha/react";
-import { useId, useMemo, useState } from "react";
+import { Badge, Drawer, Loader, ScrollArea } from "@mantine/core";
+import { useClient, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { KanbanController } from "../../../../api/controllers/KanbanController.ts";
 import type { TaskController } from "../../../../api/controllers/TaskController.ts";
+import type { Project } from "../../../../api/entities/projects.ts";
 import type { Task } from "../../../../api/entities/tasks.ts";
-import { theme } from "../../constants/theme.ts";
+import {
+  kanbanProjectAtom,
+  kanbanReloadAtom,
+} from "../../atoms/kanbanProjectAtom.ts";
+import type { I18n } from "../../services/I18n.ts";
 import TaskView from "../project/task/TaskView.tsx";
 import KanbanColumn from "./KanbanColumn.tsx";
 
 type TaskStatus = "new" | "accepted" | "completed";
 
 interface KanbanBoardProps {
-  project: {
-    id: number;
-    title: string;
-    packages: string[];
-    public?: boolean;
-  };
+  project: Project;
   tasks: Task[];
   readOnly: boolean;
 }
@@ -45,9 +45,22 @@ const KanbanBoard = ({
   const [activeZone, setActiveZone] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [, setKanbanProject] = useStore(kanbanProjectAtom);
+  const [reloadKey] = useStore(kanbanReloadAtom);
   const taskApi = useClient<TaskController>();
   const kanbanApi = useClient<KanbanController>();
+  const { tr } = useI18n<I18n, "en">();
+  const toast = useToast();
   const dndId = useId();
+
+  useEffect(() => {
+    setKanbanProject({ project, readOnly });
+    return () => setKanbanProject(undefined as any);
+  }, [project, readOnly]);
+
+  useEffect(() => {
+    if (reloadKey?.key) reload();
+  }, [reloadKey]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -104,20 +117,12 @@ const KanbanBoard = ({
     if (fromStatus === toStatus) return;
 
     if (fromStatus === "completed") {
-      notifications.show({
-        message: "Completed tasks cannot be moved",
-        color: "red",
-        autoClose: 3000,
-      });
+      toast.danger({ message: String(tr("kanban.error.completedCannotMove")) });
       return;
     }
 
     if (fromStatus === "new" && toStatus === "completed") {
-      notifications.show({
-        message: "Accept the task first before completing it",
-        color: "orange",
-        autoClose: 3000,
-      });
+      toast.warning({ message: String(tr("kanban.error.acceptFirst")) });
       return;
     }
 
@@ -131,62 +136,47 @@ const KanbanBoard = ({
       }
       await reload();
     } catch (error: any) {
-      notifications.show({
-        message: error?.message || "Action failed",
-        color: "red",
-        autoClose: 3000,
+      toast.danger({
+        message: error?.message || String(tr("kanban.error.actionFailed")),
       });
     }
   };
 
   return (
-    <Flex direction="column" h="100vh">
-      {/* Header */}
-      <Card
-        p="sm"
-        radius={0}
-        withBorder
-        bg={theme.colors.panel}
-        style={{ borderLeft: 0, borderRight: 0, borderTop: 0 }}
-      >
-        <Flex justify="space-between" align="center">
-          <Flex align="center" gap="sm">
-            <Text fw={600} size="lg">
-              {project.title}
-            </Text>
+    <Flex direction="column" flex={1} style={{ overflow: "hidden" }}>
+      {/* Zone filter nav */}
+      <Flex surface borderedBottom centerY gap={4} px="sm" py={6}>
+        <ScrollArea type="auto" scrollbars="x" style={{ flex: 1 }}>
+          <Flex gap={4} align="center">
             {readOnly && (
-              <Badge size="xs" variant="light" color="gray">
-                Read only
+              <Badge size="xs" variant="light" color="gray" mr={4}>
+                {tr("kanban.readOnly")}
               </Badge>
             )}
             {loading && <Loader type="dots" size="xs" />}
-          </Flex>
-
-          {/* Zone filter */}
-          <Flex gap={4} align="center">
             <ActionButton
               size="xs"
-              variant={activeZone === null ? "light" : "subtle"}
+              variant={activeZone === null ? "filled" : "default"}
               onClick={() => setActiveZone(null)}
             >
-              All
+              {tr("kanban.filter.all")}
             </ActionButton>
             {project.packages.map((zone: string) => (
               <ActionButton
                 key={zone}
                 size="xs"
-                variant={activeZone === zone ? "light" : "subtle"}
+                variant={activeZone === zone ? "filled" : "default"}
                 onClick={() => setActiveZone(activeZone === zone ? null : zone)}
               >
                 {zone}
               </ActionButton>
             ))}
           </Flex>
-        </Flex>
-      </Card>
+        </ScrollArea>
+      </Flex>
 
       {/* Columns */}
-      <Flex flex={1} p="sm" gap="sm" className="overflow-auto">
+      <Flex flex={1} style={{ overflow: "hidden" }}>
         <DndContext id={dndId} sensors={sensors} onDragEnd={handleDragEnd}>
           <KanbanColumn
             status="new"

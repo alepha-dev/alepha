@@ -1,12 +1,11 @@
 import {
-  $env,
   $hook,
   $inject,
   Alepha,
   AppNotStartedError,
-  alephaSecretEnvSchema,
   ContainerLockedError,
 } from "alepha";
+import { SecretProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import { ForbiddenError } from "alepha/server";
 import type { JSONWebKeySet, JWTPayload } from "jose";
@@ -34,11 +33,11 @@ export class SecurityProvider {
 
   protected readonly log = $logger();
   protected readonly jwt = $inject(JwtProvider);
-  protected readonly env = $env(alephaSecretEnvSchema);
   protected readonly alepha = $inject(Alepha);
+  protected readonly secretProvider = $inject(SecretProvider);
 
   public get secretKey(): string {
-    return this.env.APP_SECRET;
+    return this.secretProvider.secretKey;
   }
 
   /**
@@ -53,7 +52,7 @@ export class SecurityProvider {
     ? [
         {
           name: "default",
-          secret: this.env.APP_SECRET,
+          secret: this.secretKey,
           roles: [
             {
               name: "admin",

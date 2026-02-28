@@ -7,6 +7,7 @@ import { currentUserAtom } from "alepha/security";
 import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
+import type { ChapterController } from "../../api/controllers/ChapterController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { KanbanController } from "../../api/controllers/KanbanController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
@@ -14,6 +15,7 @@ import type { ProjectStatsController } from "../../api/controllers/ProjectStatsC
 import type { TaskController } from "../../api/controllers/TaskController.ts";
 import type { WhiteboardController } from "../../api/controllers/WhiteboardController.ts";
 import { currentAssignedTasksAtom } from "./atoms/currentAssignedTasksAtom.ts";
+import { currentChaptersAtom } from "./atoms/currentChaptersAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectCharacterAtom } from "./atoms/currentProjectCharacterAtom.ts";
 import { currentTaskAtom } from "./atoms/currentTaskAtom.ts";
@@ -33,6 +35,7 @@ export class AppRouter {
   whiteboardApi = $client<WhiteboardController>();
   invitationApi = $client<InvitationController>();
   kanbanApi = $client<KanbanController>();
+  chapterApi = $client<ChapterController>();
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
   meRouter = $inject(MeRouter);
@@ -80,18 +83,15 @@ export class AppRouter {
       }
     },
     errorHandler: (error, state) => {
-      if (HttpError.is(error, 401) && state.url.pathname !== "/login") {
-        return new Redirection(`/login?r=${state.url.pathname}`);
+      if (HttpError.is(error, 401) && state.url.pathname !== "/auth/login") {
+        return new Redirection(`/auth/login?r=${state.url.pathname}`);
       }
 
       if (!this.alepha.isProduction()) {
         return;
       }
 
-      return createElement(ErrorPage, {
-        error,
-        alepha: this.alepha,
-      });
+      return createElement(ErrorPage);
     },
   });
 
@@ -133,7 +133,7 @@ export class AppRouter {
   });
 
   kanban = $page({
-    path: "/kanban/:projectId",
+    path: "/k/:projectId",
     schema: {
       params: t.object({
         projectId: t.integer(),
@@ -153,11 +153,10 @@ export class AppRouter {
 
   project = $page({
     children: () => [
-      this.projectTask, //
       this.projectBoard,
+      this.projectChapters,
       this.projectSettings,
       this.projectAnalytics,
-      this.projectPlayers,
       this.projectWhiteboards,
     ],
     path: "/p/:projectId",
@@ -175,9 +174,14 @@ export class AppRouter {
           },
         });
 
+      const chapters = await this.chapterApi.getChapters({
+        params: { projectId: params.projectId },
+      });
+
       this.alepha.store.set(currentProjectAtom, project);
       this.alepha.store.set(currentProjectCharacterAtom, character);
       this.alepha.store.set(currentAssignedTasksAtom, tasks);
+      this.alepha.store.set(currentChaptersAtom, chapters);
 
       return {
         project,
@@ -187,42 +191,24 @@ export class AppRouter {
       this.alepha.store.set(currentProjectCharacterAtom, undefined);
       this.alepha.store.set(currentProjectAtom, undefined);
       this.alepha.store.set(currentAssignedTasksAtom, []);
+      this.alepha.store.set(currentChaptersAtom, undefined);
     },
   });
 
   projectBoard = $page({
+    children: () => [this.projectBoardTable, this.projectTask],
     path: "/",
     lazy: () => import("./components/project/ProjectBoard.tsx"),
   });
 
-  projectPlayers = $page({
-    path: "/players",
-    lazy: () => import("./components/project/ProjectPlayers.tsx"),
-    loader: async ({ params }) => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
+  projectBoardTable = $page({
+    path: "/",
+    lazy: () => import("./components/project/ProjectBoardTable.tsx"),
+  });
 
-      const [players, pendingInvitations] = await Promise.all([
-        this.projectApi.getProjectPlayers({
-          params: { id: project.id },
-        }),
-        this.invitationApi
-          .getProjectInvitations({
-            params: { projectId: project.id },
-          })
-          .catch(() => []), // Fail gracefully if no permission
-      ]);
-
-      return {
-        players,
-        project,
-        pendingInvitations: pendingInvitations.filter(
-          (inv) => inv.status === "pending",
-        ),
-      };
-    },
+  projectChapters = $page({
+    path: "/chapters",
+    lazy: () => import("./components/project/ProjectChapters.tsx"),
   });
 
   projectAnalytics = $page({
@@ -249,8 +235,23 @@ export class AppRouter {
         throw new NotFoundError("Project not found");
       }
 
+      const [players, pendingInvitations] = await Promise.all([
+        this.projectApi.getProjectPlayers({
+          params: { id: project.id },
+        }),
+        this.invitationApi
+          .getProjectInvitations({
+            params: { projectId: project.id },
+          })
+          .catch(() => []),
+      ]);
+
       return {
         project,
+        players,
+        pendingInvitations: pendingInvitations.filter(
+          (inv) => inv.status === "pending",
+        ),
       };
     },
   });

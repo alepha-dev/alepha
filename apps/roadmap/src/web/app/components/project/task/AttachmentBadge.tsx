@@ -1,4 +1,5 @@
-import { ActionIcon, Badge, HoverCard, Image, Text } from "@mantine/core";
+import { ActionButton, Text } from "@alepha/ui";
+import { Badge, HoverCard, Image } from "@mantine/core";
 import { IconFile, IconPhoto, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 
@@ -39,7 +40,7 @@ const AttachmentBadge = (props: AttachmentBadgeProps) => {
       rightSection={
         !disabled &&
         onRemove && (
-          <ActionIcon
+          <ActionButton
             size="xs"
             variant="transparent"
             color="red"
@@ -49,7 +50,7 @@ const AttachmentBadge = (props: AttachmentBadgeProps) => {
             }}
           >
             <IconTrash size={12} />
-          </ActionIcon>
+          </ActionButton>
         )
       }
       style={{ cursor: "pointer" }}

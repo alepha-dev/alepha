@@ -25,7 +25,6 @@ import { CodecManager } from "./providers/CodecManager.ts";
 import { EventManager } from "./providers/EventManager.ts";
 import { StateManager } from "./providers/StateManager.ts";
 import type { TSchema } from "./providers/TypeProvider.ts";
-import { t } from "./providers/TypeProvider.ts";
 
 /**
  * Core container of the Alepha framework.
@@ -160,11 +159,6 @@ export class Alepha {
    * If you are not interested about these helpers, you can use the constructor directly.
    */
   public static create(state: Partial<State> = {}): Alepha {
-    // set a fixed APP_SECRET for tests so sessions/cookies are stable
-    if (typeof process === "object" && process.env?.NODE_ENV === "test") {
-      process.env.APP_SECRET ??= "alepha-test-secret";
-    }
-
     // merge process.env with the state.env
     if (typeof process === "object" && typeof process.env === "object") {
       state.env = {
@@ -1172,13 +1166,6 @@ export interface Env {
    */
   APP_SECRET?: string;
 }
-
-export const alephaSecretEnvSchema = t.object({
-  APP_SECRET: t.text({
-    description:
-      "The secret key used for signing JWTs, encrypting cookies, and other security features. Required in production.",
-  }),
-});
 
 // ---------------------------------------------------------------------------------------------------------------------
 

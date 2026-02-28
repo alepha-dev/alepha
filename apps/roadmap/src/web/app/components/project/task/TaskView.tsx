@@ -1,5 +1,5 @@
-import { ActionButton } from "@alepha/ui";
-import { Card, Drawer, Flex, Stack, Text, Textarea } from "@mantine/core";
+import { ActionButton, Flex, Text } from "@alepha/ui";
+import { Card, Drawer, Textarea } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import {
   IconCircleFilled,
@@ -7,6 +7,7 @@ import {
   IconCopy,
   IconEdit,
   IconFileText,
+  IconHistory,
   IconNotes,
   IconPaperclip,
   IconPigMoney,
@@ -41,6 +42,7 @@ import type { I18n } from "../../../services/I18n.ts";
 import AttachmentBadge from "./AttachmentBadge.tsx";
 import TaskCreate from "./TaskCreate.tsx";
 import TaskDescription from "./TaskDescription.tsx";
+import TaskHistory from "./TaskHistory.tsx";
 import TaskViewObjectives from "./TaskViewObjectives.tsx";
 
 export interface TaskViewProps {
@@ -82,16 +84,14 @@ const TaskView = (props: TaskViewProps) => {
   const openDeleteModal = () =>
     new Promise<boolean>((resolve) =>
       modals.openConfirmModal({
-        title: "Abandon the quest",
+        title: tr("task.view.abandon.title"),
         centered: true,
-        children: (
-          <Text size="sm">
-            Are you sure you want to abandon this quest? You will lose all
-            progress on this task.
-          </Text>
-        ),
+        children: <Text size="sm">{tr("task.view.abandon.confirm")}</Text>,
         onClose: () => resolve(false),
-        labels: { confirm: "Abandon Quest", cancel: "Cancel" },
+        labels: {
+          confirm: tr("task.view.abandon.confirmButton"),
+          cancel: tr("common.cancel"),
+        },
         confirmProps: { color: "red" },
         onCancel: () => resolve(false),
         onConfirm: () => resolve(true),
@@ -130,107 +130,113 @@ const TaskView = (props: TaskViewProps) => {
       p={0}
       m={2}
     >
-      <Stack flex={1} className={"overflow-auto"} gap={0}>
-        <Stack flex={1} className={"overflow-auto"} gap={0}>
+      <Flex direction="column" flex={1} className={"overflow-auto"} gap={0}>
+        <Flex direction="column" flex={1} className={"overflow-auto"} gap={0}>
           <Flex
             px={"lg"}
             py={"md"}
             direction={"column"}
-            gap={"md"}
+            gap={"xl"}
             flex={1}
             className={"overflow-auto"}
           >
-            <Flex gap={"xs"} align="center" justify="center">
-              <IconTag size={theme.icon.size.md} />
-              <Text
-                size="lg"
-                fw={"bold"}
-                style={{ textWrap: "nowrap" }}
-                className={"cinzel-400"}
-              >
-                {task.title}
-              </Text>
-              {!task.completedAt && project && (
-                <>
-                  <EditTaskButton
-                    task={task}
-                    onUpdate={(it) => {
-                      updateTask(it);
-                      alepha.store.set(currentTaskAtom, it);
-                    }}
-                    showDialog={showDialog}
-                    setShowDialog={setShowDialog}
-                  />
-                  <NoteButton
-                    task={task}
-                    onUpdate={(it) => {
-                      updateTask(it);
-                      alepha.store.set(currentTaskAtom, it);
-                    }}
-                  />
-                  <DuplicateTaskButton task={task} />
-                </>
-              )}
-              <Flex
-                flex={1}
-                style={{
-                  opacity: 0.1,
-                  height: 1,
-                  backgroundColor: "var(--alepha-text)",
-                }}
-              />
-              <TaskTimer
-                task={task}
-                onUpdate={(it) => {
-                  updateTask(it);
-                  alepha.store.set(currentTaskAtom, it);
-                  const tasks =
-                    alepha.store.get(currentAssignedTasksAtom) ?? [];
-                  alepha.store.set(
-                    currentAssignedTasksAtom,
-                    tasks.map((t) => (t.id === it.id ? it : t)),
-                  );
-                }}
-              />
-              <ActionButton
-                px={"xs"}
-                {...(props.onClose
-                  ? { onClick: props.onClose }
-                  : project
-                    ? {
-                        href: router.path("projectBoard", {
-                          params: { projectId: String(project.id) },
-                        }),
-                      }
-                    : {})}
-              >
-                <IconX size={theme.icon.size.md} />
-              </ActionButton>
-            </Flex>
-            <Text size={"sm"}>
-              {tr("task.view.summary", {
-                args: [task.priority, info.getRank(task.complexity)],
-              })}
-            </Text>
-
-            <Stack gap={0}>
+            <Flex col gap={"xs"}>
               <Flex gap={"xs"} align="center" justify="center">
-                <IconFileText size={theme.icon.size.lg} />
-                <Text size="lg" fw={"bold"} className={"cinzel-400"}>
-                  {tr("task.view.description")}
+                <IconTag size={theme.icon.size.md} />
+                <Text
+                  size="lg"
+                  fw={"bold"}
+                  style={{ textWrap: "nowrap" }}
+                  className={"cinzel-400"}
+                >
+                  {task.title}
                 </Text>
+                {!task.completedAt && project && (
+                  <>
+                    <EditTaskButton
+                      task={task}
+                      onUpdate={(it) => {
+                        updateTask(it);
+                        alepha.store.set(currentTaskAtom, it);
+                      }}
+                      showDialog={showDialog}
+                      setShowDialog={setShowDialog}
+                    />
+                    <NoteButton
+                      task={task}
+                      onUpdate={(it) => {
+                        updateTask(it);
+                        alepha.store.set(currentTaskAtom, it);
+                      }}
+                    />
+                    <DuplicateTaskButton task={task} />
+                  </>
+                )}
                 <Flex
-                  w={"100%"}
+                  flex={1}
                   style={{
                     opacity: 0.1,
                     height: 1,
                     backgroundColor: "var(--alepha-text)",
                   }}
                 />
+                <TaskTimer
+                  task={task}
+                  onUpdate={(it) => {
+                    updateTask(it);
+                    alepha.store.set(currentTaskAtom, it);
+                    const tasks =
+                      alepha.store.get(currentAssignedTasksAtom) ?? [];
+                    alepha.store.set(
+                      currentAssignedTasksAtom,
+                      tasks.map((t) => (t.id === it.id ? it : t)),
+                    );
+                  }}
+                />
+                <ActionButton
+                  variant={"minimal"}
+                  px={"xs"}
+                  {...(props.onClose
+                    ? { onClick: props.onClose }
+                    : project
+                      ? {
+                          href: router.path("projectBoard", {
+                            params: { projectId: String(project.id) },
+                          }),
+                        }
+                      : {})}
+                >
+                  <IconX size={theme.icon.size.md} />
+                </ActionButton>
               </Flex>
-            </Stack>
 
-            <TaskDescription task={task} onEdit={() => setShowDialog(true)} />
+              <Text size={"sm"}>
+                {tr("task.view.summary", {
+                  args: [task.priority, info.getRank(task.complexity)],
+                })}
+              </Text>
+            </Flex>
+
+            <Flex col gap={"xs"}>
+              <Flex direction="column" gap={0}>
+                <Flex gap={"xs"} align="center" justify="center">
+                  <IconFileText size={theme.icon.size.lg} />
+                  <Text size="lg" fw={"bold"} className={"cinzel-400"}>
+                    {tr("task.view.description")}
+                  </Text>
+                  <Flex
+                    w={"100%"}
+                    style={{
+                      opacity: 0.1,
+                      height: 1,
+                      backgroundColor: "var(--alepha-text)",
+                    }}
+                  />
+                </Flex>
+              </Flex>
+
+              <TaskDescription task={task} onEdit={() => setShowDialog(true)} />
+            </Flex>
 
             <TaskViewObjectives
               task={task}
@@ -264,47 +270,70 @@ const TaskView = (props: TaskViewProps) => {
               </>
             )}
 
-            <Flex gap={"xs"} align="center" justify="center">
-              <IconPigMoney size={theme.icon.size.lg} />
-              <Text className={"cinzel-400"} size="lg" fw={"bold"}>
-                {tr("task.view.rewards")}
-              </Text>
-              <Flex
-                w={"100%"}
-                style={{
-                  opacity: 0.1,
-                  height: 1,
-                  backgroundColor: "var(--alepha-text)",
-                }}
-              />
-            </Flex>
-            <Flex gap={"sm"}>
-              <Text size={"sm"}>{tr("task.view.receive")}</Text>
-              <Flex gap={"xs"} align={"center"}>
-                <Flex align={"center"} gap={2}>
-                  <Text size={"sm"}>{info.getGold(money)}</Text>
-                  <IconCircleFilled
-                    color={"var(--color-gold)"}
-                    size={theme.icon.size.xs}
-                  />
-                </Flex>
-                <Flex align={"center"} gap={2}>
-                  <Text size={"sm"}>{info.getSilver(money)}</Text>
-                  <IconCircleFilled
-                    color={"var(--color-silver)"}
-                    size={theme.icon.size.xs}
-                  />
+            <Flex col gap={"xs"}>
+              <Flex gap={"xs"} align="center" justify="center">
+                <IconPigMoney size={theme.icon.size.lg} />
+                <Text className={"cinzel-400"} size="lg" fw={"bold"}>
+                  {tr("task.view.rewards")}
+                </Text>
+                <Flex
+                  w={"100%"}
+                  style={{
+                    opacity: 0.1,
+                    height: 1,
+                    backgroundColor: "var(--alepha-text)",
+                  }}
+                />
+              </Flex>
+
+              <Flex gap={"sm"}>
+                <Text size={"sm"}>{tr("task.view.receive")}</Text>
+                <Flex gap={"xs"} align={"center"}>
+                  <Flex align={"center"} gap={2}>
+                    <Text size={"sm"}>{info.getGold(money)}</Text>
+                    <IconCircleFilled
+                      color={"var(--color-gold)"}
+                      size={theme.icon.size.xs}
+                    />
+                  </Flex>
+                  <Flex align={"center"} gap={2}>
+                    <Text size={"sm"}>{info.getSilver(money)}</Text>
+                    <IconCircleFilled
+                      color={"var(--color-silver)"}
+                      size={theme.icon.size.xs}
+                    />
+                  </Flex>
                 </Flex>
               </Flex>
+
+              <Flex gap={"sm"}>
+                <Text size={"sm"}>{tr("task.view.experience")}</Text>
+                <Text size={"sm"} fw={"bold"}>
+                  {info.getXpFromTask(task)} XP
+                </Text>
+              </Flex>
             </Flex>
-            <Flex gap={"sm"}>
-              <Text size={"sm"}>{tr("task.view.experience")}</Text>
-              <Text size={"sm"} fw={"bold"}>
-                {info.getXpFromTask(task)} XP
-              </Text>
+
+            {/* History */}
+            <Flex col>
+              <Flex gap={"xs"} align="center" justify="center">
+                <IconHistory size={theme.icon.size.lg} />
+                <Text className={"cinzel-400"} size="lg" fw={"bold"}>
+                  {tr("task.view.history")}
+                </Text>
+                <Flex
+                  w={"100%"}
+                  style={{
+                    opacity: 0.1,
+                    height: 1,
+                    backgroundColor: "var(--alepha-text)",
+                  }}
+                />
+              </Flex>
+              <TaskHistory task={task} />
             </Flex>
           </Flex>
-        </Stack>
+        </Flex>
         {!task.completedAt && (
           <Flex p={"xs"}>
             <Card
@@ -320,7 +349,7 @@ const TaskView = (props: TaskViewProps) => {
                   <ActionButton
                     w={"100%"}
                     c={"blue"}
-                    variant={"subtle"}
+                    variant={"minimal"}
                     leftSection={<IconSignature size={theme.icon.size.md} />}
                     disabled={!taskApi.acceptTask.can()}
                     onClick={async () => {
@@ -346,7 +375,7 @@ const TaskView = (props: TaskViewProps) => {
                       px={"sm"}
                       textVisibleFrom={"sm"}
                       c={"red"}
-                      variant={"subtle"}
+                      variant={"minimal"}
                       leftSection={<IconTrash size={theme.icon.size.md} />}
                       {...abandonTask}
                     >
@@ -355,7 +384,7 @@ const TaskView = (props: TaskViewProps) => {
                   </Flex>
                   <ActionButton
                     c={"green"}
-                    variant={"subtle"}
+                    variant={"minimal"}
                     leftSection={<IconSwords size={theme.icon.size.md} />}
                     disabled={
                       !taskApi.completeTask.can() ||
@@ -382,7 +411,7 @@ const TaskView = (props: TaskViewProps) => {
             </Card>
           </Flex>
         )}
-      </Stack>
+      </Flex>
     </Card>
   );
 };
@@ -398,6 +427,7 @@ const EditTaskButton = (props: {
   const { showDialog = false, setShowDialog = () => {} } = props;
 
   const client = useClient<TaskController>();
+  const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
   if (!project) {
     return null;
@@ -411,8 +441,8 @@ const EditTaskButton = (props: {
     <Flex>
       <ActionButton
         px={"xs"}
-        variant={"subtle"}
-        tooltip="Edit"
+        variant={"minimal"}
+        tooltip={tr("task.view.edit")}
         onClick={() => {
           setShowDialog(true);
         }}
@@ -420,7 +450,7 @@ const EditTaskButton = (props: {
         <IconEdit size={theme.icon.size.md} />
       </ActionButton>
       <Drawer
-        title={"Update Quest"}
+        title={tr("task.create.update")}
         size={"xl"}
         position={"right"}
         opened={showDialog}
@@ -452,6 +482,7 @@ const NoteButton = (props: { task: Task; onUpdate: (task: Task) => void }) => {
   const [noteText, setNoteText] = useState(props.task.note || "");
   const client = useClient<TaskController>();
   const alepha = useAlepha();
+  const { tr } = useI18n<I18n, "en">();
 
   if (!client.updateTaskNote.can()) {
     return null;
@@ -476,8 +507,8 @@ const NoteButton = (props: { task: Task; onUpdate: (task: Task) => void }) => {
     <Flex>
       <ActionButton
         px={"xs"}
-        variant={"subtle"}
-        tooltip="Notes"
+        variant={"minimal"}
+        tooltip={tr("task.view.notes")}
         onClick={() => {
           setNoteText(props.task.note || "");
           setShowDialog(true);
@@ -486,7 +517,7 @@ const NoteButton = (props: { task: Task; onUpdate: (task: Task) => void }) => {
         <IconNotes size={theme.icon.size.md} />
       </ActionButton>
       <Drawer
-        title={"Quest Notes"}
+        title={tr("task.view.notes.title")}
         size={"xl"}
         position={"right"}
         opened={showDialog}
@@ -500,9 +531,9 @@ const NoteButton = (props: { task: Task; onUpdate: (task: Task) => void }) => {
           className={"shadow"}
           p={"md"}
         >
-          <Stack gap={"md"}>
+          <Flex direction="column" gap={"md"}>
             <Textarea
-              placeholder="Add your notes here..."
+              placeholder={tr("task.view.notes.placeholder")}
               value={noteText}
               onChange={(e) => setNoteText(e.currentTarget.value)}
               minRows={10}
@@ -510,16 +541,16 @@ const NoteButton = (props: { task: Task; onUpdate: (task: Task) => void }) => {
             />
             <Flex justify={"flex-end"} gap={"sm"}>
               <ActionButton
-                variant={"subtle"}
+                variant={"minimal"}
                 onClick={() => setShowDialog(false)}
               >
-                Cancel
+                {tr("common.cancel")}
               </ActionButton>
               <ActionButton variant={"filled"} onClick={handleSave}>
-                Save
+                {tr("task.view.notes.save")}
               </ActionButton>
             </Flex>
-          </Stack>
+          </Flex>
         </Card>
       </Drawer>
     </Flex>
@@ -530,6 +561,7 @@ const DuplicateTaskButton = (props: { task: Task }) => {
   const [showDialog, setShowDialog] = useState(false);
   const client = useClient<TaskController>();
   const [project] = useStore(currentProjectAtom);
+  const { tr } = useI18n<I18n, "en">();
 
   if (!project) {
     return null;
@@ -541,7 +573,7 @@ const DuplicateTaskButton = (props: { task: Task }) => {
 
   // Prepare duplicate task data (exclude id and timestamps)
   const duplicateTaskData = {
-    title: `${props.task.title} (Copy)`,
+    title: `${props.task.title} ${tr("task.view.duplicate.suffix")}`,
     description: props.task.description,
     package: props.task.package,
     priority: props.task.priority,
@@ -556,8 +588,8 @@ const DuplicateTaskButton = (props: { task: Task }) => {
     <Flex>
       <ActionButton
         px={"xs"}
-        variant={"subtle"}
-        tooltip="Duplicate"
+        variant={"minimal"}
+        tooltip={tr("task.view.duplicate")}
         onClick={() => {
           setShowDialog(true);
         }}
@@ -565,7 +597,7 @@ const DuplicateTaskButton = (props: { task: Task }) => {
         <IconCopy size={theme.icon.size.md} />
       </ActionButton>
       <Drawer
-        title={"Duplicate Quest"}
+        title={tr("task.view.duplicate.title")}
         size={"xl"}
         position={"right"}
         opened={showDialog}
@@ -592,6 +624,7 @@ const DuplicateTaskButton = (props: { task: Task }) => {
 };
 
 const TaskTimer = (props: { task: Task; onUpdate: (task: Task) => void }) => {
+  const { tr } = useI18n<I18n, "en">();
   const client = useClient<TaskController>();
   const [currentTime, setCurrentTime] = useState<number>(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -708,9 +741,12 @@ const TaskTimer = (props: { task: Task; onUpdate: (task: Task) => void }) => {
           </Text>
         </ClientOnly>
         <ActionButton
+          bd={0}
           px={"xs"}
-          variant={"subtle"}
-          tooltip={running ? "Pause timer" : "Start timer"}
+          variant={"minimal"}
+          tooltip={
+            running ? tr("task.view.timer.pause") : tr("task.view.timer.start")
+          }
           onClick={toggleTimer}
           disabled={!client.startTimer.can() && !client.stopTimer.can()}
         >

@@ -1,5 +1,5 @@
-import { ActionButton } from "@alepha/ui";
-import { Card, Container, Flex, SimpleGrid, Stack, Text } from "@mantine/core";
+import { ActionButton, Flex, Text } from "@alepha/ui";
+import { Card, Container, SimpleGrid } from "@mantine/core";
 import {
   IconCircleArrowRight,
   IconCubePlus,
@@ -9,15 +9,10 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import type { Project } from "../../../../api/entities/projects.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-
-export interface HomeProps {
-  projects: Project[];
-}
 
 const Home = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -26,7 +21,7 @@ const Home = () => {
   const dt = useInject(DateTimeProvider);
 
   return (
-    <Stack>
+    <Flex direction="column">
       <Flex
         style={{ zIndex: -1, filter: "" }}
         pos={"absolute"}
@@ -63,13 +58,15 @@ const Home = () => {
               }}
               spacing={"sm"}
             >
-              <Flex direction={"column"}>
-                <Text fw={"bold"} size={"lg"}>
-                  {tr("home.title")}
-                </Text>
-                <Text size="sm" c={"gray"}>
-                  {tr("home.subtitle")}
-                </Text>
+              <Flex gap={"sm"}>
+                <Flex col>
+                  <Text fw={"bold"} size={"lg"}>
+                    {tr("home.title")}
+                  </Text>
+                  <Text size="sm" c={"gray"}>
+                    {tr("home.subtitle")}
+                  </Text>
+                </Flex>
               </Flex>
               <Flex flex={1}>
                 <Flex flex={1} visibleFrom={"md"} />
@@ -83,7 +80,7 @@ const Home = () => {
                   >
                     <ActionButton
                       size={"md"}
-                      variant={"subtle"}
+                      variant={"minimal"}
                       leftSection={<IconCubePlus size={16} />}
                       href={router.path("projectCreate")}
                     >
@@ -122,7 +119,7 @@ const Home = () => {
                             flex={1}
                             justify={"space-between"}
                             rightSection={<IconCircleArrowRight size={20} />}
-                            variant={"subtle"}
+                            variant={"minimal"}
                             href={router.path("project", {
                               params: { projectId: project.id },
                             })}
@@ -158,7 +155,7 @@ const Home = () => {
           </Flex>
         </Flex>
       </Container>
-    </Stack>
+    </Flex>
   );
 };
 

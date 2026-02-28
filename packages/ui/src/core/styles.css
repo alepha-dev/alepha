@@ -111,9 +111,7 @@
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
-/* Modal Customizations */
 
-/* Custom modal scale animation */
 @keyframes modalScaleIn {
   from {
     opacity: 0;

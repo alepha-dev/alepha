@@ -5,6 +5,7 @@ import { type Route, RouterProvider } from "alepha/router";
 import { ForbiddenError } from "alepha/server";
 import { createElement, type ReactNode } from "react";
 import NotFoundPage from "../components/NotFound.tsx";
+import { Redirection } from "../errors/Redirection.ts";
 import {
   isPageRoute,
   type PageRoute,
@@ -120,10 +121,21 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
       await this.alepha.events.emit("react:transition:success", { state });
     } catch (e) {
       this.log.error("Transition has failed", e);
+
+      let element: ReactNode | undefined;
+      try {
+        const result = state.onError(e as Error, state);
+        if (result != null && !(result instanceof Redirection)) {
+          element = result as ReactNode;
+        }
+      } catch {
+        // error handler itself failed, fall through to default
+      }
+
       state.layers = [
         {
           name: "error",
-          element: this.pageApi.renderError(e as Error),
+          element: element ?? this.pageApi.renderError(e as Error),
           index: 0,
           path: "/",
         },

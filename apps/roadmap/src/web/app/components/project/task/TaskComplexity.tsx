@@ -1,4 +1,5 @@
-import { Card, Text } from "@mantine/core";
+import { Text } from "@alepha/ui";
+import { Card } from "@mantine/core";
 import { useInject } from "alepha/react";
 import { CharacterInfo } from "../../../../../api/services/CharacterInfo.ts";
 import { theme } from "../../../constants/theme.ts";

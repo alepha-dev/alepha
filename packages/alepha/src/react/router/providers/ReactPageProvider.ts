@@ -377,6 +377,7 @@ export class ReactPageProvider {
             index: i + 1,
             path,
             route: it.route,
+            cache: it.cache,
           });
           break;
         } catch (e) {

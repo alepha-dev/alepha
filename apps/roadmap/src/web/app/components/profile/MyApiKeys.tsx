@@ -1,17 +1,5 @@
-import { ActionButton } from "@alepha/ui";
-import {
-  ActionIcon,
-  Badge,
-  Card,
-  Code,
-  CopyButton,
-  Flex,
-  Group,
-  Modal,
-  Stack,
-  Text,
-  Tooltip,
-} from "@mantine/core";
+import { ActionButton, Flex, Text } from "@alepha/ui";
+import { Badge, Card, Code, CopyButton, Modal, Tooltip } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconCheck,
@@ -82,8 +70,8 @@ const MyApiKeys = (props: MyApiKeysProps) => {
   };
 
   return (
-    <Stack w="100%" p="xs" gap={0}>
-      <Group p="xs" justify="space-between">
+    <Flex direction="column" w="100%" p="xs" gap={0}>
+      <Flex p="xs" justify="space-between">
         <Flex px={1}>
           <Text size="xs" c="dimmed">
             MCP API keys allow Claude and other LLM clients to access all your
@@ -96,10 +84,10 @@ const MyApiKeys = (props: MyApiKeysProps) => {
             Create Key
           </ActionButton>
         </Flex>
-      </Group>
+      </Flex>
 
       <Card withBorder bg={theme.colors.panel} w="100%" p="xs" radius="md">
-        <Stack gap="xs">
+        <Flex direction="column" gap="xs">
           {apiKeys.length === 0 ? (
             <Text size="sm" c="dimmed" ta="center" py="md">
               No API keys yet. Create one to connect Claude or other MCP
@@ -114,17 +102,17 @@ const MyApiKeys = (props: MyApiKeysProps) => {
                 p="sm"
                 radius="sm"
               >
-                <Group justify="space-between" wrap="nowrap">
+                <Flex justify="space-between" wrap="nowrap">
                   <Flex align="center" gap="sm">
                     <IconKey size={20} />
-                    <Stack gap={0}>
-                      <Group gap="xs">
+                    <Flex direction="column" gap={0}>
+                      <Flex gap="xs">
                         <Text size="sm" fw={500}>
                           {key.name}
                         </Text>
                         <Code>...{key.tokenSuffix}</Code>
-                      </Group>
-                      <Group gap="xs">
+                      </Flex>
+                      <Flex gap="xs">
                         <Text size="xs" c="dimmed">
                           Created {dt.of(key.createdAt).fromNow()}
                         </Text>
@@ -143,40 +131,40 @@ const MyApiKeys = (props: MyApiKeysProps) => {
                             Expires {dt.of(key.expiresAt).fromNow()}
                           </Badge>
                         )}
-                      </Group>
-                    </Stack>
+                      </Flex>
+                    </Flex>
                   </Flex>
                   <Tooltip label="Revoke key">
-                    <ActionIcon
+                    <ActionButton
                       variant="subtle"
                       color="red"
                       onClick={() => handleRevoke(key.id)}
                     >
                       <IconTrash size={16} />
-                    </ActionIcon>
+                    </ActionButton>
                   </Tooltip>
-                </Group>
+                </Flex>
               </Card>
             ))
           )}
-        </Stack>
+        </Flex>
       </Card>
 
       <Modal opened={opened} onClose={close} title="Create MCP API Key">
         <form {...form.props}>
-          <Stack gap="md">
+          <Flex direction="column" gap="md">
             <Control
               input={form.input.name}
               title="Key Name"
               text={{ placeholder: "e.g., Claude Desktop" }}
             />
-            <Group justify="flex-end">
+            <Flex justify="flex-end">
               <ActionButton variant="subtle" onClick={close}>
                 Cancel
               </ActionButton>
               <ActionButton form={form}>Create</ActionButton>
-            </Group>
-          </Stack>
+            </Flex>
+          </Flex>
         </form>
       </Modal>
 
@@ -186,11 +174,11 @@ const MyApiKeys = (props: MyApiKeysProps) => {
         title="API Key Created"
         closeOnClickOutside={false}
       >
-        <Stack gap="md">
+        <Flex direction="column" gap="md">
           <Text size="sm">
             Copy this API key now. You won't be able to see it again.
           </Text>
-          <Group gap="xs">
+          <Flex gap="xs">
             <Code
               block
               style={{
@@ -203,7 +191,7 @@ const MyApiKeys = (props: MyApiKeysProps) => {
             <CopyButton value={newToken || ""}>
               {({ copied, copy }) => (
                 <Tooltip label={copied ? "Copied!" : "Copy"}>
-                  <ActionIcon
+                  <ActionButton
                     variant="subtle"
                     color={copied ? "green" : "gray"}
                     onClick={copy}
@@ -213,16 +201,16 @@ const MyApiKeys = (props: MyApiKeysProps) => {
                     ) : (
                       <IconClipboard size={16} />
                     )}
-                  </ActionIcon>
+                  </ActionButton>
                 </Tooltip>
               )}
             </CopyButton>
-          </Group>
+          </Flex>
           <Card withBorder p="sm" bg={theme.colors.panel}>
             <Text size="xs" fw={500} mb="xs">
               Claude Code
             </Text>
-            <Group gap="xs" wrap="nowrap">
+            <Flex gap="xs" wrap="nowrap">
               <Code
                 block
                 style={{
@@ -238,7 +226,7 @@ const MyApiKeys = (props: MyApiKeysProps) => {
               >
                 {({ copied, copy }) => (
                   <Tooltip label={copied ? "Copied!" : "Copy"}>
-                    <ActionIcon
+                    <ActionButton
                       variant="subtle"
                       color={copied ? "green" : "gray"}
                       onClick={copy}
@@ -248,11 +236,11 @@ const MyApiKeys = (props: MyApiKeysProps) => {
                       ) : (
                         <IconClipboard size={16} />
                       )}
-                    </ActionIcon>
+                    </ActionButton>
                   </Tooltip>
                 )}
               </CopyButton>
-            </Group>
+            </Flex>
           </Card>
           <Card withBorder p="sm" bg={theme.colors.panel}>
             <Text size="xs" fw={500} mb="xs">
@@ -277,12 +265,12 @@ const MyApiKeys = (props: MyApiKeysProps) => {
             tool to see available campaigns, then specify project_name in other
             tools.
           </Text>
-          <Group justify="flex-end">
+          <Flex justify="flex-end">
             <ActionButton onClick={() => setNewToken(null)}>Done</ActionButton>
-          </Group>
-        </Stack>
+          </Flex>
+        </Flex>
       </Modal>
-    </Stack>
+    </Flex>
   );
 };
 

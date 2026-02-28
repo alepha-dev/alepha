@@ -1,14 +1,10 @@
-import {
-  AlephaUI,
-  alephaThemeListAtom,
-  defaultTheme,
-  midnightTheme,
-} from "@alepha/ui";
+import { AlephaUI } from "@alepha/ui";
 import { AlephaUIAuth } from "@alepha/ui/auth";
 import { $module } from "alepha";
 import { CharacterInfo } from "../../api/services/CharacterInfo.ts";
 import { AppRouter } from "./AppRouter.ts";
 import { currentAssignedTasksAtom } from "./atoms/currentAssignedTasksAtom.ts";
+import { currentChaptersAtom } from "./atoms/currentChaptersAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectCharacterAtom } from "./atoms/currentProjectCharacterAtom.ts";
 import { currentTaskAtom } from "./atoms/currentTaskAtom.ts";
@@ -16,6 +12,10 @@ import {
   currentWhiteboardAtom,
   currentWhiteboardsAtom,
 } from "./atoms/currentWhiteboardsAtom.ts";
+import {
+  kanbanProjectAtom,
+  kanbanReloadAtom,
+} from "./atoms/kanbanProjectAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { MeRouter } from "./components/profile/MeRouter.ts";
 import { I18n } from "./services/I18n.ts";
@@ -26,11 +26,14 @@ export const RoadmapWebApp = $module({
   services: [Toaster, I18n, AppRouter, MeRouter],
   atoms: [
     currentAssignedTasksAtom,
+    currentChaptersAtom,
     currentProjectAtom,
     currentProjectCharacterAtom,
     currentTaskAtom,
     currentWhiteboardAtom,
     currentWhiteboardsAtom,
+    kanbanProjectAtom,
+    kanbanReloadAtom,
     userProjectsAtom,
   ],
   register(alepha) {
@@ -40,13 +43,6 @@ export const RoadmapWebApp = $module({
       .with(Toaster)
       .with(I18n)
       .with(AppRouter)
-      .with(CharacterInfo)
-      .set(alephaThemeListAtom, [
-        defaultTheme,
-        {
-          ...midnightTheme,
-          primaryColor: "gray",
-        },
-      ]);
+      .with(CharacterInfo);
   },
 });

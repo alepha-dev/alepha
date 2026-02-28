@@ -1,5 +1,5 @@
-import { ActionButton } from "@alepha/ui";
-import { Card, Flex, Modal, Typography } from "@mantine/core";
+import { ActionButton, Flex } from "@alepha/ui";
+import { Card, Modal, Typography } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconMaximize } from "@tabler/icons-react";
 import type { Task } from "../../../../../api/entities/tasks.ts";
@@ -32,7 +32,7 @@ const TaskDescription = (props: { task: Task; onEdit: () => void }) => {
       </Modal>
       <ActionButton
         px={"xs"}
-        variant={"subtle"}
+        variant={"minimal"}
         onClick={open}
         style={{ right: 4, top: 4, position: "absolute" }}
       >

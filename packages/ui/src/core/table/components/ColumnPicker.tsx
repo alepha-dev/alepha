@@ -76,7 +76,7 @@ const ColumnPicker = <T extends object, Filters extends TObject>({
       <Popover.Target>
         <div>
           <ActionButton
-            variant="subtle"
+            variant={"minimal"}
             icon={IconColumns}
             onClick={() => setOpened((o) => !o)}
           />
@@ -104,14 +104,14 @@ const ColumnPicker = <T extends object, Filters extends TObject>({
             <Flex gap={4}>
               <ActionButton
                 size="compact-xs"
-                variant="subtle"
+                variant={"minimal"}
                 onClick={handleShowAll}
               >
                 All
               </ActionButton>
               <ActionButton
                 size="compact-xs"
-                variant="subtle"
+                variant={"minimal"}
                 onClick={handleDefault}
               >
                 Default

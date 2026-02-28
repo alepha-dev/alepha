@@ -1,14 +1,5 @@
-import {
-  Badge,
-  Button,
-  Card,
-  Flex,
-  Group,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
-import { notifications } from "@mantine/notifications";
+import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
+import { Badge, Card, Title } from "@mantine/core";
 import { IconCheck, IconMail, IconX } from "@tabler/icons-react";
 import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -38,6 +29,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
     {},
   );
   const alepha = useAlepha();
+  const toast = useToast();
   const { l } = useI18n();
 
   const handleAccept = async (invitationId: string) => {
@@ -50,17 +42,13 @@ const MyInvitations = (props: MyInvitationsProps) => {
       setInvitations(await invitationApi.getMyInvitations());
       alepha.store.set(userProjectsAtom, await projectApi.getMyProjects());
 
-      notifications.show({
-        title: "Invitation Accepted",
+      toast.success({
         message:
           "You have joined the project! A character has been created for you.",
-        color: "green",
       });
     } catch (error: any) {
-      notifications.show({
-        title: "Error",
+      toast.danger({
         message: error.message || "Failed to accept invitation",
-        color: "red",
       });
     } finally {
       setLoadingStates((prev) => ({ ...prev, [invitationId]: false }));
@@ -76,16 +64,12 @@ const MyInvitations = (props: MyInvitationsProps) => {
 
       setInvitations(await invitationApi.getMyInvitations());
 
-      notifications.show({
-        title: "Invitation Rejected",
+      toast.warning({
         message: "The invitation has been declined.",
-        color: "orange",
       });
     } catch (error: any) {
-      notifications.show({
-        title: "Error",
+      toast.danger({
         message: error.message || "Failed to reject invitation",
-        color: "red",
       });
     } finally {
       setLoadingStates((prev) => ({ ...prev, [invitationId]: false }));
@@ -107,7 +91,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
         align="center"
         justify="center"
       >
-        <Stack align="center" gap="md">
+        <Flex direction="column" align="center" gap="md">
           <IconMail size={48} opacity={0.5} />
           <Text c="dimmed" size="lg" ta="center">
             No invitations found
@@ -115,25 +99,25 @@ const MyInvitations = (props: MyInvitationsProps) => {
           <Text c="dimmed" size="sm" ta="center">
             When someone invites you to join their project, it will appear here.
           </Text>
-        </Stack>
+        </Flex>
       </Flex>
     );
   }
 
   return (
     <Flex bg={"var(--alepha-ground)"} flex={1} p="lg">
-      <Stack w="100%" maw={800}>
-        <Group gap="sm" align="center">
+      <Flex direction="column" w="100%" maw={800}>
+        <Flex gap="sm" align="center">
           <IconMail size={24} />
           <Title order={2}>My Invitations</Title>
           <Badge variant="light" color="blue">
             {invitations.length}{" "}
             {invitations.length === 1 ? "invitation" : "invitations"}
           </Badge>
-        </Group>
+        </Flex>
 
         {pendingInvitations.length > 0 && (
-          <Stack gap="md">
+          <Flex direction="column" gap="md">
             <Text size="lg" fw={500}>
               Pending Invitations
             </Text>
@@ -148,15 +132,15 @@ const MyInvitations = (props: MyInvitationsProps) => {
                   borderLeft: "4px solid var(--mantine-color-orange-6)",
                 }}
               >
-                <Stack gap="md">
-                  <Group justify="space-between" align="flex-start">
-                    <Stack gap="xs" flex={1}>
-                      <Group gap="sm">
+                <Flex direction="column" gap="md">
+                  <Flex justify="space-between" align="flex-start">
+                    <Flex direction="column" gap="xs" flex={1}>
+                      <Flex gap="sm">
                         <Title order={4}>{invitation.projectTitle}</Title>
                         <Badge variant="light" color="orange">
                           Pending
                         </Badge>
-                      </Group>
+                      </Flex>
                       <Text size="sm" c="dimmed">
                         Invited by{" "}
                         {invitation.inviterName || invitation.inviterEmail}
@@ -164,11 +148,11 @@ const MyInvitations = (props: MyInvitationsProps) => {
                       <Text size="xs" c="dimmed">
                         Received: {l(invitation.createdAt)}
                       </Text>
-                    </Stack>
-                  </Group>
+                    </Flex>
+                  </Flex>
 
-                  <Group gap="sm">
-                    <Button
+                  <Flex gap="sm">
+                    <ActionButton
                       leftSection={<IconCheck size={16} />}
                       color="green"
                       onClick={() => handleAccept(invitation.id)}
@@ -176,8 +160,8 @@ const MyInvitations = (props: MyInvitationsProps) => {
                       disabled={Object.values(loadingStates).some(Boolean)}
                     >
                       Accept
-                    </Button>
-                    <Button
+                    </ActionButton>
+                    <ActionButton
                       leftSection={<IconX size={16} />}
                       variant="light"
                       color="red"
@@ -186,16 +170,16 @@ const MyInvitations = (props: MyInvitationsProps) => {
                       disabled={Object.values(loadingStates).some(Boolean)}
                     >
                       Reject
-                    </Button>
-                  </Group>
-                </Stack>
+                    </ActionButton>
+                  </Flex>
+                </Flex>
               </Card>
             ))}
-          </Stack>
+          </Flex>
         )}
 
         {processedInvitations.length > 0 && (
-          <Stack gap="md">
+          <Flex direction="column" gap="md">
             <Text size="lg" fw={500}>
               Previous Invitations
             </Text>
@@ -214,9 +198,9 @@ const MyInvitations = (props: MyInvitationsProps) => {
                       : "4px solid var(--mantine-color-red-6)",
                 }}
               >
-                <Group justify="space-between" align="flex-start">
-                  <Stack gap="xs" flex={1}>
-                    <Group gap="sm">
+                <Flex justify="space-between" align="flex-start">
+                  <Flex direction="column" gap="xs" flex={1}>
+                    <Flex gap="sm">
                       <Title order={4}>{invitation.projectTitle}</Title>
                       <Badge
                         variant="light"
@@ -228,7 +212,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
                           ? "Accepted"
                           : "Rejected"}
                       </Badge>
-                    </Group>
+                    </Flex>
                     <Text size="sm" c="dimmed">
                       Invited by{" "}
                       {invitation.inviterName || invitation.inviterEmail}
@@ -236,13 +220,13 @@ const MyInvitations = (props: MyInvitationsProps) => {
                     <Text size="xs" c="dimmed">
                       Received: {l(invitation.createdAt)}
                     </Text>
-                  </Stack>
-                </Group>
+                  </Flex>
+                </Flex>
               </Card>
             ))}
-          </Stack>
+          </Flex>
         )}
-      </Stack>
+      </Flex>
     </Flex>
   );
 };

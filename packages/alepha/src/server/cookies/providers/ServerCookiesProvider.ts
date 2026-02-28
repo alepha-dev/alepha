@@ -8,15 +8,14 @@ import {
 } from "node:crypto";
 import { deflateRawSync, inflateRawSync } from "node:zlib";
 import {
-  $env,
   $hook,
   $inject,
   Alepha,
   AlephaError,
-  alephaSecretEnvSchema,
   type Static,
   type TSchema,
 } from "alepha";
+import { SecretProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import type {
@@ -31,7 +30,7 @@ export class ServerCookiesProvider {
   protected readonly log = $logger();
   protected readonly cookieParser = $inject(CookieParser);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
-  protected readonly env = $env(alephaSecretEnvSchema);
+  protected readonly secretProvider = $inject(SecretProvider);
 
   // crypto constants
   protected readonly ALGORITHM = "aes-256-gcm";
@@ -222,7 +221,7 @@ export class ServerCookiesProvider {
    * Accepts any string length — no padding or truncation needed.
    */
   protected deriveKey(): Buffer {
-    return createHash("sha256").update(this.env.APP_SECRET).digest();
+    return createHash("sha256").update(this.secretProvider.secretKey).digest();
   }
 
   protected sign(data: string): string {

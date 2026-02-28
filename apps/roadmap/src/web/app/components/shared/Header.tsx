@@ -1,13 +1,22 @@
-import { ActionButton } from "@alepha/ui";
-import { Burger, Container, Drawer, Flex } from "@mantine/core";
-import { useEvents, useStore } from "alepha/react";
+import { ActionButton, Flex } from "@alepha/ui";
+import { Burger, Card, Drawer } from "@mantine/core";
+import { IconPlus } from "@tabler/icons-react";
+import { useClient, useEvents, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useState } from "react";
+import type { TaskController } from "../../../../api/controllers/TaskController.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import {
+  kanbanProjectAtom,
+  kanbanReloadAtom,
+} from "../../atoms/kanbanProjectAtom.ts";
 import { theme } from "../../constants/theme.ts";
-import ProjectActions from "../project/ProjectActions.tsx";
+import type { I18n } from "../../services/I18n.ts";
+import HeaderProjectActions from "../project/ProjectActions.tsx";
 import QuestLog from "../project/QuestLog.tsx";
+import TaskCreate from "../project/task/TaskCreate.tsx";
 import HeaderActions from "./HeaderActions.tsx";
 import HeaderProject from "./HeaderProject.tsx";
 import RoadmapLogo from "./RoadmapLogo.tsx";
@@ -21,17 +30,17 @@ const Header = () => {
       p={"xs"}
       px={"md"}
       gap={"xs"}
-      mah={64}
+      h={64}
       align="center"
       justify="center"
     >
       <Flex w={"100%"} px={2}>
-        <Flex flex={1} gap={"xs"}>
+        <Flex gap={"xs"}>
           <Flex align="center" justify="center" gap={"xs"}>
             <MobileQuestLog />
             <Flex>
               <ActionButton
-                variant={"subtle"}
+                variant={"minimal"}
                 href={router.path("home")}
                 active={false}
                 leftSection={<RoadmapLogo />}
@@ -40,11 +49,13 @@ const Header = () => {
             <HeaderProject />
           </Flex>
         </Flex>
-        <Container w={theme.container} visibleFrom={"lg"} p={0}>
-          <ProjectActions />
-        </Container>
-        <Flex flex={1}>
-          <Flex flex={1} />
+        <Flex px={"sm"} flex={1} align="center" justify="center">
+          <Flex visibleFrom={"lg"} maw={"900px"}>
+            <HeaderProjectActions />
+          </Flex>
+        </Flex>
+        <Flex align="center" justify="end" gap="xs">
+          <KanbanCreateButton />
           <HeaderActions />
         </Flex>
       </Flex>
@@ -83,6 +94,52 @@ const MobileQuestLog = () => {
         }}
       >
         <QuestLog />
+      </Drawer>
+    </Flex>
+  );
+};
+
+const KanbanCreateButton = () => {
+  const [showDialog, setShowDialog] = useState(false);
+  const { tr } = useI18n<I18n, "en">();
+  const client = useClient<TaskController>();
+  const [kanban] = useStore(kanbanProjectAtom);
+  const [reloadKey, setReloadKey] = useStore(kanbanReloadAtom);
+
+  if (!kanban || kanban.readOnly) {
+    return null;
+  }
+
+  return (
+    <Flex>
+      <ActionButton
+        textVisibleFrom="sm"
+        variant="filled"
+        color="green"
+        disabled={!client.createTask.can()}
+        leftSection={<IconPlus />}
+        onClick={() => setShowDialog(true)}
+      >
+        {tr("project.menu.create-task")}
+      </ActionButton>
+      <Drawer
+        title={tr("project.menu.create-task")}
+        size="xl"
+        position="right"
+        opened={showDialog}
+        onClose={() => setShowDialog(false)}
+        className="drawer"
+      >
+        <Card withBorder bg={theme.colors.card} radius="md" className="shadow">
+          <TaskCreate
+            project={kanban.project}
+            onSubmit={() => setShowDialog(false)}
+            onCreated={() => {
+              setShowDialog(false);
+              setReloadKey({ key: (reloadKey?.key ?? 0) + 1 });
+            }}
+          />
+        </Card>
       </Drawer>
     </Flex>
   );
