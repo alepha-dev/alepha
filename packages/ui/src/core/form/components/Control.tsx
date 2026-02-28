@@ -176,7 +176,8 @@ const Control = (_props: ControlProps) => {
   //region <NumberInput/>
   if (
     props.number ||
-    (props.input.schema &&
+    (!props.select &&
+      props.input.schema &&
       "type" in props.input.schema &&
       (props.input.schema.type === "number" ||
         props.input.schema.type === "integer"))

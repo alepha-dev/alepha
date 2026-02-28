@@ -31,7 +31,7 @@ export const getDefaultIcon = (params: {
   isArray?: boolean;
   size?: IconSize;
 }): ReactElement => {
-  const { type, format, name, isEnum, isArray, size = "sm" } = params;
+  const { type, format, name, isEnum, isArray, size = "xs" } = params;
   const iconSize = ui.sizes.icon[size];
 
   // Format-based icons (highest priority)

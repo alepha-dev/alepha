@@ -194,6 +194,7 @@ export class TaskController {
         status: t.optional(t.enum(["new", "accepted", "completed"])),
         search: t.optional(t.string()),
         chapterId: t.optional(t.integer()),
+        package: t.optional(t.string()),
       }),
       response: db.page(taskResourceSchema),
     },
@@ -211,6 +212,10 @@ export class TaskController {
         where.chapterId = { eq: query.chapterId };
       }
 
+      if (query.package) {
+        where.package = { eq: query.package };
+      }
+
       if (query.status === "new") {
         where.acceptedAt = { isNull: true };
         where.completedAt = { isNull: true };
@@ -226,7 +231,7 @@ export class TaskController {
 
       const result = await this.tasks.paginate(query, {
         where,
-      });
+      }, { count: true });
 
       return {
         ...result,

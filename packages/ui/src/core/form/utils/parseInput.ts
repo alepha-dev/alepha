@@ -60,7 +60,7 @@ export const parseInput = (
       })
     : isValidElement(props.icon)
       ? props.icon
-      : createElement(props.icon, { size: ui.sizes.icon.md });
+      : createElement(props.icon, { size: ui.sizes.icon.sm });
 
   const format =
     props.input.schema &&

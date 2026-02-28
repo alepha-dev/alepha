@@ -383,9 +383,9 @@ const DataTable = <T extends object, Filters extends TObject>(
           </Text>
           {col.sortable && (
             <Flex c="dimmed">
-              {sortDir === "asc" && <IconArrowUp size={ui.sizes.icon.sm} />}
-              {sortDir === "desc" && <IconArrowDown size={ui.sizes.icon.sm} />}
-              {sortDir === null && <IconArrowsSort size={ui.sizes.icon.sm} />}
+              {sortDir === "asc" && <IconArrowUp size={ui.sizes.icon.xs} />}
+              {sortDir === "desc" && <IconArrowDown size={ui.sizes.icon.xs} />}
+              {sortDir === null && <IconArrowsSort size={ui.sizes.icon.xs} />}
             </Flex>
           )}
         </Flex>
@@ -453,9 +453,21 @@ const DataTable = <T extends object, Filters extends TObject>(
             alepha,
           } as DataTableColumnContext<Filters>;
 
+          const content = col.value?.(item as T, ctx);
+
           return (
             <Table.Td key={key} style={col.fit ? FIT_STYLE : undefined}>
-              {col.value?.(item as T, ctx)}
+              {col.action ? (
+                <ActionButton
+                  td={"inherit"}
+                  unstyled
+                  {...col.action(item as T)}
+                >
+                  {content}
+                </ActionButton>
+              ) : (
+                content
+              )}
             </Table.Td>
           );
         })}
@@ -570,8 +582,16 @@ const DataTable = <T extends object, Filters extends TObject>(
         )}
       </Flex>
 
-      <Flex col rounded bordered elevated shadowed={"xs"}>
-        <Flex className="overflow-auto">
+      <Flex
+        col
+        rounded
+        bordered
+        elevated
+        shadowed={"xs"}
+        flex={1}
+        style={{ minHeight: 0 }}
+      >
+        <Flex className="overflow-auto" flex={1} style={{ minHeight: 0 }} col>
           <Table
             aria-label="Data table"
             withRowBorders
@@ -579,10 +599,12 @@ const DataTable = <T extends object, Filters extends TObject>(
             {...props.tableProps}
           >
             <Table.Thead
+              bdrs={"md"}
               style={{
                 position: "sticky",
                 top: 0,
                 zIndex: 1,
+                backgroundColor: "var(--alepha-elevated)",
               }}
             >
               <Table.Tr>
@@ -596,7 +618,7 @@ const DataTable = <T extends object, Filters extends TObject>(
               {!loaded || form.submitting ? (
                 <Table.Tr>
                   <Table.Td colSpan={totalColumns || 1} py="sm">
-                    <Flex justify="center">
+                    <Flex justify="center" p={"md"}>
                       <Loader size="sm" type="dots" />
                     </Flex>
                   </Table.Td>
@@ -624,8 +646,10 @@ const DataTable = <T extends object, Filters extends TObject>(
           <DataTablePagination
             page={page}
             size={size}
-            totalPages={items.page?.totalPages ?? 1}
+            totalPages={items.page?.totalPages}
             totalElements={items.page?.totalElements}
+            isFirst={items.page?.isFirst}
+            isLast={items.page?.isLast}
             offset={items.page?.offset ?? 0}
             numberOfElements={items.content.length}
             onPageChange={(value) => {

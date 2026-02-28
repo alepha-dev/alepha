@@ -4,8 +4,10 @@ import { Pagination, Select } from "@mantine/core";
 export interface DataTablePaginationProps {
   page: number;
   size: string;
-  totalPages: number;
+  totalPages?: number;
   totalElements?: number;
+  isFirst?: boolean;
+  isLast?: boolean;
   offset: number;
   numberOfElements: number;
   onPageChange: (page: number) => void;
@@ -17,6 +19,8 @@ const DataTablePagination = ({
   size,
   totalPages,
   totalElements,
+  isFirst,
+  isLast,
   offset,
   numberOfElements,
   onPageChange,
@@ -24,6 +28,7 @@ const DataTablePagination = ({
 }: DataTablePaginationProps) => {
   const from = numberOfElements > 0 ? offset + 1 : 0;
   const to = offset + numberOfElements;
+  const hasTotal = totalPages != null;
 
   return (
     <Flex
@@ -68,8 +73,9 @@ const DataTablePagination = ({
         <Flex>
           <Pagination
             size={"sm"}
-            withEdges
-            total={totalPages}
+            withEdges={hasTotal}
+            withPages={hasTotal}
+            total={hasTotal ? totalPages : (isLast !== false ? page : page + 1)}
             value={page}
             onChange={onPageChange}
           />

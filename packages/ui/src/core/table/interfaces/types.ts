@@ -75,6 +75,11 @@ export interface DataTableColumn<T extends object, Filters extends TObject> {
    * Hide this column by default. Users can show it via the column picker.
    */
   defaultHidden?: boolean;
+  /**
+   * Wrap the cell content with an ActionButton. Defaults to `variant="unstyled"`.
+   * Receives the row item to generate per-row action props (e.g., dynamic href).
+   */
+  action?: (item: T) => ActionProps;
 }
 
 // -----------------------------------------------------------------------------
