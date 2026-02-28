@@ -1,4 +1,4 @@
-import { ActionButton, Flex } from "@alepha/ui";
+import { ActionButton, Control, Flex } from "@alepha/ui";
 import { Card } from "@mantine/core";
 import { IconDeviceFloppy, IconTag } from "@tabler/icons-react";
 import { t } from "alepha";
@@ -11,7 +11,6 @@ import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-import Control from "../ui/Control.tsx";
 
 export interface ProjectUpdateProps {
   project: Project;
@@ -54,13 +53,13 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
       <form {...form.props}>
         <Flex direction={"column"} gap={"xl"}>
           <Control
-            title={tr("project.create.name")}
+            label={tr("project.create.name")}
             icon={<IconTag />}
             input={form.input.title}
           />
           <Control
             input={form.input.public}
-            title={tr("project.create.public")}
+            label={tr("project.create.public")}
             description={tr("project.create.public.helper")}
           />
           <Flex>

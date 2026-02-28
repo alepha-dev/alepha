@@ -1,9 +1,9 @@
+import type { CustomControlProps } from "@alepha/ui";
 import { ActionButton, Flex } from "@alepha/ui";
 import { TextInput } from "@mantine/core";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 import { theme } from "../../../constants/theme.ts";
-import type { CustomControlProps } from "../../ui/Control.tsx";
 
 export interface Objective {
   title: string;

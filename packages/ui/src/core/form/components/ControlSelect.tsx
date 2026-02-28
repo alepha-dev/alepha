@@ -223,6 +223,7 @@ const ControlSelect = (props: ControlSelectProps) => {
   if (props.segmented) {
     const segmentedControlProps: Partial<SegmentedControlProps> =
       typeof props.segmented === "object" ? props.segmented : {};
+    const segmentedData = segmentedControlProps.data ?? data.slice(0, 10);
 
     return (
       <Input.Wrapper {...inputProps}>
@@ -234,7 +235,7 @@ const ControlSelect = (props: ControlSelectProps) => {
             onChange={(value) => {
               props.input.set(coerceValue(value));
             }}
-            data={data.slice(0, 10)}
+            data={segmentedData}
           />
         </Flex>
       </Input.Wrapper>

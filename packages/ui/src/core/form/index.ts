@@ -2,7 +2,10 @@ import type { ControlProps } from "./components/Control.tsx";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export type { ControlProps } from "./components/Control.tsx";
+export type {
+  ControlProps,
+  CustomControlProps,
+} from "./components/Control.tsx";
 export { default as Control } from "./components/Control.tsx";
 export { default as ControlArray } from "./components/ControlArray.tsx";
 export { default as ControlDate } from "./components/ControlDate.tsx";

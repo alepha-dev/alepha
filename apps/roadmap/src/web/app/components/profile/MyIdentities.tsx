@@ -1,4 +1,4 @@
-import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
+import { ActionButton, Control, Flex, Text, useToast } from "@alepha/ui";
 import { Badge, Card, Modal, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -13,7 +13,6 @@ import { useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useState } from "react";
 import type { IdentityController } from "../../../../api/controllers/IdentityController.ts";
-import Control from "../ui/Control.tsx";
 
 export interface MyIdentitiesProps {
   identities: Array<{
@@ -197,7 +196,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 
               <Control
                 input={passwordForm.input.username}
-                title="Username"
+                label="Username"
                 icon={<IconUser size={16} />}
                 text={{
                   placeholder: "Choose a username",
@@ -207,7 +206,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 
               <Control
                 input={passwordForm.input.password}
-                title="Password"
+                label="Password"
                 icon={<IconLock size={16} />}
                 password={{
                   placeholder: "Enter password",
@@ -217,7 +216,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 
               <Control
                 input={passwordForm.input.confirmPassword}
-                title="Confirm Password"
+                label="Confirm Password"
                 icon={<IconLock size={16} />}
                 password={{
                   placeholder: "Confirm password",

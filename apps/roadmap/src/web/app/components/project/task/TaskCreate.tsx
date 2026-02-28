@@ -1,4 +1,4 @@
-import { ActionButton, Flex } from "@alepha/ui";
+import { ActionButton, Control, Flex } from "@alepha/ui";
 import { SimpleGrid } from "@mantine/core";
 import {
   IconDeviceFloppy,
@@ -23,7 +23,6 @@ import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAto
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TextEditor from "../../shared/TextEditor.tsx";
-import Control from "../../ui/Control.tsx";
 import TaskAttachments from "./TaskAttachments.tsx";
 import TaskCreateObjectives from "./TaskCreateObjectives.tsx";
 
@@ -108,27 +107,29 @@ const TaskCreate = (props: TaskCreateProps) => {
           spacing={"sm"}
         >
           <Control
-            title={tr("task.create.title")}
+            label={tr("task.create.title")}
             description={tr("task.create.title.helper")}
             input={form.input.title}
             icon={<IconTag />}
           />
           <Control
-            title={tr("task.create.package")}
+            label={tr("task.create.package")}
             description={tr("task.create.package.helper")}
             input={form.input.package}
             icon={<IconTent />}
-            autocomplete={{
-              data: currentProject?.packages || [],
-              placeholder: "Enter or select a zone...",
-              limit: 5,
+            select={{
+              autocomplete: {
+                data: currentProject?.packages || [],
+                placeholder: "Enter or select a zone...",
+                limit: 5,
+              },
             }}
           />
         </SimpleGrid>
 
         <Control
           description={tr("task.create.description.helper")}
-          title={tr("task.create.description")}
+          label={tr("task.create.description")}
           custom={TextEditor}
           input={form.input.description}
           icon={<IconFileText />}
@@ -143,62 +144,68 @@ const TaskCreate = (props: TaskCreateProps) => {
         >
           <Control
             input={form.input.priority}
-            title={tr("task.create.priority")}
+            label={tr("task.create.priority")}
             description={tr("task.create.priority.helper")}
-            segmented={{
-              data: [
-                {
-                  label: tr("priority.high"),
-                  value: "high",
-                },
-                {
-                  label: tr("priority.medium"),
-                  value: "medium",
-                },
-                {
-                  label: tr("priority.low"),
-                  value: "low",
-                },
-                {
-                  label: tr("priority.none"),
-                  value: "optional",
-                },
-              ],
+            segmented
+            select={{
+              segmented: {
+                data: [
+                  {
+                    label: String(tr("priority.high")),
+                    value: "high",
+                  },
+                  {
+                    label: String(tr("priority.medium")),
+                    value: "medium",
+                  },
+                  {
+                    label: String(tr("priority.low")),
+                    value: "low",
+                  },
+                  {
+                    label: String(tr("priority.none")),
+                    value: "optional",
+                  },
+                ],
+              },
             }}
           />
           <Control
             input={form.input.complexity}
-            title={tr("task.create.complexity")}
+            label={tr("task.create.complexity")}
             description={tr("task.create.complexity.helper")}
-            segmented={{
-              data: [
-                {
-                  label: "S",
-                  value: "5",
-                },
-                {
-                  label: "A",
-                  value: "4",
-                },
-                {
-                  label: "B",
-                  value: "3",
-                },
-                {
-                  label: "C",
-                  value: "2",
-                },
-                {
-                  label: "F",
-                  value: "1",
-                },
-              ],
+            segmented
+            select={{
+              segmented: {
+                data: [
+                  {
+                    label: "S",
+                    value: "5",
+                  },
+                  {
+                    label: "A",
+                    value: "4",
+                  },
+                  {
+                    label: "B",
+                    value: "3",
+                  },
+                  {
+                    label: "C",
+                    value: "2",
+                  },
+                  {
+                    label: "F",
+                    value: "1",
+                  },
+                ],
+              },
             }}
           />
         </SimpleGrid>
 
         <Control
-          title={tr("task.create.objectives")}
+          label={tr("task.create.objectives")}
           description={tr("task.create.objectives.helper")}
           custom={TaskCreateObjectives}
           input={form.input.objectives}
@@ -206,7 +213,7 @@ const TaskCreate = (props: TaskCreateProps) => {
         />
 
         <Control
-          title={tr("task.create.attachments")}
+          label={tr("task.create.attachments")}
           description={tr("task.create.attachments.helper")}
           custom={TaskAttachments}
           input={form.input.attachments}

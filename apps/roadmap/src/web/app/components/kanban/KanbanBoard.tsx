@@ -1,4 +1,4 @@
-import { Flex, useToast } from "@alepha/ui";
+import { Control, Flex, useToast } from "@alepha/ui";
 import {
   DndContext,
   type DragEndEvent,
@@ -22,7 +22,6 @@ import {
 } from "../../atoms/kanbanProjectAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import TaskView from "../project/task/TaskView.tsx";
-import Control from "../ui/Control.tsx";
 import KanbanColumn from "./KanbanColumn.tsx";
 
 type TaskStatus = "new" | "accepted" | "completed";
@@ -165,11 +164,13 @@ const KanbanBoard = ({
           <Control
             input={filterForm.input.zones}
             size="xs"
-            multi={{
-              placeholder: String(tr("kanban.filter.all")),
-              data: project.packages,
-              clearable: true,
-              searchable: true,
+            select={{
+              multi: {
+                placeholder: String(tr("kanban.filter.all")),
+                data: project.packages,
+                clearable: true,
+                searchable: true,
+              },
             }}
           />
         </Flex>
