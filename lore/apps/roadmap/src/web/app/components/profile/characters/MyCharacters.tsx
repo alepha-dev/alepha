@@ -3,35 +3,28 @@ import { Badge, Card, Progress, Title } from "@mantine/core";
 import { IconCircleFilled, IconCrown } from "@tabler/icons-react";
 import { useInject } from "alepha/react";
 import { Localize, useI18n } from "alepha/react/i18n";
-import { CharacterInfo } from "../../../../api/services/CharacterInfo.ts";
+import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
+
+export interface MyCharactersCharacter {
+  id: number;
+  projectId: number;
+  projectTitle: string;
+  xp: number;
+  balance: number;
+  owner?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface MyCharactersProps {
-  characters: Array<{
-    id: number;
-    projectId: number;
-    projectTitle: string;
-    xp: number;
-    balance: number;
-    owner?: boolean;
-    createdAt: string;
-    updatedAt: string;
-  }>;
+  characters: Array<MyCharactersCharacter>;
 }
 
 const CharacterXPBar = ({
   character,
   characterInfo,
 }: {
-  character: {
-    id: number;
-    projectId: number;
-    projectTitle: string;
-    xp: number;
-    balance: number;
-    owner?: boolean;
-    createdAt: string;
-    updatedAt: string;
-  };
+  character: MyCharactersCharacter;
   characterInfo: CharacterInfo;
 }) => {
   const level = characterInfo.getLevelByXp(character.xp);

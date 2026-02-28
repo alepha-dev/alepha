@@ -12,11 +12,11 @@ import {
 import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useActive, useRouter } from "alepha/react/router";
-import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
-import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
-import type { AppRouter } from "../../../AppRouter.ts";
-import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
+import type { TaskController } from "@/api/controllers/TaskController.ts";
+import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
+import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentAssignedTasksAtom } from "@/web/app/atoms/currentAssignedTasksAtom.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 import TaskComplexity from "./TaskComplexity.tsx";
 
 const TaskItem = (props: { task: TaskResource; index: number }) => {

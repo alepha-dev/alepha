@@ -1,49 +1,40 @@
 import { ActionButton, Flex, Text } from "@alepha/ui";
-import { Card, Drawer, Textarea } from "@mantine/core";
+import { Card } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import {
   IconCircleFilled,
-  IconClock,
-  IconCopy,
-  IconEdit,
   IconFileText,
   IconHistory,
-  IconNotes,
   IconPaperclip,
   IconPigMoney,
-  IconPlayerPause,
-  IconPlayerPlay,
   IconSignature,
   IconSwords,
   IconTag,
   IconTrash,
   IconX,
 } from "@tabler/icons-react";
-import {
-  ClientOnly,
-  useAlepha,
-  useClient,
-  useInject,
-  useStore,
-} from "alepha/react";
+import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { useEffect, useRef, useState } from "react";
-import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
-import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
-import { CharacterInfo } from "../../../../../api/services/CharacterInfo.ts";
-import type { AppRouter } from "../../../AppRouter.ts";
-import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentProjectCharacterAtom } from "../../../atoms/currentProjectCharacterAtom.ts";
-import { currentTaskAtom } from "../../../atoms/currentTaskAtom.ts";
-import { theme } from "../../../constants/theme.ts";
-import type { I18n } from "../../../services/I18n.ts";
+import { useEffect, useState } from "react";
+import type { TaskController } from "@/api/controllers/TaskController.ts";
+import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
+import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
+import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentAssignedTasksAtom } from "@/web/app/atoms/currentAssignedTasksAtom.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { currentProjectCharacterAtom } from "@/web/app/atoms/currentProjectCharacterAtom.ts";
+import { currentTaskAtom } from "@/web/app/atoms/currentTaskAtom.ts";
+import { theme } from "@/web/app/constants/theme.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 import AttachmentBadge from "./AttachmentBadge.tsx";
-import TaskCreate from "./TaskCreate.tsx";
 import TaskDescription from "./TaskDescription.tsx";
 import TaskHistory from "./TaskHistory.tsx";
+import TaskViewDuplicateButton from "./TaskViewDuplicateButton.tsx";
+import TaskViewEditButton from "./TaskViewEditButton.tsx";
+import TaskViewNoteButton from "./TaskViewNoteButton.tsx";
 import TaskViewObjectives from "./TaskViewObjectives.tsx";
+import TaskViewTimer from "./TaskViewTimer.tsx";
 
 export interface TaskViewProps {
   task: TaskResource;
@@ -153,7 +144,7 @@ const TaskView = (props: TaskViewProps) => {
                 </Text>
                 {!task.completedAt && project && (
                   <>
-                    <EditTaskButton
+                    <TaskViewEditButton
                       task={task}
                       onUpdate={(it) => {
                         updateTask(it);
@@ -162,14 +153,14 @@ const TaskView = (props: TaskViewProps) => {
                       showDialog={showDialog}
                       setShowDialog={setShowDialog}
                     />
-                    <NoteButton
+                    <TaskViewNoteButton
                       task={task}
                       onUpdate={(it) => {
                         updateTask(it);
                         alepha.store.set(currentTaskAtom, it);
                       }}
                     />
-                    <DuplicateTaskButton task={task} />
+                    <TaskViewDuplicateButton task={task} />
                   </>
                 )}
                 <Flex
@@ -180,7 +171,7 @@ const TaskView = (props: TaskViewProps) => {
                     backgroundColor: "var(--alepha-text)",
                   }}
                 />
-                <TaskTimer
+                <TaskViewTimer
                   task={task}
                   onUpdate={(it) => {
                     updateTask(it);
@@ -417,363 +408,3 @@ const TaskView = (props: TaskViewProps) => {
 };
 
 export default TaskView;
-
-const EditTaskButton = (props: {
-  task: TaskResource;
-  onUpdate: (task: TaskResource) => void;
-  setShowDialog?: (show: boolean) => void;
-  showDialog?: boolean;
-}) => {
-  const { showDialog = false, setShowDialog = () => {} } = props;
-
-  const client = useClient<TaskController>();
-  const { tr } = useI18n<I18n, "en">();
-  const [project] = useStore(currentProjectAtom);
-  if (!project) {
-    return null;
-  }
-
-  if (!client.updateTaskById.can()) {
-    return null;
-  }
-
-  return (
-    <Flex>
-      <ActionButton
-        px={"xs"}
-        variant={"minimal"}
-        tooltip={tr("task.view.edit")}
-        onClick={() => {
-          setShowDialog(true);
-        }}
-      >
-        <IconEdit size={theme.icon.size.md} />
-      </ActionButton>
-      <Drawer
-        title={tr("task.create.update")}
-        size={"xl"}
-        position={"right"}
-        opened={showDialog}
-        onClose={() => setShowDialog(false)}
-        className={"drawer"}
-      >
-        <Card
-          withBorder
-          bg={theme.colors.card}
-          radius={"md"}
-          className={"shadow"}
-        >
-          <TaskCreate
-            project={project}
-            task={props.task}
-            onSubmit={(task) => {
-              setShowDialog(false);
-              props.onUpdate(task);
-            }}
-          />
-        </Card>
-      </Drawer>
-    </Flex>
-  );
-};
-
-const NoteButton = (props: {
-  task: TaskResource;
-  onUpdate: (task: TaskResource) => void;
-}) => {
-  const [showDialog, setShowDialog] = useState(false);
-  const [noteText, setNoteText] = useState(props.task.note || "");
-  const client = useClient<TaskController>();
-  const alepha = useAlepha();
-  const { tr } = useI18n<I18n, "en">();
-
-  if (!client.updateTaskNote.can()) {
-    return null;
-  }
-
-  const handleSave = async () => {
-    const updatedTask = await client.updateTaskNote({
-      params: { id: props.task.id },
-      body: { note: noteText },
-    });
-    props.onUpdate(updatedTask);
-    // Update local state
-    const currentTasks = alepha.store.get(currentAssignedTasksAtom) || [];
-    const updatedTasks = currentTasks.map((t) =>
-      t.id === updatedTask.id ? updatedTask : t,
-    );
-    alepha.store.set(currentAssignedTasksAtom, updatedTasks);
-    setShowDialog(false);
-  };
-
-  return (
-    <Flex>
-      <ActionButton
-        px={"xs"}
-        variant={"minimal"}
-        tooltip={tr("task.view.notes")}
-        onClick={() => {
-          setNoteText(props.task.note || "");
-          setShowDialog(true);
-        }}
-      >
-        <IconNotes size={theme.icon.size.md} />
-      </ActionButton>
-      <Drawer
-        title={tr("task.view.notes.title")}
-        size={"xl"}
-        position={"right"}
-        opened={showDialog}
-        onClose={() => setShowDialog(false)}
-        className={"drawer"}
-      >
-        <Card
-          withBorder
-          bg={theme.colors.card}
-          radius={"md"}
-          className={"shadow"}
-          p={"md"}
-        >
-          <Flex direction="column" gap={"md"}>
-            <Textarea
-              placeholder={tr("task.view.notes.placeholder")}
-              value={noteText}
-              onChange={(e) => setNoteText(e.currentTarget.value)}
-              minRows={10}
-              autosize
-            />
-            <Flex justify={"flex-end"} gap={"sm"}>
-              <ActionButton
-                variant={"minimal"}
-                onClick={() => setShowDialog(false)}
-              >
-                {tr("common.cancel")}
-              </ActionButton>
-              <ActionButton variant={"filled"} onClick={handleSave}>
-                {tr("task.view.notes.save")}
-              </ActionButton>
-            </Flex>
-          </Flex>
-        </Card>
-      </Drawer>
-    </Flex>
-  );
-};
-
-const DuplicateTaskButton = (props: { task: TaskResource }) => {
-  const [showDialog, setShowDialog] = useState(false);
-  const client = useClient<TaskController>();
-  const [project] = useStore(currentProjectAtom);
-  const { tr } = useI18n<I18n, "en">();
-
-  if (!project) {
-    return null;
-  }
-
-  if (!client.createTask.can()) {
-    return null;
-  }
-
-  // Prepare duplicate task data (exclude id and timestamps)
-  const duplicateTaskData = {
-    title: `${props.task.title} ${tr("task.view.duplicate.suffix")}`,
-    description: props.task.description,
-    package: props.task.package,
-    priority: props.task.priority,
-    complexity: props.task.complexity,
-    objectives: props.task.objectives.map((obj) => ({
-      title: obj.title,
-      completed: false, // Reset completion status for duplicate
-    })),
-  };
-
-  return (
-    <Flex>
-      <ActionButton
-        px={"xs"}
-        variant={"minimal"}
-        tooltip={tr("task.view.duplicate")}
-        onClick={() => {
-          setShowDialog(true);
-        }}
-      >
-        <IconCopy size={theme.icon.size.md} />
-      </ActionButton>
-      <Drawer
-        title={tr("task.view.duplicate.title")}
-        size={"xl"}
-        position={"right"}
-        opened={showDialog}
-        onClose={() => setShowDialog(false)}
-        className={"drawer"}
-      >
-        <Card
-          withBorder
-          bg={theme.colors.card}
-          radius={"md"}
-          className={"shadow"}
-        >
-          <TaskCreate
-            project={project}
-            task={duplicateTaskData as TaskResource}
-            onSubmit={() => {
-              setShowDialog(false);
-            }}
-          />
-        </Card>
-      </Drawer>
-    </Flex>
-  );
-};
-
-const TaskTimer = (props: {
-  task: TaskResource;
-  onUpdate: (task: TaskResource) => void;
-}) => {
-  const { tr } = useI18n<I18n, "en">();
-  const client = useClient<TaskController>();
-  const [currentTime, setCurrentTime] = useState<number>(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { task } = props;
-
-  // Calculate total time from all sessions
-  const calculateTotalTime = () => {
-    if (!task.timerSessions) return 0;
-
-    let total = 0;
-    const now = new Date();
-
-    for (const session of task.timerSessions) {
-      const start = new Date(session.startedAt);
-      const stop = session.stoppedAt ? new Date(session.stoppedAt) : now;
-      total += stop.getTime() - start.getTime();
-    }
-
-    return Math.floor(total / 1000); // Return in seconds
-  };
-
-  // Check if timer is running
-  const isTimerRunning = () => {
-    if (!task.timerSessions || task.timerSessions.length === 0) return false;
-    const lastSession = task.timerSessions[task.timerSessions.length - 1];
-    return lastSession && !lastSession.stoppedAt;
-  };
-
-  // Format time display
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    if (minutes > 0) {
-      return `${minutes}m ${secs}s`;
-    }
-    return `${secs}s`;
-  };
-
-  // Start/stop timer
-  const toggleTimer = async () => {
-    if (isTimerRunning()) {
-      const updatedTask = await client.stopTimer({
-        params: { id: task.id },
-      });
-      props.onUpdate(updatedTask);
-
-      // Clear interval
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    } else {
-      const updatedTask = await client.startTimer({
-        params: { id: task.id },
-      });
-      props.onUpdate(updatedTask);
-    }
-  };
-
-  // Update timer display
-  useEffect(() => {
-    // Set initial time
-    setCurrentTime(calculateTotalTime());
-
-    // If timer is running, update every second
-    if (isTimerRunning()) {
-      intervalRef.current = setInterval(() => {
-        setCurrentTime(calculateTotalTime());
-      }, 1000);
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [task.timerSessions]);
-
-  // Don't show timer if task is not accepted or already completed
-  if (!task.acceptedAt || task.completedAt) {
-    return null;
-  }
-
-  // Don't show if user doesn't have permission
-  if (!client.startTimer.can() && !client.stopTimer.can()) {
-    return null;
-  }
-
-  const running = isTimerRunning();
-
-  return (
-    <Flex align="center">
-      <Flex
-        className={"shadow"}
-        align="center"
-        gap="xs"
-        ml={"xs"}
-        px={"xs"}
-        py={2}
-        bdrs={"md"}
-        miw={150}
-        justify={"end"}
-        bd={"1px solid var(--alepha-border)"}
-      >
-        <IconClock size={theme.icon.size.sm} opacity={0.6} />
-        <ClientOnly>
-          <Text size="sm" fw={500}>
-            {formatTime(currentTime)}
-          </Text>
-        </ClientOnly>
-        <ActionButton
-          bd={0}
-          px={"xs"}
-          variant={"minimal"}
-          tooltip={
-            running ? tr("task.view.timer.pause") : tr("task.view.timer.start")
-          }
-          onClick={toggleTimer}
-          disabled={!client.startTimer.can() && !client.stopTimer.can()}
-        >
-          {running ? (
-            <IconPlayerPause size={theme.icon.size.md} />
-          ) : (
-            <IconPlayerPlay size={theme.icon.size.md} />
-          )}
-        </ActionButton>
-      </Flex>
-
-      <Flex
-        flex={1}
-        ml={"xs"}
-        style={{
-          width: 32,
-          opacity: 0.1,
-          height: 1,
-          backgroundColor: "var(--alepha-text)",
-        }}
-      />
-    </Flex>
-  );
-};

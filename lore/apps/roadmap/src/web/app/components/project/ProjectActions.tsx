@@ -1,29 +1,20 @@
-import { ActionButton, Flex, Text } from "@alepha/ui";
-import {
-  Card,
-  Center,
-  Drawer,
-  SegmentedControl,
-  Transition,
-} from "@mantine/core";
+import { Flex, Text } from "@alepha/ui";
+import { Card, Center, SegmentedControl, Transition } from "@mantine/core";
 import {
   IconBook2,
   IconBrush,
   IconChartLine,
-  IconPlus,
   IconSettings,
   IconTable,
 } from "@tabler/icons-react";
-import { useClient, useStore } from "alepha/react";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-import { useState } from "react";
-import type { TaskController } from "../../../../api/controllers/TaskController.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
-import TaskCreate from "./task/TaskCreate.tsx";
+import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 
 type TabValue =
   | "projectBoard"
@@ -129,7 +120,7 @@ const ProjectActions = () => {
               data={tabs}
             />
             <Flex flex={1} />
-            <CreateTaskButton />
+            <ProjectActionsCreateButton />
           </Flex>
         </Card>
       )}
@@ -138,47 +129,3 @@ const ProjectActions = () => {
 };
 
 export default ProjectActions;
-
-const CreateTaskButton = () => {
-  const [showDialog, setShowDialog] = useState(false);
-  const { tr } = useI18n<I18n, "en">();
-  const client = useClient<TaskController>();
-
-  const [project] = useStore(currentProjectAtom);
-  if (!project) {
-    return null;
-  }
-
-  return (
-    <Flex px={"xs"}>
-      <ActionButton
-        size={"xs"}
-        textVisibleFrom={"xl"}
-        variant={"filled"}
-        color={"green"}
-        disabled={!client.createTask.can()}
-        icon={IconPlus}
-        onClick={() => setShowDialog(true)}
-      >
-        {tr("project.menu.create-task")}
-      </ActionButton>
-      <Drawer
-        title={tr("project.menu.create-task")}
-        size={"xl"}
-        position={"right"}
-        opened={showDialog}
-        onClose={() => setShowDialog(false)}
-        className={"drawer"}
-      >
-        <Card
-          withBorder
-          bg={theme.colors.card}
-          radius={"md"}
-          className={"shadow"}
-        >
-          <TaskCreate project={project} onSubmit={() => setShowDialog(false)} />
-        </Card>
-      </Drawer>
-    </Flex>
-  );
-};

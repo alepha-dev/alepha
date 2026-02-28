@@ -7,11 +7,11 @@ import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useEffect, useState } from "react";
-import type { ChapterController } from "../../../../api/controllers/ChapterController.ts";
-import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
-import type { TaskController } from "../../../../api/controllers/TaskController.ts";
-import type { User } from "../../../../api/entities/users.ts";
-import type { TaskResource } from "../../../../api/schemas/taskResourceSchema.ts";
+import type { ChapterController } from "@/api/controllers/ChapterController.ts";
+import type { ProjectController } from "@/api/controllers/ProjectController.ts";
+import type { TaskController } from "@/api/controllers/TaskController.ts";
+import type { User } from "@/api/entities/users.ts";
+import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentAssignedTasksAtom } from "../../atoms/currentAssignedTasksAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
@@ -98,7 +98,6 @@ const ProjectBoardTable = () => {
         ),
         package: t.optional(t.string()),
       })}
-      defaultFilters={["search", "search"]}
       typeFormProps={{
         fieldControlProps: {
           chapterId: {
@@ -253,12 +252,6 @@ const ProjectBoardTable = () => {
               ...(alepha.store.get(currentAssignedTasksAtom) ?? []),
               updatedTask,
             ]);
-          },
-        },
-        {
-          label: "test",
-          onClick: () => {
-            console.log("test");
           },
         },
         {

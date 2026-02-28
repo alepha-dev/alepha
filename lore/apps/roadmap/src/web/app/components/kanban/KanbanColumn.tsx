@@ -2,11 +2,19 @@ import { Flex, Text } from "@alepha/ui";
 import { useDroppable } from "@dnd-kit/core";
 import { ScrollArea } from "@mantine/core";
 import { useI18n } from "alepha/react/i18n";
-import type { TaskResource } from "../../../../api/schemas/taskResourceSchema.ts";
+import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
 import type { I18n } from "../../services/I18n.ts";
 import KanbanCard from "./KanbanCard.tsx";
 
 type ColumnStatus = "new" | "accepted" | "completed";
+
+export interface KanbanColumnProps {
+  status: ColumnStatus;
+  tasks: TaskResource[];
+  readOnly: boolean;
+  last?: boolean;
+  onSelect: (task: TaskResource) => void;
+}
 
 const columnKeys = {
   new: "kanban.column.new",
@@ -20,19 +28,8 @@ const columnColors: Record<ColumnStatus, string> = {
   completed: "var(--mantine-color-green-5)",
 };
 
-const KanbanColumn = ({
-  status,
-  tasks,
-  readOnly,
-  last,
-  onSelect,
-}: {
-  status: ColumnStatus;
-  tasks: TaskResource[];
-  readOnly: boolean;
-  last?: boolean;
-  onSelect: (task: TaskResource) => void;
-}) => {
+const KanbanColumn = (props: KanbanColumnProps) => {
+  const { status, tasks, readOnly, last, onSelect } = props;
   const { tr } = useI18n<I18n, "en">();
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${status}`,

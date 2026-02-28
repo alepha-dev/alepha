@@ -17,7 +17,7 @@ import {
   kanbanReloadAtom,
 } from "./atoms/kanbanProjectAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
-import { MeRouter } from "./components/profile/MeRouter.ts";
+import { MeRouter } from "./components/profile/me/MeRouter.ts";
 import { I18n } from "./services/I18n.ts";
 import { Toaster } from "./services/Toaster.ts";
 

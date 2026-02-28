@@ -1,7 +1,7 @@
 import { AlephaMantineProvider, Flex } from "@alepha/ui";
 import { NestedView } from "alepha/react/router";
 import { theme } from "../constants/theme.ts";
-import Header from "./shared/Header.tsx";
+import Header from "./shared/header/Header.tsx";
 
 const Layout = () => {
   return (

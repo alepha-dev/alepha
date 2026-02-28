@@ -3,11 +3,11 @@ import { Checkbox } from "@mantine/core";
 import { IconListCheck } from "@tabler/icons-react";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
-import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
-import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
-import { theme } from "../../../constants/theme.ts";
-import type { I18n } from "../../../services/I18n.ts";
+import type { TaskController } from "@/api/controllers/TaskController.ts";
+import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
+import { currentAssignedTasksAtom } from "@/web/app/atoms/currentAssignedTasksAtom.ts";
+import { theme } from "@/web/app/constants/theme.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 
 interface TaskViewObjectivesProps {
   task: TaskResource;

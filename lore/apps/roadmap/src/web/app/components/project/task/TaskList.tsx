@@ -9,11 +9,11 @@ import {
 import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useId, useMemo } from "react";
-import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
-import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
-import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
+import type { TaskController } from "@/api/controllers/TaskController.ts";
+import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
+import { currentAssignedTasksAtom } from "@/web/app/atoms/currentAssignedTasksAtom.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 import TaskGroup from "./TaskGroup.tsx";
 
 interface TaskListProps {
@@ -107,7 +107,7 @@ const TaskList = (props: TaskListProps) => {
 
   return (
     <DndContext id={id} sensors={sensors} onDragEnd={handleDragEnd}>
-      <Flex direction="column" gap={0}>
+      <Flex direction="column" gap={"xs"}>
         {packageList.map((key) => (
           <TaskGroup name={key} tasks={groupByPackage[key]} key={key} />
         ))}

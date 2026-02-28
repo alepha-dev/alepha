@@ -8,12 +8,8 @@ export interface CanvasGridProps {
   gridSize?: number;
 }
 
-const CanvasGrid = ({
-  stagePos,
-  stageSize,
-  zoom,
-  gridSize = 20,
-}: CanvasGridProps) => {
+const CanvasGrid = (props: CanvasGridProps) => {
+  const { stagePos, stageSize, zoom, gridSize = 20 } = props;
   // Calculate visible area in canvas coordinates
   const startX = Math.floor(-stagePos.x / zoom / gridSize) * gridSize;
   const startY = Math.floor(-stagePos.y / zoom / gridSize) * gridSize;

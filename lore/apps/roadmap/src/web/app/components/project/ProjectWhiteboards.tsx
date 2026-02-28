@@ -3,9 +3,9 @@ import { Loader } from "@mantine/core";
 import { IconBrush, IconPlus } from "@tabler/icons-react";
 import { useClient, useStore } from "alepha/react";
 import { type ComponentType, useEffect, useState } from "react";
-import type { WhiteboardController } from "../../../../api/controllers/WhiteboardController.ts";
-import type { Project } from "../../../../api/entities/projects.ts";
-import type { Whiteboard } from "../../../../api/entities/whiteboards.ts";
+import type { WhiteboardController } from "@/api/controllers/WhiteboardController.ts";
+import type { Project } from "@/api/entities/projects.ts";
+import type { Whiteboard } from "@/api/entities/whiteboards.ts";
 import {
   currentWhiteboardAtom,
   currentWhiteboardsAtom,

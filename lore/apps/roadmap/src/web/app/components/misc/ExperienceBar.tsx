@@ -4,7 +4,7 @@ import { useInject, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
-import { CharacterInfo } from "../../../../api/services/CharacterInfo.ts";
+import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
 import { currentProjectCharacterAtom } from "../../atoms/currentProjectCharacterAtom.ts";
 import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";

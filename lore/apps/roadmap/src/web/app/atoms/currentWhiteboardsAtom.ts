@@ -1,5 +1,5 @@
 import { $atom, t } from "alepha";
-import { whiteboards } from "../../../api/entities/whiteboards.ts";
+import { whiteboards } from "@/api/entities/whiteboards.ts";
 
 export const currentWhiteboardsAtom = $atom({
   name: "rdm.current.whiteboards",

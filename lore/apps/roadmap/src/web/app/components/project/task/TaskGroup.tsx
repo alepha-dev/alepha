@@ -3,8 +3,8 @@ import { useDroppable } from "@dnd-kit/core";
 import { IconMinus, IconPlus } from "@tabler/icons-react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
-import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
-import type { I18n } from "../../../services/I18n.ts";
+import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 import { openRenameZoneModal } from "./RenameZoneModal.tsx";
 import TaskItem from "./TaskItem.tsx";
 
@@ -38,7 +38,7 @@ const TaskGroup = (props: TaskGroupProps) => {
   return (
     <Flex
       direction="column"
-      gap={0}
+      gap={2}
       ref={setNodeRef}
       style={{
         backgroundColor: isOver ? "rgba(64, 192, 87, 0.1)" : undefined,
@@ -47,7 +47,7 @@ const TaskGroup = (props: TaskGroupProps) => {
       }}
     >
       <Flex p={0} align="center" justify="center" gap={"xs"}>
-        <Flex align="center" justify="center">
+        <Flex gap={2} align="center" justify="center">
           <ActionButton
             size={"xs"}
             variant={"minimal"}

@@ -24,7 +24,7 @@ import {
   currentWhiteboardsAtom,
 } from "./atoms/currentWhiteboardsAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
-import { MeRouter } from "./components/profile/MeRouter.ts";
+import { MeRouter } from "./components/profile/me/MeRouter.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 
 export class AppRouter {
@@ -208,7 +208,7 @@ export class AppRouter {
 
   projectChapters = $page({
     path: "/chapters",
-    lazy: () => import("./components/project/ProjectChapters.tsx"),
+    lazy: () => import("./components/project/chapters/ProjectChapters.tsx"),
   });
 
   projectAnalytics = $page({
@@ -228,7 +228,7 @@ export class AppRouter {
 
   projectSettings = $page({
     path: "/settings",
-    lazy: () => import("./components/project/ProjectSettings.tsx"),
+    lazy: () => import("./components/project/settings/ProjectSettings.tsx"),
     loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {

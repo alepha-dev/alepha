@@ -1,5 +1,5 @@
 import { $atom, t } from "alepha";
-import { characters } from "../../../api/entities/characters.ts";
+import { characters } from "@/api/entities/characters.ts";
 
 export const currentProjectCharacterAtom = $atom({
   name: "rdm.current.project_character",

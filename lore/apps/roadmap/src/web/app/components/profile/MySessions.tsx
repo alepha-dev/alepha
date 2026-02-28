@@ -12,7 +12,7 @@ import { useState } from "react";
 import type {
   SessionController,
   UserSession,
-} from "../../../../api/controllers/SessionController.ts";
+} from "@/api/controllers/SessionController.ts";
 import { theme } from "../../constants/theme.ts";
 
 export interface MySessionsProps {

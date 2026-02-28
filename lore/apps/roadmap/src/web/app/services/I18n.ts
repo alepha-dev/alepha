@@ -416,7 +416,7 @@ export class I18n {
         "kanban.column.completed": "Terminées",
         "kanban.empty": "Aucune quête",
         "kanban.readOnly": "Lecture seule",
-        "kanban.filter.all": "Toutes",
+        "kanban.filter.packages": "Zones",
         "kanban.error.completedCannotMove":
           "Les quêtes terminées ne peuvent pas être déplacées",
         "kanban.error.acceptFirst":
