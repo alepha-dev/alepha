@@ -1,14 +1,12 @@
 import { t } from "alepha";
+import { taskStatusSchema } from "../../api/schemas/taskResourceSchema.ts";
 
 /**
  * Task priority levels.
  */
 export const prioritySchema = t.enum(["optional", "low", "medium", "high"]);
 
-/**
- * Task status.
- */
-export const taskStatusSchema = t.enum(["new", "accepted", "completed"]);
+export { taskStatusSchema };
 
 /**
  * Task objective.

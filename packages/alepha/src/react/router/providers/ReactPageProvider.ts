@@ -8,6 +8,7 @@ import {
   type TSchema,
   t,
 } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { AlephaContext, ClientOnly } from "alepha/react";
 import type { Head } from "alepha/react/head";
@@ -24,6 +25,8 @@ import {
   type PagePrimitiveOptions,
 } from "../primitives/$page.ts";
 
+// -------------------------------------------------------------------------------------------------------------------
+
 export const reactPageOptions = $atom({
   name: "alepha.react.page.options",
   description: "Configuration options for the React page provider.",
@@ -38,14 +41,70 @@ export const reactPageOptions = $atom({
   },
 });
 
+// -------------------------------------------------------------------------------------------------------------------
+
 /**
  * Handle page routes for React applications. (Browser and Server)
  */
 export class ReactPageProvider {
+  protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly log = $logger();
   protected readonly options = $use(reactPageOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly pages: PageRoute[] = [];
+  protected nextIdCursor = 0;
+
+  protected readonly configure = $hook({
+    on: "configure",
+    handler: () => {
+      let hasNotFoundHandler = false;
+      const pages = this.alepha.primitives($page);
+
+      const hasParent = (it: PagePrimitive) => {
+        if (it.options.parent) {
+          return true;
+        }
+
+        for (const page of pages) {
+          const children = page.options.children
+            ? Array.isArray(page.options.children)
+              ? page.options.children
+              : page.options.children()
+            : [];
+          if (children.includes(it)) {
+            return true;
+          }
+        }
+      };
+
+      for (const page of pages) {
+        if (page.options.path === "/*") {
+          hasNotFoundHandler = true;
+        }
+
+        // skip children, we only want root pages
+        if (hasParent(page)) {
+          continue;
+        }
+
+        this.add(this.map(pages, page));
+      }
+
+      if (!hasNotFoundHandler && pages.length > 0) {
+        // add a default 404 page if not already defined
+        this.add({
+          path: "/*",
+          name: "notFound",
+          component: NotFoundPage,
+          onServerResponse: ({ reply }) => {
+            reply.status = 404;
+          },
+        });
+      }
+    },
+  });
+
+  // -------------------------------------------------------------------------------------------------------------------
 
   public getPages(): PageRoute[] {
     return this.pages;
@@ -322,14 +381,18 @@ export class ReactPageProvider {
       // normal use case
       if (!it.error) {
         try {
-          const element = await this.createElement(it.route, {
-            // default props attached to page
-            ...(it.route.props ? it.route.props() : {}),
-            // resolved props
-            ...props,
-            // context props (from previous layers)
-            ...context,
-          });
+          const element = await this.createElement(
+            it.route,
+            {
+              // default props attached to page
+              ...(it.route.props ? it.route.props() : {}),
+              // resolved props
+              ...props,
+              // context props (from previous layers)
+              ...context,
+            },
+            state.url,
+          );
 
           state.layers.push({
             name: it.route.name,
@@ -406,6 +469,7 @@ export class ReactPageProvider {
   protected async createElement(
     page: PageRoute,
     props: Record<string, any>,
+    targetUrl?: URL,
   ): Promise<ReactNode> {
     if (page.lazy && page.component) {
       this.log.warn(
@@ -414,8 +478,17 @@ export class ReactPageProvider {
     }
 
     if (page.lazy) {
-      const component = await page.lazy(); // load component
-      return createElement(component.default, props);
+      try {
+        const component = await page.lazy();
+        return createElement(component.default, props);
+      } catch (error) {
+        if (this.alepha.isBrowser() && this.isChunkLoadError(error)) {
+          if (this.reloadAfterChunkError(targetUrl)) {
+            return undefined;
+          }
+        }
+        throw error;
+      }
     }
 
     if (page.component) {
@@ -423,6 +496,46 @@ export class ReactPageProvider {
     }
 
     return undefined;
+  }
+
+  /**
+   * Detect chunk load errors caused by stale dynamic imports after a deployment.
+   * When new assets are deployed with different hashes, old chunk URLs return 404.
+   */
+  protected isChunkLoadError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const msg = error.message;
+    return (
+      /Failed to fetch dynamically imported module/.test(msg) ||
+      /error loading dynamically imported module/i.test(msg) ||
+      /Unable to preload CSS/.test(msg) ||
+      /Importing a module script failed/.test(msg)
+    );
+  }
+
+  /**
+   * Navigate to the target URL to fetch updated assets after a chunk load failure.
+   * Uses sessionStorage to prevent infinite reload loops.
+   * Returns true if navigation was initiated.
+   */
+  protected reloadAfterChunkError(url?: URL): boolean {
+    const key = "alepha:chunk-reload";
+    const lastReload = sessionStorage.getItem(key);
+    const now = this.dateTimeProvider.nowMillis();
+
+    if (lastReload && now - Number(lastReload) < 10_000) {
+      this.log.error(
+        "Chunk load failed after recent reload, not retrying to avoid loop",
+      );
+      return false;
+    }
+
+    this.log.warn("Chunk load failed after deployment, reloading page");
+    sessionStorage.setItem(key, String(now));
+    window.location.assign(
+      url ? url.pathname + url.search : window.location.href,
+    );
+    return true;
   }
 
   public renderError(error: Error): ReactNode {
@@ -491,56 +604,6 @@ export class ReactPageProvider {
     );
   }
 
-  protected readonly configure = $hook({
-    on: "configure",
-    handler: () => {
-      let hasNotFoundHandler = false;
-      const pages = this.alepha.primitives($page);
-
-      const hasParent = (it: PagePrimitive) => {
-        if (it.options.parent) {
-          return true;
-        }
-
-        for (const page of pages) {
-          const children = page.options.children
-            ? Array.isArray(page.options.children)
-              ? page.options.children
-              : page.options.children()
-            : [];
-          if (children.includes(it)) {
-            return true;
-          }
-        }
-      };
-
-      for (const page of pages) {
-        if (page.options.path === "/*") {
-          hasNotFoundHandler = true;
-        }
-
-        // skip children, we only want root pages
-        if (hasParent(page)) {
-          continue;
-        }
-
-        this.add(this.map(pages, page));
-      }
-
-      if (!hasNotFoundHandler && pages.length > 0) {
-        // add a default 404 page if not already defined
-        this.add({
-          path: "/*",
-          name: "notFound",
-          component: NotFoundPage,
-          onServerResponse: ({ reply }) => {
-            reply.status = 404;
-          },
-        });
-      }
-    },
-  });
-
   protected map(
     pages: Array<PagePrimitive>,
     target: PagePrimitive,
@@ -608,13 +671,13 @@ export class ReactPageProvider {
     return path;
   }
 
-  protected _next = 0;
-
   protected nextId(): string {
-    this._next += 1;
-    return `P${this._next}`;
+    this.nextIdCursor += 1;
+    return `P${this.nextIdCursor}`;
   }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export const isPageRoute = (it: any): it is PageRoute => {
   return (
@@ -710,7 +773,9 @@ export interface ReactRouterState {
    */
   head: Head;
 
-  //
+  /**
+   * Optional name of the current page route
+   */
   name?: string;
 }
 
@@ -720,10 +785,6 @@ export interface RouterStackItem {
   props?: Record<string, any>;
   error?: Error;
   cache?: boolean;
-}
-
-export interface TransitionOptions {
-  previous?: PreviousLayerData[];
 }
 
 export interface CreateLayersResult {

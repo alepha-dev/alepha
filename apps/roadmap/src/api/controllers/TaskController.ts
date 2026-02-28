@@ -15,10 +15,15 @@ import sanitizeHtml from "sanitize-html";
 import { chapters } from "../entities/chapters.ts";
 import { characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
-import { tasks } from "../entities/tasks.ts";
+import { type Task, tasks } from "../entities/tasks.ts";
 import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { taskCreateSchema } from "../schemas/taskCreateSchema.ts";
+import {
+  type TaskResource,
+  taskResourceSchema,
+} from "../schemas/taskResourceSchema.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
+import { TaskResourceMapper } from "../services/TaskResourceMapper.ts";
 
 export class TaskController {
   log = $logger();
@@ -30,6 +35,7 @@ export class TaskController {
   dt = $inject(DateTimeProvider);
   security = $inject(AppSecurityProvider);
   fileService = $inject(FileService);
+  taskMapper = $inject(TaskResourceMapper);
 
   attachments = $bucket({
     maxSize: 10 * 1024 * 1024, // 10 MB
@@ -45,11 +51,18 @@ export class TaskController {
     ],
   });
 
+  /**
+   * Enrich a task entity with computed metadata.
+   */
+  mapTaskToResource(task: Task): TaskResource {
+    return this.taskMapper.mapTaskToResource(task);
+  }
+
   createTask = $action({
     use: [$secure({ permissions: ["task:create"] })],
     schema: {
       body: taskCreateSchema,
-      response: tasks.schema,
+      response: taskResourceSchema,
     },
     handler: async ({ body, user }) => {
       const { project } = await this.security.checkOwnership(
@@ -67,12 +80,14 @@ export class TaskController {
         });
       }
 
-      return await this.tasks.create({
+      const task = await this.tasks.create({
         ...body,
         attachments: body.attachments ?? [],
         createdBy: user.id,
         history: [],
       });
+
+      return this.mapTaskToResource(task);
     },
   });
 
@@ -109,7 +124,7 @@ export class TaskController {
       body: t.object({
         fileId: t.uuid(),
       }),
-      response: tasks.schema,
+      response: taskResourceSchema,
     },
     handler: async ({ params, body, user }) => {
       const task = await this.tasks.getOne({
@@ -122,12 +137,14 @@ export class TaskController {
       await this.security.checkOwnership(task.projectId, user);
 
       if (task.attachments.includes(body.fileId)) {
-        return task;
+        return this.mapTaskToResource(task);
       }
 
-      return await this.tasks.updateById(params.id, {
+      const updated = await this.tasks.updateById(params.id, {
         attachments: [...task.attachments, body.fileId],
       });
+
+      return this.mapTaskToResource(updated);
     },
   });
 
@@ -138,7 +155,7 @@ export class TaskController {
         id: t.integer(),
         fileId: t.uuid(),
       }),
-      response: tasks.schema,
+      response: taskResourceSchema,
     },
     handler: async ({ params, user }) => {
       const task = await this.tasks.getOne({
@@ -159,9 +176,11 @@ export class TaskController {
         // File may not exist or already deleted
       });
 
-      return await this.tasks.updateById(params.id, {
+      const updated = await this.tasks.updateById(params.id, {
         attachments: updatedAttachments,
       });
+
+      return this.mapTaskToResource(updated);
     },
   });
 
@@ -176,7 +195,7 @@ export class TaskController {
         search: t.optional(t.string()),
         chapterId: t.optional(t.integer()),
       }),
-      response: db.page(tasks.schema),
+      response: db.page(taskResourceSchema),
     },
     handler: async ({ params, query, user }) => {
       await this.security.checkOwnership(params.projectId, user);
@@ -205,9 +224,14 @@ export class TaskController {
 
       query.sort ??= "-updatedAt";
 
-      return this.tasks.paginate(query, {
+      const result = await this.tasks.paginate(query, {
         where,
       });
+
+      return {
+        ...result,
+        content: result.content.map((task) => this.mapTaskToResource(task)),
+      };
     },
   });
 
@@ -217,7 +241,7 @@ export class TaskController {
       params: t.object({
         id: t.integer(),
       }),
-      response: tasks.schema,
+      response: taskResourceSchema,
     },
     handler: async ({ params, user }) => {
       const task = await this.tasks.getOne({
@@ -239,7 +263,7 @@ export class TaskController {
       });
 
       await this.tasks.save(task);
-      return task;
+      return this.mapTaskToResource(task);
     },
   });
 
@@ -249,7 +273,7 @@ export class TaskController {
       params: t.object({
         id: t.integer(),
       }),
-      response: tasks.schema,
+      response: taskResourceSchema,
     },
     handler: async ({ params, user }) => {
       const task = await this.tasks.getOne({
@@ -271,7 +295,7 @@ export class TaskController {
       });
 
       await this.tasks.save(task);
-      return task;
+      return this.mapTaskToResource(task);
     },
   });
 
@@ -281,7 +305,7 @@ export class TaskController {
       params: t.object({
         id: t.integer(),
       }),
-      response: t.extend(tasks.schema, {
+      response: t.extend(taskResourceSchema, {
         character: characters.schema,
       }),
     },
@@ -352,7 +376,7 @@ export class TaskController {
         ]);
 
         return {
-          ...task,
+          ...this.mapTaskToResource(task),
           character,
         };
       });
@@ -365,7 +389,7 @@ export class TaskController {
       params: t.object({
         id: t.integer(),
       }),
-      response: tasks.schema,
+      response: taskResourceSchema,
     },
     handler: async ({ params, user }) => {
       const task = await this.tasks.getOne({
@@ -376,7 +400,7 @@ export class TaskController {
 
       await this.security.checkOwnership(task.projectId, user);
 
-      return task;
+      return this.mapTaskToResource(task);
     },
   });
 
@@ -397,7 +421,7 @@ export class TaskController {
           "attachments",
         ]),
       ),
-      response: tasks.schema,
+      response: taskResourceSchema,
     },
     handler: async ({ params, body, user }) => {
       const task = await this.tasks.getOne({
@@ -423,7 +447,7 @@ export class TaskController {
         body.description = sanitizeHtml(body.description);
       }
 
-      return await this.tasks.updateById(params.id, {
+      const updated = await this.tasks.updateById(params.id, {
         ...body,
         history: [
           ...task.history,
@@ -434,6 +458,8 @@ export class TaskController {
           },
         ],
       });
+
+      return this.mapTaskToResource(updated);
     },
   });
 
@@ -446,7 +472,7 @@ export class TaskController {
       body: t.object({
         index: t.integer(),
       }),
-      response: tasks.schema,
+      response: taskResourceSchema,
     },
     handler: async ({ params, user, body }) => {
       const task = await this.tasks.getOne({
@@ -467,7 +493,7 @@ export class TaskController {
       task.objectives[body.index].completed =
         !task.objectives[body.index].completed;
 
-      return await this.tasks.updateById(params.id, {
+      const updated = await this.tasks.updateById(params.id, {
         objectives: task.objectives,
         history: task.objectives[body.index].completed
           ? [
@@ -480,6 +506,8 @@ export class TaskController {
             ]
           : task.history,
       });
+
+      return this.mapTaskToResource(updated);
     },
   });
 
@@ -497,7 +525,7 @@ export class TaskController {
           }),
         ),
       }),
-      response: tasks.schema,
+      response: taskResourceSchema,
     },
     handler: async ({ params, body, user }) => {
       const task = await this.tasks.getOne({
@@ -518,7 +546,7 @@ export class TaskController {
         );
       }
 
-      return await this.tasks.updateById(params.id, {
+      const updated = await this.tasks.updateById(params.id, {
         objectives: body.objectives,
         history: [
           ...task.history,
@@ -529,6 +557,8 @@ export class TaskController {
           },
         ],
       });
+
+      return this.mapTaskToResource(updated);
     },
   });
 
@@ -573,7 +603,7 @@ export class TaskController {
       body: t.object({
         newZone: t.string(),
       }),
-      response: tasks.schema,
+      response: taskResourceSchema,
     },
     handler: async ({ params, body, user }) => {
       const task = await this.tasks.getOne({
@@ -605,7 +635,7 @@ export class TaskController {
         });
       }
 
-      return updatedTask;
+      return this.mapTaskToResource(updatedTask);
     },
   });
 
@@ -618,7 +648,7 @@ export class TaskController {
       body: t.object({
         note: t.string({ size: "rich" }),
       }),
-      response: tasks.schema,
+      response: taskResourceSchema,
     },
     handler: async ({ params, body, user }) => {
       const task = await this.tasks.getOne({
@@ -632,9 +662,11 @@ export class TaskController {
       // sanitize HTML content
       const sanitizedNote = sanitizeHtml(body.note);
 
-      return await this.tasks.updateById(params.id, {
+      const updated = await this.tasks.updateById(params.id, {
         note: sanitizedNote,
       });
+
+      return this.mapTaskToResource(updated);
     },
   });
 
@@ -644,7 +676,7 @@ export class TaskController {
       params: t.object({
         id: t.integer(),
       }),
-      response: tasks.schema,
+      response: taskResourceSchema,
     },
     handler: async ({ params, user }) => {
       const task = await this.tasks.getOne({
@@ -669,9 +701,11 @@ export class TaskController {
         startedAt: this.dt.nowISOString(),
       });
 
-      return await this.tasks.updateById(params.id, {
+      const updated = await this.tasks.updateById(params.id, {
         timerSessions: sessions,
       });
+
+      return this.mapTaskToResource(updated);
     },
   });
 
@@ -681,7 +715,7 @@ export class TaskController {
       params: t.object({
         id: t.integer(),
       }),
-      response: tasks.schema,
+      response: taskResourceSchema,
     },
     handler: async ({ params, user }) => {
       const task = await this.tasks.getOne({
@@ -704,9 +738,11 @@ export class TaskController {
       // Stop the timer
       lastSession.stoppedAt = this.dt.nowISOString();
 
-      return await this.tasks.updateById(params.id, {
+      const updated = await this.tasks.updateById(params.id, {
         timerSessions: sessions,
       });
+
+      return this.mapTaskToResource(updated);
     },
   });
 }

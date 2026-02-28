@@ -9,8 +9,8 @@ import { useRouter } from "alepha/react/router";
 import { useEffect, useState } from "react";
 import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
 import type { TaskController } from "../../../../api/controllers/TaskController.ts";
-import type { Task } from "../../../../api/entities/tasks.ts";
 import type { User } from "../../../../api/entities/users.ts";
+import type { TaskResource } from "../../../../api/schemas/taskResourceSchema.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -79,7 +79,7 @@ const ProjectBoardTable = () => {
   if (!project) return null;
 
   return (
-    <DataTable<Task, typeof filtersSchema>
+    <DataTable<TaskResource, typeof filtersSchema>
       submitOnInit
       defaultSize={10}
       emptyLabel={tr("common.noResults")}
@@ -106,6 +106,23 @@ const ProjectBoardTable = () => {
               {users.find((u) => u.id === task.acceptedBy)?.username}
             </Flex>
           ),
+        },
+        status: {
+          label: "Status",
+          fit: true,
+          value: (task) => {
+            const color =
+              task.metadata.status === "completed"
+                ? "green"
+                : task.metadata.status === "accepted"
+                  ? "blue"
+                  : "gray";
+            return (
+              <Badge size="sm" color={color} variant="light">
+                {task.metadata.status}
+              </Badge>
+            );
+          },
         },
         title: {
           label: "Quest",

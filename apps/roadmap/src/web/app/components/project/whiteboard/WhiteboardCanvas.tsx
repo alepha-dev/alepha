@@ -23,8 +23,8 @@ import {
   Transformer,
 } from "react-konva";
 import type { WhiteboardController } from "../../../../../api/controllers/WhiteboardController.ts";
-import type { Task } from "../../../../../api/entities/tasks.ts";
 import type { WhiteboardElement } from "../../../../../api/entities/whiteboards.ts";
+import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
 import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -90,7 +90,7 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
   const [isPanning, setIsPanning] = useState(false);
   const [lastPointerPos, setLastPointerPos] = useState({ x: 0, y: 0 });
   const [spacePressed, setSpacePressed] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<TaskResource | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Update elements when whiteboard changes
@@ -707,14 +707,14 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
     }
   };
 
-  const handleTaskUpdate = (updatedTask: Task) => {
+  const handleTaskUpdate = (updatedTask: TaskResource) => {
     setEditingTask(null);
     setAcceptedTasks(
       acceptedTasks.map((t) => (t.id === updatedTask.id ? updatedTask : t)),
     );
   };
 
-  const handleTaskDblClick = (task: Task) => {
+  const handleTaskDblClick = (task: TaskResource) => {
     setEditingTask(task);
   };
 

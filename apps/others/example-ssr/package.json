@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build --stats",
+    "build&start": "node dist",
     "deploy": "alepha deploy",
     "studio": "alepha db studio --mode=production",
     "db:generate": "alepha db generate",

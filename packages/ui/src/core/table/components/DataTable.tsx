@@ -265,6 +265,8 @@ const DataTable = <T extends object, Filters extends TObject>(
           value,
           form as unknown as FormModel<Filters>,
         );
+        form.input.page.set(0);
+        await form.submit();
       },
     },
     [items],
@@ -475,7 +477,14 @@ const DataTable = <T extends object, Filters extends TObject>(
                           ) : (
                             (Icon as ReactNode)
                           ),
-                        onClick: (action as any).onClick,
+                        onClick: (action as any).onClick
+                          ? async () => {
+                              await (action as any).onClick();
+                              if (!action.skipRefresh) {
+                                await form.submit();
+                              }
+                            }
+                          : undefined,
                         color: action.color,
                       };
                     }),

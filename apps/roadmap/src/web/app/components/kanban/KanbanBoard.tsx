@@ -13,7 +13,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import type { KanbanController } from "../../../../api/controllers/KanbanController.ts";
 import type { TaskController } from "../../../../api/controllers/TaskController.ts";
 import type { Project } from "../../../../api/entities/projects.ts";
-import type { Task } from "../../../../api/entities/tasks.ts";
+import type { TaskResource } from "../../../../api/schemas/taskResourceSchema.ts";
 import {
   kanbanProjectAtom,
   kanbanReloadAtom,
@@ -26,25 +26,19 @@ type TaskStatus = "new" | "accepted" | "completed";
 
 interface KanbanBoardProps {
   project: Project;
-  tasks: Task[];
+  tasks: TaskResource[];
   readOnly: boolean;
 }
-
-const getTaskStatus = (task: Task): TaskStatus => {
-  if (task.completedAt) return "completed";
-  if (task.acceptedAt) return "accepted";
-  return "new";
-};
 
 const KanbanBoard = ({
   project,
   tasks: initialTasks,
   readOnly,
 }: KanbanBoardProps) => {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [tasks, setTasks] = useState<TaskResource[]>(initialTasks);
   const [activeZone, setActiveZone] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<TaskResource | null>(null);
   const [, setKanbanProject] = useStore(kanbanProjectAtom);
   const [reloadKey] = useStore(kanbanReloadAtom);
   const taskApi = useClient<TaskController>();
@@ -74,13 +68,13 @@ const KanbanBoard = ({
   }, [tasks, activeZone]);
 
   const grouped = useMemo(() => {
-    const result: Record<TaskStatus, Task[]> = {
+    const result: Record<TaskStatus, TaskResource[]> = {
       new: [],
       accepted: [],
       completed: [],
     };
     for (const task of filteredTasks) {
-      result[getTaskStatus(task)].push(task);
+      result[task.metadata.status].push(task);
     }
     return result;
   }, [filteredTasks]);
@@ -110,8 +104,8 @@ const KanbanBoard = ({
     const columnData = over.data.current;
     if (taskData?.type !== "task" || columnData?.type !== "column") return;
 
-    const task = taskData.task as Task;
-    const fromStatus = getTaskStatus(task);
+    const task = taskData.task as TaskResource;
+    const fromStatus = task.metadata.status;
     const toStatus = columnData.status as TaskStatus;
 
     if (fromStatus === toStatus) return;

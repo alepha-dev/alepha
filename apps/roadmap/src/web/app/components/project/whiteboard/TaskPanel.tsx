@@ -7,13 +7,13 @@ import {
 } from "@tabler/icons-react";
 import { useI18n } from "alepha/react/i18n";
 import { useCallback, useState } from "react";
-import type { Task } from "../../../../../api/entities/tasks.ts";
+import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TaskComplexity from "../task/TaskComplexity.tsx";
 import classes from "./WhiteboardCanvas.module.css";
 
 export interface TaskPanelProps {
-  availableTasks: Task[];
+  availableTasks: TaskResource[];
   onAddTask: (taskId: number, x?: number, y?: number) => void;
   onDragStart: (e: React.DragEvent, taskId: number) => void;
 }

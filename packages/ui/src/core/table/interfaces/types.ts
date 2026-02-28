@@ -29,6 +29,11 @@ export type DataTableRowAction = ActionProps & {
    */
   label?: string;
   visible?: boolean;
+  /**
+   * When true, skip the automatic table refresh after a successful onClick.
+   * By default, the table re-fetches data after every row action completes.
+   */
+  skipRefresh?: boolean;
 };
 
 // -----------------------------------------------------------------------------

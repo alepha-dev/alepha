@@ -3,7 +3,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@mantine/core";
 import { IconExclamationMark, IconSparkles } from "@tabler/icons-react";
-import type { Task } from "../../../../api/entities/tasks.ts";
+import type { TaskResource } from "../../../../api/schemas/taskResourceSchema.ts";
 import { theme } from "../../constants/theme.ts";
 import TaskComplexity from "../project/task/TaskComplexity.tsx";
 
@@ -25,9 +25,9 @@ const KanbanCard = ({
   readOnly,
   onSelect,
 }: {
-  task: Task;
+  task: TaskResource;
   readOnly: boolean;
-  onSelect: (task: Task) => void;
+  onSelect: (task: TaskResource) => void;
 }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -74,10 +74,10 @@ const KanbanCard = ({
               <Text size="xs" c="dimmed">
                 {task.package}
               </Text>
-              {!!task.objectives.length && (
+              {task.metadata.objectivesProgress.total > 0 && (
                 <Text size="10px" c="dimmed">
-                  {task.objectives.filter((o) => o.completed).length}/
-                  {task.objectives.length}
+                  {task.metadata.objectivesProgress.completed}/
+                  {task.metadata.objectivesProgress.total}
                 </Text>
               )}
             </Flex>
