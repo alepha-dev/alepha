@@ -18,7 +18,7 @@ export const parseInput = (
   const disabled = false; // form.loading;
   const id = props.input.props.id;
   const label =
-    props.title ??
+    props.label ??
     ("title" in props.input.schema &&
     typeof props.input.schema.title === "string"
       ? props.input.schema.title
@@ -104,7 +104,7 @@ export const parseInput = (
 
 export interface GenericControlProps {
   input: BaseInputField;
-  title?: string;
+  label?: string;
   description?: string;
   icon?: ReactElement | ((props: { size: number }) => ReactNode);
   size?: "xs" | "sm" | "md" | "lg" | "xl";

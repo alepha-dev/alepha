@@ -355,7 +355,7 @@ const Register = (props: RegisterProps) => {
                       {settings.usernameEnabled !== false &&
                         form.input.username && (
                           <Control
-                            title={tr("registerUsername")}
+                            label={tr("registerUsername")}
                             input={form.input.username}
                             icon={<IconUser />}
                             text={{
@@ -365,7 +365,7 @@ const Register = (props: RegisterProps) => {
                         )}
                       {settings.emailEnabled !== false && form.input.email && (
                         <Control
-                          title={tr("registerEmail")}
+                          label={tr("registerEmail")}
                           input={form.input.email}
                           icon={<IconMail />}
                           text={{
@@ -376,7 +376,7 @@ const Register = (props: RegisterProps) => {
                       {settings.phoneEnabled === true &&
                         form.input.phoneNumber && (
                           <Control
-                            title={tr("registerPhone")}
+                            label={tr("registerPhone")}
                             input={form.input.phoneNumber}
                             icon={<IconPhone />}
                             text={{
@@ -385,7 +385,7 @@ const Register = (props: RegisterProps) => {
                           />
                         )}
                       <Control
-                        title={tr("registerPassword")}
+                        label={tr("registerPassword")}
                         input={form.input.password}
                         icon={<IconLock />}
                         password={{
@@ -393,7 +393,7 @@ const Register = (props: RegisterProps) => {
                         }}
                       />
                       <Control
-                        title={tr("registerConfirmPassword")}
+                        label={tr("registerConfirmPassword")}
                         input={form.input.confirmPassword}
                         icon={<IconLock />}
                         password={{

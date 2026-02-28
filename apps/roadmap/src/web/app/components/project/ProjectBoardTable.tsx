@@ -3,7 +3,7 @@ import { Badge } from "@mantine/core";
 import { IconSignature, IconTrash, IconUser } from "@tabler/icons-react";
 import { t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
+import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useEffect, useState } from "react";
@@ -13,6 +13,7 @@ import type { TaskController } from "../../../../api/controllers/TaskController.
 import type { User } from "../../../../api/entities/users.ts";
 import type { TaskResource } from "../../../../api/schemas/taskResourceSchema.ts";
 import type { AppRouter } from "../../AppRouter.ts";
+import { currentAssignedTasksAtom } from "../../atoms/currentAssignedTasksAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import TaskComplexity from "./task/TaskComplexity.tsx";
@@ -42,6 +43,7 @@ const removeHtmlTags = (text: string) => {
 };
 
 const ProjectBoardTable = () => {
+  const alepha = useAlepha();
   const [project] = useStore(currentProjectAtom);
   const taskApi = useClient<TaskController>();
   const projectApi = useClient<ProjectController>();
@@ -86,8 +88,17 @@ const ProjectBoardTable = () => {
       submitOnInit
       defaultSize={10}
       emptyLabel={tr("common.noResults")}
-      filters={filtersSchema}
-      defaultFilters={["status", "search"]}
+      filters={t.object({
+        status: t.optional(t.enum(["new", "accepted", "completed"])),
+        search: t.optional(t.string()),
+        chapterId: t.optional(
+          t.integer({
+            title: "Chapter",
+          }),
+        ),
+        package: t.optional(t.string()),
+      })}
+      defaultFilters={["search", "search"]}
       typeFormProps={{
         fieldControlProps: {
           chapterId: {
@@ -175,7 +186,7 @@ const ProjectBoardTable = () => {
               </Text>
               {task.description && (
                 <Text style={{ textOverflow: "ellipsis" }} size="xs" c="dimmed">
-                  {removeHtmlTags(task.description.slice(0, 100))}
+                  {removeHtmlTags(task.description.slice(0, 60))}
                 </Text>
               )}
             </Flex>
@@ -189,7 +200,7 @@ const ProjectBoardTable = () => {
             <Badge
               size="sm"
               color={getPriorityColor(task.priority)}
-              variant="light"
+              variant="dot"
             >
               {task.priority}
             </Badge>
@@ -235,7 +246,19 @@ const ProjectBoardTable = () => {
           color: "blue",
           visible: !task.acceptedAt && taskApi.acceptTask.can(),
           onClick: async () => {
-            await taskApi.acceptTask({ params: { id: task.id } });
+            const updatedTask = await taskApi.acceptTask({
+              params: { id: task.id },
+            });
+            alepha.store.set(currentAssignedTasksAtom, [
+              ...(alepha.store.get(currentAssignedTasksAtom) ?? []),
+              updatedTask,
+            ]);
+          },
+        },
+        {
+          label: "test",
+          onClick: () => {
+            console.log("test");
           },
         },
         {

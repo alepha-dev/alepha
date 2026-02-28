@@ -151,7 +151,7 @@ const Login = (props: LoginProps) => {
                 <form {...form.props}>
                   <Flex direction="column" flex={1} gap={"md"}>
                     <Control
-                      title={identifierTitle}
+                      label={identifierTitle}
                       input={form.input.identifier}
                       icon={IconUser}
                       text={{
@@ -159,7 +159,7 @@ const Login = (props: LoginProps) => {
                       }}
                     />
                     <Control
-                      title={tr("loginPassword")}
+                      label={tr("loginPassword")}
                       input={form.input.password}
                       icon={IconLock}
                       password={{

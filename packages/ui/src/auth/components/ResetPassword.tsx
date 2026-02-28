@@ -193,7 +193,7 @@ const ResetPassword = (props: ResetPasswordProps) => {
                     {tr("resetPasswordEnterEmail")}
                   </Text>
                   <Control
-                    title={tr("resetPasswordEmail")}
+                    label={tr("resetPasswordEmail")}
                     input={emailForm.input.email}
                     icon={<IconMail />}
                     text={{
@@ -249,7 +249,7 @@ const ResetPassword = (props: ResetPasswordProps) => {
                     {tr("resetPasswordEnterNewPassword")}
                   </Text>
                   <Control
-                    title={tr("resetPasswordNewPassword")}
+                    label={tr("resetPasswordNewPassword")}
                     input={passwordForm.input.password}
                     icon={<IconLock />}
                     password={{
@@ -258,7 +258,7 @@ const ResetPassword = (props: ResetPasswordProps) => {
                     }}
                   />
                   <Control
-                    title={tr("resetPasswordConfirmPassword")}
+                    label={tr("resetPasswordConfirmPassword")}
                     input={passwordForm.input.confirmPassword}
                     icon={<IconLock />}
                     password={{

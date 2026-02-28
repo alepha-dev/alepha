@@ -23,7 +23,9 @@
   ],
   "dependencies": {
     "@mantine/charts": "^8.3.15",
+    "@mantine/core": "^8.3.15",
     "@mantine/dates": "^8.3.15",
+    "@mantine/hooks": "^8.3.15",
     "@mantine/modals": "^8.3.15",
     "@mantine/notifications": "^8.3.15",
     "@mantine/nprogress": "^8.3.15",
@@ -46,8 +48,6 @@
     "vitest": "^4.0.18"
   },
   "peerDependencies": {
-    "@mantine/core": "^8.3.15",
-    "@mantine/hooks": "^8.3.15",
     "alepha": "0.18.2",
     "react": "*",
     "react-dom": "*"

@@ -66,7 +66,9 @@ __metadata:
   dependencies:
     "@biomejs/biome": "npm:^2.4.4"
     "@mantine/charts": "npm:^8.3.15"
+    "@mantine/core": "npm:^8.3.15"
     "@mantine/dates": "npm:^8.3.15"
+    "@mantine/hooks": "npm:^8.3.15"
     "@mantine/modals": "npm:^8.3.15"
     "@mantine/notifications": "npm:^8.3.15"
     "@mantine/nprogress": "npm:^8.3.15"
@@ -85,8 +87,6 @@ __metadata:
     vite: "npm:^7.3.1"
     vitest: "npm:^4.0.18"
   peerDependencies:
-    "@mantine/core": ^8.3.15
-    "@mantine/hooks": ^8.3.15
     alepha: 0.18.2
     react: "*"
     react-dom: "*"

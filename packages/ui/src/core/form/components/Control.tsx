@@ -137,7 +137,7 @@ const Control = (_props: ControlProps) => {
     return (
       <ControlObject
         input={props.input}
-        title={props.title}
+        label={props.label}
         description={props.description}
         {...controlObjectProps}
       />
@@ -165,7 +165,7 @@ const Control = (_props: ControlProps) => {
     return (
       <ControlArray
         input={props.input}
-        title={props.title}
+        label={props.label}
         description={props.description}
         {...controlArrayProps}
       />
@@ -191,7 +191,7 @@ const Control = (_props: ControlProps) => {
       <ControlNumber
         size={props.size}
         input={props.input}
-        title={props.title}
+        label={props.label}
         description={props.description}
         icon={icon}
         {...controlNumberProps}
@@ -251,7 +251,7 @@ const Control = (_props: ControlProps) => {
       <ControlSelect
         size={props.size}
         input={props.input}
-        title={props.title}
+        label={props.label}
         description={props.description}
         icon={icon}
         {...opts}
@@ -296,7 +296,7 @@ const Control = (_props: ControlProps) => {
     return (
       <ControlSelect
         size={props.size}
-        title={props.title}
+        label={props.label}
         description={props.description}
         icon={icon}
         {...opts}
@@ -352,7 +352,7 @@ const Control = (_props: ControlProps) => {
       <ControlDate
         size={props.size}
         input={props.input}
-        title={props.title}
+        label={props.label}
         description={props.description}
         icon={icon}
         date={props.date}
@@ -385,13 +385,14 @@ const Control = (_props: ControlProps) => {
   return (
     <TextInput
       {...inputProps}
+      pointer
       size={props.size}
       id={id}
       leftSection={icon}
       type={getInputType()}
+      inputWrapperOrder={["label", "input", "description", "error"]}
       {...props.input.props}
       {...textInputProps}
-      inputWrapperOrder={["label", "input", "description", "error"]}
     />
   );
   //endregion

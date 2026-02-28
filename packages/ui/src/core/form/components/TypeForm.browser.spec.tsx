@@ -500,7 +500,7 @@ describe("TypeForm", () => {
         return (
           <TypeForm
             form={form}
-            controlProps={{ title: "Custom Title" }}
+            controlProps={{ label: "Custom Title" }}
             skipSubmitButton
           />
         );
@@ -530,8 +530,8 @@ describe("TypeForm", () => {
           <TypeForm
             form={form}
             fieldControlProps={{
-              field1: { title: "Field One" },
-              field2: { title: "Field Two" },
+              field1: { label: "Field One" },
+              field2: { label: "Field Two" },
             }}
             skipSubmitButton
           />

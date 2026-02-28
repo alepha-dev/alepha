@@ -75,7 +75,7 @@ const DataTablePagination = ({
             size={"sm"}
             withEdges={hasTotal}
             withPages={hasTotal}
-            total={hasTotal ? totalPages : (isLast !== false ? page : page + 1)}
+            total={hasTotal ? totalPages : isLast !== false ? page : page + 1}
             value={page}
             onChange={onPageChange}
           />

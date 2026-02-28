@@ -98,6 +98,7 @@ const DataTable = <T extends object, Filters extends TObject>(
   const [items, setItems] = useState<MaybePage<T>>(
     typeof props.items === "function" ? { content: [] } : props.items,
   );
+  const itemsRef = useRef(items);
   const [loaded, setLoaded] = useState(
     typeof props.items !== "function" || !props.submitOnInit,
   );
@@ -107,6 +108,7 @@ const DataTable = <T extends object, Filters extends TObject>(
   const [size, setSize] = useState(String(defaultSize));
   const [currentPage, setCurrentPage] = useState(0);
   const alepha = useInject(Alepha);
+  itemsRef.current = items;
   const sentinelRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -225,7 +227,7 @@ const DataTable = <T extends object, Filters extends TObject>(
               sort?: string;
             },
             {
-              items: items.content,
+              items: itemsRef.current.content,
             },
           );
 
@@ -282,7 +284,7 @@ const DataTable = <T extends object, Filters extends TObject>(
         }
       },
     },
-    [items],
+    [],
   );
 
   const dt = useInject(DateTimeProvider);

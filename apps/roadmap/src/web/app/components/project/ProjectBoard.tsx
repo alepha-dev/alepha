@@ -12,7 +12,7 @@ const ProjectBoard = () => {
   return (
     <Flex p={"xs"} flex={1} gap="xs" className="overflow-auto">
       <Flex
-        visibleFrom="md"
+        visibleFrom="lg"
         style={{
           width: "25%",
           minWidth: 240,
