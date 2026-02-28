@@ -81,7 +81,7 @@ const MobileQuestLog = () => {
   }
 
   return (
-    <Flex hiddenFrom={"md"}>
+    <Flex hiddenFrom={"lg"}>
       <Burger opened={show} onClick={() => setShow(true)} />
       <Drawer
         flex={1}

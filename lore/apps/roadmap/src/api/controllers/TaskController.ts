@@ -229,9 +229,13 @@ export class TaskController {
 
       query.sort ??= "-updatedAt";
 
-      const result = await this.tasks.paginate(query, {
-        where,
-      }, { count: true });
+      const result = await this.tasks.paginate(
+        query,
+        {
+          where,
+        },
+        { count: true },
+      );
 
       return {
         ...result,
