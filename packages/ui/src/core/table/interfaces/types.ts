@@ -142,6 +142,20 @@ export interface DataTableProps<T extends object, Filters extends TObject> {
   ) => void;
 
   /**
+   * Skip auto-submit when filter values change.
+   * When true, filters update form state but do not trigger a refetch.
+   * The user must manually refresh (e.g. via the toolbar refresh button).
+   */
+  skipSubmitOnChange?: boolean;
+
+  /**
+   * Debounce delay in milliseconds for filter auto-submit.
+   * Defaults to 300ms. Set to 0 to disable debounce.
+   * Ignored when skipSubmitOnChange is true.
+   */
+  debounce?: number;
+
+  /**
    * Optional filters to apply to the data.
    */
   filters?: TObject;

@@ -1,25 +1,13 @@
 import { mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import type { PGlite } from "@electric-sql/pglite";
-import { $env, $hook, $inject, AlephaError, t } from "alepha";
-import { DatabaseProvider, type SQLLike } from "alepha/orm";
+import { $env, $hook, $inject, AlephaError } from "alepha";
+import { DatabaseProvider, databaseEnvSchema, type SQLLike } from "alepha/orm";
 import { sql } from "drizzle-orm";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
+import { postgresEnvSchema } from "../schemas/postgresEnvSchema.ts";
 import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
-
-const envSchema = t.object({
-  /**
-   * Same as NodePostgresProvider connection string.
-   * But, will accept only `file:` protocol for the database path.
-   *
-   * DATABASE_URL=memory://
-   * DATABASE_URL=./db
-   * DATABASE_URL=file://absolute/path/to/db
-   */
-  DATABASE_URL: t.optional(t.text()),
-  POSTGRES_SCHEMA: t.optional(t.text()),
-});
 
 export interface PgLiteModule {
   PGlite: typeof PGlite;
@@ -35,10 +23,11 @@ export class PglitePostgresProvider extends DatabaseProvider {
   }
 
   public override get schema(): string {
-    return this.env.POSTGRES_SCHEMA ?? "public";
+    return this.pgEnv.POSTGRES_SCHEMA ?? "public";
   }
 
-  protected readonly env = $env(envSchema);
+  protected readonly env = $env(databaseEnvSchema);
+  protected readonly pgEnv = $env(postgresEnvSchema);
   protected readonly builder = $inject(PostgresModelBuilder);
 
   protected client?: PGlite;

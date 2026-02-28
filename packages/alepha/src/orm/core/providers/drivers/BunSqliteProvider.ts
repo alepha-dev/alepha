@@ -13,14 +13,13 @@ import {
 } from "alepha";
 import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import type { PgDatabase } from "drizzle-orm/pg-core";
+import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const envSchema = t.object({
-  DATABASE_URL: t.optional(t.text()),
-});
+const envSchema = databaseEnvSchema;
 
 /**
  * Configuration options for the Bun SQLite database provider.

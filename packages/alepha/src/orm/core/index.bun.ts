@@ -1,4 +1,4 @@
-import { $module, type Alepha, t } from "alepha";
+import { $module, type Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { $entity } from "./primitives/$entity.ts";
 import { $sequence } from "./primitives/$sequence.ts";
@@ -7,6 +7,7 @@ import { BunSqliteProvider } from "./providers/drivers/BunSqliteProvider.ts";
 import { CloudflareD1Provider } from "./providers/drivers/CloudflareD1Provider.ts";
 import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
 import { RepositoryProvider } from "./providers/RepositoryProvider.ts";
+import { databaseEnvSchema } from "./schemas/databaseEnvSchema.ts";
 import { PgRelationManager } from "./services/PgRelationManager.ts";
 import { QueryManager } from "./services/QueryManager.ts";
 import { Repository } from "./services/Repository.ts";
@@ -33,11 +34,7 @@ export const AlephaOrm = $module({
     QueryManager,
   ],
   register: (alepha: Alepha) => {
-    const env = alepha.parseEnv(
-      t.object({
-        DATABASE_URL: t.optional(t.text()),
-      }),
-    );
+    const env = alepha.parseEnv(databaseEnvSchema);
 
     alepha.with(DrizzleKitProvider);
     alepha.with(RepositoryProvider);

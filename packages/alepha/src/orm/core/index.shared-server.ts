@@ -17,6 +17,7 @@ export * from "./providers/DrizzleKitProvider.ts";
 export * from "./providers/drivers/CloudflareD1Provider.ts";
 export * from "./providers/drivers/DatabaseProvider.ts";
 export * from "./providers/RepositoryProvider.ts";
+export * from "./schemas/databaseEnvSchema.ts";
 export * from "./schemas/insertSchema.ts";
 export * from "./schemas/updateSchema.ts";
 export * from "./services/ModelBuilder.ts";

@@ -3,6 +3,8 @@ import {
   type AutocompleteProps,
   Flex,
   Input,
+  MultiSelect,
+  type MultiSelectProps,
   type NumberInputProps,
   PasswordInput,
   type PasswordInputProps,
@@ -33,6 +35,7 @@ export interface ControlProps {
   text?: TextInputProps;
   area?: boolean | TextareaProps;
   select?: boolean | SelectProps;
+  multi?: boolean | MultiSelectProps;
   autocomplete?: boolean | AutocompleteProps;
   password?: boolean | PasswordInputProps;
   switch?: boolean | SwitchProps;
@@ -41,6 +44,7 @@ export interface ControlProps {
   number?: boolean | NumberInputProps;
 
   custom?: ComponentType<CustomControlProps>;
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
 }
 
 const Control = (props: ControlProps) => {
@@ -141,6 +145,29 @@ const Control = (props: ControlProps) => {
         leftSection={icon}
         {...props.input.props}
         {...autocompleteProps}
+      />
+    );
+  }
+  // endregion
+
+  // region <MultiSelect/>
+  if (props.multi) {
+    const multiSelectProps = typeof props.multi === "object" ? props.multi : {};
+    return (
+      <MultiSelect
+        {...inputProps}
+        size={props.size}
+        id={id}
+        leftSection={icon}
+        defaultValue={
+          Array.isArray(props.input.props.defaultValue)
+            ? props.input.props.defaultValue
+            : []
+        }
+        onChange={(value) => {
+          props.input.set(value);
+        }}
+        {...multiSelectProps}
       />
     );
   }

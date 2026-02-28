@@ -1,46 +1,16 @@
-import {
-  $env,
-  $hook,
-  $inject,
-  $pipeline,
-  AlephaError,
-  type Static,
-  t,
-} from "alepha";
+import { $env, $hook, $inject, $pipeline, AlephaError } from "alepha";
 import { $lock } from "alepha/lock";
 import {
   DatabaseProvider,
   DbError,
   DbMigrationError,
+  databaseEnvSchema,
   type SQLLike,
 } from "alepha/orm";
 import { sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
+import { postgresEnvSchema } from "../schemas/postgresEnvSchema.ts";
 import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-const envSchema = t.object({
-  /**
-   * Main configuration for database connection.
-   * Accept a string in the format of a Postgres connection URL.
-   * Example: postgres://user:password@localhost:5432/database
-   * or
-   * Example: postgres://user:password@localhost:5432/database?sslmode=require
-   */
-  DATABASE_URL: t.optional(t.text()),
-
-  /**
-   * In addition to the DATABASE_URL, you can specify the postgres schema name.
-   *
-   * It will monkey patch drizzle tables.
-   */
-  POSTGRES_SCHEMA: t.optional(t.text()),
-});
-
-declare module "alepha" {
-  interface Env extends Partial<Static<typeof envSchema>> {}
-}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -56,7 +26,8 @@ declare module "alepha" {
  * Subclasses must implement `connect()`, `close()`, and `executeMigrations()`.
  */
 export abstract class PostgresProvider extends DatabaseProvider {
-  protected readonly env = $env(envSchema);
+  protected readonly env = $env(databaseEnvSchema);
+  protected readonly pgEnv = $env(postgresEnvSchema);
   protected readonly builder = $inject(PostgresModelBuilder);
 
   public override readonly dialect = "postgresql";
@@ -101,8 +72,8 @@ export abstract class PostgresProvider extends DatabaseProvider {
       return this.schemaForTesting;
     }
 
-    if (this.env.POSTGRES_SCHEMA) {
-      return this.env.POSTGRES_SCHEMA;
+    if (this.pgEnv.POSTGRES_SCHEMA) {
+      return this.pgEnv.POSTGRES_SCHEMA;
     }
 
     return "public";

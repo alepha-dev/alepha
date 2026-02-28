@@ -21,6 +21,7 @@ import type {
   SchemaToTableConfig,
 } from "../../primitives/$entity.ts";
 import type { SequencePrimitive } from "../../primitives/$sequence.ts";
+import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
 import type { ModelBuilder } from "../../services/ModelBuilder.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 
@@ -263,6 +264,14 @@ export abstract class DatabaseProvider {
       await this.executeMigrations(migrationsFolder);
       this.log.info("Migration OK");
     } else {
+      const { DATABASE_SYNC } = this.alepha.parseEnv(databaseEnvSchema);
+      if (DATABASE_SYNC === false) {
+        this.log.info(
+          "Database synchronization disabled (DATABASE_SYNC=false)",
+        );
+        return;
+      }
+
       try {
         await this.kit.synchronize(this);
       } catch (error) {

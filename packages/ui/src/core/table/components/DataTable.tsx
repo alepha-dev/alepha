@@ -108,6 +108,7 @@ const DataTable = <T extends object, Filters extends TObject>(
   const [currentPage, setCurrentPage] = useState(0);
   const alepha = useInject(Alepha);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Column visibility state
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
@@ -265,14 +266,32 @@ const DataTable = <T extends object, Filters extends TObject>(
           value,
           form as unknown as FormModel<Filters>,
         );
+
+        if (props.skipSubmitOnChange) return;
+
         form.input.page.set(0);
-        await form.submit();
+
+        const delay = props.debounce ?? 300;
+        if (delay > 0) {
+          if (debounceRef.current) clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            form.submit();
+          }, delay);
+        } else {
+          await form.submit();
+        }
       },
     },
     [items],
   );
 
   const dt = useInject(DateTimeProvider);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (props.submitOnInit) {

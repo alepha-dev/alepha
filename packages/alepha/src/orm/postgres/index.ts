@@ -1,5 +1,5 @@
-import { $module, type Alepha, t } from "alepha";
-import { AlephaOrm, DatabaseProvider } from "alepha/orm";
+import { $module, type Alepha } from "alepha";
+import { AlephaOrm, DatabaseProvider, databaseEnvSchema } from "alepha/orm";
 import { BunPostgresProvider } from "./providers/BunPostgresProvider.ts";
 import { CloudflareHyperdriveProvider } from "./providers/CloudflareHyperdriveProvider.ts";
 import { NodePostgresProvider } from "./providers/NodePostgresProvider.ts";
@@ -14,6 +14,7 @@ export * from "./providers/CloudflareHyperdriveProvider.ts";
 export * from "./providers/NodePostgresProvider.ts";
 export * from "./providers/PglitePostgresProvider.ts";
 export * from "./providers/PostgresProvider.ts";
+export * from "./schemas/postgresEnvSchema.ts";
 export * from "./services/PostgresModelBuilder.ts";
 export * from "./types/byte.ts";
 
@@ -31,11 +32,7 @@ export const AlephaOrmPostgres = $module({
     PostgresModelBuilder,
   ],
   register: (alepha: Alepha) => {
-    const env = alepha.parseEnv(
-      t.object({
-        DATABASE_URL: t.optional(t.text()),
-      }),
-    );
+    const env = alepha.parseEnv(databaseEnvSchema);
 
     const url = env.DATABASE_URL;
     const isBun = alepha.isBun();

@@ -1,4 +1,4 @@
-import { $module, type Alepha, t } from "alepha";
+import { $module, type Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import type { PgTransaction } from "drizzle-orm/pg-core";
 import { DbMigrationMode } from "./modes/DbMigrationMode.ts";
@@ -10,6 +10,7 @@ import { CloudflareD1Provider } from "./providers/drivers/CloudflareD1Provider.t
 import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
 import { RepositoryProvider } from "./providers/RepositoryProvider.ts";
+import { databaseEnvSchema } from "./schemas/databaseEnvSchema.ts";
 import { PgRelationManager } from "./services/PgRelationManager.ts";
 import { QueryManager } from "./services/QueryManager.ts";
 import { Repository } from "./services/Repository.ts";
@@ -116,11 +117,7 @@ export const AlephaOrm = $module({
     DbMigrationMode,
   ],
   register: (alepha: Alepha) => {
-    const env = alepha.parseEnv(
-      t.object({
-        DATABASE_URL: t.optional(t.text()),
-      }),
-    );
+    const env = alepha.parseEnv(databaseEnvSchema);
 
     const url = env.DATABASE_URL;
     const isBun = alepha.isBun();
