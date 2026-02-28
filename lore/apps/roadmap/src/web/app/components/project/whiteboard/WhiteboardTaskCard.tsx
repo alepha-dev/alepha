@@ -1,6 +1,6 @@
 import { Group, Line, Rect, Text } from "react-konva";
-import type { Task } from "../../../../../api/entities/tasks.ts";
 import type { WhiteboardElement } from "../../../../../api/entities/whiteboards.ts";
+import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
 import type { KonvaEventObject } from "./types.ts";
 
 const RANK_LABELS = ["F", "C", "B", "A", "S"];
@@ -19,7 +19,7 @@ const COMPLEXITY_STYLES: Record<
 
 export interface WhiteboardTaskCardProps {
   element: WhiteboardElement;
-  task: Task;
+  task: TaskResource;
   isSelected: boolean;
   draggable: boolean;
   onClick: (e: KonvaEventObject<MouseEvent>) => void;

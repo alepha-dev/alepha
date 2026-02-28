@@ -4,14 +4,14 @@ import { IconListCheck } from "@tabler/icons-react";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
-import type { Task } from "../../../../../api/entities/tasks.ts";
+import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
 import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
 import { theme } from "../../../constants/theme.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
 interface TaskViewObjectivesProps {
-  task: Task;
-  onTaskUpdate?: (updatedTask: Task) => void;
+  task: TaskResource;
+  onTaskUpdate?: (updatedTask: TaskResource) => void;
 }
 
 const TaskViewObjectives = ({

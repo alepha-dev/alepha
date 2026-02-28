@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build",
+    "build&start": "alepha build && node dist",
     "db:generate": "alepha db generate",
     "build:docker": "alepha build --docker && cd dist && docker build -t alepha/roadmap .",
     "deploy": "alepha platform up -e production",

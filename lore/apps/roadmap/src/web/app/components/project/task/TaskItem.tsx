@@ -13,13 +13,13 @@ import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useActive, useRouter } from "alepha/react/router";
 import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
-import type { Task } from "../../../../../api/entities/tasks.ts";
+import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TaskComplexity from "./TaskComplexity.tsx";
 
-const TaskItem = (props: { task: Task; index: number }) => {
+const TaskItem = (props: { task: TaskResource; index: number }) => {
   const { task } = props;
 
   const alepha = useAlepha();
@@ -199,10 +199,10 @@ const TaskItem = (props: { task: Task; index: number }) => {
         <Flex flex={1} align={"center"} gap={"sm"}>
           <TaskComplexity complexity={task.complexity} />
           <Text c={isActive ? "white" : undefined}>{task.title}</Text>
-          {!!task.objectives.length && task.objectives.length > 1 && (
+          {task.metadata.objectivesProgress.total > 1 && (
             <Text c={isActive ? "white" : undefined} size={"10px"}>
-              {task.objectives.filter((it) => it.completed).length}/
-              {task.objectives.length}
+              {task.metadata.objectivesProgress.completed}/
+              {task.metadata.objectivesProgress.total}
             </Text>
           )}
         </Flex>

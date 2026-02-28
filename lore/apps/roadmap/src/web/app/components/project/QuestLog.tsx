@@ -1,14 +1,6 @@
 import { ActionButton, Flex, Text } from "@alepha/ui";
-import { Card, Menu, TextInput } from "@mantine/core";
-import {
-  IconBook2,
-  IconDots,
-  IconExclamationMark,
-  IconSearch,
-  IconSelector,
-  IconSortAZ,
-  IconX,
-} from "@tabler/icons-react";
+import { Card, TextInput } from "@mantine/core";
+import { IconBook2, IconSearch, IconX } from "@tabler/icons-react";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useMemo, useState } from "react";
@@ -80,30 +72,6 @@ const QuestLog = () => {
               </Card>
             </Flex>
             <Flex flex={1} />
-            <Flex px={1}>
-              <ActionButton variant={"minimal"} px="xs">
-                <IconSelector size={theme.icon.size.md} />
-              </ActionButton>
-              <Menu
-                withArrow
-                arrowSize={12}
-                trigger="hover"
-                position="bottom-start"
-              >
-                <Menu.Target>
-                  <ActionButton variant={"minimal"} px="xs">
-                    <IconDots size={theme.icon.size.md} />
-                  </ActionButton>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Label>Sort by</Menu.Label>
-                  <Menu.Item leftSection={<IconSortAZ />}>Name</Menu.Item>
-                  <Menu.Item leftSection={<IconExclamationMark />}>
-                    Priority
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
-            </Flex>
           </Flex>
         </Card>
       </Flex>

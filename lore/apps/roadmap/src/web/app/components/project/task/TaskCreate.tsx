@@ -16,8 +16,8 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
 import type { Project } from "../../../../../api/entities/projects.ts";
-import type { Task } from "../../../../../api/entities/tasks.ts";
 import { taskCreateSchema } from "../../../../../api/schemas/taskCreateSchema.ts";
+import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
@@ -28,9 +28,9 @@ import TaskAttachments from "./TaskAttachments.tsx";
 import TaskCreateObjectives from "./TaskCreateObjectives.tsx";
 
 export interface TaskCreateProps {
-  onSubmit: (task: Task) => void;
-  onCreated?: (task: Task) => void;
-  task?: Partial<Task>;
+  onSubmit: (task: TaskResource) => void;
+  onCreated?: (task: TaskResource) => void;
+  task?: Partial<TaskResource>;
   project: Project;
 }
 
@@ -46,7 +46,7 @@ const TaskCreate = (props: TaskCreateProps) => {
   const form = useForm({
     id: "task-create",
     schema: t.omit(taskCreateSchema, ["projectId"]),
-    initialValues: props.task as Task,
+    initialValues: props.task as TaskResource,
     handler: async (data) => {
       if (props.task?.id) {
         const resp = await taskApi.updateTaskById({

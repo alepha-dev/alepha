@@ -30,7 +30,7 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useEffect, useRef, useState } from "react";
 import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
-import type { Task } from "../../../../../api/entities/tasks.ts";
+import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
 import { CharacterInfo } from "../../../../../api/services/CharacterInfo.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
@@ -46,9 +46,9 @@ import TaskHistory from "./TaskHistory.tsx";
 import TaskViewObjectives from "./TaskViewObjectives.tsx";
 
 export interface TaskViewProps {
-  task: Task;
+  task: TaskResource;
   onClose?: () => void;
-  onTaskChange?: (task: Task) => void;
+  onTaskChange?: (task: TaskResource) => void;
 }
 
 const TaskView = (props: TaskViewProps) => {
@@ -59,14 +59,14 @@ const TaskView = (props: TaskViewProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [showDialog, setShowDialog] = useState(false);
 
-  const [task, setTask] = useState<Task>(props.task);
+  const [task, setTask] = useState<TaskResource>(props.task);
   useEffect(() => {
     setTask(props.task);
   }, [props.task]);
 
   const [project] = useStore(currentProjectAtom);
 
-  const updateTask = (updated: Task) => {
+  const updateTask = (updated: TaskResource) => {
     setTask(updated);
     props.onTaskChange?.(updated);
   };
@@ -419,8 +419,8 @@ const TaskView = (props: TaskViewProps) => {
 export default TaskView;
 
 const EditTaskButton = (props: {
-  task: Task;
-  onUpdate: (task: Task) => void;
+  task: TaskResource;
+  onUpdate: (task: TaskResource) => void;
   setShowDialog?: (show: boolean) => void;
   showDialog?: boolean;
 }) => {
@@ -477,7 +477,10 @@ const EditTaskButton = (props: {
   );
 };
 
-const NoteButton = (props: { task: Task; onUpdate: (task: Task) => void }) => {
+const NoteButton = (props: {
+  task: TaskResource;
+  onUpdate: (task: TaskResource) => void;
+}) => {
   const [showDialog, setShowDialog] = useState(false);
   const [noteText, setNoteText] = useState(props.task.note || "");
   const client = useClient<TaskController>();
@@ -557,7 +560,7 @@ const NoteButton = (props: { task: Task; onUpdate: (task: Task) => void }) => {
   );
 };
 
-const DuplicateTaskButton = (props: { task: Task }) => {
+const DuplicateTaskButton = (props: { task: TaskResource }) => {
   const [showDialog, setShowDialog] = useState(false);
   const client = useClient<TaskController>();
   const [project] = useStore(currentProjectAtom);
@@ -612,7 +615,7 @@ const DuplicateTaskButton = (props: { task: Task }) => {
         >
           <TaskCreate
             project={project}
-            task={duplicateTaskData as Task}
+            task={duplicateTaskData as TaskResource}
             onSubmit={() => {
               setShowDialog(false);
             }}
@@ -623,7 +626,10 @@ const DuplicateTaskButton = (props: { task: Task }) => {
   );
 };
 
-const TaskTimer = (props: { task: Task; onUpdate: (task: Task) => void }) => {
+const TaskTimer = (props: {
+  task: TaskResource;
+  onUpdate: (task: TaskResource) => void;
+}) => {
   const { tr } = useI18n<I18n, "en">();
   const client = useClient<TaskController>();
   const [currentTime, setCurrentTime] = useState<number>(0);

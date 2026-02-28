@@ -2,7 +2,7 @@ import { Flex, Text } from "@alepha/ui";
 import { useDroppable } from "@dnd-kit/core";
 import { ScrollArea } from "@mantine/core";
 import { useI18n } from "alepha/react/i18n";
-import type { Task } from "../../../../api/entities/tasks.ts";
+import type { TaskResource } from "../../../../api/schemas/taskResourceSchema.ts";
 import type { I18n } from "../../services/I18n.ts";
 import KanbanCard from "./KanbanCard.tsx";
 
@@ -28,10 +28,10 @@ const KanbanColumn = ({
   onSelect,
 }: {
   status: ColumnStatus;
-  tasks: Task[];
+  tasks: TaskResource[];
   readOnly: boolean;
   last?: boolean;
-  onSelect: (task: Task) => void;
+  onSelect: (task: TaskResource) => void;
 }) => {
   const { tr } = useI18n<I18n, "en">();
   const { setNodeRef, isOver } = useDroppable({

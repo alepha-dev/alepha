@@ -2,10 +2,10 @@ import { ActionButton, Flex } from "@alepha/ui";
 import { Card, Modal, Typography } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconMaximize } from "@tabler/icons-react";
-import type { Task } from "../../../../../api/entities/tasks.ts";
+import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
 import { theme } from "../../../constants/theme.ts";
 
-const TaskDescription = (props: { task: Task; onEdit: () => void }) => {
+const TaskDescription = (props: { task: TaskResource; onEdit: () => void }) => {
   const [opened, { open, close }] = useDisclosure(false);
 
   return (

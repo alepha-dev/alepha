@@ -11,9 +11,9 @@ import {
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import type { ReactNode } from "react";
-import type { Task } from "../../../../../api/entities/tasks.ts";
+import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
 
-const TaskHistory = (props: { task: Task }) => {
+const TaskHistory = (props: { task: TaskResource }) => {
   const task = props.task;
 
   return (
@@ -36,7 +36,7 @@ const TaskHistory = (props: { task: Task }) => {
 
 export default TaskHistory;
 
-const TaskTimeline = ({ task }: { task: Task }) => {
+const TaskTimeline = ({ task }: { task: TaskResource }) => {
   const dt = useInject(DateTimeProvider);
   const style = {
     animation: "fadeInUpLight 0.3s ease forwards",
@@ -110,7 +110,7 @@ const TaskTimeline = ({ task }: { task: Task }) => {
   const iconSize = ui.sizes.icon.xs;
 
   return (
-    <Timeline w={"100%"} active={1} bulletSize={24} lineWidth={2}>
+    <Timeline w={"100%"} active={0} bulletSize={24} lineWidth={2}>
       {task.completedAt &&
         renderItem(
           "completed",

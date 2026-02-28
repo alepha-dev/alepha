@@ -16,6 +16,8 @@ import { projects } from "../entities/projects.ts";
 import { tasks } from "../entities/tasks.ts";
 import type { User } from "../entities/users.ts";
 import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
+import { taskResourceSchema } from "../schemas/taskResourceSchema.ts";
+import { TaskResourceMapper } from "../services/TaskResourceMapper.ts";
 
 export class ProjectController {
   log = $logger();
@@ -26,6 +28,7 @@ export class ProjectController {
   users = $repository(users);
   security = $inject(AppSecurityProvider);
   fs = $inject(FileSystemProvider);
+  taskMapper = $inject(TaskResourceMapper);
 
   createProject = $action({
     use: [$secure({ permissions: ["project:create"] })],
@@ -146,7 +149,7 @@ export class ProjectController {
       }),
       response: t.extend(projects.schema, {
         character: t.optional(characters.schema),
-        tasks: t.array(tasks.schema),
+        tasks: t.array(taskResourceSchema),
       }),
     },
     handler: async ({ params, user }) => {
@@ -171,7 +174,13 @@ export class ProjectController {
         },
       });
 
-      return { ...project, tasks: projectTasks, character };
+      return {
+        ...project,
+        tasks: projectTasks.map((task) =>
+          this.taskMapper.mapTaskToResource(task),
+        ),
+        character,
+      };
     },
   });
 

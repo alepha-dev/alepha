@@ -3,14 +3,14 @@ import { useDroppable } from "@dnd-kit/core";
 import { IconMinus, IconPlus } from "@tabler/icons-react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
-import type { Task } from "../../../../../api/entities/tasks.ts";
+import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { openRenameZoneModal } from "./RenameZoneModal.tsx";
 import TaskItem from "./TaskItem.tsx";
 
 interface TaskGroupProps {
   name: string;
-  tasks: Task[];
+  tasks: TaskResource[];
 }
 
 const TaskGroup = (props: TaskGroupProps) => {

@@ -9,6 +9,8 @@ import { $action, UnauthorizedError } from "alepha/server";
 import { characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
 import { tasks } from "../entities/tasks.ts";
+import { taskResourceSchema } from "../schemas/taskResourceSchema.ts";
+import { TaskResourceMapper } from "../services/TaskResourceMapper.ts";
 
 export class KanbanController {
   protected projects = $repository(projects);
@@ -16,6 +18,7 @@ export class KanbanController {
   protected characters = $repository(characters);
   protected alepha = $inject(Alepha);
   protected security = $inject(SecurityProvider);
+  protected taskMapper = $inject(TaskResourceMapper);
 
   /**
    * Get all tasks for a project, grouped for kanban display.
@@ -30,7 +33,7 @@ export class KanbanController {
       }),
       response: t.object({
         project: projects.schema,
-        tasks: t.array(tasks.schema),
+        tasks: t.array(taskResourceSchema),
         readOnly: t.boolean(),
       }),
     },
@@ -104,7 +107,7 @@ export class KanbanController {
 
       return {
         project,
-        tasks: allTasks,
+        tasks: allTasks.map((task) => this.taskMapper.mapTaskToResource(task)),
         readOnly,
       };
     },

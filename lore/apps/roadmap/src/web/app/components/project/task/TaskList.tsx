@@ -10,14 +10,14 @@ import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useId, useMemo } from "react";
 import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
-import type { Task } from "../../../../../api/entities/tasks.ts";
+import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
 import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TaskGroup from "./TaskGroup.tsx";
 
 interface TaskListProps {
-  tasks: Task[];
+  tasks: TaskResource[];
 }
 
 const TaskList = (props: TaskListProps) => {
@@ -35,7 +35,7 @@ const TaskList = (props: TaskListProps) => {
   );
 
   const groupByPackage = useMemo(() => {
-    const grouped: Record<string, Task[]> = {};
+    const grouped: Record<string, TaskResource[]> = {};
     for (const task of props.tasks) {
       grouped[task.package] ??= [];
       grouped[task.package].push(task);
@@ -56,7 +56,7 @@ const TaskList = (props: TaskListProps) => {
     const zoneData = over.data.current;
 
     if (taskData?.type === "task" && zoneData?.type === "zone") {
-      const task = taskData.task as Task;
+      const task = taskData.task as TaskResource;
       const newZoneName = zoneData.zoneName as string;
 
       // Don't update if already in the same zone
