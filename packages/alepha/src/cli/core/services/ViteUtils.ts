@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join, relative, resolve } from "node:path";
 import { $hook, $inject, type Alepha, AlephaError } from "alepha";
@@ -169,6 +170,60 @@ export class ViteUtils {
     };
 
     return logger;
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------
+  // TSConfig paths plugin
+  // ---------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Vite plugin that reads tsconfig.json `compilerOptions.paths` and converts
+   * them to Vite `resolve.alias` entries. Enables `@/*` → `src/*` style imports
+   * with zero config beyond tsconfig.json.
+   */
+  public createTsconfigPathsPlugin(): Plugin {
+    return {
+      name: "alepha-tsconfig-paths",
+      async config(config) {
+        const root = config.root || process.cwd();
+        const tsconfigPath = join(root, "tsconfig.json");
+
+        let content: string;
+        try {
+          content = await readFile(tsconfigPath, "utf-8");
+        } catch {
+          return;
+        }
+
+        // Strip JSONC comments before parsing
+        const clean = content
+          .replace(/\/\/.*$/gm, "")
+          .replace(/\/\*[\s\S]*?\*\//g, "");
+
+        let tsconfig: any;
+        try {
+          tsconfig = JSON.parse(clean);
+        } catch {
+          return;
+        }
+
+        const paths = tsconfig?.compilerOptions?.paths;
+        if (!paths || typeof paths !== "object") return;
+
+        const alias: Record<string, string> = {};
+        for (const [pattern, targets] of Object.entries(paths)) {
+          if (!Array.isArray(targets) || targets.length === 0) continue;
+          const target = targets[0] as string;
+          const aliasKey = pattern.replace(/\*$/, "");
+          const aliasPath = target.replace(/\*$/, "").replace(/^\.\//, "");
+          const resolved = resolve(root, aliasPath);
+          alias[aliasKey] = aliasKey.endsWith("/") ? `${resolved}/` : resolved;
+        }
+
+        if (Object.keys(alias).length === 0) return;
+        return { resolve: { alias } };
+      },
+    };
   }
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -367,6 +422,7 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
       server: { middlewareMode: true },
       appType: "custom",
       logLevel: "silent",
+      plugins: [this.createTsconfigPathsPlugin()],
     } satisfies InlineConfig);
 
     await this.viteDevServer.ssrLoadModule(opts.entry.server);

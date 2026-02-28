@@ -44,20 +44,21 @@ const tools: Array<{
   { id: "eraser", icon: <IconEraser size={18} />, label: "Eraser" },
 ];
 
-const WhiteboardToolbar = ({
-  tool,
-  onToolChange,
-  strokeColor,
-  onStrokeColorChange,
-  fillColor,
-  onFillColorChange,
-  onUndo,
-  onRedo,
-  canUndo,
-  canRedo,
-  onImageUpload,
-  isUploadingImage,
-}: WhiteboardToolbarProps) => {
+const WhiteboardToolbar = (props: WhiteboardToolbarProps) => {
+  const {
+    tool,
+    onToolChange,
+    strokeColor,
+    onStrokeColorChange,
+    fillColor,
+    onFillColorChange,
+    onUndo,
+    onRedo,
+    canUndo,
+    canRedo,
+    onImageUpload,
+    isUploadingImage,
+  } = props;
   return (
     <Flex gap="xs" align={"center"}>
       {tools.map((t) => (

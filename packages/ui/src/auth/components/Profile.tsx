@@ -10,6 +10,7 @@ import {
 import { useAuth } from "alepha/react/auth";
 import { useRouter } from "alepha/react/router";
 import type { AuthRouter } from "../AuthRouter.ts";
+import ProfileField from "./ProfileField.tsx";
 
 const Profile = () => {
   const auth = useAuth();
@@ -118,28 +119,6 @@ const Profile = () => {
         <ActionButton variant="subtle" href="/">
           Back to home
         </ActionButton>
-      </Flex>
-    </Flex>
-  );
-};
-
-interface ProfileFieldProps {
-  icon: React.ReactNode;
-  label: string;
-  children: React.ReactNode;
-}
-
-const ProfileField = ({ icon, label, children }: ProfileFieldProps) => {
-  return (
-    <Flex gap="sm" align="flex-start">
-      <Flex c="dimmed" mt={2}>
-        {icon}
-      </Flex>
-      <Flex direction="column" gap={2} flex={1}>
-        <Text size="xs" c="dimmed" tt="uppercase" fw={500}>
-          {label}
-        </Text>
-        <Text size="sm">{children}</Text>
       </Flex>
     </Flex>
   );

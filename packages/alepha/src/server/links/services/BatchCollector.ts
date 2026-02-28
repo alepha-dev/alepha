@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
 import { HttpClient, HttpError } from "alepha/server";
+import { $logger } from "../../../logger/index.ts";
 
 /**
  * Collects browser-side action calls within a microtask and
@@ -15,6 +16,7 @@ import { HttpClient, HttpError } from "alepha/server";
 export class BatchCollector {
   protected static readonly MAX_BATCH_SIZE = 20;
 
+  protected readonly log = $logger();
   protected readonly httpClient = $inject(HttpClient);
 
   protected pending: PendingBatchEntry[] = [];
@@ -29,10 +31,10 @@ export class BatchCollector {
 
       if (!this.scheduled) {
         this.scheduled = true;
-        queueMicrotask(() => {
+        setTimeout(() => {
           this.scheduled = false;
-          this.flush();
-        });
+          this.flush().catch((err) => this.log.error(err));
+        }, 10);
       }
     });
   }

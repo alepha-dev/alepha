@@ -2,7 +2,7 @@
  * Template for alepha.config.ts with documented options.
  */
 export const alephaConfigTs = () => {
-  return `import { defineConfig } from "alepha/cli";
+  return `import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   //

@@ -3,7 +3,7 @@ import type {
   Whiteboard,
   WhiteboardData,
   WhiteboardElement,
-} from "../../../../../api/entities/whiteboards.ts";
+} from "@/api/entities/whiteboards.ts";
 
 // Konva types
 export type KonvaStage = React.ComponentRef<typeof Stage>;

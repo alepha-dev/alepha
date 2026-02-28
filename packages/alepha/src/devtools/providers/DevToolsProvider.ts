@@ -30,10 +30,8 @@ export class DevToolsProvider {
    */
   protected readonly onLog = $hook({
     on: "log",
-    handler: ({ message, entry }) => {
-      if (message) {
-        this.memoryDestination.write(message, entry);
-      }
+    handler: ({ entry }) => {
+      this.memoryDestination.write("", entry);
     },
   });
 
@@ -106,15 +104,8 @@ export class DevToolsProvider {
       }),
     },
     handler: ({ query }) => {
-      let memoryProvider: MemoryDestinationProvider;
-      try {
-        memoryProvider = this.alepha.inject(MemoryDestinationProvider);
-      } catch {
-        return { logs: [], total: 0 };
-      }
-
       const levelOrder = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
-      let entries = memoryProvider.logs;
+      let entries = this.memoryDestination.logs;
 
       if (query.level) {
         const minIndex = levelOrder.indexOf(query.level.toUpperCase());

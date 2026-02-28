@@ -373,6 +373,14 @@ export interface PagePrimitiveOptions<
   head?: Head | ((props: TProps, previous?: Head) => Head);
 
   /**
+   * Label for the page, used for navigation menus or breadcrumbs.
+   *
+   * This is optional and can be used by the application to display a user-friendly name for the page.
+   * It has no functional impact on routing or rendering.
+   */
+  label?: string;
+
+  /**
    * Source path for SSR module preloading.
    *
    * This is automatically injected by the viteAlephaPreload plugin.

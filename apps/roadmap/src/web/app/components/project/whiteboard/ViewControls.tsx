@@ -19,15 +19,16 @@ export interface ViewControlsProps {
   onSetZoom: (zoom: number) => void;
 }
 
-const ViewControls = ({
-  zoom,
-  spacePressed,
-  onZoomIn,
-  onZoomOut,
-  onZoomReset,
-  onFitToContent,
-  onSetZoom,
-}: ViewControlsProps) => {
+const ViewControls = (props: ViewControlsProps) => {
+  const {
+    zoom,
+    spacePressed,
+    onZoomIn,
+    onZoomOut,
+    onZoomReset,
+    onFitToContent,
+    onSetZoom,
+  } = props;
   return (
     <Paper
       radius="md"

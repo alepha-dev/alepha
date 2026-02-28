@@ -37,7 +37,7 @@ export * from "./services/Logger.ts";
  * - Console destination
  * - Memory destination (for devtools)
  * - Custom handlers
- * - Configuration via `LOG_LEVEL` and `LOG_FORMAT`
+ * - Configuration via `LOG_LEVEL`, `LOG_FORMAT`, and `DEBUG`
  *
  * @module alepha.logger
  */
@@ -56,10 +56,22 @@ export const AlephaLogger = $module({
   register: (alepha) => {
     const env = alepha.parseEnv(envSchema);
 
+    // Support DEBUG env var (debug package convention) as shorthand for LOG_LEVEL/LOG_FORMAT.
+    // DEBUG=alepha:* → LOG_LEVEL=alepha.*:debug,info LOG_FORMAT=pretty
+    let logLevel = env.LOG_LEVEL;
+    let logFormat = env.LOG_FORMAT;
+    if (env.DEBUG) {
+      const patterns = env.DEBUG.split(",")
+        .map((p) => p.trim().replaceAll(":", "."))
+        .filter(Boolean);
+      logLevel ??= `${patterns.map((p) => `${p}:debug`).join(",")},info`;
+      logFormat ??= "pretty";
+    }
+
     const getLogDestinationProvider = () => {
       // in test mode, if no LOG_LEVEL is set, use MemoryDestinationProvider to capture logs for inspection.
       // logs will be printed to console only if the test fails.
-      if (alepha.isTest() && !env.LOG_LEVEL) {
+      if (alepha.isTest() && !logLevel) {
         const printOnError = (ev: any) => {
           if (ev.task?.result?.state === "fail") {
             const output = alepha.inject(MemoryDestinationProvider);
@@ -83,11 +95,11 @@ export const AlephaLogger = $module({
     };
 
     const getLogFormatterProvider = () => {
-      if (env.LOG_FORMAT) {
-        if (env.LOG_FORMAT === "json") {
+      if (logFormat) {
+        if (logFormat === "json") {
           return JsonFormatterProvider;
         }
-        if (env.LOG_FORMAT === "raw") {
+        if (logFormat === "raw") {
           return RawFormatterProvider;
         }
         return PrettyFormatterProvider;
@@ -122,7 +134,7 @@ export const AlephaLogger = $module({
 
     alepha.store.set(
       "alepha.logger.level",
-      env.LOG_LEVEL ?? (alepha.isTest() ? "trace" : "info"),
+      logLevel ?? (alepha.isTest() ? "trace" : "info"),
     );
   },
 });
@@ -130,6 +142,21 @@ export const AlephaLogger = $module({
 // ---------------------------------------------------------------------------------------------------------------------
 
 const envSchema = t.object({
+  /**
+   * Enable debug logging for specific modules using the `debug` package convention.
+   *
+   * @example
+   * DEBUG=alepha:* # Enable debug logging for all alepha modules
+   * DEBUG=alepha:orm:* # Enable debug logging for alepha.orm modules
+   * DEBUG=* # Enable debug logging for all modules
+   */
+  DEBUG: t.optional(
+    t.text({
+      description:
+        "Enable debug logging for specific modules using the debug package convention. Example: DEBUG=alepha:*",
+    }),
+  ),
+
   /**
    * Default log level for the application.
    *

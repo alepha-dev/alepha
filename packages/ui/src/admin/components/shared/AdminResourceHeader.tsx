@@ -14,8 +14,8 @@ import {
   IconChevronLeft,
   IconExternalLink,
 } from "@tabler/icons-react";
-import { useRouter } from "alepha/react/router";
 import type { ComponentType, ReactNode } from "react";
+import AdminResourceHeaderMenuItem from "./AdminResourceHeaderMenuItem.tsx";
 
 export interface AdminResourceAction {
   label: string;
@@ -106,29 +106,6 @@ export interface AdminResourceHeaderProps {
    */
   loading?: boolean;
 }
-
-const ActionMenuItem = (props: { action: AdminResourceAction }) => {
-  const { action } = props;
-  const router = useRouter();
-
-  const menuItemProps: Record<string, unknown> = {};
-  if (action.href) {
-    Object.assign(menuItemProps, router.anchor(action.href));
-  } else if (action.onClick) {
-    menuItemProps.onClick = action.onClick;
-  }
-
-  return (
-    <Menu.Item
-      leftSection={action.icon ? <action.icon size={16} /> : undefined}
-      color={action.color}
-      disabled={action.disabled}
-      {...menuItemProps}
-    >
-      {action.label}
-    </Menu.Item>
-  );
-};
 
 const AdminResourceHeader = (props: AdminResourceHeaderProps) => {
   const {
@@ -271,7 +248,7 @@ const AdminResourceHeader = (props: AdminResourceHeaderProps) => {
               </Menu.Target>
               <Menu.Dropdown>
                 {menuActions.map((action, index) => (
-                  <ActionMenuItem key={index} action={action} />
+                  <AdminResourceHeaderMenuItem key={index} action={action} />
                 ))}
               </Menu.Dropdown>
             </Menu>

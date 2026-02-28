@@ -56,7 +56,7 @@ alepha build --target=docker --image=myapp        # myapp:latest
 Full Docker configuration in `alepha.config.ts`:
 
 ```typescript
-import { defineConfig } from "alepha/cli";
+import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {

@@ -31,7 +31,10 @@ export class BuildClientTask extends BuildTask {
     // Write index.html template for Vite to consume
     const template = this.viteUtils.generateIndexHtml(ctx.entry);
     await this.fs.mkdir(this.fs.join(ctx.root, "node_modules/.alepha"));
-    const indexHtmlPath = this.fs.join(ctx.root, "node_modules/.alepha/index.html");
+    const indexHtmlPath = this.fs.join(
+      ctx.root,
+      "node_modules/.alepha/index.html",
+    );
     await this.fs.writeFile(indexHtmlPath, template);
 
     try {
@@ -61,6 +64,7 @@ export class BuildClientTask extends BuildTask {
     const viteReact = await this.viteUtils.importViteReact();
     if (viteReact) plugins.push(viteReact());
 
+    plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
 
     if (opts.stats) {
@@ -120,7 +124,7 @@ export class BuildClientTask extends BuildTask {
     await this.fs.cp(
       "dist/public/node_modules/.alepha/index.html",
       "dist/public/index.html",
-    )
+    );
     await this.fs.rm("dist/public/node_modules", { recursive: true });
   }
 }

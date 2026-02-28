@@ -44,7 +44,7 @@ If Surge is not installed, the deploy command installs it automatically as a dev
 Set a custom Surge domain in `alepha.config.ts`:
 
 ```typescript
-import { defineConfig } from "alepha/cli";
+import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {
@@ -80,7 +80,7 @@ alepha build --target=static --sitemap=https://myapp.com
 Or in config:
 
 ```typescript
-import { defineConfig } from "alepha/cli";
+import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {

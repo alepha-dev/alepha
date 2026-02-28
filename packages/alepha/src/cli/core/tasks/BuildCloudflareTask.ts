@@ -1,9 +1,9 @@
 import { basename } from "node:path";
 import { $inject } from "alepha";
 import { KV_DEFAULT_BINDING } from "alepha/cache";
-import { FileSystemProvider } from "alepha/system";
 import { QUEUE_DEFAULT_BINDING } from "alepha/queue";
 import type { CronProvider, WorkerdCronProvider } from "alepha/scheduler";
+import { FileSystemProvider } from "alepha/system";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
@@ -102,19 +102,14 @@ export class BuildCloudflareTask extends BuildTask {
     ];
   }
 
-  protected enhanceCron(
-    ctx: BuildTaskContext,
-    wrangler: WranglerConfig,
-  ): void {
+  protected enhanceCron(ctx: BuildTaskContext, wrangler: WranglerConfig): void {
     if (ctx.alepha.primitives("scheduler").length === 0) {
       return;
     }
 
     let cronProvider: CronProvider | undefined;
     try {
-      cronProvider = ctx.alepha.inject(
-        "CronProvider",
-      ) as WorkerdCronProvider;
+      cronProvider = ctx.alepha.inject("CronProvider") as WorkerdCronProvider;
     } catch {}
 
     const crons = cronProvider?.getCronJobs();
@@ -144,10 +139,7 @@ export class BuildCloudflareTask extends BuildTask {
       return;
     }
 
-    const [dbName, id] = url
-      .replace("d1://", "")
-      .replace("d1:", "")
-      .split(":");
+    const [dbName, id] = url.replace("d1://", "").replace("d1:", "").split(":");
     const binding = BuildCloudflareTask.D1_BINDING;
     wrangler.d1_databases = wrangler.d1_databases || [];
     wrangler.d1_databases.push({

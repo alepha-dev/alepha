@@ -29,7 +29,7 @@ Each step is handled by an **adapter**. The adapter knows how to talk to a speci
 Add a `platform` section to `alepha.config.ts`:
 
 ```typescript
-import { defineConfig } from "alepha/cli";
+import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   platform: {
@@ -263,7 +263,7 @@ After deployment, secrets from `.env.{env}` are pushed via `wrangler secret:bulk
 
 ```typescript
 // alepha.config.ts
-import { defineConfig } from "alepha/cli";
+import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   platform: {

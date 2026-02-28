@@ -1,4 +1,4 @@
-import { defineConfig } from "alepha/cli";
+import { defineConfig } from "alepha/cli/config";
 import pkg from "../../packages/alepha/package.json" with { type: "json" };
 import { DocsCommand } from "./scripts/gen-docs.ts";
 import { LlmsCommand } from "./scripts/gen-llms.ts";

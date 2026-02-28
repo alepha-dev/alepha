@@ -32,7 +32,7 @@
     "copy": "yarn workspaces foreach -Apt run copy",
     "convert": "node scripts/convert.ts",
     "lint": "yarn alepha lint",
-    "typecheck": "yarn alepha typecheck",
+    "typecheck": "yarn workspaces foreach -Apt run typecheck",
     "test": "yarn vitest run",
     "check-dependencies": "yarn workspaces foreach -Apt exec depcheck .",
     "build": "yarn workspaces foreach -Apt run build",

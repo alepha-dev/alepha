@@ -1,17 +1,7 @@
-import {
-  ActionButton,
-  extractSchemaFields,
-  OPERATOR_INFO,
-  type SchemaField,
-  ui,
-} from "@alepha/ui";
+import { extractSchemaFields, ui } from "@alepha/ui";
 import {
   ActionIcon,
-  Badge,
-  Divider,
-  Flex,
   Popover,
-  Text,
   TextInput,
   type TextInputProps,
 } from "@mantine/core";
@@ -20,6 +10,7 @@ import type { TObject } from "alepha";
 import { parseQueryString } from "alepha/orm";
 import { useEvents } from "alepha/react";
 import { useRef, useState } from "react";
+import ControlQueryBuilderHelp from "./ControlQueryBuilderHelp.tsx";
 
 export interface ControlQueryBuilderProps
   extends Omit<TextInputProps, "value" | "onChange"> {
@@ -33,13 +24,15 @@ export interface ControlQueryBuilderProps
  * Query builder with text input and help popover.
  * Generates query strings for parseQueryString syntax.
  */
-const ControlQueryBuilder = ({
-  schema,
-  value = "",
-  onChange,
-  placeholder = "Enter query or click for assistance...",
-  ...textInputProps
-}: ControlQueryBuilderProps) => {
+const ControlQueryBuilder = (props: ControlQueryBuilderProps) => {
+  const {
+    schema,
+    value = "",
+    onChange,
+    placeholder = "Enter query or click for assistance...",
+    ...textInputProps
+  } = props;
+
   const [helpOpened, setHelpOpened] = useState(false);
   const [textValue, setTextValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -146,166 +139,10 @@ const ControlQueryBuilder = ({
           backdropFilter: "blur(20px)",
         }}
       >
-        <QueryHelp fields={fields} onInsert={handleInsert} />
+        <ControlQueryBuilderHelp fields={fields} onInsert={handleInsert} />
       </Popover.Dropdown>
     </Popover>
   );
 };
-
-// ---------------------------------------------------------------------------------------------------------------------
-// Query Help Component
-// ---------------------------------------------------------------------------------------------------------------------
-
-interface QueryHelpProps {
-  fields: SchemaField[];
-  onInsert: (text: string) => void;
-}
-
-function QueryHelp({ fields, onInsert }: QueryHelpProps) {
-  return (
-    <Flex
-      gap="md"
-      align="flex-start"
-      wrap="nowrap"
-      bg={ui.colors.surface}
-      p={"sm"}
-      bdrs={"sm"}
-    >
-      {/* Left Column: Operators */}
-      <Flex direction="column" gap="md" style={{ flex: 1 }}>
-        {/* Available Operators */}
-        <Flex direction="column" gap="xs">
-          <Text size="sm" fw={600}>
-            Operators
-          </Text>
-          <Flex direction="column" gap={4}>
-            {Object.entries(OPERATOR_INFO).map(([key, info]) => (
-              <Flex key={key} gap="xs" wrap="nowrap">
-                <ActionButton
-                  px={"xs"}
-                  size={"xs"}
-                  h={24}
-                  variant={"default"}
-                  justify={"center"}
-                  miw={48}
-                  onClick={() => onInsert(info.symbol)}
-                >
-                  {info.symbol}
-                </ActionButton>
-                <Text size="xs" c="dimmed" style={{ flex: 1 }}>
-                  {info.label}
-                </Text>
-              </Flex>
-            ))}
-          </Flex>
-        </Flex>
-
-        <Divider />
-
-        {/* Logic Operators */}
-        <Flex direction="column" gap="xs">
-          <Text size="sm" fw={600}>
-            Logic
-          </Text>
-          <Flex direction="column" gap={4}>
-            <Flex gap="xs" wrap="nowrap">
-              <ActionButton
-                px={"xs"}
-                size={"xs"}
-                h={24}
-                variant={"default"}
-                justify={"center"}
-                miw={48}
-                onClick={() => onInsert("&")}
-              >
-                &
-              </ActionButton>
-              <Text size="xs" c="dimmed">
-                AND
-              </Text>
-            </Flex>
-            <Flex gap="xs" wrap="nowrap">
-              <ActionButton
-                px={"xs"}
-                size={"xs"}
-                h={24}
-                variant={"default"}
-                justify={"center"}
-                miw={48}
-                onClick={() => onInsert("|")}
-              >
-                |
-              </ActionButton>
-              <Text size="xs" c="dimmed">
-                OR
-              </Text>
-            </Flex>
-          </Flex>
-        </Flex>
-      </Flex>
-
-      {/* Divider */}
-      {fields.length > 0 && <Divider orientation="vertical" />}
-
-      {/* Right Column: Fields */}
-      {fields.length > 0 && (
-        <Flex direction={"column"} gap="xs" style={{ flex: 2 }}>
-          <Text size="sm" fw={600}>
-            Fields
-          </Text>
-          <Flex
-            direction={"column"}
-            gap={4}
-            style={{ maxHeight: 300, overflowY: "auto" }}
-          >
-            {fields.map((field) => (
-              <Flex key={field.path} gap="xs" wrap="nowrap" align="flex-start">
-                <ActionButton
-                  px={"xs"}
-                  size={"xs"}
-                  h={24}
-                  variant={"default"}
-                  justify={"end"}
-                  miw={120}
-                  onClick={() => onInsert(field.path)}
-                >
-                  {field.path}
-                </ActionButton>
-                <Flex
-                  mt={3}
-                  direction={"column"}
-                  gap={2}
-                  style={{ flex: 1, minWidth: 0 }}
-                >
-                  <Text size="xs" c="dimmed" lineClamp={1}>
-                    {field.description || field.type}
-                  </Text>
-                  {field.enum && (
-                    <Flex gap={0} wrap="wrap">
-                      {field.enum.map((enumValue) => (
-                        <ActionButton
-                          px={"xs"}
-                          size={"xs"}
-                          h={24}
-                          key={enumValue}
-                          onClick={() => onInsert(enumValue)}
-                        >
-                          {enumValue}
-                        </ActionButton>
-                      ))}
-                    </Flex>
-                  )}
-                </Flex>
-                <Badge size="xs" variant="light" style={{ flexShrink: 0 }}>
-                  {field.type}
-                </Badge>
-              </Flex>
-            ))}
-          </Flex>
-        </Flex>
-      )}
-    </Flex>
-  );
-}
 
 export default ControlQueryBuilder;

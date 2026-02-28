@@ -1,6 +1,6 @@
 import { Group, Line, Rect, Text } from "react-konva";
-import type { WhiteboardElement } from "../../../../../api/entities/whiteboards.ts";
-import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
+import type { WhiteboardElement } from "@/api/entities/whiteboards.ts";
+import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
 import type { KonvaEventObject } from "./types.ts";
 
 const RANK_LABELS = ["F", "C", "B", "A", "S"];
@@ -30,16 +30,17 @@ export interface WhiteboardTaskCardProps {
 
 const MAX_TITLE_LENGTH = 28;
 
-const WhiteboardTaskCard = ({
-  element,
-  task,
-  isSelected,
-  draggable,
-  onClick,
-  onTap,
-  onDblClick,
-  onDragEnd,
-}: WhiteboardTaskCardProps) => {
+const WhiteboardTaskCard = (props: WhiteboardTaskCardProps) => {
+  const {
+    element,
+    task,
+    isSelected,
+    draggable,
+    onClick,
+    onTap,
+    onDblClick,
+    onDragEnd,
+  } = props;
   const width = element.width ?? 220;
   const height = 48;
   const rank = RANK_LABELS[task.complexity - 1] ?? "F";

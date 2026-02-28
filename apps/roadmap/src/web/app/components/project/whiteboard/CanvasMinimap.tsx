@@ -1,8 +1,8 @@
 import { Flex, Text } from "@alepha/ui";
 import { Paper } from "@mantine/core";
 import { useI18n } from "alepha/react/i18n";
-import type { WhiteboardElement } from "../../../../../api/entities/whiteboards.ts";
-import type { I18n } from "../../../services/I18n.ts";
+import type { WhiteboardElement } from "@/api/entities/whiteboards.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 import type { Position, Size } from "./types.ts";
 import classes from "./WhiteboardCanvas.module.css";
 
@@ -13,12 +13,8 @@ export interface CanvasMinimapProps {
   zoom: number;
 }
 
-const CanvasMinimap = ({
-  elements,
-  stagePos,
-  stageSize,
-  zoom,
-}: CanvasMinimapProps) => {
+const CanvasMinimap = (props: CanvasMinimapProps) => {
+  const { elements, stagePos, stageSize, zoom } = props;
   const { tr } = useI18n<I18n, "en">();
 
   if (elements.length === 0) {

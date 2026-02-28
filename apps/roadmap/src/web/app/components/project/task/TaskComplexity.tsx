@@ -1,12 +1,17 @@
 import { Text } from "@alepha/ui";
 import { Card } from "@mantine/core";
 import { useInject } from "alepha/react";
-import { CharacterInfo } from "../../../../../api/services/CharacterInfo.ts";
-import { theme } from "../../../constants/theme.ts";
+import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
+import { theme } from "@/web/app/constants/theme.ts";
 
-const TaskComplexity = ({ complexity }: { complexity: number }) => {
+export interface TaskComplexityProps {
+  complexity: number;
+}
+
+const TaskComplexity = (props: TaskComplexityProps) => {
+  const { complexity } = props;
   const info = useInject(CharacterInfo);
-  const props = {
+  const cardProps = {
     p: 0,
     w: 25,
     h: 25,
@@ -24,7 +29,7 @@ const TaskComplexity = ({ complexity }: { complexity: number }) => {
   if (complexity === 5)
     return (
       <Card
-        {...props}
+        {...cardProps}
         className={"shadow-2"}
         style={{ borderColor: theme.colors.gold }}
         bg={theme.colors.panel}
@@ -35,7 +40,7 @@ const TaskComplexity = ({ complexity }: { complexity: number }) => {
   if (complexity === 4)
     return (
       <Card
-        {...props}
+        {...cardProps}
         className={"shadow"}
         style={{ borderColor: theme.colors.silver }}
         bg={theme.colors.panel}
@@ -45,18 +50,18 @@ const TaskComplexity = ({ complexity }: { complexity: number }) => {
     );
   if (complexity === 3)
     return (
-      <Card {...props} className={"shadow"} bg={theme.colors.panel}>
+      <Card {...cardProps} className={"shadow"} bg={theme.colors.panel}>
         {renderComplexityText(complexity)}
       </Card>
     );
   if (complexity === 2)
     return (
-      <Card {...props} bg={theme.colors.panel}>
+      <Card {...cardProps} bg={theme.colors.panel}>
         {renderComplexityText(complexity)}
       </Card>
     );
   return (
-    <Card {...props} bg={theme.colors.card}>
+    <Card {...cardProps} bg={theme.colors.card}>
       {renderComplexityText(complexity)}
     </Card>
   );

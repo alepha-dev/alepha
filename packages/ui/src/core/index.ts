@@ -93,7 +93,6 @@ export type {
   SidebarButtonTheme,
   SidebarDivider,
   SidebarElement,
-  SidebarItemProps,
   SidebarMenuItem,
   SidebarNode,
   SidebarProps,
@@ -103,6 +102,9 @@ export type {
   SidebarTheme,
 } from "./components/layout/Sidebar.tsx";
 export { Sidebar } from "./components/layout/Sidebar.tsx";
+export { SidebarCollapsedItem } from "./components/layout/SidebarCollapsedItem.tsx";
+export type { SidebarItemProps } from "./components/layout/SidebarItem.tsx";
+export { SidebarItem } from "./components/layout/SidebarItem.tsx";
 export type { TextProps } from "./components/Text.tsx";
 export { default as Text } from "./components/Text.tsx";
 export * from "./constants/ui.ts";

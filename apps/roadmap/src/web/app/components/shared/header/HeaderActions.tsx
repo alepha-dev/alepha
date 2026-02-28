@@ -10,10 +10,10 @@ import { IconSettings } from "@tabler/icons-react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import type { AppSecurityProvider } from "../../../../api/providers/AppSecurityProvider.ts";
-import { theme } from "../../constants/theme.ts";
-import type { I18n } from "../../services/I18n.ts";
-import type { MeRouter } from "../profile/MeRouter.ts";
+import type { AppSecurityProvider } from "@/api/providers/AppSecurityProvider.ts";
+import { theme } from "@/web/app/constants/theme.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
+import type { MeRouter } from "../../profile/me/MeRouter.ts";
 
 const HeaderActions = () => {
   const items: ActionMenuItem[] = [];

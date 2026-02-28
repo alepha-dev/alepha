@@ -1,6 +1,4 @@
 import {
-  Autocomplete,
-  type AutocompleteProps,
   Flex,
   Input,
   Loader,
@@ -10,11 +8,11 @@ import {
   type SegmentedControlProps,
   Select,
   type SelectProps,
-  TagsInput,
-  type TagsInputProps,
 } from "@mantine/core";
+import type { Async } from "alepha";
+import { useAction } from "alepha/react";
 import { useFormState } from "alepha/react/form";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type GenericControlProps, parseInput } from "../utils/parseInput.ts";
 
 export type SelectValueLabel =
@@ -24,11 +22,20 @@ export type SelectValueLabel =
 type LoaderMode = "static" | "short" | "long";
 
 export interface ControlSelectProps extends GenericControlProps {
-  select?: boolean | SelectProps;
-  multi?: boolean | MultiSelectProps;
-  tags?: boolean | TagsInputProps;
-  autocomplete?: boolean | AutocompleteProps;
-  segmented?: boolean | Partial<SegmentedControlProps>;
+  /**
+   * Configure select with optional SelectProps.
+   */
+  selectProps?: boolean | SelectProps;
+
+  /**
+   * Configure select as multi-select (for array of enums) with optional MultiSelectProps.
+   */
+  multiSelectProps?: boolean | MultiSelectProps;
+
+  /**
+   * If true, renders a SegmentedControl instead of Select/MultiSelect.
+   */
+  segmentedProps?: boolean | Partial<SegmentedControlProps>;
 
   /**
    * Async loader for select options.
@@ -36,7 +43,7 @@ export interface ControlSelectProps extends GenericControlProps {
    * @param search - Search text (empty string on initial load)
    * @param resolve - Optional array of values to resolve labels for (used for default values in long mode)
    */
-  loader?: (search: string, resolve?: string[]) => Promise<SelectValueLabel[]>;
+  loader?: (search: string, resolve?: string[]) => Async<SelectValueLabel[]>;
 
   /**
    * Threshold to distinguish short (client-filtered) from long (server-filtered) lists.
@@ -52,90 +59,6 @@ export interface ControlSelectProps extends GenericControlProps {
    */
   loaderDebounce?: number;
 }
-
-/**
- * Hook for async select data loading with auto short/long mode detection.
- */
-const useAsyncLoader = (
-  loader: ControlSelectProps["loader"],
-  threshold: number,
-  debounceMs: number,
-  defaultValue: any,
-) => {
-  const [data, setData] = useState<SelectValueLabel[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<LoaderMode>("static");
-  const cache = useRef(new Map<string, SelectValueLabel[]>());
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  // Initial load — determines mode
-  useEffect(() => {
-    if (!loader) {
-      setMode("static");
-      return;
-    }
-
-    setLoading(true);
-    loader("").then((result) => {
-      const isShort = result.length <= threshold;
-      setMode(isShort ? "short" : "long");
-      cache.current.set("", result);
-      setData(result);
-      setLoading(false);
-
-      // In long mode, resolve default value label
-      if (!isShort && defaultValue != null && String(defaultValue) !== "") {
-        loader("", [String(defaultValue)]).then((resolved) => {
-          if (resolved.length > 0) {
-            setData((prev) => {
-              const existing = new Set(
-                prev.map((d) => (typeof d === "string" ? d : d.value)),
-              );
-              const newItems = resolved.filter((r) => {
-                const val = typeof r === "string" ? r : r.value;
-                return !existing.has(val);
-              });
-              return [...prev, ...newItems];
-            });
-          }
-        });
-      }
-    });
-  }, [loader, threshold]);
-
-  // Debounced search (long mode only)
-  const search = useCallback(
-    (text: string) => {
-      if (!loader || mode !== "long") return;
-
-      // Check cache first
-      if (cache.current.has(text)) {
-        setData(cache.current.get(text)!);
-        return;
-      }
-
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        setLoading(true);
-        loader(text).then((result) => {
-          cache.current.set(text, result);
-          setData(result);
-          setLoading(false);
-        });
-      }, debounceMs);
-    },
-    [loader, mode, debounceMs],
-  );
-
-  // Cleanup
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  return { data, loading, mode, search };
-};
 
 /**
  * ControlSelect component for handling Select, MultiSelect, and TagsInput.
@@ -220,9 +143,9 @@ const ControlSelect = (props: ControlSelectProps) => {
     return val;
   };
 
-  if (props.segmented) {
+  if (props.segmentedProps) {
     const segmentedControlProps: Partial<SegmentedControlProps> =
-      typeof props.segmented === "object" ? props.segmented : {};
+      typeof props.segmentedProps === "object" ? props.segmentedProps : {};
     const segmentedData = segmentedControlProps.data ?? data.slice(0, 10);
 
     return (
@@ -242,63 +165,38 @@ const ControlSelect = (props: ControlSelectProps) => {
     );
   }
 
-  if (props.autocomplete) {
-    const autocompleteProps =
-      typeof props.autocomplete === "object" ? props.autocomplete : {};
-
-    return (
-      <Autocomplete
-        {...inputProps}
-        size={props.size}
-        id={id}
-        leftSection={icon}
-        data={data}
-        {...props.input.props}
-        {...autocompleteProps}
-      />
-    );
-  }
-
-  // region <TagsInput/> - for array of strings without enum
-  if ((isArray && !itemsEnum) || props.tags) {
-    const tagsInputProps = typeof props.tags === "object" ? props.tags : {};
-    return (
-      <TagsInput
-        {...inputProps}
-        size={props.size}
-        id={id}
-        leftSection={icon}
-        defaultValue={
-          Array.isArray(props.input.props.defaultValue)
-            ? props.input.props.defaultValue
-            : []
-        }
-        onChange={(value) => {
-          props.input.set(value);
-        }}
-        {...tagsInputProps}
-      />
-    );
-  }
-  // endregion
+  const baseSelectProps: Pick<
+    // pick only what we need to be compatible with both Select and MultiSelect
+    SelectProps,
+    | "size"
+    | "id"
+    | "leftSection"
+    | "searchable"
+    | "withAlignedLabels"
+    | "rightSection"
+    | "data"
+    | "inputWrapperOrder"
+  > = {
+    size: props.size,
+    id,
+    leftSection: loading ? <Loader color={"gray"} size={10} /> : icon,
+    searchable: true,
+    withAlignedLabels: true,
+    rightSection: <span />,
+    data,
+    // TODO: set in $atom ?
+    inputWrapperOrder: ["label", "input", "description", "error"],
+  };
 
   // region <MultiSelect/> - for array of enums
-  if ((isArray && itemsEnum) || props.multi) {
-    const data =
-      itemsEnum?.map((value: string) => ({
-        value,
-        label: value,
-      })) || [];
-
-    const multiSelectProps = typeof props.multi === "object" ? props.multi : {};
+  if (isArray || props.multiSelectProps) {
+    const multiSelectProps =
+      typeof props.multiSelectProps === "object" ? props.multiSelectProps : {};
 
     return (
       <MultiSelect
         {...inputProps}
-        size={props.size}
-        id={id}
-        leftSection={icon}
-        data={data}
+        {...baseSelectProps}
         defaultValue={
           Array.isArray(props.input.props.defaultValue)
             ? props.input.props.defaultValue
@@ -314,20 +212,15 @@ const ControlSelect = (props: ControlSelectProps) => {
   // endregion
 
   // region <Select/> - for single value (static, short, or long mode)
-  const selectProps = typeof props.select === "object" ? props.select : {};
+  const selectProps =
+    typeof props.selectProps === "object" ? props.selectProps : {};
 
   // Short mode: searchable + clearable, client-side filter
   if (mode === "short") {
     return (
       <Select
         {...inputProps}
-        size={props.size}
-        id={id}
-        leftSection={icon}
-        rightSection={loading ? <Loader size="xs" /> : null}
-        searchable
-        clearable
-        data={data}
+        {...baseSelectProps}
         defaultValue={
           props.input.props.defaultValue != null
             ? String(props.input.props.defaultValue)
@@ -346,15 +239,9 @@ const ControlSelect = (props: ControlSelectProps) => {
     return (
       <Select
         {...inputProps}
-        size={props.size}
-        id={id}
-        leftSection={icon}
-        rightSection={loading ? <Loader size="xs" /> : null}
-        searchable
-        clearable
-        data={data}
+        {...baseSelectProps}
         filter={({ options }) => options}
-        onSearchChange={search}
+        onSearchChange={search.run}
         defaultValue={
           props.input.props.defaultValue != null
             ? String(props.input.props.defaultValue)
@@ -372,12 +259,7 @@ const ControlSelect = (props: ControlSelectProps) => {
   return (
     <Select
       {...inputProps}
-      size={props.size}
-      id={id}
-      leftSection={icon}
-      rightSection={<Flex />}
-      clearable
-      data={data}
+      {...baseSelectProps}
       {...props.input.props}
       onChange={(value) => {
         props.input.set(coerceValue(value));
@@ -389,3 +271,98 @@ const ControlSelect = (props: ControlSelectProps) => {
 };
 
 export default ControlSelect;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Hook for async select data loading with auto short/long mode detection.
+ */
+const useAsyncLoader = (
+  loader: ControlSelectProps["loader"],
+  threshold: number,
+  debounceMs: number,
+  defaultValue: any,
+) => {
+  const [data, setData] = useState<SelectValueLabel[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<LoaderMode>("static");
+  const cache = useRef(new Map<string, SelectValueLabel[]>());
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useAction(
+    {
+      name: "select:loader:init",
+      runOnInit: true,
+      handler: async () => {
+        if (!loader) {
+          setMode("static");
+          return;
+        }
+
+        setLoading(true);
+        const result = await loader("");
+        const isShort = result.length <= threshold;
+        setMode(isShort ? "short" : "long");
+        cache.current.set("", result);
+        setData(result);
+        setLoading(false);
+
+        // In long mode, resolve default value label
+        if (!isShort && defaultValue != null && String(defaultValue) !== "") {
+          const resolved = await loader("", [String(defaultValue)]);
+          if (resolved.length > 0) {
+            setData((prev) => {
+              const existing = new Set(
+                prev.map((d) => (typeof d === "string" ? d : d.value)),
+              );
+              const newItems = resolved.filter((r) => {
+                const val = typeof r === "string" ? r : r.value;
+                return !existing.has(val);
+              });
+              return [...prev, ...newItems];
+            });
+          }
+        }
+      },
+    },
+    [loader, threshold],
+  );
+
+  // Debounced search (long mode only)
+  const search = useAction<[string]>(
+    {
+      handler: async (text) => {
+        if (!loader || mode !== "long") return;
+
+        // Check cache first
+        if (cache.current.has(text)) {
+          setData(cache.current.get(text)!);
+          return;
+        }
+
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(async () => {
+          setLoading(true);
+          try {
+            const result = await loader(text);
+            cache.current.set(text, result);
+            setData(result);
+            setLoading(false);
+          } catch (error) {
+            setLoading(false);
+          }
+        }, debounceMs);
+      },
+    },
+    [loader, mode, debounceMs],
+  );
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  return { data, loading, mode, search };
+};

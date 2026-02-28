@@ -1,9 +1,8 @@
-import type { CustomControlProps } from "@alepha/ui";
-import { ActionButton, Flex } from "@alepha/ui";
+import { ActionButton, type CustomControlProps, Flex } from "@alepha/ui";
 import { TextInput } from "@mantine/core";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
-import { theme } from "../../../constants/theme.ts";
+import { theme } from "@/web/app/constants/theme.ts";
 
 export interface Objective {
   title: string;
@@ -82,12 +81,12 @@ const TaskCreateObjectives = (props: ObjectiveEditorProps) => {
           }}
           rightSection={
             <ActionButton
-              variant="subtle"
+              size={"xs"}
+              icon={IconPlus}
+              variant="minimal"
               onClick={addObjective}
               disabled={!newObjective.trim()}
-            >
-              <IconPlus size={theme.icon.size.sm} />
-            </ActionButton>
+            />
           }
         />
       </Flex>

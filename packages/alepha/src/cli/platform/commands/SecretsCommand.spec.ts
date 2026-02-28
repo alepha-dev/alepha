@@ -252,9 +252,7 @@ describe("SecretsCommand", () => {
 
       const output = writes.join("");
       expect(output).toContain("env:");
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: testing GHA template syntax
       expect(output).toContain("API_KEY: ${{ secrets.API_KEY }}");
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: testing GHA template syntax
       expect(output).toContain(
         "GITHUB_CLIENT_ID: ${{ secrets.APP_GITHUB_CLIENT_ID }}",
       );

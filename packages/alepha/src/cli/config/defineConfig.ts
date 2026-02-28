@@ -1,11 +1,14 @@
 import type { Alepha } from "alepha";
-import type { CommandPrimitive } from "alepha/command";
 import {
   type AppEntryOptions,
   appEntryOptions,
-} from "./atoms/appEntryOptions.ts";
-import { type BuildOptions, buildOptions } from "./atoms/buildOptions.ts";
-import { type DevOptions, devOptions } from "./atoms/devOptions.ts";
+  type BuildOptions,
+  buildOptions,
+  type DevOptions,
+  devOptions,
+} from "alepha/cli";
+import { type PlatformOptions, platformOptions } from "alepha/cli/platform";
+import type { CommandPrimitive } from "alepha/command";
 
 export interface AlephaCliConfig {
   entry?: AppEntryOptions;
@@ -38,23 +41,14 @@ export interface AlephaCliConfig {
    * Always use .env files by default, this is only for dynamic values.
    */
   env?: Record<string, unknown>;
+
+  /**
+   * Platform deployment configuration.
+   */
+  platform?: PlatformOptions;
 }
 
 export type AlephaCliConfigFn = (alepha: Alepha) => AlephaCliConfig;
-
-type ConfigProcessor = (alepha: Alepha, config: AlephaCliConfig) => void;
-
-const configProcessors: ConfigProcessor[] = [];
-
-/**
- * Register a processor that runs during config resolution.
- *
- * Used by submodules (e.g. platform) to handle their own config keys
- * without core needing to know about them.
- */
-export function registerConfigProcessor(processor: ConfigProcessor) {
-  configProcessors.push(processor);
-}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -89,8 +83,8 @@ export const defineConfig = (
       alepha.set(appEntryOptions, config.entry);
     }
 
-    for (const processor of configProcessors) {
-      processor(alepha, config);
+    if (config.platform) {
+      alepha.set(platformOptions, config.platform);
     }
 
     return {

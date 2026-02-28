@@ -6,7 +6,8 @@ export interface HelpModalProps {
   onClose: () => void;
 }
 
-const HelpModal = ({ opened, onClose }: HelpModalProps) => {
+const HelpModal = (props: HelpModalProps) => {
+  const { opened, onClose } = props;
   return (
     <Modal opened={opened} onClose={onClose} title="Draw Help" size="md">
       <Text size="sm" fw={500} mb="xs">

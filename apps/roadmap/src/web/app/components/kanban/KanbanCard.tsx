@@ -3,9 +3,15 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@mantine/core";
 import { IconExclamationMark, IconSparkles } from "@tabler/icons-react";
-import type { TaskResource } from "../../../../api/schemas/taskResourceSchema.ts";
+import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
 import { theme } from "../../constants/theme.ts";
 import TaskComplexity from "../project/task/TaskComplexity.tsx";
+
+export interface KanbanCardProps {
+  task: TaskResource;
+  readOnly: boolean;
+  onSelect: (task: TaskResource) => void;
+}
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
@@ -20,15 +26,8 @@ const getPriorityColor = (priority: string) => {
   }
 };
 
-const KanbanCard = ({
-  task,
-  readOnly,
-  onSelect,
-}: {
-  task: TaskResource;
-  readOnly: boolean;
-  onSelect: (task: TaskResource) => void;
-}) => {
+const KanbanCard = (props: KanbanCardProps) => {
+  const { task, readOnly, onSelect } = props;
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `task-${task.id}`,

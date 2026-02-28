@@ -21,7 +21,8 @@
       "suspicious": {
         "noExplicitAny": "off",
         "noArrayIndexKey": "off",
-        "noConfusingVoidType": "off"
+        "noConfusingVoidType": "off",
+        "noTemplateCurlyInString": "off"
       },
       "correctness": {
         "noUnusedImports": {

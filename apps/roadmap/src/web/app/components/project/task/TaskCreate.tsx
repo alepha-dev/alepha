@@ -14,14 +14,15 @@ import { useAlepha, useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import type { TaskController } from "../../../../../api/controllers/TaskController.ts";
-import type { Project } from "../../../../../api/entities/projects.ts";
-import { taskCreateSchema } from "../../../../../api/schemas/taskCreateSchema.ts";
-import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
-import type { AppRouter } from "../../../AppRouter.ts";
-import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
+import type { TaskController } from "@/api/controllers/TaskController.ts";
+import type { Project } from "@/api/entities/projects.ts";
+import { taskCreateSchema } from "@/api/schemas/taskCreateSchema.ts";
+import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
+import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentAssignedTasksAtom } from "@/web/app/atoms/currentAssignedTasksAtom.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { kanbanProjectAtom } from "@/web/app/atoms/kanbanProjectAtom.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 import TextEditor from "../../shared/TextEditor.tsx";
 import TaskAttachments from "./TaskAttachments.tsx";
 import TaskCreateObjectives from "./TaskCreateObjectives.tsx";
@@ -39,6 +40,7 @@ const TaskCreate = (props: TaskCreateProps) => {
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
   const [currentProject, setCurrentProject] = useStore(currentProjectAtom);
+  const [kanbanProject] = useStore(kanbanProjectAtom);
 
   const update = !!props.task?.id;
 
@@ -96,6 +98,9 @@ const TaskCreate = (props: TaskCreateProps) => {
     },
   });
 
+  const packages =
+    currentProject?.packages || kanbanProject?.project?.packages || [];
+
   return (
     <form {...form.props}>
       <Flex direction="column" gap="md">
@@ -118,8 +123,8 @@ const TaskCreate = (props: TaskCreateProps) => {
             input={form.input.package}
             icon={<IconTent />}
             select={{
-              autocomplete: {
-                data: currentProject?.packages || [],
+              loader: () => packages,
+              selectProps: {
                 placeholder: "Enter or select a zone...",
                 limit: 5,
               },
@@ -148,7 +153,7 @@ const TaskCreate = (props: TaskCreateProps) => {
             description={tr("task.create.priority.helper")}
             segmented
             select={{
-              segmented: {
+              segmentedProps: {
                 data: [
                   {
                     label: String(tr("priority.high")),
@@ -176,7 +181,7 @@ const TaskCreate = (props: TaskCreateProps) => {
             description={tr("task.create.complexity.helper")}
             segmented
             select={{
-              segmented: {
+              segmentedProps: {
                 data: [
                   {
                     label: "S",

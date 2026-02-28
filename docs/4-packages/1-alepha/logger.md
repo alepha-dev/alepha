@@ -20,7 +20,7 @@ Configurable logging with multiple outputs.
 - Console destination
 - Memory destination (for devtools)
 - Custom handlers
-- Configuration via `LOG_LEVEL` and `LOG_FORMAT`
+- Configuration via `LOG_LEVEL`, `LOG_FORMAT`, and `DEBUG`
 
 ## API Reference
 

@@ -57,6 +57,7 @@ export const parseInput = (
           props.input.schema &&
           "type" in props.input.schema &&
           props.input.schema.type === "array",
+        size: props.size,
       })
     : isValidElement(props.icon)
       ? props.icon

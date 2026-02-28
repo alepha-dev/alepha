@@ -15,9 +15,9 @@ import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { currentUserAtom } from "alepha/security";
 import { type ChangeEvent, useRef, useState } from "react";
-import type { UserController } from "../../../../api/controllers/UserController.ts";
-import type { User } from "../../../../api/entities/users.ts";
-import { CharacterInfo } from "../../../../api/services/CharacterInfo.ts";
+import type { UserController } from "@/api/controllers/UserController.ts";
+import type { User } from "@/api/entities/users.ts";
+import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
 
 export interface ProfileProps {
   user: User;

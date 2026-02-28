@@ -22,12 +22,12 @@ import {
   Stage,
   Transformer,
 } from "react-konva";
-import type { WhiteboardController } from "../../../../../api/controllers/WhiteboardController.ts";
-import type { WhiteboardElement } from "../../../../../api/entities/whiteboards.ts";
-import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
-import { currentAssignedTasksAtom } from "../../../atoms/currentAssignedTasksAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
+import type { WhiteboardController } from "@/api/controllers/WhiteboardController.ts";
+import type { WhiteboardElement } from "@/api/entities/whiteboards.ts";
+import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
+import { currentAssignedTasksAtom } from "@/web/app/atoms/currentAssignedTasksAtom.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 import TaskCreate from "../task/TaskCreate.tsx";
 import CanvasGrid from "./CanvasGrid.tsx";
 import CanvasImage from "./CanvasImage.tsx";

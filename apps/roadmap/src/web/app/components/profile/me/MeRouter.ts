@@ -1,11 +1,11 @@
 import type { ApiKeyController } from "alepha/api/keys";
 import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
-import type { CharacterController } from "../../../../api/controllers/CharacterController.ts";
-import type { IdentityController } from "../../../../api/controllers/IdentityController.ts";
-import type { InvitationController } from "../../../../api/controllers/InvitationController.ts";
-import type { SessionController } from "../../../../api/controllers/SessionController.ts";
-import type { UserController } from "../../../../api/controllers/UserController.ts";
+import type { CharacterController } from "@/api/controllers/CharacterController.ts";
+import type { IdentityController } from "@/api/controllers/IdentityController.ts";
+import type { InvitationController } from "@/api/controllers/InvitationController.ts";
+import type { SessionController } from "@/api/controllers/SessionController.ts";
+import type { UserController } from "@/api/controllers/UserController.ts";
 
 export class MeRouter {
   sessionApi = $client<SessionController>();
@@ -23,7 +23,7 @@ export class MeRouter {
   characters = $page({
     parent: this.me,
     path: "/characters",
-    lazy: () => import("./MyCharacters.tsx"),
+    lazy: () => import("../characters/MyCharacters.tsx"),
     loader: async () => {
       return {
         characters: await this.characterApi.getMyCharacters(),
@@ -34,7 +34,7 @@ export class MeRouter {
   identities = $page({
     parent: this.me,
     path: "/identities",
-    lazy: () => import("./MyIdentities.tsx"),
+    lazy: () => import("../MyIdentities.tsx"),
     loader: async () => {
       return {
         identities: await this.identityApi.getMyIdentities(),
@@ -45,7 +45,7 @@ export class MeRouter {
   invitations = $page({
     parent: this.me,
     path: "/invitations",
-    lazy: () => import("./MyInvitations.tsx"),
+    lazy: () => import("../MyInvitations.tsx"),
     loader: async () => {
       return {
         invitations: await this.invitationApi.getMyInvitations(),
@@ -56,7 +56,7 @@ export class MeRouter {
   profile = $page({
     parent: this.me,
     path: "/",
-    lazy: () => import("./MyProfile.tsx"),
+    lazy: () => import("../MyProfile.tsx"),
     loader: async () => {
       const [user, characters, identities] = await Promise.all([
         this.userApi.me(),
@@ -74,7 +74,7 @@ export class MeRouter {
   sessions = $page({
     parent: this.me,
     path: "/sessions",
-    lazy: () => import("./MySessions.tsx"),
+    lazy: () => import("../MySessions.tsx"),
     loader: async () => {
       return {
         sessions: await this.sessionApi.getMySessions(),
@@ -85,7 +85,7 @@ export class MeRouter {
   apiKeys = $page({
     parent: this.me,
     path: "/api-keys",
-    lazy: () => import("./MyApiKeys.tsx"),
+    lazy: () => import("../MyApiKeys.tsx"),
     loader: async () => {
       return {
         apiKeys: await this.apiKeyApi.listApiKeys(),

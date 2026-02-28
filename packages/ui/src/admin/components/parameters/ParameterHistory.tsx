@@ -5,22 +5,21 @@ import type { ParameterResponse } from "alepha/api/parameters";
 import { useI18n } from "alepha/react/i18n";
 import { getStatusColor } from "./types.ts";
 
-export interface ParameterHistoryProps {
+interface Props {
   selectedConfig: string | null;
   history: ParameterResponse[];
   loading: boolean;
   onRollback: (version: number) => void;
 }
 
-const ParameterHistory = ({
-  history,
-  loading,
-  onRollback,
-}: ParameterHistoryProps) => {
+/**
+ * Parameter version history timeline panel.
+ */
+const ParameterHistory = (props: Props) => {
   const { l } = useI18n();
 
   const renderContent = () => {
-    if (loading) {
+    if (props.loading) {
       return (
         <Flex flex={1} justify="center" align="center">
           <Loader size="sm" />
@@ -28,7 +27,7 @@ const ParameterHistory = ({
       );
     }
 
-    if (history.length === 0) {
+    if (props.history.length === 0) {
       return (
         <Flex flex={1} justify="center" align="center">
           <Text c="dimmed" size="xs">
@@ -41,11 +40,11 @@ const ParameterHistory = ({
     return (
       <ScrollArea flex={1} offsetScrollbars>
         <Timeline
-          active={history.findIndex((h) => h.status === "current")}
+          active={props.history.findIndex((h) => h.status === "current")}
           bulletSize={24}
           lineWidth={2}
         >
-          {history.map((version) => (
+          {props.history.map((version) => (
             <Timeline.Item
               key={version.id}
               bullet={
@@ -91,7 +90,7 @@ const ParameterHistory = ({
                   <ActionButton
                     size="compact-xs"
                     variant="subtle"
-                    onClick={() => onRollback(version.version)}
+                    onClick={() => props.onRollback(version.version)}
                   >
                     Rollback to this version
                   </ActionButton>

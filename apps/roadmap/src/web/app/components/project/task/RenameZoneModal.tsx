@@ -6,9 +6,9 @@ import { useClient, useStore } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import type { ProjectController } from "../../../../../api/controllers/ProjectController.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
+import type { ProjectController } from "@/api/controllers/ProjectController.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 
 interface RenameZoneModalProps {
   currentZoneName: string;

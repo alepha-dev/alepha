@@ -35,7 +35,6 @@ export type {
   SidebarButtonTheme,
   SidebarDivider,
   SidebarElement,
-  SidebarItemProps,
   SidebarMenuItem,
   SidebarNode,
   SidebarProps,
@@ -45,6 +44,9 @@ export type {
   SidebarTheme,
 } from "./Sidebar.tsx";
 export { Sidebar } from "./Sidebar.tsx";
+export { SidebarCollapsedItem } from "./SidebarCollapsedItem.tsx";
+export type { SidebarItemProps } from "./SidebarItem.tsx";
+export { SidebarItem } from "./SidebarItem.tsx";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

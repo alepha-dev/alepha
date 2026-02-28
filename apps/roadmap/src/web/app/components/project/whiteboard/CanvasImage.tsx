@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Image as KonvaImage, Rect } from "react-konva";
-import type { WhiteboardElement } from "../../../../../api/entities/whiteboards.ts";
+import type { WhiteboardElement } from "@/api/entities/whiteboards.ts";
 import type { KonvaEventObject, ToolType } from "./types.ts";
 
 export interface CanvasImageProps {
@@ -13,15 +13,16 @@ export interface CanvasImageProps {
   onTransformEnd: (e: KonvaEventObject<unknown>) => void;
 }
 
-const CanvasImage = ({
-  element,
-  isSelected,
-  tool,
-  onSelect,
-  onErase,
-  onDragEnd,
-  onTransformEnd,
-}: CanvasImageProps) => {
+const CanvasImage = (props: CanvasImageProps) => {
+  const {
+    element,
+    isSelected,
+    tool,
+    onSelect,
+    onErase,
+    onDragEnd,
+    onTransformEnd,
+  } = props;
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [error, setError] = useState(false);
 

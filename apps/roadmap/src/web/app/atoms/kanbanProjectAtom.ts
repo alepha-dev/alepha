@@ -1,5 +1,5 @@
 import { $atom, t } from "alepha";
-import { projects } from "../../../api/entities/projects.ts";
+import { projects } from "@/api/entities/projects.ts";
 
 export const kanbanProjectAtom = $atom({
   name: "rdm.kanban.project",

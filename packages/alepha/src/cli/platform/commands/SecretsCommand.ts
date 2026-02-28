@@ -68,7 +68,6 @@ export class SecretsCommand {
         process.stdout.write("env:\n");
         for (const secret of remoteSecrets) {
           const localName = this.filter.toLocalName(secret.name);
-          // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions syntax
           process.stdout.write(
             `  ${localName}: \${{ secrets.${secret.name} }}\n`,
           );

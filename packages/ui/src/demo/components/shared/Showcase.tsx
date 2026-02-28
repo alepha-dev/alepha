@@ -36,14 +36,16 @@ export interface ShowcaseProps<T extends TObject> {
  * Showcase component for demonstrating UI components with interactive props configuration.
  * Uses TypeForm to render a form based on the props schema and displays the component preview.
  */
-const Showcase = <T extends TObject>({
-  title,
-  schema,
-  initialValues,
-  columns = 3,
-  children,
-  windowProps,
-}: ShowcaseProps<T>) => {
+const Showcase = <T extends TObject>(props: ShowcaseProps<T>) => {
+  const {
+    title,
+    schema,
+    initialValues,
+    columns = 3,
+    children,
+    windowProps,
+  } = props;
+
   const [values, setValues] = useState<Record<string, any>>(
     initialValues ?? {},
   );

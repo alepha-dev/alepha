@@ -15,12 +15,9 @@ export interface DataTableFiltersProps {
   filterVisibility: FilterVisibility;
 }
 
-const DataTableFilters = ({
-  schema,
-  form,
-  typeFormProps,
-  filterVisibility,
-}: DataTableFiltersProps) => {
+const DataTableFilters = (props: DataTableFiltersProps) => {
+  const { schema, form, typeFormProps, filterVisibility } = props;
+
   const visibleSchema = useMemo(() => {
     const visibleKeys = Object.keys(schema.properties).filter(
       (key) => filterVisibility[key] !== false,

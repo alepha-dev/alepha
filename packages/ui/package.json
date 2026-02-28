@@ -58,7 +58,7 @@
     "typecheck": "alepha typecheck",
     "test": "alepha test",
     "build": "node ../alepha/scripts/build.ts",
-    "build:check": "node scripts/build.ts --check"
+    "build:check": "node ../alepha/scripts/build.ts --check"
   },
   "repository": {
     "type": "git",

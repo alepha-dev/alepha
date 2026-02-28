@@ -1,31 +1,17 @@
-import {
-  ActionButton,
-  type ActionMenuConfig,
-  type ActionMenuItem,
-  type ActionProps,
-  Flex,
-  OmnibarButton,
-  renderIcon,
-  SidebarCollapseButton,
-  Text,
-  ui,
-} from "@alepha/ui";
 import type { FlexProps, MantineBreakpoint } from "@mantine/core";
-import {
-  IconChevronDown,
-  IconChevronRight,
-  IconSquareRounded,
-} from "@tabler/icons-react";
-import { useEvents } from "alepha/react";
 import { useRouter } from "alepha/react/router";
-import {
-  type ComponentType,
-  Fragment,
-  type ReactNode,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { type ComponentType, Fragment, type ReactNode, useMemo } from "react";
+import { ui } from "../../constants/ui.ts";
+import { renderIcon } from "../../helpers/renderIcon.tsx";
+import type { ActionProps } from "../buttons/ActionButton.tsx";
+import OmnibarButton from "../buttons/OmnibarButton.tsx";
+import SidebarCollapseButton from "../buttons/ToggleSidebarButton.tsx";
+import Flex from "../Flex.tsx";
+import Text from "../Text.tsx";
+import { SidebarCollapsedItem } from "./SidebarCollapsedItem.tsx";
+import { SidebarItem } from "./SidebarItem.tsx";
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface SidebarProps {
   items?: SidebarNode[];
@@ -49,9 +35,10 @@ export interface SidebarProps {
       };
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 export const Sidebar = (props: SidebarProps) => {
   const router = useRouter();
-  const { onItemClick } = props;
 
   const divider = (
     key: string | number,
@@ -160,7 +147,7 @@ export const Sidebar = (props: SidebarProps) => {
           key={key}
           item={item}
           level={0}
-          onItemClick={onItemClick}
+          onItemClick={props.onItemClick}
           theme={props.theme ?? {}}
         />
       );
@@ -171,7 +158,7 @@ export const Sidebar = (props: SidebarProps) => {
         key={key}
         item={item}
         level={0}
-        onItemClick={onItemClick}
+        onItemClick={props.onItemClick}
         theme={props.theme ?? {}}
       />
     );
@@ -244,218 +231,6 @@ export const Sidebar = (props: SidebarProps) => {
   }
 
   return renderSidebar(false);
-};
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export interface SidebarItemProps {
-  item: SidebarMenuItem;
-  level: number;
-  onItemClick?: (item: SidebarMenuItem) => void;
-  theme: SidebarTheme;
-}
-
-export const SidebarItem = (props: SidebarItemProps) => {
-  const { item, level } = props;
-  const maxLevel = 2; // 0, 1, 2 = 3 levels total
-
-  const router = useRouter();
-  const isActive = useCallback((item: SidebarMenuItem): boolean => {
-    if (!item.children) return false;
-    for (const child of item.children) {
-      if (child.href) {
-        if (router.isActive(child.href)) {
-          return true;
-        }
-      }
-      if (isActive(child)) {
-        return true;
-      }
-    }
-    return false;
-  }, []);
-
-  const [isOpen, setIsOpen] = useState<boolean>(isActive(item));
-
-  useEvents(
-    {
-      "react:transition:end": () => {
-        // recalculate open state on transition end to ensure correct state after navigation
-        if (isActive(item)) {
-          setIsOpen(true);
-        }
-      },
-    },
-    [],
-  );
-
-  if (level > maxLevel) return null;
-
-  const handleItemClick = (e: MouseEvent) => {
-    if (!props.item.target) {
-      e.preventDefault();
-    }
-    if (item.children && item.children.length > 0) {
-      setIsOpen(!isOpen);
-    } else {
-      props.onItemClick?.(item);
-      item.onClick?.();
-    }
-  };
-
-  return (
-    <Flex direction={"column"} ps={level === 0 ? 0 : 32} pos={"relative"}>
-      <ActionButton
-        w={"100%"}
-        justify="space-between"
-        href={props.item.href}
-        target={props.item.target}
-        size={
-          props.item.theme?.size ??
-          props.theme.button?.size ??
-          (level === 0 ? "sm" : "xs")
-        }
-        bd={0}
-        fw={"normal"}
-        variant={"default"}
-        propsActive={{
-          variant: "outline",
-        }}
-        radius={props.item.theme?.radius ?? props.theme.button?.radius ?? "md"}
-        onClick={handleItemClick}
-        leftSection={
-          <Flex w={"100%"} align="center" gap={"sm"}>
-            {renderIcon(item.icon, ui.sizes.icon.sm)}
-            <Flex direction={"column"}>
-              <Flex>{item.label}</Flex>
-            </Flex>
-          </Flex>
-        }
-        rightSection={
-          item.children ? (
-            <Flex>
-              {isOpen ? (
-                <IconChevronDown size={14} />
-              ) : (
-                <IconChevronRight size={14} />
-              )}
-            </Flex>
-          ) : (
-            props.item.rightSection
-          )
-        }
-        {...props.item.actionProps}
-      />
-
-      {item.children && isOpen && (
-        <Flex direction={"column"} data-parent-level={level} gap={2} py={2}>
-          <Flex
-            style={{
-              position: "absolute",
-              width: 1,
-              background:
-                "linear-gradient(to bottom, transparent, var(--mantine-color-default-border), transparent)",
-              top: 48,
-              left: 20 + 32 * level,
-              bottom: 16,
-            }}
-          />
-          {item.children
-            .filter((child) => !child.can || child.can())
-            .map((child, index) => (
-              <SidebarItem
-                key={index}
-                item={child}
-                level={level + 1}
-                onItemClick={props.onItemClick}
-                theme={props.theme}
-              />
-            ))}
-        </Flex>
-      )}
-    </Flex>
-  );
-};
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-const SidebarCollapsedItem = (props: SidebarItemProps) => {
-  const { item, level } = props;
-  const router = useRouter();
-
-  const handleItemClick = () => {
-    props.onItemClick?.(item);
-    item.onClick?.();
-  };
-
-  const hasChildren = item.children && item.children.length > 0;
-
-  const menu: ActionMenuConfig | undefined = hasChildren
-    ? {
-        on: "hover",
-        position: "right",
-        menuProps: {
-          arrowPosition: "center",
-          arrowSize: 10,
-          withArrow: true,
-        },
-        items: [
-          {
-            type: "label",
-            label: item.label,
-          },
-          ...item
-            .children!.filter((child) => !child.can || child.can())
-            .map(
-              (child): ActionMenuItem => ({
-                label: child.label as string,
-                icon: renderIcon(child.icon, ui.sizes.icon.sm),
-                href: child.href,
-                active: child.href
-                  ? router.isActive(child.href, {
-                      startWith: child.activeStartsWith,
-                    })
-                  : undefined,
-              }),
-            ),
-        ],
-      }
-    : undefined;
-
-  return (
-    <Flex w={"100%"} justify="center" pos={"relative"}>
-      <ActionButton
-        size={
-          props.item.theme?.size ??
-          props.theme.button?.size ??
-          (level === 0 ? "sm" : "xs")
-        }
-        bd={0}
-        variant={"default"}
-        propsActive={{
-          variant: "outline",
-        }}
-        tooltip={
-          hasChildren
-            ? undefined
-            : {
-                label: item.label,
-                position: "right",
-              }
-        }
-        onClick={hasChildren ? undefined : handleItemClick}
-        icon={
-          renderIcon(item.icon, ui.sizes.icon.sm) ?? (
-            <IconSquareRounded size={ui.sizes.icon.sm} />
-          )
-        }
-        href={hasChildren ? undefined : (props.item.href as any)}
-        target={hasChildren ? undefined : props.item.target}
-        menu={menu}
-        {...props.item.actionProps}
-      />
-    </Flex>
-  );
 };
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -60,7 +60,7 @@ The `vercel.json` rewrites all routes to the serverless function:
 ## Configuration
 
 ```typescript
-import { defineConfig } from "alepha/cli";
+import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {

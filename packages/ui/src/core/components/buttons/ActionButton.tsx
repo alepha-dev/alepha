@@ -174,89 +174,15 @@ export type ActionProps = ActionCommonProps &
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-// Helper function to render menu items recursively
-const ActionMenuItem = (props: {
-  item: ActionMenuItem;
-  index: number;
-}): ReactNode => {
-  const { item, index } = props;
-
-  const router = useRouter();
-  const action = useAction(
-    {
-      handler: async (e: any) => {
-        await item.onClick?.();
-      },
-    },
-    [item.onClick],
-  );
-
-  // Render divider
-  if (item.type === "divider") {
-    return <Menu.Divider key={index} />;
-  }
-
-  // Render label
-  if (item.type === "label") {
-    return <Menu.Label key={index}>{item.label}</Menu.Label>;
-  }
-
-  // Render submenu if it has children
-  if (item.children && item.children.length > 0) {
-    return (
-      <Menu key={index} trigger="hover" position="right-start" offset={2}>
-        <Menu.Target>
-          <Menu.Item
-            leftSection={item.icon}
-            rightSection={<IconChevronRight size={14} />}
-          >
-            {item.label}
-          </Menu.Item>
-        </Menu.Target>
-        <Menu.Dropdown>
-          {item.children.map((child, childIndex) => (
-            <ActionMenuItem item={child} index={childIndex} key={childIndex} />
-          ))}
-        </Menu.Dropdown>
-      </Menu>
-    );
-  }
-
-  const menuItemProps: MenuItemProps & ButtonHTMLAttributes<unknown> = {};
-  if (props.item.onClick) {
-    menuItemProps.onClick = action.run;
-  } else if (props.item.href) {
-    Object.assign(menuItemProps, router.anchor(props.item.href));
-  }
-
-  // render regular menu item
-  return (
-    <Menu.Item
-      key={index}
-      leftSection={
-        item.icon ??
-        (item.active ? (
-          <IconCheck size={ui.sizes.icon.sm} />
-        ) : (
-          <Flex w={ui.sizes.icon.sm} />
-        ))
-      }
-      onClick={item.onClick}
-      color={item.color}
-      {...menuItemProps}
-    >
-      {item.label}
-    </Menu.Item>
-  );
-};
+// ---------------------------------------------------------------------------------------------------------------------
 
 const ActionButton = (_props: ActionProps) => {
   const theme = useMantineTheme();
   const props = { ..._props };
 
   if (props.variant === "minimal") {
-    props.variant = "default";
-    props.bd = 0;
+    //props.variant = "default";
+    //props.bd = 0;
   }
 
   const { tooltip, menu, icon, iconSize, ...restProps } = props;
@@ -663,3 +589,79 @@ const ActionHrefButton = (props: ActionNavigationButtonProps) => {
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+// Helper function to render menu items recursively
+const ActionMenuItem = (props: {
+  item: ActionMenuItem;
+  index: number;
+}): ReactNode => {
+  const { item, index } = props;
+
+  const router = useRouter();
+  const action = useAction(
+    {
+      handler: async (e: any) => {
+        await item.onClick?.();
+      },
+    },
+    [item.onClick],
+  );
+
+  // Render divider
+  if (item.type === "divider") {
+    return <Menu.Divider key={index} />;
+  }
+
+  // Render label
+  if (item.type === "label") {
+    return <Menu.Label key={index}>{item.label}</Menu.Label>;
+  }
+
+  // Render submenu if it has children
+  if (item.children && item.children.length > 0) {
+    return (
+      <Menu key={index} trigger="hover" position="right-start" offset={2}>
+        <Menu.Target>
+          <Menu.Item
+            leftSection={item.icon}
+            rightSection={<IconChevronRight size={14} />}
+          >
+            {item.label}
+          </Menu.Item>
+        </Menu.Target>
+        <Menu.Dropdown>
+          {item.children.map((child, childIndex) => (
+            <ActionMenuItem item={child} index={childIndex} key={childIndex} />
+          ))}
+        </Menu.Dropdown>
+      </Menu>
+    );
+  }
+
+  const menuItemProps: MenuItemProps & ButtonHTMLAttributes<unknown> = {};
+  if (props.item.onClick) {
+    menuItemProps.onClick = action.run;
+  } else if (props.item.href) {
+    Object.assign(menuItemProps, router.anchor(props.item.href));
+  }
+
+  // render regular menu item
+  return (
+    <Menu.Item
+      key={index}
+      leftSection={
+        item.icon ??
+        (item.active ? (
+          <IconCheck size={ui.sizes.icon.sm} />
+        ) : (
+          <Flex w={ui.sizes.icon.sm} />
+        ))
+      }
+      onClick={item.onClick}
+      color={item.color}
+      {...menuItemProps}
+    >
+      {item.label}
+    </Menu.Item>
+  );
+};

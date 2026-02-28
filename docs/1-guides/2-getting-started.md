@@ -192,7 +192,7 @@ npx alepha build
 Build targets and runtime can also be set in `alepha.config.ts`:
 
 ```typescript filename="alepha.config.ts"
-import { defineConfig } from "alepha/cli";
+import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {

@@ -59,6 +59,7 @@ export class ViteDevServerProvider {
   protected reloadDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   protected isReloading = false;
   protected needsBrowserReload = false;
+  protected currentReloadPromise: Promise<void> | null = null;
 
   /**
    * Initialize the dev server and load Alepha.
@@ -122,6 +123,7 @@ export class ViteDevServerProvider {
 
     const plugins: Plugin[] = [];
     if (viteReact && !this.options.noViteReactPlugin) plugins.push(viteReact());
+    plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
     plugins.push(this.createAlephaPlugin());
 
@@ -287,10 +289,15 @@ export class ViteDevServerProvider {
         // Queue Alepha reload for server-side invalidation
         this.changedFiles.add(ctx.file);
 
-        // React components (.tsx/.jsx): restart Alepha silently,
-        // let Vite HMR handle the browser update (React Fast Refresh)
+        // React components (.tsx/.jsx): reload Alepha BEFORE letting
+        // Vite HMR reach the browser, to prevent 503 errors from
+        // components that fetch data on mount during server reload.
         if (/\.(tsx|jsx)$/.test(ctx.file)) {
-          this.scheduleReload();
+          if (this.reloadDebounceTimer) {
+            clearTimeout(this.reloadDebounceTimer);
+            this.reloadDebounceTimer = null;
+          }
+          await this.performReload();
           return;
         }
 
@@ -350,13 +357,27 @@ export class ViteDevServerProvider {
   }
 
   /**
-   * Perform the actual reload after debounce.
+   * Perform the actual reload.
+   * Returns a promise that callers can await to know when reload is done.
+   * If a reload is already in progress, returns that promise.
    */
-  protected async performReload(): Promise<void> {
-    if (this.isReloading || this.changedFiles.size === 0) {
-      return;
+  protected performReload(): Promise<void> {
+    if (this.changedFiles.size === 0) {
+      return this.currentReloadPromise ?? Promise.resolve();
     }
 
+    if (this.isReloading) {
+      return this.currentReloadPromise ?? Promise.resolve();
+    }
+
+    this.currentReloadPromise = this.executeReload();
+    return this.currentReloadPromise;
+  }
+
+  /**
+   * Execute the reload work.
+   */
+  protected async executeReload(): Promise<void> {
     this.isReloading = true;
 
     // Snapshot files to process and clear immediately
@@ -386,6 +407,7 @@ export class ViteDevServerProvider {
       this.sendErrorOverlay(this.currentError);
     } finally {
       this.isReloading = false;
+      this.currentReloadPromise = null;
 
       // If more files changed during reload, schedule another
       if (this.changedFiles.size > 0) {

@@ -12,10 +12,11 @@ import { useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useId, useMemo, useState } from "react";
-import type { KanbanController } from "../../../../api/controllers/KanbanController.ts";
-import type { TaskController } from "../../../../api/controllers/TaskController.ts";
-import type { Project } from "../../../../api/entities/projects.ts";
-import type { TaskResource } from "../../../../api/schemas/taskResourceSchema.ts";
+import type { ChapterController } from "@/api/controllers/ChapterController.ts";
+import type { KanbanController } from "@/api/controllers/KanbanController.ts";
+import type { TaskController } from "@/api/controllers/TaskController.ts";
+import type { Project } from "@/api/entities/projects.ts";
+import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
 import {
   kanbanProjectAtom,
   kanbanReloadAtom,
@@ -32,19 +33,18 @@ interface KanbanBoardProps {
   readOnly: boolean;
 }
 
-const KanbanBoard = ({
-  project,
-  tasks: initialTasks,
-  readOnly,
-}: KanbanBoardProps) => {
+const KanbanBoard = (props: KanbanBoardProps) => {
+  const { project, tasks: initialTasks, readOnly } = props;
   const [tasks, setTasks] = useState<TaskResource[]>(initialTasks);
   const [activeZones, setActiveZones] = useState<string[]>([]);
+  const [activeChapterId, setActiveChapterId] = useState<number | undefined>();
   const [loading, setLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskResource | null>(null);
   const [, setKanbanProject] = useStore(kanbanProjectAtom);
   const [reloadKey] = useStore(kanbanReloadAtom);
   const taskApi = useClient<TaskController>();
   const kanbanApi = useClient<KanbanController>();
+  const chapterApi = useClient<ChapterController>();
   const { tr } = useI18n<I18n, "en">();
   const toast = useToast();
   const dndId = useId();
@@ -66,10 +66,12 @@ const KanbanBoard = ({
 
   const filterForm = useForm({
     schema: t.object({
-      zones: t.array(t.string(), { default: [] }),
+      zones: t.optional(t.array(t.string())),
+      chapterId: t.optional(t.integer()),
     }),
     handler: async (values) => {
-      setActiveZones(values.zones);
+      setActiveZones(values.zones ?? []);
+      setActiveChapterId(values.chapterId);
     },
     onChange: async () => {
       await filterForm.submit();
@@ -77,9 +79,15 @@ const KanbanBoard = ({
   });
 
   const filteredTasks = useMemo(() => {
-    if (activeZones.length === 0) return tasks;
-    return tasks.filter((t) => activeZones.includes(t.package));
-  }, [tasks, activeZones]);
+    let result = tasks;
+    if (activeZones.length > 0) {
+      result = result.filter((task) => activeZones.includes(task.package));
+    }
+    if (activeChapterId != null) {
+      result = result.filter((task) => task.chapterId === activeChapterId);
+    }
+    return result;
+  }, [tasks, activeZones, activeChapterId]);
 
   const grouped = useMemo(() => {
     const result: Record<TaskStatus, TaskResource[]> = {
@@ -152,7 +160,7 @@ const KanbanBoard = ({
 
   return (
     <Flex direction="column" flex={1} style={{ overflow: "hidden" }}>
-      {/* Zone filter nav */}
+      {/* Filter nav */}
       <Flex surface borderedBottom centerY gap="xs" px="sm" py={6}>
         {readOnly && (
           <Badge size="xs" variant="light" color="gray">
@@ -160,16 +168,36 @@ const KanbanBoard = ({
           </Badge>
         )}
         {loading && <Loader type="dots" size="xs" />}
-        <Flex flex={1}>
+        <Flex flex={1} gap="xs">
           <Control
+            size={"xs"}
             input={filterForm.input.zones}
+            select={{
+              label: "",
+              multiSelectProps: {
+                placeholder: "Zones",
+              },
+              loader: async () => {
+                return project.packages;
+              },
+            }}
+          />
+          <Control
+            input={filterForm.input.chapterId}
             size="xs"
             select={{
-              multi: {
-                placeholder: String(tr("kanban.filter.all")),
-                data: project.packages,
-                clearable: true,
-                searchable: true,
+              label: "",
+              selectProps: {
+                placeholder: "Chapter",
+              },
+              loader: async () => {
+                const chapters = await chapterApi.getChapters({
+                  params: { projectId: project.id },
+                });
+                return chapters.map((ch) => ({
+                  value: String(ch.id),
+                  label: `Ch.${ch.number}: ${ch.title} (${ch.questCount} quests)`,
+                }));
               },
             }}
           />

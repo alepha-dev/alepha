@@ -48,7 +48,6 @@ export * from "./commands/root.ts";
 export * from "./commands/test.ts";
 export * from "./commands/typecheck.ts";
 export * from "./commands/verify.ts";
-export * from "./defineConfig.ts";
 export * from "./providers/AlephaCliExtensionProvider.ts";
 export * from "./providers/AppEntryProvider.ts";
 export * from "./providers/ViteBuildProvider.ts";

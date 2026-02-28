@@ -708,6 +708,11 @@ export interface PageRoute extends PageRouteEntry {
   name: string;
   parent?: PageRoute;
   match: string;
+
+  /**
+   * Optional meta information associated with the page route, can be used for any purpose (e.g. menu label, icon, etc.).
+   */
+  label?: string;
 }
 
 export interface Layer {

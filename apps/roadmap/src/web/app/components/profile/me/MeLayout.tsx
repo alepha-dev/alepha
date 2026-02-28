@@ -10,7 +10,7 @@ import {
 } from "@tabler/icons-react";
 import { useAuth } from "alepha/react/auth";
 import { NestedView, useRouter } from "alepha/react/router";
-import { theme } from "../../constants/theme.ts";
+import { theme } from "@/web/app/constants/theme.ts";
 import type { MeRouter } from "./MeRouter.ts";
 
 const MeLayout = () => {

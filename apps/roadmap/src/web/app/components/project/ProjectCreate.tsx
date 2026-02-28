@@ -8,7 +8,7 @@ import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useMemo, useRef } from "react";
-import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
+import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { theme } from "../../constants/theme.ts";

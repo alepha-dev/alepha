@@ -1,24 +1,20 @@
 import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
-import { Badge, Card, Container, Modal, TextInput } from "@mantine/core";
-import {
-  IconBook2,
-  IconCopy,
-  IconDownload,
-  IconPlayerPlay,
-  IconPlayerStop,
-  IconTrash,
-} from "@tabler/icons-react";
+import { Card, Container, Modal, TextInput } from "@mantine/core";
+import { IconBook2, IconPlayerPlay, IconPlayerStop } from "@tabler/icons-react";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useCallback, useState } from "react";
-import type { ChapterController } from "../../../../api/controllers/ChapterController.ts";
-import type { Chapter } from "../../../../api/entities/chapters.ts";
-import { currentChaptersAtom } from "../../atoms/currentChaptersAtom.ts";
-import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
-import { theme } from "../../constants/theme.ts";
-import type { I18n } from "../../services/I18n.ts";
+import type { ChapterController } from "@/api/controllers/ChapterController.ts";
+import type { Chapter } from "@/api/entities/chapters.ts";
+import { currentChaptersAtom } from "@/web/app/atoms/currentChaptersAtom.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { theme } from "@/web/app/constants/theme.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
+import ProjectChaptersChangelog from "./ProjectChaptersChangelog.tsx";
+import ProjectChaptersCloseModal from "./ProjectChaptersCloseModal.tsx";
+import ProjectChaptersRow from "./ProjectChaptersRow.tsx";
 
-type ChapterWithCount = Chapter & { questCount: number };
+export type ChapterWithCount = Chapter & { questCount: number };
 
 const ProjectChapters = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -188,7 +184,7 @@ const ProjectChapters = () => {
             </Text>
           )}
           {chapters?.map((chapter) => (
-            <ChapterRow
+            <ProjectChaptersRow
               key={chapter.id}
               chapter={chapter}
               onDelete={handleDelete}
@@ -205,7 +201,7 @@ const ProjectChapters = () => {
           centered
         >
           {closeModal && (
-            <CloseChapterModal
+            <ProjectChaptersCloseModal
               chapter={closeModal}
               onConfirm={(title) => handleClose(closeModal.id, title)}
               onCancel={() => setCloseModal(null)}
@@ -230,7 +226,7 @@ const ProjectChapters = () => {
           size="lg"
         >
           {changelogModal && (
-            <ChangelogContent
+            <ProjectChaptersChangelog
               markdown={changelogModal.markdown}
               chapter={changelogModal.chapter}
             />
@@ -242,182 +238,3 @@ const ProjectChapters = () => {
 };
 
 export default ProjectChapters;
-
-const ChapterRow = ({
-  chapter,
-  onDelete,
-  onViewChangelog,
-}: {
-  chapter: ChapterWithCount;
-  onDelete: (id: number) => void;
-  onViewChangelog: (id: number) => void;
-}) => {
-  const { tr } = useI18n<I18n, "en">();
-  const i18n = useI18n();
-  const isActive = !chapter.closedAt;
-
-  return (
-    <Card
-      withBorder
-      radius="md"
-      bg={theme.colors.card}
-      className="shadow"
-      p="sm"
-    >
-      <Flex align="center" justify="space-between" gap="sm">
-        <Flex align="center" gap="sm" flex={1}>
-          <Badge
-            size="lg"
-            variant={isActive ? "filled" : "light"}
-            color={isActive ? "green" : "gray"}
-          >
-            #{chapter.number}
-          </Badge>
-          <Flex direction="column" gap={0} flex={1}>
-            <Text size="sm" fw={600}>
-              {chapter.title}
-            </Text>
-            <Flex gap="xs">
-              <Text size="xs" c="dimmed">
-                {tr("chapter.list.quests", {
-                  args: [String(chapter.questCount)],
-                })}
-              </Text>
-              {chapter.closedAt && (
-                <Text size="xs" c="dimmed">
-                  {tr("chapter.list.closed", {
-                    args: [String(i18n.l(chapter.closedAt, { date: "ll" }))],
-                  })}
-                </Text>
-              )}
-            </Flex>
-          </Flex>
-        </Flex>
-        <Flex gap="xs">
-          <ActionButton
-            variant="minimal"
-            size="sm"
-            leftSection={<IconBook2 size={theme.icon.size.sm} />}
-            onClick={() => onViewChangelog(chapter.id)}
-          >
-            {tr("chapter.changelog")}
-          </ActionButton>
-          {chapter.questCount === 0 && (
-            <ActionButton
-              variant="light"
-              color="red"
-              size="sm"
-              leftSection={<IconTrash size={theme.icon.size.sm} />}
-              onClick={() => onDelete(chapter.id)}
-            >
-              {tr("chapter.delete")}
-            </ActionButton>
-          )}
-        </Flex>
-      </Flex>
-    </Card>
-  );
-};
-
-const CloseChapterModal = ({
-  chapter,
-  onConfirm,
-  onCancel,
-}: {
-  chapter: ChapterWithCount;
-  onConfirm: (title: string) => void;
-  onCancel: () => void;
-}) => {
-  const { tr } = useI18n<I18n, "en">();
-  const [title, setTitle] = useState(chapter.title);
-
-  return (
-    <Flex direction="column" gap="md">
-      <Text size="sm">{tr("chapter.close.modal.description")}</Text>
-      <TextInput
-        label={tr("chapter.close.modal.label")}
-        value={title}
-        onChange={(e) => setTitle(e.currentTarget.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && title.trim()) onConfirm(title.trim());
-        }}
-        data-autofocus
-      />
-      <Flex justify="end" gap="sm">
-        <ActionButton variant="default" onClick={onCancel}>
-          {tr("chapter.start.cancel")}
-        </ActionButton>
-        <ActionButton
-          color="orange"
-          disabled={!title.trim()}
-          onClick={() => onConfirm(title.trim())}
-        >
-          {tr("chapter.close")}
-        </ActionButton>
-      </Flex>
-    </Flex>
-  );
-};
-
-const ChangelogContent = ({
-  markdown,
-  chapter,
-}: {
-  markdown: string;
-  chapter: Chapter;
-}) => {
-  const { tr } = useI18n<I18n, "en">();
-  const toast = useToast();
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(markdown);
-    toast.success({ message: tr("chapter.changelog.copied") });
-  };
-
-  const handleDownload = () => {
-    const blob = new Blob([markdown], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `chapter-${chapter.number}-changelog.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  return (
-    <Flex direction="column" gap="md">
-      <Flex gap="xs" justify="end">
-        <ActionButton
-          variant="light"
-          size="sm"
-          leftSection={<IconCopy size={14} />}
-          onClick={handleCopy}
-        >
-          {tr("chapter.changelog.copy")}
-        </ActionButton>
-        <ActionButton
-          variant="light"
-          size="sm"
-          leftSection={<IconDownload size={14} />}
-          onClick={handleDownload}
-        >
-          {tr("chapter.changelog.download")}
-        </ActionButton>
-      </Flex>
-      <Card
-        withBorder
-        radius="md"
-        p="md"
-        style={{
-          fontFamily: "monospace",
-          whiteSpace: "pre-wrap",
-          fontSize: "0.85rem",
-          maxHeight: "60vh",
-          overflow: "auto",
-        }}
-      >
-        {markdown}
-      </Card>
-    </Flex>
-  );
-};

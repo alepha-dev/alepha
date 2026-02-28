@@ -1,5 +1,5 @@
 import { $atom, t } from "alepha";
-import { chapters } from "../../../api/entities/chapters.ts";
+import { chapters } from "@/api/entities/chapters.ts";
 
 export const currentChaptersAtom = $atom({
   name: "rdm.current.chapters",

@@ -12,12 +12,12 @@ import { useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-import type { AppRouter } from "../../AppRouter.ts";
-import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
-import { kanbanProjectAtom } from "../../atoms/kanbanProjectAtom.ts";
-import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
-import { theme } from "../../constants/theme.ts";
-import type { I18n } from "../../services/I18n.ts";
+import type { AppRouter } from "../../../AppRouter.ts";
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { kanbanProjectAtom } from "../../../atoms/kanbanProjectAtom.ts";
+import { userProjectsAtom } from "../../../atoms/userProjectsAtom.ts";
+import { theme } from "../../../constants/theme.ts";
+import type { I18n } from "../../../services/I18n.ts";
 
 const HeaderProject = () => {
   const { tr } = useI18n<I18n, "en">();

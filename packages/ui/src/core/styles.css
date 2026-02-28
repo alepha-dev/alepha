@@ -111,6 +111,18 @@
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */
+/* our custom "minimal" variant for <Button/> - from Blueprint */
+.mantine-Button-root[data-variant="minimal"] {
+  background-color: transparent;
+  color: var(--mantine-color-text);
+}
+
+.mantine-Button-root[data-variant="minimal"]:hover {
+  /* imitate the hover effect of <Table/> rows */
+  background-color: light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.1));
+}
+
+/* ------------------------------------------------------------------------------------------------------------------ */
 
 @keyframes modalScaleIn {
   from {

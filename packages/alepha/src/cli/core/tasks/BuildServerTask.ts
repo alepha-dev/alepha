@@ -81,6 +81,7 @@ export class BuildServerTask extends BuildTask {
       plugins.push(viteReact());
     }
 
+    plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
 
     if (opts.stats) {

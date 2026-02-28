@@ -1,16 +1,8 @@
 import { $module } from "alepha";
-import {
-  AlephaCli,
-  type AlephaCliConfig,
-  registerConfigProcessor,
-} from "alepha/cli";
+import { AlephaCli } from "alepha/cli";
 import { CloudflareAdapter } from "./adapters/CloudflareAdapter.ts";
 import { DockerAdapter } from "./adapters/DockerAdapter.ts";
 import { VercelAdapter } from "./adapters/VercelAdapter.ts";
-import {
-  type PlatformOptions,
-  platformOptions,
-} from "./atoms/platformOptions.ts";
 import { PlatformCommand } from "./commands/platform.ts";
 import { SecretsCommand } from "./commands/SecretsCommand.ts";
 import { GitHubSecretStore } from "./providers/GitHubSecretStore.ts";
@@ -26,25 +18,6 @@ import { SecretFilterService } from "./services/SecretFilterService.ts";
 import { VercelApi } from "./services/VercelApi.ts";
 import { VercelCli } from "./services/VercelCli.ts";
 import { WranglerApi } from "./services/WranglerApi.ts";
-
-// ---------------------------------------------------------------------------
-// Module augmentation — extends AlephaCliConfig with platform options
-// ---------------------------------------------------------------------------
-
-declare module "alepha/cli" {
-  interface AlephaCliConfig {
-    /**
-     * Platform deployment configuration.
-     */
-    platform?: PlatformOptions;
-  }
-}
-
-registerConfigProcessor((alepha: any, config: AlephaCliConfig) => {
-  if (config.platform) {
-    alepha.set(platformOptions, config.platform);
-  }
-});
 
 // ---------------------------------------------------------------------------
 

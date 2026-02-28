@@ -114,7 +114,7 @@ At runtime, `CloudflareQueueProvider` replaces the default queue provider and `W
 ## Configuration
 
 ```typescript
-import { defineConfig } from "alepha/cli";
+import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {

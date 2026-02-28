@@ -245,7 +245,7 @@ const Control = (_props: ControlProps) => {
   if (isEnum || (isArray && !isArrayOfObjects) || props.select) {
     const opts = typeof props.select === "object" ? props.select : {};
     if (props.segmented) {
-      opts.segmented ??= {};
+      opts.segmentedProps ??= {};
     }
     return (
       <ControlSelect
@@ -285,7 +285,7 @@ const Control = (_props: ControlProps) => {
 
     const opts: ControlSelectProps = {
       input: props.input,
-      select: {
+      selectProps: {
         data: [
           { value: "true", label: "Yes" },
           { value: "false", label: "No" },
@@ -385,11 +385,11 @@ const Control = (_props: ControlProps) => {
   return (
     <TextInput
       {...inputProps}
-      pointer
       size={props.size}
       id={id}
       leftSection={icon}
       type={getInputType()}
+      // TODO: set in $atom ?
       inputWrapperOrder={["label", "input", "description", "error"]}
       {...props.input.props}
       {...textInputProps}

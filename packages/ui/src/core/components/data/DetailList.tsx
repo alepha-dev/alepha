@@ -14,7 +14,8 @@ export interface DetailListProps {
   columns?: number;
 }
 
-const DetailList = ({ items, columns = 1 }: DetailListProps) => {
+const DetailList = (props: DetailListProps) => {
+  const { items, columns = 1 } = props;
   const visibleItems = items.filter((item) => !item.hidden);
 
   return (

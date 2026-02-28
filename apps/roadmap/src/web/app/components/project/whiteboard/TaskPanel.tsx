@@ -7,8 +7,8 @@ import {
 } from "@tabler/icons-react";
 import { useI18n } from "alepha/react/i18n";
 import { useCallback, useState } from "react";
-import type { TaskResource } from "../../../../../api/schemas/taskResourceSchema.ts";
-import type { I18n } from "../../../services/I18n.ts";
+import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 import TaskComplexity from "../task/TaskComplexity.tsx";
 import classes from "./WhiteboardCanvas.module.css";
 
@@ -18,11 +18,8 @@ export interface TaskPanelProps {
   onDragStart: (e: React.DragEvent, taskId: number) => void;
 }
 
-const TaskPanel = ({
-  availableTasks,
-  onAddTask,
-  onDragStart,
-}: TaskPanelProps) => {
+const TaskPanel = (props: TaskPanelProps) => {
+  const { availableTasks, onAddTask, onDragStart } = props;
   const { tr } = useI18n<I18n, "en">();
   const [isOpen, setIsOpen] = useState(true);
   const [panelHeight, setPanelHeight] = useState(300);
