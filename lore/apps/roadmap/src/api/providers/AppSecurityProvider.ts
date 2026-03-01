@@ -20,16 +20,16 @@ export class AppSecurityProvider {
   realm = $realm({
     features: {
       apiKeys: true,
-      files: true,
+      avatars: true,
       audits: true,
-      jobs: true,
+      sessionPurge: true,
       notifications: true,
     },
     settings: {
-      usernameRequired: true,
+      username: "required",
+      usernameRegExp: "^[a-zA-Z0-9_@.]{3,30}$",
       resetPasswordAllowed: true,
       verifyEmailRequired: true,
-      usernameRegExp: "^[a-zA-Z0-9_@.]{3,30}$",
     },
     identities: {
       github: true,
