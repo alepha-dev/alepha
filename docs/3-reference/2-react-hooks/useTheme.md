@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { useTheme } from "@alepha/ui/styles";
+import { useTheme } from "@alepha/ui/styles.css";
 ```
 
 ## Overview

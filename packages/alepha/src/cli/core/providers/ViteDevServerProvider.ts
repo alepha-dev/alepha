@@ -235,6 +235,13 @@ export class ViteDevServerProvider {
           });
         }
 
+        // Re-send error overlay when a new browser connects (e.g. page refresh during error state)
+        server.hot.on("connection", () => {
+          if (this.currentError) {
+            setTimeout(() => this.sendErrorOverlay(this.currentError!), 50);
+          }
+        });
+
         // Return function to run AFTER Vite's built-in middleware
         return () => {
           server.middlewares.use(async (req, res, next) => {
@@ -245,8 +252,16 @@ export class ViteDevServerProvider {
               return;
             }
 
-            // In error state, let Vite serve its error overlay
+            // In error state, serve a minimal HTML shell so the browser
+            // can connect to Vite's HMR and display the error overlay
             if (this.hasError && !this.alepha) {
+              if (req.headers.accept?.includes("text/html")) {
+                res.writeHead(200, { "content-type": "text/html" });
+                res.end(
+                  '<!DOCTYPE html><html><head><script type="module" src="/@vite/client"></script></head><body></body></html>',
+                );
+                return;
+              }
               next();
               return;
             }
@@ -384,6 +399,7 @@ export class ViteDevServerProvider {
     // New files arriving during reload will go to fresh set
     const filesToInvalidate = new Set(this.changedFiles);
     const sendReload = this.needsBrowserReload;
+    const wasInError = this.hasError;
     this.changedFiles.clear();
     this.needsBrowserReload = false;
 
@@ -396,7 +412,7 @@ export class ViteDevServerProvider {
       await this.alepha?.start();
 
       this.currentError = null;
-      if (sendReload) {
+      if (sendReload || wasInError) {
         this.sendBrowserReload();
       }
     } catch (err) {
@@ -619,6 +635,8 @@ export class ViteDevServerProvider {
           this.waitingForRetry = false;
           this.currentError = null;
           this.server.watcher.off("change", onFileChange);
+          this.server.watcher.off("add", onFileChange);
+          this.sendBrowserReload();
           resolve(alepha);
         } catch (err) {
           this.hasError = true;
@@ -631,6 +649,7 @@ export class ViteDevServerProvider {
       };
 
       this.server.watcher.on("change", onFileChange);
+      this.server.watcher.on("add", onFileChange);
     });
   }
 
@@ -679,13 +698,11 @@ export class ViteDevServerProvider {
   /**
    * Log a formatted error with stack trace.
    */
-  protected logError(title: string, err: unknown): void {
+  protected logError(title: string, _err: unknown): void {
     const c = this.colors;
 
     console.log();
     console.log(c.set("RED", `  ✗ ${title}`));
-    this.logErrorWithCause(err);
-    console.log();
     console.log(c.set("GREY_DARK", "    Waiting for file changes to retry..."));
     console.log();
   }

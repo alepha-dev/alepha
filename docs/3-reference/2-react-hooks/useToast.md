@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { useToast } from "@alepha/ui/styles";
+import { useToast } from "@alepha/ui/styles.css";
 ```
 
 ## Overview

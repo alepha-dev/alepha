@@ -13,12 +13,9 @@ export class AppSecurity {
 
       // Registration & login options
       registrationAllowed: true,
-      emailEnabled: true,
-      emailRequired: true,
-      usernameEnabled: false,
-      usernameRequired: false,
-      phoneEnabled: false,
-      phoneRequired: false,
+      email: "required",
+      username: "none",
+      phoneNumber: "none",
 
       // Verification (requires notifications feature)
       verifyEmailRequired: false,
@@ -30,8 +27,8 @@ export class AppSecurity {
       notifications: false,
       audits: false,
       apiKeys: false,
-      jobs: false,
-      files: false,
+      sessionPurge: false,
+      avatars: false,
       parameters: false,
     },
     identities: {

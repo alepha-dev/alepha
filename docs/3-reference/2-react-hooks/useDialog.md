@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { useDialog } from "@alepha/ui/styles";
+import { useDialog } from "@alepha/ui/styles.css";
 ```
 
 ## Overview

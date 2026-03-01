@@ -87,6 +87,6 @@
       "default": "./src/demo/index.ts"
     },
     "./styles": "./src/core/styles.css",
-    "./json/styles": "./src/json/styles.css"
+    "./styles.css": "./src/core/styles.css"
   }
 }

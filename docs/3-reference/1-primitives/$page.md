@@ -71,6 +71,7 @@ It provides a declarative way to define pages with powerful features:
 | `onLeave` | `Object` | No | Called when user leaves the page |
 | `animation` | `PageAnimation` | No | Add a css animation when the page is loaded or unloaded |
 | `head` | `Head \| ((props: TProps, previous?: Head) =&gt; Head)` | No | Head configuration for the page (title, meta tags, etc.) |
+| `redirect` | `string` | No | Redirect to another path when this page is matched |
 | `label` | `string` | No | Label for the page, used for navigation menus or breadcrumbs |
 
 ## Examples

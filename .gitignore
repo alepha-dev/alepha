@@ -19,7 +19,6 @@ playwright-report
 
 deno.lock
 apps/tmp
-tasks
 docs/plans
-docs/ideas
-docs/specs
+apps/ride/*
+!apps/ride/package.json

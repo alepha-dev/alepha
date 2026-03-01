@@ -146,7 +146,7 @@ describe("alepha/api/users - RegistrationService", () => {
 
       realmProvider.register("username-required-realm", {
         settings: {
-          usernameRequired: true,
+          username: "required",
         } as never,
       });
 
@@ -180,8 +180,8 @@ describe("alepha/api/users - RegistrationService", () => {
 
       realmProvider.register("phone-required-realm", {
         settings: {
-          phoneRequired: true,
-          emailRequired: false,
+          phoneNumber: "required",
+          email: "optional",
         } as never,
       });
 
@@ -240,8 +240,8 @@ describe("alepha/api/users - RegistrationService", () => {
 
       realmProvider.register("phone-realm", {
         settings: {
-          phoneEnabled: true,
-          emailRequired: false,
+          phoneNumber: "optional",
+          email: "optional",
         } as never,
       });
 
@@ -530,7 +530,7 @@ describe("alepha/api/users - RegistrationService", () => {
       expect,
     }) => {
       const { registrationService, sessionService } = await setup({
-        usernameEnabled: true,
+        username: "optional",
       });
 
       const intent = await registrationService.createRegistrationIntent({
@@ -559,7 +559,7 @@ describe("alepha/api/users - RegistrationService", () => {
       expect,
     }) => {
       const { registrationService, sessionService } = await setup({
-        usernameEnabled: true,
+        username: "optional",
       });
 
       // Phase 1: Create intent

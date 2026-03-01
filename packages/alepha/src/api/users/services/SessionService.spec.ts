@@ -13,7 +13,7 @@ import {
   UserService,
 } from "../index.ts";
 
-const setup = async (options?: { usernameEnabled?: boolean }) => {
+const setup = async (options?: { username?: "optional" | "required" }) => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error" },
   });
@@ -27,11 +27,11 @@ const setup = async (options?: { usernameEnabled?: boolean }) => {
   const sessionService = alepha.inject(SessionService);
 
   // Configure realm settings if provided
-  if (options?.usernameEnabled) {
+  if (options?.username) {
     const realmProvider = alepha.inject(RealmProvider);
     realmProvider.register("default", {
       settings: {
-        usernameEnabled: true,
+        username: options.username,
       } as never,
     });
   }
@@ -247,7 +247,7 @@ describe("alepha/api/users - SessionService.login", () => {
 
   it("should handle different providers correctly", async ({ expect }) => {
     const { sessionService, userService, cryptoProvider, identities } =
-      await setup({ usernameEnabled: true });
+      await setup({ username: "optional" });
 
     const user = await userService.users().create({
       username: "multiprovideruser",

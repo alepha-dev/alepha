@@ -1,5 +1,19 @@
 import { $atom, type Static, t } from "alepha";
 
+/**
+ * Tri-state field requirement for realm auth settings.
+ *
+ * - `"none"`: Field is disabled and not shown.
+ * - `"optional"`: Field is shown but not required.
+ * - `"required"`: Field is shown and required.
+ */
+export type FieldRequirement = "none" | "optional" | "required";
+
+const fieldRequirement = (description: string) =>
+  t.union([t.const("none"), t.const("optional"), t.const("required")], {
+    description,
+  });
+
 export const realmAuthSettingsAtom = $atom({
   name: "alepha.api.users.realmAuthSettings",
   schema: t.object({
@@ -25,40 +39,26 @@ export const realmAuthSettingsAtom = $atom({
     registrationAllowed: t.boolean({
       description: "Enable user self-registration",
     }),
-    emailEnabled: t.boolean({
-      description: "Enable email address as a login/registration credential",
-    }),
-    emailRequired: t.boolean({
-      description: "Require email address for user accounts",
-    }),
-    usernameEnabled: t.boolean({
-      description: "Enable username as a login/registration credential",
-    }),
-    usernameRequired: t.boolean({
-      description: "Require username for user accounts",
-    }),
+    email: fieldRequirement(
+      "Email address field requirement for user accounts",
+    ),
+    username: fieldRequirement("Username field requirement for user accounts"),
     usernameRegExp: t.string({
       description:
         "Regular expression that usernames must match (if username is enabled)",
     }),
-    phoneEnabled: t.boolean({
-      description: "Enable phone number as a login/registration credential",
-    }),
-    phoneRequired: t.boolean({
-      description: "Require phone number for user accounts",
-    }),
+    phoneNumber: fieldRequirement(
+      "Phone number field requirement for user accounts",
+    ),
     verifyEmailRequired: t.boolean({
       description: "Require email verification for user accounts",
     }),
     verifyPhoneRequired: t.boolean({
       description: "Require phone verification for user accounts",
     }),
-    firstNameLastNameEnabled: t.boolean({
-      description: "Enable first and last name for user accounts",
-    }),
-    firstNameLastNameRequired: t.boolean({
-      description: "Require first and last name for user accounts",
-    }),
+    firstNameLastName: fieldRequirement(
+      "First and last name field requirement for user accounts",
+    ),
     resetPasswordAllowed: t.boolean({
       description: "Enable forgot password functionality",
     }),
@@ -93,18 +93,14 @@ export const realmAuthSettingsAtom = $atom({
   default: {
     // for a fresh hello world setup, we accept registration and email login
     registrationAllowed: true,
-    emailEnabled: true,
-    emailRequired: true,
-    usernameEnabled: false,
-    usernameRequired: false,
+    email: "required" as FieldRequirement,
+    username: "none" as FieldRequirement,
     usernameRegExp: "^[a-zA-Z0-9_]{3,30}$",
-    phoneEnabled: false,
-    phoneRequired: false,
+    phoneNumber: "none" as FieldRequirement,
     verifyEmailRequired: false,
     verifyPhoneRequired: false,
     resetPasswordAllowed: false,
-    firstNameLastNameEnabled: false,
-    firstNameLastNameRequired: false,
+    firstNameLastName: "none" as FieldRequirement,
     adminEmails: [],
     adminUsernames: [],
     // TODO: not implemented yet

@@ -125,7 +125,7 @@ export class SessionService {
 
       where.realm = name;
 
-      if (settings.usernameEnabled !== false && isUsername) {
+      if (settings.username !== "none" && isUsername) {
         // validate username format if regex is provided
         if (settings.usernameRegExp) {
           const regex = new RegExp(settings.usernameRegExp);
@@ -146,9 +146,9 @@ export class SessionService {
           }
         }
         where.username = username;
-      } else if (settings.emailEnabled !== false && isEmail) {
+      } else if (settings.email !== "none" && isEmail) {
         where.email = username;
-      } else if (settings.phoneEnabled === true && isPhone) {
+      } else if (settings.phoneNumber !== "none" && isPhone) {
         where.phoneNumber = username;
       } else {
         this.log.warn("Invalid login identifier format", {

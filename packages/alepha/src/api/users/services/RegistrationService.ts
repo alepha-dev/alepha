@@ -97,7 +97,7 @@ export class RegistrationService {
     }
 
     // Validate required fields based on settings
-    if (realmSettings?.usernameRequired && !body.username) {
+    if (realmSettings?.username === "required" && !body.username) {
       this.log.debug("Registration rejected: username required", {
         userRealmName,
       });
@@ -120,14 +120,14 @@ export class RegistrationService {
       }
     }
 
-    if (realmSettings?.emailRequired !== false && !body.email) {
+    if (realmSettings?.email === "required" && !body.email) {
       this.log.debug("Registration rejected: email required", {
         userRealmName,
       });
       throw new BadRequestError("Email is required");
     }
 
-    if (realmSettings?.phoneRequired && !body.phoneNumber) {
+    if (realmSettings?.phoneNumber === "required" && !body.phoneNumber) {
       this.log.debug("Registration rejected: phone required", {
         userRealmName,
       });

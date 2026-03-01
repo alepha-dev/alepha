@@ -13,7 +13,7 @@ import { sessions } from "../entities/sessions.ts";
  * - Verification code cleanup
  * - Inactive user notifications
  *
- * It is lazy-loaded when the `jobs` feature is enabled in the realm.
+ * It is lazy-loaded when the `sessionPurge` feature is enabled in the realm.
  */
 export class UserJobs {
   protected readonly log = $logger();

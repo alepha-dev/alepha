@@ -57,28 +57,14 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
   options.settings ??= {};
 
-  if (options.settings.emailRequired) {
-    options.settings.emailEnabled = true;
-  }
-
-  if (options.settings.usernameRequired) {
-    options.settings.usernameEnabled = true;
-  }
-
-  if (options.settings.phoneRequired) {
-    options.settings.phoneEnabled = true;
-  }
-
   // Merge features with defaults
   const features: RealmFeatures = {
-    jobs: false,
+    sessionPurge: false,
     notifications: false,
     apiKeys: false,
-    clients: false,
     parameters: false,
-    files: false,
+    avatars: false,
     audits: false,
-    organizations: false,
     ...options.features,
   };
 
@@ -97,7 +83,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   // Enable features based on configuration
   // Each feature registers its wrapper service which internally uses the module primitives
 
-  if (features.files) {
+  if (features.avatars) {
     alepha.with(UserBuckets);
   }
 
@@ -105,7 +91,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     alepha.with(UserAudits);
   }
 
-  if (features.jobs) {
+  if (features.sessionPurge) {
     alepha.with(UserJobs);
   }
 
@@ -226,11 +212,11 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
 export interface RealmFeatures {
   /**
-   * Enable job execution tracking and purge functionality.
+   * Enable session purge functionality for cleaning up expired sessions.
    *
    * @default false
    */
-  jobs?: boolean;
+  sessionPurge?: boolean;
 
   /**
    * Enable notification system for password reset, verification emails, etc.
@@ -257,26 +243,6 @@ export interface RealmFeatures {
   apiKeys?: boolean;
 
   /**
-   * Enable OAuth2 Authorization Server for third-party client authentication.
-   *
-   * When enabled, Alepha acts as an OAuth2 Authorization Server, allowing
-   * third-party applications to authenticate users via standard OAuth2 flows:
-   * - Authorization Code + PKCE (OAuth 2.1)
-   * - Client Credentials (machine-to-machine)
-   * - Refresh Token
-   *
-   * Also provides:
-   * - Token introspection (RFC 7662)
-   * - Token revocation (RFC 7009)
-   * - AS metadata (RFC 8414)
-   * - Protected Resource metadata (RFC 9728)
-   * - MCP-compatible OAuth2 flow
-   *
-   * @default false
-   */
-  clients?: boolean;
-
-  /**
    * Enable runtime configuration management.
    *
    * Allows configuring realm settings at runtime with versioning and scheduled activation.
@@ -286,11 +252,11 @@ export interface RealmFeatures {
   parameters?: boolean;
 
   /**
-   * Enable file management for avatar uploads and attachments.
+   * Enable avatar uploads for user profiles.
    *
    * @default false
    */
-  files?: boolean;
+  avatars?: boolean;
 
   /**
    * Enable audit trail for compliance and event logging.
@@ -298,13 +264,6 @@ export interface RealmFeatures {
    * @default false
    */
   audits?: boolean;
-
-  /**
-   * Enable organization management to group users.
-   *
-   * @default false
-   */
-  organizations?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

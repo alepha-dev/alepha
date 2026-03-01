@@ -34,13 +34,12 @@ export class RealmProvider {
   public register(realmName: string, realmOptions: RealmOptions = {}) {
     // Merge features with defaults
     const features: RealmFeatures = {
-      jobs: false,
+      sessionPurge: false,
       notifications: false,
       apiKeys: false,
       parameters: false,
-      files: false,
+      avatars: false,
       audits: false,
-      organizations: false,
       ...realmOptions.features,
     };
 

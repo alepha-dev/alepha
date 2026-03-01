@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { $ui } from "@alepha/ui/styles";
+import { $ui } from "@alepha/ui/styles.css";
 ```
 
 ## Overview
