@@ -10,6 +10,7 @@ export * from "./providers/FileSystemProvider.ts";
 export * from "./providers/MemoryFileSystemProvider.ts";
 export * from "./providers/MemoryShellProvider.ts";
 export * from "./providers/ShellProvider.ts";
+export * from "./providers/WorkerdFileSystemProvider.ts";
 export * from "./services/FileDetector.ts";
 
 export const AlephaSystem = $module({

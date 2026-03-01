@@ -26,3 +26,4 @@ System-level abstractions for portable code across runtimes.
 - [`MemoryShellProvider`](/docs/reference-providers-memoryshellprovider) — In-memory implementation of ShellProvider for testing.
 - [`NodeFileSystemProvider`](/docs/reference-providers-nodefilesystemprovider) — Node.js implementation of FileSystem interface.
 - [`NodeShellProvider`](/docs/reference-providers-nodeshellprovider) — Node.js implementation of ShellProvider.
+- [`WorkerdFileSystemProvider`](/docs/reference-providers-workerdfilesystemprovider) — Web-standard implementation of FileSystemProvider for Cloudflare Workers and other edge runtimes.
