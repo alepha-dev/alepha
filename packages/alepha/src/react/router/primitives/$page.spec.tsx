@@ -649,6 +649,26 @@ describe("$page primitive tests", () => {
     expect(rendered.html).toBe("Child received: from parent and from parent");
   });
 
+  test("$page - redirect shorthand", async ({ expect }) => {
+    class App {
+      home = $page({
+        path: "/",
+        redirect: "/dashboard",
+      });
+
+      dashboard = $page({
+        path: "/dashboard",
+        component: () => "Dashboard",
+      });
+    }
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const rendered = await app.home.render();
+    expect(rendered.redirect).toBe("/dashboard");
+  });
+
   test("$page - cache configuration without static", async ({ expect }) => {
     class App {
       cached = $page({

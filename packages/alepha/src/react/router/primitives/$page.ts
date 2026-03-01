@@ -373,6 +373,22 @@ export interface PagePrimitiveOptions<
   head?: Head | ((props: TProps, previous?: Head) => Head);
 
   /**
+   * Redirect to another path when this page is matched.
+   *
+   * This is a shorthand for throwing a `Redirection` in the loader.
+   * The redirect is performed before any loader or component rendering.
+   *
+   * @example
+   * ```ts
+   * home = $page({
+   *   path: "/",
+   *   redirect: "/dashboard",
+   * });
+   * ```
+   */
+  redirect?: string;
+
+  /**
    * Label for the page, used for navigation menus or breadcrumbs.
    *
    * This is optional and can be used by the application to display a user-friendly name for the page.

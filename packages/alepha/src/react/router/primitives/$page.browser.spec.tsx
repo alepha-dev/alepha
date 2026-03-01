@@ -167,6 +167,40 @@ describe("$page browser tests", () => {
     });
   });
 
+  describe("redirect", () => {
+    it("should redirect to another page", async () => {
+      class App {
+        home = $page({
+          path: "/",
+          redirect: "/dashboard",
+        });
+
+        dashboard = $page({
+          path: "/dashboard",
+          component: () => <div data-testid="dashboard">Dashboard</div>,
+        });
+      }
+
+      alepha = Alepha.create().with(AlephaReact).with(App);
+      await alepha.start();
+
+      const router = alepha.inject(ReactRouter);
+
+      await act(async () => {
+        await router.push("/");
+      });
+
+      await waitFor(() => {
+        expect(
+          document.querySelector('[data-testid="dashboard"]'),
+        ).toBeDefined();
+        expect(
+          document.querySelector('[data-testid="dashboard"]')?.textContent,
+        ).toBe("Dashboard");
+      });
+    });
+  });
+
   describe("errorHandler", () => {
     it("should handle errors and redirect", async () => {
       let isAuthenticated = false;

@@ -269,7 +269,7 @@ export class ReactPageProvider {
           ? this.alepha.codec.decode(route.schema.query, state.query)
           : {};
       } catch (e) {
-        it.error = e as Error;
+        it.error = e instanceof Error ? e : new Error(String(e));
         break;
       }
 
@@ -278,7 +278,7 @@ export class ReactPageProvider {
           ? this.alepha.codec.decode(route.schema.params, state.params)
           : {};
       } catch (e) {
-        it.error = e as Error;
+        it.error = e instanceof Error ? e : new Error(String(e));
         break;
       }
 
@@ -317,6 +317,11 @@ export class ReactPageProvider {
         forceRefresh = true;
       }
 
+      // redirect shorthand
+      if (route.redirect) {
+        return { redirect: route.redirect };
+      }
+
       // no loader, render a basic view by default
       if (!route.loader) {
         continue;
@@ -347,7 +352,7 @@ export class ReactPageProvider {
 
         this.log.error("Page loader has failed", e);
 
-        it.error = e as Error;
+        it.error = e instanceof Error ? e : new Error(String(e));
         break;
       }
     }
@@ -406,7 +411,7 @@ export class ReactPageProvider {
             cache: it.cache,
           });
         } catch (e) {
-          it.error = e as Error;
+          it.error = e instanceof Error ? e : new Error(String(e));
         }
       }
 

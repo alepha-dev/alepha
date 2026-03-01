@@ -12,7 +12,7 @@ export interface ErrorBoundaryProps {
    * Fallback React node to render when an error is caught.
    * If not provided, a default error message will be shown.
    */
-  fallback: (error: Error) => ReactNode;
+  fallback: (error: Error, reset: () => void) => ReactNode;
 
   /**
    * Optional callback that receives the error and error info.
@@ -63,7 +63,10 @@ export class ErrorBoundary extends React.Component<
 
   render(): ReactNode {
     if (this.state.error) {
-      return this.props.fallback(this.state.error);
+      const reset = () => {
+        this.setState({ error: undefined });
+      };
+      return this.props.fallback(this.state.error, reset);
     }
 
     return this.props.children;

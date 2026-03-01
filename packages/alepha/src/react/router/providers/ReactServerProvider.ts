@@ -124,7 +124,7 @@ export class ReactServerProvider {
     this.hasServerLinksProvider = this.alepha.has(ServerLinksProvider);
 
     for (const page of this.pageApi.getPages()) {
-      if (page.component || page.lazy) {
+      if (page.component || page.lazy || page.redirect) {
         this.log.debug(`+ ${page.match} -> ${page.name}`);
 
         // Separate $cache from server-level middleware.

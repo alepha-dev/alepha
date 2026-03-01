@@ -37,7 +37,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
     handler: async () => {
       for (const page of this.pageApi.getPages()) {
         // mount only if a view is provided
-        if (page.component || page.lazy) {
+        if (page.component || page.lazy || page.redirect) {
           this.push({
             path: page.match,
             page,
