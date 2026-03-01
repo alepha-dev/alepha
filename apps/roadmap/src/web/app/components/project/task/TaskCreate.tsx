@@ -123,6 +123,7 @@ const TaskCreate = (props: TaskCreateProps) => {
             input={form.input.package}
             icon={<IconTent />}
             select={{
+              creatable: true,
               loader: () => packages,
               selectProps: {
                 placeholder: "Enter or select a zone...",

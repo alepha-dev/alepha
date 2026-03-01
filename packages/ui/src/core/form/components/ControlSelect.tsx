@@ -1,4 +1,6 @@
 import {
+  Autocomplete,
+  type AutocompleteProps,
   Flex,
   Input,
   Loader,
@@ -8,6 +10,8 @@ import {
   type SegmentedControlProps,
   Select,
   type SelectProps,
+  TagsInput,
+  type TagsInputProps,
 } from "@mantine/core";
 import type { Async } from "alepha";
 import { useAction } from "alepha/react";
@@ -23,6 +27,13 @@ type LoaderMode = "static" | "short" | "long";
 
 export interface ControlSelectProps extends GenericControlProps {
   /**
+   * If true, allows creating new values not present in the options list.
+   * For single values, Select becomes an Autocomplete.
+   * For arrays, MultiSelect becomes a TagsInput.
+   */
+  creatable?: boolean;
+
+  /**
    * Configure select with optional SelectProps.
    */
   selectProps?: boolean | SelectProps;
@@ -36,6 +47,16 @@ export interface ControlSelectProps extends GenericControlProps {
    * If true, renders a SegmentedControl instead of Select/MultiSelect.
    */
   segmentedProps?: boolean | Partial<SegmentedControlProps>;
+
+  /**
+   * Props passed to the Autocomplete component when creatable is true and the field is single-value.
+   */
+  autocompleteProps?: Partial<AutocompleteProps>;
+
+  /**
+   * Props passed to the TagsInput component when creatable is true and the field is array-value.
+   */
+  tagsInputProps?: Partial<TagsInputProps>;
 
   /**
    * Async loader for select options.
@@ -61,12 +82,13 @@ export interface ControlSelectProps extends GenericControlProps {
 }
 
 /**
- * ControlSelect component for handling Select, MultiSelect, and TagsInput.
+ * ControlSelect component for handling Select, MultiSelect, Autocomplete, and TagsInput.
  *
  * Features:
  * - Basic Select with enum support
  * - MultiSelect for array of enums
- * - TagsInput for array of strings (no enum)
+ * - Autocomplete for creatable single values
+ * - TagsInput for creatable array values
  * - Async lazy loading with auto short/long mode detection
  * - Short mode: client-side filtering with cached data
  * - Long mode: debounced server search
@@ -89,15 +111,6 @@ const ControlSelect = (props: ControlSelectProps) => {
     "type" in props.input.schema &&
     (props.input.schema.type === "integer" ||
       props.input.schema.type === "number");
-
-  // For arrays, check if items have enum (MultiSelect) or not (TagsInput)
-  let itemsEnum: string[] | undefined;
-  if (isArray && "items" in props.input.schema && props.input.schema.items) {
-    const items: any = props.input.schema.items;
-    if ("enum" in items && Array.isArray(items.enum)) {
-      itemsEnum = items.enum;
-    }
-  }
 
   // Extract enum values from schema (for non-array select)
   const enumValues =
@@ -143,6 +156,7 @@ const ControlSelect = (props: ControlSelectProps) => {
     return val;
   };
 
+  // region <SegmentedControl/> — early return
   if (props.segmentedProps) {
     const segmentedControlProps: Partial<SegmentedControlProps> =
       typeof props.segmentedProps === "object" ? props.segmentedProps : {};
@@ -164,107 +178,137 @@ const ControlSelect = (props: ControlSelectProps) => {
       </Input.Wrapper>
     );
   }
+  // endregion
 
-  const baseSelectProps: Pick<
-    // pick only what we need to be compatible with both Select and MultiSelect
-    SelectProps,
-    | "size"
-    | "id"
-    | "leftSection"
-    | "searchable"
-    | "withAlignedLabels"
-    | "rightSection"
-    | "data"
-    | "inputWrapperOrder"
-  > = {
+  // Shared props used by all select-like components
+  const sharedProps = {
     size: props.size,
     id,
     leftSection: loading ? <Loader color={"gray"} size={10} /> : icon,
-    searchable: true,
-    withAlignedLabels: true,
     rightSection: <span />,
     data,
     // TODO: set in $atom ?
-    inputWrapperOrder: ["label", "input", "description", "error"],
+    inputWrapperOrder: ["label", "input", "description", "error"] as (
+      | "input"
+      | "label"
+      | "description"
+      | "error"
+    )[],
   };
 
-  // region <MultiSelect/> - for array of enums
-  if (isArray || props.multiSelectProps) {
-    const multiSelectProps =
-      typeof props.multiSelectProps === "object" ? props.multiSelectProps : {};
+  // Select and MultiSelect support searchable; Autocomplete and TagsInput are inherently searchable
+  const selectableProps = {
+    ...sharedProps,
+    searchable: true,
+  };
+
+  // Long mode additions: bypass client filter + wire server search
+  const longModeProps =
+    mode === "long"
+      ? {
+          filter: ({ options }: { options: any[] }) => options,
+          onSearchChange: search.run,
+        }
+      : {};
+
+  // Default values computed once
+  const defaultSingle =
+    props.input.props.defaultValue != null
+      ? String(props.input.props.defaultValue)
+      : undefined;
+
+  const defaultArray = Array.isArray(props.input.props.defaultValue)
+    ? props.input.props.defaultValue
+    : [];
+
+  // region <TagsInput/> — creatable + array
+  if (props.creatable && (isArray || props.tagsInputProps)) {
+    const tagsInputExtraProps = props.tagsInputProps ?? {};
 
     return (
-      <MultiSelect
+      <TagsInput
         {...inputProps}
-        {...baseSelectProps}
-        defaultValue={
-          Array.isArray(props.input.props.defaultValue)
-            ? props.input.props.defaultValue
-            : []
-        }
+        {...sharedProps}
+        {...longModeProps}
+        defaultValue={defaultArray}
         onChange={(value) => {
           props.input.set(value);
         }}
-        {...multiSelectProps}
+        {...tagsInputExtraProps}
       />
     );
   }
   // endregion
 
-  // region <Select/> - for single value (static, short, or long mode)
-  const selectProps =
+  // region <Autocomplete/> — creatable + single
+  if (props.creatable) {
+    const autocompleteExtraProps = props.autocompleteProps ?? {};
+
+    return (
+      <Autocomplete
+        {...inputProps}
+        {...sharedProps}
+        {...longModeProps}
+        defaultValue={defaultSingle}
+        onChange={(value) => {
+          props.input.set(coerceValue(value));
+        }}
+        {...autocompleteExtraProps}
+      />
+    );
+  }
+  // endregion
+
+  // region <MultiSelect/> — array (non-creatable)
+  if (isArray || props.multiSelectProps) {
+    const multiSelectExtraProps =
+      typeof props.multiSelectProps === "object" ? props.multiSelectProps : {};
+
+    return (
+      <MultiSelect
+        {...inputProps}
+        {...selectableProps}
+        {...longModeProps}
+        defaultValue={defaultArray}
+        onChange={(value) => {
+          props.input.set(value);
+        }}
+        {...multiSelectExtraProps}
+      />
+    );
+  }
+  // endregion
+
+  // region <Select/> — single value (static, short, or long mode)
+  const selectExtraProps =
     typeof props.selectProps === "object" ? props.selectProps : {};
 
-  // Short mode: searchable + clearable, client-side filter
-  if (mode === "short") {
+  // Static mode: spread input.props for enum-based select
+  if (mode === "static") {
     return (
       <Select
         {...inputProps}
-        {...baseSelectProps}
-        defaultValue={
-          props.input.props.defaultValue != null
-            ? String(props.input.props.defaultValue)
-            : undefined
-        }
+        {...selectableProps}
+        {...props.input.props}
         onChange={(value) => {
           props.input.set(coerceValue(value));
         }}
-        {...selectProps}
+        {...selectExtraProps}
       />
     );
   }
 
-  // Long mode: searchable + server-side filter via onSearchChange
-  if (mode === "long") {
-    return (
-      <Select
-        {...inputProps}
-        {...baseSelectProps}
-        filter={({ options }) => options}
-        onSearchChange={search.run}
-        defaultValue={
-          props.input.props.defaultValue != null
-            ? String(props.input.props.defaultValue)
-            : undefined
-        }
-        onChange={(value) => {
-          props.input.set(coerceValue(value));
-        }}
-        {...selectProps}
-      />
-    );
-  }
-
-  // Static mode: enum-based select
+  // Short or long mode
   return (
     <Select
       {...inputProps}
-      {...baseSelectProps}
-      {...props.input.props}
+      {...selectableProps}
+      {...longModeProps}
+      defaultValue={defaultSingle}
       onChange={(value) => {
         props.input.set(coerceValue(value));
       }}
-      {...selectProps}
+      {...selectExtraProps}
     />
   );
   // endregion

@@ -1,6 +1,6 @@
 import { $inject } from "alepha";
+import { $logger } from "alepha/logger";
 import { HttpClient, HttpError } from "alepha/server";
-import { $logger } from "../../../logger/index.ts";
 
 /**
  * Collects browser-side action calls within a microtask and
