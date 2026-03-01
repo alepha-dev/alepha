@@ -337,7 +337,7 @@ test.describe("User Journey", () => {
       await page.waitForTimeout(500);
 
       // Select Zone - click the input/combobox to open dropdown
-      const zoneInput = dialog.getByPlaceholder(/enter or select a zone/i);
+      const zoneInput = dialog.getByLabel(/zone/i);
       if (await zoneInput.isVisible({ timeout: 2000 })) {
         await zoneInput.click();
         await page.waitForTimeout(500);
