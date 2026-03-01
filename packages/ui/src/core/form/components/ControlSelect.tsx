@@ -136,10 +136,11 @@ const ControlSelect = (props: ControlSelectProps) => {
   // Static data from enum (no loader)
   const [staticData, setStaticData] = useState<SelectValueLabel[]>([]);
 
+  const enumKey = JSON.stringify(enumValues);
   useEffect(() => {
     if (!props.input?.props || props.loader) return;
     setStaticData(enumValues);
-  }, [props.input, props.loader]);
+  }, [props.input, props.loader, enumKey]);
 
   const data = props.loader ? asyncData : staticData;
 
@@ -167,7 +168,11 @@ const ControlSelect = (props: ControlSelectProps) => {
         <Flex>
           <SegmentedControl
             disabled={inputProps.disabled}
-            defaultValue={String(props.input.props.defaultValue)}
+            defaultValue={
+              props.input.props.defaultValue != null
+                ? String(props.input.props.defaultValue)
+                : undefined
+            }
             {...segmentedControlProps}
             onChange={(value) => {
               props.input.set(coerceValue(value));
@@ -185,7 +190,6 @@ const ControlSelect = (props: ControlSelectProps) => {
     size: props.size,
     id,
     leftSection: loading ? <Loader color={"gray"} size={10} /> : icon,
-    rightSection: <span />,
     data,
     // TODO: set in $atom ?
     inputWrapperOrder: ["label", "input", "description", "error"] as (
@@ -196,10 +200,11 @@ const ControlSelect = (props: ControlSelectProps) => {
     )[],
   };
 
-  // Select and MultiSelect support searchable; Autocomplete and TagsInput are inherently searchable
+  // Select and MultiSelect: searchable + hide default chevron
   const selectableProps = {
     ...sharedProps,
     searchable: true,
+    rightSection: <span />,
   };
 
   // Long mode additions: bypass client filter + wire server search
@@ -331,7 +336,6 @@ const useAsyncLoader = (
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<LoaderMode>("static");
   const cache = useRef(new Map<string, SelectValueLabel[]>());
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useAction(
     {
@@ -349,9 +353,8 @@ const useAsyncLoader = (
         setMode(isShort ? "short" : "long");
         cache.current.set("", result);
         setData(result);
-        setLoading(false);
 
-        // In long mode, resolve default value label
+        // In long mode, resolve default value label before clearing loading
         if (!isShort && defaultValue != null && String(defaultValue) !== "") {
           const resolved = await loader("", [String(defaultValue)]);
           if (resolved.length > 0) {
@@ -367,6 +370,8 @@ const useAsyncLoader = (
             });
           }
         }
+
+        setLoading(false);
       },
     },
     [loader, threshold],
@@ -375,38 +380,25 @@ const useAsyncLoader = (
   // Debounced search (long mode only)
   const search = useAction<[string]>(
     {
+      debounce: debounceMs,
       handler: async (text) => {
         if (!loader || mode !== "long") return;
 
-        // Check cache first
+        // Check cache first (immediate, no network)
         if (cache.current.has(text)) {
           setData(cache.current.get(text)!);
           return;
         }
 
-        if (timerRef.current) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(async () => {
-          setLoading(true);
-          try {
-            const result = await loader(text);
-            cache.current.set(text, result);
-            setData(result);
-            setLoading(false);
-          } catch (error) {
-            setLoading(false);
-          }
-        }, debounceMs);
+        setLoading(true);
+        const result = await loader(text);
+        cache.current.set(text, result);
+        setData(result);
+        setLoading(false);
       },
     },
     [loader, mode, debounceMs],
   );
-
-  // Cleanup
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
 
   return { data, loading, mode, search };
 };

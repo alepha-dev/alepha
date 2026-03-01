@@ -60,7 +60,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/ui@npm:0.18.2, @alepha/ui@npm:^0.18.2, @alepha/ui@workspace:packages/ui":
+"@alepha/ui@npm:0.18.2, @alepha/ui@workspace:packages/ui":
   version: 0.0.0-use.local
   resolution: "@alepha/ui@workspace:packages/ui"
   dependencies:
@@ -13239,22 +13239,6 @@ __metadata:
   checksum: 10c0/492874770afaade724a10f8a97cce511d74bed07735c7f1100b7957254d7a5bbbc18becaf5cd049f9d7b0feeb945a64af64d5a300dfb851a4ac57cf3a5998afc
   languageName: node
   linkType: hard
-
-"tmp@workspace:apps/tmp":
-  version: 0.0.0-use.local
-  resolution: "tmp@workspace:apps/tmp"
-  dependencies:
-    "@alepha/ui": "npm:^0.18.2"
-    "@types/react": "npm:^19.2.14"
-    "@vitejs/plugin-react": "npm:^5.1.4"
-    alepha: "npm:^0.18.2"
-    drizzle-kit: "npm:^0.31.9"
-    react: "npm:^19.2.4"
-    react-dom: "npm:^19.2.4"
-    vite: "npm:^7.3.1"
-    vitest: "npm:^4.0.18"
-  languageName: unknown
-  linkType: soft
 
 "to-regex-range@npm:^5.0.1":
   version: 5.0.1

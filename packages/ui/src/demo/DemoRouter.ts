@@ -121,7 +121,7 @@ export class DemoRouter {
     icon: IconForms,
     path: "/form",
     label: "Form",
-    children: () => [this.demoTypeForm],
+    children: () => [this.demoTypeForm, this.demoControlSelect],
   });
 
   demoTypeForm = $page({
@@ -129,6 +129,13 @@ export class DemoRouter {
     path: "/type-form",
     label: "TypeForm",
     lazy: () => import("./components/core/DemoTypeForm.tsx"),
+  });
+
+  demoControlSelect = $page({
+    icon: IconForms,
+    path: "/control-select",
+    label: "ControlSelect",
+    lazy: () => import("./components/core/DemoControlSelect.tsx"),
   });
 
   // Table Components
