@@ -1,12 +1,13 @@
+import type { VerifyEmailStep } from "@alepha/ui/auth";
 import { VerifyEmail } from "@alepha/ui/auth";
 import { t } from "alepha";
 import Showcase from "../shared/Showcase.tsx";
 
 const showcaseSchema = t.object({
-  placeholder: t.boolean({
-    title: "Demo Mode",
-    default: true,
-    $control: { switch: true },
+  step: t.string({
+    title: "Step",
+    default: "success",
+    enum: ["verifying", "success", "error"],
   }),
 });
 
@@ -16,11 +17,11 @@ const DemoVerifyEmail = () => {
       title="VerifyEmail"
       schema={showcaseSchema}
       initialValues={{
-        placeholder: true,
+        step: "success",
       }}
       columns={1}
     >
-      {() => <VerifyEmail />}
+      {(values) => <VerifyEmail step={values.step as VerifyEmailStep} />}
     </Showcase>
   );
 };

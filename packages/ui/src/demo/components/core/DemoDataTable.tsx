@@ -1,4 +1,4 @@
-import { DataTable, Text } from "@alepha/ui";
+import { DataTable, Text, useDialog } from "@alepha/ui";
 import { Badge, Code, Flex, Paper } from "@mantine/core";
 import {
   IconDownload,
@@ -117,6 +117,259 @@ const showcaseSchema = t.object({
   }),
 });
 
+interface DataTablePreviewProps {
+  withCheckbox: boolean;
+  withExport: boolean;
+  withPanel: boolean;
+  withDrawer: boolean;
+  defaultSize: number;
+}
+
+const DataTablePreview = (props: DataTablePreviewProps) => {
+  const dialog = useDialog();
+
+  return (
+    <DataTable<User, typeof filters>
+      key={JSON.stringify(props)}
+      filters={filters}
+      defaultFilters={["search", "role"]}
+      submitOnInit
+      defaultSize={props.defaultSize}
+      withCheckbox={props.withCheckbox}
+      withExport={props.withExport}
+      getItemKey={(u) => String(u.id)}
+      onFilterChange={(key, _value, form) => {
+        if (key === "role" || key === "status") {
+          return form.submit();
+        }
+      }}
+      typeFormProps={{
+        skipSubmitButton: true,
+        columns: 3,
+      }}
+      items={async (params) => {
+        let filtered = [...sampleUsers];
+        if (params.search) {
+          const s = params.search.toLowerCase();
+          filtered = filtered.filter(
+            (u) =>
+              u.name.toLowerCase().includes(s) ||
+              u.email.toLowerCase().includes(s),
+          );
+        }
+        if (params.role) {
+          filtered = filtered.filter((u) => u.role === params.role);
+        }
+        if (params.status) {
+          filtered = filtered.filter((u) => u.status === params.status);
+        }
+        const start = params.page * params.size;
+        const content = filtered.slice(start, start + params.size);
+        return {
+          content,
+          page: {
+            totalElements: filtered.length,
+            totalPages: Math.ceil(filtered.length / params.size),
+          },
+        };
+      }}
+      actions={[
+        {
+          tooltip: "Add User",
+          icon: IconPlus,
+          variant: "light",
+          size: "xs",
+          onClick: () => dialog.alert({ message: "Add user clicked" }),
+        },
+      ]}
+      checkboxActions={[
+        {
+          label: "Export Selected",
+          icon: <IconDownload size={14} />,
+          intent: "primary",
+          onClick: ({ selectedItems, clearSelection }) => {
+            dialog.alert({
+              message: `Exporting ${selectedItems.length} users`,
+            });
+            clearSelection();
+          },
+        },
+        {
+          label: "Delete Selected",
+          icon: <IconTrash size={14} />,
+          intent: "danger",
+          onClick: ({ selectedItems, clearSelection }) => {
+            dialog.alert({
+              message: `Deleting ${selectedItems.length} users`,
+            });
+            clearSelection();
+          },
+        },
+      ]}
+      columns={{
+        id: {
+          label: "ID",
+          value: (u) => <Text size="sm">{u.id}</Text>,
+          sortable: true,
+          fit: true,
+        },
+        name: {
+          label: "Name",
+          value: (u) => (
+            <Text size="sm" fw={500}>
+              {u.name}
+            </Text>
+          ),
+          sortable: true,
+        },
+        email: {
+          label: "Email",
+          value: (u) => (
+            <Text size="sm" c="dimmed">
+              {u.email}
+            </Text>
+          ),
+        },
+        role: {
+          label: "Role",
+          value: (u) => (
+            <Badge
+              size="sm"
+              color={
+                u.role === "admin"
+                  ? "blue"
+                  : u.role === "user"
+                    ? "green"
+                    : "gray"
+              }
+            >
+              {u.role}
+            </Badge>
+          ),
+        },
+        status: {
+          label: "Status",
+          value: (u) => (
+            <Badge
+              size="sm"
+              color={u.status === "active" ? "green" : "red"}
+              variant="light"
+            >
+              {u.status}
+            </Badge>
+          ),
+        },
+        notes: {
+          label: "Notes",
+          defaultHidden: true,
+          value: (u) => (
+            <Text size="xs" c="dimmed" lineClamp={1}>
+              {u.notes ?? "—"}
+            </Text>
+          ),
+        },
+      }}
+      rowActions={(u) => [
+        {
+          label: "Edit",
+          icon: IconEdit,
+          color: "blue",
+          onClick: () => dialog.alert({ message: `Edit ${u.name}` }),
+        },
+        {
+          label: "Delete",
+          icon: IconTrash,
+          color: "red",
+          onClick: () => dialog.alert({ message: `Delete ${u.name}` }),
+          visible: u.role !== "admin",
+        },
+      ]}
+      panel={
+        props.withPanel
+          ? {
+              can: (u) => Boolean(u.notes),
+              render: (u) => (
+                <Flex direction="column" gap="xs" p="sm">
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                    Notes
+                  </Text>
+                  <Text size="sm">{u.notes}</Text>
+                </Flex>
+              ),
+            }
+          : undefined
+      }
+      drawer={
+        props.withDrawer
+          ? (u) => (
+              <Flex direction="column" gap="md">
+                <Text size="lg" fw={600}>
+                  {u.name}
+                </Text>
+                <Paper p="sm" radius="md" withBorder>
+                  <Flex direction="column" gap="xs">
+                    <Flex gap="xs">
+                      <Text size="sm" c="dimmed" w={60}>
+                        Email
+                      </Text>
+                      <Text size="sm">{u.email}</Text>
+                    </Flex>
+                    <Flex gap="xs">
+                      <Text size="sm" c="dimmed" w={60}>
+                        Role
+                      </Text>
+                      <Badge
+                        size="sm"
+                        color={
+                          u.role === "admin"
+                            ? "blue"
+                            : u.role === "user"
+                              ? "green"
+                              : "gray"
+                        }
+                      >
+                        {u.role}
+                      </Badge>
+                    </Flex>
+                    <Flex gap="xs">
+                      <Text size="sm" c="dimmed" w={60}>
+                        Status
+                      </Text>
+                      <Badge
+                        size="sm"
+                        color={u.status === "active" ? "green" : "red"}
+                        variant="light"
+                      >
+                        {u.status}
+                      </Badge>
+                    </Flex>
+                  </Flex>
+                </Paper>
+                {u.notes && (
+                  <Paper p="sm" radius="md" withBorder>
+                    <Text size="sm" fw={600} mb="xs">
+                      Notes
+                    </Text>
+                    <Text size="sm">{u.notes}</Text>
+                  </Paper>
+                )}
+                <Paper p="sm" radius="md" withBorder>
+                  <Text size="sm" fw={600} mb="xs">
+                    Raw Data
+                  </Text>
+                  <Code block>{JSON.stringify(u, null, 2)}</Code>
+                </Paper>
+              </Flex>
+            )
+          : undefined
+      }
+      tableProps={{
+        highlightOnHover: true,
+      }}
+    />
+  );
+};
+
 const DemoDataTable = () => {
   return (
     <Showcase
@@ -131,242 +384,7 @@ const DemoDataTable = () => {
       }}
       columns={1}
     >
-      {(props) => (
-        <DataTable<User, typeof filters>
-          key={JSON.stringify(props)}
-          filters={filters}
-          defaultFilters={["search", "role"]}
-          submitOnInit
-          defaultSize={props.defaultSize}
-          withCheckbox={props.withCheckbox}
-          withExport={props.withExport}
-          getItemKey={(u) => String(u.id)}
-          onFilterChange={(key, _value, form) => {
-            if (key === "role" || key === "status") {
-              return form.submit();
-            }
-          }}
-          typeFormProps={{
-            skipSubmitButton: true,
-            columns: 3,
-          }}
-          items={async (params) => {
-            let filtered = [...sampleUsers];
-            if (params.search) {
-              const s = params.search.toLowerCase();
-              filtered = filtered.filter(
-                (u) =>
-                  u.name.toLowerCase().includes(s) ||
-                  u.email.toLowerCase().includes(s),
-              );
-            }
-            if (params.role) {
-              filtered = filtered.filter((u) => u.role === params.role);
-            }
-            if (params.status) {
-              filtered = filtered.filter((u) => u.status === params.status);
-            }
-            const start = params.page * params.size;
-            const content = filtered.slice(start, start + params.size);
-            return {
-              content,
-              page: {
-                totalElements: filtered.length,
-                totalPages: Math.ceil(filtered.length / params.size),
-              },
-            };
-          }}
-          actions={[
-            {
-              tooltip: "Add User",
-              icon: IconPlus,
-              variant: "light",
-              size: "xs",
-              onClick: () => alert("Add user clicked"),
-            },
-          ]}
-          checkboxActions={[
-            {
-              label: "Export Selected",
-              icon: <IconDownload size={14} />,
-              intent: "primary",
-              onClick: ({ selectedItems, clearSelection }) => {
-                alert(`Exporting ${selectedItems.length} users`);
-                clearSelection();
-              },
-            },
-            {
-              label: "Delete Selected",
-              icon: <IconTrash size={14} />,
-              intent: "danger",
-              onClick: ({ selectedItems, clearSelection }) => {
-                alert(`Deleting ${selectedItems.length} users`);
-                clearSelection();
-              },
-            },
-          ]}
-          columns={{
-            id: {
-              label: "ID",
-              value: (u) => <Text size="sm">{u.id}</Text>,
-              sortable: true,
-              fit: true,
-            },
-            name: {
-              label: "Name",
-              value: (u) => (
-                <Text size="sm" fw={500}>
-                  {u.name}
-                </Text>
-              ),
-              sortable: true,
-            },
-            email: {
-              label: "Email",
-              value: (u) => (
-                <Text size="sm" c="dimmed">
-                  {u.email}
-                </Text>
-              ),
-            },
-            role: {
-              label: "Role",
-              value: (u) => (
-                <Badge
-                  size="sm"
-                  color={
-                    u.role === "admin"
-                      ? "blue"
-                      : u.role === "user"
-                        ? "green"
-                        : "gray"
-                  }
-                >
-                  {u.role}
-                </Badge>
-              ),
-            },
-            status: {
-              label: "Status",
-              value: (u) => (
-                <Badge
-                  size="sm"
-                  color={u.status === "active" ? "green" : "red"}
-                  variant="light"
-                >
-                  {u.status}
-                </Badge>
-              ),
-            },
-            notes: {
-              label: "Notes",
-              defaultHidden: true,
-              value: (u) => (
-                <Text size="xs" c="dimmed" lineClamp={1}>
-                  {u.notes ?? "—"}
-                </Text>
-              ),
-            },
-          }}
-          rowActions={(u) => [
-            {
-              label: "Edit",
-              icon: IconEdit,
-              color: "blue",
-              onClick: () => alert(`Edit ${u.name}`),
-            },
-            {
-              label: "Delete",
-              icon: IconTrash,
-              color: "red",
-              onClick: () => alert(`Delete ${u.name}`),
-              visible: u.role !== "admin",
-            },
-          ]}
-          panel={
-            props.withPanel
-              ? {
-                  can: (u) => Boolean(u.notes),
-                  render: (u) => (
-                    <Flex direction="column" gap="xs" p="sm">
-                      <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                        Notes
-                      </Text>
-                      <Text size="sm">{u.notes}</Text>
-                    </Flex>
-                  ),
-                }
-              : undefined
-          }
-          drawer={
-            props.withDrawer
-              ? (u) => (
-                  <Flex direction="column" gap="md">
-                    <Text size="lg" fw={600}>
-                      {u.name}
-                    </Text>
-                    <Paper p="sm" radius="md" withBorder>
-                      <Flex direction="column" gap="xs">
-                        <Flex gap="xs">
-                          <Text size="sm" c="dimmed" w={60}>
-                            Email
-                          </Text>
-                          <Text size="sm">{u.email}</Text>
-                        </Flex>
-                        <Flex gap="xs">
-                          <Text size="sm" c="dimmed" w={60}>
-                            Role
-                          </Text>
-                          <Badge
-                            size="sm"
-                            color={
-                              u.role === "admin"
-                                ? "blue"
-                                : u.role === "user"
-                                  ? "green"
-                                  : "gray"
-                            }
-                          >
-                            {u.role}
-                          </Badge>
-                        </Flex>
-                        <Flex gap="xs">
-                          <Text size="sm" c="dimmed" w={60}>
-                            Status
-                          </Text>
-                          <Badge
-                            size="sm"
-                            color={u.status === "active" ? "green" : "red"}
-                            variant="light"
-                          >
-                            {u.status}
-                          </Badge>
-                        </Flex>
-                      </Flex>
-                    </Paper>
-                    {u.notes && (
-                      <Paper p="sm" radius="md" withBorder>
-                        <Text size="sm" fw={600} mb="xs">
-                          Notes
-                        </Text>
-                        <Text size="sm">{u.notes}</Text>
-                      </Paper>
-                    )}
-                    <Paper p="sm" radius="md" withBorder>
-                      <Text size="sm" fw={600} mb="xs">
-                        Raw Data
-                      </Text>
-                      <Code block>{JSON.stringify(u, null, 2)}</Code>
-                    </Paper>
-                  </Flex>
-                )
-              : undefined
-          }
-          tableProps={{
-            highlightOnHover: true,
-          }}
-        />
-      )}
+      {(props) => <DataTablePreview {...(props as DataTablePreviewProps)} />}
     </Showcase>
   );
 };

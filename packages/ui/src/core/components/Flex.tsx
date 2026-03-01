@@ -69,6 +69,11 @@ export interface FlexProps extends MantineFlexProps {
    * Add a shadow to the container. The intensity will be determined by the current theme.
    */
   shadowed?: boolean | number | string;
+
+  /**
+   * Set overflow to "auto" to enable scrolling when content overflows the container.
+   */
+  overflow?: boolean;
 }
 
 const Flex = forwardRef<HTMLDivElement, FlexProps>((props, ref) => {
@@ -86,6 +91,7 @@ const Flex = forwardRef<HTMLDivElement, FlexProps>((props, ref) => {
     borderedTop,
     borderedBottom,
     shadowed,
+    overflow,
     ...rest
   } = props;
 
@@ -143,6 +149,10 @@ const Flex = forwardRef<HTMLDivElement, FlexProps>((props, ref) => {
   if (shadowed) {
     rest.className =
       `${rest.className ?? ""} shadow-${shadowed === true ? "md" : shadowed}`.trim();
+  }
+
+  if (overflow) {
+    rest.className = `${rest.className ?? ""} overflow-auto`.trim();
   }
 
   return <MantineFlex ref={ref} {...rest} />;

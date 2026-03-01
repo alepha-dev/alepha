@@ -1,9 +1,14 @@
 import { Register } from "@alepha/ui/auth";
 import { t } from "alepha";
-import type { RealmConfig } from "alepha/api/users";
+import type { FieldRequirement, RealmConfig } from "alepha/api/users";
 import Showcase from "../shared/Showcase.tsx";
 
 const showcaseSchema = t.object({
+  variant: t.string({
+    title: "Variant",
+    default: "card",
+    enum: ["card", "split"],
+  }),
   showCredentials: t.boolean({
     title: "Credentials",
     default: true,
@@ -19,35 +24,20 @@ const showcaseSchema = t.object({
     default: false,
     $control: { switch: true },
   }),
-  usernameEnabled: t.boolean({
-    title: "Username Field",
-    default: true,
-    $control: { switch: true },
+  username: t.string({
+    title: "Username",
+    default: "none",
+    enum: ["none", "optional", "required"],
   }),
-  usernameRequired: t.boolean({
-    title: "Username Required",
-    default: false,
-    $control: { switch: true },
+  email: t.string({
+    title: "Email",
+    default: "required",
+    enum: ["none", "optional", "required"],
   }),
-  emailEnabled: t.boolean({
-    title: "Email Field",
-    default: true,
-    $control: { switch: true },
-  }),
-  emailRequired: t.boolean({
-    title: "Email Required",
-    default: true,
-    $control: { switch: true },
-  }),
-  phoneEnabled: t.boolean({
-    title: "Phone Field",
-    default: false,
-    $control: { switch: true },
-  }),
-  phoneRequired: t.boolean({
-    title: "Phone Required",
-    default: false,
-    $control: { switch: true },
+  phoneNumber: t.string({
+    title: "Phone Number",
+    default: "none",
+    enum: ["none", "optional", "required"],
   }),
   registrationAllowed: t.boolean({
     title: "Registration Allowed",
@@ -65,12 +55,9 @@ const buildRealmConfig = (props: {
   showCredentials: boolean;
   showGoogleOAuth: boolean;
   showGithubOAuth: boolean;
-  usernameEnabled: boolean;
-  usernameRequired: boolean;
-  emailEnabled: boolean;
-  emailRequired: boolean;
-  phoneEnabled: boolean;
-  phoneRequired: boolean;
+  username: string;
+  email: string;
+  phoneNumber: string;
   registrationAllowed: boolean;
   showBranding: boolean;
 }): RealmConfig => {
@@ -94,17 +81,13 @@ const buildRealmConfig = (props: {
       description: props.showBranding ? "Create your account" : undefined,
       logoUrl: undefined,
       registrationAllowed: props.registrationAllowed,
-      emailEnabled: props.emailEnabled,
-      emailRequired: props.emailRequired,
-      usernameEnabled: props.usernameEnabled,
-      usernameRequired: props.usernameRequired,
+      email: props.email as FieldRequirement,
+      username: props.username as FieldRequirement,
       usernameRegExp: "^[a-zA-Z0-9_]{3,30}$",
-      phoneEnabled: props.phoneEnabled,
-      phoneRequired: props.phoneRequired,
+      phoneNumber: props.phoneNumber as FieldRequirement,
       verifyEmailRequired: false,
       verifyPhoneRequired: false,
-      firstNameLastNameEnabled: false,
-      firstNameLastNameRequired: false,
+      firstNameLastName: "none" as FieldRequirement,
       resetPasswordAllowed: true,
       adminEmails: [],
       adminUsernames: [],
@@ -125,21 +108,24 @@ const DemoRegister = () => {
       title="Register"
       schema={showcaseSchema}
       initialValues={{
+        variant: "card",
         showCredentials: true,
         showGoogleOAuth: true,
         showGithubOAuth: false,
-        usernameEnabled: true,
-        usernameRequired: false,
-        emailEnabled: true,
-        emailRequired: true,
-        phoneEnabled: false,
-        phoneRequired: false,
+        username: "none",
+        email: "required",
+        phoneNumber: "none",
         registrationAllowed: true,
         showBranding: true,
       }}
       columns={1}
     >
-      {(props) => <Register realmConfig={buildRealmConfig(props)} />}
+      {(props) => (
+        <Register
+          realmConfig={buildRealmConfig(props)}
+          variant={props.variant as "card" | "split"}
+        />
+      )}
     </Showcase>
   );
 };

@@ -112,6 +112,12 @@ const ControlSelect = (props: ControlSelectProps) => {
     (props.input.schema.type === "integer" ||
       props.input.schema.type === "number");
 
+  // Detect if schema is boolean (for value coercion)
+  const isBoolean =
+    props.input.schema &&
+    "type" in props.input.schema &&
+    props.input.schema.type === "boolean";
+
   // Extract enum values from schema (for non-array select)
   const enumValues =
     props.input.schema &&
@@ -139,8 +145,15 @@ const ControlSelect = (props: ControlSelectProps) => {
   const enumKey = JSON.stringify(enumValues);
   useEffect(() => {
     if (!props.input?.props || props.loader) return;
-    setStaticData(enumValues);
-  }, [props.input, props.loader, enumKey]);
+    if (isBoolean && enumValues.length === 0) {
+      setStaticData([
+        { value: "true", label: "True" },
+        { value: "false", label: "False" },
+      ]);
+    } else {
+      setStaticData(enumValues);
+    }
+  }, [props.input, props.loader, enumKey, isBoolean]);
 
   const data = props.loader ? asyncData : staticData;
 
@@ -154,6 +167,7 @@ const ControlSelect = (props: ControlSelectProps) => {
   const coerceValue = (val: string | null) => {
     if (val == null) return val;
     if (isNumeric) return Number(val);
+    if (isBoolean) return val === "true";
     return val;
   };
 
@@ -167,6 +181,7 @@ const ControlSelect = (props: ControlSelectProps) => {
       <Input.Wrapper {...inputProps}>
         <Flex>
           <SegmentedControl
+            w={"100%"} // TODO: double-check, maybe some impacts
             disabled={inputProps.disabled}
             defaultValue={
               props.input.props.defaultValue != null
@@ -292,9 +307,10 @@ const ControlSelect = (props: ControlSelectProps) => {
   if (mode === "static") {
     return (
       <Select
+        {...props.input.props}
         {...inputProps}
         {...selectableProps}
-        {...props.input.props}
+        defaultValue={defaultSingle}
         onChange={(value) => {
           props.input.set(coerceValue(value));
         }}

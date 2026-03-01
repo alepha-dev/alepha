@@ -1,5 +1,4 @@
-import { TypeForm, ui } from "@alepha/ui";
-import { Card, Flex, Text } from "@mantine/core";
+import { Flex, Text, TypeForm } from "@alepha/ui";
 import type { Static, TObject } from "alepha";
 import { useForm } from "alepha/react/form";
 import { type ReactNode, useState } from "react";
@@ -65,43 +64,28 @@ const Showcase = <T extends TObject>(props: ShowcaseProps<T>) => {
   );
 
   return (
-    <Flex flex={1} px={"md"} gap={"md"}>
-      <Flex
-        flex={1}
-        bg={ui.colors.background}
-        h={"100%"}
-        justify="center"
-        align="flex-start"
-        style={{ flex: 1, minWidth: 0, overflow: "auto" }}
-      >
+    <Flex fill p={"md"} pt={0} gap={"md"} overflow>
+      <Flex fill overflow ground h={"100%"} justify="center" align="flex-start">
         <MacWindow title={title} {...windowProps}>
           {children(values as Static<T>)}
         </MacWindow>
       </Flex>
 
-      <Flex
-        h={"100%"}
-        style={{
-          flex: "0 0 300px",
-          overflow: "auto",
-        }}
-      >
-        <Card shadow="sm" radius="md">
-          <Card.Section withBorder py={"xs"} inheritPadding>
-            <Text size={"xs"} fw={500}>
-              {title} Props
-            </Text>
-          </Card.Section>
-
-          <Card.Section p={"sm"}>
-            <TypeForm
-              form={form}
-              columns={{ base: 1, xs: 1, sm: 1, md: 1, lg: 1, xl: 1 }}
-              skipSubmitButton
-              skipFormElement
-            />
-          </Card.Section>
-        </Card>
+      <Flex h={"100%"} col surface bordered rounded shadowed w={300}>
+        <Flex p={"xs"} borderedBottom>
+          <Text size={"xs"} fw={500}>
+            {title} Props
+          </Text>
+        </Flex>
+        <Flex px={"md"} py={"xs"}>
+          <TypeForm
+            fill
+            form={form}
+            columns={{ base: 1, xs: 1, sm: 1, md: 1, lg: 1, xl: 1 }}
+            skipSubmitButton
+            skipFormElement
+          />
+        </Flex>
       </Flex>
     </Flex>
   );

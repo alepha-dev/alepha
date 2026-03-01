@@ -1,57 +1,14 @@
-import { Control, type SelectValueLabel, TypeForm } from "@alepha/ui";
-import { Card, Flex, Text } from "@mantine/core";
+import {
+  Control,
+  Flex,
+  type SelectValueLabel,
+  Text,
+  TypeForm,
+  useDialog,
+} from "@alepha/ui";
 import { t } from "alepha";
 import { useForm } from "alepha/react/form";
-
-/**
- * Section wrapper for each demo case.
- */
-const Section = (props: {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) => (
-  <Card shadow="sm" radius="md" w="100%">
-    <Card.Section withBorder py="xs" inheritPadding>
-      <Text size="sm" fw={600}>
-        {props.title}
-      </Text>
-      <Text size="xs" c="dimmed">
-        {props.description}
-      </Text>
-    </Card.Section>
-    <Card.Section p="md">{props.children}</Card.Section>
-  </Card>
-);
-
-/**
- * Reusable form demo — renders a TypeForm and shows submitted JSON.
- */
-const FormDemo = <T extends ReturnType<typeof t.object>>(props: {
-  id: string;
-  schema: T;
-  fieldControlProps?: Record<string, any>;
-  children?: React.ReactNode;
-}) => {
-  const form = useForm(
-    {
-      schema: props.schema,
-      handler: (values) => {
-        alert(JSON.stringify(values, null, 2));
-      },
-    },
-    [],
-  );
-
-  return (
-    <TypeForm
-      form={form}
-      columns={1}
-      fieldControlProps={props.fieldControlProps}
-      submitButtonProps={{ children: "Submit" }}
-    />
-  );
-};
+import Showcase from "../shared/Showcase.tsx";
 
 // region schemas
 
@@ -90,6 +47,13 @@ const segmentedSchema = t.object({
   theme: t.enum(["light", "dark", "auto"], {
     title: "Theme",
     default: "auto",
+  }),
+});
+
+const booleanSchema = t.object({
+  enabled: t.boolean({
+    title: "Enabled",
+    default: true,
   }),
 });
 
@@ -133,138 +97,228 @@ const shortCityLoader = async (): Promise<SelectValueLabel[]> => {
 
 // endregion
 
-const AsyncSelectDemo = (props: {
-  title: string;
-  description: string;
-  loader: (search: string, resolve?: string[]) => Promise<SelectValueLabel[]>;
-  defaultValue?: string;
-}) => {
-  const schema = t.object({
-    city: t.text({ title: "City" }),
-  });
+// region shared hook
 
-  const form = useForm(
-    {
-      schema,
-      handler: (values) => {
-        alert(JSON.stringify(values, null, 2));
-      },
-    },
-    [],
-  );
+const useAlertValues = () => {
+  const dialog = useDialog();
+  return (values: any) => {
+    dialog.alert({
+      title: "Submitted",
+      message: JSON.stringify(values, null, 2),
+    });
+  };
+};
 
+// endregion
+
+// region variant components
+
+const SelectVariant = () => {
+  const handler = useAlertValues();
+  const form = useForm({ schema: selectSchema, handler }, []);
   return (
-    <Section title={props.title} description={props.description}>
-      <Control
-        input={form.input.city}
-        select={{
-          loader: props.loader,
-          selectProps: { defaultValue: props.defaultValue },
-        }}
-      />
-    </Section>
+    <TypeForm fill form={form} submitButtonProps={{ children: "Submit" }} />
   );
 };
 
+const MultiSelectVariant = () => {
+  const handler = useAlertValues();
+  const form = useForm({ schema: multiSelectSchema, handler }, []);
+  return (
+    <TypeForm fill form={form} submitButtonProps={{ children: "Submit" }} />
+  );
+};
+
+const AutocompleteVariant = () => {
+  const handler = useAlertValues();
+  const form = useForm({ schema: autocompleteSchema, handler }, []);
+  return (
+    <TypeForm
+      fill
+      form={form}
+      fieldControlProps={{ city: { select: { creatable: true } } }}
+      submitButtonProps={{ children: "Submit" }}
+    />
+  );
+};
+
+const TagsVariant = () => {
+  const handler = useAlertValues();
+  const form = useForm({ schema: tagsSchema, handler }, []);
+  return (
+    <TypeForm
+      fill
+      form={form}
+      fieldControlProps={{ tags: { select: { creatable: true } } }}
+      submitButtonProps={{ children: "Submit" }}
+    />
+  );
+};
+
+const SegmentedVariant = () => {
+  const handler = useAlertValues();
+  const form = useForm({ schema: segmentedSchema, handler }, []);
+  return (
+    <TypeForm
+      fill
+      form={form}
+      fieldControlProps={{ theme: { segmented: true } }}
+      submitButtonProps={{ children: "Submit" }}
+    />
+  );
+};
+
+const BooleanVariant = () => {
+  const handler = useAlertValues();
+  const form = useForm({ schema: booleanSchema, handler }, []);
+  return (
+    <TypeForm fill form={form} submitButtonProps={{ children: "Submit" }} />
+  );
+};
+
+const NumericVariant = () => {
+  const handler = useAlertValues();
+  const form = useForm({ schema: numericSchema, handler }, []);
+  return (
+    <TypeForm
+      fill
+      form={form}
+      fieldControlProps={{
+        rating: {
+          select: {
+            selectProps: {
+              data: [
+                { value: "1", label: "1 - Poor" },
+                { value: "2", label: "2 - Fair" },
+                { value: "3", label: "3 - Good" },
+                { value: "4", label: "4 - Great" },
+                { value: "5", label: "5 - Excellent" },
+              ],
+            },
+          },
+        },
+      }}
+      submitButtonProps={{ children: "Submit" }}
+    />
+  );
+};
+
+const AsyncShortVariant = () => {
+  const handler = useAlertValues();
+  const asyncSchema = t.object({ city: t.text({ title: "City" }) });
+  const form = useForm({ schema: asyncSchema, handler }, []);
+  return (
+    <Control
+      input={form.input.city}
+      select={{
+        loader: shortCityLoader,
+      }}
+    />
+  );
+};
+
+const AsyncLongVariant = () => {
+  const handler = useAlertValues();
+  const asyncSchema = t.object({ city: t.text({ title: "City" }) });
+  const form = useForm({ schema: asyncSchema, handler }, []);
+  return (
+    <Control
+      input={form.input.city}
+      select={{
+        loader: cityLoader,
+        selectProps: { defaultValue: "city-42" },
+      }}
+    />
+  );
+};
+
+// endregion
+
+const variants: {
+  title: string;
+  description: string;
+  component: () => React.ReactNode;
+}[] = [
+  {
+    title: "Select",
+    description: "Single enum value with dropdown",
+    component: SelectVariant,
+  },
+  {
+    title: "Multi Select",
+    description: "Array of enum values with multi-select dropdown",
+    component: MultiSelectVariant,
+  },
+  {
+    title: "Autocomplete",
+    description:
+      "Single value with freeform text input — type any value or pick from suggestions",
+    component: AutocompleteVariant,
+  },
+  {
+    title: "Tags",
+    description: "Array of freeform values — type and press Enter to add tags",
+    component: TagsVariant,
+  },
+  {
+    title: "Segmented",
+    description: "Enum rendered as segmented toggle buttons",
+    component: SegmentedVariant,
+  },
+  {
+    title: "Boolean",
+    description:
+      "Boolean value — select value is coerced to true/false on submit",
+    component: BooleanVariant,
+  },
+  {
+    title: "Numeric",
+    description: "Integer enum — select value is coerced to number on submit",
+    component: NumericVariant,
+  },
+  {
+    title: "Async (Short)",
+    description:
+      "Loader returns <= 100 items — client-side filtering, single network call",
+    component: AsyncShortVariant,
+  },
+  {
+    title: "Async (Long)",
+    description:
+      "Loader returns > 100 items — server-side filtering with debounced search",
+    component: AsyncLongVariant,
+  },
+];
+
+const showcaseSchema = t.object({});
+
 const DemoControlSelect = () => {
   return (
-    <Flex direction="column" gap="lg" p="md" maw={600}>
-      <Text size="xl" fw={700}>
-        ControlSelect
-      </Text>
-      <Text size="sm" c="dimmed">
-        All select-like form controls: Select, MultiSelect, Autocomplete,
-        TagsInput, SegmentedControl, and async loading modes.
-      </Text>
-
-      <Section title="Select" description="Single enum value with dropdown">
-        <FormDemo id="select" schema={selectSchema} />
-      </Section>
-
-      <Section
-        title="MultiSelect"
-        description="Array of enum values with multi-select dropdown"
-      >
-        <FormDemo id="multi" schema={multiSelectSchema} />
-      </Section>
-
-      <Section
-        title="Autocomplete (creatable)"
-        description="Single value with freeform text input — type any value or pick from suggestions"
-      >
-        <FormDemo
-          id="autocomplete"
-          schema={autocompleteSchema}
-          fieldControlProps={{
-            city: { select: { creatable: true } },
-          }}
-        />
-      </Section>
-
-      <Section
-        title="TagsInput (creatable + array)"
-        description="Array of freeform values — type and press Enter to add tags"
-      >
-        <FormDemo
-          id="tags"
-          schema={tagsSchema}
-          fieldControlProps={{
-            tags: { select: { creatable: true } },
-          }}
-        />
-      </Section>
-
-      <Section
-        title="SegmentedControl"
-        description="Enum rendered as segmented toggle buttons"
-      >
-        <FormDemo
-          id="segmented"
-          schema={segmentedSchema}
-          fieldControlProps={{
-            theme: { segmented: true },
-          }}
-        />
-      </Section>
-
-      <Section
-        title="Numeric Select"
-        description="Integer enum — select value is coerced to number on submit"
-      >
-        <FormDemo
-          id="numeric"
-          schema={numericSchema}
-          fieldControlProps={{
-            rating: {
-              select: {
-                selectProps: {
-                  data: [
-                    { value: "1", label: "1 - Poor" },
-                    { value: "2", label: "2 - Fair" },
-                    { value: "3", label: "3 - Good" },
-                    { value: "4", label: "4 - Great" },
-                    { value: "5", label: "5 - Excellent" },
-                  ],
-                },
-              },
-            },
-          }}
-        />
-      </Section>
-
-      <AsyncSelectDemo
-        title="Async Select (short mode)"
-        description="Loader returns <= 100 items — client-side filtering, single network call"
-        loader={shortCityLoader}
-      />
-
-      <AsyncSelectDemo
-        title="Async Select (long mode)"
-        description="Loader returns > 100 items — server-side filtering with debounced search"
-        loader={cityLoader}
-        defaultValue="city-42"
-      />
-    </Flex>
+    <Showcase title="ControlSelect" schema={showcaseSchema}>
+      {() => (
+        <Flex direction="column" gap="xl">
+          {variants.map((variant) => (
+            <Flex
+              rounded
+              shadowed={"sm"}
+              bordered
+              key={variant.title}
+              direction="column"
+            >
+              <Flex elevated rounded col borderedBottom p={"sm"}>
+                <Text fw={600}>{variant.title}</Text>
+                <Text size="sm" c="dimmed">
+                  {variant.description}
+                </Text>
+              </Flex>
+              <Flex rounded surface p={"xs"}>
+                <variant.component />
+              </Flex>
+            </Flex>
+          ))}
+        </Flex>
+      )}
+    </Showcase>
   );
 };
 

@@ -1,6 +1,6 @@
 import { ActionButton, Control, capitalize } from "@alepha/ui";
 import { Card, Flex, Image, Text, Title } from "@mantine/core";
-import { IconLock, IconUser } from "@tabler/icons-react";
+import { IconLock, IconPhoto, IconUser } from "@tabler/icons-react";
 import { AlephaError, t } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
 import { useAuth } from "alepha/react/auth";
@@ -10,17 +10,20 @@ import { useRouter } from "alepha/react/router";
 import { HttpError } from "alepha/server";
 import { useMemo } from "react";
 import type { AuthI18n } from "../AuthI18n.ts";
-import type { AuthRouter } from "../AuthRouter.ts";
 import IconGithub from "./icons/IconGithub.tsx";
 import IconGoogle from "./icons/IconGoogle.tsx";
 
 export interface LoginProps {
   realmConfig: RealmConfig;
+  registerPath?: string;
+  resetPasswordPath?: string;
+  variant?: "card" | "split";
+  image?: string;
 }
 
 const Login = (props: LoginProps) => {
   const auth = useAuth();
-  const router = useRouter<AuthRouter>();
+  const router = useRouter();
   const { tr } = useI18n<AuthI18n, "en">();
   const redirect = router.query.r || "/";
 
@@ -33,9 +36,9 @@ const Login = (props: LoginProps) => {
   // Determine what login methods are available
   const loginMethods = useMemo(() => {
     const methods = [];
-    if (settings.usernameEnabled !== false) methods.push("username");
-    if (settings.emailEnabled !== false) methods.push("email");
-    if (settings.phoneEnabled === true) methods.push("phone");
+    if (settings.username !== "none") methods.push("username");
+    if (settings.email !== "none") methods.push("email");
+    if (settings.phoneNumber !== "none") methods.push("phone");
     return methods;
   }, [settings]);
 
@@ -113,128 +116,192 @@ const Login = (props: LoginProps) => {
 
   const showOrDivider = credentialsProvider && externalLoginMethods.length > 0;
 
+  const realmQuery = props.realmConfig.realmName
+    ? `?realm=${encodeURIComponent(props.realmConfig.realmName)}`
+    : "";
+
+  const formContent = (
+    <Flex direction="column" gap={"md"}>
+      {/* Realm branding */}
+      {(settings.logoUrl || settings.displayName || settings.description) && (
+        <Flex direction="column" gap={"xs"} align="center" mb="xs">
+          {settings.logoUrl && (
+            <Image
+              src={settings.logoUrl}
+              alt={settings.displayName || props.realmConfig.realmName}
+              h={48}
+              w="auto"
+              fit="contain"
+            />
+          )}
+          {settings.displayName && (
+            <Title order={4} ta="center">
+              {settings.displayName}
+            </Title>
+          )}
+          {settings.description && (
+            <Text size="sm" c="dimmed" ta="center">
+              {settings.description}
+            </Text>
+          )}
+        </Flex>
+      )}
+
+      {/* Credentials login form */}
+      {credentialsProvider && (
+        <>
+          <form {...form.props}>
+            <Flex direction="column" flex={1} gap={"md"}>
+              <Control
+                label={identifierTitle}
+                input={form.input.identifier}
+                icon={IconUser}
+                text={{
+                  autoComplete: getAutoCompleteType(),
+                }}
+              />
+              <Control
+                label={tr("loginPassword")}
+                input={form.input.password}
+                icon={IconLock}
+                password={{
+                  autoComplete: "current-password",
+                }}
+              />
+              <ActionButton variant={"filled"} form={form}>
+                {tr("loginSignIn")}
+              </ActionButton>
+            </Flex>
+          </form>
+          {settings.resetPasswordAllowed && (
+            <Text size="sm" ta="center">
+              <ActionButton
+                href={`${props.resetPasswordPath ?? "/auth/reset-password"}${realmQuery}`}
+                anchorProps={{ inherit: true }}
+              >
+                {tr("loginForgotPassword")}
+              </ActionButton>
+            </Text>
+          )}
+        </>
+      )}
+
+      {/* OR divider - only when both credentials AND external methods exist */}
+      {showOrDivider && (
+        <Flex align="center" justify="center" gap={"md"}>
+          <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
+          <Text size="xs" c={"dimmed"}>
+            {tr("loginOr")}
+          </Text>
+          <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
+        </Flex>
+      )}
+
+      {/* External login methods */}
+      {externalLoginMethods.length > 0 && (
+        <Flex direction="column" gap={"sm"}>
+          {externalLoginMethods.map((method) => (
+            <ActionButton
+              variant={"default"}
+              key={method.type}
+              leftSection={leftSection(method.name.toLowerCase())}
+              onClick={() =>
+                auth.login(method.name, {
+                  redirect,
+                  realm: props.realmConfig.realmName,
+                })
+              }
+            >
+              {tr("loginContinueWith", {
+                args: [capitalize(method.name)],
+              })}
+            </ActionButton>
+          ))}
+        </Flex>
+      )}
+
+      {/* Registration link */}
+      {settings.registrationAllowed && (
+        <Text size="sm" ta="center">
+          {tr("loginNoAccount")}{" "}
+          <ActionButton
+            href={`${props.registerPath ?? "/auth/register"}${realmQuery}`}
+            anchorProps={{ inherit: true }}
+          >
+            {tr("loginSignUp")}
+          </ActionButton>
+        </Text>
+      )}
+    </Flex>
+  );
+
+  if (props.variant === "split") {
+    return (
+      <Flex flex={1} justify={"center"} align={"center"}>
+        <Card
+          withBorder
+          p={0}
+          w={720}
+          bg={"var(--alepha-elevated)"}
+          style={{ overflow: "hidden" }}
+        >
+          <Flex mih={480}>
+            {props.image ? (
+              <Flex
+                flex={1}
+                style={{
+                  backgroundImage: `url(${props.image})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
+              />
+            ) : (
+              <Flex
+                flex={1}
+                justify="center"
+                align="center"
+                bg="var(--mantine-color-gray-light)"
+                style={{
+                  borderRight: "1px solid var(--mantine-color-default-border)",
+                }}
+              >
+                <Flex
+                  justify="center"
+                  align="center"
+                  w={120}
+                  h={80}
+                  style={{
+                    border: "2px dashed var(--mantine-color-default-border)",
+                    borderRadius: "var(--mantine-radius-sm)",
+                  }}
+                >
+                  <IconPhoto size={32} style={{ opacity: 0.3 }} />
+                </Flex>
+              </Flex>
+            )}
+            <Flex
+              flex={1}
+              direction="column"
+              gap={"md"}
+              p={"xl"}
+              justify={"center"}
+            >
+              {formContent}
+              <ActionButton variant={"subtle"} href={"/"}>
+                {tr("loginCancel")}
+              </ActionButton>
+            </Flex>
+          </Flex>
+        </Card>
+      </Flex>
+    );
+  }
+
   return (
     <Flex flex={1} justify={"center"} align={"center"}>
       <Flex direction="column" gap={"sm"} w={360}>
         <Card withBorder p={"lg"} bg={"var(--alepha-elevated)"}>
-          <Flex direction="column" gap={"md"}>
-            {/* Realm branding */}
-            {(settings.logoUrl ||
-              settings.displayName ||
-              settings.description) && (
-              <Flex direction="column" gap={"xs"} align="center" mb="xs">
-                {settings.logoUrl && (
-                  <Image
-                    src={settings.logoUrl}
-                    alt={settings.displayName || props.realmConfig.realmName}
-                    h={48}
-                    w="auto"
-                    fit="contain"
-                  />
-                )}
-                {settings.displayName && (
-                  <Title order={4} ta="center">
-                    {settings.displayName}
-                  </Title>
-                )}
-                {settings.description && (
-                  <Text size="sm" c="dimmed" ta="center">
-                    {settings.description}
-                  </Text>
-                )}
-              </Flex>
-            )}
-
-            {/* Credentials login form */}
-            {credentialsProvider && (
-              <>
-                <form {...form.props}>
-                  <Flex direction="column" flex={1} gap={"md"}>
-                    <Control
-                      label={identifierTitle}
-                      input={form.input.identifier}
-                      icon={IconUser}
-                      text={{
-                        autoComplete: getAutoCompleteType(),
-                      }}
-                    />
-                    <Control
-                      label={tr("loginPassword")}
-                      input={form.input.password}
-                      icon={IconLock}
-                      password={{
-                        autoComplete: "current-password",
-                      }}
-                    />
-                    <ActionButton variant={"filled"} form={form}>
-                      {tr("loginSignIn")}
-                    </ActionButton>
-                  </Flex>
-                </form>
-                {settings.resetPasswordAllowed && (
-                  <Text size="sm" ta="center">
-                    <ActionButton
-                      href={router.path("resetPassword", {
-                        query: { realm: props.realmConfig.realmName },
-                      })}
-                      anchorProps={{ inherit: true }}
-                    >
-                      {tr("loginForgotPassword")}
-                    </ActionButton>
-                  </Text>
-                )}
-              </>
-            )}
-
-            {/* OR divider - only when both credentials AND external methods exist */}
-            {showOrDivider && (
-              <Flex align="center" justify="center" gap={"md"}>
-                <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
-                <Text size="xs" c={"dimmed"}>
-                  {tr("loginOr")}
-                </Text>
-                <Flex flex={1} h={"1px"} bg={"var(--alepha-border)"} />
-              </Flex>
-            )}
-
-            {/* External login methods */}
-            {externalLoginMethods.length > 0 && (
-              <Flex direction="column" gap={"sm"}>
-                {externalLoginMethods.map((method) => (
-                  <ActionButton
-                    variant={"default"}
-                    key={method.type}
-                    leftSection={leftSection(method.name.toLowerCase())}
-                    onClick={() =>
-                      auth.login(method.name, {
-                        redirect,
-                        realm: props.realmConfig.realmName,
-                      })
-                    }
-                  >
-                    {tr("loginContinueWith", {
-                      args: [capitalize(method.name)],
-                    })}
-                  </ActionButton>
-                ))}
-              </Flex>
-            )}
-
-            {/* Registration link */}
-            {settings.registrationAllowed && (
-              <Text size="sm" ta="center">
-                {tr("loginNoAccount")}{" "}
-                <ActionButton
-                  href={router.path("register", {
-                    query: { realm: props.realmConfig.realmName },
-                  })}
-                  anchorProps={{ inherit: true }}
-                >
-                  {tr("loginSignUp")}
-                </ActionButton>
-              </Text>
-            )}
-          </Flex>
+          {formContent}
         </Card>
         <ActionButton variant={"subtle"} href={"/"}>
           {tr("loginCancel")}

@@ -1,4 +1,4 @@
-import { alephaSidebarAtom, Flex } from "@alepha/ui";
+import { alephaSidebarAtom, Container, Flex } from "@alepha/ui";
 import {
   AppShell,
   type AppShellFooterProps,
@@ -64,10 +64,14 @@ export interface DashboardShellProps {
   };
 
   /**
-   * Wrap AppBar and main content in a Mantine Container.
-   * Pass `true` for default Container, or ContainerProps to customize.
+   * Wrap the Dashboard main content in a Mantine Container.
    */
   container?: boolean | ContainerProps;
+
+  /**
+   * If true, the DashboardShell will fill the height of its container.
+   */
+  fill?: boolean;
 }
 
 const DashboardShell = (props: DashboardShellProps) => {
@@ -131,6 +135,7 @@ const DashboardShell = (props: DashboardShellProps) => {
   const headerHeight = hasAppBar ? hHeight : 0;
   const footerHeight = footerElement ? fHeight : 0;
   const navbarWidth = collapsed ? collapsedWidth : expandedWidth;
+  const mainContent = props.children ?? <NestedView />;
 
   return (
     <AppShell
@@ -189,9 +194,18 @@ const DashboardShell = (props: DashboardShellProps) => {
         display={"flex"}
         bg={"var(--alepha-ground)"}
         pos={"relative"}
+        h={props.fill ? "100%" : "inherit"}
         {...props.appShellMainProps}
       >
-        {props.children ?? <NestedView />}
+        {props.container ? (
+          <Container
+            {...(typeof props.container === "boolean" ? {} : props.container)}
+          >
+            {mainContent}
+          </Container>
+        ) : (
+          mainContent
+        )}
       </AppShell.Main>
 
       {footerElement && (

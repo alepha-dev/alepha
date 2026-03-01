@@ -1,6 +1,6 @@
 import { ResetPassword } from "@alepha/ui/auth";
 import { t } from "alepha";
-import type { RealmConfig } from "alepha/api/users";
+import type { FieldRequirement, RealmConfig } from "alepha/api/users";
 import Showcase from "../shared/Showcase.tsx";
 
 const showcaseSchema = t.object({
@@ -28,17 +28,13 @@ const buildRealmConfig = (props: {
       description: props.showBranding ? "Reset your password" : undefined,
       logoUrl: undefined,
       registrationAllowed: true,
-      emailEnabled: true,
-      emailRequired: true,
-      usernameEnabled: false,
-      usernameRequired: false,
+      email: "required" as FieldRequirement,
+      username: "none" as FieldRequirement,
       usernameRegExp: "^[a-zA-Z0-9_]{3,30}$",
-      phoneEnabled: false,
-      phoneRequired: false,
+      phoneNumber: "none" as FieldRequirement,
       verifyEmailRequired: false,
       verifyPhoneRequired: false,
-      firstNameLastNameEnabled: false,
-      firstNameLastNameRequired: false,
+      firstNameLastName: "none" as FieldRequirement,
       resetPasswordAllowed: props.resetPasswordAllowed,
       adminEmails: [],
       adminUsernames: [],

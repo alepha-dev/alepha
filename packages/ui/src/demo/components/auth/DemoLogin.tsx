@@ -1,9 +1,14 @@
 import { Login } from "@alepha/ui/auth";
 import { t } from "alepha";
-import type { RealmConfig } from "alepha/api/users";
+import type { FieldRequirement, RealmConfig } from "alepha/api/users";
 import Showcase from "../shared/Showcase.tsx";
 
 const showcaseSchema = t.object({
+  variant: t.string({
+    title: "Variant",
+    default: "card",
+    enum: ["card", "split"],
+  }),
   showCredentials: t.boolean({
     title: "Credentials",
     default: true,
@@ -19,20 +24,20 @@ const showcaseSchema = t.object({
     default: false,
     $control: { switch: true },
   }),
-  usernameEnabled: t.boolean({
-    title: "Username Login",
-    default: true,
-    $control: { switch: true },
+  username: t.string({
+    title: "Username",
+    default: "optional",
+    enum: ["none", "optional", "required"],
   }),
-  emailEnabled: t.boolean({
-    title: "Email Login",
-    default: true,
-    $control: { switch: true },
+  email: t.string({
+    title: "Email",
+    default: "optional",
+    enum: ["none", "optional", "required"],
   }),
-  phoneEnabled: t.boolean({
-    title: "Phone Login",
-    default: false,
-    $control: { switch: true },
+  phoneNumber: t.string({
+    title: "Phone Number",
+    default: "none",
+    enum: ["none", "optional", "required"],
   }),
   registrationAllowed: t.boolean({
     title: "Show Sign Up",
@@ -55,9 +60,9 @@ const buildRealmConfig = (props: {
   showCredentials: boolean;
   showGoogleOAuth: boolean;
   showGithubOAuth: boolean;
-  usernameEnabled: boolean;
-  emailEnabled: boolean;
-  phoneEnabled: boolean;
+  username: string;
+  email: string;
+  phoneNumber: string;
   registrationAllowed: boolean;
   resetPasswordAllowed: boolean;
   showBranding: boolean;
@@ -82,17 +87,13 @@ const buildRealmConfig = (props: {
       description: props.showBranding ? "Sign in to continue" : undefined,
       logoUrl: undefined,
       registrationAllowed: props.registrationAllowed,
-      emailEnabled: props.emailEnabled,
-      emailRequired: false,
-      usernameEnabled: props.usernameEnabled,
+      email: props.email as FieldRequirement,
+      username: props.username as FieldRequirement,
       usernameRegExp: "^[a-zA-Z0-9_]{3,30}$",
-      usernameRequired: false,
-      phoneEnabled: props.phoneEnabled,
-      phoneRequired: false,
+      phoneNumber: props.phoneNumber as FieldRequirement,
       verifyEmailRequired: false,
       verifyPhoneRequired: false,
-      firstNameLastNameEnabled: false,
-      firstNameLastNameRequired: false,
+      firstNameLastName: "none" as FieldRequirement,
       resetPasswordAllowed: props.resetPasswordAllowed,
       adminEmails: [],
       adminUsernames: [],
@@ -113,19 +114,25 @@ const DemoLogin = () => {
       title="Login"
       schema={showcaseSchema}
       initialValues={{
+        variant: "card",
         showCredentials: true,
         showGoogleOAuth: true,
         showGithubOAuth: false,
-        usernameEnabled: true,
-        emailEnabled: true,
-        phoneEnabled: false,
+        username: "optional",
+        email: "optional",
+        phoneNumber: "none",
         registrationAllowed: true,
         resetPasswordAllowed: true,
         showBranding: true,
       }}
       columns={1}
     >
-      {(props) => <Login realmConfig={buildRealmConfig(props)} />}
+      {(props) => (
+        <Login
+          realmConfig={buildRealmConfig(props)}
+          variant={props.variant as "card" | "split"}
+        />
+      )}
     </Showcase>
   );
 };

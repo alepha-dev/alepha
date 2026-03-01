@@ -4,22 +4,23 @@ import { IconAlertCircle, IconCheck, IconMailCheck } from "@tabler/icons-react";
 import type { UserController } from "alepha/api/users";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter, useRouterState } from "alepha/react/router";
+import { useRouterState } from "alepha/react/router";
 import { useEffect, useState } from "react";
 import type { AuthI18n } from "../AuthI18n.ts";
-import type { AuthRouter } from "../AuthRouter.ts";
 
-export type VerifyEmailProps = {};
+export type VerifyEmailStep = "verifying" | "success" | "error";
 
-type Step = "verifying" | "success" | "error";
+export interface VerifyEmailProps {
+  loginPath?: string;
+  step?: VerifyEmailStep;
+}
 
-const VerifyEmail = (_props: VerifyEmailProps) => {
-  const router = useRouter<AuthRouter>();
+const VerifyEmailStateful = (props: VerifyEmailProps) => {
   const state = useRouterState();
   const userCtrl = useClient<UserController>();
   const { tr } = useI18n<AuthI18n, "en">();
 
-  const [step, setStep] = useState<Step>("verifying");
+  const [step, setStep] = useState<VerifyEmailStep>("verifying");
   const [error, setError] = useState<string | null>(null);
 
   const email = state.query.email as string | undefined;
@@ -48,6 +49,21 @@ const VerifyEmail = (_props: VerifyEmailProps) => {
   }, [email, token]);
 
   return (
+    <VerifyEmailView step={step} error={error} loginPath={props.loginPath} />
+  );
+};
+
+interface VerifyEmailViewProps {
+  step: VerifyEmailStep;
+  error?: string | null;
+  loginPath?: string;
+}
+
+const VerifyEmailView = (props: VerifyEmailViewProps) => {
+  const { tr } = useI18n<AuthI18n, "en">();
+  const { step } = props;
+
+  return (
     <Flex flex={1} justify="center" align="center">
       <Flex direction="column" gap="sm" w={400}>
         <Card withBorder p="lg" bg="var(--alepha-elevated)">
@@ -73,7 +89,7 @@ const VerifyEmail = (_props: VerifyEmailProps) => {
                 <Alert variant="light" color="green" icon={<IconCheck />}>
                   <Text size="sm">{tr("verifyEmailSuccess")}</Text>
                 </Alert>
-                <ActionButton href={router.path("login")} fullWidth>
+                <ActionButton href={props.loginPath ?? "/auth/login"} fullWidth>
                   {tr("verifyEmailSignIn")}
                 </ActionButton>
               </>
@@ -86,9 +102,11 @@ const VerifyEmail = (_props: VerifyEmailProps) => {
                   {tr("verifyEmailTitle")}
                 </Text>
                 <Alert variant="light" color="red" icon={<IconAlertCircle />}>
-                  <Text size="sm">{error || tr("verifyEmailFailed")}</Text>
+                  <Text size="sm">
+                    {props.error || tr("verifyEmailFailed")}
+                  </Text>
                 </Alert>
-                <ActionButton href={router.path("login")} fullWidth>
+                <ActionButton href={props.loginPath ?? "/auth/login"} fullWidth>
                   {tr("verifyEmailBackToSignIn")}
                 </ActionButton>
               </>
@@ -98,6 +116,13 @@ const VerifyEmail = (_props: VerifyEmailProps) => {
       </Flex>
     </Flex>
   );
+};
+
+const VerifyEmail = (props: VerifyEmailProps) => {
+  if (props.step) {
+    return <VerifyEmailView step={props.step} loginPath={props.loginPath} />;
+  }
+  return <VerifyEmailStateful {...props} />;
 };
 
 export default VerifyEmail;

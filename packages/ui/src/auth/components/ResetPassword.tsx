@@ -20,10 +20,10 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useState } from "react";
 import type { AuthI18n } from "../AuthI18n.ts";
-import type { AuthRouter } from "../AuthRouter.ts";
 
 export interface ResetPasswordProps {
   realmConfig: RealmConfig;
+  loginPath?: string;
 }
 
 type Step = "email" | "code" | "password" | "success";
@@ -36,7 +36,7 @@ interface ResetState {
 }
 
 const ResetPassword = (props: ResetPasswordProps) => {
-  const router = useRouter<AuthRouter>();
+  const router = useRouter();
   const userCtrl = useClient<UserController>();
   const { tr } = useI18n<AuthI18n, "en">();
   const [resetState, setResetState] = useState<ResetState>({ step: "email" });
@@ -176,9 +176,7 @@ const ResetPassword = (props: ResetPasswordProps) => {
                   <Text size="sm">{tr("resetPasswordDisabled")}</Text>
                 </Alert>
                 <ActionButton
-                  href={router.path("login", {
-                    query: { realm: props.realmConfig.realmName },
-                  })}
+                  href={`${props.loginPath ?? "/auth/login"}${props.realmConfig.realmName ? `?realm=${encodeURIComponent(props.realmConfig.realmName)}` : ""}`}
                 >
                   {tr("resetPasswordBackToSignIn")}
                 </ActionButton>
@@ -276,9 +274,7 @@ const ResetPassword = (props: ResetPasswordProps) => {
                   <Text size="sm">{tr("resetPasswordSuccess")}</Text>
                 </Alert>
                 <ActionButton
-                  href={router.path("login", {
-                    query: { realm: props.realmConfig.realmName },
-                  })}
+                  href={`${props.loginPath ?? "/auth/login"}${props.realmConfig.realmName ? `?realm=${encodeURIComponent(props.realmConfig.realmName)}` : ""}`}
                 >
                   {tr("resetPasswordBackToSignIn")}
                 </ActionButton>

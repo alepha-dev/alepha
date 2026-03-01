@@ -13,12 +13,14 @@ const DemoLayout = () => {
   return (
     <AlephaMantineProvider>
       <DashboardShell
+        fill
         appShellProps={{
           withBorder: false,
           bg: ui.colors.background,
         }}
         appShellHeaderProps={{
           bg: "transparent",
+          style: { backdropFilter: "blur(10px)" },
         }}
         appBarProps={{
           items: [
@@ -58,7 +60,10 @@ const DemoLayout = () => {
             },
             {
               ...router.node("demoForm"),
-              children: [router.node("demoTypeForm")],
+              children: [
+                router.node("demoTypeForm"),
+                router.node("demoControlSelect"),
+              ],
             },
             {
               ...router.node("demoTable"),
@@ -70,7 +75,12 @@ const DemoLayout = () => {
             },
             {
               ...router.node("demoAuth"),
-              children: [router.node("demoLogin"), router.node("demoRegister")],
+              children: [
+                router.node("demoLogin"),
+                router.node("demoRegister"),
+                router.node("demoResetPassword"),
+                router.node("demoVerifyEmail"),
+              ],
             },
             {
               position: "bottom",

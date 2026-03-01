@@ -1,4 +1,4 @@
-import { TypeForm } from "@alepha/ui";
+import { TypeForm, useDialog } from "@alepha/ui";
 import { t } from "alepha";
 import { useForm } from "alepha/react/form";
 import Showcase from "../shared/Showcase.tsx";
@@ -32,11 +32,16 @@ const showcaseSchema = t.object({
 });
 
 const DemoTypeForm = () => {
+  const dialog = useDialog();
+
   const form = useForm(
     {
       schema: formSchema,
       handler: (values) => {
-        alert(JSON.stringify(values, null, 2));
+        dialog.alert({
+          title: "Submitted",
+          message: JSON.stringify(values, null, 2),
+        });
       },
     },
     [],

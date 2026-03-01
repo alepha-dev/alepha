@@ -1,5 +1,5 @@
+import { Flex } from "@alepha/ui";
 import {
-  Flex,
   type FlexProps,
   Portal,
   SegmentedControl,
@@ -12,7 +12,6 @@ import {
   IconDeviceTablet,
 } from "@tabler/icons-react";
 import { type ReactNode, useState } from "react";
-
 export interface MacWindowProps {
   children: ReactNode;
   title?: string;
@@ -127,13 +126,7 @@ const MacWindow = ({ children, title, containerProps }: MacWindowProps) => {
   );
 
   const body = (
-    <Flex
-      direction={"column"}
-      flex={1}
-      p="md"
-      style={{ overflow: "auto" }}
-      {...containerProps}
-    >
+    <Flex overflow direction={"column"} flex={1} p="md" {...containerProps}>
       {children}
     </Flex>
   );
@@ -159,14 +152,15 @@ const MacWindow = ({ children, title, containerProps }: MacWindowProps) => {
 
   return (
     <Flex
-      direction="column"
+      col
+      overflow
+      h={"100%"}
       bdrs={"md"}
       style={{
         width: DEVICE_WIDTHS[device],
         maxWidth: "100%",
         border: "1px solid var(--mantine-color-default-border)",
         overflow: "hidden",
-        background: "var(--mantine-color-body)",
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
         transition: "width 0.3s ease",
       }}
