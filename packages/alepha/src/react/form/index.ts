@@ -4,8 +4,10 @@ import { $module } from "alepha";
 
 export { default as FormState } from "./components/FormState.tsx";
 export * from "./errors/FormValidationError.ts";
+export * from "./hooks/useFieldValue.ts";
 export * from "./hooks/useForm.ts";
 export * from "./hooks/useFormState.ts";
+export * from "./hooks/useFormValues.ts";
 export * from "./services/FormModel.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -13,7 +15,6 @@ export * from "./services/FormModel.ts";
 declare module "alepha" {
   interface Hooks {
     "form:change": { id: string; path: string; value: any };
-    "form:reset": { id: string; values: Record<string, any> };
     "form:submit:begin": { id: string };
     "form:submit:success": { id: string; values: Record<string, any> };
     "form:submit:error": { id: string; error: Error };

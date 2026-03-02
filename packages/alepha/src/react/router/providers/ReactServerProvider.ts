@@ -366,6 +366,7 @@ export class ReactServerProvider {
         },
         {
           hydration: true,
+          state,
           onError: (error) => {
             if (error instanceof Redirection) {
               this.log.debug("Streaming resulted in redirection", {

@@ -12,9 +12,7 @@ export interface Objective {
 interface ObjectiveEditorProps extends CustomControlProps {}
 
 const TaskCreateObjectives = (props: ObjectiveEditorProps) => {
-  const [objectives, setObjectives] = useState<Objective[]>(
-    props.defaultValue || [],
-  );
+  const [objectives, setObjectives] = useState<Objective[]>(props.value || []);
   const [newObjective, setNewObjective] = useState<string>("");
 
   const addObjective = () => {

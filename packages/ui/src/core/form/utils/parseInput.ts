@@ -73,12 +73,15 @@ export const parseInput = (
   const required = props.input.required;
   const schema = props.input.schema as TObject & { $control?: ControlProps };
 
+  const testId = (props.input.props as any)?.["data-testid"];
+
   const inputProps: InputProps = {
     label,
     description,
     error,
     required,
     disabled,
+    ...(testId ? { "data-testid": testId } : {}),
   };
 
   if ("minLength" in schema && typeof schema.minLength === "number") {

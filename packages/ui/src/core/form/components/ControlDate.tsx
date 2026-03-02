@@ -6,7 +6,7 @@ import {
   TimeInput,
   type TimeInputProps,
 } from "@mantine/dates";
-import { useFormState } from "alepha/react/form";
+import { useFieldValue, useFormState } from "alepha/react/form";
 import { type GenericControlProps, parseInput } from "../utils/parseInput.ts";
 
 export interface ControlDateProps extends GenericControlProps {
@@ -27,6 +27,7 @@ export interface ControlDateProps extends GenericControlProps {
  */
 const ControlDate = (props: ControlDateProps) => {
   const form = useFormState(props.input);
+  const [value, setValue] = useFieldValue(props.input);
   const { inputProps, id, icon, format } = parseInput(props, form);
   if (!props.input?.props) {
     return null;
@@ -41,14 +42,10 @@ const ControlDate = (props: ControlDateProps) => {
         {...inputProps}
         id={id}
         leftSection={icon}
-        defaultValue={
-          props.input.props.defaultValue
-            ? new Date(props.input.props.defaultValue)
-            : undefined
+        value={value ? new Date(value) : null}
+        onChange={(val) =>
+          setValue(val ? new Date(val).toISOString() : undefined)
         }
-        onChange={(value) => {
-          props.input.set(value ? new Date(value).toISOString() : undefined);
-        }}
         {...dateTimePickerProps}
       />
     );
@@ -63,16 +60,10 @@ const ControlDate = (props: ControlDateProps) => {
         {...inputProps}
         id={id}
         leftSection={icon}
-        defaultValue={
-          props.input.props.defaultValue
-            ? new Date(props.input.props.defaultValue)
-            : undefined
+        value={value ? new Date(value) : null}
+        onChange={(val) =>
+          setValue(val ? new Date(val).toISOString().slice(0, 10) : undefined)
         }
-        onChange={(value) => {
-          props.input.set(
-            value ? new Date(value).toISOString().slice(0, 10) : undefined,
-          );
-        }}
         {...dateInputProps}
       />
     );
@@ -87,10 +78,8 @@ const ControlDate = (props: ControlDateProps) => {
         {...inputProps}
         id={id}
         leftSection={icon}
-        defaultValue={props.input.props.defaultValue}
-        onChange={(event) => {
-          props.input.set(event.currentTarget.value);
-        }}
+        value={value ?? ""}
+        onChange={(event) => setValue(event.currentTarget.value)}
         {...timeInputProps}
       />
     );

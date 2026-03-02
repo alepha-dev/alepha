@@ -58,16 +58,6 @@ export const useFormState = <
       );
     }
 
-    if (hasValues) {
-      listeners.push(
-        alepha.events.on("form:reset", (event) => {
-          if (event.id === form.id) {
-            setValues(event.values);
-          }
-        }),
-      );
-    }
-
     if (hasLoading) {
       listeners.push(
         alepha.events.on("form:submit:begin", (event) => {

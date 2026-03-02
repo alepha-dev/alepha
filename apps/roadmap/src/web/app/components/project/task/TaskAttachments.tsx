@@ -15,8 +15,8 @@ interface TaskAttachmentsProps extends CustomControlProps {
 }
 
 const TaskAttachments = (props: TaskAttachmentsProps) => {
-  const { defaultValue, onChange, disabled } = props;
-  const attachments: string[] = defaultValue || [];
+  const { value: propValue, onChange, disabled } = props;
+  const attachments: string[] = propValue || [];
   const toast = useToast();
   const taskApi = useClient<TaskController>();
   const fileInputRef = useRef<HTMLInputElement>(null);

@@ -19,7 +19,7 @@ import type {
   DateTimePickerProps,
   TimeInputProps,
 } from "@mantine/dates";
-import { useFormState } from "alepha/react/form";
+import { useFieldValue, useFormState } from "alepha/react/form";
 import type { ComponentType } from "react";
 import { type GenericControlProps, parseInput } from "../utils/parseInput.ts";
 import ControlArray, { type ControlArrayProps } from "./ControlArray.tsx";
@@ -76,6 +76,7 @@ export interface ControlProps extends GenericControlProps {
  */
 const Control = (_props: ControlProps) => {
   const form = useFormState(_props.input, ["error"]);
+  const [value, setValue] = useFieldValue(_props.input);
 
   // Early return if input is not properly initialized
   if (!_props.input?.props) {
@@ -93,12 +94,11 @@ const Control = (_props: ControlProps) => {
   if (props.query) {
     return (
       <ControlQueryBuilder
-        {...props.input.props}
         {...inputProps}
         schema={props.query}
-        value={props.input.props.value}
-        onChange={(value) => {
-          props.input.set(value);
+        value={value}
+        onChange={(val) => {
+          setValue(val);
         }}
       />
     );
@@ -112,9 +112,9 @@ const Control = (_props: ControlProps) => {
       <Input.Wrapper {...inputProps}>
         <Flex flex={1} mt={"calc(var(--mantine-spacing-xs) / 2)"}>
           <Custom
-            defaultValue={props.input.props.defaultValue}
-            onChange={(value) => {
-              props.input.set(value);
+            value={value}
+            onChange={(val) => {
+              setValue(val);
             }}
           />
         </Flex>
@@ -209,9 +209,7 @@ const Control = (_props: ControlProps) => {
         size={props.size}
         id={id}
         leftSection={icon}
-        onChange={(file) => {
-          props.input.set(file);
-        }}
+        onChange={(file) => setValue(file)}
         {...fileInputProps}
       />
     );
@@ -227,7 +225,8 @@ const Control = (_props: ControlProps) => {
         size={props.size}
         id={id}
         leftSection={icon}
-        {...props.input.props}
+        value={value ?? ""}
+        onChange={(val) => setValue(val)}
         {...colorInputProps}
       />
     );
@@ -274,9 +273,9 @@ const Control = (_props: ControlProps) => {
           size={props.size}
           id={id}
           color={"blue"}
-          defaultChecked={props.input.props.defaultValue}
+          checked={Boolean(value)}
           onChange={(event) => {
-            props.input.set(event.currentTarget.checked);
+            setValue(event.currentTarget.checked);
           }}
           {...switchProps}
         />
@@ -315,7 +314,8 @@ const Control = (_props: ControlProps) => {
         size={props.size}
         id={id}
         leftSection={icon}
-        {...props.input.props}
+        value={value ?? ""}
+        onChange={(ev) => setValue(ev.target.value)}
         {...passwordInputProps}
       />
     );
@@ -331,7 +331,8 @@ const Control = (_props: ControlProps) => {
         size={props.size}
         id={id}
         leftSection={icon}
-        {...props.input.props}
+        value={value ?? ""}
+        onChange={(ev) => setValue(ev.target.value)}
         {...textAreaProps}
       />
     );
@@ -378,7 +379,7 @@ const Control = (_props: ControlProps) => {
       case "phone":
         return "tel";
       default:
-        return undefined;
+        return props.input.props.type ?? "text";
     }
   };
 
@@ -389,9 +390,9 @@ const Control = (_props: ControlProps) => {
       id={id}
       leftSection={icon}
       type={getInputType()}
-      // TODO: set in $atom ?
       inputWrapperOrder={["label", "input", "description", "error"]}
-      {...props.input.props}
+      value={value ?? ""}
+      onChange={(ev) => setValue(ev.target.value)}
       {...textInputProps}
     />
   );
@@ -401,6 +402,6 @@ const Control = (_props: ControlProps) => {
 export default Control;
 
 export type CustomControlProps = {
-  defaultValue: any;
+  value: any;
   onChange: (value: any) => void;
 };

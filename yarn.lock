@@ -11929,9 +11929,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ride-ea4cc4@workspace:apps/ride":
+"ride@workspace:apps/ride":
   version: 0.0.0-use.local
-  resolution: "ride-ea4cc4@workspace:apps/ride"
+  resolution: "ride@workspace:apps/ride"
   languageName: unknown
   linkType: soft
 

@@ -4,7 +4,18 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
 import { describe, it } from "vitest";
-import { useForm } from "../index.ts";
+import { useFieldValue, useForm } from "../index.ts";
+
+const TestInput = ({ input, testId }: { input: any; testId: string }) => {
+  const [value, setValue] = useFieldValue(input);
+  return (
+    <input
+      data-testid={testId}
+      value={value ?? ""}
+      onChange={(ev) => setValue(ev.target.value)}
+    />
+  );
+};
 
 describe("useForm", () => {
   const renderWithAlepha = (alepha: Alepha, element: ReactNode) => {
@@ -29,17 +40,23 @@ describe("useForm", () => {
             }),
           }),
         }),
-        handler: (values, args) => {
+        handler: (values) => {
           calls.push(values);
         },
       });
 
       return (
         <form {...form.props} data-testid="test-form">
-          <input {...form.input.str.props} />
-          <input {...form.input.int.props} />
-          <input {...form.input.nested.items.str.props} />
-          <input {...form.input.nested.items.another.items.level.props} />
+          <TestInput input={form.input.str} testId="test-str" />
+          <TestInput input={form.input.int} testId="test-int" />
+          <TestInput
+            input={form.input.nested.items.str}
+            testId="test-nested.str"
+          />
+          <TestInput
+            input={form.input.nested.items.another.items.level}
+            testId="test-nested.another.level"
+          />
           <button type="submit">Submit</button>
         </form>
       );
@@ -312,9 +329,18 @@ describe("useForm", () => {
 
       return (
         <form {...form.props} data-testid="complex-form">
-          <input {...form.input.company.items.name.props} />
-          <input {...form.input.company.items.address.items.street.props} />
-          <input {...form.input.company.items.address.items.city.props} />
+          <TestInput
+            input={form.input.company.items.name}
+            testId="complex-test-company.name"
+          />
+          <TestInput
+            input={form.input.company.items.address.items.street}
+            testId="complex-test-company.address.street"
+          />
+          <TestInput
+            input={form.input.company.items.address.items.city}
+            testId="complex-test-company.address.city"
+          />
           <button
             type="button"
             data-testid="set-employees"

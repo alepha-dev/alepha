@@ -8,7 +8,7 @@ import {
   t,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import type { ChangeEvent, InputHTMLAttributes } from "react";
+import type { InputHTMLAttributes } from "react";
 
 /**
  * FormModel is a dynamic form handler that generates form inputs based on a provided TypeBox schema.
@@ -22,6 +22,7 @@ export class FormModel<T extends TObject> {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly values: Record<string, any> = {};
+  protected readonly initialValues: Record<string, any> = {};
   protected submitInProgress = false;
 
   public input: SchemaToInput<T>;
@@ -49,6 +50,8 @@ export class FormModel<T extends TObject> {
       ) as Record<string, any>;
       Object.assign(this.values, decoded);
     }
+
+    this.initialValues = { ...this.values };
 
     this.input = this.createProxyFromSchema(options, options.schema, {
       store: this.values,
@@ -93,10 +96,6 @@ export class FormModel<T extends TObject> {
     return defaults;
   }
 
-  public get element(): HTMLFormElement {
-    return window.document.getElementById(this.id)! as HTMLFormElement;
-  }
-
   public get currentValues(): Record<string, any> {
     return this.restructureValues(this.values);
   }
@@ -113,24 +112,21 @@ export class FormModel<T extends TObject> {
     };
   }
 
-  public readonly reset = (event: FormEventLike) => {
-    // clear values in place to maintain proxy reference
+  public readonly reset = (event?: FormEventLike) => {
+    event?.preventDefault?.();
     for (const key in this.values) {
       delete this.values[key];
     }
-
+    Object.assign(this.values, { ...this.initialValues });
+    for (const [key, value] of Object.entries(this.values)) {
+      const path = `/${key.replaceAll(".", "/")}`;
+      this.alepha.events.emit(
+        "form:change",
+        { id: this.id, path, value },
+        { catch: true },
+      );
+    }
     this.options.onReset?.();
-
-    return this.alepha.events.emit(
-      "form:reset",
-      {
-        id: this.id,
-        values: this.values,
-      },
-      {
-        catch: true,
-      },
-    );
   };
 
   public readonly submit = async () => {
@@ -153,10 +149,6 @@ export class FormModel<T extends TObject> {
     this.submitInProgress = true;
 
     const options = this.options;
-    const form = this.element;
-    const args = {
-      form,
-    };
 
     try {
       let values: Record<string, any> = this.restructureValues(this.values);
@@ -168,7 +160,7 @@ export class FormModel<T extends TObject> {
         >;
       }
 
-      await options.handler(values as any, args);
+      await options.handler(values as any);
 
       await this.alepha.events.emit("react:action:success", {
         type: "form",
@@ -181,7 +173,7 @@ export class FormModel<T extends TObject> {
     } catch (error) {
       this.log.error("Form submission error:", error);
 
-      options.onError?.(error as Error, args);
+      options.onError?.(error as Error);
 
       await this.alepha.events.emit("react:action:error", {
         type: "form",
@@ -308,6 +300,7 @@ export class FormModel<T extends TObject> {
       return {
         path: "",
         required,
+        initialValue: undefined,
         props: {} as InputHTMLAttributes<unknown>,
         schema: schema,
         set: () => {},
@@ -319,81 +312,22 @@ export class FormModel<T extends TObject> {
     const key = parent ? `${parent}.${name}` : name;
     const path = `/${key.replaceAll(".", "/")}`;
 
-    const set = (value: any, sync = true) => {
-      // Convert to typed value immediately based on schema
+    const set = (value: any) => {
       const typedValue = this.getValueFromInput(value, field);
-
-      if (context.store[key] === typedValue) {
-        // no change, do not update
-        // return; <- disabled for now, as some inputs may need to sync even if value is same
-      }
-
       context.store[key] = typedValue;
-
       if (options.onChange) {
         options.onChange(key, typedValue, context.store);
       }
-
       this.alepha.events.emit(
         "form:change",
-        {
-          id: this.id,
-          path: path,
-          value: typedValue,
-        },
-        {
-          catch: true,
-        },
+        { id: this.id, path: path, value: typedValue },
+        { catch: true },
       );
-
-      if (sync) {
-        const inputElement = window.document.querySelector(
-          `[data-path="${path}"]`,
-        );
-        if (inputElement instanceof HTMLInputElement) {
-          if (t.schema.isBoolean(field)) {
-            inputElement.value = value;
-            inputElement.checked = Boolean(value);
-          } else {
-            inputElement.value = value;
-          }
-        }
-      }
     };
 
     const attr: InputHTMLAttributesLike = {
       name: key,
-      autoComplete: "off",
-      onChange: (event: ChangeEvent<HTMLInputElement> | string | number) => {
-        if (typeof event === "string") {
-          // If the event is a string, it means it's a direct value change
-          set(event, false);
-          return;
-        }
-
-        if (typeof event === "number") {
-          // Some inputs might return number directly
-          set(event, false);
-          return;
-        }
-
-        if (t.schema.isBoolean(field)) {
-          if (event.target.value === "true") {
-            set(true, false);
-          } else if (event.target.value === "false") {
-            set(false, false);
-          } else if (event.target.value === "") {
-            set(undefined, false);
-          } else {
-            set(event.target.checked, false);
-          }
-        } else {
-          set(event.target.value, false);
-        }
-      },
     };
-
-    (attr as any)["data-path"] = path;
 
     if (options.id) {
       attr.id = `${options.id}-${key}`;
@@ -408,12 +342,6 @@ export class FormModel<T extends TObject> {
       if (field.minLength != null) {
         attr.minLength = Number(field.minLength);
       }
-    }
-
-    if (options.initialValues?.[name] != null) {
-      attr.defaultValue = this.valueToInputEntry(options.initialValues[name]);
-    } else if ("default" in field && field.default != null) {
-      attr.defaultValue = this.valueToInputEntry(field.default);
     }
 
     if (isRequired) {
@@ -462,6 +390,7 @@ export class FormModel<T extends TObject> {
         set,
         form: this,
         required,
+        initialValue: context.store[key],
         items: this.createProxyFromSchema(options, field, {
           parent: key,
           store: context.store,
@@ -478,6 +407,7 @@ export class FormModel<T extends TObject> {
         set,
         form: this,
         required,
+        initialValue: context.store[key],
         items: [], // <- will be populated dynamically in the UI
       } as ArrayInputField<any>;
     }
@@ -489,6 +419,7 @@ export class FormModel<T extends TObject> {
       set,
       form: this,
       required,
+      initialValue: context.store[key],
     };
   }
 
@@ -536,30 +467,6 @@ export class FormModel<T extends TObject> {
 
     return input; // fallback for other types
   }
-
-  protected valueToInputEntry(value: any): string | number | boolean {
-    if (value === null || value === undefined) {
-      return "";
-    }
-
-    if (typeof value === "boolean") {
-      return value;
-    }
-
-    if (typeof value === "number") {
-      return value;
-    }
-
-    if (typeof value === "string") {
-      return value;
-    }
-
-    if (value instanceof Date) {
-      return value.toISOString().slice(0, 16); // For datetime-local input
-    }
-
-    return value;
-  }
 }
 
 export type SchemaToInput<T extends TObject> = {
@@ -580,6 +487,7 @@ export type InputField<T extends TSchema> = T extends TObject
 export interface BaseInputField {
   path: string;
   required: boolean;
+  initialValue: any;
   props: InputHTMLAttributesLike;
   schema: TSchema;
   set: (value: any) => void;
@@ -601,16 +509,12 @@ export type InputHTMLAttributesLike = Pick<
   | "name"
   | "type"
   | "value"
-  | "defaultValue"
   | "required"
   | "maxLength"
   | "minLength"
   | "aria-label"
-  | "autoComplete"
 > & {
   value?: any;
-  defaultValue?: any;
-  onChange?: (event: any) => void;
 };
 
 export type FormCtrlOptions<T extends TObject> = {
@@ -624,7 +528,7 @@ export type FormCtrlOptions<T extends TObject> = {
    * Callback function to handle form submission.
    * This function will receive the parsed and validated form values.
    */
-  handler: (values: Static<T>, args: { form: HTMLFormElement }) => unknown;
+  handler: (values: Static<T>) => unknown;
 
   /**
    * Optional initial values for the form fields.
@@ -650,7 +554,7 @@ export type FormCtrlOptions<T extends TObject> = {
    */
   id?: string;
 
-  onError?: (error: Error, args: { form: HTMLFormElement }) => void;
+  onError?: (error: Error) => void;
 
   onChange?: (key: string, value: any, store: Record<string, any>) => void;
 

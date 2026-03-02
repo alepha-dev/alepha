@@ -88,11 +88,11 @@ const useArrayItems = (
   const alepha = useAlepha();
   const keyCounter = useRef(0);
 
-  // Initialize from defaultValue
+  // Initialize from initialValue
   const [items, setItemsState] = useState<ArrayItem[]>(() => {
-    const defaultValue = input?.props?.defaultValue;
-    if (Array.isArray(defaultValue)) {
-      return defaultValue.map((value) => ({
+    const initial = input?.initialValue;
+    if (Array.isArray(initial)) {
+      return initial.map((value) => ({
         key: keyCounter.current++,
         value,
       }));
@@ -126,46 +126,20 @@ const useArrayItems = (
     });
   }, []);
 
-  // Listen for form changes and reset events
+  // Listen for form changes
   useEffect(() => {
     if (!input?.form) return;
 
     const formId = input.form.id;
     const fieldPath = input.path;
 
-    const listeners = [
-      // Handle form reset
-      alepha.events.on("form:reset", (event) => {
-        if (event.id === formId) {
-          const defaultValue = input.props?.defaultValue;
-          keyCounter.current = 0;
-          if (Array.isArray(defaultValue)) {
-            setItemsState(
-              defaultValue.map((value) => ({
-                key: keyCounter.current++,
-                value,
-              })),
-            );
-          } else {
-            setItemsState([]);
-          }
-        }
-      }),
-
-      // Handle external value changes (e.g., programmatic updates)
-      alepha.events.on("form:change", (event) => {
-        if (event.id === formId && event.path === fieldPath) {
-          // Value was changed externally, sync our state
-          syncFromFormValue(event.value);
-        }
-      }),
-    ];
-
-    return () => {
-      for (const unsub of listeners) {
-        unsub();
+    const unsub = alepha.events.on("form:change", (event) => {
+      if (event.id === formId && event.path === fieldPath) {
+        syncFromFormValue(event.value);
       }
-    };
+    });
+
+    return unsub;
   }, [alepha, input, syncFromFormValue]);
 
   // Update form when items change
@@ -200,10 +174,10 @@ const createArrayItemInput = (
     path: `${parentInput.path}/${index}`,
     required: false,
     form: parentInput.form,
+    initialValue: value,
     props: {
       id: `${parentInput.props.id}-${index}`,
       name: `${parentInput.props.name}[${index}]`,
-      defaultValue: value,
     },
     set: onValueChange,
   };
@@ -228,10 +202,10 @@ const createArrayItemFieldInput = (
     path: `${parentInput.path}/${index}/${fieldName}`,
     required: itemSchema.required?.includes(fieldName) ?? false,
     form: parentInput.form,
+    initialValue: itemValue?.[fieldName],
     props: {
       id: `${parentInput.props.id}-${index}-${fieldName}`,
       name: `${parentInput.props.name}[${index}].${fieldName}`,
-      defaultValue: itemValue?.[fieldName],
     },
     set: (value: any) => onFieldChange(fieldName, value),
   };

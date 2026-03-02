@@ -21,7 +21,11 @@ import {
   type TextInputProps,
 } from "@mantine/core";
 import { TypeBoxError } from "alepha";
-import { type BaseInputField, useFormState } from "alepha/react/form";
+import {
+  type BaseInputField,
+  useFieldValue,
+  useFormState,
+} from "alepha/react/form";
 import type { ComponentType, ReactNode } from "react";
 
 export interface ControlProps {
@@ -49,6 +53,7 @@ export interface ControlProps {
 
 const Control = (props: ControlProps) => {
   const form = useFormState(props.input);
+  const [value, setValue] = useFieldValue(props.input);
   if (!props.input?.props) {
     return null;
   }
@@ -93,9 +98,9 @@ const Control = (props: ControlProps) => {
       <Input.Wrapper {...inputProps}>
         <Flex flex={1} mt={"calc(var(--mantine-spacing-xs) / 2)"}>
           <Custom
-            defaultValue={props.input.props.defaultValue}
-            onChange={(value) => {
-              props.input.set(value);
+            value={value}
+            onChange={(val) => {
+              setValue(val);
             }}
           />
         </Flex>
@@ -121,10 +126,10 @@ const Control = (props: ControlProps) => {
         <Flex mt={"calc(var(--mantine-spacing-xs) / 2)"}>
           <SegmentedControl
             disabled={disabled}
-            defaultValue={String(props.input.props.defaultValue)}
+            value={value != null ? String(value) : undefined}
             {...segmentedControlProps}
-            onChange={(value) => {
-              props.input.set(value);
+            onChange={(val) => {
+              setValue(val);
             }}
             data={data}
           />
@@ -143,7 +148,8 @@ const Control = (props: ControlProps) => {
         {...inputProps}
         id={id}
         leftSection={icon}
-        {...props.input.props}
+        value={value != null ? String(value) : ""}
+        onChange={(val) => setValue(val)}
         {...autocompleteProps}
       />
     );
@@ -159,13 +165,9 @@ const Control = (props: ControlProps) => {
         size={props.size}
         id={id}
         leftSection={icon}
-        defaultValue={
-          Array.isArray(props.input.props.defaultValue)
-            ? props.input.props.defaultValue
-            : []
-        }
-        onChange={(value) => {
-          props.input.set(value);
+        value={Array.isArray(value) ? value : []}
+        onChange={(val) => {
+          setValue(val);
         }}
         {...multiSelectProps}
       />
@@ -198,7 +200,8 @@ const Control = (props: ControlProps) => {
         id={id}
         leftSection={icon}
         data={data}
-        {...props.input.props}
+        value={value != null ? String(value) : null}
+        onChange={(val) => setValue(val)}
         {...selectProps}
       />
     );
@@ -220,8 +223,10 @@ const Control = (props: ControlProps) => {
         {...inputProps}
         id={id}
         color={"blue"}
-        defaultChecked={props.input.props.defaultValue}
-        {...props.input.props}
+        checked={Boolean(value)}
+        onChange={(event) => {
+          setValue(event.currentTarget.checked);
+        }}
         {...switchProps}
       />
     );
@@ -237,7 +242,8 @@ const Control = (props: ControlProps) => {
         {...inputProps}
         id={id}
         leftSection={icon}
-        {...props.input.props}
+        value={value ?? ""}
+        onChange={(ev) => setValue(ev.target.value)}
         {...passwordInputProps}
       />
     );
@@ -252,7 +258,8 @@ const Control = (props: ControlProps) => {
         {...inputProps}
         id={id}
         leftSection={icon}
-        {...props.input.props}
+        value={value ?? ""}
+        onChange={(ev) => setValue(ev.target.value)}
         {...textAreaProps}
       />
     );
@@ -266,7 +273,9 @@ const Control = (props: ControlProps) => {
       {...inputProps}
       id={id}
       leftSection={icon}
-      {...props.input.props}
+      type={props.input.props.type ?? "text"}
+      value={value ?? ""}
+      onChange={(ev) => setValue(ev.target.value)}
       {...textInputProps}
     />
   );
@@ -284,6 +293,6 @@ const capitalize = (str: string) => {
 };
 
 export type CustomControlProps = {
-  defaultValue: any;
+  value: any;
   onChange: (value: any) => void;
 };

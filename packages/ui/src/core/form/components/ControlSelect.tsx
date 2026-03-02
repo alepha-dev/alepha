@@ -15,7 +15,7 @@ import {
 } from "@mantine/core";
 import type { Async } from "alepha";
 import { useAction } from "alepha/react";
-import { useFormState } from "alepha/react/form";
+import { useFieldValue, useFormState } from "alepha/react/form";
 import { useEffect, useRef, useState } from "react";
 import { type GenericControlProps, parseInput } from "../utils/parseInput.ts";
 
@@ -97,6 +97,7 @@ export interface ControlSelectProps extends GenericControlProps {
  */
 const ControlSelect = (props: ControlSelectProps) => {
   const form = useFormState(props.input);
+  const [value, setValue] = useFieldValue(props.input);
   const { inputProps, id, icon } = parseInput(props, form);
 
   // Detect if schema is an array type
@@ -136,7 +137,7 @@ const ControlSelect = (props: ControlSelectProps) => {
     props.loader,
     props.loaderThreshold ?? 100,
     props.loaderDebounce ?? 300,
-    props.input.props?.defaultValue,
+    props.input.initialValue,
   );
 
   // Static data from enum (no loader)
@@ -181,16 +182,12 @@ const ControlSelect = (props: ControlSelectProps) => {
       <Input.Wrapper {...inputProps}>
         <Flex>
           <SegmentedControl
-            w={"100%"} // TODO: double-check, maybe some impacts
+            w={"100%"}
             disabled={inputProps.disabled}
-            defaultValue={
-              props.input.props.defaultValue != null
-                ? String(props.input.props.defaultValue)
-                : undefined
-            }
+            value={value != null ? String(value) : undefined}
             {...segmentedControlProps}
-            onChange={(value) => {
-              props.input.set(coerceValue(value));
+            onChange={(val) => {
+              setValue(coerceValue(val));
             }}
             data={segmentedData}
           />
@@ -231,16 +228,6 @@ const ControlSelect = (props: ControlSelectProps) => {
         }
       : {};
 
-  // Default values computed once
-  const defaultSingle =
-    props.input.props.defaultValue != null
-      ? String(props.input.props.defaultValue)
-      : undefined;
-
-  const defaultArray = Array.isArray(props.input.props.defaultValue)
-    ? props.input.props.defaultValue
-    : [];
-
   // region <TagsInput/> — creatable + array
   if (props.creatable && (isArray || props.tagsInputProps)) {
     const tagsInputExtraProps = props.tagsInputProps ?? {};
@@ -250,9 +237,9 @@ const ControlSelect = (props: ControlSelectProps) => {
         {...inputProps}
         {...sharedProps}
         {...longModeProps}
-        defaultValue={defaultArray}
-        onChange={(value) => {
-          props.input.set(value);
+        value={Array.isArray(value) ? value : []}
+        onChange={(val) => {
+          setValue(val);
         }}
         {...tagsInputExtraProps}
       />
@@ -269,9 +256,9 @@ const ControlSelect = (props: ControlSelectProps) => {
         {...inputProps}
         {...sharedProps}
         {...longModeProps}
-        defaultValue={defaultSingle}
-        onChange={(value) => {
-          props.input.set(coerceValue(value));
+        value={value != null ? String(value) : ""}
+        onChange={(val) => {
+          setValue(coerceValue(val));
         }}
         {...autocompleteExtraProps}
       />
@@ -289,9 +276,9 @@ const ControlSelect = (props: ControlSelectProps) => {
         {...inputProps}
         {...selectableProps}
         {...longModeProps}
-        defaultValue={defaultArray}
-        onChange={(value) => {
-          props.input.set(value);
+        value={Array.isArray(value) ? value : []}
+        onChange={(val) => {
+          setValue(val);
         }}
         {...multiSelectExtraProps}
       />
@@ -303,16 +290,15 @@ const ControlSelect = (props: ControlSelectProps) => {
   const selectExtraProps =
     typeof props.selectProps === "object" ? props.selectProps : {};
 
-  // Static mode: spread input.props for enum-based select
+  // Static mode
   if (mode === "static") {
     return (
       <Select
-        {...props.input.props}
         {...inputProps}
         {...selectableProps}
-        defaultValue={defaultSingle}
-        onChange={(value) => {
-          props.input.set(coerceValue(value));
+        value={value != null ? String(value) : null}
+        onChange={(val) => {
+          setValue(coerceValue(val));
         }}
         {...selectExtraProps}
       />
@@ -325,9 +311,9 @@ const ControlSelect = (props: ControlSelectProps) => {
       {...inputProps}
       {...selectableProps}
       {...longModeProps}
-      defaultValue={defaultSingle}
-      onChange={(value) => {
-        props.input.set(coerceValue(value));
+      value={value != null ? String(value) : null}
+      onChange={(val) => {
+        setValue(coerceValue(val));
       }}
       {...selectExtraProps}
     />

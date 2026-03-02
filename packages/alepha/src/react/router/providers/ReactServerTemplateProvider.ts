@@ -300,6 +300,7 @@ export class ReactServerTemplateProvider {
     >,
     options: {
       hydration?: boolean;
+      state?: ReactRouterState;
       onError?: (error: unknown) => void;
     } = {},
   ): ReadableStream<Uint8Array> {
@@ -308,7 +309,7 @@ export class ReactServerTemplateProvider {
 
     let headClosed = false;
     let bodyStarted = false;
-    let routerState: ReactRouterState | undefined;
+    let routerState: ReactRouterState | undefined = options.state;
 
     return new ReadableStream<Uint8Array>({
       start: async (controller) => {
@@ -469,6 +470,17 @@ export class ReactServerTemplateProvider {
     );
 
     controller.enqueue(slots.ROOT_CLOSE);
+
+    if (routerState) {
+      controller.enqueue(slots.HYDRATION_PREFIX);
+      controller.enqueue(
+        encoder.encode(
+          this.safeJsonSerialize(this.buildHydrationData(routerState)),
+        ),
+      );
+      controller.enqueue(slots.HYDRATION_SUFFIX);
+    }
+
     controller.enqueue(slots.BODY_HTML_CLOSE);
   }
 

@@ -5,9 +5,7 @@ import {
   Slider,
   type SliderProps,
 } from "@mantine/core";
-import { useEvents } from "alepha/react";
-import { useFormState } from "alepha/react/form";
-import { useRef, useState } from "react";
+import { useFieldValue, useFormState } from "alepha/react/form";
 import { type GenericControlProps, parseInput } from "../utils/parseInput.ts";
 
 export interface ControlNumberProps extends GenericControlProps {
@@ -20,31 +18,12 @@ export interface ControlNumberProps extends GenericControlProps {
  */
 const ControlNumber = (props: ControlNumberProps) => {
   const form = useFormState(props.input);
+  const [value, setValue] = useFieldValue(props.input);
   const { inputProps, id, icon } = parseInput(props, form);
-  const ref = useRef<HTMLInputElement | null>(null);
-
-  // HTML Reset doesn't trigger on <NumberInput /> so we handle it manually
-
-  const [value, setValue] = useState<number | undefined>(
-    props.input.props.defaultValue,
-  );
-
-  useEvents(
-    {
-      "form:reset": (event) => {
-        if (event.id === props.input?.form.id && ref.current) {
-          setValue(props.input.props.defaultValue);
-        }
-      },
-    },
-    [props.input],
-  );
 
   if (!props.input?.props) {
     return null;
   }
-
-  const { type, ...inputPropsWithoutType } = props.input.props;
 
   if (props.sliderProps) {
     const min = props.sliderProps.min ?? inputProps.minimum ?? 0;
@@ -59,18 +38,13 @@ const ControlNumber = (props: ControlNumberProps) => {
         >
           <Slider
             {...inputProps}
-            ref={ref}
             id={id}
-            {...inputPropsWithoutType}
             {...props.sliderProps}
-            value={value}
+            value={value ?? 0}
             min={min}
             max={max}
             label={() => value}
-            onChange={(val) => {
-              setValue(val);
-              props.input.set(val);
-            }}
+            onChange={(val) => setValue(val)}
           />
         </div>
       </Input.Wrapper>
@@ -80,16 +54,13 @@ const ControlNumber = (props: ControlNumberProps) => {
   return (
     <NumberInput
       {...inputProps}
-      ref={ref}
       id={id}
       leftSection={icon}
-      {...inputPropsWithoutType}
       {...props.numberInputProps}
       value={value ?? ""}
       onChange={(val) => {
         const newValue = val !== null ? Number(val) : undefined;
         setValue(newValue);
-        props.input.set(newValue);
       }}
     />
   );
