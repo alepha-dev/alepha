@@ -4,12 +4,12 @@ import { StarterKit } from "@tiptap/starter-kit";
 import type React from "react";
 
 export interface TextEditorProps {
-  defaultValue?: string;
+  value?: string;
   onChange?: (value: string) => void;
 }
 
 const TextEditor: React.FC<TextEditorProps> = (props) => {
-  const { defaultValue = "", onChange } = props;
+  const { value: defaultValue = "", onChange } = props;
 
   const editor = useEditor({
     extensions: [StarterKit],
