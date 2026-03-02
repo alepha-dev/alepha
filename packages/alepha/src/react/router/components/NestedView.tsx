@@ -2,7 +2,6 @@ import { ErrorBoundary, useAlepha, useEvents } from "alepha/react";
 import { memo, type ReactNode, use, useRef, useState } from "react";
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import { Redirection } from "../errors/Redirection.ts";
-import { useRouter } from "../hooks/useRouter.ts";
 import { useRouterState } from "../hooks/useRouterState.ts";
 import type { PageAnimation } from "../primitives/$page.ts";
 import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
@@ -40,7 +39,6 @@ const NestedView = (props: NestedViewProps) => {
   const onError = routerLayer?.onError;
   const state = useRouterState();
   const alepha = useAlepha();
-  const router = useRouter();
   const [boundaryKey, setBoundaryKey] = useState(0);
 
   const [view, setView] = useState<ReactNode | undefined>(
@@ -156,19 +154,9 @@ const NestedView = (props: NestedViewProps) => {
     );
   }
 
-  const fallback = (rawError: Error, resetBoundary: () => void) => {
-    const error =
-      rawError instanceof Error ? rawError : new Error(String(rawError));
-    const isLoaderError = !!state.layers[index]?.error;
-    const retry = isLoaderError
-      ? () => router.reload()
-      : () => {
-          setBoundaryKey((k) => k + 1);
-          resetBoundary();
-        };
-
+  const fallback = (error: Error) => {
     const result = onError?.(error, state) ?? (
-      <ErrorViewer error={error} alepha={alepha} onRetry={retry} />
+      <ErrorViewer error={error} alepha={alepha} />
     );
     if (result instanceof Redirection) {
       return "Redirection inside ErrorBoundary is not allowed.";

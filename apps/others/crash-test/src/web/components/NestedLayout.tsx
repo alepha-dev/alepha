@@ -1,9 +1,6 @@
-import { NestedView, useRouter } from "alepha/react/router";
-import type { AppRouter } from "../AppRouter.ts";
+import { Link, NestedView } from "alepha/react/router";
 
 const NestedLayout = () => {
-  const router = useRouter<AppRouter>();
-
   return (
     <div
       style={{
@@ -17,9 +14,8 @@ const NestedLayout = () => {
         This parent renders fine. The child below crashes.
       </p>
       <nav style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-        <button
-          type="button"
-          onClick={() => router.push("nestedChildOk")}
+        <Link
+          href="/nested"
           style={{
             padding: "6px 12px",
             border: "1px solid #444",
@@ -27,13 +23,13 @@ const NestedLayout = () => {
             background: "#2a2a2a",
             color: "#eee",
             cursor: "pointer",
+            textDecoration: "none",
           }}
         >
           OK child
-        </button>
-        <button
-          type="button"
-          onClick={() => router.push("nestedChildRenderError")}
+        </Link>
+        <Link
+          href="/nested/render-error"
           style={{
             padding: "6px 12px",
             border: "1px solid #444",
@@ -41,13 +37,13 @@ const NestedLayout = () => {
             background: "#2a2a2a",
             color: "#eee",
             cursor: "pointer",
+            textDecoration: "none",
           }}
         >
           Child render error
-        </button>
-        <button
-          type="button"
-          onClick={() => router.push("nestedChildLoaderError")}
+        </Link>
+        <Link
+          href="/nested/loader-error"
           style={{
             padding: "6px 12px",
             border: "1px solid #444",
@@ -55,10 +51,11 @@ const NestedLayout = () => {
             background: "#2a2a2a",
             color: "#eee",
             cursor: "pointer",
+            textDecoration: "none",
           }}
         >
           Child loader error
-        </button>
+        </Link>
       </nav>
       <div
         style={{
