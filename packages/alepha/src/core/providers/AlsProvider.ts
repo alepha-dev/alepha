@@ -27,6 +27,8 @@ export class AlsProvider {
 
     const parent = this.als.getStore() ?? undefined;
 
+    // Intentional mutation: set defaults on the input object to avoid
+    // allocating an intermediate copy. Callers always pass a fresh literal.
     data.registry ??= new Map();
     data.context ??= this.createContextId();
 

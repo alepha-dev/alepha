@@ -238,6 +238,10 @@ export class EventManager {
     }
 
     const catchErrors = options.catch ?? false;
+
+    // Logger is captured at compile time. Since compilation happens after
+    // start() (on first emit), the logger is already fully configured and
+    // won't change afterwards — this is safe.
     const log = this.log;
 
     // Once the first async hook is encountered, all remaining hooks

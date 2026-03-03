@@ -609,6 +609,7 @@ export class Alepha {
     this.locked = false;
     this.configured = false;
     this.started = false;
+    this.ready = false;
   }
 
   /**
@@ -949,13 +950,20 @@ export class Alepha {
 
     const config = this.codec.validate(schema, this.env) as Record<string, any>;
 
-    for (const key in config) {
-      if (typeof config[key] === "string") {
+    // Resolve $KEY references. Multiple passes handle transitive references
+    // where a replacement introduces a new $KEY that was already checked
+    // (e.g. C=$B, B=$A, A=value — single pass leaves C as "$A").
+    let changed = true;
+    for (let pass = 0; changed && pass < 10; pass++) {
+      changed = false;
+      for (const key in config) {
+        if (typeof config[key] !== "string") continue;
         for (const env in config) {
-          config[key] = (config[key] as string).replaceAll(
-            `$${env}`,
-            String(config[env] ?? ""),
-          );
+          const before = config[key] as string;
+          config[key] = before.replaceAll(`$${env}`, String(config[env] ?? ""));
+          if (config[key] !== before) {
+            changed = true;
+          }
         }
       }
     }

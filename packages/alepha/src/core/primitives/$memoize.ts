@@ -32,19 +32,31 @@ export const $memoize = (options?: MemoizeOptions): Middleware => {
           return store.get(key);
         }
 
-        const result = await next(...args);
+        // Store the promise immediately to deduplicate concurrent calls
+        // for the same key (thundering herd prevention).
+        const promise = next(...args);
+        store.set(key, promise);
 
-        // Evict oldest if at capacity
-        if (store.size >= maxSize) {
-          const firstKey = store.keys().next().value;
-          if (firstKey !== undefined) {
-            store.delete(firstKey);
+        try {
+          const result = await promise;
+
+          // Replace the promise with the resolved value
+          store.set(key, result);
+
+          // Evict oldest if at capacity
+          if (store.size > maxSize) {
+            const firstKey = store.keys().next().value;
+            if (firstKey !== undefined) {
+              store.delete(firstKey);
+            }
           }
+
+          return result;
+        } catch (error) {
+          // Don't cache failed results
+          store.delete(key);
+          throw error;
         }
-
-        store.set(key, result);
-
-        return result;
       };
     },
   });

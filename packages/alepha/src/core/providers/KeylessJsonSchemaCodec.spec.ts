@@ -836,12 +836,9 @@ describe("KeylessJsonSchemaCodec", () => {
       const alepha = Alepha.create();
       const codec = alepha.inject(KeylessJsonSchemaCodec);
 
-      // Configure all options
+      // Configure options
       codec.configure({
         useFunctionCompilation: false,
-        maxArrayLength: 100,
-        maxStringLength: 1000,
-        maxDepth: 10,
       });
 
       // Test that configuration works by encoding/decoding

@@ -209,6 +209,42 @@ describe("SchemaValidator", () => {
       expect(result.tags).toEqual(["tag1", "tag2"]);
     });
 
+    test("should unwrap optional arrays and preprocess items", async ({
+      expect,
+    }) => {
+      const alepha = Alepha.create();
+      const validator = alepha.inject(SchemaValidator);
+
+      const schema = t.object({
+        tags: t.optional(t.array(t.text({ trim: true }))),
+      });
+
+      const data = {
+        tags: ["  tag1  ", "  tag2  "],
+      };
+
+      const result = validator.validate(schema, data);
+      expect(result.tags).toEqual(["tag1", "tag2"]);
+    });
+
+    test("should unwrap nullable arrays and preprocess items", async ({
+      expect,
+    }) => {
+      const alepha = Alepha.create();
+      const validator = alepha.inject(SchemaValidator);
+
+      const schema = t.object({
+        tags: t.union([t.array(t.text({ trim: true })), t.null()]),
+      });
+
+      const data = {
+        tags: ["  tag1  ", "  tag2  "],
+      };
+
+      const result = validator.validate(schema, data);
+      expect(result.tags).toEqual(["tag1", "tag2"]);
+    });
+
     test("should delete undefined values when option is enabled", async ({
       expect,
     }) => {

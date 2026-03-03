@@ -84,6 +84,26 @@ describe("Alepha#parseEnv", () => {
     expect(env.URL).toBe("$host");
   });
 
+  it("should resolve transitive $KEY references", async () => {
+    const schema = t.object({
+      A: t.optional(t.text()),
+      B: t.optional(t.text()),
+      C: t.optional(t.text()),
+    });
+
+    const alepha = Alepha.create({
+      env: {
+        A: "value",
+        B: "$A",
+        C: "$B",
+      },
+    });
+
+    const env = alepha.parseEnv(schema);
+    expect(env.B).toBe("value");
+    expect(env.C).toBe("value");
+  });
+
   it("should return cached result for same schema", async () => {
     const schema = t.object({
       FOO: t.optional(t.text()),

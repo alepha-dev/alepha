@@ -67,6 +67,15 @@ export class SchemaValidator {
       return undefined;
     }
 
+    // Unwrap optional/union to access the inner type schema (e.g. array items, object properties).
+    // Must happen after the null check above which needs the original schema for nullability.
+    if (!schema.type && schema.anyOf) {
+      schema =
+        schema.anyOf.find(
+          (s: any) => s.type !== "null" && s.type !== "undefined",
+        ) || schema;
+    }
+
     if (Array.isArray(value)) {
       return value.map((it) => this.beforeParse(schema.items, it, options));
     }

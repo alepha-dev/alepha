@@ -1,5 +1,4 @@
 import type { TArray, TObject, TSchema, TUnion } from "typebox";
-import { AlephaError } from "../errors/AlephaError.ts";
 import { $hook } from "../primitives/$hook.ts";
 import { SchemaCodec } from "./SchemaCodec.ts";
 import { type Static, t } from "./TypeProvider.ts";
@@ -18,9 +17,6 @@ import { type Static, t } from "./TypeProvider.ts";
 //   Keyless: ["Alice",30,true]                        (17 bytes)
 // =============================================================================
 
-// Security: Keys that could enable prototype pollution attacks
-const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
-
 export interface KeylessCodec<T = any> {
   encode: (value: T) => string;
   decode: (str: string) => T;
@@ -34,30 +30,6 @@ export interface KeylessCodecOptions {
    * @default Auto-detected: false in browser (CSP compatibility), true on server
    */
   useFunctionCompilation?: boolean;
-
-  /**
-   * Maximum allowed array length during encoding/decoding.
-   * Prevents DoS attacks via large arrays.
-   *
-   * @default 10000
-   */
-  maxArrayLength?: number;
-
-  /**
-   * Maximum allowed string length during encoding/decoding.
-   * Prevents DoS attacks via large strings.
-   *
-   * @default 1000000 (1MB)
-   */
-  maxStringLength?: number;
-
-  /**
-   * Maximum recursion depth for nested objects.
-   * Prevents stack overflow attacks.
-   *
-   * @default 50
-   */
-  maxDepth?: number;
 }
 
 /**
@@ -71,12 +43,7 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
   protected readonly textEncoder = new TextEncoder();
   protected readonly textDecoder = new TextDecoder();
   protected varCounter = 0;
-
-  // Options with defaults
   protected useFunctionCompilation = true;
-  protected maxArrayLength = 10000;
-  protected maxStringLength = 1000000;
-  protected maxDepth = 50;
 
   /**
    * Configure codec options.
@@ -85,15 +52,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     if (options.useFunctionCompilation !== undefined) {
       this.useFunctionCompilation = options.useFunctionCompilation;
       this.cache.clear(); // Clear cache when compilation mode changes
-    }
-    if (options.maxArrayLength !== undefined) {
-      this.maxArrayLength = options.maxArrayLength;
-    }
-    if (options.maxStringLength !== undefined) {
-      this.maxStringLength = options.maxStringLength;
-    }
-    if (options.maxDepth !== undefined) {
-      this.maxDepth = options.maxDepth;
     }
     return this;
   }
@@ -152,10 +110,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
     return value as T;
   }
 
-  // ===========================================================================
-  // Security Validation
-  // ===========================================================================
-
   /**
    * Test if `new Function()` is available (not blocked by CSP).
    */
@@ -165,72 +119,6 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return fn() === true;
     } catch {
       return false;
-    }
-  }
-
-  /**
-   * Validate schema keys for prototype pollution.
-   * Uses a visited set to avoid infinite recursion on recursive schemas.
-   */
-  protected validateSchemaKeys(
-    schema: TSchema,
-    depth = 0,
-    visited = new Set<TSchema>(),
-  ): void {
-    // Avoid infinite recursion on recursive schemas
-    if (visited.has(schema)) {
-      return;
-    }
-    visited.add(schema);
-
-    if (depth > this.maxDepth) {
-      throw new AlephaError(
-        `Schema depth exceeds maximum allowed (${this.maxDepth})`,
-      );
-    }
-
-    if (t.schema.isObject(schema)) {
-      const objSchema = schema as TObject;
-      const props = objSchema.properties as Record<string, TSchema>;
-
-      for (const key of Object.keys(props)) {
-        if (UNSAFE_KEYS.has(key)) {
-          throw new AlephaError(
-            `Unsafe schema key "${key}" detected. This key is blocked to prevent prototype pollution.`,
-          );
-        }
-        // Depth increases for object properties
-        this.validateSchemaKeys(props[key], depth + 1, visited);
-      }
-    } else if (t.schema.isArray(schema)) {
-      const arrSchema = schema as TArray;
-      // Depth increases for array items
-      this.validateSchemaKeys(arrSchema.items, depth + 1, visited);
-    } else if (t.schema.isUnion(schema) || t.schema.isOptional(schema)) {
-      // Optional/union wrappers don't increase depth - they're type modifiers
-      this.validateSchemaKeys(this.unwrap(schema), depth, visited);
-    }
-  }
-
-  /**
-   * Validate array length.
-   */
-  protected validateArrayLength(arr: unknown[]): void {
-    if (arr.length > this.maxArrayLength) {
-      throw new AlephaError(
-        `Array length (${arr.length}) exceeds maximum allowed (${this.maxArrayLength})`,
-      );
-    }
-  }
-
-  /**
-   * Validate string length.
-   */
-  protected validateStringLength(str: string): void {
-    if (str.length > this.maxStringLength) {
-      throw new AlephaError(
-        `String length (${str.length}) exceeds maximum allowed (${this.maxStringLength})`,
-      );
     }
   }
 
@@ -493,12 +381,14 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       for (const { key, isOpt, isNullable, inner } of this.getObjectFields(
         schema as TObject,
       )) {
-        const innerEnc = this.genEnc(inner, `${ve}.${key}`);
+        const sk = JSON.stringify(key);
+        const access = `${ve}[${sk}]`;
+        const innerEnc = this.genEnc(inner, access);
 
         if (isOpt) {
-          parts.push(`${ve}.${key}!==undefined?${innerEnc}:null`);
+          parts.push(`${access}!==undefined?${innerEnc}:null`);
         } else if (isNullable) {
-          parts.push(`${ve}.${key}!==null?${innerEnc}:null`);
+          parts.push(`${access}!==null?${innerEnc}:null`);
         } else {
           parts.push(innerEnc);
         }
@@ -557,32 +447,35 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       );
 
       if (simple) {
-        const fieldExprs = fields.map(({ key }) => `${key}:a[i++]`);
+        const fieldExprs = fields.map(
+          ({ key }) => `${JSON.stringify(key)}:a[i++]`,
+        );
         return { code: "", result: `{${fieldExprs.join(",")}}` };
       }
 
       let code = `const ${v}={};`;
       for (const { key, isOpt, isNullable, inner } of fields) {
+        const sk = JSON.stringify(key);
         if (isOpt) {
           const nested = this.genDecFromValue(inner, "t");
-          code += `{const t=a[i++];if(t!==null){${v}.${key}=${nested};}}`;
+          code += `{const t=a[i++];if(t!==null){${v}[${sk}]=${nested};}}`;
         } else if (isNullable) {
           const nested = this.genDecFromValue(inner, "t");
-          code += `{const t=a[i++];if(t===null){${v}.${key}=null;}else{${v}.${key}=${nested};}}`;
+          code += `{const t=a[i++];if(t===null){${v}[${sk}]=null;}else{${v}[${sk}]=${nested};}}`;
         } else if (t.schema.isObject(inner)) {
           const nested = this.genDecFromValue(inner, "a[i++]");
-          code += `${v}.${key}=${nested};`;
+          code += `${v}[${sk}]=${nested};`;
         } else if (t.schema.isArray(inner)) {
           // Handle arrays - check if items need transformation
           const arrSchema = inner as TArray;
           if (t.schema.isObject(arrSchema.items)) {
             const itemTransform = this.genDecFromValue(arrSchema.items, "e");
-            code += `${v}.${key}=a[i++].map(e=>${itemTransform});`;
+            code += `${v}[${sk}]=a[i++].map(e=>${itemTransform});`;
           } else {
-            code += `${v}.${key}=a[i++];`;
+            code += `${v}[${sk}]=a[i++];`;
           }
         } else {
-          code += `${v}.${key}=a[i++];`;
+          code += `${v}[${sk}]=a[i++];`;
         }
       }
 
@@ -620,13 +513,14 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       const fields = keys.map((k, idx) => {
         const inner = this.unwrap(props[k]);
         const innerExpr = `${v}[${idx}]`;
+        const sk = JSON.stringify(k);
         if (t.schema.isObject(inner)) {
-          return `${k}:${this.genDecFromValue(inner, innerExpr)}`;
+          return `${sk}:${this.genDecFromValue(inner, innerExpr)}`;
         }
         if (t.schema.isBigInt(inner)) {
-          return `${k}:BigInt(${innerExpr}.slice(0,-1))`;
+          return `${sk}:BigInt(${innerExpr}.slice(0,-1))`;
         }
-        return `${k}:${innerExpr}`;
+        return `${sk}:${innerExpr}`;
       });
       return `((${v}=${expr})=>({${fields.join(",")}}))()`;
     }
