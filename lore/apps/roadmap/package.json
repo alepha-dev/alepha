@@ -27,7 +27,7 @@
     "@mantine/modals": "^8.3.15",
     "@mantine/notifications": "^8.3.15",
     "@mantine/tiptap": "^8.3.15",
-    "@tabler/icons-react": "^3.37.1",
+    "@tabler/icons-react": "^3.38.0",
     "@tiptap/core": "^3.20.0",
     "@tiptap/extension-link": "^3.20.0",
     "@tiptap/pm": "^3.20.0",
@@ -35,26 +35,26 @@
     "@tiptap/starter-kit": "^3.20.0",
     "alepha": "^0.18.2",
     "animate.css": "^4.1.1",
-    "framer-motion": "^12.34.3",
+    "framer-motion": "^12.34.5",
     "highlight.js": "^11.11.1",
     "konva": "^10.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-is": "^19.2.4",
-    "react-konva": "^19.2.2",
+    "react-konva": "^19.2.3",
     "recharts": "^3.7.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
-    "@types/node": "^25.3.0",
+    "@types/node": "^25.3.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "better-sqlite3": "^12.6.2",
     "drizzle-kit": "^0.31.9",
     "typescript": "^5.9.3",
-    "vercel": "^50.22.1",
+    "vercel": "^50.25.6",
     "vite": "^7.3.1",
     "vitest": "^4.0.18",
-    "wrangler": "^4.67.0"
+    "wrangler": "^4.69.0"
   }
 }
