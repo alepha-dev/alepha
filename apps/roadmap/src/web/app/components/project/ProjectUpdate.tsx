@@ -1,6 +1,6 @@
-import { ActionButton, Control, Flex } from "@alepha/ui";
+import { TypeForm } from "@alepha/ui";
 import { Card } from "@mantine/core";
-import { IconDeviceFloppy, IconTag } from "@tabler/icons-react";
+import { IconTag } from "@tabler/icons-react";
 import { t } from "alepha";
 import { useAlepha, useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";
@@ -26,11 +26,23 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
     schema: t.object({
       title: t.optional(
         t.string({
+          title: String(tr("project.create.name")),
           minLength: 3,
           maxLength: 24,
         }),
       ),
-      public: t.optional(t.boolean()),
+      public: t.optional(
+        t.boolean({
+          title: String(tr("project.create.public")),
+          description: String(tr("project.create.public.helper")),
+        }),
+      ),
+      whiteboard: t.optional(
+        t.boolean({
+          title: String(tr("project.settings.whiteboard")),
+          description: String(tr("project.settings.whiteboard.helper")),
+        }),
+      ),
     }),
     handler: async (values) => {
       const project = await projectApi.updateProjectById({
@@ -50,25 +62,22 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
 
   return (
     <Card radius={0} withBorder className={"shadow"} bg={theme.colors.card}>
-      <form {...form.props}>
-        <Flex direction={"column"} gap={"xl"}>
-          <Control
-            label={tr("project.create.name")}
-            icon={<IconTag />}
-            input={form.input.title}
-          />
-          <Control
-            input={form.input.public}
-            label={tr("project.create.public")}
-            description={tr("project.create.public.helper")}
-          />
-          <Flex>
-            <ActionButton leftSection={<IconDeviceFloppy />} form={form}>
-              {tr("project.update.submit")}
-            </ActionButton>
-          </Flex>
-        </Flex>
-      </form>
+      <TypeForm
+        columns={{
+          base: 1,
+          md: 2,
+          xl: 2,
+        }}
+        form={form}
+        fieldControlProps={{
+          title: {
+            icon: <IconTag />,
+          },
+        }}
+        submitButtonProps={{
+          children: tr("project.update.submit"),
+        }}
+      />
     </Card>
   );
 };

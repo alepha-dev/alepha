@@ -383,7 +383,13 @@ export class ReactServerProvider {
 
       this.log.trace("Page streaming started (early head optimization)");
       route.onServerResponse?.(serverRequest);
-      reply.body = htmlStream;
+      reply.body = htmlStream.pipeThrough(
+        new TransformStream({
+          flush: () => {
+            this.log.info("Page streaming completed", { name: route.name });
+          },
+        }),
+      );
     };
   }
 

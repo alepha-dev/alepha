@@ -4,7 +4,6 @@ import {
   IconDeviceFloppy,
   IconFileText,
   IconListCheck,
-  IconPaperclip,
   IconPlus,
   IconTag,
   IconTent,
@@ -24,7 +23,6 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { kanbanProjectAtom } from "@/web/app/atoms/kanbanProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import TextEditor from "../../shared/TextEditor.tsx";
-import TaskAttachments from "./TaskAttachments.tsx";
 import TaskCreateObjectives from "./TaskCreateObjectives.tsx";
 
 export interface TaskCreateProps {
@@ -218,13 +216,7 @@ const TaskCreate = (props: TaskCreateProps) => {
           icon={<IconListCheck />}
         />
 
-        <Control
-          label={tr("task.create.attachments")}
-          description={tr("task.create.attachments.helper")}
-          custom={TaskAttachments}
-          input={form.input.attachments}
-          icon={<IconPaperclip />}
-        />
+        <br />
 
         <Flex>
           {update ? (

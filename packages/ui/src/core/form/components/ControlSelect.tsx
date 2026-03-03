@@ -180,11 +180,10 @@ const ControlSelect = (props: ControlSelectProps) => {
 
     return (
       <Input.Wrapper {...inputProps}>
-        <Flex>
+        <Flex my={"calc(var(--mantine-spacing-xs) / 2)"}>
           <SegmentedControl
-            w={"100%"}
             disabled={inputProps.disabled}
-            value={value != null ? String(value) : undefined}
+            value={value != null ? String(value) : ""}
             {...segmentedControlProps}
             onChange={(val) => {
               setValue(coerceValue(val));
@@ -203,13 +202,6 @@ const ControlSelect = (props: ControlSelectProps) => {
     id,
     leftSection: loading ? <Loader color={"gray"} size={10} /> : icon,
     data,
-    // TODO: set in $atom ?
-    inputWrapperOrder: ["label", "input", "description", "error"] as (
-      | "input"
-      | "label"
-      | "description"
-      | "error"
-    )[],
   };
 
   // Select and MultiSelect: searchable + hide default chevron
@@ -350,30 +342,32 @@ const useAsyncLoader = (
         }
 
         setLoading(true);
-        const result = await loader("");
-        const isShort = result.length <= threshold;
-        setMode(isShort ? "short" : "long");
-        cache.current.set("", result);
-        setData(result);
+        try {
+          const result = await loader("");
+          const isShort = result.length <= threshold;
+          setMode(isShort ? "short" : "long");
+          cache.current.set("", result);
+          setData(result);
 
-        // In long mode, resolve default value label before clearing loading
-        if (!isShort && defaultValue != null && String(defaultValue) !== "") {
-          const resolved = await loader("", [String(defaultValue)]);
-          if (resolved.length > 0) {
-            setData((prev) => {
-              const existing = new Set(
-                prev.map((d) => (typeof d === "string" ? d : d.value)),
-              );
-              const newItems = resolved.filter((r) => {
-                const val = typeof r === "string" ? r : r.value;
-                return !existing.has(val);
+          // In long mode, resolve default value label before clearing loading
+          if (!isShort && defaultValue != null && String(defaultValue) !== "") {
+            const resolved = await loader("", [String(defaultValue)]);
+            if (resolved.length > 0) {
+              setData((prev) => {
+                const existing = new Set(
+                  prev.map((d) => (typeof d === "string" ? d : d.value)),
+                );
+                const newItems = resolved.filter((r) => {
+                  const val = typeof r === "string" ? r : r.value;
+                  return !existing.has(val);
+                });
+                return [...prev, ...newItems];
               });
-              return [...prev, ...newItems];
-            });
+            }
           }
+        } finally {
+          setLoading(false);
         }
-
-        setLoading(false);
       },
     },
     [loader, threshold],
@@ -393,10 +387,13 @@ const useAsyncLoader = (
         }
 
         setLoading(true);
-        const result = await loader(text);
-        cache.current.set(text, result);
-        setData(result);
-        setLoading(false);
+        try {
+          const result = await loader(text);
+          cache.current.set(text, result);
+          setData(result);
+        } finally {
+          setLoading(false);
+        }
       },
     },
     [loader, mode, debounceMs],

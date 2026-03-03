@@ -103,7 +103,7 @@ const DataTable = <T extends object, Filters extends TObject>(
     typeof props.items !== "function" || !props.submitOnInit,
   );
 
-  const defaultSize = props.infinityScroll ? 100 : props.defaultSize || 10;
+  const defaultSize = props.defaultSize || (props.infinityScroll ? 100 : 10);
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(String(defaultSize));
   const [currentPage, setCurrentPage] = useState(0);

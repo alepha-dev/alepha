@@ -179,6 +179,17 @@ export abstract class Repository<T extends TObject> {
       throw this.handleError(error, "Custom query has failed");
     }
 
+    if (rows == null) {
+      return [];
+    }
+
+    if (!Array.isArray(rows)) {
+      throw new DbError(
+        "Invalid query result. Expected an array of rows, but got: " +
+          JSON.stringify(rows),
+      );
+    }
+
     return rows.map((it) => {
       return this.clean(
         this.mapRawFieldsToEntity(it),

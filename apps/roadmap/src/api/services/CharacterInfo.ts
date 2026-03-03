@@ -54,7 +54,7 @@ export class CharacterInfo {
   }
 
   getNextXpForLevel(xp: number): number {
-    return this.geGlobalMaxXpForLevel(this.getLevelByXp(xp)) - xp;
+    return this.getGlobalMaxXpForLevel(this.getLevelByXp(xp)) - xp;
   }
 
   getMaxXpForLevel(level: number): number {
@@ -65,7 +65,7 @@ export class CharacterInfo {
     return this.levels[index];
   }
 
-  geGlobalMaxXpForLevel(level: number): number {
+  getGlobalMaxXpForLevel(level: number): number {
     const index = level - 1;
     if (index < 0 || index >= this.levels.length) {
       throw new Error(`Invalid level: ${level}`);
@@ -81,6 +81,6 @@ export class CharacterInfo {
     if (level === 1) {
       return xp;
     }
-    return xp - this.geGlobalMaxXpForLevel(level - 1);
+    return xp - this.getGlobalMaxXpForLevel(level - 1);
   }
 }

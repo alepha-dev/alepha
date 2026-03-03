@@ -88,6 +88,16 @@ export const useFormState = <
       );
     }
 
+    if (hasDirty) {
+      listeners.push(
+        alepha.events.on("form:reset", (event) => {
+          if (event.id === form.id) {
+            setDirty(false);
+          }
+        }),
+      );
+    }
+
     if (hasErrors) {
       listeners.push(
         alepha.events.on("form:submit:error", (event) => {

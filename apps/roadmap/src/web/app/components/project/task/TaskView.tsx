@@ -97,10 +97,11 @@ const TaskView = (props: TaskViewProps) => {
         return;
       }
 
-      await taskApi.abandonTask({
+      const updatedTask = await taskApi.abandonTask({
         params: { id: task.id },
       });
 
+      updateTask(updatedTask);
       alepha.store.set(
         currentAssignedTasksAtom,
         (alepha.store.get(currentAssignedTasksAtom) ?? []).filter(
@@ -382,9 +383,11 @@ const TaskView = (props: TaskViewProps) => {
                       task.objectives.some((o) => !o.completed)
                     }
                     onClick={async () => {
-                      const { character } = await taskApi.completeTask({
-                        params: { id: task.id },
-                      });
+                      const { character, ...updatedTask } =
+                        await taskApi.completeTask({
+                          params: { id: task.id },
+                        });
+                      updateTask(updatedTask);
                       alepha.store.set(currentProjectCharacterAtom, character);
                       alepha.store.set(
                         currentAssignedTasksAtom,

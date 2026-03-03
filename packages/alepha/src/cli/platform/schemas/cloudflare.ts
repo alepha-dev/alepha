@@ -153,6 +153,8 @@ export type CloudflareSecret = Static<typeof cloudflareSecretSchema>;
 
 export const createD1BodySchema = t.object({
   name: t.string(),
+  primary_location_hint: t.optional(t.string()),
+  jurisdiction: t.optional(t.string()),
 });
 
 export const createKVBodySchema = t.object({

@@ -112,6 +112,32 @@ export class FormModel<T extends TObject> {
     };
   }
 
+  public readonly setInitialValues = (values: Record<string, any>) => {
+    const decoded = this.alepha.codec.decode(
+      this.options.schema,
+      values,
+    ) as Record<string, any>;
+
+    for (const key in this.initialValues) {
+      delete (this.initialValues as Record<string, any>)[key];
+    }
+    Object.assign(this.initialValues, decoded);
+
+    for (const key in this.values) {
+      delete this.values[key];
+    }
+    Object.assign(this.values, { ...this.initialValues });
+
+    for (const [key, value] of Object.entries(this.values)) {
+      const path = `/${key.replaceAll(".", "/")}`;
+      this.alepha.events.emit(
+        "form:change",
+        { id: this.id, path, value },
+        { catch: true },
+      );
+    }
+  };
+
   public readonly reset = (event?: FormEventLike) => {
     event?.preventDefault?.();
     for (const key in this.values) {
@@ -126,6 +152,7 @@ export class FormModel<T extends TObject> {
         { catch: true },
       );
     }
+    this.alepha.events.emit("form:reset", { id: this.id }, { catch: true });
     this.options.onReset?.();
   };
 

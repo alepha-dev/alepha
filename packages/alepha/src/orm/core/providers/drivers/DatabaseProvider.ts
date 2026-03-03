@@ -219,6 +219,18 @@ export abstract class DatabaseProvider {
     schema: T,
   ): Promise<Array<Static<T>>> {
     const result = await this.execute(statement);
+
+    if (result == null) {
+      return [];
+    }
+
+    if (!Array.isArray(result)) {
+      this.log.error("Unexpected query result format", { result });
+      throw new DbError(
+        "Unexpected query result format, expected array of rows",
+      );
+    }
+
     return result.map((row) => this.alepha.codec.decode(schema, row));
   }
 

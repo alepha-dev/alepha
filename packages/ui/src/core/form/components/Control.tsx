@@ -390,7 +390,6 @@ const Control = (_props: ControlProps) => {
       id={id}
       leftSection={icon}
       type={getInputType()}
-      inputWrapperOrder={["label", "input", "description", "error"]}
       value={value ?? ""}
       onChange={(ev) => setValue(ev.target.value)}
       {...textInputProps}

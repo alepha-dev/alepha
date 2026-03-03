@@ -796,9 +796,12 @@ export class JobProvider {
         entries.push(entry);
       });
 
-      // Run initial sweeps to recover from previous crashes
-      await this.delayedDispatchSweep();
-      await this.recoverySweep();
+      // Run initial sweeps to recover from previous crashes.
+      // Skipped on serverless — cron triggers handle periodic sweeps instead.
+      if (!this.alepha.isServerless()) {
+        await this.delayedDispatchSweep();
+        await this.recoverySweep();
+      }
 
       // Periodic sweeps via cron (works in serverless environments like Cloudflare Workers)
       this.cronProvider.createCronJob(

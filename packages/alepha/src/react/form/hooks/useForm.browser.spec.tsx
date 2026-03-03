@@ -3,6 +3,7 @@ import { Alepha, t } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { describe, it } from "vitest";
 import { useFieldValue, useForm } from "../index.ts";
 
@@ -388,5 +389,63 @@ describe("useForm", () => {
         { name: "Bob", role: "Designer" },
       ],
     });
+  });
+
+  it("should update initialValues after save so reset uses new values", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+
+    const Form = () => {
+      const [saved, setSaved] = useState({ name: "original" });
+
+      const form = useForm({
+        id: "reset-test",
+        schema: t.object({
+          name: t.text(),
+        }),
+        initialValues: saved,
+        handler: async (values) => {
+          setSaved({ ...values });
+        },
+      });
+
+      return (
+        <form {...form.props} data-testid="reset-form">
+          <TestInput input={form.input.name} testId="reset-name" />
+          <button type="submit">Save</button>
+          <button type="reset">Reset</button>
+        </form>
+      );
+    };
+
+    await alepha.start();
+    const ui = renderWithAlepha(alepha, <Form />);
+
+    const input = () =>
+      (ui.getByTestId("reset-name") as HTMLInputElement).value;
+
+    // Initial value
+    expect(input()).toBe("original");
+
+    // Edit and save
+    fireEvent.change(ui.getByTestId("reset-name"), {
+      target: { value: "updated" },
+    });
+    fireEvent.submit(ui.getByText("Save"));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // After save, initialValues should be updated
+    // Edit again
+    fireEvent.change(ui.getByTestId("reset-name"), {
+      target: { value: "temporary" },
+    });
+    expect(input()).toBe("temporary");
+
+    // Reset should go back to saved value, not original
+    fireEvent.click(ui.getByText("Reset"));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(input()).toBe("updated");
   });
 });

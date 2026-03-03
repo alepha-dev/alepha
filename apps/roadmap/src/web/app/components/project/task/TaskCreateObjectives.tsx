@@ -41,7 +41,7 @@ const TaskCreateObjectives = (props: ObjectiveEditorProps) => {
   };
 
   return (
-    <Flex direction="column" gap={2}>
+    <Flex fill direction="column" gap={2}>
       {objectives.map((objective, index) => (
         <Flex key={index} gap="xs" align="center">
           <TextInput

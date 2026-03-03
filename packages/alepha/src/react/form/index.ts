@@ -19,6 +19,7 @@ declare module "alepha" {
     "form:submit:success": { id: string; values: Record<string, any> };
     "form:submit:error": { id: string; error: Error };
     "form:submit:end": { id: string };
+    "form:reset": { id: string };
   }
 }
 

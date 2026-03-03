@@ -708,35 +708,36 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
 
     // 5. Delete R2 bucket
-    const needsBucket = ctx.apps.some((a) => a.resources.hasBucket);
-    if (needsBucket) {
-      const name = ctx.naming.r2();
-      await run({
-        name: `delete r2 ${name}`,
-        handler: async () => {
-          try {
-            await this.api.deleteR2(name);
-          } catch (error: any) {
-            const msg = String(error.message || "");
-            if (
-              msg.includes("does not exist") ||
-              msg.includes("NoSuchBucket")
-            ) {
-              // Already gone, nothing to do
-            } else if (
-              msg.includes("not empty") ||
-              msg.includes("BucketNotEmpty")
-            ) {
-              this.log.warn(
-                `Bucket ${name} is not empty -- skipped. Empty it manually.`,
-              );
-            } else {
-              this.log.warn(`Failed to delete r2 ${name}: ${msg}`);
-            }
-          }
-        },
-      });
-    }
+    // TODO: empty bucket via S3-compatible API before deletion (needs native S3 client)
+    // const needsBucket = ctx.apps.some((a) => a.resources.hasBucket);
+    // if (needsBucket) {
+    //   const name = ctx.naming.r2();
+    //   await run({
+    //     name: `delete r2 ${name}`,
+    //     handler: async () => {
+    //       try {
+    //         await this.api.deleteR2(name);
+    //       } catch (error: any) {
+    //         const msg = String(error.message || "");
+    //         if (
+    //           msg.includes("does not exist") ||
+    //           msg.includes("NoSuchBucket")
+    //         ) {
+    //           // Already gone, nothing to do
+    //         } else if (
+    //           msg.includes("not empty") ||
+    //           msg.includes("BucketNotEmpty")
+    //         ) {
+    //           this.log.warn(
+    //             `Bucket ${name} is not empty -- skipped. Empty it manually.`,
+    //           );
+    //         } else {
+    //           this.log.warn(`Failed to delete r2 ${name}: ${msg}`);
+    //         }
+    //       }
+    //     },
+    //   });
+    // }
 
     // 6. Delete D1 or Hyperdrive
     const needsDB = ctx.apps.some((a) => a.resources.hasDatabase);

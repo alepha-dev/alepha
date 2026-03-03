@@ -1,7 +1,7 @@
 import { ActionButton, type ActionSubmitButtonProps } from "@alepha/ui";
 import { Card, Flex, type FlexProps, Grid } from "@mantine/core";
 import type { TObject } from "alepha";
-import type { FormModel } from "alepha/react/form";
+import { type FormModel, useFormState } from "alepha/react/form";
 import type { ReactNode } from "react";
 import Control, { type ControlProps } from "./Control.tsx";
 
@@ -95,6 +95,8 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
     fill = true,
     size,
   } = props;
+
+  const { dirty } = useFormState(form, ["dirty"]);
 
   const schema = props.schema || form.options.schema;
   if (!schema?.properties) {
@@ -194,12 +196,13 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
             <Flex></Flex>
             <Flex flex={1}></Flex>
             <Flex gap={"sm"}>
-              <ActionButton variant={"subtle"} type={"reset"}>
+              <ActionButton variant={"subtle"} type={"reset"} disabled={!dirty}>
                 Reset
               </ActionButton>
               <ActionButton
                 intent={"primary"}
                 form={form}
+                disabled={!dirty}
                 {...submitButtonProps}
               >
                 {submitButtonProps?.children ?? "Submit"}

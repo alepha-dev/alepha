@@ -1,6 +1,6 @@
 import type { TObject } from "alepha";
 import { useAlepha } from "alepha/react";
-import { useId, useMemo } from "react";
+import { useEffect, useId, useMemo, useRef } from "react";
 import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
 
 /**
@@ -37,11 +37,23 @@ export const useForm = <T extends TObject>(
 ): FormModel<T> => {
   const alepha = useAlepha();
   const formId = useId();
+  const initialValuesRef = useRef(options.initialValues);
 
-  return useMemo(() => {
+  const form = useMemo(() => {
     return alepha.inject(FormModel<T>, {
       lifetime: "transient",
       args: [options.id || formId, options],
     });
   }, deps);
+
+  useEffect(() => {
+    if (initialValuesRef.current !== options.initialValues) {
+      initialValuesRef.current = options.initialValues;
+      if (options.initialValues) {
+        form.setInitialValues(options.initialValues as Record<string, any>);
+      }
+    }
+  }, [options.initialValues]);
+
+  return form;
 };

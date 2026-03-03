@@ -118,13 +118,16 @@ export class CloudflareApi {
     );
   }
 
-  public async createD1(name: string): Promise<CloudflareD1> {
+  public async createD1(
+    name: string,
+    location = "weur", // TODO: move to config (or auto-resolve based on account info, or ask ?)
+  ): Promise<CloudflareD1> {
     const accountId = await this.resolveAccountId();
     return await this.fetch<CloudflareD1>(
       `/accounts/${accountId}/d1/database`,
       {
         method: "POST",
-        body: { name },
+        body: { name, primary_location_hint: location },
         bodySchema: createD1BodySchema,
         schema: cloudflareD1Schema,
       },

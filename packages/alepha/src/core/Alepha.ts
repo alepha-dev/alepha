@@ -236,9 +236,22 @@ export class Alepha {
   protected ready = false;
 
   /**
-   * A promise that resolves when the App has started.
+   * In-flight startup promise returned by boot().
+   *
+   * Concurrent callers of start() share this same promise. Cleared on
+   * success, failure, or stale-detection.
    */
-  protected starting?: PromiseWithResolvers<this>;
+  protected startPromise?: Promise<this>;
+
+  /**
+   * Timestamp (performance.now) when the current boot() began.
+   *
+   * In serverless environments (e.g. Cloudflare Workers), the runtime can
+   * kill an invocation mid-startup without running cleanup. The global
+   * Alepha instance persists, leaving startPromise as a never-settling
+   * promise. We detect this by comparing elapsed time against STARTUP_TIMEOUT.
+   */
+  protected startedAt = 0;
 
   /**
    * During the instantiation process, we keep a list of pending instantiations.
@@ -480,12 +493,27 @@ export class Alepha {
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
+   * Max time (ms) a boot() is allowed to run before being considered stale.
+   *
+   * In serverless runtimes (Cloudflare Workers, etc.) an invocation can be
+   * killed mid-startup. The global Alepha instance survives, but
+   * `startPromise` becomes a zombie that never settles.
+   * Any new invocation that sees an older-than-STARTUP_TIMEOUT promise
+   * discards it and boots fresh.
+   */
+  protected static readonly STARTUP_TIMEOUT = 30_000;
+
+  /**
    * Starts the App.
    *
    * - Lock any further changes to the container.
    * - Run "configure" hook for all services. Primitives will be processed.
    * - Run "start" hook for all services. Providers will connect/listen/...
    * - Run "ready" hook for all services. This is the point where the App is ready to serve requests.
+   *
+   * Concurrent callers share the same boot promise. If a previous boot was
+   * abandoned (serverless invocation killed), the stale promise is detected
+   * and a fresh boot is triggered.
    *
    * @return A promise that resolves when the App has started.
    */
@@ -495,19 +523,36 @@ export class Alepha {
       return this;
     }
 
-    // make sure that start is called only once
-    if (this.starting) {
-      this.log?.warn("App is already starting, waiting for it to finish...");
-      return this.starting.promise;
+    if (this.startPromise) {
+      const elapsed = performance.now() - this.startedAt;
+      if (elapsed > Alepha.STARTUP_TIMEOUT) {
+        this.log?.warn(
+          `Previous start attempt is stale (${Math.round(elapsed)}ms ago), resetting...`,
+        );
+        this.resetStartup();
+      } else {
+        this.log?.warn("App is already starting, waiting for it to finish...");
+        return this.startPromise;
+      }
     }
 
-    this.starting = Promise.withResolvers();
+    this.startedAt = performance.now();
+    this.startPromise = this.boot();
+    return this.startPromise;
+  }
+
+  /**
+   * Perform the actual startup sequence.
+   *
+   * Separated from start() so that start() remains a thin state-machine
+   * and boot() owns the real work. The promise returned here is stored as
+   * `startPromise` and shared with concurrent callers.
+   */
+  protected async boot(): Promise<this> {
+    const now = performance.now();
+    this.log?.info("Starting App...");
 
     try {
-      const now = performance.now();
-
-      this.log?.info("Starting App...");
-
       for (const [key] of this.substitutions.entries()) {
         this.inject(key);
       }
@@ -544,17 +589,26 @@ export class Alepha {
       );
 
       this.ready = true;
+      return this;
     } catch (error) {
-      this.starting.reject(error);
-      const promise = this.starting.promise;
-      this.starting = undefined;
-      return promise;
+      this.resetStartup();
+      throw error;
     }
+  }
 
-    this.starting.resolve(this);
-    this.starting = undefined;
-
-    return this;
+  /**
+   * Reset startup state so that a fresh boot() can be attempted.
+   *
+   * Called when:
+   * - boot() fails (error during configure/start/ready hooks)
+   * - a stale startPromise is detected (serverless invocation was killed)
+   */
+  protected resetStartup(): void {
+    this.startPromise = undefined;
+    this.startedAt = 0;
+    this.locked = false;
+    this.configured = false;
+    this.started = false;
   }
 
   /**
@@ -580,6 +634,8 @@ export class Alepha {
 
     this.started = false;
     this.ready = false;
+    this.startPromise = undefined;
+    this.startedAt = 0;
   }
 
   /**
