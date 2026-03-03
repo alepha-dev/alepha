@@ -96,6 +96,7 @@ export class BuildClientTask extends BuildTask {
             entryFileNames: "entry.[hash].js",
             chunkFileNames: "chunk.[hash].js",
             assetFileNames: "asset.[hash][extname]",
+            experimentalMinChunkSize: 5_000,
           },
         },
       },

@@ -126,6 +126,7 @@ export class BuildServerTask extends BuildTask {
             chunkFileNames: "[hash].js",
             assetFileNames: "[hash][extname]",
             format: "esm",
+            experimentalMinChunkSize: 10_000,
           },
         },
       },
