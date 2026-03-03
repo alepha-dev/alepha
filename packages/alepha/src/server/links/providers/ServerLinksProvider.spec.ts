@@ -366,6 +366,112 @@ describe("ServerLinksProvider", () => {
     });
   });
 
+  describe("schemas endpoint", () => {
+    it("should return schemas for requested actions", async ({ expect }) => {
+      class App {
+        ping = $action({
+          schema: {
+            body: t.object({ message: t.text() }),
+            response: t.object({ pong: t.boolean() }),
+          },
+          handler: () => ({ pong: true }),
+        });
+      }
+
+      const alepha = Alepha.create().with(App).with(ServerLinksProvider);
+      await alepha.start();
+
+      const res = await fetch(
+        `${alepha.inject(ServerProvider).hostname}/api/_links/schemas`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ actions: ["ping"] }),
+        },
+      );
+
+      const data = await res.json();
+
+      expect(data.ping).toBeDefined();
+      expect(data.ping.body).toBeDefined();
+      expect(data.ping.response).toBeDefined();
+      expect(JSON.parse(data.ping.body).type).toBe("object");
+      expect(JSON.parse(data.ping.response).type).toBe("object");
+    });
+
+    it("should return empty for unknown actions", async ({ expect }) => {
+      class App {
+        ping = $action({
+          schema: { response: t.text() },
+          handler: () => "pong",
+        });
+      }
+
+      const alepha = Alepha.create().with(App).with(ServerLinksProvider);
+      await alepha.start();
+
+      const res = await fetch(
+        `${alepha.inject(ServerProvider).hostname}/api/_links/schemas`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ actions: ["nonexistent"] }),
+        },
+      );
+
+      const data = await res.json();
+
+      expect(data.nonexistent).toBeUndefined();
+    });
+
+    it("should filter based on user permissions", async ({ expect }) => {
+      class App {
+        publicAction = $action({
+          schema: {
+            body: t.object({ name: t.text() }),
+            response: t.text(),
+          },
+          handler: () => "PUBLIC",
+        });
+        securedAction = $action({
+          use: [$secure()],
+          schema: {
+            body: t.object({ secret: t.text() }),
+            response: t.text(),
+          },
+          handler: () => "SECURED",
+        });
+        issuer = $issuer({
+          secret: "test",
+          roles: [{ name: "user", permissions: [{ name: "*" }] }],
+        });
+      }
+
+      const alepha = Alepha.create()
+        .with(App)
+        .with(ServerLinksProvider)
+        .with(AlephaSecurity);
+      await alepha.start();
+
+      // Unauthenticated request — should only get public schema
+      const res = await fetch(
+        `${alepha.inject(ServerProvider).hostname}/api/_links/schemas`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            actions: ["publicAction", "securedAction"],
+          }),
+        },
+      );
+
+      const data = await res.json();
+
+      expect(data.publicAction).toBeDefined();
+      expect(data.securedAction).toBeUndefined();
+    });
+  });
+
   describe("caching and ETag", () => {
     it("should return ETag header on first request", async ({ expect }) => {
       class App {

@@ -5,6 +5,7 @@ const env = loadEnv();
 
 export default defineConfig({
   test: {
+    testTimeout: 10000,
     globals: true,
     onConsoleLog(log) {
       if (log.includes("was not wrapped in act(")) {

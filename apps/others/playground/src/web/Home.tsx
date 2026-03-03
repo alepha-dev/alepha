@@ -1,4 +1,5 @@
 import { Flex, TypeForm, useDialog } from "@alepha/ui";
+import { t } from "alepha";
 import { useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import type { AppSecurity } from "../api/AppSecurity.ts";
@@ -6,10 +7,11 @@ import type { AppSecurity } from "../api/AppSecurity.ts";
 const Home = () => {
   const client = useClient<AppSecurity>();
   const dialog = useDialog();
-  const schema = client.ping.schema();
 
   const form = useForm({
-    schema: schema.body,
+    schema: t.object({
+      ping: t.string(),
+    }),
     handler: async (body) => {
       const response = await client.ping({
         body,

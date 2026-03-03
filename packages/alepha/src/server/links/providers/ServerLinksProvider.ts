@@ -13,8 +13,7 @@ import {
   serverApiOptions,
 } from "alepha/server";
 import type { ApiRegistryResponse } from "../schemas/apiLinksResponseSchema.ts";
-import { DefinitionsPool } from "../services/DefinitionsPool.ts";
-import { LinkProvider } from "./LinkProvider.ts";
+import { type HttpClientLink, LinkProvider } from "./LinkProvider.ts";
 import { RemotePrimitiveProvider } from "./RemotePrimitiveProvider.ts";
 
 export class ServerLinksProvider {
@@ -147,6 +146,51 @@ export class ServerLinksProvider {
   });
 
   /**
+   * On-demand schemas endpoint — returns JSON Schemas for requested actions.
+   *
+   * Schemas are filtered by the user's permissions (same logic as the registry).
+   */
+  public readonly schemas = $route({
+    method: "POST",
+    path: "/api/_links/schemas",
+    schema: {
+      body: t.object({
+        actions: t.array(t.text()),
+      }),
+      response: t.record(
+        t.text(),
+        t.object({
+          body: t.optional(t.string()),
+          response: t.optional(t.string()),
+        }),
+      ),
+    },
+    handler: async ({ body, user }) => {
+      const result: Record<string, { body?: string; response?: string }> = {};
+
+      for (const name of body.actions) {
+        const link = this.linkProvider
+          .getServerLinks()
+          .find((l) => l.name === name && !l.host);
+
+        if (!link) continue;
+        if (!this.isLinkAccessible(link, user)) continue;
+
+        const entry: { body?: string; response?: string } = {};
+        if (link.schema?.body) {
+          entry.body = JSON.stringify(link.schema.body);
+        }
+        if (link.schema?.response) {
+          entry.response = JSON.stringify(link.schema.response);
+        }
+        result[name] = entry;
+      }
+
+      return result as any;
+    },
+  });
+
+  /**
    * Batch endpoint — execute multiple actions in a single HTTP request.
    * Each sub-request is independent: errors in one don't affect others.
    */
@@ -227,7 +271,6 @@ export class ServerLinksProvider {
         ? securityProvider.getPermissions(user)
         : undefined;
 
-    const pool = new DefinitionsPool();
     const actions: Record<string, any> = {};
     const permissions: string[] = [];
 
@@ -247,57 +290,12 @@ export class ServerLinksProvider {
     for (const link of this.linkProvider.getServerLinks()) {
       // SKIP REMOTE LINKS, remote links are handled separately for security
       if (link.host) continue;
-
-      if (securityProvider && link.secured) {
-        // skip secured links if user is not provided
-        if (!user) {
-          continue;
-        }
-
-        if (typeof link.secured === "object") {
-          // issuer check
-          if (
-            link.secured.issuers?.length &&
-            (!user.realm || !link.secured.issuers.includes(user.realm))
-          ) {
-            continue;
-          }
-
-          // role check
-          if (link.secured.roles?.length) {
-            const hasRole = link.secured.roles.some((role: string) =>
-              user.roles?.includes(role),
-            );
-            if (!hasRole) continue;
-          }
-
-          // explicit permission check
-          if (link.secured.permissions?.length) {
-            const perms = link.secured.permissions;
-
-            let allowed = true;
-            for (const perm of perms) {
-              const result = securityProvider.checkPermission(
-                perm,
-                ...(user.roles ?? []),
-              );
-              if (!result.isAuthorized) {
-                allowed = false;
-                break;
-              }
-            }
-            if (!allowed) continue;
-          }
-        }
-        // link.secured === true → auth only, user is already checked above
-      }
+      if (!this.isLinkAccessible(link, user)) continue;
 
       actions[link.name] = {
         path: link.path,
         method: link.method || undefined,
         kind: link.kind,
-        body: pool.ref(link.schema?.body),
-        response: pool.ref(link.schema?.response),
         contentType: link.contentType,
         service: link.service,
       };
@@ -318,20 +316,6 @@ export class ServerLinksProvider {
     for (const { remote, registry } of remoteResults) {
       const remotePrefix = registry.prefix ?? "/api";
 
-      // Merge remote definitions into our pool
-      const remoteDefMap = new Map<string, string>();
-      if (registry.definitions) {
-        for (const [refKey, jsonString] of Object.entries(
-          registry.definitions,
-        )) {
-          const schema = JSON.parse(jsonString);
-          const newRef = pool.ref(schema);
-          if (newRef) {
-            remoteDefMap.set(refKey, newRef);
-          }
-        }
-      }
-
       // Merge remote actions
       for (const [name, action] of Object.entries(registry.actions)) {
         let path = action.path.replace(remotePrefix, "");
@@ -342,12 +326,6 @@ export class ServerLinksProvider {
         actions[name] = {
           path,
           method: action.method,
-          body: action.body
-            ? (remoteDefMap.get(action.body) ?? action.body)
-            : undefined,
-          response: action.response
-            ? (remoteDefMap.get(action.response) ?? action.response)
-            : undefined,
           contentType: action.contentType,
           service: remote.name,
         };
@@ -361,15 +339,57 @@ export class ServerLinksProvider {
 
     this.serverTimingProvider.endTiming("fetchRemoteLinks");
 
-    const definitions = pool.toJSON();
-
     return {
       prefix: this.serverApi.prefix,
-      definitions:
-        Object.keys(definitions).length > 0 ? definitions : undefined,
       actions,
       permissions: permissions.length > 0 ? permissions : undefined,
     };
+  }
+
+  /**
+   * Check if a link is accessible by the given user based on security rules.
+   */
+  protected isLinkAccessible(
+    link: HttpClientLink,
+    user?: UserAccountToken,
+  ): boolean {
+    const { securityProvider } = this;
+
+    if (securityProvider && link.secured) {
+      if (!user) return false;
+
+      if (typeof link.secured === "object") {
+        // issuer check
+        if (
+          link.secured.issuers?.length &&
+          (!user.realm || !link.secured.issuers.includes(user.realm))
+        ) {
+          return false;
+        }
+
+        // role check
+        if (link.secured.roles?.length) {
+          const hasRole = link.secured.roles.some((role: string) =>
+            user.roles?.includes(role),
+          );
+          if (!hasRole) return false;
+        }
+
+        // explicit permission check
+        if (link.secured.permissions?.length) {
+          for (const perm of link.secured.permissions) {
+            const result = securityProvider.checkPermission(
+              perm,
+              ...(user.roles ?? []),
+            );
+            if (!result.isAuthorized) return false;
+          }
+        }
+      }
+      // link.secured === true → auth only, user is already checked above
+    }
+
+    return true;
   }
 }
 

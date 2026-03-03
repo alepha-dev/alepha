@@ -9,7 +9,6 @@ import { RemotePrimitiveProvider } from "./providers/RemotePrimitiveProvider.ts"
 import { ServerLinksProvider } from "./providers/ServerLinksProvider.ts";
 import type { ApiRegistryResponse } from "./schemas/apiLinksResponseSchema.ts";
 import { BatchCollector } from "./services/BatchCollector.ts";
-import { DefinitionsPool } from "./services/DefinitionsPool.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -22,7 +21,6 @@ export * from "./providers/RemotePrimitiveProvider.ts";
 export * from "./providers/ServerLinksProvider.ts";
 export * from "./schemas/apiLinksResponseSchema.ts";
 export * from "./services/BatchCollector.ts";
-export * from "./services/DefinitionsPool.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -69,6 +67,5 @@ export const AlephaServerLinks = $module({
     RemotePrimitiveProvider,
     LinkProvider,
     BatchCollector,
-    DefinitionsPool,
   ],
 });

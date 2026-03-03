@@ -40,13 +40,9 @@ describe("LinkProvider", () => {
 
     expect(data).toStrictEqual({
       prefix: "/api",
-      definitions: {
-        $0: '{"type":"object","required":["pong"],"properties":{"pong":{"type":"boolean"}},"additionalProperties":false}',
-      },
       actions: {
         ping: {
           path: "/ping",
-          response: "$0",
         },
       },
     });
@@ -114,13 +110,13 @@ describe("LinkProvider", () => {
     expect(data.actions.createUser.method).toBe("POST");
   });
 
-  it("should deduplicate schemas in definitions pool", async ({ expect }) => {
-    const responseSchema = t.object({ id: t.integer(), name: t.text() });
-
-    class DedupeApp {
+  it("should not include definitions or schema refs in registry", async ({
+    expect,
+  }) => {
+    class SchemaApp {
       getUser = $action({
         path: "/users/:id",
-        schema: { response: responseSchema },
+        schema: { response: t.object({ id: t.integer(), name: t.text() }) },
         handler: () => ({ id: 1, name: "John" }),
       });
       updateUser = $action({
@@ -128,13 +124,13 @@ describe("LinkProvider", () => {
         path: "/users/:id",
         schema: {
           body: t.object({ name: t.text() }),
-          response: responseSchema,
+          response: t.object({ id: t.integer(), name: t.text() }),
         },
         handler: () => ({ id: 1, name: "John" }),
       });
     }
 
-    const alepha = Alepha.create().with(DedupeApp).with(ServerLinksProvider);
+    const alepha = Alepha.create().with(SchemaApp).with(ServerLinksProvider);
     await alepha.start();
 
     const res = await fetch(
@@ -142,16 +138,11 @@ describe("LinkProvider", () => {
     );
     const data = await res.json();
 
-    // Both actions should reference the same definition for response
-    expect(data.actions.getUser.response).toBe(
-      data.actions.updateUser.response,
-    );
-
-    // The body schema is different, so it gets a separate definition
-    expect(data.actions.updateUser.body).toBeDefined();
-    expect(data.actions.updateUser.body).not.toBe(
-      data.actions.updateUser.response,
-    );
+    expect(data.definitions).toBeUndefined();
+    expect(data.actions.getUser.body).toBeUndefined();
+    expect(data.actions.getUser.response).toBeUndefined();
+    expect(data.actions.updateUser.body).toBeUndefined();
+    expect(data.actions.updateUser.response).toBeUndefined();
   });
 
   it("should not include group or rawSchema in wire format", async ({

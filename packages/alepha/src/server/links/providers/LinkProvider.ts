@@ -1,12 +1,4 @@
-import {
-  $inject,
-  $use,
-  Alepha,
-  AlephaError,
-  type Async,
-  jsonSchemaToTypeBox,
-  t,
-} from "alepha";
+import { $inject, $use, Alepha, AlephaError, type Async, t } from "alepha";
 import { $logger } from "alepha/logger";
 import type { SecureOptions } from "alepha/security";
 import {
@@ -26,7 +18,6 @@ import {
   type SsePrimitive,
   type SseRequestEntry,
   type SseStream,
-  type TRequestBody,
   UnauthorizedError,
 } from "alepha/server";
 import { linkOptionsAtom } from "../atoms/linkOptionsAtom.ts";
@@ -54,7 +45,6 @@ export class LinkProvider {
   // Browser/SSR: parsed from the registry response
   protected actionMap = new Map<string, HttpClientLink>();
   protected permissions = new Set<string>();
-  protected definitions: Record<string, string> = {};
   protected lastLoadedRegistry: ApiRegistryResponse | null = null;
 
   // Browser-only: batch collector for coalescing multiple calls
@@ -111,7 +101,6 @@ export class LinkProvider {
    */
   protected loadRegistry(registry: ApiRegistryResponse): void {
     this.lastLoadedRegistry = registry;
-    this.definitions = registry.definitions ?? {};
     this.permissions.clear();
     this.actionMap.clear();
 
@@ -123,9 +112,6 @@ export class LinkProvider {
         method: action.method,
         contentType: action.contentType,
         service: action.service,
-        // Store definition refs for lazy schema resolution
-        bodyRef: action.body,
-        responseRef: action.response,
       });
     }
 
@@ -326,36 +312,6 @@ export class LinkProvider {
       return this.can(name);
     };
 
-    $.schema = () => {
-      const link = this.links.find((l) => l.name === name);
-      if (!link) {
-        throw new AlephaError(`Link ${name} not found.`);
-      }
-
-      // If schema is already resolved (server-side), return it
-      if (link.schema) {
-        return link.schema as { body: any; response: any };
-      }
-
-      // Lazy resolve from definition refs (browser-side)
-      const resolved: RequestConfigSchema = {};
-      if (link.bodyRef && this.definitions[link.bodyRef]) {
-        resolved.body = jsonSchemaToTypeBox(
-          JSON.parse(this.definitions[link.bodyRef]),
-        ) as TRequestBody;
-      }
-      if (link.responseRef && this.definitions[link.responseRef]) {
-        resolved.response = jsonSchemaToTypeBox(
-          JSON.parse(this.definitions[link.responseRef]),
-        ) as TRequestBody;
-      }
-
-      // Cache for next access
-      link.schema = resolved;
-
-      return resolved as { body: any; response: any };
-    };
-
     return $;
   }
 
@@ -460,9 +416,6 @@ export interface HttpClientLink {
     request: ServerRequest,
     options: ClientRequestOptions,
   ) => Async<ServerResponseBody>;
-  // -- browser only (definition refs for lazy schema resolution) --
-  bodyRef?: string;
-  responseRef?: string;
 }
 
 export interface ClientScope {
@@ -491,10 +444,6 @@ export interface VirtualAction<T extends RequestConfigSchema>
     opts?: ClientRequestOptions,
   ): Promise<ClientRequestResponse<T>>;
   can: () => boolean;
-  schema: () => {
-    body: T["body"];
-    response: T["response"];
-  };
 }
 
 export interface VirtualSse<T extends SseConfigSchema> {

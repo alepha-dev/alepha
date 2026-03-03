@@ -13,20 +13,6 @@ export const apiActionSchema = t.object({
     }),
   ),
 
-  body: t.optional(
-    t.text({
-      description:
-        "Reference to a definitions pool entry (e.g. '$0') for the request body JSON Schema.",
-    }),
-  ),
-
-  response: t.optional(
-    t.text({
-      description:
-        "Reference to a definitions pool entry (e.g. '$0') for the response JSON Schema.",
-    }),
-  ),
-
   contentType: t.optional(
     t.text({
       description:
@@ -51,16 +37,6 @@ export const apiActionSchema = t.object({
 
 export const apiRegistryResponseSchema = t.object({
   prefix: t.optional(t.text()),
-
-  definitions: t.optional(
-    t.record(
-      t.text(),
-      t.string({
-        description:
-          "Pre-stringified JSON Schema. Values can be 2KB+, so t.string() (no maxLength) is used instead of t.text().",
-      }),
-    ),
-  ),
 
   actions: t.record(t.text(), apiActionSchema),
 
