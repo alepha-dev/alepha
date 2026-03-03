@@ -139,7 +139,9 @@ const ProjectWhiteboards = (props: ProjectWhiteboardsProps) => {
           />
         ) : (
           <Flex
+            w="100%"
             h="100%"
+            flex={1}
             align="center"
             justify="center"
             direction="column"

@@ -14,6 +14,7 @@ export const projects = $entity({
     }),
     createdBy: t.uuid(),
     public: t.optional(t.boolean()),
+    whiteboard: t.optional(t.boolean()),
     packages: db.default(t.array(t.string()), []),
   }),
   indexes: [

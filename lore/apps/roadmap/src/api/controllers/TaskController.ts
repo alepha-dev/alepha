@@ -11,7 +11,6 @@ import {
   ForbiddenError,
   okSchema,
 } from "alepha/server";
-import sanitizeHtml from "sanitize-html";
 import { chapters } from "../entities/chapters.ts";
 import { characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
@@ -24,6 +23,44 @@ import {
 } from "../schemas/taskResourceSchema.ts";
 import { CharacterInfo } from "../services/CharacterInfo.ts";
 import { TaskResourceMapper } from "../services/TaskResourceMapper.ts";
+
+/**
+ * Tags matching what TipTap StarterKit + Mantine controls produce.
+ */
+const ALLOWED_TAGS = new Set([
+  "p",
+  "br",
+  "strong",
+  "em",
+  "u",
+  "s",
+  "mark",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "ul",
+  "ol",
+  "li",
+  "blockquote",
+  "pre",
+  "code",
+  "hr",
+]);
+
+const sanitizeHtml = (html: string) => {
+  return html
+    .replace(/<script[\s>][\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s>][\s\S]*?<\/style>/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<\/?([a-z][a-z0-9]*)\b[^>]*\/?>/gi, (match, tag: string) => {
+      const lower = tag.toLowerCase();
+      if (!ALLOWED_TAGS.has(lower)) return "";
+      if (match.startsWith("</")) return `</${lower}>`;
+      if (lower === "br" || lower === "hr") return `<${lower}>`;
+      return `<${lower}>`;
+    });
+};
 
 export class TaskController {
   log = $logger();

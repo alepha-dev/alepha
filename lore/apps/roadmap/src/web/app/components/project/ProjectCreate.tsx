@@ -1,13 +1,13 @@
 import { ActionButton, Control, Flex, Text, useToast } from "@alepha/ui";
 import { Card, Container } from "@mantine/core";
-import { IconHammer, IconTag, IconUpload } from "@tabler/icons-react";
+import { IconHammer, IconTag } from "@tabler/icons-react";
 import { t } from "alepha";
 import { useAlepha, useClient } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
@@ -21,7 +21,6 @@ const ProjectCreate = () => {
   const alepha = useAlepha();
   const { tr } = useI18n<I18n, "en">();
   const toast = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const initialValues = useMemo(() => {
     try {
@@ -71,41 +70,6 @@ const ProjectCreate = () => {
       ]);
     },
   });
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const body = JSON.parse(text);
-
-      if (!body.version || !body.project || !body.tasks) {
-        toast.danger({ message: tr("project.create.import.error") });
-        return;
-      }
-
-      const project = await client.importProject({ body });
-
-      await router.push("project", {
-        params: { projectId: String(project.id) },
-      });
-
-      alepha.store.set(userProjectsAtom, [
-        ...(alepha.store.get(userProjectsAtom) || []),
-        project,
-      ]);
-    } catch (e) {
-      toast.danger({
-        message:
-          e instanceof Error ? e.message : tr("project.create.import.error"),
-      });
-    } finally {
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  };
 
   return (
     <Card
@@ -165,20 +129,6 @@ const ProjectCreate = () => {
                     color={"green"}
                   >
                     {tr("project.create.submit")}
-                  </ActionButton>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".json"
-                    onChange={handleImport}
-                    style={{ display: "none" }}
-                  />
-                  <ActionButton
-                    leftSection={<IconUpload />}
-                    variant={"light"}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    {tr("project.create.import")}
                   </ActionButton>
                 </Flex>
               </Flex>

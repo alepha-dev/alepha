@@ -69,10 +69,6 @@ export class I18n {
         "project.create.public.helper":
           "If enabled, your campaign will be visible across the realm, not just to you and your adventurers.",
         "project.create.submit": "Create Campaign",
-        "project.create.import": "Import Campaign",
-        "project.create.import.helper":
-          "Restore a campaign from a backup scroll.",
-        "project.create.import.error": "Invalid backup file.",
 
         "task.view.summary": "This quest has $1 priority. Difficulty tier: $2.",
         "task.view.description": "Description",
@@ -113,17 +109,15 @@ export class I18n {
         "project.settings.players.invite.cancel": "Cancel",
         "project.settings.players.invite.submit": "Send Invitation",
 
-        "project.settings.backup.title": "Backup",
-        "project.settings.actions.backup": "Backup Campaign",
-        "project.settings.actions.backup.helper":
-          "Save a copy of your campaign, including all quests and chapters, as a backup scroll.",
-
         "project.settings.danger.title": "Danger Zone",
         "project.settings.actions.delete": "Delete this campaign",
         "project.settings.actions.delete.helper":
           "Sometimes retreat is the only option. All quests and progress will be lost forever.",
 
         "project.settings.general.title": "General",
+        "project.settings.whiteboard": "Whiteboard",
+        "project.settings.whiteboard.helper":
+          "Enable the drawing canvas to sketch plans and map out your quests.",
         "project.settings.character.title": "Character",
         "project.settings.character.level": "Level $1",
         "project.settings.character.nextLevel": "$1 XP to next level",
@@ -314,10 +308,6 @@ export class I18n {
         "project.create.public.helper":
           "Si activé, votre campagne sera visible dans tout le royaume, pas seulement par vos compagnons.",
         "project.create.submit": "Lancer la campagne",
-        "project.create.import": "Importer une campagne",
-        "project.create.import.helper":
-          "Restaurez une campagne à partir d'un parchemin de sauvegarde.",
-        "project.create.import.error": "Fichier de sauvegarde invalide.",
 
         "task.view.summary":
           "Cette quête est de priorité $1 et de difficulté $2.",
@@ -358,17 +348,15 @@ export class I18n {
         "project.settings.players.invite.cancel": "Annuler",
         "project.settings.players.invite.submit": "Envoyer l'invitation",
 
-        "project.settings.backup.title": "Sauvegarde",
-        "project.settings.actions.backup": "Sauvegarder la campagne",
-        "project.settings.actions.backup.helper":
-          "Conservez une copie de votre campagne, y compris toutes les quêtes et chapitres, sous forme de parchemin.",
-
         "project.settings.danger.title": "Zone à risques",
         "project.settings.actions.delete": "Détruire cette campagne",
         "project.settings.actions.delete.helper":
           "Parfois, il faut abandonner le combat… mais sachez que toutes les quêtes et les progrès seront perdus.",
 
         "project.settings.general.title": "Général",
+        "project.settings.whiteboard": "Tableau blanc",
+        "project.settings.whiteboard.helper":
+          "Activer le canevas de dessin pour esquisser vos plans et cartographier vos quêtes.",
         "project.settings.character.title": "Personnage",
         "project.settings.character.level": "Niveau $1",
         "project.settings.character.nextLevel":

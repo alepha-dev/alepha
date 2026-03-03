@@ -5,7 +5,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
 import { AlephaMcp } from "alepha/mcp";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -34,11 +34,12 @@ const setup = async (): Promise<TestContext> => {
   const alepha = Alepha.create({
     env: {
       LOG_LEVEL: "error",
-      SERVER_PORT: 0, // Random port
+      SERVER_PORT: 0,
+      DATABASE_URL: ":memory:",
     },
   });
 
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);

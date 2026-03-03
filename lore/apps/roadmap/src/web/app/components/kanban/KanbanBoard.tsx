@@ -11,7 +11,7 @@ import { t } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import type { ChapterController } from "@/api/controllers/ChapterController.ts";
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { TaskController } from "@/api/controllers/TaskController.ts";
@@ -48,6 +48,20 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toast = useToast();
   const dndId = useId();
+
+  const zonesLoader = useCallback(async () => {
+    return project.packages;
+  }, [project.packages]);
+
+  const chaptersLoader = useCallback(async () => {
+    const chapters = await chapterApi.getChapters({
+      params: { projectId: project.id },
+    });
+    return chapters.map((ch) => ({
+      value: String(ch.id),
+      label: `Ch.${ch.number}: ${ch.title} (${ch.questCount} quests)`,
+    }));
+  }, [project.id]);
 
   useEffect(() => {
     setKanbanProject({ project, readOnly });
@@ -113,9 +127,8 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     }
   };
 
-  const closeDrawer = async () => {
+  const closeDrawer = () => {
     setSelectedTask(null);
-    await reload();
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -177,9 +190,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
               multiSelectProps: {
                 placeholder: "Zones",
               },
-              loader: async () => {
-                return project.packages;
-              },
+              loader: zonesLoader,
             }}
           />
           <Control
@@ -190,15 +201,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
               selectProps: {
                 placeholder: "Chapter",
               },
-              loader: async () => {
-                const chapters = await chapterApi.getChapters({
-                  params: { projectId: project.id },
-                });
-                return chapters.map((ch) => ({
-                  value: String(ch.id),
-                  label: `Ch.${ch.number}: ${ch.title} (${ch.questCount} quests)`,
-                }));
-              },
+              loader: chaptersLoader,
             }}
           />
         </Flex>

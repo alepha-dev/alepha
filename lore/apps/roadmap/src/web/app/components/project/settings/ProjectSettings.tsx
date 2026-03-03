@@ -1,7 +1,6 @@
 import { ActionButton, Flex, Text } from "@alepha/ui";
 import { Card, Container, SimpleGrid } from "@mantine/core";
 import { modals } from "@mantine/modals";
-import { IconDownload } from "@tabler/icons-react";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -75,46 +74,6 @@ const ProjectSettings = (props: ProjectSettingsProps) => {
           players={players}
           pendingInvitations={pendingInvitations}
         />
-
-        {/* Backup */}
-        <Flex direction="column" gap={"xs"}>
-          <Text>{tr("project.settings.backup.title")}</Text>
-          <Card
-            radius={0}
-            withBorder
-            className={"shadow"}
-            bg={theme.colors.card}
-            p={"sm"}
-          >
-            <SimpleGrid
-              cols={{
-                base: 1,
-                xs: 2,
-              }}
-            >
-              <Flex direction="column" gap={0}>
-                <Text size={"sm"}>{tr("project.settings.actions.backup")}</Text>
-                <Text size="xs" c={"dimmed"}>
-                  {tr("project.settings.actions.backup.helper")}
-                </Text>
-              </Flex>
-              <Flex justify={"end"} align={"center"}>
-                <ActionButton
-                  flex={{
-                    base: 1,
-                    xs: "unset",
-                  }}
-                  leftSection={<IconDownload />}
-                  onClick={() => {
-                    window.open(`/api/projects/${project.id}/backup`, "_blank");
-                  }}
-                >
-                  {tr("project.settings.actions.backup")}
-                </ActionButton>
-              </Flex>
-            </SimpleGrid>
-          </Card>
-        </Flex>
 
         {/* Danger Zone */}
         <Flex direction="column" gap={"xs"}>

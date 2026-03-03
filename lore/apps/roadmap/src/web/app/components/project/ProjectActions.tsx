@@ -56,17 +56,21 @@ const ProjectActions = () => {
         </Center>
       ),
     },
-    {
-      value: "projectWhiteboards",
-      label: (
-        <Center style={{ gap: 6 }}>
-          <IconBrush size={theme.icon.size.sm} />
-          <Flex visibleFrom={"sm"}>
-            <Text size={"sm"}>{tr("project.menu.whiteboards")}</Text>
-          </Flex>
-        </Center>
-      ),
-    },
+    ...(project?.whiteboard
+      ? [
+          {
+            value: "projectWhiteboards" as TabValue,
+            label: (
+              <Center style={{ gap: 6 }}>
+                <IconBrush size={theme.icon.size.sm} />
+                <Flex visibleFrom={"sm"}>
+                  <Text size={"sm"}>{tr("project.menu.whiteboards")}</Text>
+                </Flex>
+              </Center>
+            ),
+          },
+        ]
+      : []),
     {
       value: "projectAnalytics",
       label: (

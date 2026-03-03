@@ -75,7 +75,7 @@ export class ProjectStatsController {
 					COUNT(CASE WHEN t.completed_at IS NOT NULL THEN 1 END) as completed_tasks,
 					COUNT(DISTINCT c.user_id) as active_players,
 					COALESCE(SUM(c.xp), 0) as total_xp,
-					COALESCE(AVG(t.complexity::numeric), 0) as average_task_complexity
+					COALESCE(AVG(CAST(t.complexity AS REAL)), 0) as average_task_complexity
 				FROM ${this.tasks.table} t
 				LEFT JOIN ${this.characters.table} c ON c.project_id = t.project_id
 				WHERE t.project_id = ${params.id}
@@ -89,13 +89,14 @@ export class ProjectStatsController {
         }),
       );
 
+      const overviewRow = overviewQuery[0];
       const overview = {
-        totalTasks: Number(overviewQuery[0].total_tasks) || 0,
-        completedTasks: Number(overviewQuery[0].completed_tasks) || 0,
-        activePlayers: Number(overviewQuery[0].active_players) || 0,
-        totalXP: Number(overviewQuery[0].total_xp) || 0,
+        totalTasks: Number(overviewRow?.total_tasks) || 0,
+        completedTasks: Number(overviewRow?.completed_tasks) || 0,
+        activePlayers: Number(overviewRow?.active_players) || 0,
+        totalXP: Number(overviewRow?.total_xp) || 0,
         averageTaskComplexity:
-          Number(overviewQuery[0].average_task_complexity) || 0,
+          Number(overviewRow?.average_task_complexity) || 0,
       };
 
       // Get tasks by priority
@@ -183,25 +184,27 @@ export class ProjectStatsController {
         totalTasks: Number(row.total_tasks) || 0,
       }));
 
+      const isSqlite = this.database.dialect === "sqlite";
+      const daysAgo = (days: number) =>
+        isSqlite
+          ? sql.raw(`(strftime('%s', 'now', '-${days} days') * 1000)`)
+          : sql.raw(`CURRENT_DATE - INTERVAL '${days} days'`);
+      const completedAtDate = isSqlite
+        ? sql`DATE(${this.tasks.table.completedAt} / 1000, 'unixepoch')`
+        : sql`DATE(${this.tasks.table.completedAt})`;
+
       // Get activity timeline (last 365 days with all dates for filtering on frontend)
       const timelineQuery = await this.database.run(
         sql`
-				WITH date_series AS (
-					SELECT generate_series(
-						CURRENT_DATE - INTERVAL '364 days',
-						CURRENT_DATE,
-						'1 day'::interval
-					)::date AS date
-				)
 				SELECT
-					ds.date,
-					COALESCE(COUNT(t.id), 0) as tasks_completed
-				FROM date_series ds
-				LEFT JOIN ${this.tasks.table} t ON DATE(t.completed_at) = ds.date
-					AND t.project_id = ${params.id}
-					AND t.completed_at IS NOT NULL
-				GROUP BY ds.date
-				ORDER BY ds.date ASC
+					${completedAtDate} as date,
+					COUNT(*) as tasks_completed
+				FROM ${this.tasks.table}
+				WHERE ${this.tasks.table.projectId} = ${params.id}
+					AND ${this.tasks.table.completedAt} IS NOT NULL
+					AND ${this.tasks.table.deletedAt} IS NULL
+					AND ${this.tasks.table.completedAt} >= ${daysAgo(364)}
+				GROUP BY ${completedAtDate}
 			`,
         t.object({
           date: t.string(),
@@ -209,10 +212,16 @@ export class ProjectStatsController {
         }),
       );
 
-      const activityTimeline = timelineQuery.map((row) => ({
-        date: row.date,
-        tasksCompleted: Number(row.tasks_completed),
-      }));
+      const completionsByDate = new Map(
+        timelineQuery.map((r) => [r.date, Number(r.tasks_completed)]),
+      );
+      const today = new Date();
+      const activityTimeline = Array.from({ length: 365 }, (_, i) => {
+        const d = new Date(today);
+        d.setDate(d.getDate() - (364 - i));
+        const key = d.toISOString().split("T")[0];
+        return { date: key, tasksCompleted: completionsByDate.get(key) ?? 0 };
+      });
 
       // Calculate completion rates
       const weeklyQuery = await this.database.run(
@@ -221,7 +230,7 @@ export class ProjectStatsController {
 				FROM ${this.tasks.table}
 				WHERE ${this.tasks.table.projectId} = ${params.id}
 					AND ${this.tasks.table.completedAt} IS NOT NULL
-					AND ${this.tasks.table.completedAt} >= CURRENT_DATE - INTERVAL '7 days'
+					AND ${this.tasks.table.completedAt} >= ${daysAgo(7)}
 			`,
         t.object({
           completed: t.string(),
@@ -234,7 +243,7 @@ export class ProjectStatsController {
 				FROM ${this.tasks.table}
 				WHERE ${this.tasks.table.projectId} = ${params.id}
 					AND ${this.tasks.table.completedAt} IS NOT NULL
-					AND ${this.tasks.table.completedAt} >= CURRENT_DATE - INTERVAL '30 days'
+					AND ${this.tasks.table.completedAt} >= ${daysAgo(30)}
 			`,
         t.object({
           completed: t.string(),
