@@ -203,6 +203,48 @@ export class DrizzleKitProvider {
     return models;
   }
 
+  /**
+   * Preview schema push without executing any statements.
+   *
+   * Returns the SQL statements that would be executed, warnings, and
+   * whether data loss would occur. Does NOT execute any SQL.
+   */
+  public async dryRunPush(provider: DatabaseProvider): Promise<{
+    statements: string[];
+    warnings: string[];
+    hasDataLoss: boolean;
+  }> {
+    const kit = this.importDrizzleKit();
+    const models = this.getModels(provider);
+
+    if (Object.keys(models).length === 0) {
+      return { statements: [], warnings: [], hasDataLoss: false };
+    }
+
+    let result: {
+      statementsToExecute: string[];
+      warnings: string[];
+      hasDataLoss: boolean;
+    };
+
+    if (provider.dialect === "sqlite") {
+      result = await this.muteSpinner(() =>
+        kit.pushSQLiteSchema(models, provider.db as any),
+      );
+    } else {
+      const wrappedDb = this.wrapDbForDrizzleKit(provider.db);
+      result = await this.muteSpinner(() =>
+        kit.pushSchema(models, wrappedDb, [provider.schema]),
+      );
+    }
+
+    return {
+      statements: result.statementsToExecute,
+      warnings: result.warnings,
+      hasDataLoss: result.hasDataLoss,
+    };
+  }
+
   // -------------------------------------------------------------------------------------------------------------------
 
   protected async pushSqlite(

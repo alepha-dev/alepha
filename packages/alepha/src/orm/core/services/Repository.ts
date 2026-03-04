@@ -12,7 +12,23 @@ import {
 } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { asc, desc, type SQL } from "drizzle-orm";
+import {
+  asc,
+  avg,
+  count,
+  desc,
+  and as drizzleAnd,
+  eq as drizzleEq,
+  gt,
+  gte,
+  lt,
+  lte,
+  max,
+  min,
+  ne,
+  type SQL,
+  sum,
+} from "drizzle-orm";
 import type {
   LockConfig,
   LockStrength,
@@ -42,6 +58,12 @@ import { DbTableNotFoundError } from "../errors/DbTableNotFoundError.ts";
 import { DbVersionMismatchError } from "../errors/DbVersionMismatchError.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
 import type {
+  AggregateOp,
+  AggregateQuery,
+  AggregateResult,
+  AggregateSelect,
+} from "../interfaces/AggregateQuery.ts";
+import type {
   PgQuery,
   PgQueryRelations,
   PgRelationMap,
@@ -55,6 +77,7 @@ import type {
   EntityPrimitive,
   SchemaToTableConfig,
 } from "../primitives/$entity.ts";
+import { DbCacheProvider } from "../providers/DbCacheProvider.ts";
 import {
   DatabaseProvider,
   type SQLLike,
@@ -72,6 +95,7 @@ export abstract class Repository<T extends TObject> {
   protected readonly relationManager = $inject(PgRelationManager);
   protected readonly queryManager = $inject(QueryManager);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly dbCache = new DbCacheProvider();
   protected readonly alepha = $inject(Alepha);
 
   static of<T extends TObject>(
@@ -88,7 +112,11 @@ export abstract class Repository<T extends TObject> {
   constructor(entity: EntityPrimitive<T>, provider = DatabaseProvider) {
     this.entity = entity;
     this.provider = this.alepha.inject(provider);
-    this.provider.registerEntity(entity as EntityPrimitive);
+    if ((entity as any).isView) {
+      this.provider.registerView(entity as any);
+    } else {
+      this.provider.registerEntity(entity as EntityPrimitive);
+    }
   }
 
   /**
@@ -118,6 +146,13 @@ export abstract class Repository<T extends TObject> {
    */
   public get tableName(): string {
     return this.entity.name;
+  }
+
+  /**
+   * Whether this repository is backed by a view (read-only).
+   */
+  public get isReadOnly(): boolean {
+    return (this.entity as any).isView === true;
   }
 
   /**
@@ -323,6 +358,16 @@ export abstract class Repository<T extends TObject> {
     query: PgQueryRelations<T, R> = {},
     opts: StatementOptions = {},
   ): Promise<PgStatic<T, R>[]> {
+    // Check cache
+    if (opts.cache) {
+      const cacheKey = opts.cache.key ?? this.buildCacheKey("findMany", query);
+      const cached = await this.dbCache.get<PgStatic<T, R>[]>(
+        this.tableName,
+        cacheKey,
+      );
+      if (cached) return cached;
+    }
+
     await this.alepha.events.emit("repository:read:before", {
       tableName: this.tableName,
       query,
@@ -427,7 +472,21 @@ export abstract class Repository<T extends TObject> {
         entities: rows,
       });
 
-      return rows as PgStatic<T, R>[];
+      const result = rows as PgStatic<T, R>[];
+
+      // Store in cache
+      if (opts.cache) {
+        const cacheKey =
+          opts.cache.key ?? this.buildCacheKey("findMany", query);
+        await this.dbCache.set(
+          this.tableName,
+          cacheKey,
+          result,
+          opts.cache.ttl,
+        );
+      }
+
+      return result;
     } catch (error) {
       throw this.handleError(error, "Query select has failed");
     }
@@ -603,6 +662,7 @@ export abstract class Repository<T extends TObject> {
     data: Static<TObjectInsert<T>>,
     opts: StatementOptions = {},
   ): Promise<Static<T>> {
+    this.assertWritable();
     await this.alepha.events.emit("repository:create:before", {
       tableName: this.tableName,
       data,
@@ -613,6 +673,8 @@ export abstract class Repository<T extends TObject> {
         .values(this.cast(data ?? {}, true))
         .returning(this.table)
         .then(([it]) => this.clean(it, this.entity.schema));
+
+      this.dbCache.invalidateTable(this.tableName).catch(() => {});
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
@@ -639,6 +701,7 @@ export abstract class Repository<T extends TObject> {
     values: Array<Static<TObjectInsert<T>>>,
     opts: StatementOptions & { batchSize?: number } = {},
   ): Promise<Static<T>[]> {
+    this.assertWritable();
     if (values.length === 0) {
       return [];
     }
@@ -660,6 +723,8 @@ export abstract class Repository<T extends TObject> {
           .then((rows) => rows.map((it) => this.clean(it, this.entity.schema)));
         allEntities.push(...entities);
       }
+
+      this.dbCache.invalidateTable(this.tableName).catch(() => {});
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
@@ -709,6 +774,7 @@ export abstract class Repository<T extends TObject> {
       set?: WithSQL<Static<TObjectUpdate<T>>>;
     } = {},
   ): Promise<Static<T>> {
+    this.assertWritable();
     await this.alepha.events.emit("repository:create:before", {
       tableName: this.tableName,
       data,
@@ -754,6 +820,8 @@ export abstract class Repository<T extends TObject> {
         .returning(this.table)
         .then(([it]) => this.clean(it, this.entity.schema));
 
+      this.dbCache.invalidateTable(this.tableName).catch(() => {});
+
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
         data,
@@ -776,6 +844,7 @@ export abstract class Repository<T extends TObject> {
     data: WithSQL<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
   ): Promise<Static<T>> {
+    this.assertWritable();
     await this.alepha.events.emit("repository:update:before", {
       tableName: this.tableName,
       where,
@@ -815,6 +884,8 @@ export abstract class Repository<T extends TObject> {
     try {
       const entity = this.clean(response[0], this.entity.schema);
 
+      this.dbCache.invalidateTable(this.tableName).catch(() => {});
+
       await this.alepha.events.emit("repository:update:after", {
         tableName: this.tableName,
         where,
@@ -852,6 +923,7 @@ export abstract class Repository<T extends TObject> {
     entity: Static<T>,
     opts: StatementOptions = {},
   ): Promise<void> {
+    this.assertWritable();
     const row = entity as any;
 
     const id = row[this.id.key];
@@ -937,6 +1009,7 @@ export abstract class Repository<T extends TObject> {
     data: WithSQL<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
   ): Promise<Array<number | string>> {
+    this.assertWritable();
     await this.alepha.events.emit("repository:update:before", {
       tableName: this.tableName,
       where,
@@ -963,6 +1036,8 @@ export abstract class Repository<T extends TObject> {
         .where(this.toSQL(where))
         .returning();
 
+      this.dbCache.invalidateTable(this.tableName).catch(() => {});
+
       await this.alepha.events.emit("repository:update:after", {
         tableName: this.tableName,
         where,
@@ -984,6 +1059,7 @@ export abstract class Repository<T extends TObject> {
     where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
   ): Promise<Array<number | string>> {
+    this.assertWritable();
     const deletedAt = this.deletedAt();
     if (deletedAt && !opts.force) {
       return await this.updateMany(
@@ -1005,6 +1081,8 @@ export abstract class Repository<T extends TObject> {
         .where(this.toSQL(where))
         .returning({ id: (this.table as any)[this.id.key] });
       const ids = result.map((row) => row.id);
+
+      this.dbCache.invalidateTable(this.tableName).catch(() => {});
 
       await this.alepha.events.emit("repository:delete:after", {
         tableName: this.tableName,
@@ -1096,6 +1174,165 @@ export abstract class Repository<T extends TObject> {
     where = this.withDeletedAt(where, opts);
     const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
     return db.$count(this.table, this.toSQL(where));
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Execute an aggregate query with type-safe select, groupBy, and having.
+   *
+   * @example
+   * ```ts
+   * const result = await repo.aggregate({
+   *   select: { category: true, amount: { sum: true, avg: true } },
+   *   groupBy: ["category"],
+   *   having: { amount: { sum: { gt: 100 } } },
+   *   orderBy: { column: "amount.sum", direction: "desc" },
+   * });
+   * // result: Array<{ category: string; amount: { sum: number; avg: number } }>
+   * ```
+   */
+  public async aggregate<S extends AggregateSelect<T>>(
+    query: AggregateQuery<T, S>,
+    opts: StatementOptions = {},
+  ): Promise<AggregateResult<T, S>[]> {
+    const AGG_SEPARATOR = "___";
+
+    // Build flat select fields
+    const flatFields: Record<string, any> = {};
+    const aggFn = (op: AggregateOp, column: any) => {
+      switch (op) {
+        case "count":
+          return count(column);
+        case "sum":
+          return sum(column);
+        case "avg":
+          return avg(column);
+        case "min":
+          return min(column);
+        case "max":
+          return max(column);
+      }
+    };
+
+    for (const [key, select] of Object.entries(query.select)) {
+      if (select === true) {
+        flatFields[key] = this.col(key);
+      } else if (typeof select === "object" && select !== null) {
+        for (const op of Object.keys(select) as AggregateOp[]) {
+          if ((select as Record<string, boolean>)[op]) {
+            flatFields[`${key}${AGG_SEPARATOR}${op}`] = aggFn(
+              op,
+              this.col(key),
+            );
+          }
+        }
+      }
+    }
+
+    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
+    let builder = db.select(flatFields).from(this.table as PgTable);
+
+    // WHERE
+    if (query.where) {
+      const where = this.withDeletedAt(query.where as any, opts);
+      builder = builder.where(this.toSQL(where)) as any;
+    }
+
+    // GROUP BY
+    if (query.groupBy) {
+      builder = builder.groupBy(
+        ...query.groupBy.map((key) => this.col(key as string)),
+      ) as any;
+    }
+
+    // HAVING
+    if (query.having) {
+      const havingConditions: SQL[] = [];
+      for (const [key, ops] of Object.entries(query.having)) {
+        if (!ops || typeof ops !== "object") continue;
+        for (const [op, comparisons] of Object.entries(ops)) {
+          if (!comparisons || typeof comparisons !== "object") continue;
+          const aggExpr = aggFn(op as AggregateOp, this.col(key));
+          for (const [cmp, val] of Object.entries(
+            comparisons as Record<string, number>,
+          )) {
+            switch (cmp) {
+              case "gt":
+                havingConditions.push(gt(aggExpr, val));
+                break;
+              case "gte":
+                havingConditions.push(gte(aggExpr, val));
+                break;
+              case "lt":
+                havingConditions.push(lt(aggExpr, val));
+                break;
+              case "lte":
+                havingConditions.push(lte(aggExpr, val));
+                break;
+              case "eq":
+                havingConditions.push(drizzleEq(aggExpr, val));
+                break;
+              case "ne":
+                havingConditions.push(ne(aggExpr, val));
+                break;
+            }
+          }
+        }
+      }
+      if (havingConditions.length > 0) {
+        builder = builder.having(drizzleAnd(...havingConditions)!) as any;
+      }
+    }
+
+    // ORDER BY
+    if (query.orderBy) {
+      const clauses = this.queryManager.normalizeOrderBy(query.orderBy);
+      builder = builder.orderBy(
+        ...clauses.map((clause) => {
+          // Support dot notation: "amount.sum" → "amount___sum"
+          const colName = clause.column.includes(".")
+            ? clause.column.replace(".", AGG_SEPARATOR)
+            : clause.column;
+          const col = flatFields[colName];
+          if (!col) {
+            throw new AlephaError(
+              `Invalid orderBy column '${clause.column}' in aggregate query`,
+            );
+          }
+          return clause.direction === "desc" ? desc(col) : asc(col);
+        }),
+      ) as any;
+    }
+
+    // LIMIT / OFFSET
+    if (query.limit) {
+      builder = builder.limit(query.limit) as any;
+    }
+    if (query.offset) {
+      builder = builder.offset(query.offset) as any;
+    }
+
+    try {
+      const rows = await builder.execute();
+
+      // Re-nest flat results: { amount___sum: 500 } → { amount: { sum: 500 } }
+      return rows.map((row: any) => {
+        const result: Record<string, any> = {};
+        for (const [flatKey, value] of Object.entries(row)) {
+          if (flatKey.includes(AGG_SEPARATOR)) {
+            const [col, op] = flatKey.split(AGG_SEPARATOR);
+            if (!result[col]) result[col] = {};
+            result[col][op] = value != null ? Number(value) : 0;
+          } else {
+            result[flatKey] = value;
+          }
+        }
+        return result as AggregateResult<T, S>;
+      });
+    } catch (error) {
+      throw this.handleError(error, "Aggregate query has failed");
+    }
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1330,6 +1567,36 @@ export abstract class Repository<T extends TObject> {
   }
 
   /**
+   * Throw if this repository is read-only (backed by a view).
+   */
+  protected assertWritable(): void {
+    if (this.isReadOnly) {
+      throw new AlephaError(
+        `Cannot write to view '${this.tableName}'. Views are read-only.`,
+      );
+    }
+  }
+
+  /**
+   * Refresh a materialized view. PostgreSQL only.
+   */
+  public async refresh(): Promise<void> {
+    if (!(this.entity as any).materialized) {
+      throw new AlephaError(
+        `Cannot refresh '${this.tableName}'. Only materialized views support refresh.`,
+      );
+    }
+    await this.provider.execute(`REFRESH MATERIALIZED VIEW ${this.tableName}`);
+  }
+
+  /**
+   * Build a cache key from method name and query parameters.
+   */
+  protected buildCacheKey(method: string, query: any): string {
+    return `${method}:${JSON.stringify(query)}`;
+  }
+
+  /**
    * Convert a where clause to SQL.
    */
   protected toSQL(
@@ -1412,6 +1679,28 @@ export interface StatementOptions {
    * Force the current time.
    */
   now?: DateTime | string;
+
+  /**
+   * Cache configuration for query results.
+   *
+   * When set, results are stored in an in-memory cache keyed by query parameters.
+   * Any write to this table automatically invalidates all cached queries.
+   *
+   * @example
+   * ```ts
+   * await repo.findMany(query, { cache: { ttl: 60_000 } });
+   * ```
+   */
+  cache?: {
+    /**
+     * Time-to-live in milliseconds.
+     */
+    ttl?: number;
+    /**
+     * Custom cache key. If not provided, a key is derived from the query.
+     */
+    key?: string;
+  };
 }
 
 type WithSQL<T> = {

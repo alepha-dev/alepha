@@ -16,20 +16,24 @@ import {
   type SQLiteColumnBuilderBase,
   type SQLiteTableWithColumns,
   sqliteTable,
+  sqliteView,
   unique,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 import {
   PG_CREATED_AT,
+  PG_GENERATED,
   PG_IDENTITY,
   PG_PRIMARY_KEY,
   PG_REF,
   PG_SERIAL,
   PG_UPDATED_AT,
+  type PgGeneratedOptions,
   type PgRefOptions,
 } from "../constants/PG_SYMBOLS.ts";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type { SequencePrimitive } from "../primitives/$sequence.ts";
+import type { ViewPrimitive } from "../primitives/$view.ts";
 import { ModelBuilder } from "./ModelBuilder.ts";
 
 export class SqliteModelBuilder extends ModelBuilder {
@@ -60,6 +64,33 @@ export class SqliteModelBuilder extends ModelBuilder {
     const table = sqliteTable(tableName, columns, configFn);
 
     options.tables.set(tableName, table);
+  }
+
+  public buildView(
+    view: ViewPrimitive,
+    options: {
+      tables: Map<string, unknown>;
+      schema: string;
+    },
+  ) {
+    const viewName = view.name;
+    if (options.tables.has(viewName)) {
+      return;
+    }
+
+    if (view.materialized) {
+      throw new AlephaError("SQLite does not support materialized views");
+    }
+
+    const columns = this.schemaToSqliteColumns(
+      viewName,
+      view.schema,
+      new Map(),
+      options.tables,
+    );
+
+    const drizzleView = sqliteView(viewName, columns).existing();
+    options.tables.set(viewName, drizzleView);
   }
 
   public buildSequence(
@@ -149,6 +180,13 @@ export class SqliteModelBuilder extends ModelBuilder {
 
           return target;
         }, config.actions);
+      }
+
+      if (PG_GENERATED in value) {
+        const gen = value[PG_GENERATED] as PgGeneratedOptions;
+        col = col.generatedAlwaysAs(gen.expression, {
+          mode: gen.mode ?? "virtual",
+        });
       }
 
       if (schema.required?.includes(key)) {

@@ -12,6 +12,7 @@ import {
   arrayOverlaps,
   between,
   eq,
+  exists,
   gt,
   gte,
   ilike,
@@ -25,11 +26,13 @@ import {
   ne,
   not,
   notBetween,
+  notExists,
   notIlike,
   notInArray,
   notLike,
   or,
   type SQL,
+  type SQLWrapper,
   sql,
 } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
@@ -152,6 +155,16 @@ export class QueryManager {
           if (where) {
             return not(where);
           }
+        }
+
+        if (key === "exists") {
+          conditions.push(exists(operator as SQLWrapper));
+          continue;
+        }
+
+        if (key === "notExists") {
+          conditions.push(notExists(operator as SQLWrapper));
+          continue;
         }
 
         if (operator) {

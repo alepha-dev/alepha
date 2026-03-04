@@ -66,8 +66,18 @@ export class BunPostgresProvider extends PostgresProvider {
 
     const { drizzle } = await import("drizzle-orm/bun-sql");
 
-    // Create Bun SQL client
-    this.client = new Bun.SQL(this.url);
+    // Create Bun SQL client with pool options
+    const bunOptions: Record<string, any> = { url: this.url };
+    if (this.pgEnv.POOL_MAX != null) {
+      bunOptions.max = this.pgEnv.POOL_MAX;
+    }
+    if (this.pgEnv.POOL_IDLE_TIMEOUT != null) {
+      bunOptions.idleTimeout = this.pgEnv.POOL_IDLE_TIMEOUT;
+    }
+    if (this.pgEnv.POOL_CONNECT_TIMEOUT != null) {
+      bunOptions.connectionTimeout = this.pgEnv.POOL_CONNECT_TIMEOUT;
+    }
+    this.client = new Bun.SQL(bunOptions);
 
     // Test connection
     await this.client.unsafe("SELECT 1");

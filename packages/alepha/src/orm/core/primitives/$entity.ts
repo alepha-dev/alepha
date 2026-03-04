@@ -67,6 +67,10 @@ export interface EntityPrimitiveOptions<
          * Custom name for the index. If not provided, generates name automatically.
          */
         name?: string;
+        /**
+         * Partial index condition. Only rows matching this SQL expression are indexed.
+         */
+        where?: SQL;
       }
     | {
         /**
@@ -81,6 +85,10 @@ export interface EntityPrimitiveOptions<
          * Custom name for the index. If not provided, generates name automatically.
          */
         name?: string;
+        /**
+         * Partial index condition. Only rows matching this SQL expression are indexed.
+         */
+        where?: SQL;
       }
   )[];
 

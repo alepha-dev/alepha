@@ -179,8 +179,72 @@ export class DbCommand {
         description: "Path to the Alepha server entry file",
       }),
     ),
-    flags: drizzleCommandFlags,
+    flags: t.extend(drizzleCommandFlags, {
+      dryRun: t.optional(
+        t.boolean({
+          description: "Preview SQL statements without executing them",
+        }),
+      ),
+    }),
     handler: async ({ root, args, flags }) => {
+      if (flags.dryRun) {
+        const entry = await this.entryProvider.getAppEntry(root);
+        const alepha = await this.utils.loadAlephaFromServerEntryFile({
+          mode: "development",
+          entry,
+        });
+
+        const drizzleKitProvider =
+          alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
+        const repositoryProvider =
+          alepha.inject<RepositoryProvider>("RepositoryProvider");
+        const accepted = new Set<string>([]);
+
+        for (const primitive of repositoryProvider.getRepositories()) {
+          const provider = primitive.provider;
+          const providerName = provider.name;
+
+          if (accepted.has(providerName)) continue;
+          accepted.add(providerName);
+
+          if (flags.provider && flags.provider !== providerName) continue;
+
+          this.log.info("");
+          this.log.info(
+            `Dry run for '${providerName}' (${provider.dialect}) ...`,
+          );
+
+          await (provider as any).connect();
+
+          try {
+            const result = await drizzleKitProvider.dryRunPush(provider);
+
+            if (result.statements.length === 0) {
+              this.log.info("No changes detected.");
+            } else {
+              if (result.hasDataLoss) {
+                this.log.warn("WARNING: These changes would cause data loss!");
+                for (const warning of result.warnings) {
+                  this.log.warn(`  ${warning}`);
+                }
+              }
+
+              this.log.info("");
+              this.log.info(
+                `${result.statements.length} statement(s) would be executed:`,
+              );
+              this.log.info("");
+              for (const stmt of result.statements) {
+                this.log.info(stmt);
+              }
+            }
+          } finally {
+            await (provider as any).close();
+          }
+        }
+        return;
+      }
+
       await this.runDrizzleKitCommand({
         root,
         args,

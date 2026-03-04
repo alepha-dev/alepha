@@ -104,6 +104,13 @@ export class NodePostgresProvider extends PostgresProvider {
       },
     };
 
+    // Pool options — only set when explicitly configured via env vars
+    if (this.pgEnv.POOL_MAX != null) options.max = this.pgEnv.POOL_MAX;
+    if (this.pgEnv.POOL_IDLE_TIMEOUT != null)
+      options.idle_timeout = this.pgEnv.POOL_IDLE_TIMEOUT;
+    if (this.pgEnv.POOL_CONNECT_TIMEOUT != null)
+      options.connect_timeout = this.pgEnv.POOL_CONNECT_TIMEOUT;
+
     // Set search_path at connection level so schema-free migration SQL
     // resolves to the correct PostgreSQL schema across all pool connections.
     if (this.schema !== "public") {

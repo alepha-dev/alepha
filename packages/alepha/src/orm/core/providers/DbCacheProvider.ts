@@ -1,24 +1,39 @@
-import { $inject } from "alepha";
-import { MemoryCacheProvider } from "alepha/cache";
-
 /**
- * Database query cache backed by `MemoryCacheProvider`.
+ * Database query cache using a simple in-memory Map.
  *
- * Uses `db:{tableName}` as the cache name and query-derived keys.
+ * Uses `{tableName}:{cacheKey}` as the storage key.
  * Provides per-table invalidation for write-through cache busting.
+ *
+ * This is intentionally self-contained (no external cache dependencies)
+ * so the ORM module does not force `AlephaCache` on all consumers.
  */
 export class DbCacheProvider {
-  protected readonly cache = $inject(MemoryCacheProvider);
+  protected readonly store = new Map<
+    string,
+    { value: unknown; expiresAt?: number }
+  >();
 
-  protected cacheName(tableName: string): string {
-    return `db:${tableName}`;
+  protected storeKey(tableName: string, cacheKey: string): string {
+    return `${tableName}:${cacheKey}`;
   }
 
   /**
    * Get a cached query result.
    */
-  public async get<T>(tableName: string, cacheKey: string): Promise<T | undefined> {
-    return this.cache.getTyped<T>(this.cacheName(tableName), cacheKey);
+  public async get<T>(
+    tableName: string,
+    cacheKey: string,
+  ): Promise<T | undefined> {
+    const key = this.storeKey(tableName, cacheKey);
+    const entry = this.store.get(key);
+
+    if (!entry) return undefined;
+    if (entry.expiresAt && Date.now() > entry.expiresAt) {
+      this.store.delete(key);
+      return undefined;
+    }
+
+    return entry.value as T;
   }
 
   /**
@@ -30,8 +45,10 @@ export class DbCacheProvider {
     value: T,
     ttl?: number,
   ): Promise<void> {
-    await this.cache.setTyped(this.cacheName(tableName), cacheKey, value, {
-      ttl,
+    const key = this.storeKey(tableName, cacheKey);
+    this.store.set(key, {
+      value,
+      expiresAt: ttl ? Date.now() + ttl : undefined,
     });
   }
 
@@ -39,6 +56,11 @@ export class DbCacheProvider {
    * Invalidate all cached queries for a table.
    */
   public async invalidateTable(tableName: string): Promise<void> {
-    await this.cache.invalidateKeys(this.cacheName(tableName), ["*"]);
+    const prefix = `${tableName}:`;
+    for (const key of this.store.keys()) {
+      if (key.startsWith(prefix)) {
+        this.store.delete(key);
+      }
+    }
   }
 }

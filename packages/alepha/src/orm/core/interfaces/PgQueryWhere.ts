@@ -97,6 +97,13 @@ type PgQueryWhereConditions<
    * @see notExists for the inverse of this test
    */
   exists?: SQLWrapper;
+
+  /**
+   * Test whether a subquery evaluates to have no rows.
+   *
+   * @see exists for the inverse of this test
+   */
+  notExists?: SQLWrapper;
 };
 
 type PgQueryWhereRelations<

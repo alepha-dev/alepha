@@ -21,6 +21,7 @@ import type {
   SchemaToTableConfig,
 } from "../../primitives/$entity.ts";
 import type { SequencePrimitive } from "../../primitives/$sequence.ts";
+import type { ViewPrimitive } from "../../primitives/$view.ts";
 import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
 import type { ModelBuilder } from "../../services/ModelBuilder.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
@@ -151,6 +152,10 @@ export abstract class DatabaseProvider {
   public registerEntity(entity: EntityPrimitive) {
     this.entityPrimitives.push(entity);
     this.builder.buildTable(entity, this);
+  }
+
+  public registerView(view: ViewPrimitive) {
+    this.builder.buildView(view, this);
   }
 
   public registerSequence(sequence: SequencePrimitive) {

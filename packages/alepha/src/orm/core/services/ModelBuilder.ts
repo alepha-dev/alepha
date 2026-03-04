@@ -1,6 +1,7 @@
 import type { SQL } from "drizzle-orm";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type { SequencePrimitive } from "../primitives/$sequence.ts";
+import type { ViewPrimitive } from "../primitives/$view.ts";
 
 /**
  * Database-specific table configuration functions
@@ -37,6 +38,17 @@ export abstract class ModelBuilder {
       tables: Map<string, unknown>;
       enums: Map<string, unknown>;
       schemas: Map<string, unknown>;
+      schema: string;
+    },
+  ): void;
+
+  /**
+   * Build a view from a view primitive.
+   */
+  abstract buildView(
+    view: ViewPrimitive,
+    options: {
+      tables: Map<string, unknown>;
       schema: string;
     },
   ): void;
@@ -111,19 +123,17 @@ export abstract class ModelBuilder {
 
               // Use original camelCase property name for lookup
               if ((self as any)[indexDef.column]) {
-                if (indexDef.unique) {
-                  configs.push(
-                    builders
+                let idx = indexDef.unique
+                  ? builders
                       .uniqueIndex(indexName)
-                      .on((self as any)[indexDef.column]),
-                  );
-                } else {
-                  configs.push(
-                    builders
+                      .on((self as any)[indexDef.column])
+                  : builders
                       .index(indexName)
-                      .on((self as any)[indexDef.column]),
-                  );
+                      .on((self as any)[indexDef.column]);
+                if ("where" in indexDef && indexDef.where) {
+                  idx = (idx as any).where(indexDef.where);
                 }
+                configs.push(idx);
               }
             } else if ("columns" in indexDef) {
               const columnNames = indexDef.columns.map((col: any) =>
@@ -138,11 +148,13 @@ export abstract class ModelBuilder {
                 .filter(Boolean);
 
               if (cols.length === indexDef.columns.length) {
-                if (indexDef.unique) {
-                  configs.push(builders.uniqueIndex(indexName).on(...cols));
-                } else {
-                  configs.push(builders.index(indexName).on(...cols));
+                let idx = indexDef.unique
+                  ? builders.uniqueIndex(indexName).on(...cols)
+                  : builders.index(indexName).on(...cols);
+                if ("where" in indexDef && indexDef.where) {
+                  idx = (idx as any).where(indexDef.where);
                 }
+                configs.push(idx);
               }
             }
           }

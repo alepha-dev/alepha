@@ -5,16 +5,19 @@ import {
   ModelBuilder,
   PG_CREATED_AT,
   PG_ENUM,
+  PG_GENERATED,
   PG_IDENTITY,
   PG_PRIMARY_KEY,
   PG_REF,
   PG_SERIAL,
   PG_UPDATED_AT,
   type PgEnumOptions,
+  type PgGeneratedOptions,
   type PgIdentityOptions,
   type PgRefOptions,
   type SequencePrimitive,
   schema,
+  type ViewPrimitive,
 } from "alepha/orm";
 import type { BuildExtraConfigColumns } from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";
@@ -27,9 +30,11 @@ import {
   type PgTableExtraConfigValue,
   type PgTableWithColumns,
   pgEnum,
+  pgMaterializedView,
   pgSchema,
   pgSequence,
   pgTable,
+  pgView,
   unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -95,6 +100,36 @@ export class PostgresModelBuilder extends ModelBuilder {
     const table = nsp.table(tableName, columns, configFn);
 
     options.tables.set(tableName, table);
+  }
+
+  public buildView(
+    view: ViewPrimitive,
+    options: {
+      tables: Map<string, unknown>;
+      schema: string;
+    },
+  ) {
+    const viewName = view.name;
+    if (options.tables.has(viewName)) {
+      return;
+    }
+
+    const columns = this.schemaToPgColumns(
+      viewName,
+      view.schema,
+      { enum: pgEnum, table: pgTable, sequence: pgSequence } as any,
+      new Map(),
+      options.tables,
+    );
+
+    let drizzleView: unknown;
+    if (view.materialized) {
+      drizzleView = pgMaterializedView(viewName, columns).existing();
+    } else {
+      drizzleView = pgView(viewName, columns).existing();
+    }
+
+    options.tables.set(viewName, drizzleView);
   }
 
   public buildSequence(
@@ -192,6 +227,11 @@ export class PostgresModelBuilder extends ModelBuilder {
 
             return target;
           }, config.actions);
+        }
+
+        if (PG_GENERATED in value) {
+          const gen = value[PG_GENERATED] as PgGeneratedOptions;
+          col = col.generatedAlwaysAs(gen.expression);
         }
 
         if (schema.required?.includes(key)) {

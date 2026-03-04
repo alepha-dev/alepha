@@ -1,3 +1,4 @@
+import type { SQL } from "drizzle-orm";
 import type {
   PgSequenceOptions,
   UpdateDeleteAction,
@@ -13,6 +14,7 @@ export const PG_VERSION = Symbol.for("Alepha.Postgres.Version");
 export const PG_IDENTITY = Symbol.for("Alepha.Postgres.Identity");
 export const PG_ENUM = Symbol.for("Alepha.Postgres.Enum");
 export const PG_REF = Symbol.for("Alepha.Postgres.Ref");
+export const PG_GENERATED = Symbol.for("Alepha.Postgres.Generated");
 
 /**
  * @deprecated Use `PG_IDENTITY` instead.
@@ -33,6 +35,7 @@ export type PgSymbols = {
   [PG_IDENTITY]: PgIdentityOptions;
   [PG_REF]: PgRefOptions;
   [PG_ENUM]: PgEnumOptions;
+  [PG_GENERATED]: PgGeneratedOptions;
 
   /**
    * @deprecated Use `PG_IDENTITY` instead.
@@ -51,6 +54,20 @@ export type PgIdentityOptions = {
 export interface PgEnumOptions {
   name?: string;
   description?: string;
+}
+
+export interface PgGeneratedOptions {
+  /**
+   * SQL expression for the generated column.
+   */
+  expression: SQL;
+
+  /**
+   * Storage mode for the generated column.
+   * - `"stored"` — value is computed on write and stored on disk (default for PostgreSQL).
+   * - `"virtual"` — value is computed on read (default for SQLite).
+   */
+  mode?: "stored" | "virtual";
 }
 
 export interface PgRefOptions {

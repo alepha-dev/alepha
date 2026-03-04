@@ -13,6 +13,7 @@ export * from "./primitives/$repository.ts";
 export * from "./primitives/$seed.ts";
 export * from "./primitives/$sequence.ts";
 export * from "./primitives/$transactional.ts";
+export * from "./providers/DbCacheProvider.ts";
 export * from "./providers/DrizzleKitProvider.ts";
 export * from "./providers/drivers/CloudflareD1Provider.ts";
 export * from "./providers/drivers/DatabaseProvider.ts";
