@@ -35,6 +35,12 @@ export class ServerAuthProvider {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly serverLinksProvider = $inject(ServerLinksProvider);
 
+  public get identities(): Array<AuthPrimitive> {
+    return this.alepha
+      .primitives($auth)
+      .filter((auth) => !auth.options.disabled);
+  }
+
   protected readonly authorizationCode = $cookie({
     name: "authorizationCode",
     ttl: [15, "minutes"],
@@ -58,47 +64,6 @@ export class ServerAuthProvider {
     schema: tokensSchema,
   });
 
-  public get identities(): Array<AuthPrimitive> {
-    return this.alepha
-      .primitives($auth)
-      .filter((auth) => !auth.options.disabled);
-  }
-
-  public getAuthenticationProviders(
-    filters: { realmName?: string } = {},
-  ): AuthenticationProvider[] {
-    const providers: AuthenticationProvider[] = [];
-
-    for (const identity of this.identities) {
-      if (filters.realmName) {
-        const issuer = identity.issuer;
-        if (!issuer || issuer.name !== filters.realmName) {
-          continue;
-        }
-      }
-
-      const type =
-        "oidc" in identity.options
-          ? "OIDC"
-          : "oauth" in identity.options
-            ? "OAUTH2"
-            : "credentials" in identity.options
-              ? "CREDENTIALS"
-              : undefined;
-
-      if (!type) {
-        continue;
-      }
-
-      providers.push({
-        name: identity.name,
-        type,
-      });
-    }
-
-    return providers;
-  }
-
   protected readonly configure = $hook({
     on: "configure",
     handler: async () => {
@@ -107,20 +72,6 @@ export class ServerAuthProvider {
       }
     },
   });
-
-  protected getAccessTokens(tokens: Tokens) {
-    const idp = this.provider(tokens.provider);
-
-    if (
-      "oidc" in idp.options &&
-      !("realm" in idp.options) &&
-      idp.options.oidc?.useIdToken
-    ) {
-      return tokens.id_token;
-    }
-
-    return tokens.access_token;
-  }
 
   /**
    * Fill request headers with access token from cookies or fallback to provider's fallback function.
@@ -135,7 +86,7 @@ export class ServerAuthProvider {
       if (cookies) {
         const tokens = await this.cookiesToTokens(cookies);
         if (tokens) {
-          request.headers.authorization = `Bearer ${this.getAccessTokens(tokens)}`;
+          request.headers.authorization = `Bearer ${this.extractAccessToken(tokens)}`;
           this.log.trace("Access token set in request headers", {
             provider: tokens.provider,
           });
@@ -156,86 +107,6 @@ export class ServerAuthProvider {
       }
     },
   });
-
-  /**
-   * Convert cookies to tokens.
-   * If the tokens are expired, try to refresh them using the refresh token.
-   */
-  protected async cookiesToTokens(
-    cookies: Cookies,
-  ): Promise<Tokens | undefined> {
-    const tokens = this.getTokens(cookies);
-    if (!tokens) {
-      // no cookie, no tokens
-      this.log.trace("No tokens found in cookies");
-      return;
-    }
-
-    this.log.trace("Tokens found in cookies", {
-      expires_in: tokens.expires_in,
-      issued_at: tokens.issued_at,
-    });
-
-    // check if tokens are expired
-    const refreshedTokens = await this.refreshTokens(tokens);
-    if (!refreshedTokens) {
-      this.tokens.del({ cookies });
-      // 08/25: exception here will go to Server error handler, not the React one
-      // better to remove cookie & session and let the page handle 401 Unauthorized
-      //throw new SessionExpiredError("Session expired. Please login again.");
-      return;
-    }
-
-    if (refreshedTokens.access_token !== tokens.access_token) {
-      this.setTokens(refreshedTokens, cookies);
-    }
-
-    return refreshedTokens;
-  }
-
-  protected async refreshTokens(tokens: Tokens): Promise<Tokens | undefined> {
-    if (tokens.expires_in && tokens.issued_at) {
-      const gracePeriodSec = 10;
-      const expiresAt = tokens.issued_at + (tokens.expires_in - gracePeriodSec);
-
-      if (expiresAt < this.dateTimeProvider.now().unix()) {
-        this.log.trace("Tokens are expired");
-
-        // oh no, it is expired
-        if (tokens.refresh_token) {
-          this.log.trace("Trying to refresh tokens using refresh token");
-          // but has refresh token!
-          try {
-            const provider = this.provider(tokens);
-            const result = await provider.refresh(
-              tokens.refresh_token,
-              tokens.access_token,
-            );
-            const newTokens = {
-              ...result,
-              provider: tokens.provider,
-              issued_at: this.dateTimeProvider.now().unix(),
-            };
-
-            this.log.debug("Tokens refreshed successfully");
-
-            return newTokens;
-          } catch (e) {
-            this.log.warn("Failed to refresh token", e);
-          }
-        }
-
-        // session expired and no (valid) refresh token
-        return;
-      }
-    }
-
-    if (!tokens.issued_at && tokens.access_token) {
-      return;
-    }
-
-    return tokens;
-  }
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -412,7 +283,7 @@ export class ServerAuthProvider {
         provider: query.provider,
         realm: query.realm,
       });
-      const oauth = provider.oauth;
+      const oauth = await provider.getOAuth();
       if (!oauth) {
         throw new SecurityError(
           `Auth provider '${query.provider}' does not support OAuth2`,
@@ -495,7 +366,7 @@ export class ServerAuthProvider {
       }
 
       const provider = this.provider(authorizationCode);
-      const oauth = provider.oauth;
+      const oauth = await provider.getOAuth();
       if (!oauth) {
         throw new SecurityError(
           `Auth provider '${provider.name}' does not support OAuth2`,
@@ -586,7 +457,7 @@ export class ServerAuthProvider {
         }
       }
 
-      const oauth = provider.oauth;
+      const oauth = await provider.getOAuth();
       if (!oauth) {
         reply.redirect(redirect, 302);
         return;
@@ -623,6 +494,45 @@ export class ServerAuthProvider {
     },
   });
 
+  // -------------------------------------------------------------------------------------------------------------------
+
+  public getAuthenticationProviders(
+    filters: { realmName?: string } = {},
+  ): AuthenticationProvider[] {
+    const providers: AuthenticationProvider[] = [];
+
+    for (const identity of this.identities) {
+      if (filters.realmName) {
+        const issuer = identity.issuer;
+        if (!issuer || issuer.name !== filters.realmName) {
+          continue;
+        }
+      }
+
+      const type =
+        "oidc" in identity.options
+          ? "OIDC"
+          : "oauth" in identity.options
+            ? "OAUTH2"
+            : "credentials" in identity.options
+              ? "CREDENTIALS"
+              : undefined;
+
+      if (!type) {
+        continue;
+      }
+
+      providers.push({
+        name: identity.name,
+        type,
+      });
+    }
+
+    return providers;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+
   /**
    * Find an auth provider by name and optionally by realm.
    * When realm is specified, it filters providers by both name and realm.
@@ -655,6 +565,42 @@ export class ServerAuthProvider {
     return identity;
   }
 
+  /**
+   * Convert cookies to tokens.
+   * If the tokens are expired, try to refresh them using the refresh token.
+   */
+  protected async cookiesToTokens(
+    cookies: Cookies,
+  ): Promise<Tokens | undefined> {
+    const tokens = this.getTokens(cookies);
+    if (!tokens) {
+      // no cookie, no tokens
+      this.log.trace("No tokens found in cookies");
+      return;
+    }
+
+    this.log.trace("Tokens found in cookies", {
+      expires_in: tokens.expires_in,
+      issued_at: tokens.issued_at,
+    });
+
+    // check if tokens are expired
+    const refreshedTokens = await this.refreshTokens(tokens);
+    if (!refreshedTokens) {
+      this.tokens.del({ cookies });
+      // 08/25: exception here will go to Server error handler, not the React one
+      // better to remove cookie & session and let the page handle 401 Unauthorized
+      //throw new SessionExpiredError("Session expired. Please login again.");
+      return;
+    }
+
+    if (refreshedTokens.access_token !== tokens.access_token) {
+      this.setTokens(refreshedTokens, cookies);
+    }
+
+    return refreshedTokens;
+  }
+
   protected getTokens(cookies?: Cookies): Tokens | undefined {
     return this.tokens.get({ cookies });
   }
@@ -674,7 +620,67 @@ export class ServerAuthProvider {
       ttl,
     });
   }
+
+  protected extractAccessToken(tokens: Tokens) {
+    const idp = this.provider(tokens.provider);
+
+    if (
+      "oidc" in idp.options &&
+      !("realm" in idp.options) &&
+      idp.options.oidc?.useIdToken
+    ) {
+      return tokens.id_token;
+    }
+
+    return tokens.access_token;
+  }
+
+  protected async refreshTokens(tokens: Tokens): Promise<Tokens | undefined> {
+    if (tokens.expires_in && tokens.issued_at) {
+      const gracePeriodSec = 10;
+      const expiresAt = tokens.issued_at + (tokens.expires_in - gracePeriodSec);
+
+      if (expiresAt < this.dateTimeProvider.now().unix()) {
+        this.log.trace("Tokens are expired");
+
+        // oh no, it is expired
+        if (tokens.refresh_token) {
+          this.log.trace("Trying to refresh tokens using refresh token");
+          // but has refresh token!
+          try {
+            const provider = this.provider(tokens);
+            const result = await provider.refresh(
+              tokens.refresh_token,
+              tokens.access_token,
+            );
+            const newTokens = {
+              ...result,
+              provider: tokens.provider,
+              issued_at: this.dateTimeProvider.now().unix(),
+            };
+
+            this.log.debug("Tokens refreshed successfully");
+
+            return newTokens;
+          } catch (e) {
+            this.log.warn("Failed to refresh token", e);
+          }
+        }
+
+        // session expired and no (valid) refresh token
+        return;
+      }
+    }
+
+    if (!tokens.issued_at && tokens.access_token) {
+      return;
+    }
+
+    return tokens;
+  }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface OAuth2Profile {
   sub: string; // Subject - unique ID per user (required by OpenID)

@@ -255,7 +255,29 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
   protected readonly securityProvider = $inject(SecurityProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
-  public oauth?: Configuration;
+  protected oauthConfig?: Configuration;
+  protected oauthInitializer?: () => Promise<Configuration>;
+
+  public get oauth(): Configuration | undefined {
+    return this.oauthConfig;
+  }
+
+  /**
+   * Get the OAuth2/OIDC configuration, initializing lazily if needed (serverless mode).
+   */
+  public async getOAuth(): Promise<Configuration | undefined> {
+    if (this.oauthConfig) {
+      return this.oauthConfig;
+    }
+
+    if (this.oauthInitializer) {
+      this.oauthConfig = await this.oauthInitializer();
+      this.oauthInitializer = undefined;
+      return this.oauthConfig;
+    }
+
+    return undefined;
+  }
 
   public get name() {
     return this.options.name ?? this.config.propertyKey;
@@ -320,10 +342,13 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
             },
           );
         });
-    } else if (this.oauth) {
+    }
+
+    const oauth = await this.getOAuth();
+    if (oauth) {
       try {
         return {
-          ...(await refreshTokenGrant(this.oauth, refreshToken)),
+          ...(await refreshTokenGrant(oauth, refreshToken)),
           issued_at: this.dateTimeProvider.now().unix(),
         };
       } catch (error) {
@@ -399,30 +424,38 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
   }
 
   public async prepare() {
-    const addons: Array<(config: Configuration) => void> = [];
-
-    addons.push(allowInsecureRequests);
-
     if ("oidc" in this.options) {
       const { oidc } = this.options;
 
-      this.oauth = await discovery(
-        new URL(oidc.issuer),
-        oidc.clientId,
-        {
-          client_secret: oidc.clientSecret,
-        },
-        undefined,
-        {
-          execute: addons,
-        },
-      );
+      const discoverOidc = async () => {
+        const execute: Array<(config: Configuration) => void> = [];
+        execute.push(allowInsecureRequests);
+
+        return discovery(
+          new URL(oidc.issuer),
+          oidc.clientId,
+          {
+            client_secret: oidc.clientSecret,
+          },
+          undefined,
+          {
+            execute,
+          },
+        );
+      };
+
+      // Defer OIDC discovery in serverless/dev to avoid cold start penalty
+      if (this.alepha.isServerless() || !this.alepha.isProduction()) {
+        this.oauthInitializer = discoverOidc;
+      } else {
+        this.oauthConfig = await discoverOidc();
+      }
     }
 
     if ("oauth" in this.options) {
       const { oauth } = this.options;
 
-      this.oauth = new Configuration(
+      this.oauthConfig = new Configuration(
         {
           authorization_endpoint: oauth.authorization,
           token_endpoint: oauth.token,
