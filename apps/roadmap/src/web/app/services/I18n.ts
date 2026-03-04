@@ -163,6 +163,7 @@ export class I18n {
         "kanban.column.accepted": "In Progress",
         "kanban.column.completed": "Completed",
         "kanban.empty": "No quests",
+        "kanban.showMore": "Show more",
         "kanban.readOnly": "Read only",
         "kanban.filter.all": "All",
         "kanban.error.completedCannotMove": "Completed quests cannot be moved",
@@ -403,6 +404,7 @@ export class I18n {
         "kanban.column.accepted": "En cours",
         "kanban.column.completed": "Terminées",
         "kanban.empty": "Aucune quête",
+        "kanban.showMore": "Afficher plus",
         "kanban.readOnly": "Lecture seule",
         "kanban.filter.packages": "Zones",
         "kanban.error.completedCannotMove":

@@ -12,7 +12,6 @@ import { useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import type { ChapterController } from "@/api/controllers/ChapterController.ts";
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { TaskController } from "@/api/controllers/TaskController.ts";
 import type { Project } from "@/api/entities/projects.ts";
@@ -37,14 +36,12 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const { project, tasks: initialTasks, readOnly } = props;
   const [tasks, setTasks] = useState<TaskResource[]>(initialTasks);
   const [activeZones, setActiveZones] = useState<string[]>([]);
-  const [activeChapterId, setActiveChapterId] = useState<number | undefined>();
   const [loading, setLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskResource | null>(null);
   const [, setKanbanProject] = useStore(kanbanProjectAtom);
   const [reloadKey] = useStore(kanbanReloadAtom);
   const taskApi = useClient<TaskController>();
   const kanbanApi = useClient<KanbanController>();
-  const chapterApi = useClient<ChapterController>();
   const { tr } = useI18n<I18n, "en">();
   const toast = useToast();
   const dndId = useId();
@@ -52,16 +49,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const zonesLoader = useCallback(async () => {
     return project.packages;
   }, [project.packages]);
-
-  const chaptersLoader = useCallback(async () => {
-    const chapters = await chapterApi.getChapters({
-      params: { projectId: project.id },
-    });
-    return chapters.map((ch) => ({
-      value: String(ch.id),
-      label: `Ch.${ch.number}: ${ch.title} (${ch.questCount} quests)`,
-    }));
-  }, [project.id]);
 
   useEffect(() => {
     setKanbanProject({ project, readOnly });
@@ -81,11 +68,9 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const filterForm = useForm({
     schema: t.object({
       zones: t.optional(t.array(t.string())),
-      chapterId: t.optional(t.integer()),
     }),
     handler: async (values) => {
       setActiveZones(values.zones ?? []);
-      setActiveChapterId(values.chapterId);
     },
     onChange: async () => {
       await filterForm.submit();
@@ -93,15 +78,11 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   });
 
   const filteredTasks = useMemo(() => {
-    let result = tasks;
     if (activeZones.length > 0) {
-      result = result.filter((task) => activeZones.includes(task.package));
+      return tasks.filter((task) => activeZones.includes(task.package));
     }
-    if (activeChapterId != null) {
-      result = result.filter((task) => task.chapterId === activeChapterId);
-    }
-    return result;
-  }, [tasks, activeZones, activeChapterId]);
+    return tasks;
+  }, [tasks, activeZones]);
 
   const grouped = useMemo(() => {
     const result: Record<TaskStatus, TaskResource[]> = {
@@ -112,6 +93,10 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     for (const task of filteredTasks) {
       result[task.metadata.status].push(task);
     }
+    result.completed.sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
     return result;
   }, [filteredTasks]);
 
@@ -191,17 +176,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                 placeholder: "Zones",
               },
               loader: zonesLoader,
-            }}
-          />
-          <Control
-            input={filterForm.input.chapterId}
-            size="xs"
-            select={{
-              label: "",
-              selectProps: {
-                placeholder: "Chapter",
-              },
-              loader: chaptersLoader,
             }}
           />
         </Flex>
