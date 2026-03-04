@@ -29,6 +29,7 @@ import {
   type PageRoute,
   ReactPageProvider,
   type ReactRouterState,
+  reactPageOptions,
 } from "./ReactPageProvider.ts";
 import { ReactServerTemplateProvider } from "./ReactServerTemplateProvider.ts";
 import { SSRManifestProvider } from "./SSRManifestProvider.ts";
@@ -72,6 +73,7 @@ export class ReactServerProvider {
   protected hasServerLinksProvider = false;
 
   protected readonly options = $use(reactServerOptions);
+  protected readonly pageOptions = $use(reactPageOptions);
 
   /**
    * Configure the React server provider.
@@ -251,6 +253,16 @@ export class ReactServerProvider {
   }
 
   /**
+   * Resolve the static file pattern from page options.
+   * Returns a compiled RegExp, or `false` if disabled (empty string).
+   */
+  protected resolveStaticFilePattern(): RegExp | false {
+    const pattern = this.pageOptions.staticFilePattern;
+    if (!pattern) return false;
+    return new RegExp(pattern);
+  }
+
+  /**
    * Create the request handler for a page route.
    *
    * When cacheMiddleware is provided, uses a non-streaming path that renders
@@ -261,9 +273,22 @@ export class ReactServerProvider {
     cacheMiddleware: Middleware[] = [],
   ): ServerHandler {
     const hasCache = cacheMiddleware.length > 0;
+    const isCatchAll = route.match === "/*";
+    const staticFilePattern = isCatchAll
+      ? this.resolveStaticFilePattern()
+      : false;
 
     return async (serverRequest) => {
       const { url, reply, query, params } = serverRequest;
+
+      // Skip SSR for file-like URLs hitting the catch-all wildcard.
+      // Bots and crawlers often probe paths like /hello.txt, /wp-login.php, etc.
+      // Rendering a full React page for these is wasteful — return a plain 404 instead.
+      if (staticFilePattern && staticFilePattern.test(url.pathname)) {
+        reply.status = 404;
+        reply.headers["content-type"] = "text/plain";
+        return "Not Found";
+      }
 
       this.log.trace("Rendering page", { name: route.name });
 
@@ -574,6 +599,12 @@ declare module "alepha" {
 /**
  * React server provider configuration atom
  */
+/**
+ * Default pattern matching file-like URLs (e.g. /hello.txt, /wp-login.php).
+ * Matches paths whose last segment contains a dot followed by 1-10 alphanumeric characters.
+ */
+export const DEFAULT_STATIC_FILE_PATTERN = "\\.[a-zA-Z0-9]{1,10}$";
+
 export const reactServerOptions = $atom({
   name: "alepha.react.server.options",
   schema: t.object({

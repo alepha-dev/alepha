@@ -35,9 +35,20 @@ export const reactPageOptions = $atom({
      * Enable React StrictMode wrapper.
      */
     strictMode: t.boolean({ default: true }),
+    /**
+     * RegExp pattern (as string) to detect file-like URLs (e.g. /hello.txt, /wp-login.php).
+     * When a request hits the catch-all wildcard route and matches this pattern,
+     * SSR is skipped and a plain 404 response is returned instead.
+     *
+     * Set to empty string to disable this behavior.
+     *
+     * @default "\\.[a-zA-Z0-9]{1,10}$"
+     */
+    staticFilePattern: t.string(),
   }),
   default: {
     strictMode: true,
+    staticFilePattern: "\\.[a-zA-Z0-9]{1,10}$",
   },
 });
 
