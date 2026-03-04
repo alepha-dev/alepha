@@ -87,8 +87,7 @@ const ProjectBoardTable = () => {
     <DataTable<TaskResource, typeof filtersSchema>
       key={project.id}
       submitOnInit
-      infinityScroll
-      defaultSize={20}
+      defaultSize={25}
       emptyLabel={tr("common.noResults")}
       filters={t.object({
         status: t.optional(t.enum(["new", "accepted", "completed"])),

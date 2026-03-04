@@ -221,53 +221,11 @@ test.describe("User Journey", () => {
     // STEP 4: Create a new campaign
     // ==========================================
     await test.step("Create new campaign", async () => {
-      // First go to home page
+      // After registration, the user is already logged in
       await page.goto("/");
       await page.waitForLoadState("networkidle");
 
-      // Check if we're logged in - look for username in header
-      const isLoggedIn = await page
-        .getByText(testUsername)
-        .isVisible({ timeout: 3000 })
-        .catch(() => false);
-
-      if (!isLoggedIn) {
-        // Need to login - click Sign In
-        const signInLink = page.getByRole("link", { name: /sign in/i });
-        if (await signInLink.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await signInLink.click();
-          await page.waitForLoadState("networkidle");
-
-          // Fill login form
-          const usernameInput = page.locator("input").first();
-          const passwordInput = page.locator('input[type="password"]').first();
-          await usernameInput.fill(testEmail);
-          await passwordInput.fill(testPassword);
-
-          const signInButton = page.getByRole("button", { name: /sign in/i });
-          await expect(signInButton).toBeEnabled({ timeout: 5000 });
-          await signInButton.click();
-
-          // Wait for login to complete - could redirect to home or email confirmation
-          await page.waitForURL(
-            (url) => !url.pathname.includes("/auth/login"),
-            { timeout: 30000 },
-          );
-          await page.waitForLoadState("networkidle");
-
-          // If redirected to email confirmation page, handle it
-          if (
-            page.url().includes("/auth/confirm-email") ||
-            page.url().includes("/verify")
-          ) {
-            // Skip verification for now, just go home
-            await page.goto("/");
-            await page.waitForLoadState("networkidle");
-          }
-        }
-      }
-
-      // Now we should be logged in - click "New Campaign" button
+      // Click "New Campaign" button
       const newCampaignButton = page.getByRole("button", {
         name: /new.*campaign/i,
       });
