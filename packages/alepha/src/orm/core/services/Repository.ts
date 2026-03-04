@@ -247,8 +247,10 @@ export abstract class Repository<T extends TObject> {
     ) => Promise<T>,
     config?: PgTransactionConfig,
   ): Promise<T> {
-    if (this.provider.driver === "pglite") {
-      this.log.warn("Transactions are not supported with pglite driver");
+    if (!this.provider.supportsTransactions) {
+      this.log.warn(
+        `Transactions are not supported with ${this.provider.driver} driver`,
+      );
       return await transaction(null as any);
     }
 

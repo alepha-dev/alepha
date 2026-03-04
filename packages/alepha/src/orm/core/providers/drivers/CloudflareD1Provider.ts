@@ -88,6 +88,18 @@ export class CloudflareD1Provider extends DatabaseProvider {
     return rows;
   }
 
+  /**
+   * D1 does not support SQL-level transactions (BEGIN/COMMIT/ROLLBACK).
+   * It rejects these statements and requires the JS `batch()` API for atomic
+   * multi-statement operations instead.
+   *
+   * @see https://developers.cloudflare.com/d1/worker-api/d1-database/#batch-statements
+   * @see https://github.com/drizzle-team/drizzle-orm/issues/2463
+   */
+  public override get supportsTransactions(): boolean {
+    return false;
+  }
+
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {

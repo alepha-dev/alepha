@@ -43,6 +43,10 @@ export class PglitePostgresProvider extends DatabaseProvider {
 
   public override readonly dialect = "postgresql";
 
+  public override get supportsTransactions(): boolean {
+    return false;
+  }
+
   public override get url(): string {
     let path = this.env.DATABASE_URL;
 

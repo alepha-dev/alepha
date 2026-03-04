@@ -53,6 +53,15 @@ export abstract class DatabaseProvider {
   }
 
   /**
+   * Whether this driver supports SQL-level transactions (BEGIN/COMMIT/ROLLBACK).
+   *
+   * Drivers that do not (e.g. PGlite, Cloudflare D1) should override to `false`.
+   */
+  public get supportsTransactions(): boolean {
+    return true;
+  }
+
+  /**
    * Raw database connection handle (e.g. DatabaseSync, bun:sqlite Database).
    * Override in providers that expose native connections for introspection.
    */
@@ -195,6 +204,10 @@ export abstract class DatabaseProvider {
   ): Promise<R> {
     const existing = this.alepha.get("alepha.orm.tx");
     if (existing) {
+      return fn();
+    }
+
+    if (!this.supportsTransactions) {
       return fn();
     }
 
