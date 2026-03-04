@@ -1,10 +1,13 @@
-import { Flex, Text } from "@alepha/ui";
+import { ActionButton, Flex, Text } from "@alepha/ui";
 import { useDroppable } from "@dnd-kit/core";
 import { ScrollArea } from "@mantine/core";
 import { useI18n } from "alepha/react/i18n";
+import { useMemo, useState } from "react";
 import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
 import type { I18n } from "../../services/I18n.ts";
 import KanbanCard from "./KanbanCard.tsx";
+
+const PAGE_SIZE = 20;
 
 type ColumnStatus = "new" | "accepted" | "completed";
 
@@ -31,10 +34,17 @@ const columnColors: Record<ColumnStatus, string> = {
 const KanbanColumn = (props: KanbanColumnProps) => {
   const { status, tasks, readOnly, last, onSelect } = props;
   const { tr } = useI18n<I18n, "en">();
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${status}`,
     data: { type: "column", status },
   });
+
+  const visibleTasks = useMemo(
+    () => tasks.slice(0, visibleCount),
+    [tasks, visibleCount],
+  );
+  const hasMore = tasks.length > visibleCount;
 
   return (
     <Flex
@@ -99,7 +109,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
               </Text>
             </Flex>
           )}
-          {tasks.map((task) => (
+          {visibleTasks.map((task) => (
             <KanbanCard
               key={task.id}
               task={task}
@@ -107,6 +117,17 @@ const KanbanColumn = (props: KanbanColumnProps) => {
               onSelect={onSelect}
             />
           ))}
+          {hasMore && (
+            <Flex justify="center" py="xs">
+              <ActionButton
+                variant="subtle"
+                size="compact-xs"
+                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              >
+                {tr("kanban.showMore")}
+              </ActionButton>
+            </Flex>
+          )}
         </Flex>
       </ScrollArea>
     </Flex>
