@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { basename, dirname } from "node:path";
-import { $inject } from "alepha";
-import { $logger } from "alepha/logger";
+import { $inject, AlephaError } from "alepha";
+import type { RunnerMethod } from "alepha/command";
+import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import { cliAssets } from "../assets.ts";
 import { type AgentMdType, agentMd } from "../templates/agentMd.ts";
@@ -39,6 +40,7 @@ import {
  */
 export class ProjectScaffolder {
   protected readonly log = $logger();
+  protected readonly colors = $inject(ConsoleColorProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly utils = $inject(AlephaCliUtils);
@@ -383,6 +385,216 @@ export class ProjectScaffolder {
     if (files.length === 0) {
       await this.fs.writeFile(dummyPath, dummySpecTs());
     }
+  }
+
+  // ===========================================
+  // Full Init Orchestration
+  // ===========================================
+
+  /**
+   * Full project init — scaffolds files, installs deps, sets up PM and git.
+   */
+  async init({
+    run,
+    root,
+    flags,
+    args,
+  }: {
+    run: RunnerMethod;
+    root: string;
+    flags: {
+      pm?: "yarn" | "npm" | "pnpm" | "bun";
+      api?: boolean;
+      react?: boolean;
+      ui?: boolean;
+      auth?: boolean;
+      admin?: boolean;
+      tailwind?: boolean;
+      test?: boolean;
+      force?: boolean;
+    };
+    args?: string;
+  }) {
+    if (args) {
+      root = this.fs.join(root, args);
+      await this.fs.mkdir(root, { force: true });
+    }
+
+    // Flag cascading: --admin → --auth → --ui → --react, --api
+    if (flags.admin) {
+      flags.auth = true;
+    }
+    if (flags.auth) {
+      flags.api = true;
+      flags.ui = true;
+    }
+    if (flags.ui) {
+      flags.react = true;
+    }
+    if (flags.tailwind) {
+      flags.react = true;
+    }
+
+    // When codegen flags are set, target directory must be empty (unless --force)
+    const hasCodegenFlags =
+      flags.admin ||
+      flags.auth ||
+      flags.api ||
+      flags.ui ||
+      flags.react ||
+      flags.tailwind;
+    if (hasCodegenFlags && !flags.force) {
+      const files = await this.fs.ls(root);
+      // Allow a directory that only has package.json (common for monorepo packages)
+      const meaningful = files.filter((f) => f !== "package.json");
+      if (meaningful.length > 0) {
+        throw new AlephaError(
+          `Target directory is not empty (${root}). Use --force to overwrite existing files.`,
+        );
+      }
+    }
+
+    // Detect workspace context (are we inside packages/ or apps/ of a monorepo?)
+    const workspace = await this.pm.getWorkspaceContext(root);
+
+    // Detect agent type: claude CLI → CLAUDE.md, else → AGENTS.md
+    let agentType: "claude" | "agents" | false = false;
+    if (!workspace.isPackage) {
+      const hasClaudeCli = await this.utils.isInstalledAsync("claude");
+      agentType = hasClaudeCli ? "claude" : "agents";
+    }
+
+    const isExpo = await this.pm.hasExpo(root);
+
+    // Get git email for admin auto-promotion (if auth enabled)
+    const adminEmail = flags.auth ? await this.utils.getGitEmail() : undefined;
+
+    const force = !!flags.force;
+
+    await run({
+      name: "ensuring configuration files",
+      handler: async () => {
+        await this.ensureConfig(root, {
+          force,
+          packageJson: { ...flags, isPackage: workspace.isPackage },
+          // Skip workspace-level configs if they exist at workspace root
+          tsconfigJson: !workspace.config.tsconfigJson,
+          biomeJson: !workspace.config.biomeJson,
+          editorconfig: !workspace.config.editorconfig,
+          agentMd: agentType ? { type: agentType } : false,
+        });
+
+        // Create alepha.config.ts with documented options
+        await this.ensureAlephaConfig(root, { force });
+
+        // Create project structure based on flags
+        await this.ensureMainServerTs(root, {
+          api: !!flags.api,
+          react: !!flags.react && !isExpo,
+          force,
+        });
+        if (flags.api) {
+          await this.ensureApiProject(root, {
+            auth: !!flags.auth,
+            adminEmail,
+            force,
+          });
+        }
+        if (flags.react && !isExpo) {
+          await this.ensureWebProject(root, {
+            api: !!flags.api,
+            ui: !!flags.ui,
+            auth: !!flags.auth,
+            admin: !!flags.admin,
+            tailwind: !!flags.tailwind,
+            force,
+          });
+        }
+      },
+    });
+
+    // Use workspace PM if detected, otherwise detect from current root
+    const pmName = await this.pm.getPackageManager(
+      workspace.workspaceRoot ?? root,
+      flags.pm ?? workspace.packageManager ?? undefined,
+    );
+
+    // Only setup PM files if not in a workspace package
+    if (!workspace.isPackage) {
+      if (pmName === "yarn") {
+        await this.pm.ensureYarn(root);
+        await run("yarn set version stable", { root });
+      } else if (pmName === "bun") {
+        await this.pm.ensureBun(root);
+      } else if (pmName === "pnpm") {
+        await this.pm.ensurePnpm(root);
+      } else {
+        await this.pm.ensureNpm(root);
+      }
+    }
+
+    // Run install from workspace root if in a package, otherwise from current root
+    const installRoot = workspace.workspaceRoot ?? root;
+    await run(`${pmName} install`, {
+      alias: `installing dependencies with ${pmName}`,
+      root: installRoot,
+    });
+
+    // Create test directory if --test flag is set (vitest is in package.json)
+    if (flags.test) {
+      await this.ensureTestDir(root);
+    }
+
+    await run(`${pmName} run lint`, {
+      alias: "running linter",
+      root: installRoot,
+    });
+
+    // Initialize git repository if not in a workspace package
+    if (!workspace.isPackage) {
+      const gitInitialized = await this.ensureGitRepo(root, {
+        force,
+      });
+      if (gitInitialized) {
+        await run("git add .", {
+          alias: "staging generated files",
+          root,
+        });
+      }
+    }
+
+    // Don't show success message if no path arg, e.g. just "alepha init" to re-configure current dir
+    if (!args) {
+      return;
+    }
+
+    // We must end the run context in order to log success message
+    run.end();
+
+    // Success message
+    const projectName = args || ".";
+    const pmRun = pmName === "npm" ? "npm run" : pmName;
+    const c = this.colors;
+
+    this.log.info("");
+    this.log.info(`  ${c.set("GREEN", "✓")} Project ready!`);
+    this.log.info("");
+    this.log.info(
+      `  ${c.set("GREY_DARK", "$")} cd ${c.set("CYAN", projectName)}`,
+    );
+    this.log.info(
+      `  ${c.set("GREY_DARK", "$")} ${c.set("CYAN", `${pmRun} dev`)}`,
+    );
+
+    if (adminEmail) {
+      this.log.info("");
+      this.log.info(`  Admin email: ${c.set("GREEN", adminEmail)}`);
+      this.log.info(
+        `  ${c.set("GREY_DARK", "(from git config, change in src/api/AppSecurity.ts)")}`,
+      );
+    }
+
+    this.log.info("");
   }
 
   // ===========================================

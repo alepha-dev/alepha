@@ -1,9 +1,16 @@
 import { $module } from "alepha";
+import { appEntryOptions } from "./atoms/appEntryOptions.ts";
+import { buildOptions } from "./atoms/buildOptions.ts";
+import { devOptions } from "./atoms/devOptions.ts";
 import { BuildCommand } from "./commands/build.ts";
 import { CleanCommand } from "./commands/clean.ts";
 import { DbCommand } from "./commands/db.ts";
 import { DevCommand } from "./commands/dev.ts";
-import { GitMessageParser, GitProvider } from "./commands/gen/changelog.ts";
+import {
+  changelogOptions,
+  GitMessageParser,
+  GitProvider,
+} from "./commands/gen/changelog.ts";
 import { GenCommand } from "./commands/gen.ts";
 import { InitCommand } from "./commands/init.ts";
 import { LintCommand } from "./commands/lint.ts";
@@ -55,6 +62,7 @@ export * from "./providers/ViteDevServerProvider.ts";
 export * from "./services/AlephaCliUtils.ts";
 export * from "./services/GitMessageParser.ts";
 export * from "./services/PackageManagerUtils.ts";
+export * from "./services/ProjectScaffolder.ts";
 export * from "./services/ViteUtils.ts";
 export * from "./tasks/BuildAssetsTask.ts";
 export * from "./tasks/BuildClientTask.ts";
@@ -71,13 +79,36 @@ export * from "./version.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export const AlephaCli = $module({
-  name: "alepha.cli",
+/**
+ * Services, providers, and build tasks — no commands.
+ * Use this module when you need CLI utilities without registering commands.
+ */
+export const AlephaCliServices = $module({
+  name: "alepha.cli.services",
   services: [
+    // Services & providers
     AlephaCliUtils,
     PackageManagerUtils,
     ViteUtils,
     ProjectScaffolder,
+    AppEntryProvider,
+    GitMessageParser,
+    GitProvider,
+    ViteDevServerProvider,
+    ViteBuildProvider,
+  ],
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Full CLI module — all services and commands.
+ */
+export const AlephaCli = $module({
+  name: "alepha.cli",
+  atoms: [appEntryOptions, buildOptions, changelogOptions, devOptions],
+  services: [
+    AlephaCliExtensionProvider,
     // Commands
     BuildCommand,
     CleanCommand,
@@ -90,13 +121,6 @@ export const AlephaCli = $module({
     TypecheckCommand,
     VerifyCommand,
     GenCommand,
-    // Support services
-    AlephaCliExtensionProvider,
-    AppEntryProvider,
-    GitMessageParser,
-    GitProvider,
-    ViteDevServerProvider,
-    ViteBuildProvider,
     // Build tasks
     BuildAssetsTask,
     BuildClientTask,

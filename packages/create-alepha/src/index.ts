@@ -1,15 +1,5 @@
 #!/usr/bin/env node
-/**
- * Quick project setup tool.
- *
- * **Features:**
- * - `npx create-alepha` to bootstrap projects
- * - Template selection
- * - Environment configuration
- * - Package manager detection
- *
- * @module create-alepha
- */
+
 import { Alepha, run } from "alepha";
 import { CreateAlephaCoreCommands } from "./CreateAlephaCoreCommands.ts";
 import { version } from "./version.ts";
