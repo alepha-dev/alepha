@@ -1,3 +1,14 @@
+## [0.18.3] - 2026-03-08
+
+### Features
+
+- **orm**: partial indexes, subqueries (exists/notExists), connection pooling config, aggregate functions, dry-run   migrations, generated columns, query caching, database views (`cca9a73e`)
+- **server/auth**: defer IODC discovery on serverless and dev (`4d74f9db`)
+- **server**: add $sse server action primitive (`15216b2c`)
+- **cli**: platform - add secret management (`92e7ba9d`)
+- **api/notifications**: add admin ui (`e06f5d83`)
+- **cli**: platform - docker - add rustfs as default S3 resource (`a2ff5eea`)
+
 ## [0.18.2] - 2026-02-27
 
 ### Features

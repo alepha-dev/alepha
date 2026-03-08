@@ -20,7 +20,7 @@
     "build:e2e": "DATABASE_URL=d1://emerald:00000000-0000-0000-0000-000000000000 alepha build"
   },
   "dependencies": {
-    "alepha": "^0.18.2",
+    "alepha": "^0.18.3",
     "react": "^19.2.4"
   },
   "devDependencies": {
