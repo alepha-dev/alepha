@@ -783,9 +783,10 @@ export class JobProvider {
     on: "start",
     handler: async () => {
       this.workerId = crypto.randomUUID().slice(0, 12);
-      this.log.info(
-        `Job system started (worker=${this.workerId}, dispatch=${this.queueDispatch ? "queue" : "inline"})`,
-      );
+      this.log.info(`Job system started`, {
+        workerId: this.workerId,
+        dispatch: this.queueDispatch ? "queue" : "inline",
+      });
 
       // Set up log capture listener (once)
       this.alepha.events.on("log", ({ entry }) => {

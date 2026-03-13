@@ -112,7 +112,6 @@ export class BuildServerTask extends BuildTask {
         noExternal: true,
         resolve: { conditions },
       },
-      esbuild: { legalComments: "none", keepNames: true },
       build: {
         ssr: opts.entry,
         minify: true,
@@ -126,8 +125,15 @@ export class BuildServerTask extends BuildTask {
             chunkFileNames: "[hash].js",
             assetFileNames: "[hash][extname]",
             format: "esm",
-            // experimentalMinChunkSize: 10_000,
-          },
+            experimentalMinChunkSize: 10_000,
+            // Rolldown/Oxc minifier: preserve class and function names
+            minify: {
+              mangle: { keepNames: true },
+              compress: {
+                keepNames: { function: true, class: true },
+              },
+            },
+          } as any,
         },
       },
       customLogger: logger,
