@@ -46,6 +46,10 @@ export class ConsoleColorProvider {
       return true;
     }
 
+    if (this.alepha.isBrowser() && !navigator.userAgent.includes("Chrome")) {
+      return false;
+    }
+
     return !this.alepha.isProduction();
   }
 
