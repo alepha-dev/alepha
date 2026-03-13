@@ -36,7 +36,7 @@ const PromptDialog = ({ options, onSubmit }: PromptDialogProps) => {
         required={options?.required}
         mb="md"
       />
-      <Flex justify="flex-end">
+      <Flex justify="flex-end" gap={"xs"}>
         <Button variant="subtle" onClick={() => onSubmit(null)}>
           {options?.cancelLabel || "Cancel"}
         </Button>
