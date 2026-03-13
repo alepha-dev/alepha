@@ -19,9 +19,9 @@
   },
   "devDependencies": {
     "alepha": "0.18.3",
-    "tsdown": "^0.20.3",
+    "tsdown": "^0.21.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.0"
   },
   "peerDependencies": {
     "alepha": "0.18.3"

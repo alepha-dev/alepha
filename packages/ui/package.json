@@ -22,21 +22,21 @@
     "styles.css"
   ],
   "dependencies": {
-    "@mantine/charts": "^8.3.15",
-    "@mantine/core": "^8.3.15",
-    "@mantine/dates": "^8.3.15",
-    "@mantine/hooks": "^8.3.15",
-    "@mantine/modals": "^8.3.15",
-    "@mantine/notifications": "^8.3.15",
-    "@mantine/nprogress": "^8.3.15",
-    "@mantine/spotlight": "^8.3.15",
-    "@tabler/icons-react": "^3.38.0",
-    "dayjs": "^1.11.19",
+    "@mantine/charts": "^8.3.16",
+    "@mantine/core": "^8.3.16",
+    "@mantine/dates": "^8.3.16",
+    "@mantine/hooks": "^8.3.16",
+    "@mantine/modals": "^8.3.16",
+    "@mantine/notifications": "^8.3.16",
+    "@mantine/nprogress": "^8.3.16",
+    "@mantine/spotlight": "^8.3.16",
+    "@tabler/icons-react": "^3.40.0",
+    "dayjs": "^1.11.20",
     "react-is": "^19.2.4",
-    "recharts": "^3.7.0"
+    "recharts": "^3.8.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.5",
+    "@biomejs/biome": "^2.4.6",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/react-is": "^19.2.0",
@@ -44,8 +44,8 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1",
-    "vitest": "^4.0.18"
+    "vite": "^8.0.0",
+    "vitest": "^4.1.0"
   },
   "peerDependencies": {
     "alepha": "0.18.3",

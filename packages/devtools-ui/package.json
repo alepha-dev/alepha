@@ -11,17 +11,17 @@
   "main": "./src/main.ts",
   "devDependencies": {
     "@alepha/ui": "0.18.3",
-    "@biomejs/biome": "^2.4.5",
-    "@mantine/core": "^8.3.15",
-    "@mantine/hooks": "^8.3.15",
-    "@tabler/icons-react": "^3.38.0",
+    "@biomejs/biome": "^2.4.6",
+    "@mantine/core": "^8.3.16",
+    "@mantine/hooks": "^8.3.16",
+    "@tabler/icons-react": "^3.40.0",
     "@xyflow/react": "^12.10.1",
     "alepha": "0.18.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1",
-    "vitest": "^4.0.18"
+    "vite": "^8.0.0",
+    "vitest": "^4.1.0"
   },
   "scripts": {
     "lint": "alepha lint",
