@@ -20,5 +20,6 @@ playwright-report
 deno.lock
 apps/tmp
 docs/plans
+docs/superpowers
 apps/ride/*
 !apps/ride/package.json

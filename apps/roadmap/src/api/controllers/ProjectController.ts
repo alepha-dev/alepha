@@ -4,6 +4,7 @@ import { $logger } from "alepha/logger";
 import { $repository, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, ForbiddenError, okSchema } from "alepha/server";
+import { $etag } from "alepha/server/etag";
 import { chapters } from "../entities/chapters.ts";
 import { type Character, characters } from "../entities/characters.ts";
 import { projects } from "../entities/projects.ts";
@@ -60,7 +61,12 @@ export class ProjectController {
   });
 
   getMyProjects = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [
+      $secure({ permissions: ["project:read"] }),
+      $etag({
+        control: { private: true, maxAge: 30, staleWhileRevalidate: 120 },
+      }),
+    ],
     description: "Get all projects for the authenticated user",
     schema: {
       query: pageQuerySchema,
@@ -184,7 +190,12 @@ export class ProjectController {
   });
 
   getProjectPlayers = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [
+      $secure({ permissions: ["project:read"] }),
+      $etag({
+        control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
+      }),
+    ],
     schema: {
       params: t.object({
         id: t.integer(),
