@@ -1,5 +1,6 @@
 import { $atom, $hook, $inject, $use, type Static, t } from "alepha";
 import { CacheProvider } from "alepha/cache";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
   HttpError,
@@ -70,6 +71,7 @@ export interface RateLimitRegistration extends RateLimitOptions {
 
 export class ServerRateLimitProvider {
   protected readonly log = $logger();
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly cacheProvider = $inject(CacheProvider);
   protected readonly globalOptions = $use(rateLimitOptions);
@@ -217,7 +219,7 @@ export class ServerRateLimitProvider {
     const windowMs = options.windowMs ?? this.globalOptions.windowMs;
     const max = options.max ?? this.globalOptions.max;
 
-    const now = Date.now();
+    const now = this.dateTime.nowMillis();
     // Fixed window: round down to nearest window boundary
     const windowStart = Math.floor(now / windowMs) * windowMs;
     const resetTime = windowStart + windowMs;

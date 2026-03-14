@@ -105,7 +105,7 @@ export class RetryProvider {
     const { handler, onError } = options;
 
     let lastError: Error | undefined;
-    const startTime = Date.now();
+    const startTime = this.dateTime.nowMillis();
 
     const maxDurationMs = options.maxDuration
       ? this.dateTime.duration(options.maxDuration).asMilliseconds()
@@ -140,7 +140,7 @@ export class RetryProvider {
         }
 
         // Check for timeout before attempting
-        if (Date.now() - startTime >= maxDurationMs) {
+        if (this.dateTime.nowMillis() - startTime >= maxDurationMs) {
           throw new RetryTimeoutError(maxDurationMs);
         }
 
@@ -148,7 +148,7 @@ export class RetryProvider {
           const result = await handler(...args);
 
           // Check for timeout after handler execution
-          if (Date.now() - startTime >= maxDurationMs) {
+          if (this.dateTime.nowMillis() - startTime >= maxDurationMs) {
             throw new RetryTimeoutError(maxDurationMs);
           }
 
@@ -157,7 +157,7 @@ export class RetryProvider {
           lastError = err as Error;
 
           // Check for timeout after error
-          if (Date.now() - startTime >= maxDurationMs) {
+          if (this.dateTime.nowMillis() - startTime >= maxDurationMs) {
             throw new RetryTimeoutError(maxDurationMs);
           }
 
@@ -191,7 +191,7 @@ export class RetryProvider {
           }
 
           // Check for timeout after backoff wait before next attempt
-          if (Date.now() - startTime >= maxDurationMs) {
+          if (this.dateTime.nowMillis() - startTime >= maxDurationMs) {
             throw new RetryTimeoutError(maxDurationMs);
           }
         }

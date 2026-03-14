@@ -6,6 +6,7 @@ import {
   type Static,
   type TObject,
 } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { type SQLWrapper, sql } from "drizzle-orm";
 import {
@@ -30,6 +31,7 @@ export type SQLLike = SQLWrapper | string;
 
 export abstract class DatabaseProvider {
   protected readonly alepha = $inject(Alepha);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly log = $logger();
   protected abstract readonly builder: ModelBuilder;
   protected readonly kit = $inject(DrizzleKitProvider);
@@ -328,7 +330,7 @@ export abstract class DatabaseProvider {
    * Example: `test_alepha_1739871618_k3m9x2p1`
    */
   protected generateTestSchemaName(): string {
-    const epoch = Math.floor(Date.now() / 1000);
+    const epoch = Math.floor(this.dateTime.nowMillis() / 1000);
     const random = Math.random().toString(36).slice(2, 10).padEnd(8, "0");
 
     return `test_alepha_${epoch}_${random}`;

@@ -1,10 +1,12 @@
 import { $hook, $inject, Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 type TimingMap = Record<string, [number, number]>;
 
 export class ServerTimingProvider {
   protected readonly log = $logger();
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
 
   public options = {
@@ -23,7 +25,7 @@ export class ServerTimingProvider {
       }
 
       request.metadata.timing = {};
-      request.metadata.timing[this.handlerName] = [Date.now()];
+      request.metadata.timing[this.handlerName] = [this.dateTime.nowMillis()];
     },
   });
 
@@ -80,7 +82,7 @@ export class ServerTimingProvider {
 
     request.metadata ??= {};
     request.metadata.timing ??= {};
-    request.metadata.timing[name] = [Date.now()];
+    request.metadata.timing[name] = [this.dateTime.nowMillis()];
   }
 
   public endTiming(name: string): void {
@@ -108,6 +110,9 @@ export class ServerTimingProvider {
   }
 
   protected setDuration(name: string, timing: TimingMap): void {
-    timing[name] = [timing[name][0], Date.now() - timing[name][0]];
+    timing[name] = [
+      timing[name][0],
+      this.dateTime.nowMillis() - timing[name][0],
+    ];
   }
 }

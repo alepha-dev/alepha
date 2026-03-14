@@ -51,7 +51,7 @@ export class PrettyPrint {
    */
   public startCommand(cliName: string, commandName: string): void {
     this.header = commandName ? `${cliName} ${commandName}` : cliName;
-    this.commandStartTime = Date.now();
+    this.commandStartTime = this.dateTimeProvider.nowMillis();
     this.tasks.clear();
     this.lastLineCount = 0;
     this.write(`┌─ ${this.header}\n`);
@@ -64,7 +64,7 @@ export class PrettyPrint {
     this.restoreStdout();
     if (this.commandStartTime) {
       const totalDuration = (
-        (Date.now() - this.commandStartTime) /
+        (this.dateTimeProvider.nowMillis() - this.commandStartTime) /
         1000
       ).toFixed(1);
       this.write(`└─ Done in ${totalDuration}s\n`);
@@ -81,7 +81,7 @@ export class PrettyPrint {
       taskName,
       frameIndex: 0,
       status: "running",
-      startTime: Date.now(),
+      startTime: this.dateTimeProvider.nowMillis(),
     });
 
     this.interceptStdout();
@@ -163,7 +163,9 @@ export class PrettyPrint {
       if (task.status === "running") {
         const frame = this.frames[task.frameIndex];
         const elapsed = String(
-          Math.floor((Date.now() - task.startTime) / 100) / 10,
+          Math.floor(
+            (this.dateTimeProvider.nowMillis() - task.startTime) / 100,
+          ) / 10,
         ).padEnd(3, ".0");
         line += `${this.colors.cyan}${frame}${this.colors.reset} ${this.colors.dim}${task.taskName}${this.colors.reset}  ${this.colors.dim}${elapsed}s${this.colors.reset}`;
         task.frameIndex = (task.frameIndex + 1) % this.frames.length;

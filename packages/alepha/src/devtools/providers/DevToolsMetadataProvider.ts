@@ -1,6 +1,7 @@
 import { $inject, Alepha, type TObject, type TSchema, t } from "alepha";
 import { $bucket } from "alepha/bucket";
 import { $cache } from "alepha/cache";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
   PG_CREATED_AT,
@@ -44,9 +45,10 @@ import type { DevTopicMetadata } from "../schemas/DevTopicMetadata.ts";
 
 export class DevToolsMetadataProvider {
   protected readonly alepha = $inject(Alepha);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly log = $logger();
   protected readonly serverProvider = $inject(ServerProvider);
-  protected readonly startedAt = Date.now();
+  protected readonly startedAt = this.dateTime.nowMillis();
 
   public getActions(): DevActionMetadata[] {
     const actionPrimitives = this.alepha.primitives($action);
@@ -418,7 +420,7 @@ export class DevToolsMetadataProvider {
       runtime: isBun ? "bun" : "node",
       mode: this.alepha.isProduction() ? "production" : "development",
       port,
-      uptime: (Date.now() - this.startedAt) / 1000,
+      uptime: (this.dateTime.nowMillis() - this.startedAt) / 1000,
       memoryUsage: process.memoryUsage?.()?.rss ?? 0,
     };
   }

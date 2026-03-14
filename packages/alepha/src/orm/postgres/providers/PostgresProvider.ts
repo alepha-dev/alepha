@@ -184,7 +184,7 @@ export abstract class PostgresProvider extends DatabaseProvider {
           sql`SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'test_alepha_%'`,
         );
 
-        const now = Date.now();
+        const now = this.dateTime.nowMillis();
         const maxAge = 60 * 60 * 1000; // 1 hour
 
         for (const row of result) {

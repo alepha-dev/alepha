@@ -20,7 +20,8 @@ export class VerificationJobs {
       }
 
       const dayMs = 24 * 60 * 60 * 1000;
-      const purgeThreshold = Date.now() - purgeDays * dayMs;
+      const purgeThreshold =
+        this.dateTimeProvider.nowMillis() - purgeDays * dayMs;
 
       await this.verificationRepository.deleteMany({
         createdAt: {

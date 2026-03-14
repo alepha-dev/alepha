@@ -541,7 +541,7 @@ export abstract class Repository<T extends TObject> {
       orderBy = this.queryManager.parsePaginationSort(pagination.sort) as any;
     }
 
-    const now = Date.now();
+    const now = this.dateTimeProvider.nowMillis();
     const timers = {
       query: now,
       count: now,
@@ -559,7 +559,7 @@ export abstract class Repository<T extends TObject> {
         },
         opts,
       ).then((it) => {
-        timers.query = Date.now() - timers.query;
+        timers.query = this.dateTimeProvider.nowMillis() - timers.query;
         return it;
       }),
     );
@@ -572,7 +572,7 @@ export abstract class Repository<T extends TObject> {
 
       tasks.push(
         this.db.$count(this.table, this.toSQL(countWhere)).then((it) => {
-          timers.count = Date.now() - timers.count;
+          timers.count = this.dateTimeProvider.nowMillis() - timers.count;
           return it;
         }),
       );

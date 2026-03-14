@@ -140,7 +140,11 @@ export class MemoryCacheProvider extends CacheProvider {
   // ─────────────────────────────────────────────────────────────────────────────
 
   public async get(name: string, key: string): Promise<Uint8Array | undefined> {
-    this.getCalls.push({ name, key, timestamp: Date.now() });
+    this.getCalls.push({
+      name,
+      key,
+      timestamp: this.dateTimeProvider.nowMillis(),
+    });
 
     if (this.getError) {
       throw this.getError;
@@ -163,7 +167,13 @@ export class MemoryCacheProvider extends CacheProvider {
     value: Uint8Array,
     ttl?: number,
   ): Promise<Uint8Array> {
-    this.setCalls.push({ name, key, value, ttl, timestamp: Date.now() });
+    this.setCalls.push({
+      name,
+      key,
+      value,
+      ttl,
+      timestamp: this.dateTimeProvider.nowMillis(),
+    });
     this._stats.sets++;
 
     if (this.setError) {
@@ -196,7 +206,11 @@ export class MemoryCacheProvider extends CacheProvider {
   }
 
   public async del(name: string, ...keys: string[]): Promise<void> {
-    this.delCalls.push({ name, keys, timestamp: Date.now() });
+    this.delCalls.push({
+      name,
+      keys,
+      timestamp: this.dateTimeProvider.nowMillis(),
+    });
     this._stats.deletes++;
 
     if (this.delError) {

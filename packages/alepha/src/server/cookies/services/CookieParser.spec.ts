@@ -1,3 +1,4 @@
+import { describe, it } from "vitest";
 import type { Cookie } from "../primitives/$cookie.ts";
 import { CookieParser } from "./CookieParser.ts";
 

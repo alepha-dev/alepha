@@ -1,8 +1,10 @@
 import { $hook, $inject, Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 export class ServerLoggerProvider {
   protected readonly log = $logger();
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
 
   public readonly onRequest = $hook({
@@ -13,7 +15,7 @@ export class ServerLoggerProvider {
         return;
       }
 
-      request.metadata.now = Date.now();
+      request.metadata.now = this.dateTime.nowMillis();
 
       const search = request.url.search;
       const data: Record<string, string> = {
@@ -51,7 +53,7 @@ export class ServerLoggerProvider {
         return;
       }
 
-      const ms = Date.now() - request.metadata.now;
+      const ms = this.dateTime.nowMillis() - request.metadata.now;
       const search = request.url.search;
       this.log.info("Request completed", {
         method: request.method,

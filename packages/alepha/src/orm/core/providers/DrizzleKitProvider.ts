@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
 import { $inject, Alepha, AlephaError } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import type * as DrizzleKit from "drizzle-kit/api";
 import { sql } from "drizzle-orm";
@@ -7,6 +8,7 @@ import type { DatabaseProvider } from "./drivers/DatabaseProvider.ts";
 
 export class DrizzleKitProvider {
   protected readonly log = $logger();
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
 
   /**
@@ -34,7 +36,7 @@ export class DrizzleKitProvider {
       return;
     }
 
-    const now = Date.now();
+    const now = this.dateTime.nowMillis();
     const kit = this.importDrizzleKit();
     const models = this.getModels(provider);
 
@@ -60,7 +62,9 @@ export class DrizzleKitProvider {
       await this.executeFallbackStatements(statements, provider);
     }
 
-    this.log.info(`Sync with '${provider.name}' OK [${Date.now() - now}ms]`);
+    this.log.info(
+      `Sync with '${provider.name}' OK [${this.dateTime.nowMillis() - now}ms]`,
+    );
   }
 
   // -------------------------------------------------------------------------------------------------------------------

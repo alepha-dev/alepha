@@ -1,3 +1,6 @@
+import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+
 /**
  * Database query cache using a simple in-memory Map.
  *
@@ -8,6 +11,7 @@
  * so the ORM module does not force `AlephaCache` on all consumers.
  */
 export class DbCacheProvider {
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly store = new Map<
     string,
     { value: unknown; expiresAt?: number }
@@ -28,7 +32,7 @@ export class DbCacheProvider {
     const entry = this.store.get(key);
 
     if (!entry) return undefined;
-    if (entry.expiresAt && Date.now() > entry.expiresAt) {
+    if (entry.expiresAt && this.dateTime.nowMillis() > entry.expiresAt) {
       this.store.delete(key);
       return undefined;
     }
@@ -48,7 +52,7 @@ export class DbCacheProvider {
     const key = this.storeKey(tableName, cacheKey);
     this.store.set(key, {
       value,
-      expiresAt: ttl ? Date.now() + ttl : undefined,
+      expiresAt: ttl ? this.dateTime.nowMillis() + ttl : undefined,
     });
   }
 

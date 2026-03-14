@@ -1,5 +1,6 @@
 import { cp, glob, rm } from "node:fs/promises";
 import { $inject, Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { ShellProvider } from "alepha/system";
 import { CommandError } from "../errors/CommandError.ts";
@@ -56,8 +57,9 @@ export interface RunnerMethod {
 
 export class Runner {
   protected readonly log = $logger();
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected timers: Timer[] = [];
-  protected readonly startTime: number = Date.now();
+  protected readonly startTime: number = this.dateTime.nowMillis();
   protected readonly prettyPrint = $inject(PrettyPrint);
   protected readonly alepha = $inject(Alepha);
   protected readonly shell = $inject(ShellProvider);
@@ -217,7 +219,10 @@ export class Runner {
     if (this.timers.length === 0) return;
 
     this.log.info("");
-    const totalTime = ((Date.now() - this.startTime) / 1000).toFixed(1);
+    const totalTime = (
+      (this.dateTime.nowMillis() - this.startTime) /
+      1000
+    ).toFixed(1);
     this.log.info(`Total time: ${totalTime}s`);
     this.log.info(``);
 
@@ -226,7 +231,7 @@ export class Runner {
   }
 
   protected async executeTask(task: Task): Promise<string> {
-    const now = Date.now();
+    const now = this.dateTime.nowMillis();
     const taskId = `task-${++this.taskCounter}`; // Use unique counter-based ID
 
     // Setup dynamic logger
@@ -253,7 +258,7 @@ export class Runner {
 
     if (stdout) this.log.trace(stdout);
 
-    const duration = ((Date.now() - now) / 1000).toFixed(1);
+    const duration = ((this.dateTime.nowMillis() - now) / 1000).toFixed(1);
 
     const message =
       stdout && !stdout.includes("\n") ? stdout.trim() : undefined;
