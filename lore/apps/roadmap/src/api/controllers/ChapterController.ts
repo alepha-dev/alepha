@@ -4,6 +4,7 @@ import { $logger } from "alepha/logger";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
+import { $etag } from "alepha/server/etag";
 import { chapters } from "../entities/chapters.ts";
 import { tasks } from "../entities/tasks.ts";
 import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
@@ -17,7 +18,12 @@ export class ChapterController {
   security = $inject(AppSecurityProvider);
 
   getChapters = $action({
-    use: [$secure({ permissions: ["task:read"] })],
+    use: [
+      $secure({ permissions: ["task:read"] }),
+      $etag({
+        control: { private: true, maxAge: 30, staleWhileRevalidate: 120 },
+      }),
+    ],
     schema: {
       params: t.object({
         projectId: t.integer(),
@@ -175,7 +181,12 @@ export class ChapterController {
   });
 
   getChapterChangelog = $action({
-    use: [$secure({ permissions: ["task:read"] })],
+    use: [
+      $secure({ permissions: ["task:read"] }),
+      $etag({
+        control: { private: true, maxAge: 60, staleWhileRevalidate: 600 },
+      }),
+    ],
     schema: {
       params: t.object({
         id: t.integer(),

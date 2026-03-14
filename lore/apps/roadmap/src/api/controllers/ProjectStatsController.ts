@@ -18,7 +18,13 @@ export class ProjectStatsController {
   fs = $inject(FileSystemProvider);
 
   getProjectStats = $action({
-    use: [$secure({ permissions: ["stats:read"] }), $etag(true)],
+    use: [
+      $secure({ permissions: ["stats:read"] }),
+      $etag({
+        store: true,
+        control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
+      }),
+    ],
     schema: {
       params: t.object({
         id: t.integer(),
