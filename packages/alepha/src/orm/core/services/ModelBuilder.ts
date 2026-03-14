@@ -1,3 +1,4 @@
+import { AlephaError } from "alepha";
 import type { SQL } from "drizzle-orm";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type { SequencePrimitive } from "../primitives/$sequence.ts";
@@ -181,7 +182,7 @@ export abstract class ModelBuilder {
             const foreignColumns = fkDef.foreignColumns.map((colRef) => {
               const entityCol = colRef();
               if (!entityCol || !entityCol.entity || !entityCol.name) {
-                throw new Error(
+                throw new AlephaError(
                   `Invalid foreign column reference in ${entity.name}`,
                 );
               }
@@ -190,7 +191,7 @@ export abstract class ModelBuilder {
               if (tableResolver) {
                 const foreignTable = tableResolver(entityCol.entity.name);
                 if (!foreignTable) {
-                  throw new Error(
+                  throw new AlephaError(
                     `Foreign table ${entityCol.entity.name} not found for ${entity.name}`,
                   );
                 }

@@ -301,7 +301,7 @@ export class SqliteModelBuilder extends ModelBuilder {
       return this.mapStringToSqliteColumn(key, value as any);
     }
 
-    throw new Error(
+    throw new AlephaError(
       `Unsupported schema for field '${tableName}.${fieldName}' (schema: ${JSON.stringify(value)})`,
     );
   };

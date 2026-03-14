@@ -1,4 +1,5 @@
 import {
+  AlephaError,
   createPrimitive,
   type InstantiableClass,
   KIND,
@@ -57,7 +58,7 @@ export class EmailPrimitive extends Primitive<EmailPrimitiveOptions> {
       variables: {},
       provider: this.provider,
       abort: () => {
-        throw new Error("Email sending aborted by hook");
+        throw new AlephaError("Email sending aborted by hook");
       },
     });
 

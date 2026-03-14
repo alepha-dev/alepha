@@ -1,4 +1,5 @@
 import {
+  AlephaError,
   createPrimitive,
   type InstantiableClass,
   KIND,
@@ -56,7 +57,7 @@ export class SmsPrimitive extends Primitive<SmsPrimitiveOptions> {
       variables: {},
       provider: this.provider,
       abort: () => {
-        throw new Error("SMS sending aborted by hook");
+        throw new AlephaError("SMS sending aborted by hook");
       },
     });
 

@@ -398,7 +398,7 @@ export class QueryManager {
 
     if (operator?.between != null) {
       if (!Array.isArray(operator.between) || operator.between.length !== 2) {
-        throw new Error(
+        throw new AlephaError(
           "between operator requires exactly 2 values [min, max]",
         );
       }
@@ -416,7 +416,7 @@ export class QueryManager {
         !Array.isArray(operator.notBetween) ||
         operator.notBetween.length !== 2
       ) {
-        throw new Error(
+        throw new AlephaError(
           "notBetween operator requires exactly 2 values [min, max]",
         );
       }

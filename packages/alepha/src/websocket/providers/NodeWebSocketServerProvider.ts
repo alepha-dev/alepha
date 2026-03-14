@@ -5,6 +5,7 @@ import {
   $inject,
   $use,
   Alepha,
+  AlephaError,
   type Static,
   t,
   Value,
@@ -494,7 +495,7 @@ export class NodeWebSocketConnection implements WebSocketConnection {
 
   public async send(message: any): Promise<void> {
     if (this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error("WebSocket is not open");
+      throw new AlephaError("WebSocket is not open");
     }
 
     const data =

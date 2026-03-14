@@ -1,12 +1,14 @@
+import { AlephaError } from "alepha";
+
 export class BrowserCryptoProvider {
   protected static readonly AES_ALGORITHM = "AES-GCM";
   protected static readonly AES_IV_LENGTH = 12;
   public hashPassword(): never {
-    throw new Error("hashPassword is not supported in the browser");
+    throw new AlephaError("hashPassword is not supported in the browser");
   }
 
   public verifyPassword(): never {
-    throw new Error("verifyPassword is not supported in the browser");
+    throw new AlephaError("verifyPassword is not supported in the browser");
   }
 
   public async hash(data: string, algorithm = "SHA-256"): Promise<string> {
@@ -69,7 +71,7 @@ export class BrowserCryptoProvider {
   public async decrypt(ciphertext: string, key: string): Promise<string> {
     const parts = ciphertext.split(":");
     if (parts.length !== 3) {
-      throw new Error("Invalid ciphertext format");
+      throw new AlephaError("Invalid ciphertext format");
     }
 
     const [ivHex, tagHex, encryptedHex] = parts;

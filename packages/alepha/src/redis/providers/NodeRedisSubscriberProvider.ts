@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha } from "alepha";
+import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import {
   type NodeRedisClient,
@@ -31,7 +31,7 @@ export class NodeRedisSubscriberProvider extends RedisSubscriberProvider {
 
   public get subscriber(): NodeRedisClient {
     if (!this.client.isReady) {
-      throw new Error("Redis subscriber client is not ready");
+      throw new AlephaError("Redis subscriber client is not ready");
     }
 
     return this.client;

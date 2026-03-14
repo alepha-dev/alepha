@@ -204,7 +204,7 @@ class QueryStringParser {
       return ch;
     }
 
-    throw new Error(`Expected operator at position ${this.pos}`);
+    throw new AlephaError(`Expected operator at position ${this.pos}`);
   }
 
   protected parseValue(): any {
@@ -377,7 +377,7 @@ class QueryStringParser {
     } else if (operator === "<=") {
       filterOp = { lte: value };
     } else {
-      throw new Error(`Unsupported operator: ${operator}`);
+      throw new AlephaError(`Unsupported operator: ${operator}`);
     }
 
     // Build nested object for path
@@ -402,7 +402,7 @@ class QueryStringParser {
   protected consume(expected: string): void {
     this.skipWhitespace();
     if (this.query[this.pos] !== expected) {
-      throw new Error(
+      throw new AlephaError(
         `Expected '${expected}' at position ${this.pos}, got '${this.query[this.pos]}'`,
       );
     }

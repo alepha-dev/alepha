@@ -1,3 +1,4 @@
+import { AlephaError } from "alepha";
 import type {
   RemoteSecret,
   SecretStoreProvider,
@@ -33,7 +34,7 @@ export class MemorySecretStore implements SecretStoreProvider {
   public async ensureAvailable(): Promise<void> {
     this.calls.push({ method: "ensureAvailable" });
     if (this.availableError) {
-      throw new Error(this.availableError);
+      throw new AlephaError(this.availableError);
     }
   }
 

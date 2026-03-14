@@ -10,6 +10,7 @@ import {
   scrypt,
   timingSafeEqual,
 } from "node:crypto";
+import { AlephaError } from "alepha";
 
 export class CryptoProvider {
   protected static readonly SCRYPT_OPTIONS: ScryptOptions = {
@@ -112,7 +113,7 @@ export class CryptoProvider {
   public decrypt(ciphertext: string, key: string): string {
     const parts = ciphertext.split(":");
     if (parts.length !== 3) {
-      throw new Error("Invalid ciphertext format");
+      throw new AlephaError("Invalid ciphertext format");
     }
 
     const [ivHex, tagHex, encryptedHex] = parts;

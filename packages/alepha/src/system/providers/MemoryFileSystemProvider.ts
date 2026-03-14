@@ -1,5 +1,5 @@
 import { basename as nodeBasename, join as nodeJoin } from "node:path";
-import { $inject, type FileLike, Json } from "alepha";
+import { $inject, AlephaError, type FileLike, Json } from "alepha";
 import type {
   CpOptions,
   CreateFileOptions,
@@ -135,7 +135,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
       const filePath = options.path;
       const buffer = this.files.get(filePath);
       if (buffer === undefined) {
-        throw new Error(
+        throw new AlephaError(
           `ENOENT: no such file or directory, open '${filePath}'`,
         );
       }
@@ -145,7 +145,9 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
         size: buffer.byteLength,
         lastModified: Date.now(),
         stream: () => {
-          throw new Error("Stream not implemented in MemoryFileSystemProvider");
+          throw new AlephaError(
+            "Stream not implemented in MemoryFileSystemProvider",
+          );
         },
         arrayBuffer: async (): Promise<ArrayBuffer> =>
           buffer.buffer.slice(
@@ -164,7 +166,9 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
         size: buffer.byteLength,
         lastModified: Date.now(),
         stream: () => {
-          throw new Error("Stream not implemented in MemoryFileSystemProvider");
+          throw new AlephaError(
+            "Stream not implemented in MemoryFileSystemProvider",
+          );
         },
         arrayBuffer: async (): Promise<ArrayBuffer> =>
           buffer.buffer.slice(
@@ -183,7 +187,9 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
         size: buffer.byteLength,
         lastModified: Date.now(),
         stream: () => {
-          throw new Error("Stream not implemented in MemoryFileSystemProvider");
+          throw new AlephaError(
+            "Stream not implemented in MemoryFileSystemProvider",
+          );
         },
         arrayBuffer: async (): Promise<ArrayBuffer> =>
           buffer.buffer.slice(
@@ -194,7 +200,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
       };
     }
 
-    throw new Error(
+    throw new AlephaError(
       "MemoryFileSystemProvider.createFile: unsupported options. Only buffer and text are supported.",
     );
   }
@@ -208,7 +214,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     const exists = this.files.has(path) || this.directories.has(path);
 
     if (!exists && !options?.force) {
-      throw new Error(`ENOENT: no such file or directory, rm '${path}'`);
+      throw new AlephaError(`ENOENT: no such file or directory, rm '${path}'`);
     }
 
     if (this.directories.has(path)) {
@@ -226,7 +232,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
           }
         }
       } else {
-        throw new Error(
+        throw new AlephaError(
           `EISDIR: illegal operation on a directory, rm '${path}'`,
         );
       }
@@ -255,7 +261,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
       const content = this.files.get(src)!;
       this.files.set(dest, Buffer.from(content));
     } else {
-      throw new Error(`ENOENT: no such file or directory, cp '${src}'`);
+      throw new AlephaError(`ENOENT: no such file or directory, cp '${src}'`);
     }
   }
 
@@ -279,7 +285,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
       this.files.delete(src);
       this.files.set(dest, content);
     } else {
-      throw new Error(`ENOENT: no such file or directory, mv '${src}'`);
+      throw new AlephaError(`ENOENT: no such file or directory, mv '${src}'`);
     }
   }
 
@@ -296,7 +302,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     const normalizedPath = this.normalizePath(path);
 
     if (this.directories.has(normalizedPath) && !options?.recursive) {
-      throw new Error(`EEXIST: file already exists, mkdir '${path}'`);
+      throw new AlephaError(`EEXIST: file already exists, mkdir '${path}'`);
     }
 
     this.directories.add(normalizedPath);
@@ -383,7 +389,9 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
 
     const content = this.files.get(path);
     if (!content) {
-      throw new Error(`ENOENT: no such file or directory, open '${path}'`);
+      throw new AlephaError(
+        `ENOENT: no such file or directory, open '${path}'`,
+      );
     }
     return content;
   }

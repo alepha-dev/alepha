@@ -87,7 +87,7 @@ export class Logger implements LoggerInterface {
         try {
           return this.asLogLevel(trimmedPart);
         } catch (error) {
-          throw new Error(`Invalid global log level "${trimmedPart}"`);
+          throw new AlephaError(`Invalid global log level "${trimmedPart}"`);
         }
       }
     }

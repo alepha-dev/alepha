@@ -1,3 +1,4 @@
+import { AlephaError } from "alepha";
 import type { ShellProvider, ShellRunOptions } from "./ShellProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -117,7 +118,7 @@ export class MemoryShellProvider implements ShellProvider {
     // Check for configured error
     const errorMsg = this.errors.get(command);
     if (errorMsg) {
-      throw new Error(errorMsg);
+      throw new AlephaError(errorMsg);
     }
 
     // Return configured output or empty string

@@ -1,4 +1,4 @@
-import { $hook, $inject, type Alepha } from "alepha";
+import { $hook, $inject, type Alepha, AlephaError } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { type RetryBackoffOptions, RetryProvider } from "alepha/retry";
@@ -256,7 +256,7 @@ export class BatchProvider {
       context.options.maxQueueSize !== undefined &&
       partition.itemIds.length >= context.options.maxQueueSize
     ) {
-      throw new Error(
+      throw new AlephaError(
         `Batch queue size exceeded for partition '${partitionKey}' (max: ${context.options.maxQueueSize})`,
       );
     }
@@ -318,7 +318,7 @@ export class BatchProvider {
   ): Promise<TResponse> {
     const itemState = context.itemStates.get(id);
     if (!itemState) {
-      throw new Error(`Item with id '${id}' not found`);
+      throw new AlephaError(`Item with id '${id}' not found`);
     }
 
     // If already completed or failed, return immediately

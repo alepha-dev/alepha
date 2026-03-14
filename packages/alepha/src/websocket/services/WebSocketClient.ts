@@ -346,7 +346,7 @@ export class WebSocketChannelConnection<
     if (!Value.Check(outSchema, message)) {
       const errors = Array.from(Value.Errors(outSchema, message));
       this.log.warn("Message validation failed", { errors });
-      throw new Error(
+      throw new AlephaError(
         `Message validation failed: ${errors.map((e) => e.message).join(", ")}`,
       );
     }

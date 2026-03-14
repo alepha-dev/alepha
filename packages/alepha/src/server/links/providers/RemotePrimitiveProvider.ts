@@ -1,4 +1,4 @@
-import { $hook, $inject, $pipeline, $use, Alepha } from "alepha";
+import { $hook, $inject, $pipeline, $use, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { $retry } from "alepha/retry";
 import type { ServiceAccountPrimitive } from "alepha/security";
@@ -157,7 +157,7 @@ export class RemotePrimitiveProvider {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch links from ${url}`);
+        throw new AlephaError(`Failed to fetch links from ${url}`);
       }
 
       return this.alepha.codec.decode(

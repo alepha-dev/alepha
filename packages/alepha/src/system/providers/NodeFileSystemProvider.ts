@@ -617,14 +617,14 @@ export class NodeFileSystemProvider implements FileSystemProvider {
       // Handle HTTP/HTTPS URLs
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(
+        throw new AlephaError(
           `Failed to fetch ${url}: ${response.status} ${response.statusText}`,
         );
       }
       const arrayBuffer = await response.arrayBuffer();
       return Buffer.from(arrayBuffer);
     } else {
-      throw new Error(`Unsupported protocol: ${parsedUrl.protocol}`);
+      throw new AlephaError(`Unsupported protocol: ${parsedUrl.protocol}`);
     }
   }
 

@@ -1,4 +1,4 @@
-import { $context } from "alepha";
+import { $context, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
 import type { AccessTokenResponse, IssuerPrimitive } from "./$issuer.ts";
@@ -87,7 +87,7 @@ export const $serviceAccount = (
           }),
         });
       } catch (error) {
-        throw new Error(
+        throw new AlephaError(
           `Failed to fetch access token from ${url}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
@@ -101,7 +101,7 @@ export const $serviceAccount = (
         } catch {
           // Ignore error reading body
         }
-        throw new Error(`Failed to fetch access token: ${errorMessage}`);
+        throw new AlephaError(`Failed to fetch access token: ${errorMessage}`);
       }
 
       // Parse JSON response
@@ -109,14 +109,14 @@ export const $serviceAccount = (
       try {
         json = await response.json();
       } catch (error) {
-        throw new Error(
+        throw new AlephaError(
           `Failed to parse access token response as JSON: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
 
       // Validate response structure
       if (!json.access_token || !json.expires_in) {
-        throw new Error(
+        throw new AlephaError(
           `Invalid access token response: missing access_token or expires_in. Response: ${JSON.stringify(json)}`,
         );
       }

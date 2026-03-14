@@ -1,6 +1,7 @@
 import {
   $inject,
   Alepha,
+  AlephaError,
   type FileLike,
   isFileLike,
   type Static,
@@ -348,7 +349,7 @@ export class HttpClient {
       size: Number(response.headers.get("Content-Length") ?? 0),
       lastModified: Date.now(),
       stream: () => {
-        throw new Error("Not implemented");
+        throw new AlephaError("Not implemented");
       },
       arrayBuffer: async () => {
         return await response.arrayBuffer();

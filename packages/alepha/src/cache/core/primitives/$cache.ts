@@ -2,6 +2,7 @@ import {
   $atom,
   $inject,
   $use,
+  AlephaError,
   createPrimitive,
   type InstantiableClass,
   KIND,
@@ -186,7 +187,7 @@ export class CachePrimitive<
   public async run(...args: TParameter): Promise<TReturn> {
     const handler = this.options.handler;
     if (!handler) {
-      throw new Error("Cache handler is not defined.");
+      throw new AlephaError("Cache handler is not defined.");
     }
 
     const key = this.key(...args);

@@ -1,4 +1,4 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import type { PagePrimitive } from "../primitives/$page.ts";
 import { ReactBrowserProvider } from "../providers/ReactBrowserProvider.ts";
 import {
@@ -130,7 +130,7 @@ export class ReactRouter<T extends object> {
 
   public get location(): Location {
     if (!this.browser) {
-      throw new Error("Browser is required");
+      throw new AlephaError("Browser is required");
     }
 
     return this.browser.location;
