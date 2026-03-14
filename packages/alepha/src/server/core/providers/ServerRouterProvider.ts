@@ -296,8 +296,13 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
         });
       }
       headers["content-type"] = reply.body.type;
+      const sanitizedName = reply.body.name
+        .replaceAll("\\", "\\\\")
+        .replaceAll('"', '\\"')
+        .replaceAll("\r", "")
+        .replaceAll("\n", "");
       headers["content-disposition"] =
-        `attachment; filename="${reply.body.name.replaceAll('"', "")}"`;
+        `attachment; filename="${sanitizedName}"`;
       reply.body = reply.body.stream();
       return;
     }
