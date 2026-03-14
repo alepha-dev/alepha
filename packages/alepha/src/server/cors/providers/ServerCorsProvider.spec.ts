@@ -46,6 +46,7 @@ describe("ServerCorsProvider", () => {
   test("should return correct CORS headers for a simple request from an allowed origin", async () => {
     await setupServer({
       origin: "https://allowed.example.com",
+      credentials: true,
     });
 
     const response = await fetch(`${server.hostname}/api/hello`, {
@@ -164,6 +165,19 @@ describe("ServerCorsProvider", () => {
       headers: { Origin: "https://disallowed.com" },
     });
     expect(res3.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  test("should not send credentials header with default config", async () => {
+    await setupServer();
+
+    const response = await fetch(`${server.hostname}/api/hello`, {
+      method: "POST",
+      headers: {
+        Origin: "https://any.origin.com",
+      },
+    });
+
+    expect(response.headers.get("access-control-allow-credentials")).toBeNull();
   });
 
   test("should not return CORS headers if Origin header is not present", async () => {

@@ -28,7 +28,7 @@ export const corsOptions = $atom({
     credentials: t.optional(
       t.boolean({
         description: "Allow credentials",
-        default: true,
+        default: false,
       }),
     ),
     maxAge: t.optional(
@@ -41,7 +41,7 @@ export const corsOptions = $atom({
     origin: "*",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     headers: ["Content-Type", "Authorization"],
-    credentials: true,
+    credentials: false,
   },
 });
 
