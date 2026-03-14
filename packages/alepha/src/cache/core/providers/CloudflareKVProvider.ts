@@ -110,7 +110,8 @@ export class CloudflareKVProvider extends CacheProvider {
       }
 
       this.kv = binding;
-      this.log.info("Cloudflare KV cache ready");
+
+      this.log.info("Cloudflare KV cache OK");
     },
   });
 

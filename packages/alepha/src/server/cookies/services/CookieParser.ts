@@ -5,12 +5,19 @@ export class CookieParser {
     const cookies: Record<string, string> = {};
     const parts = header.split(";");
     for (const part of parts) {
-      const [key, value] = part.split("=");
+      const eqIndex = part.indexOf("=");
+      if (eqIndex === -1) {
+        continue;
+      }
+
+      const key = part.slice(0, eqIndex).trim();
+      const value = part.slice(eqIndex + 1).trim();
+
       if (!key || !value) {
         continue;
       }
 
-      cookies[key.trim()] = value.trim();
+      cookies[key] = value;
     }
 
     return cookies;
