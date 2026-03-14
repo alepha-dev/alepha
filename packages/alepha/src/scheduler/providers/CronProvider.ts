@@ -130,13 +130,29 @@ export class CronProvider {
 
         this.log.trace("Running cron task");
 
-        task.handler({ now: this.dt.of(next) }).catch((err) => {
-          if (task.onError) {
-            task.onError(err);
-          } else {
-            this.log.error("Error in cron task:", err);
+        if (task.executing) {
+          this.log.warn(
+            `Cron task '${task.name}' is still running, skipping this invocation`,
+          );
+          if (task.loop) {
+            this.run(task, this.dt.of(next));
           }
-        });
+          return;
+        }
+
+        task.executing = true;
+        task
+          .handler({ now: this.dt.of(next) })
+          .catch((err) => {
+            if (task.onError) {
+              task.onError(err);
+            } else {
+              this.log.error("Error in cron task:", err);
+            }
+          })
+          .finally(() => {
+            task.executing = false;
+          });
 
         if (task.loop) {
           this.run(task, this.dt.of(next));
@@ -197,6 +213,7 @@ export interface CronJob {
   cron: Cron;
   loop: boolean;
   running?: boolean;
+  executing?: boolean;
   onError?: (error: Error) => void;
   abort?: AbortController;
 }
