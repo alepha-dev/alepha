@@ -440,7 +440,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     reply.body = JSON.stringify({
       status: 500,
       error: "InternalServerError",
-      message: error.message,
+      message: this.alepha.isProduction()
+        ? "Internal Server Error"
+        : error.message,
       requestId,
     });
   }
