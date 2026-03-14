@@ -89,7 +89,7 @@ export class PgRelationManager {
   /**
    * Check if all values in an object are null (indicates a left join with no match)
    */
-  private isAllNull(obj: unknown): boolean {
+  protected isAllNull(obj: unknown): boolean {
     if (obj === null || obj === undefined) return true;
     if (typeof obj !== "object") return false;
     return Object.values(obj).every((val) => val === null);

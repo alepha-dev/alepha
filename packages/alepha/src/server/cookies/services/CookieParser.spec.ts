@@ -18,7 +18,9 @@ describe("CookieParser", () => {
     });
 
     it("should preserve base64 values with trailing =", ({ expect }) => {
-      const result = parser.parseRequestCookies("session=eyJhbGciOiJIUzI1NiJ9==");
+      const result = parser.parseRequestCookies(
+        "session=eyJhbGciOiJIUzI1NiJ9==",
+      );
 
       expect(result).toEqual({ session: "eyJhbGciOiJIUzI1NiJ9==" });
     });
@@ -30,7 +32,8 @@ describe("CookieParser", () => {
     });
 
     it("should handle realistic JWT cookie", ({ expect }) => {
-      const jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U";
+      const jwt =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U";
       const result = parser.parseRequestCookies(`auth=${jwt}; theme=dark`);
 
       expect(result).toEqual({ auth: jwt, theme: "dark" });
@@ -49,7 +52,9 @@ describe("CookieParser", () => {
     });
 
     it("should trim whitespace from keys and values", ({ expect }) => {
-      const result = parser.parseRequestCookies("  foo  =  bar  ;  baz  =  qux  ");
+      const result = parser.parseRequestCookies(
+        "  foo  =  bar  ;  baz  =  qux  ",
+      );
 
       expect(result).toEqual({ foo: "bar", baz: "qux" });
     });
@@ -72,7 +77,9 @@ describe("CookieParser", () => {
       expect(result).toEqual(["session=abc123; Path=/; HttpOnly"]);
     });
 
-    it("should delete cookies by setting Max-Age=0 when value is null", ({ expect }) => {
+    it("should delete cookies by setting Max-Age=0 when value is null", ({
+      expect,
+    }) => {
       const cookies: Record<string, Cookie | null> = {
         session: null,
       };
@@ -103,7 +110,9 @@ describe("CookieParser", () => {
       expect(result).toEqual(["token=xyz; Secure"]);
     });
 
-    it("should not add Secure flag when secure is explicitly false", ({ expect }) => {
+    it("should not add Secure flag when secure is explicitly false", ({
+      expect,
+    }) => {
       const cookies: Record<string, Cookie | null> = {
         token: { value: "xyz", secure: false },
       };

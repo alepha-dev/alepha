@@ -64,8 +64,8 @@ export function parseQueryString<T extends TObject>(
 // ---------------------------------------------------------------------------------------------------------------------
 
 class QueryStringParser {
-  private pos = 0;
-  private readonly query: string;
+  protected pos = 0;
+  protected readonly query: string;
 
   constructor(query: string) {
     this.query = query.trim();
@@ -75,11 +75,11 @@ class QueryStringParser {
     return this.parseExpression();
   }
 
-  private parseExpression(): PgQueryWhere<any> {
+  protected parseExpression(): PgQueryWhere<any> {
     return this.parseOr();
   }
 
-  private parseOr(): any {
+  protected parseOr(): any {
     const left = this.parseAnd();
 
     // Check for OR operator (|)
@@ -97,7 +97,7 @@ class QueryStringParser {
     return left;
   }
 
-  private parseAnd(): any {
+  protected parseAnd(): any {
     const left = this.parsePrimary();
 
     // Check for AND operator (&)
@@ -115,7 +115,7 @@ class QueryStringParser {
     return left;
   }
 
-  private parsePrimary(): any {
+  protected parsePrimary(): any {
     this.skipWhitespace();
 
     // Handle parentheses
@@ -130,7 +130,7 @@ class QueryStringParser {
     return this.parseCondition();
   }
 
-  private parseCondition(): any {
+  protected parseCondition(): any {
     const field = this.parseFieldPath();
     this.skipWhitespace();
 
@@ -149,7 +149,7 @@ class QueryStringParser {
     return this.buildCondition(field, operator, value);
   }
 
-  private parseFieldPath(): string[] {
+  protected parseFieldPath(): string[] {
     const path: string[] = [];
     let current = "";
 
@@ -178,7 +178,7 @@ class QueryStringParser {
     return path;
   }
 
-  private parseOperator(): string {
+  protected parseOperator(): string {
     this.skipWhitespace();
 
     const remaining = this.query.slice(this.pos);
@@ -207,7 +207,7 @@ class QueryStringParser {
     throw new Error(`Expected operator at position ${this.pos}`);
   }
 
-  private parseValue(): any {
+  protected parseValue(): any {
     this.skipWhitespace();
 
     // Handle null
@@ -240,7 +240,7 @@ class QueryStringParser {
     return this.coerceValue(value.trim());
   }
 
-  private parseArray(): any[] {
+  protected parseArray(): any[] {
     this.consume("[");
     const values: any[] = [];
 
@@ -274,7 +274,7 @@ class QueryStringParser {
     return values;
   }
 
-  private parseQuotedString(): string {
+  protected parseQuotedString(): string {
     const quote = this.query[this.pos];
     this.pos++; // Skip opening quote
 
@@ -309,7 +309,7 @@ class QueryStringParser {
     return value;
   }
 
-  private coerceValue(value: string): any {
+  protected coerceValue(value: string): any {
     // Try to parse as number
     if (/^-?\d+$/.test(value)) {
       return parseInt(value, 10);
@@ -330,7 +330,7 @@ class QueryStringParser {
     return value;
   }
 
-  private buildCondition(path: string[], operator: string, value: any): any {
+  protected buildCondition(path: string[], operator: string, value: any): any {
     // Map operator to filter operator
     let filterOp: any;
 
@@ -394,12 +394,12 @@ class QueryStringParser {
     return result;
   }
 
-  private peek(): string {
+  protected peek(): string {
     this.skipWhitespace();
     return this.query[this.pos] || "";
   }
 
-  private consume(expected: string): void {
+  protected consume(expected: string): void {
     this.skipWhitespace();
     if (this.query[this.pos] !== expected) {
       throw new Error(
@@ -409,7 +409,7 @@ class QueryStringParser {
     this.pos++;
   }
 
-  private skipWhitespace(): void {
+  protected skipWhitespace(): void {
     while (this.pos < this.query.length && /\s/.test(this.query[this.pos])) {
       this.pos++;
     }

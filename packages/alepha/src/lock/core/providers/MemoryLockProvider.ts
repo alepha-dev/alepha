@@ -49,7 +49,7 @@ export class MemoryLockProvider implements LockProvider {
     }
   }
 
-  private ttl(key: string, ms: number): void {
+  protected ttl(key: string, ms: number): void {
     if (this.storeTimeout[key] != null) {
       this.storeTimeout[key].clear();
       delete this.storeTimeout[key];

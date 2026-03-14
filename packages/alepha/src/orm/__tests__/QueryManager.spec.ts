@@ -1,7 +1,7 @@
 import { Alepha, t } from "alepha";
-import { describe, expect, it } from "vitest";
-import { boolean, integer, pgTable, text } from "drizzle-orm/pg-core";
 import type { PgColumn } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, text } from "drizzle-orm/pg-core";
+import { describe, expect, it } from "vitest";
 import { QueryManager } from "../core/services/QueryManager.ts";
 
 const testTable = pgTable("test", {

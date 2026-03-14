@@ -233,16 +233,16 @@ export abstract class Repository<T extends TObject> {
     });
   }
 
-  private _columnNameMap?: Map<string, string>;
+  protected columnNameMap?: Map<string, string>;
 
   /**
    * Map raw database fields to entity fields. (handles column name differences)
    */
   protected mapRawFieldsToEntity(row: Record<string, unknown>) {
-    if (!this._columnNameMap) {
-      this._columnNameMap = new Map();
+    if (!this.columnNameMap) {
+      this.columnNameMap = new Map();
       for (const colKey of Object.keys(this.table)) {
-        this._columnNameMap.set(this.table[colKey].name, colKey);
+        this.columnNameMap.set(this.table[colKey].name, colKey);
       }
     }
 
@@ -250,7 +250,7 @@ export abstract class Repository<T extends TObject> {
 
     for (const key of Object.keys(row)) {
       entity[key] = row[key];
-      const fieldKey = this._columnNameMap.get(key);
+      const fieldKey = this.columnNameMap.get(key);
       if (fieldKey) {
         entity[fieldKey] = row[key];
       }

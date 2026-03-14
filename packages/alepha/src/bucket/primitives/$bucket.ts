@@ -206,7 +206,7 @@ export interface BucketFileOptions {
 
 export class BucketPrimitive extends Primitive<BucketPrimitiveOptions> {
   public readonly provider = this.$provider();
-  private readonly fileSystem = $inject(FileSystemProvider);
+  protected readonly fileSystem = $inject(FileSystemProvider);
 
   public get name() {
     return this.options.name ?? `${this.config.propertyKey}`;

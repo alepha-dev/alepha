@@ -103,7 +103,7 @@ export class ServerProxyProvider {
     };
   }
 
-  private getRawRequestBody(req: ServerRequest): ReadableStream | undefined {
+  protected getRawRequestBody(req: ServerRequest): ReadableStream | undefined {
     const { method } = req;
 
     if (method === "GET" || method === "HEAD" || method === "OPTIONS") {

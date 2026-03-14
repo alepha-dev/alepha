@@ -95,7 +95,7 @@ export class Logger implements LoggerInterface {
     return "INFO";
   }
 
-  private matchesPattern(moduleName: string, pattern: string): boolean {
+  protected matchesPattern(moduleName: string, pattern: string): boolean {
     if (pattern.includes("*")) {
       // Convert wildcard pattern to regex
       const regexPattern = pattern.replace(/\./g, "\\.").replace(/\*/g, ".*");
