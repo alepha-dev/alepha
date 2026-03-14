@@ -11,6 +11,7 @@ import {
   testPaginationSort,
   testPgAttr,
   testRepositoryHooks,
+  testSaveWithCustomPrimaryKey,
   testSaveWithDeletedFields,
   testSerialIdOperations,
   testUpsert,
@@ -92,6 +93,16 @@ describe("$repository", () => {
     });
     it("should save an entity with deleted fields (postgres)", async () => {
       await testSaveWithDeletedFields(Alepha.create().with(AlephaOrmPostgres));
+    });
+    it("should save an entity with custom primary key (sqlite)", async () => {
+      await testSaveWithCustomPrimaryKey(
+        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+      );
+    });
+    it("should save an entity with custom primary key (postgres)", async () => {
+      await testSaveWithCustomPrimaryKey(
+        Alepha.create().with(AlephaOrmPostgres),
+      );
     });
   });
 

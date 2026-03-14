@@ -977,6 +977,37 @@ export const testSaveWithDeletedFields = async (alepha: Alepha) => {
 };
 
 // ============================================================================
+// testSaveWithCustomPrimaryKey
+// ============================================================================
+
+const customPkEntity = $entity({
+  name: "custom_pk_items",
+  schema: t.object({
+    code: db.primaryKey(t.uuid()),
+    label: t.text(),
+  }),
+});
+
+class CustomPkApp {
+  items = $repository(customPkEntity);
+}
+
+export const testSaveWithCustomPrimaryKey = async (alepha: Alepha) => {
+  const app = alepha.inject(CustomPkApp);
+  await alepha.start();
+
+  const entity = await app.items.create({ label: "Original" });
+  expect(entity.code).toBeDefined();
+  expect(entity.label).toBe("Original");
+
+  entity.label = "Updated";
+  await app.items.save(entity);
+
+  const updated = await app.items.getById(entity.code);
+  expect(updated.label).toBe("Updated");
+};
+
+// ============================================================================
 // testUpsert
 // ============================================================================
 

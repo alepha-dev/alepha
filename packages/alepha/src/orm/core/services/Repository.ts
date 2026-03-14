@@ -942,7 +942,7 @@ export abstract class Repository<T extends TObject> {
 
     let where: any = this.createQueryWhere();
 
-    where.id = { eq: id };
+    where[this.id.key] = { eq: id };
 
     const versionField = getAttrFields(this.entity.schema, PG_VERSION)?.[0];
     if (versionField && typeof row[versionField.key] === "number") {
