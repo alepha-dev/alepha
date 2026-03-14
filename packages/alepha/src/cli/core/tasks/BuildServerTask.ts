@@ -118,14 +118,13 @@ export class BuildServerTask extends BuildTask {
         sourcemap: true,
         chunkSizeWarningLimit: 10000,
         outDir: `${opts.distDir}/server`,
-        rollupOptions: {
+        rolldownOptions: {
           external: [/^bun(:|$)/, /^cloudflare:/],
           output: {
             entryFileNames: "[hash].js",
             chunkFileNames: "[hash].js",
             assetFileNames: "[hash][extname]",
             format: "esm",
-            experimentalMinChunkSize: 10_000,
             // Rolldown/Oxc minifier: preserve class and function names
             minify: {
               mangle: { keepNames: true },
@@ -133,7 +132,7 @@ export class BuildServerTask extends BuildTask {
                 keepNames: { function: true, class: true },
               },
             },
-          } as any,
+          },
         },
       },
       customLogger: logger,

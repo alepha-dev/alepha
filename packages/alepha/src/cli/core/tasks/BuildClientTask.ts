@@ -90,17 +90,15 @@ export class BuildClientTask extends BuildTask {
         outDir: opts.dist,
         manifest: true,
         chunkSizeWarningLimit: 1000,
-        rollupOptions: {
+        rolldownOptions: {
           input: "node_modules/.alepha/index.html",
           output: {
             entryFileNames: "entry.[hash].js",
             chunkFileNames: "chunk.[hash].js",
             assetFileNames: "asset.[hash][extname]",
-            // experimentalMinChunkSize: 5_000,
           },
         },
       },
-      esbuild: { legalComments: "none", keepNames: true },
       customLogger: logger,
       plugins,
     };
