@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
-import { describe, test } from "vitest";
+import { describe, it, test } from "vitest";
 import {
+  $action,
   $route,
   BadRequestError,
   HttpClient,
@@ -98,6 +99,34 @@ describe("HttpClient", () => {
         },
       ),
     ).toEqual("?a=b");
+  });
+
+  describe("request deduplication", () => {
+    it("should not deduplicate POST requests", async ({ expect }) => {
+      let callCount = 0;
+
+      const alepha = Alepha.create();
+      class TestApp {
+        counter = $action({
+          method: "POST",
+          handler: () => {
+            callCount++;
+            return { count: callCount };
+          },
+        });
+      }
+      const client = alepha.with(TestApp).inject(HttpClient);
+      await alepha.start();
+      const hostname = alepha.inject(ServerProvider).hostname;
+
+      const [res1, res2] = await Promise.all([
+        client.fetch(`${hostname}/api/counter`, { method: "POST" }),
+        client.fetch(`${hostname}/api/counter`, { method: "POST" }),
+      ]);
+
+      expect(callCount).toBe(2);
+      expect(res1.data).not.toBe(res2.data);
+    });
   });
 
   test("should handle json", async ({ expect }) => {

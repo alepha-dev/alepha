@@ -114,23 +114,28 @@ export class HttpClient {
       request,
     });
 
-    // make a key for the request
-    // this will be used to check if the request is already pending
+    // Deduplicate concurrent identical requests for idempotent methods only.
+    // Non-idempotent methods (POST, PUT, PATCH, DELETE) must always execute
+    // since each call may produce a different side effect.
+    const isIdempotent =
+      request.method === "GET" ||
+      request.method === "HEAD" ||
+      request.method === "OPTIONS";
     const key =
       options.key ??
-      JSON.stringify({
-        url,
-        method: request.method,
-        body: request.body,
-      });
+      (isIdempotent
+        ? JSON.stringify({ url, method: request.method })
+        : undefined);
 
-    const existing = this.pendingRequests[key];
-    if (existing) {
-      this.log.info("Request already pending", key);
-      return existing;
+    if (key) {
+      const existing = this.pendingRequests[key];
+      if (existing) {
+        this.log.info("Request already pending", key);
+        return existing;
+      }
     }
 
-    this.pendingRequests[key] = fetch(url, request)
+    const promise = fetch(url, request)
       .then(async (response) => {
         this.log.debug("Response", {
           url,
@@ -164,10 +169,16 @@ export class HttpClient {
         return fetchResponse;
       })
       .finally(() => {
-        delete this.pendingRequests[key];
+        if (key) {
+          delete this.pendingRequests[key];
+        }
       });
 
-    return this.pendingRequests[key];
+    if (key) {
+      this.pendingRequests[key] = promise;
+    }
+
+    return promise;
   }
 
   protected url(
