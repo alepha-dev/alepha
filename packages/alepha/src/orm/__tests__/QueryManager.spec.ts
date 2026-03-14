@@ -1,6 +1,22 @@
-import { Alepha } from "alepha";
+import { Alepha, t } from "alepha";
 import { describe, expect, it } from "vitest";
+import { boolean, integer, pgTable, text } from "drizzle-orm/pg-core";
+import type { PgColumn } from "drizzle-orm/pg-core";
 import { QueryManager } from "../core/services/QueryManager.ts";
+
+const testTable = pgTable("test", {
+  age: integer("age"),
+  name: text("name"),
+  active: boolean("active"),
+});
+
+const testSchema = t.object({
+  age: t.number(),
+  name: t.text(),
+  active: t.boolean(),
+});
+
+const col = (key: string) => (testTable as any)[key] as PgColumn;
 
 describe("QueryManager", () => {
   const alepha = Alepha.create();
@@ -79,6 +95,56 @@ describe("QueryManager", () => {
 
     it("should return empty array for non-object non-string non-array", () => {
       expect(qm.normalizeOrderBy(42)).toEqual([]);
+    });
+  });
+
+  describe("toSQL", () => {
+    const options = {
+      schema: testSchema,
+      col,
+      dialect: "postgresql" as const,
+    };
+
+    it("should produce a condition when filtering by zero", () => {
+      const result = qm.toSQL({ age: 0 } as any, options);
+
+      expect(result).toBeDefined();
+    });
+
+    it("should produce a condition when filtering by false", () => {
+      const result = qm.toSQL({ active: false } as any, options);
+
+      expect(result).toBeDefined();
+    });
+
+    it("should produce a condition when filtering by empty string", () => {
+      const result = qm.toSQL({ name: "" } as any, options);
+
+      expect(result).toBeDefined();
+    });
+
+    it("should produce a condition when filtering by string value", () => {
+      const result = qm.toSQL({ name: "alice" } as any, options);
+
+      expect(result).toBeDefined();
+    });
+
+    it("should produce a condition when filtering with eq operator on zero", () => {
+      const result = qm.toSQL({ age: { eq: 0 } } as any, options);
+
+      expect(result).toBeDefined();
+    });
+
+    it("should return undefined for null values", () => {
+      const result = qm.toSQL({ age: null } as any, options);
+
+      expect(result).toBeUndefined();
+    });
+
+    it("should return undefined for undefined values", () => {
+      const result = qm.toSQL({ age: undefined } as any, options);
+
+      expect(result).toBeUndefined();
     });
   });
 });

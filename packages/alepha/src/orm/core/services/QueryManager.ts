@@ -167,7 +167,7 @@ export class QueryManager {
           continue;
         }
 
-        if (operator) {
+        if (operator != null) {
           const column = col(key);
           const sql = this.mapOperatorToSql(
             operator,
