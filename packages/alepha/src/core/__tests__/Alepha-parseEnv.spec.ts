@@ -104,6 +104,46 @@ describe("Alepha#parseEnv", () => {
     expect(env.C).toBe("value");
   });
 
+  it("should not replace substring keys when a longer key matches", async () => {
+    const schema = t.object({
+      PORT: t.optional(t.text()),
+      PORT_NAME: t.optional(t.text()),
+      URL: t.optional(t.text()),
+    });
+
+    const alepha = Alepha.create({
+      env: {
+        PORT: "3000",
+        PORT_NAME: "http",
+        URL: "$PORT_NAME://$PORT",
+      },
+    });
+
+    const env = alepha.parseEnv(schema);
+    expect(env.URL).toBe("http://3000");
+  });
+
+  it("should handle overlapping key prefixes correctly", async () => {
+    const schema = t.object({
+      A: t.optional(t.text()),
+      AB: t.optional(t.text()),
+      ABC: t.optional(t.text()),
+      RESULT: t.optional(t.text()),
+    });
+
+    const alepha = Alepha.create({
+      env: {
+        A: "1",
+        AB: "2",
+        ABC: "3",
+        RESULT: "$ABC-$AB-$A",
+      },
+    });
+
+    const env = alepha.parseEnv(schema);
+    expect(env.RESULT).toBe("3-2-1");
+  });
+
   it("should return cached result for same schema", async () => {
     const schema = t.object({
       FOO: t.optional(t.text()),
