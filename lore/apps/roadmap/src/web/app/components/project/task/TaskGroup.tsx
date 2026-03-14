@@ -1,5 +1,4 @@
 import { ActionButton, Flex, Text } from "@alepha/ui";
-import { useDroppable } from "@dnd-kit/core";
 import { IconMinus, IconPlus } from "@tabler/icons-react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
@@ -17,14 +16,6 @@ const TaskGroup = (props: TaskGroupProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [isCollapsed, setIsCollapsed] = useState(true);
 
-  const { setNodeRef, isOver } = useDroppable({
-    id: `zone-${props.name}`,
-    data: {
-      type: "zone",
-      zoneName: props.name,
-    },
-  });
-
   // sort by complexity
   const tasks = [...props.tasks].sort((a, b) =>
     a.complexity - b.complexity > 0 ? -1 : 1,
@@ -36,16 +27,7 @@ const TaskGroup = (props: TaskGroupProps) => {
   };
 
   return (
-    <Flex
-      direction="column"
-      gap={2}
-      ref={setNodeRef}
-      style={{
-        backgroundColor: isOver ? "rgba(64, 192, 87, 0.1)" : undefined,
-        borderRadius: isOver ? "4px" : undefined,
-        transition: "background-color 0.2s ease",
-      }}
-    >
+    <Flex direction="column" gap={2}>
       <Flex p={0} align="center" justify="center" gap={"xs"}>
         <Flex gap={2} align="center" justify="center">
           <ActionButton
