@@ -14,6 +14,7 @@ import {
   testSaveWithCustomPrimaryKey,
   testSaveWithDeletedFields,
   testSerialIdOperations,
+  testTransactionThrowsWhenUnsupported,
   testUpsert,
   testUuidIdOperations,
 } from "./$repository-tests.ts";
@@ -102,6 +103,14 @@ describe("$repository", () => {
     it("should save an entity with custom primary key (postgres)", async () => {
       await testSaveWithCustomPrimaryKey(
         Alepha.create().with(AlephaOrmPostgres),
+      );
+    });
+  });
+
+  describe("transaction", () => {
+    it("should throw when driver does not support transactions (sqlite)", async () => {
+      await testTransactionThrowsWhenUnsupported(
+        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
       );
     });
   });

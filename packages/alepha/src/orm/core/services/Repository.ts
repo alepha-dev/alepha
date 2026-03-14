@@ -283,10 +283,9 @@ export abstract class Repository<T extends TObject> {
     config?: PgTransactionConfig,
   ): Promise<T> {
     if (!this.provider.supportsTransactions) {
-      this.log.warn(
-        `Transactions are not supported with ${this.provider.driver} driver`,
+      throw new AlephaError(
+        `Transactions are not supported with ${this.provider.driver} driver. Use $transactional() middleware instead, which gracefully degrades on unsupported drivers.`,
       );
-      return await transaction(null as any);
     }
 
     this.log.debug(`Starting transaction on table ${this.tableName}`);
