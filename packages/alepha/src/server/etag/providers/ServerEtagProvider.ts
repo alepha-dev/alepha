@@ -372,6 +372,10 @@ export class ServerEtagProvider {
     if (control.immutable) {
       directives.push("immutable");
     }
+    if (control.staleWhileRevalidate !== undefined) {
+      const seconds = this.durationToSeconds(control.staleWhileRevalidate);
+      directives.push(`stale-while-revalidate=${seconds}`);
+    }
 
     return directives.length > 0 ? directives.join(", ") : undefined;
   }

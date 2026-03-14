@@ -165,6 +165,12 @@ export type EtagMiddlewareOptions =
              * Indicates that the response can be stored but must be revalidated before each use.
              */
             immutable?: boolean;
+            /**
+             * Time window (in seconds or DurationLike) during which a stale response may be served
+             * while a fresh one is fetched in the background.
+             * Supported by Cloudflare, modern browsers, and most CDNs.
+             */
+            staleWhileRevalidate?: number | DurationLike;
           };
     };
 
@@ -184,5 +190,6 @@ export interface EtagMiddlewareOptionsResolved {
         mustRevalidate?: boolean;
         proxyRevalidate?: boolean;
         immutable?: boolean;
+        staleWhileRevalidate?: number | DurationLike;
       };
 }

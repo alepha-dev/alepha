@@ -165,6 +165,34 @@ class TestApp {
     handler: () => "mixed",
   });
 
+  cacheWithStaleWhileRevalidate = $action({
+    use: [
+      $etag({
+        store: true,
+        control: {
+          public: true,
+          sMaxAge: 900,
+          staleWhileRevalidate: 60,
+        },
+      }),
+    ],
+    handler: () => "stale-while-revalidate",
+  });
+
+  cacheWithStaleWhileRevalidateDuration = $action({
+    use: [
+      $etag({
+        store: true,
+        control: {
+          public: true,
+          sMaxAge: [15, "minutes"],
+          staleWhileRevalidate: [1, "minute"],
+        },
+      }),
+    ],
+    handler: () => "stale-while-revalidate-duration",
+  });
+
   errorAction = $action({
     use: [$etag(true)],
     handler: ({ reply }) => {
@@ -884,6 +912,44 @@ describe("ServerEtagProvider", () => {
 
       expect(cacheControl).toContain("max-age=600");
       expect(cacheControl).toContain("s-maxage=1200"); // 20 minutes = 1200 seconds
+    });
+
+    test("should support stale-while-revalidate directive with number", async ({
+      expect,
+    }) => {
+      const response = await app.cacheWithStaleWhileRevalidate.fetch();
+
+      expect(response.status).toBe(200);
+      const cacheControl = response.headers.get("cache-control");
+      expect(cacheControl).toContain("public");
+      expect(cacheControl).toContain("s-maxage=900");
+      expect(cacheControl).toContain("stale-while-revalidate=60");
+    });
+
+    test("should support stale-while-revalidate directive with DurationLike", async ({
+      expect,
+    }) => {
+      const response = await app.cacheWithStaleWhileRevalidateDuration.fetch();
+
+      expect(response.status).toBe(200);
+      const cacheControl = response.headers.get("cache-control");
+      expect(cacheControl).toContain("public");
+      expect(cacheControl).toContain("s-maxage=900");
+      expect(cacheControl).toContain("stale-while-revalidate=60");
+    });
+
+    test("should handle stale-while-revalidate via buildCacheControlHeader", ({
+      expect,
+    }) => {
+      const cacheControl = etagProvider.buildCacheControlHeader({
+        control: {
+          public: true,
+          sMaxAge: 900,
+          staleWhileRevalidate: [2, "minutes"],
+        },
+      });
+
+      expect(cacheControl).toContain("stale-while-revalidate=120");
     });
   });
 
