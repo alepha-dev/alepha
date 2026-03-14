@@ -316,9 +316,13 @@ export class SSRManifestProvider {
  * Entry assets structure containing the main entry JS and associated CSS files.
  */
 export interface EntryAssets {
-  /** Main entry JavaScript file (e.g., "/assets/entry.abc123.js") */
+  /**
+   * Main entry JavaScript file (e.g., "/assets/entry.abc123.js")
+   */
   js?: string;
-  /** Associated CSS files (e.g., ["/assets/style.abc123.css"]) */
+  /**
+   * Associated CSS files (e.g., ["/assets/style.abc123.css"])
+   */
   css: string[];
 }
 

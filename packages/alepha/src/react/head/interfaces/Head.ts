@@ -20,48 +20,88 @@ export interface Head extends SimpleHead, Seo {}
  * Fields are used for meta description, OpenGraph, and Twitter Card tags.
  */
 export interface Seo {
-  /** Page description - used for meta description, og:description, twitter:description */
+  /**
+   * Page description - used for meta description, og:description, twitter:description
+   */
   description?: string;
-  /** Primary image URL - used for og:image and twitter:image */
+  /**
+   * Primary image URL - used for og:image and twitter:image
+   */
   image?: string;
-  /** Canonical URL - used for og:url and link rel="canonical" */
+  /**
+   * Canonical URL - used for og:url and link rel="canonical"
+   */
   url?: string;
-  /** Site name - used for og:site_name */
+  /**
+   * Site name - used for og:site_name
+   */
   siteName?: string;
-  /** Locale - used for og:locale (e.g., "en_US") */
+  /**
+   * Locale - used for og:locale (e.g., "en_US")
+   */
   locale?: string;
-  /** Content type - used for og:type (default: "website") */
+  /**
+   * Content type - used for og:type (default: "website")
+   */
   type?: "website" | "article" | "product" | "profile" | string;
-  /** Image width in pixels - used for og:image:width */
+  /**
+   * Image width in pixels - used for og:image:width
+   */
   imageWidth?: number;
-  /** Image height in pixels - used for og:image:height */
+  /**
+   * Image height in pixels - used for og:image:height
+   */
   imageHeight?: number;
-  /** Image alt text - used for og:image:alt and twitter:image:alt */
+  /**
+   * Image alt text - used for og:image:alt and twitter:image:alt
+   */
   imageAlt?: string;
 
-  /** Twitter-specific overrides */
+  /**
+   * Twitter-specific overrides
+   */
   twitter?: {
-    /** Twitter card type */
+    /**
+     * Twitter card type
+     */
     card?: "summary" | "summary_large_image" | "app" | "player";
-    /** @username of website */
+    /**
+     * @username of website
+     */
     site?: string;
-    /** @username of content creator */
+    /**
+     * @username of content creator
+     */
     creator?: string;
-    /** Override title for Twitter */
+    /**
+     * Override title for Twitter
+     */
     title?: string;
-    /** Override description for Twitter */
+    /**
+     * Override description for Twitter
+     */
     description?: string;
-    /** Override image for Twitter */
+    /**
+     * Override image for Twitter
+     */
     image?: string;
   };
 
-  /** OpenGraph-specific overrides */
+  /**
+   * OpenGraph-specific overrides
+   */
   og?: {
-    /** Override title for OpenGraph */
+    /**
+     * Override title for OpenGraph
+     */
     title?: string;
-    /** Override description for OpenGraph */
+    /**
+     * Override description for OpenGraph
+     */
     description?: string;
-    /** Override image for OpenGraph */
+    /**
+     * Override image for OpenGraph
+     */
     image?: string;
   };
 }
@@ -69,15 +109,23 @@ export interface Seo {
 export interface SimpleHead {
   title?: string;
   titleSeparator?: string;
-  /** Document charset - defaults to "UTF-8" if not specified */
+  /**
+   * Document charset - defaults to "UTF-8" if not specified
+   */
   charset?: string;
-  /** Viewport content - defaults to "width=device-width, initial-scale=1" if not specified */
+  /**
+   * Viewport content - defaults to "width=device-width, initial-scale=1" if not specified
+   */
   viewport?: string;
   htmlAttributes?: Record<string, string>;
   bodyAttributes?: Record<string, string>;
-  /** Meta tags - supports both name and property attributes */
+  /**
+   * Meta tags - supports both name and property attributes
+   */
   meta?: Array<HeadMeta>;
-  /** Link tags (e.g., stylesheets, preload, canonical) */
+  /**
+   * Link tags (e.g., stylesheets, preload, canonical)
+   */
   link?: Array<{
     rel: string;
     href: string;
@@ -85,21 +133,31 @@ export interface SimpleHead {
     as?: string;
     crossorigin?: string;
   }>;
-  /** Script tags - string for inline code, or object with attributes */
+  /**
+   * Script tags - string for inline code, or object with attributes
+   */
   script?: Array<
     | string
     | (Record<string, string | boolean | undefined> & {
-        /** Inline JavaScript code */
+        /**
+         * Inline JavaScript code
+         */
         content?: string;
       })
   >;
 }
 
 export interface HeadMeta {
-  /** Meta name attribute (e.g., "description", "twitter:card") */
+  /**
+   * Meta name attribute (e.g., "description", "twitter:card")
+   */
   name?: string;
-  /** Meta property attribute (e.g., "og:title", "og:image") */
+  /**
+   * Meta property attribute (e.g., "og:title", "og:image")
+   */
   property?: string;
-  /** Meta content value */
+  /**
+   * Meta content value
+   */
   content: string;
 }

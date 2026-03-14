@@ -473,14 +473,18 @@ export class CliProvider {
   // Command Resolution
   // ─────────────────────────────────────────────────────────────────────────────
 
-  /** Find a command by name or alias */
+  /**
+   * Find a command by name or alias
+   */
   protected findCommand(name: string): CommandPrimitive<TObject> | undefined {
     return this.commands.findLast(
       (command) => command.name === name || command.aliases.includes(name),
     );
   }
 
-  /** Find a top-level command by name or alias (excludes child commands) */
+  /**
+   * Find a top-level command by name or alias (excludes child commands)
+   */
   protected findTopLevelCommand(
     name: string,
   ): CommandPrimitive<TObject> | undefined {
@@ -489,17 +493,23 @@ export class CliProvider {
     );
   }
 
-  /** Find all pre-hooks for a command (commands named `pre{commandName}`) */
+  /**
+   * Find all pre-hooks for a command (commands named `pre{commandName}`)
+   */
   protected findPreHooks(commandName: string): CommandPrimitive<TObject>[] {
     return this.commands.filter((cmd) => cmd.name === `pre${commandName}`);
   }
 
-  /** Find all post-hooks for a command (commands named `post{commandName}`) */
+  /**
+   * Find all post-hooks for a command (commands named `post{commandName}`)
+   */
   protected findPostHooks(commandName: string): CommandPrimitive<TObject>[] {
     return this.commands.filter((cmd) => cmd.name === `post${commandName}`);
   }
 
-  /** Get global flags (help only, root command flags are NOT global) */
+  /**
+   * Get global flags (help only, root command flags are NOT global)
+   */
   protected getAllGlobalFlags(): Record<
     string,
     { aliases: string[]; description?: string; schema: TSchema }
@@ -511,7 +521,9 @@ export class CliProvider {
   // Parsing (Flags, Args, Env)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  /** Parse command flags from argv using the command's flag schema */
+  /**
+   * Parse command flags from argv using the command's flag schema
+   */
   protected parseCommandFlags(
     argv: string[],
     schema: TObject,
@@ -567,7 +579,9 @@ export class CliProvider {
     }
   }
 
-  /** Parse and validate environment variables using the command's env schema */
+  /**
+   * Parse and validate environment variables using the command's env schema
+   */
   protected parseCommandEnv(
     schema: TObject,
     commandName: string,
@@ -609,7 +623,9 @@ export class CliProvider {
     }
   }
 
-  /** Parse --mode or -m flag from argv for environment file loading */
+  /**
+   * Parse --mode or -m flag from argv for environment file loading
+   */
   protected parseModeFlag(argv: string[]): string | undefined {
     for (let i = 0; i < argv.length; i++) {
       const arg = argv[i];
@@ -632,7 +648,9 @@ export class CliProvider {
     return undefined;
   }
 
-  /** Load .env and .env.{mode} files into process.env */
+  /**
+   * Load .env and .env.{mode} files into process.env
+   */
   protected async loadModeEnv(
     root: string,
     mode: string | undefined,
@@ -645,7 +663,9 @@ export class CliProvider {
     await this.envUtils.loadEnv(root, envFiles);
   }
 
-  /** Low-level flag parser - extracts flag values from argv based on definitions */
+  /**
+   * Low-level flag parser - extracts flag values from argv based on definitions
+   */
   protected parseFlags(
     argv: string[],
     flagDefs: { key: string; aliases: string[]; schema: TSchema }[],
@@ -721,7 +741,9 @@ export class CliProvider {
     return result;
   }
 
-  /** Get indices of argv elements consumed by flags (for separating args from flags) */
+  /**
+   * Get indices of argv elements consumed by flags (for separating args from flags)
+   */
   protected getFlagConsumedIndices(
     argv: string[],
     flagDefs: { key: string; aliases: string[]; schema: TSchema }[],
@@ -839,7 +861,9 @@ export class CliProvider {
     }
   }
 
-  /** Convert a string argument value to the appropriate type based on schema */
+  /**
+   * Convert a string argument value to the appropriate type based on schema
+   */
   protected parseArgumentValue(value: string, schema: TSchema): any {
     if (t.schema.isString(schema)) {
       return value;
@@ -871,7 +895,9 @@ export class CliProvider {
   // Help Generation
   // ─────────────────────────────────────────────────────────────────────────────
 
-  /** Generate usage string for command arguments (e.g., "<path>" or "[path]") */
+  /**
+   * Generate usage string for command arguments (e.g., "<path>" or "[path]")
+   */
   protected generateArgsUsage(schema?: TSchema): string {
     if (!schema) {
       return "";
@@ -901,7 +927,9 @@ export class CliProvider {
     return ` <${key}${typeName}>`;
   }
 
-  /** Get display type name for a schema (e.g., ": number", ": boolean") */
+  /**
+   * Get display type name for a schema (e.g., ": number", ": boolean")
+   */
   protected getTypeName(schema: TSchema): string {
     if (!schema) return "";
 
@@ -1101,7 +1129,9 @@ export class CliProvider {
     this.log.info(""); // Newline
   }
 
-  /** Generate colored usage string for command arguments (for help display) */
+  /**
+   * Generate colored usage string for command arguments (for help display)
+   */
   protected generateColoredArgsUsage(schema?: TSchema): string {
     if (!schema) {
       return "";
@@ -1133,7 +1163,9 @@ export class CliProvider {
     return ` ${c.set("CYAN", `<${key}${typeName}>`)}`;
   }
 
-  /** Get the full command path (e.g., "deploy vercel" for a nested command) */
+  /**
+   * Get the full command path (e.g., "deploy vercel" for a nested command)
+   */
   protected getCommandPath(command: CommandPrimitive<any>): string {
     const path: string[] = [command.name];
     let current = command;
@@ -1149,7 +1181,9 @@ export class CliProvider {
     return path.join(" ");
   }
 
-  /** Find the parent command of a nested command */
+  /**
+   * Find the parent command of a nested command
+   */
   protected findParentCommand(
     command: CommandPrimitive<any>,
   ): CommandPrimitive<any> | undefined {
@@ -1161,7 +1195,9 @@ export class CliProvider {
     return undefined;
   }
 
-  /** Get top-level commands (commands that are not children of other commands) */
+  /**
+   * Get top-level commands (commands that are not children of other commands)
+   */
   protected getTopLevelCommands(): CommandPrimitive<any>[] {
     const allChildren = new Set<CommandPrimitive<any>>();
 
@@ -1176,7 +1212,9 @@ export class CliProvider {
     return this.commands.filter((cmd) => !allChildren.has(cmd));
   }
 
-  /** Calculate max display length for child commands (for help alignment) */
+  /**
+   * Calculate max display length for child commands (for help alignment)
+   */
   protected getMaxChildCmdLength(children: CommandPrimitive<any>[]): number {
     return Math.max(
       ...children
@@ -1190,7 +1228,9 @@ export class CliProvider {
     );
   }
 
-  /** Calculate max display length for commands (for help alignment) */
+  /**
+   * Calculate max display length for commands (for help alignment)
+   */
   protected getMaxCmdLength(commands: CommandPrimitive[]): number {
     return Math.max(
       ...commands
@@ -1205,7 +1245,9 @@ export class CliProvider {
     );
   }
 
-  /** Calculate max display length for flags (for help alignment) */
+  /**
+   * Calculate max display length for flags (for help alignment)
+   */
   protected getMaxFlagLength(flags: { aliases: string[] }[]): number {
     return Math.max(
       ...flags.map((f) => {
