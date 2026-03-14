@@ -111,7 +111,7 @@ describe("HttpClient", () => {
           method: "POST",
           handler: () => {
             callCount++;
-            return { count: callCount };
+            return String(callCount);
           },
         });
       }
@@ -125,7 +125,7 @@ describe("HttpClient", () => {
       ]);
 
       expect(callCount).toBe(2);
-      expect(res1.data).not.toBe(res2.data);
+      expect(res1.data).not.toEqual(res2.data);
     });
   });
 

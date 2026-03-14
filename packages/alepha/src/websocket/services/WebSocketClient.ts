@@ -69,6 +69,7 @@ export class WebSocketChannelConnection<
   public isConnecting = false;
   public isError = false;
   public error?: Error;
+  protected connectPromise?: Promise<void>;
 
   // Connection callbacks
   protected onConnectCallbacks = new Set<() => void>();
@@ -184,6 +185,11 @@ export class WebSocketChannelConnection<
       return;
     }
 
+    if (this.connectPromise) {
+      this.log.trace("Connection already in progress, reusing promise");
+      return this.connectPromise;
+    }
+
     this.isConnecting = true;
     this.isError = false;
     this.error = undefined;
@@ -191,7 +197,7 @@ export class WebSocketChannelConnection<
     const url = this.buildUrl();
     this.log.info("Connecting to WebSocket server", { url });
 
-    return new Promise((resolve, reject) => {
+    this.connectPromise = new Promise<void>((resolve, reject) => {
       try {
         const ws = new WebSocket(url);
         this.ws = ws;
@@ -295,7 +301,11 @@ export class WebSocketChannelConnection<
 
         reject(error);
       }
+    }).finally(() => {
+      this.connectPromise = undefined;
     });
+
+    return this.connectPromise;
   }
 
   /**
@@ -435,6 +445,7 @@ export class WebSocketChannelConnection<
 
     this.isConnected = false;
     this.isConnecting = false;
+    this.connectPromise = undefined;
 
     this.log.info("Disconnected");
   }
