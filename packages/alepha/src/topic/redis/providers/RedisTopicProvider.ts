@@ -5,6 +5,7 @@ import {
   type SubscribeCallback,
   TopicProvider,
   type TopicPublishOptions,
+  type TopicSubscribeOptions,
   type UnSubscribeFn,
 } from "alepha/topic";
 
@@ -85,6 +86,7 @@ export class RedisTopicProvider extends TopicProvider {
   public async subscribe(
     name: string,
     callback: SubscribeCallback,
+    _options?: TopicSubscribeOptions,
   ): Promise<UnSubscribeFn> {
     const topic = this.prefix(name);
 

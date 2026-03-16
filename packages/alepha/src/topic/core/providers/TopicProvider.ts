@@ -41,6 +41,7 @@ export abstract class TopicProvider {
   public abstract subscribe(
     topic: string,
     callback: SubscribeCallback,
+    options?: TopicSubscribeOptions,
   ): Promise<UnSubscribeFn>;
 
   /**
@@ -97,6 +98,7 @@ export abstract class TopicProvider {
     name: string,
     schema: T["payload"],
     handler: TopicHandler<T>,
+    options?: TopicSubscribeOptions,
   ): Promise<UnSubscribeFn> {
     const parser = new TemplatedPathParser(name);
     const subscribeTopic = parser.hasParams
@@ -119,6 +121,7 @@ export abstract class TopicProvider {
           this.log.error("Message processing has failed", error);
         }
       },
+      options,
     );
   }
 
@@ -214,3 +217,6 @@ export interface TopicPublishOptions {
   retain?: boolean;
   params?: Record<string, string>;
 }
+
+// biome-ignore lint/suspicious/noEmptyInterface: augmented by provider-specific modules (e.g. MqttTopicProvider)
+export interface TopicSubscribeOptions {}

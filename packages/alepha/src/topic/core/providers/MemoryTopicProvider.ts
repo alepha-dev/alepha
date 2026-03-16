@@ -4,6 +4,7 @@ import {
   type SubscribeCallback,
   TopicProvider,
   type TopicPublishOptions,
+  type TopicSubscribeOptions,
   type UnSubscribeFn,
 } from "./TopicProvider.ts";
 
@@ -60,6 +61,7 @@ export class MemoryTopicProvider extends TopicProvider {
   public async subscribe(
     topic: string,
     callback: SubscribeCallback,
+    _options?: TopicSubscribeOptions,
   ): Promise<UnSubscribeFn> {
     if (!this.subscriptions[topic]) {
       this.subscriptions[topic] = [];

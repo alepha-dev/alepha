@@ -5,6 +5,7 @@ import {
   type SubscribeCallback,
   TopicProvider,
   type TopicPublishOptions,
+  type TopicSubscribeOptions,
   type UnSubscribeFn,
 } from "alepha/topic";
 
@@ -43,6 +44,12 @@ declare module "alepha" {
  * Ignored by Memory and Redis providers.
  */
 declare module "alepha/topic" {
+  interface TopicSubscribeOptions {
+    mqtt?: {
+      qos?: 0 | 1 | 2;
+    };
+  }
+
   interface TopicPrimitiveOptions<T> {
     /**
      * MQTT-specific options for this topic.
@@ -119,13 +126,17 @@ export class MqttTopicProvider extends TopicProvider {
   public async subscribe(
     name: string,
     callback: SubscribeCallback,
+    options?: TopicSubscribeOptions,
   ): Promise<UnSubscribeFn> {
+    const qos = options?.mqtt?.qos;
+
     return this.mqttClient.subscribe(
       this.prefix(name),
       (receivedTopic, payload) => {
         const unprefixed = this.unprefix(receivedTopic);
         return callback(payload, unprefixed);
       },
+      qos !== undefined ? { qos } : undefined,
     );
   }
 

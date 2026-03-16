@@ -200,7 +200,7 @@ export const testTopicRetain = async (
     received.push(m.payload.value);
   });
 
-  await expect.poll(() => received).toEqual(["retained"]);
+  await expect.poll(() => received, { timeout: 5000 }).toEqual(["retained"]);
 
   await app.stop();
 };

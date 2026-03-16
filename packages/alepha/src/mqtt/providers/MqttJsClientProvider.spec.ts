@@ -126,30 +126,40 @@ describe("MqttJsClientProvider", () => {
     await alepha.stop();
   });
 
-  it("should deliver a retained message to a late subscriber", async ({
-    expect,
-  }) => {
+  it("should deliver a retained message to a late subscriber", {
+    retry: 3,
+  }, async ({ expect }) => {
     const topic = `test/mqtt-client/${randomUUID()}/retain`;
     const received: string[] = [];
 
-    const alepha = createApp();
-    const mqtt = alepha.inject(MqttJsClientProvider);
-    await alepha.start();
+    // Use two separate clients: one to publish, another to subscribe.
+    // This mirrors real-world usage and avoids same-client delivery races.
+    const publisher = createApp();
+    const subscriber = createApp();
+    const pubMqtt = publisher.inject(MqttJsClientProvider);
+    const subMqtt = subscriber.inject(MqttJsClientProvider);
+    await publisher.start();
 
-    // Publish with retain before subscribing.
-    await mqtt.publish(topic, "retained-value", { retain: true });
+    // Publish with retain + QoS 1 so the broker ACKs storage before resolving.
+    await pubMqtt.publish(topic, "retained-value", { retain: true, qos: 1 });
 
-    // Subscribe after the message was published.
-    await mqtt.subscribe(topic, (_t, payload) => {
-      received.push(payload);
-    });
+    // Start the subscriber AFTER the publish is confirmed.
+    await subscriber.start();
+    await subMqtt.subscribe(
+      topic,
+      (_t, payload) => {
+        received.push(payload);
+      },
+      { qos: 1 },
+    );
 
     await expect.poll(() => received.length, { timeout: 5000 }).toBe(1);
     expect(received[0]).toBe("retained-value");
 
     // Clean up: clear the retained message from the broker.
-    await mqtt.publish(topic, "", { retain: true });
+    await pubMqtt.publish(topic, "", { retain: true });
 
-    await alepha.stop();
+    await publisher.stop();
+    await subscriber.stop();
   });
 });

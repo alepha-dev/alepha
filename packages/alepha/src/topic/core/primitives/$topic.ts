@@ -289,6 +289,7 @@ export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
       this.name,
       this.options.schema.payload,
       handler,
+      { mqtt: (this.options as any).mqtt },
     );
   }
 
