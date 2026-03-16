@@ -23,6 +23,7 @@
     "@redis/client": "^5.11.0",
     "dayjs": "^1.11.20",
     "drizzle-orm": "^0.45.1",
+    "mqtt": "^5.12.0",
     "postgres": "^3.4.8",
     "tsx": "^4.21.0",
     "typebox": "^1.1.6",
@@ -262,6 +263,11 @@
       "import": "./src/mcp/index.ts",
       "default": "./src/mcp/index.ts"
     },
+    "./mqtt": {
+      "types": "./src/mqtt/index.ts",
+      "import": "./src/mqtt/index.ts",
+      "default": "./src/mqtt/index.ts"
+    },
     "./orm": {
       "types": "./src/orm/core/index.ts",
       "react-native": "./src/orm/core/index.browser.ts",
@@ -452,6 +458,11 @@
       "types": "./src/topic/core/index.ts",
       "import": "./src/topic/core/index.ts",
       "default": "./src/topic/core/index.ts"
+    },
+    "./topic/mqtt": {
+      "types": "./src/topic/mqtt/index.ts",
+      "import": "./src/topic/mqtt/index.ts",
+      "default": "./src/topic/mqtt/index.ts"
     },
     "./topic/redis": {
       "types": "./src/topic/redis/index.ts",

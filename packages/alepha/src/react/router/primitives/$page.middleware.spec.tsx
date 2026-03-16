@@ -81,6 +81,61 @@ describe("$page middleware", () => {
     expect(result.html).toBe("ok");
   });
 
+  test("parent middleware cascades to child pages", async ({ expect }) => {
+    const alepha = Alepha.create();
+
+    const calls: string[] = [];
+
+    const $parentGuard = (): Middleware =>
+      createMiddleware({
+        name: "$parentGuard",
+        handler:
+          ({ next }) =>
+          async (...args: any[]) => {
+            calls.push("parent");
+            return next(...args);
+          },
+      });
+
+    const $childGuard = (): Middleware =>
+      createMiddleware({
+        name: "$childGuard",
+        handler:
+          ({ next }) =>
+          async (...args: any[]) => {
+            calls.push("child");
+            return next(...args);
+          },
+      });
+
+    class App {
+      layout = $page({
+        use: [$parentGuard()],
+        children: () => [this.child],
+        component: () => "layout",
+      });
+
+      child = $page({
+        path: "/child",
+        use: [$childGuard()],
+        loader: () => {
+          calls.push("loader");
+          return { msg: "hello" };
+        },
+        component: ({ msg }: { msg: string }) => msg,
+      });
+    }
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const result = await app.child.fetch({ html: true });
+    expect(result.html).toContain("hello");
+
+    // Parent middleware should run before child middleware
+    expect(calls).toEqual(["parent", "child", "loader"]);
+  });
+
   test("is still a PagePrimitive", ({ expect }) => {
     const alepha = Alepha.create();
 

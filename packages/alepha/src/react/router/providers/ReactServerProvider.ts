@@ -129,13 +129,17 @@ export class ReactServerProvider {
       if (page.component || page.lazy || page.redirect) {
         this.log.debug(`+ ${page.match} -> ${page.name}`);
 
+        // Collect middleware from the entire parent chain + own page.
+        // Parent middleware runs first (outermost → innermost).
+        const allMiddleware = this.collectMiddleware(page);
+
         // Separate $cache from server-level middleware.
         // $cache is applied inside createHandler around the render function,
         // not around the entire server handler (which works via side effects).
-        const cacheMiddleware = (page.use ?? []).filter(
+        const cacheMiddleware = allMiddleware.filter(
           (m) => m[OPTIONS]?.name === "$cache",
         );
-        const serverMiddleware = (page.use ?? []).filter(
+        const serverMiddleware = allMiddleware.filter(
           (m) => m[OPTIONS]?.name !== "$cache",
         );
 
@@ -260,6 +264,24 @@ export class ReactServerProvider {
     const pattern = this.pageOptions.staticFilePattern;
     if (!pattern) return false;
     return new RegExp(pattern);
+  }
+
+  /**
+   * Collect middleware from the entire parent chain + the page itself.
+   * Parent middleware runs first (outermost → innermost → page).
+   */
+  protected collectMiddleware(page: PageRoute): Middleware[] {
+    const chain: Middleware[][] = [];
+    let current: PageRoute | undefined = page;
+
+    while (current) {
+      if (current.use?.length) {
+        chain.unshift(current.use);
+      }
+      current = current.parent;
+    }
+
+    return chain.flat();
   }
 
   /**
@@ -537,8 +559,9 @@ export class ReactServerProvider {
       return { html: await this.streamToString(htmlStream) };
     };
 
-    const result = page.use?.length
-      ? await new PipelineHandler(renderFn, page.use).run(url.href)
+    const allMiddleware = this.collectMiddleware(page);
+    const result = allMiddleware.length
+      ? await new PipelineHandler(renderFn, allMiddleware).run(url.href)
       : await renderFn(url.href);
 
     if (result.redirect) {
