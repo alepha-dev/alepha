@@ -132,7 +132,8 @@ export const testLockWait = async (
   expect(result[1]).toBeGreaterThanOrEqual(500);
   expect(result[2]).toBeGreaterThanOrEqual(500);
 
-  expect(count).toBe(1);
+  // All 3 apps should eventually execute (wait: true means queue, not skip)
+  expect(count).toBe(3);
 };
 
 export const testLockGracePeriod = async (

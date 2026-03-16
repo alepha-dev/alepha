@@ -17,7 +17,7 @@ import {
   type DurationLike,
 } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $topic, TopicTimeoutError } from "alepha/topic";
+import { $topic } from "alepha/topic";
 import { LockAcquireError } from "../errors/LockAcquireError.ts";
 import { LockProvider } from "../providers/LockProvider.ts";
 import { LockTopicProvider } from "../providers/LockTopicProvider.ts";
@@ -431,18 +431,22 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
 
     if (lock.id !== this.id) {
       if (this.options.wait) {
-        try {
-          await this.wait(key, this.maxDuration);
-        } catch (error) {
-          if (error instanceof TopicTimeoutError) {
-            this.log.warn(
-              `Lock timeout for '${key}' has been reached. Retry...`,
-            );
-            await this.run(...args);
-          } else {
-            throw error;
+        // Poll until the lock is released, then re-attempt
+        const start = this.dateTimeProvider.nowMillis();
+        const maxMs = this.maxDuration.as("milliseconds");
+        let acquired = false;
+        while (this.dateTimeProvider.nowMillis() - start < maxMs) {
+          await this.dateTimeProvider.wait(500);
+          const current = await this.lock(key);
+          if (current.id === this.id || !current.id || current.endedAt) {
+            acquired = true;
+            break;
           }
         }
+        if (acquired) {
+          return this.run(...args);
+        }
+        this.log.warn(`Lock wait timeout for '${key}', giving up`);
       }
 
       return;
