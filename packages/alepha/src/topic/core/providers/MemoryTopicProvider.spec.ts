@@ -1,9 +1,11 @@
-import { describe, test } from "vitest";
+import { describe, it, test } from "vitest";
 import {
   SharedTopicProvider,
   testTopicAsSub,
   testTopicBasic,
   testTopicLateSubscribe,
+  testTopicParams,
+  testTopicRetain,
 } from "../__tests__/shared.ts";
 
 describe("$topic - memory", () => {
@@ -19,5 +21,13 @@ describe("$topic - memory", () => {
 
   test("should subscribe after start with provider", async () => {
     await testTopicLateSubscribe(provider);
+  });
+
+  it("should deliver retained message to new subscriber", async () => {
+    await testTopicRetain(SharedTopicProvider);
+  });
+
+  it("should support parameterized topic names", async () => {
+    await testTopicParams(SharedTopicProvider);
   });
 });

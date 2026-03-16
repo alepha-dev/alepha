@@ -9,6 +9,55 @@ import {
 } from "alepha/topic";
 import { expect } from "vitest";
 
+export const testTopicParams = async (
+  provider: Service<TopicProvider>,
+  configure?: (app: Alepha) => void,
+) => {
+  class TestParams {
+    sensor = $topic({
+      name: "devices/{deviceId}/sensor",
+      schema: {
+        params: t.object({ deviceId: t.text() }),
+        payload: t.object({ temp: t.number() }),
+      },
+    });
+  }
+
+  const app = Alepha.create();
+
+  configure?.(app);
+
+  app.with({ provide: TopicProvider, use: provider }).with(TestParams);
+
+  await app.start();
+  const test = app.inject(TestParams);
+
+  // Subscribe to all devices
+  const received: Array<{ deviceId: string; temp: number }> = [];
+  await test.sensor.subscribe(async (m) => {
+    received.push({ deviceId: m.params.deviceId, temp: m.payload.temp });
+  });
+
+  // Publish to specific devices
+  await test.sensor.publish({
+    params: { deviceId: "dev-1" },
+    payload: { temp: 22.5 },
+  });
+  await test.sensor.publish({
+    params: { deviceId: "dev-2" },
+    payload: { temp: 18.0 },
+  });
+
+  await expect
+    .poll(() => received)
+    .toEqual([
+      { deviceId: "dev-1", temp: 22.5 },
+      { deviceId: "dev-2", temp: 18.0 },
+    ]);
+
+  await app.stop();
+};
+
 export const payloadSchema = t.object({
   id: t.text(),
   count: t.integer(),
@@ -19,7 +68,10 @@ export class SharedTopicProvider extends MemoryTopicProvider {
   subscriptions = subscriptions;
 }
 
-export const testTopicBasic = async (provider: Service<TopicProvider>) => {
+export const testTopicBasic = async (
+  provider: Service<TopicProvider>,
+  configure?: (app: Alepha) => void,
+) => {
   class TestTopic {
     t = $topic({
       name: "test",
@@ -44,6 +96,8 @@ export const testTopicBasic = async (provider: Service<TopicProvider>) => {
     testClass: Service<T>,
   ): Promise<{ app: Alepha; test: T }> => {
     const app = Alepha.create();
+
+    configure?.(app);
 
     app.with({
       provide: TopicProvider,
@@ -76,7 +130,10 @@ export const testTopicBasic = async (provider: Service<TopicProvider>) => {
   await app4.stop();
 };
 
-export const testTopicAsSub = async (provider: Service<TopicProvider>) => {
+export const testTopicAsSub = async (
+  provider: Service<TopicProvider>,
+  configure?: (app: Alepha) => void,
+) => {
   let count = 0;
   class A {
     t = $topic({
@@ -90,7 +147,11 @@ export const testTopicAsSub = async (provider: Service<TopicProvider>) => {
     });
   }
 
-  const app = Alepha.create({})
+  const app = Alepha.create({});
+
+  configure?.(app);
+
+  app
     .with({
       provide: TopicProvider,
       use: provider,
@@ -107,10 +168,52 @@ export const testTopicAsSub = async (provider: Service<TopicProvider>) => {
   //await expect(a.t.publish({ n: 123.6 })).rejects.toThrowError(TypeBoxError);
 };
 
+export const testTopicRetain = async (
+  provider: Service<TopicProvider>,
+  configure?: (app: Alepha) => void,
+) => {
+  class TestRetain {
+    t = $topic({
+      name: `retain-test-${crypto.randomUUID()}`,
+      schema: {
+        payload: t.object({ value: t.text() }),
+      },
+      retain: true,
+    });
+  }
+
+  const app = Alepha.create();
+
+  configure?.(app);
+
+  app.with({ provide: TopicProvider, use: provider }).with(TestRetain);
+
+  await app.start();
+  const test = app.inject(TestRetain);
+
+  // Publish a retained message
+  await test.t.publish({ value: "retained" });
+
+  // Subscribe AFTER publish — should receive the retained message
+  const received: string[] = [];
+  await test.t.subscribe(async (m) => {
+    received.push(m.payload.value);
+  });
+
+  await expect.poll(() => received).toEqual(["retained"]);
+
+  await app.stop();
+};
+
 export const testTopicLateSubscribe = async (
   Provider: Service<TopicProvider>,
+  configure?: (app: Alepha) => void,
 ) => {
-  const alepha = Alepha.create()
+  const alepha = Alepha.create();
+
+  configure?.(alepha);
+
+  alepha
     .with({
       provide: TopicProvider,
       use: Provider,

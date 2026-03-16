@@ -1,6 +1,7 @@
 import { $inject, Alepha } from "alepha";
 import { DateTimeProvider, type Timeout } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { TemplatedPathParser } from "alepha/router";
 import { TopicTimeoutError } from "../errors/TopicTimeoutError.ts";
 import { $subscriber } from "../primitives/$subscriber.ts";
 import {
@@ -25,7 +26,11 @@ export abstract class TopicProvider {
    * @param topic - The topic to publish to.
    * @param message - The message to publish.
    */
-  public abstract publish(topic: string, message: string): Promise<void>;
+  public abstract publish(
+    topic: string,
+    message: string,
+    options?: TopicPublishOptions,
+  ): Promise<void>;
 
   /**
    * Subscribe to a topic with a raw callback.
@@ -52,12 +57,20 @@ export abstract class TopicProvider {
     name: string,
     schema: T["payload"],
     payload: TopicMessage<T>["payload"],
+    options?: TopicPublishOptions,
   ): Promise<void> {
+    let topicName = name;
+    if (options?.params) {
+      const parser = new TemplatedPathParser(name);
+      topicName = parser.interpolate(options.params);
+    }
+
     await this.publish(
-      name,
+      topicName,
       JSON.stringify({
         payload: this.alepha.codec.encode(schema, payload),
       }),
+      options,
     );
   }
 
@@ -74,7 +87,7 @@ export abstract class TopicProvider {
         schema,
         payload,
       ) as TopicMessage<T>["payload"],
-    };
+    } as TopicMessage<T>;
   }
 
   /**
@@ -85,13 +98,28 @@ export abstract class TopicProvider {
     schema: T["payload"],
     handler: TopicHandler<T>,
   ): Promise<UnSubscribeFn> {
-    return this.subscribe(name, async (message) => {
-      try {
-        await handler(this.parseMessage<T>(schema, message));
-      } catch (error) {
-        this.log.error("Message processing has failed", error);
-      }
-    });
+    const parser = new TemplatedPathParser(name);
+    const subscribeTopic = parser.hasParams
+      ? parser.wildcardize(this.wildcardChar())
+      : name;
+
+    return this.subscribe(
+      subscribeTopic,
+      async (message, receivedTopic?: string) => {
+        try {
+          const parsed = this.parseMessage<T>(schema, message);
+
+          if (parser.hasParams && receivedTopic) {
+            const params = parser.extract(receivedTopic);
+            await handler({ ...parsed, params } as TopicMessage<T>);
+          } else {
+            await handler(parsed);
+          }
+        } catch (error) {
+          this.log.error("Message processing has failed", error);
+        }
+      },
+    );
   }
 
   /**
@@ -135,6 +163,14 @@ export abstract class TopicProvider {
   }
 
   /**
+   * The wildcard character used for pattern subscriptions.
+   * Override in subclasses for provider-specific wildcards.
+   */
+  protected wildcardChar(): string {
+    return "+";
+  }
+
+  /**
    * Returns the list of $subscribers for this provider.
    */
   protected subscribers(): Array<() => Promise<unknown>> {
@@ -167,6 +203,14 @@ export abstract class TopicProvider {
   }
 }
 
-export type SubscribeCallback = (message: string) => Promise<void> | void;
+export type SubscribeCallback = (
+  message: string,
+  topic?: string,
+) => Promise<void> | void;
 
 export type UnSubscribeFn = () => Promise<void>;
+
+export interface TopicPublishOptions {
+  retain?: boolean;
+  params?: Record<string, string>;
+}

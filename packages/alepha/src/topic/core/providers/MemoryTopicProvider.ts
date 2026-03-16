@@ -3,12 +3,14 @@ import { $logger } from "alepha/logger";
 import {
   type SubscribeCallback,
   TopicProvider,
+  type TopicPublishOptions,
   type UnSubscribeFn,
 } from "./TopicProvider.ts";
 
 export class MemoryTopicProvider extends TopicProvider {
   protected readonly log = $logger();
   protected readonly subscriptions: Record<string, SubscribeCallback[]> = {};
+  protected readonly retained: Record<string, string> = {};
 
   protected readonly start = $hook({
     on: "start",
@@ -28,14 +30,23 @@ export class MemoryTopicProvider extends TopicProvider {
    *
    * @param topic
    * @param message
+   * @param options
    */
-  public async publish(topic: string, message: string): Promise<void> {
-    if (!this.subscriptions[topic]) {
-      return;
+  public async publish(
+    topic: string,
+    message: string,
+    options?: TopicPublishOptions,
+  ): Promise<void> {
+    if (options?.retain) {
+      this.retained[topic] = message;
     }
 
-    for (const callback of this.subscriptions[topic]) {
-      await callback(message);
+    for (const [pattern, callbacks] of Object.entries(this.subscriptions)) {
+      if (this.topicMatches(pattern, topic)) {
+        for (const callback of callbacks) {
+          await callback(message, topic);
+        }
+      }
     }
   }
 
@@ -55,6 +66,15 @@ export class MemoryTopicProvider extends TopicProvider {
     }
 
     this.subscriptions[topic].push(callback);
+
+    // Deliver retained messages matching the pattern
+    for (const [retainedTopic, retainedMessage] of Object.entries(
+      this.retained,
+    )) {
+      if (this.topicMatches(topic, retainedTopic)) {
+        await callback(retainedMessage, retainedTopic);
+      }
+    }
 
     return async () => {
       const callbacks = this.subscriptions[topic];
@@ -76,5 +96,26 @@ export class MemoryTopicProvider extends TopicProvider {
    */
   public async unsubscribe(topic: string): Promise<void> {
     delete this.subscriptions[topic];
+  }
+
+  /**
+   * Check if a topic matches a subscription pattern.
+   * Supports `+` single-level wildcard.
+   */
+  protected topicMatches(pattern: string, topic: string): boolean {
+    if (pattern === topic) {
+      return true;
+    }
+
+    const patternParts = pattern.split("/");
+    const topicParts = topic.split("/");
+
+    if (patternParts.length !== topicParts.length) {
+      return false;
+    }
+
+    return patternParts.every(
+      (part, i) => part === "+" || part === topicParts[i],
+    );
   }
 }

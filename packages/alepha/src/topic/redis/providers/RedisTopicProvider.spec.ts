@@ -1,8 +1,9 @@
-import { describe, test } from "vitest";
+import { describe, it, test } from "vitest";
 import {
   testTopicAsSub,
   testTopicBasic,
   testTopicLateSubscribe,
+  testTopicRetain,
 } from "../../core/__tests__/shared.ts";
 import { RedisTopicProvider } from "../index.ts";
 
@@ -19,5 +20,9 @@ describe("$topic - redis", () => {
 
   test("should subscribe after start with provider", async () => {
     await testTopicLateSubscribe(provider);
+  });
+
+  it("should deliver retained message to new subscriber", async () => {
+    await testTopicRetain(RedisTopicProvider);
   });
 });

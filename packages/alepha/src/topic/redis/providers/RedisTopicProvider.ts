@@ -4,6 +4,7 @@ import { RedisProvider, RedisSubscriberProvider } from "alepha/redis";
 import {
   type SubscribeCallback,
   TopicProvider,
+  type TopicPublishOptions,
   type UnSubscribeFn,
 } from "alepha/topic";
 
@@ -56,6 +57,10 @@ export class RedisTopicProvider extends TopicProvider {
     },
   });
 
+  protected override wildcardChar(): string {
+    return "*";
+  }
+
   public prefix(queue: string): string {
     return `${this.options.prefix}:${queue}`;
   }
@@ -63,7 +68,14 @@ export class RedisTopicProvider extends TopicProvider {
   /**
    * Publish a message to a topic.
    */
-  public async publish(topic: string, message: string): Promise<void> {
+  public async publish(
+    topic: string,
+    message: string,
+    options?: TopicPublishOptions,
+  ): Promise<void> {
+    if (options?.retain) {
+      await this.redisProvider.set(`${this.prefix(topic)}:retained`, message);
+    }
     await this.redisProvider.publish(this.prefix(topic), message);
   }
 
@@ -75,6 +87,13 @@ export class RedisTopicProvider extends TopicProvider {
     callback: SubscribeCallback,
   ): Promise<UnSubscribeFn> {
     const topic = this.prefix(name);
+
+    // Deliver retained message if exists
+    const retained = await this.redisProvider.get(`${topic}:retained`);
+    if (retained) {
+      await callback(retained.toString());
+    }
+
     await this.redisSubscriberProvider.subscribe(topic, callback);
 
     return () => this.unsubscribe(name, callback);

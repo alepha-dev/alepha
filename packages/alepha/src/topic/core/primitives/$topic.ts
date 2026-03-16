@@ -10,6 +10,7 @@ import type { DurationLike } from "alepha/datetime";
 import { MemoryTopicProvider } from "../providers/MemoryTopicProvider.ts";
 import {
   TopicProvider,
+  type TopicPublishOptions,
   type UnSubscribeFn,
 } from "../providers/TopicProvider.ts";
 
@@ -237,6 +238,18 @@ export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
    * ```
    */
   handler?: TopicHandler<T>;
+
+  /**
+   * Whether the last published message should be retained and delivered to new subscribers.
+   *
+   * When enabled, the provider stores the last message for this topic.
+   * New subscribers immediately receive the retained message upon subscribing.
+   *
+   * Supported by Memory, Redis, and MQTT providers.
+   *
+   * @default false
+   */
+  retain?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -250,11 +263,24 @@ export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
     return this.options.name || this.config.propertyKey;
   }
 
-  public async publish(payload: TopicMessage<T>["payload"]): Promise<void> {
+  public async publish(
+    message: T extends { params: TSchema }
+      ? { params: Static<T["params"]>; payload: TopicMessage<T>["payload"] }
+      : TopicMessage<T>["payload"],
+  ): Promise<void> {
+    const hasParams = this.options.schema.params;
+    const payload = hasParams ? (message as any).payload : message;
+    const params = hasParams ? (message as any).params : undefined;
+
     await this.provider.publishMessage<T>(
       this.name,
       this.options.schema.payload,
       payload,
+      {
+        retain: this.options.retain,
+        mqtt: (this.options as any).mqtt,
+        params,
+      } as TopicPublishOptions,
     );
   }
 
@@ -295,6 +321,7 @@ $topic[KIND] = TopicPrimitive;
 
 export interface TopicMessage<T extends TopicMessageSchema> {
   payload: Static<T["payload"]>;
+  params: T extends { params: TSchema } ? Static<T["params"]> : never;
 }
 
 export interface TopicWaitOptions<T extends TopicMessageSchema> {
@@ -304,6 +331,7 @@ export interface TopicWaitOptions<T extends TopicMessageSchema> {
 
 export interface TopicMessageSchema {
   payload: TSchema;
+  params?: TSchema;
 }
 
 export type TopicHandler<T extends TopicMessageSchema = TopicMessageSchema> = (
