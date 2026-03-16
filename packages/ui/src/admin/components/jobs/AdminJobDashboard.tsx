@@ -1,6 +1,6 @@
 import { ActionButton, Flex, StatCards, Text, useToast } from "@alepha/ui";
 import { AreaChart, BarChart, DonutChart } from "@mantine/charts";
-import { Paper, SimpleGrid, Table } from "@mantine/core";
+import { Paper, SegmentedControl, SimpleGrid, Table } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconCircleCheck,
@@ -20,6 +20,13 @@ import { useI18n } from "alepha/react/i18n";
 import { useCallback, useEffect, useState } from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+const TIME_RANGES = [
+  { label: "24h", value: "1" },
+  { label: "7d", value: "7" },
+  { label: "14d", value: "14" },
+  { label: "30d", value: "30" },
+];
 
 const formatDuration = (
   start: Date | string,
@@ -53,20 +60,23 @@ const AdminJobDashboard = () => {
   const { l } = useI18n();
   const toast = useToast();
 
+  const [days, setDays] = useState("7");
   const [stats, setStats] = useState<JobStats | null>(null);
   const [recent, setRecent] = useState<RecentExecution[]>([]);
   const [failures, setFailures] = useState<JobFailure[]>([]);
   const [activity, setActivity] = useState<JobActivityPoint[]>([]);
   const [queueDepth, setQueueDepth] = useState<JobQueueDepth[]>([]);
 
+  const daysNum = Number(days);
+
   const loadData = useCallback(async () => {
     try {
       const [statsData, recentData, failureData, activityData, queueData] =
         await Promise.all([
-          client.getJobStats(),
+          client.getJobStats({ query: { days: daysNum } }),
           client.findJobExecutions({ query: { sort: "-createdAt", size: 10 } }),
-          client.getJobTopFailures(),
-          client.getJobActivity({ query: { days: 14 } }),
+          client.getJobTopFailures({ query: { days: daysNum } }),
+          client.getJobActivity({ query: { days: daysNum } }),
           client.getJobQueueDepth(),
         ]);
       setStats(statsData);
@@ -77,7 +87,7 @@ const AdminJobDashboard = () => {
     } catch {
       toast.danger("Failed to load dashboard data");
     }
-  }, [client, toast]);
+  }, [client, toast, daysNum]);
 
   useEffect(() => {
     loadData();
@@ -119,19 +129,40 @@ const AdminJobDashboard = () => {
       ].filter((d) => d.value > 0)
     : [];
 
+  const rangeLabel =
+    TIME_RANGES.find((r) => r.value === days)?.label ?? `${days}d`;
+
   return (
     <Flex flex={1} direction="column" gap="md" p="md">
       <Flex justify="space-between" align="center">
         <Text size="lg" fw={600}>
           Jobs Dashboard
         </Text>
-        <ActionButton
-          tooltip="Refresh"
-          variant="light"
-          size="sm"
-          icon={IconRefresh}
-          onClick={loadData}
-        />
+        <Flex
+          gap="sm"
+          align="center"
+          py="xs"
+          px="sm"
+          style={{
+            backgroundColor: "var(--mantine-color-body)",
+            borderRadius: "var(--mantine-radius-md)",
+            border: "1px solid var(--mantine-color-default-border)",
+          }}
+        >
+          <SegmentedControl
+            size="xs"
+            data={TIME_RANGES}
+            value={days}
+            onChange={setDays}
+          />
+          <ActionButton
+            tooltip="Refresh"
+            variant="minimal"
+            size="sm"
+            icon={IconRefresh}
+            onClick={loadData}
+          />
+        </Flex>
       </Flex>
 
       {/* Stats Cards */}
@@ -149,13 +180,13 @@ const AdminJobDashboard = () => {
               icon: IconPlayerPlay,
             },
             {
-              label: "Completed 24h",
-              value: stats.completed24h,
+              label: `Completed (${rangeLabel})`,
+              value: stats.completed,
               icon: IconCircleCheck,
             },
             {
-              label: "Failed 24h",
-              value: stats.failed24h,
+              label: `Failed (${rangeLabel})`,
+              value: stats.failed,
               icon: IconAlertTriangle,
             },
           ]}
@@ -167,7 +198,7 @@ const AdminJobDashboard = () => {
         {/* Activity Timeline */}
         <Paper p="md" radius="md" withBorder>
           <Text size="sm" fw={600} mb="sm">
-            Activity (14d)
+            Activity ({rangeLabel})
           </Text>
           {activityChartData.length > 0 ? (
             <AreaChart
@@ -292,10 +323,10 @@ const AdminJobDashboard = () => {
           </Table>
         </Paper>
 
-        {/* Top Failures (7d) */}
+        {/* Top Failures */}
         <Paper p="md" radius="md" withBorder>
           <Text size="sm" fw={600} mb="sm">
-            Top Failures (7d)
+            Top Failures ({rangeLabel})
           </Text>
           {failures.length > 0 ? (
             <Table>
@@ -336,7 +367,7 @@ const AdminJobDashboard = () => {
           ) : (
             <Flex h={100} align="center" justify="center">
               <Text size="sm" c="dimmed">
-                No failures in the last 7 days
+                No failures in the last {rangeLabel}
               </Text>
             </Flex>
           )}

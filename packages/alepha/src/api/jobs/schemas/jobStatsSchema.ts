@@ -7,8 +7,8 @@ export const jobStatsSchema = t.object({
   scheduled: t.integer(),
   retrying: t.integer(),
   dead: t.integer(),
-  completed24h: t.integer(),
-  failed24h: t.integer(),
+  completed: t.integer(),
+  failed: t.integer(),
 });
 
 export type JobStats = Static<typeof jobStatsSchema>;

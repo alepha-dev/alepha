@@ -29,8 +29,8 @@ export const testGetStatsEmpty = async (alepha: Alepha) => {
   expect(stats.scheduled).toBe(0);
   expect(stats.retrying).toBe(0);
   expect(stats.dead).toBe(0);
-  expect(stats.completed24h).toBe(0);
-  expect(stats.failed24h).toBe(0);
+  expect(stats.completed).toBe(0);
+  expect(stats.failed).toBe(0);
 };
 
 // =============================================================================
@@ -122,7 +122,7 @@ export const testGetStatsWithMixedStatuses = async (alepha: Alepha) => {
     completedAt: twoDaysAgo,
   });
 
-  // dead within 24h — should count for failed24h
+  // dead within 24h — should count for failed
   await app.repo.create({
     jobName: "App.jobA",
     status: "dead",
@@ -133,7 +133,7 @@ export const testGetStatsWithMixedStatuses = async (alepha: Alepha) => {
     completedAt: oneHourAgo,
   });
 
-  // dead outside 24h — should NOT count for failed24h
+  // dead outside 24h — should NOT count for failed
   await app.repo.create({
     jobName: "App.jobA",
     status: "dead",
@@ -152,6 +152,6 @@ export const testGetStatsWithMixedStatuses = async (alepha: Alepha) => {
   expect(stats.scheduled).toBe(1);
   expect(stats.retrying).toBe(1);
   expect(stats.dead).toBe(3); // all dead regardless of time
-  expect(stats.completed24h).toBe(1); // only the recent one
-  expect(stats.failed24h).toBe(2); // 2 dead within 24h (the recent dead ones)
+  expect(stats.completed).toBe(1); // only the recent one
+  expect(stats.failed).toBe(2); // 2 dead within 24h (the recent dead ones)
 };

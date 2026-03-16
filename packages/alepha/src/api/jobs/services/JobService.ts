@@ -50,10 +50,13 @@ export class JobService {
     return this.database.dialect === "sqlite" ? new Date(iso).getTime() : iso;
   }
 
-  public async getStats(): Promise<JobStats> {
+  public async getStats(days?: number): Promise<JobStats> {
     const jobs = this.jobProvider.getRegisteredJobs();
-    const twentyFourHoursAgo = this.toRawDate(
-      this.dt.now().subtract(24, "hour").toISOString(),
+    const periodAgo = this.toRawDate(
+      this.dt
+        .now()
+        .subtract(days ?? 1, "day")
+        .toISOString(),
     );
 
     const rows = await this.executions.query(
@@ -64,8 +67,8 @@ export class JobService {
           COUNT(*) FILTER (WHERE ${e.status} = 'scheduled') AS scheduled,
           COUNT(*) FILTER (WHERE ${e.status} = 'retrying') AS retrying,
           COUNT(*) FILTER (WHERE ${e.status} = 'dead') AS dead,
-          COUNT(*) FILTER (WHERE ${e.status} = 'completed' AND ${e.completedAt} >= ${twentyFourHoursAgo}) AS completed_24h,
-          COUNT(*) FILTER (WHERE ${e.status} IN ('dead', 'failed') AND ${e.completedAt} >= ${twentyFourHoursAgo}) AS failed_24h
+          COUNT(*) FILTER (WHERE ${e.status} = 'completed' AND ${e.completedAt} >= ${periodAgo}) AS completed_24h,
+          COUNT(*) FILTER (WHERE ${e.status} IN ('dead', 'failed') AND ${e.completedAt} >= ${periodAgo}) AS failed_24h
         FROM ${e}
       `,
       t.object({
@@ -87,8 +90,8 @@ export class JobService {
       scheduled: Number(row.scheduled),
       retrying: Number(row.retrying),
       dead: Number(row.dead),
-      completed24h: Number(row.completed_24h),
-      failed24h: Number(row.failed_24h),
+      completed: Number(row.completed_24h),
+      failed: Number(row.failed_24h),
     };
   }
 
@@ -428,11 +431,14 @@ export class JobService {
     }));
   }
 
-  public async getTopFailures(): Promise<JobFailure[]> {
-    const sevenDaysAgoIso = this.dt.now().subtract(7, "day").toISOString();
+  public async getTopFailures(days?: number): Promise<JobFailure[]> {
+    const periodAgoIso = this.dt
+      .now()
+      .subtract(days ?? 7, "day")
+      .toISOString();
 
     if (this.database.dialect === "sqlite") {
-      return this.getTopFailuresSqlite(sevenDaysAgoIso);
+      return this.getTopFailuresSqlite(periodAgoIso);
     }
 
     const rows = await this.executions.query(
@@ -443,7 +449,7 @@ export class JobService {
           (ARRAY_AGG(${e.error} ORDER BY ${e.completedAt} DESC))[1] AS last_error
         FROM ${e}
         WHERE ${e.status} IN ('dead', 'failed')
-          AND ${e.completedAt} >= ${sevenDaysAgoIso}
+          AND ${e.completedAt} >= ${periodAgoIso}
         GROUP BY ${e.jobName}
         ORDER BY failures DESC
       `,
@@ -462,11 +468,11 @@ export class JobService {
   }
 
   protected async getTopFailuresSqlite(
-    sevenDaysAgoIso: string,
+    periodAgoIso: string,
   ): Promise<JobFailure[]> {
     const where = this.executions.createQueryWhere();
     where.status = { inArray: ["dead", "failed"] };
-    where.completedAt = { gte: sevenDaysAgoIso };
+    where.completedAt = { gte: periodAgoIso };
 
     const failures = await this.executions.findMany({
       where,

@@ -26,9 +26,10 @@ export class AdminJobController {
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
+      query: jobActivityQuerySchema,
       response: jobStatsSchema,
     },
-    handler: () => this.jobService.getStats(),
+    handler: ({ query }) => this.jobService.getStats(query.days),
   });
 
   public readonly getJobRegistry = $action({
@@ -157,8 +158,9 @@ export class AdminJobController {
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
+      query: jobActivityQuerySchema,
       response: t.array(jobFailureSchema),
     },
-    handler: () => this.jobService.getTopFailures(),
+    handler: ({ query }) => this.jobService.getTopFailures(query.days),
   });
 }
