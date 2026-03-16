@@ -56,4 +56,5 @@ class UserController {
 | `mustRevalidate` | `boolean` | No | Indicates that once a resource becomes stale, caches must not use it without successful validation. |
 | `proxyRevalidate` | `boolean` | No | Similar to must-revalidate, but only for shared caches. |
 | `immutable` | `boolean` | No | Indicates that the response can be stored but must be revalidated before each use. |
+| `staleWhileRevalidate` | `number \| DurationLike` | No | Time window (in seconds or DurationLike) during which a stale response may be served while a fresh one is fetched in the background |
 

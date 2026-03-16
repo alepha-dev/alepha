@@ -31,6 +31,14 @@ services:
       - verdaccio-storage:/verdaccio/storage
       - verdaccio-conf:/verdaccio/conf
 
+  mosquitto:
+    restart: always
+    image: eclipse-mosquitto:latest
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./assets/mosquitto.conf:/mosquitto/config/mosquitto.conf
+
 volumes:
   verdaccio-storage:
   verdaccio-conf:

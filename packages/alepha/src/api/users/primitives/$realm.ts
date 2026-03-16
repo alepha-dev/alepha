@@ -5,6 +5,7 @@ import { AlephaApiVerification } from "alepha/api/verifications";
 import type { Repository } from "alepha/orm";
 import {
   $issuer,
+  $permission,
   type IssuerPrimitive,
   type IssuerPrimitiveOptions,
   type IssuerResolver,
@@ -163,6 +164,10 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
       },
       ...options.issuer?.settings,
     },
+  });
+
+  $permission({
+    name: "admin:access",
   });
 
   realm.link = (name: string) => {
