@@ -10,3 +10,4 @@
  */
 
 export * from "./providers/RouterProvider.ts";
+export * from "./TemplatedPathParser.ts";
