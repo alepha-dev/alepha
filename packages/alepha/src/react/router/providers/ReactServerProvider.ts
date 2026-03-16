@@ -337,12 +337,12 @@ export class ReactServerProvider {
         );
       }
 
-      // Check access permissions
+      // Check access permissions (walk up the parent chain)
       let target: PageRoute | undefined = route;
       while (target) {
-        if (route.can && !route.can()) {
+        if (target.can && !target.can()) {
           this.log.warn(
-            `Access to page '${route.name}' is forbidden by can() check`,
+            `Access to page '${route.name}' is forbidden by can() check on '${target.name}'`,
           );
           reply.status = 403;
           reply.headers["content-type"] = "text/plain";
