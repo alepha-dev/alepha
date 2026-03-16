@@ -230,7 +230,9 @@ export class ProtobufProvider {
       }
     }
 
-    // Handle optional types
+    // Handle optional types — this branch is effectively dead code because TypeBox
+    // optional schemas retain their inner `type` field, so isString/isNumber/etc.
+    // match first. Kept as a safety net.
     if (t.schema.isOptional(schema)) {
       return this.convertType(schema);
     }
