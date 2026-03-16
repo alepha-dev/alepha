@@ -23,6 +23,8 @@ export class SecretProvider {
   protected readonly configure = $hook({
     on: "configure",
     handler: async () => {
+      // It's not ideal from a security pov but it's the best for convenience,
+      // it can be changed to a hard error in a future release.
       if (
         this.secretKey === DEFAULT_SECRET_KEY_VALUE &&
         this.alepha.isProduction()
