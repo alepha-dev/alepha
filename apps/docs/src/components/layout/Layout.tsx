@@ -1,8 +1,6 @@
-import { IconLock, IconLockOpen } from "@tabler/icons-react";
 import { useEvents } from "alepha/react";
 import { NestedView, useRouterState } from "alepha/react/router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useKonamiCode } from "../../hooks/useKonamiCode.ts";
 import CommandPalette from "./CommandPalette.tsx";
 import Header from "./Header.tsx";
 import KeyboardShortcutsHelp from "./KeyboardShortcutsHelp.tsx";
@@ -71,10 +69,6 @@ const NavigationProgress = () => {
       />
     </div>
   );
-};
-
-const logConsoleEasterEgg = () => {
-  console.log("↑ ↑ ↓ ↓ ← → ← → B A");
 };
 
 // =============================================================================
@@ -174,11 +168,6 @@ const SidebarResizer = (props: {
 // =============================================================================
 
 const Layout = () => {
-  // Log console Easter egg on mount
-  useEffect(() => {
-    logConsoleEasterEgg();
-  }, []);
-
   return (
     <>
       <NavigationProgress />
@@ -196,8 +185,6 @@ export default Layout;
 const LayoutContent = () => {
   const state = useRouterState();
   const hasSidebar = state.layers.slice(-1)[0]?.route?.sidebar === true;
-  const [hackerMode, setHackerMode] = useState(false);
-  const [showHackerNotification, setShowHackerNotification] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
@@ -329,39 +316,6 @@ const LayoutContent = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [hasSidebar]);
 
-  // Easter egg: Konami code activates hacker mode
-  useKonamiCode(
-    useCallback(() => {
-      setHackerMode((prev) => !prev);
-      setShowHackerNotification(true);
-
-      // Trigger a glitch effect
-      const glitch = document.createElement("div");
-      glitch.className = "terminal-glitch";
-      glitch.style.background = `linear-gradient(transparent 0%, rgba(34, 197, 94, 0.1) 50%, transparent 100%)`;
-      document.body.appendChild(glitch);
-      setTimeout(() => glitch.remove(), 150);
-
-      // Hide notification after 3 seconds
-      setTimeout(() => setShowHackerNotification(false), 3000);
-
-      console.log(
-        `%c ${hackerMode ? "HACKER MODE DEACTIVATED" : "🔓 HACKER MODE ACTIVATED"} `,
-        `background: ${hackerMode ? "#ef4444" : "#22c55e"}; color: #0a0a0a; font-weight: bold; padding: 4px 8px; border-radius: 4px;`,
-      );
-    }, [hackerMode]),
-  );
-
-  // Apply hacker mode class to document
-  useEffect(() => {
-    if (hackerMode) {
-      document.documentElement.classList.add("hacker-mode");
-    } else {
-      document.documentElement.classList.remove("hacker-mode");
-    }
-    return () => document.documentElement.classList.remove("hacker-mode");
-  }, [hackerMode]);
-
   // Home page layout - header without tabs, no sidebar
   if (!hasSidebar) {
     return (
@@ -399,24 +353,6 @@ const LayoutContent = () => {
         open={showHelp}
         onClose={() => setShowHelp(false)}
       />
-
-      {/* Hacker Mode Notification */}
-      {showHackerNotification && (
-        <div
-          className={`${styles.notification} ${styles.hackerNotification} ${hackerMode ? styles.hackerNotificationActive : styles.hackerNotificationInactive}`}
-          role="status"
-          aria-live="polite"
-        >
-          <span className="flex items-center gap-2">
-            {hackerMode ? (
-              <IconLockOpen size={14} aria-hidden="true" />
-            ) : (
-              <IconLock size={14} aria-hidden="true" />
-            )}
-            {hackerMode ? "HACKER MODE ACTIVATED" : "HACKER MODE DEACTIVATED"}
-          </span>
-        </div>
-      )}
 
       {/* Focus Mode Notification */}
       {focusMode && (
@@ -483,7 +419,7 @@ const LayoutContent = () => {
         </div>
 
         {/* Status Bar */}
-        {!focusMode && <StatusBar hackerMode={hackerMode} />}
+        {!focusMode && <StatusBar />}
       </div>
 
       {/* Command Palette */}

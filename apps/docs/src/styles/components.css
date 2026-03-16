@@ -451,24 +451,6 @@
 }
 
 /* -----------------------------------------------------------------------------
-   EASTER EGG: HACKER MODE
-   ----------------------------------------------------------------------------- */
-
-.hacker-mode {
-  --color-accent: #00ff00;
-  --color-accent-dim: #004400;
-  --color-accent-glow: rgba(0, 255, 0, 0.6);
-}
-
-.hacker-mode .terminal-page {
-  animation: hackerFlicker 0.1s infinite;
-}
-
-.hacker-mode .ascii-art {
-  animation: hackerGlow 2s ease-in-out infinite alternate;
-}
-
-/* -----------------------------------------------------------------------------
    EASTER EGG: CURSOR TRAIL
    ----------------------------------------------------------------------------- */
 

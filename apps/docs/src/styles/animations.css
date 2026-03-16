@@ -360,32 +360,6 @@
   animation: glitch 0.3s ease-in-out;
 }
 
-/* Hacker mode flicker */
-@keyframes hackerFlicker {
-  0%,
-  100% {
-    filter: none;
-  }
-  50% {
-    filter: brightness(1.02);
-  }
-}
-
-/* Hacker mode glow */
-@keyframes hackerGlow {
-  from {
-    text-shadow:
-      0 0 10px var(--color-accent-glow),
-      0 0 20px var(--color-accent-glow);
-  }
-  to {
-    text-shadow:
-      0 0 20px var(--color-accent-glow),
-      0 0 40px var(--color-accent-glow),
-      0 0 60px var(--color-accent-glow);
-  }
-}
-
 /* Cursor trail fade */
 @keyframes cursorFade {
   to {

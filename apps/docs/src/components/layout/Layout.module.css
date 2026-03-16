@@ -77,23 +77,6 @@
   animation: slideUp 0.3s ease;
 }
 
-.hackerNotification {
-  top: 60px;
-  padding: 8px 16px;
-  font-weight: 600;
-  font-size: 12px;
-}
-
-.hackerNotificationActive {
-  background: var(--color-accent);
-  color: #0a0a0a;
-}
-
-.hackerNotificationInactive {
-  background: var(--color-red);
-  color: #0a0a0a;
-}
-
 .focusNotification {
   bottom: 40px;
   background: var(--color-bg-elevated);

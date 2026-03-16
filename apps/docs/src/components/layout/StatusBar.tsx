@@ -1,14 +1,9 @@
-import { IconLockOpen } from "@tabler/icons-react";
 import { ClientOnly } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
 import { useEffect, useState } from "react";
 
-interface StatusBarProps {
-  hackerMode?: boolean;
-}
-
-const StatusBar = (props: StatusBarProps) => {
+const StatusBar = () => {
   const state = useRouterState();
   const { l } = useI18n();
   const currentPage = state.url?.pathname || "/";
@@ -38,7 +33,7 @@ const StatusBar = (props: StatusBarProps) => {
               display: "inline-block",
             }}
           />
-          <span>{props.hackerMode ? "root" : "ready"}</span>
+          <span>ready</span>
         </div>
 
         <span style={{ color: "var(--color-border)" }}>│</span>
@@ -48,19 +43,6 @@ const StatusBar = (props: StatusBarProps) => {
         <span style={{ color: "var(--color-border)" }}>│</span>
 
         <span>TypeScript</span>
-
-        {props.hackerMode && (
-          <>
-            <span style={{ color: "var(--color-border)" }}>│</span>
-            <span
-              className="flex items-center gap-1"
-              style={{ color: "var(--color-accent)", fontWeight: 600 }}
-            >
-              <IconLockOpen size={12} />
-              HACKER
-            </span>
-          </>
-        )}
       </div>
 
       {/* Right side */}
