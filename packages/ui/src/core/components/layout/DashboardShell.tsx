@@ -69,7 +69,7 @@ export interface DashboardShellProps {
   container?: boolean | ContainerProps;
 
   /**
-   * If true, the DashboardShell will fill the height of its container.
+   * If true, the DashboardShell will fill the height with its container.
    */
   fill?: boolean;
 }

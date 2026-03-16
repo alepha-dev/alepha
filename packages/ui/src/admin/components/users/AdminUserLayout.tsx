@@ -1,46 +1,18 @@
-import { Flex, Text, useDialog, useToast } from "@alepha/ui";
-import { Loader } from "@mantine/core";
+import { Flex, useDialog, useToast } from "@alepha/ui";
 import { IconBan, IconShieldCheck, IconTrash } from "@tabler/icons-react";
-import { t } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
-import { useClient } from "alepha/react";
-import { NestedView, useRouter, useRouterState } from "alepha/react/router";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { useAlepha, useClient, useStore } from "alepha/react";
+import { NestedView, useRouter } from "alepha/react/router";
+import { useCallback, useEffect } from "react";
 import type { AdminRouter } from "../../AdminRouter.ts";
+import { adminUserAtom } from "../../atoms/adminUserAtom.ts";
 import AdminResourceHeader from "../shared/AdminResourceHeader.tsx";
 import AdminResourceTabs from "../shared/AdminResourceTabs.tsx";
 
 export interface AdminUserLayoutProps {
+  user: UserEntity;
   userRealmName?: string;
 }
-
-interface UserContextValue {
-  user: UserEntity;
-  reload: () => void;
-}
-
-const UserContext = createContext<UserContextValue | null>(null);
-
-export const useUser = () => {
-  const ctx = useContext(UserContext);
-  if (!ctx) throw new Error("useUser must be used within AdminUserLayout");
-  return ctx;
-};
-
-const updateUserSchema = t.object({
-  email: t.optional(t.email()),
-  phoneNumber: t.optional(t.e164()),
-  firstName: t.optional(t.string()),
-  lastName: t.optional(t.string()),
-  roles: t.optional(t.array(t.string())),
-  enabled: t.optional(t.boolean()),
-});
 
 const displayName = (u: UserEntity) =>
   u.firstName || u.lastName
@@ -49,63 +21,55 @@ const displayName = (u: UserEntity) =>
 
 const AdminUserLayout = (props: AdminUserLayoutProps) => {
   const router = useRouter<AdminRouter>();
-  const state = useRouterState();
   const client = useClient<AdminUserController>();
+  const alepha = useAlepha();
   const dialog = useDialog();
   const toast = useToast();
-  const userId = state.params.userId as string;
-
-  const [user, setUser] = useState<UserEntity | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const realmQuery = { userRealmName: props.userRealmName };
-
-  const loadUser = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await client.getUser({
-        params: { id: userId },
-        query: realmQuery,
-      });
-      setUser(data);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId, client]);
+  const [user] = useStore(adminUserAtom);
 
   useEffect(() => {
-    loadUser();
-  }, [loadUser]);
+    alepha.store.set(adminUserAtom, props.user);
+  }, [props.user]);
+
+  const currentUser = user ?? props.user;
+  const userId = currentUser.id;
+  const realmQuery = { userRealmName: props.userRealmName };
+
+  const reload = useCallback(async () => {
+    const data = await client.getUser({
+      params: { id: userId },
+      query: realmQuery,
+    });
+    alepha.store.set(adminUserAtom, data);
+  }, [userId, client]);
 
   const handleToggleEnabled = async () => {
-    if (!user) return;
-    const action = user.enabled ? "disable" : "enable";
+    const action = currentUser.enabled ? "disable" : "enable";
     const confirmed = await dialog.confirm({
-      title: `${user.enabled ? "Disable" : "Enable"} User`,
-      message: `Are you sure you want to ${action} ${displayName(user)}?`,
+      title: `${currentUser.enabled ? "Disable" : "Enable"} User`,
+      message: `Are you sure you want to ${action} ${displayName(currentUser)}?`,
     });
     if (confirmed) {
       const updated = await client.updateUser({
-        params: { id: user.id },
+        params: { id: currentUser.id },
         query: realmQuery,
-        body: { enabled: !user.enabled },
+        body: { enabled: !currentUser.enabled },
       });
-      setUser(updated);
+      alepha.store.set(adminUserAtom, updated);
       toast.success({ title: `User ${action}d` });
     }
   };
 
   const handleDelete = async () => {
-    if (!user) return;
     const confirmed = await dialog.confirm({
       title: "Delete User",
-      message: `Are you sure you want to delete ${displayName(user)}? This cannot be undone.`,
+      message: `Are you sure you want to delete ${displayName(currentUser)}? This cannot be undone.`,
       confirmColor: "red",
       confirmLabel: "Delete",
     });
     if (confirmed) {
       await client.deleteUser({
-        params: { id: user.id },
+        params: { id: currentUser.id },
         query: realmQuery,
       });
       toast.success({ title: "User deleted" });
@@ -113,71 +77,64 @@ const AdminUserLayout = (props: AdminUserLayoutProps) => {
     }
   };
 
-  if (loading) {
-    return (
-      <Flex flex={1} justify="center" align="center">
-        <Loader />
-      </Flex>
-    );
-  }
-
-  if (!user) {
-    return (
-      <Flex flex={1} justify="center" align="center">
-        <Text c="dimmed">User not found</Text>
-      </Flex>
-    );
-  }
-
   return (
-    <UserContext.Provider value={{ user, reload: loadUser }}>
-      <Flex flex={1} direction="column" gap="lg" p="md">
-        <AdminResourceHeader
-          backHref={router.path("adminUsers")}
-          backLabel="Users"
-          title={displayName(user)}
-          subtitle={user.email || user.username}
-          status={{
-            label: user.enabled ? "Active" : "Disabled",
-            color: user.enabled ? "green" : "gray",
-          }}
-          menuActions={[
-            {
-              label: user.enabled ? "Disable" : "Enable",
-              icon: user.enabled ? IconBan : IconShieldCheck,
-              onClick: handleToggleEnabled,
-            },
-            {
-              label: "Delete",
-              icon: IconTrash,
-              color: "red",
-              onClick: handleDelete,
-            },
-          ]}
-        />
+    <Flex
+      flex={1}
+      direction="column"
+      gap="lg"
+      p="md"
+      m="md"
+      style={{
+        backgroundColor: "var(--mantine-color-body)",
+        borderRadius: "var(--mantine-radius-md)",
+        border: "1px solid var(--mantine-color-default-border)",
+      }}
+    >
+      <AdminResourceHeader
+        backHref={router.path("adminUsers")}
+        backLabel="Users"
+        title={displayName(currentUser)}
+        subtitle={currentUser.email || currentUser.username}
+        status={{
+          label: currentUser.enabled ? "Active" : "Disabled",
+          color: currentUser.enabled ? "green" : "gray",
+        }}
+        menuActions={[
+          {
+            label: currentUser.enabled ? "Disable" : "Enable",
+            icon: currentUser.enabled ? IconBan : IconShieldCheck,
+            onClick: handleToggleEnabled,
+          },
+          {
+            label: "Delete",
+            icon: IconTrash,
+            color: "red",
+            onClick: handleDelete,
+          },
+        ]}
+      />
 
-        <AdminResourceTabs
-          tabs={[
-            {
-              value: "profile",
-              label: "Profile",
-              href: router.path("adminUserProfile", {
-                params: { userId },
-              }),
-            },
-            {
-              value: "sessions",
-              label: "Sessions",
-              href: router.path("adminUserSessions", {
-                params: { userId },
-              }),
-            },
-          ]}
-        />
+      <AdminResourceTabs
+        tabs={[
+          {
+            value: "profile",
+            label: "Profile",
+            href: router.path("adminUserProfile", {
+              params: { userId },
+            }),
+          },
+          {
+            value: "sessions",
+            label: "Sessions",
+            href: router.path("adminUserSessions", {
+              params: { userId },
+            }),
+          },
+        ]}
+      />
 
-        <NestedView />
-      </Flex>
-    </UserContext.Provider>
+      <NestedView />
+    </Flex>
   );
 };
 

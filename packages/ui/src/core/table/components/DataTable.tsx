@@ -606,7 +606,6 @@ const DataTable = <T extends object, Filters extends TObject>(
                 position: "sticky",
                 top: 0,
                 zIndex: 1,
-                backgroundColor: "var(--alepha-elevated)",
               }}
             >
               <Table.Tr>

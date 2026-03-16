@@ -117,8 +117,8 @@ export class DialogService {
           <ConfirmDialog
             options={options}
             onConfirm={(confirmed) => {
-              this.close(modalId);
               done(confirmed);
+              this.close(modalId);
             }}
           />
         ),
@@ -147,8 +147,8 @@ export class DialogService {
           <PromptDialog
             options={options}
             onSubmit={(value) => {
-              this.close(modalId);
               done(value);
+              this.close(modalId);
             }}
           />
         ),

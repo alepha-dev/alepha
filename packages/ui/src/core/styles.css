@@ -112,7 +112,8 @@
 
 /* ------------------------------------------------------------------------------------------------------------------ */
 /* our custom "minimal" variant for <Button/> - from Blueprint */
-.mantine-Button-root[data-variant="minimal"] {
+.mantine-Button-root[data-variant="minimal"],
+.mantine-Anchor-root[data-variant="minimal"] {
   background-color: transparent;
   color: var(--mantine-color-text);
 }

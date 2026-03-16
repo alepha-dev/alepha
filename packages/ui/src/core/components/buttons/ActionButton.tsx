@@ -264,6 +264,7 @@ const ActionButton = (_props: ActionProps) => {
           </ActionHrefButton>
         );
       }
+
       return (
         <ActionNavigationButton {...restProps} href={restProps.href}>
           {restProps.children}

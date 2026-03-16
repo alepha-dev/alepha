@@ -152,7 +152,7 @@ const AdminUsers = (props: AdminUsersProps) => {
                 >
                   <Flex gap={"xs"} centerY>
                     <Avatar size={"sm"} name={name} />
-                    <Flex col>
+                    <Flex col align={"start"}>
                       <Text size={"sm"} bold>
                         {name}
                       </Text>

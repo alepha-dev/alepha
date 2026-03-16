@@ -4,10 +4,9 @@ import {
   DashboardShell,
   type DashboardShellProps,
   SidebarCollapseButton,
-  Text,
   ui,
 } from "@alepha/ui";
-import { Flex, Image } from "@mantine/core";
+import { Flex } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 
 export interface AdminLayoutProps {
@@ -31,7 +30,7 @@ const AdminLayout = (props: AdminLayoutProps) => {
     >
       <DashboardShell
         layout={"alt"}
-        navbarHeader={(props) => (
+        navbarHeader={() => (
           <Flex gap={"md"} flex={1} px={"lg"} align={"center"}>
             <ActionButton
               href={"/"}
@@ -39,17 +38,6 @@ const AdminLayout = (props: AdminLayoutProps) => {
               bd={0}
               icon={IconArrowLeft}
             />
-            {!props.collapsed && (
-              <>
-                <Image pt={4} src={"/favicon.svg"} h={36} w={36} />
-                <Flex direction={"column"}>
-                  <Text bold>Blog</Text>
-                  <Text small muted mt={-4}>
-                    Admin Panel
-                  </Text>
-                </Flex>
-              </>
-            )}
           </Flex>
         )}
         footerHeight={48}

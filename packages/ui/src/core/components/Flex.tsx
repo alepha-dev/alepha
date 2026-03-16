@@ -2,9 +2,17 @@ import {
   Flex as MantineFlex,
   type FlexProps as MantineFlexProps,
 } from "@mantine/core";
+import { FormModel } from "alepha/react/form";
+import type { FormHTMLAttributes } from "react";
 import { forwardRef } from "react";
 
 export interface FlexProps extends MantineFlexProps {
+  /**
+   * Render as a `<form>` element.
+   * If `true`, renders as a plain form.
+   * If an object, spreads the form attributes (onSubmit, id, noValidate, etc.).
+   */
+  form?: boolean | FormHTMLAttributes<HTMLFormElement> | FormModel<any>;
   /**
    * flex: 1 — fill available space.
    */
@@ -92,6 +100,7 @@ const Flex = forwardRef<HTMLDivElement, FlexProps>((props, ref) => {
     borderedBottom,
     shadowed,
     overflow,
+    form,
     ...rest
   } = props;
 
@@ -153,6 +162,21 @@ const Flex = forwardRef<HTMLDivElement, FlexProps>((props, ref) => {
 
   if (overflow) {
     rest.className = `${rest.className ?? ""} overflow-auto`.trim();
+  }
+
+  if (form) {
+    let formProps: any = typeof form === "object" ? form : {};
+    if (formProps instanceof FormModel) {
+      formProps = formProps.props;
+    }
+    return (
+      <MantineFlex
+        ref={ref}
+        component={"form"}
+        {...(formProps as any)}
+        {...rest}
+      />
+    );
   }
 
   return <MantineFlex ref={ref} {...rest} />;

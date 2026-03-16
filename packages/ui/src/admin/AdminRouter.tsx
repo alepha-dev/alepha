@@ -24,7 +24,7 @@ import {
   IconUser,
   IconUsers,
 } from "@tabler/icons-react";
-import { $inject } from "alepha";
+import { $inject, t } from "alepha";
 import type { AdminAuditController } from "alepha/api/audits";
 import type { FileController } from "alepha/api/files";
 import type { AdminJobController } from "alepha/api/jobs";
@@ -37,6 +37,7 @@ import type {
 } from "alepha/api/users";
 import { ReactAuth } from "alepha/react/auth";
 import { $page, ReactRouter, Redirection } from "alepha/react/router";
+import { $secure } from "alepha/security";
 import { $cookie } from "alepha/server/cookies";
 import { $client } from "alepha/server/links";
 
@@ -202,6 +203,11 @@ export class AdminRouter {
       title: "Admin Panel",
       titleSeparator: " | ",
     },
+    use: [
+      $secure({
+        permissions: ["admin:access"],
+      }),
+    ],
     lazy: () => import("./components/AdminLayout.tsx"),
     props: () => ({
       adminShellProps: this.adminShellProps(),
@@ -249,7 +255,18 @@ export class AdminRouter {
     head: {
       title: "Users",
     },
+    schema: {
+      params: t.object({
+        userId: t.text(),
+      }),
+    },
     lazy: () => import("./components/users/AdminUserLayout.tsx"),
+    loader: async ({ params }) => {
+      const user = await this.userCtrl.getUser({
+        params: { id: params.userId },
+      });
+      return { user };
+    },
   });
 
   public readonly adminUserProfile = $page({
