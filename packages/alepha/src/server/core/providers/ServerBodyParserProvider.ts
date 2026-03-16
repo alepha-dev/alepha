@@ -226,10 +226,25 @@ export class ServerBodyParserProvider {
       | import("node:zlib").Gunzip
       | import("node:zlib").Inflate,
   ): Promise<Buffer> {
+    const maxDecompressed = this.options.limit * 10;
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = [];
+      let size = 0;
       transform
-        .on("data", (chunk: Buffer) => chunks.push(chunk))
+        .on("data", (chunk: Buffer) => {
+          size += chunk.length;
+          if (size > maxDecompressed) {
+            transform.destroy();
+            reject(
+              new HttpError({
+                status: 413,
+                message: "Decompressed body size limit exceeded",
+              }),
+            );
+            return;
+          }
+          chunks.push(chunk);
+        })
         .on("end", () => resolve(Buffer.concat(chunks)))
         .on("error", reject);
       transform.end(buffer);
