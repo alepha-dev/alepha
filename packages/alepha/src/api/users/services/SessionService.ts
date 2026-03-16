@@ -300,7 +300,7 @@ export class SessionService {
         sessionId: session.id,
         userId: session.userId,
       });
-      await this.sessions(userRealmName).deleteById(refreshToken);
+      await this.sessions(userRealmName).deleteById(session.id);
       throw new UnauthorizedError("Session expired");
     }
 
