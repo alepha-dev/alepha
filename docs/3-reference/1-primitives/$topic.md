@@ -25,6 +25,7 @@ event filtering, and pluggable backends (memory, Redis, custom providers).
 | `provider` | `"memory" \| Service&lt;TopicProvider&gt;` | No | Topic provider configuration for message storage and delivery |
 | `schema` | `T` | Yes | TypeBox schema defining the structure of messages published to this topic |
 | `handler` | `TopicHandler&lt;T&gt;` | No | Default subscriber handler function that processes messages published to this topic |
+| `retain` | `boolean` | No | Whether the last published message should be retained and delivered to new subscribers |
 
 ## Examples
 
