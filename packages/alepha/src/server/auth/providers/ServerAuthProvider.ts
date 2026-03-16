@@ -636,6 +636,12 @@ export class ServerAuthProvider {
   }
 
   protected async refreshTokens(tokens: Tokens): Promise<Tokens | undefined> {
+    // Note: concurrent requests refreshing with the same token is safe here because
+    // Alepha does not rotate refresh tokens — the same token is reused across refreshes
+    // (session-based: same UUID in the session row; token-based: same JWT).
+    // If single-use rotation is ever added (e.g., for SPA/public clients per OAuth 2.1),
+    // a reuse grace window (à la Auth0) should be implemented to avoid race conditions.
+
     if (tokens.expires_in && tokens.issued_at) {
       const gracePeriodSec = 10;
       const expiresAt = tokens.issued_at + (tokens.expires_in - gracePeriodSec);

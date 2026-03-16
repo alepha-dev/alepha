@@ -50,9 +50,7 @@ describe("$page can() access control", () => {
 
     const server = alepha.inject(ServerProvider);
     const http = alepha.inject(HttpClient);
-    const response = await http.fetch(
-      `${server.hostname}/admin/dashboard`,
-    );
+    const response = await http.fetch(`${server.hostname}/admin/dashboard`);
 
     expect(response.status).toBe(403);
     expect(response.data).toBe("Forbidden");
@@ -81,9 +79,7 @@ describe("$page can() access control", () => {
 
     const server = alepha.inject(ServerProvider);
     const http = alepha.inject(HttpClient);
-    const response = await http.fetch(
-      `${server.hostname}/admin/dashboard`,
-    );
+    const response = await http.fetch(`${server.hostname}/admin/dashboard`);
 
     expect(response.status).toBe(200);
   });

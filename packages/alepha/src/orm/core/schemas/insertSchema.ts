@@ -1,7 +1,6 @@
 import type { TObject, TOptional } from "alepha";
 import { t } from "alepha";
 import { PG_DEFAULT, PG_GENERATED } from "../constants/PG_SYMBOLS.ts";
-import { schema } from "../types/schema.ts";
 
 /**
  * Transforms a TObject schema for insert operations.
@@ -44,8 +43,8 @@ export const insertSchema = <T extends TObject>(obj: T): TObjectInsert<T> => {
 
   return t.object(
     newProperties,
-    "options" in schema && typeof schema.options === "object"
-      ? { ...schema.options }
+    "options" in obj && typeof obj.options === "object"
+      ? { ...obj.options }
       : {},
   ) as TObjectInsert<T>;
 };

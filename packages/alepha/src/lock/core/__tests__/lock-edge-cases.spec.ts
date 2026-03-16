@@ -93,9 +93,7 @@ describe("$lock edge cases", () => {
     expect(order).toContain("app2-end");
 
     // app1 should finish before app2 starts (sequential execution)
-    expect(order.indexOf("app1-end")).toBeLessThan(
-      order.indexOf("app2-start"),
-    );
+    expect(order.indexOf("app1-end")).toBeLessThan(order.indexOf("app2-start"));
   });
 
   it("wait mode releases lock on handler error", async ({ expect }) => {
