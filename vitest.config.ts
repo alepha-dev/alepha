@@ -33,13 +33,13 @@ export default defineConfig({
       // for testing, let's use Paris timezone as default :)
       TZ: "Europe/Paris",
       // database connection string for tests, installed via docker-compose
-      POSTGRES_URL: "postgres://postgres:postgres@127.0.0.1:5432/postgres",
       DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:5432/postgres",
       // S3-compatible storage (MinIO via docker-compose) for testing @alepha/bucket-s3
       S3_ENDPOINT: "http://127.0.0.1:9090",
       S3_REGION: "us-east-1",
       S3_ACCESS_KEY_ID: "mock",
       S3_SECRET_ACCESS_KEY: "mock",
+      MQTT_BROKER_URL: "mqtt://localhost:1884",
     },
     projects: [
       {

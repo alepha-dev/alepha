@@ -5842,6 +5842,7 @@ __metadata:
   dependencies:
     "@alepha/ui": "npm:^0.18.3"
     "@mantine/core": "npm:^8.3.16"
+    "@mantine/hooks": "npm:^8.3.16"
     "@tabler/icons-react": "npm:^3.40.0"
     "@types/node": "npm:^25.5.0"
     "@types/react": "npm:^19.2.14"

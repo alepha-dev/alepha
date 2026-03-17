@@ -92,7 +92,7 @@ export class BuildCommand {
     description: "Build the project for production",
     flags: t.object({
       stats: t.optional(
-        t.boolean({
+        t.union([t.boolean(), t.enum(["json"])], {
           description: "Generate build stats report",
         }),
       ),

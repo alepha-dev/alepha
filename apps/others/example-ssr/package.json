@@ -4,7 +4,7 @@
   "name": "example-ssr",
   "scripts": {
     "dev": "alepha dev",
-    "build": "alepha build --stats",
+    "build": "alepha build --stats=json",
     "build&start": "node dist",
     "deploy": "alepha deploy",
     "studio": "alepha db studio --mode=production",

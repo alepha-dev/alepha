@@ -55,7 +55,7 @@ export class BuildClientTask extends BuildTask {
 
   protected async buildClient(opts: {
     dist: string;
-    stats?: boolean;
+    stats?: boolean | "json";
     silent?: boolean;
   }): Promise<void> {
     const { build: viteBuild } = await this.viteUtils.importVite();
@@ -70,7 +70,7 @@ export class BuildClientTask extends BuildTask {
     if (opts.stats) {
       plugins.push(
         viteAnalyzer({
-          analyzerMode: "static",
+          analyzerMode: opts.stats === "json" ? "json" : "static",
         }),
       );
     }

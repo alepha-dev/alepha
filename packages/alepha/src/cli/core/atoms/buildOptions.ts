@@ -35,8 +35,11 @@ export const buildOptions = $atom({
   schema: t.object({
     /**
      * Generate build stats report.
+     *
+     * - `true` - Generate a static HTML report
+     * - `"json"` - Generate a JSON report
      */
-    stats: t.optional(t.boolean({ default: false })),
+    stats: t.optional(t.union([t.boolean(), t.enum(["json"])])),
 
     /**
      * Deployment target for the build output.

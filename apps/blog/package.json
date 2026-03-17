@@ -15,6 +15,7 @@
   "dependencies": {
     "@alepha/ui": "^0.18.3",
     "@mantine/core": "^8.3.16",
+    "@mantine/hooks": "^8.3.16",
     "@tabler/icons-react": "^3.40.0",
     "alepha": "^0.18.3",
     "marked": "^15.0.0",

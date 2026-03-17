@@ -34,7 +34,7 @@ export interface BreadcrumbProps extends FlexProps {
  * Pages should define a `label` in their `$page()` options for best results.
  * Falls back to the page name converted to Title Case.
  */
-const Breadcrumb = (props: BreadcrumbProps) => {
+const Breadcrumbs = (props: BreadcrumbProps) => {
   const { home = "Home", separator, size = "sm", ...groupProps } = props;
 
   const state = useRouterState();
@@ -85,4 +85,4 @@ const Breadcrumb = (props: BreadcrumbProps) => {
   );
 };
 
-export default Breadcrumb;
+export default Breadcrumbs;

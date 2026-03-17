@@ -35,7 +35,7 @@ services:
     restart: always
     image: emqx/emqx:latest
     ports:
-      - "1883:1883"
+      - "1884:1883"
     environment:
       EMQX_ALLOW_ANONYMOUS: "true"
 

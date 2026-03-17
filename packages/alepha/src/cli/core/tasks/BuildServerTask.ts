@@ -67,7 +67,7 @@ export class BuildServerTask extends BuildTask {
     entry: string;
     distDir: string;
     clientDir?: string;
-    stats?: boolean;
+    stats?: boolean | "json";
     silent?: boolean;
     conditions?: string[];
     alepha: Alepha;
@@ -87,7 +87,7 @@ export class BuildServerTask extends BuildTask {
     if (opts.stats) {
       plugins.push(
         viteAnalyzer({
-          analyzerMode: "static",
+          analyzerMode: opts.stats === "json" ? "json" : "static",
         }),
       );
     }
