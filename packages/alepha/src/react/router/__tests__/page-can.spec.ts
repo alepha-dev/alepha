@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
-import { $page } from "alepha/react/router";
 import { HttpClient, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
+import { $page } from "../index.ts";
 
 describe("$page can() access control", () => {
   it("should return 403 when leaf page can() returns false", async ({
