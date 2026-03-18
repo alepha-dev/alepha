@@ -2,7 +2,7 @@
   "name": "alepha",
   "description": "Easy-to-use modern TypeScript framework for building many kind of applications.",
   "author": "Nicolas Foures",
-  "version": "0.18.3",
+  "version": "0.19.0",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"

@@ -1,3 +1,34 @@
+## [0.19.0] - 2026-03-18
+
+### Features
+
+- **security**: allow $secure in browser (`8a473778`)
+- **topic**: add $topic retain (`d9df97c7`)
+- **mqtt**: new module mqtt (`55f3d43e`)
+- **server/etag**: add cache control stale-while-revalidate (`6a4de2b5`)
+
+### Bug Fixes
+
+- **cli**: use Map for per-app KV namespace IDs in CloudflareAdapter (`e82110ff`)
+- **command**: strip surrounding quotes in .env parser (`92c64d1f`)
+- **websocket**: filter sendToLocalConnections by channelPath (`09f07a50`)
+- **orm**: pass column key to identity column constructors in PostgresModelBuilder (`74e4dba6`)
+- **orm**: add missing return for plain bigint columns in PostgresModelBuilder (`4655e44e`)
+- **orm**: fix not operator discarding sibling conditions in toSQL (`35248aeb`)
+- **api/users**: fix expired session deletion using wrong key (`08ab071b`)
+- **react/router**: fix parent can() checks skipped in SSR access control (`be712687`)
+- **websocket**: prevent concurrent connect race condition (`5d9e13ba`)
+- **scheduler**: prevent overlapping cron handler executions (`e8167ed9`)
+- **orm**: throw explicit error for transactions on unsupported drivers (`2dd7ecc8`)
+- **http**: only deduplicate GET/HEAD/OPTIONS requests (`1cb0f7e8`)
+- **server**: hide internal error details in production 500 responses (`5d22187f`)
+- **server/cors**: default credentials to false for safe CORS defaults (`1340fa87`)
+- **server**: prevent header injection via Content-Disposition filename (`cae72f87`)
+- **core**: prevent env variable substring collision in parseEnv (`e73f3715`)
+- **orm**: use dynamic primary key in Repository.save() (`b2978faf`)
+- **orm**: allow filtering by falsy values (0, false, empty string) (`7e8df451`)
+- **server/cookies**: split on first = only to preserve base64 cookie values (`fc231082`)
+
 ## [0.18.3] - 2026-03-08
 
 ### Features
