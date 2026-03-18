@@ -131,10 +131,14 @@ export class CryptoProvider {
   }
 
   public equals(a: string, b: string): boolean {
-    if (a.length !== b.length) {
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) {
+      // Constant-time compare against self to avoid timing leak on length mismatch
+      timingSafeEqual(bufA, bufA);
       return false;
     }
-    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+    return timingSafeEqual(bufA, bufB);
   }
 
   public randomUUID(): string {

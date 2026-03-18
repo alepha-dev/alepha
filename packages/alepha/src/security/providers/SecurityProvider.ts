@@ -566,7 +566,7 @@ export class SecurityProvider {
       verify?: JWTVerifyOptions;
     } = {},
   ): Promise<UserAccountToken> {
-    const token = headerOrToken?.replace("Bearer", "").trim();
+    const token = headerOrToken?.replace(/^Bearer\s+/i, "").trim();
     if (typeof token !== "string" || token === "") {
       throw new InvalidTokenError(
         "Invalid authorization header, maybe token is missing ?",

@@ -178,8 +178,11 @@ export const DevLogs = () => {
       params.set("limit", "500");
 
       const res = await http.fetch(`/__devtools/api/logs?${params.toString()}`);
-      setLogs((res.data as any)?.logs ?? []);
+      const newLogs = (res.data as any)?.logs ?? [];
+      setLogs(newLogs);
       setTotal((res.data as any)?.total ?? 0);
+      // Reset selection when logs change to avoid stale index
+      setSelectedIndex(null);
     } catch {
       // silently fail
     }

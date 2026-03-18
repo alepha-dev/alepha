@@ -255,7 +255,7 @@ export class ServerCompressProvider {
     response: ServerResponse,
     encoding: keyof typeof ServerCompressProvider.compressors,
   ): void {
-    response.headers.vary = "content-encoding";
+    response.headers.vary = "accept-encoding";
     response.headers["content-encoding"] = encoding;
   }
 }

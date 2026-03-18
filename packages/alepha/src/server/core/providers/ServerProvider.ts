@@ -63,16 +63,15 @@ export class ServerProvider {
    */
   protected getUrlBase(headers: Record<string, string>): string {
     const host = headers[HEADER_HOST];
-    let base = this.urlBaseCache.get(host);
+    const proto =
+      headers[HEADER_X_FORWARDED_PROTO] === "https" ? PROTO_HTTPS : PROTO_HTTP;
+    const cacheKey = proto + host;
+    let base = this.urlBaseCache.get(cacheKey);
     if (!base) {
-      const proto =
-        headers[HEADER_X_FORWARDED_PROTO] === "https"
-          ? PROTO_HTTPS
-          : PROTO_HTTP;
-      base = proto + host;
+      base = cacheKey;
       // Limit cache size to prevent memory leaks from many unique hosts
       if (this.urlBaseCache.size < 100) {
-        this.urlBaseCache.set(host, base);
+        this.urlBaseCache.set(cacheKey, base);
       }
     }
     return base;

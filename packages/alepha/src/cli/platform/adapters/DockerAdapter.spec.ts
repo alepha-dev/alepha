@@ -127,7 +127,7 @@ describe("DockerAdapter", () => {
 
       // Traefik not running
       shell.outputs.set(
-        "ssh root@1.2.3.4 \"docker ps --filter name=alepha-traefik --format '{{.Names}}'\"",
+        "ssh root@1.2.3.4 'docker ps --filter name=alepha-traefik --format '\\''{{.Names}}'\\'''",
         "",
       );
 
@@ -193,7 +193,7 @@ describe("DockerAdapter", () => {
 
       // Traefik already running
       shell.outputs.set(
-        "ssh root@1.2.3.4 \"docker ps --filter name=alepha-traefik --format '{{.Names}}'\"",
+        "ssh root@1.2.3.4 'docker ps --filter name=alepha-traefik --format '\\''{{.Names}}'\\'''",
         "alepha-traefik",
       );
 

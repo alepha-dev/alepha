@@ -361,7 +361,11 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
       throw new AlephaError("An access token is required for refreshing");
     }
 
-    // extract user from an expired token
+    // Extract user from an expired token.
+    // WARNING: Roles from the expired token are reused without re-validation.
+    // If roles were revoked, the new access token will still contain old roles
+    // until the refresh token expires. Use session-based refresh (onRefreshSession)
+    // to re-fetch current roles from the database on each refresh.
     const user = await this.securityProvider.createUserFromToken(accessToken, {
       realm: this.name,
       verify: {

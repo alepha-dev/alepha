@@ -336,8 +336,15 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
 
       for (let idx = 0; idx < keys.length; idx++) {
         const k = keys[idx];
-        const inner = this.unwrap(props[k]);
+        const prop = props[k];
+        const isOpt = t.schema.isOptional(prop);
+        const inner = this.unwrap(prop);
         const v = value[idx];
+
+        if (isOpt && v === null) {
+          // Optional fields encoded as null should be decoded as undefined (omitted)
+          continue;
+        }
 
         if (t.schema.isObject(inner)) {
           result[k] = this.interpretDecodeFromValue(inner, v);
@@ -503,6 +510,11 @@ export class KeylessJsonSchemaCodec extends SchemaCodec {
       return `BigInt(${expr}.slice(0,-1))`;
     }
     if (t.schema.isArray(schema)) {
+      const items = schema.items as TSchema;
+      if (t.schema.isObject(items) || t.schema.isBigInt(items)) {
+        const v = this.nextVar();
+        return `${expr}.map(${v}=>${this.genDecFromValue(items, v)})`;
+      }
       return expr;
     }
     if (t.schema.isObject(schema)) {

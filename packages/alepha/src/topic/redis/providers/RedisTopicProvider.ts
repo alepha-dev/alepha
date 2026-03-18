@@ -90,13 +90,14 @@ export class RedisTopicProvider extends TopicProvider {
   ): Promise<UnSubscribeFn> {
     const topic = this.prefix(name);
 
-    // Deliver retained message if exists
+    // Subscribe first to avoid message loss window
+    await this.redisSubscriberProvider.subscribe(topic, callback);
+
+    // Then deliver retained message if exists
     const retained = await this.redisProvider.get(`${topic}:retained`);
     if (retained) {
       await callback(retained.toString());
     }
-
-    await this.redisSubscriberProvider.subscribe(topic, callback);
 
     return () => this.unsubscribe(name, callback);
   }

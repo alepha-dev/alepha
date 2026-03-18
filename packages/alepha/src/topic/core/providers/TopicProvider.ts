@@ -136,7 +136,7 @@ export abstract class TopicProvider {
     const filter = options.filter ?? (() => true);
 
     return new Promise((resolve, reject) => {
-      const ref: { timeout?: Timeout } = {};
+      const ref: { timeout?: Timeout; clear?: () => void } = {};
 
       (async () => {
         const clear = await this.subscribe(name, (raw) => {
@@ -146,9 +146,13 @@ export abstract class TopicProvider {
           }
 
           ref.timeout?.clear();
-          clear();
+          if (ref.clear) {
+            ref.clear();
+          }
           resolve(message);
         });
+
+        ref.clear = clear;
 
         const timeoutDuration = options.timeout ?? [10, "seconds"];
 

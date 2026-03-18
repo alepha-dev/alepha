@@ -52,7 +52,7 @@ export function createPagination<T>(
 ): Page<T> {
   const content = entities.slice(0, limit);
   const hasNext = entities.length === limit + 1;
-  const pageNumber = Math.floor(offset / limit);
+  const pageNumber = limit > 0 ? Math.floor(offset / limit) : 0;
 
   return {
     content,

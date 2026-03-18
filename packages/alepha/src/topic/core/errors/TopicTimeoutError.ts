@@ -1,4 +1,6 @@
-export class TopicTimeoutError extends Error {
+import { AlephaError } from "alepha";
+
+export class TopicTimeoutError extends AlephaError {
   public readonly topic: string;
   public readonly timeout: number;
 

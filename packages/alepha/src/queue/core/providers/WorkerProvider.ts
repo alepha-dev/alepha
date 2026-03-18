@@ -71,6 +71,7 @@ export class WorkerProvider {
   protected abortController: AbortController | undefined;
   protected workerIntervals: Record<number, number> = {};
   protected consumers: Array<Consumer> = [];
+  protected nextConsumerIndex = 0;
 
   public get isRunning(): boolean {
     return this.workersRunning > 0;
@@ -146,7 +147,7 @@ export class WorkerProvider {
         workerLoop().catch((e) => {
           this.log.error(`Worker n-${i} has crashed`, e);
           // Always decrement on crash, regardless of shutdown state
-          this.workersRunning -= 1;
+          this.workersRunning = Math.max(0, this.workersRunning - 1);
         }),
       );
     }
@@ -194,10 +195,14 @@ export class WorkerProvider {
    * Get the next message.
    */
   protected async getNextMessage(): Promise<undefined | NextMessage> {
-    for (const consumer of this.consumers) {
+    const len = this.consumers.length;
+    for (let i = 0; i < len; i++) {
+      const idx = (this.nextConsumerIndex + i) % len;
+      const consumer = this.consumers[idx];
       const provider = consumer.queue.provider;
       const message = await provider.pop(consumer.queue.name);
       if (message) {
+        this.nextConsumerIndex = (idx + 1) % len;
         return { message, consumer };
       }
     }

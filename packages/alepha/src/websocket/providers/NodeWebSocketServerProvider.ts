@@ -468,8 +468,9 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         return;
       }
 
-      // Close all connections
-      for (const connection of this.connections.values()) {
+      // Close all connections (collect into array to avoid mutation during iteration)
+      const connections = Array.from(this.connections.values());
+      for (const connection of connections) {
         await connection.close(1001, "Server shutting down");
       }
 

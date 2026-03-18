@@ -336,9 +336,9 @@ export class DateTimeProvider {
     unit?: ManipulateType,
   ): Promise<void> {
     this.ref = this.ref || this.now();
-    this.ref = this.ref.add(this.duration(duration, unit));
     const ms = this.duration(duration, unit).asMilliseconds();
-    const now = Date.now();
+    const now = this.nowMillis();
+    this.ref = this.ref.add(this.duration(duration, unit));
 
     for (const timeout of [...this.timeouts]) {
       if (!timeout.timer) {
@@ -380,7 +380,8 @@ export class DateTimeProvider {
         await interval.run();
       }
 
-      interval.timer = -1;
+      // Keep intervals suspended — they only fire during travel() calls
+      interval.timer = null;
     }
 
     await this.tick();

@@ -4,8 +4,15 @@ import { FileDetector, FileSystemProvider } from "alepha/system";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
 
+interface StoredFile {
+  buffer: Buffer;
+  name: string;
+  type: string;
+  size: number;
+}
+
 export class MemoryFileStorageProvider implements FileStorageProvider {
-  public readonly files: Record<string, FileLike> = {};
+  public readonly files: Record<string, StoredFile> = {};
   protected readonly fileSystem = $inject(FileSystemProvider);
   protected readonly fileDetector = $inject(FileDetector);
 
@@ -16,25 +23,38 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
   ): Promise<string> {
     fileId ??= this.createId();
 
-    this.files[`${bucketName}/${fileId}`] = this.fileSystem.createFile({
-      stream: file.stream(),
+    // Consume the stream and store as buffer so downloads are repeatable
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of file.stream() as AsyncIterable<Uint8Array>) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+
+    this.files[`${bucketName}/${fileId}`] = {
+      buffer,
       name: file.name,
       type: file.type,
       size: file.size,
-    });
+    };
 
     return fileId;
   }
 
   public async download(bucketName: string, fileId: string): Promise<FileLike> {
     const fileKey = `${bucketName}/${fileId}`;
-    const file = this.files[fileKey];
+    const stored = this.files[fileKey];
 
-    if (!file) {
+    if (!stored) {
       throw new FileNotFoundError(`File with ID ${fileId} not found.`);
     }
 
-    return file;
+    // Create a fresh FileLike with a new stream from the stored buffer
+    return this.fileSystem.createFile({
+      stream: new Blob([new Uint8Array(stored.buffer)]).stream(),
+      name: stored.name,
+      type: stored.type,
+      size: stored.size,
+    });
   }
 
   public async exists(bucketName: string, fileId: string): Promise<boolean> {

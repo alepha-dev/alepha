@@ -149,7 +149,7 @@ export class ServerCorsProvider {
   }
 
   protected readonly configure = $hook({
-    on: "configure",
+    on: "start",
     handler: () => {
       const routes = this.serverRouterProvider.getRoutes();
       for (const route of routes) {

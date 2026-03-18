@@ -132,12 +132,12 @@ export class PrettyFormatterProvider extends LogFormatterProvider {
 
     let str = error.stack ?? error.message;
 
-    const anyError = error as any;
-    while (anyError.cause && anyError.cause instanceof Error) {
-      vite?.ssrFixStacktrace(anyError.cause);
+    let currentCause = (error as any).cause;
+    while (currentCause && currentCause instanceof Error) {
+      vite?.ssrFixStacktrace(currentCause);
 
-      str += `\nCaused by: ${anyError.cause.stack ?? anyError.cause.message}`;
-      anyError.cause = anyError.cause.cause;
+      str += `\nCaused by: ${currentCause.stack ?? currentCause.message}`;
+      currentCause = currentCause.cause;
     }
 
     return str;

@@ -162,7 +162,7 @@ export class JwtProvider {
    * @protected
    */
   protected isSecretKey(key: string): boolean {
-    return !key.startsWith("http");
+    return !key.startsWith("http://") && !key.startsWith("https://");
   }
 }
 

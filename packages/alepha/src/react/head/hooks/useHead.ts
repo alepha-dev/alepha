@@ -37,12 +37,12 @@ export const useHead = (options?: UseHeadOptions): UseHeadReturn => {
       return;
     }
 
-    alepha
-      .inject(BrowserHeadProvider)
-      .renderHead(
-        window.document,
-        typeof head === "function" ? head(current) : head || {},
-      );
+    const headProvider = alepha.inject(BrowserHeadProvider);
+    const resolved =
+      typeof head === "function"
+        ? head(headProvider.getHead(window.document))
+        : head || {};
+    headProvider.renderHead(window.document, resolved);
   }, []);
 
   useEffect(() => {

@@ -167,14 +167,6 @@ export class Alepha {
       };
     }
 
-    // force production mode when building with vite
-    if (typeof process === "object" && process.env?.NODE_ENV === "production") {
-      state.env ??= {};
-      Object.assign(state.env, {
-        NODE_ENV: "production",
-      });
-    }
-
     const alepha = new Alepha(state);
 
     if (alepha.isTest()) {

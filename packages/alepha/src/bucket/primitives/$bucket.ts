@@ -245,7 +245,7 @@ export class BucketPrimitive extends Primitive<BucketPrimitiveOptions> {
     // check size in bytes, convert MB to bytes
     if (file.size > maxSize * 1024 * 1024) {
       throw new InvalidFileError(
-        `File size ${file.size} exceeds the maximum size of ${this.options.maxSize} MB in bucket ${this.name}`,
+        `File size ${file.size} exceeds the maximum size of ${maxSize} MB in bucket ${this.name}`,
       );
     }
 

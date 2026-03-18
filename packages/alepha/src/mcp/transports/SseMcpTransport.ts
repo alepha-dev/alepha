@@ -149,8 +149,12 @@ export class SseMcpTransport {
           context,
         );
 
-        request.reply.headers["content-type"] = "application/json";
-        request.reply.body = response ? JSON.stringify(response) : "";
+        if (response) {
+          request.reply.headers["content-type"] = "application/json";
+          request.reply.body = JSON.stringify(response);
+        } else {
+          request.reply.status = 204;
+        }
       } catch (error) {
         if (error instanceof JsonRpcParseError) {
           request.reply.status = 400;

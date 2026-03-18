@@ -295,13 +295,18 @@ export class MemoryCacheProvider extends CacheProvider {
     let current = 0;
 
     if (existing) {
-      const str = new TextDecoder().decode(existing);
-      current = Number.parseInt(str, 10) || 0;
+      try {
+        current = this.deserialize<number>(existing);
+      } catch {
+        // Fallback for raw bytes without type marker
+        const str = new TextDecoder().decode(existing);
+        current = Number.parseInt(str, 10) || 0;
+      }
     }
 
     const newValue = current + amount;
     this.store[name][key] ??= {};
-    this.store[name][key].data = new TextEncoder().encode(String(newValue));
+    this.store[name][key].data = this.serialize(newValue);
 
     return newValue;
   }

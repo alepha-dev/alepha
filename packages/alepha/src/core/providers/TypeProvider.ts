@@ -404,7 +404,7 @@ export class TypeProvider {
 
   public int32(options?: TNumberOptions): TInteger {
     return Type.Integer({
-      minimum: -2147483647,
+      minimum: -2147483648,
       maximum: 2147483647,
       ...options,
     });

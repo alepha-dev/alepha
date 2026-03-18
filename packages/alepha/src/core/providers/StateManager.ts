@@ -154,7 +154,7 @@ export class StateManager<State extends object = AlephaState> {
     const store = this.store as Record<string, any>;
 
     const prevValue = this.get(key);
-    if (prevValue === value) {
+    if (prevValue === value && typeof value !== "object") {
       return this;
     }
 

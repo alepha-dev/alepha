@@ -151,7 +151,7 @@ export const $serviceAccount = (
 };
 
 export type ServiceAccountPrimitiveOptions = {
-  gracePeriod?: number; // Grace period in milliseconds before token expiration
+  gracePeriod?: number; // Grace period in seconds before token expiration
 } & (
   | {
       oauth2: Oauth2ServiceAccountPrimitiveOptions;

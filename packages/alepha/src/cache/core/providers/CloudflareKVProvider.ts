@@ -152,7 +152,14 @@ export class CloudflareKVProvider extends CacheProvider {
       options.expirationTtl = Math.max(60, Math.ceil(ttl / 1000));
     }
 
-    await this.getKV().put(kvKey, value.buffer as ArrayBuffer, options);
+    await this.getKV().put(
+      kvKey,
+      value.buffer.slice(
+        value.byteOffset,
+        value.byteOffset + value.byteLength,
+      ) as ArrayBuffer,
+      options,
+    );
     return value;
   }
 

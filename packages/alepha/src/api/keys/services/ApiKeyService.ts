@@ -232,9 +232,7 @@ export class ApiKeyService {
         })) ?? null;
 
       // Store in cache (even if null, to prevent repeated lookups)
-      if (apiKey) {
-        await this.validationCache.set(hash, apiKey);
-      }
+      await this.validationCache.set(hash, apiKey);
     }
 
     if (!apiKey) {

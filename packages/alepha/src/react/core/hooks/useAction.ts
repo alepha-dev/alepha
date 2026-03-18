@@ -190,13 +190,12 @@ export function useAction<Args extends any[], Result = void>(
           signal: abortController.signal,
         } as any);
 
-        // TODO: it should be after onSuccess?
-        setResult(result as Result);
-
         // Only update state if still mounted and not aborted
         if (!isMountedRef.current || abortController.signal.aborted) {
           return;
         }
+
+        setResult(result as Result);
 
         await alepha.events.emit("react:action:success", {
           type: "custom",
@@ -236,7 +235,9 @@ export function useAction<Args extends any[], Result = void>(
         }
       } finally {
         isExecutingRef.current = false;
-        setLoading(false);
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
 
         await alepha.events.emit("react:action:end", {
           type: "custom",

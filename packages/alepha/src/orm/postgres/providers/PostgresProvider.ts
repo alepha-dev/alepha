@@ -2,7 +2,6 @@ import { $env, $hook, $inject, $pipeline, AlephaError } from "alepha";
 import { $lock } from "alepha/lock";
 import {
   DatabaseProvider,
-  DbError,
   DbMigrationError,
   databaseEnvSchema,
   type SQLLike,
@@ -54,14 +53,10 @@ export abstract class PostgresProvider extends DatabaseProvider {
   /**
    * Execute a SQL statement.
    */
-  public override execute(
+  public override async execute(
     statement: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
-    try {
-      return this.db.execute(statement);
-    } catch (error) {
-      throw new DbError("Error executing statement", error);
-    }
+    return await this.db.execute(statement);
   }
 
   /**

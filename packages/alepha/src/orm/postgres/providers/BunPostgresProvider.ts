@@ -67,7 +67,13 @@ export class BunPostgresProvider extends PostgresProvider {
     const { drizzle } = await import("drizzle-orm/bun-sql");
 
     // Create Bun SQL client with pool options
-    const bunOptions: Record<string, any> = { url: this.url };
+    // Set search_path via connection URL so all pool connections use the correct schema
+    let connectionUrl = this.url;
+    if (this.schema !== "public") {
+      const separator = connectionUrl.includes("?") ? "&" : "?";
+      connectionUrl += `${separator}search_path=${this.schema},public`;
+    }
+    const bunOptions: Record<string, any> = { url: connectionUrl };
     if (this.pgEnv.POOL_MAX != null) {
       bunOptions.max = this.pgEnv.POOL_MAX;
     }
@@ -90,11 +96,6 @@ export class BunPostgresProvider extends PostgresProvider {
         },
       },
     });
-
-    // Set search_path so schema-free migration SQL resolves to the correct schema.
-    if (this.schema !== "public") {
-      await this.client.unsafe(`SET search_path TO ${this.schema}, public`);
-    }
 
     this.log.info("Connection OK");
   }

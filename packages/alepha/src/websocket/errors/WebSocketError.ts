@@ -1,7 +1,9 @@
+import { AlephaError } from "alepha";
+
 /**
  * Base WebSocket error class
  */
-export class WebSocketError extends Error {
+export class WebSocketError extends AlephaError {
   constructor(
     message: string,
     public readonly code?: number,

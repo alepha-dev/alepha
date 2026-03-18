@@ -115,15 +115,15 @@ export class BuildClientTask extends BuildTask {
   /**
    * Weird cleanup required because we changed input from "index.html" to "node_modules/.alepha/index.html".
    */
-  public async postBuildCleanUpForIndexHtml() {
-    const manifestPath = "dist/public/.vite/manifest.json";
+  public async postBuildCleanUpForIndexHtml(dist = "dist/public") {
+    const manifestPath = `${dist}/.vite/manifest.json`;
     let text = await this.fs.readTextFile(manifestPath);
     text = text.replaceAll("node_modules/.alepha/index.html", "index.html");
     await this.fs.writeFile(manifestPath, text);
     await this.fs.cp(
-      "dist/public/node_modules/.alepha/index.html",
-      "dist/public/index.html",
+      `${dist}/node_modules/.alepha/index.html`,
+      `${dist}/index.html`,
     );
-    await this.fs.rm("dist/public/node_modules", { recursive: true });
+    await this.fs.rm(`${dist}/node_modules`, { recursive: true });
   }
 }

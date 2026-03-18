@@ -401,9 +401,10 @@ export class HttpClient {
         }
       }
 
-      return `${url}?${new URLSearchParams(
+      const params = new URLSearchParams(
         query as Record<string, string>,
-      ).toString()}`;
+      ).toString();
+      return params ? `${url}?${params}` : url;
     }
     return url;
   }

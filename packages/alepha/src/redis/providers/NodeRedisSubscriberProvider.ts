@@ -58,8 +58,12 @@ export class NodeRedisSubscriberProvider extends RedisSubscriberProvider {
   }
 
   public override async close(): Promise<void> {
+    if (!this.client.isReady) {
+      this.log.debug("Subscriber client not ready, skipping close");
+      return;
+    }
     this.log.debug("Closing subscriber connection...");
-    await this.subscriber.close();
+    await this.client.close();
     this.log.info("Subscriber connection closed");
   }
 

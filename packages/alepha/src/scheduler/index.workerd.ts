@@ -33,11 +33,10 @@ export const AlephaScheduler = $module({
   name: "alepha.scheduler",
   primitives: [$scheduler],
   services: [AlephaLock, CronProvider, WorkerdCronProvider],
-  register: (alepha) => {
+  register: (alepha) =>
     // Replace CronProvider with WorkerdCronProvider for Cloudflare Workers
     alepha.with({
       provide: CronProvider,
       use: WorkerdCronProvider,
-    });
-  },
+    }),
 });

@@ -457,7 +457,7 @@ describe("TypeProvider", () => {
         const schema = t.int32();
 
         expect(() => alepha.codec.validate(schema, 2147483648)).toThrow();
-        expect(() => alepha.codec.validate(schema, -2147483648)).toThrow();
+        expect(() => alepha.codec.validate(schema, -2147483649)).toThrow();
       });
     });
 

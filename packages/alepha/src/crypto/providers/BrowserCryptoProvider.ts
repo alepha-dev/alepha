@@ -117,8 +117,14 @@ export class BrowserCryptoProvider {
   public randomCode(length: number): string {
     const max = 10 ** length;
     const array = new Uint32Array(1);
-    crypto.getRandomValues(array);
-    const code = array[0]! % max;
+    // Rejection sampling to avoid modulo bias
+    const limit = Math.floor(0x100000000 / max) * max;
+    let value: number;
+    do {
+      crypto.getRandomValues(array);
+      value = array[0]!;
+    } while (value >= limit);
+    const code = value % max;
     return String(code).padStart(length, "0");
   }
 

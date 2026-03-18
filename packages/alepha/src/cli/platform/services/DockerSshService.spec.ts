@@ -25,11 +25,11 @@ describe("DockerSshService", () => {
 
   test("exec runs command on remote host", async ({ expect }) => {
     const { ssh, shell } = createTestEnv();
-    shell.outputs.set('ssh root@1.2.3.4 "ls /opt"', "/opt/alepha");
+    shell.outputs.set("ssh root@1.2.3.4 'ls /opt'", "/opt/alepha");
 
     const result = await ssh.exec("1.2.3.4", "ls /opt");
 
-    expect(shell.wasCalled('ssh root@1.2.3.4 "ls /opt"')).toBe(true);
+    expect(shell.wasCalled("ssh root@1.2.3.4 'ls /opt'")).toBe(true);
     expect(result).toBe("/opt/alepha");
   });
 

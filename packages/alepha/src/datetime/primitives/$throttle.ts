@@ -53,7 +53,7 @@ export const $throttle = (options: ThrottleOptions): Middleware => {
 
         if (refill > 0) {
           tokens = Math.min(options.rate, tokens + refill);
-          lastRefill = now;
+          lastRefill += Math.floor(elapsed / intervalMs) * intervalMs;
         }
 
         if (tokens <= 0) {
