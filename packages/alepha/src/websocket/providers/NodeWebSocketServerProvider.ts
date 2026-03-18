@@ -324,12 +324,20 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   ): Promise<void> {
     const targetConnections = new Set<string>();
 
+    // Helper to check if a connection belongs to this channel
+    const isOnChannel = (connId: string) => {
+      const conn = this.connections.get(connId);
+      return conn?.channelPath === channelPath;
+    };
+
     // Collect target connections based on criteria
     if (criteria.roomIds) {
       for (const roomId of criteria.roomIds) {
         const roomConns = this.roomManager.getRoomConnections(roomId);
         for (const connId of roomConns) {
-          targetConnections.add(connId);
+          if (isOnChannel(connId)) {
+            targetConnections.add(connId);
+          }
         }
       }
     }
@@ -339,7 +347,9 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         const userConns = this.userConnections.get(userId);
         if (userConns) {
           for (const connId of userConns) {
-            targetConnections.add(connId);
+            if (isOnChannel(connId)) {
+              targetConnections.add(connId);
+            }
           }
         }
       }
@@ -347,14 +357,18 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
     if (criteria.connectionIds) {
       for (const connId of criteria.connectionIds) {
-        targetConnections.add(connId);
+        if (isOnChannel(connId)) {
+          targetConnections.add(connId);
+        }
       }
     }
 
     // If no specific targeting, send to all connections on this channel
     if (!criteria.roomIds && !criteria.userIds && !criteria.connectionIds) {
       for (const conn of this.connections.values()) {
-        targetConnections.add(conn.id);
+        if (conn.channelPath === channelPath) {
+          targetConnections.add(conn.id);
+        }
       }
     }
 
@@ -488,6 +502,10 @@ export class NodeWebSocketConnection implements WebSocketConnection {
     protected readonly provider: NodeWebSocketServerProvider,
     protected readonly endpoint: WebSocketPrimitiveOptions<any, any>,
   ) {}
+
+  public get channelPath(): string {
+    return this.endpoint.channel.options.path;
+  }
 
   public get readyState(): WebSocketState {
     return this.ws.readyState;

@@ -148,14 +148,17 @@ export class WebSocketChannelConnection<
       this.onDisconnectCallbacks.add(callbacks.onDisconnect);
     if (callbacks?.onError) this.onErrorCallbacks.add(callbacks.onError);
 
-    // Connect if not already connected
+    // Connect or reconnect to include the new room in the URL
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       this.log.trace("No active connection, initiating connect");
       this.connect().catch((error) => {
         this.log.error("Failed to connect:", error);
       });
     } else {
-      this.log.trace("Already connected, reusing existing connection");
+      this.log.trace("Reconnecting to include new room subscription", {
+        roomId,
+      });
+      this.reconnect();
     }
 
     // Return unsubscribe function

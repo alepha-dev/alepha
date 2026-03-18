@@ -16,6 +16,11 @@ export interface WebSocketConnection {
   userId?: string;
 
   /**
+   * Channel path this connection belongs to
+   */
+  channelPath: string;
+
+  /**
    * Room IDs that this connection is currently in
    */
   roomIds: string[];
