@@ -34,7 +34,7 @@ export class CloudflareAdapter extends PlatformAdapter {
 
   protected provisionedD1Id?: string;
   protected provisionedHyperdriveId?: string;
-  protected provisionedKVId?: string;
+  protected provisionedKVIds = new Map<string, string>();
 
   /**
    * Check if the user's DATABASE_URL points to an external Postgres database.
@@ -139,11 +139,13 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
 
     if (ctx.app.resources.hasKV) {
-      env.CLOUDFLARE_KV_NAME = ctx.naming.kv(
+      const kvName = ctx.naming.kv(
         ctx.apps.length > 1 ? ctx.app.name : undefined,
       );
-      if (this.provisionedKVId) {
-        env.CLOUDFLARE_KV_ID = this.provisionedKVId;
+      env.CLOUDFLARE_KV_NAME = kvName;
+      const kvId = this.provisionedKVIds.get(kvName);
+      if (kvId) {
+        env.CLOUDFLARE_KV_ID = kvId;
       }
     }
 
@@ -314,7 +316,7 @@ export class CloudflareAdapter extends PlatformAdapter {
         tasks.push({
           name: `provision kv (${kvName})`,
           handler: async () => {
-            this.provisionedKVId = await this.ensureKV(kvName);
+            this.provisionedKVIds.set(kvName, await this.ensureKV(kvName));
           },
         });
       }
