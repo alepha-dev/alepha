@@ -6,6 +6,9 @@ export class ProtobufProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly schemas: Map<string | TObject, Type> = new Map();
   protected readonly protobuf: typeof protobufjs = protobufjs;
+  /**
+   * @deprecated Use local enumDefinitions passed through method parameters.
+   */
   protected readonly enumDefinitions: Map<string, string[]> = new Map();
 
   /**
@@ -45,8 +48,8 @@ export class ProtobufProvider {
     options: CreateProtobufSchemaOptions = {},
   ): string {
     const { rootName = "root", mainMessageName = "Target" } = options;
-    // Clear enum definitions for this schema generation
-    this.enumDefinitions.clear();
+    // Use local enum definitions to avoid race conditions with concurrent calls
+    const enumDefinitions = new Map<string, string[]>();
 
     const context = {
       proto: `package ${rootName};\nsyntax = "proto3";\n\n`,
@@ -57,10 +60,11 @@ export class ProtobufProvider {
       const { message, subMessages } = this.parseObjectWithDependencies(
         schema,
         mainMessageName,
+        enumDefinitions,
       );
 
       // Add all enum definitions first
-      for (const [enumName, values] of this.enumDefinitions) {
+      for (const [enumName, values] of enumDefinitions) {
         context.proto += this.generateEnumDefinition(enumName, values);
       }
 
@@ -79,6 +83,7 @@ export class ProtobufProvider {
   protected parseObjectWithDependencies(
     obj: TSchema,
     parentName: string,
+    enumDefinitions: Map<string, string[]> = this.enumDefinitions,
   ): { message: string; subMessages: string[] } {
     if (!t.schema.isObject(obj)) {
       return { message: "", subMessages: [] };
@@ -94,7 +99,7 @@ export class ProtobufProvider {
         // Check if array items are enums
         if (this.isEnum(value.items)) {
           const enumValues = this.getEnumValues(value.items);
-          const enumName = this.registerEnum(key, enumValues);
+          const enumName = this.registerEnum(key, enumValues, enumDefinitions);
           fields.push(`  repeated ${enumName} ${key} = ${fieldIndex++};`);
           continue;
         }
@@ -105,7 +110,11 @@ export class ProtobufProvider {
               ? value.items.title
               : `${parentName}_${key}`;
           const { message: subMessage, subMessages: nestedSubMessages } =
-            this.parseObjectWithDependencies(value.items, subMessageName);
+            this.parseObjectWithDependencies(
+              value.items,
+              subMessageName,
+              enumDefinitions,
+            );
           subMessages.push(...nestedSubMessages);
           subMessages.push(subMessage);
           fields.push(`  repeated ${subMessageName} ${key} = ${fieldIndex++};`);
@@ -124,7 +133,11 @@ export class ProtobufProvider {
             ? value.title
             : `${parentName}_${key}`;
         const { message: subMessage, subMessages: nestedSubMessages } =
-          this.parseObjectWithDependencies(value, subMessageName);
+          this.parseObjectWithDependencies(
+            value,
+            subMessageName,
+            enumDefinitions,
+          );
         subMessages.push(...nestedSubMessages);
         subMessages.push(subMessage);
         fields.push(`  ${subMessageName} ${key} = ${fieldIndex++};`);
@@ -140,7 +153,11 @@ export class ProtobufProvider {
           // Check if it's an enum
           if (this.isEnum(nonNullType)) {
             const enumValues = this.getEnumValues(nonNullType);
-            const enumName = this.registerEnum(key, enumValues);
+            const enumName = this.registerEnum(
+              key,
+              enumValues,
+              enumDefinitions,
+            );
             fields.push(`  ${enumName} ${key} = ${fieldIndex++};`);
             continue;
           }
@@ -151,7 +168,11 @@ export class ProtobufProvider {
                 ? nonNullType.title
                 : `${parentName}_${key}`;
             const { message: subMessage, subMessages: nestedSubMessages } =
-              this.parseObjectWithDependencies(nonNullType, subMessageName);
+              this.parseObjectWithDependencies(
+                nonNullType,
+                subMessageName,
+                enumDefinitions,
+              );
             subMessages.push(...nestedSubMessages);
             subMessages.push(subMessage);
             fields.push(`  ${subMessageName} ${key} = ${fieldIndex++};`);
@@ -194,7 +215,7 @@ export class ProtobufProvider {
       // Handle enum fields
       if (this.isEnum(value)) {
         const enumValues = this.getEnumValues(value);
-        const enumName = this.registerEnum(key, enumValues);
+        const enumName = this.registerEnum(key, enumValues, enumDefinitions);
         fields.push(`  ${enumName} ${key} = ${fieldIndex++};`);
         continue;
       }
@@ -268,13 +289,17 @@ export class ProtobufProvider {
    * Register an enum and return its type name.
    * Generates a PascalCase name from the field name.
    */
-  protected registerEnum(fieldName: string, values: string[]): string {
+  protected registerEnum(
+    fieldName: string,
+    values: string[],
+    enumDefinitions: Map<string, string[]> = this.enumDefinitions,
+  ): string {
     // Capitalize first letter of field name for enum type name
     const enumName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
 
     // Check if we already have this exact enum registered
     const valueKey = values.join(",");
-    const existingEnum = Array.from(this.enumDefinitions.entries()).find(
+    const existingEnum = Array.from(enumDefinitions.entries()).find(
       ([_, enumValues]) => enumValues.join(",") === valueKey,
     );
 
@@ -284,7 +309,7 @@ export class ProtobufProvider {
     }
 
     // Register new enum
-    this.enumDefinitions.set(enumName, values);
+    enumDefinitions.set(enumName, values);
     return enumName;
   }
 
