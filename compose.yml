@@ -22,15 +22,6 @@ services:
     ports:
       - "9090:9090"
 
-  verdaccio:
-    restart: always
-    image: verdaccio/verdaccio:latest
-    ports:
-      - "4873:4873"
-    volumes:
-      - verdaccio-storage:/verdaccio/storage
-      - verdaccio-conf:/verdaccio/conf
-
   emqx:
     restart: always
     image: emqx/emqx:latest
@@ -38,7 +29,3 @@ services:
       - "1884:1883"
     environment:
       EMQX_ALLOW_ANONYMOUS: "true"
-
-volumes:
-  verdaccio-storage:
-  verdaccio-conf:

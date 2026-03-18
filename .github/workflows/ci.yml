@@ -44,7 +44,7 @@ jobs:
       emqx:
         image: emqx/emqx
         ports:
-          - 1883:1883
+          - 1884:1883
         env:
           EMQX_ALLOW_ANONYMOUS: "true"
 
