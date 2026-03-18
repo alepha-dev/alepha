@@ -153,8 +153,9 @@ export class QueryManager {
             dialect: options.dialect,
           });
           if (where) {
-            return not(where);
+            conditions.push(not(where));
           }
+          continue;
         }
 
         if (key === "exists") {

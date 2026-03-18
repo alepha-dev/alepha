@@ -1,8 +1,18 @@
 import { Alepha, t } from "alepha";
+import type { SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
-import { boolean, integer, pgTable, text } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  integer,
+  PgDialect,
+  pgTable,
+  text,
+} from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 import { QueryManager } from "../core/services/QueryManager.ts";
+
+const dialect = new PgDialect();
+const toSqlString = (sql: SQL) => dialect.sqlToQuery(sql).sql;
 
 const testTable = pgTable("test", {
   age: integer("age"),
@@ -145,6 +155,41 @@ describe("QueryManager", () => {
       const result = qm.toSQL({ age: undefined } as any, options);
 
       expect(result).toBeUndefined();
+    });
+
+    it("should include not condition alongside sibling conditions", () => {
+      const result = qm.toSQL(
+        { name: "John", not: { active: false } } as any,
+        options,
+      );
+
+      expect(result).toBeDefined();
+      const sqlStr = toSqlString(result!);
+      expect(sqlStr).toContain('"name"');
+      expect(sqlStr).toContain("not");
+      expect(sqlStr).toContain('"active"');
+    });
+
+    it("should not discard conditions after not", () => {
+      const result = qm.toSQL(
+        { not: { active: false }, name: "Alice", age: { eq: 30 } } as any,
+        options,
+      );
+
+      expect(result).toBeDefined();
+      const sqlStr = toSqlString(result!);
+      expect(sqlStr).toContain('"name"');
+      expect(sqlStr).toContain('"age"');
+      expect(sqlStr).toContain("not");
+    });
+
+    it("should handle not as the only condition", () => {
+      const result = qm.toSQL({ not: { active: true } } as any, options);
+
+      expect(result).toBeDefined();
+      const sqlStr = toSqlString(result!);
+      expect(sqlStr).toContain("not");
+      expect(sqlStr).toContain('"active"');
     });
   });
 });
