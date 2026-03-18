@@ -353,6 +353,24 @@ describe("ModelBuilder", () => {
       // Column names should be converted to snake_case internally
     });
 
+    it("should build table with plain bigint column", () => {
+      const entity = $entity({
+        name: "counters",
+        schema: t.object({
+          id: db.primaryKey(),
+          totalViews: t.bigint(),
+        }),
+      });
+
+      builder.buildTable(entity, options);
+
+      expect(options.tables.has("counters")).toBe(true);
+      const table = options.tables.get("counters") as any;
+      expect(table).toBeDefined();
+      // Verify the bigint column exists
+      expect(table.totalViews).toBeDefined();
+    });
+
     it("should not recreate table if it already exists", () => {
       const entity = $entity({
         name: "users",

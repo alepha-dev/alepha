@@ -293,6 +293,8 @@ export class PostgresModelBuilder extends ModelBuilder {
         }
         return pg.bigint({ mode: "bigint" }).generatedAlwaysAsIdentity(options);
       }
+
+      return pg.bigint(key, { mode: "bigint" });
     }
 
     if (t.schema.isNumber(value)) {
