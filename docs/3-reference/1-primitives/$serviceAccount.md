@@ -18,7 +18,7 @@ You have some options to configure the service account:
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `gracePeriod` | `number; // Grace period in milliseconds before token expi...` | No |  |
+| `gracePeriod` | `number; // Grace period in seconds before token expiration` | No |  |
 
 ## Examples
 

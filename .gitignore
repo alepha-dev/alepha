@@ -23,3 +23,4 @@ docs/plans
 docs/superpowers
 apps/ride/*
 !apps/ride/package.json
+BUGS.md
