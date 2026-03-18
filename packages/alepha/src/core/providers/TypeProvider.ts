@@ -32,7 +32,7 @@ import { OPTIONS } from "../constants/OPTIONS.ts";
 import type { TypeBoxError } from "../errors/TypeBoxError.ts";
 import { isTypeFile, type TFile, type TStream } from "../helpers/FileLike.ts";
 
-export { Type, Value, Format };
+export { Format, Type, Value };
 
 // https://github.com/sinclairzx81/typebox/blob/main/changelog/1.1.0.md
 Settings.Set({ correctiveParse: true });

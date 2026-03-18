@@ -11,9 +11,9 @@
   "main": "./src/main.ts",
   "devDependencies": {
     "@alepha/ui": "0.18.3",
-    "@biomejs/biome": "^2.4.6",
-    "@mantine/core": "^8.3.16",
-    "@mantine/hooks": "^8.3.16",
+    "@biomejs/biome": "^2.4.8",
+    "@mantine/core": "^8.3.18",
+    "@mantine/hooks": "^8.3.18",
     "@tabler/icons-react": "^3.40.0",
     "@xyflow/react": "^12.10.1",
     "alepha": "0.18.3",

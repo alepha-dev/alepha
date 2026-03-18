@@ -26,12 +26,12 @@
     "src"
   ],
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1008.0"
+    "@aws-sdk/client-s3": "^3.1012.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.6",
+    "@biomejs/biome": "^2.4.8",
     "alepha": "0.18.3",
-    "tsdown": "^0.21.2",
+    "tsdown": "^0.21.4",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   },

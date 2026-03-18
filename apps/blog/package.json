@@ -14,22 +14,22 @@
   },
   "dependencies": {
     "@alepha/ui": "^0.18.3",
-    "@mantine/core": "^8.3.16",
-    "@mantine/hooks": "^8.3.16",
+    "@mantine/core": "^8.3.18",
+    "@mantine/hooks": "^8.3.18",
     "@tabler/icons-react": "^3.40.0",
     "alepha": "^0.18.3",
-    "marked": "^15.0.0",
+    "marked": "^17.0.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
-    "better-sqlite3": "^12.6.2",
-    "drizzle-kit": "^0.31.9",
+    "better-sqlite3": "^12.8.0",
+    "drizzle-kit": "^0.31.10",
     "typescript": "^5.9.3",
     "vite": "^8.0.0",
     "vitest": "^4.1.0",
-    "wrangler": "^4.73.0"
+    "wrangler": "^4.75.0"
   }
 }
