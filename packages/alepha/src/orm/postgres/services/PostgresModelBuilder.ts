@@ -275,9 +275,9 @@ export class PostgresModelBuilder extends ModelBuilder {
       if (PG_IDENTITY in value) {
         const options = value[PG_IDENTITY] as PgIdentityOptions;
         if (options.mode === "byDefault") {
-          return pg.integer().generatedByDefaultAsIdentity(options);
+          return pg.integer(key).generatedByDefaultAsIdentity(options);
         }
-        return pg.integer().generatedAlwaysAsIdentity(options);
+        return pg.integer(key).generatedAlwaysAsIdentity(options);
       }
 
       return pg.integer(key);
@@ -288,10 +288,12 @@ export class PostgresModelBuilder extends ModelBuilder {
         const options = value[PG_IDENTITY] as PgIdentityOptions;
         if (options.mode === "byDefault") {
           return pg
-            .bigint({ mode: "bigint" })
+            .bigint(key, { mode: "bigint" })
             .generatedByDefaultAsIdentity(options);
         }
-        return pg.bigint({ mode: "bigint" }).generatedAlwaysAsIdentity(options);
+        return pg
+          .bigint(key, { mode: "bigint" })
+          .generatedAlwaysAsIdentity(options);
       }
 
       return pg.bigint(key, { mode: "bigint" });
@@ -302,10 +304,12 @@ export class PostgresModelBuilder extends ModelBuilder {
         const options = value[PG_IDENTITY] as PgIdentityOptions;
         if (options.mode === "byDefault") {
           return pg
-            .bigint({ mode: "number" })
+            .bigint(key, { mode: "number" })
             .generatedByDefaultAsIdentity(options);
         }
-        return pg.bigint({ mode: "number" }).generatedAlwaysAsIdentity(options);
+        return pg
+          .bigint(key, { mode: "number" })
+          .generatedAlwaysAsIdentity(options);
       }
 
       if (value.format === "int64") {

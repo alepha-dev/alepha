@@ -371,6 +371,25 @@ describe("ModelBuilder", () => {
       expect(table.totalViews).toBeDefined();
     });
 
+    it("should use correct column name for identity primary key", () => {
+      const entity = $entity({
+        name: "events",
+        schema: t.object({
+          eventId: db.identityPrimaryKey(),
+          name: t.text(),
+        }),
+      });
+
+      builder.buildTable(entity, options);
+
+      expect(options.tables.has("events")).toBe(true);
+      const table = options.tables.get("events") as any;
+      expect(table).toBeDefined();
+      expect(table.eventId).toBeDefined();
+      // Column should use snake_case name
+      expect(table.eventId.config.name).toBe("event_id");
+    });
+
     it("should not recreate table if it already exists", () => {
       const entity = $entity({
         name: "users",
