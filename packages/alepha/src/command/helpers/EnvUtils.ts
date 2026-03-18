@@ -51,7 +51,16 @@ export class EnvUtils {
             if (key) {
               const trimmedKey = key.trim();
               if (trimmedKey && !trimmedKey.startsWith("#")) {
-                result[trimmedKey] = rest.join("=").trim();
+                let value = rest.join("=").trim();
+                // Strip matching surrounding quotes (single or double)
+                if (
+                  value.length >= 2 &&
+                  ((value[0] === '"' && value[value.length - 1] === '"') ||
+                    (value[0] === "'" && value[value.length - 1] === "'"))
+                ) {
+                  value = value.slice(1, -1);
+                }
+                result[trimmedKey] = value;
               }
             }
           }
