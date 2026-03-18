@@ -38,7 +38,7 @@ const ExperienceBar = () => {
   const level = info.getLevelByXp(character.xp);
   const max = info.getMaxXpForLevel(level);
   const current = info.getCurrentXpForLevel(level, character.xp);
-  const percentage = Math.floor((current * 100) / max);
+  const percentage = max > 0 ? Math.floor((current * 100) / max) : 100;
 
   return (
     <>

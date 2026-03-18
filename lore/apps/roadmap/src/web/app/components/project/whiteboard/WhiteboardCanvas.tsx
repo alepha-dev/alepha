@@ -120,13 +120,15 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
 
   const pushHistory = useCallback(
     (newElements: WhiteboardElement[]) => {
-      const newHistory = history.slice(0, historyIndex + 1);
-      newHistory.push(newElements);
-      setHistory(newHistory);
-      setHistoryIndex(newHistory.length - 1);
+      setHistory((prev) => {
+        const newHistory = prev.slice(0, historyIndex + 1);
+        newHistory.push(newElements);
+        setHistoryIndex(newHistory.length - 1);
+        return newHistory;
+      });
       setIsDirty(true);
     },
-    [history, historyIndex],
+    [historyIndex],
   );
 
   const handleUndo = useCallback(() => {
@@ -530,8 +532,8 @@ const WhiteboardCanvas = ({ whiteboard, onSave }: WhiteboardCanvasProps) => {
     setEditingTextId(element.id);
     setEditingTextValue(element.text ?? "Text");
     setEditingTextPos({
-      x: container.left + element.x,
-      y: container.top + element.y,
+      x: container.left + element.x * zoom + stagePos.x,
+      y: container.top + element.y * zoom + stagePos.y,
     });
   };
 
