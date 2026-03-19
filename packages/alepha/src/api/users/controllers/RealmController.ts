@@ -23,23 +23,17 @@ export class RealmController {
     group: this.group,
     method: "GET",
     path: `${this.url}/config`,
-    use: [
-      $etag({
-        control: {
-          maxAge: [24, "hours"],
-        },
-      }),
-    ],
+    use: [$etag()],
     schema: {
       query: t.object({
         realmName: t.optional(t.string()),
       }),
       response: realmConfigSchema,
     },
-    handler: ({ query }) => {
-      const { name: realmName, settings } = this.realmProvider.getRealm(
-        query.realmName,
-      );
+    handler: async ({ query }) => {
+      const realm = this.realmProvider.getRealm(query.realmName);
+      const settings = await realm.getSettings();
+      const realmName = realm.name;
 
       const authenticationMethods =
         this.serverAuthProvider.getAuthenticationProviders({

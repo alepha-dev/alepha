@@ -2,9 +2,18 @@ import { Alepha } from "alepha";
 import { $bucket } from "alepha/bucket";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import type { UserAccountToken } from "alepha/security";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 import { FileController, FileService } from "../index.ts";
+
+const adminUser: UserAccountToken = {
+  id: "00000000-0000-0000-0000-000000000001",
+  name: "Test Admin",
+  roles: ["admin"],
+};
+
+const asAdmin = { user: adminUser };
 
 describe("FileController", () => {
   class App {
@@ -41,15 +50,16 @@ describe("FileController", () => {
     it("should return files from specific bucket", async () => {
       const { app, ctrl } = await setup();
       await app.images.upload(createFile("test"));
-      const files = await ctrl.findFiles({
-        query: { bucket: app.images.name },
-      });
+      const files = await ctrl.findFiles(
+        { query: { bucket: app.images.name } },
+        asAdmin,
+      );
       expect(files.content.length).toEqual(1);
     });
 
     it("should return empty list when no files exist", async () => {
       const { ctrl } = await setup();
-      const files = await ctrl.findFiles();
+      const files = await ctrl.findFiles({}, asAdmin);
       expect(files.content).toEqual([]);
       expect(files.page.totalElements).toBe(0);
     });
@@ -59,7 +69,7 @@ describe("FileController", () => {
       await app.images.upload(createFile("image.png"));
       await app.documents.upload(createFile("doc.pdf"));
 
-      const files = await ctrl.findFiles({ query: {} });
+      const files = await ctrl.findFiles({ query: {} }, asAdmin);
       expect(files.content.length).toEqual(2);
     });
 
@@ -68,15 +78,17 @@ describe("FileController", () => {
       await app.images.upload(createFile("image.png"));
       await app.documents.upload(createFile("doc.pdf"));
 
-      const imagesFiles = await ctrl.findFiles({
-        query: { bucket: app.images.name },
-      });
+      const imagesFiles = await ctrl.findFiles(
+        { query: { bucket: app.images.name } },
+        asAdmin,
+      );
       expect(imagesFiles.content.length).toEqual(1);
       expect(imagesFiles.content[0].bucket).toBe(app.images.name);
 
-      const docsFiles = await ctrl.findFiles({
-        query: { bucket: app.documents.name },
-      });
+      const docsFiles = await ctrl.findFiles(
+        { query: { bucket: app.documents.name } },
+        asAdmin,
+      );
       expect(docsFiles.content.length).toEqual(1);
       expect(docsFiles.content[0].bucket).toBe(app.documents.name);
     });
@@ -91,9 +103,10 @@ describe("FileController", () => {
         tags: ["important", "personal"],
       });
 
-      const importantFiles = await ctrl.findFiles.run({
-        query: { tags: ["important"] },
-      });
+      const importantFiles = await ctrl.findFiles.run(
+        { query: { tags: ["important"] } },
+        asAdmin,
+      );
       expect(importantFiles.content.length).toEqual(2);
     });
 
@@ -103,16 +116,18 @@ describe("FileController", () => {
       await app.images.upload(createFile("file2.txt"));
       await app.images.upload(createFile("file3.txt"));
 
-      const page1 = await ctrl.findFiles({
-        query: { bucket: app.images.name, size: 2, page: 0 },
-      });
+      const page1 = await ctrl.findFiles(
+        { query: { bucket: app.images.name, size: 2, page: 0 } },
+        asAdmin,
+      );
 
       expect(page1.content.length).toEqual(2);
       expect(page1.page.totalElements).toBe(3);
 
-      const page2 = await ctrl.findFiles({
-        query: { bucket: app.images.name, size: 2, page: 1 },
-      });
+      const page2 = await ctrl.findFiles(
+        { query: { bucket: app.images.name, size: 2, page: 1 } },
+        asAdmin,
+      );
       expect(page2.content.length).toEqual(1);
       expect(page2.page.totalElements).toBe(3);
     });
@@ -123,9 +138,10 @@ describe("FileController", () => {
       const file2 = await app.images.upload(createFile("second.txt"));
       const file3 = await app.images.upload(createFile("third.txt"));
 
-      const files = await ctrl.findFiles({
-        query: { bucket: app.images.name },
-      });
+      const files = await ctrl.findFiles(
+        { query: { bucket: app.images.name } },
+        asAdmin,
+      );
 
       expect(files.content[0].blobId).toBe(file3);
       expect(files.content[1].blobId).toBe(file2);
@@ -141,10 +157,10 @@ describe("FileController", () => {
         type: "text/plain",
       });
 
-      const result = await ctrl.uploadFile({
-        body: { file },
-        query: {},
-      });
+      const result = await ctrl.uploadFile(
+        { body: { file }, query: {} },
+        asAdmin,
+      );
 
       expect(result.name).toBe("test.txt");
       expect(result.mimeType).toBe("text/plain");
@@ -159,10 +175,10 @@ describe("FileController", () => {
         type: "text/plain",
       });
 
-      const result = await ctrl.uploadFile({
-        body: { file },
-        query: {},
-      });
+      const result = await ctrl.uploadFile(
+        { body: { file }, query: {} },
+        asAdmin,
+      );
 
       expect(result.checksum).toBeDefined();
       expect(result.checksum).toMatch(/^[a-f0-9]{64}$/); // SHA-256 hex format
@@ -175,10 +191,10 @@ describe("FileController", () => {
         type: "application/pdf",
       });
 
-      const result = await ctrl.uploadFile({
-        body: { file },
-        query: { bucket: app.documents.name },
-      });
+      const result = await ctrl.uploadFile(
+        { body: { file }, query: { bucket: app.documents.name } },
+        asAdmin,
+      );
 
       expect(result.bucket).toBe(app.documents.name);
       expect(result.name).toBe("doc.pdf");
@@ -189,16 +205,16 @@ describe("FileController", () => {
       const file = createFile("Temporary file", { name: "temp.txt" });
       const expirationDate = dtp.now().add(1, "hour").toISOString();
 
-      const result = await ctrl.uploadFile({
-        body: { file },
-        query: { expirationDate },
-      });
+      const result = await ctrl.uploadFile(
+        { body: { file }, query: { expirationDate } },
+        asAdmin,
+      );
 
       expect(result.expirationDate).toEqual(expirationDate);
     });
 
     it("should capture user information when provided", async () => {
-      const { ctrl, service } = await setup();
+      const { service } = await setup();
       const file = createFile("User file", { name: "user.txt" });
 
       const result = await service.uploadFile(file, {
@@ -224,12 +240,15 @@ describe("FileController", () => {
         type: "text/plain",
       });
 
-      const uploaded = await ctrl.uploadFile({
-        body: { file },
-        query: {},
-      });
+      const uploaded = await ctrl.uploadFile(
+        { body: { file }, query: {} },
+        asAdmin,
+      );
 
-      const streamed = await ctrl.streamFile({ params: { id: uploaded.id } });
+      const streamed = await ctrl.streamFile(
+        { params: { id: uploaded.id } },
+        asAdmin,
+      );
 
       expect(streamed.name).toBe("test.txt");
       expect(streamed.type).toBe("text/plain");
@@ -240,9 +259,10 @@ describe("FileController", () => {
       const { ctrl } = await setup();
 
       await expect(
-        ctrl.streamFile({
-          params: { id: "00000000-0000-0000-0000-000000000000" },
-        }),
+        ctrl.streamFile(
+          { params: { id: "00000000-0000-0000-0000-000000000000" } },
+          asAdmin,
+        ),
       ).rejects.toThrow();
     });
   });
@@ -252,21 +272,22 @@ describe("FileController", () => {
       const { ctrl } = await setup();
       const file = createFile("To be deleted", { name: "delete-me.txt" });
 
-      const uploaded = await ctrl.uploadFile({
-        body: { file },
-        query: {},
-      });
+      const uploaded = await ctrl.uploadFile(
+        { body: { file }, query: {} },
+        asAdmin,
+      );
 
-      const result = await ctrl.deleteFile({
-        params: { id: uploaded.id },
-      });
+      const result = await ctrl.deleteFile(
+        { params: { id: uploaded.id } },
+        asAdmin,
+      );
 
       expect(result.ok).toBe(true);
       expect(result.id).toBe(uploaded.id);
 
       // Verify file is actually deleted
       await expect(
-        ctrl.streamFile({ params: { id: uploaded.id } }),
+        ctrl.streamFile({ params: { id: uploaded.id } }, asAdmin),
       ).rejects.toThrow();
     });
 
@@ -274,9 +295,10 @@ describe("FileController", () => {
       const { ctrl } = await setup();
 
       await expect(
-        ctrl.deleteFile({
-          params: { id: "00000000-0000-0000-0000-000000000000" },
-        }),
+        ctrl.deleteFile(
+          { params: { id: "00000000-0000-0000-0000-000000000000" } },
+          asAdmin,
+        ),
       ).rejects.toThrow();
     });
   });
@@ -286,15 +308,15 @@ describe("FileController", () => {
       const { ctrl } = await setup();
       const file = createFile("test content", { name: "original.txt" });
 
-      const uploaded = await ctrl.uploadFile({
-        body: { file },
-        query: {},
-      });
+      const uploaded = await ctrl.uploadFile(
+        { body: { file }, query: {} },
+        asAdmin,
+      );
 
-      const updated = await ctrl.updateFile({
-        params: { id: uploaded.id },
-        body: { name: "renamed.txt" },
-      });
+      const updated = await ctrl.updateFile(
+        { params: { id: uploaded.id }, body: { name: "renamed.txt" } },
+        asAdmin,
+      );
 
       expect(updated.name).toBe("renamed.txt");
       expect(updated.id).toBe(uploaded.id);
@@ -304,15 +326,15 @@ describe("FileController", () => {
       const { ctrl } = await setup();
       const file = createFile("test content", { name: "test.txt" });
 
-      const uploaded = await ctrl.uploadFile({
-        body: { file },
-        query: {},
-      });
+      const uploaded = await ctrl.uploadFile(
+        { body: { file }, query: {} },
+        asAdmin,
+      );
 
-      const updated = await ctrl.updateFile({
-        params: { id: uploaded.id },
-        body: { tags: ["important", "work"] },
-      });
+      const updated = await ctrl.updateFile(
+        { params: { id: uploaded.id }, body: { tags: ["important", "work"] } },
+        asAdmin,
+      );
 
       expect(updated.tags).toEqual(["important", "work"]);
     });
@@ -321,17 +343,20 @@ describe("FileController", () => {
       const { ctrl, dtp } = await setup();
       const file = createFile("test content", { name: "test.txt" });
 
-      const uploaded = await ctrl.uploadFile({
-        body: { file },
-        query: {},
-      });
+      const uploaded = await ctrl.uploadFile(
+        { body: { file }, query: {} },
+        asAdmin,
+      );
 
       const newExpiration = dtp.now().add(2, "days").toISOString();
 
-      const updated = await ctrl.updateFile({
-        params: { id: uploaded.id },
-        body: { expirationDate: newExpiration },
-      });
+      const updated = await ctrl.updateFile(
+        {
+          params: { id: uploaded.id },
+          body: { expirationDate: newExpiration },
+        },
+        asAdmin,
+      );
 
       expect(updated.expirationDate).toBe(newExpiration);
     });
@@ -340,21 +365,24 @@ describe("FileController", () => {
       const { ctrl, dtp } = await setup();
       const file = createFile("test content", { name: "original.txt" });
 
-      const uploaded = await ctrl.uploadFile({
-        body: { file },
-        query: {},
-      });
+      const uploaded = await ctrl.uploadFile(
+        { body: { file }, query: {} },
+        asAdmin,
+      );
 
       const newExpiration = dtp.now().add(3, "days").toISOString();
 
-      const updated = await ctrl.updateFile({
-        params: { id: uploaded.id },
-        body: {
-          name: "updated.txt",
-          tags: ["tag1", "tag2"],
-          expirationDate: newExpiration,
+      const updated = await ctrl.updateFile(
+        {
+          params: { id: uploaded.id },
+          body: {
+            name: "updated.txt",
+            tags: ["tag1", "tag2"],
+            expirationDate: newExpiration,
+          },
         },
-      });
+        asAdmin,
+      );
 
       expect(updated.name).toBe("updated.txt");
       expect(updated.tags).toEqual(["tag1", "tag2"]);
@@ -365,10 +393,13 @@ describe("FileController", () => {
       const { ctrl } = await setup();
 
       await expect(
-        ctrl.updateFile({
-          params: { id: "00000000-0000-0000-0000-000000000000" },
-          body: { name: "new-name.txt" },
-        }),
+        ctrl.updateFile(
+          {
+            params: { id: "00000000-0000-0000-0000-000000000000" },
+            body: { name: "new-name.txt" },
+          },
+          asAdmin,
+        ),
       ).rejects.toThrow();
     });
   });
@@ -386,7 +417,10 @@ describe("FileController", () => {
         createFile("content", { name: "report-2025.pdf" }),
       );
 
-      const results = await ctrl.findFiles({ query: { name: "report" } });
+      const results = await ctrl.findFiles(
+        { query: { name: "report" } },
+        asAdmin,
+      );
       expect(results.content.length).toBe(2);
       expect(results.content.every((f) => f.name.includes("report"))).toBe(
         true,
@@ -405,9 +439,10 @@ describe("FileController", () => {
         createFile("content", { name: "file3.pdf", type: "application/pdf" }),
       );
 
-      const results = await ctrl.findFiles({
-        query: { mimeType: "application/pdf" },
-      });
+      const results = await ctrl.findFiles(
+        { query: { mimeType: "application/pdf" } },
+        asAdmin,
+      );
       expect(results.content.length).toBe(2);
       expect(
         results.content.every((f) => f.mimeType === "application/pdf"),
@@ -429,7 +464,10 @@ describe("FileController", () => {
         user: { id: user1Id, realm: "test", name: "User 1" },
       });
 
-      const results = await ctrl.findFiles({ query: { creator: user1Id } });
+      const results = await ctrl.findFiles(
+        { query: { creator: user1Id } },
+        asAdmin,
+      );
       expect(results.content.length).toBe(2);
       expect(results.content.every((f) => f.creator === user1Id)).toBe(true);
     });
@@ -446,19 +484,17 @@ describe("FileController", () => {
       await service.uploadFile(createFile("content", { name: "file2.txt" }));
       await service.uploadFile(createFile("content", { name: "file3.txt" }));
 
-      // Filter for files created after start time (should get all 3)
-      const results = await ctrl.findFiles({
-        query: { createdAfter: startTime },
-      });
-
+      const results = await ctrl.findFiles(
+        { query: { createdAfter: startTime } },
+        asAdmin,
+      );
       expect(results.content.length).toBe(3);
 
-      // Filter for files created before a future date (should get all 3)
       const futureTime = dtp.now().add(1, "hour").toISOString();
-      const results2 = await ctrl.findFiles({
-        query: { createdBefore: futureTime },
-      });
-
+      const results2 = await ctrl.findFiles(
+        { query: { createdBefore: futureTime } },
+        asAdmin,
+      );
       expect(results2.content.length).toBe(3);
     });
 
@@ -482,14 +518,17 @@ describe("FileController", () => {
         { user: { id: userId, realm: "test", name: "User" } },
       );
 
-      const results = await ctrl.findFiles({
-        query: {
-          name: "report",
-          mimeType: "application/pdf",
-          creator: userId,
-          tags: ["important"],
+      const results = await ctrl.findFiles(
+        {
+          query: {
+            name: "report",
+            mimeType: "application/pdf",
+            creator: userId,
+            tags: ["important"],
+          },
         },
-      });
+        asAdmin,
+      );
 
       expect(results.content.length).toBe(1);
       expect(results.content[0].name).toBe("report.pdf");
@@ -502,28 +541,29 @@ describe("FileController", () => {
 
       // Upload
       const file = createFile("Lifecycle test", { name: "lifecycle.txt" });
-      const uploaded = await ctrl.uploadFile({
-        body: { file },
-        query: {},
-      });
+      const uploaded = await ctrl.uploadFile(
+        { body: { file }, query: {} },
+        asAdmin,
+      );
 
       // List
-      const listResult = await ctrl.findFiles({ query: {} });
+      const listResult = await ctrl.findFiles({ query: {} }, asAdmin);
       expect(listResult.content).toContainEqual(
         expect.objectContaining({ id: uploaded.id }),
       );
 
       // Stream
-      const streamed = await ctrl.streamFile({
-        params: { id: uploaded.id },
-      });
+      const streamed = await ctrl.streamFile(
+        { params: { id: uploaded.id } },
+        asAdmin,
+      );
       expect(await streamed.text()).toBe("Lifecycle test");
 
       // Delete
-      await ctrl.deleteFile({ params: { id: uploaded.id } });
+      await ctrl.deleteFile({ params: { id: uploaded.id } }, asAdmin);
 
       // Verify deletion
-      const finalList = await ctrl.findFiles({ query: {} });
+      const finalList = await ctrl.findFiles({ query: {} }, asAdmin);
       expect(
         finalList.content.find((f) => f.id === uploaded.id),
       ).toBeUndefined();
@@ -532,27 +572,33 @@ describe("FileController", () => {
     it("should handle multiple files with different properties", async () => {
       const { ctrl, dtp, service } = await setup();
 
-      // Upload various files
-      await ctrl.uploadFile({
-        body: { file: createFile("File 1", { name: "file1.txt" }) },
-        query: {},
-      });
+      await ctrl.uploadFile(
+        {
+          body: { file: createFile("File 1", { name: "file1.txt" }) },
+          query: {},
+        },
+        asAdmin,
+      );
 
       await service.uploadFile(createFile("File 2", { name: "file2.txt" }), {
         tags: ["important"],
       });
 
-      await ctrl.uploadFile({
-        body: { file: createFile("File 3", { name: "file3.txt" }) },
-        query: { expirationDate: dtp.now().add(1, "hour").toISOString() },
-      });
+      await ctrl.uploadFile(
+        {
+          body: { file: createFile("File 3", { name: "file3.txt" }) },
+          query: { expirationDate: dtp.now().add(1, "hour").toISOString() },
+        },
+        asAdmin,
+      );
 
-      const allFiles = await ctrl.findFiles({ query: {} });
+      const allFiles = await ctrl.findFiles({ query: {} }, asAdmin);
       expect(allFiles.content.length).toBe(3);
 
-      const taggedFiles = await ctrl.findFiles({
-        query: { tags: ["important"] },
-      });
+      const taggedFiles = await ctrl.findFiles(
+        { query: { tags: ["important"] } },
+        asAdmin,
+      );
       expect(taggedFiles.content.length).toBe(1);
     });
   });

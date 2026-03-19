@@ -1,4 +1,5 @@
 import { $inject, t } from "alepha";
+import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 import { fileQuerySchema } from "../schemas/fileQuerySchema.ts";
@@ -21,6 +22,7 @@ export class FileController {
   public readonly findFiles = $action({
     path: this.url,
     group: `admin:${this.group}`,
+    use: [$secure({ permissions: ["admin:file:read"] })],
     description: "List files with filtering and pagination",
     schema: {
       query: fileQuerySchema,
@@ -37,6 +39,7 @@ export class FileController {
     method: "DELETE",
     path: `${this.url}/:id`,
     group: `admin:${this.group}`,
+    use: [$secure({ permissions: ["admin:file:delete"] })],
     description: "Delete a file",
     schema: {
       params: t.object({
@@ -55,6 +58,7 @@ export class FileController {
   public readonly uploadFile = $action({
     path: this.url,
     group: this.group,
+    use: [$secure({ permissions: ["file:create"] })],
     description: "Upload a new file",
     schema: {
       body: t.object({
@@ -81,6 +85,7 @@ export class FileController {
     method: "PATCH",
     path: `${this.url}/:id`,
     group: `admin:${this.group}`,
+    use: [$secure({ permissions: ["admin:file:update"] })],
     description: "Update file metadata",
     schema: {
       params: t.object({
@@ -106,6 +111,7 @@ export class FileController {
     group: this.group,
     description: "Download a file",
     use: [
+      $secure({ permissions: ["file:read"] }),
       $etag({
         control: {
           public: true,

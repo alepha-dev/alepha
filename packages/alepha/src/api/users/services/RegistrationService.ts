@@ -88,7 +88,8 @@ export class RegistrationService {
       userRealmName,
     });
 
-    const realmSettings = this.realmProvider.getRealm(userRealmName).settings;
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const realmSettings = await realm.getSettings();
 
     // Check if registration is allowed
     if (realmSettings?.registrationAllowed === false) {

@@ -1,4 +1,5 @@
 import { $inject, Alepha, AlephaError } from "alepha";
+import type { ParameterPrimitive } from "alepha/api/parameters";
 import { $repository, type Repository } from "alepha/orm";
 import {
   type RealmAuthSettings,
@@ -20,6 +21,8 @@ export interface Realm {
   repositories: RealmRepositories;
   settings: RealmAuthSettings;
   features: RealmFeatures;
+  settingsParameter?: ParameterPrimitive<typeof realmAuthSettingsAtom.schema>;
+  getSettings(): Promise<RealmAuthSettings>;
 }
 
 export class RealmProvider {
@@ -32,6 +35,12 @@ export class RealmProvider {
   protected realms = new Map<string, Realm>();
 
   public register(realmName: string, realmOptions: RealmOptions = {}) {
+    if (realmName.includes(".")) {
+      throw new AlephaError(
+        `Realm name "${realmName}" must not contain dots — dots are reserved for parameter tree paths`,
+      );
+    }
+
     // Merge features with defaults
     const features: RealmFeatures = {
       sessionPurge: false,
@@ -43,7 +52,7 @@ export class RealmProvider {
       ...realmOptions.features,
     };
 
-    this.realms.set(realmName, {
+    const realm: Realm = {
       name: realmName,
       repositories: {
         identities: realmOptions.entities?.identities ?? this.defaultIdentities,
@@ -64,7 +73,14 @@ export class RealmProvider {
         },
       },
       features,
-    });
+      getSettings: async function () {
+        if (this.settingsParameter) {
+          return await this.settingsParameter.get();
+        }
+        return this.settings;
+      },
+    };
+    this.realms.set(realmName, realm);
     return this.getRealm(realmName);
   }
 

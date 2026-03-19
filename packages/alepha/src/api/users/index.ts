@@ -29,7 +29,6 @@ export * from "./entities/sessions.ts";
 export * from "./entities/users.ts";
 export * from "./jobs/UserJobs.ts";
 export * from "./notifications/UserNotifications.ts";
-export * from "./parameters/UserParameters.ts";
 export * from "./primitives/$realm.ts";
 export * from "./providers/RealmProvider.ts";
 export * from "./schemas/completePasswordResetRequestSchema.ts";

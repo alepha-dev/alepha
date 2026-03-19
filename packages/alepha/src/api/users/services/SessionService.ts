@@ -62,7 +62,9 @@ export class SessionService {
   ): Promise<boolean> {
     if (user.roles.includes("admin")) return false;
 
-    const { settings, name } = this.realmProvider.getRealm(userRealmName);
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const settings = await realm.getSettings();
+    const { name } = realm;
     const adminEmails = settings.adminEmails ?? [];
     const adminUsernames = settings.adminUsernames ?? [];
 
@@ -166,7 +168,9 @@ export class SessionService {
     password: string,
     userRealmName?: string,
   ): Promise<UserEntity> {
-    const { settings, name } = this.realmProvider.getRealm(userRealmName);
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const settings = await realm.getSettings();
+    const { name } = realm;
     const { loginRateLimit } = settings;
     const isEmail = username.includes("@");
     const isPhone = /^[+\d][\d\s()-]+$/.test(username);

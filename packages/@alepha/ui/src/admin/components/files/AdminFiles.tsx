@@ -103,7 +103,7 @@ const AdminFiles = () => {
             fit: true,
             value: (item) => {
               const Icon = getFileIcon(item.mimeType);
-              const url = `/files/${item.id}`;
+              const url = `/api/files/${item.id}`;
 
               if (isImage(item.mimeType)) {
                 return (
@@ -200,7 +200,7 @@ const AdminFiles = () => {
             icon: IconDownload,
             skipRefresh: true,
             onClick: () => {
-              window.open(`/files/${item.id}`, "_blank");
+              window.open(`/api/files/${item.id}`, "_blank");
             },
           },
         ]}

@@ -1,6 +1,6 @@
 import { $context } from "alepha";
 import { AlephaApiKeys, ApiKeyService } from "alepha/api/keys";
-import { AlephaApiParameters } from "alepha/api/parameters";
+import { $parameter, AlephaApiParameters } from "alepha/api/parameters";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import type { Repository } from "alepha/orm";
 import {
@@ -21,7 +21,10 @@ import {
   type WithLinkFn,
   type WithLoginFn,
 } from "alepha/server/auth";
-import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
+import {
+  type RealmAuthSettings,
+  realmAuthSettingsAtom,
+} from "../atoms/realmAuthSettingsAtom.ts";
 import { UserAudits } from "../audits/UserAudits.ts";
 import { UserBuckets } from "../buckets/UserBuckets.ts";
 import type { identities } from "../entities/identities.ts";
@@ -99,11 +102,6 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   if (features.notifications) {
     alepha.with(UserNotifications);
     alepha.with(AlephaApiVerification);
-  }
-
-  if (features.parameters) {
-    // for now, we don't have $parameter related to users, we just register the module
-    alepha.with(AlephaApiParameters);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -208,6 +206,18 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     }
 
     alepha.with(() => auth);
+  }
+
+  if (features.parameters) {
+    alepha.with(AlephaApiParameters);
+    const settingsParam = $parameter({
+      name: `api.realms.settings.${name}`,
+      description: `Authentication and registration settings for realm "${name}"`,
+      schema: realmAuthSettingsAtom.schema,
+      default: realmRegistration.settings,
+    });
+    realmRegistration.settingsParameter = settingsParam;
+    alepha.with(() => ({ [`realmSettings_${name}`]: settingsParam }));
   }
 
   return realm;
