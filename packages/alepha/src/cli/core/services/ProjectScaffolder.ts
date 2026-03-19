@@ -547,7 +547,7 @@ export class ProjectScaffolder {
 
     await run(`${pmName} run lint`, {
       alias: "running linter",
-      root: installRoot,
+      root,
     });
 
     // Initialize git repository if not in a workspace package
