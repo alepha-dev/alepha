@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { AlephaCache } from "alepha/cache";
 import { AlephaEmail } from "alepha/email";
 import { AdminIdentityController } from "./controllers/AdminIdentityController.ts";
 import { AdminSessionController } from "./controllers/AdminSessionController.ts";
@@ -75,6 +76,7 @@ export const AlephaApiUsers = $module({
   name: "alepha.api.users",
   services: [
     AlephaEmail,
+    AlephaCache,
     RealmProvider,
     SessionService,
     SessionCrudService,

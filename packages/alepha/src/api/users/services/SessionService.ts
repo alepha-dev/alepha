@@ -1,6 +1,7 @@
 import { randomInt } from "node:crypto";
 import { $inject, Alepha } from "alepha";
 import type { FileController } from "alepha/api/files";
+import { CacheProvider } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
@@ -24,6 +25,7 @@ export class SessionService {
   protected readonly log = $logger();
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly fileController = $client<FileController>();
+  protected readonly cacheProvider = $inject(CacheProvider);
 
   protected userAudits(realmName?: string) {
     const realm = this.realmProvider.getRealm(realmName);
@@ -102,6 +104,59 @@ export class SessionService {
     return new Promise((resolve) => setTimeout(resolve, randomInt(50, 201)));
   }
 
+  protected static readonly LOGIN_CACHE_NAME = "login-rate-limit";
+
+  /**
+   * Check if a login key is currently locked out.
+   * Read-only — does not increment the counter.
+   */
+  protected async isLoginLocked(key: string, max: number): Promise<boolean> {
+    try {
+      const count = await this.cacheProvider.getTyped<number>(
+        SessionService.LOGIN_CACHE_NAME,
+        key,
+      );
+      return count != null && count >= max;
+    } catch (error) {
+      this.log.warn(
+        "Failed to check login rate limit, allowing attempt",
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Record a failed login attempt. Uses getTyped + setTyped (not incr) so that
+   * each write refreshes the TTL — implementing sliding-window behavior.
+   *
+   * Returns `true` if this failure just crossed the lockout threshold.
+   */
+  protected async recordFailedLogin(
+    key: string,
+    max: number,
+    windowMs: number,
+  ): Promise<boolean> {
+    try {
+      const count =
+        (await this.cacheProvider.getTyped<number>(
+          SessionService.LOGIN_CACHE_NAME,
+          key,
+        )) ?? 0;
+      const newCount = count + 1;
+      await this.cacheProvider.setTyped(
+        SessionService.LOGIN_CACHE_NAME,
+        key,
+        newCount,
+        { ttl: windowMs },
+      );
+      return newCount === max;
+    } catch (error) {
+      this.log.warn("Failed to record failed login attempt", error);
+      return false;
+    }
+  }
+
   /**
    * Validate user credentials and return the user if valid.
    */
@@ -112,11 +167,29 @@ export class SessionService {
     userRealmName?: string,
   ): Promise<UserEntity> {
     const { settings, name } = this.realmProvider.getRealm(userRealmName);
+    const { loginRateLimit } = settings;
     const isEmail = username.includes("@");
     const isPhone = /^[+\d][\d\s()-]+$/.test(username);
     const isUsername = !isEmail && !isPhone;
     const identities = this.identities(userRealmName);
     const users = this.users(userRealmName);
+
+    // IP rate limit check (global, cross-realm) — before any DB work
+    const request = this.alepha.store.get("alepha.http.request");
+    const ipKey = request?.ip ? `login:ip:${request.ip}` : undefined;
+
+    if (ipKey) {
+      const ipLocked = await this.isLoginLocked(
+        ipKey,
+        loginRateLimit.ipMaxAttempts,
+      );
+      if (ipLocked) {
+        this.log.warn("Login blocked — IP rate limit exceeded", {
+          ip: request?.ip,
+        });
+        throw new InvalidCredentialsError();
+      }
+    }
 
     await this.randomDelay();
 
@@ -180,6 +253,42 @@ export class SessionService {
           metadata: { provider, username },
         });
 
+        // Only increment IP counter (no user ID to track)
+        if (ipKey) {
+          const justLocked = await this.recordFailedLogin(
+            ipKey,
+            loginRateLimit.ipMaxAttempts,
+            loginRateLimit.windowMs,
+          );
+          if (justLocked) {
+            await this.userAudits(userRealmName)?.record(
+              "security",
+              "rate_limited",
+              {
+                userRealm: name,
+                success: false,
+                description:
+                  "IP temporarily locked due to too many failed login attempts",
+                metadata: { ip: request?.ip },
+              },
+            );
+          }
+        }
+
+        throw new InvalidCredentialsError();
+      }
+
+      // Account rate limit check (per-realm)
+      const accountKey = `login:account:${name}:${user.id}`;
+      const accountLocked = await this.isLoginLocked(
+        accountKey,
+        loginRateLimit.accountMaxAttempts,
+      );
+      if (accountLocked) {
+        this.log.warn("Login blocked — account rate limit exceeded", {
+          userId: user.id,
+          realm: name,
+        });
         throw new InvalidCredentialsError();
       }
 
@@ -220,6 +329,48 @@ export class SessionService {
           metadata: { provider, username },
         });
 
+        // Record failed attempt on both IP and account counters
+        if (ipKey) {
+          const ipJustLocked = await this.recordFailedLogin(
+            ipKey,
+            loginRateLimit.ipMaxAttempts,
+            loginRateLimit.windowMs,
+          );
+          if (ipJustLocked) {
+            await this.userAudits(userRealmName)?.record(
+              "security",
+              "rate_limited",
+              {
+                userRealm: name,
+                success: false,
+                description:
+                  "IP temporarily locked due to too many failed login attempts",
+                metadata: { ip: request?.ip },
+              },
+            );
+          }
+        }
+
+        const accountJustLocked = await this.recordFailedLogin(
+          accountKey,
+          loginRateLimit.accountMaxAttempts,
+          loginRateLimit.windowMs,
+        );
+        if (accountJustLocked) {
+          await this.userAudits(userRealmName)?.record(
+            "security",
+            "rate_limited",
+            {
+              userRealm: name,
+              resourceId: user.id,
+              success: false,
+              description:
+                "Account temporarily locked due to too many failed login attempts",
+              metadata: { userId: user.id },
+            },
+          );
+        }
+
         throw new InvalidCredentialsError();
       }
 
@@ -238,7 +389,6 @@ export class SessionService {
       return user;
     } catch (error) {
       if (error instanceof InvalidCredentialsError) {
-        // TODO: store failed login attempts (with request data) and lock account after threshold
         throw error;
       }
 

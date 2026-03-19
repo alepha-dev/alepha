@@ -58,6 +58,10 @@ export class RealmProvider {
           ...realmAuthSettingsAtom.options.default.passwordPolicy,
           ...realmOptions.settings?.passwordPolicy,
         },
+        loginRateLimit: {
+          ...realmAuthSettingsAtom.options.default.loginRateLimit,
+          ...realmOptions.settings?.loginRateLimit,
+        },
       },
       features,
     });

@@ -89,6 +89,25 @@ export const realmAuthSettingsAtom = $atom({
         description: "Require at least one special character",
       }),
     }),
+    loginRateLimit: t.object({
+      ipMaxAttempts: t.integer({
+        description:
+          "Max failed login attempts per IP before temporary lockout",
+        default: 15,
+        minimum: 1,
+      }),
+      accountMaxAttempts: t.integer({
+        description:
+          "Max failed login attempts per account before temporary lockout",
+        default: 5,
+        minimum: 1,
+      }),
+      windowMs: t.integer({
+        description: "Rate limit window duration in milliseconds",
+        default: 15 * 60 * 1000,
+        minimum: 1000,
+      }),
+    }),
   }),
   default: {
     // for a fresh hello world setup, we accept registration and email login
@@ -110,6 +129,11 @@ export const realmAuthSettingsAtom = $atom({
       requireLowercase: true,
       requireNumbers: true,
       requireSpecialCharacters: false,
+    },
+    loginRateLimit: {
+      ipMaxAttempts: 15,
+      accountMaxAttempts: 5,
+      windowMs: 15 * 60 * 1000,
     },
   },
 });
