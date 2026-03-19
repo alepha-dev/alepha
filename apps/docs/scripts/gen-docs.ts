@@ -674,23 +674,45 @@ export class DocsCommand {
         throw error;
       }
 
+      // Resolve package paths (handling @scope/ directories)
+      const packagePaths: { name: string; path: string }[] = [];
+      for (const d of dirents) {
+        if (!d.isDirectory()) continue;
+        if (d.name.startsWith("@")) {
+          // Scoped directory — recurse one level
+          const scopeDir = join(packagesDir, d.name);
+          const scopeEntries = await fs.readdir(scopeDir, {
+            withFileTypes: true,
+          });
+          for (const sd of scopeEntries) {
+            if (sd.isDirectory()) {
+              packagePaths.push({
+                name: `${d.name}/${sd.name}`,
+                path: join(scopeDir, sd.name),
+              });
+            }
+          }
+        } else {
+          packagePaths.push({
+            name: d.name,
+            path: join(packagesDir, d.name),
+          });
+        }
+      }
+
       // First pass: collect package names and alepha module structure
       const alephaModules: string[] = [];
       const allPackageNames: string[] = [];
 
-      for (const d of dirents) {
-        if (!d.isDirectory()) continue;
+      for (const entry of packagePaths) {
         try {
           const pkg = JSON.parse(
-            await fs.readFile(
-              join(packagesDir, d.name, "package.json"),
-              "utf-8",
-            ),
+            await fs.readFile(join(entry.path, "package.json"), "utf-8"),
           );
           if (pkg.private) continue;
           allPackageNames.push(pkg.name);
           if (pkg.name === "alepha") {
-            const mods = this.extractModules(pkg, join(packagesDir, d.name));
+            const mods = this.extractModules(pkg, entry.path);
             if (mods) alephaModules.push(...mods.map((m) => m.name));
           }
         } catch {
@@ -719,11 +741,9 @@ export class DocsCommand {
         readmes: 0,
       };
 
-      for (const dirent of dirents) {
-        if (!dirent.isDirectory()) continue;
-
-        await run(`scan ${dirent.name}`, async () => {
-          const packagePath = join(packagesDir, dirent.name);
+      for (const entry of packagePaths) {
+        await run(`scan ${entry.name}`, async () => {
+          const packagePath = entry.path;
           let pkgJson: any;
           try {
             pkgJson = JSON.parse(
@@ -785,7 +805,7 @@ export class DocsCommand {
               join(packagesDocsDir, `${dirName}.md`),
               this.generateModuleMarkdown(
                 pkgJson,
-                dirent.name,
+                entry.name,
                 realPkgName,
                 data,
               ),

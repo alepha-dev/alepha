@@ -1,4 +1,4 @@
-# @alepha/bucket-s3 - Bucket S3
+# @alepha/bucket-s3 - @alepha/bucket S3
 
 ## Installation
 

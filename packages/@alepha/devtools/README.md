@@ -1,14 +1,16 @@
-# Alepha - Devtools
+# Alepha @alepha/devtools
+
+Developer tools for Alepha applications.
 
 ## Installation
 
-Part of the `alepha` package. Import from `alepha/devtools`.
+This package is part of the Alepha framework and can be installed via the all-in-one package:
 
 ```bash
 npm install alepha
 ```
 
-## Overview
+## Module
 
 Runtime inspection and debugging UI.
 

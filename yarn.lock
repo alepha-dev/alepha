@@ -33,6 +33,7 @@ __metadata:
     alepha: "npm:0.19.0"
     react: "npm:^19.2.4"
     react-dom: "npm:^19.2.4"
+    tsdown: "npm:^0.21.4"
     typescript: "npm:^5.9.3"
     vite: "npm:^8.0.0"
     vitest: "npm:^4.1.0"

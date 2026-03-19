@@ -1,8 +1,8 @@
-# @alepha/mqtt
+# @alepha/mqtt - Core
+
+MQTT client and topic provider for Alepha framework.
 
 ## Installation
-
-Standalone package. Import from `@alepha/mqtt`.
 
 ```bash
 npm install @alepha/mqtt

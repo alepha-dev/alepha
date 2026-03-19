@@ -104,6 +104,11 @@ const buildRealmConfig = (props: {
         requireNumbers: true,
         requireSpecialCharacters: false,
       },
+      loginRateLimit: {
+        ipMaxAttempts: 15,
+        accountMaxAttempts: 5,
+        windowMs: 15 * 60 * 1000,
+      },
     },
   };
 };

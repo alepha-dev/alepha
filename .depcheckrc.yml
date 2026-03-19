@@ -1,8 +1,10 @@
 ignores:
     - 'alepha'
+    - '@alepha/ui'
+    - '@alepha/mqtt'
+    - '@alepha/devtools'
     - '@vitejs/plugin-react'
     - 'jsdom'
-    - '@alepha/ui'
     - '@vitest/coverage-v8'
     - 'drizzle-kit'
     - 'swagger-ui-dist'
@@ -28,6 +30,7 @@ ignores:
     - 'tailwindcss'
     - '@tailwindcss/vite'
     - '@types/react-is'
+
 ignore-patterns:
     - 'dist'
     - 'assets'

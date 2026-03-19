@@ -1,4 +1,3 @@
-import { devMetadataSchema } from "@alepha/devtools";
 import {
   ActionButton,
   DarkModeButton,
@@ -18,6 +17,7 @@ import {
 import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { devMetadataSchema } from "../../schemas/DevMetadata.ts";
 
 export const DevLayout = () => {
   const http = useInject(HttpClient);

@@ -1,8 +1,6 @@
-# @alepha/mqtt/topic
+# @alepha/mqtt - Topic
 
 ## Installation
-
-Part of the `@alepha/mqtt` package. Import from `@alepha/mqtt/topic`.
 
 ```bash
 npm install @alepha/mqtt

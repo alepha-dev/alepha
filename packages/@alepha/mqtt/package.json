@@ -31,10 +31,11 @@
     "alepha": "0.19.0"
   },
   "scripts": {
-    "lint": "alepha lint",
+    "lint": "alepha lint && yarn build:check",
     "typecheck": "alepha typecheck",
     "test": "alepha test",
-    "build": "node ../alepha/scripts/build.ts"
+    "build": "node ../../alepha/scripts/build.ts",
+    "build:check": "node ../../alepha/scripts/build.ts --check"
   },
   "repository": {
     "type": "git",

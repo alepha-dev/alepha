@@ -1,4 +1,4 @@
-# @alepha/protobuf - Protobuf
+# @alepha/protobuf - @alepha/protobuf
 
 ## Installation
 

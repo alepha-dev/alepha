@@ -13,7 +13,7 @@ import {
   testNonExistentFileError,
   testUploadAndExistence,
   testUploadIntoBuckets,
-} from "../../../alepha/src/bucket/__tests__/shared.ts";
+} from "../../../../alepha/src/bucket/__tests__/shared.ts";
 import { AlephaBucketS3, S3FileStorageProvider } from "../index.ts";
 
 const alepha = Alepha.create().with(AlephaBucketS3).with(TestApp);
