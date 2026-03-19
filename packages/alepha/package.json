@@ -215,13 +215,6 @@
       "import": "./src/datetime/index.ts",
       "default": "./src/datetime/index.ts"
     },
-    "./devtools": {
-      "types": "./src/devtools/index.ts",
-      "react-native": "./src/devtools/index.browser.ts",
-      "browser": "./src/devtools/index.browser.ts",
-      "import": "./src/devtools/index.ts",
-      "default": "./src/devtools/index.ts"
-    },
     "./email/brevo": {
       "types": "./src/email/brevo/index.ts",
       "import": "./src/email/brevo/index.ts",

@@ -20,7 +20,7 @@ import {
 } from "@xyflow/react";
 import { useAction, useInject } from "alepha/react";
 import "@xyflow/react/dist/style.css";
-import { devMetadataSchema } from "alepha/devtools";
+import { devMetadataSchema } from "@alepha/devtools";
 import { HttpClient } from "alepha/server";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getModuleColor } from "./constants.ts";

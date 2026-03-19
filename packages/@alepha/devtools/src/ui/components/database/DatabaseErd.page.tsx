@@ -1,5 +1,5 @@
+import { devMetadataSchema } from "@alepha/devtools";
 import { Flex } from "@mantine/core";
-import { devMetadataSchema } from "alepha/devtools";
 import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useEffect, useState } from "react";

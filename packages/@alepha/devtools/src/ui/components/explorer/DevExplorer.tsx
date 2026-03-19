@@ -1,8 +1,8 @@
+import { devMetadataSchema } from "@alepha/devtools";
 import { Flex, ui } from "@alepha/ui";
 import { ScrollArea, Text, TextInput } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import { t } from "alepha";
-import { devMetadataSchema } from "alepha/devtools";
 import { useInject } from "alepha/react";
 import { useQueryParams } from "alepha/react/router";
 import { HttpClient } from "alepha/server";

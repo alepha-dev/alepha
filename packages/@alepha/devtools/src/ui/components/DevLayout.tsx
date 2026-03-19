@@ -1,3 +1,4 @@
+import { devMetadataSchema } from "@alepha/devtools";
 import {
   ActionButton,
   DarkModeButton,
@@ -14,7 +15,6 @@ import {
   IconSitemap,
   IconTopologyRing,
 } from "@tabler/icons-react";
-import { devMetadataSchema } from "alepha/devtools";
 import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useCallback, useEffect, useMemo, useState } from "react";

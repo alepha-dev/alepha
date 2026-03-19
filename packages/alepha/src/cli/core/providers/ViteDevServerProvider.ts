@@ -1,10 +1,10 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import { __alephaRef, $inject, type Alepha, AlephaError } from "alepha";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import type { Plugin, ViteDevServer } from "vite";
-import { cliAssets } from "../assets.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import type { AppEntry } from "./AppEntryProvider.ts";
 
@@ -60,6 +60,7 @@ export class ViteDevServerProvider {
   protected isReloading = false;
   protected needsBrowserReload = false;
   protected currentReloadPromise: Promise<void> | null = null;
+  protected devtoolsAssetsPath: string | undefined;
 
   /**
    * Initialize the dev server and load Alepha.
@@ -204,8 +205,21 @@ export class ViteDevServerProvider {
       name: "alepha",
 
       configureServer: (server) => {
-        // Devtools live reload via SSE
+        // Resolve @alepha/devtools assets path (if installed)
         if (!this.options.noDevtools) {
+          try {
+            const require = createRequire(import.meta.url);
+            const pkgPath = require.resolve("@alepha/devtools/package.json");
+            this.devtoolsAssetsPath = join(dirname(pkgPath), "assets/ui");
+          } catch {
+            this.log.debug("@alepha/devtools not installed, skipping devtools");
+          }
+        }
+
+        // Devtools live reload via SSE
+        if (this.devtoolsAssetsPath) {
+          const assetsPath = this.devtoolsAssetsPath;
+
           server.middlewares.use(async (req, res, next) => {
             const url = req.url || "/";
 
@@ -217,7 +231,7 @@ export class ViteDevServerProvider {
               return next();
             }
 
-            const indexPath = join(cliAssets.devtools, "index.html");
+            const indexPath = join(assetsPath, "index.html");
 
             try {
               let html = await readFile(indexPath, "utf-8");
@@ -467,9 +481,13 @@ export class ViteDevServerProvider {
     // Expose Vite server to Alepha for Logger SSR stack trace fixing
     alepha.store.set("alepha.vite.server" as any, this.server);
 
-    if (!this.options.noDevtools) {
-      const mod = await this.server.ssrLoadModule("alepha/devtools");
-      alepha.with(mod.AlephaDevtools);
+    if (this.devtoolsAssetsPath) {
+      try {
+        const mod = await this.server.ssrLoadModule("@alepha/devtools");
+        alepha.with(mod.AlephaDevtools);
+      } catch (err) {
+        this.log.warn("Failed to load @alepha/devtools", err);
+      }
     }
 
     this.alepha = alepha;

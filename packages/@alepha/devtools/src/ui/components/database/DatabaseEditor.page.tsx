@@ -1,4 +1,4 @@
-import { devMetadataSchema } from "alepha/devtools";
+import { devMetadataSchema } from "@alepha/devtools";
 import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useEffect, useState } from "react";

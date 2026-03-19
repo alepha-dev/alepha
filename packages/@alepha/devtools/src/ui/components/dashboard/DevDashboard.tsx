@@ -1,3 +1,4 @@
+import { devMetadataSchema } from "@alepha/devtools";
 import { Flex, ui } from "@alepha/ui";
 import {
   Badge,
@@ -24,7 +25,6 @@ import {
   IconStack2,
   IconVariable,
 } from "@tabler/icons-react";
-import { devMetadataSchema } from "alepha/devtools";
 import { useInject } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 import { HttpClient } from "alepha/server";

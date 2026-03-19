@@ -1,3 +1,5 @@
+import type { DevAtomMetadata } from "@alepha/devtools";
+import { devMetadataSchema } from "@alepha/devtools";
 import { ActionButton, Flex, JsonViewer, ui } from "@alepha/ui";
 import {
   Badge,
@@ -14,8 +16,6 @@ import {
   IconRefresh,
   IconSearch,
 } from "@tabler/icons-react";
-import type { DevAtomMetadata } from "alepha/devtools";
-import { devMetadataSchema } from "alepha/devtools";
 import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useCallback, useEffect, useMemo, useState } from "react";
