@@ -211,6 +211,7 @@ export class ViteDevServerProvider {
             const require = createRequire(import.meta.url);
             const pkgPath = require.resolve("@alepha/devtools/package.json");
             this.devtoolsAssetsPath = join(dirname(pkgPath), "assets/ui");
+            process.env.VITE_ALEPHA_DEVTOOLS = "true";
           } catch {
             this.log.debug("@alepha/devtools not installed, skipping devtools");
           }

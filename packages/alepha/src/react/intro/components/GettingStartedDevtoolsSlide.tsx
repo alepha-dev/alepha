@@ -1,15 +1,12 @@
-import { useAlepha } from "alepha/react";
 import type { GettingStartedSlide } from "./GettingStarted.tsx";
 
 /**
  * Hook that provides the devtools slide content.
- * Only shown in non-production environments where devtools are available.
- * Returns undefined if the app is running in production.
+ * Only shown when @alepha/devtools is installed and enabled.
+ * Returns undefined if devtools are not available.
  */
 export const useDevtoolsSlide = (): GettingStartedSlide | undefined => {
-  const alepha = useAlepha();
-
-  if (alepha.isProduction()) {
+  if (!import.meta.env.VITE_ALEPHA_DEVTOOLS) {
     return undefined;
   }
 
