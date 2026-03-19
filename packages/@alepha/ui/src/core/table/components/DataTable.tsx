@@ -90,7 +90,7 @@ const toAriaSort = (
   return "none";
 };
 
-const FIT_STYLE = { width: 1, whiteSpace: "nowrap" } as const;
+const FIT_STYLE = { width: 1, whiteSpace: "nowrap", minWidth: "fit-content" } as const;
 
 const DataTable = <T extends object, Filters extends TObject>(
   props: DataTableProps<T, Filters>,
