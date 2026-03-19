@@ -1,11 +1,9 @@
-import type { UnSubscribeFn } from "alepha/topic";
-
 /**
  * Abstract MQTT client provider.
  *
  * Low-level MQTT client for publish/subscribe messaging.
  * Analogous to `RedisProvider` — provides the transport layer
- * that higher-level modules like `alepha/topic/mqtt` build on.
+ * that higher-level modules like `@alepha/mqtt/topic` build on.
  */
 export abstract class MqttClientProvider {
   /**
@@ -40,7 +38,7 @@ export abstract class MqttClientProvider {
     topic: string,
     callback: MqttMessageCallback,
     options?: MqttSubscribeOptions,
-  ): Promise<UnSubscribeFn>;
+  ): Promise<() => Promise<void>>;
 
   /**
    * Unsubscribe from an MQTT topic.

@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { MqttJsClientProvider } from "alepha/mqtt";
+import { MqttJsClientProvider } from "@alepha/mqtt";
 ```
 
 ## Overview

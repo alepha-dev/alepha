@@ -28,6 +28,6 @@
     "typecheck": "alepha typecheck",
     "dev": "alepha dev --no-devtools",
     "build": "alepha build -t static && yarn copy-assets",
-    "copy-assets": "rm -rf ../alepha/assets/devtools-ui && cp -r dist/public ../alepha/assets/devtools-ui"
+    "copy-assets": "rm -rf ../../alepha/assets/devtools-ui && cp -r dist/public ../../alepha/assets/devtools-ui"
   }
 }

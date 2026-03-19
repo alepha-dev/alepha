@@ -10,7 +10,6 @@ import {
   t,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import type { UnSubscribeFn } from "alepha/topic";
 import type { MqttClient } from "mqtt";
 import {
   MqttClientProvider,
@@ -207,7 +206,7 @@ export class MqttJsClientProvider extends MqttClientProvider {
     topic: string,
     callback: MqttMessageCallback,
     options?: MqttSubscribeOptions,
-  ): Promise<UnSubscribeFn> {
+  ): Promise<() => Promise<void>> {
     await this.ensureConnected();
 
     if (!this.subscriptions.has(topic)) {

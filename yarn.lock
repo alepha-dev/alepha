@@ -5,9 +5,9 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
-"@alepha/bucket-s3@workspace:packages/bucket-s3":
+"@alepha/bucket-s3@workspace:packages/@alepha/bucket-s3":
   version: 0.0.0-use.local
-  resolution: "@alepha/bucket-s3@workspace:packages/bucket-s3"
+  resolution: "@alepha/bucket-s3@workspace:packages/@alepha/bucket-s3"
   dependencies:
     "@aws-sdk/client-s3": "npm:^3.1012.0"
     "@biomejs/biome": "npm:^2.4.8"
@@ -20,9 +20,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/devtools-ui@workspace:packages/devtools-ui":
+"@alepha/devtools-ui@workspace:packages/@alepha/devtools-ui":
   version: 0.0.0-use.local
-  resolution: "@alepha/devtools-ui@workspace:packages/devtools-ui"
+  resolution: "@alepha/devtools-ui@workspace:packages/@alepha/devtools-ui"
   dependencies:
     "@alepha/ui": "npm:0.19.0"
     "@biomejs/biome": "npm:^2.4.8"
@@ -39,9 +39,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/protobuf@workspace:packages/protobuf":
+"@alepha/mqtt@workspace:packages/@alepha/mqtt":
   version: 0.0.0-use.local
-  resolution: "@alepha/protobuf@workspace:packages/protobuf"
+  resolution: "@alepha/mqtt@workspace:packages/@alepha/mqtt"
+  dependencies:
+    "@biomejs/biome": "npm:^2.4.8"
+    alepha: "npm:0.19.0"
+    mqtt: "npm:^5.15.0"
+    typescript: "npm:^5.9.3"
+    vitest: "npm:^4.1.0"
+  peerDependencies:
+    alepha: 0.19.0
+  languageName: unknown
+  linkType: soft
+
+"@alepha/protobuf@workspace:packages/@alepha/protobuf":
+  version: 0.0.0-use.local
+  resolution: "@alepha/protobuf@workspace:packages/@alepha/protobuf"
   dependencies:
     alepha: "npm:0.19.0"
     protobufjs: "npm:^8.0.0"
@@ -53,9 +67,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/ui@npm:0.19.0, @alepha/ui@npm:^0.19.0, @alepha/ui@workspace:packages/alepha-ui":
+"@alepha/ui@npm:0.19.0, @alepha/ui@npm:^0.19.0, @alepha/ui@workspace:packages/@alepha/ui":
   version: 0.0.0-use.local
-  resolution: "@alepha/ui@workspace:packages/alepha-ui"
+  resolution: "@alepha/ui@workspace:packages/@alepha/ui"
   dependencies:
     "@biomejs/biome": "npm:^2.4.8"
     "@mantine/charts": "npm:^8.3.18"
@@ -5417,7 +5431,6 @@ __metadata:
     drizzle-orm: "npm:^0.45.1"
     jose: "npm:^6.2.2"
     jsdom: "npm:^29.0.0"
-    mqtt: "npm:^5.15.0"
     nodemailer: "npm:^8.0.3"
     openid-client: "npm:^6.8.2"
     postgres: "npm:^3.4.8"
@@ -11737,12 +11750,6 @@ __metadata:
   checksum: 10c0/4614e4292356cafade0b6031527eea9bc90f2372a22c012313be1dcc69a3b90c7338158b414539be863fa95bfcb2ddcd0587be696841af4e6679d85e62c060c7
   languageName: node
   linkType: hard
-
-"ride@workspace:apps/ride":
-  version: 0.0.0-use.local
-  resolution: "ride@workspace:apps/ride"
-  languageName: unknown
-  linkType: soft
 
 "roadmap@workspace:apps/roadmap":
   version: 0.0.0-use.local

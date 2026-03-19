@@ -1,6 +1,6 @@
+import { MqttClientProvider } from "@alepha/mqtt";
 import { $atom, $hook, $inject, $use, type Static, t } from "alepha";
 import { $logger } from "alepha/logger";
-import { MqttClientProvider } from "alepha/mqtt";
 import {
   type SubscribeCallback,
   TopicProvider,

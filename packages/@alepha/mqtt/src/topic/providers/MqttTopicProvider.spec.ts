@@ -1,13 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { MqttClientProvider, MqttJsClientProvider } from "@alepha/mqtt";
 import { Alepha, t } from "alepha";
-import { MqttClientProvider, MqttJsClientProvider } from "alepha/mqtt";
-import { $topic, TopicProvider } from "alepha/topic";
+import { $topic, AlephaTopic, TopicProvider } from "alepha/topic";
 import { describe, expect, it } from "vitest";
-import {
-  testTopicAsSub,
-  testTopicLateSubscribe,
-  testTopicParams,
-} from "../../core/__tests__/shared.ts";
 import { MqttTopicProvider } from "../index.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -58,11 +53,73 @@ describe("$topic - mqtt", () => {
   });
 
   it("should subscribe with handler", async () => {
-    await testTopicAsSub(MqttTopicProvider, configure);
+    let count = 0;
+    class A {
+      t = $topic({
+        name: "a",
+        schema: {
+          payload: t.object({ n: t.integer() }),
+        },
+        handler: async ({ payload }) => {
+          count += payload.n;
+        },
+      });
+    }
+
+    const app = Alepha.create({});
+
+    configure(app);
+
+    app
+      .with({
+        provide: TopicProvider,
+        use: MqttTopicProvider,
+      })
+      .with(A);
+
+    await app.start();
+
+    const a = app.inject(A);
+
+    await a.t.publish({ n: 123 });
+
+    await expect.poll(() => expect(count).toBe(123)).toBeTruthy();
   });
 
   it("should subscribe after start with provider", async () => {
-    await testTopicLateSubscribe(MqttTopicProvider, configure);
+    const alepha = Alepha.create();
+
+    configure(alepha);
+
+    alepha
+      .with({
+        provide: TopicProvider,
+        use: MqttTopicProvider,
+      })
+      .with(AlephaTopic);
+
+    await alepha.start();
+
+    const provider = alepha.inject(TopicProvider);
+
+    let count = 0;
+    const unsub = await provider.subscribe("inc", () => {
+      count += 1;
+    });
+    await provider.subscribe("inc10", () => {
+      count += 10;
+    });
+
+    expect(count).toBe(0);
+    await provider.publish("inc", "");
+    await provider.publish("inc10", "");
+    await expect.poll(() => expect(count).toBe(11)).toBeTruthy();
+
+    await unsub();
+
+    await provider.publish("inc", "");
+    await provider.publish("inc10", "");
+    await expect.poll(() => expect(count).toBe(21)).toBeTruthy();
   });
 
   it("should deliver retained message to new subscriber", {
@@ -122,7 +179,49 @@ describe("$topic - mqtt", () => {
   });
 
   it("should support parameterized topic names", async () => {
-    await testTopicParams(MqttTopicProvider, configure);
+    class TestParams {
+      sensor = $topic({
+        name: "devices/{deviceId}/sensor",
+        schema: {
+          params: t.object({ deviceId: t.text() }),
+          payload: t.object({ temp: t.number() }),
+        },
+      });
+    }
+
+    const app = Alepha.create();
+
+    configure(app);
+
+    app
+      .with({ provide: TopicProvider, use: MqttTopicProvider })
+      .with(TestParams);
+
+    await app.start();
+    const test = app.inject(TestParams);
+
+    const received: Array<{ deviceId: string; temp: number }> = [];
+    await test.sensor.subscribe(async (m) => {
+      received.push({ deviceId: m.params.deviceId, temp: m.payload.temp });
+    });
+
+    await test.sensor.publish({
+      params: { deviceId: "dev-1" },
+      payload: { temp: 22.5 },
+    });
+    await test.sensor.publish({
+      params: { deviceId: "dev-2" },
+      payload: { temp: 18.0 },
+    });
+
+    await expect
+      .poll(() => received)
+      .toEqual([
+        { deviceId: "dev-1", temp: 22.5 },
+        { deviceId: "dev-2", temp: 18.0 },
+      ]);
+
+    await app.stop();
   });
 
   it("should support QoS via mqtt options", async ({ expect }) => {

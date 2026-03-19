@@ -1,0 +1,56 @@
+{
+  "name": "@alepha/mqtt",
+  "description": "MQTT client and topic provider for Alepha framework.",
+  "keywords": [
+    "alepha",
+    "mqtt"
+  ],
+  "author": "Nicolas Foures",
+  "version": "0.19.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "main": "./src/core/index.ts",
+  "types": "./src/core/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "dependencies": {
+    "mqtt": "^5.15.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.8",
+    "alepha": "0.19.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  },
+  "peerDependencies": {
+    "alepha": "0.19.0"
+  },
+  "scripts": {
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "node ../alepha/scripts/build.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
+  "homepage": "https://github.com/feunard/alepha",
+  "exports": {
+    ".": {
+      "types": "./src/core/index.ts",
+      "import": "./src/core/index.ts",
+      "default": "./src/core/index.ts"
+    },
+    "./topic": {
+      "types": "./src/topic/index.ts",
+      "import": "./src/topic/index.ts",
+      "default": "./src/topic/index.ts"
+    }
+  }
+}
