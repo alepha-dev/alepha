@@ -1,19 +1,14 @@
-import type { ReactNode } from "react";
-import type { AlephaIntent } from "../interfaces/AlephaIntent.ts";
+import SectionHeader, { type SectionHeaderProps } from "./SectionHeader.tsx";
 
-export type HeadingProps = {
-  title: string | ReactNode;
-  description?: string | ReactNode;
-  icon?: ReactNode;
-  intent?: AlephaIntent;
-  loading?: boolean;
-  ellipsis?: boolean;
-  fill?: boolean;
-  tag?: string | ReactNode;
-};
+export type HeadingProps = SectionHeaderProps;
 
+/**
+ * Alias for SectionHeader.
+ *
+ * @deprecated Use `SectionHeader` instead.
+ */
 const Heading = (props: HeadingProps) => {
-  return <h1>Heading</h1>;
+  return <SectionHeader {...props} />;
 };
 
 export default Heading;
