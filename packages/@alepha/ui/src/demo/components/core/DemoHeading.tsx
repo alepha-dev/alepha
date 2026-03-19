@@ -1,4 +1,4 @@
-import { Flex, Panel, SectionHeader } from "@alepha/ui";
+import { Flex, Section, SectionHeader } from "@alepha/ui";
 import { IconUser } from "@tabler/icons-react";
 import { t } from "alepha";
 import Showcase from "../shared/Showcase.tsx";
@@ -6,7 +6,7 @@ import Showcase from "../shared/Showcase.tsx";
 const DemoHeading = () => {
   return (
     <Showcase
-      title="SectionHeader & Panel"
+      title="SectionHeader & Section"
       schema={t.object({})}
       initialValues={{}}
     >
@@ -29,32 +29,34 @@ const DemoHeading = () => {
             ]}
           />
 
-          <Panel title="Basic Panel">Panel body content goes here.</Panel>
+          <Section title="Basic Section">
+            Section body content goes here.
+          </Section>
 
-          <Panel
+          <Section
             title="With Icon & Actions"
             icon={IconUser}
-            subtitle="A panel with header features"
+            subtitle="A section with header features"
             actions={[{ children: "Edit", onClick: () => {} }]}
           >
-            Panel body with icon and actions.
-          </Panel>
+            Section body with icon and actions.
+          </Section>
 
-          <Panel
-            title="Collapsible Panel"
+          <Section
+            title="Collapsible Section"
             collapsible
             subtitle="Click header to toggle"
           >
             This content can be collapsed.
-          </Panel>
+          </Section>
 
-          <Panel title="Collapsed by Default" collapsible defaultCollapsed>
+          <Section title="Collapsed by Default" collapsible defaultCollapsed>
             This was hidden initially.
-          </Panel>
+          </Section>
 
-          <Panel>
-            Panel without header — just a bordered surface container.
-          </Panel>
+          <Section>
+            Section without header — just a bordered surface container.
+          </Section>
         </Flex>
       )}
     </Showcase>

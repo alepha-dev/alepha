@@ -6,19 +6,19 @@ import type { ActionProps } from "./buttons/ActionButton.tsx";
 import Flex from "./Flex.tsx";
 import SectionHeader, { type SectionHeaderProps } from "./SectionHeader.tsx";
 
-export interface PanelProps
+export interface SectionProps
   extends Omit<SectionHeaderProps, "extra" | "size" | "title"> {
   /**
-   * Panel header title. When omitted, no header is rendered.
+   * Section header title. When omitted, no header is rendered.
    */
   title?: string | ReactNode;
   /**
-   * Panel content.
+   * Section content.
    */
   children?: ReactNode;
 
   /**
-   * When `true`, the panel body can be collapsed/expanded.
+   * When `true`, the section body can be collapsed/expanded.
    */
   collapsible?: boolean;
 
@@ -28,12 +28,12 @@ export interface PanelProps
   defaultCollapsed?: boolean;
 
   /**
-   * Padding for the panel body.
+   * Padding for the section body.
    */
   p?: string | number;
 }
 
-const Panel = (props: PanelProps) => {
+const Section = (props: SectionProps) => {
   const {
     children,
     collapsible,
@@ -106,4 +106,4 @@ const Panel = (props: PanelProps) => {
   );
 };
 
-export default Panel;
+export default Section;

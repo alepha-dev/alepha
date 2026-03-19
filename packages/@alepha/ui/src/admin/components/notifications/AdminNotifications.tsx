@@ -4,6 +4,7 @@ import {
   DataTable,
   DetailList,
   Flex,
+  Section,
   Text,
   useToast,
 } from "@alepha/ui";
@@ -384,19 +385,13 @@ const NotificationDetailContent = ({
       </Flex>
 
       {/* Details */}
-      <Paper p="sm" radius="md" withBorder>
-        <Text size="sm" fw={600} mb="xs">
-          Details
-        </Text>
+      <Section title="Details" p="sm">
         <DetailList items={detailItems} columns={2} />
-      </Paper>
+      </Section>
 
       {/* Rendered Content */}
       {rendered && (
-        <Paper p="sm" radius="md" withBorder>
-          <Text size="sm" fw={600} mb="xs">
-            Content
-          </Text>
+        <Section title="Content" p="sm">
           {rendered.type === "email" && (
             <Flex direction="column" gap="xs">
               <Flex direction="column" gap={2}>
@@ -455,25 +450,19 @@ const NotificationDetailContent = ({
               </Flex>
             </Flex>
           )}
-        </Paper>
+        </Section>
       )}
 
       {/* Variables */}
       {detail.variables && Object.keys(detail.variables).length > 0 && (
-        <Paper p="sm" radius="md" withBorder>
-          <Text size="sm" fw={600} mb="xs">
-            Variables
-          </Text>
+        <Section title="Variables" p="sm">
           <Code block>{JSON.stringify(detail.variables, null, 2)}</Code>
-        </Paper>
+        </Section>
       )}
 
       {/* Error */}
       {detail.error && (
-        <Paper p="sm" radius="md" withBorder>
-          <Text size="sm" fw={600} mb="xs">
-            Error
-          </Text>
+        <Section title="Error" p="sm">
           <Paper p="xs" radius="sm" withBorder>
             <Text
               size="sm"
@@ -485,15 +474,12 @@ const NotificationDetailContent = ({
               {detail.error}
             </Text>
           </Paper>
-        </Paper>
+        </Section>
       )}
 
       {/* Logs */}
       {detail.logs && detail.logs.length > 0 && (
-        <Paper p="sm" radius="md" withBorder>
-          <Text size="sm" fw={600} mb="xs">
-            Logs ({detail.logs.length})
-          </Text>
+        <Section title={`Logs (${detail.logs.length})`} p="sm">
           <Flex
             direction="column"
             style={{ maxHeight: 300, overflowY: "auto" }}
@@ -510,7 +496,7 @@ const NotificationDetailContent = ({
               </Flex>
             ))}
           </Flex>
-        </Paper>
+        </Section>
       )}
     </Flex>
   );

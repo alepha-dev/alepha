@@ -76,7 +76,7 @@ export class DemoRouter {
   demoHeading = $page({
     icon: IconHeading,
     path: "/heading",
-    label: "Heading",
+    label: "Section",
     lazy: () => import("./components/core/DemoHeading.tsx"),
   });
 

@@ -10,14 +10,11 @@ import {
 import { AuthRouter, UserButton } from "@alepha/ui/auth";
 import {
   IconBell,
-  IconClock,
-  IconDashboard,
   IconDevices,
   IconFile,
   IconHistory,
   IconKey,
   IconLayoutDashboard,
-  IconListDetails,
   IconLockPassword,
   IconSettings,
   IconTerminal2,
@@ -151,16 +148,7 @@ export class AdminRouter {
             can: () => this.fileCtrl.findFiles.can(),
           },
           {
-            label: "Jobs",
-            icon: IconTerminal2,
-            children: [
-              {
-                ...this.router.node(this.adminJobDashboard.name),
-                label: "Dashboard",
-              },
-              { ...this.router.node(this.adminJobRegistry.name) },
-              { ...this.router.node(this.adminJobExecutions.name) },
-            ],
+            ...this.router.node(this.adminJobs.name),
           },
           {
             ...this.router.node(this.adminNotifications.name),
@@ -367,34 +355,14 @@ export class AdminRouter {
   // Jobs
   // ─────────────────────────────────────────────────────────────────────────────
 
-  public readonly adminJobDashboard = $page({
-    icon: IconDashboard,
+  public readonly adminJobs = $page({
+    icon: IconTerminal2,
     parent: this.adminLayout,
     path: "/jobs",
     label: "Jobs",
-    description: "Monitor and manage background jobs and scheduled tasks.",
-    lazy: () => import("./components/jobs/AdminJobDashboard.tsx"),
+    description: "Monitor and manage background jobs.",
+    lazy: () => import("./components/jobs/AdminJobs.tsx"),
     can: () => this.jobCtrl.getJobRegistry.can(),
-  });
-
-  public readonly adminJobRegistry = $page({
-    icon: IconListDetails,
-    parent: this.adminLayout,
-    path: "/jobs/registry",
-    label: "Registry",
-    description: "View all registered job definitions.",
-    lazy: () => import("./components/jobs/AdminJobRegistry.tsx"),
-    can: () => this.jobCtrl.getJobRegistry.can(),
-  });
-
-  public readonly adminJobExecutions = $page({
-    icon: IconClock,
-    parent: this.adminLayout,
-    path: "/jobs/executions",
-    label: "Executions",
-    description: "Browse and filter job execution history.",
-    lazy: () => import("./components/jobs/AdminJobExecutions.tsx"),
-    can: () => this.jobCtrl.findJobExecutions.can(),
   });
 
   // ─────────────────────────────────────────────────────────────────────────────

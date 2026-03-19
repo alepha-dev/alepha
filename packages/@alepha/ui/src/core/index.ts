@@ -61,7 +61,6 @@ export { default as ConfirmDialog } from "./components/dialogs/ConfirmDialog.tsx
 export { default as PromptDialog } from "./components/dialogs/PromptDialog.tsx";
 export type { FlexProps } from "./components/Flex.tsx";
 export { default as Flex } from "./components/Flex.tsx";
-export { default as Heading } from "./components/Heading.tsx";
 export type {
   AppBarBack,
   AppBarBurger,
@@ -105,8 +104,8 @@ export { Sidebar } from "./components/layout/Sidebar.tsx";
 export { SidebarCollapsedItem } from "./components/layout/SidebarCollapsedItem.tsx";
 export type { SidebarItemProps } from "./components/layout/SidebarItem.tsx";
 export { SidebarItem } from "./components/layout/SidebarItem.tsx";
-export type { PanelProps } from "./components/Panel.tsx";
-export { default as Panel } from "./components/Panel.tsx";
+export type { SectionProps } from "./components/Section.tsx";
+export { default as Section } from "./components/Section.tsx";
 export type { SectionHeaderProps } from "./components/SectionHeader.tsx";
 export { default as SectionHeader } from "./components/SectionHeader.tsx";
 export type { TextProps } from "./components/Text.tsx";
