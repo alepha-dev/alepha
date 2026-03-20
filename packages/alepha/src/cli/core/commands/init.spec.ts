@@ -630,15 +630,13 @@ describe("alepha init", () => {
       );
     };
 
-    it("should skip biome.json when workspace root has it", async () => {
+    it("should always create biome.json even when workspace root has it", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupWorkspace(fs, json);
 
       await cli.run(cmd.init, { root: "/workspace/packages/my-pkg" });
 
-      expect(fs.wasWritten("/workspace/packages/my-pkg/biome.json")).toBe(
-        false,
-      );
+      expect(fs.wasWritten("/workspace/packages/my-pkg/biome.json")).toBe(true);
     });
 
     it("should skip .editorconfig when workspace root has it", async () => {

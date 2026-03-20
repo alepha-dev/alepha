@@ -17,8 +17,8 @@ import {
   type PgRefOptions,
   type SequencePrimitive,
   schema,
-  type ViewPrimitive,
   sql,
+  type ViewPrimitive,
 } from "alepha/orm";
 import type { BuildExtraConfigColumns } from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";

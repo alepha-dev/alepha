@@ -479,7 +479,7 @@ export class ProjectScaffolder {
           packageJson: { ...flags, isPackage: workspace.isPackage },
           // Skip workspace-level configs if they exist at workspace root
           tsconfigJson: !workspace.config.tsconfigJson,
-          biomeJson: !workspace.config.biomeJson,
+          biomeJson: true,
           editorconfig: !workspace.config.editorconfig,
           agentMd: agentType ? { type: agentType } : false,
         });
