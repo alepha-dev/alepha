@@ -398,9 +398,14 @@ export class PackageManagerUtils {
       alepha: `^${version}`,
     };
 
-    const devDependencies: Record<string, string> = {
-      "drizzle-kit": alephaDeps["drizzle-kit"],
-    };
+    const devDependencies: Record<string, string> = {};
+
+    // Only include drizzle-kit when the project uses a database.
+    // React-only projects (--react without --api/--auth/--admin) don't need it.
+    const isReactOnly = modes.react && !modes.ui;
+    if (!isReactOnly) {
+      devDependencies["drizzle-kit"] = alephaDeps["drizzle-kit"];
+    }
 
     // Add biome/vitest only if not a workspace package (workspace root has them)
     if (!modes.isPackage) {
