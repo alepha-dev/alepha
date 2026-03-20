@@ -20,8 +20,7 @@ const Profile = () => {
     return null;
   }
 
-  const { id, name, email, username, picture, roles, organizations } =
-    auth.user;
+  const { id, name, email, username, picture, roles, organization } = auth.user;
 
   const displayName = name || username || email || "User";
 
@@ -85,19 +84,15 @@ const Profile = () => {
                 </ProfileField>
               )}
 
-              {/* Organizations */}
-              {organizations && organizations.length > 0 && (
+              {/* Organization */}
+              {organization && (
                 <ProfileField
                   icon={<IconCalendar size={18} />}
-                  label="Organizations"
+                  label="Organization"
                 >
-                  <Flex gap="xs">
-                    {organizations.map((org) => (
-                      <Badge key={org} size="sm" variant="outline">
-                        {org}
-                      </Badge>
-                    ))}
-                  </Flex>
+                  <Badge size="sm" variant="outline">
+                    {organization}
+                  </Badge>
                 </ProfileField>
               )}
             </Flex>

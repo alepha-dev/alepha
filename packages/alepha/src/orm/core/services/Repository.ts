@@ -12,6 +12,7 @@ import {
 } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { currentUserAtom } from "alepha/security";
 import {
   asc,
   avg,
@@ -41,7 +42,6 @@ import type {
   PgUpdateSetSource,
 } from "drizzle-orm/pg-core";
 import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
-import { currentUserAtom } from "../../../security/atoms/currentUserAtom.ts";
 import {
   PG_DELETED_AT,
   PG_ORGANIZATION,
