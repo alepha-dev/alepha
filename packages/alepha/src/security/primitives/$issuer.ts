@@ -311,7 +311,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         preferred_username: user.username,
         picture: user.picture,
         // our claims
-        organizations: user.organizations,
+        organization: user.organization,
         roles: user.roles,
       },
       this.name,

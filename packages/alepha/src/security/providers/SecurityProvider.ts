@@ -295,7 +295,7 @@ export class SecurityProvider {
     const username = this.getUsernameFromPayload(payload);
     const picture = this.getPictureFromPayload(payload);
     const name = this.getNameFromPayload(payload);
-    const organizations = this.getOrganizationsFromPayload(payload);
+    const organization = this.getOrganizationFromPayload(payload);
     const rolesFromSystem = this.getRoles(realmName);
     const roles = rolesFromPayload
       .reduce<Role[]>(
@@ -317,7 +317,7 @@ export class SecurityProvider {
       email,
       username,
       picture,
-      organizations,
+      organization,
       sessionId,
     };
   }
@@ -916,20 +916,15 @@ export class SecurityProvider {
     return this.UNKNOWN_USER_NAME;
   }
 
-  public getOrganizationsFromPayload(
+  public getOrganizationFromPayload(
     payload: Record<string, any>,
-  ): string[] | undefined {
+  ): string | undefined {
     if (!payload) {
       return;
     }
 
-    if (payload.organization) {
-      if (typeof payload.organization === "string") {
-        return [payload.organization];
-      }
-      if (Array.isArray(payload.organization)) {
-        return payload.organization;
-      }
+    if (typeof payload.organization === "string") {
+      return payload.organization;
     }
   }
 }

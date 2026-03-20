@@ -22,6 +22,7 @@ import {
   PG_DELETED_AT,
   PG_ENUM,
   PG_IDENTITY,
+  PG_ORGANIZATION,
   PG_PRIMARY_KEY,
   PG_REF,
   PG_UPDATED_AT,
@@ -186,6 +187,16 @@ export class DatabaseTypeProvider {
    */
   public readonly deletedAt = (options?: TStringOptions) =>
     pgAttr(t.optional(t.datetime(options)), PG_DELETED_AT);
+
+  /**
+   * Creates an organization column for multi-tenant row scoping.
+   *
+   * When present, queries are automatically filtered by the current user's organization.
+   * Rows with `null` organization are considered global and visible to everyone.
+   * On create, the column is auto-stamped with the current user's organization.
+   */
+  public readonly organization = () =>
+    pgAttr(t.optional(t.uuid()), PG_ORGANIZATION);
 
   /**
    * Creates a Postgres ENUM type.

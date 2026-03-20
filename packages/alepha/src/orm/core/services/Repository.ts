@@ -41,8 +41,10 @@ import type {
   PgUpdateSetSource,
 } from "drizzle-orm/pg-core";
 import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
+import { currentUserAtom } from "../../../security/atoms/currentUserAtom.ts";
 import {
   PG_DELETED_AT,
+  PG_ORGANIZATION,
   PG_PRIMARY_KEY,
   PG_UPDATED_AT,
   PG_VERSION,
@@ -388,9 +390,8 @@ export abstract class Repository<T extends TObject> {
       );
     }
 
-    const where = this.withDeletedAt(
-      (query.where ?? {}) as PgQueryWhere<T>,
-      opts,
+    const where = this.withOrganization(
+      this.withDeletedAt((query.where ?? {}) as PgQueryWhere<T>, opts),
     );
 
     builder.where(() => this.toSQL(where, joins));
@@ -565,9 +566,8 @@ export abstract class Repository<T extends TObject> {
     );
 
     if (opts.count) {
-      const countWhere = this.withDeletedAt(
-        (query.where ?? {}) as PgQueryWhere<T>,
-        opts,
+      const countWhere = this.withOrganization(
+        this.withDeletedAt((query.where ?? {}) as PgQueryWhere<T>, opts),
       );
 
       tasks.push(
@@ -662,6 +662,7 @@ export abstract class Repository<T extends TObject> {
     opts: StatementOptions = {},
   ): Promise<Static<T>> {
     this.assertWritable();
+    this.stampOrganization(data);
     await this.alepha.events.emit("repository:create:before", {
       tableName: this.tableName,
       data,
@@ -703,6 +704,10 @@ export abstract class Repository<T extends TObject> {
     this.assertWritable();
     if (values.length === 0) {
       return [];
+    }
+
+    for (const value of values) {
+      this.stampOrganization(value);
     }
 
     await this.alepha.events.emit("repository:create:before", {
@@ -774,6 +779,7 @@ export abstract class Repository<T extends TObject> {
     } = {},
   ): Promise<Static<T>> {
     this.assertWritable();
+    this.stampOrganization(data);
     await this.alepha.events.emit("repository:create:before", {
       tableName: this.tableName,
       data,
@@ -862,7 +868,7 @@ export abstract class Repository<T extends TObject> {
         opts.now ?? this.dateTimeProvider.nowISOString();
     }
 
-    where = this.withDeletedAt(where, opts);
+    where = this.withOrganization(this.withDeletedAt(where, opts));
     row = this.cast(row, false) as any;
 
     // do not update the ID field
@@ -1025,7 +1031,7 @@ export abstract class Repository<T extends TObject> {
         opts.now ?? this.dateTimeProvider.nowISOString();
     }
 
-    where = this.withDeletedAt(where, opts);
+    where = this.withOrganization(this.withDeletedAt(where, opts));
     data = this.cast(data, false) as any;
     try {
       const entities = await this.rawUpdate(opts)
@@ -1069,6 +1075,8 @@ export abstract class Repository<T extends TObject> {
         opts,
       );
     }
+
+    where = this.withOrganization(where);
 
     await this.alepha.events.emit("repository:delete:before", {
       tableName: this.tableName,
@@ -1170,7 +1178,7 @@ export abstract class Repository<T extends TObject> {
     where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
   ): Promise<number> {
-    where = this.withDeletedAt(where, opts);
+    where = this.withOrganization(this.withDeletedAt(where, opts));
     const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
     return db.$count(this.table, this.toSQL(where));
   }
@@ -1234,7 +1242,9 @@ export abstract class Repository<T extends TObject> {
 
     // WHERE
     if (query.where) {
-      const where = this.withDeletedAt(query.where as any, opts);
+      const where = this.withOrganization(
+        this.withDeletedAt(query.where as any, opts),
+      );
       builder = builder.where(this.toSQL(where)) as any;
     }
 
@@ -1454,6 +1464,56 @@ export abstract class Repository<T extends TObject> {
     const deletedAtFields = getAttrFields(this.entity.schema, PG_DELETED_AT);
     if (deletedAtFields.length > 0) {
       return deletedAtFields[0];
+    }
+    return undefined;
+  }
+
+  protected withOrganization(
+    where: PgQueryWhereOrSQL<T>,
+  ): PgQueryWhereOrSQL<T> {
+    const orgField = this.organizationField();
+    if (!orgField) {
+      return where;
+    }
+
+    const user = this.alepha.store.get(currentUserAtom);
+    if (!user?.organization) {
+      return where;
+    }
+
+    return {
+      and: [
+        where,
+        {
+          or: [
+            { [orgField.key]: { eq: user.organization } },
+            { [orgField.key]: { isNull: true } },
+          ],
+        } as any,
+      ],
+    } as PgQueryWhereOrSQL<T>;
+  }
+
+  protected stampOrganization(data: any): void {
+    const orgField = this.organizationField();
+    if (!orgField) {
+      return;
+    }
+
+    if (data[orgField.key] != null) {
+      return;
+    }
+
+    const user = this.alepha.store.get(currentUserAtom);
+    if (user?.organization) {
+      data[orgField.key] = user.organization;
+    }
+  }
+
+  protected organizationField(): PgAttrField | undefined {
+    const fields = getAttrFields(this.entity.schema, PG_ORGANIZATION);
+    if (fields.length > 0) {
+      return fields[0];
     }
     return undefined;
   }

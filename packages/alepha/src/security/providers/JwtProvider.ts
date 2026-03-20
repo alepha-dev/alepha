@@ -187,7 +187,7 @@ export interface ExtendedJWTPayload extends JWTPayload {
   name?: string;
   roles?: string[];
   email?: string;
-  organizations?: string[];
+  organization?: string;
   // keycloak specific
   realm_access?: { roles: string[] };
 }

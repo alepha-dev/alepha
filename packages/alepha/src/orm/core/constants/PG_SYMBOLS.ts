@@ -15,6 +15,7 @@ export const PG_IDENTITY = Symbol.for("Alepha.Postgres.Identity");
 export const PG_ENUM = Symbol.for("Alepha.Postgres.Enum");
 export const PG_REF = Symbol.for("Alepha.Postgres.Ref");
 export const PG_GENERATED = Symbol.for("Alepha.Postgres.Generated");
+export const PG_ORGANIZATION = Symbol.for("Alepha.Postgres.Organization");
 
 /**
  * @deprecated Use `PG_IDENTITY` instead.
@@ -36,6 +37,7 @@ export type PgSymbols = {
   [PG_REF]: PgRefOptions;
   [PG_ENUM]: PgEnumOptions;
   [PG_GENERATED]: PgGeneratedOptions;
+  [PG_ORGANIZATION]: {};
 
   /**
    * @deprecated Use `PG_IDENTITY` instead.

@@ -39,9 +39,9 @@ export const userAccountInfoSchema = t.object({
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  organizations: t.optional(
-    t.array(t.text(), {
-      description: "List of organizations the user belongs to.",
+  organization: t.optional(
+    t.uuid({
+      description: "Organization the user belongs to.",
     }),
   ),
 
