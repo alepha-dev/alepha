@@ -107,6 +107,14 @@ export class BuildServerTask extends BuildTask {
       define: {
         "process.env.NODE_ENV": '"production"',
       },
+      resolve: {
+        dedupe: [
+          "react",
+          "react-dom",
+          "react/jsx-runtime",
+          "react/jsx-dev-runtime",
+        ],
+      },
       publicDir: false,
       ssr: {
         noExternal: true,

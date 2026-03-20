@@ -85,6 +85,14 @@ export class BuildClientTask extends BuildTask {
       define: {
         "process.env.NODE_ENV": '"production"',
       },
+      resolve: {
+        dedupe: [
+          "react",
+          "react-dom",
+          "react/jsx-runtime",
+          "react/jsx-dev-runtime",
+        ],
+      },
       publicDir: "public",
       build: {
         outDir: opts.dist,
