@@ -88,10 +88,10 @@ export class ViteDevServerProvider {
       await this.alepha?.start();
       await this.listen();
 
-      console.log("");
-      this.server.printUrls();
-      this.server.bindCLIShortcuts({ print: true });
-      console.log("");
+      const port = this.server.config.server.port ?? 5173;
+      const url = `http://localhost:${port}/`;
+      const log = this.alepha?.log ?? this.log;
+      log.info(`Listening on ${this.colors.set("CYAN", url)}`);
     } catch (err) {
       this.hasError = true;
       this.currentError = err instanceof Error ? err : new Error(String(err));
