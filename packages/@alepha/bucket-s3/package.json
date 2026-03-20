@@ -13,7 +13,7 @@
     "minio"
   ],
   "author": "Nicolas Foures",
-  "version": "0.19.0",
+  "version": "0.19.1",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -30,13 +30,13 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.8",
-    "alepha": "0.19.0",
+    "alepha": "0.19.1",
     "tsdown": "^0.21.4",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   },
   "peerDependencies": {
-    "alepha": "0.19.0"
+    "alepha": "0.19.1"
   },
   "scripts": {
     "lint": "alepha lint",

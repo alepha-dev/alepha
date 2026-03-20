@@ -13,11 +13,11 @@
     "studio": "alepha db studio"
   },
   "dependencies": {
-    "@alepha/ui": "^0.19.0",
+    "@alepha/ui": "^0.19.1",
     "@mantine/core": "^8.3.18",
     "@mantine/hooks": "^8.3.18",
     "@tabler/icons-react": "^3.40.0",
-    "alepha": "^0.19.0",
+    "alepha": "^0.19.1",
     "marked": "^17.0.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"

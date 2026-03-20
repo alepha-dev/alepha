@@ -1,3 +1,16 @@
+## [0.19.1] - 2026-03-20
+
+### Features
+
+- **orm**: pg - use uuid v7 by default (`04d95cdd`)
+- **ui**: add SectionHeader and Panel components (`d29dc4aa`)
+- **api/users**: add login rate limit (`3ffcc736`)
+- **ui/admin**: improve ApiFiles search UI (`92b396b4`)
+
+### Bug Fixes
+
+- **api/files**: add missing security (`8e8d931d`)
+
 ## [0.19.0] - 2026-03-18
 
 ### Features
