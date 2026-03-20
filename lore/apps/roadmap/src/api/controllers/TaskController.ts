@@ -356,76 +356,65 @@ export class TaskController {
       }),
     },
     handler: async ({ params, user }) => {
-      return this.tasks.transaction(async (tx) => {
-        const task = await this.tasks.getOne(
-          {
-            where: {
-              id: { eq: params.id },
-              completedAt: { isNull: true },
-              acceptedAt: { isNotNull: true },
-            },
-          },
-          { tx },
-        );
-
-        await this.security.checkOwnership(task.projectId, user);
-
-        // Check if all objectives are completed
-        if (task.objectives.length > 0) {
-          const incompleteObjectives = task.objectives.filter(
-            (obj) => !obj.completed,
-          );
-          if (incompleteObjectives.length > 0) {
-            throw new BadRequestError(
-              `Cannot complete task: ${incompleteObjectives.length} objective(s) remain incomplete`,
-            );
-          }
-        }
-
-        const character = await this.characters.getOne(
-          {
-            where: {
-              projectId: { eq: task.projectId },
-              userId: { eq: user.id },
-            },
-          },
-          { tx },
-        );
-
-        const xp = this.characterInfo.getXpFromTask(task);
-        const money = this.characterInfo.getMoneyFromTask(task);
-
-        character.xp += xp;
-        character.balance += money;
-        task.completedAt = this.dt.nowISOString();
-        task.completedBy = user.id;
-
-        // Auto-attach to active chapter
-        const activeChapters = await this.chapters.findMany(
-          {
-            where: {
-              projectId: { eq: task.projectId },
-              closedAt: { isNull: true },
-            },
-            limit: 1,
-          },
-          { tx },
-        );
-
-        if (activeChapters.length > 0) {
-          task.chapterId = activeChapters[0].id;
-        }
-
-        await Promise.all([
-          this.characters.save(character, { tx }),
-          this.tasks.save(task, { tx }),
-        ]);
-
-        return {
-          ...this.mapTaskToResource(task),
-          character,
-        };
+      const task = await this.tasks.getOne({
+        where: {
+          id: { eq: params.id },
+          completedAt: { isNull: true },
+          acceptedAt: { isNotNull: true },
+        },
       });
+
+      await this.security.checkOwnership(task.projectId, user);
+
+      // Check if all objectives are completed
+      if (task.objectives.length > 0) {
+        const incompleteObjectives = task.objectives.filter(
+          (obj) => !obj.completed,
+        );
+        if (incompleteObjectives.length > 0) {
+          throw new BadRequestError(
+            `Cannot complete task: ${incompleteObjectives.length} objective(s) remain incomplete`,
+          );
+        }
+      }
+
+      const character = await this.characters.getOne({
+        where: {
+          projectId: { eq: task.projectId },
+          userId: { eq: user.id },
+        },
+      });
+
+      const xp = this.characterInfo.getXpFromTask(task);
+      const money = this.characterInfo.getMoneyFromTask(task);
+
+      character.xp += xp;
+      character.balance += money;
+      task.completedAt = this.dt.nowISOString();
+      task.completedBy = user.id;
+
+      // Auto-attach to active chapter
+      const activeChapters = await this.chapters.findMany({
+        where: {
+          projectId: { eq: task.projectId },
+          closedAt: { isNull: true },
+        },
+        limit: 1,
+      });
+
+      if (activeChapters.length > 0) {
+        task.chapterId = activeChapters[0].id;
+      }
+
+      await Promise.all([
+        this.characters.save(character),
+        this.tasks.save(task),
+      ]);
+
+      return {
+        ...this.mapTaskToResource(task),
+        character,
+      };
     },
   });
 
