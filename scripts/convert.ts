@@ -25,7 +25,19 @@ main(process.argv[2]).catch((err) => {
  */
 async function main(to?: string) {
   const root = join(process.cwd(), "packages");
-  const packages = await readdir(root);
+  const entries = await readdir(root);
+
+  const packages: string[] = [];
+  for (const entry of entries) {
+    if (entry.startsWith("@")) {
+      const scoped = await readdir(join(root, entry));
+      for (const sub of scoped) {
+        packages.push(join(entry, sub));
+      }
+    } else {
+      packages.push(entry);
+    }
+  }
 
   console.log(`Converting exports to ${to ?? "opposite"}`);
 
