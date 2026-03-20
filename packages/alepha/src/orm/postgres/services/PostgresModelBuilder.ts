@@ -18,6 +18,7 @@ import {
   type SequencePrimitive,
   schema,
   type ViewPrimitive,
+  sql,
 } from "alepha/orm";
 import type { BuildExtraConfigColumns } from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";
@@ -42,6 +43,13 @@ import { byte } from "../types/byte.ts";
 
 export class PostgresModelBuilder extends ModelBuilder {
   protected schemas = new Map<string, PgSchema>();
+
+  /**
+   * Create a primary key column with UUID v7
+   */
+  protected getPrimaryKeyUUID(key: string) {
+    return pg.uuid(key).default(sql`uuidv7()`);
+  }
 
   protected getPgSchema(name: string) {
     if (!this.schemas.has(name) && name !== "public") {
@@ -417,7 +425,7 @@ export class PostgresModelBuilder extends ModelBuilder {
     if ("format" in value) {
       if (value.format === "uuid") {
         if (PG_PRIMARY_KEY in value) {
-          return pg.uuid(key).defaultRandom();
+          return this.getPrimaryKeyUUID(key);
         }
 
         return pg.uuid(key);

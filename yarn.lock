@@ -75,7 +75,6 @@ __metadata:
   resolution: "@alepha/ui@workspace:packages/@alepha/ui"
   dependencies:
     "@biomejs/biome": "npm:^2.4.8"
-    "@mantine/charts": "npm:^8.3.18"
     "@mantine/core": "npm:^8.3.18"
     "@mantine/dates": "npm:^8.3.18"
     "@mantine/hooks": "npm:^8.3.18"
@@ -91,8 +90,6 @@ __metadata:
     dayjs: "npm:^1.11.20"
     react: "npm:^19.2.4"
     react-dom: "npm:^19.2.4"
-    react-is: "npm:^19.2.4"
-    recharts: "npm:^3.8.0"
     typescript: "npm:^5.9.3"
     vite: "npm:^8.0.0"
     vitest: "npm:^4.1.0"
