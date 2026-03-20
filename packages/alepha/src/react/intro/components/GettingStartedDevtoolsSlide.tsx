@@ -6,7 +6,7 @@ import type { GettingStartedSlide } from "./GettingStarted.tsx";
  * Returns undefined if devtools are not available.
  */
 export const useDevtoolsSlide = (): GettingStartedSlide | undefined => {
-  if (!import.meta.env.VITE_ALEPHA_DEVTOOLS) {
+  if (!import.meta.env?.VITE_ALEPHA_DEVTOOLS) {
     return undefined;
   }
 
