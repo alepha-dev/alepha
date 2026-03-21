@@ -22,7 +22,7 @@ export class AppSecurityProvider {
       apiKeys: true,
       avatars: true,
       audits: true,
-      sessionPurge: true,
+      jobs: true,
       notifications: true,
     },
     settings: {
