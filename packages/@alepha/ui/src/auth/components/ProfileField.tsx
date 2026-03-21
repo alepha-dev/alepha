@@ -30,7 +30,7 @@ const ProfileField = (props: ProfileFieldProps) => {
         <Text size="xs" c="dimmed" tt="uppercase" fw={500}>
           {label}
         </Text>
-        <Text size="sm">{children}</Text>
+        <Text size="sm" component="span">{children}</Text>
       </Flex>
     </Flex>
   );

@@ -63,7 +63,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
   // Merge features with defaults
   const features: RealmFeatures = {
-    sessionPurge: false,
+    jobs: false,
     notifications: false,
     apiKeys: false,
     parameters: false,
@@ -95,7 +95,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     alepha.with(UserAudits);
   }
 
-  if (features.sessionPurge) {
+  if (features.jobs) {
     alepha.with(UserJobs);
   }
 
@@ -227,11 +227,13 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
 export interface RealmFeatures {
   /**
-   * Enable session purge functionality for cleaning up expired sessions.
+   * Will enable Job module.
+   *
+   * - Enable session purge functionality for cleaning up expired sessions.
    *
    * @default false
    */
-  sessionPurge?: boolean;
+  jobs?: boolean;
 
   /**
    * Enable notification system for password reset, verification emails, etc.

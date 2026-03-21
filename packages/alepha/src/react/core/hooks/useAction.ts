@@ -134,8 +134,10 @@ export function useAction<Args extends any[], Result = void>(
   const isMountedRef = useRef(true);
   const intervalRef = useRef<Interval | undefined>(undefined);
 
-  // Cleanup on unmount
+  // Track mount state — must set true in body for React StrictMode double-invoke
   useEffect(() => {
+    isMountedRef.current = true;
+
     return () => {
       isMountedRef.current = false;
 
@@ -179,12 +181,11 @@ export function useAction<Args extends any[], Result = void>(
       setLoading(true);
       setError(undefined);
 
-      await alepha.events.emit("react:action:begin", {
-        type: "custom",
-        id: options.id,
-      });
-
       try {
+        await alepha.events.emit("react:action:begin", {
+          type: "custom",
+          id: options.id,
+        });
         // Pass abort signal as last argument to handler
         const result = await options.handler(...args, {
           signal: abortController.signal,

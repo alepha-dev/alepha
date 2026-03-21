@@ -1,5 +1,4 @@
 import { Flex, Text, useToast } from "@alepha/ui";
-import { Card } from "@mantine/core";
 import { IconSettings } from "@tabler/icons-react";
 import type {
   AdminParameterController,
@@ -171,9 +170,9 @@ const AdminParameters = ({
 
   return (
     <Flex flex={1} p="md">
-      <Card
-        withBorder
-        p={0}
+      <Flex
+        bordered
+        elevated
         w={"100%"}
         style={{
           flexDirection: "row",
@@ -206,7 +205,7 @@ const AdminParameters = ({
         ) : (
           <ParameterEmptyState />
         )}
-      </Card>
+      </Flex>
     </Flex>
   );
 };

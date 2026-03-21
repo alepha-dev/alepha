@@ -41,7 +41,7 @@ const ParameterTreeNode = memo((props: Props) => {
   const handleMouseLeave = useCallback(() => setIsHovered(false), []);
 
   return (
-    <Flex>
+    <Flex col>
       <UnstyledButton
         onClick={handleClick}
         onMouseEnter={handleMouseEnter}

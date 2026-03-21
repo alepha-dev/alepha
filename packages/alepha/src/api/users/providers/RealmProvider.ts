@@ -43,7 +43,7 @@ export class RealmProvider {
 
     // Merge features with defaults
     const features: RealmFeatures = {
-      sessionPurge: false,
+      jobs: false,
       notifications: false,
       apiKeys: false,
       parameters: false,

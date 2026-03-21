@@ -20,6 +20,11 @@ export class AppSecurityProvider {
   realm = $realm({
     features: {
       apiKeys: true,
+      audits: true,
+      notifications: true,
+      parameters: true,
+      avatars: true,
+      jobs: true,
     },
     identities: {
       google: true,
