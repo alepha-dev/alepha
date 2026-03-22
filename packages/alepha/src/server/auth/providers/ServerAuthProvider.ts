@@ -50,6 +50,7 @@ export class ServerAuthProvider {
       realm: t.optional(t.text()),
       codeVerifier: t.optional(t.text({ size: "long" })),
       redirectUri: t.optional(t.text({ size: "long" })),
+      loginUri: t.optional(t.text({ size: "long" })),
       state: t.optional(t.text()),
       nonce: t.optional(t.text()),
     }),
@@ -278,7 +279,11 @@ export class ServerAuthProvider {
         redirect_uri: t.optional(t.text({ size: "rich" })),
       }),
     },
-    handler: async ({ query, url, reply }) => {
+    handler: async ({ query, url, reply, headers }) => {
+      const loginUri = headers.referer
+        ? new URL(headers.referer).pathname + new URL(headers.referer).search
+        : undefined;
+
       const provider = this.provider({
         provider: query.provider,
         realm: query.realm,
@@ -318,6 +323,7 @@ export class ServerAuthProvider {
           state,
           nonce: parameters.nonce,
           redirectUri: query.redirect_uri ?? "/",
+          loginUri,
           provider: query.provider,
           realm: query.realm,
         });
@@ -345,6 +351,7 @@ export class ServerAuthProvider {
       this.authorizationCode.set({
         codeVerifier,
         redirectUri: query.redirect_uri ?? "/",
+        loginUri,
         provider: query.provider,
         realm: query.realm,
       });
@@ -374,6 +381,7 @@ export class ServerAuthProvider {
       }
 
       const redirectUri = authorizationCode.redirectUri ?? "/";
+      const loginUri = authorizationCode.loginUri;
 
       const externalTokens = await authorizationCodeGrant(oauth, url, {
         pkceCodeVerifier: authorizationCode.codeVerifier,
@@ -405,7 +413,21 @@ export class ServerAuthProvider {
 
       // internal, we need to create our own tokens
 
-      const user = await provider.user(externalTokens);
+      let user: UserAccount;
+      try {
+        user = await provider.user(externalTokens);
+      } catch (e) {
+        this.log.warn("OAuth2 account linking failed", e);
+        const errorTarget = loginUri || redirectUri;
+        const errorUrl = new URL(errorTarget, url.origin);
+        errorUrl.searchParams.set(
+          "error",
+          e instanceof BadRequestError ? e.message : "Authentication failed",
+        );
+        reply.redirect(errorUrl.pathname + errorUrl.search, 302);
+        return;
+      }
+
       const tokens = await issuer.createToken(user);
 
       this.setTokens(

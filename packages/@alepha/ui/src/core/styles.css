@@ -120,7 +120,12 @@
 
 .mantine-Button-root[data-variant="minimal"]:hover {
   /* imitate the hover effect of <Table/> rows */
-  background-color: light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.1));
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-mantine-color-scheme="dark"]
+  .mantine-Button-root[data-variant="minimal"]:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ */

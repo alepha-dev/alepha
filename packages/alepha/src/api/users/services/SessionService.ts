@@ -9,7 +9,7 @@ import {
   InvalidCredentialsError,
   type UserAccount,
 } from "alepha/security";
-import { UnauthorizedError } from "alepha/server";
+import { BadRequestError, UnauthorizedError } from "alepha/server";
 import type { OAuth2Profile } from "alepha/server/auth";
 import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
@@ -594,6 +594,15 @@ export class SessionService {
       await this.ensureAdminRole(existing, userRealmName);
 
       return existing;
+    }
+
+    const realmSettings = await realm.getSettings();
+    if (realmSettings?.registrationAllowed === false) {
+      this.log.warn("Registration not allowed for realm via OAuth2", {
+        provider,
+        userRealmName,
+      });
+      throw new BadRequestError("Account doesn't exist");
     }
 
     // TODO: check usernames for uniqueness, add suffix if needed (e.g. john.doe1)

@@ -1,6 +1,6 @@
 import { ActionButton, Control, capitalize } from "@alepha/ui";
-import { Card, Flex, Image, Text, Title } from "@mantine/core";
-import { IconLock, IconPhoto, IconUser } from "@tabler/icons-react";
+import { Alert, Card, Flex, Image, Text, Title } from "@mantine/core";
+import { IconAlertCircle, IconLock, IconPhoto, IconUser } from "@tabler/icons-react";
 import { AlephaError, t } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
 import { useAuth } from "alepha/react/auth";
@@ -26,6 +26,7 @@ const Login = (props: LoginProps) => {
   const router = useRouter();
   const { tr } = useI18n<AuthI18n, "en">();
   const redirect = router.query.r || "/";
+  const error = router.query.error;
 
   const credentialsProvider = props.realmConfig.authenticationMethods.find(
     (it) => it.type === "CREDENTIALS",
@@ -145,6 +146,13 @@ const Login = (props: LoginProps) => {
             </Text>
           )}
         </Flex>
+      )}
+
+      {/* Error alert from OAuth redirect */}
+      {error && (
+        <Alert variant="light" color="red" icon={<IconAlertCircle />}>
+          {error}
+        </Alert>
       )}
 
       {/* Credentials login form */}

@@ -7,6 +7,7 @@ import {
   CryptoProvider,
   InvalidCredentialsError,
 } from "alepha/security";
+import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
 import {
   AlephaApiUsers,
@@ -707,5 +708,71 @@ describe("alepha/api/users - SessionService.login", () => {
       );
       expect(result.id).toBe(user.id);
     });
+  });
+});
+
+describe("alepha/api/users - SessionService.link", () => {
+  it("should reject OAuth2 account creation when registration is disabled", async ({
+    expect,
+  }) => {
+    const { sessionService, alepha } = await setup();
+
+    const realmProvider = alepha.inject(RealmProvider);
+    realmProvider.register("closed", {
+      settings: {
+        registrationAllowed: false,
+      } as never,
+    });
+
+    await expect(
+      sessionService.link(
+        "google",
+        {
+          sub: "google-123",
+          email: "newuser@example.com",
+          name: "New User",
+        },
+        "closed",
+      ),
+    ).rejects.toThrowError(BadRequestError);
+  });
+
+  it("should allow OAuth2 login for existing users when registration is disabled", async ({
+    expect,
+  }) => {
+    const { sessionService, userService, alepha } = await setup();
+
+    const realmProvider = alepha.inject(RealmProvider);
+    realmProvider.register("closed", {
+      settings: {
+        registrationAllowed: false,
+      } as never,
+    });
+
+    // Create existing user and identity
+    const user = await userService.users("closed").create({
+      realm: "closed",
+      email: "existing@example.com",
+      roles: ["user"],
+    });
+
+    await sessionService.identities("closed").create({
+      provider: "google",
+      providerUserId: "google-existing",
+      userId: user.id,
+    });
+
+    // Existing identity should still work
+    const result = await sessionService.link(
+      "google",
+      {
+        sub: "google-existing",
+        email: "existing@example.com",
+        name: "Existing User",
+      },
+      "closed",
+    );
+
+    expect(result.id).toBe(user.id);
   });
 });

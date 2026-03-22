@@ -54,7 +54,12 @@ export class ParameterProvider {
   /**
    * Unique identifier for this instance (to avoid self-updates).
    */
-  protected readonly instanceId = this.crypto.randomUUID();
+  protected get instanceId(): string {
+    this._instanceId ??= this.crypto.randomUUID();
+    return this._instanceId;
+  }
+
+  protected _instanceId: string | undefined;
 
   /**
    * In-memory cache of registered parameter primitives.
