@@ -1,6 +1,11 @@
 import { ActionButton, Control, capitalize } from "@alepha/ui";
 import { Alert, Card, Flex, Image, Text, Title } from "@mantine/core";
-import { IconAlertCircle, IconLock, IconPhoto, IconUser } from "@tabler/icons-react";
+import {
+  IconAlertCircle,
+  IconLock,
+  IconPhoto,
+  IconUser,
+} from "@tabler/icons-react";
 import { AlephaError, t } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
 import { useAuth } from "alepha/react/auth";

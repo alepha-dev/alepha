@@ -19,13 +19,13 @@
     "src"
   ],
   "dependencies": {
-    "mqtt": "^5.15.0"
+    "mqtt": "^5.15.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.8",
+    "@biomejs/biome": "^2.4.9",
     "alepha": "0.19.1",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.0"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
   },
   "peerDependencies": {
     "alepha": "0.19.1"

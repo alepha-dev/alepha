@@ -597,7 +597,10 @@ export class SessionService {
     }
 
     const realmSettings = await realm.getSettings();
-    if (realmSettings?.registrationAllowed === false) {
+    const adminEmails = realmSettings?.adminEmails ?? [];
+    const isAdmin = profile.email && adminEmails.includes(profile.email);
+
+    if (realmSettings?.registrationAllowed === false && !isAdmin) {
       this.log.warn("Registration not allowed for realm via OAuth2", {
         provider,
         userRealmName,

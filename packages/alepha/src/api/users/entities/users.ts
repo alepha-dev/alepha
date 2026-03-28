@@ -32,6 +32,8 @@ export const users = $entity({
     enabled: db.default(t.boolean(), true),
 
     emailVerified: db.default(t.boolean(), false),
+
+    organizationId: db.organization(),
   }),
   indexes: [
     { columns: ["realm", "username"], unique: true },

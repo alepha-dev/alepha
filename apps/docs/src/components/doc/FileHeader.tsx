@@ -39,7 +39,9 @@ const FileHeader = (props: FileHeaderProps) => {
             </span>
             <span style={{ color: "var(--color-text-muted)" }}>$</span>
           </div>
-          <span style={{ color: "var(--term-text)" }}>cat {fileName}</span>
+          <span style={{ color: "var(--term-text)" }}>
+            cat {fileName} | pretty
+          </span>
         </div>
       </div>
 
