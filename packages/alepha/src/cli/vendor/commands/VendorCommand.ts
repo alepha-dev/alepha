@@ -1,4 +1,5 @@
 import { $inject, $use, AlephaError, t } from "alepha";
+import { PackageManagerUtils } from "alepha/cli";
 import { $command } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { vendorOptions } from "../atoms/vendorOptions.ts";
@@ -18,6 +19,7 @@ export class VendorCommand {
   protected readonly options = $use(vendorOptions);
   protected readonly vendorService = $inject(VendorService);
   protected readonly color = $inject(ConsoleColorProvider);
+  protected readonly pm = $inject(PackageManagerUtils);
 
   /**
    * Ensure vendor config is present and return resolved options.
@@ -71,9 +73,9 @@ export class VendorCommand {
         },
       });
 
-      run.end();
-
       if (result.aborted) {
+        run.end();
+
         process.stdout.write(
           `\nLocal modifications detected. Use ${c.set("CYAN", "--force")} to overwrite.\n`,
         );
@@ -84,7 +86,7 @@ export class VendorCommand {
           if (count === 0) continue;
 
           process.stdout.write(
-            `\n${c.set("CYAN", pkg.name)}: ${count} file(s) differ\n`,
+            `\n${c.set("CYAN", pkg.name)}: ${count} ${count === 1 ? "file differs" : "files differ"}\n`,
           );
           for (const file of pkg.added) {
             process.stdout.write(`  ${c.set("GREEN", "A")} ${file}\n`);
@@ -101,6 +103,13 @@ export class VendorCommand {
         return;
       }
 
+      if (result.synced.length > 0) {
+        const pmName = await this.pm.getPackageManager(root);
+        await run(`${pmName} install`, { root });
+      }
+
+      run.end();
+
       if (result.errors.length > 0) {
         for (const error of result.errors) {
           process.stdout.write(`${c.set("RED", "  error")} ${error}\n`);
@@ -109,7 +118,7 @@ export class VendorCommand {
 
       if (result.synced.length > 0) {
         process.stdout.write(
-          `\nSynced ${c.set("CYAN", String(result.synced.length))} package(s) from ${c.set("CYAN", opts.branch)}\n`,
+          `\nSynced ${c.set("CYAN", String(result.synced.length))} ${result.synced.length === 1 ? "package" : "packages"} from ${c.set("CYAN", opts.branch)}\n`,
         );
         for (const pkg of result.synced) {
           process.stdout.write(`  ${c.set("GREEN", "\u2713")} ${pkg}\n`);
@@ -162,7 +171,7 @@ export class VendorCommand {
         }
 
         process.stdout.write(
-          `\n${c.set("CYAN", pkg.name)}: ${count} file(s) differ\n`,
+          `\n${c.set("CYAN", pkg.name)}: ${count} ${count === 1 ? "file differs" : "files differ"}\n`,
         );
 
         for (const file of pkg.added) {
