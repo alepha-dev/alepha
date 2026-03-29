@@ -46,6 +46,7 @@ export class BuildServerTask extends BuildTask {
       name: "build server",
       handler: async () => {
         await this.buildServer({
+          root: ctx.root,
           entry: ctx.entry.server,
           distDir,
           clientDir: clientBuilt ? publicDir : undefined,
@@ -64,6 +65,7 @@ export class BuildServerTask extends BuildTask {
   }
 
   protected async buildServer(opts: {
+    root: string;
     entry: string;
     distDir: string;
     clientDir?: string;
@@ -166,7 +168,11 @@ export class BuildServerTask extends BuildTask {
 
     await this.generateExternals(opts.distDir, externals);
 
-    const entryFile = this.extractEntryFromBundle(opts.entry, result);
+    const entryFile = this.extractEntryFromBundle(
+      opts.root,
+      opts.entry,
+      result,
+    );
 
     let manifest = "";
     let manifestData:
@@ -304,15 +310,14 @@ export class BuildServerTask extends BuildTask {
   }
 
   protected extractEntryFromBundle(
+    root: string,
     entry: string,
     result:
       | vite.Rollup.RollupOutput
       | vite.Rollup.RollupOutput[]
       | vite.Rollup.RollupWatcher,
   ): string {
-    const entryFilePath = isAbsolute(entry)
-      ? entry
-      : join(process.cwd(), entry);
+    const entryFilePath = isAbsolute(entry) ? entry : join(root, entry);
 
     const normalizedEntryPath = entryFilePath.replace(/\\/g, "/");
 

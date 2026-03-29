@@ -310,11 +310,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     if (responseKind === "text") {
       reply.body = String(reply.body);
       // Detect HTML responses (starts with <!DOCTYPE html>)
-      if (
-        reply.body.length > 15 &&
-        reply.body.charCodeAt(0) === 60 &&
-        reply.body.startsWith("<!DOCTYPE html>")
-      ) {
+      if (reply.body.startsWith("<!DOCTYPE html>")) {
         headers["content-type"] ??= "text/html; charset=UTF-8";
       } else {
         headers["content-type"] ??= "text/plain";

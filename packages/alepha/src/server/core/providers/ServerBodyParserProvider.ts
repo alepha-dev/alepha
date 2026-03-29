@@ -260,12 +260,14 @@ export class ServerBodyParserProvider {
     let totalLength = 0;
 
     const reader = stream.getReader();
+    let needsCancel = true;
 
     try {
       while (true) {
         const { done, value } = await reader.read();
 
         if (done) {
+          needsCancel = false;
           break;
         }
 
@@ -276,8 +278,6 @@ export class ServerBodyParserProvider {
             this.log.error(
               `Body size limit exceeded: ${totalLength} > ${limit}`,
             );
-
-            await reader.cancel();
 
             throw new HttpError({
               status: 413,
@@ -303,6 +303,9 @@ export class ServerBodyParserProvider {
         combined.byteLength,
       );
     } finally {
+      if (needsCancel) {
+        await reader.cancel().catch(() => {});
+      }
       reader.releaseLock();
     }
   }

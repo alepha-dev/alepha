@@ -309,6 +309,36 @@ describe("ServerBodyParserProvider", () => {
     expect(result).toBeUndefined();
   });
 
+  it("should cancel stream reader when body exceeds limit", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create();
+    alepha.store.mut(bodyParserOptions, () => ({
+      inflate: true,
+      limit: 10,
+    }));
+    const parser = alepha.inject(ServerBodyParserProvider);
+    await alepha.start();
+
+    let readerCancelled = false;
+
+    // Stream must stay open (not closed) so cancel() is invocable
+    const stream = new ReadableStream({
+      pull(controller) {
+        controller.enqueue(new TextEncoder().encode("A".repeat(20)));
+      },
+      cancel() {
+        readerCancelled = true;
+      },
+    });
+
+    await expect(parser.parseText(stream)).rejects.toThrowError(
+      "Request body size limit exceeded",
+    );
+
+    expect(readerCancelled).toBe(true);
+  });
+
   it("should return undefined for unsupported content-type", async ({
     expect,
   }) => {

@@ -156,14 +156,24 @@ export class VendorService {
 
       if (!remoteExists) {
         const localFiles = await this.fs.ls(localPkgDir, { recursive: true });
-        results.push({ name: pkg, added: [], modified: [], removed: localFiles });
+        results.push({
+          name: pkg,
+          added: [],
+          modified: [],
+          removed: localFiles,
+        });
         totalChanges += localFiles.length;
         continue;
       }
 
       if (!localExists) {
         const remoteFiles = await this.fs.ls(remotePkgDir, { recursive: true });
-        results.push({ name: pkg, added: remoteFiles, modified: [], removed: [] });
+        results.push({
+          name: pkg,
+          added: remoteFiles,
+          modified: [],
+          removed: [],
+        });
         totalChanges += remoteFiles.length;
         continue;
       }
@@ -212,7 +222,10 @@ export class VendorService {
         ) {
           // Extract the path to the ignored directory itself
           const idx = file.indexOf(ignored);
-          const dirPath = this.fs.join(pkgDir, file.substring(0, idx + ignored.length));
+          const dirPath = this.fs.join(
+            pkgDir,
+            file.substring(0, idx + ignored.length),
+          );
           await this.fs.rm(dirPath, { recursive: true, force: true });
         }
       }
@@ -267,7 +280,8 @@ export class VendorService {
       (p) =>
         filePath === p ||
         filePath.startsWith(`${p}/`) ||
-        filePath.includes(`/${p}/`),
+        filePath.includes(`/${p}/`) ||
+        filePath.endsWith(`/${p}`),
     );
   }
 

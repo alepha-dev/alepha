@@ -16,9 +16,6 @@ Alepha
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/dt/alepha.svg" alt="downloads"/></a>
 </div>
 
-> [!WARNING]
-> This project is in active development and may not be suitable for production use. Please report any issues or bugs on [GitHub](https://github.com/feunard/alepha/issues).
-
 ## What is Alepha?
 
 Full-stack TypeScript framework for agentic era. Define your schema once — get database, API, types, and forms.
@@ -32,13 +29,13 @@ Built on predictable conventions and typed primitives — works great with AI co
 
 Each layer builds on the previous.
 
-| Layer | Description | Primitives                                              |
-|-------|-------------|---------------------------------------------------------|
-| **Foundation** | DI, lifecycle, config | `$inject`, `$env`, `$module`, `$hook`, `$logger`        |
-| **Backend** | Database, queues, storage, API | `$entity`, `$action`, `$queue`, `$bucket`, `$scheduler` |
+| Layer        | Description | Primitives                                              |
+|--------------|-------------|---------------------------------------------------------|
+| **Core**     | DI, lifecycle, config | `$inject`, `$env`, `$module`, `$hook`, `$logger`        |
+| **Backend**  | Database, queues, storage, API | `$entity`, `$action`, `$queue`, `$bucket`, `$scheduler` |
 | **Frontend** | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                |
-| **Platform** | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
-| **Admin** | Admin panel & auth UI | `$uiAdmin`, `$uiAuth`                                   |
+| **Modules**  | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
+| **Admin**    | Admin panel & auth UI | `$uiAdmin`, `$uiAuth`                                   |
 
 ## Example
 

@@ -102,7 +102,7 @@ export class DockerAdapter extends PlatformAdapter {
       name: "deploy",
       handler: async () => {
         await this.shell.run("tar czf dist.tar.gz dist", { root: ctx.root });
-        await this.ssh.exec(ip, `mkdir -p ${remote}`);
+        await this.ssh.exec(ip, `mkdir -p "${remote}"`);
         await this.ssh.upload(
           ip,
           this.fs.join(ctx.root, "dist.tar.gz"),
@@ -110,7 +110,7 @@ export class DockerAdapter extends PlatformAdapter {
         );
         await this.ssh.exec(
           ip,
-          `cd ${remote} && tar xzf dist.tar.gz && docker compose build && docker compose up -d`,
+          `cd "${remote}" && tar xzf dist.tar.gz && docker compose build && docker compose up -d`,
         );
       },
     });
@@ -201,7 +201,7 @@ export class DockerAdapter extends PlatformAdapter {
         await this.fs.mkdir(dirname(localCompose), { recursive: true });
         await this.fs.writeFile(localCompose, compose);
 
-        await this.ssh.exec(ip, `mkdir -p ${remote}`);
+        await this.ssh.exec(ip, `mkdir -p "${remote}"`);
         await this.ssh.upload(ip, localCompose, `${remote}/docker-compose.yml`);
 
         const envFile = this.fs.join(ctx.root, `.env.${ctx.env}`);
@@ -236,7 +236,7 @@ export class DockerAdapter extends PlatformAdapter {
         await this.fs.mkdir(dirname(localPath), { recursive: true });
         await this.fs.writeFile(localPath, traefikCompose);
 
-        await this.ssh.exec(ip, `mkdir -p ${this.TRAEFIK_PATH}`);
+        await this.ssh.exec(ip, `mkdir -p "${this.TRAEFIK_PATH}"`);
         await this.ssh.upload(
           ip,
           localPath,
@@ -244,7 +244,7 @@ export class DockerAdapter extends PlatformAdapter {
         );
         await this.ssh.exec(
           ip,
-          `cd ${this.TRAEFIK_PATH} && docker compose up -d`,
+          `cd "${this.TRAEFIK_PATH}" && docker compose up -d`,
         );
       },
     });
@@ -268,7 +268,7 @@ export class DockerAdapter extends PlatformAdapter {
           const remote = this.remotePath(ctx);
           await this.ssh.exec(
             ip,
-            `cd ${remote} && docker compose exec app node -e "require('./migrate')"`,
+            `cd "${remote}" && docker compose exec app node -e "require('./migrate')"`,
           );
         } else {
           await this.shell.run("alepha db migrations apply", {
@@ -330,7 +330,7 @@ export class DockerAdapter extends PlatformAdapter {
           try {
             const output = await this.ssh.exec(
               ip,
-              `cd ${remote} && docker compose ps --format json 2>/dev/null || echo "[]"`,
+              `cd "${remote}" && docker compose ps --format json 2>/dev/null || echo "[]"`,
             );
             const containers = this.parseContainers(output);
             for (const c of containers) {
@@ -381,7 +381,7 @@ export class DockerAdapter extends PlatformAdapter {
         if (this.isRemote(ctx)) {
           const ip = ctx.envConfig.ip!;
           const remote = this.remotePath(ctx);
-          await this.ssh.exec(ip, `cd ${remote} && docker compose down`);
+          await this.ssh.exec(ip, `cd "${remote}" && docker compose down`);
         } else {
           const composePath = this.composePath(ctx);
           if (await this.fs.exists(composePath)) {

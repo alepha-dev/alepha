@@ -155,8 +155,8 @@ export class DevCommand {
       }
     };
 
-    process.on("SIGINT", cleanup);
-    process.on("SIGTERM", cleanup);
+    process.once("SIGINT", cleanup);
+    process.once("SIGTERM", cleanup);
 
     // Wait for all processes (they run until killed)
     await Promise.allSettled(
