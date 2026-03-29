@@ -95,7 +95,7 @@ export class VendorService {
           continue;
         }
 
-        this.log.info(`Syncing package: ${pkg}`);
+        this.log.debug(`Syncing package: ${pkg}`);
 
         await this.fs.rm(localPkgDir, { recursive: true, force: true });
         await this.fs.cp(remotePkgDir, localPkgDir, { recursive: true });
@@ -194,9 +194,14 @@ export class VendorService {
 
     this.log.debug(`Cloning ${remote}#${branch} into ${tmpDir}`);
 
-    await this.shell.run(
+    const output = await this.shell.run(
       `git clone --depth 1 --branch ${branch} --filter=blob:none ${remote} ${tmpDir}`,
+      { capture: true },
     );
+
+    if (output) {
+      this.log.debug(output);
+    }
 
     return tmpDir;
   }
@@ -223,7 +228,10 @@ export class VendorService {
     for (const file of remoteFiles) {
       if (!localSet.has(file)) {
         added.push(file);
-      } else {
+        continue;
+      }
+
+      try {
         const [localContent, remoteContent] = await Promise.all([
           this.fs.readFile(this.fs.join(localDir, file)),
           this.fs.readFile(this.fs.join(remoteDir, file)),
@@ -232,6 +240,8 @@ export class VendorService {
         if (!localContent.equals(remoteContent)) {
           modified.push(file);
         }
+      } catch {
+        // Skip directories and unreadable entries
       }
     }
 

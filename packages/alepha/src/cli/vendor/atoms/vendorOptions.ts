@@ -20,8 +20,10 @@ export const vendorOptions = $atom({
 
       /**
        * Branch to sync from.
+       *
+       * @default "main"
        */
-      branch: t.text(),
+      branch: t.optional(t.text()),
 
       /**
        * Package directory names under `packages/` to sync.

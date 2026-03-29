@@ -30,7 +30,7 @@ export class VendorCommand {
     }
     return {
       remote: this.options.remote ?? DEFAULT_REMOTE,
-      branch: this.options.branch,
+      branch: this.options.branch ?? "main",
       packages: this.options.packages,
     };
   }
