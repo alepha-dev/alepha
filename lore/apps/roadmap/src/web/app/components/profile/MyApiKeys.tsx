@@ -172,6 +172,7 @@ const MyApiKeys = (props: MyApiKeysProps) => {
         onClose={() => setNewToken(null)}
         title="API Key Created"
         closeOnClickOutside={false}
+        size="lg"
       >
         <Flex direction="column" gap="md">
           <Text size="sm">
@@ -258,6 +259,42 @@ const MyApiKeys = (props: MyApiKeysProps) => {
                 2,
               )}
             </Code>
+          </Card>
+          <Card withBorder p="sm" bg={theme.colors.panel}>
+            <Text size="xs" fw={500} mb="xs">
+              Claude Desktop
+            </Text>
+            <Flex gap="xs" wrap="nowrap">
+              <Code
+                block
+                style={{
+                  flex: 1,
+                  wordBreak: "break-all",
+                  fontSize: "11px",
+                }}
+              >
+                {`${typeof window !== "undefined" ? window.location.origin : ""}/mcp?api_key=${newToken}`}
+              </Code>
+              <CopyButton
+                value={`${typeof window !== "undefined" ? window.location.origin : ""}/mcp?api_key=${newToken}`}
+              >
+                {({ copied, copy }) => (
+                  <Tooltip label={copied ? "Copied!" : "Copy"}>
+                    <ActionButton
+                      variant="subtle"
+                      color={copied ? "green" : "gray"}
+                      onClick={copy}
+                    >
+                      {copied ? (
+                        <IconCheck size={16} />
+                      ) : (
+                        <IconClipboard size={16} />
+                      )}
+                    </ActionButton>
+                  </Tooltip>
+                )}
+              </CopyButton>
+            </Flex>
           </Card>
           <Text size="xs" c="dimmed">
             This key gives access to all your campaigns. Use the project_list
