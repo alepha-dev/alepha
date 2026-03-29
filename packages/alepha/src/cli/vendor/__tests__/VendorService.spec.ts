@@ -86,6 +86,7 @@ describe("VendorService", () => {
         remote: "remote",
         branch: "main",
         packages: ["my-pkg"],
+        force: true,
       });
 
       expect(result.synced).toEqual(["my-pkg"]);
@@ -148,6 +149,7 @@ describe("VendorService", () => {
         remote: "remote",
         branch: "main",
         packages: ["pkg-a", "pkg-b"],
+        force: true,
       });
 
       expect(result.synced).toEqual(["pkg-a", "pkg-b"]);
@@ -185,6 +187,7 @@ describe("VendorService", () => {
           remote: "remote",
           branch: "main",
           packages: ["pkg-a"],
+          force: true,
         }),
       ).rejects.toThrow("disk full");
 

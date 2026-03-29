@@ -5,7 +5,7 @@
     "alepha",
     "mqtt"
   ],
-  "author": "Nicolas Foures",
+  "author": "Feunard",
   "version": "0.19.1",
   "type": "module",
   "engines": {

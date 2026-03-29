@@ -10,6 +10,7 @@ export interface VendorSyncOptions {
   remote: string;
   branch: string;
   packages: string[];
+  force?: boolean;
 }
 
 /**
@@ -18,6 +19,7 @@ export interface VendorSyncOptions {
 export interface VendorSyncResult {
   synced: string[];
   errors: string[];
+  aborted?: VendorDiffResult;
 }
 
 /**
@@ -59,8 +61,10 @@ export class VendorService {
   /**
    * Sync vendored packages from a remote repository.
    *
-   * Shallow-clones the remote, then for each package: removes the local copy
-   * and copies the remote copy into place.
+   * Shallow-clones the remote once, then:
+   * - Without `force`: diffs first. If local modifications exist, aborts
+   *   and returns the diff result without touching local files.
+   * - With `force` (or no changes): removes local copies and replaces them.
    */
   async sync(options: VendorSyncOptions): Promise<VendorSyncResult> {
     const synced: string[] = [];
@@ -69,6 +73,17 @@ export class VendorService {
 
     try {
       tmpDir = await this.cloneRemote(options.remote, options.branch);
+
+      if (!options.force) {
+        const diffResult = await this.diffFromClone(
+          options.root,
+          tmpDir,
+          options.packages,
+        );
+        if (diffResult.totalChanges > 0) {
+          return { synced: [], errors: [], aborted: diffResult };
+        }
+      }
 
       for (const pkg of options.packages) {
         const remotePkgDir = this.fs.join(tmpDir, "packages", pkg);
@@ -103,70 +118,69 @@ export class VendorService {
    * files to identify added, modified, and removed files.
    */
   async diff(options: VendorDiffOptions): Promise<VendorDiffResult> {
-    const packages: VendorPackageDiff[] = [];
-    let totalChanges = 0;
     let tmpDir: string | undefined;
 
     try {
       tmpDir = await this.cloneRemote(options.remote, options.branch);
-
-      for (const pkg of options.packages) {
-        const remotePkgDir = this.fs.join(tmpDir, "packages", pkg);
-        const localPkgDir = this.fs.join(options.root, "packages", pkg);
-
-        const remoteExists = await this.fs.exists(remotePkgDir);
-        const localExists = await this.fs.exists(localPkgDir);
-
-        if (!remoteExists && !localExists) {
-          packages.push({ name: pkg, added: [], modified: [], removed: [] });
-          continue;
-        }
-
-        if (!remoteExists) {
-          const localFiles = await this.fs.ls(localPkgDir, { recursive: true });
-          packages.push({
-            name: pkg,
-            added: [],
-            modified: [],
-            removed: localFiles,
-          });
-          totalChanges += localFiles.length;
-          continue;
-        }
-
-        if (!localExists) {
-          const remoteFiles = await this.fs.ls(remotePkgDir, {
-            recursive: true,
-          });
-          packages.push({
-            name: pkg,
-            added: remoteFiles,
-            modified: [],
-            removed: [],
-          });
-          totalChanges += remoteFiles.length;
-          continue;
-        }
-
-        const result = await this.diffDirectories(localPkgDir, remotePkgDir);
-        const pkgChanges =
-          result.added.length + result.modified.length + result.removed.length;
-        totalChanges += pkgChanges;
-
-        packages.push({
-          name: pkg,
-          added: result.added,
-          modified: result.modified,
-          removed: result.removed,
-        });
-      }
+      return await this.diffFromClone(options.root, tmpDir, options.packages);
     } finally {
       if (tmpDir) {
         await this.fs.rm(tmpDir, { recursive: true, force: true });
       }
     }
+  }
 
-    return { packages, totalChanges };
+  /**
+   * Diff local packages against an already-cloned remote.
+   */
+  protected async diffFromClone(
+    root: string,
+    tmpDir: string,
+    packages: string[],
+  ): Promise<VendorDiffResult> {
+    const results: VendorPackageDiff[] = [];
+    let totalChanges = 0;
+
+    for (const pkg of packages) {
+      const remotePkgDir = this.fs.join(tmpDir, "packages", pkg);
+      const localPkgDir = this.fs.join(root, "packages", pkg);
+
+      const remoteExists = await this.fs.exists(remotePkgDir);
+      const localExists = await this.fs.exists(localPkgDir);
+
+      if (!remoteExists && !localExists) {
+        results.push({ name: pkg, added: [], modified: [], removed: [] });
+        continue;
+      }
+
+      if (!remoteExists) {
+        const localFiles = await this.fs.ls(localPkgDir, { recursive: true });
+        results.push({ name: pkg, added: [], modified: [], removed: localFiles });
+        totalChanges += localFiles.length;
+        continue;
+      }
+
+      if (!localExists) {
+        const remoteFiles = await this.fs.ls(remotePkgDir, { recursive: true });
+        results.push({ name: pkg, added: remoteFiles, modified: [], removed: [] });
+        totalChanges += remoteFiles.length;
+        continue;
+      }
+
+      const result = await this.diffDirectories(localPkgDir, remotePkgDir);
+      const pkgChanges =
+        result.added.length + result.modified.length + result.removed.length;
+      totalChanges += pkgChanges;
+
+      results.push({
+        name: pkg,
+        added: result.added,
+        modified: result.modified,
+        removed: result.removed,
+      });
+    }
+
+    return { packages: results, totalChanges };
   }
 
   /**

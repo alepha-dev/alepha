@@ -56,52 +56,6 @@ export class VendorCommand {
       const opts = this.resolveOptions();
       const c = this.color;
 
-      if (!flags.force) {
-        let diffResult: VendorDiffResult = { packages: [], totalChanges: 0 };
-
-        await run({
-          name: `Checking for local modifications`,
-          handler: async () => {
-            diffResult = await this.vendorService.diff({
-              root,
-              remote: opts.remote,
-              branch: opts.branch,
-              packages: opts.packages,
-            });
-          },
-        });
-
-        if (diffResult.totalChanges > 0) {
-          run.end();
-
-          process.stdout.write(
-            `\nLocal modifications detected. Use ${c.set("CYAN", "--force")} to overwrite.\n`,
-          );
-
-          for (const pkg of diffResult.packages) {
-            const count =
-              pkg.added.length + pkg.modified.length + pkg.removed.length;
-            if (count === 0) continue;
-
-            process.stdout.write(
-              `\n${c.set("CYAN", pkg.name)}: ${count} file(s) differ\n`,
-            );
-            for (const file of pkg.added) {
-              process.stdout.write(`  ${c.set("GREEN", "A")} ${file}\n`);
-            }
-            for (const file of pkg.modified) {
-              process.stdout.write(`  ${c.set("ORANGE", "M")} ${file}\n`);
-            }
-            for (const file of pkg.removed) {
-              process.stdout.write(`  ${c.set("RED", "D")} ${file}\n`);
-            }
-          }
-
-          process.stdout.write("\n");
-          return;
-        }
-      }
-
       let result: VendorSyncResult = { synced: [], errors: [] };
 
       await run({
@@ -112,11 +66,40 @@ export class VendorCommand {
             remote: opts.remote,
             branch: opts.branch,
             packages: opts.packages,
+            force: flags.force,
           });
         },
       });
 
       run.end();
+
+      if (result.aborted) {
+        process.stdout.write(
+          `\nLocal modifications detected. Use ${c.set("CYAN", "--force")} to overwrite.\n`,
+        );
+
+        for (const pkg of result.aborted.packages) {
+          const count =
+            pkg.added.length + pkg.modified.length + pkg.removed.length;
+          if (count === 0) continue;
+
+          process.stdout.write(
+            `\n${c.set("CYAN", pkg.name)}: ${count} file(s) differ\n`,
+          );
+          for (const file of pkg.added) {
+            process.stdout.write(`  ${c.set("GREEN", "A")} ${file}\n`);
+          }
+          for (const file of pkg.modified) {
+            process.stdout.write(`  ${c.set("ORANGE", "M")} ${file}\n`);
+          }
+          for (const file of pkg.removed) {
+            process.stdout.write(`  ${c.set("RED", "D")} ${file}\n`);
+          }
+        }
+
+        process.stdout.write("\n");
+        return;
+      }
 
       if (result.errors.length > 0) {
         for (const error of result.errors) {

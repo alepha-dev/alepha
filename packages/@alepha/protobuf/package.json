@@ -1,7 +1,7 @@
 {
   "name": "@alepha/protobuf",
   "description": "Protocol Buffers (Protobuf) codec support for Alepha framework.",
-  "author": "Nicolas Foures",
+  "author": "Feunard",
   "version": "0.19.1",
   "type": "module",
   "engines": {
