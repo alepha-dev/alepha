@@ -207,6 +207,20 @@ export class VendorService {
   }
 
   /**
+   * Directories to ignore during diff comparisons.
+   */
+  protected readonly ignoredPaths = ["assets/swagger-ui", "node_modules", "dist"];
+
+  /**
+   * Check if a file path should be ignored during diff.
+   */
+  protected isIgnored(filePath: string): boolean {
+    return this.ignoredPaths.some(
+      (p) => filePath === p || filePath.startsWith(`${p}/`),
+    );
+  }
+
+  /**
    * Recursively compare two directories and return the differences.
    */
   protected async diffDirectories(
@@ -222,10 +236,13 @@ export class VendorService {
       this.fs.ls(remoteDir, { recursive: true }),
     ]);
 
-    const localSet = new Set(localFiles);
-    const remoteSet = new Set(remoteFiles);
+    const filteredLocal = localFiles.filter((f) => !this.isIgnored(f));
+    const filteredRemote = remoteFiles.filter((f) => !this.isIgnored(f));
 
-    for (const file of remoteFiles) {
+    const localSet = new Set(filteredLocal);
+    const remoteSet = new Set(filteredRemote);
+
+    for (const file of filteredRemote) {
       if (!localSet.has(file)) {
         added.push(file);
         continue;
@@ -245,7 +262,7 @@ export class VendorService {
       }
     }
 
-    for (const file of localFiles) {
+    for (const file of filteredLocal) {
       if (!remoteSet.has(file)) {
         removed.push(file);
       }
