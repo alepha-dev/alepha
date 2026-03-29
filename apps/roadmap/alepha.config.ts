@@ -1,6 +1,8 @@
 import { defineConfig } from "alepha/cli/config";
+import { AlephaCliPlatform } from "alepha/cli/platform";
 
 export default defineConfig({
+  services: [AlephaCliPlatform],
   platform: {
     environments: {
       production: {
