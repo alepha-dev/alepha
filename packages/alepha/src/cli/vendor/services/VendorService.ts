@@ -99,6 +99,7 @@ export class VendorService {
 
         await this.fs.rm(localPkgDir, { recursive: true, force: true });
         await this.fs.cp(remotePkgDir, localPkgDir, { recursive: true });
+        await this.removeIgnoredFiles(localPkgDir);
 
         synced.push(pkg);
       }
@@ -184,6 +185,41 @@ export class VendorService {
   }
 
   /**
+   * Remove test files and ignored directories from a synced package.
+   */
+  protected async removeIgnoredFiles(pkgDir: string): Promise<void> {
+    const allFiles = await this.fs.ls(pkgDir, { recursive: true });
+
+    // Remove ignored files
+    for (const file of allFiles) {
+      if (
+        file.endsWith(".spec.ts") ||
+        file.endsWith(".spec.tsx") ||
+        file === "LICENSE"
+      ) {
+        await this.fs.rm(this.fs.join(pkgDir, file), { force: true });
+      }
+    }
+
+    // Remove ignored directories (find all occurrences at any depth)
+    for (const file of allFiles) {
+      for (const ignored of this.ignoredPaths) {
+        if (
+          file === ignored ||
+          file.startsWith(`${ignored}/`) ||
+          file.includes(`/${ignored}/`) ||
+          file.endsWith(`/${ignored}`)
+        ) {
+          // Extract the path to the ignored directory itself
+          const idx = file.indexOf(ignored);
+          const dirPath = this.fs.join(pkgDir, file.substring(0, idx + ignored.length));
+          await this.fs.rm(dirPath, { recursive: true, force: true });
+        }
+      }
+    }
+  }
+
+  /**
    * Clone a remote repository into a temporary directory.
    */
   protected async cloneRemote(remote: string, branch: string): Promise<string> {
@@ -209,14 +245,29 @@ export class VendorService {
   /**
    * Directories to ignore during diff comparisons.
    */
-  protected readonly ignoredPaths = ["assets/swagger-ui", "node_modules", "dist"];
+  protected readonly ignoredPaths = [
+    "__tests__",
+    "assets/swagger-ui",
+    "node_modules",
+    "dist",
+  ];
 
   /**
    * Check if a file path should be ignored during diff.
    */
   protected isIgnored(filePath: string): boolean {
+    if (
+      filePath.endsWith(".spec.ts") ||
+      filePath.endsWith(".spec.tsx") ||
+      filePath === "LICENSE"
+    ) {
+      return true;
+    }
     return this.ignoredPaths.some(
-      (p) => filePath === p || filePath.startsWith(`${p}/`),
+      (p) =>
+        filePath === p ||
+        filePath.startsWith(`${p}/`) ||
+        filePath.includes(`/${p}/`),
     );
   }
 
