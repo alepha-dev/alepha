@@ -1,7 +1,7 @@
 import type { State } from "../Alepha.ts";
 import { OPTIONS } from "../constants/OPTIONS.ts";
-import type { Static, TObject } from "../providers/TypeProvider.ts";
-import type { Atom } from "./$atom.ts";
+import type { Static } from "../providers/TypeProvider.ts";
+import type { Atom, TAtomObject } from "./$atom.ts";
 import { $context } from "./$context.ts";
 
 /**
@@ -26,7 +26,7 @@ import { $context } from "./$context.ts";
  * }
  * ```
  */
-export const $use = <T extends TObject, N extends string>(
+export const $use = <T extends TAtomObject, N extends string>(
   atom: Atom<T, N>,
 ): Readonly<Static<T>> => {
   const { alepha } = $context();

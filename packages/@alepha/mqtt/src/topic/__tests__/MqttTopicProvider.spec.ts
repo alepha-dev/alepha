@@ -164,6 +164,9 @@ describe("$topic - mqtt", () => {
 
     await pub.t.publish({ value: "retained" });
 
+    // Allow the broker to persist the retained message before the subscriber connects.
+    await new Promise((r) => setTimeout(r, 200));
+
     await subApp.start();
     const sub = subApp.inject(Subscriber);
 

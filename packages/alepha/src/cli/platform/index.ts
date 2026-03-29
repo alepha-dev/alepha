@@ -21,6 +21,38 @@ import { WranglerApi } from "./services/WranglerApi.ts";
 
 // ---------------------------------------------------------------------------
 
+/**
+ * CLI plugin for multi-cloud deployment orchestration.
+ *
+ * Manages the full lifecycle of deploying Alepha apps: provision resources,
+ * build, migrate databases, deploy, and sync secrets. Supports Cloudflare
+ * Workers, Vercel, and Docker (local and remote via SSH).
+ *
+ * Commands:
+ * - `alepha platform plan`    — show project topology and resource names
+ * - `alepha platform up`      — full deployment pipeline
+ * - `alepha platform down`    — teardown an environment
+ * - `alepha platform status`  — inspect deployed resources
+ * - `alepha platform build`   — build apps locally
+ * - `alepha platform deploy`  — deploy to cloud
+ * - `alepha platform migrate` — run database migrations
+ * - `alepha platform secrets` — manage external secret stores
+ *
+ * Configuration in `alepha.config.ts`:
+ *
+ * ```typescript
+ * import { AlephaCliPlatform } from "alepha/cli/platform";
+ *
+ * export default defineConfig({
+ *   services: [AlephaCliPlatform],
+ *   platform: {
+ *     environments: {
+ *       production: { adapter: "cloudflare", domain: "myapp.com" },
+ *     },
+ *   },
+ * });
+ * ```
+ */
 export const AlephaCliPlatform = $module({
   name: "alepha.cli.platform",
   services: [

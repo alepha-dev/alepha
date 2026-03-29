@@ -197,6 +197,11 @@
       "import": "./src/cli/platform/index.ts",
       "default": "./src/cli/platform/index.ts"
     },
+    "./cli/vendor": {
+      "types": "./src/cli/vendor/index.ts",
+      "import": "./src/cli/vendor/index.ts",
+      "default": "./src/cli/vendor/index.ts"
+    },
     "./command": {
       "types": "./src/command/index.ts",
       "import": "./src/command/index.ts",

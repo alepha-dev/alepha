@@ -23,6 +23,8 @@ describe("VerificationJobs", () => {
     const time = alepha.inject(DateTimeProvider);
     const jobs = alepha.inject(VerificationJobs);
 
+    await db.verifications.deleteMany({ target: { eq: "hello@mail.com" } });
+
     const entry = {
       type: "link",
       target: "hello@mail.com",
@@ -36,12 +38,12 @@ describe("VerificationJobs", () => {
 
     await db.verifications.create({
       ...entry,
-      createdAt: time.now().subtract(1, "days").toISOString(),
+      createdAt: time.now().subtract(2, "days").toISOString(),
     });
 
     await db.verifications.create({
       ...entry,
-      createdAt: time.now().subtract(2, "days").toISOString(),
+      createdAt: time.now().subtract(3, "days").toISOString(),
     });
 
     expect(await db.verifications.count()).toBe(3);

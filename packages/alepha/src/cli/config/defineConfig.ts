@@ -8,6 +8,7 @@ import {
   devOptions,
 } from "alepha/cli";
 import { type PlatformOptions, platformOptions } from "alepha/cli/platform";
+import { type VendorOptions, vendorOptions } from "alepha/cli/vendor";
 import type { CommandPrimitive } from "alepha/command";
 
 export interface AlephaCliConfig {
@@ -46,6 +47,11 @@ export interface AlephaCliConfig {
    * Platform deployment configuration.
    */
   platform?: PlatformOptions;
+
+  /**
+   * Vendor synchronization configuration.
+   */
+  vendor?: VendorOptions;
 }
 
 export type AlephaCliConfigFn = (alepha: Alepha) => AlephaCliConfig;
@@ -85,6 +91,10 @@ export const defineConfig = (
 
     if (config.platform) {
       alepha.set(platformOptions, config.platform);
+    }
+
+    if (config.vendor) {
+      alepha.set(vendorOptions, config.vendor);
     }
 
     return {
