@@ -5,6 +5,21 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
+"@alepha/billing-stripe@workspace:packages/@alepha/billing-stripe":
+  version: 0.0.0-use.local
+  resolution: "@alepha/billing-stripe@workspace:packages/@alepha/billing-stripe"
+  dependencies:
+    "@biomejs/biome": "npm:^2.4.9"
+    alepha: "npm:0.19.1"
+    stripe: "npm:^17.0.0"
+    tsdown: "npm:^0.21.7"
+    typescript: "npm:^6.0.2"
+    vitest: "npm:^4.1.2"
+  peerDependencies:
+    alepha: 0.19.1
+  languageName: unknown
+  linkType: soft
+
 "@alepha/bucket-s3@workspace:packages/@alepha/bucket-s3":
   version: 0.0.0-use.local
   resolution: "@alepha/bucket-s3@workspace:packages/@alepha/bucket-s3"
@@ -4699,7 +4714,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:>=13.7.0, @types/node@npm:^25.5.0":
+"@types/node@npm:*, @types/node@npm:>=13.7.0, @types/node@npm:>=8.1.0, @types/node@npm:^25.5.0":
   version: 25.5.0
   resolution: "@types/node@npm:25.5.0"
   dependencies:
@@ -11431,7 +11446,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"qs@npm:^6.14.0, qs@npm:^6.14.1":
+"qs@npm:^6.11.0, qs@npm:^6.14.0, qs@npm:^6.14.1":
   version: 6.15.0
   resolution: "qs@npm:6.15.0"
   dependencies:
@@ -12897,6 +12912,16 @@ __metadata:
   version: 2.0.1
   resolution: "strip-json-comments@npm:2.0.1"
   checksum: 10c0/b509231cbdee45064ff4f9fd73609e2bcc4e84a4d508e9dd0f31f70356473fde18abfb5838c17d56fb236f5a06b102ef115438de0600b749e818a35fbbc48c43
+  languageName: node
+  linkType: hard
+
+"stripe@npm:^17.0.0":
+  version: 17.7.0
+  resolution: "stripe@npm:17.7.0"
+  dependencies:
+    "@types/node": "npm:>=8.1.0"
+    qs: "npm:^6.11.0"
+  checksum: 10c0/df67c6d455bd0dd87140640924c220fa9581fc00c3267d171f407c8d088f946f61e3ae7e88a89e7dd705b10fd5254630fc943222eb6f003390ebafbd391f81b2
   languageName: node
   linkType: hard
 

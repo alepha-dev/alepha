@@ -887,6 +887,7 @@ export class TreeCommand {
         for (const item of items) {
           this.log.trace(`Writing doc: ${item.slug}`);
           const content = item.content
+            .replaceAll("\\", "\\\\")
             .replaceAll("`", "\\`")
             .replaceAll("${", "\\${")
             .replaceAll("\t", "  ");

@@ -160,6 +160,11 @@
       "import": "./src/batch/index.ts",
       "default": "./src/batch/index.ts"
     },
+    "./billing": {
+      "types": "./src/billing/index.ts",
+      "import": "./src/billing/index.ts",
+      "default": "./src/billing/index.ts"
+    },
     "./bin": {
       "types": "./src/bin/index.ts",
       "import": "./src/bin/index.ts",

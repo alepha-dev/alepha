@@ -1,0 +1,149 @@
+import { $inject, t } from "alepha";
+import { $secure } from "alepha/security";
+import { $action, okSchema } from "alepha/server";
+import {
+  captureIntentSchema,
+  intentQuerySchema,
+  intentResourceSchema,
+  recordCashSchema,
+  refundIntentSchema,
+} from "../schemas/intentSchemas.ts";
+import { refundResourceSchema } from "../schemas/refundSchemas.ts";
+import { BillingService } from "../services/BillingService.ts";
+
+export class AdminBillingController {
+  protected readonly url = "/admin/billing";
+  protected readonly group = "admin:billing";
+  protected readonly billing = $inject(BillingService);
+
+  /**
+   * List payment intents with pagination and filtering.
+   */
+  public readonly listIntents = $action({
+    path: `${this.url}/intents`,
+    group: this.group,
+    use: [$secure({ permissions: ["billing:read"] })],
+    description: "List payment intents",
+    schema: {
+      query: intentQuerySchema,
+      response: t.page(intentResourceSchema),
+    },
+    handler: ({ query }) => this.billing.findIntents(query),
+  });
+
+  /**
+   * Get a payment intent by ID.
+   */
+  public readonly getIntent = $action({
+    path: `${this.url}/intents/:id`,
+    group: this.group,
+    use: [$secure({ permissions: ["billing:read"] })],
+    description: "Get payment intent details",
+    schema: {
+      params: t.object({ id: t.uuid() }),
+      response: intentResourceSchema,
+    },
+    handler: ({ params }) => this.billing.getIntent(params.id),
+  });
+
+  /**
+   * Capture an authorized intent.
+   */
+  public readonly captureIntent = $action({
+    method: "POST",
+    path: `${this.url}/intents/:id/capture`,
+    group: this.group,
+    use: [$secure({ permissions: ["billing:write"] })],
+    description: "Capture an authorized payment intent",
+    schema: {
+      params: t.object({ id: t.uuid() }),
+      body: captureIntentSchema,
+      response: intentResourceSchema,
+    },
+    handler: ({ params, body }) => this.billing.capture(params.id, body.amount),
+  });
+
+  /**
+   * Void an authorized intent.
+   */
+  public readonly voidIntent = $action({
+    method: "POST",
+    path: `${this.url}/intents/:id/void`,
+    group: this.group,
+    use: [$secure({ permissions: ["billing:write"] })],
+    description: "Void an authorized payment intent",
+    schema: {
+      params: t.object({ id: t.uuid() }),
+      response: intentResourceSchema,
+    },
+    handler: ({ params }) => this.billing.void(params.id),
+  });
+
+  /**
+   * Refund a captured intent.
+   */
+  public readonly refundIntent = $action({
+    method: "POST",
+    path: `${this.url}/intents/:id/refund`,
+    group: this.group,
+    use: [$secure({ permissions: ["billing:write"] })],
+    description: "Issue partial or full refund",
+    schema: {
+      params: t.object({ id: t.uuid() }),
+      body: refundIntentSchema,
+      response: refundResourceSchema,
+    },
+    handler: ({ params, body }) =>
+      this.billing.refund(params.id, body.amount, body.reason),
+  });
+
+  /**
+   * Cancel a created intent.
+   */
+  public readonly cancelIntent = $action({
+    method: "POST",
+    path: `${this.url}/intents/:id/cancel`,
+    group: this.group,
+    use: [$secure({ permissions: ["billing:write"] })],
+    description: "Cancel a created payment intent",
+    schema: {
+      params: t.object({ id: t.uuid() }),
+      response: intentResourceSchema,
+    },
+    handler: ({ params }) => this.billing.cancel(params.id),
+  });
+
+  /**
+   * Record a cash payment.
+   */
+  public readonly recordCash = $action({
+    method: "POST",
+    path: `${this.url}/cash`,
+    group: this.group,
+    use: [$secure({ permissions: ["billing:write"] })],
+    description: "Record a cash payment",
+    schema: {
+      body: recordCashSchema,
+      response: intentResourceSchema,
+    },
+    handler: ({ body }) =>
+      this.billing.recordCashPayment(body.amount, body.currency, body.metadata),
+  });
+
+  /**
+   * PSP webhook endpoint (not under /admin, no auth — verified by provider).
+   */
+  public readonly webhook = $action({
+    method: "POST",
+    path: "/billing/webhook",
+    group: this.group,
+    description: "PSP webhook endpoint",
+    schema: {
+      response: okSchema,
+    },
+    handler: async (request) => {
+      await this.billing.handleWebhook(request.raw.web!.req);
+      return { ok: true };
+    },
+  });
+}
