@@ -136,15 +136,6 @@ export class PlatformCommand {
         }
       }
 
-      if (adapterName === "docker" || adapterName === "docker-compose") {
-        if (hasDB && !envVars.DATABASE_URL) {
-          resources.push({ label: "Postgres", value: "postgres:17-alpine" });
-        }
-        if (hasBucket && !envVars.S3_ENDPOINT) {
-          resources.push({ label: "RustFS", value: "rustfs/rustfs:latest" });
-        }
-      }
-
       const excludedKeys =
         adapterName === "vercel"
           ? VercelAdapter.EXCLUDED_SECRET_KEYS

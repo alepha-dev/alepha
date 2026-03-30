@@ -2,7 +2,6 @@ import { $inject, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
-import { DockerAdapter } from "../adapters/DockerAdapter.ts";
 import type {
   AppDefinition,
   PlatformAdapter,
@@ -28,7 +27,6 @@ export class PlatformOrchestrator {
   protected readonly inspector = $inject(PlatformInspector);
   protected readonly naming = $inject(NamingService);
   protected readonly cloudflareAdapter = $inject(CloudflareAdapter);
-  protected readonly dockerAdapter = $inject(DockerAdapter);
   protected readonly vercelAdapter = $inject(VercelAdapter);
 
   // -------------------------------------------------------------------------
@@ -39,15 +37,8 @@ export class PlatformOrchestrator {
     switch (adapterName) {
       case "cloudflare":
         return this.cloudflareAdapter;
-      case "docker":
-      case "docker-compose":
-        return this.dockerAdapter;
       case "vercel":
         return this.vercelAdapter;
-      case "aks":
-        throw new AlephaError(
-          `Adapter "${adapterName}" is not yet available. Currently supported: cloudflare, docker, vercel`,
-        );
       default:
         throw new AlephaError(`Unknown adapter: "${adapterName}"`);
     }

@@ -51,10 +51,10 @@ describe("PlatformOrchestrator", () => {
       expect(adapter).toBeInstanceOf(CloudflareAdapter);
     });
 
-    test("throws for unsupported adapter", ({ expect }) => {
+    test("throws for unknown adapter", ({ expect }) => {
       const { orchestrator } = createTestEnv();
       expect(() => orchestrator.resolveAdapter("aks")).toThrow(
-        /not yet available/,
+        /Unknown adapter/,
       );
     });
   });
