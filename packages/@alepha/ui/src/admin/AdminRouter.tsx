@@ -10,6 +10,7 @@ import {
 import { AuthRouter, UserButton } from "@alepha/ui/auth";
 import {
   IconBell,
+  IconCreditCard,
   IconDevices,
   IconFile,
   IconHistory,
@@ -32,6 +33,7 @@ import type {
   AdminSessionController,
   AdminUserController,
 } from "alepha/api/users";
+import type { AdminBillingController } from "alepha/billing";
 import { ReactAuth } from "alepha/react/auth";
 import { $page, ReactRouter, Redirection } from "alepha/react/router";
 import { $secure } from "alepha/security";
@@ -51,6 +53,7 @@ export class AdminRouter {
   protected readonly jobCtrl = $client<AdminJobController>();
   protected readonly apiKeyCtrl = $client<AdminApiKeyController>();
   protected readonly notificationCtrl = $client<AdminNotificationController>();
+  protected readonly billingCtrl = $client<AdminBillingController>();
 
   public readonly adminCookie = $cookie(alephaSidebarAtom, {
     name: "admin.sidebar",
@@ -157,6 +160,16 @@ export class AdminRouter {
           {
             ...this.router.node(this.adminParameters.name),
             can: () => this.paramCtrl.getParameterTree.can(),
+          },
+        ],
+      },
+      {
+        type: "section",
+        label: "Commerce",
+        children: [
+          {
+            ...this.router.node(this.adminBilling.name),
+            can: () => this.billingCtrl.listIntents.can(),
           },
         ],
       },
@@ -397,5 +410,22 @@ export class AdminRouter {
     },
     lazy: () => import("./components/notifications/AdminNotifications.tsx"),
     can: () => this.notificationCtrl.findNotifications.can(),
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Billing
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  public readonly adminBilling = $page({
+    icon: IconCreditCard,
+    parent: this.adminLayout,
+    path: "/billing",
+    label: "Billing",
+    description: "Manage payment intents and transactions.",
+    head: {
+      title: "Billing",
+    },
+    lazy: () => import("./components/billing/AdminBilling.tsx"),
+    can: () => this.billingCtrl.listIntents.can(),
   });
 }
