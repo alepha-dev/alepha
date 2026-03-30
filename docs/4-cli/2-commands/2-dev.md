@@ -10,7 +10,13 @@ alepha dev
 
 That's it. Your app is running. Make changes and watch them appear instantly.
 
-## How It Works
+## Options
+
+| Flag | Description |
+|------|-------------|
+| `--only` | Run only specific apps in a monorepo (comma-separated: `--only api,web`) |
+
+## What It Does
 
 The `dev` command is smart about what kind of project you're running:
 
@@ -61,12 +67,6 @@ Alepha looks for your entry file in this order:
 2. `src/main.server.ts`
 3. `src/index.ts`
 4. `src/server.ts`
-
-Or you can specify it directly:
-
-```bash
-alepha dev src/custom-entry.ts
-```
 
 > **Entry Point Required**
 >

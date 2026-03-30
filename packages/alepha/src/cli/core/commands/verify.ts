@@ -25,7 +25,6 @@ export class VerifyCommand {
     description: "Verify the Alepha project",
     handler: async ({ root, run }) => {
       await run("alepha clean");
-      await run("alepha format");
       await run("alepha lint");
 
       await run("alepha typecheck");

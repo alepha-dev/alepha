@@ -10,6 +10,12 @@ alepha verify
 
 Grab a coffee. When you get back, you'll know if your code is production-ready.
 
+## Options
+
+| Flag | Description |
+|------|-------------|
+| (none) | Runs the full pipeline with no flags needed |
+
 ## What It Does
 
 The `verify` command runs a complete quality pipeline:
@@ -18,11 +24,10 @@ The `verify` command runs a complete quality pipeline:
 alepha verify
 
 ✓ clean         Clean the project
-✓ format        Format code with Biome
-✓ lint          Lint code with Biome
+✓ lint          Format and lint code with Biome
 ✓ typecheck     Check TypeScript types
 ✓ test          Run tests with Vitest
-✓ db:check      Check database migrations
+✓ db check      Check database migrations
 ✓ build         Build for production
 ✓ clean         Clean up build artifacts
 ```
@@ -39,23 +44,15 @@ alepha clean
 
 Removes the `dist/` folder. Starts fresh.
 
-### 2. Format
-
-```bash
-alepha format
-```
-
-Formats your code with Biome. Consistent style, no debates.
-
-### 3. Lint
+### 2. Lint
 
 ```bash
 alepha lint
 ```
 
-Checks for code issues — unused variables, suspicious patterns, import problems. Biome catches them fast.
+Formats and lints your code with Biome (`biome check --fix`). Consistent style, no debates. Catches unused variables, suspicious patterns, import problems.
 
-### 4. Typecheck
+### 3. Typecheck
 
 ```bash
 alepha typecheck
@@ -63,7 +60,7 @@ alepha typecheck
 
 Runs `tsc --noEmit`. Your types must be correct. No `any` sneaking through, no missing properties, no incorrect function calls.
 
-### 5. Test
+### 4. Test
 
 ```bash
 alepha test
@@ -75,10 +72,10 @@ Runs Vitest (if it's installed). Your tests must pass. All of them.
 >
 > This step is skipped if Vitest isn't in your `devDependencies`.
 
-### 6. Database Migrations Check
+### 5. Database Migrations Check
 
 ```bash
-alepha db:check-migrations
+alepha db migrations check
 ```
 
 Verifies your Drizzle migrations are in sync with your schema.
@@ -87,7 +84,7 @@ Verifies your Drizzle migrations are in sync with your schema.
 >
 > This step is skipped if you don't have a `migrations/` directory.
 
-### 7. Build
+### 6. Build
 
 ```bash
 alepha build
@@ -101,7 +98,7 @@ If it can't build, it can't ship. See the [Build Command](/docs/cli/build) docum
 >
 > This step is skipped for Expo projects (they have their own build process).
 
-### 8. Clean Again
+### 7. Clean Again
 
 ```bash
 alepha clean
@@ -113,15 +110,15 @@ Removes build artifacts. Leaves your working directory clean.
 
 The order matters:
 
-1. **Format first** — Clean code is easier to read
-2. **Lint second** — Catch issues in formatted code
-3. **Typecheck third** — Types depend on clean, linted code
-4. **Test fourth** — Tests depend on correct types
+1. **Lint first** — Format and catch issues early
+2. **Typecheck second** — Types depend on clean, linted code
+3. **Test third** — Tests depend on correct types
+4. **Migrations fourth** — Verify schema consistency
 5. **Build last** — Only build if everything else passes
 
 > **Fail Fast**
 >
-> The pipeline is designed to fail fast. If format fails, there's no point running tests. If types are wrong, the build will fail anyway.
+> The pipeline is designed to fail fast. If lint fails, there's no point running tests. If types are wrong, the build will fail anyway.
 
 ## When to Run Verify
 
@@ -136,7 +133,7 @@ Don't commit broken code. Your teammates will thank you.
 ### Before Deploying
 
 ```bash
-alepha verify && alepha build --vercel && cd dist && vercel --prod
+alepha verify && alepha build --target=vercel && cd dist && vercel --prod
 ```
 
 Don't deploy broken code. Your users will thank you.
@@ -186,10 +183,7 @@ fi
 Don't want to run everything? Use the individual commands:
 
 ```bash
-# Just format
-alepha format
-
-# Just lint
+# Just lint (includes formatting)
 alepha lint
 
 # Just typecheck
@@ -208,21 +202,9 @@ alepha build
 
 ## Handling Failures
 
-### Format Failures
-
-Biome usually auto-fixes format issues. If `verify` fails on format:
-
-```bash
-alepha format
-# → Auto-fixes issues
-
-alepha verify
-# → Should pass now
-```
-
 ### Lint Failures
 
-Lint errors need manual fixes. The error messages tell you what's wrong:
+Biome auto-fixes formatting issues but some lint errors need manual fixes. The error messages tell you what's wrong:
 
 ```
 src/auth.ts:42:5 lint/suspicious/noExplicitAny

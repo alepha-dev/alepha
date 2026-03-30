@@ -4,8 +4,8 @@ Alepha uses a hook-based event system for lifecycle management and cross-service
 
 ## Confusion Warning
 
-- `$hook` is not a React Hook (e.g. useState) ! But rather event listeners.
-- `$hook` is not a pub/sub system ! Use `$topic` for pub/sub.
+- `$hook` is not a React Hook (e.g. `useState`). It is an event listener.
+- `$hook` is not a pub/sub system. Use `$topic` for pub/sub.
 
 ## Lifecycle
 

@@ -3,7 +3,7 @@
 Alepha is a full-stack TypeScript application engine.
 
 Most tools require assembling the stack: pick a router, configure an ORM, wire up auth,
-set up queues, debug Dockerfiles.
+set up queues, write deployment configs.
 
 Alepha ships with all of it built-in.
 
@@ -161,7 +161,7 @@ Common infrastructure needs are built-in primitives:
 | Distributed locks | `$lock` | Coordinate across processes |
 | Email | `$email` | Send transactional email |
 
-Production builds compile to an optimized bundle deployable to Docker, Vercel, Cloudflare, or any VPS.
+Production builds compile to an optimized bundle deployable to Vercel, Cloudflare, or any VPS.
 Primitives like `$scheduler` automatically map to native platform formats (Cloudflare Triggers, Vercel Cron).
 
 ## Deployment Targets
@@ -170,7 +170,6 @@ Primitives like `$scheduler` automatically map to native platform formats (Cloud
 
 ```bash
 alepha build                         # Default: Node.js
-alepha build --target=docker         # Generates Dockerfile
 alepha build --target=vercel         # Adapts to Vercel serverless
 alepha build --target=cloudflare     # Adapts to Cloudflare Workers
 alepha build --target=static         # Static site generation

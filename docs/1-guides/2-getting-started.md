@@ -181,7 +181,6 @@ App starts up just like in development mode, but without HMR and with better per
 Alepha adapts the build output based on where you deploy:
 
 ```bash
-npm run build -- --target=docker       # Generates a Dockerfile in dist/
 npm run build -- --target=vercel       # Adapts output for Vercel serverless
 npm run build -- --target=cloudflare   # Adapts output for Cloudflare Workers
 npm run build -- --runtime=bun         # Optimizes for Bun runtime
@@ -196,8 +195,8 @@ import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {
-    target: "docker", // will produce a Dockerfile with Node.js base image
-    runtime: "node",
+    target: "cloudflare",
+    runtime: "workerd",
   },
 });
 ```
@@ -229,7 +228,48 @@ my-app/
         Home.tsx            # Example React component
 ```
 
-Entry file conventions:
-- `src/main.ts` -- server-only apps (API)
-- `src/main.server.ts` -- server entry when a browser entry also exists
-- `src/main.browser.ts` -- browser entry for React apps
+For API-only projects (no `--react`), the `web/` directory and `main.browser.ts` are absent.
+
+### Entry Points
+
+| File | Purpose | When needed |
+|------|---------|-------------|
+| `main.server.ts` | Server entry point | Always |
+| `main.browser.ts` | Browser entry point | React/full-stack only |
+
+### Scaling with Modules
+
+As your project grows, group features into modules:
+
+```
+src/
+  api/
+    users/
+      controllers/
+      services/
+      entities/
+      index.ts           # UsersModule
+    billing/
+      controllers/
+      services/
+      entities/
+      index.ts           # BillingModule
+  web/
+    app/
+      AppRouter.ts
+    components/
+  main.server.ts
+  main.browser.ts
+```
+
+### Naming Conventions
+
+| Directory | Contains | Example files |
+|-----------|----------|---------------|
+| `controllers/` | API endpoints with `$action` | `UserController.ts` |
+| `services/` | Business logic | `UserService.ts` |
+| `entities/` | Database schemas with `$entity` | `userEntity.ts` |
+| `providers/` | External service wrappers | `StripeProvider.ts` |
+| `schemas/` | Shared TypeBox schemas | `userSchema.ts` |
+| `atoms/` | State definitions with `$atom` | `currentUserAtom.ts` |
+| `components/` | React components | `UserCard.tsx` |

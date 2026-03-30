@@ -98,8 +98,6 @@ The default provider depends on the environment:
 | `LocalFileStorageProvider` | `alepha/bucket` | Local filesystem storage |
 | `CloudflareR2Provider` | `alepha/bucket` | Cloudflare R2 (S3-compatible) |
 | `S3FileStorageProvider` | `@alepha/bucket-s3` | AWS S3 / MinIO |
-| `VercelFileStorageProvider` | `@alepha/bucket-vercel` | Vercel Blob |
-| `AzureBlobStorageProvider` | `@alepha/bucket-azure` | Azure Blob Storage |
 
 ### Configuring a Provider
 

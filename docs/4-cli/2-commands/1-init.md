@@ -31,25 +31,27 @@ The `init` command is your project bootstrap. It handles the tedious setup work 
 
 | Flag | Description |
 |------|-------------|
-| `--react` | Include React and alepha/react for building web apps |
-| `--ui` | Include @alepha/ui component library (automatically includes --react) |
+| `--api` | Include API module structure (`src/api/`) |
+| `--react`, `-r` | Include React dependencies and web module (`src/web/`) |
+| `--ui` | Include @alepha/ui component library (implies `--react`) |
+| `--auth` | Include authentication (implies `--api --ui --react`) |
+| `--admin` | Include admin portal (implies `--auth`) |
+| `--tailwind` | Include Tailwind CSS with Vite plugin (implies `--react`) |
 | `--test` | Set up Vitest and create a test directory |
-| `--yarn` | Use Yarn as the package manager |
-| `--pnpm` | Use pnpm as the package manager |
-| `--npm` | Use npm as the package manager |
-| `--bun` | Use Bun as the package manager |
+| `--pm <manager>` | Package manager to use: `yarn`, `npm`, `pnpm`, or `bun` |
+| `--force`, `-f` | Override existing files |
 
 ## Package Manager Detection
 
-If you don't specify a package manager, `init` figures it out automatically:
+If you don't specify `--pm`, `init` figures it out automatically:
 
-1. If `yarn.lock` exists → uses Yarn
-2. If `pnpm-lock.yaml` exists → uses pnpm
-3. Otherwise → uses npm
-
-> **Package Manager Cleanup**
->
-> When switching package managers, `init` cleans up the old lock files to avoid conflicts.
+1. If running under Bun → uses Bun
+2. If `yarn.lock` exists → uses Yarn
+3. If `pnpm-lock.yaml` exists → uses pnpm
+4. If `bun.lock` exists → uses Bun
+5. If `package-lock.json` exists → uses npm
+6. Inside a workspace → uses the workspace package manager
+7. Otherwise → uses npm
 
 ## Project Flavors
 

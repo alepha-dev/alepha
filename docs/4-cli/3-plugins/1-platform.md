@@ -1,18 +1,32 @@
-# Platform Command
+# Platform Plugin
 
-Deploying a full-stack app to the cloud means provisioning databases, creating storage buckets, configuring queues, pushing secrets, and running migrations -- before you even think about deploying code. Most teams glue this together with shell scripts, Terraform files, and CI pipelines that drift out of sync with the application.
+Deploy your full-stack app to the cloud in one command. The platform plugin provisions databases, storage buckets, queues, pushes secrets, runs migrations, and deploys your code.
 
-`alepha platform` does all of it in one command.
+## Quick Start
+
+Register the plugin in `alepha.config.ts`:
+
+```typescript filename=alepha.config.ts
+import { defineConfig } from "alepha/cli/config";
+import { AlephaCliPlatform } from "alepha/cli/platform";
+
+export default defineConfig({
+  services: [AlephaCliPlatform],
+  platform: {
+    environments: {
+      production: { adapter: "cloudflare", domain: "myapp.com" },
+    },
+  },
+});
+```
 
 ```bash
 alepha p up
 ```
 
-It reads your code, figures out what cloud resources you need, provisions them, builds, migrates, deploys, and pushes secrets. If your app uses `$entity`, it creates a database. If it uses `$bucket`, it creates a storage bucket. No Terraform. No YAML. No manual resource declarations.
+Your app is live. Database created, secrets pushed, worker deployed.
 
-Alias: `alepha p` (or `alepha platform`).
-
-## How It Works
+## What It Does
 
 Alepha introspects your application at build time. It scans for primitives -- `$entity`, `$bucket`, `$cache`, `$queue`, `$scheduler` -- and maps them to cloud resources on the target platform.
 
@@ -22,7 +36,18 @@ The deployment lifecycle runs in a fixed order:
 authenticate → provision → build → migrate → deploy → secrets
 ```
 
-Each step is handled by an **adapter**. The adapter knows how to talk to a specific cloud provider. Currently, the Cloudflare adapter is the recommended choice. Vercel and Docker adapters are experimental.
+Each step is handled by an **adapter**. Currently supported adapters are Cloudflare (recommended) and Vercel (experimental).
+
+Alias: `alepha p` (or `alepha platform`).
+
+## Options
+
+| Flag | Description |
+|------|-------------|
+| `--env`, `-e` | Target environment (default: `"production"`) |
+| `--app`, `-a` | Target a specific app in a monorepo |
+| `--verbose`, `-v` | Enable detailed output |
+| `--json` | Machine-readable output (`plan` and `status` only) |
 
 ## Configuration
 
@@ -30,8 +55,10 @@ Add a `platform` section to `alepha.config.ts`:
 
 ```typescript
 import { defineConfig } from "alepha/cli/config";
+import { AlephaCliPlatform } from "alepha/cli/platform";
 
 export default defineConfig({
+  services: [AlephaCliPlatform],
   platform: {
     environments: {
       production: {
@@ -47,7 +74,7 @@ export default defineConfig({
 });
 ```
 
-### Options
+### Platform Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -60,17 +87,15 @@ export default defineConfig({
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `adapter` | `string` | Cloud provider: `"cloudflare"`, `"vercel"`, `"docker"` |
+| `adapter` | `string` | Cloud provider: `"cloudflare"` or `"vercel"` |
 | `domain` | `string` | Primary custom domain |
 | `domains` | `Record` | Per-app domain mapping (monorepo) |
-| `ip` | `string` | VPS IP address (Docker remote mode) |
 
 ## Secrets
 
 Secrets are read from `.env.{env}` files. If you deploy to the `production` environment, create a `.env.production` file:
 
-```bash
-# .env.production
+```bash filename=.env.production
 STRIPE_SECRET_KEY=sk_live_...
 SENDGRID_API_KEY=SG...
 ```
@@ -169,10 +194,6 @@ Run database migrations only.
 alepha p migrate --env production
 ```
 
-### Flags
-
-All commands accept `--env` (`-e`) to target an environment and `--app` (`-a`) to target a specific app in a monorepo. `--verbose` (`-v`) enables detailed output. `plan` and `status` accept `--json` for machine-readable output.
-
 ## Cloudflare Adapter
 
 The Cloudflare adapter deploys your application as a [Cloudflare Worker](https://developers.cloudflare.com/workers/). It uses the Cloudflare REST API for resource provisioning and the Wrangler CLI for deployment, migrations, and secret management.
@@ -233,8 +254,6 @@ The adapter runs `alepha build -t cloudflare` with environment variables injecte
 
 You do not set these manually. The adapter injects them between provisioning and build.
 
-For details on what the Cloudflare build produces (`wrangler.jsonc`, worker entry, bindings), see [Cloudflare Workers Deployment](/docs/cli-commands-build#cloudflare).
-
 ### Deploy
 
 Deploys via `wrangler deploy` using the generated `dist/wrangler.jsonc`. Returns the live Worker URL.
@@ -261,8 +280,7 @@ After deployment, secrets from `.env.{env}` are pushed via `wrangler secret:bulk
 
 ### Full Example
 
-```typescript
-// alepha.config.ts
+```typescript filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
@@ -277,8 +295,7 @@ export default defineConfig({
 });
 ```
 
-```bash
-# .env.production
+```bash filename=.env.production
 STRIPE_SECRET_KEY=sk_live_...
 ```
 
@@ -335,9 +352,7 @@ Deploy a single app:
 alepha p up --env production --app api
 ```
 
-## Other Adapters
-
-### Vercel (experimental)
+## Vercel Adapter (experimental)
 
 Deploys to Vercel serverless. Handles project creation, deployment, and environment variable management.
 
@@ -349,26 +364,12 @@ environments: {
 
 Limitations: no resource provisioning (database, storage), no native queue support. Prefer Cloudflare for new projects.
 
-### Docker (experimental)
+## Tips
 
-Two modes based on whether `ip` is set:
+**Start with `plan`.** Run `alepha p plan` before your first deploy. It shows what will be created without touching anything.
 
-**Local mode** -- Generates `docker-compose.yml` with Postgres and Redis for local development.
+**Use temporary environments for PRs.** Name them `tmp-pr-<number>` and they tear down without confirmation. Great for preview deployments.
 
-```typescript
-environments: {
-  local: { adapter: "docker" },
-}
-```
+**Keep secrets in `.env.production`.** The platform plugin reads them automatically. Don't commit this file.
 
-**Remote mode** -- Builds a Docker image, uploads to a VPS via SSH, and deploys behind a Traefik reverse proxy with automatic TLS.
-
-```typescript
-environments: {
-  production: {
-    adapter: "docker",
-    ip: "203.0.113.1",
-    domain: "myapp.com",
-  },
-}
-```
+**Check status after deploy.** Run `alepha p status` to verify everything is live and secrets are pushed.

@@ -36,8 +36,8 @@ const ProjectSettingsConfirmationModal = (
         <ActionButton
           variant="default"
           onClick={() => {
-            modals.closeAll();
             resolve(false);
+            modals.closeAll();
           }}
         >
           {tr("project.settings.delete.modal.cancel")}
@@ -46,8 +46,8 @@ const ProjectSettingsConfirmationModal = (
           color="red"
           disabled={!isValid}
           onClick={() => {
-            modals.closeAll();
             resolve(true);
+            modals.closeAll();
           }}
         >
           {tr("project.settings.delete.modal.submit")}

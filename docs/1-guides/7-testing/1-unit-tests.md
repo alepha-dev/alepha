@@ -134,7 +134,7 @@ expect(shell.wasCalled("yarn install")).toBe(true);
 
 ## Database Testing
 
-Alepha uses real Postgres for tests, running via Docker (`docker-compose`). Each test file gets its own schema. Migrations run automatically before tests and the schema is dropped after tests complete.
+Alepha uses real Postgres for tests. Each test file gets its own schema. Migrations run automatically before tests and the schema is dropped after tests complete.
 
 The connection string is set in `vitest.config.ts`:
 

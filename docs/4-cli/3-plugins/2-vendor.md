@@ -1,31 +1,51 @@
 # Vendor Plugin
 
-The vendor plugin keeps local copies of Alepha packages inside your project. This lets you audit source code, apply quick patches, or work offline with a stable snapshot.
+Keep local copies of Alepha packages inside your project. Audit source code, apply quick patches, or work offline with a stable snapshot.
 
-Install it as a dev dependency:
+## Quick Start
 
-```bash
-npm install -D @alepha/vendor
+Register the plugin in `alepha.config.ts`:
+
+```typescript filename=alepha.config.ts
+import { defineConfig } from "alepha/cli/config";
+import { AlephaCliVendor } from "alepha/cli/vendor";
+
+export default defineConfig({
+  services: [AlephaCliVendor],
+  vendor: {
+    packages: ["alepha"],
+  },
+});
 ```
 
-Once installed, the `alepha vendor` command becomes available.
+```bash
+alepha vendor sync
+```
 
-## Why Vendor?
+Your `packages/` directory now contains the vendored source. Your workspace resolves these local copies instead of the published npm packages.
 
-Sometimes you need the framework source in your own repository:
+## What It Does
+
+The vendor plugin clones the Alepha repository, copies the packages you specify into your project, strips test files and build artifacts, and runs `install` so everything resolves correctly.
+
+Use cases:
 
 - **Auditing** -- review Alepha internals without trusting a published package
 - **Patching** -- fix a bug locally before the next release
 - **Offline work** -- develop without network access to the registry
 - **Compliance** -- meet corporate policies that require vendored dependencies
 
-The plugin clones the Alepha repository, copies the packages you specify into your project, strips test files and build artifacts, and runs `install` so everything resolves correctly.
+## Options
+
+| Flag | Description |
+|------|-------------|
+| `--force`, `-f` | Skip local modification check and overwrite (`sync` only) |
 
 ## Configuration
 
 Register the plugin and list the packages you want to vendor in `alepha.config.ts`:
 
-```typescript
+```typescript filename=alepha.config.ts
 import { AlephaCliVendor } from "alepha/cli/vendor";
 import { defineConfig } from "alepha/cli/config";
 
@@ -37,7 +57,7 @@ export default defineConfig({
 });
 ```
 
-### Options
+### Config Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -63,13 +83,9 @@ The command:
 4. Removes test files and build artifacts
 5. Runs the package manager install
 
-If you have local changes and want to discard them:
-
-```bash
-alepha vendor sync --force
-```
-
-The `--force` flag skips the modification check and overwrites unconditionally.
+> **Local Changes Protection**
+>
+> If you have local modifications, `sync` aborts and shows a diff. Use `--force` to overwrite.
 
 ### diff
 
@@ -79,7 +95,11 @@ Compare local packages against the remote HEAD.
 alepha vendor diff
 ```
 
-Shows file-level changes per package -- added, modified, and removed files -- with a summary of total changes. Useful before syncing to see what has changed upstream, or to verify that your local patches are still intact.
+Shows file-level changes per package -- added, modified, and removed files -- with a summary of total changes.
+
+> **Before Syncing**
+>
+> Run `diff` before `sync` to see what changed upstream, or to verify that your local patches are still intact.
 
 ## Ignored Files
 
@@ -93,7 +113,7 @@ These are removed after copying so the vendored packages contain only source cod
 
 ## Workflow
 
-A typical workflow looks like this:
+A typical workflow:
 
 ```bash
 # Initial vendor
@@ -109,4 +129,12 @@ alepha vendor sync
 alepha vendor sync --force
 ```
 
-After syncing, your `packages/` directory contains the vendored source. Your workspace resolves these local copies instead of the published npm packages.
+## Tips
+
+**Run `diff` before `sync`.** Always check what changed upstream before pulling. You don't want to overwrite a local fix.
+
+**Commit after syncing.** Vendor updates should be their own commit. This makes it easy to revert if something breaks.
+
+**Keep patches small.** The fewer local changes, the easier it is to sync upstream updates. File issues for fixes you want upstreamed.
+
+**Use `--force` sparingly.** It discards all local modifications. Make sure you've committed or stashed your patches first.

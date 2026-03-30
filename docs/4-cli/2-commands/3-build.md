@@ -1,6 +1,6 @@
 # Build Command
 
-Build your project for production. The `build` command compiles, optimizes, and prepares your app for deployment — whether that's a Node.js server, Vercel, Cloudflare Workers, or a Docker container.
+Build your project for production. The `build` command compiles, optimizes, and prepares your app for deployment — whether that's a Node.js server, Vercel, or Cloudflare Workers.
 
 ## Quick Start
 
@@ -18,7 +18,7 @@ The build process handles everything:
 2. **Builds the client** — Compiles React, bundles assets, optimizes for browsers
 3. **Builds the server** — Compiles your backend code for Node.js
 4. **Copies assets** — Moves static files to the right places
-5. **Generates deployment configs** — Vercel, Cloudflare, Docker (if requested)
+5. **Generates deployment configs** — Vercel, Cloudflare (if requested)
 
 ## Output Structure
 
@@ -45,10 +45,10 @@ node dist/index.js
 
 | Flag | Description |
 |------|-------------|
-| `--stats` | Generate build statistics report |
-| `--vercel` | Generate Vercel deployment configuration |
-| `--cloudflare` | Generate Cloudflare Workers configuration |
-| `--docker` | Generate Dockerfile and related files |
+| `--target`, `-t` | Deployment target: `bare`, `docker`, `vercel`, `cloudflare`, or `static` |
+| `--runtime`, `-r` | JavaScript runtime: `node`, `bun`, or `workerd` |
+| `--stats` | Generate build statistics report (use `--stats=json` for JSON output) |
+| `--image`, `-i` | Build Docker image (`-i` for latest, `-i=<version>` for specific version). Requires `--target=docker` |
 | `--sitemap=<url>` | Generate sitemap.xml with the given base URL |
 
 ## Deployment Targets
@@ -72,7 +72,7 @@ cd /app && node index.js
 ### Vercel
 
 ```bash
-alepha build --vercel
+alepha build --target=vercel
 ```
 
 Creates a minimal Vercel serverless configuration:
@@ -100,7 +100,7 @@ cd dist && vercel --prod
 ### Cloudflare Workers
 
 ```bash
-alepha build --cloudflare
+alepha build --target=cloudflare
 ```
 
 Creates Cloudflare Workers configuration:
@@ -120,29 +120,6 @@ Then deploy:
 
 ```bash
 cd dist && wrangler deploy
-```
-
-### Docker
-
-```bash
-alepha build --docker
-```
-
-Creates a production-ready `Dockerfile`:
-
-```dockerfile
-FROM node:20-alpine
-WORKDIR /app
-COPY dist/ .
-EXPOSE 3000
-CMD ["node", "index.js"]
-```
-
-Build and run:
-
-```bash
-docker build -t myapp .
-docker run -p 3000:3000 myapp
 ```
 
 ## SEO Features
@@ -220,9 +197,6 @@ export default defineConfig({
       // Build options
       stats: true,
       vercel: true,
-      docker: {
-        port: 8080,
-      },
       client: {
         sitemap: {
           hostname: "https://myapp.com",
@@ -289,14 +263,6 @@ alepha build --vercel
 
 # 3. Deploy
 cd dist && vercel --prod
-```
-
-Or with Docker:
-
-```bash
-alepha build --docker
-docker build -t myapp:$(git rev-parse --short HEAD) .
-docker push myapp:$(git rev-parse --short HEAD)
 ```
 
 ## Tips
