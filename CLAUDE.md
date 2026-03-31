@@ -189,8 +189,8 @@ yarn test       # Unit and integration tests - ensures functionality
 
 These commands are **MANDATORY** and non-negotiable. Do not skip them under any circumstances.
 - If `yarn typecheck` fails, fix all type errors before proceeding
-- If `yarn test` fails, fix all test failures before committing
-- If either command fails, do NOT commit or push changes
+- If `yarn test` fails, fix all test failures
+- If `yarn lint` fails, fix all lint issues
 
 For package-specific work, use:
 ```bash
@@ -199,6 +199,7 @@ yarn w @package-name typecheck && yarn w @package-name test
 
 ## Notes for AI Assistants
 
+- You are NOT allowed to commit code directly. Instead, provide the modified code and instructions for a human to review and commit.
 - Update docs/1-guides/ if you change any public API or behavior (docs/3-reference is auto generated from source code)
 - The framework heavily uses TypeScript generics and decorators (`$` prefix indicates a primitive)
 - All async operations should use `Alepha.create()` and proper lifecycle management
