@@ -8,21 +8,24 @@ npm install @alepha/ui
 
 ## Overview
 
-Admin panel UI components.
+Generic admin UI framework.
 
-**Features:**
-- AdminLayout for admin pages
-- AdminUsers with user list, create, details, settings, sessions, audits
-- AdminFiles for file management
-- AdminJobs for job monitoring
+Provides the admin layout shell, `$uiAdmin` primitive for explicit
+page composition, and shared components for building admin pages.
 
-- AdminParameters for configuration management
-- AdminSessions for session management
-- AdminAudits for audit log viewing
-- AdminVerifications for verification management
+Domain-specific admin pages are provided by sub-modules:
+- `@alepha/ui/admin-users`
+- `@alepha/ui/admin-sessions`
+- `@alepha/ui/admin-audits`
+- `@alepha/ui/admin-files`
+- `@alepha/ui/admin-parameters`
+- `@alepha/ui/admin-jobs`
+- `@alepha/ui/admin-keys`
+- `@alepha/ui/admin-notifications`
+- `@alepha/ui/admin-billing`
 
 ## API Reference
 
 ### Primitives
 
-- [`$uiAdmin`](/docs/reference-primitives-$uiadmin) — Register Admin UI components and get the AdminRouter instance.
+- [`$uiAdmin`](/docs/reference-primitives-$uiadmin) — Create an admin panel with explicit page composition and sidebar configuration.

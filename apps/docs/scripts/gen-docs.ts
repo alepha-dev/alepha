@@ -37,8 +37,8 @@ interface ModuleData {
 }
 
 /**
- * Generates per-reference documentation pages (docs/3-reference/)
- * and per-package documentation pages + READMEs (docs/4-packages/).
+ * Generates per-reference documentation pages (docs/2-reference/)
+ * and per-package documentation pages + READMEs (docs/3-packages/).
  */
 export class DocsCommand {
   protected log = $logger();
@@ -651,11 +651,11 @@ export class DocsCommand {
     handler: async ({ run, root }) => {
       const rootDir = join(root, "../..");
       const packagesDir = join(rootDir, "packages");
-      const referenceDocsDir = join(rootDir, "docs/3-reference");
+      const referenceDocsDir = join(rootDir, "docs/2-reference");
       const primitivesDocsDir = join(referenceDocsDir, "1-primitives");
       const hooksDocsDir = join(referenceDocsDir, "2-react-hooks");
       const providersDocsDir = join(referenceDocsDir, "3-providers");
-      const packagesDocsDir = join(rootDir, "docs/4-packages");
+      const packagesDocsDir = join(rootDir, "docs/3-packages");
 
       await run("clean", async () => {
         await fs.rm(referenceDocsDir, { recursive: true, force: true });

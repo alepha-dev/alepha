@@ -8,29 +8,6 @@ import { $secure } from "alepha/security";
 
 ## Overview
 
-* Restrict to specific issuers (realms).
-   * User must belong to one of the listed issuers.
-   */
-  issuers?: string[];
-
-  /**
-   * Required roles. User must have at least one of the listed roles.
-   */
-  roles?: string[];
-
-  /**
-   * Required permissions. All must be satisfied.
-   */
-  permissions?: (string | Permission)[];
-
-  /**
-   * Custom guard function. Runs after all other checks.
-   * Return `false` to deny access.
-   */
-  guard?: (user: UserAccountToken) => boolean;
-}
-
-/**
 Middleware that enforces authentication and authorization.
 
 Resolves the user from the request context, `currentUserAtom`, or authorization headers.

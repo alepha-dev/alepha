@@ -8,17 +8,6 @@ import { $throttle } from "alepha/datetime";
 
 ## Overview
 
-* Max calls per window.
-   */
-  rate: number;
-
-  /**
-   * Window duration.
-   */
-  per: DurationLike;
-}
-
-/**
 Middleware that rate-controls handler execution using a token bucket.
 
 Excess calls are **delayed** until capacity is available — never rejected.
