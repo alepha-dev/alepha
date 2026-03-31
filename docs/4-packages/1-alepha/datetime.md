@@ -22,7 +22,7 @@ Date and time operations.
 
 ### Primitives
 
-- [`$debounce`](/docs/reference-primitives-$debounce) — * Coalescing window. Concurrent calls within this window share one execution.
+- [`$debounce`](/docs/reference-primitives-$debounce) — Middleware that coalesces concurrent calls with the same key into a single handler execution.
 - [`$interval`](/docs/reference-primitives-$interval) — Run a function periodically.
-- [`$throttle`](/docs/reference-primitives-$throttle) — * Max calls per window.
+- [`$throttle`](/docs/reference-primitives-$throttle) — Middleware that rate-controls handler execution using a token bucket.
 - [`$timeout`](/docs/reference-primitives-$timeout) — Middleware that aborts handler execution if it exceeds a duration limit.

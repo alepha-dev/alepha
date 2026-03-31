@@ -8,48 +8,6 @@ import { $channel } from "alepha/websocket";
 
 ## Overview
 
-Channel primitive options
-/
-export interface ChannelPrimitiveOptions<
-  TClient extends TWSObject,
-  TServer extends TWSObject,
-> {
-  /**
-   * WebSocket endpoint path (e.g., "/ws/chat")
-   */
-  path: string;
-
-  /**
-   * Optional description for documentation
-   */
-  description?: string;
-
-  /**
-   * Message schemas for bidirectional communication
-   */
-  schema: {
-    /**
-     * Optional room ID schema validation
-     * Default: t.text() (any string)
-     * Can be enforced at application level: t.uuid(), t.regex(/^[a-f0-9\-]{36}$/)
-     */
-    roomId?: TString;
-
-    /**
-     * Messages from server to client
-     * This is what clients will receive
-     */
-    in: TClient;
-
-    /**
-     * Messages from client to server
-     * This is what the server will receive
-     */
-    out: TServer;
-  };
-}
-
-/**
 Defines a WebSocket channel with specified client and server message schemas.
 
 Channels must be defined as class properties to be registered in the Alepha context.

@@ -8,17 +8,6 @@ import { $circuit } from "alepha/server";
 
 ## Overview
 
-* Consecutive failures before opening the circuit.
-   */
-  threshold: number;
-
-  /**
-   * Cooldown before transitioning from open to half-open.
-   */
-  reset: DurationLike;
-}
-
-/**
 Middleware that implements the circuit breaker pattern.
 
 Three states:

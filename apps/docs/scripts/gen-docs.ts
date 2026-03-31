@@ -233,8 +233,8 @@ export class DocsCommand {
     try {
       const content = await fs.readFile(filePath, "utf-8");
       const pattern = isHook
-        ? /\/\*\*\s*\n([\s\S]*?)\s*\*\/\s*\nexport (?:const|function) (use\w+)/
-        : /\/\*\*\s*\n([\s\S]*?)\s*\*\/\s*\nexport (?:const|function) (\$\w+)/;
+        ? /\/\*\*\s*\n((?:(?!\/\*\*)[\s\S])*?)\s*\*\/\s*\nexport (?:const|function) (use\w+)/
+        : /\/\*\*\s*\n((?:(?!\/\*\*)[\s\S])*?)\s*\*\/\s*\nexport (?:const|function) (\$\w+)/;
 
       const match = content.match(pattern);
       if (!match || match[1].includes("@internal")) return null;

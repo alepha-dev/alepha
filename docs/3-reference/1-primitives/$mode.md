@@ -8,33 +8,6 @@ import { $mode } from "alepha";
 
 ## Overview
 
-* Environment variable to check for.
-   *
-   * The mode activates when:
-   * - The env variable is truthy (e.g. `MIGRATE=true`), OR
-   * - The `MODE` env equals this value (e.g. `MODE=MIGRATE`)
-   *
-   * @example "MIGRATE"
-   * @example "SEED"
-   * @example "CONSOLE"
-   */
-  env: string;
-
-  /**
-   * Callback to execute when the mode is activated and the app is ready.
-   *
-   * After the callback completes (or throws), `alepha.stop()` is called automatically
-   * to ensure graceful shutdown (close DB connections, etc.).
-   *
-   * If omitted, the mode activates (graph is pruned) but the process stays alive.
-   * Useful for long-running modes like queue workers or cron.
-   */
-  ready?: (alepha: Alepha) => void | Promise<void>;
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
 Activate a selective bootstrap mode.
 
 When the environment condition matches, the owning class becomes `alepha.target`:

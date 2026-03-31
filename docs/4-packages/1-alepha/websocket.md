@@ -24,7 +24,7 @@ Real-time bidirectional communication.
 
 ### Primitives
 
-- [`$channel`](/docs/reference-primitives-$channel) — Channel primitive options
+- [`$channel`](/docs/reference-primitives-$channel) — Defines a WebSocket channel with specified client and server message schemas.
 - [`$websocket`](/docs/reference-primitives-$websocket) — Defines a WebSocket server endpoint for a specific channel.
 
 ### Environment Variables

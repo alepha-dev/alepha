@@ -8,13 +8,6 @@ import { $rateLimit } from "alepha/server/rate-limit";
 
 ## Overview
 
-* Custom key function. Receives the handler arguments.
-   * When provided, bypasses request-based key generation — works outside `$action`.
-   */
-  key?: (...args: any[]) => string;
-}
-
-/**
 Middleware that enforces rate limiting.
 
 **Key resolution** (in order):
