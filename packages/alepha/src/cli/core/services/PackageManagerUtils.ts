@@ -401,7 +401,7 @@ export class PackageManagerUtils {
     const devDependencies: Record<string, string> = {};
 
     // Only include drizzle-kit when the project uses a database.
-    // React-only projects (--react without --api/--auth/--admin) don't need it.
+    // React-only projects (--react without --api/--saas) don't need it.
     const isReactOnly = modes.react && !modes.ui;
     if (!isReactOnly) {
       devDependencies["drizzle-kit"] = alephaDeps["drizzle-kit"];

@@ -43,15 +43,10 @@ export class InitCommand {
             "Include @alepha/ui (components, auth portal, admin portal)",
         }),
       ),
-      auth: t.optional(
+      saas: t.optional(
         t.boolean({
           description:
-            "Include authentication (AppSecurity, $uiAuth). Implies --api --ui --react",
-        }),
-      ),
-      admin: t.optional(
-        t.boolean({
-          description: "Include admin portal ($uiAdmin). Implies --auth",
+            "Include authentication, admin portal, API, UI, and React. Everything you need for a SaaS app.",
         }),
       ),
       tailwind: t.optional(

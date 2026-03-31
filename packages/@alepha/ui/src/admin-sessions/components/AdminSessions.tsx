@@ -23,8 +23,6 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useState } from "react";
-import type { AdminRouter } from "../../AdminRouter.tsx";
-
 export interface AdminSessionsProps {
   userRealmName?: string;
 }
@@ -55,7 +53,7 @@ const isExpired = (expiresAt: Date | string) =>
 
 const AdminSessions = (props: AdminSessionsProps) => {
   const client = useClient<AdminSessionController>();
-  const router = useRouter<AdminRouter>();
+  const router = useRouter();
   const { l } = useI18n();
   const dialog = useDialog();
   const toast = useToast();

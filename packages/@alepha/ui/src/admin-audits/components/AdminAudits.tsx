@@ -6,7 +6,6 @@ import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import type { AdminRouter } from "../../AdminRouter.ts";
 
 export interface AdminAuditsProps {
   userRealmName?: string;
@@ -14,7 +13,7 @@ export interface AdminAuditsProps {
 
 const AdminAudits = (props: AdminAuditsProps) => {
   const client = useClient<AdminAuditController>();
-  const router = useRouter<AdminRouter>();
+  const router = useRouter();
   const { l } = useI18n();
 
   const filters = t.object({

@@ -20,6 +20,7 @@ import { mainCss } from "../templates/mainCss.ts";
 import { mainServerTs } from "../templates/mainServerTs.ts";
 import { tsconfigJson } from "../templates/tsconfigJson.ts";
 import { viteConfigTs } from "../templates/viteConfigTs.ts";
+import { webAdminDashboardTsx } from "../templates/webAdminDashboardTsx.ts";
 import { webAppRouterTs } from "../templates/webAppRouterTs.ts";
 import { webHomeComponentTsx } from "../templates/webHomeComponentTsx.ts";
 import { webIndexTs } from "../templates/webIndexTs.ts";
@@ -356,6 +357,14 @@ export class ProjectScaffolder {
       webHomeComponentTsx({ api: opts.api }),
       opts.force,
     );
+    if (opts.admin) {
+      await this.ensureFile(
+        root,
+        "src/web/components/AdminDashboard.tsx",
+        webAdminDashboardTsx(),
+        opts.force,
+      );
+    }
     await this.ensureFile(
       root,
       "src/main.browser.ts",
@@ -407,8 +416,7 @@ export class ProjectScaffolder {
       api?: boolean;
       react?: boolean;
       ui?: boolean;
-      auth?: boolean;
-      admin?: boolean;
+      saas?: boolean;
       tailwind?: boolean;
       test?: boolean;
       force?: boolean;
@@ -420,11 +428,8 @@ export class ProjectScaffolder {
       await this.fs.mkdir(root, { force: true });
     }
 
-    // Flag cascading: --admin → --auth → --ui → --react, --api
-    if (flags.admin) {
-      flags.auth = true;
-    }
-    if (flags.auth) {
+    // Flag cascading: --saas → --api + --ui → --react
+    if (flags.saas) {
       flags.api = true;
       flags.ui = true;
     }
@@ -437,12 +442,7 @@ export class ProjectScaffolder {
 
     // When codegen flags are set, target directory must be empty (unless --force)
     const hasCodegenFlags =
-      flags.admin ||
-      flags.auth ||
-      flags.api ||
-      flags.ui ||
-      flags.react ||
-      flags.tailwind;
+      flags.saas || flags.api || flags.ui || flags.react || flags.tailwind;
     if (hasCodegenFlags && !flags.force) {
       const files = await this.fs.ls(root);
       // Allow a directory that only has package.json (common for monorepo packages)
@@ -466,8 +466,8 @@ export class ProjectScaffolder {
 
     const isExpo = await this.pm.hasExpo(root);
 
-    // Get git email for admin auto-promotion (if auth enabled)
-    const adminEmail = flags.auth ? await this.utils.getGitEmail() : undefined;
+    // Get git email for admin auto-promotion (if saas enabled)
+    const adminEmail = flags.saas ? await this.utils.getGitEmail() : undefined;
 
     const force = !!flags.force;
 
@@ -495,7 +495,7 @@ export class ProjectScaffolder {
         });
         if (flags.api) {
           await this.ensureApiProject(root, {
-            auth: !!flags.auth,
+            auth: !!flags.saas,
             adminEmail,
             force,
           });
@@ -504,8 +504,8 @@ export class ProjectScaffolder {
           await this.ensureWebProject(root, {
             api: !!flags.api,
             ui: !!flags.ui,
-            auth: !!flags.auth,
-            admin: !!flags.admin,
+            auth: !!flags.saas,
+            admin: !!flags.saas,
             tailwind: !!flags.tailwind,
             force,
           });

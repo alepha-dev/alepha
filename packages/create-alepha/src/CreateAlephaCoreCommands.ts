@@ -7,7 +7,7 @@ const presets = {
   minimal: [] as string[],
   api: ["--api"],
   "full-stack": ["--api", "--react", "--tailwind"],
-  "full-stack + auth": ["--api", "--react", "--tailwind", "--auth", "--admin"],
+  "full-stack + saas": ["--api", "--react", "--tailwind", "--saas"],
 };
 
 export class CreateAlephaCoreCommands {
@@ -51,7 +51,7 @@ export class CreateAlephaCoreCommands {
 
       // 2. Preset
       const preset = (await ask("Which template would you like?", {
-        schema: t.enum(["minimal", "api", "full-stack", "full-stack + auth"]),
+        schema: t.enum(["minimal", "api", "full-stack", "full-stack + saas"]),
       })) as keyof typeof presets;
 
       // 3. Package manager

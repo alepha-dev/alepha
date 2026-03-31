@@ -1,13 +1,12 @@
 import { Flex, useDialog, useToast } from "@alepha/ui";
+import { AdminResourceHeader, AdminResourceTabs } from "@alepha/ui/admin";
 import { IconBan, IconShieldCheck, IconTrash } from "@tabler/icons-react";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { NestedView, useRouter } from "alepha/react/router";
 import { useCallback, useEffect } from "react";
-import type { AdminRouter } from "../../AdminRouter.ts";
-import { adminUserAtom } from "../../atoms/adminUserAtom.ts";
-import AdminResourceHeader from "../shared/AdminResourceHeader.tsx";
-import AdminResourceTabs from "../shared/AdminResourceTabs.tsx";
+import type { AdminUserRouter } from "../AdminUserRouter.tsx";
+import { adminUserAtom } from "../atoms/adminUserAtom.ts";
 
 export interface AdminUserLayoutProps {
   user: UserEntity;
@@ -20,7 +19,7 @@ const displayName = (u: UserEntity) =>
     : u.username || u.email || "User";
 
 const AdminUserLayout = (props: AdminUserLayoutProps) => {
-  const router = useRouter<AdminRouter>();
+  const router = useRouter<AdminUserRouter>();
   const client = useClient<AdminUserController>();
   const alepha = useAlepha();
   const dialog = useDialog();

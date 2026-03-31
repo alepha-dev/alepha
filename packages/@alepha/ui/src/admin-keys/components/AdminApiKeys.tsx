@@ -23,7 +23,6 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useCallback, useState } from "react";
-import type { AdminRouter } from "../../AdminRouter.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -75,7 +74,7 @@ const formatKeyPreview = (prefix: string, suffix: string) => {
 
 const AdminApiKeys = () => {
   const client = useClient<AdminApiKeyController>();
-  const router = useRouter<AdminRouter>();
+  const router = useRouter();
   const { l } = useI18n();
   const toast = useToast();
   const dialog = useDialog();

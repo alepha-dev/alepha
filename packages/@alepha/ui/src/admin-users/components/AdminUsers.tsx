@@ -19,7 +19,7 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useState } from "react";
-import type { AdminRouter } from "../../AdminRouter.tsx";
+import type { AdminUserRouter } from "../AdminUserRouter.tsx";
 
 export interface AdminUsersProps {
   userRealmName?: string;
@@ -33,7 +33,7 @@ const filters = t.object({
 
 const AdminUsers = (props: AdminUsersProps) => {
   const client = useClient<AdminUserController>();
-  const router = useRouter<AdminRouter>();
+  const router = useRouter<AdminUserRouter>();
   const { l } = useI18n();
   const dialog = useDialog();
   const toast = useToast();

@@ -2,7 +2,7 @@ import { DetailList, Flex } from "@alepha/ui";
 import { Badge } from "@mantine/core";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { adminUserAtom } from "../../atoms/adminUserAtom.ts";
+import { adminUserAtom } from "../atoms/adminUserAtom.ts";
 
 const AdminUserProfile = () => {
   const [user] = useStore(adminUserAtom);

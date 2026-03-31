@@ -1,7 +1,21 @@
 import { $uiAdmin } from "@alepha/ui/admin";
+import { AdminAuditRouter } from "@alepha/ui/admin-audits";
+import { AdminBillingRouter } from "@alepha/ui/admin-billing";
+import { AdminFileRouter } from "@alepha/ui/admin-files";
+import { AdminJobRouter } from "@alepha/ui/admin-jobs";
+import { AdminApiKeyRouter } from "@alepha/ui/admin-keys";
+import { AdminNotificationRouter } from "@alepha/ui/admin-notifications";
+import { AdminParameterRouter } from "@alepha/ui/admin-parameters";
+import { AdminSessionRouter } from "@alepha/ui/admin-sessions";
+import { AdminUserRouter } from "@alepha/ui/admin-users";
 import { $uiAuth } from "@alepha/ui/auth";
-import { IconArticle, IconPlus } from "@tabler/icons-react";
-import { t } from "alepha";
+import {
+  IconArticle,
+  IconCreditCard,
+  IconLockPassword,
+  IconPlus,
+} from "@tabler/icons-react";
+import { $inject, t } from "alepha";
 import { $head } from "alepha/react/head";
 import { $page, Redirection } from "alepha/react/router";
 import { HttpError } from "alepha/server";
@@ -12,33 +26,77 @@ import type { PostController } from "@/api/controllers/PostController.ts";
 export class AppRouter {
   postApi = $client<PostController>();
 
+  // ── Admin Domain Routers ──────────────────────────
+  protected users = $inject(AdminUserRouter);
+  protected sessions = $inject(AdminSessionRouter);
+  protected audits = $inject(AdminAuditRouter);
+  protected files = $inject(AdminFileRouter);
+  protected parameters = $inject(AdminParameterRouter);
+  protected jobs = $inject(AdminJobRouter);
+  protected apiKeys = $inject(AdminApiKeyRouter);
+  protected notifications = $inject(AdminNotificationRouter);
+  protected billing = $inject(AdminBillingRouter);
+
   uiAuth = $uiAuth();
-  uiAdmin = $uiAdmin((adminRouter) => ({
-    sidebarProps: {
-      items: [
-        ...adminRouter.getDefaultSidebarItems(),
-        {
-          type: "section" as const,
-          label: "Content",
-          children: [
-            {
-              label: "Posts",
-              icon: IconArticle,
-              href: "/admin/posts",
-            },
-            {
-              label: "New Post",
-              icon: IconPlus,
-              href: "/admin/posts/new",
-            },
-          ],
-        },
-      ],
-    },
-    appBarProps: {
-      items: adminRouter.getDefaultAppBarItems(),
-    },
-  }));
+  uiAdmin = $uiAdmin({
+    pages: [
+      this.users.adminUsers,
+      this.sessions.adminSessions,
+      this.audits.adminAudits,
+      this.files.adminFiles,
+      this.parameters.adminParameters,
+      this.jobs.adminJobs,
+      this.apiKeys.adminApiKeys,
+      this.notifications.adminNotifications,
+      this.billing.adminBilling,
+    ],
+    sidebarItems: [
+      {
+        label: "Security",
+        children: [
+          {
+            label: "Identity",
+            icon: IconLockPassword,
+            children: [
+              this.users.adminUsers,
+              this.sessions.adminSessions,
+              this.apiKeys.adminApiKeys,
+            ],
+          },
+          this.audits.adminAudits,
+        ],
+      },
+      {
+        label: "System",
+        children: [
+          this.files.adminFiles,
+          this.jobs.adminJobs,
+          this.notifications.adminNotifications,
+          this.parameters.adminParameters,
+        ],
+      },
+      {
+        label: "Commerce",
+        icon: IconCreditCard,
+        children: [this.billing.adminBilling],
+      },
+      {
+        label: "Content",
+        children: [
+          {
+            label: "Posts",
+            icon: IconArticle,
+            href: "/admin/posts",
+          },
+          {
+            label: "New Post",
+            icon: IconPlus,
+            href: "/admin/posts/new",
+          },
+        ],
+      },
+    ],
+  });
 
   protected publicCache = $etag({
     control: { public: true, sMaxAge: 900, staleWhileRevalidate: 60 },
