@@ -1,8 +1,10 @@
-import { $hook, $inject, Alepha, t } from "alepha";
+import { $hook, $inject, $state, Alepha, t } from "alepha";
+import { localEmailOptions } from "alepha/email";
 import { $logger, MemoryDestinationProvider } from "alepha/logger";
 import { RepositoryProvider } from "alepha/orm";
 import { $route, ServerProvider } from "alepha/server";
 import { $serve } from "alepha/server/static";
+import { FileSystemProvider } from "alepha/system";
 import { devtoolsAssets } from "../assets.ts";
 import { devMetadataSchema } from "../schemas/DevMetadata.ts";
 import { DevToolsMetadataProvider } from "./DevToolsMetadataProvider.ts";
@@ -13,6 +15,8 @@ export class DevToolsProvider {
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly devCollectorProvider = $inject(DevToolsMetadataProvider);
   protected readonly memoryDestination = $inject(MemoryDestinationProvider);
+  protected readonly fs = $inject(FileSystemProvider);
+  protected readonly emailOptions = $state(localEmailOptions);
 
   protected readonly onStart = $hook({
     on: "start",
@@ -163,6 +167,116 @@ export class DevToolsProvider {
       entries = entries.slice(offset, offset + limit);
 
       return { logs: entries, total };
+    },
+  });
+
+  // -------------------------------------------------------------------------------------------------------------------
+  // Email endpoint
+  // -------------------------------------------------------------------------------------------------------------------
+
+  protected readonly emailsRoute = $route({
+    method: "GET",
+    path: "/__devtools/api/emails",
+    silent: true,
+    schema: {
+      response: t.object({
+        emails: t.array(
+          t.object({
+            to: t.text(),
+            subject: t.text(),
+            body: t.string(),
+            sentAt: t.text(),
+          }),
+        ),
+      }),
+    },
+    handler: async () => {
+      try {
+        const dir = this.emailOptions.directory;
+        const exists = await this.fs.exists(dir);
+        if (!exists) return { emails: [] };
+
+        const files = await this.fs.ls(dir);
+        const emailFiles = files.filter((f) => f.endsWith(".eml.json"));
+
+        const emails: Array<{
+          to: string;
+          subject: string;
+          body: string;
+          sentAt: string;
+        }> = [];
+
+        for (const file of emailFiles) {
+          try {
+            const data = await this.fs.readJsonFile<{
+              to: string;
+              subject: string;
+              body: string;
+              sentAt: string;
+            }>(this.fs.join(dir, file));
+            emails.push(data);
+          } catch {
+            // skip malformed files
+          }
+        }
+
+        emails.sort((a, b) => b.sentAt.localeCompare(a.sentAt));
+        return { emails };
+      } catch {
+        return { emails: [] };
+      }
+    },
+  });
+
+  // -------------------------------------------------------------------------------------------------------------------
+  // SMS endpoint
+  // -------------------------------------------------------------------------------------------------------------------
+
+  protected readonly smsRoute = $route({
+    method: "GET",
+    path: "/__devtools/api/sms",
+    silent: true,
+    schema: {
+      response: t.object({
+        messages: t.array(
+          t.object({
+            to: t.text(),
+            message: t.string(),
+            sentAt: t.text(),
+          }),
+        ),
+      }),
+    },
+    handler: async () => {
+      try {
+        const dir = "node_modules/.alepha/sms";
+        const exists = await this.fs.exists(dir);
+        if (!exists) return { messages: [] };
+
+        const files = await this.fs.ls(dir);
+        const smsFiles = files.filter((f) => f.endsWith(".sms.json"));
+
+        const messages: Array<{ to: string; message: string; sentAt: string }> =
+          [];
+
+        for (const file of smsFiles) {
+          try {
+            const data = await this.fs.readJsonFile<{
+              to: string;
+              message: string;
+              sentAt: string;
+            }>(this.fs.join(dir, file));
+            messages.push(data);
+          } catch {
+            // skip malformed files
+          }
+        }
+
+        messages.sort((a, b) => b.sentAt.localeCompare(a.sentAt));
+        return { messages };
+      } catch {
+        return { messages: [] };
+      }
     },
   });
 

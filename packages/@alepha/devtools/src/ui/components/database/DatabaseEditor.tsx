@@ -16,7 +16,7 @@ import {
 import { jsonSchemaToTypeBox, t } from "alepha";
 import { useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";
-import { useRouter } from "alepha/react/router";
+import { useRouter, useRouterState } from "alepha/react/router";
 import { HttpClient } from "alepha/server";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TreeView, type TreeViewNode } from "../shared/TreeView.tsx";
@@ -107,12 +107,15 @@ const parseEditorPath = (pathname: string) => {
 export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
   const http = useInject(HttpClient);
   const router = useRouter();
+  const state = useRouterState();
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [pageInfo, setPageInfo] = useState<any>(null);
 
-  const { table: selectedEntity, recordId } = parseEditorPath(router.pathname);
+  const { table: selectedEntity, recordId } = parseEditorPath(
+    state.url.pathname,
+  );
   const isNew = recordId === "new";
 
   const entity = entities.find((e) => e.name === selectedEntity);

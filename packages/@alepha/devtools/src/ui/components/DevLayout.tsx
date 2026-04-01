@@ -1,15 +1,15 @@
 import {
-  ActionButton,
   DarkModeButton,
   DashboardShell,
   Flex,
   OmnibarButton,
 } from "@alepha/ui";
 import {
-  IconArrowLeft,
   IconDashboard,
   IconDatabase,
   IconList,
+  IconMail,
+  IconMessage,
   IconSettings,
   IconSitemap,
   IconTopologyRing,
@@ -69,6 +69,17 @@ export const DevLayout = () => {
       },
       { type: "divider" },
       {
+        label: "Emails",
+        icon: <IconMail />,
+        href: "/emails",
+      },
+      {
+        label: "SMS",
+        icon: <IconMessage />,
+        href: "/sms",
+      },
+      { type: "divider" },
+      {
         label: "Graph",
         icon: <IconTopologyRing />,
         href: "/graph",
@@ -96,19 +107,7 @@ export const DevLayout = () => {
       navbarFooter={<Flex />}
       footerHeight={24}
       headerHeight={60}
-      navbarHeader={() => (
-        <Flex align="center" justify="center" h="100%" w="100%">
-          <ActionButton
-            href="/"
-            target="_self"
-            variant="subtle"
-            color="gray"
-            size="sm"
-          >
-            <IconArrowLeft size={18} />
-          </ActionButton>
-        </Flex>
-      )}
+      navbarHeader={() => <Flex />}
       sidebarProps={{
         collapsed: true,
         items: sidebarItems,

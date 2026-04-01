@@ -3,6 +3,8 @@ import {
   IconDashboard,
   IconDatabase,
   IconList,
+  IconMail,
+  IconMessage,
   IconSettings,
   IconSitemap,
   IconTopologyRing,
@@ -99,6 +101,22 @@ export class AppRouter {
     icon: <IconTopologyRing />,
     parent: this.layout,
     lazy: () => import("./components/graph/DevDependencyGraph.tsx"),
+  });
+
+  emails = $page({
+    path: "/emails",
+    label: "Emails",
+    icon: <IconMail />,
+    parent: this.layout,
+    lazy: () => import("./components/emails/DevEmails.tsx"),
+  });
+
+  sms = $page({
+    path: "/sms",
+    label: "SMS",
+    icon: <IconMessage />,
+    parent: this.layout,
+    lazy: () => import("./components/sms/DevSms.tsx"),
   });
 
   logs = $page({

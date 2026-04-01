@@ -80,7 +80,7 @@ const EnvLine = ({ variable }: { variable: EnvVariable }) => {
   const sensitive = isSensitive(variable.name);
 
   return (
-    <Flex>
+    <Flex direction="column">
       {/* Description as comment */}
       {variable.description?.split("\n").map((line, i) => (
         <Text key={i} fz={11} ff="monospace" c="dimmed" fs="italic" lh={1.6}>
