@@ -29,6 +29,13 @@
       "when": 1774794225845,
       "tag": "0003_org-id",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1775074722304,
+      "tag": "0004_greedy_goblin_queen",
+      "breakpoints": true
     }
   ]
 }
