@@ -15,21 +15,16 @@ export interface AdminLayoutProps {
 
 const AdminLayout = (props: AdminLayoutProps) => {
   return (
-    <AlephaMantineProvider
-      mantine={{
-        theme: {
-          components: {
-            Button: {
-              defaultProps: {
-                fw: 400,
-              },
-            },
-          },
-        },
-      }}
-    >
+    <AlephaMantineProvider>
       <DashboardShell
-        layout={"alt"}
+        appBarProps={{
+          items: [
+            {
+              position: "right",
+              type: "dark",
+            },
+          ],
+        }}
         navbarHeader={() => (
           <Flex gap={"md"} flex={1} px={"lg"} align={"center"}>
             <ActionButton
@@ -52,11 +47,6 @@ const AdminLayout = (props: AdminLayoutProps) => {
             />
           </Flex>
         }
-        sidebarProps={{
-          autoPopulateMenu: {
-            startsWith: "/admin",
-          },
-        }}
         {...props.adminShellProps}
       />
     </AlephaMantineProvider>

@@ -76,10 +76,19 @@ const UserButton = (props: UserButtonProps) => {
   }>();
 
   const isConnected = !!auth.user;
-  const isAdmin = isConnected && adminUserCtrl.findUsers.can();
+  const isAdmin = isConnected && auth.can("admin:access");
   const userPage = pages.getPages().find((it) => it.name === "userProfile");
   const adminPage = pages.getPages().find((it) => it.name === "adminLayout");
   const authRouter = useRouter<AuthRouter>();
+
+  console.log(
+    "isConnected:",
+    isConnected,
+    "admin:access:",
+    auth.can("admin:access"),
+    "adminPage:",
+    !!adminPage,
+  );
 
   if (!auth.user) {
     return (

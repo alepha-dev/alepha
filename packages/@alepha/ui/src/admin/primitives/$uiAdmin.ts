@@ -53,13 +53,6 @@ export interface AdminSidebarSection {
   children: AdminSidebarItem[];
 }
 
-export interface UiAdminResult {
-  /**
-   * The admin layout page. Use as parent for custom admin pages.
-   */
-  adminLayout: PagePrimitive;
-}
-
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
@@ -68,12 +61,13 @@ export interface UiAdminResult {
  * Pages listed in `pages` are parented under the admin layout (`/admin`).
  * Sidebar items that reference a `$page` are resolved to `SidebarNode` objects.
  */
-export const $uiAdmin = (options: UiAdminOptions): UiAdminResult => {
+export const $uiAdmin = (options: UiAdminOptions) => {
   const { alepha } = $context();
   const router = alepha.inject(ReactRouter<any>);
   const authRouter = alepha.inject(AuthRouter);
 
   const adminLayout = $page({
+    name: "adminLayout",
     path: "/admin",
     label: "Admin",
     head: {
@@ -106,7 +100,7 @@ export const $uiAdmin = (options: UiAdminOptions): UiAdminResult => {
     (page.options as { parent?: PagePrimitive }).parent = adminLayout;
   }
 
-  return { adminLayout };
+  return adminLayout;
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -121,7 +115,6 @@ function resolveSidebarItems(
     }
     if (isAdminSidebarSection(item)) {
       return {
-        type: "section" as const,
         label: item.label,
         icon: item.icon,
         children: resolveSidebarItems(router, item.children),
@@ -153,8 +146,5 @@ function buildShellProps(
       ...options.shellProps?.sidebarProps,
       items: resolveSidebarItems(router, options.sidebarItems),
     },
-    appBarProps: options.appBarItems
-      ? { ...options.shellProps?.appBarProps, items: options.appBarItems }
-      : options.shellProps?.appBarProps,
   };
 }

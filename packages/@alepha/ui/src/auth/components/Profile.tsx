@@ -35,7 +35,7 @@ const Profile = () => {
                 src={picture ? `/api/files/${picture}` : undefined}
                 size={96}
                 radius="xl"
-                color="blue"
+                color="var(--mantine-primary-color-filled)"
               >
                 {!picture && <IconUser size={48} />}
               </Avatar>

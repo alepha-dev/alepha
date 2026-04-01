@@ -421,7 +421,7 @@ export class DevToolsMetadataProvider {
       mode: this.alepha.isProduction() ? "production" : "development",
       port,
       uptime: (this.dateTime.nowMillis() - this.startedAt) / 1000,
-      memoryUsage: process.memoryUsage?.()?.rss ?? 0,
+      memoryUsage: process.memoryUsage?.()?.heapUsed ?? 0,
     };
   }
 

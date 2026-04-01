@@ -1,5 +1,5 @@
 import { devMetadataSchema } from "@alepha/devtools";
-import { Flex, ui } from "@alepha/ui";
+import { ActionButton, Flex, ui } from "@alepha/ui";
 import {
   Badge,
   Card,
@@ -19,6 +19,7 @@ import {
   IconDatabase,
   IconFileText,
   IconPlug,
+  IconRefresh,
   IconRoute,
   IconServer,
   IconSettings,
@@ -93,6 +94,7 @@ export const DevDashboard = () => {
   const [metadata, setMetadata] = useState<any>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [events, setEvents] = useState<LogEntry[]>([]);
+  const [reloading, setReloading] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (document.visibilityState !== "visible") return;
@@ -111,6 +113,19 @@ export const DevDashboard = () => {
       // silently fail
     }
   }, [http]);
+
+  const handleReload = useCallback(async () => {
+    setReloading(true);
+    try {
+      await http.fetch("/__devtools/api/reload", { method: "POST" });
+      setTimeout(() => {
+        fetchData();
+        setReloading(false);
+      }, 1000);
+    } catch {
+      setReloading(false);
+    }
+  }, [http, fetchData]);
 
   useEffect(() => {
     fetchData();
@@ -191,17 +206,21 @@ export const DevDashboard = () => {
       <Flex direction="column" gap="lg">
         {/* App Stats */}
         <div>
-          <Title
-            order={5}
-            mb="sm"
-            c="dimmed"
-            tt="uppercase"
-            fz="xs"
-            fw={600}
-            lts={1}
-          >
-            System
-          </Title>
+          <Flex justify="space-between" align="center" mb="sm">
+            <Title order={5} c="dimmed" tt="uppercase" fz="xs" fw={600} lts={1}>
+              System
+            </Title>
+            <ActionButton
+              size="xs"
+              variant="subtle"
+              color="gray"
+              loading={reloading}
+              onClick={handleReload}
+              icon={<IconRefresh size={14} />}
+            >
+              Reload
+            </ActionButton>
+          </Flex>
           <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 6 }} spacing="sm">
             {system && (
               <>

@@ -8,13 +8,11 @@ import { AdminNotificationRouter } from "@alepha/ui/admin-notifications";
 import { AdminParameterRouter } from "@alepha/ui/admin-parameters";
 import { AdminSessionRouter } from "@alepha/ui/admin-sessions";
 import { AdminUserRouter } from "@alepha/ui/admin-users";
-import {
-  IconCreditCard,
-  IconLayoutDashboard,
-  IconLockPassword,
-} from "@tabler/icons-react";
+import { UserButton } from "@alepha/ui/auth";
+import { IconLayoutDashboard } from "@tabler/icons-react";
 import { $inject } from "alepha";
 import { $page } from "alepha/react/router";
+import { createElement } from "react";
 
 export class AppAdminRouter {
   protected users = $inject(AdminUserRouter);
@@ -28,6 +26,28 @@ export class AppAdminRouter {
   protected billing = $inject(AdminBillingRouter);
 
   adminLayout = $uiAdmin({
+    shellProps: {
+      appBarProps: {
+        items: [
+          {
+            position: "right",
+            element: createElement(UserButton),
+          },
+          {
+            position: "right",
+            type: "theme",
+          },
+          {
+            position: "right",
+            type: "lang",
+          },
+          {
+            position: "right",
+            type: "dark",
+          },
+        ],
+      },
+    },
     pages: [
       this.users.adminUsers,
       this.sessions.adminSessions,
@@ -41,17 +61,11 @@ export class AppAdminRouter {
     ],
     sidebarItems: [
       {
-        label: "Security",
+        label: "Identity",
         children: [
-          {
-            label: "Identity",
-            icon: IconLockPassword,
-            children: [
-              this.users.adminUsers,
-              this.sessions.adminSessions,
-              this.apiKeys.adminApiKeys,
-            ],
-          },
+          this.users.adminUsers,
+          this.sessions.adminSessions,
+          this.apiKeys.adminApiKeys,
           this.audits.adminAudits,
         ],
       },
@@ -63,11 +77,6 @@ export class AppAdminRouter {
           this.notifications.adminNotifications,
           this.parameters.adminParameters,
         ],
-      },
-      {
-        label: "Commerce",
-        icon: IconCreditCard,
-        children: [this.billing.adminBilling],
       },
     ],
   });

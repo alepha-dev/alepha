@@ -87,7 +87,7 @@ const buildTree = (metadata: any): TreeNode[] => {
     for (const page of metadata.pages) {
       pageNodeMap.set(page.name, {
         id: `page:${page.name}`,
-        label: page.label || page.name,
+        label: page.name,
         type: "page" as const,
         data: page,
         children: [],

@@ -269,7 +269,7 @@ const Register = (props: RegisterProps) => {
               )}
 
               <ActionButton
-                color={"blue"}
+                variant={"filled"}
                 onClick={handleVerificationSubmit}
                 loading={isSubmitting}
                 disabled={!canSubmitVerification()}
@@ -393,7 +393,7 @@ const Register = (props: RegisterProps) => {
                     autoComplete: "new-password",
                   }}
                 />
-                <ActionButton form={form} color={"blue"} variant={"filled"}>
+                <ActionButton form={form} variant={"filled"}>
                   {tr("registerCreateAccount")}
                 </ActionButton>
               </Flex>

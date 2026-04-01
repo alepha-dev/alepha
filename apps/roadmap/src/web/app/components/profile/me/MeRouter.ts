@@ -16,7 +16,7 @@ export class MeRouter {
   apiKeyApi = $client<ApiKeyController>();
 
   me = $page({
-    path: "/me",
+    path: "/auth/profile",
     lazy: () => import("./MeLayout.tsx"),
   });
 
