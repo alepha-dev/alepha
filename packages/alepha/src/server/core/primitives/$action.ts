@@ -1,7 +1,7 @@
 import {
   $atom,
   $inject,
-  $use,
+  $state,
   AlephaError,
   type Async,
   createPrimitive,
@@ -235,7 +235,7 @@ export class ActionPrimitive<
   TConfig extends RequestConfigSchema,
 > extends PipelinePrimitive<ActionPrimitiveOptions<TConfig>> {
   protected readonly log = $logger();
-  protected readonly settings = $use(serverApiOptions);
+  protected readonly settings = $state(serverApiOptions);
   protected readonly httpClient = $inject(HttpClient);
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);

@@ -3,7 +3,7 @@ import {
   $env,
   $hook,
   $inject,
-  $use,
+  $state,
   Alepha,
   AlephaError,
   type Static,
@@ -91,7 +91,7 @@ export class MqttJsClientProvider extends MqttClientProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);
-  protected readonly options = $use(mqttOptions);
+  protected readonly options = $state(mqttOptions);
 
   protected client: MqttClient | undefined;
 

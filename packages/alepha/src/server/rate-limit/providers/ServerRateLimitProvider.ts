@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $use, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, type Static, t } from "alepha";
 import { CacheProvider } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -74,7 +74,7 @@ export class ServerRateLimitProvider {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly cacheProvider = $inject(CacheProvider);
-  protected readonly globalOptions = $use(rateLimitOptions);
+  protected readonly globalOptions = $state(rateLimitOptions);
 
   protected static readonly CACHE_NAME = "rate-limit";
 

@@ -3,7 +3,7 @@ import {
   $atom,
   $hook,
   $inject,
-  $use,
+  $state,
   Alepha,
   type FileLike,
   isTypeFile,
@@ -57,7 +57,7 @@ declare module "alepha" {
 export class ServerMultipartProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly options = $use(multipartOptions);
+  protected readonly options = $state(multipartOptions);
 
   public readonly onRequest = $hook({
     on: "server:onRequest",

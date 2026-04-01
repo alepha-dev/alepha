@@ -1,7 +1,7 @@
 import { Readable } from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
 import type { TSchema } from "alepha";
-import { $atom, $hook, $inject, $use, Alepha, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, Alepha, type Static, t } from "alepha";
 import { $logger } from "alepha/logger";
 import { HttpError } from "../errors/HttpError.ts";
 
@@ -42,7 +42,7 @@ declare module "alepha" {
 export class ServerBodyParserProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly options = $use(bodyParserOptions);
+  protected readonly options = $state(bodyParserOptions);
 
   public readonly onRequest = $hook({
     on: "server:onRequest",
@@ -99,14 +99,20 @@ export class ServerBodyParserProvider {
       }
 
       if (route.schema?.body) {
-        const contentLength = request.headers["content-length"];
-        if (contentLength) {
-          const size = Number.parseInt(contentLength, 10);
-          if (!Number.isNaN(size) && size > this.options.limit) {
-            throw new HttpError({
-              status: 413,
-              message: "Request body size limit exceeded",
-            });
+        const contentType = request.headers["content-type"] ?? "";
+
+        // Skip body size check for multipart requests — ServerMultipartProvider
+        // handles its own limits (multipartOptions.limit / fileLimit).
+        if (!contentType.startsWith("multipart/")) {
+          const contentLength = request.headers["content-length"];
+          if (contentLength) {
+            const size = Number.parseInt(contentLength, 10);
+            if (!Number.isNaN(size) && size > this.options.limit) {
+              throw new HttpError({
+                status: 413,
+                message: "Request body size limit exceeded",
+              });
+            }
           }
         }
 

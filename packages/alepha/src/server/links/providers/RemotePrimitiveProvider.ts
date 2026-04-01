@@ -1,4 +1,4 @@
-import { $hook, $inject, $pipeline, $use, Alepha, AlephaError } from "alepha";
+import { $hook, $inject, $pipeline, $state, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { $retry } from "alepha/retry";
 import type { ServiceAccountPrimitive } from "alepha/security";
@@ -12,7 +12,7 @@ import {
 import { LinkProvider } from "./LinkProvider.ts";
 
 export class RemotePrimitiveProvider {
-  protected readonly serverApi = $use(serverApiOptions);
+  protected readonly serverApi = $state(serverApiOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly proxyProvider = $inject(ServerProxyProvider);
   protected readonly linkProvider = $inject(LinkProvider);

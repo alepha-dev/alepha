@@ -1,6 +1,6 @@
 import {
   $inject,
-  $use,
+  $state,
   AlephaError,
   type Async,
   createPrimitive,
@@ -392,7 +392,7 @@ export class SsePrimitive<
   TConfig extends SseConfigSchema,
 > extends PipelinePrimitive<SsePrimitiveOptions<TConfig>> {
   protected readonly log = $logger();
-  protected readonly settings = $use(serverApiOptions);
+  protected readonly settings = $state(serverApiOptions);
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 

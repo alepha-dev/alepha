@@ -2,7 +2,7 @@ import { Readable, type Transform } from "node:stream";
 import { ReadableStream } from "node:stream/web";
 import { promisify } from "node:util";
 import * as zlib from "node:zlib";
-import { $atom, $hook, $inject, $use, Alepha, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, Alepha, type Static, t } from "alepha";
 import type { ServerResponse } from "alepha/server";
 
 const gzip = promisify(zlib.gzip);
@@ -77,7 +77,7 @@ export class ServerCompressProvider {
   };
 
   protected readonly alepha = $inject(Alepha);
-  protected readonly options = $use(compressOptions);
+  protected readonly options = $state(compressOptions);
 
   public readonly onResponse = $hook({
     on: "server:onResponse",

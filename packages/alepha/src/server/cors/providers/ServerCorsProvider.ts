@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $use, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, type Static, t } from "alepha";
 import { $logger } from "alepha/logger";
 import { ServerRouterProvider } from "alepha/server";
 
@@ -69,7 +69,7 @@ export interface CorsRegistration extends Partial<CorsOptions> {
 export class ServerCorsProvider {
   protected readonly log = $logger();
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
-  protected readonly globalOptions = $use(corsOptions);
+  protected readonly globalOptions = $state(corsOptions);
 
   /**
    * Registered CORS configurations with their path patterns

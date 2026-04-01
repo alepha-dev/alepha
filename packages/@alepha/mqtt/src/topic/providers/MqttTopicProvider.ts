@@ -1,5 +1,5 @@
 import { MqttClientProvider } from "@alepha/mqtt";
-import { $atom, $hook, $inject, $use, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, type Static, t } from "alepha";
 import { $logger } from "alepha/logger";
 import {
   type SubscribeCallback,
@@ -74,7 +74,7 @@ declare module "alepha/topic" {
 
 export class MqttTopicProvider extends TopicProvider {
   protected readonly mqttClient = $inject(MqttClientProvider);
-  protected readonly options = $use(mqttTopicOptions);
+  protected readonly options = $state(mqttTopicOptions);
   protected readonly log = $logger();
 
   protected readonly start = $hook({

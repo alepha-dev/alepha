@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { $hook, $inject, $use, Alepha, AlephaError, t } from "alepha";
+import { $hook, $inject, $state, Alepha, AlephaError, t } from "alepha";
 import { $logger } from "alepha/logger";
 import type { SecurityProvider, UserAccountToken } from "alepha/security";
 import {
@@ -17,7 +17,7 @@ import { type HttpClientLink, LinkProvider } from "./LinkProvider.ts";
 import { RemotePrimitiveProvider } from "./RemotePrimitiveProvider.ts";
 
 export class ServerLinksProvider {
-  protected readonly serverApi = $use(serverApiOptions);
+  protected readonly serverApi = $state(serverApiOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly linkProvider = $inject(LinkProvider);
   protected readonly remoteProvider = $inject(RemotePrimitiveProvider);

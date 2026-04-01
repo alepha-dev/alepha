@@ -1,4 +1,4 @@
-import { $inject, $use, Alepha, AlephaError, type Async, t } from "alepha";
+import { $inject, $state, Alepha, AlephaError, type Async, t } from "alepha";
 import { $logger } from "alepha/logger";
 import type { SecureOptions } from "alepha/security";
 import {
@@ -50,7 +50,7 @@ export class LinkProvider {
   // Browser-only: batch collector for coalescing multiple calls
   protected batchCollector?: BatchCollector;
 
-  protected readonly options = $use(linkOptionsAtom);
+  protected readonly options = $state(linkOptionsAtom);
 
   /**
    * Get applicative links registered on the server.

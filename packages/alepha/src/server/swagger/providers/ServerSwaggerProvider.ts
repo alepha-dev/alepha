@@ -4,7 +4,7 @@ import {
   $atom,
   $hook,
   $inject,
-  $use,
+  $state,
   Alepha,
   isTypeFile,
   type Static,
@@ -64,7 +64,7 @@ export class ServerSwaggerProvider {
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly options = $use(swaggerOptions);
+  protected readonly options = $state(swaggerOptions);
   protected readonly fs = $inject(FileSystemProvider);
 
   public json?: OpenApiDocument;

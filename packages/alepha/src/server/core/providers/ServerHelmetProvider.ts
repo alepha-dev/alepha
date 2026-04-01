@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $use, Alepha, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, Alepha, type Static, t } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -102,7 +102,7 @@ export class ServerHelmetProvider {
   /**
    * The configuration options loaded from the atom.
    */
-  protected readonly options = $use(helmetOptions);
+  protected readonly options = $state(helmetOptions);
 
   protected defaultCspDirectives(): CspDirectives {
     return {
