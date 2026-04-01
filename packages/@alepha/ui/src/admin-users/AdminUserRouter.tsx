@@ -22,8 +22,7 @@ export class AdminUserRouter {
   });
 
   adminUserLayout = $page({
-    parent: this.adminUsers,
-    path: "/:userId",
+    path: "/users/:userId",
     head: { title: "Users" },
     schema: {
       params: t.object({

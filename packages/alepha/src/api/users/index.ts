@@ -1,11 +1,13 @@
 import { $module } from "alepha";
-import { AlephaCache } from "alepha/cache";
-import { AlephaEmail } from "alepha/email";
+import { UserAudits } from "./audits/UserAudits.ts";
+import { UserBuckets } from "./buckets/UserBuckets.ts";
 import { AdminIdentityController } from "./controllers/AdminIdentityController.ts";
 import { AdminSessionController } from "./controllers/AdminSessionController.ts";
 import { AdminUserController } from "./controllers/AdminUserController.ts";
 import { RealmController } from "./controllers/RealmController.ts";
 import { UserController } from "./controllers/UserController.ts";
+import { UserJobs } from "./jobs/UserJobs.ts";
+import { UserNotifications } from "./notifications/UserNotifications.ts";
 import { RealmProvider } from "./providers/RealmProvider.ts";
 import { CredentialService } from "./services/CredentialService.ts";
 import { IdentityService } from "./services/IdentityService.ts";
@@ -74,8 +76,6 @@ export * from "./services/UserService.ts";
 export const AlephaApiUsers = $module({
   name: "alepha.api.users",
   services: [
-    AlephaEmail,
-    AlephaCache,
     RealmProvider,
     SessionService,
     SessionCrudService,
@@ -88,5 +88,24 @@ export const AlephaApiUsers = $module({
     AdminSessionController,
     AdminIdentityController,
     RealmController,
+    UserJobs,
+    UserNotifications,
+    UserAudits,
+    UserBuckets,
   ],
+  register: (alepha) => {
+    alepha
+      .with(RealmProvider)
+      .with(SessionService)
+      .with(SessionCrudService)
+      .with(CredentialService)
+      .with(RegistrationService)
+      .with(UserService)
+      .with(IdentityService)
+      .with(UserController)
+      .with(AdminUserController)
+      .with(AdminSessionController)
+      .with(AdminIdentityController)
+      .with(RealmController);
+  },
 });

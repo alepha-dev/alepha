@@ -4,7 +4,7 @@ import { IconBan, IconShieldCheck, IconTrash } from "@tabler/icons-react";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { NestedView, useRouter } from "alepha/react/router";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import type { AdminUserRouter } from "../AdminUserRouter.tsx";
 import { adminUserAtom } from "../atoms/adminUserAtom.ts";
 
@@ -33,14 +33,6 @@ const AdminUserLayout = (props: AdminUserLayoutProps) => {
   const currentUser = user ?? props.user;
   const userId = currentUser.id;
   const realmQuery = { userRealmName: props.userRealmName };
-
-  const reload = useCallback(async () => {
-    const data = await client.getUser({
-      params: { id: userId },
-      query: realmQuery,
-    });
-    alepha.store.set(adminUserAtom, data);
-  }, [userId, client]);
 
   const handleToggleEnabled = async () => {
     const action = currentUser.enabled ? "disable" : "enable";
@@ -76,6 +68,10 @@ const AdminUserLayout = (props: AdminUserLayoutProps) => {
     }
   };
 
+  const subtitle = [currentUser.email, currentUser.username]
+    .filter(Boolean)
+    .join(" \u00B7 ");
+
   return (
     <Flex
       flex={1}
@@ -92,12 +88,39 @@ const AdminUserLayout = (props: AdminUserLayoutProps) => {
       <AdminResourceHeader
         backHref={router.path("adminUsers")}
         backLabel="Users"
+        avatar={
+          currentUser.picture ? `/api/files/${currentUser.picture}` : undefined
+        }
         title={displayName(currentUser)}
-        subtitle={currentUser.email || currentUser.username}
+        subtitle={subtitle}
+        identifier={currentUser.id}
+        identifierLabel="User ID"
         status={{
           label: currentUser.enabled ? "Active" : "Disabled",
           color: currentUser.enabled ? "green" : "gray",
         }}
+        badges={[
+          ...(currentUser.emailVerified
+            ? [
+                {
+                  label: "Email verified",
+                  color: "teal",
+                  variant: "light" as const,
+                },
+              ]
+            : [
+                {
+                  label: "Email unverified",
+                  color: "orange",
+                  variant: "light" as const,
+                },
+              ]),
+          ...(currentUser.roles ?? []).map((role) => ({
+            label: role,
+            color: "blue",
+            variant: "outline" as const,
+          })),
+        ]}
         menuActions={[
           {
             label: currentUser.enabled ? "Disable" : "Enable",

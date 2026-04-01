@@ -22,7 +22,7 @@ export interface UiAdminOptions {
    * List the root page of each domain router. Internal child pages
    * (those with a parent already set) follow automatically.
    */
-  pages: PagePrimitive[];
+  pages: PagePrimitive<any, any, any>[];
 
   /**
    * Sidebar navigation items.
