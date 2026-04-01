@@ -63,7 +63,7 @@ export class DrizzleKitProvider {
     }
 
     this.log.info(
-      `Sync with '${provider.name}' OK [${this.dateTime.nowMillis() - now}ms]`,
+      `Synchronization of '${provider.name}' OK [${this.dateTime.nowMillis() - now}ms]`,
     );
   }
 

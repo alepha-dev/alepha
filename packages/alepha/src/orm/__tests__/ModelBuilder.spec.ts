@@ -9,6 +9,7 @@ import { PostgresModelBuilder } from "../postgres/services/PostgresModelBuilder.
 import {
   testComplexRelationships,
   testCustomConfig,
+  testExpressionIndex,
   testModelBuilderFeatures,
 } from "./ModelBuilder-tests.ts";
 
@@ -390,6 +391,51 @@ describe("ModelBuilder", () => {
       expect(table.eventId.config.name).toBe("event_id");
     });
 
+    it("should build table with expression-based index", () => {
+      const entity = $entity({
+        name: "users",
+        schema: t.object({
+          id: db.primaryKey(),
+          realm: t.text(),
+          username: t.text(),
+        }),
+        indexes: [
+          {
+            expressions: (self) => [self.realm, sql`LOWER(${self.username})`],
+            unique: true,
+            name: "users_realm_username_lower_idx",
+          },
+        ],
+      });
+
+      builder.buildTable(entity, options);
+
+      expect(options.tables.has("users")).toBe(true);
+      const table = options.tables.get("users");
+      expect(table).toBeDefined();
+    });
+
+    it("should build table with expression-only index", () => {
+      const entity = $entity({
+        name: "users",
+        schema: t.object({
+          id: db.primaryKey(),
+          email: t.email(),
+        }),
+        indexes: [
+          {
+            expressions: (self) => [sql`LOWER(${self.email})`],
+            unique: true,
+            name: "users_email_lower_idx",
+          },
+        ],
+      });
+
+      builder.buildTable(entity, options);
+
+      expect(options.tables.has("users")).toBe(true);
+    });
+
     it("should not recreate table if it already exists", () => {
       const entity = $entity({
         name: "users",
@@ -557,6 +603,30 @@ describe("ModelBuilder", () => {
 
       expect(options.tables.has("products")).toBe(true);
       const table = options.tables.get("products");
+      expect(table).toBeDefined();
+    });
+
+    it("should build table with expression-based index", () => {
+      const entity = $entity({
+        name: "users",
+        schema: t.object({
+          id: db.primaryKey(),
+          realm: t.text(),
+          username: t.text(),
+        }),
+        indexes: [
+          {
+            expressions: (self) => [self.realm, sql`LOWER(${self.username})`],
+            unique: true,
+            name: "users_realm_username_lower_idx",
+          },
+        ],
+      });
+
+      builder.buildTable(entity, options);
+
+      expect(options.tables.has("users")).toBe(true);
+      const table = options.tables.get("users");
       expect(table).toBeDefined();
     });
 
@@ -831,6 +901,16 @@ describe("ModelBuilder", () => {
 
     it("should handle complex nested relationships (postgres)", async () => {
       await testComplexRelationships(Alepha.create().with(AlephaOrmPostgres));
+    });
+
+    it("should enforce LOWER expression unique index (sqlite)", async () => {
+      await testExpressionIndex(
+        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+      );
+    });
+
+    it("should enforce LOWER expression unique index (postgres)", async () => {
+      await testExpressionIndex(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 });

@@ -422,3 +422,56 @@ export const testComplexRelationships = async (alepha: Alepha) => {
   await app.products.clear({ force: true });
   await app.categories.clear({ force: true });
 };
+
+// ---------------------------------------------------------------------------
+// Expression-based index: LOWER username uniqueness
+// ---------------------------------------------------------------------------
+
+const usersWithLowerIndex = $entity({
+  name: "users_lower",
+  schema: t.object({
+    id: db.primaryKey(),
+    realm: t.text(),
+    username: t.text(),
+  }),
+  indexes: [
+    {
+      expressions: (self) => [self.realm, sql`LOWER(${self.username})`],
+      unique: true,
+      name: "users_lower_realm_username_idx",
+    },
+  ],
+});
+
+export const testExpressionIndex = async (alepha: Alepha) => {
+  class App {
+    users = $repository(usersWithLowerIndex);
+  }
+
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  // Insert first user
+  await app.users.create({ realm: "default", username: "JohnDoe" });
+
+  // Same username different case in same realm should fail (unique LOWER index)
+  try {
+    await app.users.create({ realm: "default", username: "johndoe" });
+    expect.fail("Should have thrown unique constraint error");
+  } catch (error) {
+    expect(error).toBeDefined();
+  }
+
+  // Same username different realm should succeed
+  await app.users.create({ realm: "other", username: "JohnDoe" });
+
+  // Different username same realm should succeed
+  await app.users.create({ realm: "default", username: "JaneDoe" });
+
+  // Verify all 3 records exist
+  const all = await app.users.findMany({});
+  expect(all.length).toBe(3);
+
+  // Clean up
+  await app.users.clear({ force: true });
+};

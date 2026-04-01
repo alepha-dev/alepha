@@ -338,11 +338,25 @@ export class QueryManager {
     }
 
     if (operator?.ilike != null) {
-      conditions.push(ilike(column, encodeValue(operator.ilike)));
+      if (dialect === "sqlite") {
+        // SQLite doesn't have ilike, use LOWER() for case-insensitive matching
+        conditions.push(
+          sql`LOWER(${column}) LIKE LOWER(${encodeValue(operator.ilike)})`,
+        );
+      } else {
+        conditions.push(ilike(column, encodeValue(operator.ilike)));
+      }
     }
 
     if (operator?.notIlike != null) {
-      conditions.push(notIlike(column, encodeValue(operator.notIlike)));
+      if (dialect === "sqlite") {
+        // SQLite doesn't have ilike, use LOWER() for case-insensitive matching
+        conditions.push(
+          sql`LOWER(${column}) NOT LIKE LOWER(${encodeValue(operator.notIlike)})`,
+        );
+      } else {
+        conditions.push(notIlike(column, encodeValue(operator.notIlike)));
+      }
     }
 
     if (operator?.contains != null) {

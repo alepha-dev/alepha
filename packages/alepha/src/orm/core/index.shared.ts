@@ -4,6 +4,7 @@ export {
   pageQuerySchema,
   pageSchema,
 } from "alepha";
+export { sql } from "drizzle-orm";
 export * from "./errors/DbColumnNotFoundError.ts";
 export * from "./errors/DbConnectionError.ts";
 export * from "./errors/DbDeadlockError.ts";

@@ -136,6 +136,17 @@ export abstract class ModelBuilder {
                 }
                 configs.push(idx);
               }
+            } else if ("expressions" in indexDef) {
+              const parts = indexDef.expressions(self as any);
+              if (parts.length > 0) {
+                let idx = indexDef.unique
+                  ? builders.uniqueIndex(indexDef.name).on(...parts)
+                  : builders.index(indexDef.name).on(...parts);
+                if ("where" in indexDef && indexDef.where) {
+                  idx = (idx as any).where(indexDef.where);
+                }
+                configs.push(idx);
+              }
             } else if ("columns" in indexDef) {
               const columnNames = indexDef.columns.map((col: any) =>
                 this.toColumnName(col as string),

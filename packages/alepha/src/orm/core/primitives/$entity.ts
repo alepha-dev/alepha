@@ -90,6 +90,37 @@ export interface EntityPrimitiveOptions<
          */
         where?: SQL;
       }
+    | {
+        /**
+         * SQL expressions for expression-based indexes.
+         *
+         * Can include column references and SQL functions like `LOWER()`, `UPPER()`, etc.
+         * Columns and expressions can be mixed together.
+         *
+         * @example
+         * ```ts
+         * // Case-insensitive unique username per realm
+         * indexes: [{
+         *   expressions: (self) => [self.realm, sql`LOWER(${self.username})`],
+         *   unique: true,
+         *   name: "users_realm_username_lower_idx",
+         * }]
+         * ```
+         */
+        expressions: (self: Record<Keys & string, any>) => (SQL | any)[];
+        /**
+         * Whether this should be a unique index (enforces uniqueness constraint).
+         */
+        unique?: boolean;
+        /**
+         * Custom name for the index. If not provided, generates name automatically.
+         */
+        name: string;
+        /**
+         * Partial index condition. Only rows matching this SQL expression are indexed.
+         */
+        where?: SQL;
+      }
   )[];
 
   /**
