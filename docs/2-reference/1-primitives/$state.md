@@ -1,9 +1,9 @@
-# $use
+# $state
 
 ## Import
 
 ```typescript
-import { $use } from "alepha";
+import { $state } from "alepha";
 ```
 
 ## Overview
@@ -22,7 +22,7 @@ and will update when the atom's state changes.
 const userState = $atom({ schema: t.object({ name: t.text(), role: t.text() }) });
 
 class UserComponent {
-  user = $use(userState); // Reactive reference to atom state
+  user = $state(userState); // Reactive reference to atom state
 
   render() {
     return <div>Hello {this.user.name}!</div>;

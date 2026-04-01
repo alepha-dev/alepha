@@ -122,6 +122,18 @@ export const AlephaCliDevtoolsPlugin = $module({
     vite.addVitePlugin({
       name: "alepha-devtools",
       configureServer: (server) => {
+        // Reload endpoint
+        server.middlewares.use((req, res, next) => {
+          if (req.url !== "/__devtools/api/reload" || req.method !== "POST") {
+            return next();
+          }
+
+          vite.reload();
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(JSON.stringify({ ok: true }));
+        });
+
+        // Serve devtools HTML
         server.middlewares.use(async (req, res, next) => {
           const url = req.url || "/";
 

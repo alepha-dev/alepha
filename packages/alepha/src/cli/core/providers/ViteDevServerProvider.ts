@@ -80,6 +80,16 @@ export class ViteDevServerProvider {
   }
 
   /**
+   * Trigger a full Alepha reload programmatically.
+   */
+  public reload(): void {
+    this.hasError = true;
+    this.needsBrowserReload = true;
+    this.changedFiles.add("__manual_reload__");
+    this.scheduleReload();
+  }
+
+  /**
    * Initialize the dev server and load Alepha.
    */
   public async init(options: DevServerOptions): Promise<Alepha> {
@@ -693,11 +703,13 @@ export class ViteDevServerProvider {
   /**
    * Log a formatted error with stack trace.
    */
-  protected logError(title: string, _err: unknown): void {
+  protected logError(title: string, err: unknown): void {
     const c = this.colors;
 
     console.log();
     console.log(c.set("RED", `  ✗ ${title}`));
+    this.logErrorWithCause(err);
+    console.log();
     console.log(c.set("GREY_DARK", "    Waiting for file changes to retry..."));
     console.log();
   }

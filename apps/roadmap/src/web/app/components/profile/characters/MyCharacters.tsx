@@ -27,7 +27,14 @@ const MyCharacters = (props: MyCharactersProps) => {
 
   if (!characters || characters.length === 0) {
     return (
-      <Flex flex={1} align="center" justify="center" direction="column" gap="sm" py="xl">
+      <Flex
+        flex={1}
+        align="center"
+        justify="center"
+        direction="column"
+        gap="sm"
+        py="xl"
+      >
         <IconSwords size={40} opacity={0.3} />
         <Text c="dimmed" ta="center">
           No characters yet. Join a campaign to begin your adventure.
@@ -52,7 +59,10 @@ const MyCharacters = (props: MyCharactersProps) => {
         {characters.map((character) => {
           const level = characterInfo.getLevelByXp(character.xp);
           const maxXp = characterInfo.getMaxXpForLevel(level);
-          const currentXp = characterInfo.getCurrentXpForLevel(level, character.xp);
+          const currentXp = characterInfo.getCurrentXpForLevel(
+            level,
+            character.xp,
+          );
           const percentage = Math.floor((currentXp * 100) / maxXp);
           const gold = characterInfo.getGold(character.balance);
           const silver = characterInfo.getSilver(character.balance);
@@ -98,7 +108,10 @@ const MyCharacters = (props: MyCharactersProps) => {
                       Treasury
                     </Text>
                     <Flex align="center" gap={4}>
-                      <IconCoin size={12} color="var(--mantine-color-yellow-5)" />
+                      <IconCoin
+                        size={12}
+                        color="var(--mantine-color-yellow-5)"
+                      />
                       <Text size="sm" fw={600} c="yellow.5">
                         {gold}
                       </Text>
@@ -122,7 +135,12 @@ const MyCharacters = (props: MyCharactersProps) => {
 
               {/* XP Progress */}
               <Flex direction="column" gap={4}>
-                <Progress value={percentage} size="xs" radius="xl" color="blue" />
+                <Progress
+                  value={percentage}
+                  size="xs"
+                  radius="xl"
+                  color="blue"
+                />
                 <Flex justify="space-between">
                   <Text size="xs" c="dimmed">
                     {l(currentXp)} / {l(maxXp)} XP

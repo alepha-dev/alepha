@@ -38,7 +38,7 @@ Foundation of the entire framework with dependency injection and lifecycle manag
 - [`$module`](/docs/reference-primitives-$module) — Wrap Services and Primitives into a Module.
 - [`$pipeline`](/docs/reference-primitives-$pipeline) — Creates a pipeline primitive that composes middleware with a handler.
 - [`$scope`](/docs/reference-primitives-$scope) — Middleware that wraps the handler in an ALS (AsyncLocalStorage) context.
-- [`$use`](/docs/reference-primitives-$use) — Subscribes to an atom's state and returns its current value for use in components.
+- [`$state`](/docs/reference-primitives-$state) — Subscribes to an atom's state and returns its current value for use in components.
 
 ### Providers
 
