@@ -1,7 +1,7 @@
+import { $env, t } from "alepha";
 import { $realm } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { $swagger } from "alepha/server/swagger";
 import { type Character, characters } from "../entities/characters.ts";
 import { type Project, projects } from "../entities/projects.ts";
 
@@ -9,13 +9,11 @@ export class AppSecurityProvider {
   projects = $repository(projects);
   characters = $repository(characters);
 
-  docs = $swagger({
-    info: {
-      title: "Roadmap API",
-      description: "API documentation for the Roadmap application.",
-      version: "1.0.0",
-    },
-  });
+  env = $env(
+    t.object({
+      ADMIN_EMAIL: t.optional(t.email()),
+    }),
+  );
 
   realm = $realm({
     features: {
@@ -30,6 +28,7 @@ export class AppSecurityProvider {
       usernameRegExp: "^[a-zA-Z0-9_@.]{3,30}$",
       resetPasswordAllowed: true,
       verifyEmailRequired: true,
+      adminEmails: this.env.ADMIN_EMAIL ? [this.env.ADMIN_EMAIL] : [],
     },
     identities: {
       github: true,
