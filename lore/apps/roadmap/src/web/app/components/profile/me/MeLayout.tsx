@@ -1,5 +1,5 @@
-import { ActionButton, type ActionProps, Flex, Text } from "@alepha/ui";
-import { Card, Container } from "@mantine/core";
+import { type ActionProps, ActionButton, Flex, Text } from "@alepha/ui";
+import { Avatar } from "@mantine/core";
 import {
   IconAntenna,
   IconKey,
@@ -15,44 +15,68 @@ import type { MeRouter } from "./MeRouter.ts";
 
 const MeLayout = () => {
   const auth = useAuth();
+
   return (
-    <Container w={theme.container} flex={1} className={"overflow-auto"}>
-      <Flex direction="column" flex={1} w={"100%"}>
-        <Card
-          withBorder
-          className={"shadow"}
-          flex={1}
-          p={"md"}
-          px={"lg"}
-          bg={theme.colors.panel}
+    <Flex
+      direction="column"
+      flex={1}
+      w="100%"
+      maw={theme.container.xl}
+      mx="auto"
+      className="overflow-auto"
+      p="md"
+      gap="md"
+    >
+      {/* Compact header */}
+      <Flex
+        align="center"
+        gap="md"
+        p="md"
+        bg="var(--alepha-elevated)"
+        style={{
+          borderRadius: "var(--mantine-radius-md)",
+          border: "1px solid var(--alepha-border)",
+        }}
+      >
+        <Avatar
+          src={
+            auth.user?.picture
+              ? `/api/files/${auth.user.picture}`
+              : undefined
+          }
+          size={40}
+          radius="xl"
         >
-          <Text>{auth.user?.username}</Text>
-          <Text size={"xs"}>{auth.user?.email}</Text>
-        </Card>
-        <Flex
-          className={"overflow-auto"}
-          flex={1}
-          gap={"lg"}
-          direction={{
-            base: "column",
-            md: "row",
-          }}
-        >
-          <Flex
-            h={"100%"}
-            w={{
-              base: "100%",
-              md: "196px",
-            }}
-          >
-            <MeMenu />
-          </Flex>
-          <Flex flex={1} className={"overflow-auto"}>
-            <NestedView />
-          </Flex>
+          <IconUser size={20} />
+        </Avatar>
+        <Flex direction="column" gap={0}>
+          <Text size="sm" fw={600}>
+            {auth.user?.username || "Anonymous"}
+          </Text>
+          <Text size="xs" c="dimmed">
+            {auth.user?.email}
+          </Text>
         </Flex>
       </Flex>
-    </Container>
+
+      {/* Content */}
+      <Flex
+        className="overflow-auto"
+        flex={1}
+        gap="md"
+        direction={{ base: "column", md: "row" }}
+      >
+        <Flex
+          w={{ base: "100%", md: 180 }}
+          miw={{ md: 180 }}
+        >
+          <MeMenu />
+        </Flex>
+        <Flex flex={1} className="overflow-auto">
+          <NestedView />
+        </Flex>
+      </Flex>
+    </Flex>
   );
 };
 
@@ -62,78 +86,54 @@ const MeMenu = () => {
   const meRouter = useRouter<MeRouter>();
 
   return (
-    <Card
-      withBorder
-      bg={theme.colors.app}
-      p={"xs"}
-      w={{
-        base: "100%",
-        md: "196px",
+    <Flex
+      p="xs"
+      gap={2}
+      w={{ base: "100%", md: 180 }}
+      bg="var(--alepha-elevated)"
+      direction={{ base: "row", md: "column" }}
+      style={{
+        borderRadius: "var(--mantine-radius-md)",
+        border: "1px solid var(--alepha-border)",
       }}
     >
-      <Flex
-        flex={1}
-        gap={"xs"}
-        direction={{
-          base: "row",
-          md: "column",
-        }}
-      >
-        <Text visibleFrom={"md"} size="xs">
-          General
-        </Text>
-        <ActionNavLink
-          leftSection={<IconUser size={20} />}
-          href={meRouter.path("profile")}
-        >
-          Profile
-        </ActionNavLink>
-        <ActionNavLink
-          leftSection={<IconMapRoute size={20} />}
-          href={meRouter.path("characters")}
-        >
-          Campaigns
-        </ActionNavLink>
-        <ActionNavLink
-          leftSection={<IconMail size={20} />}
-          href={meRouter.path("invitations")}
-        >
-          Invitations
-        </ActionNavLink>
-        <Text visibleFrom={"md"} size="xs">
-          Security
-        </Text>
-        <ActionNavLink
-          leftSection={<IconShield size={20} />}
-          href={meRouter.path("identities")}
-        >
-          Identities
-        </ActionNavLink>
-        <ActionNavLink
-          leftSection={<IconAntenna size={20} />}
-          href={meRouter.path("sessions")}
-        >
-          Sessions
-        </ActionNavLink>
-        <ActionNavLink
-          leftSection={<IconKey size={20} />}
-          href={meRouter.path("apiKeys")}
-        >
-          API Keys
-        </ActionNavLink>
-      </Flex>
-    </Card>
+      <Text visibleFrom="md" size="xs" c="dimmed" tt="uppercase" fw={600} px="xs" pt="xs">
+        General
+      </Text>
+      <NavLink icon={<IconUser size={16} />} href={meRouter.path("profile")}>
+        Profile
+      </NavLink>
+      <NavLink icon={<IconMapRoute size={16} />} href={meRouter.path("characters")}>
+        Campaigns
+      </NavLink>
+      <NavLink icon={<IconMail size={16} />} href={meRouter.path("invitations")}>
+        Invitations
+      </NavLink>
+      <Text visibleFrom="md" size="xs" c="dimmed" tt="uppercase" fw={600} px="xs" pt="sm">
+        Security
+      </Text>
+      <NavLink icon={<IconShield size={16} />} href={meRouter.path("identities")}>
+        Identities
+      </NavLink>
+      <NavLink icon={<IconAntenna size={16} />} href={meRouter.path("sessions")}>
+        Sessions
+      </NavLink>
+      <NavLink icon={<IconKey size={16} />} href={meRouter.path("apiKeys")}>
+        API Keys
+      </NavLink>
+    </Flex>
   );
 };
 
-const ActionNavLink = (props: ActionProps & { href: string }) => {
+const NavLink = (props: ActionProps & { href: string; icon: React.ReactNode }) => {
   return (
     <ActionButton
-      size={"xs"}
-      textVisibleFrom={"sm"}
-      justify={"flex-start"}
-      variant={"minimal"}
-      {...props}
+      size="xs"
+      textVisibleFrom="sm"
+      justify="flex-start"
+      variant="minimal"
+      leftSection={props.icon}
+      href={props.href}
     >
       {props.children}
     </ActionButton>

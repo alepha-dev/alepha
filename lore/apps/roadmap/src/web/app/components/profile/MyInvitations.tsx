@@ -1,5 +1,5 @@
 import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
-import { Badge, Card, Title } from "@mantine/core";
+import { Badge } from "@mantine/core";
 import { IconCheck, IconMail, IconX } from "@tabler/icons-react";
 import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -25,9 +25,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
   const [invitations, setInvitations] = useState(props.invitations);
   const invitationApi = useClient<InvitationController>();
   const projectApi = useClient<ProjectController>();
-  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
   const alepha = useAlepha();
   const toast = useToast();
   const { l } = useI18n();
@@ -35,21 +33,14 @@ const MyInvitations = (props: MyInvitationsProps) => {
   const handleAccept = async (invitationId: string) => {
     setLoadingStates((prev) => ({ ...prev, [invitationId]: true }));
     try {
-      await invitationApi.acceptInvitation({
-        params: { id: invitationId },
-      });
-
+      await invitationApi.acceptInvitation({ params: { id: invitationId } });
       setInvitations(await invitationApi.getMyInvitations());
       alepha.store.set(userProjectsAtom, await projectApi.getMyProjects());
-
       toast.success({
-        message:
-          "You have joined the project! A character has been created for you.",
+        message: "You have joined the campaign! A character has been created for you.",
       });
     } catch (error: any) {
-      toast.danger({
-        message: error.message || "Failed to accept invitation",
-      });
+      toast.danger({ message: error.message || "Failed to accept invitation" });
     } finally {
       setLoadingStates((prev) => ({ ...prev, [invitationId]: false }));
     }
@@ -58,175 +49,145 @@ const MyInvitations = (props: MyInvitationsProps) => {
   const handleReject = async (invitationId: string) => {
     setLoadingStates((prev) => ({ ...prev, [invitationId]: true }));
     try {
-      await invitationApi.rejectInvitation({
-        params: { id: invitationId },
-      });
-
+      await invitationApi.rejectInvitation({ params: { id: invitationId } });
       setInvitations(await invitationApi.getMyInvitations());
-
-      toast.warning({
-        message: "The invitation has been declined.",
-      });
+      toast.warning({ message: "The invitation has been declined." });
     } catch (error: any) {
-      toast.danger({
-        message: error.message || "Failed to reject invitation",
-      });
+      toast.danger({ message: error.message || "Failed to reject invitation" });
     } finally {
       setLoadingStates((prev) => ({ ...prev, [invitationId]: false }));
     }
   };
 
-  const pendingInvitations = invitations.filter(
-    (inv) => inv.status === "pending",
-  );
-  const processedInvitations = invitations.filter(
-    (inv) => inv.status !== "pending",
-  );
+  const pendingInvitations = invitations.filter((inv) => inv.status === "pending");
+  const processedInvitations = invitations.filter((inv) => inv.status !== "pending");
 
   if (!invitations || invitations.length === 0) {
     return (
-      <Flex
-        bg={"var(--alepha-ground)"}
-        flex={1}
-        align="center"
-        justify="center"
-      >
-        <Flex direction="column" align="center" gap="md">
-          <IconMail size={48} opacity={0.5} />
-          <Text c="dimmed" size="lg" ta="center">
-            No invitations found
-          </Text>
-          <Text c="dimmed" size="sm" ta="center">
-            When someone invites you to join their project, it will appear here.
-          </Text>
-        </Flex>
+      <Flex flex={1} align="center" justify="center" direction="column" gap="sm" py="xl">
+        <IconMail size={40} opacity={0.3} />
+        <Text c="dimmed" ta="center">
+          No invitations yet.
+        </Text>
+        <Text c="dimmed" size="sm" ta="center">
+          When someone invites you to their campaign, it will appear here.
+        </Text>
       </Flex>
     );
   }
 
   return (
-    <Flex bg={"var(--alepha-ground)"} flex={1} p="lg">
-      <Flex direction="column" w="100%" maw={800}>
-        <Flex gap="sm" align="center">
-          <IconMail size={24} />
-          <Title order={2}>My Invitations</Title>
-          <Badge variant="light" color="blue">
-            {invitations.length}{" "}
-            {invitations.length === 1 ? "invitation" : "invitations"}
-          </Badge>
-        </Flex>
-
+    <Flex direction="column" gap="lg" flex={1} py="md">
+      <Flex align="center" gap="sm">
+        <IconMail size={20} />
+        <Text size="lg" fw={700}>
+          Invitations
+        </Text>
         {pendingInvitations.length > 0 && (
-          <Flex direction="column" gap="md">
-            <Text size="lg" fw={500}>
-              Pending Invitations
-            </Text>
-            {pendingInvitations.map((invitation) => (
-              <Card
-                key={invitation.id}
-                shadow="sm"
-                padding="lg"
-                radius="md"
-                withBorder
-                style={{
-                  borderLeft: "4px solid var(--mantine-color-orange-6)",
-                }}
-              >
-                <Flex direction="column" gap="md">
-                  <Flex justify="space-between" align="flex-start">
-                    <Flex direction="column" gap="xs" flex={1}>
-                      <Flex gap="sm">
-                        <Title order={4}>{invitation.projectTitle}</Title>
-                        <Badge variant="light" color="orange">
-                          Pending
-                        </Badge>
-                      </Flex>
-                      <Text size="sm" c="dimmed">
-                        Invited by{" "}
-                        {invitation.inviterName || invitation.inviterEmail}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        Received: {l(invitation.createdAt)}
-                      </Text>
-                    </Flex>
-                  </Flex>
-
-                  <Flex gap="sm">
-                    <ActionButton
-                      leftSection={<IconCheck size={16} />}
-                      color="green"
-                      onClick={() => handleAccept(invitation.id)}
-                      loading={loadingStates[invitation.id]}
-                      disabled={Object.values(loadingStates).some(Boolean)}
-                    >
-                      Accept
-                    </ActionButton>
-                    <ActionButton
-                      leftSection={<IconX size={16} />}
-                      variant="light"
-                      color="red"
-                      onClick={() => handleReject(invitation.id)}
-                      loading={loadingStates[invitation.id]}
-                      disabled={Object.values(loadingStates).some(Boolean)}
-                    >
-                      Reject
-                    </ActionButton>
-                  </Flex>
-                </Flex>
-              </Card>
-            ))}
-          </Flex>
-        )}
-
-        {processedInvitations.length > 0 && (
-          <Flex direction="column" gap="md">
-            <Text size="lg" fw={500}>
-              Previous Invitations
-            </Text>
-            {processedInvitations.map((invitation) => (
-              <Card
-                key={invitation.id}
-                shadow="sm"
-                padding="lg"
-                radius="md"
-                withBorder
-                style={{
-                  opacity: 0.7,
-                  borderLeft:
-                    invitation.status === "accepted"
-                      ? "4px solid var(--mantine-color-green-6)"
-                      : "4px solid var(--mantine-color-red-6)",
-                }}
-              >
-                <Flex justify="space-between" align="flex-start">
-                  <Flex direction="column" gap="xs" flex={1}>
-                    <Flex gap="sm">
-                      <Title order={4}>{invitation.projectTitle}</Title>
-                      <Badge
-                        variant="light"
-                        color={
-                          invitation.status === "accepted" ? "green" : "red"
-                        }
-                      >
-                        {invitation.status === "accepted"
-                          ? "Accepted"
-                          : "Rejected"}
-                      </Badge>
-                    </Flex>
-                    <Text size="sm" c="dimmed">
-                      Invited by{" "}
-                      {invitation.inviterName || invitation.inviterEmail}
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Received: {l(invitation.createdAt)}
-                    </Text>
-                  </Flex>
-                </Flex>
-              </Card>
-            ))}
-          </Flex>
+          <Badge variant="filled" color="orange" size="sm">
+            {pendingInvitations.length} pending
+          </Badge>
         )}
       </Flex>
+
+      {/* Pending */}
+      {pendingInvitations.length > 0 && (
+        <Flex direction="column" gap="sm">
+          {pendingInvitations.map((invitation) => (
+            <Flex
+              key={invitation.id}
+              direction="column"
+              gap="sm"
+              p="md"
+              bg="var(--alepha-elevated)"
+              style={{
+                borderRadius: "var(--mantine-radius-md)",
+                border: "1px solid var(--alepha-border)",
+                borderLeft: "3px solid var(--mantine-color-orange-6)",
+              }}
+            >
+              <Flex justify="space-between" align="center">
+                <Flex direction="column" gap={2}>
+                  <Flex align="center" gap="sm">
+                    <Text fw={600}>{invitation.projectTitle}</Text>
+                    <Badge variant="light" color="orange" size="xs">
+                      Pending
+                    </Badge>
+                  </Flex>
+                  <Text size="xs" c="dimmed">
+                    From {invitation.inviterName || invitation.inviterEmail} &middot; {l(invitation.createdAt)}
+                  </Text>
+                </Flex>
+
+                <Flex gap="xs">
+                  <ActionButton
+                    size="xs"
+                    leftSection={<IconCheck size={14} />}
+                    color="green"
+                    onClick={() => handleAccept(invitation.id)}
+                    loading={loadingStates[invitation.id]}
+                    disabled={Object.values(loadingStates).some(Boolean)}
+                  >
+                    Accept
+                  </ActionButton>
+                  <ActionButton
+                    size="xs"
+                    leftSection={<IconX size={14} />}
+                    variant="light"
+                    color="red"
+                    onClick={() => handleReject(invitation.id)}
+                    loading={loadingStates[invitation.id]}
+                    disabled={Object.values(loadingStates).some(Boolean)}
+                  >
+                    Reject
+                  </ActionButton>
+                </Flex>
+              </Flex>
+            </Flex>
+          ))}
+        </Flex>
+      )}
+
+      {/* Previous */}
+      {processedInvitations.length > 0 && (
+        <Flex direction="column" gap="sm">
+          <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+            Previous
+          </Text>
+          {processedInvitations.map((invitation) => (
+            <Flex
+              key={invitation.id}
+              align="center"
+              gap="sm"
+              p="sm"
+              px="md"
+              bg="var(--alepha-elevated)"
+              style={{
+                borderRadius: "var(--mantine-radius-sm)",
+                border: "1px solid var(--alepha-border)",
+                opacity: 0.7,
+                borderLeft: `3px solid var(--mantine-color-${invitation.status === "accepted" ? "green" : "red"}-6)`,
+              }}
+            >
+              <Flex direction="column" gap={0} flex={1}>
+                <Text size="sm" fw={500}>
+                  {invitation.projectTitle}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {invitation.inviterName || invitation.inviterEmail} &middot; {l(invitation.createdAt)}
+                </Text>
+              </Flex>
+              <Badge
+                variant="light"
+                size="xs"
+                color={invitation.status === "accepted" ? "green" : "red"}
+              >
+                {invitation.status === "accepted" ? "Accepted" : "Rejected"}
+              </Badge>
+            </Flex>
+          ))}
+        </Flex>
+      )}
     </Flex>
   );
 };
