@@ -49,6 +49,7 @@ export class AppAdminRouter {
       },
     },
     pages: [
+      this.users.adminUserLayout,
       this.users.adminUsers,
       this.sessions.adminSessions,
       this.audits.adminAudits,
