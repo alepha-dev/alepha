@@ -24,6 +24,7 @@ import {
   currentWhiteboardsAtom,
 } from "./atoms/currentWhiteboardsAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
+import { AppAdminRouter } from "../admin/AppAdminRouter.ts";
 import { MeRouter } from "./components/profile/me/MeRouter.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 
@@ -39,6 +40,7 @@ export class AppRouter {
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
   meRouter = $inject(MeRouter);
+  adminRouter = $inject(AppAdminRouter);
   authRouter = $inject(AuthRouter);
 
   head = $head(() => {
@@ -71,6 +73,7 @@ export class AppRouter {
       this.projectCreate,
       this.kanban,
       this.meRouter.me,
+      this.adminRouter.admin.adminLayout,
       this.notFound,
     ],
     lazy: () => import("./components/Layout.tsx"),

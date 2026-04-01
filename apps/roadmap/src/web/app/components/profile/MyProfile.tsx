@@ -1,14 +1,22 @@
 import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
-import { Avatar, Badge, Card, Grid, Title } from "@mantine/core";
+import {
+  Avatar,
+  Badge,
+  Divider,
+  Progress,
+  RingProgress,
+  Tooltip,
+} from "@mantine/core";
 import {
   IconBrandGithub,
   IconBrandGoogle,
-  IconCalendar,
   IconCamera,
+  IconCoin,
+  IconFlame,
   IconKey,
-  IconMail,
-  IconShield,
-  IconTrophy,
+  IconShieldCheck,
+  IconStar,
+  IconSwords,
   IconUser,
 } from "@tabler/icons-react";
 import { useClient, useInject, useStore } from "alepha/react";
@@ -42,7 +50,7 @@ export interface ProfileProps {
 
 const MyProfile = (props: ProfileProps) => {
   const { user, characters, identities } = props;
-  const [, setUser] = useStore(currentUserAtom); // to trigger re-render on avatar update
+  const [, setUser] = useStore(currentUserAtom);
   const characterInfo = useInject(CharacterInfo);
   const userApi = useClient<UserController>();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,21 +59,15 @@ const MyProfile = (props: ProfileProps) => {
   const [currentUser, setCurrentUser] = useState(user);
   const { l } = useI18n();
 
-  // Calculate user statistics
   const totalXP = characters.reduce((sum, char) => sum + char.xp, 0);
   const totalGold = characters.reduce(
     (sum, char) => sum + characterInfo.getGold(char.balance),
     0,
   );
-  const averageLevel =
-    characters.length > 0
-      ? Math.floor(
-          characters.reduce(
-            (sum, char) => sum + characterInfo.getLevelByXp(char.xp),
-            0,
-          ) / characters.length,
-        )
-      : 0;
+  const totalSilver = characters.reduce(
+    (sum, char) => sum + characterInfo.getSilver(char.balance),
+    0,
+  );
   const highestLevel =
     characters.length > 0
       ? Math.max(
@@ -73,22 +75,18 @@ const MyProfile = (props: ProfileProps) => {
         )
       : 0;
 
-  const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case "google":
-        return <IconBrandGoogle size={16} />;
-      case "github":
-        return <IconBrandGithub size={16} />;
-      case "usernamePassword":
-        return <IconKey size={16} />;
-      default:
-        return <IconUser size={16} />;
-    }
-  };
+  const xpProgress =
+    highestLevel > 0 && characters.length > 0
+      ? (() => {
+          const best = characters.reduce((a, b) => (a.xp > b.xp ? a : b));
+          const level = characterInfo.getLevelByXp(best.xp);
+          const maxXp = characterInfo.getMaxXpForLevel(level);
+          const currentXp = characterInfo.getCurrentXpForLevel(level, best.xp);
+          return Math.round((currentXp / maxXp) * 100);
+        })()
+      : 0;
 
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
+  const handleAvatarClick = () => fileInputRef.current?.click();
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -96,14 +94,9 @@ const MyProfile = (props: ProfileProps) => {
 
     setUploading(true);
     try {
-      const updatedUser = await userApi.updateAvatar({
-        body: { file },
-      });
+      const updatedUser = await userApi.updateAvatar({ body: { file } });
       setCurrentUser(updatedUser);
-      setUser({
-        ...user,
-        picture: updatedUser.picture,
-      });
+      setUser({ ...user, picture: updatedUser.picture });
       toast.success({ message: "Avatar updated successfully" });
     } catch (error) {
       toast.danger({
@@ -111,185 +104,386 @@ const MyProfile = (props: ProfileProps) => {
       });
     } finally {
       setUploading(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
+  const providerIcon = (provider: string) => {
+    const size = 14;
+    if (provider === "google") return <IconBrandGoogle size={size} />;
+    if (provider === "github") return <IconBrandGithub size={size} />;
+    if (provider === "usernamePassword") return <IconKey size={size} />;
+    return <IconUser size={size} />;
+  };
+
+  const providerLabel = (provider: string) => {
+    if (provider === "usernamePassword") return "Password";
+    return provider.charAt(0).toUpperCase() + provider.slice(1);
+  };
+
   return (
-    <Flex bg={"var(--alepha-ground)"} flex={1} p="lg">
-      <Flex direction="column" w="100%" maw={1000}>
-        {/* Header Card */}
-        <Card shadow="sm" padding="xl" radius="md" withBorder>
-          <Flex gap="xl" align="flex-start">
-            <Flex direction="column" gap="xs" align="center">
-              <Avatar
-                src={
-                  currentUser.picture
-                    ? `/api/files/${currentUser.picture}`
-                    : undefined
-                }
-                size={120}
-                radius="md"
-              >
-                <IconUser size={60} />
-              </Avatar>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                style={{ display: "none" }}
-              />
-              <ActionButton
-                size="xs"
-                variant="light"
-                leftSection={<IconCamera size={16} />}
-                onClick={handleAvatarClick}
-                loading={uploading}
-              >
-                {uploading ? "Uploading..." : "Change Avatar"}
-              </ActionButton>
-            </Flex>
-
-            <Flex direction="column" gap="md" flex={1}>
-              <Flex direction="column" gap="xs">
-                <Title order={2}>{user.username || "Anonymous User"}</Title>
-                <Flex gap="sm">
-                  <IconMail size={16} />
-                  <Text c="dimmed">{user.email}</Text>
-                </Flex>
-                <Flex gap="sm">
-                  <IconCalendar size={16} />
-                  <Text c="dimmed">Member since {l(user.createdAt)}</Text>
-                </Flex>
-              </Flex>
-
-              <Flex gap="sm">
-                {user.roles.map((role) => (
-                  <Badge
-                    key={role}
-                    variant="light"
-                    color={role === "admin" ? "red" : "blue"}
-                    leftSection={<IconShield size={12} />}
-                  >
-                    {role.charAt(0).toUpperCase() + role.slice(1)}
-                  </Badge>
-                ))}
-              </Flex>
+    <Flex direction="column" gap="lg" flex={1} py="md">
+      {/* Hero — Avatar + Identity */}
+      <Flex
+        gap="xl"
+        align="center"
+        p="xl"
+        bg="var(--alepha-elevated)"
+        style={{
+          borderRadius: "var(--mantine-radius-lg)",
+          border: "1px solid var(--alepha-border)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <Flex direction="column" align="center" gap="xs" style={{ zIndex: 1 }}>
+          <Flex
+            style={{ position: "relative", cursor: "pointer" }}
+            onClick={handleAvatarClick}
+          >
+            <Avatar
+              src={
+                currentUser.picture
+                  ? `/api/files/${currentUser.picture}`
+                  : undefined
+              }
+              size={100}
+              radius="xl"
+              style={{
+                border: "3px solid var(--alepha-border)",
+              }}
+            >
+              <IconUser size={48} />
+            </Avatar>
+            <Flex
+              align="center"
+              justify="center"
+              style={{
+                position: "absolute",
+                bottom: 0,
+                right: 0,
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                background: "var(--alepha-surface)",
+                border: "2px solid var(--alepha-border)",
+              }}
+            >
+              <IconCamera size={14} />
             </Flex>
           </Flex>
-        </Card>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            style={{ display: "none" }}
+          />
+          {uploading && (
+            <Text size="xs" c="dimmed">
+              Uploading...
+            </Text>
+          )}
+        </Flex>
 
-        <Grid>
-          {/* Gaming Statistics */}
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Card shadow="sm" padding="lg" radius="md" withBorder h="100%">
-              <Flex direction="column" gap="md">
-                <Flex gap="sm">
-                  <IconTrophy size={20} />
-                  <Title order={4}>Gaming Statistics</Title>
-                </Flex>
+        <Flex direction="column" gap={4} style={{ zIndex: 1 }} flex={1}>
+          <Flex align="center" gap="sm">
+            <Text size="xl" fw={700} lh={1.2}>
+              {user.username || "Anonymous"}
+            </Text>
+            {highestLevel > 0 && (
+              <Badge
+                variant="light"
+                color="yellow"
+                size="sm"
+                leftSection={<IconStar size={10} />}
+              >
+                Lv. {highestLevel}
+              </Badge>
+            )}
+          </Flex>
 
-                <Flex direction="column" gap="sm">
-                  <Flex justify="space-between">
-                    <Text size="sm" fw={500}>
-                      Total Experience
-                    </Text>
-                    <Text size="sm" fw={600}>
-                      {l(totalXP)} XP
-                    </Text>
-                  </Flex>
+          <Text size="sm" c="dimmed">
+            {user.email}
+          </Text>
 
-                  <Flex justify="space-between">
-                    <Text size="sm" fw={500}>
-                      Total Gold
-                    </Text>
-                    <Text size="sm" c="yellow.6" fw={600}>
-                      {l(totalGold)}g
-                    </Text>
-                  </Flex>
+          <Flex gap="xs" mt={4}>
+            {user.roles.map((role: string) => (
+              <Badge
+                key={role}
+                variant="dot"
+                color={role === "admin" ? "red" : "blue"}
+                size="xs"
+              >
+                {role}
+              </Badge>
+            ))}
+          </Flex>
 
-                  <Flex justify="space-between">
-                    <Text size="sm" fw={500}>
-                      Active Characters
-                    </Text>
-                    <Text size="sm" fw={600}>
-                      {characters.length}
-                    </Text>
-                  </Flex>
+          <Text size="xs" c="dimmed" mt={2}>
+            Adventurer since {l(user.createdAt, { date: "LL" })}
+          </Text>
+        </Flex>
 
-                  <Flex justify="space-between">
-                    <Text size="sm" fw={500}>
-                      Highest Level
-                    </Text>
-                    <Badge variant="light">Level {highestLevel}</Badge>
-                  </Flex>
-
-                  {characters.length > 1 && (
-                    <Flex justify="space-between">
-                      <Text size="sm" fw={500}>
-                        Average Level
-                      </Text>
-                      <Badge variant="light">Level {averageLevel}</Badge>
-                    </Flex>
-                  )}
-                </Flex>
-              </Flex>
-            </Card>
-          </Grid.Col>
-
-          {/* Account Security */}
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Card shadow="sm" padding="lg" radius="md" withBorder h="100%">
-              <Flex direction="column" gap="md">
-                <Flex gap="sm">
-                  <IconShield size={20} />
-                  <Title order={4}>Account Security</Title>
-                </Flex>
-
-                <Flex direction="column" gap="sm">
-                  <Flex justify="space-between">
-                    <Text size="sm" fw={500}>
-                      Connected Providers
-                    </Text>
-                    <Text size="sm" fw={600}>
-                      {identities.length}
-                    </Text>
-                  </Flex>
-
-                  <Flex direction="column" gap="xs">
-                    {identities.map((identity) => (
-                      <Flex key={identity.id} justify="space-between">
-                        <Flex gap="xs">
-                          {getProviderIcon(identity.provider)}
-                          <Text size="sm">
-                            {identity.provider === "usernamePassword"
-                              ? "Password"
-                              : identity.provider.charAt(0).toUpperCase() +
-                                identity.provider.slice(1)}
-                          </Text>
-                        </Flex>
-                        <Badge variant="light" size="xs">
-                          Active
-                        </Badge>
-                      </Flex>
-                    ))}
-                  </Flex>
-
-                  <Text size="xs" c="dimmed" mt="xs">
-                    Last updated: {l(user.updatedAt)}
+        {/* XP Ring */}
+        {highestLevel > 0 && (
+          <Flex direction="column" align="center" gap={2}>
+            <RingProgress
+              size={80}
+              thickness={6}
+              roundCaps
+              sections={[{ value: xpProgress, color: "blue" }]}
+              label={
+                <Flex align="center" justify="center">
+                  <Text size="xs" fw={700} ta="center">
+                    {xpProgress}%
                   </Text>
                 </Flex>
+              }
+            />
+            <Text size="xs" c="dimmed">
+              Next level
+            </Text>
+          </Flex>
+        )}
+      </Flex>
+
+      {/* Stats Row */}
+      <Flex gap="md">
+        <StatCard
+          icon={<IconFlame size={18} color="var(--mantine-color-orange-5)" />}
+          label="Experience"
+          value={`${l(totalXP)} XP`}
+        />
+        <StatCard
+          icon={<IconCoin size={18} color="var(--mantine-color-yellow-5)" />}
+          label="Treasury"
+          value={
+            <Flex gap={6} align="baseline">
+              <Text size="lg" fw={700} c="yellow.5">
+                {l(totalGold)}
+              </Text>
+              <Text size="xs" c="yellow.5">
+                gold
+              </Text>
+              <Text size="sm" fw={600} c="dimmed">
+                {totalSilver}
+              </Text>
+              <Text size="xs" c="dimmed">
+                silver
+              </Text>
+            </Flex>
+          }
+        />
+        <StatCard
+          icon={<IconSwords size={18} color="var(--mantine-color-teal-5)" />}
+          label="Characters"
+          value={String(characters.length)}
+        />
+      </Flex>
+
+      {/* Characters + Security */}
+      <Flex gap="md" direction={{ base: "column", md: "row" }}>
+        {/* Active Characters */}
+        <Flex
+          direction="column"
+          gap="sm"
+          flex={1}
+          p="lg"
+          bg="var(--alepha-elevated)"
+          style={{
+            borderRadius: "var(--mantine-radius-md)",
+            border: "1px solid var(--alepha-border)",
+          }}
+        >
+          <Flex align="center" gap="xs">
+            <IconSwords size={16} />
+            <Text size="sm" fw={600}>
+              Active Characters
+            </Text>
+          </Flex>
+
+          {characters.length === 0 && (
+            <Text size="sm" c="dimmed">
+              No characters yet. Join a campaign to begin your adventure.
+            </Text>
+          )}
+
+          <Flex direction="column" gap="xs">
+            {characters.slice(0, 5).map((char) => {
+              const level = characterInfo.getLevelByXp(char.xp);
+              const maxXp = characterInfo.getMaxXpForLevel(level);
+              const currentXp = characterInfo.getCurrentXpForLevel(
+                level,
+                char.xp,
+              );
+              const progress = Math.round((currentXp / maxXp) * 100);
+              const gold = characterInfo.getGold(char.balance);
+              const silver = characterInfo.getSilver(char.balance);
+
+              return (
+                <Flex
+                  key={char.id}
+                  align="center"
+                  gap="sm"
+                  p="xs"
+                  px="sm"
+                  bg="var(--alepha-surface)"
+                  style={{
+                    borderRadius: "var(--mantine-radius-sm)",
+                    border: "1px solid var(--alepha-border)",
+                  }}
+                >
+                  <Flex direction="column" flex={1} gap={2}>
+                    <Flex align="center" justify="space-between">
+                      <Flex align="center" gap="xs">
+                        <Text size="sm" fw={600}>
+                          {char.projectTitle}
+                        </Text>
+                        {char.owner && (
+                          <Badge variant="light" size="xs" color="orange">
+                            Owner
+                          </Badge>
+                        )}
+                      </Flex>
+                      <Flex align="center" gap={6}>
+                        <Tooltip label={`${gold}g ${silver}s`}>
+                          <Flex align="center" gap={2}>
+                            <IconCoin
+                              size={12}
+                              color="var(--mantine-color-yellow-5)"
+                            />
+                            <Text size="xs" c="yellow.5" fw={600}>
+                              {gold}
+                            </Text>
+                          </Flex>
+                        </Tooltip>
+                        <Badge variant="light" size="xs">
+                          Lv. {level}
+                        </Badge>
+                      </Flex>
+                    </Flex>
+                    <Progress
+                      value={progress}
+                      size="xs"
+                      radius="xl"
+                      color="blue"
+                    />
+                  </Flex>
+                </Flex>
+              );
+            })}
+          </Flex>
+
+          {characters.length > 5 && (
+            <Text size="xs" c="dimmed" ta="center">
+              +{characters.length - 5} more characters
+            </Text>
+          )}
+        </Flex>
+
+        {/* Security */}
+        <Flex
+          direction="column"
+          gap="sm"
+          w={{ base: "100%", md: 280 }}
+          miw={{ md: 280 }}
+          p="lg"
+          bg="var(--alepha-elevated)"
+          style={{
+            borderRadius: "var(--mantine-radius-md)",
+            border: "1px solid var(--alepha-border)",
+          }}
+        >
+          <Flex align="center" gap="xs">
+            <IconShieldCheck size={16} />
+            <Text size="sm" fw={600}>
+              Security
+            </Text>
+          </Flex>
+
+          <Flex direction="column" gap="xs">
+            {identities.map((identity) => (
+              <Flex
+                key={identity.id}
+                align="center"
+                gap="sm"
+                p="xs"
+                px="sm"
+                bg="var(--alepha-surface)"
+                style={{
+                  borderRadius: "var(--mantine-radius-sm)",
+                  border: "1px solid var(--alepha-border)",
+                }}
+              >
+                {providerIcon(identity.provider)}
+                <Text size="sm" flex={1}>
+                  {providerLabel(identity.provider)}
+                </Text>
+                <Flex
+                  w={8}
+                  h={8}
+                  style={{
+                    borderRadius: "50%",
+                    background: "var(--mantine-color-green-6)",
+                  }}
+                />
               </Flex>
-            </Card>
-          </Grid.Col>
-        </Grid>
+            ))}
+          </Flex>
+
+          <Divider color="var(--alepha-border)" my={4} />
+
+          <Flex justify="space-between" align="center">
+            <Text size="xs" c="dimmed">
+              Last activity
+            </Text>
+            <Text size="xs" c="dimmed">
+              {l(user.updatedAt, { date: "ll" })}
+            </Text>
+          </Flex>
+        </Flex>
       </Flex>
     </Flex>
   );
 };
 
 export default MyProfile;
+
+// ---------------------------------------------------------
+
+interface StatCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}
+
+const StatCard = (props: StatCardProps) => {
+  return (
+    <Flex
+      direction="column"
+      gap={4}
+      flex={1}
+      p="md"
+      bg="var(--alepha-elevated)"
+      style={{
+        borderRadius: "var(--mantine-radius-md)",
+        border: "1px solid var(--alepha-border)",
+      }}
+    >
+      <Flex align="center" gap="xs">
+        {props.icon}
+        <Text size="xs" c="dimmed" tt="uppercase" fw={600} lh={1}>
+          {props.label}
+        </Text>
+      </Flex>
+      {typeof props.value === "string" ? (
+        <Text size="lg" fw={700}>
+          {props.value}
+        </Text>
+      ) : (
+        props.value
+      )}
+    </Flex>
+  );
+};
