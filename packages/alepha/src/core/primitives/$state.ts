@@ -18,7 +18,7 @@ import { $context } from "./$context.ts";
  * const userState = $atom({ schema: t.object({ name: t.text(), role: t.text() }) });
  *
  * class UserComponent {
- *   user = $use(userState); // Reactive reference to atom state
+ *   user = $state(userState); // Reactive reference to atom state
  *
  *   render() {
  *     return <div>Hello {this.user.name}!</div>;
@@ -26,7 +26,7 @@ import { $context } from "./$context.ts";
  * }
  * ```
  */
-export const $use = <T extends TAtomObject, N extends string>(
+export const $state = <T extends TAtomObject, N extends string>(
   atom: Atom<T, N>,
 ): Readonly<Static<T>> => {
   const { alepha } = $context();

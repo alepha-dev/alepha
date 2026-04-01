@@ -11,11 +11,6 @@ export const devOptions = $atom({
   description: "Dev configuration options",
   schema: t.object({
     /**
-     * Disable devtools.
-     */
-    noDevtools: t.optional(t.boolean({ default: false })),
-
-    /**
      * Disable Vite React plugin.
      */
     noViteReactPlugin: t.optional(t.boolean({ default: false })),

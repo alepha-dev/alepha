@@ -276,7 +276,7 @@ export class UserService {
     // Check for existing user based on provided unique fields
     if (data.username) {
       const existingUser = await this.users(userRealmName).findOne({
-        where: { username: { eq: data.username } },
+        where: { username: { ilike: data.username } },
       });
 
       if (existingUser) {

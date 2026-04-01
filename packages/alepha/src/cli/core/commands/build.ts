@@ -1,4 +1,4 @@
-import { $inject, $use, Alepha, AlephaError, t } from "alepha";
+import { $inject, $state, Alepha, AlephaError, t } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import {
@@ -31,7 +31,7 @@ export class BuildCommand {
   protected readonly scaffolder = $inject(ProjectScaffolder);
   protected readonly boot = $inject(AppEntryProvider);
   protected readonly viteBuildProvider = $inject(ViteBuildProvider);
-  protected readonly options = $use(buildOptions);
+  protected readonly options = $state(buildOptions);
 
   /**
    * Build pipeline: tasks run sequentially in this order.

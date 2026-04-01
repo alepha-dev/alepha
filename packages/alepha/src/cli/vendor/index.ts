@@ -30,8 +30,8 @@ import { VendorService } from "./services/VendorService.ts";
  * });
  * ```
  */
-export const AlephaCliVendor = $module({
-  name: "alepha.cli.vendor",
+export const AlephaCliVendorPlugin = $module({
+  name: "alepha.cli.plugins.vendor",
   atoms: [vendorOptions],
   services: [VendorCommand, VendorService],
 });

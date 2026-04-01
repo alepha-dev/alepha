@@ -1,4 +1,4 @@
-import { $inject, $use, AlephaError, t } from "alepha";
+import { $inject, $state, AlephaError, t } from "alepha";
 import { PackageManagerUtils } from "alepha/cli";
 import { $command } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
@@ -16,7 +16,7 @@ const DEFAULT_REMOTE = "git@github.com:feunard/alepha.git";
 
 export class VendorCommand {
   protected readonly log = $logger();
-  protected readonly options = $use(vendorOptions);
+  protected readonly options = $state(vendorOptions);
   protected readonly vendorService = $inject(VendorService);
   protected readonly color = $inject(ConsoleColorProvider);
   protected readonly pm = $inject(PackageManagerUtils);

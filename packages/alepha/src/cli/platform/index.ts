@@ -50,8 +50,8 @@ import { WranglerApi } from "./services/WranglerApi.ts";
  * });
  * ```
  */
-export const AlephaCliPlatform = $module({
-  name: "alepha.cli.platform",
+export const AlephaCliPlatformPlugin = $module({
+  name: "alepha.cli.plugins.platform",
   services: [
     AlephaCli,
     PlatformCommand,

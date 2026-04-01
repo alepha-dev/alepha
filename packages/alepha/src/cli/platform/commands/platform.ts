@@ -1,4 +1,4 @@
-import { $inject, $use, AlephaError, t } from "alepha";
+import { $inject, $state, AlephaError, t } from "alepha";
 import { AppEntryProvider, ViteBuildProvider } from "alepha/cli";
 import { $command, EnvUtils } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
@@ -23,7 +23,7 @@ import { SecretsCommand } from "./SecretsCommand.ts";
 
 export class PlatformCommand {
   protected readonly log = $logger();
-  protected readonly options = $use(platformOptions);
+  protected readonly options = $state(platformOptions);
   protected readonly orchestrator = $inject(PlatformOrchestrator);
   protected readonly inspector = $inject(PlatformInspector);
   protected readonly naming = $inject(NamingService);

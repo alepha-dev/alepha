@@ -28,7 +28,7 @@ export * from "./primitives/$mode.ts";
 export * from "./primitives/$module.ts";
 export * from "./primitives/$pipeline.ts";
 export * from "./primitives/$scope.ts";
-export * from "./primitives/$use.ts";
+export * from "./primitives/$state.ts";
 export * from "./providers/AlsProvider.ts";
 export * from "./providers/CodecManager.ts";
 export * from "./providers/EventManager.ts";

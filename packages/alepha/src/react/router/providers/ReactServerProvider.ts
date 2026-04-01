@@ -4,7 +4,7 @@ import {
   $env,
   $hook,
   $inject,
-  $use,
+  $state,
   Alepha,
   type Middleware,
   OPTIONS,
@@ -72,8 +72,8 @@ export class ReactServerProvider {
    */
   protected hasServerLinksProvider = false;
 
-  protected readonly options = $use(reactServerOptions);
-  protected readonly pageOptions = $use(reactPageOptions);
+  protected readonly options = $state(reactServerOptions);
+  protected readonly pageOptions = $state(reactPageOptions);
 
   /**
    * Configure the React server provider.

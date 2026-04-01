@@ -1,5 +1,5 @@
 import { type Static, t } from "alepha";
-import { $entity, db } from "alepha/orm";
+import { $entity, db, sql } from "alepha/orm";
 
 export const DEFAULT_USER_REALM_NAME = "default";
 
@@ -16,7 +16,7 @@ export const users = $entity({
     username: t.optional(
       t.shortText({
         minLength: 3,
-        maxLength: 50,
+        maxLength: 30,
         // pattern is handled at the realm settings level
       }),
     ),
@@ -36,7 +36,11 @@ export const users = $entity({
     organizationId: db.organization(),
   }),
   indexes: [
-    { columns: ["realm", "username"], unique: true },
+    {
+      expressions: (self) => [self.realm, sql`LOWER(${self.username})`],
+      unique: true,
+      name: "users_realm_username_lower_idx",
+    },
     { columns: ["realm", "email"], unique: true },
     { columns: ["realm", "phoneNumber"], unique: true },
   ],

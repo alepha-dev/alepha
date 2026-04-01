@@ -2,7 +2,7 @@ import {
   $atom,
   $hook,
   $inject,
-  $use,
+  $state,
   Alepha,
   type Static,
   type TSchema,
@@ -61,7 +61,7 @@ declare module "alepha" {
 
 export class WorkerProvider {
   protected readonly log = $logger();
-  protected readonly options = $use(queueWorkerOptions);
+  protected readonly options = $state(queueWorkerOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly queueProvider = $inject(QueueProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);

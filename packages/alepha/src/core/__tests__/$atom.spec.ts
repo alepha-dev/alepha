@@ -1,7 +1,7 @@
 import { Alepha, type State } from "alepha";
 import { describe, expect, it } from "vitest";
 import { $atom } from "../primitives/$atom.ts";
-import { $use } from "../primitives/$use.ts";
+import { $state } from "../primitives/$state.ts";
 import { t } from "../providers/TypeProvider.ts";
 
 describe("$atom", () => {
@@ -16,7 +16,7 @@ describe("$atom", () => {
   });
 
   class App {
-    count = $use(count);
+    count = $state(count);
   }
 
   it("should be get/set with state manager", () => {

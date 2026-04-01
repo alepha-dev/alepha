@@ -99,6 +99,78 @@ export class SessionService {
   }
 
   /**
+   * Generate a unique username from an OAuth profile.
+   *
+   * 1. Extract candidate from email prefix
+   * 2. Sanitize against realm's usernameRegExp (strip invalid chars, truncate)
+   * 3. Check case-insensitive uniqueness, append suffix (2, 3, ...) if taken
+   * 4. Fall back to "user" + random 6-char alphanumeric if all else fails
+   */
+  protected async generateUniqueUsername(
+    profile: OAuth2Profile,
+    realmSettings: any,
+    users: any,
+  ): Promise<string> {
+    const maxLength = 30;
+    const maxSuffixAttempts = 10;
+
+    // Extract candidate from email or profile name
+    let candidate = profile.email?.split("@")[0] ?? profile.name ?? "";
+
+    // Strip characters not allowed in usernames (keep alphanumeric, underscore, dot, hyphen)
+    candidate = candidate.replace(/[^a-zA-Z0-9_.-]/g, "");
+
+    // If realm has a custom regex, further sanitize
+    if (realmSettings?.usernameRegExp) {
+      try {
+        const regex = new RegExp(realmSettings.usernameRegExp);
+        if (!regex.test(candidate)) {
+          // Strip to basic alphanumeric as safe fallback
+          candidate = candidate.replace(/[^a-zA-Z0-9_]/g, "");
+        }
+      } catch {
+        // Invalid regex, continue with sanitized candidate
+      }
+    }
+
+    // Ensure minimum length
+    if (candidate.length < 3) {
+      candidate = `user${candidate}`;
+    }
+
+    // Truncate to leave room for suffix
+    candidate = candidate.slice(0, maxLength - 2);
+
+    // Check uniqueness (case-insensitive)
+    const isAvailable = async (name: string) => {
+      const existing = await users.findMany({
+        where: { username: { contains: name } },
+        limit: 1,
+      });
+      // Case-insensitive check
+      return !existing.some(
+        (u: any) => u.username?.toLowerCase() === name.toLowerCase(),
+      );
+    };
+
+    if (await isAvailable(candidate)) {
+      return candidate;
+    }
+
+    // Try with numeric suffix
+    for (let i = 2; i <= maxSuffixAttempts + 1; i++) {
+      const withSuffix = `${candidate}${i}`;
+      if (withSuffix.length <= maxLength && (await isAvailable(withSuffix))) {
+        return withSuffix;
+      }
+    }
+
+    // Final fallback: random username
+    const random = Math.random().toString(36).slice(2, 8);
+    return `user${random}`;
+  }
+
+  /**
    * Random delay to prevent timing attacks (50-200ms)
    * Uses cryptographically secure random number generation
    */
@@ -222,7 +294,7 @@ export class SessionService {
             throw new InvalidCredentialsError();
           }
         }
-        where.username = username;
+        where.username = { ilike: username };
       } else if (settings.email !== "none" && isEmail) {
         where.email = username;
       } else if (settings.phoneNumber !== "none" && isPhone) {
@@ -608,12 +680,15 @@ export class SessionService {
       throw new BadRequestError("Account doesn't exist");
     }
 
-    // TODO: check usernames for uniqueness, add suffix if needed (e.g. john.doe1)
-    // TODO: username must match a-zA-Z0-9._-
+    const username = await this.generateUniqueUsername(
+      profile,
+      realmSettings,
+      users,
+    );
 
     const user = await users.create({
       realm: realm.name,
-      username: profile.email.split("@")[0],
+      username,
       email: profile.email,
       // we trust the OAuth2 provider
       emailVerified: true,

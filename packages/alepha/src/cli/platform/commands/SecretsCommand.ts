@@ -1,4 +1,4 @@
-import { $inject, $use, AlephaError, t } from "alepha";
+import { $inject, $state, AlephaError, t } from "alepha";
 import { $command, EnvUtils } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { platformOptions } from "../atoms/platformOptions.ts";
@@ -10,7 +10,7 @@ import { SecretFilterService } from "../services/SecretFilterService.ts";
 
 export class SecretsCommand {
   protected readonly log = $logger();
-  protected readonly options = $use(platformOptions);
+  protected readonly options = $state(platformOptions);
   protected readonly inspector = $inject(PlatformInspector);
   protected readonly naming = $inject(NamingService);
   protected readonly envUtils = $inject(EnvUtils);

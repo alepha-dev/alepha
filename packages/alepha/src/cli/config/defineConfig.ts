@@ -7,6 +7,7 @@ import {
   type DevOptions,
   devOptions,
 } from "alepha/cli";
+import { type DevtoolsOptions, devtoolsOptions } from "alepha/cli/devtools";
 import { type PlatformOptions, platformOptions } from "alepha/cli/platform";
 import { type VendorOptions, vendorOptions } from "alepha/cli/vendor";
 import type { CommandPrimitive } from "alepha/command";
@@ -35,6 +36,11 @@ export interface AlephaCliConfig {
    * Configure Alepha dev command.
    */
   dev?: DevOptions;
+
+  /**
+   * Configure devtools plugin.
+   */
+  devtools?: DevtoolsOptions;
 
   /**
    * Environment variables to set before running commands.
@@ -91,6 +97,10 @@ export const defineConfig = (
 
     if (config.platform) {
       alepha.set(platformOptions, config.platform);
+    }
+
+    if (config.devtools) {
+      alepha.set(devtoolsOptions, config.devtools);
     }
 
     if (config.vendor) {

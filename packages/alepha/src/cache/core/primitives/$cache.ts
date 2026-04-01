@@ -1,7 +1,7 @@
 import {
   $atom,
   $inject,
-  $use,
+  $state,
   AlephaError,
   createPrimitive,
   type InstantiableClass,
@@ -173,7 +173,7 @@ export class CachePrimitive<
   TReturn = any,
   TParameter extends any[] = any[],
 > extends Primitive<CachePrimitiveOptions<TReturn, TParameter>> {
-  protected readonly settings = $use(cacheOptions);
+  protected readonly settings = $state(cacheOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   public readonly provider = this.$provider();
 

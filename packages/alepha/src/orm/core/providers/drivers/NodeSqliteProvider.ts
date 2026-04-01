@@ -7,7 +7,7 @@ import {
   $env,
   $hook,
   $inject,
-  $use,
+  $state,
   AlephaError,
   type Static,
   t,
@@ -81,7 +81,7 @@ declare module "alepha" {
 export class NodeSqliteProvider extends DatabaseProvider {
   protected readonly env = $env(envSchema);
   protected readonly builder = $inject(SqliteModelBuilder);
-  protected readonly options = $use(nodeSqliteOptions);
+  protected readonly options = $state(nodeSqliteOptions);
 
   protected sqlite!: DatabaseSync;
   protected drizzleDb!: any;
@@ -182,7 +182,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
         await this.migrate();
       }
 
-      this.log.info(`SQLite database OK`, { at: filepath });
+      this.log.info(`Sqlite connection OK`, { at: filepath });
     },
   });
 

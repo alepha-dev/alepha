@@ -5,7 +5,7 @@ import {
   $env,
   $hook,
   $inject,
-  $use,
+  $state,
   Alepha,
   type Static,
   type TObject,
@@ -115,7 +115,7 @@ export class CliProvider {
   protected readonly runner = $inject(Runner);
   protected readonly asker = $inject(Asker);
   protected readonly envUtils = $inject(EnvUtils);
-  protected readonly options = $use(cliOptions);
+  protected readonly options = $state(cliOptions);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Configuration

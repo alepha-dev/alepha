@@ -3,7 +3,7 @@ import {
   $atom,
   $hook,
   $inject,
-  $use,
+  $state,
   Alepha,
   AlephaError,
   type Static,
@@ -58,7 +58,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   protected readonly roomManager = $inject(RoomManager);
   protected readonly topicService = $inject(WebSocketTopicService);
   protected readonly log = $logger();
-  protected readonly wsOptions = $use(websocketOptions);
+  protected readonly wsOptions = $state(websocketOptions);
 
   protected wss?: WebSocketServer;
   protected endpoints = new Map<string, WebSocketPrimitiveOptions<any, any>>();

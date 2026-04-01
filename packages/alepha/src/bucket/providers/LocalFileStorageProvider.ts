@@ -8,7 +8,7 @@ import {
   $atom,
   $hook,
   $inject,
-  $use,
+  $state,
   Alepha,
   AlephaError,
   type FileLike,
@@ -55,7 +55,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   protected readonly log = $logger();
   protected readonly fileDetector = $inject(FileDetector);
   protected readonly fileSystemProvider = $inject(FileSystemProvider);
-  protected readonly options = $use(localFileStorageOptions);
+  protected readonly options = $state(localFileStorageOptions);
 
   protected get storagePath(): string {
     return this.options.storagePath;

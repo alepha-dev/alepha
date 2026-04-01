@@ -1,4 +1,4 @@
-import { $inject, $use, Alepha, AlephaError } from "alepha";
+import { $inject, $state, Alepha, AlephaError } from "alepha";
 import { Asker } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -29,7 +29,7 @@ export class PlatformInspector {
   protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly asker = $inject(Asker);
-  protected readonly options = $use(platformOptions);
+  protected readonly options = $state(platformOptions);
   protected readonly naming = $inject(NamingService);
 
   /**

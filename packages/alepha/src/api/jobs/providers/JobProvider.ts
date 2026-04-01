@@ -1,7 +1,7 @@
 import {
   $hook,
   $inject,
-  $use,
+  $state,
   Alepha,
   AlephaError,
   type Static,
@@ -81,7 +81,7 @@ export class JobProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly cronProvider = $inject(CronProvider);
-  protected readonly config = $use(jobConfig);
+  protected readonly config = $state(jobConfig);
   protected readonly log = $logger();
   protected readonly executions = $repository(jobExecutionEntity);
   protected readonly executionLogs = $repository(jobExecutionLogEntity);
@@ -783,7 +783,7 @@ export class JobProvider {
     on: "start",
     handler: async () => {
       this.workerId = crypto.randomUUID().slice(0, 12);
-      this.log.info(`Job system started`, {
+      this.log.info(`Job system OK`, {
         workerId: this.workerId,
         dispatch: this.queueDispatch ? "queue" : "inline",
       });

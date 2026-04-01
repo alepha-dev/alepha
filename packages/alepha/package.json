@@ -197,6 +197,11 @@
       "import": "./src/cli/core/index.ts",
       "default": "./src/cli/core/index.ts"
     },
+    "./cli/devtools": {
+      "types": "./src/cli/devtools/index.ts",
+      "import": "./src/cli/devtools/index.ts",
+      "default": "./src/cli/devtools/index.ts"
+    },
     "./cli/platform": {
       "types": "./src/cli/platform/index.ts",
       "import": "./src/cli/platform/index.ts",

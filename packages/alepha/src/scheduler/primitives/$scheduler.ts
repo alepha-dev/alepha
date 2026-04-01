@@ -2,7 +2,7 @@ import {
   $atom,
   $inject,
   $pipeline,
-  $use,
+  $state,
   Alepha,
   type Async,
   createPrimitive,
@@ -93,7 +93,7 @@ declare module "alepha" {
 
 export class SchedulerPrimitive extends Primitive<SchedulerPrimitiveOptions> {
   protected readonly log = $logger();
-  protected readonly settings = $use(schedulerOptions);
+  protected readonly settings = $state(schedulerOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly cronProvider = $inject(CronProvider);

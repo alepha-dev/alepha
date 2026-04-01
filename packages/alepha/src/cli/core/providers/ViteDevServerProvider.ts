@@ -1,6 +1,4 @@
-import { readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { __alephaRef, $inject, type Alepha, AlephaError } from "alepha";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -20,15 +18,18 @@ export interface DevServerOptions {
   entry: AppEntry;
 
   /**
-   * Disable devtools.
-   */
-  noDevtools?: boolean;
-
-  /**
    * Disable Vite React plugin.
    */
   noViteReactPlugin?: boolean;
 }
+
+/**
+ * Hook called after Alepha is loaded during dev server init/reload.
+ */
+export type OnAlephaLoadedHook = (
+  alepha: Alepha,
+  server: ViteDevServer,
+) => Promise<void>;
 
 /**
  * Vite development server with Alepha integration.
@@ -60,7 +61,23 @@ export class ViteDevServerProvider {
   protected isReloading = false;
   protected needsBrowserReload = false;
   protected currentReloadPromise: Promise<void> | null = null;
-  protected devtoolsAssetsPath: string | undefined;
+  protected extraVitePlugins: Plugin[] = [];
+  protected alephaLoadedHooks: OnAlephaLoadedHook[] = [];
+
+  /**
+   * Register an additional Vite plugin.
+   * Must be called before init().
+   */
+  public addVitePlugin(plugin: Plugin): void {
+    this.extraVitePlugins.push(plugin);
+  }
+
+  /**
+   * Register a hook called after Alepha is loaded/reloaded.
+   */
+  public onAlephaLoaded(hook: OnAlephaLoadedHook): void {
+    this.alephaLoadedHooks.push(hook);
+  }
 
   /**
    * Initialize the dev server and load Alepha.
@@ -126,6 +143,7 @@ export class ViteDevServerProvider {
     if (viteReact && !this.options.noViteReactPlugin) plugins.push(viteReact());
     plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
+    plugins.push(...this.extraVitePlugins);
     plugins.push(this.createAlephaPlugin());
 
     // DEFAULT PORT
@@ -213,51 +231,6 @@ export class ViteDevServerProvider {
       name: "alepha",
 
       configureServer: (server) => {
-        // Resolve @alepha/devtools assets path (if installed)
-        if (!this.options.noDevtools) {
-          try {
-            const require = createRequire(import.meta.url);
-            const pkgPath = require.resolve("@alepha/devtools/package.json");
-            this.devtoolsAssetsPath = join(dirname(pkgPath), "assets/ui");
-            process.env.VITE_ALEPHA_DEVTOOLS = "true";
-          } catch {
-            this.log.debug("@alepha/devtools not installed, skipping devtools");
-          }
-        }
-
-        // Devtools live reload via SSE
-        if (this.devtoolsAssetsPath) {
-          const assetsPath = this.devtoolsAssetsPath;
-
-          server.middlewares.use(async (req, res, next) => {
-            const url = req.url || "/";
-
-            // Serve devtools HTML with reload script injected
-            if (
-              !url.startsWith("/__devtools") ||
-              !req.headers.accept?.includes("text/html")
-            ) {
-              return next();
-            }
-
-            const indexPath = join(assetsPath, "index.html");
-
-            try {
-              let html = await readFile(indexPath, "utf-8");
-              html = html.replace(
-                "<head>",
-                `<head><script type="module" src="/@vite/client"></script>`,
-              );
-
-              res.writeHead(200, { "content-type": "text/html" });
-              res.end(html);
-            } catch (err) {
-              this.log.error("Failed to serve devtools UI", err);
-              next();
-            }
-          });
-        }
-
         // Re-send error overlay when a new browser connects (e.g. page refresh during error state)
         server.hot.on("connection", () => {
           if (this.currentError) {
@@ -490,13 +463,8 @@ export class ViteDevServerProvider {
     // Expose Vite server to Alepha for Logger SSR stack trace fixing
     alepha.store.set("alepha.vite.server" as any, this.server);
 
-    if (this.devtoolsAssetsPath) {
-      try {
-        const mod = await this.server.ssrLoadModule("@alepha/devtools");
-        alepha.with(mod.AlephaDevtools);
-      } catch (err) {
-        this.log.warn("Failed to load @alepha/devtools", err);
-      }
+    for (const hook of this.alephaLoadedHooks) {
+      await hook(alepha, this.server);
     }
 
     this.alepha = alepha;

@@ -2,7 +2,7 @@ import {
   $atom,
   $hook,
   $inject,
-  $use,
+  $state,
   Alepha,
   type State,
   type Static,
@@ -54,7 +54,7 @@ export class ReactBrowserProvider {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly browserHeadProvider = $inject(BrowserHeadProvider);
 
-  protected readonly options = $use(reactBrowserOptions);
+  protected readonly options = $state(reactBrowserOptions);
 
   public get rootId() {
     return "root";

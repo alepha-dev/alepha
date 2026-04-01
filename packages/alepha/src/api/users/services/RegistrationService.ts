@@ -339,7 +339,7 @@ export class RegistrationService {
 
     if (body.username) {
       const existingUser = await userRepository.findOne({
-        where: { username: { eq: body.username } },
+        where: { username: { ilike: body.username } },
       });
       if (existingUser) {
         this.log.debug("Username already taken", { username: body.username });

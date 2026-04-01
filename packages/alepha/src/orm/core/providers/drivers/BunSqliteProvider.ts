@@ -6,7 +6,7 @@ import {
   $env,
   $hook,
   $inject,
-  $use,
+  $state,
   AlephaError,
   type Static,
   t,
@@ -74,7 +74,7 @@ declare module "alepha" {
 export class BunSqliteProvider extends DatabaseProvider {
   protected readonly env = $env(envSchema);
   protected readonly builder = $inject(SqliteModelBuilder);
-  protected readonly options = $use(bunSqliteOptions);
+  protected readonly options = $state(bunSqliteOptions);
 
   protected sqlite?: Database;
   protected bunDb?: BunSQLiteDatabase;

@@ -2,7 +2,7 @@ import {
   $atom,
   $context,
   $inject,
-  $use,
+  $state,
   AlephaError,
   type AsyncFn,
   createMiddleware,
@@ -391,7 +391,7 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
 > {
   protected readonly log = $logger();
   protected readonly provider = $inject(LockProvider);
-  protected readonly settings = $use(lockOptions);
+  protected readonly settings = $state(lockOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
   /**

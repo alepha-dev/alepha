@@ -1,4 +1,4 @@
-import { $atom, $inject, $use, t } from "alepha";
+import { $atom, $inject, $state, t } from "alepha";
 import { $logger } from "alepha/logger";
 import { $route } from "alepha/server";
 import {
@@ -60,7 +60,7 @@ export const mcpSseOptions = $atom({
  */
 export class SseMcpTransport {
   protected readonly log = $logger();
-  protected readonly options = $use(mcpSseOptions);
+  protected readonly options = $state(mcpSseOptions);
   protected readonly mcpServer = $inject(McpServerProvider);
 
   /**

@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $use, Alepha, type Static, t } from "alepha";
+import { $atom, $hook, $inject, $state, Alepha, type Static, t } from "alepha";
 import { $logger } from "alepha/logger";
 import { RedisProvider, RedisSubscriberProvider } from "alepha/redis";
 import {
@@ -38,7 +38,7 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class RedisTopicProvider extends TopicProvider {
-  protected readonly options = $use(redisTopicOptions);
+  protected readonly options = $state(redisTopicOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly redisProvider = $inject(RedisProvider);
   protected readonly redisSubscriberProvider = $inject(RedisSubscriberProvider);

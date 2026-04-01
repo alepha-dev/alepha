@@ -2,7 +2,7 @@ import {
   $atom,
   $hook,
   $inject,
-  $use,
+  $state,
   Alepha,
   AlephaError,
   type TSchema,
@@ -60,7 +60,7 @@ export const reactPageOptions = $atom({
 export class ReactPageProvider {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly log = $logger();
-  protected readonly options = $use(reactPageOptions);
+  protected readonly options = $state(reactPageOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly pages: PageRoute[] = [];
   protected nextIdCursor = 0;

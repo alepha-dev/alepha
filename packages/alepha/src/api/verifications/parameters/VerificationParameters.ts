@@ -1,4 +1,4 @@
-import { $atom, $use, type Static } from "alepha";
+import { $atom, $state, type Static } from "alepha";
 import {
   type VerificationSettings,
   verificationSettingsSchema,
@@ -41,7 +41,7 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class VerificationParameters {
-  protected readonly options = $use(verificationOptions);
+  protected readonly options = $state(verificationOptions);
 
   public get<K extends keyof VerificationSettings>(
     key: K,
