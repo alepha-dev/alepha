@@ -14,7 +14,6 @@ import type { ProjectController } from "../../api/controllers/ProjectController.
 import type { ProjectStatsController } from "../../api/controllers/ProjectStatsController.ts";
 import type { TaskController } from "../../api/controllers/TaskController.ts";
 import type { WhiteboardController } from "../../api/controllers/WhiteboardController.ts";
-import { AppAdminRouter } from "../admin/AppAdminRouter.ts";
 import { currentAssignedTasksAtom } from "./atoms/currentAssignedTasksAtom.ts";
 import { currentChaptersAtom } from "./atoms/currentChaptersAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
@@ -40,7 +39,6 @@ export class AppRouter {
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
   meRouter = $inject(MeRouter);
-  adminRouter = $inject(AppAdminRouter);
   authRouter = $inject(AuthRouter);
 
   head = $head(() => {
@@ -73,7 +71,6 @@ export class AppRouter {
       this.projectCreate,
       this.kanban,
       this.meRouter.me,
-      this.adminRouter.adminLayout,
       this.notFound,
     ],
     lazy: () => import("./components/Layout.tsx"),

@@ -20,7 +20,6 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 import { useClient, useInject, useStore } from "alepha/react";
-import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { currentUserAtom } from "alepha/security";
 import { type ChangeEvent, useRef, useState } from "react";
@@ -52,7 +51,6 @@ export interface ProfileProps {
 const MyProfile = (props: ProfileProps) => {
   const { user, characters, identities } = props;
   const [, setUser] = useStore(currentUserAtom);
-  const auth = useAuth();
   const characterInfo = useInject(CharacterInfo);
   const userApi = useClient<UserController>();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,7 +96,7 @@ const MyProfile = (props: ProfileProps) => {
     try {
       const updatedUser = await userApi.updateAvatar({ body: { file } });
       setCurrentUser(updatedUser);
-      await auth.refresh();
+      setUser({ ...user, picture: updatedUser.picture });
       toast.success({ message: "Avatar updated successfully" });
     } catch (error) {
       toast.danger({
