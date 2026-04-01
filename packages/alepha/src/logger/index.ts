@@ -57,14 +57,19 @@ export const AlephaLogger = $module({
     const env = alepha.parseEnv(envSchema);
 
     // Support DEBUG env var (debug package convention) as shorthand for LOG_LEVEL/LOG_FORMAT.
+    // DEBUG=1 → LOG_LEVEL=trace LOG_FORMAT=pretty
     // DEBUG=alepha:* → LOG_LEVEL=alepha.*:debug,info LOG_FORMAT=pretty
     let logLevel = env.LOG_LEVEL;
     let logFormat = env.LOG_FORMAT;
     if (env.DEBUG) {
-      const patterns = env.DEBUG.split(",")
-        .map((p) => p.trim().replaceAll(":", "."))
-        .filter(Boolean);
-      logLevel ??= `${patterns.map((p) => `${p}:debug`).join(",")},info`;
+      if (env.DEBUG === "1" || env.DEBUG === "true") {
+        logLevel ??= "trace";
+      } else {
+        const patterns = env.DEBUG.split(",")
+          .map((p) => p.trim().replaceAll(":", "."))
+          .filter(Boolean);
+        logLevel ??= `${patterns.map((p) => `${p}:debug`).join(",")},info`;
+      }
       logFormat ??= "pretty";
     }
 
@@ -146,6 +151,7 @@ const envSchema = t.object({
    * Enable debug logging for specific modules using the `debug` package convention.
    *
    * @example
+   * DEBUG=1 # Shorthand for LOG_LEVEL=trace LOG_FORMAT=pretty
    * DEBUG=alepha:* # Enable debug logging for all alepha modules
    * DEBUG=alepha:orm:* # Enable debug logging for alepha.orm modules
    * DEBUG=* # Enable debug logging for all modules
