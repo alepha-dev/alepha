@@ -34,21 +34,14 @@ export class LocalSmsProvider implements SmsProvider {
       // Ensure directory exists
       await this.fs.mkdir(this.directory, { recursive: true });
 
-      // Create filename: phone+date
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       for (const recipient of Array.isArray(to) ? to : [to]) {
         const sanitizedPhone = recipient.replace(/[^0-9+]/g, "_");
-        const filename = `${sanitizedPhone}+${timestamp}.txt`;
+        const filename = `${sanitizedPhone},${timestamp}.sms.json`;
         const filepath = this.fs.join(this.directory, filename);
 
-        // Create text content
-        const textContent = this.createSmsText({
-          to: recipient,
-          message,
-        });
-
-        // Write to file
-        await this.fs.writeFile(filepath, textContent);
+        const content = this.createSmsJson({ to: recipient, message });
+        await this.fs.writeFile(filepath, JSON.stringify(content, null, 2));
 
         this.log.info("SMS saved to local file", { filepath, to });
       }
@@ -59,19 +52,15 @@ export class LocalSmsProvider implements SmsProvider {
     }
   }
 
-  public createSmsText(options: { to: string; message: string }): string {
-    const { to, message } = options;
-    const timestamp = new Date().toISOString();
-
-    return `SMS Message
-===========
-
-Sent: ${timestamp}
-To: ${to}
-
-Message:
---------
-${message}
-`;
+  public createSmsJson(options: { to: string; message: string }): {
+    to: string;
+    message: string;
+    sentAt: string;
+  } {
+    return {
+      to: options.to,
+      message: options.message,
+      sentAt: new Date().toISOString(),
+    };
   }
 }

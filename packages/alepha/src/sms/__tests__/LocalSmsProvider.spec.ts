@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SmsError } from "../errors/SmsError.ts";
 import { LocalSmsProvider } from "../providers/LocalSmsProvider.ts";
 
@@ -8,7 +8,7 @@ import { LocalSmsProvider } from "../providers/LocalSmsProvider.ts";
 
 describe("LocalSmsProvider", () => {
   describe("send", () => {
-    test("should successfully send SMS to local file", async () => {
+    it("should successfully send SMS to local file", async () => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -29,10 +29,14 @@ describe("LocalSmsProvider", () => {
 
       expect(memoryFs.writeFileCalls).toHaveLength(1);
       expect(memoryFs.writeFileCalls[0].path).toContain("+1234567890");
-      expect(memoryFs.writeFileCalls[0].data).toContain("Test message");
+
+      const written = JSON.parse(memoryFs.writeFileCalls[0].data as string);
+      expect(written.to).toBe("+1234567890");
+      expect(written.message).toBe("Test message");
+      expect(written.sentAt).toBeDefined();
     });
 
-    test("should create proper filename with sanitized phone and timestamp", async () => {
+    it("should create proper filename with sanitized phone and timestamp", async () => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -54,13 +58,13 @@ describe("LocalSmsProvider", () => {
       expect(memoryFs.joinCalls).toHaveLength(1);
       expect(memoryFs.joinCalls[0]).toEqual([
         "node_modules/.alepha/sms",
-        "+1__234__567_8900+2023-01-01T12-00-00-000Z.txt",
+        "+1__234__567_8900,2023-01-01T12-00-00-000Z.sms.json",
       ]);
 
       vi.useRealTimers();
     });
 
-    test("should sanitize special characters in phone number", async () => {
+    it("should sanitize special characters in phone number", async () => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -77,11 +81,11 @@ describe("LocalSmsProvider", () => {
 
       expect(memoryFs.joinCalls).toHaveLength(1);
       expect(memoryFs.joinCalls[0][1]).toMatch(
-        /\+1_234_567_8900______123\+.+\.txt/,
+        /\+1_234_567_8900______123,.+\.sms\.json/,
       );
     });
 
-    test("should create proper text content", async () => {
+    it("should create proper JSON content", async () => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -91,20 +95,23 @@ describe("LocalSmsProvider", () => {
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
       await alepha.start();
 
+      const mockDate = new Date("2023-01-01T12:00:00.000Z");
+      vi.setSystemTime(mockDate);
+
       await provider.send({
         to: "+1234567890",
         message: "Test message with content",
       });
 
-      const textContent = memoryFs.writeFileCalls[0].data;
+      const written = JSON.parse(memoryFs.writeFileCalls[0].data as string);
+      expect(written.to).toBe("+1234567890");
+      expect(written.message).toBe("Test message with content");
+      expect(written.sentAt).toBe("2023-01-01T12:00:00.000Z");
 
-      expect(textContent).toContain("SMS Message");
-      expect(textContent).toContain("+1234567890");
-      expect(textContent).toContain("Test message with content");
-      expect(textContent).toContain("Sent:");
+      vi.useRealTimers();
     });
 
-    test("should throw SmsError when mkdir fails", async () => {
+    it("should throw SmsError when mkdir fails", async () => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -131,7 +138,7 @@ describe("LocalSmsProvider", () => {
       ).rejects.toThrow("Failed to save SMS to local file: Permission denied");
     });
 
-    test("should throw SmsError when writeFile fails", async () => {
+    it("should throw SmsError when writeFile fails", async () => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -158,7 +165,7 @@ describe("LocalSmsProvider", () => {
       ).rejects.toThrow("Failed to save SMS to local file: Disk full");
     });
 
-    test("should handle non-Error exceptions", async () => {
+    it("should handle non-Error exceptions", async () => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -179,7 +186,7 @@ describe("LocalSmsProvider", () => {
       ).rejects.toThrow(SmsError);
     });
 
-    test("should handle multiple recipients", async () => {
+    it("should handle multiple recipients", async () => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -199,7 +206,7 @@ describe("LocalSmsProvider", () => {
       expect(memoryFs.writeFileCalls[1].path).toContain("+2222222222");
     });
 
-    test("should use custom directory when provided", async () => {
+    it("should use custom directory when provided", async () => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
         use: MemoryFileSystemProvider,
@@ -225,7 +232,7 @@ describe("LocalSmsProvider", () => {
     });
   });
 
-  describe("createSmsText", () => {
+  describe("createSmsJson", () => {
     let provider: LocalSmsProvider;
 
     beforeEach(async () => {
@@ -237,30 +244,29 @@ describe("LocalSmsProvider", () => {
       await alepha.start();
     });
 
-    test("should create proper text structure", () => {
+    it("should create proper JSON structure", () => {
       const mockDate = new Date("2023-01-01T12:00:00.000Z");
       vi.setSystemTime(mockDate);
 
-      const text = provider.createSmsText({
+      const result = provider.createSmsJson({
         to: "+1234567890",
         message: "Test message",
       });
 
-      expect(text).toContain("SMS Message");
-      expect(text).toContain("+1234567890");
-      expect(text).toContain("Test message");
-      expect(text).toContain("2023-01-01T12:00:00.000Z");
+      expect(result.to).toBe("+1234567890");
+      expect(result.message).toBe("Test message");
+      expect(result.sentAt).toBe("2023-01-01T12:00:00.000Z");
 
       vi.useRealTimers();
     });
 
-    test("should handle multiline messages", () => {
-      const text = provider.createSmsText({
+    it("should handle multiline messages", () => {
+      const result = provider.createSmsJson({
         to: "+1234567890",
         message: "Line 1\nLine 2\nLine 3",
       });
 
-      expect(text).toContain("Line 1\nLine 2\nLine 3");
+      expect(result.message).toBe("Line 1\nLine 2\nLine 3");
     });
   });
 });
