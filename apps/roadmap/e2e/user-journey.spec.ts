@@ -29,7 +29,7 @@ async function findLatestEmail(
 
       // Find files matching this email, sorted by modification time (newest first)
       const matchingFiles = files
-        .filter((f) => f.startsWith(sanitizedEmail) && f.endsWith(".html"))
+        .filter((f) => f.startsWith(sanitizedEmail) && f.endsWith(".eml.json"))
         .map((f) => ({
           name: f,
           path: path.join(emailDir, f),
@@ -50,11 +50,14 @@ async function findLatestEmail(
 }
 
 /**
- * Helper to extract 6-digit verification code from email HTML
+ * Helper to extract 6-digit verification code from email JSON
  */
-function extractVerificationCode(htmlContent: string): string | null {
+function extractVerificationCode(jsonContent: string): string | null {
+  const email = JSON.parse(jsonContent);
+  const body = email.body as string;
+
   // The code is in a span with specific styling: font-size: 32px; font-weight: bold; letter-spacing: 8px
-  const codeMatch = htmlContent.match(
+  const codeMatch = body.match(
     /letter-spacing:\s*8px[^>]*>[\s\n]*([A-Z0-9]{6})[\s\n]*</i,
   );
   if (codeMatch) {
@@ -62,7 +65,7 @@ function extractVerificationCode(htmlContent: string): string | null {
   }
 
   // Fallback: look for any 6-character alphanumeric code in a span
-  const fallbackMatch = htmlContent.match(
+  const fallbackMatch = body.match(
     /<span[^>]*>[\s\n]*([A-Z0-9]{6})[\s\n]*<\/span>/i,
   );
   return fallbackMatch ? fallbackMatch[1] : null;
@@ -75,7 +78,7 @@ function clearEmails(): void {
   if (fs.existsSync(emailDir)) {
     const files = fs.readdirSync(emailDir);
     for (const file of files) {
-      if (file.endsWith(".html")) {
+      if (file.endsWith(".eml.json")) {
         fs.unlinkSync(path.join(emailDir, file));
       }
     }

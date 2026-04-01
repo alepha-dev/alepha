@@ -6001,29 +6001,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"blog@workspace:apps/blog":
-  version: 0.0.0-use.local
-  resolution: "blog@workspace:apps/blog"
-  dependencies:
-    "@alepha/ui": "npm:^0.19.1"
-    "@mantine/core": "npm:^8.3.18"
-    "@mantine/hooks": "npm:^8.3.18"
-    "@tabler/icons-react": "npm:^3.41.0"
-    "@types/node": "npm:^25.5.0"
-    "@types/react": "npm:^19.2.14"
-    alepha: "npm:^0.19.1"
-    better-sqlite3: "npm:^12.8.0"
-    drizzle-kit: "npm:^0.31.10"
-    marked: "npm:^17.0.5"
-    react: "npm:^19.2.4"
-    react-dom: "npm:^19.2.4"
-    typescript: "npm:^6.0.2"
-    vite: "npm:^8.0.3"
-    vitest: "npm:^4.1.2"
-    wrangler: "npm:^4.78.0"
-  languageName: unknown
-  linkType: soft
-
 "body-parser@npm:^2.2.1":
   version: 2.2.2
   resolution: "body-parser@npm:2.2.2"

@@ -34,5 +34,4 @@ export {
   type AdminSidebarItem,
   type AdminSidebarSection,
   type UiAdminOptions,
-  type UiAdminResult,
 } from "./primitives/$uiAdmin.ts";
