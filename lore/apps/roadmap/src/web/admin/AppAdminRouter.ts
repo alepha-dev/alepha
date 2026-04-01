@@ -27,7 +27,7 @@ export class AppAdminRouter {
   protected notifications = $inject(AdminNotificationRouter);
   protected billing = $inject(AdminBillingRouter);
 
-  admin = $uiAdmin({
+  adminLayout = $uiAdmin({
     pages: [
       this.users.adminUsers,
       this.sessions.adminSessions,
@@ -74,7 +74,7 @@ export class AppAdminRouter {
 
   // ── Dashboard ───────────────────────────────────
   dashboard = $page({
-    parent: this.admin.adminLayout,
+    parent: this.adminLayout,
     path: "/",
     label: "Dashboard",
     icon: IconLayoutDashboard,

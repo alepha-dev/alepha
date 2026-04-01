@@ -1,4 +1,4 @@
-import { type ActionProps, ActionButton, Flex, Text } from "@alepha/ui";
+import { ActionButton, type ActionProps, Flex, Text } from "@alepha/ui";
 import { Avatar } from "@mantine/core";
 import {
   IconAntenna,
@@ -40,9 +40,7 @@ const MeLayout = () => {
       >
         <Avatar
           src={
-            auth.user?.picture
-              ? `/api/files/${auth.user.picture}`
-              : undefined
+            auth.user?.picture ? `/api/files/${auth.user.picture}` : undefined
           }
           size={40}
           radius="xl"
@@ -66,10 +64,7 @@ const MeLayout = () => {
         gap="md"
         direction={{ base: "column", md: "row" }}
       >
-        <Flex
-          w={{ base: "100%", md: 180 }}
-          miw={{ md: 180 }}
-        >
+        <Flex w={{ base: "100%", md: 180 }} miw={{ md: 180 }}>
           <MeMenu />
         </Flex>
         <Flex flex={1} className="overflow-auto">
@@ -97,25 +92,53 @@ const MeMenu = () => {
         border: "1px solid var(--alepha-border)",
       }}
     >
-      <Text visibleFrom="md" size="xs" c="dimmed" tt="uppercase" fw={600} px="xs" pt="xs">
+      <Text
+        visibleFrom="md"
+        size="xs"
+        c="dimmed"
+        tt="uppercase"
+        fw={600}
+        px="xs"
+        pt="xs"
+      >
         General
       </Text>
       <NavLink icon={<IconUser size={16} />} href={meRouter.path("profile")}>
         Profile
       </NavLink>
-      <NavLink icon={<IconMapRoute size={16} />} href={meRouter.path("characters")}>
+      <NavLink
+        icon={<IconMapRoute size={16} />}
+        href={meRouter.path("characters")}
+      >
         Campaigns
       </NavLink>
-      <NavLink icon={<IconMail size={16} />} href={meRouter.path("invitations")}>
+      <NavLink
+        icon={<IconMail size={16} />}
+        href={meRouter.path("invitations")}
+      >
         Invitations
       </NavLink>
-      <Text visibleFrom="md" size="xs" c="dimmed" tt="uppercase" fw={600} px="xs" pt="sm">
+      <Text
+        visibleFrom="md"
+        size="xs"
+        c="dimmed"
+        tt="uppercase"
+        fw={600}
+        px="xs"
+        pt="sm"
+      >
         Security
       </Text>
-      <NavLink icon={<IconShield size={16} />} href={meRouter.path("identities")}>
+      <NavLink
+        icon={<IconShield size={16} />}
+        href={meRouter.path("identities")}
+      >
         Identities
       </NavLink>
-      <NavLink icon={<IconAntenna size={16} />} href={meRouter.path("sessions")}>
+      <NavLink
+        icon={<IconAntenna size={16} />}
+        href={meRouter.path("sessions")}
+      >
         Sessions
       </NavLink>
       <NavLink icon={<IconKey size={16} />} href={meRouter.path("apiKeys")}>
@@ -125,7 +148,9 @@ const MeMenu = () => {
   );
 };
 
-const NavLink = (props: ActionProps & { href: string; icon: React.ReactNode }) => {
+const NavLink = (
+  props: ActionProps & { href: string; icon: React.ReactNode },
+) => {
   return (
     <ActionButton
       size="xs"

@@ -25,7 +25,9 @@ const MyInvitations = (props: MyInvitationsProps) => {
   const [invitations, setInvitations] = useState(props.invitations);
   const invitationApi = useClient<InvitationController>();
   const projectApi = useClient<ProjectController>();
-  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
+    {},
+  );
   const alepha = useAlepha();
   const toast = useToast();
   const { l } = useI18n();
@@ -37,7 +39,8 @@ const MyInvitations = (props: MyInvitationsProps) => {
       setInvitations(await invitationApi.getMyInvitations());
       alepha.store.set(userProjectsAtom, await projectApi.getMyProjects());
       toast.success({
-        message: "You have joined the campaign! A character has been created for you.",
+        message:
+          "You have joined the campaign! A character has been created for you.",
       });
     } catch (error: any) {
       toast.danger({ message: error.message || "Failed to accept invitation" });
@@ -59,12 +62,23 @@ const MyInvitations = (props: MyInvitationsProps) => {
     }
   };
 
-  const pendingInvitations = invitations.filter((inv) => inv.status === "pending");
-  const processedInvitations = invitations.filter((inv) => inv.status !== "pending");
+  const pendingInvitations = invitations.filter(
+    (inv) => inv.status === "pending",
+  );
+  const processedInvitations = invitations.filter(
+    (inv) => inv.status !== "pending",
+  );
 
   if (!invitations || invitations.length === 0) {
     return (
-      <Flex flex={1} align="center" justify="center" direction="column" gap="sm" py="xl">
+      <Flex
+        flex={1}
+        align="center"
+        justify="center"
+        direction="column"
+        gap="sm"
+        py="xl"
+      >
         <IconMail size={40} opacity={0.3} />
         <Text c="dimmed" ta="center">
           No invitations yet.
@@ -115,7 +129,8 @@ const MyInvitations = (props: MyInvitationsProps) => {
                     </Badge>
                   </Flex>
                   <Text size="xs" c="dimmed">
-                    From {invitation.inviterName || invitation.inviterEmail} &middot; {l(invitation.createdAt)}
+                    From {invitation.inviterName || invitation.inviterEmail}{" "}
+                    &middot; {l(invitation.createdAt)}
                   </Text>
                 </Flex>
 
@@ -174,7 +189,8 @@ const MyInvitations = (props: MyInvitationsProps) => {
                   {invitation.projectTitle}
                 </Text>
                 <Text size="xs" c="dimmed">
-                  {invitation.inviterName || invitation.inviterEmail} &middot; {l(invitation.createdAt)}
+                  {invitation.inviterName || invitation.inviterEmail} &middot;{" "}
+                  {l(invitation.createdAt)}
                 </Text>
               </Flex>
               <Badge

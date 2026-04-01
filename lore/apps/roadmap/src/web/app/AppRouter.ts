@@ -14,6 +14,7 @@ import type { ProjectController } from "../../api/controllers/ProjectController.
 import type { ProjectStatsController } from "../../api/controllers/ProjectStatsController.ts";
 import type { TaskController } from "../../api/controllers/TaskController.ts";
 import type { WhiteboardController } from "../../api/controllers/WhiteboardController.ts";
+import { AppAdminRouter } from "../admin/AppAdminRouter.ts";
 import { currentAssignedTasksAtom } from "./atoms/currentAssignedTasksAtom.ts";
 import { currentChaptersAtom } from "./atoms/currentChaptersAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
@@ -24,7 +25,6 @@ import {
   currentWhiteboardsAtom,
 } from "./atoms/currentWhiteboardsAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
-import { AppAdminRouter } from "../admin/AppAdminRouter.ts";
 import { MeRouter } from "./components/profile/me/MeRouter.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 
@@ -73,7 +73,7 @@ export class AppRouter {
       this.projectCreate,
       this.kanban,
       this.meRouter.me,
-      this.adminRouter.admin.adminLayout,
+      this.adminRouter.adminLayout,
       this.notFound,
     ],
     lazy: () => import("./components/Layout.tsx"),

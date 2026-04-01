@@ -149,7 +149,11 @@ const MyIdentities = (props: MyIdentitiesProps) => {
                 <Text size="sm" fw={600}>
                   {providerLabel(identity.provider)}
                 </Text>
-                <Badge variant="dot" color={providerColor(identity.provider)} size="xs">
+                <Badge
+                  variant="dot"
+                  color={providerColor(identity.provider)}
+                  size="xs"
+                >
                   Active
                 </Badge>
               </Flex>
@@ -186,28 +190,38 @@ const MyIdentities = (props: MyIdentitiesProps) => {
         <form {...passwordForm.props}>
           <Flex direction="column" gap="md">
             <Text size="sm" c="dimmed">
-              Set up a username and password to sign in without external providers.
+              Set up a username and password to sign in without external
+              providers.
             </Text>
 
             <Control
               input={passwordForm.input.username}
               label="Username"
               icon={<IconUser size={16} />}
-              text={{ placeholder: "Choose a username", autoComplete: "username" }}
+              text={{
+                placeholder: "Choose a username",
+                autoComplete: "username",
+              }}
             />
 
             <Control
               input={passwordForm.input.password}
               label="Password"
               icon={<IconLock size={16} />}
-              password={{ placeholder: "Enter password", autoComplete: "new-password" }}
+              password={{
+                placeholder: "Enter password",
+                autoComplete: "new-password",
+              }}
             />
 
             <Control
               input={passwordForm.input.confirmPassword}
               label="Confirm Password"
               icon={<IconLock size={16} />}
-              password={{ placeholder: "Confirm password", autoComplete: "new-password" }}
+              password={{
+                placeholder: "Confirm password",
+                autoComplete: "new-password",
+              }}
             />
 
             <Flex justify="flex-end" gap="sm">
