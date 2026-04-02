@@ -33,7 +33,7 @@
     "@tiptap/pm": "^3.21.0",
     "@tiptap/react": "^3.21.0",
     "@tiptap/starter-kit": "^3.21.0",
-    "alepha": "^0.19.1",
+    "alepha": "^0.19.2",
     "animate.css": "^4.1.1",
     "framer-motion": "^12.38.0",
     "highlight.js": "^11.11.1",
