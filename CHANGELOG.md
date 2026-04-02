@@ -1,3 +1,19 @@
+## [0.19.2] - 2026-04-02
+
+### Features
+
+- **orm**: allow index expressions in $entity (`ff75f6c2`)
+- **devtools**: expose email/sms to devtools (`63b7de7e`)
+- **core**: rename $use to $state [BREAKING] (`4cf2e1ca`)
+- **logger**: allow DEBUG=1 which convert to LOG_LEVEL=trace and LOG_FORMAT=pretty (`1b43e6e3`)
+- **devtools**: expose devtools as AlephaCli plugin now (`ebdb9457`)
+- **ui/admin**: split ui admin pages into submodules (`fec91f42`)
+- **api/billing**: init module (`40e05352`)
+- **cli**: add vendor plugin - copy alepha sources in project workspace (`10f8f0f7`)
+- **api/organizations**: add CRUD module (`9d3c2f7e`)
+- **cli**: dev - allow to run 'dev' on multi apps (`40e3eea6`)
+- **orm**: add db.organization() for automatic software multi-tenant (`55c6263f`)
+
 ## [0.19.1] - 2026-03-20
 
 ### Features

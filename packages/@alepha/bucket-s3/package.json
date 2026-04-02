@@ -13,7 +13,7 @@
     "minio"
   ],
   "author": "Feunard",
-  "version": "0.19.1",
+  "version": "0.19.2",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -30,13 +30,13 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.9",
-    "alepha": "0.19.1",
+    "alepha": "0.19.2",
     "tsdown": "^0.21.7",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"
   },
   "peerDependencies": {
-    "alepha": "0.19.1"
+    "alepha": "0.19.2"
   },
   "scripts": {
     "lint": "alepha lint",
