@@ -1,3 +1,17 @@
+## [0.19.3] - 2026-04-03
+
+### Features
+
+- **cli**: dev - add readiness endpoint and reload handler for Alepha (`7c03a096`)
+- **cli**: enhance configuration handling for devtools, platform, and vendor options (`3ef50624`)
+
+### Bug Fixes
+
+- **orm**: streamline SQL execution and enhance error handling (`3207d158`)
+- **devtools**: update build script to include UI build step (`f782a908`)
+- **logger**: adjust log level for production and browser environments (`61ddb8f5`)
+- **core**: enforce production mode during Vite builds (`6a6dbfe4`)
+
 ## [0.19.2] - 2026-04-02
 
 ### Features
