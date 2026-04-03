@@ -139,7 +139,12 @@ export const AlephaLogger = $module({
 
     alepha.store.set(
       "alepha.logger.level",
-      logLevel ?? (alepha.isTest() ? "trace" : "info"),
+      logLevel ??
+        (alepha.isTest()
+          ? "trace"
+          : alepha.isProduction() && alepha.isBrowser()
+            ? "warn"
+            : "info"),
     );
   },
 });
