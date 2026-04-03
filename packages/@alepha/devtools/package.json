@@ -43,7 +43,7 @@
     "test": "alepha test",
     "dev:ui": "alepha dev --no-devtools",
     "build": "tsdown && yarn build:ui",
-    "build:ui": "alepha build -t static && rm -rf assets/ui && cp -r dist/public assets/ui"
+    "build:ui": "alepha build -t static && rm -rf assets/ui && mkdir -p assets && cp -r dist/public assets/ui"
   },
   "repository": {
     "type": "git",
