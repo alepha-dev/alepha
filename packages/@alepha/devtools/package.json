@@ -42,7 +42,7 @@
     "typecheck": "alepha typecheck",
     "test": "alepha test",
     "dev:ui": "alepha dev --no-devtools",
-    "build": "tsdown",
+    "build": "tsdown && yarn build:ui",
     "build:ui": "alepha build -t static && rm -rf assets/ui && cp -r dist/public assets/ui"
   },
   "repository": {
