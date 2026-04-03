@@ -398,7 +398,9 @@ export class PackageManagerUtils {
       alepha: `^${version}`,
     };
 
-    const devDependencies: Record<string, string> = {};
+    const devDependencies: Record<string, string> = {
+      vite: alephaDeps.vite,
+    };
 
     // Only include drizzle-kit when the project uses a database.
     // React-only projects (--react without --api/--saas) don't need it.

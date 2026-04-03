@@ -5,7 +5,7 @@ import type { RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import { cliAssets } from "../assets.ts";
-import { type AgentMdType, agentMd } from "../templates/agentMd.ts";
+import { type AgentMdOptions, agentMd } from "../templates/agentMd.ts";
 import { alephaConfigTs } from "../templates/alephaConfigTs.ts";
 import { apiAppSecurityTs } from "../templates/apiAppSecurityTs.ts";
 import { apiHelloControllerTs } from "../templates/apiHelloControllerTs.ts";
@@ -75,7 +75,7 @@ export class ProjectScaffolder {
       tsconfigJson?: boolean;
       biomeJson?: boolean;
       editorconfig?: boolean;
-      agentMd?: false | { type: AgentMdType };
+      agentMd?: false | AgentMdOptions;
     },
   ): Promise<void> {
     const tasks: Promise<void>[] = [];
@@ -187,10 +187,10 @@ export class ProjectScaffolder {
 
   public async ensureAgentMd(
     root: string,
-    options: { type: AgentMdType; force?: boolean },
+    options: AgentMdOptions & { force?: boolean },
   ): Promise<void> {
     const filename = options.type === "claude" ? "CLAUDE.md" : "AGENTS.md";
-    await this.ensureFile(root, filename, agentMd(options.type), options.force);
+    await this.ensureFile(root, filename, agentMd(options), options.force);
   }
 
   /**
@@ -481,7 +481,7 @@ export class ProjectScaffolder {
           tsconfigJson: !workspace.config.tsconfigJson,
           biomeJson: true,
           editorconfig: !workspace.config.editorconfig,
-          agentMd: agentType ? { type: agentType } : false,
+          agentMd: agentType ? { type: agentType, ui: !!flags.ui } : false,
         });
 
         // Create alepha.config.ts with documented options
