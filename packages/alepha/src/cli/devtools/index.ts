@@ -3,7 +3,19 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { $module, AlephaError } from "alepha";
 import { ViteDevServerProvider } from "alepha/cli";
-import { devtoolsOptions } from "./atoms/devtoolsOptions.ts";
+import { cliConfigPlugins } from "alepha/cli/config";
+import {
+  type DevtoolsOptions,
+  devtoolsOptions,
+} from "./atoms/devtoolsOptions.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "alepha/cli/config" {
+  interface AlephaCliConfig {
+    devtools?: DevtoolsOptions;
+  }
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -187,6 +199,14 @@ export const AlephaCliDevtoolsPlugin = $module({
       }
     });
   },
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+cliConfigPlugins.push((config, alepha) => {
+  if (config.devtools) {
+    alepha.set(devtoolsOptions, config.devtools);
+  }
 });
 
 // ---------------------------------------------------------------------------------------------------------------------

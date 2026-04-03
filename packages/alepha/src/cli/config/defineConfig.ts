@@ -7,20 +7,23 @@ import {
   type DevOptions,
   devOptions,
 } from "alepha/cli";
-import { type DevtoolsOptions, devtoolsOptions } from "alepha/cli/devtools";
-import { type PlatformOptions, platformOptions } from "alepha/cli/platform";
-import { type VendorOptions, vendorOptions } from "alepha/cli/vendor";
-import type { CommandPrimitive } from "alepha/command";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type AlephaCliConfigPlugin = (
+  config: AlephaCliConfig,
+  alepha: Alepha,
+) => void;
+
+export const cliConfigPlugins: AlephaCliConfigPlugin[] = [];
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export interface AlephaCliConfig {
-  entry?: AppEntryOptions;
   /**
-   * Add custom commands to the Alepha CLI.
-   *
-   * You can override 'deploy', 'build', 'dev', 'start' commands this way.
-   * But you can also add your own commands and run them via `alepha <command>`.
+   * Override entry paths.
    */
-  commands?: Record<string, CommandPrimitive>;
+  entry?: AppEntryOptions;
 
   /**
    * Register more services to the Alepha CLI (enhancements, commands, etc.).
@@ -38,39 +41,17 @@ export interface AlephaCliConfig {
   dev?: DevOptions;
 
   /**
-   * Configure devtools plugin.
-   */
-  devtools?: DevtoolsOptions;
-
-  /**
    * Environment variables to set before running commands.
    *
    * Always use .env files by default, this is only for dynamic values.
    */
   env?: Record<string, unknown>;
-
-  /**
-   * Platform deployment configuration.
-   */
-  platform?: PlatformOptions;
-
-  /**
-   * Vendor synchronization configuration.
-   */
-  vendor?: VendorOptions;
 }
-
-export type AlephaCliConfigFn = (alepha: Alepha) => AlephaCliConfig;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export const defineConfig = (
-  runConfig: AlephaCliConfig | AlephaCliConfigFn,
-) => {
+export const defineConfig = (config: AlephaCliConfig) => {
   return (alepha: Alepha) => {
-    const config =
-      typeof runConfig === "function" ? runConfig(alepha) : runConfig;
-
     if (config.services) {
       for (const it of config.services) {
         alepha.with(it);
@@ -95,20 +76,10 @@ export const defineConfig = (
       alepha.set(appEntryOptions, config.entry);
     }
 
-    if (config.platform) {
-      alepha.set(platformOptions, config.platform);
+    for (const plugin of cliConfigPlugins) {
+      plugin(config, alepha);
     }
 
-    if (config.devtools) {
-      alepha.set(devtoolsOptions, config.devtools);
-    }
-
-    if (config.vendor) {
-      alepha.set(vendorOptions, config.vendor);
-    }
-
-    return {
-      ...config.commands,
-    };
+    return {};
   };
 };

@@ -1,7 +1,12 @@
 import { $module } from "alepha";
 import { AlephaCli } from "alepha/cli";
+import { cliConfigPlugins } from "alepha/cli/config";
 import { CloudflareAdapter } from "./adapters/CloudflareAdapter.ts";
 import { VercelAdapter } from "./adapters/VercelAdapter.ts";
+import {
+  type PlatformOptions,
+  platformOptions,
+} from "./atoms/platformOptions.ts";
 import { PlatformCommand } from "./commands/platform.ts";
 import { SecretsCommand } from "./commands/SecretsCommand.ts";
 import { GitHubSecretStore } from "./providers/GitHubSecretStore.ts";
@@ -15,6 +20,14 @@ import { SecretFilterService } from "./services/SecretFilterService.ts";
 import { VercelApi } from "./services/VercelApi.ts";
 import { VercelCli } from "./services/VercelCli.ts";
 import { WranglerApi } from "./services/WranglerApi.ts";
+
+// ---------------------------------------------------------------------------
+
+declare module "alepha/cli/config" {
+  interface AlephaCliConfig {
+    platform?: PlatformOptions;
+  }
+}
 
 // ---------------------------------------------------------------------------
 
@@ -38,10 +51,10 @@ import { WranglerApi } from "./services/WranglerApi.ts";
  * Configuration in `alepha.config.ts`:
  *
  * ```typescript
- * import { AlephaCliPlatform } from "alepha/cli/platform";
+ * import { AlephaCliPlatformPlugin } from "alepha/cli/platform";
  *
  * export default defineConfig({
- *   services: [AlephaCliPlatform],
+ *   services: [AlephaCliPlatformPlugin],
  *   platform: {
  *     environments: {
  *       production: { adapter: "cloudflare", domain: "myapp.com" },
@@ -70,6 +83,14 @@ export const AlephaCliPlatformPlugin = $module({
     PlatformInspector,
     PlatformOrchestrator,
   ],
+});
+
+// ---------------------------------------------------------------------------
+
+cliConfigPlugins.push((config, alepha) => {
+  if (config.platform) {
+    alepha.set(platformOptions, config.platform);
+  }
 });
 
 // ---------------------------------------------------------------------------

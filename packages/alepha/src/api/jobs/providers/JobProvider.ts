@@ -116,12 +116,16 @@ export class JobProvider {
     });
 
     if (options.cron) {
-      this.cronProvider.createCronJob(name, options.cron, () =>
-        this.trigger(name, {
-          triggeredBy: "system",
-          triggeredByName: "system (cron)",
-        }),
-      );
+      this.cronProvider.createCronJob(name, options.cron, async () => {
+        try {
+          await this.trigger(name, {
+            triggeredBy: "system",
+            triggeredByName: "system (cron)",
+          });
+        } catch (error) {
+          this.log.error(`Cron trigger failed for job '${name}'`, error);
+        }
+      });
     }
   }
 

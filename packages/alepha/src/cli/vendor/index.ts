@@ -1,7 +1,16 @@
 import { $module } from "alepha";
-import { vendorOptions } from "./atoms/vendorOptions.ts";
+import { cliConfigPlugins } from "alepha/cli/config";
+import { type VendorOptions, vendorOptions } from "./atoms/vendorOptions.ts";
 import { VendorCommand } from "./commands/VendorCommand.ts";
 import { VendorService } from "./services/VendorService.ts";
+
+// ---------------------------------------------------------------------------
+
+declare module "alepha/cli/config" {
+  interface AlephaCliConfig {
+    vendor?: VendorOptions;
+  }
+}
 
 // ---------------------------------------------------------------------------
 
@@ -19,10 +28,10 @@ import { VendorService } from "./services/VendorService.ts";
  * Configuration in `alepha.config.ts`:
  *
  * ```typescript
- * import { AlephaCliVendor } from "alepha/cli/vendor";
+ * import { AlephaCliVendorPlugin } from "alepha/cli/vendor";
  *
  * export default defineConfig({
- *   services: [AlephaCliVendor],
+ *   services: [AlephaCliVendorPlugin],
  *   vendor: {
  *     branch: "main",
  *     packages: ["alepha", "@alepha/bucket-s3"],
@@ -34,6 +43,14 @@ export const AlephaCliVendorPlugin = $module({
   name: "alepha.cli.plugins.vendor",
   atoms: [vendorOptions],
   services: [VendorCommand, VendorService],
+});
+
+// ---------------------------------------------------------------------------
+
+cliConfigPlugins.push((config, alepha) => {
+  if (config.vendor) {
+    alepha.set(vendorOptions, config.vendor);
+  }
 });
 
 // ---------------------------------------------------------------------------
