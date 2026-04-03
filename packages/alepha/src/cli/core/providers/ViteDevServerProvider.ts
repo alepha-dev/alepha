@@ -248,6 +248,26 @@ export class ViteDevServerProvider {
           }
         });
 
+        // Readiness endpoint: responds only when Alepha is fully loaded
+        server.middlewares.use(async (req, res, next) => {
+          if (req.url !== "/__alepha/ready") {
+            next();
+            return;
+          }
+
+          if (this.currentReloadPromise) {
+            await this.currentReloadPromise;
+          }
+
+          if (this.alepha?.isReady()) {
+            res.writeHead(200, { "content-type": "text/plain" });
+            res.end("ok");
+          } else {
+            res.writeHead(503, { "content-type": "text/plain" });
+            res.end("not ready");
+          }
+        });
+
         // Return function to run AFTER Vite's built-in middleware
         return () => {
           server.middlewares.use(async (req, res, next) => {
@@ -256,6 +276,11 @@ export class ViteDevServerProvider {
             if (url.startsWith("/@") || url.startsWith("/__vite")) {
               next();
               return;
+            }
+
+            // Wait for in-progress reload to complete before serving
+            if (this.currentReloadPromise) {
+              await this.currentReloadPromise;
             }
 
             // In error state, serve a minimal HTML shell so the browser
@@ -332,11 +357,10 @@ export class ViteDevServerProvider {
 
   /**
    * Send full browser reload via Vite's HMR.
+   * Uses a custom event so the client can poll for readiness before reloading.
    */
   protected sendBrowserReload(): void {
-    this.server.hot.send({
-      type: "full-reload",
-    });
+    this.server.hot.send("alepha:reload", {});
   }
 
   /**
@@ -551,6 +575,24 @@ export class ViteDevServerProvider {
     if (preamble) {
       tags.push(preamble);
     }
+
+    // Reload handler: polls /__alepha/ready before reloading to avoid
+    // hitting the server while it's still restarting.
+    tags.push(`<script type="module">
+if (import.meta.hot) {
+  import.meta.hot.on("alepha:reload", async () => {
+    for (let i = 0; i < 50; i++) {
+      try {
+        const res = await fetch("/__alepha/ready");
+        if (res.ok) { window.location.reload(); return; }
+      } catch {}
+      await new Promise(r => setTimeout(r, 200));
+    }
+    window.location.reload();
+  });
+}
+</script>`);
+
     if (style) {
       tags.push(`<link rel="stylesheet" href="/${style}">`);
     }
