@@ -89,7 +89,7 @@ const TaskPanel = (props: TaskPanelProps) => {
       </Flex>
 
       {/* Collapsible content */}
-      <Collapse in={isOpen}>
+      <Collapse expanded={isOpen}>
         <ScrollArea h={panelHeight} p="xs" scrollbarSize={6}>
           <Flex direction="column" gap={4}>
             {availableTasks.length === 0 ? (
