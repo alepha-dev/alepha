@@ -167,6 +167,16 @@ export class Alepha {
       };
     }
 
+    // force production mode when building with vite
+    // vite's define replaces `process.env.NODE_ENV` with `"production"` at build time,
+    // but the spread above doesn't carry it (especially in workerd/cloudflare).
+    if (typeof process === "object" && process.env?.NODE_ENV === "production") {
+      state.env ??= {};
+      Object.assign(state.env, {
+        NODE_ENV: "production",
+      });
+    }
+
     const alepha = new Alepha(state);
 
     if (alepha.isTest()) {
