@@ -29,10 +29,8 @@ export class DrizzleKitProvider {
     }
 
     if (this.alepha.isTest()) {
-      // In test mode, we want to generate migrations from scratch (no snapshots)
-      // to ensure the generated SQL is correct and can be applied cleanly.
       const { statements } = await this.generateMigration(provider);
-      await this.executeFallbackStatements(statements, provider);
+      await this.executeStatements(statements, provider);
       return;
     }
 
@@ -52,14 +50,18 @@ export class DrizzleKitProvider {
         await this.pushPostgres(kit, models, provider);
       }
     } catch (error) {
-      // Fallback: generate migrations from scratch (no snapshots)
-      // Covers drivers that don't support introspection (e.g. PgLite, sqlite-proxy)
+      // Fallback: generate migrations from scratch (no snapshots).
+      // Covers drivers that don't support introspection (e.g. PgLite, sqlite-proxy).
+      //
+      // If push partially executed (e.g. interactive rename applied then errored),
+      // the fallback would re-create tables that already exist. Guard against this
+      // by attempting the statements individually and ignoring "already exists" errors.
       this.log.debug(
         "Push sync not available, falling back to migration generation",
         { error },
       );
       const { statements } = await this.generateMigration(provider);
-      await this.executeFallbackStatements(statements, provider);
+      await this.executeStatementsLenient(statements, provider);
     }
 
     this.log.info(
@@ -127,7 +129,6 @@ export class DrizzleKitProvider {
   public getModels(provider: DatabaseProvider): Record<string, unknown> {
     const models: Record<string, unknown> = {};
 
-    // Required for pushSchema with Postgres and POSTGRES_SCHEMA
     for (const [key, value] of provider.schemas.entries()) {
       models[`__schema_${key}`] = value;
     }
@@ -232,14 +233,10 @@ export class DrizzleKitProvider {
     };
 
     if (provider.dialect === "sqlite") {
-      result = await this.muteSpinner(() =>
-        kit.pushSQLiteSchema(models, provider.db as any),
-      );
+      result = await kit.pushSQLiteSchema(models, provider.db as any);
     } else {
       const wrappedDb = this.wrapDbForDrizzleKit(provider.db);
-      result = await this.muteSpinner(() =>
-        kit.pushSchema(models, wrappedDb, [provider.schema]),
-      );
+      result = await kit.pushSchema(models, wrappedDb, [provider.schema]);
     }
 
     return {
@@ -256,11 +253,11 @@ export class DrizzleKitProvider {
     models: Record<string, unknown>,
     provider: DatabaseProvider,
   ): Promise<void> {
-    const result = await this.muteSpinner(() =>
-      kit.pushSQLiteSchema(models, provider.db as any),
+    const { statementsToExecute } = await kit.pushSQLiteSchema(
+      models,
+      provider.db as any,
     );
-
-    await this.runPushResult(result, provider);
+    await this.executeStatements(statementsToExecute, provider);
   }
 
   /**
@@ -275,78 +272,61 @@ export class DrizzleKitProvider {
       await this.createSchemaIfNotExists(provider, provider.schema);
     }
 
-    // Drizzle Kit's pushSchema internally does:
-    //   const res = await drizzleInstance.execute(sql.raw(query));
-    //   return res.rows;
-    //
-    // This assumes node-postgres (pg) format where execute() returns { rows: [...] }.
-    // But postgres.js (used by Alepha) returns a Result that extends Array — no .rows property.
-    // We wrap the db instance so execute() returns { rows: [...] } as expected.
+    // Drizzle Kit's pushSchema expects execute() to return { rows: T[] }
+    // (node-postgres/pg format), but postgres.js returns a Result that
+    // extends Array directly — no .rows property.
     const wrappedDb = this.wrapDbForDrizzleKit(provider.db);
 
-    const result = await this.muteSpinner(() =>
-      kit.pushSchema(models, wrappedDb, [provider.schema]),
-    );
-
-    await this.runPushResult(result, provider);
+    const { statementsToExecute } = await kit.pushSchema(models, wrappedDb, [
+      provider.schema,
+    ]);
+    await this.executeStatements(statementsToExecute, provider);
   }
 
   /**
-   * Run the statements returned by Drizzle Kit's pushSchema, with safety filters and logging.
+   * Execute a list of SQL statements against the provider.
    */
-  protected async runPushResult(
-    result: {
-      statementsToExecute: string[];
-      warnings: string[];
-      hasDataLoss: boolean;
-    },
-    provider: DatabaseProvider,
-  ) {
-    // Filter out destructive schema/table drops — never auto-apply those in dev.
-    const safe = (result.statementsToExecute as string[]).filter((s) => {
-      const upper = s.trimStart().toUpperCase();
-      if (upper.startsWith("DROP SCHEMA") || upper.startsWith("DROP TABLE")) {
-        this.log.warn("Skipping destructive statement", { statement: s });
-        return false;
-      }
-      return true;
-    });
-
-    if (result.hasDataLoss) {
-      this.log.warn("Push would cause data loss", {
-        warnings: result.warnings,
-        statements: result.statementsToExecute,
-      });
-    }
-
-    if (safe.length > 0) {
-      this.log.debug(`Pushing ${safe.length} statements ...`, {
-        statements: safe,
-      });
-      for (const statement of safe) {
-        await provider.execute(sql.raw(statement));
-      }
-    }
-  }
-
-  /**
-   * Execute migration statements as a fallback when push sync is not available.
-   * Used for drivers that don't support Drizzle Kit introspection (e.g. PgLite).
-   */
-  protected async executeFallbackStatements(
+  protected async executeStatements(
     statements: string[],
     provider: DatabaseProvider,
   ): Promise<void> {
+    if (statements.length > 0) {
+      this.log.debug(`Executing ${statements.length} statements ...`, {
+        statements,
+      });
+    }
     for (const statement of statements) {
-      const upper = statement.trimStart().toUpperCase();
-      // Schema lifecycle is managed by createSchemaIfNotExists / generateTestSchema.
-      if (
-        upper.startsWith("DROP SCHEMA") ||
-        upper.startsWith("CREATE SCHEMA")
-      ) {
-        continue;
-      }
       await provider.execute(sql.raw(statement));
+    }
+  }
+
+  /**
+   * Execute SQL statements, ignoring "already exists" errors.
+   *
+   * Used by the fallback migration path where push may have partially
+   * applied changes before erroring, leaving some objects already created.
+   */
+  protected async executeStatementsLenient(
+    statements: string[],
+    provider: DatabaseProvider,
+  ): Promise<void> {
+    if (statements.length > 0) {
+      this.log.debug(
+        `Executing ${statements.length} statements (lenient) ...`,
+        { statements },
+      );
+    }
+    for (const statement of statements) {
+      try {
+        await provider.execute(sql.raw(statement));
+      } catch (error: any) {
+        const message = error?.message ?? "";
+        if (message.includes("already exists")) {
+          this.log.debug(`Skipped (already exists): ${statement.slice(0, 80)}`);
+          continue;
+        }
+        throw error;
+      }
     }
   }
 
@@ -375,7 +355,7 @@ export class DrizzleKitProvider {
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  // TODO: remove both hacks when Drizzle Kit is updated !
+  // TODO: remove when Drizzle Kit fixes postgres.js compatibility
 
   /**
    * Wrap a Drizzle PgDatabase instance for compatibility with Drizzle Kit.
@@ -400,40 +380,6 @@ export class DrizzleKitProvider {
       },
     });
   }
-
-  /**
-   * Suppress Drizzle Kit's spinner output during a callback.
-   *
-   * Drizzle Kit uses hanji's renderWithTask with a setInterval-based spinner.
-   * If the wrapped task throws, the interval is never cleared and leaks
-   * spinner frames to stdout. We keep the filter active until the next
-   * tick after the promise settles to catch any straggling writes.
-   */
-  protected async muteSpinner<T>(fn: () => Promise<T>): Promise<T> {
-    const originalWrite = process.stdout.write;
-    const filter = (chunk: any, ...args: any[]) => {
-      const str =
-        typeof chunk === "string" ? chunk : (chunk?.toString?.() ?? "");
-      if (str.includes("Pulling schema from database")) {
-        return true;
-      }
-      if (str.includes("\x1B[1A")) {
-        return true;
-      }
-      return (originalWrite as any).call(process.stdout, chunk, ...args);
-    };
-    process.stdout.write = filter as any;
-    try {
-      return await fn();
-    } finally {
-      // Delay restore to catch orphaned setInterval spinner writes
-      // that fire after the promise rejects but before cleanup.
-      await new Promise((r) => setTimeout(r, 200));
-      process.stdout.write = originalWrite;
-    }
-  }
-
-  // -------------------------------------------------------------------------------------------------------------------
 
   /**
    * Try to load the official Drizzle Kit API.
