@@ -328,7 +328,7 @@ const ControlArray = (props: ControlArrayProps) => {
           )}
 
           {objectItemSchema ? (
-            <Grid style={{ flex: 1 }} gutter="sm">
+            <Grid style={{ flex: 1 }} gap="sm">
               {fieldNames.map((fieldName) => {
                 const fieldControlProps = props.controlProps?.[fieldName] ?? {};
                 const fieldInput = createArrayItemFieldInput(

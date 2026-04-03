@@ -128,7 +128,7 @@ const ParameterTreeNode = memo((props: Props) => {
       </UnstyledButton>
 
       {hasChildren && (
-        <Collapse in={isExpanded}>
+        <Collapse expanded={isExpanded}>
           {props.node.children.map((child: ParameterTreeNodeData) => (
             <ParameterTreeNode
               key={child.path}

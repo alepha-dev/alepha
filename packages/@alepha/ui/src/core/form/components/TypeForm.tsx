@@ -220,7 +220,7 @@ const TypeForm = <T extends TObject>(props: TypeFormProps<T>) => {
 
   return (
     <Flex
-      component={"form"}
+      component={"form" as any}
       flex={fill ? 1 : undefined}
       {...form.props}
       {...props.flexProps}

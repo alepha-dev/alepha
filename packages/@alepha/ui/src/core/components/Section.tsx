@@ -92,7 +92,7 @@ const Section = (props: SectionProps) => {
         </Flex>
       )}
       {collapsible ? (
-        <Collapse in={!collapsed}>
+        <Collapse expanded={!collapsed}>
           <Flex col p={p} {...(hasHeader ? { borderedTop: true } : {})}>
             {children}
           </Flex>

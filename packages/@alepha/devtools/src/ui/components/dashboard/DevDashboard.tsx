@@ -259,7 +259,7 @@ export const DevDashboard = () => {
           </SimpleGrid>
         </div>
 
-        <Grid gutter="lg">
+        <Grid gap="lg">
           {/* Recent Events */}
           <Grid.Col span={{ base: 12, md: 7 }}>
             <Card

@@ -19,7 +19,7 @@ const DetailList = (props: DetailListProps) => {
   const visibleItems = items.filter((item) => !item.hidden);
 
   return (
-    <Grid gutter="xs">
+    <Grid gap="xs">
       {visibleItems.map((item) => (
         <Grid.Col key={item.label} span={12 / columns}>
           <Flex
