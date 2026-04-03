@@ -30,7 +30,12 @@ export class DrizzleKitProvider {
 
     if (this.alepha.isTest()) {
       const { statements } = await this.generateMigration(provider);
-      await this.executeStatements(statements, provider);
+      await this.executeStatements(
+        statements.map((s) =>
+          s.replace(/^CREATE SCHEMA /i, "CREATE SCHEMA IF NOT EXISTS "),
+        ),
+        provider,
+      );
       return;
     }
 
