@@ -1,11 +1,11 @@
 import { $uiAdmin } from "@alepha/ui/admin";
 import { AdminAuditRouter } from "@alepha/ui/admin-audits";
-import { AdminBillingRouter } from "@alepha/ui/admin-billing";
 import { AdminFileRouter } from "@alepha/ui/admin-files";
 import { AdminJobRouter } from "@alepha/ui/admin-jobs";
 import { AdminApiKeyRouter } from "@alepha/ui/admin-keys";
 import { AdminNotificationRouter } from "@alepha/ui/admin-notifications";
 import { AdminParameterRouter } from "@alepha/ui/admin-parameters";
+import { AdminPaymentRouter } from "@alepha/ui/admin-payments";
 import { AdminSessionRouter } from "@alepha/ui/admin-sessions";
 import { AdminUserRouter } from "@alepha/ui/admin-users";
 import { UserButton } from "@alepha/ui/auth";
@@ -23,7 +23,7 @@ export class AppAdminRouter {
   protected jobs = $inject(AdminJobRouter);
   protected apiKeys = $inject(AdminApiKeyRouter);
   protected notifications = $inject(AdminNotificationRouter);
-  protected billing = $inject(AdminBillingRouter);
+  protected payments = $inject(AdminPaymentRouter);
 
   adminLayout = $uiAdmin({
     shellProps: {
@@ -58,7 +58,7 @@ export class AppAdminRouter {
       this.jobs.adminJobs,
       this.apiKeys.adminApiKeys,
       this.notifications.adminNotifications,
-      this.billing.adminBilling,
+      this.payments.adminPayments,
     ],
     sidebarItems: [
       {
