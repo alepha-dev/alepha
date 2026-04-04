@@ -1,52 +1,52 @@
 import { $module } from "alepha";
-import { AdminBillingController } from "./controllers/AdminBillingController.ts";
-import { BillingController } from "./controllers/BillingController.ts";
-import { BillingProvider } from "./providers/BillingProvider.ts";
-import { MemoryBillingProvider } from "./providers/MemoryBillingProvider.ts";
-import { BillingService } from "./services/BillingService.ts";
+import { AdminPaymentController } from "./controllers/AdminPaymentController.ts";
+import { PaymentController } from "./controllers/PaymentController.ts";
+import { MemoryPaymentProvider } from "./providers/MemoryPaymentProvider.ts";
+import { PaymentProvider } from "./providers/PaymentProvider.ts";
 import { PaymentMethodService } from "./services/PaymentMethodService.ts";
+import { PaymentService } from "./services/PaymentService.ts";
 
-export * from "./controllers/AdminBillingController.ts";
-export * from "./controllers/BillingController.ts";
+export * from "./controllers/AdminPaymentController.ts";
+export * from "./controllers/PaymentController.ts";
 export * from "./entities/paymentIntents.ts";
 export * from "./entities/paymentMethods.ts";
 export * from "./entities/refunds.ts";
-export * from "./errors/BillingError.ts";
-export * from "./providers/BillingProvider.ts";
-export * from "./providers/MemoryBillingProvider.ts";
+export * from "./errors/PaymentError.ts";
+export * from "./providers/MemoryPaymentProvider.ts";
+export * from "./providers/PaymentProvider.ts";
 export * from "./schemas/intentSchemas.ts";
 export * from "./schemas/paymentMethodSchemas.ts";
 export * from "./schemas/refundSchemas.ts";
-export * from "./services/BillingService.ts";
 export * from "./services/PaymentMethodService.ts";
+export * from "./services/PaymentService.ts";
 
 declare module "alepha" {
   interface Hooks {
-    "billing:authorized": {
+    "payments:authorized": {
       intentId: string;
       amount: number;
       currency: string;
       metadata?: unknown;
     };
-    "billing:captured": {
+    "payments:captured": {
       intentId: string;
       amount: number;
       currency: string;
       metadata?: unknown;
     };
-    "billing:failed": {
+    "payments:failed": {
       intentId: string;
       amount: number;
       currency: string;
       metadata?: unknown;
     };
-    "billing:voided": {
+    "payments:voided": {
       intentId: string;
       amount: number;
       currency: string;
       metadata?: unknown;
     };
-    "billing:refunded": {
+    "payments:refunded": {
       intentId: string;
       refundId: string;
       amount: number;
@@ -56,21 +56,21 @@ declare module "alepha" {
   }
 }
 
-export const AlephaBilling = $module({
-  name: "alepha.billing",
+export const AlephaPayments = $module({
+  name: "alepha.payments",
   services: [
-    AdminBillingController,
-    BillingController,
-    BillingProvider,
-    MemoryBillingProvider,
-    BillingService,
+    AdminPaymentController,
+    PaymentController,
+    PaymentProvider,
+    MemoryPaymentProvider,
+    PaymentService,
     PaymentMethodService,
   ],
   register: (alepha) => {
     alepha.with({
       optional: true,
-      provide: BillingProvider,
-      use: MemoryBillingProvider,
+      provide: PaymentProvider,
+      use: MemoryPaymentProvider,
     });
   },
 });

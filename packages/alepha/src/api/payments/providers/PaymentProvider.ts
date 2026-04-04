@@ -24,7 +24,7 @@ export interface CreatePaymentMethodResult {
   expYear?: number;
 }
 
-export abstract class BillingProvider {
+export abstract class PaymentProvider {
   /**
    * Create a checkout session with the PSP.
    * Returns a URL to redirect the user to, and the PSP's reference ID.

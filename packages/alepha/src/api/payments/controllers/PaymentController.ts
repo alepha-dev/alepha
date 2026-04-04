@@ -9,13 +9,13 @@ import {
   addPaymentMethodSchema,
   paymentMethodResourceSchema,
 } from "../schemas/paymentMethodSchemas.ts";
-import { BillingService } from "../services/BillingService.ts";
 import { PaymentMethodService } from "../services/PaymentMethodService.ts";
+import { PaymentService } from "../services/PaymentService.ts";
 
-export class BillingController {
-  protected readonly url = "/billing";
-  protected readonly group = "billing";
-  protected readonly billing = $inject(BillingService);
+export class PaymentController {
+  protected readonly url = "/payments";
+  protected readonly group = "payments";
+  protected readonly payments = $inject(PaymentService);
   protected readonly paymentMethods = $inject(PaymentMethodService);
 
   /**
@@ -103,6 +103,10 @@ export class BillingController {
       response: checkoutResponseSchema,
     },
     handler: ({ body }) =>
-      this.billing.createSession(body.intentId, body.returnUrl, body.authorize),
+      this.payments.createSession(
+        body.intentId,
+        body.returnUrl,
+        body.authorize,
+      ),
   });
 }

@@ -2,15 +2,15 @@ import { DataTable, Flex, Text } from "@alepha/ui";
 import { Badge } from "@mantine/core";
 import { type Page, t } from "alepha";
 import type {
-  AdminBillingController,
+  AdminPaymentController,
   PaymentIntentEntity,
-} from "alepha/billing";
+} from "alepha/api/payments";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useCallback, useState } from "react";
-import AdminBillingIntentDrawer from "./AdminBillingIntentDrawer.tsx";
+import AdminPaymentIntentDrawer from "./AdminPaymentIntentDrawer.tsx";
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────���────────────────────────��─────────────────────────────────────
 
 export const STATUS_COLORS: Record<string, string> = {
   created: "gray",
@@ -27,7 +27,7 @@ export const STATUS_COLORS: Record<string, string> = {
 export const formatAmount = (amount: number, currency: string): string =>
   `${currency.toUpperCase()} ${(amount / 100).toFixed(2)}`;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────���────────────────────────���─────────────────────────────────────────
 
 const intentFilters = t.object({
   status: t.optional(
@@ -45,10 +45,10 @@ const intentFilters = t.object({
   ),
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────��────────────────────────────────────────────────────────────────────
 
-const AdminBilling = () => {
-  const client = useClient<AdminBillingController>();
+const AdminPayments = () => {
+  const client = useClient<AdminPaymentController>();
   const { l } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -119,11 +119,11 @@ const AdminBilling = () => {
           },
         }}
         drawer={(item) => (
-          <AdminBillingIntentDrawer item={item} onAction={refresh} />
+          <AdminPaymentIntentDrawer item={item} onAction={refresh} />
         )}
       />
     </Flex>
   );
 };
 
-export default AdminBilling;
+export default AdminPayments;

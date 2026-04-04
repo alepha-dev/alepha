@@ -8,14 +8,14 @@ import {
   paymentIntents,
 } from "../entities/paymentIntents.ts";
 import { type RefundEntity, refunds } from "../entities/refunds.ts";
-import { BillingError } from "../errors/BillingError.ts";
-import { BillingProvider } from "../providers/BillingProvider.ts";
+import { PaymentError } from "../errors/PaymentError.ts";
+import { PaymentProvider } from "../providers/PaymentProvider.ts";
 
-export class BillingService {
+export class PaymentService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
-  protected readonly provider = $inject(BillingProvider);
+  protected readonly provider = $inject(PaymentProvider);
   protected readonly intentRepo = $repository(paymentIntents);
   protected readonly refundRepo = $repository(refunds);
 
@@ -114,7 +114,7 @@ export class BillingService {
 
   /**
    * Process a webhook event by updating the intent status and emitting
-   * the corresponding billing event.
+   * the corresponding payment event.
    */
   public async handleWebhookEvent(
     intentId: string,
@@ -124,9 +124,9 @@ export class BillingService {
     const intent = await this.getIntent(intentId);
 
     const eventMap = {
-      authorized: "billing:authorized",
-      captured: "billing:captured",
-      failed: "billing:failed",
+      authorized: "payments:authorized",
+      captured: "payments:captured",
+      failed: "payments:failed",
     } as const;
 
     type WebhookStatus = keyof typeof eventMap;
@@ -171,7 +171,7 @@ export class BillingService {
       amount,
     });
 
-    await this.alepha.events.emit("billing:captured", {
+    await this.alepha.events.emit("payments:captured", {
       intentId: intent.id,
       amount,
       currency: intent.currency,
@@ -196,7 +196,7 @@ export class BillingService {
       status: "voided",
     });
 
-    await this.alepha.events.emit("billing:voided", {
+    await this.alepha.events.emit("payments:voided", {
       intentId: intent.id,
       amount: intent.amount,
       currency: intent.currency,
@@ -238,7 +238,7 @@ export class BillingService {
 
     await this.intentRepo.updateById(intent.id, { status: "refunded" });
 
-    await this.alepha.events.emit("billing:refunded", {
+    await this.alepha.events.emit("payments:refunded", {
       intentId: intent.id,
       refundId: refund.id,
       amount,
@@ -265,7 +265,7 @@ export class BillingService {
       metadata: metadata as any,
     });
 
-    await this.alepha.events.emit("billing:captured", {
+    await this.alepha.events.emit("payments:captured", {
       intentId: intent.id,
       amount,
       currency,
@@ -317,7 +317,7 @@ export class BillingService {
     operation: string,
   ): void {
     if (intent.status !== expected) {
-      throw new BillingError(
+      throw new PaymentError(
         `Cannot ${operation}: intent ${intent.id} is '${intent.status}', expected '${expected}'`,
       );
     }

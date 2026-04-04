@@ -13,7 +13,7 @@
  * - `@alepha/ui/admin-jobs`
  * - `@alepha/ui/admin-keys`
  * - `@alepha/ui/admin-notifications`
- * - `@alepha/ui/admin-billing`
+ * - `@alepha/ui/admin-payments`
  *
  * @module alepha.ui.admin
  */

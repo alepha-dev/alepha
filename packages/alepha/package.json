@@ -141,6 +141,11 @@
       "import": "./src/api/parameters/index.ts",
       "default": "./src/api/parameters/index.ts"
     },
+    "./api/payments": {
+      "types": "./src/api/payments/index.ts",
+      "import": "./src/api/payments/index.ts",
+      "default": "./src/api/payments/index.ts"
+    },
     "./api/users": {
       "types": "./src/api/users/index.ts",
       "react-native": "./src/api/users/index.browser.ts",
@@ -159,11 +164,6 @@
       "types": "./src/batch/index.ts",
       "import": "./src/batch/index.ts",
       "default": "./src/batch/index.ts"
-    },
-    "./billing": {
-      "types": "./src/billing/index.ts",
-      "import": "./src/billing/index.ts",
-      "default": "./src/billing/index.ts"
     },
     "./bin": {
       "types": "./src/bin/index.ts",

@@ -5,21 +5,6 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
-"@alepha/billing-stripe@workspace:packages/@alepha/billing-stripe":
-  version: 0.0.0-use.local
-  resolution: "@alepha/billing-stripe@workspace:packages/@alepha/billing-stripe"
-  dependencies:
-    "@biomejs/biome": "npm:^2.4.10"
-    alepha: "npm:0.19.3"
-    stripe: "npm:^22.0.0"
-    tsdown: "npm:^0.21.7"
-    typescript: "npm:^6.0.2"
-    vitest: "npm:^4.1.2"
-  peerDependencies:
-    alepha: 0.19.3
-  languageName: unknown
-  linkType: soft
-
 "@alepha/bucket-s3@workspace:packages/@alepha/bucket-s3":
   version: 0.0.0-use.local
   resolution: "@alepha/bucket-s3@workspace:packages/@alepha/bucket-s3"
@@ -64,6 +49,21 @@ __metadata:
     "@biomejs/biome": "npm:^2.4.10"
     alepha: "npm:0.19.3"
     mqtt: "npm:^5.15.1"
+    typescript: "npm:^6.0.2"
+    vitest: "npm:^4.1.2"
+  peerDependencies:
+    alepha: 0.19.3
+  languageName: unknown
+  linkType: soft
+
+"@alepha/payments-stripe@workspace:packages/@alepha/payments-stripe":
+  version: 0.0.0-use.local
+  resolution: "@alepha/payments-stripe@workspace:packages/@alepha/payments-stripe"
+  dependencies:
+    "@biomejs/biome": "npm:^2.4.10"
+    alepha: "npm:0.19.3"
+    stripe: "npm:^22.0.0"
+    tsdown: "npm:^0.21.7"
     typescript: "npm:^6.0.2"
     vitest: "npm:^4.1.2"
   peerDependencies:

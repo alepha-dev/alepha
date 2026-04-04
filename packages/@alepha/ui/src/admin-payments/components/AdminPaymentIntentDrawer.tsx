@@ -15,23 +15,23 @@ import {
   IconShieldCheck,
 } from "@tabler/icons-react";
 import type {
-  AdminBillingController,
+  AdminPaymentController,
   PaymentIntentEntity,
-} from "alepha/billing";
+} from "alepha/api/payments";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useCallback, useState } from "react";
-import { formatAmount, STATUS_COLORS } from "./AdminBilling.tsx";
+import { formatAmount, STATUS_COLORS } from "./AdminPayments.tsx";
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ───────���─────────────────────────────────────────────────────────────────────
 
-export interface AdminBillingIntentDrawerProps {
+export interface AdminPaymentIntentDrawerProps {
   item: PaymentIntentEntity;
   onAction: () => void;
 }
 
-const AdminBillingIntentDrawer = (props: AdminBillingIntentDrawerProps) => {
-  const client = useClient<AdminBillingController>();
+const AdminPaymentIntentDrawer = (props: AdminPaymentIntentDrawerProps) => {
+  const client = useClient<AdminPaymentController>();
   const { l } = useI18n();
   const toast = useToast();
   const dialog = useDialog();
@@ -257,4 +257,4 @@ const AdminBillingIntentDrawer = (props: AdminBillingIntentDrawerProps) => {
   );
 };
 
-export default AdminBillingIntentDrawer;
+export default AdminPaymentIntentDrawer;

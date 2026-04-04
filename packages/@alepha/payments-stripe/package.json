@@ -1,11 +1,10 @@
 {
-  "name": "@alepha/billing-stripe",
-  "description": "Stripe payment provider for alepha/billing.",
+  "name": "@alepha/payments-stripe",
+  "description": "Stripe payment provider for alepha/payments.",
   "keywords": [
     "alepha",
-    "billing",
-    "stripe",
-    "payments"
+    "payments",
+    "stripe"
   ],
   "author": "Feunard",
   "version": "0.19.3",

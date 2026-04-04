@@ -249,11 +249,11 @@ src/
       services/
       entities/
       index.ts           # UsersModule
-    billing/
+    payments/
       controllers/
       services/
       entities/
-      index.ts           # BillingModule
+      index.ts           # PaymentsModule
   web/
     app/
       AppRouter.ts

@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { PaymentIntentEntity } from "../entities/paymentIntents.ts";
 import type {
-  BillingProvider,
   CreatePaymentMethodResult,
   CreateSessionResult,
+  PaymentProvider,
   RefundResult,
   WebhookEvent,
-} from "./BillingProvider.ts";
+} from "./PaymentProvider.ts";
 
 interface MemoryCharge {
   providerRef: string;
@@ -20,7 +20,7 @@ interface MemoryRefund {
   amount: number;
 }
 
-export class MemoryBillingProvider implements BillingProvider {
+export class MemoryPaymentProvider implements PaymentProvider {
   protected readonly charges: Map<string, MemoryCharge> = new Map();
   protected readonly refundRecords: Map<string, MemoryRefund> = new Map();
   protected readonly methods: Map<string, CreatePaymentMethodResult> =
@@ -39,7 +39,7 @@ export class MemoryBillingProvider implements BillingProvider {
       status,
     });
     return {
-      url: `/billing/mock-checkout/${intent.id}`,
+      url: `/payments/mock-checkout/${intent.id}`,
       providerRef,
     };
   }

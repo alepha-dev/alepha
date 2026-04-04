@@ -5,12 +5,12 @@ import {
   type PaymentMethodEntity,
   paymentMethods,
 } from "../entities/paymentMethods.ts";
-import { BillingError } from "../errors/BillingError.ts";
-import { BillingProvider } from "../providers/BillingProvider.ts";
+import { PaymentError } from "../errors/PaymentError.ts";
+import { PaymentProvider } from "../providers/PaymentProvider.ts";
 
 export class PaymentMethodService {
   protected readonly log = $logger();
-  protected readonly provider = $inject(BillingProvider);
+  protected readonly provider = $inject(PaymentProvider);
   protected readonly methodRepo = $repository(paymentMethods);
 
   public async addPaymentMethod(
@@ -51,7 +51,7 @@ export class PaymentMethodService {
   ): Promise<void> {
     const method = await this.methodRepo.getById(methodId);
     if (method.userId !== userId) {
-      throw new BillingError("Cannot remove another user's payment method");
+      throw new PaymentError("Cannot remove another user's payment method");
     }
 
     await this.provider.deletePaymentMethod(method.providerRef);
@@ -64,7 +64,7 @@ export class PaymentMethodService {
   ): Promise<PaymentMethodEntity> {
     const method = await this.methodRepo.getById(methodId);
     if (method.userId !== userId) {
-      throw new BillingError("Cannot modify another user's payment method");
+      throw new PaymentError("Cannot modify another user's payment method");
     }
 
     const userMethods = await this.methodRepo.findMany({

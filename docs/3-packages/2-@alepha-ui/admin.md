@@ -22,7 +22,7 @@ Domain-specific admin pages are provided by sub-modules:
 - `@alepha/ui/admin-jobs`
 - `@alepha/ui/admin-keys`
 - `@alepha/ui/admin-notifications`
-- `@alepha/ui/admin-billing`
+- `@alepha/ui/admin-payments`
 
 ## API Reference
 

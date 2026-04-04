@@ -1,13 +1,13 @@
 import { $env, $inject, Alepha, type Static, t } from "alepha";
+import { $logger } from "alepha/logger";
 import type {
-  BillingProvider,
   CreatePaymentMethodResult,
   CreateSessionResult,
   PaymentIntentEntity,
+  PaymentProvider,
   RefundResult,
   WebhookEvent,
-} from "alepha/billing";
-import { $logger } from "alepha/logger";
+} from "alepha/api/payments";
 import Stripe from "stripe";
 
 const envSchema = t.object({
@@ -19,7 +19,7 @@ declare module "alepha" {
   interface Env extends Partial<Static<typeof envSchema>> {}
 }
 
-export class StripeBillingProvider implements BillingProvider {
+export class StripePaymentProvider implements PaymentProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);

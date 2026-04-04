@@ -1,5 +1,5 @@
 import { AlephaError } from "alepha";
 
-export class BillingError extends AlephaError {
+export class PaymentError extends AlephaError {
   public readonly status = 400;
 }

@@ -9,12 +9,12 @@ import {
   refundIntentSchema,
 } from "../schemas/intentSchemas.ts";
 import { refundResourceSchema } from "../schemas/refundSchemas.ts";
-import { BillingService } from "../services/BillingService.ts";
+import { PaymentService } from "../services/PaymentService.ts";
 
-export class AdminBillingController {
-  protected readonly url = "/admin/billing";
-  protected readonly group = "admin:billing";
-  protected readonly billing = $inject(BillingService);
+export class AdminPaymentController {
+  protected readonly url = "/admin/payments";
+  protected readonly group = "admin:payments";
+  protected readonly payments = $inject(PaymentService);
 
   /**
    * List payment intents with pagination and filtering.
@@ -22,13 +22,13 @@ export class AdminBillingController {
   public readonly listIntents = $action({
     path: `${this.url}/intents`,
     group: this.group,
-    use: [$secure({ permissions: ["billing:read"] })],
+    use: [$secure({ permissions: ["payments:read"] })],
     description: "List payment intents",
     schema: {
       query: intentQuerySchema,
       response: t.page(intentResourceSchema),
     },
-    handler: ({ query }) => this.billing.findIntents(query),
+    handler: ({ query }) => this.payments.findIntents(query),
   });
 
   /**
@@ -37,13 +37,13 @@ export class AdminBillingController {
   public readonly getIntent = $action({
     path: `${this.url}/intents/:id`,
     group: this.group,
-    use: [$secure({ permissions: ["billing:read"] })],
+    use: [$secure({ permissions: ["payments:read"] })],
     description: "Get payment intent details",
     schema: {
       params: t.object({ id: t.uuid() }),
       response: intentResourceSchema,
     },
-    handler: ({ params }) => this.billing.getIntent(params.id),
+    handler: ({ params }) => this.payments.getIntent(params.id),
   });
 
   /**
@@ -53,14 +53,15 @@ export class AdminBillingController {
     method: "POST",
     path: `${this.url}/intents/:id/capture`,
     group: this.group,
-    use: [$secure({ permissions: ["billing:write"] })],
+    use: [$secure({ permissions: ["payments:write"] })],
     description: "Capture an authorized payment intent",
     schema: {
       params: t.object({ id: t.uuid() }),
       body: captureIntentSchema,
       response: intentResourceSchema,
     },
-    handler: ({ params, body }) => this.billing.capture(params.id, body.amount),
+    handler: ({ params, body }) =>
+      this.payments.capture(params.id, body.amount),
   });
 
   /**
@@ -70,13 +71,13 @@ export class AdminBillingController {
     method: "POST",
     path: `${this.url}/intents/:id/void`,
     group: this.group,
-    use: [$secure({ permissions: ["billing:write"] })],
+    use: [$secure({ permissions: ["payments:write"] })],
     description: "Void an authorized payment intent",
     schema: {
       params: t.object({ id: t.uuid() }),
       response: intentResourceSchema,
     },
-    handler: ({ params }) => this.billing.void(params.id),
+    handler: ({ params }) => this.payments.void(params.id),
   });
 
   /**
@@ -86,7 +87,7 @@ export class AdminBillingController {
     method: "POST",
     path: `${this.url}/intents/:id/refund`,
     group: this.group,
-    use: [$secure({ permissions: ["billing:write"] })],
+    use: [$secure({ permissions: ["payments:write"] })],
     description: "Issue partial or full refund",
     schema: {
       params: t.object({ id: t.uuid() }),
@@ -94,7 +95,7 @@ export class AdminBillingController {
       response: refundResourceSchema,
     },
     handler: ({ params, body }) =>
-      this.billing.refund(params.id, body.amount, body.reason),
+      this.payments.refund(params.id, body.amount, body.reason),
   });
 
   /**
@@ -104,13 +105,13 @@ export class AdminBillingController {
     method: "POST",
     path: `${this.url}/intents/:id/cancel`,
     group: this.group,
-    use: [$secure({ permissions: ["billing:write"] })],
+    use: [$secure({ permissions: ["payments:write"] })],
     description: "Cancel a created payment intent",
     schema: {
       params: t.object({ id: t.uuid() }),
       response: intentResourceSchema,
     },
-    handler: ({ params }) => this.billing.cancel(params.id),
+    handler: ({ params }) => this.payments.cancel(params.id),
   });
 
   /**
@@ -120,14 +121,18 @@ export class AdminBillingController {
     method: "POST",
     path: `${this.url}/cash`,
     group: this.group,
-    use: [$secure({ permissions: ["billing:write"] })],
+    use: [$secure({ permissions: ["payments:write"] })],
     description: "Record a cash payment",
     schema: {
       body: recordCashSchema,
       response: intentResourceSchema,
     },
     handler: ({ body }) =>
-      this.billing.recordCashPayment(body.amount, body.currency, body.metadata),
+      this.payments.recordCashPayment(
+        body.amount,
+        body.currency,
+        body.metadata,
+      ),
   });
 
   /**
@@ -135,14 +140,14 @@ export class AdminBillingController {
    */
   public readonly webhook = $action({
     method: "POST",
-    path: "/billing/webhook",
+    path: "/payments/webhook",
     group: this.group,
     description: "PSP webhook endpoint",
     schema: {
       response: okSchema,
     },
     handler: async (request) => {
-      await this.billing.handleWebhook(request.raw.web!.req);
+      await this.payments.handleWebhook(request.raw.web!.req);
       return { ok: true };
     },
   });
