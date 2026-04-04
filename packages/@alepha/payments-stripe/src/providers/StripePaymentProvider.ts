@@ -1,5 +1,4 @@
 import { $env, $inject, Alepha, type Static, t } from "alepha";
-import { $logger } from "alepha/logger";
 import type {
   CreatePaymentMethodResult,
   CreateSessionResult,
@@ -8,6 +7,7 @@ import type {
   RefundResult,
   WebhookEvent,
 } from "alepha/api/payments";
+import { $logger } from "alepha/logger";
 import Stripe from "stripe";
 
 const envSchema = t.object({
