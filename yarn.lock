@@ -24,7 +24,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/bucket-s3@workspace:packages/@alepha/bucket-s3"
   dependencies:
-    "@aws-sdk/client-s3": "npm:^3.1023.0"
+    "@aws-sdk/client-s3": "npm:^3.1024.0"
     "@biomejs/biome": "npm:^2.4.10"
     alepha: "npm:0.19.3"
     tsdown: "npm:^0.21.7"
@@ -237,9 +237,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/client-s3@npm:^3.1023.0":
-  version: 3.1023.0
-  resolution: "@aws-sdk/client-s3@npm:3.1023.0"
+"@aws-sdk/client-s3@npm:^3.1024.0":
+  version: 3.1024.0
+  resolution: "@aws-sdk/client-s3@npm:3.1024.0"
   dependencies:
     "@aws-crypto/sha1-browser": "npm:5.2.0"
     "@aws-crypto/sha256-browser": "npm:5.2.0"
@@ -296,7 +296,7 @@ __metadata:
     "@smithy/util-utf8": "npm:^4.2.2"
     "@smithy/util-waiter": "npm:^4.2.14"
     tslib: "npm:^2.6.2"
-  checksum: 10c0/7962b39b91463b53c5915e43ad5f5bc273f14734ff552a1851a6f58013f40575145dc9df36ff2ad9da95ddc77f740771ff67dca8319cbf7b6809d17d68037e64
+  checksum: 10c0/4334ac1f1d09d0d4145569494d54da04d7a16014b77f52c8d635ca66c5a5996267a09f385978230080e6503b1b5fe59ba693802f4a08941d49263d9b621ada55
   languageName: node
   linkType: hard
 
@@ -10959,7 +10959,7 @@ __metadata:
     alepha: "npm:^0.19.3"
     react: "npm:^19.2.4"
     react-dom: "npm:^19.2.4"
-    vercel: "npm:^50.38.3"
+    vercel: "npm:^50.39.0"
     vite: "npm:^8.0.3"
   languageName: unknown
   linkType: soft
@@ -11944,7 +11944,7 @@ __metadata:
     react-konva: "npm:^19.2.3"
     recharts: "npm:^3.8.1"
     typescript: "npm:^6.0.2"
-    vercel: "npm:^50.38.3"
+    vercel: "npm:^50.39.0"
     vite: "npm:^8.0.3"
     vitest: "npm:^4.1.2"
     wrangler: "npm:^4.80.0"
@@ -13623,9 +13623,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vercel@npm:^50.38.3":
-  version: 50.38.3
-  resolution: "vercel@npm:50.38.3"
+"vercel@npm:^50.39.0":
+  version: 50.39.0
+  resolution: "vercel@npm:50.39.0"
   dependencies:
     "@vercel/backends": "npm:0.0.55"
     "@vercel/blob": "npm:2.3.0"
@@ -13659,7 +13659,7 @@ __metadata:
   bin:
     vc: dist/vc.js
     vercel: dist/vc.js
-  checksum: 10c0/b1d5c7476f1c315237a9e1dcf084fd0ebd82d5a9a2477a2f4438c9be85ed065f3b70ef71f195965eed5c8313c43e4c9fe936eafebff5221271efd8715836b68c
+  checksum: 10c0/c417870c71aec41d1506d43048d9cd8c1ce80e915436cf7a385455f0d9d52c0590308f78ec1d52d0a086d5ec5e926fa9a318a6adaa390e0b86e99542bbfb4a50
   languageName: node
   linkType: hard
 
