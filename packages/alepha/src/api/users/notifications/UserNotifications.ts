@@ -109,6 +109,29 @@ export class UserNotifications {
     }),
   });
 
+  public readonly accountLockout = $notification({
+    category: "security",
+    description:
+      "Email sent to users when their account is temporarily locked due to too many failed login attempts.",
+    critical: true,
+    sensitive: true,
+    email: {
+      subject: "Account temporarily locked",
+      body: (it) => `
+				<h1>Account Temporarily Locked</h1>
+				<p>Hi ${it.email},</p>
+				<p>Your account has been temporarily locked due to too many failed login attempts.</p>
+				<p>If this was you, please wait ${it.lockoutMinutes} minutes before trying again. If you've forgotten your password, you can reset it using the password reset feature.</p>
+				<p>If this wasn't you, someone may be trying to access your account. We recommend changing your password as soon as possible.</p>
+				<p>Best regards,<br>The Team</p>
+			`,
+    },
+    schema: t.object({
+      email: t.string({ format: "email" }),
+      lockoutMinutes: t.number(),
+    }),
+  });
+
   public readonly emailVerificationLink = $notification({
     category: "security",
     description:

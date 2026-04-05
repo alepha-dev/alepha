@@ -14,6 +14,7 @@ import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { CompleteRegistrationRequest } from "../schemas/completeRegistrationRequestSchema.ts";
 import type { RegisterRequest } from "../schemas/registerRequestSchema.ts";
 import type { RegistrationIntentResponse } from "../schemas/registrationIntentResponseSchema.ts";
+import { CredentialService } from "./CredentialService.ts";
 
 /**
  * Intent stored in cache during the registration flow.
@@ -46,10 +47,16 @@ export class RegistrationService {
   protected readonly cryptoProvider = $inject(CryptoProvider);
   protected readonly verificationController = $client<VerificationController>();
   protected readonly realmProvider = $inject(RealmProvider);
+  protected readonly credentialService = $inject(CredentialService);
 
   protected readonly intentCache = $cache<RegistrationIntent>({
     name: "api:users:registrations",
     ttl: [INTENT_TTL_MINUTES, "minutes"],
+  });
+
+  protected readonly rateLimitCache = $cache<number>({
+    name: "api:users:registration-rate-limit",
+    ttl: [15, "minutes"],
   });
 
   protected userAudits(realmName?: string) {
@@ -87,6 +94,20 @@ export class RegistrationService {
       username: body.username,
       userRealmName,
     });
+
+    // IP rate limiting
+    const request = this.alepha.store.get("alepha.http.request");
+    const ipKey = request?.ip ? `register:ip:${request.ip}` : undefined;
+    if (ipKey) {
+      const count = (await this.rateLimitCache.get(ipKey)) ?? 0;
+      if (count >= 10) {
+        this.log.warn("Registration rate limit exceeded", { ip: request?.ip });
+        throw new BadRequestError(
+          "Too many registration attempts, please try again later",
+        );
+      }
+      await this.rateLimitCache.set(ipKey, count + 1);
+    }
 
     const realm = this.realmProvider.getRealm(userRealmName);
     const realmSettings = await realm.getSettings();
@@ -137,6 +158,12 @@ export class RegistrationService {
 
     // Check for existing users (username, email, phone)
     await this.checkUserAvailability(body, userRealmName);
+
+    // Validate password against realm policy
+    this.credentialService.validatePasswordPolicy(
+      body.password,
+      realmSettings.passwordPolicy,
+    );
 
     // Hash the password
     const passwordHash = await this.cryptoProvider.hashPassword(body.password);
@@ -279,22 +306,25 @@ export class RegistrationService {
       userRealmName,
     );
 
-    // Atomically delete cache key to prevent replay
-    await this.intentCache.invalidate(body.intentId);
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const realmSettings = await realm.getSettings();
 
     // Create the user
     const user = await userRepository.create({
-      realm: userRealmName,
+      realm: realm.name,
       username: intent.data.username,
       email: intent.data.email,
       phoneNumber: intent.data.phoneNumber,
       firstName: intent.data.firstName,
       lastName: intent.data.lastName,
       picture: intent.data.picture,
-      roles: ["user"],
+      roles: realmSettings.defaultRoles,
       enabled: true,
       emailVerified: intent.requirements.email, // Marked as verified if we verified during registration
     });
+
+    // Invalidate intent after successful creation to allow retry on failure
+    await this.intentCache.invalidate(body.intentId);
 
     // Create credentials identity
     await identityRepository.create({
@@ -308,8 +338,6 @@ export class RegistrationService {
       email: user.email,
       username: user.username,
     });
-
-    const realm = this.realmProvider.getRealm(userRealmName);
 
     await this.userAudits(userRealmName)?.recordUser("create", {
       userId: user.id,
@@ -335,11 +363,12 @@ export class RegistrationService {
     body: Pick<RegisterRequest, "username" | "email" | "phoneNumber">,
     userRealmName?: string,
   ): Promise<void> {
+    const realm = this.realmProvider.getRealm(userRealmName);
     const userRepository = this.realmProvider.userRepository(userRealmName);
 
     if (body.username) {
       const existingUser = await userRepository.findOne({
-        where: { username: { ilike: body.username } },
+        where: { realm: realm.name, username: { ilike: body.username } },
       });
       if (existingUser) {
         this.log.debug("Username already taken", { username: body.username });
@@ -349,7 +378,7 @@ export class RegistrationService {
 
     if (body.email) {
       const existingUser = await userRepository.findOne({
-        where: { email: { eq: body.email } },
+        where: { realm: realm.name, email: { eq: body.email } },
       });
       if (existingUser) {
         this.log.debug("Email already taken", { email: body.email });
@@ -359,7 +388,7 @@ export class RegistrationService {
 
     if (body.phoneNumber) {
       const existingUser = await userRepository.findOne({
-        where: { phoneNumber: { eq: body.phoneNumber } },
+        where: { realm: realm.name, phoneNumber: { eq: body.phoneNumber } },
       });
       if (existingUser) {
         this.log.debug("Phone number already taken", {

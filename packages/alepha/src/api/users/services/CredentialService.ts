@@ -7,6 +7,7 @@ import { $logger } from "alepha/logger";
 import { CryptoProvider } from "alepha/security";
 import { BadRequestError, HttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
+import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
 import { UserAudits } from "../audits/UserAudits.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
@@ -68,6 +69,38 @@ export class CredentialService {
   }
 
   /**
+   * Validate a password against the realm's password policy.
+   */
+  public validatePasswordPolicy(
+    password: string,
+    policy: RealmAuthSettings["passwordPolicy"],
+  ): void {
+    if (password.length < policy.minLength) {
+      throw new BadRequestError(
+        `Password must be at least ${policy.minLength} characters`,
+      );
+    }
+    if (policy.requireUppercase && !/[A-Z]/.test(password)) {
+      throw new BadRequestError(
+        "Password must contain at least one uppercase letter",
+      );
+    }
+    if (policy.requireLowercase && !/[a-z]/.test(password)) {
+      throw new BadRequestError(
+        "Password must contain at least one lowercase letter",
+      );
+    }
+    if (policy.requireNumbers && !/\d/.test(password)) {
+      throw new BadRequestError("Password must contain at least one number");
+    }
+    if (policy.requireSpecialCharacters && !/[^a-zA-Z0-9]/.test(password)) {
+      throw new BadRequestError(
+        "Password must contain at least one special character",
+      );
+    }
+  }
+
+  /**
    * Phase 1: Create a password reset intent.
    *
    * Validates the email, checks for existing user with credentials,
@@ -89,6 +122,14 @@ export class CredentialService {
       .now()
       .add(INTENT_TTL_MINUTES, "minutes")
       .toISOString();
+
+    // Check if password reset is allowed for this realm
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const realmSettings = await realm.getSettings();
+    if (realmSettings.resetPasswordAllowed === false) {
+      this.log.debug("Password reset not allowed for realm", { userRealmName });
+      return { intentId, expiresAt };
+    }
 
     // Find user by email (silent fail for security)
     const user = await this.users(userRealmName).findOne({
@@ -187,6 +228,11 @@ export class CredentialService {
       });
     }
 
+    // Validate password against realm policy before consuming the verification code
+    const realm = this.realmProvider.getRealm(intent.realmName);
+    const realmSettings = await realm.getSettings();
+    this.validatePasswordPolicy(body.newPassword, realmSettings.passwordPolicy);
+
     // Verify code using verification controller
     const result = await this.verificationController
       .validateVerificationCode({
@@ -232,8 +278,6 @@ export class CredentialService {
       userId: intent.userId,
       email: intent.email,
     });
-
-    const realm = this.realmProvider.getRealm(intent.realmName);
 
     // Audit: password reset
     await this.userAudits(intent.realmName)?.recordUser("update", {
@@ -320,6 +364,11 @@ export class CredentialService {
       throw new BadRequestError("Invalid or expired reset token");
     }
 
+    // Validate password against realm policy
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const realmSettings = await realm.getSettings();
+    this.validatePasswordPolicy(newPassword, realmSettings.passwordPolicy);
+
     // Find user and identity
     const user = await this.users(userRealmName).getOne({
       where: { email: { eq: email } },
@@ -344,8 +393,6 @@ export class CredentialService {
     await this.sessions(userRealmName).deleteMany({
       userId: { eq: user.id },
     });
-
-    const realm = this.realmProvider.getRealm(userRealmName);
 
     // Audit: password reset (legacy method)
     await this.userAudits(userRealmName)?.recordUser("update", {

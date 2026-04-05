@@ -35,6 +35,9 @@ const setup = async () => {
     features: {
       notifications: true,
     },
+    settings: {
+      resetPasswordAllowed: true,
+    },
   });
 
   const emailProvider = alepha.inject(MemoryEmailProvider);

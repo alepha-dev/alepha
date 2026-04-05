@@ -70,6 +70,15 @@ export const realmAuthSettingsAtom = $atom({
       description:
         "List of usernames that are automatically promoted to admin role on login",
     }),
+    defaultRoles: t.array(t.string(), {
+      description: "Default roles assigned to newly registered users",
+    }),
+    verifyEmailUrl: t.optional(
+      t.string({
+        description:
+          "Base URL for email verification links (used when verification method is 'link'). Token and email are appended as query params.",
+      }),
+    ),
     passwordPolicy: t.object({
       minLength: t.integer({
         description: "Minimum password length",
@@ -122,7 +131,7 @@ export const realmAuthSettingsAtom = $atom({
     firstNameLastName: "none" as FieldRequirement,
     adminEmails: [],
     adminUsernames: [],
-    // TODO: not implemented yet
+    defaultRoles: ["user"],
     passwordPolicy: {
       minLength: 8,
       requireUppercase: true,

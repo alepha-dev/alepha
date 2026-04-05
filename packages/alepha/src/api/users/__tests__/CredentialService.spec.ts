@@ -35,6 +35,9 @@ const setup = async () => {
     features: {
       notifications: true,
     },
+    settings: {
+      resetPasswordAllowed: true,
+    },
   });
 
   const emailProvider = alepha.inject(MemoryEmailProvider);
@@ -496,6 +499,180 @@ describe("alepha/api/users - CredentialService", () => {
       );
 
       expect(user?.email).toBe("fullflow@example.com");
+    });
+  });
+
+  describe("resetPasswordAllowed=false", () => {
+    it("should silently return intent when resetPasswordAllowed is false", async ({
+      expect,
+    }) => {
+      const { alepha, credentialService, userService, cryptoProvider } =
+        await setup();
+
+      // Register a separate realm with resetPasswordAllowed disabled
+      const realmProvider = alepha.inject(RealmProvider);
+      realmProvider.register("no-reset", {
+        features: { notifications: true },
+        settings: { resetPasswordAllowed: false },
+      });
+
+      // Create a user in the no-reset realm
+      const user = await credentialService.users("no-reset").create({
+        email: "noreset@example.com",
+        username: "noresetuser",
+        roles: ["user"],
+      });
+
+      const hashedPassword = await cryptoProvider.hashPassword("Password123!");
+      await credentialService.identities("no-reset").create({
+        userId: user.id,
+        provider: "credentials",
+        password: hashedPassword,
+      });
+
+      // Request password reset - should return an intentId (security: doesn't reveal it's disabled)
+      const result = await credentialService.createPasswordResetIntent(
+        "noreset@example.com",
+        "no-reset",
+      );
+
+      expect(result.intentId).toBeDefined();
+      expect(result.expiresAt).toBeDefined();
+
+      // No email should be sent
+      const emailProvider = alepha.inject(MemoryEmailProvider);
+      expect(emailProvider.records.length).toBe(0);
+
+      // Completing the reset with the returned intentId should fail with 410
+      // because the intent was never actually stored in the cache
+      await expect(
+        credentialService.completePasswordReset({
+          intentId: result.intentId,
+          code: "123456",
+          newPassword: "NewPassword456!",
+        }),
+      ).rejects.toThrow(HttpError);
+    });
+  });
+
+  describe("Password policy enforcement during reset", () => {
+    it("should reject password that violates realm policy", async ({
+      expect,
+    }) => {
+      const { alepha, credentialService, userService, cryptoProvider } =
+        await setup();
+
+      // Register a realm with strict password policy
+      const realmProvider = alepha.inject(RealmProvider);
+      realmProvider.register("strict-policy", {
+        features: { notifications: true },
+        settings: {
+          resetPasswordAllowed: true,
+          passwordPolicy: {
+            minLength: 8,
+            requireUppercase: true,
+            requireLowercase: true,
+            requireNumbers: true,
+            requireSpecialCharacters: false,
+          },
+        },
+      });
+
+      // Create a user in the strict-policy realm
+      const user = await credentialService.users("strict-policy").create({
+        email: "strict@example.com",
+        username: "strictuser",
+        roles: ["user"],
+      });
+
+      const hashedPassword =
+        await cryptoProvider.hashPassword("OldPassword123!");
+      await credentialService.identities("strict-policy").create({
+        userId: user.id,
+        provider: "credentials",
+        password: hashedPassword,
+      });
+
+      // Create intent
+      const intent = await credentialService.createPasswordResetIntent(
+        "strict@example.com",
+        "strict-policy",
+      );
+
+      // Extract code from email
+      const emailProvider = alepha.inject(MemoryEmailProvider);
+      await expect.poll(() => emailProvider.records.length).toBe(1);
+      const code = extractCode(emailProvider.records[0].body);
+
+      // Try to complete with a password that has no uppercase and no numbers
+      await expect(
+        credentialService.completePasswordReset({
+          intentId: intent.intentId,
+          code,
+          newPassword: "alllowercase",
+        }),
+      ).rejects.toThrowError(BadRequestError);
+
+      // The verification code should NOT be consumed - can retry with a valid password
+      await credentialService.completePasswordReset({
+        intentId: intent.intentId,
+        code,
+        newPassword: "ValidRetry123",
+      });
+    });
+
+    it("should accept password that meets realm policy", async ({ expect }) => {
+      const { alepha, credentialService, userService, cryptoProvider } =
+        await setup();
+
+      // Register a realm with strict password policy
+      const realmProvider = alepha.inject(RealmProvider);
+      realmProvider.register("strict-accept", {
+        features: { notifications: true },
+        settings: {
+          resetPasswordAllowed: true,
+          passwordPolicy: {
+            minLength: 8,
+            requireUppercase: true,
+            requireLowercase: true,
+            requireNumbers: true,
+            requireSpecialCharacters: false,
+          },
+        },
+      });
+
+      // Create a user in the strict-accept realm
+      const user = await credentialService.users("strict-accept").create({
+        email: "accept@example.com",
+        username: "acceptuser",
+        roles: ["user"],
+      });
+
+      const hashedPassword =
+        await cryptoProvider.hashPassword("OldPassword123!");
+      await credentialService.identities("strict-accept").create({
+        userId: user.id,
+        provider: "credentials",
+        password: hashedPassword,
+      });
+
+      // Create intent
+      const intent = await credentialService.createPasswordResetIntent(
+        "accept@example.com",
+        "strict-accept",
+      );
+
+      // Extract code from email
+      const emailProvider = alepha.inject(MemoryEmailProvider);
+      await expect.poll(() => emailProvider.records.length).toBe(1);
+      const code = extractCode(emailProvider.records[0].body);
+
+      // Complete with a password that meets the policy
+      await credentialService.completePasswordReset({
+        intentId: intent.intentId,
+        code,
+        newPassword: "ValidPass123",
+      });
     });
   });
 

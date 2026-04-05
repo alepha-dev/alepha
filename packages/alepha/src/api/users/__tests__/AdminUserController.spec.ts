@@ -4,7 +4,12 @@ import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
-import { AdminUserController, AlephaApiUsers, UserService } from "../index.ts";
+import {
+  AdminUserController,
+  AlephaApiUsers,
+  SessionService,
+  UserService,
+} from "../index.ts";
 
 const adminUser: UserAccountToken = {
   id: "00000000-0000-0000-0000-000000000001",
@@ -443,5 +448,79 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
     const userIds = result.content.map((u) => u.id);
     expect(userIds.indexOf(user3.id)).toBeLessThan(userIds.indexOf(user2.id));
     expect(userIds.indexOf(user2.id)).toBeLessThan(userIds.indexOf(user1.id));
+  });
+});
+
+describe("alepha/api/users - AdminUserController delete cleanup", () => {
+  it("should clean up sessions and identities when deleting a user", async ({
+    expect,
+  }) => {
+    const { alepha, controller } = await setup();
+    const sessionService = alepha.inject(SessionService);
+
+    // Arrange: create a user
+    const user = await controller.createUser(
+      {
+        body: {
+          username: "cleanupuser",
+          email: "cleanupuser@example.com",
+        },
+      },
+      asAdmin,
+    );
+
+    // Arrange: create identities for the user (credentials + google)
+    await sessionService.identities().create({
+      userId: user.id,
+      provider: "credentials",
+      providerUserId: user.id,
+    });
+    await sessionService.identities().create({
+      userId: user.id,
+      provider: "google",
+      providerUserId: "google-123",
+    });
+
+    // Arrange: create sessions for the user
+    await sessionService.sessions().create({
+      userId: user.id,
+      refreshToken: "00000000-0000-0000-0000-000000000010",
+      expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+    });
+    await sessionService.sessions().create({
+      userId: user.id,
+      refreshToken: "00000000-0000-0000-0000-000000000011",
+      expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+    });
+
+    // Sanity check: sessions and identities exist before deletion
+    const sessionsBefore = await sessionService
+      .sessions()
+      .findMany({ where: { userId: { eq: user.id } } });
+    expect(sessionsBefore.length).toBe(2);
+
+    const identitiesBefore = await sessionService
+      .identities()
+      .findMany({ where: { userId: { eq: user.id } } });
+    expect(identitiesBefore.length).toBe(2);
+
+    // Act: delete the user
+    const result = await controller.deleteUser(
+      { params: { id: user.id } },
+      asAdmin,
+    );
+    expect(result.ok).toBe(true);
+
+    // Assert: sessions for that user should be gone
+    const sessionsAfter = await sessionService
+      .sessions()
+      .findMany({ where: { userId: { eq: user.id } } });
+    expect(sessionsAfter.length).toBe(0);
+
+    // Assert: identities for that user should be gone
+    const identitiesAfter = await sessionService
+      .identities()
+      .findMany({ where: { userId: { eq: user.id } } });
+    expect(identitiesAfter.length).toBe(0);
   });
 });

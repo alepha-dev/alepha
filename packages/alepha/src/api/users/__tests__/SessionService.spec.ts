@@ -7,7 +7,7 @@ import {
   CryptoProvider,
   InvalidCredentialsError,
 } from "alepha/security";
-import { BadRequestError } from "alepha/server";
+import { BadRequestError, UnauthorizedError } from "alepha/server";
 import { describe, it } from "vitest";
 import {
   AlephaApiUsers,
@@ -317,6 +317,32 @@ describe("alepha/api/users - SessionService.login", () => {
     // Empty password should fail
     await expect(
       sessionService.login("local", "empty-password@example.com", ""),
+    ).rejects.toThrowError(InvalidCredentialsError);
+  });
+
+  it("should reject login for disabled user", async ({ expect }) => {
+    const { sessionService, userService, cryptoProvider, identities } =
+      await setup();
+
+    const password = "disabledUserPass123!";
+    const hashedPassword = await cryptoProvider.hashPassword(password);
+
+    const user = await userService.users().create({
+      username: "disableduser",
+      email: "disabled@example.com",
+      roles: ["user"],
+      enabled: false,
+    });
+
+    await identities.create({
+      provider: "local",
+      providerUserId: "disabled@example.com",
+      userId: user.id,
+      password: hashedPassword,
+    });
+
+    await expect(
+      sessionService.login("local", "disabled@example.com", password),
     ).rejects.toThrowError(InvalidCredentialsError);
   });
 
@@ -774,5 +800,120 @@ describe("alepha/api/users - SessionService.link", () => {
     );
 
     expect(result.id).toBe(user.id);
+  });
+
+  it("should refuse auto-link when OAuth provider says email_verified is false", async ({
+    expect,
+  }) => {
+    const { sessionService, userService } = await setup();
+
+    await userService.users().create({
+      username: "verifieduser",
+      email: "verified@example.com",
+      roles: ["user"],
+    });
+
+    await expect(
+      sessionService.link("google", {
+        sub: "google-unverified",
+        email: "verified@example.com",
+        name: "Unverified User",
+        email_verified: false,
+      }),
+    ).rejects.toThrowError(BadRequestError);
+  });
+
+  it("should allow auto-link when email_verified is true or undefined", async ({
+    expect,
+  }) => {
+    const { sessionService, userService } = await setup();
+
+    const user = await userService.users().create({
+      username: "linkableuser",
+      email: "linkable@example.com",
+      roles: ["user"],
+    });
+
+    const result = await sessionService.link("google", {
+      sub: "google-verified",
+      email: "linkable@example.com",
+      name: "Verified User",
+      email_verified: true,
+    });
+
+    expect(result.id).toBe(user.id);
+  });
+
+  it("should use defaultRoles from realm settings for new OAuth users", async ({
+    expect,
+  }) => {
+    const { sessionService, alepha } = await setup();
+
+    const realmProvider = alepha.inject(RealmProvider);
+    realmProvider.register("custom-roles", {
+      settings: {
+        registrationAllowed: true,
+        defaultRoles: ["member", "viewer"],
+      } as never,
+    });
+
+    const result = await sessionService.link(
+      "google",
+      {
+        sub: "google-newuser-roles",
+        email: "newuser-roles@example.com",
+        name: "New Role User",
+      },
+      "custom-roles",
+    );
+
+    expect("roles" in result && result.roles).toEqual(["member", "viewer"]);
+  });
+});
+
+describe("alepha/api/users - SessionService.refreshSession", () => {
+  it("should reject refresh for disabled user and delete session", async ({
+    expect,
+  }) => {
+    const { sessionService, userService, cryptoProvider, identities } =
+      await setup();
+
+    const password = "refreshDisabledPass!";
+    const hashedPassword = await cryptoProvider.hashPassword(password);
+
+    const user = await userService.users().create({
+      username: "refreshdisableduser",
+      email: "refresh-disabled@example.com",
+      roles: ["user"],
+    });
+
+    await identities.create({
+      provider: "local",
+      providerUserId: "refresh-disabled@example.com",
+      userId: user.id,
+      password: hashedPassword,
+    });
+
+    // Login to get a session with refresh token
+    await sessionService.login(
+      "local",
+      "refresh-disabled@example.com",
+      password,
+    );
+
+    const { refreshToken } = await sessionService.createSession(user, 3600);
+
+    // Disable the user
+    await userService.users().updateById(user.id, { enabled: false });
+
+    // Refresh should fail with UnauthorizedError
+    await expect(
+      sessionService.refreshSession(refreshToken),
+    ).rejects.toThrowError(UnauthorizedError);
+
+    // Session should be deleted — a second refresh should also fail
+    await expect(
+      sessionService.refreshSession(refreshToken),
+    ).rejects.toThrowError();
   });
 });

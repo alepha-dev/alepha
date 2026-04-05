@@ -15,6 +15,7 @@ import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
 import { UserAudits } from "../audits/UserAudits.ts";
 import type { UserEntity } from "../entities/users.ts";
+import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 
 export class SessionService {
@@ -31,6 +32,14 @@ export class SessionService {
     const realm = this.realmProvider.getRealm(realmName);
     if (realm.features.audits) {
       return this.alepha.inject(UserAudits);
+    }
+    return undefined;
+  }
+
+  protected userNotifications(realmName?: string) {
+    const realm = this.realmProvider.getRealm(realmName);
+    if (realm.features.notifications) {
+      return this.alepha.inject(UserNotifications);
     }
     return undefined;
   }
@@ -141,16 +150,12 @@ export class SessionService {
     // Truncate to leave room for suffix
     candidate = candidate.slice(0, maxLength - 2);
 
-    // Check uniqueness (case-insensitive)
+    // Check uniqueness (case-insensitive exact match)
     const isAvailable = async (name: string) => {
-      const existing = await users.findMany({
-        where: { username: { contains: name } },
-        limit: 1,
+      const existing = await users.findOne({
+        where: { username: { ilike: name } },
       });
-      // Case-insensitive check
-      return !existing.some(
-        (u: any) => u.username?.toLowerCase() === name.toLowerCase(),
-      );
+      return !existing;
     };
 
     if (await isAvailable(candidate)) {
@@ -354,6 +359,23 @@ export class SessionService {
         throw new InvalidCredentialsError();
       }
 
+      // Check if user account is enabled
+      if (!user.enabled) {
+        this.log.warn("Login attempt for disabled account", {
+          userId: user.id,
+          realm: name,
+        });
+
+        await this.userAudits(userRealmName)?.recordAuth("login_failed", {
+          userRealm: name,
+          resourceId: user.id,
+          description: "Login attempt for disabled account",
+          metadata: { provider, username },
+        });
+
+        throw new InvalidCredentialsError();
+      }
+
       // Account rate limit check (per-realm)
       const accountKey = `login:account:${name}:${user.id}`;
       const accountLocked = await this.isLoginLocked(
@@ -445,6 +467,15 @@ export class SessionService {
               metadata: { userId: user.id },
             },
           );
+
+          // Notify user about account lockout
+          if (user.email) {
+            const lockoutMinutes = Math.round(loginRateLimit.windowMs / 60_000);
+            await this.userNotifications(userRealmName)?.accountLockout.push({
+              contact: user.email,
+              variables: { email: user.email, lockoutMinutes },
+            });
+          }
         }
 
         throw new InvalidCredentialsError();
@@ -535,6 +566,16 @@ export class SessionService {
         id: { eq: session.userId },
       },
     });
+
+    // Check if user account is still enabled
+    if (!user.enabled) {
+      this.log.warn("Session refresh for disabled account", {
+        userId: user.id,
+        sessionId: session.id,
+      });
+      await this.sessions(userRealmName).deleteById(session.id);
+      throw new UnauthorizedError("Account disabled");
+    }
 
     // Auto-promote to admin if configured (handles "I promote you admin" case)
     await this.ensureAdminRole(user, userRealmName);
@@ -636,11 +677,23 @@ export class SessionService {
 
     const existing = await users.findOne({
       where: {
+        realm: realm.name,
         email: profile.email,
       },
     });
 
     if (existing) {
+      // Refuse auto-link if the OAuth provider explicitly says email is not verified
+      if (profile.email_verified === false) {
+        this.log.warn(
+          "OAuth2 profile email not verified by provider, refusing auto-link",
+          { provider, email: profile.email, userId: existing.id },
+        );
+        throw new BadRequestError(
+          "Cannot link account: email not verified by provider",
+        );
+      }
+
       this.log.debug("Linking OAuth2 profile to existing user by email", {
         provider,
         profileSub: profile.sub,
@@ -692,7 +745,7 @@ export class SessionService {
       email: profile.email,
       // we trust the OAuth2 provider
       emailVerified: true,
-      roles: ["user"], // TODO: make default roles configurable via realm settings
+      roles: realmSettings.defaultRoles,
     });
 
     if (profile.picture) {

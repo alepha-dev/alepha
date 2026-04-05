@@ -8,7 +8,7 @@ export const loginSchema = t.object({
     description: "Username or email address for login",
   }),
   password: t.text({
-    minLength: 6,
+    minLength: 8,
     description: "User password",
   }),
 });

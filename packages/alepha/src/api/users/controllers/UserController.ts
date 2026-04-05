@@ -1,4 +1,5 @@
 import { $inject, t } from "alepha";
+import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { completePasswordResetRequestSchema } from "../schemas/completePasswordResetRequestSchema.ts";
 import { completeRegistrationRequestSchema } from "../schemas/completeRegistrationRequestSchema.ts";
@@ -216,13 +217,7 @@ export class UserController {
           t.enum(["code", "link"], {
             default: "code",
             description:
-              'Verification method: "code" sends a 6-digit code, "link" sends a clickable verification link.',
-          }),
-        ),
-        verifyUrl: t.optional(
-          t.string({
-            description:
-              'Base URL for verification link. Required when method is "link". Token and email will be appended as query params.',
+              'Verification method: "code" sends a 6-digit code, "link" sends a clickable verification link. When using "link", configure verifyEmailUrl in realm settings.',
           }),
         ),
       }),
@@ -240,7 +235,6 @@ export class UserController {
         body.email,
         query.userRealmName,
         method,
-        query.verifyUrl,
       );
 
       return {
@@ -293,6 +287,7 @@ export class UserController {
   public checkEmailVerification = $action({
     path: "/users/email-verification/check",
     group: this.group,
+    use: [$secure()],
     schema: {
       query: t.object({
         email: t.email(),

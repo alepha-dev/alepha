@@ -49,7 +49,6 @@ export class UserService {
     email: string,
     userRealmName?: string,
     method: "code" | "link" = "code",
-    verifyUrl?: string,
   ): Promise<boolean> {
     this.log.trace("Requesting email verification", {
       email,
@@ -84,12 +83,15 @@ export class UserService {
         });
 
       if (method === "link") {
-        // Build verification URL with token
-        const url = new URL(verifyUrl || "/verify-email", "http://localhost");
+        // Build verification URL from realm settings (server-controlled, not user input)
+        const realm = this.realmProvider.getRealm(userRealmName);
+        const realmSettings = await realm.getSettings();
+        const baseUrl = realmSettings.verifyEmailUrl ?? "/verify-email";
+        const url = new URL(baseUrl, "http://localhost");
         url.searchParams.set("email", email);
         url.searchParams.set("token", verification.token);
-        const fullVerifyUrl = verifyUrl
-          ? `${verifyUrl}${url.search}`
+        const fullVerifyUrl = realmSettings.verifyEmailUrl
+          ? `${baseUrl}${url.search}`
           : url.pathname + url.search;
 
         await this.userNotifications(userRealmName)?.emailVerificationLink.push(
@@ -270,13 +272,12 @@ export class UserService {
     });
 
     const realm = this.realmProvider.getRealm(userRealmName);
+    const realmSettings = await realm.getSettings();
 
-    // TODO: one query instead of 3
-
-    // Check for existing user based on provided unique fields
+    // Check for existing user based on provided unique fields (scoped to realm)
     if (data.username) {
       const existingUser = await this.users(userRealmName).findOne({
-        where: { username: { ilike: data.username } },
+        where: { realm: realm.name, username: { ilike: data.username } },
       });
 
       if (existingUser) {
@@ -287,7 +288,7 @@ export class UserService {
 
     if (data.email) {
       const existingUser = await this.users(userRealmName).findOne({
-        where: { email: { eq: data.email } },
+        where: { realm: realm.name, email: { eq: data.email } },
       });
 
       if (existingUser) {
@@ -298,7 +299,7 @@ export class UserService {
 
     if (data.phoneNumber) {
       const existingUser = await this.users(userRealmName).findOne({
-        where: { phoneNumber: { eq: data.phoneNumber } },
+        where: { realm: realm.name, phoneNumber: { eq: data.phoneNumber } },
       });
 
       if (existingUser) {
@@ -311,7 +312,7 @@ export class UserService {
 
     const user = await this.users(userRealmName).create({
       ...data,
-      roles: data.roles ?? ["user"], // TODO: Default roles from realm settings
+      roles: data.roles ?? realmSettings.defaultRoles,
       realm: realm.name,
     });
 
@@ -385,6 +386,14 @@ export class UserService {
   public async deleteUser(id: string, userRealmName?: string): Promise<void> {
     this.log.trace("Deleting user", { id, userRealmName });
     const user = await this.getUserById(id, userRealmName);
+
+    // Clean up related sessions and identities before deleting the user
+    await this.realmProvider
+      .sessionRepository(userRealmName)
+      .deleteMany({ userId: { eq: id } });
+    await this.realmProvider
+      .identityRepository(userRealmName)
+      .deleteMany({ userId: { eq: id } });
 
     await this.users(userRealmName).deleteById(id);
     this.log.info("User deleted", { userId: id });

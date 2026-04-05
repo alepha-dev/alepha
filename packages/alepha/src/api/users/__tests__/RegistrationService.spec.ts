@@ -245,8 +245,9 @@ describe("alepha/api/users - RegistrationService", () => {
         } as never,
       });
 
-      // Create existing user with phone
+      // Create existing user with phone in the same realm
       await userService.users("phone-realm").create({
+        realm: "phone-realm",
         username: "existinguser",
         email: "existing@example.com",
         phoneNumber: "+1234567890",
@@ -488,6 +489,7 @@ describe("alepha/api/users - RegistrationService", () => {
 
       // Simulate another user registering with same email while verification pending
       await userService.users("race-realm").create({
+        realm: "race-realm",
         email: "race@example.com",
         username: "racewinner",
         roles: ["user"],
@@ -642,6 +644,151 @@ describe("alepha/api/users - RegistrationService", () => {
         "full-verify-realm",
       );
       expect(session?.id).toBe(user.id);
+    });
+  });
+
+  describe("Password policy enforcement during registration", () => {
+    it("should reject registration when password violates realm policy", async ({
+      expect,
+    }) => {
+      const { registrationService, realmProvider } = await setup();
+
+      realmProvider.register("strict-policy-realm", {
+        settings: {
+          passwordPolicy: {
+            minLength: 10,
+            requireUppercase: true,
+            requireLowercase: false,
+            requireNumbers: false,
+            requireSpecialCharacters: false,
+          },
+        } as never,
+      });
+
+      await expect(
+        registrationService.createRegistrationIntent(
+          {
+            email: "weakpass@example.com",
+            password: "shortpw!",
+          },
+          "strict-policy-realm",
+        ),
+      ).rejects.toThrowError(BadRequestError);
+    });
+
+    it("should accept registration when password meets realm policy", async ({
+      expect,
+    }) => {
+      const { registrationService, realmProvider } = await setup();
+
+      realmProvider.register("strict-policy-realm", {
+        settings: {
+          passwordPolicy: {
+            minLength: 10,
+            requireUppercase: true,
+            requireLowercase: false,
+            requireNumbers: false,
+            requireSpecialCharacters: false,
+          },
+        } as never,
+      });
+
+      const result = await registrationService.createRegistrationIntent(
+        {
+          email: "strongpass@example.com",
+          password: "StrongPass123",
+        },
+        "strict-policy-realm",
+      );
+
+      expect(result.intentId).toBeDefined();
+    });
+  });
+
+  describe("Registration rate limiting", () => {
+    it("should rate limit registration attempts by IP", async ({ expect }) => {
+      const { alepha, registrationService } = await setup();
+
+      await alepha.fork(async () => {
+        alepha.store.set("alepha.http.request", { ip: "10.0.0.1" } as never);
+
+        // Make 10 registration attempts (they may fail for duplicate email, that's fine)
+        for (let i = 0; i < 10; i++) {
+          await registrationService
+            .createRegistrationIntent({
+              email: `ratelimit-${i}@example.com`,
+              password: "SecurePassword123!",
+            })
+            .catch(() => {});
+        }
+
+        // 11th attempt should be rate limited
+        await expect(
+          registrationService.createRegistrationIntent({
+            email: "ratelimit-overflow@example.com",
+            password: "SecurePassword123!",
+          }),
+        ).rejects.toThrowError(BadRequestError);
+      });
+    });
+  });
+
+  describe("Default roles from realm settings", () => {
+    it("should assign defaultRoles from realm settings to new users", async ({
+      expect,
+    }) => {
+      const { registrationService, realmProvider } = await setup();
+
+      realmProvider.register("custom-roles-realm", {
+        settings: {
+          defaultRoles: ["member", "viewer"],
+        } as never,
+      });
+
+      const intent = await registrationService.createRegistrationIntent(
+        {
+          email: "roleuser@example.com",
+          password: "SecurePassword123!",
+        },
+        "custom-roles-realm",
+      );
+
+      const user = await registrationService.completeRegistration({
+        intentId: intent.intentId,
+      });
+
+      expect(user.roles).toEqual(["member", "viewer"]);
+    });
+  });
+
+  describe("Cross-realm email uniqueness", () => {
+    it("should allow same email in different realms", async ({ expect }) => {
+      const { registrationService, userService, realmProvider } = await setup();
+
+      realmProvider.register("realm-a");
+      realmProvider.register("realm-b");
+
+      // Create a user with this email in realm-a directly
+      await userService.users("realm-a").create({
+        realm: "realm-a",
+        email: "shared@example.com",
+        roles: ["user"],
+      });
+
+      // Register a new user with the same email in realm-b via registration flow
+      const intent = await registrationService.createRegistrationIntent(
+        {
+          email: "shared@example.com",
+          password: "SecurePassword123!",
+        },
+        "realm-b",
+      );
+
+      const user = await registrationService.completeRegistration({
+        intentId: intent.intentId,
+      });
+
+      expect(user.email).toBe("shared@example.com");
     });
   });
 });

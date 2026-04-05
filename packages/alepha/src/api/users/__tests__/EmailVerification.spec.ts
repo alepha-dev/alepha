@@ -3,7 +3,7 @@ import { AlephaApiVerification } from "alepha/api/verifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
-import { AlephaSecurity } from "alepha/security";
+import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
 import {
@@ -264,7 +264,7 @@ describe("alepha/api/users - Email Verification", () => {
   });
 
   it("should check email verification status", async ({ expect }) => {
-    const { userService, actions } = await setup();
+    const { alepha, userService, actions } = await setup();
 
     // Create a test user with unverified email
     await userService.users().create({
@@ -282,23 +282,34 @@ describe("alepha/api/users - Email Verification", () => {
       emailVerified: true,
     });
 
-    // Check unverified email
-    const unverifiedResult = await actions.checkEmailVerification({
-      query: { email: "unverified@example.com" },
-    });
-    expect(unverifiedResult.verified).toBe(false);
+    // checkEmailVerification requires $secure() authentication
+    await alepha.context.run(async () => {
+      alepha.store.set(currentUserAtom, {
+        id: "admin-1",
+        name: "Admin",
+        email: "admin@example.com",
+        realm: "default",
+        roles: ["admin"],
+      });
 
-    // Check verified email
-    const verifiedResult = await actions.checkEmailVerification({
-      query: { email: "verified@example.com" },
-    });
-    expect(verifiedResult.verified).toBe(true);
+      // Check unverified email
+      const unverifiedResult = await actions.checkEmailVerification({
+        query: { email: "unverified@example.com" },
+      });
+      expect(unverifiedResult.verified).toBe(false);
 
-    // Check non-existent email
-    const nonExistentResult = await actions.checkEmailVerification({
-      query: { email: "nonexistent@example.com" },
+      // Check verified email
+      const verifiedResult = await actions.checkEmailVerification({
+        query: { email: "verified@example.com" },
+      });
+      expect(verifiedResult.verified).toBe(true);
+
+      // Check non-existent email
+      const nonExistentResult = await actions.checkEmailVerification({
+        query: { email: "nonexistent@example.com" },
+      });
+      expect(nonExistentResult.verified).toBe(false);
     });
-    expect(nonExistentResult.verified).toBe(false);
   });
 
   it("should respect rate limiting on verification requests", async ({
