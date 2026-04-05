@@ -422,7 +422,7 @@ describe("VendorService", () => {
         packages: ["pkg"],
       });
 
-      expect(result.packages[0].removed).toEqual(["local-only.ts"]);
+      expect(result.packages[0].added).toEqual(["local-only.ts"]);
       expect(result.totalChanges).toBe(1);
     });
 
@@ -467,7 +467,7 @@ describe("VendorService", () => {
         packages: ["pkg"],
       });
 
-      expect(result.packages[0].added).toEqual(["deleted.ts"]);
+      expect(result.packages[0].removed).toEqual(["deleted.ts"]);
       expect(result.totalChanges).toBe(1);
     });
 

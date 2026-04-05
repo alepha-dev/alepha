@@ -185,24 +185,26 @@ export class VendorService {
       }
 
       if (!remoteExists) {
+        // No baseline = everything local was added by user
         const localFiles = await this.fs.ls(localPkgDir, { recursive: true });
         results.push({
           name: pkg,
-          added: [],
+          added: localFiles,
           modified: [],
-          removed: localFiles,
+          removed: [],
         });
         totalChanges += localFiles.length;
         continue;
       }
 
       if (!localExists) {
+        // Baseline exists but local doesn't = user deleted everything
         const remoteFiles = await this.fs.ls(remotePkgDir, { recursive: true });
         results.push({
           name: pkg,
-          added: remoteFiles,
+          added: [],
           modified: [],
-          removed: [],
+          removed: remoteFiles,
         });
         totalChanges += remoteFiles.length;
         continue;
@@ -400,9 +402,10 @@ export class VendorService {
     const localSet = new Set(filteredLocal);
     const remoteSet = new Set(filteredRemote);
 
+    // Files in baseline but not local = user deleted them
     for (const file of filteredRemote) {
       if (!localSet.has(file)) {
-        added.push(file);
+        removed.push(file);
         continue;
       }
 
@@ -420,9 +423,10 @@ export class VendorService {
       }
     }
 
+    // Files in local but not baseline = user added them
     for (const file of filteredLocal) {
       if (!remoteSet.has(file)) {
-        removed.push(file);
+        added.push(file);
       }
     }
 
