@@ -90,6 +90,12 @@ export class ParameterProvider {
   protected readonly loadPromises = new Map<string, Promise<void>>();
 
   /**
+   * Generation counter per parameter — incremented on each doLoad call.
+   * Used to discard results from superseded loads.
+   */
+  protected readonly loadGeneration = new Map<string, number>();
+
+  /**
    * Subscriber callbacks per parameter name.
    */
   protected readonly subscribers = new Map<
@@ -379,6 +385,15 @@ export class ParameterProvider {
       schemaHash = this.schemaHashes.get(name) ?? "";
     }
 
+    // Validate content against the registered schema when the schema hash
+    // matches. A mismatched hash means the content is from a different
+    // schema version (e.g., migration seed) and should not be validated
+    // against the current schema.
+    const param = this.primitives.get(name);
+    if (param && schemaHash === this.schemaHashes.get(name)) {
+      content = this.alepha.codec.validate(param.schema, content) as Static<T>;
+    }
+
     const now = this.dateTimeProvider.now().toDate();
     const activationDate = options.activationDate ?? now;
     const isImmediate = activationDate <= now;
@@ -444,11 +459,30 @@ export class ParameterProvider {
   /**
    * Get all versions of a parameter.
    */
-  public async getHistory(name: string): Promise<Parameter[]> {
+  public async getHistory(
+    name: string,
+    options?: { limit?: number; offset?: number },
+  ): Promise<Parameter[]> {
     return this.repo.findMany({
       where: { name },
       orderBy: { column: "version", direction: "desc" },
+      limit: options?.limit,
+      offset: options?.offset,
     });
+  }
+
+  /**
+   * Delete all versions of a parameter.
+   */
+  public async delete(name: string): Promise<void> {
+    await this.repo.deleteMany({ name: { eq: name } });
+    this.cachedCurrent.delete(name);
+    this.cachedNext.delete(name);
+    this.loaded.delete(name);
+    this.loadPromises.delete(name);
+    this.loadGeneration.delete(name);
+    this.migrationChecked.delete(name);
+    this.log.info("Parameter deleted", { name });
   }
 
   /**
@@ -568,8 +602,14 @@ export class ParameterProvider {
    * Fetches current and next from database, updates cache.
    */
   protected async doLoad(name: string): Promise<void> {
+    const gen = (this.loadGeneration.get(name) ?? 0) + 1;
+    this.loadGeneration.set(name, gen);
+
     const { current, next } = await this.loadCurrentAndNext(name);
     const schemaHash = this.schemaHashes.get(name) ?? "";
+
+    // Superseded by a newer load — discard results
+    if (this.loadGeneration.get(name) !== gen) return;
 
     // Check if migration is needed
     if (current && !this.migrationChecked.has(name)) {
@@ -665,21 +705,22 @@ export class ParameterProvider {
   }
 
   /**
-   * Poll until a lock is released.
+   * Poll until a lock is released (or TTL expires).
+   * Uses a probe-only SET NX with minimal TTL to detect release
+   * without holding the lock longer than necessary.
    */
   protected async waitForLock(lockKey: string): Promise<void> {
     const maxWait = 30_000;
+    const probeId = crypto.randomUUID();
     const start = this.dateTimeProvider.nowMillis();
     while (this.dateTimeProvider.nowMillis() - start < maxWait) {
-      await this.dateTimeProvider.wait(200);
-      const lockId = crypto.randomUUID();
-      const value = await this.lockProvider.set(lockKey, lockId, true, 1000);
-      if (value === lockId) {
+      await this.dateTimeProvider.wait(500);
+      const value = await this.lockProvider.set(lockKey, probeId, true, 500);
+      if (value === probeId) {
         await this.lockProvider.del(lockKey);
         return;
       }
     }
-    // Timeout — proceed anyway (lock expired or will expire)
   }
 
   /**

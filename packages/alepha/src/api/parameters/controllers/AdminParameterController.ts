@@ -1,6 +1,6 @@
 import { $inject, AlephaError, t } from "alepha";
 import { $secure } from "alepha/security";
-import { $action } from "alepha/server";
+import { $action, okSchema } from "alepha/server";
 import { activateParameterBodySchema } from "../schemas/activateParameterBodySchema.ts";
 import { createParameterVersionBodySchema } from "../schemas/createParameterVersionBodySchema.ts";
 import { parameterCurrentResponseSchema } from "../schemas/parameterCurrentResponseSchema.ts";
@@ -78,10 +78,17 @@ export class AdminParameterController {
     method: "GET",
     schema: {
       params: parameterNameParamSchema,
+      query: t.object({
+        limit: t.optional(t.integer({ minimum: 1, maximum: 100 })),
+        offset: t.optional(t.integer({ minimum: 0 })),
+      }),
       response: parameterHistoryResponseSchema,
     },
-    handler: async ({ params }) => {
-      const rawVersions = await this.provider.getHistory(params.name);
+    handler: async ({ params, query }) => {
+      const rawVersions = await this.provider.getHistory(params.name, {
+        limit: query.limit,
+        offset: query.offset,
+      });
       const versions = this.provider.calculateStatuses(rawVersions);
       return { versions };
     },
@@ -239,6 +246,25 @@ export class AdminParameterController {
           creatorName: body.creatorName,
         },
       );
+    },
+  });
+
+  /**
+   * Delete all versions of a parameter.
+   */
+  deleteParameter = $action({
+    group: this.group,
+    use: [$secure({ permissions: ["admin:parameter:delete"] })],
+    description: "Delete all versions of a parameter.",
+    path: "/parameters/:name",
+    method: "DELETE",
+    schema: {
+      params: parameterNameParamSchema,
+      response: okSchema,
+    },
+    handler: async ({ params }) => {
+      await this.provider.delete(params.name);
+      return { ok: true };
     },
   });
 }

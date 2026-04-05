@@ -84,7 +84,10 @@ export class ParameterPrimitive<T extends TObject> extends Primitive<
    * Parameter name (uses property key if not specified).
    */
   public get name(): string {
-    return this.options.name || this.config.propertyKey;
+    return (
+      this.options.name ||
+      `${this.config.service.name}.${this.config.propertyKey}`
+    );
   }
 
   /**
@@ -163,8 +166,22 @@ export class ParameterPrimitive<T extends TObject> extends Primitive<
   /**
    * Get version history for this parameter.
    */
-  public async getHistory() {
-    return this.provider.getHistory(this.name);
+  public async getHistory(options?: { limit?: number; offset?: number }) {
+    return this.provider.getHistory(this.name, options);
+  }
+
+  /**
+   * Get a specific version of this parameter.
+   */
+  public async getVersion(version: number) {
+    return this.provider.getVersion(this.name, version);
+  }
+
+  /**
+   * Delete all versions of this parameter.
+   */
+  public async delete(): Promise<void> {
+    await this.provider.delete(this.name);
   }
 
   /**

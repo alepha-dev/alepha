@@ -1902,3 +1902,330 @@ describe("ParameterTreeNode children structure", () => {
     expect(aNode.children.map((c: any) => c.name).sort()).toEqual(["b", "c"]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Content validation in save()
+// ---------------------------------------------------------------------------
+
+describe("save validation", () => {
+  it("should reject invalid content when schema hash matches", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "validate.reject",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    const schemaHash = (provider as any).schemaHashes.get("validate.reject");
+
+    // Invalid: maxUploadSize should be number, not string
+    await expect(
+      provider.save(
+        "validate.reject",
+        { enableBeta: true, maxUploadSize: "not-a-number" } as any,
+        schemaHash,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("should accept valid content when schema hash matches", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "validate.accept",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    const schemaHash = (provider as any).schemaHashes.get("validate.accept");
+
+    const result = await provider.save(
+      "validate.accept",
+      { enableBeta: true, maxUploadSize: 999 },
+      schemaHash,
+    );
+
+    expect(result.content).toEqual({ enableBeta: true, maxUploadSize: 999 });
+  });
+
+  it("should skip validation when schema hash differs (migration seed)", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "validate.skip",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    // Save with mismatched hash — should NOT validate against current schema
+    const result = await provider.save(
+      "validate.skip",
+      { totally: "different", shape: 42 } as any,
+      "old-hash",
+    );
+
+    expect(result.content).toEqual({ totally: "different", shape: 42 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// $parameter.name fallback
+// ---------------------------------------------------------------------------
+
+describe("$parameter.name fallback", () => {
+  it("should use ClassName.propertyKey when name option is omitted", async () => {
+    class MySettings {
+      theme = $parameter({
+        schema: t.object({ dark: t.boolean() }),
+        default: { dark: false },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(MySettings);
+    await alepha.start();
+
+    const settings = alepha.inject(MySettings);
+    expect(settings.theme.name).toBe("MySettings.theme");
+  });
+
+  it("should use explicit name when provided", async () => {
+    class MySettings {
+      theme = $parameter({
+        name: "app.ui.theme",
+        schema: t.object({ dark: t.boolean() }),
+        default: { dark: false },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(MySettings);
+    await alepha.start();
+
+    const settings = alepha.inject(MySettings);
+    expect(settings.theme.name).toBe("app.ui.theme");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// delete()
+// ---------------------------------------------------------------------------
+
+describe("delete", () => {
+  it("should delete all versions and clear cache", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "delete.test",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+    const provider = alepha.inject(ParameterProvider);
+
+    await config.features.set({ enableBeta: true, maxUploadSize: 100 });
+    await config.features.set({ enableBeta: false, maxUploadSize: 200 });
+
+    const historyBefore = await provider.getHistory("delete.test");
+    expect(historyBefore.length).toBe(2);
+
+    await config.features.delete();
+
+    // All versions gone
+    const historyAfter = await provider.getHistory("delete.test");
+    expect(historyAfter.length).toBe(0);
+
+    // Cache cleared — falls back to default
+    expect(await config.features.get()).toEqual({
+      enableBeta: false,
+      maxUploadSize: 10485760,
+    });
+    expect(config.features.isUsingDefault).toBe(true);
+  });
+
+  it("should be a no-op for non-existent parameter", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    // Should not throw
+    await provider.delete("nonexistent.param");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getHistory pagination
+// ---------------------------------------------------------------------------
+
+describe("getHistory pagination", () => {
+  it("should respect limit and offset", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    for (let i = 1; i <= 5; i++) {
+      await provider.save("paginate.test", { v: i }, "h");
+    }
+
+    // Get first 2 (versions 5, 4 — desc order)
+    const page1 = await provider.getHistory("paginate.test", {
+      limit: 2,
+    });
+    expect(page1.length).toBe(2);
+    expect(page1[0].version).toBe(5);
+    expect(page1[1].version).toBe(4);
+
+    // Get next 2 (versions 3, 2)
+    const page2 = await provider.getHistory("paginate.test", {
+      limit: 2,
+      offset: 2,
+    });
+    expect(page2.length).toBe(2);
+    expect(page2[0].version).toBe(3);
+    expect(page2[1].version).toBe(2);
+  });
+
+  it("should return all when no limit specified", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+
+    await provider.save("paginate.all", { v: 1 }, "h");
+    await provider.save("paginate.all", { v: 2 }, "h");
+    await provider.save("paginate.all", { v: 3 }, "h");
+
+    const all = await provider.getHistory("paginate.all");
+    expect(all.length).toBe(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getVersion on primitive
+// ---------------------------------------------------------------------------
+
+describe("$parameter.getVersion", () => {
+  it("should return a specific version via the primitive", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "prim.getversion",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+
+    await config.features.set({ enableBeta: true, maxUploadSize: 1 });
+    await config.features.set({ enableBeta: false, maxUploadSize: 2 });
+
+    const v1 = await config.features.getVersion(1);
+    expect(v1).not.toBeNull();
+    expect(v1!.content).toEqual({ enableBeta: true, maxUploadSize: 1 });
+
+    const missing = await config.features.getVersion(99);
+    expect(missing).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tags
+// ---------------------------------------------------------------------------
+
+describe("tags", () => {
+  it("should store and retrieve tags on parameter versions", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "tags.test",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+
+    await config.features.set(
+      { enableBeta: true, maxUploadSize: 100 },
+      { tags: ["feature-flag", "beta"] },
+    );
+
+    const history = await config.features.getHistory();
+    expect(history[0].tags).toEqual(["feature-flag", "beta"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Set idempotency
+// ---------------------------------------------------------------------------
+
+describe("set idempotency", () => {
+  it("should not notify subscribers when setting the same value", async () => {
+    class AppConfig {
+      features = $parameter({
+        name: "idempotent.test",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 10485760 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(AppConfig);
+    await alepha.start();
+
+    const config = alepha.inject(AppConfig);
+
+    await config.features.set({ enableBeta: true, maxUploadSize: 100 });
+
+    const received: unknown[] = [];
+    config.features.sub((v) => received.push(v));
+
+    // Set the exact same value again
+    await config.features.set({ enableBeta: true, maxUploadSize: 100 });
+
+    expect(received.length).toBe(0);
+  });
+});
