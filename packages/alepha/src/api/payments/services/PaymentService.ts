@@ -60,7 +60,7 @@ export class PaymentService {
   ): Promise<PaymentIntentEntity> {
     return await this.intentRepo.create({
       amount,
-      currency,
+      currency: currency.toLowerCase(),
       status: "created",
       metadata: metadata as any,
       paymentMethodId: options?.paymentMethodId,
@@ -76,9 +76,20 @@ export class PaymentService {
     intentId: string,
     returnUrl: string,
     authorize?: boolean,
+    userId?: string,
   ): Promise<{ url: string; intentId: string }> {
     const intent = await this.getIntent(intentId);
     this.assertStatus(intent, "created", "createSession");
+
+    // Verify intent ownership if userId is provided
+    if (userId && intent.userId && intent.userId !== userId) {
+      throw new PaymentError("Payment intent does not belong to this user");
+    }
+
+    // Associate intent with user if not already set
+    if (userId && !intent.userId) {
+      await this.intentRepo.updateById(intent.id, { userId });
+    }
 
     const result = await this.provider.createSession(intent, {
       returnUrl,
@@ -116,6 +127,18 @@ export class PaymentService {
    * Process a webhook event by updating the intent status and emitting
    * the corresponding payment event.
    */
+  /**
+   * Valid status transitions from webhook events.
+   * Only these transitions are allowed — all others are silently ignored.
+   */
+  protected static readonly VALID_WEBHOOK_TRANSITIONS: Record<
+    string,
+    string[]
+  > = {
+    processing: ["authorized", "captured", "failed"],
+    authorized: ["captured", "failed"],
+  };
+
   public async handleWebhookEvent(
     intentId: string,
     status: string,
@@ -136,6 +159,16 @@ export class PaymentService {
     }
 
     const webhookStatus = status as WebhookStatus;
+
+    // Validate status transition
+    const allowed = PaymentService.VALID_WEBHOOK_TRANSITIONS[intent.status];
+    if (!allowed?.includes(webhookStatus)) {
+      this.log.warn(
+        `Ignoring webhook: cannot transition ${intent.status} → ${webhookStatus}`,
+        { intentId: intent.id },
+      );
+      return;
+    }
 
     await this.intentRepo.updateById(intent.id, {
       status: webhookStatus,
@@ -162,6 +195,12 @@ export class PaymentService {
     this.assertStatus(intent, "authorized", "capture");
 
     const amount = finalAmount ?? intent.amount;
+    if (amount > intent.amount) {
+      throw new PaymentError(
+        `Capture amount ${amount} exceeds authorized amount ${intent.amount}`,
+      );
+    }
+
     if (intent.providerRef) {
       await this.provider.capturePayment(intent.providerRef, amount);
     }
@@ -215,7 +254,29 @@ export class PaymentService {
     reason?: string,
   ): Promise<RefundEntity> {
     const intent = await this.getIntent(intentId);
-    this.assertStatus(intent, "captured", "refund");
+
+    // Allow refunds from both "captured" and "partially_refunded" states
+    if (
+      intent.status !== "captured" &&
+      intent.status !== "partially_refunded"
+    ) {
+      throw new PaymentError(
+        `Cannot refund: intent ${intent.id} is '${intent.status}', expected 'captured' or 'partially_refunded'`,
+      );
+    }
+
+    // Validate refund amount against remaining refundable amount
+    const existingRefunds = await this.refundRepo.findMany({
+      where: { intentId: { eq: intent.id } },
+    });
+    const totalRefunded = existingRefunds.reduce((sum, r) => sum + r.amount, 0);
+    const remaining = intent.amount - totalRefunded;
+
+    if (amount > remaining) {
+      throw new PaymentError(
+        `Refund amount ${amount} exceeds remaining refundable amount ${remaining}`,
+      );
+    }
 
     let refundProviderRef: string | undefined;
     if (intent.providerRef) {
@@ -236,7 +297,13 @@ export class PaymentService {
       providerRef: refundProviderRef,
     });
 
-    await this.intentRepo.updateById(intent.id, { status: "refunded" });
+    // Set status based on whether fully or partially refunded
+    const newTotalRefunded = totalRefunded + amount;
+    const newStatus =
+      newTotalRefunded >= intent.amount ? "refunded" : "partially_refunded";
+    await this.intentRepo.updateById(intent.id, {
+      status: newStatus,
+    });
 
     await this.alepha.events.emit("payments:refunded", {
       intentId: intent.id,
@@ -260,7 +327,7 @@ export class PaymentService {
   ): Promise<PaymentIntentEntity> {
     const intent = await this.intentRepo.create({
       amount,
-      currency,
+      currency: currency.toLowerCase(),
       status: "captured",
       metadata: metadata as any,
     });
@@ -282,9 +349,18 @@ export class PaymentService {
     const intent = await this.getIntent(intentId);
     this.assertStatus(intent, "created", "cancel");
 
-    return await this.intentRepo.updateById(intent.id, {
+    const cancelled = await this.intentRepo.updateById(intent.id, {
       status: "cancelled",
     });
+
+    await this.alepha.events.emit("payments:cancelled", {
+      intentId: intent.id,
+      amount: intent.amount,
+      currency: intent.currency,
+      metadata: intent.metadata,
+    });
+
+    return cancelled;
   }
 
   /**

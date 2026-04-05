@@ -16,6 +16,7 @@ export const paymentIntents = $entity({
       "processing",
       "authorized",
       "captured",
+      "partially_refunded",
       "voided",
       "failed",
       "cancelled",

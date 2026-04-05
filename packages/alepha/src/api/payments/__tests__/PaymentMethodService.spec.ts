@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
+import { PaymentError } from "../errors/PaymentError.ts";
 import { AlephaPayments } from "../index.ts";
 import { PaymentMethodService } from "../services/PaymentMethodService.ts";
 
@@ -74,5 +75,18 @@ describe("PaymentMethodService", () => {
     await expect(
       service.removePaymentMethod(method.id, userId2),
     ).rejects.toThrowError();
+  });
+
+  it("should reject setting default for another user's payment method", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaPayments);
+    const service = alepha.inject(PaymentMethodService);
+    await alepha.start();
+
+    const method = await service.addPaymentMethod(userId, orgId, "tok_visa");
+    await expect(service.setDefault(method.id, userId2)).rejects.toThrowError(
+      PaymentError,
+    );
   });
 });

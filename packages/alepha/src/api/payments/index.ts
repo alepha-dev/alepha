@@ -53,6 +53,12 @@ declare module "alepha" {
       currency: string;
       metadata?: unknown;
     };
+    "payments:cancelled": {
+      intentId: string;
+      amount: number;
+      currency: string;
+      metadata?: unknown;
+    };
   }
 }
 

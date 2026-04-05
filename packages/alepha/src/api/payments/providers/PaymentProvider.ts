@@ -54,7 +54,14 @@ export abstract class PaymentProvider {
   ): Promise<RefundResult>;
 
   /**
-   * Parse an incoming PSP webhook request into a normalized event.
+   * Parse and verify an incoming PSP webhook request.
+   *
+   * Implementations MUST verify the webhook signature before returning.
+   * Throw an error if the signature is invalid or missing — this is the
+   * only authentication on the webhook endpoint (no $secure middleware).
+   *
+   * Failure to verify signatures allows attackers to forge payment
+   * confirmations by POSTing fake webhook events.
    */
   abstract parseWebhook(request: Request): Promise<WebhookEvent>;
 
