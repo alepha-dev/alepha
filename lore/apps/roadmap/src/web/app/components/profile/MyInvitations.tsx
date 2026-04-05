@@ -1,22 +1,22 @@
 import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
 import { Badge } from "@mantine/core";
 import { IconCheck, IconMail, IconX } from "@tabler/icons-react";
+import type { InvitationController } from "alepha/api/invitations";
 import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
-import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 
 export interface MyInvitationsProps {
   invitations: Array<{
     id: string;
-    projectId: number;
-    projectTitle: string;
+    resourceId: string;
+    resourceName: string;
     invitedBy: string;
     inviterName?: string;
     inviterEmail?: string;
-    status: "pending" | "accepted" | "rejected";
+    status: "pending" | "accepted" | "declined" | "expired" | "revoked";
     createdAt: string;
   }>;
 }
@@ -49,14 +49,16 @@ const MyInvitations = (props: MyInvitationsProps) => {
     }
   };
 
-  const handleReject = async (invitationId: string) => {
+  const handleDecline = async (invitationId: string) => {
     setLoadingStates((prev) => ({ ...prev, [invitationId]: true }));
     try {
-      await invitationApi.rejectInvitation({ params: { id: invitationId } });
+      await invitationApi.declineInvitation({ params: { id: invitationId } });
       setInvitations(await invitationApi.getMyInvitations());
       toast.warning({ message: "The invitation has been declined." });
     } catch (error: any) {
-      toast.danger({ message: error.message || "Failed to reject invitation" });
+      toast.danger({
+        message: error.message || "Failed to decline invitation",
+      });
     } finally {
       setLoadingStates((prev) => ({ ...prev, [invitationId]: false }));
     }
@@ -123,7 +125,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
               <Flex justify="space-between" align="center">
                 <Flex direction="column" gap={2}>
                   <Flex align="center" gap="sm">
-                    <Text fw={600}>{invitation.projectTitle}</Text>
+                    <Text fw={600}>{invitation.resourceName}</Text>
                     <Badge variant="light" color="orange" size="xs">
                       Pending
                     </Badge>
@@ -150,11 +152,11 @@ const MyInvitations = (props: MyInvitationsProps) => {
                     leftSection={<IconX size={14} />}
                     variant="light"
                     color="red"
-                    onClick={() => handleReject(invitation.id)}
+                    onClick={() => handleDecline(invitation.id)}
                     loading={loadingStates[invitation.id]}
                     disabled={Object.values(loadingStates).some(Boolean)}
                   >
-                    Reject
+                    Decline
                   </ActionButton>
                 </Flex>
               </Flex>
@@ -186,7 +188,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
             >
               <Flex direction="column" gap={0} flex={1}>
                 <Text size="sm" fw={500}>
-                  {invitation.projectTitle}
+                  {invitation.resourceName}
                 </Text>
                 <Text size="xs" c="dimmed">
                   {invitation.inviterName || invitation.inviterEmail} &middot;{" "}
@@ -198,7 +200,8 @@ const MyInvitations = (props: MyInvitationsProps) => {
                 size="xs"
                 color={invitation.status === "accepted" ? "green" : "red"}
               >
-                {invitation.status === "accepted" ? "Accepted" : "Rejected"}
+                {invitation.status.charAt(0).toUpperCase() +
+                  invitation.status.slice(1)}
               </Badge>
             </Flex>
           ))}

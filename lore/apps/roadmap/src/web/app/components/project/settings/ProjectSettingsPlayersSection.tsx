@@ -9,13 +9,15 @@ import {
   IconUser,
   IconUsers,
 } from "@tabler/icons-react";
+import type {
+  InvitationController,
+  InvitationEntity,
+} from "alepha/api/invitations";
 import { useClient, useInject } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { Localize, useI18n } from "alepha/react/i18n";
 import { useState } from "react";
-import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { Character } from "@/api/entities/characters.ts";
-import type { Invitation } from "@/api/entities/invitations.ts";
 import type { Project } from "@/api/entities/projects.ts";
 import type { User } from "@/api/entities/users.ts";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
@@ -25,7 +27,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 export interface ProjectSettingsPlayersSectionProps {
   project: Project;
   players: Array<Character & { user: User }>;
-  pendingInvitations: Array<Invitation>;
+  pendingInvitations: Array<InvitationEntity>;
 }
 
 const ProjectSettingsPlayersSection = (
@@ -53,8 +55,9 @@ const ProjectSettingsPlayersSection = (
     try {
       await invitationApi.createInvitation({
         body: {
-          projectId: project.id,
-          invitedEmail: email.trim(),
+          email: email.trim(),
+          resourceType: "project",
+          resourceId: String(project.id),
         },
       });
 
@@ -237,7 +240,7 @@ const ProjectSettingsPlayersSection = (
                 <Flex direction="column" flex={1}>
                   <Flex gap="sm" align="center">
                     <Text fw={500} size="sm">
-                      {invitation.invitedEmail}
+                      {invitation.email}
                     </Text>
                     <Badge variant="light" size="xs">
                       Pending

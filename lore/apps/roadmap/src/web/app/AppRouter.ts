@@ -1,5 +1,6 @@
 import { AuthRouter } from "@alepha/ui/auth";
 import { $hook, $inject, Alepha, t } from "alepha";
+import type { AdminInvitationController } from "alepha/api/invitations";
 import { ReactAuth } from "alepha/react/auth";
 import { $head, type Head } from "alepha/react/head";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
@@ -8,7 +9,6 @@ import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 import type { ChapterController } from "../../api/controllers/ChapterController.ts";
-import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { KanbanController } from "../../api/controllers/KanbanController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectStatsController } from "../../api/controllers/ProjectStatsController.ts";
@@ -33,7 +33,7 @@ export class AppRouter {
   projectApi = $client<ProjectController>();
   projectStatsApi = $client<ProjectStatsController>();
   whiteboardApi = $client<WhiteboardController>();
-  invitationApi = $client<InvitationController>();
+  invitationAdminApi = $client<AdminInvitationController>();
   kanbanApi = $client<KanbanController>();
   chapterApi = $client<ChapterController>();
   router = $inject(ReactRouter);
@@ -239,19 +239,22 @@ export class AppRouter {
         this.projectApi.getProjectPlayers({
           params: { id: project.id },
         }),
-        this.invitationApi
-          .getProjectInvitations({
-            params: { projectId: project.id },
+        this.invitationAdminApi
+          .findInvitations({
+            query: {
+              resourceType: "project",
+              resourceId: String(project.id),
+              status: "pending",
+            },
           })
+          .then((page) => page.content)
           .catch(() => []),
       ]);
 
       return {
         project,
         players,
-        pendingInvitations: pendingInvitations.filter(
-          (inv) => inv.status === "pending",
-        ),
+        pendingInvitations,
       };
     },
   });
