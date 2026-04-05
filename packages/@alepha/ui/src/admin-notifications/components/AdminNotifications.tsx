@@ -48,7 +48,6 @@ const notificationFilters = t.object({
       "retrying",
       "running",
       "completed",
-      "failed",
       "dead",
       "cancelled",
     ]),
