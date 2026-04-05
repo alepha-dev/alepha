@@ -80,7 +80,10 @@ export class VendorService {
           tmpDir,
           options.packages,
         );
-        if (diffResult.totalChanges > 0) {
+        const localModifications = diffResult.packages.some(
+          (pkg) => pkg.modified.length > 0 || pkg.removed.length > 0,
+        );
+        if (localModifications) {
           return { synced: [], errors: [], aborted: diffResult };
         }
       }
