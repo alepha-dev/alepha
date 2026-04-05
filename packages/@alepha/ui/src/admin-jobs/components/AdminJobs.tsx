@@ -423,13 +423,6 @@ const JobExecutionsPanel = ({
       hidden: !item.retry,
     },
     {
-      label: "Batch",
-      value: item.batch
-        ? `${item.batch.size} / ${item.batch.window}`
-        : undefined,
-      hidden: !item.batch,
-    },
-    {
       label: "Schema",
       value: item.hasSchema ? "Yes" : "No",
     },
@@ -510,7 +503,7 @@ const JobExecutionsPanel = ({
                   ? "green"
                   : exec.status === "running"
                     ? "blue"
-                    : exec.status === "failed" || exec.status === "dead"
+                    : exec.status === "dead"
                       ? "red"
                       : exec.status === "cancelled"
                         ? "yellow"
