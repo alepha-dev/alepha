@@ -8,7 +8,7 @@ import { $job } from "alepha/api/jobs";
 
 ## Overview
 
-Job primitive for defining scheduled and on-demand tasks with payload validation, retry policies, and batching.
+Job primitive for defining scheduled and on-demand tasks with payload validation and retry policies.
 
 ## Options
 
@@ -20,7 +20,6 @@ Job primitive for defining scheduled and on-demand tasks with payload validation
 | `retry` | `JobRetryOptions` | No | Retry policy for failed executions. |
 | `timeout` | `DurationLike` | No | Max execution time per attempt. |
 | `concurrency` | `number` | No | Max parallel executions. |
-| `batch` | `JobBatchOptions` | No | Consumer batching configuration. |
 | `priority` | `JobPriority` | No | Default priority for pushed jobs. |
 | `handler` | `Object` | Yes | Handler function for job execution. |
 

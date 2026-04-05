@@ -24,7 +24,7 @@ Job execution framework — unified primitive for deferred, scheduled, and queue
 
 ### Primitives
 
-- [`$job`](/docs/reference-primitives-$job) — Job primitive for defining scheduled and on-demand tasks with payload validation, retry policies, and batching.
+- [`$job`](/docs/reference-primitives-$job) — Job primitive for defining scheduled and on-demand tasks with payload validation and retry policies.
 
 ### Providers
 
