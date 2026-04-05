@@ -3,7 +3,6 @@
 @import "@mantine/spotlight/styles.css";
 @import "@mantine/dates/styles.css";
 @import "@mantine/notifications/styles.css";
-@import "@mantine/charts/styles.css";
 @import "./components/buttons/DarkModeButton.css";
 @import "./json/components/JsonViewer.css";
 
