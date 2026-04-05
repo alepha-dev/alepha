@@ -163,4 +163,48 @@ export class AdminJobController {
     },
     handler: ({ query }) => this.jobService.getTopFailures(query.days),
   });
+
+  public readonly pauseJob = $action({
+    method: "POST",
+    path: `${this.url}/pause`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:job:trigger"] })],
+    schema: {
+      body: t.object({ name: t.text() }),
+      response: okSchema,
+    },
+    handler: ({ body, user }) => {
+      return this.jobService.pauseJob(body.name, {
+        pausedBy: user?.id,
+        pausedByName: user?.name,
+      });
+    },
+  });
+
+  public readonly resumeJob = $action({
+    method: "POST",
+    path: `${this.url}/resume`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:job:trigger"] })],
+    schema: {
+      body: t.object({ name: t.text() }),
+      response: okSchema,
+    },
+    handler: async ({ body, user }) => {
+      return this.jobService.resumeJob(body.name, {
+        resumedBy: user?.id,
+        resumedByName: user?.name,
+      });
+    },
+  });
+
+  public readonly getPausedJobs = $action({
+    path: `${this.url}/paused`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:job:read"] })],
+    schema: {
+      response: t.array(t.text()),
+    },
+    handler: () => this.jobService.getPausedJobs(),
+  });
 }

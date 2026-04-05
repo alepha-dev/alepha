@@ -1,5 +1,4 @@
 import { $module, type Alepha, type Static, t } from "alepha";
-import { AlephaBatch } from "alepha/batch";
 import type { DateTime } from "alepha/datetime";
 import { AlephaLock } from "alepha/lock";
 import { AlephaQueue } from "alepha/queue";
@@ -83,7 +82,6 @@ export const AlephaApiJobs = $module({
     AlephaQueue,
     AlephaScheduler,
     AlephaLock,
-    AlephaBatch,
     JobProvider,
     JobQueueProvider,
     JobService,
@@ -100,7 +98,6 @@ export const AlephaApiJobs = $module({
 
     alepha.with(AlephaScheduler);
     alepha.with(AlephaLock);
-    alepha.with(AlephaBatch);
     alepha.with(JobProvider);
     alepha.with(JobService);
     alepha.with(AdminJobController);

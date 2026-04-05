@@ -14,12 +14,7 @@ export const jobRegistrationSchema = t.object({
       hasBackoff: t.boolean(),
     }),
   ),
-  batch: t.optional(
-    t.object({
-      size: t.integer(),
-      window: t.text(),
-    }),
-  ),
+  paused: t.boolean(),
 });
 
 export type JobRegistration = Static<typeof jobRegistrationSchema>;

@@ -17,7 +17,7 @@ import {
 } from "../providers/JobProvider.ts";
 
 /**
- * Job primitive for defining scheduled and on-demand tasks with payload validation, retry policies, and batching.
+ * Job primitive for defining scheduled and on-demand tasks with payload validation and retry policies.
  */
 export const $job = <T extends TSchema = TSchema>(
   options: JobPrimitiveOptions<T>,
@@ -50,11 +50,6 @@ export interface JobRetryOptions {
   retries: number;
   backoff?: DurationLike | JobRetryBackoff;
   when?: (error: Error) => boolean;
-}
-
-export interface JobBatchOptions {
-  size: number;
-  window: DurationLike;
 }
 
 export type JobPriority = "critical" | "high" | "normal" | "low";
@@ -92,11 +87,6 @@ export interface JobPrimitiveOptions<T extends TSchema = TSchema>
    * @default 1
    */
   concurrency?: number;
-
-  /**
-   * Consumer batching configuration.
-   */
-  batch?: JobBatchOptions;
 
   /**
    * Default priority for pushed jobs.
@@ -161,6 +151,27 @@ export class JobPrimitive<
    */
   public async trigger(context?: JobTriggerContext): Promise<void> {
     return this.jobProvider.trigger(this.name, context);
+  }
+
+  /**
+   * Pause this job. Pushed items are still accepted but processing is held.
+   */
+  public pause(): void {
+    this.jobProvider.pauseJob(this.name);
+  }
+
+  /**
+   * Resume a paused job and dispatch any pending items.
+   */
+  public async resume(): Promise<void> {
+    return this.jobProvider.resumeJob(this.name);
+  }
+
+  /**
+   * Whether this job is currently paused.
+   */
+  public get paused(): boolean {
+    return this.jobProvider.isJobPaused(this.name);
   }
 }
 

@@ -8,6 +8,7 @@ export const jobQueueDepthSchema = t.object({
   retrying: t.integer(),
   dead: t.integer(),
   concurrency: t.integer(),
+  paused: t.boolean(),
 });
 
 export type JobQueueDepth = Static<typeof jobQueueDepthSchema>;

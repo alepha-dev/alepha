@@ -23,6 +23,9 @@ export const jobConfig = $atom({
     logMaxEntries: t.integer({
       description: "Max log entries captured per execution.",
     }),
+    drainTimeout: t.integer({
+      description: "Max time (ms) to wait for in-flight jobs during shutdown.",
+    }),
   }),
   default: {
     recovery: {
@@ -35,6 +38,7 @@ export const jobConfig = $atom({
     },
     logRetentionDays: 30,
     logMaxEntries: 100,
+    drainTimeout: 30_000,
   },
 });
 

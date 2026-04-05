@@ -2020,4 +2020,880 @@ describe("$job v2", () => {
       expect(handler).toHaveBeenCalledTimes(3);
     });
   });
+
+  // ----- Concurrency enforcement -----
+
+  describe("concurrency enforcement", () => {
+    it("should execute serially with concurrency: 1", async () => {
+      let maxRunning = 0;
+      let currentRunning = 0;
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ id: t.text() }),
+          concurrency: 1,
+          handler: async () => {
+            currentRunning++;
+            maxRunning = Math.max(maxRunning, currentRunning);
+            await new Promise((r) => setTimeout(r, 50));
+            currentRunning--;
+          },
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.myJob.push([{ id: "1" }, { id: "2" }, { id: "3" }]);
+
+      await vi.waitFor(
+        async () => {
+          const completed = await app.repo.findMany({
+            where: { jobName: "App.myJob", status: "completed" },
+          });
+          expect(completed).toHaveLength(3);
+        },
+        { timeout: 10_000 },
+      );
+
+      expect(maxRunning).toBe(1);
+    });
+
+    it("should allow parallel execution up to concurrency limit", async () => {
+      let maxRunning = 0;
+      let currentRunning = 0;
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ id: t.text() }),
+          concurrency: 2,
+          handler: async () => {
+            currentRunning++;
+            maxRunning = Math.max(maxRunning, currentRunning);
+            await new Promise((r) => setTimeout(r, 50));
+            currentRunning--;
+          },
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.myJob.push([
+        { id: "1" },
+        { id: "2" },
+        { id: "3" },
+        { id: "4" },
+      ]);
+
+      await vi.waitFor(
+        async () => {
+          const completed = await app.repo.findMany({
+            where: { jobName: "App.myJob", status: "completed" },
+          });
+          expect(completed).toHaveLength(4);
+        },
+        { timeout: 10_000 },
+      );
+
+      expect(maxRunning).toBeLessThanOrEqual(2);
+    });
+
+    it("should dispatch next pending after completion", async () => {
+      const order: string[] = [];
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ id: t.text() }),
+          concurrency: 1,
+          handler: async ({ items }) => {
+            order.push(items[0]?.payload.id ?? "cron");
+          },
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.myJob.push({ id: "a" });
+      await app.myJob.push({ id: "b" });
+
+      await vi.waitFor(
+        async () => {
+          const completed = await app.repo.findMany({
+            where: { jobName: "App.myJob", status: "completed" },
+          });
+          expect(completed).toHaveLength(2);
+        },
+        { timeout: 10_000 },
+      );
+
+      expect(order).toEqual(["a", "b"]);
+    });
+  });
+
+  // ----- Pause / Resume -----
+
+  describe("pause / resume", () => {
+    it("should not dispatch while paused", async () => {
+      const handler = vi.fn();
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler,
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      app.myJob.pause();
+      expect(app.myJob.paused).toBe(true);
+
+      await app.myJob.push({ value: "test" });
+
+      // Item should stay pending
+      const executions = await app.repo.findMany({
+        where: { jobName: "App.myJob" },
+      });
+      expect(executions).toHaveLength(1);
+      expect(executions[0].status).toBe("pending");
+      expect(handler).not.toHaveBeenCalled();
+
+      // Cleanup: resume so nothing leaks
+      await app.myJob.resume();
+    });
+
+    it("should accept pushes while paused and process on resume", async () => {
+      const handler = vi.fn();
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler,
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      app.myJob.pause();
+
+      await app.myJob.push({ value: "a" });
+      await app.myJob.push({ value: "b" });
+
+      expect(handler).not.toHaveBeenCalled();
+
+      await app.myJob.resume();
+      expect(app.myJob.paused).toBe(false);
+
+      await vi.waitFor(
+        async () => {
+          const completed = await app.repo.findMany({
+            where: { jobName: "App.myJob", status: "completed" },
+          });
+          expect(completed).toHaveLength(2);
+        },
+        { timeout: 10_000 },
+      );
+
+      expect(handler).toHaveBeenCalledTimes(2);
+    });
+
+    it("should report paused status via JobService registry", async () => {
+      class App {
+        jobService = $inject(JobService);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      const before = app.jobService.getRegistry();
+      expect(before[0].paused).toBe(false);
+
+      app.myJob.pause();
+
+      const after = app.jobService.getRegistry();
+      expect(after[0].paused).toBe(true);
+
+      await app.myJob.resume();
+    });
+
+    it("should expose paused jobs via getPausedJobs", async () => {
+      class App {
+        jobService = $inject(JobService);
+        jobA = $job({
+          schema: t.object({ v: t.text() }),
+          handler: async () => {},
+        });
+        jobB = $job({
+          schema: t.object({ v: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      app.jobA.pause();
+      expect(app.jobService.getPausedJobs()).toEqual(["App.jobA"]);
+
+      app.jobB.pause();
+      expect(app.jobService.getPausedJobs()).toHaveLength(2);
+
+      await app.jobA.resume();
+      expect(app.jobService.getPausedJobs()).toEqual(["App.jobB"]);
+
+      await app.jobB.resume();
+    });
+  });
+
+  // ----- Priority-ordered dispatch -----
+
+  describe("priority-ordered dispatch", () => {
+    it("should dispatch higher priority jobs first", async () => {
+      const order: string[] = [];
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ label: t.text() }),
+          concurrency: 1,
+          handler: async ({ items }) => {
+            order.push(items[0].payload.label);
+          },
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      // Pause to queue items without dispatching
+      app.myJob.pause();
+
+      await app.myJob.push({ label: "low" }, { priority: "low" });
+      await app.myJob.push({ label: "critical" }, { priority: "critical" });
+      await app.myJob.push({ label: "normal" });
+
+      // Resume triggers dispatch in priority order
+      await app.myJob.resume();
+
+      await vi.waitFor(
+        async () => {
+          const completed = await app.repo.findMany({
+            where: { jobName: "App.myJob", status: "completed" },
+          });
+          expect(completed).toHaveLength(3);
+        },
+        { timeout: 10_000 },
+      );
+
+      expect(order).toEqual(["critical", "normal", "low"]);
+    });
+  });
+
+  // ----- Bulk pushMany -----
+
+  describe("bulk pushMany", () => {
+    it("should bulk-create non-keyed items", async () => {
+      const handler = vi.fn();
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ n: t.integer() }),
+          handler,
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      const ids = await app.myJob.pushMany([
+        { payload: { n: 1 } },
+        { payload: { n: 2 } },
+        { payload: { n: 3 } },
+      ]);
+
+      expect(ids).toHaveLength(3);
+
+      await vi.waitFor(
+        async () => {
+          const completed = await app.repo.findMany({
+            where: { jobName: "App.myJob", status: "completed" },
+          });
+          expect(completed).toHaveLength(3);
+        },
+        { timeout: 10_000 },
+      );
+    });
+
+    it("should handle mixed keyed and non-keyed items", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ v: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      const ids = await app.myJob.pushMany([
+        { payload: { v: "keyed" }, key: "k1", delay: [1, "hour"] },
+        { payload: { v: "bulk1" } },
+        { payload: { v: "bulk2" } },
+      ]);
+
+      expect(ids).toHaveLength(3);
+
+      const keyed = await app.repo.findById(ids[0]);
+      expect(keyed?.key).toBe("k1");
+      expect(keyed?.status).toBe("scheduled");
+
+      await vi.waitFor(async () => {
+        const completed = await app.repo.findMany({
+          where: { jobName: "App.myJob", status: "completed" },
+        });
+        expect(completed).toHaveLength(2);
+      });
+    });
+
+    it("should reject all items if one payload is invalid", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ n: t.integer() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await expect(
+        app.myJob.pushMany([
+          { payload: { n: 1 } },
+          { payload: { n: "not-a-number" as any } },
+        ]),
+      ).rejects.toThrow();
+
+      // First item should not have been created either (validation is upfront)
+      const all = await app.repo.findMany({
+        where: { jobName: "App.myJob" },
+      });
+      expect(all).toHaveLength(0);
+    });
+
+    it("should return empty array for empty input", async () => {
+      class App {
+        myJob = $job({
+          schema: t.object({ v: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      const ids = await app.myJob.pushMany([]);
+      expect(ids).toEqual([]);
+    });
+  });
+
+  // ----- Graceful drain -----
+
+  describe("graceful drain", () => {
+    it("should wait for in-flight jobs before aborting on stop", async () => {
+      let completed = false;
+
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {
+            await new Promise((r) => setTimeout(r, 100));
+            completed = true;
+          },
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.myJob.push({ value: "test" });
+
+      await vi.waitFor(async () => {
+        const running = await app.repo.findMany({
+          where: { jobName: "App.myJob", status: "running" },
+        });
+        expect(running).toHaveLength(1);
+      });
+
+      // Stop should drain (wait for the in-flight job)
+      await alepha.stop();
+
+      expect(completed).toBe(true);
+    });
+
+    it("should stop cleanly when no jobs are in-flight", async () => {
+      class App {
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      alepha.inject(App);
+      await alepha.start();
+      await alepha.stop();
+    });
+  });
+
+  // ----- JobService reporting -----
+
+  describe("JobService reporting", () => {
+    it("should find executions with status filter", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        jobService = $inject(JobService);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.myJob.push({ value: "test" });
+
+      await vi.waitFor(async () => {
+        const completed = await app.repo.findMany({
+          where: { jobName: "App.myJob", status: "completed" },
+        });
+        expect(completed).toHaveLength(1);
+      });
+
+      // Push a delayed one (stays scheduled)
+      await app.myJob.push({ value: "later" }, { delay: [1, "hour"] });
+
+      const completedPage = await app.jobService.findExecutions({
+        status: "completed",
+      });
+      expect(completedPage.content.length).toBe(1);
+      expect(completedPage.content[0].status).toBe("completed");
+
+      const scheduledPage = await app.jobService.findExecutions({
+        status: "scheduled",
+      });
+      expect(scheduledPage.content.length).toBe(1);
+    });
+
+    it("should find executions with priority filter", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        jobService = $inject(JobService);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.myJob.push(
+        { value: "hi" },
+        { priority: "high", delay: [1, "hour"] },
+      );
+      await app.myJob.push(
+        { value: "lo" },
+        { priority: "low", delay: [1, "hour"] },
+      );
+
+      const highPage = await app.jobService.findExecutions({
+        priority: "high",
+      });
+      expect(highPage.content).toHaveLength(1);
+      expect(highPage.content[0].priority).toBe(1);
+    });
+
+    it("should return execution detail with logs", async () => {
+      class App {
+        log = $logger();
+        repo = $repository(jobExecutionEntity);
+        logRepo = $repository(jobExecutionLogEntity);
+        jobService = $inject(JobService);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {
+            this.log.info("hello from handler");
+          },
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.myJob.push({ value: "test" });
+
+      await vi.waitFor(async () => {
+        const completed = await app.repo.findMany({
+          where: { jobName: "App.myJob", status: "completed" },
+        });
+        expect(completed).toHaveLength(1);
+      });
+
+      const completed = await app.repo.findMany({
+        where: { jobName: "App.myJob", status: "completed" },
+      });
+      const detail = await app.jobService.getExecution(completed[0].id);
+
+      expect(detail.status).toBe("completed");
+      expect(detail.can).toBeDefined();
+      expect(detail.logs).toBeDefined();
+      expect(detail.logs!.some((l) => l.message === "hello from handler")).toBe(
+        true,
+      );
+    });
+
+    it("should return cron jobs with last execution info", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        jobService = $inject(JobService);
+        cronJob = $job({
+          cron: "0 0 * * *",
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.cronJob.trigger();
+
+      await vi.waitFor(async () => {
+        const completed = await app.repo.findMany({
+          where: { jobName: "App.cronJob", status: "completed" },
+        });
+        expect(completed).toHaveLength(1);
+      });
+
+      const cronJobs = await app.jobService.getCronJobs();
+      expect(cronJobs).toHaveLength(1);
+      expect(cronJobs[0].name).toBe("App.cronJob");
+      expect(cronJobs[0].cron).toBe("0 0 * * *");
+      expect(cronJobs[0].lastExecution).toBeDefined();
+      expect(cronJobs[0].lastExecution!.status).toBe("completed");
+    });
+
+    it("should return queue depth per job", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        jobService = $inject(JobService);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      // Create a scheduled execution (stays in queue)
+      await app.myJob.push({ value: "test" }, { delay: [1, "hour"] });
+
+      const depths = await app.jobService.getQueueDepth();
+      const depth = depths.find((d) => d.jobName === "App.myJob");
+      expect(depth).toBeDefined();
+      expect(depth!.scheduled).toBe(1);
+      expect(depth!.pending).toBe(0);
+    });
+
+    it("should return top failures", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        jobService = $inject(JobService);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {
+            throw new Error("always fails");
+          },
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.myJob.push({ value: "test" });
+
+      await vi.waitFor(async () => {
+        const dead = await app.repo.findMany({
+          where: { jobName: "App.myJob", status: "dead" },
+        });
+        expect(dead).toHaveLength(1);
+      });
+
+      const failures = await app.jobService.getTopFailures();
+      expect(failures.length).toBeGreaterThanOrEqual(1);
+      const entry = failures.find((f) => f.jobName === "App.myJob");
+      expect(entry).toBeDefined();
+      expect(entry!.failures).toBe(1);
+      expect(entry!.lastError).toBe("always fails");
+    });
+
+    it("should return activity over time", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        jobService = $inject(JobService);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.myJob.push({ value: "test" });
+
+      await vi.waitFor(async () => {
+        const completed = await app.repo.findMany({
+          where: { jobName: "App.myJob", status: "completed" },
+        });
+        expect(completed).toHaveLength(1);
+      });
+
+      const activity = await app.jobService.getActivity(7);
+      expect(activity).toHaveLength(7);
+
+      // Today should have at least 1 completed
+      const today = activity[activity.length - 1];
+      expect(today.completed).toBeGreaterThanOrEqual(1);
+    });
+
+    it("should return job registry with type classification", async () => {
+      class App {
+        jobService = $inject(JobService);
+        pushOnly = $job({
+          schema: t.object({ v: t.text() }),
+          handler: async () => {},
+        });
+        cronOnly = $job({
+          cron: "0 0 * * *",
+          handler: async () => {},
+        });
+        both = $job({
+          schema: t.object({ v: t.text() }),
+          cron: "0 0 * * *",
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      const registry = app.jobService.getRegistry();
+      expect(registry).toHaveLength(3);
+
+      const push = registry.find((r) => r.name === "App.pushOnly");
+      const cron = registry.find((r) => r.name === "App.cronOnly");
+      const dual = registry.find((r) => r.name === "App.both");
+
+      expect(push!.type).toBe("push");
+      expect(cron!.type).toBe("cron");
+      expect(dual!.type).toBe("both");
+    });
+  });
+
+  // ----- Log purge -----
+
+  describe("log purge", () => {
+    it("should delete old completed executions and their logs", async () => {
+      class App {
+        log = $logger();
+        repo = $repository(jobExecutionEntity);
+        logRepo = $repository(jobExecutionLogEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {
+            this.log.info("some log");
+          },
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.myJob.push({ value: "test" });
+
+      await vi.waitFor(async () => {
+        const completed = await app.repo.findMany({
+          where: { jobName: "App.myJob", status: "completed" },
+        });
+        expect(completed).toHaveLength(1);
+      });
+
+      // Backdate completedAt to 60 days ago (retention is 30 days)
+      const completed = await app.repo.findMany({
+        where: { jobName: "App.myJob", status: "completed" },
+      });
+      const sixtyDaysAgo = new Date(Date.now() - 60 * 86_400_000).toISOString();
+      await app.repo.updateById(completed[0].id, {
+        completedAt: sixtyDaysAgo,
+      });
+
+      // Verify log exists before purge
+      const logBefore = await app.logRepo.findById(completed[0].id);
+      expect(logBefore).toBeDefined();
+
+      // Run purge
+      const provider = alepha.inject(JobProvider) as any;
+      await provider.logPurge();
+
+      // Both execution and log should be deleted
+      const execAfter = await app.repo.findById(completed[0].id);
+      expect(execAfter).toBeUndefined();
+
+      const logAfter = await app.logRepo.findById(completed[0].id);
+      expect(logAfter).toBeUndefined();
+    });
+
+    it("should preserve recent executions", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await app.myJob.push({ value: "test" });
+
+      await vi.waitFor(async () => {
+        const completed = await app.repo.findMany({
+          where: { jobName: "App.myJob", status: "completed" },
+        });
+        expect(completed).toHaveLength(1);
+      });
+
+      // Run purge — recent execution should survive
+      const provider = alepha.inject(JobProvider) as any;
+      await provider.logPurge();
+
+      const all = await app.repo.findMany({
+        where: { jobName: "App.myJob" },
+      });
+      expect(all).toHaveLength(1);
+    });
+  });
+
+  // ----- Locked sweeps -----
+
+  describe("locked sweeps", () => {
+    it("should skip sweep when lock is held by another worker", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      // Insert a stale pending record
+      const staleTime = new Date(Date.now() - 600_000).toISOString();
+      await app.repo.create({
+        jobName: "App.myJob",
+        payload: { value: "stale" },
+        status: "pending",
+        priority: 2,
+        maxAttempts: 1,
+        createdAt: staleTime,
+        updatedAt: staleTime,
+      });
+
+      // Simulate another worker holding the lock
+      const provider = alepha.inject(JobProvider) as any;
+      await provider.lockProvider.set(
+        "_alepha:jobs:recovery-lock",
+        "other-worker,2026-01-01T00:00:00.000Z",
+        false,
+        300_000,
+      );
+
+      // Recovery sweep should skip (lock held)
+      await provider.recoverySweep();
+
+      // Job should still be pending (not dispatched)
+      const pending = await app.repo.findMany({
+        where: { jobName: "App.myJob", status: "pending" },
+      });
+      expect(pending).toHaveLength(1);
+    });
+
+    it("should release lock after sweep completes", async () => {
+      class App {
+        repo = $repository(jobExecutionEntity);
+        myJob = $job({
+          schema: t.object({ value: t.text() }),
+          handler: async () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      const provider = alepha.inject(JobProvider) as any;
+
+      // Run sweep (should acquire and release lock)
+      await provider.recoverySweep();
+
+      // Second sweep should also succeed (lock was released)
+      await provider.recoverySweep();
+    });
+  });
 });

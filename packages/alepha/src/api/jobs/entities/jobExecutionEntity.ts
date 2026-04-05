@@ -19,7 +19,6 @@ export const jobExecutionEntity = $entity({
         "retrying",
         "running",
         "completed",
-        "failed",
         "dead",
         "cancelled",
       ]),
@@ -59,6 +58,5 @@ export type JobStatus =
   | "retrying"
   | "running"
   | "completed"
-  | "failed"
   | "dead"
   | "cancelled";

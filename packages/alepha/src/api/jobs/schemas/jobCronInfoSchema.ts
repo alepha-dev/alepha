@@ -7,6 +7,7 @@ export const jobCronInfoSchema = t.object({
   priority: t.enum(["critical", "high", "normal", "low"]),
   concurrency: t.integer(),
   hasSchema: t.boolean(),
+  paused: t.boolean(),
   lastExecution: t.optional(
     t.object({
       id: t.uuid(),

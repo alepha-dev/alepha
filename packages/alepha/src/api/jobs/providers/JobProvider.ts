@@ -8,6 +8,7 @@ import {
   type TSchema,
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
+import { LockProvider } from "alepha/lock";
 import type { LogEntry } from "alepha/logger";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
@@ -81,12 +82,15 @@ export class JobProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly cronProvider = $inject(CronProvider);
+  protected readonly lockProvider = $inject(LockProvider);
   protected readonly config = $state(jobConfig);
   protected readonly log = $logger();
   protected readonly executions = $repository(jobExecutionEntity);
   protected readonly executionLogs = $repository(jobExecutionLogEntity);
 
   protected readonly jobs = new Map<string, JobRegistration>();
+  protected readonly pausedJobs = new Set<string>();
+  protected readonly inFlight = new Set<Promise<void>>();
 
   /**
    * When set, job executions are dispatched through a queue (e.g. `JobQueueProvider`).
@@ -227,8 +231,61 @@ export class JobProvider {
     name: string,
     items: Array<PushManyItem>,
   ): Promise<string[]> {
-    const ids: string[] = [];
+    if (items.length === 0) return [];
+
+    const registration = this.getRegistration(name);
+    const opts = registration.options;
+
+    if (!opts.schema) {
+      throw new AlephaError(
+        `Cannot push to job '${name}': no schema defined. Use trigger() for cron-only jobs.`,
+      );
+    }
+
+    const maxAttempts = (opts.retry?.retries ?? 0) + 1;
+
+    // Keyed items need upsert logic — fall back to individual push
+    const keyed: PushManyItem[] = [];
+    const bulkRows: Array<{
+      jobName: string;
+      payload: Record<string, unknown>;
+      status: JobStatus;
+      priority: number;
+      maxAttempts: number;
+      scheduledAt?: string;
+    }> = [];
+
     for (const item of items) {
+      const validated = this.alepha.codec.validate(opts.schema, item.payload);
+      if (item.key) {
+        keyed.push({ ...item, payload: validated as Static<TSchema> });
+      } else {
+        const isDelayed = item.delay || item.scheduledAt;
+        const status: JobStatus = isDelayed ? "scheduled" : "pending";
+        let scheduledAt: string | undefined;
+        if (item.scheduledAt) {
+          scheduledAt = item.scheduledAt.toISOString();
+        } else if (item.delay) {
+          scheduledAt = this.dt
+            .now()
+            .add(this.dt.duration(item.delay))
+            .toISOString();
+        }
+        bulkRows.push({
+          jobName: name,
+          payload: validated as Record<string, unknown>,
+          status,
+          priority: PRIORITY_MAP[item.priority ?? opts.priority ?? "normal"],
+          maxAttempts,
+          scheduledAt,
+        });
+      }
+    }
+
+    const ids: string[] = [];
+
+    // Keyed: sequential upserts
+    for (const item of keyed) {
       const id = await this.push(name, item.payload, {
         key: item.key,
         delay: item.delay,
@@ -237,6 +294,23 @@ export class JobProvider {
       });
       ids.push(id);
     }
+
+    // Non-keyed: single bulk insert
+    if (bulkRows.length > 0) {
+      const created = await this.executions.createMany(bulkRows);
+      for (const exec of created) {
+        ids.push(exec.id);
+        if (exec.status === "pending" && !this.stopping) {
+          await this.scheduleProcessing(name, exec.id);
+        }
+      }
+    }
+
+    this.log.debug(`pushMany '${name}': ${ids.length} jobs created`, {
+      bulk: bulkRows.length,
+      keyed: keyed.length,
+    });
+
     return ids;
   }
 
@@ -330,6 +404,25 @@ export class JobProvider {
     jobName: string,
     executionId: string,
   ): Promise<void> {
+    if (this.pausedJobs.has(jobName)) {
+      this.log.debug(`Job '${jobName}' is paused, deferring`, { executionId });
+      return;
+    }
+
+    const registration = this.getRegistration(jobName);
+    const maxConcurrency = registration.options.concurrency ?? 1;
+    const runningCount = await this.executions.count({
+      jobName: { eq: jobName },
+      status: { eq: "running" },
+    });
+    if (runningCount >= maxConcurrency) {
+      this.log.debug(
+        `Job '${jobName}' at concurrency limit (${runningCount}/${maxConcurrency}), deferring`,
+        { executionId },
+      );
+      return;
+    }
+
     if (this.queueDispatch) {
       this.log.debug(`Dispatching job '${jobName}' via queue`, { executionId });
       await this.queueDispatch(jobName, executionId);
@@ -340,6 +433,19 @@ export class JobProvider {
   }
 
   public async processExecution(
+    jobName: string,
+    executionId: string,
+  ): Promise<void> {
+    const promise = this.processExecutionInner(jobName, executionId);
+    this.inFlight.add(promise);
+    try {
+      await promise;
+    } finally {
+      this.inFlight.delete(promise);
+    }
+  }
+
+  protected async processExecutionInner(
     jobName: string,
     executionId: string,
   ): Promise<void> {
@@ -455,12 +561,45 @@ export class JobProvider {
               { name: jobName, executionId },
               { catch: true },
             );
+
+            // A slot just opened — dispatch next pending job if any
+            await this.dispatchNextPending(jobName);
           }
         },
         { context },
       );
     } finally {
       this.logs.delete(context);
+    }
+  }
+
+  /**
+   * After a job finishes (success, failure, or cancel), dispatch any pending
+   * jobs that were deferred due to the concurrency limit.
+   */
+  protected async dispatchNextPending(jobName: string): Promise<void> {
+    if (this.stopping || this.pausedJobs.has(jobName)) return;
+
+    const registration = this.jobs.get(jobName);
+    if (!registration) return;
+
+    const maxConcurrency = registration.options.concurrency ?? 1;
+    const runningCount = await this.executions.count({
+      jobName: { eq: jobName },
+      status: { eq: "running" },
+    });
+
+    const available = maxConcurrency - runningCount;
+    if (available <= 0) return;
+
+    const pending = await this.executions.findMany({
+      where: { jobName: { eq: jobName }, status: { eq: "pending" } },
+      orderBy: { column: "priority", direction: "asc" },
+      limit: available,
+    });
+
+    for (const exec of pending) {
+      await this.scheduleProcessing(jobName, exec.id);
     }
   }
 
@@ -650,10 +789,14 @@ export class JobProvider {
   protected async recoverySweep(): Promise<void> {
     this.log.trace("Starting recovery sweep");
     if (this.stopping) return;
+
+    const acquired = await this.tryLock("_alepha:jobs:recovery-lock", 300_000);
+    if (!acquired) return;
+
     try {
       const now = this.dt.now();
 
-      // 1. Stale pending jobs
+      // 1. Stale pending jobs (priority-ordered)
       const staleThreshold = now
         .subtract(this.config.recovery.staleThreshold, "millisecond")
         .toISOString();
@@ -664,6 +807,7 @@ export class JobProvider {
 
       const stalePending = await this.executions.findMany({
         where: pendingWhere,
+        orderBy: { column: "priority", direction: "asc" },
       });
 
       for (const exec of stalePending) {
@@ -712,6 +856,8 @@ export class JobProvider {
       }
     } catch (e) {
       this.log.error("Recovery sweep failed", { error: e });
+    } finally {
+      await this.releaseLock("_alepha:jobs:recovery-lock");
     }
   }
 
@@ -725,6 +871,10 @@ export class JobProvider {
   protected async delayedDispatchSweep(): Promise<void> {
     this.log.trace("Starting delayed dispatch sweep");
     if (this.stopping) return;
+
+    const acquired = await this.tryLock("_alepha:jobs:dispatch-lock", 60_000);
+    if (!acquired) return;
+
     try {
       const now = this.dt.nowISOString();
 
@@ -732,7 +882,10 @@ export class JobProvider {
       where.status = { inArray: ["scheduled", "retrying"] };
       where.scheduledAt = { lte: now };
 
-      const ready = await this.executions.findMany({ where });
+      const ready = await this.executions.findMany({
+        where,
+        orderBy: { column: "priority", direction: "asc" },
+      });
 
       for (const exec of ready) {
         if (!this.jobs.has(exec.jobName)) continue;
@@ -741,6 +894,8 @@ export class JobProvider {
       }
     } catch (e) {
       this.log.error("Delayed dispatch sweep failed", { error: e });
+    } finally {
+      await this.releaseLock("_alepha:jobs:dispatch-lock");
     }
   }
 
@@ -762,23 +917,64 @@ export class JobProvider {
       where.status = { inArray: ["completed", "dead", "cancelled"] };
       where.completedAt = { lte: cutoff };
 
-      const old = await this.executions.findMany({ where });
-
-      for (const exec of old) {
-        try {
-          await this.executionLogs.deleteById(exec.id);
-        } catch {
-          // Log record may not exist
-        }
-        await this.executions.deleteById(exec.id);
-      }
-
-      if (old.length > 0) {
-        this.log.info(`Log purge: deleted ${old.length} old execution records`);
+      // Bulk-delete logs first (FK-safe), then executions
+      const expiredIds = await this.executions.findMany({
+        where,
+        columns: ["id"] as any,
+      });
+      if (expiredIds.length > 0) {
+        const ids = expiredIds.map((e) => e.id);
+        await this.executionLogs.deleteMany({ id: { inArray: ids } });
+        await this.executions.deleteMany({ id: { inArray: ids } });
+        this.log.info(`Log purge: deleted ${ids.length} old execution records`);
       }
     } catch (e) {
       this.log.error("Log purge failed", { error: e });
     }
+  }
+
+  // --- Pause / Resume ---
+
+  public pauseJob(name: string): void {
+    this.getRegistration(name);
+    this.pausedJobs.add(name);
+    this.log.info(`Paused job '${name}'`);
+  }
+
+  public async resumeJob(name: string): Promise<void> {
+    this.getRegistration(name);
+    this.pausedJobs.delete(name);
+    this.log.info(`Resumed job '${name}'`);
+
+    // Dispatch any pending items for this job
+    const pending = await this.executions.findMany({
+      where: { jobName: { eq: name }, status: { eq: "pending" } },
+      orderBy: { column: "priority", direction: "asc" },
+    });
+    for (const exec of pending) {
+      await this.scheduleProcessing(name, exec.id);
+    }
+  }
+
+  public isJobPaused(name: string): boolean {
+    return this.pausedJobs.has(name);
+  }
+
+  public getPausedJobs(): string[] {
+    return [...this.pausedJobs];
+  }
+
+  // --- Lock helpers ---
+
+  protected async tryLock(key: string, ttlMs: number): Promise<boolean> {
+    const lockValue = `${this.workerId},${this.dt.nowISOString()}`;
+    const result = await this.lockProvider.set(key, lockValue, true, ttlMs);
+    const [lockId] = result.split(",");
+    return lockId === this.workerId;
+  }
+
+  protected async releaseLock(key: string): Promise<void> {
+    await this.lockProvider.del(key);
   }
 
   // --- Lifecycle hooks ---
@@ -843,9 +1039,23 @@ export class JobProvider {
     handler: async () => {
       this.stopping = true;
 
-      // Abort any running executions
-      for (const controller of this.abortControllers.values()) {
-        controller.abort();
+      // Drain: wait for in-flight jobs to finish before aborting
+      if (this.inFlight.size > 0) {
+        this.log.info(`Draining ${this.inFlight.size} in-flight job(s)...`);
+        await Promise.race([
+          Promise.allSettled([...this.inFlight]),
+          this.dt.wait([this.config.drainTimeout, "millisecond"]),
+        ]);
+      }
+
+      // Abort any still-running executions after drain timeout
+      if (this.abortControllers.size > 0) {
+        this.log.warn(
+          `Aborting ${this.abortControllers.size} remaining job(s) after drain timeout`,
+        );
+        for (const controller of this.abortControllers.values()) {
+          controller.abort();
+        }
       }
     },
   });

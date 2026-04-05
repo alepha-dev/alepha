@@ -9,7 +9,6 @@ export const notificationQuerySchema = t.extend(pageQuerySchema, {
       "retrying",
       "running",
       "completed",
-      "failed",
       "dead",
       "cancelled",
     ]),

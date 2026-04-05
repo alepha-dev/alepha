@@ -68,7 +68,7 @@ export class JobService {
           COUNT(*) FILTER (WHERE ${e.status} = 'retrying') AS retrying,
           COUNT(*) FILTER (WHERE ${e.status} = 'dead') AS dead,
           COUNT(*) FILTER (WHERE ${e.status} = 'completed' AND ${e.completedAt} >= ${periodAgo}) AS completed_24h,
-          COUNT(*) FILTER (WHERE ${e.status} IN ('dead', 'failed') AND ${e.completedAt} >= ${periodAgo}) AS failed_24h
+          COUNT(*) FILTER (WHERE ${e.status} = 'dead' AND ${e.completedAt} >= ${periodAgo}) AS failed_24h
         FROM ${e}
       `,
       t.object({
@@ -127,12 +127,7 @@ export class JobService {
               hasBackoff: Boolean(opts.retry.backoff),
             }
           : undefined,
-        batch: opts.batch
-          ? {
-              size: opts.batch.size,
-              window: String(opts.batch.window),
-            }
-          : undefined,
+        paused: this.jobProvider.isJobPaused(name),
       };
 
       result.push(registration);
@@ -278,6 +273,48 @@ export class JobService {
     return { ok: true };
   }
 
+  public pauseJob(
+    name: string,
+    context?: { pausedBy?: string; pausedByName?: string },
+  ): { ok: boolean } {
+    const jobPrimitives = this.alepha.primitives($job);
+    const job = jobPrimitives.find((j) => j.name === name);
+
+    if (!job) {
+      throw new NotFoundError(`Job not found: ${name}`);
+    }
+
+    this.log.info(`Pausing job '${name}'`, {
+      pausedBy: context?.pausedByName ?? context?.pausedBy,
+    });
+
+    job.pause();
+    return { ok: true };
+  }
+
+  public async resumeJob(
+    name: string,
+    context?: { resumedBy?: string; resumedByName?: string },
+  ): Promise<{ ok: boolean }> {
+    const jobPrimitives = this.alepha.primitives($job);
+    const job = jobPrimitives.find((j) => j.name === name);
+
+    if (!job) {
+      throw new NotFoundError(`Job not found: ${name}`);
+    }
+
+    this.log.info(`Resuming job '${name}'`, {
+      resumedBy: context?.resumedByName ?? context?.resumedBy,
+    });
+
+    await job.resume();
+    return { ok: true };
+  }
+
+  public getPausedJobs(): string[] {
+    return this.jobProvider.getPausedJobs();
+  }
+
   public async getCronJobs(): Promise<JobCronInfo[]> {
     const jobs = this.jobProvider.getRegisteredJobs();
     const cronJobNames: string[] = [];
@@ -301,6 +338,7 @@ export class JobService {
         priority: (opts.priority ?? "normal") as JobCronInfo["priority"],
         concurrency: opts.concurrency ?? 1,
         hasSchema: Boolean(opts.schema),
+        paused: this.jobProvider.isJobPaused(name),
         lastExecution: last
           ? {
               id: last.id,
@@ -355,6 +393,7 @@ export class JobService {
         retrying: Number(row?.retrying ?? 0),
         dead: Number(row?.dead ?? 0),
         concurrency: reg.options.concurrency ?? 1,
+        paused: this.jobProvider.isJobPaused(name),
       });
     }
 
@@ -378,10 +417,10 @@ export class JobService {
         SELECT
           ds.date::text AS date,
           COALESCE(COUNT(*) FILTER (WHERE ${e.status} = 'completed'), 0) AS completed,
-          COALESCE(COUNT(*) FILTER (WHERE ${e.status} IN ('dead', 'failed')), 0) AS failed
+          COALESCE(COUNT(*) FILTER (WHERE ${e.status} = 'dead'), 0) AS failed
         FROM date_series ds
         LEFT JOIN ${e} ON DATE(${e.completedAt}) = ds.date
-          AND ${e.status} IN ('completed', 'dead', 'failed')
+          AND ${e.status} IN ('completed', 'dead')
         GROUP BY ds.date
         ORDER BY ds.date ASC
       `,
@@ -404,7 +443,7 @@ export class JobService {
     const startDate = now.subtract(days - 1, "day");
 
     const where = this.executions.createQueryWhere();
-    where.status = { inArray: ["completed", "dead", "failed"] };
+    where.status = { inArray: ["completed", "dead"] };
     where.completedAt = { gte: startDate.startOf("day").toISOString() };
 
     const executions = await this.executions.findMany({ where });
@@ -448,7 +487,7 @@ export class JobService {
           COUNT(*) AS failures,
           (ARRAY_AGG(${e.error} ORDER BY ${e.completedAt} DESC))[1] AS last_error
         FROM ${e}
-        WHERE ${e.status} IN ('dead', 'failed')
+        WHERE ${e.status} = 'dead'
           AND ${e.completedAt} >= ${periodAgoIso}
         GROUP BY ${e.jobName}
         ORDER BY failures DESC
@@ -471,7 +510,7 @@ export class JobService {
     periodAgoIso: string,
   ): Promise<JobFailure[]> {
     const where = this.executions.createQueryWhere();
-    where.status = { inArray: ["dead", "failed"] };
+    where.status = { eq: "dead" };
     where.completedAt = { gte: periodAgoIso };
 
     const failures = await this.executions.findMany({
