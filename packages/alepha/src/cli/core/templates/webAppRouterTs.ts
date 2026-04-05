@@ -57,6 +57,7 @@ export const webAppRouterTs = (options: {
   admin = $uiAdmin({
     pages: [
       this.users.adminUsers,
+      this.users.adminUserLayout,
       this.sessions.adminSessions,
     ],
     sidebarItems: [
@@ -67,7 +68,7 @@ export const webAppRouterTs = (options: {
 
   // ── Admin Dashboard ─────────────────────────────
   adminDashboard = $page({
-    parent: this.admin.adminLayout,
+    parent: this.admin,
     path: "/",
     label: "Dashboard",
     icon: IconLayoutDashboard,
