@@ -1,12 +1,12 @@
 import { ActionButton, Flex, Text } from "@alepha/ui";
 import { Card, Container, SimpleGrid } from "@mantine/core";
 import { modals } from "@mantine/modals";
+import type { InvitationEntity } from "alepha/api/invitations";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { Character } from "@/api/entities/characters.ts";
-import type { Invitation } from "@/api/entities/invitations.ts";
 import type { Project } from "@/api/entities/projects.ts";
 import type { User } from "@/api/entities/users.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
@@ -22,7 +22,7 @@ import ProjectSettingsPlayersSection from "./ProjectSettingsPlayersSection.tsx";
 export interface ProjectSettingsProps {
   project: Project;
   players: Array<Character & { user: User }>;
-  pendingInvitations: Array<Invitation>;
+  pendingInvitations: Array<InvitationEntity>;
 }
 
 const ProjectSettings = (props: ProjectSettingsProps) => {

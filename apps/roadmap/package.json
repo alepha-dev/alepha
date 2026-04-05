@@ -9,7 +9,7 @@
     "test": "alepha test",
     "build": "alepha build --stats",
     "build&start": "alepha build && LOG_LEVEL=debug LOG_FORMAT=pretty node dist",
-    "db:generate": "alepha db generate",
+    "db:generate": "alepha db migrations create",
     "build:docker": "alepha build --docker && cd dist && docker build -t alepha/roadmap .",
     "deploy": "alepha platform up -e production",
     "studio": "alepha db studio",
