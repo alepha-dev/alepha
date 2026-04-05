@@ -1,4 +1,4 @@
-import { $env, $inject, Alepha, type Static, t } from "alepha";
+import { $env, $inject, Alepha, AlephaError, type Static, t } from "alepha";
 import type {
   CreatePaymentMethodResult,
   CreateSessionResult,
@@ -7,6 +7,7 @@ import type {
   RefundResult,
   WebhookEvent,
 } from "alepha/api/payments";
+import { $cache } from "alepha/cache";
 import { $logger } from "alepha/logger";
 import Stripe from "stripe";
 
@@ -25,16 +26,59 @@ export class StripePaymentProvider implements PaymentProvider {
   protected readonly env = $env(envSchema);
   protected readonly stripe: Stripe;
 
+  /**
+   * Shared cache of Alepha userId → Stripe customer ID.
+   * The mapping is immutable once created, so a long TTL is safe.
+   * On cache miss, customers are re-discovered via Stripe search.
+   */
+  protected readonly customerCache = $cache<string>({
+    name: "stripe:customers",
+    ttl: [30, "days"],
+  });
+
   constructor() {
     this.stripe = new Stripe(this.env.STRIPE_SECRET_KEY);
+  }
+
+  /**
+   * Get or create a Stripe customer for the given Alepha user ID.
+   * Uses local cache first, then searches Stripe by metadata, and
+   * creates a new customer if none is found.
+   */
+  protected async getOrCreateCustomer(userId: string): Promise<string> {
+    const cached = await this.customerCache.get(userId);
+    if (cached) return cached;
+
+    const existing = await this.stripe.customers.search({
+      query: `metadata["alepha_user_id"]:"${userId}"`,
+      limit: 1,
+    });
+
+    if (existing.data.length > 0) {
+      const customerId = existing.data[0].id;
+      await this.customerCache.set(userId, customerId);
+      return customerId;
+    }
+
+    const customer = await this.stripe.customers.create({
+      metadata: { alepha_user_id: userId },
+    });
+
+    await this.customerCache.set(userId, customer.id);
+    return customer.id;
   }
 
   public async createSession(
     intent: PaymentIntentEntity,
     options: { returnUrl: string; authorize?: boolean },
   ): Promise<CreateSessionResult> {
+    const customer = intent.userId
+      ? await this.getOrCreateCustomer(intent.userId)
+      : undefined;
+
     const session = await this.stripe.checkout.sessions.create({
       mode: "payment",
+      customer,
       line_items: [
         {
           price_data: {
@@ -53,9 +97,18 @@ export class StripePaymentProvider implements PaymentProvider {
       metadata: { intentId: intent.id },
     });
 
+    if (!session.url || !session.payment_intent) {
+      throw new AlephaError(
+        "Stripe checkout session is missing URL or payment intent",
+      );
+    }
+
     return {
-      url: session.url!,
-      providerRef: session.payment_intent as string,
+      url: session.url,
+      providerRef:
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent.id,
     };
   }
 
@@ -85,7 +138,10 @@ export class StripePaymentProvider implements PaymentProvider {
 
   public async parseWebhook(request: Request): Promise<WebhookEvent> {
     const body = await request.text();
-    const signature = request.headers.get("stripe-signature")!;
+    const signature = request.headers.get("stripe-signature");
+    if (!signature) {
+      throw new AlephaError("Missing stripe-signature header");
+    }
     const event = this.stripe.webhooks.constructEvent(
       body,
       signature,
@@ -96,6 +152,7 @@ export class StripePaymentProvider implements PaymentProvider {
       "payment_intent.succeeded": "captured",
       "payment_intent.amount_capturable_updated": "authorized",
       "payment_intent.payment_failed": "failed",
+      "payment_intent.canceled": "failed",
     };
 
     const status = statusMap[event.type] ?? event.type;
@@ -112,8 +169,9 @@ export class StripePaymentProvider implements PaymentProvider {
     userId: string,
     token: string,
   ): Promise<CreatePaymentMethodResult> {
+    const customerId = await this.getOrCreateCustomer(userId);
     const pm = await this.stripe.paymentMethods.attach(token, {
-      customer: userId,
+      customer: customerId,
     });
 
     return {
