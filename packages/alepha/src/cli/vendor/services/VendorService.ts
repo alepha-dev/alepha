@@ -51,6 +51,13 @@ export interface VendorDiffResult {
 }
 
 /**
+ * Shape of the <root>/.alepha/vendor.json lock file.
+ */
+export interface VendorLock {
+  commit: string;
+}
+
+/**
  * Handles syncing and diffing vendored packages from a remote git repository.
  */
 export class VendorService {
@@ -61,32 +68,44 @@ export class VendorService {
   /**
    * Sync vendored packages from a remote repository.
    *
-   * Shallow-clones the remote once, then:
-   * - Without `force`: diffs first. If local modifications exist, aborts
-   *   and returns the diff result without touching local files.
-   * - With `force` (or no changes): removes local copies and replaces them.
+   * Without `force`: checks for local modifications by comparing the local
+   * copy against the last-synced commit (stored in .alepha/vendor.json).
+   * If modifications are found, aborts without touching local files.
+   *
+   * With `force` (or first sync): replaces local copies unconditionally.
    */
   async sync(options: VendorSyncOptions): Promise<VendorSyncResult> {
     const synced: string[] = [];
     const errors: string[] = [];
+
+    if (!options.force) {
+      const lock = await this.readLock(options.root);
+
+      if (lock) {
+        let baselineDir: string | undefined;
+        try {
+          baselineDir = await this.cloneAtCommit(options.remote, lock.commit);
+          const diffResult = await this.diffFromClone(
+            options.root,
+            baselineDir,
+            options.packages,
+          );
+
+          if (diffResult.totalChanges > 0) {
+            return { synced: [], errors: [], aborted: diffResult };
+          }
+        } finally {
+          if (baselineDir) {
+            await this.fs.rm(baselineDir, { recursive: true, force: true });
+          }
+        }
+      }
+    }
+
     let tmpDir: string | undefined;
 
     try {
       tmpDir = await this.cloneRemote(options.remote, options.branch);
-
-      if (!options.force) {
-        const diffResult = await this.diffFromClone(
-          options.root,
-          tmpDir,
-          options.packages,
-        );
-        const localModifications = diffResult.packages.some(
-          (pkg) => pkg.modified.length > 0 || pkg.removed.length > 0,
-        );
-        if (localModifications) {
-          return { synced: [], errors: [], aborted: diffResult };
-        }
-      }
 
       for (const pkg of options.packages) {
         const remotePkgDir = this.fs.join(tmpDir, "packages", pkg);
@@ -106,6 +125,9 @@ export class VendorService {
 
         synced.push(pkg);
       }
+
+      const commit = await this.getCommitHash(tmpDir);
+      await this.writeLock(options.root, { commit });
     } finally {
       if (tmpDir) {
         await this.fs.rm(tmpDir, { recursive: true, force: true });
@@ -116,16 +138,21 @@ export class VendorService {
   }
 
   /**
-   * Diff vendored packages against a remote repository.
+   * Diff vendored packages against the last-synced commit.
    *
-   * Shallow-clones the remote, then for each package: recursively compares
-   * files to identify added, modified, and removed files.
+   * Reads the commit hash from .alepha/vendor.json, clones at that commit,
+   * and compares local files to detect modifications since last sync.
    */
   async diff(options: VendorDiffOptions): Promise<VendorDiffResult> {
+    const lock = await this.readLock(options.root);
+    if (!lock) {
+      return { packages: [], totalChanges: 0 };
+    }
+
     let tmpDir: string | undefined;
 
     try {
-      tmpDir = await this.cloneRemote(options.remote, options.branch);
+      tmpDir = await this.cloneAtCommit(options.remote, lock.commit);
       return await this.diffFromClone(options.root, tmpDir, options.packages);
     } finally {
       if (tmpDir) {
@@ -256,6 +283,69 @@ export class VendorService {
     }
 
     return tmpDir;
+  }
+
+  /**
+   * Clone a remote repository at a specific commit hash.
+   */
+  protected async cloneAtCommit(
+    remote: string,
+    commit: string,
+  ): Promise<string> {
+    const tmpDir = this.fs.join(
+      process.env.TMPDIR || "/tmp",
+      `.alepha-vendor-${Date.now()}`,
+    );
+
+    this.log.debug(`Cloning ${remote}@${commit} into ${tmpDir}`);
+
+    await this.shell.run(`git init ${tmpDir}`, { capture: true });
+    await this.shell.run(`git -C ${tmpDir} remote add origin ${remote}`, {
+      capture: true,
+    });
+    await this.shell.run(`git -C ${tmpDir} fetch --depth 1 origin ${commit}`, {
+      capture: true,
+    });
+    await this.shell.run(`git -C ${tmpDir} checkout FETCH_HEAD`, {
+      capture: true,
+    });
+
+    return tmpDir;
+  }
+
+  /**
+   * Get the HEAD commit hash from a cloned repository.
+   */
+  protected async getCommitHash(repoDir: string): Promise<string> {
+    const hash = await this.shell.run(`git -C ${repoDir} rev-parse HEAD`, {
+      capture: true,
+    });
+    return hash.trim();
+  }
+
+  /**
+   * Read the vendor lock file.
+   */
+  protected async readLock(root: string): Promise<VendorLock | undefined> {
+    const lockPath = this.fs.join(root, ".alepha", "vendor.json");
+    const exists = await this.fs.exists(lockPath);
+    if (!exists) {
+      return undefined;
+    }
+    const content = await this.fs.readFile(lockPath);
+    return JSON.parse(content.toString());
+  }
+
+  /**
+   * Write the vendor lock file.
+   */
+  protected async writeLock(root: string, lock: VendorLock): Promise<void> {
+    const dir = this.fs.join(root, ".alepha");
+    await this.fs.mkdir(dir, { recursive: true });
+    await this.fs.writeFile(
+      this.fs.join(dir, "vendor.json"),
+      JSON.stringify(lock, null, 2),
+    );
   }
 
   /**

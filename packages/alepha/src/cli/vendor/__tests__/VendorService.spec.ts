@@ -21,6 +21,38 @@ describe("VendorService", () => {
     return { service, shell, fs };
   };
 
+  /**
+   * Helper to create a test service with a stubbed clone that returns
+   * a known directory, plus stubs getCommitHash to return a fixed hash.
+   */
+  const createTestService = (shell: MemoryShellProvider) => {
+    class TestVendorService extends VendorService {
+      protected override async cloneRemote(): Promise<string> {
+        await shell.run(
+          "git clone --depth 1 --branch main --filter=blob:none remote /tmp/test-clone",
+        );
+        return "/tmp/test-clone";
+      }
+
+      protected override async cloneAtCommit(): Promise<string> {
+        return "/tmp/test-baseline";
+      }
+
+      protected override async getCommitHash(): Promise<string> {
+        return "abc123";
+      }
+    }
+
+    const alepha = Alepha.create()
+      .with({ provide: ShellProvider, use: MemoryShellProvider })
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+
+    return {
+      service: alepha.inject(TestVendorService),
+      fs: alepha.inject(MemoryFileSystemProvider),
+    };
+  };
+
   describe("sync", () => {
     it("should clone the remote repository", async ({ expect }) => {
       const { service, shell, fs } = createTestEnv();
@@ -48,40 +80,23 @@ describe("VendorService", () => {
     });
 
     it("should remove local package dir before copying", async ({ expect }) => {
-      const { service, shell, fs } = createTestEnv();
+      const { service, fs } = createTestService(
+        Alepha.create()
+          .with({ provide: ShellProvider, use: MemoryShellProvider })
+          .inject(MemoryShellProvider),
+      );
 
-      /**
-       * Since MemoryShellProvider does not actually clone, we simulate
-       * by pre-populating the temp directory. We override cloneRemote
-       * to return a known path.
-       */
-      class TestVendorService extends VendorService {
-        protected override async cloneRemote(): Promise<string> {
-          await shell.run(
-            "git clone --depth 1 --branch main --filter=blob:none remote /tmp/test-clone",
-          );
-          return "/tmp/test-clone";
-        }
-      }
-
-      const alepha = Alepha.create()
-        .with({ provide: ShellProvider, use: MemoryShellProvider })
-        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
-
-      const testService = alepha.inject(TestVendorService);
-      const testFs = alepha.inject(MemoryFileSystemProvider);
-
-      await testFs.mkdir("/tmp/test-clone/packages/my-pkg", {
+      await fs.mkdir("/tmp/test-clone/packages/my-pkg", {
         recursive: true,
       });
-      await testFs.writeFile(
+      await fs.writeFile(
         "/tmp/test-clone/packages/my-pkg/index.ts",
         "export {}",
       );
-      await testFs.mkdir("/project/packages/my-pkg", { recursive: true });
-      await testFs.writeFile("/project/packages/my-pkg/old-file.ts", "old");
+      await fs.mkdir("/project/packages/my-pkg", { recursive: true });
+      await fs.writeFile("/project/packages/my-pkg/old-file.ts", "old");
 
-      const result = await testService.sync({
+      const result = await service.sync({
         root: "/project",
         remote: "remote",
         branch: "main",
@@ -91,28 +106,21 @@ describe("VendorService", () => {
 
       expect(result.synced).toEqual(["my-pkg"]);
       expect(result.errors).toEqual([]);
-      expect(testFs.wasDeleted("/project/packages/my-pkg")).toBe(true);
+      expect(fs.wasDeleted("/project/packages/my-pkg")).toBe(true);
     });
 
     it("should report errors for missing remote packages", async ({
       expect,
     }) => {
-      class TestVendorService extends VendorService {
-        protected override async cloneRemote(): Promise<string> {
-          return "/tmp/test-clone";
-        }
-      }
+      const { service, fs } = createTestService(
+        Alepha.create()
+          .with({ provide: ShellProvider, use: MemoryShellProvider })
+          .inject(MemoryShellProvider),
+      );
 
-      const alepha = Alepha.create()
-        .with({ provide: ShellProvider, use: MemoryShellProvider })
-        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+      await fs.mkdir("/tmp/test-clone/packages", { recursive: true });
 
-      const testService = alepha.inject(TestVendorService);
-      const testFs = alepha.inject(MemoryFileSystemProvider);
-
-      await testFs.mkdir("/tmp/test-clone/packages", { recursive: true });
-
-      const result = await testService.sync({
+      const result = await service.sync({
         root: "/project",
         remote: "remote",
         branch: "main",
@@ -126,25 +134,18 @@ describe("VendorService", () => {
     });
 
     it("should sync multiple packages", async ({ expect }) => {
-      class TestVendorService extends VendorService {
-        protected override async cloneRemote(): Promise<string> {
-          return "/tmp/test-clone";
-        }
-      }
+      const { service, fs } = createTestService(
+        Alepha.create()
+          .with({ provide: ShellProvider, use: MemoryShellProvider })
+          .inject(MemoryShellProvider),
+      );
 
-      const alepha = Alepha.create()
-        .with({ provide: ShellProvider, use: MemoryShellProvider })
-        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+      await fs.mkdir("/tmp/test-clone/packages/pkg-a", { recursive: true });
+      await fs.writeFile("/tmp/test-clone/packages/pkg-a/index.ts", "a");
+      await fs.mkdir("/tmp/test-clone/packages/pkg-b", { recursive: true });
+      await fs.writeFile("/tmp/test-clone/packages/pkg-b/index.ts", "b");
 
-      const testService = alepha.inject(TestVendorService);
-      const testFs = alepha.inject(MemoryFileSystemProvider);
-
-      await testFs.mkdir("/tmp/test-clone/packages/pkg-a", { recursive: true });
-      await testFs.writeFile("/tmp/test-clone/packages/pkg-a/index.ts", "a");
-      await testFs.mkdir("/tmp/test-clone/packages/pkg-b", { recursive: true });
-      await testFs.writeFile("/tmp/test-clone/packages/pkg-b/index.ts", "b");
-
-      const result = await testService.sync({
+      const result = await service.sync({
         root: "/project",
         remote: "remote",
         branch: "main",
@@ -160,6 +161,10 @@ describe("VendorService", () => {
       class TestVendorService extends VendorService {
         protected override async cloneRemote(): Promise<string> {
           return "/tmp/test-clone";
+        }
+
+        protected override async getCommitHash(): Promise<string> {
+          return "abc123";
         }
       }
 
@@ -195,30 +200,171 @@ describe("VendorService", () => {
 
       testFs.cp = originalCp;
     });
+
+    it("should write vendor.json after successful sync", async ({ expect }) => {
+      const { service, fs } = createTestService(
+        Alepha.create()
+          .with({ provide: ShellProvider, use: MemoryShellProvider })
+          .inject(MemoryShellProvider),
+      );
+
+      await fs.mkdir("/tmp/test-clone/packages/my-pkg", { recursive: true });
+      await fs.writeFile("/tmp/test-clone/packages/my-pkg/index.ts", "code");
+
+      await service.sync({
+        root: "/project",
+        remote: "remote",
+        branch: "main",
+        packages: ["my-pkg"],
+      });
+
+      expect(fs.wasWritten("/project/.alepha/vendor.json")).toBe(true);
+      const content = await fs.readFile("/project/.alepha/vendor.json");
+      const lock = JSON.parse(content.toString());
+      expect(lock.commit).toBe("abc123");
+    });
+
+    it("should skip modification check on first sync (no vendor.json)", async ({
+      expect,
+    }) => {
+      const { service, fs } = createTestService(
+        Alepha.create()
+          .with({ provide: ShellProvider, use: MemoryShellProvider })
+          .inject(MemoryShellProvider),
+      );
+
+      await fs.mkdir("/tmp/test-clone/packages/my-pkg", { recursive: true });
+      await fs.writeFile("/tmp/test-clone/packages/my-pkg/index.ts", "code");
+
+      const result = await service.sync({
+        root: "/project",
+        remote: "remote",
+        branch: "main",
+        packages: ["my-pkg"],
+      });
+
+      expect(result.synced).toEqual(["my-pkg"]);
+      expect(result.aborted).toBeUndefined();
+    });
+
+    it("should abort when local modifications detected against baseline", async ({
+      expect,
+    }) => {
+      const { service, fs } = createTestService(
+        Alepha.create()
+          .with({ provide: ShellProvider, use: MemoryShellProvider })
+          .inject(MemoryShellProvider),
+      );
+
+      // Baseline (last synced state)
+      await fs.mkdir("/tmp/test-baseline/packages/my-pkg", { recursive: true });
+      await fs.writeFile(
+        "/tmp/test-baseline/packages/my-pkg/index.ts",
+        "original",
+      );
+
+      // Local (user modified)
+      await fs.mkdir("/project/packages/my-pkg", { recursive: true });
+      await fs.writeFile("/project/packages/my-pkg/index.ts", "modified");
+
+      // Remote (latest)
+      await fs.mkdir("/tmp/test-clone/packages/my-pkg", { recursive: true });
+      await fs.writeFile("/tmp/test-clone/packages/my-pkg/index.ts", "latest");
+
+      // Vendor lock exists from a previous sync
+      await fs.mkdir("/project/.alepha", { recursive: true });
+      await fs.writeFile(
+        "/project/.alepha/vendor.json",
+        JSON.stringify({ commit: "old-hash" }),
+      );
+
+      const result = await service.sync({
+        root: "/project",
+        remote: "remote",
+        branch: "main",
+        packages: ["my-pkg"],
+      });
+
+      expect(result.aborted).toBeDefined();
+      expect(result.synced).toEqual([]);
+    });
+
+    it("should sync when local matches baseline", async ({ expect }) => {
+      const { service, fs } = createTestService(
+        Alepha.create()
+          .with({ provide: ShellProvider, use: MemoryShellProvider })
+          .inject(MemoryShellProvider),
+      );
+
+      // Baseline and local are identical
+      await fs.mkdir("/tmp/test-baseline/packages/my-pkg", { recursive: true });
+      await fs.writeFile("/tmp/test-baseline/packages/my-pkg/index.ts", "same");
+
+      await fs.mkdir("/project/packages/my-pkg", { recursive: true });
+      await fs.writeFile("/project/packages/my-pkg/index.ts", "same");
+
+      // Remote has updates
+      await fs.mkdir("/tmp/test-clone/packages/my-pkg", { recursive: true });
+      await fs.writeFile("/tmp/test-clone/packages/my-pkg/index.ts", "updated");
+
+      await fs.mkdir("/project/.alepha", { recursive: true });
+      await fs.writeFile(
+        "/project/.alepha/vendor.json",
+        JSON.stringify({ commit: "old-hash" }),
+      );
+
+      const result = await service.sync({
+        root: "/project",
+        remote: "remote",
+        branch: "main",
+        packages: ["my-pkg"],
+      });
+
+      expect(result.synced).toEqual(["my-pkg"]);
+      expect(result.aborted).toBeUndefined();
+    });
+
+    it("should skip modification check with --force even when vendor.json exists", async ({
+      expect,
+    }) => {
+      const { service, fs } = createTestService(
+        Alepha.create()
+          .with({ provide: ShellProvider, use: MemoryShellProvider })
+          .inject(MemoryShellProvider),
+      );
+
+      // Local has modifications
+      await fs.mkdir("/project/packages/my-pkg", { recursive: true });
+      await fs.writeFile("/project/packages/my-pkg/index.ts", "modified");
+
+      // Remote
+      await fs.mkdir("/tmp/test-clone/packages/my-pkg", { recursive: true });
+      await fs.writeFile("/tmp/test-clone/packages/my-pkg/index.ts", "latest");
+
+      await fs.mkdir("/project/.alepha", { recursive: true });
+      await fs.writeFile(
+        "/project/.alepha/vendor.json",
+        JSON.stringify({ commit: "old-hash" }),
+      );
+
+      const result = await service.sync({
+        root: "/project",
+        remote: "remote",
+        branch: "main",
+        packages: ["my-pkg"],
+        force: true,
+      });
+
+      expect(result.synced).toEqual(["my-pkg"]);
+      expect(result.aborted).toBeUndefined();
+    });
   });
 
   describe("diff", () => {
-    it("should clone the remote repository for diff", async ({ expect }) => {
-      const { service, shell } = createTestEnv();
-
-      await service.diff({
-        root: "/project",
-        remote: "git@github.com:user/repo.git",
-        branch: "main",
-        packages: [],
-      });
-
-      expect(
-        shell.wasCalledMatching(
-          /git clone --depth 1 --branch main --filter=blob:none/,
-        ),
-      ).toBe(true);
-    });
-
-    it("should detect added files", async ({ expect }) => {
+    const createDiffTestService = () => {
       class TestVendorService extends VendorService {
-        protected override async cloneRemote(): Promise<string> {
-          return "/tmp/test-clone";
+        protected override async cloneAtCommit(): Promise<string> {
+          return "/tmp/test-baseline";
         }
       }
 
@@ -226,89 +372,50 @@ describe("VendorService", () => {
         .with({ provide: ShellProvider, use: MemoryShellProvider })
         .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
 
-      const testService = alepha.inject(TestVendorService);
-      const testFs = alepha.inject(MemoryFileSystemProvider);
+      return {
+        service: alepha.inject(TestVendorService),
+        fs: alepha.inject(MemoryFileSystemProvider),
+      };
+    };
 
-      await testFs.mkdir("/tmp/test-clone/packages/pkg", { recursive: true });
-      await testFs.writeFile("/tmp/test-clone/packages/pkg/new-file.ts", "new");
-      await testFs.writeFile("/tmp/test-clone/packages/pkg/shared.ts", "same");
+    const writeVendorLock = async (fs: MemoryFileSystemProvider) => {
+      await fs.mkdir("/project/.alepha", { recursive: true });
+      await fs.writeFile(
+        "/project/.alepha/vendor.json",
+        JSON.stringify({ commit: "abc123" }),
+      );
+    };
 
-      await testFs.mkdir("/project/packages/pkg", { recursive: true });
-      await testFs.writeFile("/project/packages/pkg/shared.ts", "same");
+    it("should return no changes when no vendor.json exists", async ({
+      expect,
+    }) => {
+      const { service } = createDiffTestService();
 
-      const result = await testService.diff({
+      const result = await service.diff({
         root: "/project",
         remote: "remote",
         branch: "main",
         packages: ["pkg"],
       });
 
-      expect(result.packages).toHaveLength(1);
-      expect(result.packages[0].added).toEqual(["new-file.ts"]);
-      expect(result.packages[0].modified).toEqual([]);
-      expect(result.packages[0].removed).toEqual([]);
-      expect(result.totalChanges).toBe(1);
+      expect(result.packages).toEqual([]);
+      expect(result.totalChanges).toBe(0);
     });
 
-    it("should detect modified files", async ({ expect }) => {
-      class TestVendorService extends VendorService {
-        protected override async cloneRemote(): Promise<string> {
-          return "/tmp/test-clone";
-        }
-      }
+    it("should detect locally added files", async ({ expect }) => {
+      const { service, fs } = createDiffTestService();
+      await writeVendorLock(fs);
 
-      const alepha = Alepha.create()
-        .with({ provide: ShellProvider, use: MemoryShellProvider })
-        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+      // Baseline (last synced state)
+      await fs.mkdir("/tmp/test-baseline/packages/pkg", { recursive: true });
+      await fs.writeFile("/tmp/test-baseline/packages/pkg/shared.ts", "same");
 
-      const testService = alepha.inject(TestVendorService);
-      const testFs = alepha.inject(MemoryFileSystemProvider);
+      // Local (user added a file)
+      await fs.mkdir("/project/packages/pkg", { recursive: true });
+      await fs.writeFile("/project/packages/pkg/shared.ts", "same");
+      await fs.writeFile("/project/packages/pkg/local-only.ts", "local");
 
-      await testFs.mkdir("/tmp/test-clone/packages/pkg", { recursive: true });
-      await testFs.writeFile(
-        "/tmp/test-clone/packages/pkg/file.ts",
-        "updated content",
-      );
-
-      await testFs.mkdir("/project/packages/pkg", { recursive: true });
-      await testFs.writeFile(
-        "/project/packages/pkg/file.ts",
-        "original content",
-      );
-
-      const result = await testService.diff({
-        root: "/project",
-        remote: "remote",
-        branch: "main",
-        packages: ["pkg"],
-      });
-
-      expect(result.packages[0].modified).toEqual(["file.ts"]);
-      expect(result.totalChanges).toBe(1);
-    });
-
-    it("should detect removed files", async ({ expect }) => {
-      class TestVendorService extends VendorService {
-        protected override async cloneRemote(): Promise<string> {
-          return "/tmp/test-clone";
-        }
-      }
-
-      const alepha = Alepha.create()
-        .with({ provide: ShellProvider, use: MemoryShellProvider })
-        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
-
-      const testService = alepha.inject(TestVendorService);
-      const testFs = alepha.inject(MemoryFileSystemProvider);
-
-      await testFs.mkdir("/tmp/test-clone/packages/pkg", { recursive: true });
-      await testFs.writeFile("/tmp/test-clone/packages/pkg/shared.ts", "same");
-
-      await testFs.mkdir("/project/packages/pkg", { recursive: true });
-      await testFs.writeFile("/project/packages/pkg/shared.ts", "same");
-      await testFs.writeFile("/project/packages/pkg/local-only.ts", "local");
-
-      const result = await testService.diff({
+      const result = await service.diff({
         root: "/project",
         remote: "remote",
         branch: "main",
@@ -319,89 +426,87 @@ describe("VendorService", () => {
       expect(result.totalChanges).toBe(1);
     });
 
-    it("should handle package only in local", async ({ expect }) => {
-      class TestVendorService extends VendorService {
-        protected override async cloneRemote(): Promise<string> {
-          return "/tmp/test-clone";
-        }
-      }
+    it("should detect locally modified files", async ({ expect }) => {
+      const { service, fs } = createDiffTestService();
+      await writeVendorLock(fs);
 
-      const alepha = Alepha.create()
-        .with({ provide: ShellProvider, use: MemoryShellProvider })
-        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+      await fs.mkdir("/tmp/test-baseline/packages/pkg", { recursive: true });
+      await fs.writeFile("/tmp/test-baseline/packages/pkg/file.ts", "original");
 
-      const testService = alepha.inject(TestVendorService);
-      const testFs = alepha.inject(MemoryFileSystemProvider);
+      await fs.mkdir("/project/packages/pkg", { recursive: true });
+      await fs.writeFile("/project/packages/pkg/file.ts", "modified by user");
 
-      await testFs.mkdir("/tmp/test-clone/packages", { recursive: true });
-      await testFs.mkdir("/project/packages/pkg", { recursive: true });
-      await testFs.writeFile("/project/packages/pkg/file.ts", "local");
-
-      const result = await testService.diff({
+      const result = await service.diff({
         root: "/project",
         remote: "remote",
         branch: "main",
         packages: ["pkg"],
       });
 
-      expect(result.packages[0].removed).toEqual(["file.ts"]);
-      expect(result.packages[0].added).toEqual([]);
+      expect(result.packages[0].modified).toEqual(["file.ts"]);
       expect(result.totalChanges).toBe(1);
     });
 
-    it("should handle package only in remote", async ({ expect }) => {
-      class TestVendorService extends VendorService {
-        protected override async cloneRemote(): Promise<string> {
-          return "/tmp/test-clone";
-        }
-      }
+    it("should detect locally removed files", async ({ expect }) => {
+      const { service, fs } = createDiffTestService();
+      await writeVendorLock(fs);
 
-      const alepha = Alepha.create()
-        .with({ provide: ShellProvider, use: MemoryShellProvider })
-        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+      // Baseline had two files
+      await fs.mkdir("/tmp/test-baseline/packages/pkg", { recursive: true });
+      await fs.writeFile("/tmp/test-baseline/packages/pkg/kept.ts", "same");
+      await fs.writeFile("/tmp/test-baseline/packages/pkg/deleted.ts", "gone");
 
-      const testService = alepha.inject(TestVendorService);
-      const testFs = alepha.inject(MemoryFileSystemProvider);
+      // Local only has one
+      await fs.mkdir("/project/packages/pkg", { recursive: true });
+      await fs.writeFile("/project/packages/pkg/kept.ts", "same");
 
-      await testFs.mkdir("/tmp/test-clone/packages/pkg", { recursive: true });
-      await testFs.writeFile("/tmp/test-clone/packages/pkg/file.ts", "remote");
-
-      const result = await testService.diff({
+      const result = await service.diff({
         root: "/project",
         remote: "remote",
         branch: "main",
         packages: ["pkg"],
       });
 
-      expect(result.packages[0].added).toEqual(["file.ts"]);
-      expect(result.packages[0].removed).toEqual([]);
+      expect(result.packages[0].added).toEqual(["deleted.ts"]);
       expect(result.totalChanges).toBe(1);
+    });
+
+    it("should report no changes when local matches baseline", async ({
+      expect,
+    }) => {
+      const { service, fs } = createDiffTestService();
+      await writeVendorLock(fs);
+
+      await fs.mkdir("/tmp/test-baseline/packages/pkg", { recursive: true });
+      await fs.writeFile("/tmp/test-baseline/packages/pkg/file.ts", "same");
+
+      await fs.mkdir("/project/packages/pkg", { recursive: true });
+      await fs.writeFile("/project/packages/pkg/file.ts", "same");
+
+      const result = await service.diff({
+        root: "/project",
+        remote: "remote",
+        branch: "main",
+        packages: ["pkg"],
+      });
+
+      expect(result.totalChanges).toBe(0);
     });
 
     it("should clean up temp directory after diff", async ({ expect }) => {
-      class TestVendorService extends VendorService {
-        protected override async cloneRemote(): Promise<string> {
-          return "/tmp/test-clone";
-        }
-      }
+      const { service, fs } = createDiffTestService();
+      await writeVendorLock(fs);
 
-      const alepha = Alepha.create()
-        .with({ provide: ShellProvider, use: MemoryShellProvider })
-        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+      await fs.mkdir("/tmp/test-baseline/packages", { recursive: true });
 
-      const testService = alepha.inject(TestVendorService);
-      const testFs = alepha.inject(MemoryFileSystemProvider);
-
-      await testFs.mkdir("/tmp/test-clone/packages", { recursive: true });
-
-      await testService.diff({
+      await service.diff({
         root: "/project",
         remote: "remote",
         branch: "main",
         packages: [],
       });
 
-      expect(testFs.wasDeleted("/tmp/test-clone")).toBe(true);
+      expect(fs.wasDeleted("/tmp/test-baseline")).toBe(true);
     });
   });
 });
