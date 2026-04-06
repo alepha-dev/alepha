@@ -62,8 +62,8 @@ declare module "alepha" {
   }
 }
 
-export const AlephaPayments = $module({
-  name: "alepha.payments",
+export const AlephaApiPayments = $module({
+  name: "alepha.api.payments",
   services: [
     AdminPaymentController,
     PaymentController,

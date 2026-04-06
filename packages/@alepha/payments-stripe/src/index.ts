@@ -1,5 +1,5 @@
 import { $module } from "alepha";
-import { AlephaPayments, PaymentProvider } from "alepha/api/payments";
+import { AlephaApiPayments, PaymentProvider } from "alepha/api/payments";
 import { StripePaymentProvider } from "./providers/StripePaymentProvider.ts";
 
 export * from "./providers/StripePaymentProvider.ts";
@@ -10,5 +10,5 @@ export const AlephaPaymentsStripe = $module({
   register: (alepha) =>
     alepha
       .with({ provide: PaymentProvider, use: StripePaymentProvider })
-      .with(AlephaPayments),
+      .with(AlephaApiPayments),
 });

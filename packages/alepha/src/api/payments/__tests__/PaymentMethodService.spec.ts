@@ -3,7 +3,7 @@ import { Alepha } from "alepha";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 import { PaymentError } from "../errors/PaymentError.ts";
-import { AlephaPayments } from "../index.ts";
+import { AlephaApiPayments } from "../index.ts";
 import { PaymentMethodService } from "../services/PaymentMethodService.ts";
 
 describe("PaymentMethodService", () => {
@@ -11,7 +11,9 @@ describe("PaymentMethodService", () => {
   const userId2 = randomUUID();
   const orgId = randomUUID();
   it("should add a payment method", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaPayments);
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiPayments);
     const service = alepha.inject(PaymentMethodService);
     await alepha.start();
 
@@ -22,7 +24,9 @@ describe("PaymentMethodService", () => {
   });
 
   it("should list payment methods for a user", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaPayments);
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiPayments);
     const service = alepha.inject(PaymentMethodService);
     await alepha.start();
 
@@ -34,7 +38,9 @@ describe("PaymentMethodService", () => {
   });
 
   it("should remove a payment method", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaPayments);
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiPayments);
     const service = alepha.inject(PaymentMethodService);
     await alepha.start();
 
@@ -46,7 +52,9 @@ describe("PaymentMethodService", () => {
   });
 
   it("should set a default payment method", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaPayments);
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiPayments);
     const service = alepha.inject(PaymentMethodService);
     await alepha.start();
 
@@ -67,7 +75,9 @@ describe("PaymentMethodService", () => {
   it("should reject removing another user's payment method", async ({
     expect,
   }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaPayments);
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiPayments);
     const service = alepha.inject(PaymentMethodService);
     await alepha.start();
 
@@ -80,7 +90,9 @@ describe("PaymentMethodService", () => {
   it("should reject setting default for another user's payment method", async ({
     expect,
   }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaPayments);
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiPayments);
     const service = alepha.inject(PaymentMethodService);
     await alepha.start();
 

@@ -3,11 +3,13 @@ import { Alepha } from "alepha";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 import { PaymentError } from "../errors/PaymentError.ts";
-import { AlephaPayments } from "../index.ts";
+import { AlephaApiPayments } from "../index.ts";
 import { PaymentService } from "../services/PaymentService.ts";
 
 const setup = async () => {
-  const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaPayments);
+  const alepha = Alepha.create()
+    .with(AlephaOrmPostgres)
+    .with(AlephaApiPayments);
   const payments = alepha.inject(PaymentService);
   await alepha.start();
   return { alepha, payments };
