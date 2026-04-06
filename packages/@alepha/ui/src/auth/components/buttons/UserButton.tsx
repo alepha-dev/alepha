@@ -84,6 +84,7 @@ const UserButton = (props: UserButtonProps) => {
   if (!auth.user) {
     return (
       <ActionButton
+        variant={"default"}
         {...buttonProps}
         icon={icon === null ? undefined : (icon ?? IconLogin2)}
         href={authRouter.path("login")}
@@ -142,6 +143,7 @@ const UserButton = (props: UserButtonProps) => {
 
   return (
     <ActionButton
+      variant={"default"}
       {...buttonProps}
       icon={
         hasAvatar ? undefined : icon === null ? undefined : (icon ?? IconUser)
