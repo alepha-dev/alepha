@@ -156,7 +156,7 @@ export class SubscriptionController {
   /**
    * Get the billing event history for the current organization's subscription.
    */
-  public readonly getHistory = $action({
+  public readonly getSubscriptionHistory = $action({
     path: `${this.url}/mine/history`,
     group: this.group,
     use: [$secure()],
