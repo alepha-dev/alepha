@@ -12,7 +12,6 @@ import {
   type TSchema,
   type TString,
   type TStringOptions,
-  type TUnsafe,
   t,
 } from "alepha";
 import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
@@ -20,7 +19,6 @@ import {
   PG_CREATED_AT,
   PG_DEFAULT,
   PG_DELETED_AT,
-  PG_ENUM,
   PG_IDENTITY,
   PG_ORGANIZATION,
   PG_PRIMARY_KEY,
@@ -28,7 +26,6 @@ import {
   PG_UPDATED_AT,
   PG_VERSION,
   type PgDefault,
-  type PgEnumOptions,
   type PgIdentityOptions,
   type PgPrimaryKey,
   type PgRef,
@@ -197,32 +194,6 @@ export class DatabaseTypeProvider {
    */
   public readonly organization = () =>
     pgAttr(t.optional(t.uuid()), PG_ORGANIZATION);
-
-  /**
-   * Creates a Postgres ENUM type.
-   *
-   * > By default, `t.enum()` is mapped to a TEXT column in Postgres.
-   * > Using this method, you can create a real ENUM type in the database.
-   *
-   * @example
-   * ```ts
-   * const statusEnum = pg.enum(["pending", "active", "archived"], { name: "status_enum" });
-   * ```
-   */
-  public readonly enum = <T extends string[]>(
-    values: [...T],
-    pgEnumOptions?: PgEnumOptions,
-    typeOptions?: TStringOptions,
-  ): PgAttr<TUnsafe<T[number]>, typeof PG_ENUM> => {
-    return pgAttr(
-      t.enum(values, {
-        description: pgEnumOptions?.description,
-        ...typeOptions,
-      }),
-      PG_ENUM,
-      pgEnumOptions,
-    );
-  };
 
   /**
    * Creates a reference to another table or schema. Basically a foreign key.

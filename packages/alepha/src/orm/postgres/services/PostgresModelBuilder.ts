@@ -4,14 +4,12 @@ import {
   type FromSchema,
   ModelBuilder,
   PG_CREATED_AT,
-  PG_ENUM,
   PG_GENERATED,
   PG_IDENTITY,
   PG_PRIMARY_KEY,
   PG_REF,
   PG_SERIAL,
   PG_UPDATED_AT,
-  type PgEnumOptions,
   type PgGeneratedOptions,
   type PgIdentityOptions,
   type PgRefOptions,
@@ -384,10 +382,9 @@ export class PostgresModelBuilder extends ModelBuilder {
         );
       }
 
-      // SQL Enum
-      if (PG_ENUM in value && value[PG_ENUM]) {
-        const options = value[PG_ENUM] as PgEnumOptions;
-        const enumName = options.name ?? `${tableName}_${key}_enum`;
+      // SQL Enum (default for t.enum unless mode: "text")
+      if ((value as any).mode !== "text") {
+        const enumName = (value as any).enumName ?? `${tableName}_${key}_enum`;
 
         if (enums.has(enumName)) {
           const values = (

@@ -458,18 +458,43 @@ export class TypeProvider {
 
   /**
    * Create a schema for a string enum.
+   *
+   * By default, this creates a real PostgreSQL ENUM type in the database.
+   * Use `{ mode: "text" }` to store as a TEXT column instead.
+   *
+   * @example
+   * ```ts
+   * // PostgreSQL ENUM type (default)
+   * status: t.enum(["pending", "active", "archived"])
+   *
+   * // TEXT column
+   * status: t.enum(["pending", "active", "archived"], { mode: "text" })
+   *
+   * // Shared enum name across tables
+   * status: t.enum(["enabled", "disabled"], { name: "shared_status_enum" })
+   * ```
    */
   public enum<T extends string[]>(
     values: [...T],
-    options?: TTextOptions,
+    options?: TEnumOptions,
   ): TUnsafe<T[number]> {
-    return Type.Unsafe<T[number]>(
+    const { mode, name, ...textOptions } = options ?? {};
+
+    const schema = Type.Unsafe<T[number]>(
       t.text({
         enum: values,
         pattern: values.map((v) => `^${v}$`).join("|"),
-        ...options,
+        ...textOptions,
       }),
     );
+
+    if (mode === "text") {
+      Object.assign(schema, { mode: "text" });
+    } else {
+      Object.assign(schema, { enumName: name });
+    }
+
+    return schema;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -665,6 +690,24 @@ export class TypeProvider {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export type TextLength = "short" | "regular" | "long" | "rich";
+
+export interface TEnumOptions extends TTextOptions {
+  /**
+   * Storage mode for the enum.
+   *
+   * - `"text"` — stores as a TEXT column in the database.
+   * - When omitted, creates a real PostgreSQL ENUM type.
+   */
+  mode?: "text";
+
+  /**
+   * Custom name for the PostgreSQL ENUM type.
+   *
+   * Use this to share the same enum type across multiple tables.
+   * If not specified, the name is auto-generated from the table and column names.
+   */
+  name?: string;
+}
 
 export interface TTextOptions extends TStringOptions {
   /**

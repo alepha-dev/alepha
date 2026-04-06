@@ -14,7 +14,7 @@ export const tasks = $entity({
     title: t.string(),
     description: t.string({ size: "rich" }),
     package: t.string(),
-    priority: t.enum(["optional", "low", "medium", "high"]),
+    priority: t.enum(["optional", "low", "medium", "high"], { mode: "text" }),
     complexity: t.integer({ minimum: 1, maximum: 5 }),
     acceptedAt: t.optional(t.datetime()),
     completedAt: t.optional(t.datetime()),

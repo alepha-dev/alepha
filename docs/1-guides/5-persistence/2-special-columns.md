@@ -74,22 +74,23 @@ When `save()` is called, it includes the current version in the WHERE clause. If
 
 ## Enum
 
-`db.enum()` creates a native PostgreSQL ENUM type column. This is more storage-efficient and provides better type safety at the database level compared to storing enums as text.
+`t.enum()` creates a native PostgreSQL ENUM type column by default.
 
 ```typescript
-role: db.enum(["admin", "user", "moderator"]),
+role: t.enum(["admin", "user", "moderator"]),
 ```
 
-You can pass optional PostgreSQL enum options and type options:
+You can share an enum type across multiple tables by specifying a custom name:
 
 ```typescript
-status: db.enum(
-  ["pending", "active", "archived"],
-  { name: "status_enum", description: "Status values" },
-),
+status: t.enum(["pending", "active", "archived"], { name: "status_enum" }),
 ```
 
-For comparison, `t.enum(["a", "b", "c"])` stores the value as a TEXT column. Use `db.enum()` when you want a real database enum type.
+To store as a TEXT column instead of a real PostgreSQL ENUM, use `mode: "text"`:
+
+```typescript
+status: t.enum(["pending", "active", "archived"], { mode: "text" }),
+```
 
 ## Default Values
 
@@ -160,7 +161,7 @@ const user = $entity({
     id: db.primaryKey(t.uuid()),
     email: t.email(),
     name: t.text(),
-    role: db.enum(["admin", "user", "moderator"]),
+    role: t.enum(["admin", "user", "moderator"]),
     isActive: db.default(t.boolean(), true),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),

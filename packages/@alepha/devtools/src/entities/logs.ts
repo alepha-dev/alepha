@@ -5,7 +5,9 @@ export const logs = $entity({
   name: "logs",
   schema: t.object({
     id: db.primaryKey(),
-    level: t.enum(["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]),
+    level: t.enum(["TRACE", "DEBUG", "INFO", "WARN", "ERROR"], {
+      mode: "text",
+    }),
     message: t.text({
       size: "rich",
     }),
