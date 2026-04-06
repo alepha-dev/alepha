@@ -237,7 +237,8 @@ export class VendorService {
       if (
         file.endsWith(".spec.ts") ||
         file.endsWith(".spec.tsx") ||
-        file === "LICENSE"
+        file === "LICENSE" ||
+        file === "tsdown.config.ts"
       ) {
         await this.fs.rm(this.fs.join(pkgDir, file), { force: true });
       }
@@ -367,7 +368,8 @@ export class VendorService {
     if (
       filePath.endsWith(".spec.ts") ||
       filePath.endsWith(".spec.tsx") ||
-      filePath === "LICENSE"
+      filePath === "LICENSE" ||
+      filePath === "tsdown.config.ts"
     ) {
       return true;
     }
