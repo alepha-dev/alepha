@@ -27,7 +27,7 @@ export class SchemaValidator {
     try {
       //
       if (!this.useEval) {
-        return Value.Parse(schema, newValue);
+        return Value.Parse(schema, newValue) as Static<T>;
       }
       return this.getValidator(schema).Parse(newValue) as Static<T>;
     } catch (error: any) {
