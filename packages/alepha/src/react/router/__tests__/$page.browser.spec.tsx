@@ -882,4 +882,161 @@ describe("$page browser tests", () => {
       });
     });
   });
+
+  describe("transition supersession", () => {
+    it("should not commit a stale slow transition when a newer navigation already won", async () => {
+      let resolvePageA: ((value: { data: string }) => void) | undefined;
+      const pageARendered = vi.fn();
+      const pageBRendered = vi.fn();
+
+      class App {
+        pageA = $page({
+          path: "/page-a",
+          loader: () =>
+            new Promise<{ data: string }>((resolve) => {
+              resolvePageA = resolve;
+            }),
+          component: ({ data }: { data: string }) => {
+            pageARendered();
+            return <div data-testid="page-a">A: {data}</div>;
+          },
+        });
+
+        pageB = $page({
+          path: "/page-b",
+          component: () => {
+            pageBRendered();
+            return <div data-testid="page-b">B</div>;
+          },
+        });
+      }
+
+      alepha = Alepha.create().with(AlephaReact).with(App);
+      await alepha.start();
+
+      const router = alepha.inject(ReactRouter);
+
+      // Start navigating to /page-a — its loader hangs, push() will not
+      // resolve until we manually resolve the loader below.
+      const pushAPromise = router.push("/page-a");
+
+      // Yield so the in-flight transition for /page-a actually starts and
+      // reaches the awaited loader before pushB enters the race.
+      await new Promise((r) => setTimeout(r, 0));
+
+      // Navigate to /page-b before /page-a finishes loading. This should
+      // supersede the in-flight /page-a transition.
+      await act(async () => {
+        await router.push("/page-b");
+      });
+
+      // /page-b should now be the committed router state.
+      expect(router.state.name).toBe("pageB");
+      expect(router.state.url.pathname).toBe("/page-b");
+
+      // Now resolve /page-a's loader: this is the race window where the
+      // stale /page-a transition could overwrite /page-b.
+      resolvePageA?.({ data: "loaded" });
+      await act(async () => {
+        await pushAPromise;
+      });
+
+      // Stale /page-a must NOT have committed.
+      expect(router.state.name).toBe("pageB");
+      expect(router.state.url.pathname).toBe("/page-b");
+      // /page-a's component must never have been instantiated.
+      expect(pageARendered).not.toHaveBeenCalled();
+    });
+
+    it("should not fire onEnter for a stale superseded page", async () => {
+      let resolvePageA: (() => void) | undefined;
+      const pageAOnEnter = vi.fn();
+      const pageBOnEnter = vi.fn();
+
+      class App {
+        pageA = $page({
+          path: "/page-a",
+          loader: () =>
+            new Promise<void>((resolve) => {
+              resolvePageA = resolve;
+            }),
+          onEnter: pageAOnEnter,
+          component: () => <div data-testid="page-a">A</div>,
+        });
+
+        pageB = $page({
+          path: "/page-b",
+          onEnter: pageBOnEnter,
+          component: () => <div data-testid="page-b">B</div>,
+        });
+      }
+
+      alepha = Alepha.create().with(AlephaReact).with(App);
+      await alepha.start();
+
+      const router = alepha.inject(ReactRouter);
+
+      const pushAPromise = router.push("/page-a");
+      await new Promise((r) => setTimeout(r, 0));
+
+      await act(async () => {
+        await router.push("/page-b");
+      });
+
+      expect(router.state.name).toBe("pageB");
+      expect(pageBOnEnter).toHaveBeenCalledTimes(1);
+      expect(pageAOnEnter).not.toHaveBeenCalled();
+
+      // Resolve the stale loader: it must remain a no-op.
+      resolvePageA?.();
+      await act(async () => {
+        await pushAPromise;
+      });
+
+      expect(router.state.name).toBe("pageB");
+      expect(pageAOnEnter).not.toHaveBeenCalled();
+      expect(pageBOnEnter).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not call pushState for a stale superseded transition", async () => {
+      let resolvePageA: (() => void) | undefined;
+
+      class App {
+        pageA = $page({
+          path: "/page-a",
+          loader: () =>
+            new Promise<void>((resolve) => {
+              resolvePageA = resolve;
+            }),
+          component: () => <div data-testid="page-a">A</div>,
+        });
+
+        pageB = $page({
+          path: "/page-b",
+          component: () => <div data-testid="page-b">B</div>,
+        });
+      }
+
+      alepha = Alepha.create().with(AlephaReact).with(App);
+      await alepha.start();
+
+      const router = alepha.inject(ReactRouter);
+
+      const pushAPromise = router.push("/page-a");
+      await new Promise((r) => setTimeout(r, 0));
+
+      await act(async () => {
+        await router.push("/page-b");
+      });
+      expect(window.location.pathname).toBe("/page-b");
+
+      resolvePageA?.();
+      await act(async () => {
+        await pushAPromise;
+      });
+
+      // The stale /page-a transition must not have rewritten the URL bar.
+      expect(window.location.pathname).toBe("/page-b");
+    });
+  });
 });

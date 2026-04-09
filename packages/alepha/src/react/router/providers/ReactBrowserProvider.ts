@@ -79,6 +79,17 @@ export class ReactBrowserProvider {
     from?: string;
   };
 
+  /**
+   * Monotonic counter used to detect stale (superseded) transitions.
+   *
+   * Each call to `render()` captures `++this.transitionId` and any
+   * subsequent `render()` invalidates older in-flight transitions.
+   * This prevents a slow page from racing past a newer navigation
+   * (e.g. user clicks /pageA which has a 2s loader, then clicks /pageB
+   * — pageB must remain the committed page).
+   */
+  protected transitionId = 0;
+
   public get state(): ReactRouterState {
     return this.alepha.store.get("alepha.react.router.state")!;
   }
@@ -167,11 +178,20 @@ export class ReactBrowserProvider {
       options,
     });
 
+    const myTransitionId = ++this.transitionId;
+
     await this.render({
       url,
       previous: options.force ? [] : this.state.layers,
       meta: options.meta,
+      transitionId: myTransitionId,
     });
+
+    // A newer navigation has superseded us — bail out without touching
+    // history, otherwise we'd push a duplicate/stale entry.
+    if (myTransitionId !== this.transitionId) {
+      return;
+    }
 
     // when redirecting in browser
     if (this.state.url.pathname + this.state.url.search !== url) {
@@ -183,6 +203,7 @@ export class ReactBrowserProvider {
   }
 
   protected async render(options: RouterRenderOptions = {}): Promise<void> {
+    const myTransitionId = options.transitionId ?? ++this.transitionId;
     const previous = options.previous ?? this.state.layers;
     const url = options.url ?? this.url;
     const start = this.dateTimeProvider.now();
@@ -196,11 +217,24 @@ export class ReactBrowserProvider {
       to: url,
     });
 
+    const isStale = () => this.transitionId !== myTransitionId;
+
     const redirect = await this.router.transition(
       new URL(`http://localhost${url}`),
       previous,
       options.meta,
+      isStale,
     );
+
+    // A newer navigation has superseded us between the time we awaited
+    // transition() and now. Drop everything: don't follow redirects, don't
+    // log success, don't clear `transitioning` (the newer render owns it).
+    if (isStale()) {
+      this.log.debug("Transition superseded — discarding stale result", {
+        to: url,
+      });
+      return;
+    }
 
     if (redirect) {
       this.log.info("Redirecting to", {
@@ -307,4 +341,9 @@ export interface RouterRenderOptions {
   url?: string;
   previous?: PreviousLayerData[];
   meta?: Record<string, any>;
+  /**
+   * Transition id used to detect supersession by a newer navigation.
+   * When omitted, render() allocates a fresh id internally.
+   */
+  transitionId?: number;
 }

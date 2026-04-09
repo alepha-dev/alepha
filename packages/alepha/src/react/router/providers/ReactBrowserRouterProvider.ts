@@ -51,6 +51,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
     url: URL,
     previous: PreviousLayerData[] = [],
     meta = {},
+    isStale: () => boolean = () => false,
   ): Promise<string | void> {
     const { pathname, search } = url;
 
@@ -101,6 +102,13 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
           state,
           previous,
         );
+        // A newer navigation already won — bail before committing or
+        // emitting any further events. The caller (ReactBrowserProvider)
+        // also re-checks staleness, but stopping here avoids running
+        // success hooks for a transition the user no longer wants.
+        if (isStale()) {
+          return;
+        }
         if (redirect) {
           return redirect;
         }
@@ -120,6 +128,13 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
       });
       await this.alepha.events.emit("react:transition:success", { state });
     } catch (e) {
+      // If we were superseded mid-flight, swallow the error: the user has
+      // already moved on, and an error UI for an abandoned page would
+      // overwrite the newer page they actually want.
+      if (isStale()) {
+        return;
+      }
+
       this.log.error("Transition has failed", e);
 
       let element: ReactNode | undefined;
@@ -149,6 +164,13 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
         error: e as Error,
         state,
       });
+    }
+
+    // Final supersession check before any side effects (onLeave/onEnter,
+    // store mutation, head rewrite). Stale transitions must be a complete
+    // no-op from this point on.
+    if (isStale()) {
+      return;
     }
 
     // [feature]: local hook for leaving a page
