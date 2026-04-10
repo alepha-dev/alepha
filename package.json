@@ -18,7 +18,7 @@
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.4",
     "@vitest/ui": "^4.1.4",
-    "alepha": "^0.19.3",
+    "alepha": "^0.19.4",
     "depcheck": "^1.4.7",
     "typescript": "^6.0.2",
     "vitest": "^4.1.4"
