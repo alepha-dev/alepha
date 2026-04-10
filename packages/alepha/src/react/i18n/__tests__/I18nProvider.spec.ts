@@ -366,6 +366,89 @@ describe("I18nProvider", () => {
     );
   });
 
+  describe("when only non-English dictionaries are registered", () => {
+    test("should default to the first registered language", async ({
+      expect,
+    }) => {
+      class App {
+        fr = $dictionary({
+          lazy: async () => ({ default: { hello: "Bonjour" } }),
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaReactI18n);
+      const app = alepha.inject(App);
+      const i18n = alepha.inject(I18nProvider);
+
+      expect(i18n.lang).toBe("fr");
+    });
+
+    test("should translate using the first registered language", async ({
+      expect,
+    }) => {
+      class App {
+        fr = $dictionary({
+          lazy: async () => ({
+            default: { greeting: "Bonjour!", settings: "Paramètres" },
+          }),
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaReactI18n);
+      const app = alepha.inject(App);
+      const i18n = alepha.inject(I18nProvider);
+
+      await alepha.start();
+
+      expect(i18n.tr("greeting")).toBe("Bonjour!");
+      expect(i18n.tr("settings")).toBe("Paramètres");
+    });
+
+    test("should not include 'en' in languages list", async ({ expect }) => {
+      class App {
+        fr = $dictionary({
+          lazy: async () => ({ default: { hello: "Bonjour" } }),
+        });
+
+        de = $dictionary({
+          lazy: async () => ({ default: { hello: "Hallo" } }),
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaReactI18n);
+      const app = alepha.inject(App);
+      const i18n = alepha.inject(I18nProvider);
+
+      expect(i18n.languages).toEqual(["fr", "de"]);
+    });
+
+    test("should fallback to the first registered language for missing keys", async ({
+      expect,
+    }) => {
+      class App {
+        fr = $dictionary({
+          lazy: async () => ({
+            default: { hello: "Bonjour", world: "Monde" },
+          }),
+        });
+
+        de = $dictionary({
+          lazy: async () => ({ default: { hello: "Hallo" } }),
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaReactI18n);
+      const app = alepha.inject(App);
+      const i18n = alepha.inject(I18nProvider);
+
+      await alepha.start();
+      await i18n.setLang("de");
+
+      expect(i18n.tr("hello")).toBe("Hallo");
+      expect(i18n.tr("world")).toBe("Monde"); // Falls back to FR
+    });
+  });
+
   test("should handle partial interpolation args", async ({ expect }) => {
     class App {
       en = $dictionary({

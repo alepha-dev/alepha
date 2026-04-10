@@ -42,7 +42,6 @@ export class I18nProvider<
     for (const item of this.registry) {
       languages.add(item.lang);
     }
-    languages.add(this.options.fallbackLang);
 
     return Array.from(languages);
   }
@@ -70,10 +69,7 @@ export class I18nProvider<
         }
 
         for (const item of this.registry) {
-          if (
-            item.lang === this.lang ||
-            item.lang === this.options.fallbackLang
-          ) {
+          if (item.lang === this.lang || item.lang === this.fallbackLang) {
             this.log.trace("Loading language", {
               lang: item.lang,
               name: item.name,
@@ -139,11 +135,17 @@ export class I18nProvider<
     },
   });
 
+  public get fallbackLang(): string {
+    const configured = this.options.fallbackLang;
+    const hasDict = this.registry.some((item) => item.lang === configured);
+    if (hasDict) {
+      return configured;
+    }
+    return this.registry[0]?.lang ?? configured;
+  }
+
   public get lang(): string {
-    return (
-      this.alepha.store.get("alepha.react.i18n.lang") ||
-      this.options.fallbackLang
-    );
+    return this.alepha.store.get("alepha.react.i18n.lang") || this.fallbackLang;
   }
 
   public translate = (key: string, args: string[] = []) => {
@@ -156,7 +158,7 @@ export class I18nProvider<
     }
 
     for (const item of this.registry) {
-      if (item.lang === this.options.fallbackLang) {
+      if (item.lang === this.fallbackLang) {
         if (item.translations[key]) {
           return this.render(item.translations[key], args); // append lang for fallback
         }
