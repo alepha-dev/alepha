@@ -113,6 +113,11 @@
       "import": "./src/api/invitations/index.ts",
       "default": "./src/api/invitations/index.ts"
     },
+    "./api/issues": {
+      "types": "./src/api/issues/index.ts",
+      "import": "./src/api/issues/index.ts",
+      "default": "./src/api/issues/index.ts"
+    },
     "./api/jobs": {
       "types": "./src/api/jobs/index.ts",
       "react-native": "./src/api/jobs/index.browser.ts",
