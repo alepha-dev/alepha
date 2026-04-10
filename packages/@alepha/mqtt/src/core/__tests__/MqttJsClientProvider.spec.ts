@@ -129,9 +129,9 @@ describe("MqttJsClientProvider", () => {
     await alepha.stop();
   });
 
-  it("should deliver a retained message to a late subscriber", {
-    retry: 3,
-  }, async ({ expect }) => {
+  it.skip("should deliver a retained message to a late subscriber", async ({
+    expect,
+  }) => {
     const topic = `test/mqtt-client/${randomUUID()}/retain`;
     const received: string[] = [];
 

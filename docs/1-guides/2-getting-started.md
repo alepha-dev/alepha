@@ -201,6 +201,42 @@ export default defineConfig({
 });
 ```
 
+## Deploy to the Cloud
+
+Once your app builds, you can deploy it to Cloudflare Workers in one command.
+
+Add the platform plugin to your config:
+
+```typescript filename="alepha.config.ts"
+import { defineConfig } from "alepha/cli/config";
+import { AlephaCliPlatform } from "alepha/cli/platform";
+
+export default defineConfig({
+  services: [AlephaCliPlatform],
+  platform: {
+    environments: {
+      production: { adapter: "cloudflare" },
+    },
+  },
+});
+```
+
+Then deploy:
+
+```bash
+npx alepha p up
+```
+
+Alepha scans your code for primitives (`$entity`, `$bucket`, `$queue`, etc.), provisions the matching Cloudflare resources (D1, R2, Queue), builds for Workers, runs migrations, and deploys -- all in one step.
+
+Preview what will be created before deploying:
+
+```bash
+npx alepha p plan
+```
+
+See the [Platform Plugin](/docs/cli/plugins/platform) guide for full configuration, secrets, monorepo support, and teardown.
+
 ## Project Structure
 
 With `--api` and `--react` flags, `alepha init` scaffolds this structure:

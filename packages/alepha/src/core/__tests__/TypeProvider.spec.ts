@@ -850,12 +850,14 @@ describe("TypeProvider", () => {
         ).toEqual(["valid", "123", "also valid"]);
       });
 
-      it("should reject non-array values", async () => {
+      it("should auto-cast non-array values to single-element array", async () => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = t.array(t.text());
 
-        expect(() => alepha.codec.validate(schema, "not an array")).toThrow();
+        expect(alepha.codec.validate(schema, "not an array")).toEqual([
+          "not an array",
+        ]);
       });
 
       it("should support array of objects", async () => {
