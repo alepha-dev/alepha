@@ -3,6 +3,7 @@ import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { BadRequestError } from "alepha/server";
+import { describe, expect, it } from "vitest";
 import { AlephaApiIssues } from "../index.ts";
 import { issueConfigAtom } from "../schemas/issueConfigAtom.ts";
 import { IssueService } from "../services/IssueService.ts";
@@ -119,9 +120,9 @@ describe("IssueService", () => {
       const issue = await service.create({ title: "Bug" }, { id: user.id });
       await service.assign(issue.id, admin.id);
 
-      await expect(
-        service.assign(issue.id, admin.id),
-      ).rejects.toThrowError(BadRequestError);
+      await expect(service.assign(issue.id, admin.id)).rejects.toThrowError(
+        BadRequestError,
+      );
     });
   });
 
@@ -142,9 +143,9 @@ describe("IssueService", () => {
       const { service, user } = await setup();
       const issue = await service.create({ title: "Bug" }, { id: user.id });
 
-      await expect(
-        service.complete(issue.id, "Fixed"),
-      ).rejects.toThrowError(BadRequestError);
+      await expect(service.complete(issue.id, "Fixed")).rejects.toThrowError(
+        BadRequestError,
+      );
     });
   });
 
@@ -165,9 +166,9 @@ describe("IssueService", () => {
       const { service, user } = await setup();
       const issue = await service.create({ title: "Bug" }, { id: user.id });
 
-      await expect(
-        service.reopen(issue.id, "Reason"),
-      ).rejects.toThrowError(BadRequestError);
+      await expect(service.reopen(issue.id, "Reason")).rejects.toThrowError(
+        BadRequestError,
+      );
     });
   });
 
@@ -229,9 +230,9 @@ describe("IssueService", () => {
 
       const result = await service.find({ search: "Login" });
 
-      expect(
-        result.content.some((i) => i.title === "Login page broken"),
-      ).toBe(true);
+      expect(result.content.some((i) => i.title === "Login page broken")).toBe(
+        true,
+      );
     });
   });
 
