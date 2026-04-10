@@ -594,11 +594,10 @@ export class CliProvider {
 
       if (value !== undefined) {
         result[key] = value;
+      } else if ("default" in propSchema) {
+        result[key] = propSchema.default;
       } else if (t.schema.isOptional(propSchema)) {
-        // Check for default value
-        if ("default" in propSchema) {
-          result[key] = propSchema.default;
-        }
+        // Optional with no default — leave undefined
       } else {
         missing.push(key);
       }

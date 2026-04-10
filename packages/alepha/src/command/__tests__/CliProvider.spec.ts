@@ -26,6 +26,7 @@ class TestCliProvider extends CliProvider {
   public testFindPostHooks = this.findPostHooks.bind(this);
   public testGetEnumValues = this.getEnumValues.bind(this);
   public testFormatFlagDescription = this.formatFlagDescription.bind(this);
+  public testParseCommandEnv = this.parseCommandEnv.bind(this);
 
   /**
    * Extract flag definitions from a command's flags schema (for testing printHelp logic).
@@ -1288,6 +1289,50 @@ describe("CliProvider", () => {
     it("should return empty array when no commands", () => {
       const cli = createTestCli();
       expect(cli.commands).toEqual([]);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // parseCommandEnv
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("parseCommandEnv", () => {
+    it("should use default value for required field with default when env var is missing", () => {
+      const cli = createTestCli();
+      const schema = t.object({
+        MY_VAR: t.text({ default: "fallback" }),
+      });
+
+      delete process.env.MY_VAR;
+      const result = cli.testParseCommandEnv(schema, "test");
+      expect(result.MY_VAR).toBe("fallback");
+    });
+
+    it("should prefer env var over default when both exist", () => {
+      const cli = createTestCli();
+      const schema = t.object({
+        MY_VAR: t.text({ default: "fallback" }),
+      });
+
+      process.env.MY_VAR = "from-env";
+      try {
+        const result = cli.testParseCommandEnv(schema, "test");
+        expect(result.MY_VAR).toBe("from-env");
+      } finally {
+        delete process.env.MY_VAR;
+      }
+    });
+
+    it("should throw for required field without default when env var is missing", () => {
+      const cli = createTestCli();
+      const schema = t.object({
+        MY_VAR: t.text(),
+      });
+
+      delete process.env.MY_VAR;
+      expect(() => cli.testParseCommandEnv(schema, "test")).toThrow(
+        "Missing required environment variable",
+      );
     });
   });
 
