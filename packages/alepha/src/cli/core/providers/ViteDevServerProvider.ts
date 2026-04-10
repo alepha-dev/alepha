@@ -594,7 +594,7 @@ if (import.meta.hot) {
 </script>`);
 
     if (style) {
-      tags.push(`<link rel="stylesheet" href="/${style}">`);
+      tags.push(`<script type="module">import "/${style}";</script>`);
     }
     if (browser) {
       tags.push(`<script type="module" src="/${browser}"></script>`);
