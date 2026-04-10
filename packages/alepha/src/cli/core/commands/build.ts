@@ -17,6 +17,7 @@ import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
 import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
 import { BuildDockerTask } from "../tasks/BuildDockerTask.ts";
 import { BuildPrerenderTask } from "../tasks/BuildPrerenderTask.ts";
+import { BuildPwaTask } from "../tasks/BuildPwaTask.ts";
 import { BuildServerTask } from "../tasks/BuildServerTask.ts";
 import { BuildSitemapTask } from "../tasks/BuildSitemapTask.ts";
 import { BuildStaticTask } from "../tasks/BuildStaticTask.ts";
@@ -43,6 +44,7 @@ export class BuildCommand {
     $inject(BuildServerTask),
     $inject(BuildAssetsTask),
     $inject(BuildSitemapTask),
+    $inject(BuildPwaTask),
     $inject(BuildPrerenderTask),
     $inject(BuildVercelTask),
     $inject(BuildCloudflareTask),

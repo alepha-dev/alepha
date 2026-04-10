@@ -208,6 +208,63 @@ export const buildOptions = $atom({
     ),
 
     /**
+     * PWA (Progressive Web App) configuration.
+     *
+     * Generates a web app manifest and enables installability.
+     * Requires a client-side bundle (React).
+     */
+    pwa: t.optional(
+      t.object({
+        /**
+         * Full application name displayed on the splash screen
+         * and in the OS app switcher.
+         */
+        name: t.string(),
+
+        /**
+         * Short name displayed on the home screen icon.
+         * Falls back to `name` if omitted.
+         */
+        shortName: t.optional(t.string()),
+
+        /**
+         * Theme color used for the browser toolbar and OS chrome.
+         *
+         * @default "#ffffff"
+         */
+        themeColor: t.optional(t.string()),
+
+        /**
+         * Background color for the splash screen.
+         *
+         * @default "#ffffff"
+         */
+        backgroundColor: t.optional(t.string()),
+
+        /**
+         * Display mode for the installed PWA.
+         *
+         * - `standalone` - Looks like a native app (default)
+         * - `fullscreen` - Uses entire screen (games, immersive)
+         * - `minimal-ui` - Like standalone with minimal browser UI
+         * - `browser` - Standard browser tab
+         *
+         * @default "standalone"
+         */
+        display: t.optional(
+          t.enum(["standalone", "fullscreen", "minimal-ui", "browser"]),
+        ),
+
+        /**
+         * Enable offline support via service worker.
+         *
+         * TODO: Not yet implemented.
+         */
+        offline: t.optional(t.boolean()),
+      }),
+    ),
+
+    /**
      * Sitemap generation configuration.
      */
     sitemap: t.optional(
