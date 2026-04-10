@@ -6,7 +6,7 @@
     "devtools"
   ],
   "author": "Feunard",
-  "version": "0.19.3",
+  "version": "0.19.4",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -20,13 +20,13 @@
     "assets"
   ],
   "devDependencies": {
-    "@alepha/ui": "0.19.3",
+    "@alepha/ui": "0.19.4",
     "@biomejs/biome": "^2.4.11",
     "@mantine/core": "^9.0.1",
     "@mantine/hooks": "^9.0.1",
     "@tabler/icons-react": "^3.41.1",
     "@xyflow/react": "^12.10.2",
-    "alepha": "0.19.3",
+    "alepha": "0.19.4",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "tsdown": "^0.21.7",
@@ -35,7 +35,7 @@
     "vitest": "^4.1.4"
   },
   "peerDependencies": {
-    "alepha": "0.19.3"
+    "alepha": "0.19.4"
   },
   "scripts": {
     "lint": "alepha lint",

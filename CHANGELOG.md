@@ -1,3 +1,30 @@
+## [0.19.4] - 2026-04-10
+
+### Features
+
+- **orm**: replace db.enum by t.enum [BREAKING] (`c5c1c94f`)
+- **workflow**: add schemas for workflow execution, registration, and activity tracking (`6ab8fcbb`)
+- **subscriptions**: add schemas for managing subscription plans and events (`236bffa3`)
+- **users**: implement user deletion cleanup for sessions and identities (`24721278`)
+- **auth**: add defaultRoles to login, register, and reset password components (`a615a09b`)
+- **notifications**: remove 'failed' status from admin notifications (`cf6882a6`)
+- **jobs**: remove batch display from job details and refine status color coding (`612a93a1`)
+- **payments**: implement customer caching and error handling in Stripe payment processing (`f29bcab2`)
+- **payments**: enhance payment handling with improved error handling, status transitions, and user intent management (`845d3e14`)
+- **parameters**: add validation, pagination, and deletion functionalities for parameter management (`71009e9f`)
+- **invitations**: implement invitation management module with create, accept, decline, revoke, and expire functionalities (`7927c1e3`)
+- **jobs**: add pause/resume functionality and enhance job management (`9d030774`)
+
+### Bug Fixes
+
+- **react**: added a monotonic transitionId counter on ReactBrowserProvider (`cd532bb1`)
+- **ui**: remove unused Mantine charts styles import (`0c49bfcf`)
+- **cli**: vendor - correct file addition and removal logic in VendorService (`5f2c3241`)
+- **cli**: vendor - improve local modifications check before syncing (`31e14868`)
+- **cli**: init - update admin layout structure and include admin user layout (`5450c35f`)
+- **payments**: rename billing to payments and update related components (`9d956428`)
+- **cli**: fix init --saas (`a2bbab62`)
+
 ## [0.19.3] - 2026-04-03
 
 ### Features
