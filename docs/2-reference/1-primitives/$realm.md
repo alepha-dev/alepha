@@ -35,5 +35,9 @@ Environment Variables:
 | `credentials` | `true` | No |  |
 | `google` | `true` | No |  |
 | `github` | `true` | No |  |
+| `apple` | `true` | No |  |
+| `facebook` | `true` | No |  |
+| `microsoft` | `true` | No |  |
+| `franceconnect` | `true` | No |  |
 | `features` | `Partial&lt;RealmFeatures&gt;` | No | Enable or disable realm features |
 

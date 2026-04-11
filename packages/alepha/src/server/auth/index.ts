@@ -7,9 +7,13 @@ import { ServerAuthProvider } from "./providers/ServerAuthProvider.ts";
 
 export * from "./index.shared.ts";
 export * from "./primitives/$auth.ts";
+export * from "./primitives/$authApple.ts";
 export * from "./primitives/$authCredentials.ts";
+export * from "./primitives/$authFacebook.ts";
+export * from "./primitives/$authFranceConnect.ts";
 export * from "./primitives/$authGithub.ts";
 export * from "./primitives/$authGoogle.ts";
+export * from "./primitives/$authMicrosoft.ts";
 export * from "./providers/ServerAuthProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -23,6 +27,9 @@ export * from "./providers/ServerAuthProvider.ts";
  * - Google OAuth integration
  * - GitHub OAuth integration
  * - Apple OAuth integration
+ * - Facebook OAuth integration
+ * - Microsoft Entra ID (Azure AD) integration
+ * - France Connect integration
  * - Cookie-based, SSR-friendly authentication
  * - Token management and refresh
  *

@@ -12,9 +12,13 @@ import {
   SecurityProvider,
 } from "alepha/security";
 import {
+  $authApple,
   $authCredentials,
+  $authFacebook,
+  $authFranceConnect,
   $authGithub,
   $authGoogle,
+  $authMicrosoft,
   type AuthPrimitive,
   type Credentials,
   type LinkAccountOptions,
@@ -205,6 +209,22 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
       auth.github = $authGithub(realm);
     }
 
+    if (identities.apple) {
+      auth.apple = $authApple(realm);
+    }
+
+    if (identities.facebook) {
+      auth.facebook = $authFacebook(realm);
+    }
+
+    if (identities.microsoft) {
+      auth.microsoft = $authMicrosoft(realm);
+    }
+
+    if (identities.franceconnect) {
+      auth.franceconnect = $authFranceConnect(realm);
+    }
+
     alepha.with(() => auth);
   }
 
@@ -315,6 +335,10 @@ export interface RealmOptions {
     credentials?: true;
     google?: true;
     github?: true;
+    apple?: true;
+    facebook?: true;
+    microsoft?: true;
+    franceconnect?: true;
   };
 
   /**

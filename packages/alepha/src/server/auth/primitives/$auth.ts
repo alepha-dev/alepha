@@ -198,6 +198,19 @@ export interface OidcOptions {
   scope?: string;
 
   account?: LinkAccountFn;
+
+  /**
+   * OAuth2 response mode.
+   * Apple requires "form_post" which sends the authorization code via POST body
+   * instead of URL query parameters.
+   */
+  responseMode?: "query" | "fragment" | "form_post";
+
+  /**
+   * Additional parameters to include in the authorization URL.
+   * Useful for provider-specific parameters.
+   */
+  authorizationParameters?: Record<string, string>;
 }
 
 export interface LinkAccountOptions {

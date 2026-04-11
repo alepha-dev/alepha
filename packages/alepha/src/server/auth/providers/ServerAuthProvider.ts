@@ -6,7 +6,12 @@ import {
   SecurityError,
   type UserAccount,
 } from "alepha/security";
-import { $route, BadRequestError } from "alepha/server";
+import {
+  $route,
+  BadRequestError,
+  type ServerRawRequest,
+  type ServerReply,
+} from "alepha/server";
 import {
   $cookie,
   type Cookies,
@@ -319,6 +324,14 @@ export class ServerAuthProvider {
           parameters.scope = scope;
         }
 
+        if (oidc && oidc.responseMode) {
+          parameters.response_mode = oidc.responseMode;
+        }
+
+        if (oidc && oidc.authorizationParameters) {
+          Object.assign(parameters, oidc.authorizationParameters);
+        }
+
         this.authorizationCode.set({
           state,
           nonce: parameters.nonce,
@@ -348,6 +361,14 @@ export class ServerAuthProvider {
         parameters.scope = scope;
       }
 
+      if (oidc && oidc.responseMode) {
+        parameters.response_mode = oidc.responseMode;
+      }
+
+      if (oidc && oidc.authorizationParameters) {
+        Object.assign(parameters, oidc.authorizationParameters);
+      }
+
       this.authorizationCode.set({
         codeVerifier,
         redirectUri: query.redirect_uri ?? "/",
@@ -361,85 +382,116 @@ export class ServerAuthProvider {
   });
 
   /**
+   * Shared callback logic for both GET and POST OAuth2/OIDC callbacks.
+   * For form_post response mode (e.g. Apple Sign In), the raw Request object
+   * is passed so openid-client can read the authorization code from the POST body.
+   */
+  protected async handleCallback(
+    url: URL,
+    reply: ServerReply,
+    cookies: Cookies,
+    raw?: ServerRawRequest,
+  ) {
+    const authorizationCode = this.authorizationCode.get({ cookies });
+    if (!authorizationCode) {
+      throw new BadRequestError("Missing code verifier");
+    }
+
+    const provider = this.provider(authorizationCode);
+    const oauth = await provider.getOAuth();
+    if (!oauth) {
+      throw new SecurityError(
+        `Auth provider '${provider.name}' does not support OAuth2`,
+      );
+    }
+
+    const redirectUri = authorizationCode.redirectUri ?? "/";
+    const loginUri = authorizationCode.loginUri;
+
+    // For form_post response mode (e.g. Apple), pass the raw Request object
+    // so openid-client can read the authorization code from the POST body.
+    const currentUrl: URL | Request =
+      raw?.web?.req && raw.web.req.method === "POST" ? raw.web.req : url;
+
+    const externalTokens = await authorizationCodeGrant(oauth, currentUrl, {
+      pkceCodeVerifier: authorizationCode.codeVerifier,
+      expectedState: authorizationCode.state,
+      expectedNonce: authorizationCode.nonce,
+    })
+      .then((tokens) => ({
+        issued_at: this.dateTimeProvider.now().unix(),
+        provider: provider.name,
+        ...tokens,
+      }))
+      .catch((e) => {
+        this.log.error("Failed to get access token", e);
+        throw new SecurityError("Failed to get access token", {
+          cause: e,
+        });
+      });
+
+    this.authorizationCode.del({ cookies });
+
+    const issuer = provider.issuer;
+
+    // external, full OIDC System (e.g. Keycloak, Auth0)
+    if (!issuer) {
+      this.setTokens(externalTokens, cookies);
+      reply.redirect(redirectUri, 302);
+      return;
+    }
+
+    // internal, we need to create our own tokens
+
+    let user: UserAccount;
+    try {
+      user = await provider.user(externalTokens);
+    } catch (e) {
+      this.log.warn("OAuth2 account linking failed", e);
+      const errorTarget = loginUri || redirectUri;
+      const errorUrl = new URL(errorTarget, url.origin);
+      errorUrl.searchParams.set(
+        "error",
+        e instanceof BadRequestError ? e.message : "Authentication failed",
+      );
+      reply.redirect(errorUrl.pathname + errorUrl.search, 302);
+      return;
+    }
+
+    const tokens = await issuer.createToken(user);
+
+    this.setTokens(
+      {
+        ...tokens,
+        issued_at: this.dateTimeProvider.now().unix(),
+        provider: provider.name,
+      },
+      cookies,
+    );
+
+    reply.redirect(redirectUri, 302);
+  }
+
+  /**
    * Callback for OAuth2/OIDC providers.
    * It handles the authorization code flow and retrieves the access token.
    */
   public readonly callback = $route({
     path: alephaServerAuthRoutes.callback,
     handler: async ({ url, reply, cookies }) => {
-      const authorizationCode = this.authorizationCode.get({ cookies });
-      if (!authorizationCode) {
-        throw new BadRequestError("Missing code verifier");
-      }
+      await this.handleCallback(url, reply, cookies);
+    },
+  });
 
-      const provider = this.provider(authorizationCode);
-      const oauth = await provider.getOAuth();
-      if (!oauth) {
-        throw new SecurityError(
-          `Auth provider '${provider.name}' does not support OAuth2`,
-        );
-      }
-
-      const redirectUri = authorizationCode.redirectUri ?? "/";
-      const loginUri = authorizationCode.loginUri;
-
-      const externalTokens = await authorizationCodeGrant(oauth, url, {
-        pkceCodeVerifier: authorizationCode.codeVerifier,
-        expectedState: authorizationCode.state,
-        expectedNonce: authorizationCode.nonce,
-      })
-        .then((tokens) => ({
-          issued_at: this.dateTimeProvider.now().unix(),
-          provider: provider.name,
-          ...tokens,
-        }))
-        .catch((e) => {
-          this.log.error("Failed to get access token", e);
-          throw new SecurityError("Failed to get access token", {
-            cause: e,
-          });
-        });
-
-      this.authorizationCode.del({ cookies });
-
-      const issuer = provider.issuer;
-
-      // external, full OIDC System (e.g. Keycloak, Auth0)
-      if (!issuer) {
-        this.setTokens(externalTokens, cookies);
-        reply.redirect(redirectUri, 302);
-        return;
-      }
-
-      // internal, we need to create our own tokens
-
-      let user: UserAccount;
-      try {
-        user = await provider.user(externalTokens);
-      } catch (e) {
-        this.log.warn("OAuth2 account linking failed", e);
-        const errorTarget = loginUri || redirectUri;
-        const errorUrl = new URL(errorTarget, url.origin);
-        errorUrl.searchParams.set(
-          "error",
-          e instanceof BadRequestError ? e.message : "Authentication failed",
-        );
-        reply.redirect(errorUrl.pathname + errorUrl.search, 302);
-        return;
-      }
-
-      const tokens = await issuer.createToken(user);
-
-      this.setTokens(
-        {
-          ...tokens,
-          issued_at: this.dateTimeProvider.now().unix(),
-          provider: provider.name,
-        },
-        cookies,
-      );
-
-      reply.redirect(redirectUri, 302);
+  /**
+   * POST callback for OAuth2/OIDC providers using form_post response mode.
+   * Apple Sign In sends the authorization code via POST body instead of URL query parameters.
+   */
+  public readonly callbackPost = $route({
+    path: alephaServerAuthRoutes.callback,
+    method: "POST",
+    handler: async ({ url, reply, cookies, raw }) => {
+      await this.handleCallback(url, reply, cookies, raw);
     },
   });
 
