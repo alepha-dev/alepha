@@ -543,6 +543,8 @@ export class SessionService {
   public async refreshSession(refreshToken: string, userRealmName?: string) {
     this.log.trace("Refreshing session");
 
+    // getOne() throws DbEntityNotFoundError if not found — never returns null.
+    // No null check needed here.
     const session = await this.sessions(userRealmName).getOne({
       where: {
         refreshToken: { eq: refreshToken },

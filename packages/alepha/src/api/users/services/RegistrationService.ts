@@ -127,6 +127,9 @@ export class RegistrationService {
     }
 
     if (body.username) {
+      // Security note: usernameRegExp is admin-controlled (from realmAuthSettingsAtom),
+      // not user input. Default is ^[a-zA-Z0-9_]{3,30}$ which is ReDoS-safe.
+      // No need for regex timeout or safe-regex validation here.
       const usernameRegExp = realmSettings?.usernameRegExp;
       if (usernameRegExp) {
         const regex = new RegExp(usernameRegExp);

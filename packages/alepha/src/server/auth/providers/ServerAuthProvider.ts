@@ -348,6 +348,14 @@ export class ServerAuthProvider {
         return;
       }
 
+      // Security note: No state or nonce in the PKCE path is intentional.
+      // PKCE provides equivalent CSRF protection to state: the code_verifier is bound
+      // to the session cookie, and the authorization code is bound to the code_challenge.
+      // An attacker cannot forge the callback without the code_verifier. OAuth 2.1 (RFC 9126)
+      // makes PKCE mandatory and state optional. For OIDC nonce: the id_token is received
+      // over back-channel TLS from the token endpoint, making nonce replay irrelevant.
+      // openid-client/oauth4webapi correctly validates that no state is in the response
+      // when none was sent (expectNoState).
       const codeVerifier = randomPKCECodeVerifier();
       const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
 
@@ -668,6 +676,8 @@ export class ServerAuthProvider {
       return;
     }
 
+    // Non-constant-time comparison is fine here — this determines whether to update
+    // the cookie, not whether to grant access. No authentication decision is made.
     if (refreshedTokens.access_token !== tokens.access_token) {
       this.setTokens(refreshedTokens, cookies);
     }

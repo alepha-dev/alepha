@@ -161,6 +161,9 @@ export class ServerCookiesProvider {
     const cookie: Cookie = {
       value: encodeURIComponent(value),
       path: options.path ?? "/",
+      // "lax" is correct here — "strict" would break OAuth flows because OAuth callbacks
+      // are top-level redirects from the IdP, and strict cookies are not sent on cross-site
+      // top-level navigations. "lax" is Chrome's own default and the industry standard.
       sameSite: options.sameSite ?? "lax",
       secure: options.secure ?? this.alepha.isProduction(),
       httpOnly: options.httpOnly,

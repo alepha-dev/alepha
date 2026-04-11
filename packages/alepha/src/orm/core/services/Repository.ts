@@ -533,6 +533,8 @@ export abstract class Repository<T extends TObject> {
     } = {},
     opts: StatementOptions & { count?: boolean } = {},
   ): Promise<Page<PgStatic<T, R>>> {
+    // Overflow-safe: pageQuerySchema constrains size to [1, 100] and page to >= 0.
+    // With max size=100, page would need to exceed 2^45 to overflow Number.MAX_SAFE_INTEGER.
     const limit = query.limit ?? pagination.size ?? 10;
     const page = pagination.page ?? 0;
     const offset = query.offset ?? page * limit;

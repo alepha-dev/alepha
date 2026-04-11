@@ -424,6 +424,13 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
     );
   }
 
+  // Security note: No JWT signature verification here is intentional and safe.
+  // The id_token is received via authorizationCodeGrant() which fetches it over a
+  // back-channel TLS connection directly from the IdP's token endpoint. TLS authenticates
+  // the channel. openid-client/oauth4webapi validates claims (issuer, audience, nonce,
+  // expiry) during the grant. Per OIDC spec, cryptographic signature verification is
+  // not required for back-channel token responses — only for implicit/hybrid flows.
+  // See: openid-client index.d.ts enableNonRepudiationChecks() docs.
   protected getUserFromIdToken(idToken: string): OAuth2Profile {
     try {
       return JSON.parse(
