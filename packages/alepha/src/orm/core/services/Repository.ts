@@ -676,7 +676,9 @@ export abstract class Repository<T extends TObject> {
         .returning(this.table)
         .then(([it]) => this.clean(it, this.entity.schema));
 
-      this.dbCache.invalidateTable(this.tableName).catch(() => {});
+      this.dbCache
+        .invalidateTable(this.tableName)
+        .catch((err) => this.log.warn("Cache invalidation failed", err));
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
@@ -730,7 +732,9 @@ export abstract class Repository<T extends TObject> {
         allEntities.push(...entities);
       }
 
-      this.dbCache.invalidateTable(this.tableName).catch(() => {});
+      this.dbCache
+        .invalidateTable(this.tableName)
+        .catch((err) => this.log.warn("Cache invalidation failed", err));
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
@@ -827,7 +831,9 @@ export abstract class Repository<T extends TObject> {
         .returning(this.table)
         .then(([it]) => this.clean(it, this.entity.schema));
 
-      this.dbCache.invalidateTable(this.tableName).catch(() => {});
+      this.dbCache
+        .invalidateTable(this.tableName)
+        .catch((err) => this.log.warn("Cache invalidation failed", err));
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
@@ -891,7 +897,9 @@ export abstract class Repository<T extends TObject> {
     try {
       const entity = this.clean(response[0], this.entity.schema);
 
-      this.dbCache.invalidateTable(this.tableName).catch(() => {});
+      this.dbCache
+        .invalidateTable(this.tableName)
+        .catch((err) => this.log.warn("Cache invalidation failed", err));
 
       await this.alepha.events.emit("repository:update:after", {
         tableName: this.tableName,
@@ -1043,7 +1051,9 @@ export abstract class Repository<T extends TObject> {
         .where(this.toSQL(where))
         .returning();
 
-      this.dbCache.invalidateTable(this.tableName).catch(() => {});
+      this.dbCache
+        .invalidateTable(this.tableName)
+        .catch((err) => this.log.warn("Cache invalidation failed", err));
 
       await this.alepha.events.emit("repository:update:after", {
         tableName: this.tableName,
@@ -1091,7 +1101,9 @@ export abstract class Repository<T extends TObject> {
         .returning({ id: (this.table as any)[this.id.key] });
       const ids = result.map((row) => row.id);
 
-      this.dbCache.invalidateTable(this.tableName).catch(() => {});
+      this.dbCache
+        .invalidateTable(this.tableName)
+        .catch((err) => this.log.warn("Cache invalidation failed", err));
 
       await this.alepha.events.emit("repository:delete:after", {
         tableName: this.tableName,

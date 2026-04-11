@@ -40,6 +40,17 @@ export class ServerAuthProvider {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly serverLinksProvider = $inject(ServerLinksProvider);
 
+  /**
+   * Validates that a redirect URI is a safe relative path.
+   * Prevents open redirect attacks by rejecting absolute URLs and protocol-relative URLs.
+   */
+  protected validateRedirectUri(uri: string): string {
+    if (!uri.startsWith("/") || uri.startsWith("//")) {
+      return "/";
+    }
+    return uri;
+  }
+
   public get identities(): Array<AuthPrimitive> {
     return this.alepha
       .primitives($auth)
@@ -50,6 +61,7 @@ export class ServerAuthProvider {
     name: "authorizationCode",
     ttl: [15, "minutes"],
     httpOnly: true,
+    encrypt: true,
     schema: t.object({
       provider: t.text(),
       realm: t.optional(t.text()),
@@ -335,7 +347,7 @@ export class ServerAuthProvider {
         this.authorizationCode.set({
           state,
           nonce: parameters.nonce,
-          redirectUri: query.redirect_uri ?? "/",
+          redirectUri: this.validateRedirectUri(query.redirect_uri ?? "/"),
           loginUri,
           provider: query.provider,
           realm: query.realm,
@@ -379,7 +391,7 @@ export class ServerAuthProvider {
 
       this.authorizationCode.set({
         codeVerifier,
-        redirectUri: query.redirect_uri ?? "/",
+        redirectUri: this.validateRedirectUri(query.redirect_uri ?? "/"),
         loginUri,
         provider: query.provider,
         realm: query.realm,
@@ -515,7 +527,9 @@ export class ServerAuthProvider {
       }),
     },
     handler: async ({ query, reply, cookies }) => {
-      const redirect = query.post_logout_redirect_uri ?? "/";
+      const redirect = this.validateRedirectUri(
+        query.post_logout_redirect_uri ?? "/",
+      );
       const tokens = this.getTokens(cookies);
       if (!tokens) {
         reply.redirect(redirect, 302);

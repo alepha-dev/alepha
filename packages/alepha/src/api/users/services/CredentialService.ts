@@ -256,9 +256,6 @@ export class CredentialService {
       throw new BadRequestError("Verification code has already been used");
     }
 
-    // Atomically delete cache key to prevent replay
-    await this.intentCache.invalidate(body.intentId);
-
     // Hash the new password
     const hashedPassword = await this.cryptoProvider.hashPassword(
       body.newPassword,
@@ -273,6 +270,12 @@ export class CredentialService {
     await this.sessions(intent.realmName).deleteMany({
       userId: { eq: intent.userId },
     });
+
+    // Invalidate intent after all operations succeed,
+    // so the user can retry if password update or session cleanup fails.
+    // The verification code was already consumed (verifiedAt set), so replay is
+    // prevented even if the intent is still in cache.
+    await this.intentCache.invalidate(body.intentId);
 
     this.log.info("Password reset completed", {
       userId: intent.userId,

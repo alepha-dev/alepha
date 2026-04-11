@@ -177,7 +177,9 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   ): void {
     const connectionId = `ws-${this.nextConnectionId++}`;
 
-    // TODO: Extract userId from security context when alepha/security is available
+    // TODO: Extract userId from the WebSocket upgrade request.
+    // Parse JWT from cookies or Authorization header during handshake.
+    // Until implemented, maxConnectionsPerUser has no effect.
     const userId: string | undefined = undefined;
 
     // Extract roomIds from query params (e.g., ?roomId=room1&roomId=room2 or ?roomIds=room1,room2)

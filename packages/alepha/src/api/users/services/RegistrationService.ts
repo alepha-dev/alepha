@@ -291,12 +291,17 @@ export class RegistrationService {
       await this.verifyPhoneCode(intent.data.phoneNumber, body.phoneCode);
     }
 
-    // Validate captcha if required (placeholder for future implementation)
+    // Validate captcha if required
     if (intent.requirements.captcha) {
       if (!body.captchaToken) {
         throw new BadRequestError("Captcha verification is required");
       }
-      // TODO: Validate captcha token
+      // TODO: Integrate with a captcha verification provider (reCAPTCHA, hCaptcha, Turnstile).
+      // Until implemented, captcha requirement should not be enabled in realm settings
+      // as it would give a false sense of security — any non-empty token passes.
+      this.log.warn(
+        "Captcha validation is not yet implemented. Any token is accepted.",
+      );
     }
 
     // Final availability check (race condition guard)
@@ -326,15 +331,16 @@ export class RegistrationService {
       emailVerified: intent.requirements.email, // Marked as verified if we verified during registration
     });
 
-    // Invalidate intent after successful creation to allow retry on failure
-    await this.intentCache.invalidate(body.intentId);
-
     // Create credentials identity
     await identityRepository.create({
       userId: user.id,
       provider: "credentials",
       password: intent.data.passwordHash,
     });
+
+    // Invalidate intent after both user and identity creation succeed,
+    // so the user can retry if either operation fails.
+    await this.intentCache.invalidate(body.intentId);
 
     this.log.info("User registered successfully", {
       userId: user.id,
