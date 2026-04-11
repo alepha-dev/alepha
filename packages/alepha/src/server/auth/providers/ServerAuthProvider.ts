@@ -724,7 +724,7 @@ export class ServerAuthProvider {
 
     if (
       "oidc" in idp.options &&
-      !("realm" in idp.options) &&
+      !("issuer" in idp.options) &&
       idp.options.oidc?.useIdToken
     ) {
       return tokens.id_token;
