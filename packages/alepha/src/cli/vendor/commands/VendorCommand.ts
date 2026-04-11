@@ -5,6 +5,7 @@ import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { vendorOptions } from "../atoms/vendorOptions.ts";
 import type {
   VendorDiffResult,
+  VendorPackageDiff,
   VendorSyncResult,
 } from "../services/VendorService.ts";
 import { VendorService } from "../services/VendorService.ts";
@@ -81,22 +82,7 @@ export class VendorCommand {
         );
 
         for (const pkg of result.aborted.packages) {
-          const count =
-            pkg.added.length + pkg.modified.length + pkg.removed.length;
-          if (count === 0) continue;
-
-          process.stdout.write(
-            `\n${c.set("CYAN", pkg.name)}: ${count} ${count === 1 ? "file differs" : "files differ"}\n`,
-          );
-          for (const file of pkg.added) {
-            process.stdout.write(`  ${c.set("GREEN", "A")} ${file}\n`);
-          }
-          for (const file of pkg.modified) {
-            process.stdout.write(`  ${c.set("ORANGE", "M")} ${file}\n`);
-          }
-          for (const file of pkg.removed) {
-            process.stdout.write(`  ${c.set("RED", "D")} ${file}\n`);
-          }
+          this.printPackageDiff(pkg);
         }
 
         process.stdout.write("\n");
@@ -160,34 +146,51 @@ export class VendorCommand {
         return;
       }
 
-      const c = this.color;
-
       for (const pkg of result.packages) {
-        const count =
-          pkg.added.length + pkg.modified.length + pkg.removed.length;
-        if (count === 0) {
-          process.stdout.write(`\n${c.set("CYAN", pkg.name)}: no changes\n`);
-          continue;
-        }
-
-        process.stdout.write(
-          `\n${c.set("CYAN", pkg.name)}: ${count} ${count === 1 ? "file differs" : "files differ"}\n`,
-        );
-
-        for (const file of pkg.added) {
-          process.stdout.write(`  ${c.set("GREEN", "A")} ${file}\n`);
-        }
-        for (const file of pkg.modified) {
-          process.stdout.write(`  ${c.set("ORANGE", "M")} ${file}\n`);
-        }
-        for (const file of pkg.removed) {
-          process.stdout.write(`  ${c.set("RED", "D")} ${file}\n`);
-        }
+        this.printPackageDiff(pkg);
       }
 
       process.stdout.write("\n");
     },
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Helpers
+  // ─────────────────────────────────────────────────────────────────────────
+
+  protected printPackageDiff(pkg: VendorPackageDiff) {
+    const c = this.color;
+    const count = pkg.added.length + pkg.modified.length + pkg.removed.length;
+
+    if (count === 0) {
+      process.stdout.write(`\n${c.set("CYAN", pkg.name)}: no changes\n`);
+      return;
+    }
+
+    process.stdout.write(
+      `\n${c.set("CYAN", pkg.name)}: ${count} ${count === 1 ? "file differs" : "files differ"}\n`,
+    );
+
+    for (const file of pkg.added) {
+      process.stdout.write(`  ${c.set("GREEN", "A")} ${file}\n`);
+    }
+
+    for (const fileDiff of pkg.modified) {
+      process.stdout.write(`  ${c.set("ORANGE", "M")} ${fileDiff.file}\n`);
+      for (const change of fileDiff.changes) {
+        const prefix = change.type === "removed" ? "-" : "+";
+        const color = change.type === "removed" ? "RED" : "GREEN";
+        const lineNum = `L${change.line}`;
+        process.stdout.write(
+          `      ${c.set("DIM", lineNum.padEnd(5))} ${c.set(color, `${prefix} ${change.text}`)}\n`,
+        );
+      }
+    }
+
+    for (const file of pkg.removed) {
+      process.stdout.write(`  ${c.set("RED", "D")} ${file}\n`);
+    }
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Parent command

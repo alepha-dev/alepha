@@ -443,7 +443,12 @@ describe("VendorService", () => {
         packages: ["pkg"],
       });
 
-      expect(result.packages[0].modified).toEqual(["file.ts"]);
+      expect(result.packages[0].modified).toHaveLength(1);
+      expect(result.packages[0].modified[0].file).toBe("file.ts");
+      expect(result.packages[0].modified[0].changes).toEqual([
+        { line: 1, type: "removed", text: "original" },
+        { line: 1, type: "added", text: "modified by user" },
+      ]);
       expect(result.totalChanges).toBe(1);
     });
 
@@ -491,6 +496,40 @@ describe("VendorService", () => {
       });
 
       expect(result.totalChanges).toBe(0);
+    });
+
+    it("should include line-level changes for multi-line modifications", async ({
+      expect,
+    }) => {
+      const { service, fs } = createDiffTestService();
+      await writeVendorLock(fs);
+
+      await fs.mkdir("/tmp/test-baseline/packages/pkg", { recursive: true });
+      await fs.writeFile(
+        "/tmp/test-baseline/packages/pkg/config.ts",
+        "const a = 1;\nconst b = 2;\nconst c = 3;",
+      );
+
+      await fs.mkdir("/project/packages/pkg", { recursive: true });
+      await fs.writeFile(
+        "/project/packages/pkg/config.ts",
+        "const a = 1;\nconst b = 99;\nconst c = 3;\nconst d = 4;",
+      );
+
+      const result = await service.diff({
+        root: "/project",
+        remote: "remote",
+        branch: "main",
+        packages: ["pkg"],
+      });
+
+      const fileDiff = result.packages[0].modified[0];
+      expect(fileDiff.file).toBe("config.ts");
+      expect(fileDiff.changes).toEqual([
+        { line: 2, type: "removed", text: "const b = 2;" },
+        { line: 2, type: "added", text: "const b = 99;" },
+        { line: 4, type: "added", text: "const d = 4;" },
+      ]);
     });
 
     it("should clean up temp directory after diff", async ({ expect }) => {

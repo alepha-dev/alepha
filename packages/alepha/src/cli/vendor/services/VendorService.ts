@@ -33,12 +33,29 @@ export interface VendorDiffOptions {
 }
 
 /**
+ * A single line change within a modified file.
+ */
+export interface VendorLineDiff {
+  line: number;
+  type: "added" | "removed";
+  text: string;
+}
+
+/**
+ * A modified file with its line-level changes.
+ */
+export interface VendorFileDiff {
+  file: string;
+  changes: VendorLineDiff[];
+}
+
+/**
  * Diff result for a single vendored package.
  */
 export interface VendorPackageDiff {
   name: string;
   added: string[];
-  modified: string[];
+  modified: VendorFileDiff[];
   removed: string[];
 }
 
@@ -388,9 +405,13 @@ export class VendorService {
   protected async diffDirectories(
     localDir: string,
     remoteDir: string,
-  ): Promise<{ added: string[]; modified: string[]; removed: string[] }> {
+  ): Promise<{
+    added: string[];
+    modified: VendorFileDiff[];
+    removed: string[];
+  }> {
     const added: string[] = [];
-    const modified: string[] = [];
+    const modified: VendorFileDiff[] = [];
     const removed: string[] = [];
 
     const [localFiles, remoteFiles] = await Promise.all([
@@ -418,7 +439,11 @@ export class VendorService {
         ]);
 
         if (!localContent.equals(remoteContent)) {
-          modified.push(file);
+          const changes = this.computeLineDiff(
+            remoteContent.toString(),
+            localContent.toString(),
+          );
+          modified.push({ file, changes });
         }
       } catch {
         // Skip directories and unreadable entries
@@ -433,5 +458,84 @@ export class VendorService {
     }
 
     return { added, modified, removed };
+  }
+
+  /**
+   * Compute line-level differences between two file contents.
+   *
+   * Uses a longest-common-subsequence algorithm to produce minimal
+   * added/removed line changes with accurate line numbers.
+   */
+  protected computeLineDiff(baseline: string, local: string): VendorLineDiff[] {
+    const baseLines = baseline.split("\n");
+    const localLines = local.split("\n");
+    const lcs = this.longestCommonSubsequence(baseLines, localLines);
+    const changes: VendorLineDiff[] = [];
+
+    let bi = 0;
+    let li = 0;
+    let ci = 0;
+
+    while (bi < baseLines.length || li < localLines.length) {
+      if (ci < lcs.length && bi < baseLines.length && li < localLines.length) {
+        if (baseLines[bi] === lcs[ci] && localLines[li] === lcs[ci]) {
+          // Line is unchanged
+          bi++;
+          li++;
+          ci++;
+        } else if (baseLines[bi] !== lcs[ci]) {
+          changes.push({ line: bi + 1, type: "removed", text: baseLines[bi] });
+          bi++;
+        } else {
+          changes.push({ line: li + 1, type: "added", text: localLines[li] });
+          li++;
+        }
+      } else if (bi < baseLines.length) {
+        changes.push({ line: bi + 1, type: "removed", text: baseLines[bi] });
+        bi++;
+      } else {
+        changes.push({ line: li + 1, type: "added", text: localLines[li] });
+        li++;
+      }
+    }
+
+    return changes;
+  }
+
+  /**
+   * Compute the longest common subsequence of two string arrays.
+   */
+  protected longestCommonSubsequence(a: string[], b: string[]): string[] {
+    const m = a.length;
+    const n = b.length;
+    const dp: number[][] = Array.from({ length: m + 1 }, () =>
+      Array(n + 1).fill(0),
+    );
+
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        dp[i][j] =
+          a[i - 1] === b[j - 1]
+            ? dp[i - 1][j - 1] + 1
+            : Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+
+    const result: string[] = [];
+    let i = m;
+    let j = n;
+    while (i > 0 && j > 0) {
+      if (a[i - 1] === b[j - 1]) {
+        result.unshift(a[i - 1]);
+        i--;
+        j--;
+      } else if (dp[i - 1][j] > dp[i][j - 1]) {
+        i--;
+      } else {
+        j--;
+      }
+    }
+
+    return result;
   }
 }
