@@ -141,7 +141,7 @@ export class ServerAuthProvider {
       const tokens = this.getTokens(cookies);
       if (tokens) {
         const provider = this.provider(tokens);
-        if (!("realm" in provider.options)) {
+        if (!("issuer" in provider.options)) {
           const user = await provider.user(tokens);
           const api = await this.serverLinksProvider.getUserApiLinks({
             authorization: headers.authorization,
