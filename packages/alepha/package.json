@@ -209,6 +209,11 @@
       "import": "./src/cache/redis/index.ts",
       "default": "./src/cache/redis/index.ts"
     },
+    "./captcha": {
+      "types": "./src/captcha/index.ts",
+      "import": "./src/captcha/index.ts",
+      "default": "./src/captcha/index.ts"
+    },
     "./cli/config": {
       "types": "./src/cli/config/index.ts",
       "import": "./src/cli/config/index.ts",

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { $inject, Alepha, AlephaError } from "alepha";
 import type { VerificationController } from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
+import { CaptchaProvider } from "alepha/captcha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { CryptoProvider } from "alepha/security";
@@ -48,6 +49,7 @@ export class RegistrationService {
   protected readonly verificationController = $client<VerificationController>();
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly credentialService = $inject(CredentialService);
+  protected readonly captchaProvider = $inject(CaptchaProvider);
 
   protected readonly intentCache = $cache<RegistrationIntent>({
     name: "api:users:registrations",
@@ -296,12 +298,11 @@ export class RegistrationService {
       if (!body.captchaToken) {
         throw new BadRequestError("Captcha verification is required");
       }
-      // TODO: Integrate with a captcha verification provider (reCAPTCHA, hCaptcha, Turnstile).
-      // Until implemented, captcha requirement should not be enabled in realm settings
-      // as it would give a false sense of security — any non-empty token passes.
-      this.log.warn(
-        "Captcha validation is not yet implemented. Any token is accepted.",
-      );
+
+      const valid = await this.captchaProvider.verify(body.captchaToken);
+      if (!valid) {
+        throw new BadRequestError("Captcha verification failed");
+      }
     }
 
     // Final availability check (race condition guard)
