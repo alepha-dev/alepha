@@ -1,3 +1,25 @@
+## [0.19.5] - 2026-04-12
+
+### Features
+
+- **auth**: enhance Apple Sign In integration with external profile support (`5dc3ced2`)
+- **cli**: platform - add support for data jurisdiction in R2 and D1 resources (`69ad18aa`)
+- **payments**: add Stripe payment provider with webhook provisioning (`d36cc242`)
+- **captcha**: add Memory and Turnstile captcha providers with documentation (`33e8d0cc`)
+- **cli**: vendor - enhance diff output with line-level changes for modified files (`0cb4af22`)
+- **auth**: add authentication primitives for Facebook, Microsoft, and France Connect (`4541aeb3`)
+- **react/i18n**: enhance language fallback logic and add tests for non-English dictionaries (`7595d6cd`)
+- **cli**: build - add PWA configuration and manifest generation (`e500ec15`)
+- **api/issues**: create issues module (`cf9a0a15`)
+
+### Bug Fixes
+
+- **auth**: correct condition for OIDC token retrieval in ServerAuthProvider (`134b2bce`)
+- **auth**: improve intent cache invalidation logic for password reset and user registration (`6233e872`)
+- **security**: add security notes and clarify intentional design choices in authentication and session handling (`62efcd71`)
+- **cli**: dev - update stylesheet inclusion to use module script (`ebd47254`)
+- **cli**: improve default value handling in CliProvider (`3be4f5e9`)
+
 ## [0.19.4] - 2026-04-10
 
 ### Features

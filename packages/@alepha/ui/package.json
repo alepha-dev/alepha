@@ -7,7 +7,7 @@
     "mantine"
   ],
   "author": "Feunard",
-  "version": "0.19.4",
+  "version": "0.19.5",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -37,7 +37,7 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/react-is": "^19.2.0",
-    "alepha": "0.19.4",
+    "alepha": "0.19.5",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "typescript": "^6.0.2",
@@ -45,7 +45,7 @@
     "vitest": "^4.1.4"
   },
   "peerDependencies": {
-    "alepha": "0.19.4",
+    "alepha": "0.19.5",
     "react": "*",
     "react-dom": "*"
   },

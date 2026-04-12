@@ -6,7 +6,7 @@
     "mqtt"
   ],
   "author": "Feunard",
-  "version": "0.19.4",
+  "version": "0.19.5",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -23,12 +23,12 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.11",
-    "alepha": "0.19.4",
+    "alepha": "0.19.5",
     "typescript": "^6.0.2",
     "vitest": "^4.1.4"
   },
   "peerDependencies": {
-    "alepha": "0.19.4"
+    "alepha": "0.19.5"
   },
   "scripts": {
     "lint": "alepha lint && yarn build:check",
