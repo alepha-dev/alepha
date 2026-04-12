@@ -14,4 +14,14 @@ export abstract class CaptchaProvider {
    * @returns Whether the token is valid.
    */
   public abstract verify(token: string, ip?: string): Promise<boolean>;
+
+  /**
+   * Public site/widget key to hand to the browser, when applicable.
+   *
+   * Returns `undefined` for providers that don't need a client key
+   * (e.g. in-memory/test providers).
+   */
+  public getSiteKey(): string | undefined {
+    return undefined;
+  }
 }

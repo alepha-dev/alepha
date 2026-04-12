@@ -64,6 +64,7 @@ import type { CaptchaProvider } from "./CaptchaProvider.ts";
 export class TurnstileCaptchaProvider implements CaptchaProvider {
   protected readonly log = $logger();
   protected readonly secretKey: string;
+  protected readonly siteKey: string;
 
   constructor() {
     const { alepha } = $context();
@@ -74,10 +75,19 @@ export class TurnstileCaptchaProvider implements CaptchaProvider {
           description:
             "The secret key from the Cloudflare Turnstile dashboard.",
         }),
+        TURNSTILE_SITE_KEY: t.text({
+          description:
+            "The public site key from the Cloudflare Turnstile dashboard, rendered on the client.",
+        }),
       }),
     );
 
     this.secretKey = env.TURNSTILE_SECRET_KEY;
+    this.siteKey = env.TURNSTILE_SITE_KEY;
+  }
+
+  public getSiteKey(): string {
+    return this.siteKey;
   }
 
   public async verify(token: string, ip?: string): Promise<boolean> {

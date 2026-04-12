@@ -7,6 +7,12 @@ export const registrationIntentResponseSchema = t.object({
   expectCaptcha: t.boolean({
     description: "Whether captcha verification is required",
   }),
+  captchaSiteKey: t.optional(
+    t.string({
+      description:
+        "Public site key the client should render (when expectCaptcha is true)",
+    }),
+  ),
   expectEmailVerification: t.boolean({
     description: "Whether email verification is required",
   }),

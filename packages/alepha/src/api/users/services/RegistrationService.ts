@@ -225,6 +225,9 @@ export class RegistrationService {
     return {
       intentId,
       expectCaptcha: requirements.captcha,
+      captchaSiteKey: requirements.captcha
+        ? this.captchaProvider.getSiteKey()
+        : undefined,
       expectEmailVerification: requirements.email,
       expectPhoneVerification: requirements.phone,
       expiresAt,
