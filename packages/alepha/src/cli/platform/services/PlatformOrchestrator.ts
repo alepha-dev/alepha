@@ -1,4 +1,4 @@
-import { $inject, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
@@ -9,6 +9,10 @@ import type {
   PlatformState,
 } from "../adapters/PlatformAdapter.ts";
 import { VercelAdapter } from "../adapters/VercelAdapter.ts";
+import {
+  PlatformHook,
+  type PlatformHookContext,
+} from "../hooks/PlatformHook.ts";
 import { type NamingContext, NamingService } from "./NamingService.ts";
 import {
   PlatformInspector,
@@ -28,6 +32,7 @@ export class PlatformOrchestrator {
   protected readonly naming = $inject(NamingService);
   protected readonly cloudflareAdapter = $inject(CloudflareAdapter);
   protected readonly vercelAdapter = $inject(VercelAdapter);
+  protected readonly alepha = $inject(Alepha);
 
   // -------------------------------------------------------------------------
   // Adapter resolution
@@ -104,7 +109,12 @@ export class PlatformOrchestrator {
       }
     }
 
-    // 7. Secrets (push .env.{env} secrets to deployed workers)
+    // 7. Platform hooks (register external resources: Stripe webhooks, etc.)
+    //    Run before secrets() so any secret a hook writes to .env.<env>
+    //    gets pushed to the deployed worker in the same up cycle.
+    await this.runHooks("register", ctx, urls, run);
+
+    // 8. Secrets (push .env.{env} secrets to deployed workers)
     await adapter.secrets(ctx, run);
 
     run.end();
@@ -166,11 +176,66 @@ export class PlatformOrchestrator {
     // Auth
     await adapter.authenticate(ctx, run);
 
+    // Platform hooks (tear down external resources first, while creds still valid)
+    await this.runHooks("unregister", ctx, [], run);
+
     // Teardown
     await adapter.teardown(ctx, run);
     run.end();
 
     return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Platform hooks
+  // -------------------------------------------------------------------------
+
+  /**
+   * Run all registered PlatformHook instances.
+   *
+   * Discovered dynamically via `alepha.services(PlatformHook)`: any plugin
+   * that registers a PlatformHook subclass in its `$module.services`
+   * participates automatically, without the core knowing about it.
+   */
+  protected async runHooks(
+    phase: "register" | "unregister",
+    ctx: PlatformContext,
+    deployUrls: string[],
+    run: RunnerMethod,
+  ): Promise<void> {
+    const hooks = this.alepha.services(PlatformHook);
+    if (hooks.length === 0) return;
+
+    const baseUrl = ctx.envConfig.domain
+      ? `https://${ctx.envConfig.domain}`
+      : deployUrls[0];
+
+    if (!baseUrl) {
+      this.log.debug("Skipping platform hooks: no base URL available");
+      return;
+    }
+
+    const hookCtx: PlatformHookContext = { ...ctx, baseUrl, run };
+
+    for (const hook of hooks) {
+      this.log.info(`Platform hook: ${hook.name} (${phase})`);
+      try {
+        if (phase === "register") {
+          await hook.register(hookCtx);
+        } else {
+          await hook.unregister(hookCtx);
+        }
+      } catch (err) {
+        // unregister must never block teardown
+        if (phase === "unregister") {
+          this.log.warn(
+            `Platform hook ${hook.name} failed to unregister: ${(err as Error).message}`,
+          );
+        } else {
+          throw err;
+        }
+      }
+    }
   }
 
   // -------------------------------------------------------------------------

@@ -101,6 +101,7 @@ export * from "./adapters/VercelAdapter.ts";
 export * from "./atoms/platformOptions.ts";
 export * from "./commands/platform.ts";
 export * from "./commands/SecretsCommand.ts";
+export * from "./hooks/PlatformHook.ts";
 export * from "./providers/GitHubSecretStore.ts";
 export * from "./providers/MemorySecretStore.ts";
 export * from "./providers/PlatformCacheProvider.ts";

@@ -63,7 +63,6 @@ __metadata:
     "@biomejs/biome": "npm:^2.4.11"
     alepha: "npm:0.19.4"
     stripe: "npm:^22.0.1"
-    tsdown: "npm:^0.21.7"
     typescript: "npm:^6.0.2"
     vitest: "npm:^4.1.4"
   peerDependencies:
