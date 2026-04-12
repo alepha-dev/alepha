@@ -178,13 +178,21 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   };
 
   realm.login = (name: string) => {
-    return (credentials: Credentials) => {
-      return sessionService.login(
+    return async (credentials: Credentials) => {
+      const user = await sessionService.login(
         name,
         credentials.username,
         credentials.password,
         realm.name,
       );
+      // Compose display name from first+last for OIDC `name` claim.
+      // Without this, credentials-registered users appear as "Anonymous User".
+      const composedName =
+        [user.firstName, user.lastName]
+          .filter((s): s is string => !!s?.trim())
+          .join(" ")
+          .trim() || undefined;
+      return { ...user, name: composedName };
     };
   };
 
