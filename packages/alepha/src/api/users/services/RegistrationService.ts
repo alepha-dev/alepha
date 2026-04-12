@@ -321,9 +321,18 @@ export class RegistrationService {
     const realm = this.realmProvider.getRealm(userRealmName);
     const realmSettings = await realm.getSettings();
 
+    // Compose display name from first+last name when provided, so the JWT's
+    // OIDC `name` claim isn't empty (falls back to "Anonymous User" otherwise).
+    const composedName =
+      [intent.data.firstName, intent.data.lastName]
+        .filter((s): s is string => !!s?.trim())
+        .join(" ")
+        .trim() || undefined;
+
     // Create the user
     const user = await userRepository.create({
       realm: realm.name,
+      name: composedName,
       username: intent.data.username,
       email: intent.data.email,
       phoneNumber: intent.data.phoneNumber,
