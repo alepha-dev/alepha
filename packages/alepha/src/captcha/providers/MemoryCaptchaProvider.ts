@@ -23,6 +23,10 @@ export class MemoryCaptchaProvider implements CaptchaProvider {
 
   protected shouldAccept = true;
 
+  public getSiteKey(): string | undefined {
+    return undefined;
+  }
+
   public async verify(token: string, ip?: string): Promise<boolean> {
     this.log.debug("Verifying captcha in memory store", { token, ip });
 
