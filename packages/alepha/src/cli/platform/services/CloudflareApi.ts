@@ -67,6 +67,19 @@ export class CloudflareApi {
 
   protected token?: string;
   protected accountId?: string;
+  protected jurisdiction?: "eu" | "fedramp";
+
+  /**
+   * Set the Cloudflare data jurisdiction for R2 and D1 resources.
+   *
+   * R2 buckets and D1 databases created under a jurisdiction live in a
+   * separate namespace — every R2 API call (list/create/delete) must include
+   * the `cf-r2-jurisdiction` header, and D1 create must include the field
+   * in the request body. Omit / pass `undefined` for the default (global).
+   */
+  public setJurisdiction(jurisdiction?: "eu" | "fedramp"): void {
+    this.jurisdiction = jurisdiction;
+  }
 
   // -------------------------------------------------------------------------
   // Auth
@@ -127,7 +140,11 @@ export class CloudflareApi {
       `/accounts/${accountId}/d1/database`,
       {
         method: "POST",
-        body: { name, primary_location_hint: location },
+        body: {
+          name,
+          primary_location_hint: location,
+          ...(this.jurisdiction ? { jurisdiction: this.jurisdiction } : {}),
+        },
         bodySchema: createD1BodySchema,
         schema: cloudflareD1Schema,
       },
@@ -391,6 +408,10 @@ export class CloudflareApi {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
     };
+
+    if (this.jurisdiction && /\/r2\//.test(path)) {
+      headers["cf-r2-jurisdiction"] = this.jurisdiction;
+    }
 
     const init: RequestInit = { method, headers };
 

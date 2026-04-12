@@ -48,6 +48,17 @@ export class CloudflareAdapter extends PlatformAdapter {
     return !!dbUrl?.startsWith("postgres:");
   }
 
+  /**
+   * Propagate the environment's data-jurisdiction setting to the API client.
+   *
+   * Must be invoked at the top of every entry point (authenticate, build,
+   * deploy, secrets, provision, migrate, inspect, teardown) because
+   * CloudflareApi is a singleton reused across env invocations.
+   */
+  protected configureApi(ctx: PlatformContext): void {
+    this.api.setJurisdiction(ctx.envConfig.jurisdiction);
+  }
+
   protected async runShell(
     command: string,
     options: Parameters<ShellProvider["run"]>[1] = {},
@@ -70,6 +81,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   // -------------------------------------------------------------------------
 
   async authenticate(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+    this.configureApi(ctx);
     await run({
       name: "authenticate",
       handler: async () => {
@@ -112,6 +124,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   // -------------------------------------------------------------------------
 
   async build(ctx: AppContext, run: RunnerMethod): Promise<void> {
+    this.configureApi(ctx);
     const appDir = ctx.app.path
       ? this.fs.join(ctx.root, ctx.app.path)
       : ctx.root;
@@ -159,6 +172,10 @@ export class CloudflareAdapter extends PlatformAdapter {
       env.CLOUDFLARE_DOMAIN = ctx.envConfig.domain;
     }
 
+    if (ctx.envConfig.jurisdiction) {
+      env.CLOUDFLARE_JURISDICTION = ctx.envConfig.jurisdiction;
+    }
+
     await run({
       name: "alepha build -t cloudflare",
       handler: async () => {
@@ -178,6 +195,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     ctx: AppContext,
     run: RunnerMethod,
   ): Promise<string | undefined> {
+    this.configureApi(ctx);
     const workerName = ctx.naming.worker(
       ctx.apps.length > 1 ? ctx.app.name : undefined,
     );
@@ -212,6 +230,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     "DATABASE_URL",
     "R2_BUCKET_NAME",
     "CLOUDFLARE_DOMAIN",
+    "CLOUDFLARE_JURISDICTION",
     "HYPERDRIVE_ID",
     "POSTGRES_SCHEMA",
     "NODE_ENV",
@@ -221,6 +240,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     ctx: PlatformContext,
     run: RunnerMethod,
   ): Promise<void> {
+    this.configureApi(ctx);
     const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
 
     // Filter out binding/build vars, VITE_* vars, and empty values
@@ -265,6 +285,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     ctx: PlatformContext,
     run: RunnerMethod,
   ): Promise<void> {
+    this.configureApi(ctx);
     const needsDB = ctx.apps.some((a) => a.resources.hasDatabase);
     const needsBucket = ctx.apps.some((a) => a.resources.hasBucket);
     const postgres = needsDB && (await this.isPostgres(ctx));
@@ -345,6 +366,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     ctx: PlatformContext,
     run: RunnerMethod,
   ): Promise<void> {
+    this.configureApi(ctx);
     const needsDB = ctx.apps.some((a) => a.resources.hasDatabase);
     if (!needsDB) {
       return;
@@ -431,6 +453,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     ctx: PlatformContext,
     run: RunnerMethod,
   ): Promise<PlatformState> {
+    this.configureApi(ctx);
     const state: PlatformState = {
       workers: [],
       databases: [],
@@ -610,6 +633,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   // -------------------------------------------------------------------------
 
   async teardown(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
+    this.configureApi(ctx);
     // 1. Remove queue consumers (must happen before worker or queue deletion)
     for (const app of ctx.apps) {
       if (app.resources.hasQueue) {

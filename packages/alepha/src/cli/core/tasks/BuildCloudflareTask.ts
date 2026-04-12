@@ -141,11 +141,13 @@ export class BuildCloudflareTask extends BuildTask {
 
     const [dbName, id] = url.replace("d1://", "").replace("d1:", "").split(":");
     const binding = BuildCloudflareTask.D1_BINDING;
+    const jurisdiction = process.env.CLOUDFLARE_JURISDICTION;
     wrangler.d1_databases = wrangler.d1_databases || [];
     wrangler.d1_databases.push({
       binding,
       database_name: dbName,
       database_id: id,
+      ...(jurisdiction ? { jurisdiction } : {}),
     });
     wrangler.vars ??= {};
     wrangler.vars.DATABASE_URL = `d1://${binding}`;
@@ -177,10 +179,12 @@ export class BuildCloudflareTask extends BuildTask {
       return;
     }
 
+    const jurisdiction = process.env.CLOUDFLARE_JURISDICTION;
     wrangler.r2_buckets = wrangler.r2_buckets || [];
     wrangler.r2_buckets.push({
       binding: bucketName,
       bucket_name: bucketName,
+      ...(jurisdiction ? { jurisdiction } : {}),
     });
     wrangler.vars ??= {};
     wrangler.vars.R2_BUCKET_NAME = bucketName;

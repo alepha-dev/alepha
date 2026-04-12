@@ -53,11 +53,27 @@ export const platformOptions = $atom({
        * Named environments with their adapter and configuration.
        */
       environments: t.record(
-        t.text(),
+        t.text({
+          description:
+            "Environment name (e.g. 'production', 'staging', 'preview'). Used in resource naming and selected via --env.",
+        }),
         t.object({
           adapter: t.enum(["cloudflare", "vercel"]),
+          /**
+           * Custom domain for the deployed worker (e.g. "api.example.com").
+           *
+           * On Cloudflare this is attached as a custom-domain route.
+           * Omit to use the adapter's default `*.workers.dev` / preview URL.
+           */
           domain: t.optional(t.text()),
-          domains: t.optional(t.record(t.text(), t.text())),
+          /**
+           * Cloudflare data jurisdiction for R2 buckets and D1 databases.
+           * - "eu": data stays within the EU
+           * - "fedramp": FedRAMP-authorized regions
+           *
+           * Omit for the default (global) jurisdiction.
+           */
+          jurisdiction: t.optional(t.enum(["eu", "fedramp"])),
         }),
       ),
     }),
@@ -75,6 +91,6 @@ export type PlatformOptions = Static<typeof platformOptions.schema>;
 export interface EnvironmentConfig {
   adapter: "cloudflare" | "vercel";
   domain?: string;
-  domains?: Record<string, string>;
   vars?: Record<string, string>;
+  jurisdiction?: "eu" | "fedramp";
 }
