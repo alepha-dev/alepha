@@ -65,12 +65,13 @@ export const $authGithub = (
       scope: "read:user user:email",
       userinfo: async (tokens) => {
         const BASE_URL = "https://api.github.com";
-        const res = await fetch(`${BASE_URL}/user`, {
-          headers: {
-            Authorization: `Bearer ${tokens.access_token}`,
-            "User-Agent": "Alepha",
-          },
-        }).then((res) => res.json());
+        const headers = {
+          Authorization: `Bearer ${tokens.access_token}`,
+          "User-Agent": "Alepha",
+        };
+        const res = await fetch(`${BASE_URL}/user`, { headers }).then((res) =>
+          res.json(),
+        );
 
         const user: OAuth2Profile = {
           sub: res.id.toString(),
@@ -88,16 +89,21 @@ export const $authGithub = (
           user.picture = res.avatar_url;
         }
 
-        if (!user.email) {
-          const res = await fetch(`${BASE_URL}/user/emails`, {
-            headers: {
-              Authorization: `Bearer ${tokens.access_token}`,
-              "User-Agent": "Alepha",
-            },
-          });
-          if (res.ok) {
-            const emails: any[] = await res.json();
-            user.email = (emails.find((e) => e.primary) ?? emails[0]).email;
+        // `/user` omits the email if the user's public profile hides it, and
+        // never exposes `verified`. Fetch `/user/emails` to fill in both.
+        const emailsRes = await fetch(`${BASE_URL}/user/emails`, { headers });
+        if (emailsRes.ok) {
+          const emails: Array<{
+            email: string;
+            primary: boolean;
+            verified: boolean;
+          }> = await emailsRes.json();
+          if (!user.email) {
+            user.email = (emails.find((e) => e.primary) ?? emails[0])?.email;
+          }
+          if (user.email) {
+            user.email_verified =
+              emails.find((e) => e.email === user.email)?.verified ?? false;
           }
         }
 
