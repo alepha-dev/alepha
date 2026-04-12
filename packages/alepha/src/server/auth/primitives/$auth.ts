@@ -382,11 +382,22 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
   /**
    * Extracts user information from the access token.
    * This is used to create a user account from the access token.
+   *
+   * `externalProfile` carries extra profile fields that cannot be derived from the
+   * ID token or userinfo endpoint — e.g. Apple's `user` form field that is only
+   * delivered once, on first authorization. ID token / userinfo fields take
+   * precedence; externalProfile only fills gaps.
    */
-  public async user(tokens: Tokens): Promise<UserAccount> {
+  public async user(
+    tokens: Tokens,
+    externalProfile?: Record<string, unknown>,
+  ): Promise<UserAccount> {
     try {
       if ("oauth" in this.options) {
-        const profile = await this.options.oauth.userinfo(tokens);
+        const profile = {
+          ...externalProfile,
+          ...(await this.options.oauth.userinfo(tokens)),
+        } as OAuth2Profile;
 
         if (this.options.oauth.account) {
           return this.options.oauth.account({
@@ -399,7 +410,10 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
       }
 
       if ("oidc" in this.options) {
-        const payload = this.getUserFromIdToken(tokens.id_token || "");
+        const payload = {
+          ...externalProfile,
+          ...this.getUserFromIdToken(tokens.id_token || ""),
+        } as OAuth2Profile;
 
         if (this.options.oidc.account) {
           return this.options.oidc.account({

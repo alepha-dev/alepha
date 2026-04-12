@@ -402,6 +402,47 @@ export class ServerAuthProvider {
   });
 
   /**
+   * Extracts provider-specific extra profile fields delivered via the
+   * authorization callback form body rather than the ID token or userinfo
+   * endpoint. Currently handles Apple Sign In's `user` field, which is sent
+   * only on the user's first authorization and contains their name.
+   */
+  protected async extractFormPostProfile(
+    req: Request,
+  ): Promise<Record<string, unknown> | undefined> {
+    try {
+      const form = await req.formData();
+      const userField = form.get("user");
+      if (typeof userField !== "string") {
+        return undefined;
+      }
+      const parsed = JSON.parse(userField) as {
+        name?: { firstName?: string; lastName?: string };
+        email?: string;
+      };
+      const profile: Record<string, unknown> = {};
+      if (parsed.name?.firstName) {
+        profile.given_name = parsed.name.firstName;
+      }
+      if (parsed.name?.lastName) {
+        profile.family_name = parsed.name.lastName;
+      }
+      if (parsed.name?.firstName || parsed.name?.lastName) {
+        profile.name = [parsed.name?.firstName, parsed.name?.lastName]
+          .filter(Boolean)
+          .join(" ");
+      }
+      if (parsed.email) {
+        profile.email = parsed.email;
+      }
+      return Object.keys(profile).length > 0 ? profile : undefined;
+    } catch (e) {
+      this.log.warn("Failed to parse form_post profile from callback body", e);
+      return undefined;
+    }
+  }
+
+  /**
    * Shared callback logic for both GET and POST OAuth2/OIDC callbacks.
    * For form_post response mode (e.g. Apple Sign In), the raw Request object
    * is passed so openid-client can read the authorization code from the POST body.
@@ -430,8 +471,16 @@ export class ServerAuthProvider {
 
     // For form_post response mode (e.g. Apple), pass the raw Request object
     // so openid-client can read the authorization code from the POST body.
-    const currentUrl: URL | Request =
-      raw?.web?.req && raw.web.req.method === "POST" ? raw.web.req : url;
+    // Clone first so we can also extract provider-specific fields (e.g. Apple's
+    // `user` form field, only sent once on first authorization) without
+    // consuming the body that openid-client needs to read.
+    let currentUrl: URL | Request = url;
+    let externalProfile: Record<string, unknown> | undefined;
+    if (raw?.web?.req && raw.web.req.method === "POST") {
+      const cloned = raw.web.req.clone();
+      currentUrl = raw.web.req;
+      externalProfile = await this.extractFormPostProfile(cloned);
+    }
 
     const externalTokens = await authorizationCodeGrant(oauth, currentUrl, {
       pkceCodeVerifier: authorizationCode.codeVerifier,
@@ -465,7 +514,7 @@ export class ServerAuthProvider {
 
     let user: UserAccount;
     try {
-      user = await provider.user(externalTokens);
+      user = await provider.user(externalTokens, externalProfile);
     } catch (e) {
       this.log.warn("OAuth2 account linking failed", e);
       const errorTarget = loginUri || redirectUri;
