@@ -89,6 +89,7 @@ const buildRealmConfig = (props: {
       verifyPhoneRequired: false,
       firstNameLastName: "none" as FieldRequirement,
       resetPasswordAllowed: true,
+      captchaRequired: false,
       adminEmails: [],
       adminUsernames: [],
       defaultRoles: [],

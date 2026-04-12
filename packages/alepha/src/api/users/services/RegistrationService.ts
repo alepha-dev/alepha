@@ -177,7 +177,7 @@ export class RegistrationService {
     const requirements = {
       email: realmSettings?.verifyEmailRequired === true && !!body.email,
       phone: realmSettings?.verifyPhoneRequired === true && !!body.phoneNumber,
-      captcha: false, // Always false for now
+      captcha: realmSettings?.captchaRequired === true,
     };
 
     // Create verification sessions and send codes

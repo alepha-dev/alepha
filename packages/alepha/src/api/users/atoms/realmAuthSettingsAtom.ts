@@ -62,6 +62,10 @@ export const realmAuthSettingsAtom = $atom({
     resetPasswordAllowed: t.boolean({
       description: "Enable forgot password functionality",
     }),
+    captchaRequired: t.boolean({
+      description:
+        "Require captcha verification on registration (needs a CaptchaProvider registered, e.g. TurnstileCaptchaProvider)",
+    }),
     adminEmails: t.array(t.email(), {
       description:
         "List of email addresses that are automatically promoted to admin role on login",
@@ -128,6 +132,7 @@ export const realmAuthSettingsAtom = $atom({
     verifyEmailRequired: false,
     verifyPhoneRequired: false,
     resetPasswordAllowed: false,
+    captchaRequired: false,
     firstNameLastName: "none" as FieldRequirement,
     adminEmails: [],
     adminUsernames: [],
