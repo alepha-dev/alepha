@@ -59,7 +59,7 @@ export class StripePlatformHook extends PlatformHook {
         disabled: false,
         metadata,
       });
-      this.log.info(`Stripe webhook up-to-date: ${url}`);
+      this.log.debug(`Stripe webhook up-to-date: ${url}`);
       return;
     }
 
@@ -82,7 +82,7 @@ export class StripePlatformHook extends PlatformHook {
     }
 
     await this.writeEnvVar(ctx, WEBHOOK_SECRET_VAR, created.secret);
-    this.log.info(
+    this.log.debug(
       `Stripe webhook created: ${url} (secret written to .env.${ctx.env})`,
     );
   }
@@ -97,7 +97,7 @@ export class StripePlatformHook extends PlatformHook {
     if (!existing) return;
 
     await stripe.webhookEndpoints.del(existing.id);
-    this.log.info(`Stripe webhook removed: ${url}`);
+    this.log.debug(`Stripe webhook removed: ${url}`);
   }
 
   // ---------------------------------------------------------------------
