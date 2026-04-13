@@ -745,6 +745,8 @@ export class SessionService {
       realm: realm.name,
       username,
       email: profile.email,
+      firstName: profile.given_name,
+      lastName: profile.family_name,
       // we trust the OAuth2 provider
       emailVerified: true,
       roles: realmSettings.defaultRoles,
