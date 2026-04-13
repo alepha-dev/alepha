@@ -1,4 +1,5 @@
 import { $inject, t } from "alepha";
+import { CaptchaProvider } from "alepha/captcha";
 import { $action } from "alepha/server";
 import { ServerAuthProvider } from "alepha/server/auth";
 import { $etag } from "alepha/server/etag";
@@ -14,6 +15,7 @@ export class RealmController {
   protected readonly group = "realms";
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly serverAuthProvider = $inject(ServerAuthProvider);
+  protected readonly captchaProvider = $inject(CaptchaProvider);
 
   /**
    * Get realm configuration settings.
@@ -44,6 +46,9 @@ export class RealmController {
         settings,
         realmName,
         authenticationMethods,
+        captchaSiteKey: settings.captchaRequired
+          ? this.captchaProvider.getSiteKey()
+          : undefined,
       };
     },
   });

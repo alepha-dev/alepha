@@ -49,6 +49,14 @@ export const registerRequestSchema = t.object({
       description: "User's profile picture URL",
     }),
   ),
+
+  // Captcha token — required when the realm has `captchaRequired: true`.
+  // Validated at intent creation (before any verification email is sent).
+  captchaToken: t.optional(
+    t.string({
+      description: "Captcha response token (if captcha is required)",
+    }),
+  ),
 });
 
 export type RegisterRequest = Static<typeof registerRequestSchema>;

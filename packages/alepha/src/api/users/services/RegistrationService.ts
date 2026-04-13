@@ -170,6 +170,18 @@ export class RegistrationService {
       realmSettings.passwordPolicy,
     );
 
+    // Validate captcha BEFORE any side effects (email sends, rate-limit counters).
+    // This blocks bots from triggering verification emails on other people's addresses.
+    if (realmSettings?.captchaRequired === true) {
+      if (!body.captchaToken) {
+        throw new BadRequestError("Captcha verification is required");
+      }
+      const valid = await this.captchaProvider.verify(body.captchaToken);
+      if (!valid) {
+        throw new BadRequestError("Captcha verification failed");
+      }
+    }
+
     // Hash the password
     const passwordHash = await this.cryptoProvider.hashPassword(body.password);
 
@@ -177,7 +189,7 @@ export class RegistrationService {
     const requirements = {
       email: realmSettings?.verifyEmailRequired === true && !!body.email,
       phone: realmSettings?.verifyPhoneRequired === true && !!body.phoneNumber,
-      captcha: realmSettings?.captchaRequired === true,
+      captcha: false, // validated above, single-use — no gate at complete time
     };
 
     // Create verification sessions and send codes
@@ -296,17 +308,8 @@ export class RegistrationService {
       await this.verifyPhoneCode(intent.data.phoneNumber, body.phoneCode);
     }
 
-    // Validate captcha if required
-    if (intent.requirements.captcha) {
-      if (!body.captchaToken) {
-        throw new BadRequestError("Captcha verification is required");
-      }
-
-      const valid = await this.captchaProvider.verify(body.captchaToken);
-      if (!valid) {
-        throw new BadRequestError("Captcha verification failed");
-      }
-    }
+    // Captcha is validated at intent creation (see createIntent) so bots can't
+    // trigger verification emails; nothing to re-check here.
 
     // Final availability check (race condition guard)
     await this.checkUserAvailability(
