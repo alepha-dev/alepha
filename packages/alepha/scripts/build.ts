@@ -1,6 +1,6 @@
 #! /usr/bin/env node
-import { createRequire } from "node:module";
 import { access, readdir, readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import * as os from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { $inject, AlephaError, run, t } from "alepha";
@@ -139,9 +139,7 @@ class AlephaPackageBuilderCli {
               : [null, entry];
             if (scope && !name) continue;
             try {
-              const require = createRequire(
-                this.fs.join(root, "package.json"),
-              );
+              const require = createRequire(this.fs.join(root, "package.json"));
               const pkgJsonPath = require.resolve(`${entry}/package.json`);
               const pkgBuf = await this.fs.readFile(pkgJsonPath);
               const pkg = JSON.parse(pkgBuf.toString("utf-8"));

@@ -15,7 +15,7 @@ describe("BunRedisProvider", () => {
 
   beforeAll(async () => {
     alepha = Alepha.create({
-      env: { REDIS_URL: "redis://localhost:6379" },
+      env: { REDIS_URL: "redis://localhost:16379" },
     })
       .with({ provide: RedisProvider, use: BunRedisProvider })
       .with({
@@ -141,7 +141,7 @@ describe("BunRedisSubscriberProvider", () => {
 
   beforeAll(async () => {
     alepha = Alepha.create({
-      env: { REDIS_URL: "redis://localhost:6379" },
+      env: { REDIS_URL: "redis://localhost:16379" },
     })
       .with({ provide: RedisProvider, use: BunRedisProvider })
       .with({
@@ -209,7 +209,7 @@ describe("BunRedisSubscriberProvider", () => {
 
   it("should clean up connections on stop", async () => {
     const fresh = Alepha.create({
-      env: { REDIS_URL: "redis://localhost:6379" },
+      env: { REDIS_URL: "redis://localhost:16379" },
     })
       .with({ provide: RedisProvider, use: BunRedisProvider })
       .with({

@@ -33,7 +33,7 @@ describe("BunPostgresProvider", () => {
   const setup = () => {
     alepha = Alepha.create({
       env: {
-        DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:5432/postgres",
+        DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:15432/postgres",
       },
     }).with({
       provide: DatabaseProvider,

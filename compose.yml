@@ -4,13 +4,13 @@ services:
     restart: always
     image: redis:latest
     ports:
-      - "6379:6379"
+      - "16379:6379"
 
   postgres:
     restart: always
     image: postgres:latest
     ports:
-      - "5432:5432"
+      - "15432:5432"
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
@@ -20,12 +20,12 @@ services:
     restart: always
     image: adobe/s3mock:latest
     ports:
-      - "9090:9090"
+      - "19090:9090"
 
   emqx:
     restart: always
     image: emqx/emqx:latest
     ports:
-      - "1884:1883"
+      - "11883:1883"
     environment:
       EMQX_ALLOW_ANONYMOUS: "true"
