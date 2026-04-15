@@ -98,7 +98,7 @@ npx alepha init my-api --api
 npx alepha init my-app --react
 
 # L3: Api, Frontend, Admin UI
-npx alepha init my-saas --admin
+npx alepha init my-saas --saas
 ```
 
 ## Learn More
