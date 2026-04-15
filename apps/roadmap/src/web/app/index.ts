@@ -36,13 +36,8 @@ export const RoadmapWebApp = $module({
     kanbanReloadAtom,
     userProjectsAtom,
   ],
+  imports: [AlephaUI, AlephaUIAuth],
   register(alepha) {
-    alepha
-      .with(AlephaUI)
-      .with(AlephaUIAuth)
-      .with(Toaster)
-      .with(I18n)
-      .with(AppRouter)
-      .with(CharacterInfo);
+    alepha.with(CharacterInfo);
   },
 });

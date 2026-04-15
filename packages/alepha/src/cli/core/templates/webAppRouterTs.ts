@@ -25,7 +25,9 @@ export const webAppRouterTs = (options: {
       'import { AdminSessionRouter } from "@alepha/ui/admin-sessions";',
     );
     imports.push('import { $inject } from "alepha";');
-    imports.push('import { IconLayoutDashboard } from "@tabler/icons-react";');
+    imports.push(
+      'import { IconLayoutDashboard, IconUsers } from "@tabler/icons-react";',
+    );
   }
 
   // Page import
@@ -49,30 +51,36 @@ export const webAppRouterTs = (options: {
     }
 
     if (options.admin) {
-      classMembers.push(`  // ── Admin Domain Routers ──────────────────────────
+      classMembers.push(`  // ── Admin Dashboard ─────────────────────────────
+  // Defined first so it can be referenced by the admin panel below.
+  // \`$uiAdmin\` auto-parents listed pages under the admin layout.
+  adminDashboard = $page({
+    path: "/",
+    label: "Dashboard",
+    icon: IconLayoutDashboard,
+    lazy: () => import("./components/AdminDashboard.tsx"),
+  });
+
+  // ── Admin Domain Routers ──────────────────────────
   protected users = $inject(AdminUserRouter);
   protected sessions = $inject(AdminSessionRouter);
 
   // ── Admin Panel ─────────────────────────────────
   admin = $uiAdmin({
     pages: [
+      this.adminDashboard,
       this.users.adminUsers,
       this.users.adminUserLayout,
       this.sessions.adminSessions,
     ],
     sidebarItems: [
-      this.users.adminUsers,
-      this.sessions.adminSessions,
+      this.adminDashboard,
+      {
+        label: "Identity",
+        icon: IconUsers,
+        children: [this.users.adminUsers, this.sessions.adminSessions],
+      },
     ],
-  });
-
-  // ── Admin Dashboard ─────────────────────────────
-  adminDashboard = $page({
-    parent: this.admin,
-    path: "/",
-    label: "Dashboard",
-    icon: IconLayoutDashboard,
-    lazy: () => import("./components/AdminDashboard.tsx"),
   });`);
     }
 

@@ -73,16 +73,10 @@ export * from "./providers/NodeWebSocketServerProvider.ts";
 export const AlephaWebSocket = $module({
   name: "alepha.websocket",
   primitives: [$channel, $websocket],
-  services: [
-    WebSocketServerProvider,
-    NodeWebSocketServerProvider,
-    RoomManager,
-    WebSocketTopicService,
-  ],
+  services: [WebSocketServerProvider, RoomManager, WebSocketTopicService],
+  variants: [NodeWebSocketServerProvider],
+  imports: [AlephaServer, AlephaTopic],
   register: (alepha: Alepha) => {
-    alepha.with(AlephaServer);
-    alepha.with(AlephaTopic);
-
     alepha.with({
       provide: WebSocketServerProvider,
       use: NodeWebSocketServerProvider,

@@ -14,12 +14,11 @@ export * from "./providers/NodemailerEmailProvider.ts";
 export const AlephaEmailSmtp = $module({
   name: "alepha.email.smtp",
   services: [NodemailerEmailProvider],
+  imports: [AlephaEmail],
   register: (alepha: Alepha) =>
-    alepha
-      .with({
-        optional: true,
-        provide: EmailProvider,
-        use: NodemailerEmailProvider,
-      })
-      .with(AlephaEmail),
+    alepha.with({
+      optional: true,
+      provide: EmailProvider,
+      use: NodemailerEmailProvider,
+    }),
 });

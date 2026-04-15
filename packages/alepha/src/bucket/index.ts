@@ -60,11 +60,8 @@ declare module "alepha" {
 export const AlephaBucket = $module({
   name: "alepha.bucket",
   primitives: [$bucket],
-  services: [
-    FileStorageProvider,
-    MemoryFileStorageProvider,
-    LocalFileStorageProvider,
-  ],
+  services: [FileStorageProvider],
+  variants: [MemoryFileStorageProvider, LocalFileStorageProvider],
   register: (alepha) => {
     alepha.with({
       optional: true,

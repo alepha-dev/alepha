@@ -78,15 +78,10 @@ const jobEnvSchema = t.object({
  */
 export const AlephaApiJobs = $module({
   name: "alepha.api.jobs",
-  services: [
-    AlephaQueue,
-    AlephaScheduler,
-    AlephaLock,
-    JobProvider,
-    JobQueueProvider,
-    JobService,
-    AdminJobController,
-  ],
+  imports: [AlephaScheduler, AlephaLock],
+  services: [JobProvider, JobService, AdminJobController],
+  // AlephaQueue + JobQueueProvider are conditional — injected only when queue is enabled.
+  variants: [JobQueueProvider],
   register: (alepha: Alepha) => {
     const env = alepha.parseEnv(jobEnvSchema);
     const useQueue =
@@ -95,12 +90,6 @@ export const AlephaApiJobs = $module({
         : env.ALEPHA_JOBS_QUEUE === 0
           ? false
           : !alepha.isServerless();
-
-    alepha.with(AlephaScheduler);
-    alepha.with(AlephaLock);
-    alepha.with(JobProvider);
-    alepha.with(JobService);
-    alepha.with(AdminJobController);
 
     if (useQueue) {
       alepha.with(AlephaQueue);

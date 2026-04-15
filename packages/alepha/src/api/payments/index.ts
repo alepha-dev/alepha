@@ -68,10 +68,10 @@ export const AlephaApiPayments = $module({
     AdminPaymentController,
     PaymentController,
     PaymentProvider,
-    MemoryPaymentProvider,
     PaymentService,
     PaymentMethodService,
   ],
+  variants: [MemoryPaymentProvider],
   register: (alepha) => {
     alepha.with({
       optional: true,

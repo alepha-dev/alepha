@@ -13,7 +13,4 @@ export * from "./providers/SecretProvider.ts";
 export const AlephaCrypto = $module({
   name: "alepha.crypto",
   services: [CryptoProvider, SecretProvider],
-  register: (alepha) => {
-    alepha.with(CryptoProvider);
-  },
 });

@@ -1,4 +1,4 @@
-import { $module, type Alepha } from "alepha";
+import { $module } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaLock } from "alepha/lock";
 import { AdminWorkflowController } from "./controllers/AdminWorkflowController.ts";
@@ -106,19 +106,10 @@ export const AlephaApiWorkflows = $module({
   name: "alepha.api.workflows",
   primitives: [$workflow],
   services: [
-    AlephaApiJobs,
-    AlephaLock,
     WorkflowProvider,
     WorkflowService,
     WorkflowJobs,
     AdminWorkflowController,
   ],
-  register: (alepha: Alepha) => {
-    alepha.with(AlephaApiJobs);
-    alepha.with(AlephaLock);
-    alepha.with(WorkflowProvider);
-    alepha.with(WorkflowService);
-    alepha.with(WorkflowJobs);
-    alepha.with(AdminWorkflowController);
-  },
+  imports: [AlephaApiJobs, AlephaLock],
 });

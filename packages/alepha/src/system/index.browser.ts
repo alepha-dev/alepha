@@ -15,13 +15,8 @@ export * from "./services/FileDetector.ts";
 
 export const AlephaSystem = $module({
   name: "alepha.system",
-  services: [
-    FileDetector,
-    FileSystemProvider,
-    MemoryFileSystemProvider,
-    ShellProvider,
-    MemoryShellProvider,
-  ],
+  services: [FileDetector, FileSystemProvider, ShellProvider],
+  variants: [MemoryFileSystemProvider, MemoryShellProvider],
   register: (alepha) =>
     alepha
       .with({

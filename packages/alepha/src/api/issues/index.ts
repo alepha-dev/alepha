@@ -47,7 +47,4 @@ declare module "alepha" {
 export const AlephaApiIssues = $module({
   name: "alepha.api.issues",
   services: [IssueService, IssueController, AdminIssueController],
-  register: (alepha) => {
-    alepha.with(IssueService).with(IssueController).with(AdminIssueController);
-  },
 });

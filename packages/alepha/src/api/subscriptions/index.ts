@@ -130,15 +130,4 @@ export const AlephaApiSubscriptions = $module({
     SubscriptionController,
     AdminSubscriptionController,
   ],
-  register: (alepha) => {
-    alepha
-      .with(SubscriptionConfig)
-      .with(SubscriptionService)
-      .with(BillingService)
-      .with(UsageService)
-      .with(SubscriptionJobs)
-      .with(SubscriptionNotifications)
-      .with(SubscriptionController)
-      .with(AdminSubscriptionController);
-  },
 });

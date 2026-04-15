@@ -150,20 +150,22 @@ export const AlephaServer = $module({
   name: "alepha.server",
   primitives: [$route, $action, $middleware, $sse],
   services: [
-    ServerProvider,
-    BunHttpServerProvider,
-    NodeHttpServerProvider,
     ServerBodyParserProvider,
     ServerCompressProvider,
     ServerHelmetProvider,
     ServerMultipartProvider,
-    ServerLoggerProvider,
-    ServerNotReadyProvider,
-    ServerTimingProvider,
     HttpClient,
     UserAgentParser,
     ServerRequestParser,
     ServerRouterProvider,
+  ],
+  variants: [
+    ServerProvider,
+    BunHttpServerProvider,
+    NodeHttpServerProvider,
+    ServerLoggerProvider,
+    ServerNotReadyProvider,
+    ServerTimingProvider,
   ],
   register: (alepha: Alepha) => {
     // In Vite dev mode, Vite owns the HTTP server - just use base ServerProvider
@@ -185,11 +187,6 @@ export const AlephaServer = $module({
     } else {
       alepha.with(ServerProvider);
     }
-
-    alepha.with(ServerBodyParserProvider);
-    alepha.with(ServerCompressProvider);
-    alepha.with(ServerHelmetProvider);
-    alepha.with(ServerMultipartProvider);
 
     if (!alepha.isTest()) {
       alepha.with(ServerLoggerProvider);

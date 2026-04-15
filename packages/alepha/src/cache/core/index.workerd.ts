@@ -16,7 +16,8 @@ export * from "./providers/MemoryCacheProvider.ts";
 export const AlephaCache = $module({
   name: "alepha.cache",
   primitives: [$cache],
-  services: [CacheProvider, MemoryCacheProvider, CloudflareKVProvider],
+  services: [CacheProvider],
+  variants: [MemoryCacheProvider, CloudflareKVProvider],
   register: (alepha) => {
     alepha.with({
       optional: true,

@@ -32,7 +32,9 @@ declare module "alepha" {
 export const AlephaScheduler = $module({
   name: "alepha.scheduler",
   primitives: [$scheduler],
-  services: [AlephaLock, CronProvider, WorkerdCronProvider],
+  imports: [AlephaLock],
+  services: [CronProvider],
+  variants: [WorkerdCronProvider],
   register: (alepha) =>
     // Replace CronProvider with WorkerdCronProvider for Cloudflare Workers
     alepha.with({

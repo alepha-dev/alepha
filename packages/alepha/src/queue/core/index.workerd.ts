@@ -53,11 +53,10 @@ declare module "alepha" {
 export const AlephaQueue = $module({
   name: "alepha.queue",
   primitives: [$queue, $consumer],
-  services: [
-    QueueProvider,
+  services: [QueueProvider, WorkerProvider],
+  variants: [
     MemoryQueueProvider,
     CloudflareQueueProvider,
-    WorkerProvider,
     WorkerdWorkerProvider,
   ],
   register: (alepha: Alepha) =>

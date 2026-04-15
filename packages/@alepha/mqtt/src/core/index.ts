@@ -21,7 +21,8 @@ export * from "./providers/MqttJsClientProvider.ts";
  */
 export const AlephaMqtt = $module({
   name: "alepha.mqtt",
-  services: [MqttClientProvider, MqttJsClientProvider],
+  services: [MqttClientProvider],
+  variants: [MqttJsClientProvider],
   register: (alepha: Alepha): void => {
     alepha.with({
       optional: true,

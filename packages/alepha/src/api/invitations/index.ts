@@ -55,11 +55,4 @@ export const AlephaApiInvitations = $module({
     InvitationController,
     AdminInvitationController,
   ],
-  register: (alepha) => {
-    alepha
-      .with(InvitationService)
-      .with(InvitationJobs)
-      .with(InvitationController)
-      .with(AdminInvitationController);
-  },
 });

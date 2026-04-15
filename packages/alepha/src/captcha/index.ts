@@ -23,7 +23,8 @@ export * from "./providers/TurnstileCaptchaProvider.ts";
  */
 export const AlephaCaptcha = $module({
   name: "alepha.captcha",
-  services: [CaptchaProvider, MemoryCaptchaProvider, TurnstileCaptchaProvider],
+  services: [CaptchaProvider],
+  variants: [MemoryCaptchaProvider, TurnstileCaptchaProvider],
   register: (alepha) =>
     alepha.with({
       optional: true,

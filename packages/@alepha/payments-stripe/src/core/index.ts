@@ -7,8 +7,7 @@ export * from "./providers/StripePaymentProvider.ts";
 export const AlephaPaymentsStripe = $module({
   name: "alepha.payments.stripe",
   services: [StripePaymentProvider],
+  imports: [AlephaApiPayments],
   register: (alepha) =>
-    alepha
-      .with({ provide: PaymentProvider, use: StripePaymentProvider })
-      .with(AlephaApiPayments),
+    alepha.with({ provide: PaymentProvider, use: StripePaymentProvider }),
 });

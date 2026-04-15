@@ -93,19 +93,4 @@ export const AlephaApiUsers = $module({
     UserAudits,
     UserBuckets,
   ],
-  register: (alepha) => {
-    alepha
-      .with(RealmProvider)
-      .with(SessionService)
-      .with(SessionCrudService)
-      .with(CredentialService)
-      .with(RegistrationService)
-      .with(UserService)
-      .with(IdentityService)
-      .with(UserController)
-      .with(AdminUserController)
-      .with(AdminSessionController)
-      .with(AdminIdentityController)
-      .with(RealmController);
-  },
 });

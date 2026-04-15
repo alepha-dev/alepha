@@ -18,15 +18,25 @@ import type { Atom } from "./$atom.ts";
  * import { $module } from "alepha";
  * import { MyService } from "./MyService.ts";
  *
- * // export MyService, so it can be used everywhere (optional)
- * export * from "./MyService.ts";
- *
  * export default $module({
  *  name: "my.project.module",
- *  // MyService will have a module context "my.project.module"
  *  services: [MyService],
  * });
  * ```
+ *
+ * ### Slots
+ *
+ * - `services[]` — always auto-injected. Module metadata attached.
+ * - `variants[]` — module metadata attached but NOT auto-injected. Two typical uses:
+ *   (1) alternative implementations picked at register-time via `alepha.with({ provide, use })`;
+ *   (2) services whose instantiation is driven externally (e.g., the framework core).
+ * - `imports[]` — other modules this one depends on. Wired before `register()` runs.
+ * - `atoms[]` — registered on the store.
+ * - `primitives[]` — tagged with module metadata.
+ * - `register(alepha)` — purely additive side-effect hook. Runs AFTER `imports[]`
+ *   are wired and BEFORE `services[]` are auto-injected — so substitutions it
+ *   records (e.g. `alepha.with({ provide, use })`) apply to the subsequent
+ *   auto-injection. It can never suppress auto-registration.
  *
  * ### Why Modules?
  *
@@ -36,30 +46,26 @@ import type { Atom } from "./$atom.ts";
  * This helps to identify where the logs are coming from.
  *
  * You can also set different log levels for different modules.
- * It means you can set 'some.very.specific.module' to 'debug' and keep the rest of the application to 'info'.
  *
  * #### Modulith
  *
  * Force to structure your application in modules, even if it's a single deployable unit.
  * It helps to keep a clean architecture and avoid monolithic applications.
  *
- * A strict mode flag will probably come to enforce module boundaries.
- * -> Throwing errors when a service from another module is injected.
- * But it's not implemented yet.
- *
  * ### When not to use Modules?
  *
- * Small applications does not need modules. It's better to keep it simple.
- * Modules are more useful when the application grows and needs to be structured.
- * If we speak with number of `$actions`, a module should be used when you have more than 30 actions in a single module.
- * Meaning that if you have 100 actions, you should have at least 3 modules.
+ * Small applications do not need modules. Modules earn their keep when the application
+ * grows — as a rule of thumb, once a module has 30+ `$actions`, consider splitting it.
  */
-export const $module = <T extends object = {}>(
-  options: ModulePrimitiveOptions,
-): Service<Module> => {
-  const { services = [], primitives = [], name } = options;
+export const $module = (options: ModulePrimitiveOptions): Service<Module> => {
+  const {
+    services = [],
+    variants = [],
+    imports = [],
+    primitives = [],
+    name,
+  } = options;
 
-  // ensure name is valid
   if (!name || !Module.NAME_REGEX.test(name)) {
     throw new AlephaError(
       `Invalid module name '${name}'. It should be in the format of 'project.module.submodule'`,
@@ -76,10 +82,13 @@ export const $module = <T extends object = {}>(
         }
       }
 
-      if (typeof options.register === "function") {
-        options.register(alepha);
-        return;
+      for (const mod of imports) {
+        alepha.with(mod);
       }
+
+      // register() runs BEFORE services so substitutions it records
+      // (e.g. `alepha.with({ provide, use })`) apply to the subsequent auto-injection.
+      options.register?.(alepha);
 
       for (const service of services) {
         alepha.inject(service, {
@@ -89,13 +98,13 @@ export const $module = <T extends object = {}>(
     }
   };
 
-  // force name property
   Object.defineProperty($, "name", {
     value: name,
     writable: false,
   });
 
-  for (const service of services) {
+  // Attach MODULE metadata to services and variants alike — both "belong" to this module.
+  for (const service of [...services, ...variants]) {
     if (!Module.is(service)) {
       (service as WithModule)[MODULE] = $;
     }
@@ -107,7 +116,7 @@ export const $module = <T extends object = {}>(
     }
   }
 
-  return $; // module as Service<Module<T>>;
+  return $;
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -121,12 +130,46 @@ export interface ModulePrimitiveOptions {
   name: string;
 
   /**
-   * List all services related to this module.
+   * Services that belong to this module. All services listed here are:
+   * - tagged with module metadata (used for logging, boundary checks)
+   * - auto-injected when the module is registered
    *
-   * If you don't declare 'register' function, all services will be registered automatically.
-   * If you declare 'register' function, you must handle the registration of ALL services manually.
+   * If you need an alternative implementation that should NOT be eagerly instantiated
+   * (picked at register-time instead), list it under `variants` instead.
    */
   services?: Array<Service>;
+
+  /**
+   * Alternative implementations that belong to this module but are NOT auto-injected.
+   * Module metadata is still attached.
+   *
+   * Typical use: abstract provider in `services[]`, concrete impls here, with
+   * `register()` choosing one via `alepha.with({ provide, use })`.
+   *
+   * @example
+   * ```ts
+   * $module({
+   *   name: "alepha.email",
+   *   services: [EmailProvider],
+   *   variants: [MemoryEmailProvider, SmtpEmailProvider],
+   *   register: (alepha) => {
+   *     alepha.with({
+   *       provide: EmailProvider,
+   *       use: alepha.isTest() ? MemoryEmailProvider : SmtpEmailProvider,
+   *     });
+   *   },
+   * });
+   * ```
+   */
+  variants?: Array<Service>;
+
+  /**
+   * Other modules this module depends on. They are wired via `alepha.with(Module)`
+   * before `register()` runs and before `services[]` are injected.
+   *
+   * Prefer this over calling `alepha.with(OtherModule)` manually inside `register()`.
+   */
+  imports?: Array<Service<Module>>;
 
   /**
    * List of $primitives to register in the module.
@@ -134,11 +177,14 @@ export interface ModulePrimitiveOptions {
   primitives?: Array<PrimitiveFactoryLike>;
 
   /**
-   * By default, module will register ALL services.
-   * You can override this behavior by providing a register function.
-   * It's useful when you want to register services conditionally or in a specific order.
+   * Additive side-effect hook. Runs AFTER `imports[]` are wired and BEFORE
+   * `services[]` are auto-injected — so substitutions it records apply to
+   * the subsequent injection. Use it for:
+   * - variant substitution: `alepha.with({ provide, use })`
+   * - env parsing: `alepha.parseEnv(schema)`
+   * - state seeding: `alepha.store.set(...)`
    *
-   * Again, if you declare 'register', you must handle the registration of ALL services manually.
+   * It cannot suppress auto-registration — `services[]` are always injected.
    */
   register?: (alepha: Alepha) => void;
 

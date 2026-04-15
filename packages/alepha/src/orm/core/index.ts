@@ -103,19 +103,24 @@ export const SqliteProvider = NodeSqliteProvider;
 export const AlephaOrm = $module({
   name: "alepha.orm",
   primitives: [$sequence, $entity, $view],
+  imports: [AlephaDateTime],
   services: [
-    AlephaDateTime,
-    DatabaseProvider,
-    NodeSqliteProvider,
-    BunSqliteProvider,
-    CloudflareD1Provider,
     SqliteModelBuilder,
     DrizzleKitProvider,
     RepositoryProvider,
-    Repository,
     PgRelationManager,
     QueryManager,
     DbMigrationMode,
+  ],
+  // - DatabaseProvider is abstract; one of the driver variants is substituted in via register().
+  // - Repository is a base class instantiated per-entity via Repository.of(entity).
+  // Both listed for module tagging only — never auto-injected.
+  variants: [
+    DatabaseProvider,
+    Repository,
+    NodeSqliteProvider,
+    BunSqliteProvider,
+    CloudflareD1Provider,
   ],
   register: (alepha: Alepha) => {
     const env = alepha.parseEnv(databaseEnvSchema);
@@ -137,9 +142,5 @@ export const AlephaOrm = $module({
         use: isBun ? BunSqliteProvider : NodeSqliteProvider,
       });
     }
-
-    alepha.with(DbMigrationMode);
-    alepha.with(DrizzleKitProvider);
-    alepha.with(RepositoryProvider);
   },
 });

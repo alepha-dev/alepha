@@ -1,4 +1,4 @@
-import { $module, type Alepha } from "alepha";
+import { $module } from "alepha";
 import type { FetchOptions } from "alepha/server";
 import { currentUserAtom } from "./atoms/currentUserAtom.ts";
 import type { UserAccountToken } from "./interfaces/UserAccountToken.ts";
@@ -102,9 +102,4 @@ export const AlephaSecurity = $module({
   primitives: [$issuer, $role, $permission],
   atoms: [currentUserAtom],
   services: [SecurityProvider, JwtProvider, ServerSecurityProvider],
-  register: (alepha: Alepha) => {
-    alepha.with(SecurityProvider);
-    alepha.with(JwtProvider);
-    alepha.with(ServerSecurityProvider);
-  },
 });

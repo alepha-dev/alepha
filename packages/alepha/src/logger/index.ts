@@ -44,14 +44,13 @@ export * from "./services/Logger.ts";
 export const AlephaLogger = $module({
   name: "alepha.logger",
   primitives: [$logger],
-  services: [
-    Logger,
+  services: [Logger, ConsoleColorProvider],
+  variants: [
     ConsoleDestinationProvider,
     MemoryDestinationProvider,
     JsonFormatterProvider,
     PrettyFormatterProvider,
     RawFormatterProvider,
-    ConsoleColorProvider,
   ],
   register: (alepha) => {
     const env = alepha.parseEnv(envSchema);

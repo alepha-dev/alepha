@@ -61,12 +61,5 @@ declare module "alepha/bucket" {
 export const AlephaApiFiles = $module({
   name: "alepha.api.files",
   services: [FileController, AdminFileStatsController, FileJobs, FileService],
-  register: (alepha) => {
-    alepha
-      .with(AlephaBucket)
-      .with(AlephaServerEtag)
-      .with(FileController)
-      .with(AdminFileStatsController)
-      .with(FileJobs);
-  },
+  imports: [AlephaBucket, AlephaServerEtag],
 });

@@ -21,7 +21,8 @@ describe("$module", () => {
     class ServerProvider {}
     const ServerModule = $module({
       name: "server",
-      services: [CoreModule, DatabaseModule, ServerProvider],
+      imports: [CoreModule, DatabaseModule],
+      services: [ServerProvider],
     });
 
     const alepha = Alepha.create().with(ServerModule);
@@ -66,7 +67,9 @@ describe("$module", () => {
     });
   });
 
-  it("should auto inject all dependencies", async ({ expect }) => {
+  it("should auto inject all services and respect substitutions", async ({
+    expect,
+  }) => {
     let stack = "";
 
     class A {
@@ -89,31 +92,102 @@ describe("$module", () => {
       }
     }
 
-    // note: we do not need to import MyModule,
-    // it will be registered automatically if A or B is injected
     const MyModule = $module({
       name: "my.module",
       services: [A, B],
+    });
+
+    // substitute BEFORE the module registers — services[] is now eagerly injected
+    // at registration time, so substitutions must be in place first.
+    const alepha = Alepha.create()
+      .with({
+        provide: A,
+        use: A2,
+      })
+      .with(MyModule);
+
+    // services[] is auto-injected at module registration time;
+    // A is substituted by A2, B is instantiated directly. No A constructor call.
+    expect(stack).toBe("2B");
+
+    await alepha.start();
+
+    expect(stack).toBe("2B");
+    expect(alepha.inject(A).a).toBe("2");
+  });
+
+  it("should not instantiate variants, only the substituted one", async ({
+    expect,
+  }) => {
+    let stack = "";
+
+    class Provider {
+      kind = "base";
+    }
+    class MemoryImpl extends Provider {
+      constructor() {
+        super();
+        stack += "M";
+      }
+      kind = "memory";
+    }
+    class ProductionImpl extends Provider {
+      constructor() {
+        super();
+        stack += "P";
+      }
+      kind = "prod";
+    }
+
+    const MyModule = $module({
+      name: "my.variant.module",
+      services: [Provider],
+      variants: [MemoryImpl, ProductionImpl],
       register: (alepha) => {
-        alepha.with(B); // load only B explicitly
+        alepha.with({ provide: Provider, use: MemoryImpl });
       },
     });
 
-    const alepha = Alepha.create();
-
-    // substitute A with A2
-    alepha.with({
-      provide: A,
-      use: A2, // A2 will inherit of A's module
-    });
-
-    // should not be activated yet
-    expect(stack).toBe("");
-
-    // but now, we start, so all substitutions are applied
+    const alepha = Alepha.create().with(MyModule);
     await alepha.start();
 
-    expect(stack).toBe("B2");
-    expect(alepha.inject(A).a).toBe("2");
+    // only MemoryImpl should be constructed, ProductionImpl must never run
+    expect(stack).toBe("M");
+    expect(alepha.inject(Provider).kind).toBe("memory");
+  });
+
+  it("should run imports, then register(), then auto-inject services", async ({
+    expect,
+  }) => {
+    const order: string[] = [];
+
+    class Inner {
+      constructor() {
+        order.push("inner-ctor");
+      }
+    }
+    const InnerModule = $module({
+      name: "inner",
+      services: [Inner],
+    });
+
+    class Own {
+      constructor() {
+        order.push("own-ctor");
+      }
+    }
+    const OuterModule = $module({
+      name: "outer",
+      imports: [InnerModule],
+      services: [Own],
+      register: () => {
+        order.push("register");
+      },
+    });
+
+    const alepha = Alepha.create().with(OuterModule);
+    await alepha.start();
+
+    expect(order).toEqual(["inner-ctor", "register", "own-ctor"]);
   });
 });

@@ -201,12 +201,5 @@ declare module "alepha/react/router" {
 export const AlephaUI = $module({
   name: "alepha.ui",
   services: [DialogService, ToastService, ThemeProvider, UiRouter],
-  register: (alepha) => {
-    alepha.with(AlephaReactI18n);
-    alepha.with(AlephaReactHead);
-    alepha.with(AlephaReactForm);
-    alepha.with(ThemeProvider);
-    alepha.with(DialogService);
-    alepha.with(ToastService);
-  },
+  imports: [AlephaReactI18n, AlephaReactHead, AlephaReactForm],
 });

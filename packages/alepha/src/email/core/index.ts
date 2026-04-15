@@ -46,7 +46,8 @@ declare module "alepha" {
 export const AlephaEmail = $module({
   name: "alepha.email",
   primitives: [$email],
-  services: [EmailProvider, MemoryEmailProvider, LocalEmailProvider],
+  services: [EmailProvider],
+  variants: [MemoryEmailProvider, LocalEmailProvider],
   register: (alepha) => {
     if (alepha.isTest()) {
       alepha.with({

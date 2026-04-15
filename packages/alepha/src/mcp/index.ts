@@ -108,8 +108,7 @@ export {
 export const AlephaMcp = $module({
   name: "alepha.mcp",
   primitives: [$tool, $resource, $prompt],
-  services: [McpServerProvider, SseMcpTransport],
-  register: (alepha) => {
-    alepha.with(McpServerProvider);
-  },
+  services: [McpServerProvider],
+  // Transports are opt-in — user wires the one(s) they need via alepha.with(SseMcpTransport).
+  variants: [SseMcpTransport],
 });

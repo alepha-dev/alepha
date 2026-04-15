@@ -21,7 +21,10 @@ export * from "./index.shared.ts";
 
 export const AlephaCore = $module({
   name: "alepha.core",
-  services: [
+  // These services are instantiated directly by Alepha's constructor in a strict order.
+  // Declared as `variants` (semantically: not really alternatives, but the framework
+  // owns their wiring) so the module tag is attached without auto-injection.
+  variants: [
     StateManager,
     CodecManager,
     EventManager,
@@ -32,9 +35,6 @@ export const AlephaCore = $module({
     SchemaCodec,
     SchemaValidator,
   ],
-  register: () => {
-    // skip registration, Alepha will handle it
-  },
 });
 
 // ---------------------------------------------------------------------------------------------------------------------

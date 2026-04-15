@@ -36,13 +36,11 @@ export * from "./services/FileDetector.ts";
 export const AlephaSystem = $module({
   name: "alepha.system",
   primitives: [],
-  services: [
-    FileDetector,
-    FileSystemProvider,
+  services: [FileDetector, FileSystemProvider, ShellProvider],
+  variants: [
     MemoryFileSystemProvider,
     NodeFileSystemProvider,
     WorkerdFileSystemProvider,
-    ShellProvider,
     MemoryShellProvider,
     NodeShellProvider,
   ],

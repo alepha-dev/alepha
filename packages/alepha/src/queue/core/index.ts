@@ -34,7 +34,8 @@ export * from "./providers/WorkerProvider.ts";
 export const AlephaQueue = $module({
   name: "alepha.queue",
   primitives: [$queue, $consumer],
-  services: [QueueProvider, MemoryQueueProvider, WorkerProvider],
+  services: [QueueProvider, WorkerProvider],
+  variants: [MemoryQueueProvider],
   register: (alepha: Alepha) =>
     alepha
       .with({

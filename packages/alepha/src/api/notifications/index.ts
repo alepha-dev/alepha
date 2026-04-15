@@ -38,10 +38,4 @@ export const AlephaApiNotifications = $module({
     NotificationJobs,
     AdminNotificationController,
   ],
-  register: (alepha) => {
-    alepha
-      .with(NotificationSenderService)
-      .with(NotificationJobs)
-      .with(AdminNotificationController);
-  },
 });

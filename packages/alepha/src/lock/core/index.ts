@@ -27,7 +27,8 @@ export * from "./providers/MemoryLockProvider.ts";
  */
 export const AlephaLock = $module({
   name: "alepha.lock",
-  services: [LockProvider, MemoryLockProvider, LockTopicProvider],
+  services: [LockProvider, LockTopicProvider],
+  variants: [MemoryLockProvider],
   register: (alepha) =>
     alepha
       .with({
