@@ -20,7 +20,7 @@
     "CLAUDE.md"
   ],
   "dependencies": {
-    "@redis/client": "^5.11.0",
+    "@redis/client": "^5.12.1",
     "@vitejs/plugin-react": "^6.0.1",
     "dayjs": "^1.11.20",
     "drizzle-orm": "^0.45.2",
@@ -32,12 +32,12 @@
     "ws": "^8.20.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.11",
+    "@biomejs/biome": "^2.4.12",
     "@electric-sql/pglite": "^0.4.4",
     "@faker-js/faker": "^10.4.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
-    "@types/bun": "^1.3.11",
+    "@types/bun": "^1.3.12",
     "@types/node": "^25.6.0",
     "@types/nodemailer": "^8.0.0",
     "@types/react": "^19.2.14",
@@ -48,12 +48,12 @@
     "jose": "^6.2.2",
     "jsdom": "^29.0.2",
     "nodemailer": "^8.0.5",
-    "openid-client": "^6.8.2",
+    "openid-client": "^6.8.3",
     "prom-client": "^15.1.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "swagger-ui-dist": "^5.32.2",
-    "tsdown": "^0.21.7",
+    "swagger-ui-dist": "^5.32.4",
+    "tsdown": "^0.21.8",
     "vite": "^8.0.8",
     "vitest": "^4.1.4"
   },

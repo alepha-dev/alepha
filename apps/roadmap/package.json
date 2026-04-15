@@ -21,12 +21,12 @@
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/utilities": "^3.2.2",
-    "@mantine/charts": "^9.0.1",
-    "@mantine/core": "^9.0.1",
-    "@mantine/hooks": "^9.0.1",
-    "@mantine/modals": "^9.0.1",
-    "@mantine/notifications": "^9.0.1",
-    "@mantine/tiptap": "^9.0.1",
+    "@mantine/charts": "^9.0.2",
+    "@mantine/core": "^9.0.2",
+    "@mantine/hooks": "^9.0.2",
+    "@mantine/modals": "^9.0.2",
+    "@mantine/notifications": "^9.0.2",
+    "@mantine/tiptap": "^9.0.2",
     "@tabler/icons-react": "^3.41.1",
     "@tiptap/core": "^3.22.3",
     "@tiptap/extension-link": "^3.22.3",
@@ -37,7 +37,7 @@
     "animate.css": "^4.1.1",
     "framer-motion": "^12.38.0",
     "highlight.js": "^11.11.1",
-    "konva": "^10.2.3",
+    "konva": "^10.2.5",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-is": "^19.2.5",
@@ -49,12 +49,12 @@
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "better-sqlite3": "^12.8.0",
+    "better-sqlite3": "^12.9.0",
     "drizzle-kit": "^0.31.10",
     "typescript": "^6.0.2",
-    "vercel": "^50.43.0",
+    "vercel": "^51.2.1",
     "vite": "^8.0.8",
     "vitest": "^4.1.4",
-    "wrangler": "^4.81.1"
+    "wrangler": "^4.83.0"
   }
 }

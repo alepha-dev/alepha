@@ -15,7 +15,7 @@
     "react-dom": "^19.2.5"
   },
   "devDependencies": {
-    "vercel": "^50.43.0",
+    "vercel": "^51.2.1",
     "vite": "^8.0.8"
   }
 }
