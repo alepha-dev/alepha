@@ -1,4 +1,5 @@
 #! /usr/bin/env node
+import { createRequire } from "node:module";
 import { access, readdir, readFile } from "node:fs/promises";
 import * as os from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -31,6 +32,12 @@ class AlephaPackageBuilderCli {
         t.boolean({
           description:
             "Only analyze modules and refresh configs (package.json exports, tsconfig.json paths) without building",
+        }),
+      ),
+      external: t.optional(
+        t.text({
+          description:
+            "Comma-separated additional external packages (e.g. --external=alepha,@alepha/ui/styles). Bare package names auto-expand to include all their subpath exports.",
         }),
       ),
     }),
@@ -109,13 +116,45 @@ class AlephaPackageBuilderCli {
         JSON.stringify(modules, null, 2),
       );
 
-      const external: (string | RegExp)[] = modules.map((it) =>
-        `alepha/${it.name}`.replace("/core", ""),
-      );
+      const external: (string | RegExp)[] = modules.map((it) => {
+        const suffix = it.name === "core" ? "" : `/${it.name}`;
+        return `${packageName}${suffix}`;
+      });
 
       external.push("bun");
       external.push("bun:sqlite");
-      external.push("@alepha/ui/styles");
+
+      if (flags.external) {
+        const entries = flags.external
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        for (const entry of entries) {
+          external.push(entry);
+          // If the entry is a bare package name, also externalize all its
+          // sub-paths by reading its package.json exports.
+          if (!entry.includes("/") || entry.startsWith("@")) {
+            const [scope, name] = entry.startsWith("@")
+              ? entry.split("/")
+              : [null, entry];
+            if (scope && !name) continue;
+            try {
+              const require = createRequire(
+                this.fs.join(root, "package.json"),
+              );
+              const pkgJsonPath = require.resolve(`${entry}/package.json`);
+              const pkgBuf = await this.fs.readFile(pkgJsonPath);
+              const pkg = JSON.parse(pkgBuf.toString("utf-8"));
+              for (const exp of Object.keys(pkg.exports ?? {})) {
+                if (exp === "." || exp.endsWith(".json")) continue;
+                external.push(`${entry}${exp.slice(1)}`);
+              }
+            } catch {
+              // ignore if package not installed
+            }
+          }
+        }
+      }
 
       await run.rm(this.dist);
 
@@ -283,7 +322,6 @@ function removeComments(content: string): string {
 function extractAlephaDependencies(
   content: string,
   packageName: string,
-  moduleName: string,
 ): string[] {
   const deps = new Set<string>();
   const cleanedContent = removeComments(content);
@@ -424,11 +462,7 @@ export async function analyzeModules(
           for (const file of files) {
             const content = await readFile(file, "utf-8");
             detectEscapingImports(content, file, modulePath, moduleName);
-            const deps = extractAlephaDependencies(
-              content,
-              packageName,
-              moduleName,
-            );
+            const deps = extractAlephaDependencies(content, packageName);
             for (const dep of deps) {
               if (dep.endsWith(".ts")) {
                 throw new Error(
