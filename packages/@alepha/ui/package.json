@@ -54,7 +54,7 @@
     "lint": "alepha lint && yarn build:check",
     "typecheck": "alepha typecheck",
     "test": "alepha test",
-    "build": "node ../../alepha/scripts/build.ts",
+    "build": "node ../../alepha/scripts/build.ts --external=alepha,@alepha/ui/styles",
     "build:check": "node ../../alepha/scripts/build.ts --check"
   },
   "repository": {

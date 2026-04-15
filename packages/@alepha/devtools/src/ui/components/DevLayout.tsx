@@ -96,7 +96,6 @@ export const DevLayout = () => {
 
   return (
     <DashboardShell
-      layout={"alt"}
       appShellMainProps={{
         style: {
           display: "flex",
@@ -104,10 +103,6 @@ export const DevLayout = () => {
         },
       }}
       footer={<Flex />}
-      navbarFooter={<Flex />}
-      footerHeight={24}
-      headerHeight={60}
-      navbarHeader={() => <Flex />}
       sidebarProps={{
         collapsed: true,
         items: sidebarItems,

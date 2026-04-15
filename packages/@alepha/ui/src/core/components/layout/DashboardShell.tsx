@@ -1,4 +1,4 @@
-import { alephaSidebarAtom, Container, Flex } from "@alepha/ui";
+import { alephaSidebarAtom, Container } from "@alepha/ui";
 import {
   AppShell,
   type AppShellFooterProps,
@@ -26,23 +26,6 @@ export interface DashboardShellProps {
   header?: ReactNode;
   footer?: ReactNode;
   children?: ReactNode;
-
-  /**
-   * AppShell layout mode.
-   * - "default": header/footer span full width, navbar below header.
-   * - "alt": navbar is full height, header/footer offset by navbar width.
-   */
-  layout?: "default" | "alt";
-
-  /**
-   * Content rendered above the Sidebar inside the navbar (e.g. logo).
-   */
-  navbarHeader?: (props: { collapsed: boolean }) => ReactNode;
-
-  /**
-   * Content rendered below the Sidebar inside the navbar (e.g. toggle button).
-   */
-  navbarFooter?: ReactNode;
 
   /**
    * Height of the header bar in pixels.
@@ -125,15 +108,9 @@ const DashboardShell = (props: DashboardShellProps) => {
   const hasSidebar = showSidebar && props.sidebarProps !== undefined;
   const hasAppBar = props.appBarProps || props.header;
 
-  let footerElement = props.footer;
-  if (props.footerHeight) {
-    footerElement ??= <Flex h={props.footerHeight} />;
-  }
-
+  const footerElement = props.footer;
   const hHeight = props.headerHeight ?? 60;
   const fHeight = props.footerHeight ?? 24;
-  const headerHeight = hasAppBar ? hHeight : 0;
-  const footerHeight = footerElement ? fHeight : 0;
   const navbarWidth = collapsed ? collapsedWidth : expandedWidth;
   const mainContent = props.children ?? <NestedView />;
 
@@ -166,27 +143,7 @@ const DashboardShell = (props: DashboardShellProps) => {
 
       {hasSidebar && (
         <AppShell.Navbar {...props.appShellNavbarProps}>
-          {props.navbarHeader ? (
-            <Flex
-              style={{
-                borderBottom: "1px solid var(--mantine-color-default-border)",
-              }}
-              h={headerHeight}
-            >
-              {props.navbarHeader({ collapsed })}
-            </Flex>
-          ) : null}
           <Sidebar {...(props.sidebarProps ?? {})} collapsed={collapsed} />
-          {props.navbarFooter ? (
-            <Flex
-              style={{
-                borderTop: "1px solid var(--mantine-color-default-border)",
-              }}
-              h={footerHeight}
-            >
-              {props.navbarFooter}
-            </Flex>
-          ) : null}
         </AppShell.Navbar>
       )}
 
