@@ -1,3 +1,12 @@
+## [0.20.0] - 2026-04-16
+
+### Features
+
+- **core**: streamline service registration and enhance module imports [BREAKING] (`ccd92800`)
+- **core**: add 'override' method for primitives (`d4f7be43`)
+- **auth**: add captcha support for registration and verification processes (`170b2735`)
+- **auth**: add captcha requirement option for registration and reset password (`3baf1a0a`)
+
 ## [0.19.5] - 2026-04-12
 
 ### Features
