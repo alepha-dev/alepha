@@ -40,6 +40,7 @@ export default defineConfig({
       S3_ACCESS_KEY_ID: "mock",
       S3_SECRET_ACCESS_KEY: "mock",
       MQTT_BROKER_URL: "mqtt://localhost:11883",
+      REDIS_URL: "redis://localhost:16379",
     },
     projects: [
       {
