@@ -2,9 +2,8 @@ import { basename } from "node:path";
 import { $inject, Alepha } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
-import alephaPackageJson from "alepha/package.json" with { type: "json" };
 import { FileSystemProvider } from "alepha/system";
-import { version } from "../version.ts";
+import { alephaPackageJson, version } from "../alephaPackageJson.ts";
 
 /**
  * Context information about a workspace root.

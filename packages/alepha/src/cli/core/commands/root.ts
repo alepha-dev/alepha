@@ -1,7 +1,7 @@
 import { $inject, Alepha, t } from "alepha";
 import { $command, CliProvider } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
-import { version } from "../version.ts";
+import { version } from "../alephaPackageJson.ts";
 
 export class RootCommand {
   protected readonly log = $logger();

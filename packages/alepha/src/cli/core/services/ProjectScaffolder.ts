@@ -1,10 +1,8 @@
-import { readFile } from "node:fs/promises";
 import { basename, dirname } from "node:path";
 import { $inject, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
-import { cliAssets } from "../assets.ts";
 import { type AgentMdOptions, agentMd } from "../templates/agentMd.ts";
 import { alephaConfigTs } from "../templates/alephaConfigTs.ts";
 import { apiAppSecurityTs } from "../templates/apiAppSecurityTs.ts";
@@ -15,6 +13,7 @@ import { biomeJson } from "../templates/biomeJson.ts";
 import { dummySpecTs } from "../templates/dummySpecTs.ts";
 import { editorconfig } from "../templates/editorconfig.ts";
 import { gitignore } from "../templates/gitignore.ts";
+import { logoSvg } from "../templates/logoSvg.ts";
 import { mainBrowserTs } from "../templates/mainBrowserTs.ts";
 import { mainCss } from "../templates/mainCss.ts";
 import { mainServerTs } from "../templates/mainServerTs.ts";
@@ -317,7 +316,6 @@ export class ProjectScaffolder {
 
     // public/favicon.svg
     await this.fs.mkdir(this.fs.join(root, "public"), { recursive: true });
-    const logoSvg = (await readFile(cliAssets.logo)).toString();
     await this.ensureFile(root, "public/favicon.svg", logoSvg, opts.force);
 
     // src/main.css

@@ -39,6 +39,7 @@ import { BuildVercelTask } from "./tasks/BuildVercelTask.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./alephaPackageJson.ts";
 export * from "./atoms/appEntryOptions.ts";
 export * from "./atoms/buildOptions.ts";
 export * from "./atoms/changelogOptions.ts";
@@ -75,7 +76,6 @@ export * from "./tasks/BuildSitemapTask.ts";
 export * from "./tasks/BuildStaticTask.ts";
 export * from "./tasks/BuildTask.ts";
 export * from "./tasks/BuildVercelTask.ts";
-export * from "./version.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
