@@ -22,9 +22,9 @@ import {
   cloudflareKVSchema,
   cloudflareQueueConsumerSchema,
   cloudflareQueueSchema,
-  cloudflareR2ListSchema,
+  cloudflareR2Schema,
   cloudflareSecretSchema,
-  cloudflareVersionListSchema,
+  cloudflareVersionSchema,
   cloudflareWorkerSchema,
   createD1BodySchema,
   createHyperdriveBodySchema,
@@ -81,6 +81,16 @@ export class CloudflareApi {
     this.jurisdiction = jurisdiction;
   }
 
+  /**
+   * Override the Cloudflare account ID (from platform config).
+   *
+   * When unset, `resolveAccountId` falls back to `CLOUDFLARE_ACCOUNT_ID` env
+   * var or the token's single account.
+   */
+  public setAccountId(accountId?: string): void {
+    this.accountId = accountId;
+  }
+
   // -------------------------------------------------------------------------
   // Auth
   // -------------------------------------------------------------------------
@@ -107,12 +117,27 @@ export class CloudflareApi {
       return this.accountId;
     }
 
+    const fromEnv = process.env.CLOUDFLARE_ACCOUNT_ID;
+    if (fromEnv) {
+      this.accountId = fromEnv;
+      return this.accountId;
+    }
+
     const res = await this.fetch<CloudflareAccount[]>("/accounts", {
       schema: t.array(cloudflareAccountSchema),
     });
 
     if (res.length === 0) {
       throw new AlephaError("No Cloudflare accounts found for this token.");
+    }
+
+    if (res.length > 1) {
+      const list = res.map((a) => `  - ${a.id}  ${a.name}`).join("\n");
+      throw new AlephaError(
+        `Cloudflare token has access to ${res.length} accounts; set ` +
+          `\`CLOUDFLARE_ACCOUNT_ID\` or the \`accountId\` field in your ` +
+          `platform config to pick one:\n${list}`,
+      );
     }
 
     this.accountId = res[0].id;
@@ -125,9 +150,9 @@ export class CloudflareApi {
 
   public async listD1(): Promise<CloudflareD1[]> {
     const accountId = await this.resolveAccountId();
-    return await this.fetch<CloudflareD1[]>(
+    return await this.paginate<CloudflareD1>(
       `/accounts/${accountId}/d1/database`,
-      { schema: t.array(cloudflareD1Schema) },
+      cloudflareD1Schema,
     );
   }
 
@@ -136,15 +161,19 @@ export class CloudflareApi {
     location = "weur", // TODO: move to config (or auto-resolve based on account info, or ask ?)
   ): Promise<CloudflareD1> {
     const accountId = await this.resolveAccountId();
+    // When jurisdiction is set, `primary_location_hint` is silently ignored
+    // by the API, so omit it to avoid confusion.
+    const body: Record<string, unknown> = { name };
+    if (this.jurisdiction) {
+      body.jurisdiction = this.jurisdiction;
+    } else {
+      body.primary_location_hint = location;
+    }
     return await this.fetch<CloudflareD1>(
       `/accounts/${accountId}/d1/database`,
       {
         method: "POST",
-        body: {
-          name,
-          primary_location_hint: location,
-          ...(this.jurisdiction ? { jurisdiction: this.jurisdiction } : {}),
-        },
+        body,
         bodySchema: createD1BodySchema,
         schema: cloudflareD1Schema,
       },
@@ -164,9 +193,10 @@ export class CloudflareApi {
 
   public async listKV(): Promise<CloudflareKV[]> {
     const accountId = await this.resolveAccountId();
-    return await this.fetch<CloudflareKV[]>(
+    return await this.paginate<CloudflareKV>(
       `/accounts/${accountId}/storage/kv/namespaces`,
-      { schema: t.array(cloudflareKVSchema) },
+      cloudflareKVSchema,
+      100, // KV list caps at 100 per page
     );
   }
 
@@ -197,11 +227,11 @@ export class CloudflareApi {
 
   public async listR2(): Promise<CloudflareR2[]> {
     const accountId = await this.resolveAccountId();
-    const res = await this.fetch<{ buckets: CloudflareR2[] }>(
+    return await this.paginateCursor<CloudflareR2>(
       `/accounts/${accountId}/r2/buckets`,
-      { schema: cloudflareR2ListSchema },
+      "buckets",
+      cloudflareR2Schema,
     );
-    return res.buckets;
   }
 
   public async createR2(name: string): Promise<void> {
@@ -226,9 +256,9 @@ export class CloudflareApi {
 
   public async listQueues(): Promise<CloudflareQueue[]> {
     const accountId = await this.resolveAccountId();
-    return await this.fetch<CloudflareQueue[]>(
+    return await this.paginate<CloudflareQueue>(
       `/accounts/${accountId}/queues`,
-      { schema: t.array(cloudflareQueueSchema) },
+      cloudflareQueueSchema,
     );
   }
 
@@ -253,9 +283,9 @@ export class CloudflareApi {
     queueId: string,
   ): Promise<CloudflareQueueConsumer[]> {
     const accountId = await this.resolveAccountId();
-    return await this.fetch<CloudflareQueueConsumer[]>(
+    return await this.paginate<CloudflareQueueConsumer>(
       `/accounts/${accountId}/queues/${queueId}/consumers`,
-      { schema: t.array(cloudflareQueueConsumerSchema) },
+      cloudflareQueueConsumerSchema,
     );
   }
 
@@ -264,8 +294,13 @@ export class CloudflareApi {
     consumerService: string,
   ): Promise<void> {
     const accountId = await this.resolveAccountId();
+    const consumers = await this.listQueueConsumers(queueId);
+    const consumer = consumers.find((c) => c.service === consumerService);
+    if (!consumer) {
+      return;
+    }
     await this.fetch(
-      `/accounts/${accountId}/queues/${queueId}/consumers/${consumerService}`,
+      `/accounts/${accountId}/queues/${queueId}/consumers/${consumer.consumer_id}`,
       { method: "DELETE" },
     );
   }
@@ -276,9 +311,9 @@ export class CloudflareApi {
 
   public async listHyperdrive(): Promise<CloudflareHyperdrive[]> {
     const accountId = await this.resolveAccountId();
-    return await this.fetch<CloudflareHyperdrive[]>(
+    return await this.paginate<CloudflareHyperdrive>(
       `/accounts/${accountId}/hyperdrive/configs`,
-      { schema: t.array(cloudflareHyperdriveSchema) },
+      cloudflareHyperdriveSchema,
     );
   }
 
@@ -338,20 +373,22 @@ export class CloudflareApi {
     scriptName: string,
   ): Promise<CloudflareDeployment[]> {
     const accountId = await this.resolveAccountId();
+    // Deployments list is wrapped in `{ deployments }` and returns newest
+    // first; for picking the active deployment we only need the top page.
     const res = await this.fetch<{ deployments: CloudflareDeployment[] }>(
       `/accounts/${accountId}/workers/scripts/${scriptName}/deployments`,
-      { schema: cloudflareDeploymentListSchema },
+      { schema: cloudflareDeploymentListSchema, query: { per_page: "100" } },
     );
     return res.deployments;
   }
 
   public async listVersions(scriptName: string): Promise<CloudflareVersion[]> {
     const accountId = await this.resolveAccountId();
-    const res = await this.fetch<{ items: CloudflareVersion[] }>(
+    return await this.paginateCursor<CloudflareVersion>(
       `/accounts/${accountId}/workers/scripts/${scriptName}/versions`,
-      { schema: cloudflareVersionListSchema },
+      "items",
+      cloudflareVersionSchema,
     );
-    return res.items;
   }
 
   // -------------------------------------------------------------------------
@@ -428,6 +465,13 @@ export class CloudflareApi {
       success: boolean;
       result: T;
       errors: CloudflareApiError[];
+      result_info?: {
+        page: number;
+        per_page: number;
+        total_pages?: number;
+        count?: number;
+        total_count?: number;
+      };
     };
 
     if (!json.success) {
@@ -442,6 +486,101 @@ export class CloudflareApi {
     }
 
     return json.result;
+  }
+
+  /**
+   * Paginate a page-based list endpoint (`result_info.total_pages`).
+   *
+   * Cloudflare defaults to `per_page=20`; we push it to 1000 (max on most
+   * list endpoints) and loop if more pages exist. Each page is validated
+   * against the item schema.
+   */
+  protected async paginate<T>(
+    path: string,
+    itemSchema: TSchema,
+    perPage = 1000,
+  ): Promise<T[]> {
+    const results: T[] = [];
+    let page = 1;
+
+    while (true) {
+      const token = await this.resolveToken();
+      const url = `${CloudflareApi.BASE}${path}?per_page=${perPage}&page=${page}`;
+
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${token}`,
+      };
+      if (this.jurisdiction && /\/r2\//.test(path)) {
+        headers["cf-r2-jurisdiction"] = this.jurisdiction;
+      }
+
+      const response = await globalThis.fetch(url, { method: "GET", headers });
+      const json = (await response.json()) as {
+        success: boolean;
+        result: T[];
+        errors: CloudflareApiError[];
+        result_info?: { page: number; total_pages?: number };
+      };
+
+      if (!json.success) {
+        const messages = json.errors.map((e) => e.message).join(", ");
+        throw new AlephaError(
+          `Cloudflare API error (GET ${path}): ${messages}`,
+        );
+      }
+
+      const validated = this.alepha.codec.validate(
+        t.array(itemSchema),
+        json.result,
+      ) as T[];
+      results.push(...validated);
+
+      const totalPages = json.result_info?.total_pages;
+      if (!totalPages || page >= totalPages || validated.length === 0) {
+        break;
+      }
+      page++;
+    }
+
+    return results;
+  }
+
+  /**
+   * Paginate a cursor-based list endpoint where `result` is an object
+   * containing both the items array and a `cursor` field (R2 buckets,
+   * Workers versions). Returns the flattened item array.
+   */
+  protected async paginateCursor<T>(
+    path: string,
+    itemsKey: string,
+    itemSchema: TSchema,
+    perPage = 1000,
+  ): Promise<T[]> {
+    const results: T[] = [];
+    let cursor: string | undefined;
+
+    while (true) {
+      const query: Record<string, string> = { per_page: String(perPage) };
+      if (cursor) {
+        query.cursor = cursor;
+      }
+
+      const res = await this.fetch<Record<string, unknown>>(path, { query });
+      const items = (res[itemsKey] as unknown[]) ?? [];
+      const validated = this.alepha.codec.validate(
+        t.array(itemSchema),
+        items,
+      ) as T[];
+      results.push(...validated);
+
+      const nextCursor = res.cursor as string | undefined;
+      if (!nextCursor || validated.length === 0) {
+        break;
+      }
+      cursor = nextCursor;
+    }
+
+    return results;
   }
 
   // -------------------------------------------------------------------------

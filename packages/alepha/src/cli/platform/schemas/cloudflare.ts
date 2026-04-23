@@ -40,7 +40,7 @@ export type CloudflareKV = Static<typeof cloudflareKVSchema>;
 
 export const cloudflareR2Schema = t.object({
   name: t.string(),
-  creation_date: t.string(),
+  creation_date: t.optional(t.string()),
 });
 
 export type CloudflareR2 = Static<typeof cloudflareR2Schema>;
@@ -61,8 +61,9 @@ export const cloudflareQueueSchema = t.object({
 export type CloudflareQueue = Static<typeof cloudflareQueueSchema>;
 
 export const cloudflareQueueConsumerSchema = t.object({
+  consumer_id: t.string(),
   service: t.string(),
-  environment: t.string(),
+  environment: t.optional(t.string()),
 });
 
 export type CloudflareQueueConsumer = Static<

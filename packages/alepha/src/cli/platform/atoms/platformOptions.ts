@@ -74,6 +74,14 @@ export const platformOptions = $atom({
            * Omit for the default (global) jurisdiction.
            */
           jurisdiction: t.optional(t.enum(["eu", "fedramp"])),
+          /**
+           * Cloudflare account ID to deploy into.
+           *
+           * Falls back to `CLOUDFLARE_ACCOUNT_ID` env var, then to the
+           * token's account when the token is scoped to exactly one.
+           * Required when the token has access to multiple accounts.
+           */
+          accountId: t.optional(t.text()),
         }),
       ),
     }),
@@ -93,4 +101,5 @@ export interface EnvironmentConfig {
   domain?: string;
   vars?: Record<string, string>;
   jurisdiction?: "eu" | "fedramp";
+  accountId?: string;
 }

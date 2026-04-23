@@ -1,5 +1,4 @@
 import { $inject, Alepha } from "alepha";
-import { AlephaCliUtils } from "alepha/cli";
 import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
@@ -24,7 +23,6 @@ export class CloudflareAdapter extends PlatformAdapter {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
-  protected readonly utils = $inject(AlephaCliUtils);
   protected readonly cache = $inject(PlatformCacheProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly envUtils = $inject(EnvUtils);
@@ -57,6 +55,7 @@ export class CloudflareAdapter extends PlatformAdapter {
    */
   protected configureApi(ctx: PlatformContext): void {
     this.api.setJurisdiction(ctx.envConfig.jurisdiction);
+    this.api.setAccountId(ctx.envConfig.accountId);
   }
 
   protected async runShell(
@@ -256,7 +255,9 @@ export class CloudflareAdapter extends PlatformAdapter {
       return;
     }
 
-    // Push secrets to each worker
+    // Push secrets to each worker via the REST API (one PUT per secret).
+    // Historically we shelled out to `wrangler secret bulk`, but it has an
+    // open hang issue (workers-sdk#10555) and is redundant given putSecret.
     for (const app of ctx.apps) {
       const workerName = ctx.naming.worker(
         ctx.apps.length > 1 ? app.name : undefined,
@@ -265,13 +266,9 @@ export class CloudflareAdapter extends PlatformAdapter {
       await run({
         name: `push secrets to ${workerName}`,
         handler: async () => {
-          const secretsPath = await this.utils.writeConfigFile(
-            "secrets.json",
-            JSON.stringify(secrets),
-            ctx.root,
-          );
-
-          await this.wrangler.secretBulk(secretsPath, workerName);
+          for (const [name, value] of Object.entries(secrets)) {
+            await this.api.putSecret(workerName, name, value);
+          }
         },
       });
     }
@@ -882,7 +879,11 @@ export class CloudflareAdapter extends PlatformAdapter {
   > {
     const deployments = await this.api.listDeployments(workerName);
 
-    const latest = deployments.at(-1);
+    // API ordering is not guaranteed across releases — sort explicitly.
+    const sorted = [...deployments].sort((a, b) =>
+      b.created_on.localeCompare(a.created_on),
+    );
+    const latest = sorted[0];
     if (!latest?.versions?.[0]) {
       return undefined;
     }

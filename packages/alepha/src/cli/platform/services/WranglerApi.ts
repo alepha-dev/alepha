@@ -124,21 +124,4 @@ export class WranglerApi {
       { resolve: true, env: { CI: "1" } },
     );
   }
-
-  // -------------------------------------------------------------------------
-  // Secrets
-  // -------------------------------------------------------------------------
-
-  /**
-   * Push secrets in bulk to a worker.
-   */
-  public async secretBulk(
-    secretsPath: string,
-    workerName: string,
-  ): Promise<void> {
-    await this.runShell(
-      `wrangler secret bulk ${secretsPath} --name=${workerName}`,
-      { resolve: true },
-    );
-  }
 }

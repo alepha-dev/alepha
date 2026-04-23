@@ -119,6 +119,18 @@ class MemoryCloudflareApi extends CloudflareApi {
     return this.secrets.get(scriptName) ?? [];
   }
 
+  public override async putSecret(
+    scriptName: string,
+    name: string,
+    _value: string,
+  ) {
+    const existing = this.secrets.get(scriptName) ?? [];
+    if (!existing.some((s) => s.name === name)) {
+      existing.push({ name, type: "secret_text" });
+    }
+    this.secrets.set(scriptName, existing);
+  }
+
   public override async listDeployments() {
     return [];
   }
@@ -379,10 +391,10 @@ describe("CloudflareAdapter", () => {
   });
 
   describe("secrets", () => {
-    test("pushes non-binding env vars via wrangler secret bulk", async ({
+    test("pushes non-binding env vars via REST putSecret", async ({
       expect,
     }) => {
-      const { adapter, fs, shell, naming } = createTestEnv();
+      const { adapter, fs, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
         apps: [
           {
@@ -400,7 +412,6 @@ describe("CloudflareAdapter", () => {
         ],
       });
 
-      // Write .env.production with a mix of secrets and excluded vars
       await fs.writeFile(
         "/project/.env.production",
         [
@@ -418,62 +429,13 @@ describe("CloudflareAdapter", () => {
       const run = createMockRun();
       await adapter.secrets(ctx, run);
 
-      // Should call wrangler secret bulk with the worker name
-      expect(
-        shell.wasCalledMatching(
-          /wrangler secret bulk.*--name=acme-portal-production/,
-        ),
-      ).toBe(true);
-
-      // Verify the secrets JSON was written (only non-excluded vars)
-      expect(
-        fs.wasWrittenMatching(
-          "/project/node_modules/.alepha/secrets.json",
-          /GOOGLE_API_KEY/,
-        ),
-      ).toBe(true);
-      expect(
-        fs.wasWrittenMatching(
-          "/project/node_modules/.alepha/secrets.json",
-          /APP_SECRET/,
-        ),
-      ).toBe(true);
-
-      // Excluded vars should NOT be in the secrets file
-      expect(
-        fs.wasWrittenMatching(
-          "/project/node_modules/.alepha/secrets.json",
-          /DATABASE_URL/,
-        ),
-      ).toBe(false);
-      expect(
-        fs.wasWrittenMatching(
-          "/project/node_modules/.alepha/secrets.json",
-          /R2_BUCKET_NAME/,
-        ),
-      ).toBe(false);
-      expect(
-        fs.wasWrittenMatching(
-          "/project/node_modules/.alepha/secrets.json",
-          /CLOUDFLARE_DOMAIN/,
-        ),
-      ).toBe(false);
-      expect(
-        fs.wasWrittenMatching(
-          "/project/node_modules/.alepha/secrets.json",
-          /VITE_PUBLIC_KEY/,
-        ),
-      ).toBe(false);
-      expect(
-        fs.wasWrittenMatching(
-          "/project/node_modules/.alepha/secrets.json",
-          /NODE_ENV/,
-        ),
-      ).toBe(false);
+      const pushed = api.secrets.get("acme-portal-production") ?? [];
+      const names = pushed.map((s) => s.name).sort();
+      expect(names).toEqual(["APP_SECRET", "GOOGLE_API_KEY"]);
     });
 
     test("skips when no env file exists", async ({ expect }) => {
-      const { adapter, shell, naming } = createTestEnv();
+      const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
         apps: [
           {
@@ -494,11 +456,11 @@ describe("CloudflareAdapter", () => {
       const run = createMockRun();
       await adapter.secrets(ctx, run);
 
-      expect(shell.wasCalledMatching(/wrangler secret/)).toBe(false);
+      expect(api.secrets.size).toBe(0);
     });
 
     test("skips comments and empty lines", async ({ expect }) => {
-      const { adapter, fs, shell, naming } = createTestEnv();
+      const { adapter, fs, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
         apps: [
           {
@@ -524,19 +486,8 @@ describe("CloudflareAdapter", () => {
       const run = createMockRun();
       await adapter.secrets(ctx, run);
 
-      expect(shell.wasCalledMatching(/wrangler secret bulk/)).toBe(true);
-      expect(
-        fs.wasWrittenMatching(
-          "/project/node_modules/.alepha/secrets.json",
-          /ONLY_SECRET/,
-        ),
-      ).toBe(true);
-      expect(
-        fs.wasWrittenMatching(
-          "/project/node_modules/.alepha/secrets.json",
-          /comment/,
-        ),
-      ).toBe(false);
+      const pushed = api.secrets.get("acme-portal-production") ?? [];
+      expect(pushed.map((s) => s.name)).toEqual(["ONLY_SECRET"]);
     });
   });
 
