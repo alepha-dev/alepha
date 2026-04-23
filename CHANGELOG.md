@@ -1,3 +1,9 @@
+## [0.20.1] - 2026-04-23
+
+### Bug Fixes
+
+- **cli**: change log level from info to debug for platform hooks (`54b5235c`)
+
 ## [0.20.0] - 2026-04-16
 
 ### Features
