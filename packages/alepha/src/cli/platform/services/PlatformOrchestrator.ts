@@ -218,7 +218,7 @@ export class PlatformOrchestrator {
     const hookCtx: PlatformHookContext = { ...ctx, baseUrl, run };
 
     for (const hook of hooks) {
-      this.log.info(`Platform hook: ${hook.name} (${phase})`);
+      this.log.debug(`Platform hook: ${hook.name} (${phase})`);
       try {
         if (phase === "register") {
           await hook.register(hookCtx);
@@ -228,7 +228,7 @@ export class PlatformOrchestrator {
       } catch (err) {
         // unregister must never block teardown
         if (phase === "unregister") {
-          this.log.warn(
+          this.log.debug(
             `Platform hook ${hook.name} failed to unregister: ${(err as Error).message}`,
           );
         } else {
