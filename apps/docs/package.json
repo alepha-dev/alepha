@@ -5,7 +5,7 @@
   "dependencies": {
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@tabler/icons-react": "^3.41.1",
-    "alepha": "^0.20.0",
+    "alepha": "^0.20.1",
     "fuse.js": "^7.3.0",
     "react": "^19.2.5"
   },
@@ -17,7 +17,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@xmldom/xmldom": "^0.9.9",
-    "alepha": "^0.20.0",
+    "alepha": "^0.20.1",
     "highlight.js": "^11.11.1",
     "jsdom": "^29.0.2",
     "marked": "^18.0.0",

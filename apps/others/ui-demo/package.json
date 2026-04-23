@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@alepha/ui": "^0.20.0",
-    "alepha": "^0.20.0",
+    "@alepha/ui": "^0.20.1",
+    "alepha": "^0.20.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },
