@@ -12,7 +12,6 @@ export class InvitationJobs {
    */
   public readonly expireInvitations = $job({
     cron: "0 * * * *",
-    lock: true,
     handler: async () => {
       const count = await this.invitationService.expirePending();
       if (count > 0) {
@@ -26,7 +25,6 @@ export class InvitationJobs {
    */
   public readonly purgeInvitations = $job({
     cron: "0 3 * * *",
-    lock: true,
     handler: async () => {
       const count = await this.invitationService.purgeResolved();
       if (count > 0) {

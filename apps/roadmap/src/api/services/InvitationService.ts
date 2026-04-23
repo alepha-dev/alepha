@@ -5,37 +5,56 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, type Page } from "alepha/orm";
 import { BadRequestError, ForbiddenError } from "alepha/server";
+import { characters } from "../entities/characters.ts";
 import { type InvitationEntity, invitations } from "../entities/invitations.ts";
-import { InvitationProvider } from "../providers/InvitationProvider.ts";
+import { projects } from "../entities/projects.ts";
+import { AppSecurityProvider } from "./../providers/AppSecurityProvider.ts";
 import type { CreateInvitation } from "../schemas/createInvitationSchema.ts";
 import { invitationConfigAtom } from "../schemas/invitationConfigAtom.ts";
 import type { InvitationQuery } from "../schemas/invitationQuerySchema.ts";
 import type { InvitationWithResourceInfo } from "../schemas/invitationWithResourceInfoSchema.ts";
 import type { MyInvitationsQuery } from "../schemas/myInvitationsQuerySchema.ts";
 
+declare module "alepha" {
+  interface Hooks {
+    "invitation:created": {
+      invitation: InvitationEntity;
+      token: string;
+      inviter: { id: string; email?: string };
+    };
+    "invitation:accepted": {
+      invitation: InvitationEntity;
+      acceptedBy: { id: string; email?: string };
+    };
+    "invitation:declined": {
+      invitation: InvitationEntity;
+      declinedBy: { id: string; email?: string };
+    };
+    "invitation:expired": {
+      invitation: InvitationEntity;
+    };
+    "invitation:revoked": {
+      invitation: InvitationEntity;
+      revokedBy: { id: string };
+    };
+  }
+}
+
 export class InvitationService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly repo = $repository(invitations);
   protected readonly users = $repository(users);
+  protected readonly projects = $repository(projects);
+  protected readonly characters = $repository(characters);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
-  protected readonly provider = $inject(InvitationProvider);
+  protected readonly security = $inject(AppSecurityProvider);
 
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Get an invitation by ID.
-   */
   public async getById(id: string): Promise<InvitationEntity> {
     return this.repo.getById(id);
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Create a new invitation.
-   */
   public async create(
     data: CreateInvitation,
     inviter: { id: string; email?: string },
@@ -44,21 +63,15 @@ export class InvitationService {
       throw new BadRequestError("Cannot invite yourself");
     }
 
-    await this.provider.validateResource(
-      data.resourceType,
-      data.resourceId,
-      inviter,
-    );
+    await this.security.checkOwnership(Number(data.resourceId), inviter as any);
 
     const existingUser = await this.users.findOne({
       where: { email: { eq: data.email } },
     });
 
     if (existingUser) {
-      const alreadyMember = await this.provider.isMember(
-        data.resourceType,
+      const alreadyMember = await this.isProjectMember(
         data.resourceId,
-        data.email,
         existingUser.id,
       );
 
@@ -143,11 +156,6 @@ export class InvitationService {
     return entity;
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Accept a pending invitation.
-   */
   public async accept(
     invitationId: string,
     acceptedBy: { id: string; email?: string },
@@ -174,10 +182,8 @@ export class InvitationService {
       throw new BadRequestError("Invitation has expired");
     }
 
-    const alreadyMember = await this.provider.isMember(
-      invitation.resourceType,
+    const alreadyMember = await this.isProjectMember(
       invitation.resourceId,
-      invitation.email,
       acceptedBy.id,
     );
 
@@ -196,7 +202,13 @@ export class InvitationService {
       return;
     }
 
-    await this.provider.onAccept(invitation, acceptedBy);
+    await this.characters.create({
+      projectId: Number(invitation.resourceId),
+      userId: acceptedBy.id,
+      xp: 0,
+      balance: 0,
+      owner: false,
+    });
 
     await this.repo.updateById(invitationId, {
       status: "accepted",
@@ -218,11 +230,6 @@ export class InvitationService {
     });
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Decline a pending invitation.
-   */
   public async decline(
     invitationId: string,
     declinedBy: { id: string; email?: string },
@@ -261,11 +268,6 @@ export class InvitationService {
     });
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Revoke a pending invitation (by the inviter or admin).
-   */
   public async revoke(
     invitationId: string,
     revokedBy: { id: string },
@@ -300,11 +302,6 @@ export class InvitationService {
     });
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Find invitations for a given email with resource info enrichment.
-   */
   public async findByEmail(
     email: string,
     query: MyInvitationsQuery = {},
@@ -329,15 +326,12 @@ export class InvitationService {
     for (const inv of results) {
       const inviter = inviters.get(inv.invitedBy);
       let resourceName = inv.resourceType;
-      let resourceUrl: string | undefined;
 
       try {
-        const info = await this.provider.getResourceInfo(
-          inv.resourceType,
-          inv.resourceId,
-        );
-        resourceName = info.name;
-        resourceUrl = info.url;
+        const project = await this.projects.getOne({
+          where: { id: { eq: Number(inv.resourceId) } },
+        });
+        resourceName = project.title;
       } catch (error) {
         this.log.warn("Failed to load resource info for invitation", {
           invitationId: inv.id,
@@ -353,7 +347,7 @@ export class InvitationService {
         resourceType: inv.resourceType,
         resourceId: inv.resourceId,
         resourceName,
-        resourceUrl,
+        resourceUrl: undefined,
         invitedBy: inv.invitedBy,
         inviterName: this.formatInviterName(inviter),
         inviterEmail: inviter?.email,
@@ -367,11 +361,6 @@ export class InvitationService {
     return enriched;
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Find invitations for a specific resource.
-   */
   public async findByResource(
     resourceType: string,
     resourceId: string,
@@ -391,11 +380,6 @@ export class InvitationService {
     });
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Find invitations with pagination and filtering (admin).
-   */
   public async findInvitations(
     query: InvitationQuery = {},
   ): Promise<Page<InvitationEntity>> {
@@ -426,11 +410,6 @@ export class InvitationService {
     return this.repo.paginate(query, { where }, { count: true });
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Delete an invitation (admin). Only non-pending invitations can be deleted.
-   */
   public async deleteInvitation(id: string): Promise<void> {
     const invitation = await this.repo.getById(id);
 
@@ -445,12 +424,6 @@ export class InvitationService {
     this.log.info("Invitation deleted", { id });
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Expire all pending invitations that have passed their expiration date.
-   * Returns the number of expired invitations.
-   */
   public async expirePending(): Promise<number> {
     const now = this.dateTime.nowISOString();
 
@@ -486,12 +459,6 @@ export class InvitationService {
     return expired.length;
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
-
-  /**
-   * Purge resolved invitations older than the configured purge days.
-   * Returns the number of purged invitations.
-   */
   public async purgeResolved(): Promise<number> {
     const config = this.alepha.store.get(invitationConfigAtom);
 
@@ -516,11 +483,19 @@ export class InvitationService {
     return ids.length;
   }
 
-  // -------------------------------------------------------------------------------------------------------------------
+  protected async isProjectMember(
+    projectId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const character = await this.characters.findOne({
+      where: {
+        projectId: { eq: Number(projectId) },
+        userId: { eq: userId },
+      },
+    });
+    return !!character;
+  }
 
-  /**
-   * Load user records for a list of inviter IDs.
-   */
   protected async loadInviters(
     ids: string[],
   ): Promise<Map<string, UserEntity>> {
@@ -535,9 +510,6 @@ export class InvitationService {
     return new Map(result.map((user) => [user.id, user]));
   }
 
-  /**
-   * Format inviter display name from user entity.
-   */
   protected formatInviterName(user?: UserEntity): string | undefined {
     if (!user) {
       return undefined;

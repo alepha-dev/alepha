@@ -1,9 +1,9 @@
-import type { InvitationController } from "alepha/api/invitations";
 import type { ApiKeyController } from "alepha/api/keys";
 import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 import type { CharacterController } from "@/api/controllers/CharacterController.ts";
 import type { IdentityController } from "@/api/controllers/IdentityController.ts";
+import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { SessionController } from "@/api/controllers/SessionController.ts";
 import type { UserController } from "@/api/controllers/UserController.ts";
 
