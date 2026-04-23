@@ -117,8 +117,11 @@ class AlephaPackageBuilderCli {
       );
 
       const external: (string | RegExp)[] = modules.map((it) => {
-        const suffix = it.name === "core" ? "" : `/${it.name}`;
-        return `${packageName}${suffix}`;
+        if (it.name.endsWith("core")) {
+          return `${packageName}/${it.name.replace("core", "")}`.slice(0, -1);
+        }
+
+        return `${packageName}/${it.name}`;
       });
 
       external.push("bun");
