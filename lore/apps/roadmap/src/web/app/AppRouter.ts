@@ -1,6 +1,5 @@
 import { AuthRouter } from "@alepha/ui/auth";
 import { $hook, $inject, Alepha, t } from "alepha";
-import type { AdminInvitationController } from "alepha/api/invitations";
 import { ReactAuth } from "alepha/react/auth";
 import { $head, type Head } from "alepha/react/head";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
@@ -8,6 +7,7 @@ import { currentUserAtom } from "alepha/security";
 import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
+import type { AdminInvitationController } from "../../api/controllers/AdminInvitationController.ts";
 import type { ChapterController } from "../../api/controllers/ChapterController.ts";
 import type { KanbanController } from "../../api/controllers/KanbanController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";

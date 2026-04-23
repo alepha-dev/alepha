@@ -1,10 +1,10 @@
 import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
 import { Badge } from "@mantine/core";
 import { IconCheck, IconMail, IconX } from "@tabler/icons-react";
-import type { InvitationController } from "alepha/api/invitations";
 import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
+import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 

@@ -9,15 +9,13 @@ import {
   IconUser,
   IconUsers,
 } from "@tabler/icons-react";
-import type {
-  InvitationController,
-  InvitationEntity,
-} from "alepha/api/invitations";
 import { useClient, useInject } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { Localize, useI18n } from "alepha/react/i18n";
 import { useState } from "react";
+import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { Character } from "@/api/entities/characters.ts";
+import type { InvitationEntity } from "@/api/entities/invitations.ts";
 import type { Project } from "@/api/entities/projects.ts";
 import type { User } from "@/api/entities/users.ts";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
