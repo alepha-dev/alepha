@@ -6,7 +6,8 @@ import { $bucket } from "alepha/bucket";
  * This service provides file storage for user-related files such as:
  * - User avatars/profile pictures
  *
- * It is lazy-loaded when the `avatars` feature is enabled in the realm.
+ * Declared as a module variant — not auto-injected. It is instantiated
+ * lazily the first time something calls `alepha.inject(UserBuckets)`.
  */
 export class UserBuckets {
   /**

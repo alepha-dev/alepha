@@ -7,7 +7,9 @@ type AuditContext = Omit<CreateAudit, "type" | "action">;
  * User-specific audit wrapper service.
  *
  * This service wraps the core AuditService to provide user-related audit logging.
- * It is lazy-loaded when the `audits` feature is enabled in the realm.
+ *
+ * Declared as a module variant — not auto-injected. It is instantiated
+ * lazily the first time something calls `alepha.inject(UserAudits)`.
  */
 export class UserAudits {
   protected readonly auditService = $inject(AuditService);

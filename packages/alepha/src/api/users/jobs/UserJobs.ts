@@ -13,7 +13,8 @@ import { sessions } from "../entities/sessions.ts";
  * - Verification code cleanup
  * - Inactive user notifications
  *
- * It is lazy-loaded when the `sessionPurge` feature is enabled in the realm.
+ * Declared as a module variant — not auto-injected. It is instantiated
+ * lazily the first time something calls `alepha.inject(UserJobs)`.
  */
 export class UserJobs {
   protected readonly log = $logger();

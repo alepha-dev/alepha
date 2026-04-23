@@ -88,9 +88,6 @@ export const AlephaApiUsers = $module({
     AdminSessionController,
     AdminIdentityController,
     RealmController,
-    UserJobs,
-    UserNotifications,
-    UserAudits,
-    UserBuckets,
   ],
+  variants: [UserJobs, UserNotifications, UserAudits, UserBuckets],
 });
