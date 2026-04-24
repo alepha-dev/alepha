@@ -1,3 +1,5 @@
+import { AlephaError } from "alepha";
+
 /**
  * Parses and manipulates templated paths with `{param}` placeholders.
  *
@@ -23,26 +25,25 @@
 export class TemplatedPathParser {
   protected static readonly PARAM_REGEX = /\{([^}]+)\}/g;
 
-  protected readonly template: string;
-  protected readonly separator: string;
+  public readonly template: string;
+  public readonly separator: string;
+  public readonly paramNames: readonly string[];
+  public readonly hasParams: boolean;
+  protected readonly extractRegex: RegExp | null;
 
   constructor(template: string, separator = "/") {
+    if (separator.length !== 1) {
+      throw new AlephaError(
+        `TemplatedPathParser separator must be a single character, got '${separator}'`,
+      );
+    }
     this.template = template;
     this.separator = separator;
-  }
-
-  /**
-   * Returns true if the template contains at least one `{param}` placeholder.
-   */
-  get hasParams(): boolean {
-    return /\{[^}]+\}/.test(this.template);
-  }
-
-  /**
-   * Returns an ordered list of parameter names found in the template.
-   */
-  get paramNames(): string[] {
-    return [...this.template.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
+    this.paramNames = [
+      ...template.matchAll(TemplatedPathParser.PARAM_REGEX),
+    ].map((m) => m[1]);
+    this.hasParams = this.paramNames.length > 0;
+    this.extractRegex = this.hasParams ? this.buildExtractRegex() : null;
   }
 
   /**
@@ -51,50 +52,31 @@ export class TemplatedPathParser {
    */
   interpolate(params: Record<string, string>): string {
     return this.template.replace(
-      /\{([^}]+)\}/g,
+      TemplatedPathParser.PARAM_REGEX,
       (_, name: string) => params[name] ?? `{${name}}`,
     );
   }
 
   /**
    * Extracts parameter values from a concrete path by matching it against
-   * the template structure. Returns an empty object when the template has
-   * no parameters.
+   * the template structure.
+   *
+   * Returns `null` when the path does not match the template.
+   * Returns `{}` when the template has no parameters and the path matches.
    */
-  extract(path: string): Record<string, string> {
-    const names = this.paramNames;
-    if (names.length === 0) {
-      return {};
+  extract(path: string): Record<string, string> | null {
+    if (!this.extractRegex) {
+      return path === this.template ? {} : null;
     }
 
-    const escapedSeparator = this.separator.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      "\\$&",
-    );
-
-    // Build a regex from the template: escape literal parts, replace {param} with a capture group
-    const regexSource = this.template
-      .replace(/[.*+?^${}()|[\]\\]/g, (char) => {
-        // Allow { and } through so we can then replace them as param groups
-        if (char === "{" || char === "}") {
-          return char;
-        }
-        return `\\${char}`;
-      })
-      // After escaping literal chars, replace {name} patterns with capture groups.
-      // The separator is already escaped above, so we match anything that is not the separator.
-      .replace(/\{([^}]+)\}/g, `([^${escapedSeparator}]+)`);
-
-    const regex = new RegExp(`^${regexSource}$`);
-    const match = regex.exec(path);
-
+    const match = this.extractRegex.exec(path);
     if (!match) {
-      return {};
+      return null;
     }
 
     const result: Record<string, string> = {};
-    for (let i = 0; i < names.length; i++) {
-      result[names[i]] = match[i + 1];
+    for (let i = 0; i < this.paramNames.length; i++) {
+      result[this.paramNames[i]] = match[i + 1];
     }
     return result;
   }
@@ -104,7 +86,7 @@ export class TemplatedPathParser {
    * wildcard string. Defaults to `"+"` (MQTT-style).
    */
   wildcardize(wildcard = "+"): string {
-    return this.template.replace(/\{[^}]+\}/g, wildcard);
+    return this.template.replace(TemplatedPathParser.PARAM_REGEX, wildcard);
   }
 
   /**
@@ -113,16 +95,33 @@ export class TemplatedPathParser {
    */
   normalize(path: string): string {
     const sep = this.separator;
-    const escapedSep = sep.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escapedSep = this.escapeRegex(sep);
 
-    // Replace consecutive separators with a single one
     let result = path.replace(new RegExp(`${escapedSep}{2,}`, "g"), sep);
 
-    // Strip trailing separator, but preserve a lone separator
     if (result.endsWith(sep) && result.length > sep.length) {
       result = result.slice(0, -sep.length);
     }
 
     return result;
+  }
+
+  protected buildExtractRegex(): RegExp {
+    const escapedSeparator = this.escapeRegex(this.separator);
+
+    const regexSource = this.template
+      .replace(/[.*+?^${}()|[\]\\]/g, (char) => {
+        if (char === "{" || char === "}") {
+          return char;
+        }
+        return `\\${char}`;
+      })
+      .replace(/\{[^}]+\}/g, `([^${escapedSeparator}]+)`);
+
+    return new RegExp(`^${regexSource}$`);
+  }
+
+  protected escapeRegex(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 }

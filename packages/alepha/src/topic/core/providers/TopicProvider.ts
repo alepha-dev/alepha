@@ -112,7 +112,7 @@ export abstract class TopicProvider {
           const parsed = this.parseMessage<T>(schema, message);
 
           if (parser.hasParams && receivedTopic) {
-            const params = parser.extract(receivedTopic);
+            const params = parser.extract(receivedTopic) ?? {};
             await handler({ ...parsed, params } as TopicMessage<T>);
           } else {
             await handler(parsed);

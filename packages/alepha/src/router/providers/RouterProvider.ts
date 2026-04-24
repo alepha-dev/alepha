@@ -5,14 +5,18 @@ export abstract class RouterProvider<T extends Route = Route> {
 
   protected tree: Tree<T> = { children: {} };
   protected cache = new Map<string, RouteMatch<T>>();
+  protected maxCacheSize = 10_000;
 
   public match(path: string): RouteMatch<T> {
-    if (this.cache.has(path)) {
-      return this.cache.get(path)!;
+    const pathname = path.split("?", 1)[0];
+    const hit = this.cache.get(pathname);
+    if (hit) {
+      return { route: hit.route, params: { ...hit.params } };
     }
-    const result = this.mapParams(this.createRouteMatch(path));
-    this.cache.set(path, result);
-    return result;
+    const result = this.mapParams(this.createRouteMatch(pathname));
+    if (this.cache.size >= this.maxCacheSize) this.cache.clear();
+    this.cache.set(pathname, result);
+    return { route: result.route, params: { ...result.params } };
   }
 
   protected test(path: string): void {
@@ -25,6 +29,7 @@ export abstract class RouterProvider<T extends Route = Route> {
     const path = route.path.replaceAll("//", "/");
 
     this.test(path);
+    this.cache.clear();
 
     const parts = this.createParts(path);
 

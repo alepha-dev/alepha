@@ -120,6 +120,24 @@ describe("TemplatedPathParser", () => {
         deviceId: "device-1",
       });
     });
+
+    it("returns null when the path does not match the template", () => {
+      const parser = new TemplatedPathParser("/users/{id}");
+      expect(parser.extract("/posts/42")).toBeNull();
+      expect(parser.extract("/users/42/extra")).toBeNull();
+    });
+
+    it("returns null for a parameterless template when path differs", () => {
+      const parser = new TemplatedPathParser("/users/profile");
+      expect(parser.extract("/users/other")).toBeNull();
+    });
+  });
+
+  describe("constructor validation", () => {
+    it("throws when separator is not a single character", () => {
+      expect(() => new TemplatedPathParser("foo", "::")).toThrow();
+      expect(() => new TemplatedPathParser("foo", "")).toThrow();
+    });
   });
 
   describe("wildcardize", () => {

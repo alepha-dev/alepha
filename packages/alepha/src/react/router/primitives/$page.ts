@@ -50,16 +50,6 @@ import { ReactPageService } from "../services/ReactPageService.ts";
  * - Hierarchical error handling (child → parent)
  * - HTTP status code handling (404, 401, etc.)
  *
- * **Page Animations**
- * - CSS-based enter/exit animations
- * - Dynamic animations based on page state
- * - Custom timing and easing functions
- *
- * **Lifecycle Management**
- * - Server response hooks for headers and status codes
- * - Page leave handlers for cleanup (browser only)
- * - Permission-based access control
- *
  * @example Simple page with data fetching
  * ```typescript
  * const userProfile = $page({
@@ -204,11 +194,28 @@ export interface PagePrimitiveOptions<
   /**
    * Attach child pages to create nested routes.
    * This will make the page a parent route.
+   *
+   * **Declare the relationship on ONE side only.** If a child page already
+   * sets `parent: thisPage`, do NOT also add it to `children` here — the link
+   * is already established, and declaring it on both sides creates a
+   * TypeScript circular dependency between the two class fields (each
+   * references the other before it is initialised).
+   *
+   * Use a thunk (`() => [...]`) when children are declared later in the same
+   * class.
    */
   children?: Array<PagePrimitive> | (() => Array<PagePrimitive>);
 
   /**
    * Define a parent page for nested routing.
+   *
+   * **Declare the relationship on ONE side only.** If you set `parent` here,
+   * do NOT also add this page to the parent's `children` array — the link is
+   * already established, and declaring it on both sides creates a TypeScript
+   * circular dependency between the two class fields.
+   *
+   * Preferring `parent` on the child (over `children` on the parent) keeps
+   * parent pages free of forward references to their descendants.
    */
   parent?: PagePrimitive<PageConfigSchema, TPropsParent, any>;
 

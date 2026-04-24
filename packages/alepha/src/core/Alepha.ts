@@ -827,6 +827,15 @@ export class Alepha {
   }
 
   /**
+   * Alias for {@link Alepha#with}.
+   */
+  public register<T extends object>(
+    serviceEntry: ServiceEntry<T> | { default: ServiceEntry<T> },
+  ): this {
+    return this.with(serviceEntry);
+  }
+
+  /**
    * Get an instance of the specified service from the container.
    *
    * @see {@link InjectOptions} for the available options.

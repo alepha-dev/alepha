@@ -108,16 +108,6 @@
       "import": "./src/api/files/index.ts",
       "default": "./src/api/files/index.ts"
     },
-    "./api/invitations": {
-      "types": "./src/api/invitations/index.ts",
-      "import": "./src/api/invitations/index.ts",
-      "default": "./src/api/invitations/index.ts"
-    },
-    "./api/issues": {
-      "types": "./src/api/issues/index.ts",
-      "import": "./src/api/issues/index.ts",
-      "default": "./src/api/issues/index.ts"
-    },
     "./api/jobs": {
       "types": "./src/api/jobs/index.ts",
       "react-native": "./src/api/jobs/index.browser.ts",
@@ -156,11 +146,6 @@
       "import": "./src/api/payments/index.ts",
       "default": "./src/api/payments/index.ts"
     },
-    "./api/subscriptions": {
-      "types": "./src/api/subscriptions/index.ts",
-      "import": "./src/api/subscriptions/index.ts",
-      "default": "./src/api/subscriptions/index.ts"
-    },
     "./api/users": {
       "types": "./src/api/users/index.ts",
       "react-native": "./src/api/users/index.browser.ts",
@@ -174,13 +159,6 @@
       "browser": "./src/api/verifications/index.browser.ts",
       "import": "./src/api/verifications/index.ts",
       "default": "./src/api/verifications/index.ts"
-    },
-    "./api/workflows": {
-      "types": "./src/api/workflows/index.ts",
-      "react-native": "./src/api/workflows/index.browser.ts",
-      "browser": "./src/api/workflows/index.browser.ts",
-      "import": "./src/api/workflows/index.ts",
-      "default": "./src/api/workflows/index.ts"
     },
     "./batch": {
       "types": "./src/batch/index.ts",
