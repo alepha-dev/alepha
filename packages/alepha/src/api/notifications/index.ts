@@ -1,4 +1,6 @@
 import { $module } from "alepha";
+import { AlephaApiJobsQueue } from "alepha/api/jobs";
+import { AlephaApiParameters } from "alepha/api/parameters";
 import { AdminNotificationController } from "./controllers/AdminNotificationController.ts";
 import { NotificationJobs } from "./jobs/NotificationJobs.ts";
 import { $notification } from "./primitives/$notification.ts";
@@ -23,15 +25,16 @@ export * from "./services/NotificationSenderService.ts";
  * User notification management.
  *
  * **Features:**
- * - Notification definitions
- * - Email/SMS notification sending
- * - Job-based delivery with retry and tracking
- * - User preferences
+ * - Notification definitions (email/SMS templates)
+ * - Queue-based delivery with retry and audit trail (`record: "all"` + no ring buffer trim)
+ * - Runtime-editable retention window via `$parameter` — purge cron respects it live
+ * - Admin API for inspecting sent notifications
  *
  * @module alepha.api.notifications
  */
 export const AlephaApiNotifications = $module({
   name: "alepha.api.notifications",
+  imports: [AlephaApiJobsQueue, AlephaApiParameters],
   primitives: [$notification],
   services: [
     NotificationSenderService,

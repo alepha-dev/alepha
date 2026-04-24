@@ -11,7 +11,8 @@ export class VerificationJobs {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
   public readonly cleanExpired = $scheduler({
-    cron: "0 0 * * *", // Every day at midnight
+    name: "api:verifications:cleanExpired",
+    cron: "0 * * * *", // Hourly at minute 0
     description: "Clean expired verifications",
     handler: async () => {
       const purgeDays = this.verificationParameters.get("purgeDays");

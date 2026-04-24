@@ -1,210 +1,101 @@
 import { $inject, t } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
-import {
-  jobActivityPointSchema,
-  jobActivityQuerySchema,
-} from "../schemas/jobActivitySchema.ts";
-import { jobCronInfoSchema } from "../schemas/jobCronInfoSchema.ts";
-import { jobExecutionDetailResourceSchema } from "../schemas/jobExecutionDetailResourceSchema.ts";
 import { jobExecutionQuerySchema } from "../schemas/jobExecutionQuerySchema.ts";
 import { jobExecutionResourceSchema } from "../schemas/jobExecutionResourceSchema.ts";
-import { jobFailureSchema } from "../schemas/jobFailureSchema.ts";
-import { jobQueueDepthSchema } from "../schemas/jobQueueDepthSchema.ts";
 import { jobRegistrationSchema } from "../schemas/jobRegistrationSchema.ts";
-import { jobStatsSchema } from "../schemas/jobStatsSchema.ts";
 import { triggerJobSchema } from "../schemas/triggerJobSchema.ts";
 import { JobService } from "../services/JobService.ts";
 
+/**
+ * Minimal admin surface for the job system. Six endpoints.
+ */
 export class AdminJobController {
   protected readonly url: string = "/jobs";
   protected readonly group: string = "admin:jobs";
   protected readonly jobService = $inject(JobService);
 
-  public readonly getJobStats = $action({
-    path: `${this.url}/stats`,
-    group: this.group,
-    use: [$secure({ permissions: ["admin:job:read"] })],
-    schema: {
-      query: jobActivityQuerySchema,
-      response: jobStatsSchema,
-    },
-    handler: ({ query }) => this.jobService.getStats(query.days),
-  });
-
-  public readonly getJobRegistry = $action({
+  public readonly listJobs = $action({
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
       response: t.array(jobRegistrationSchema),
     },
-    handler: () => this.jobService.getRegistry(),
+    handler: () => this.jobService.listJobs(),
   });
 
-  public readonly findJobExecutions = $action({
-    path: `${this.url}/executions`,
+  public readonly listExecutions = $action({
+    path: `${this.url}/:name/executions`,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
+      params: t.object({ name: t.text() }),
       query: jobExecutionQuerySchema,
-      response: t.page(jobExecutionResourceSchema),
+      response: t.array(jobExecutionResourceSchema),
     },
-    handler: ({ query }) => this.jobService.findExecutions(query),
+    handler: ({ params, query }) =>
+      this.jobService.getExecutions(params.name, query),
   });
 
-  public readonly getJobExecution = $action({
+  public readonly getExecution = $action({
     path: `${this.url}/executions/:id`,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
     schema: {
-      params: t.object({
-        id: t.uuid(),
-      }),
-      response: jobExecutionDetailResourceSchema,
+      params: t.object({ id: t.uuid() }),
+      response: jobExecutionResourceSchema,
     },
     handler: ({ params }) => this.jobService.getExecution(params.id),
   });
 
   public readonly triggerJob = $action({
     method: "POST",
-    path: `${this.url}/trigger`,
+    path: `${this.url}/:name/trigger`,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:trigger"] })],
     schema: {
+      params: t.object({ name: t.text() }),
       body: triggerJobSchema,
       response: okSchema,
     },
-    handler: async ({ body, user }) => {
-      return this.jobService.triggerJob(body.name, {
+    handler: ({ params, body, user }) =>
+      this.jobService.triggerJob(params.name, {
         payload: body.payload,
         triggeredBy: user?.id,
         triggeredByName: user?.name,
-      });
-    },
+      }),
   });
 
-  public readonly retryJobExecution = $action({
+  public readonly retryExecution = $action({
     method: "POST",
     path: `${this.url}/executions/:id/retry`,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:trigger"] })],
     schema: {
-      params: t.object({
-        id: t.uuid(),
-      }),
+      params: t.object({ id: t.uuid() }),
       response: okSchema,
     },
-    handler: async ({ params, user }) => {
-      return this.jobService.retryExecution(params.id, {
+    handler: ({ params, user }) =>
+      this.jobService.retryExecution(params.id, {
         triggeredBy: user?.id,
         triggeredByName: user?.name,
-      });
-    },
+      }),
   });
 
-  public readonly cancelJobExecution = $action({
+  public readonly cancelExecution = $action({
     method: "POST",
     path: `${this.url}/executions/:id/cancel`,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:cancel"] })],
     schema: {
-      params: t.object({
-        id: t.uuid(),
-      }),
+      params: t.object({ id: t.uuid() }),
       response: okSchema,
     },
-    handler: async ({ params, user }) => {
-      return this.jobService.cancelExecution(params.id, {
+    handler: ({ params, user }) =>
+      this.jobService.cancelExecution(params.id, {
         cancelledBy: user?.id,
         cancelledByName: user?.name,
-      });
-    },
-  });
-
-  public readonly getJobActivity = $action({
-    path: `${this.url}/activity`,
-    group: this.group,
-    use: [$secure({ permissions: ["admin:job:read"] })],
-    schema: {
-      query: jobActivityQuerySchema,
-      response: t.array(jobActivityPointSchema),
-    },
-    handler: ({ query }) => this.jobService.getActivity(query.days),
-  });
-
-  public readonly getCronJobs = $action({
-    path: `${this.url}/cron`,
-    group: this.group,
-    use: [$secure({ permissions: ["admin:job:read"] })],
-    schema: {
-      response: t.array(jobCronInfoSchema),
-    },
-    handler: () => this.jobService.getCronJobs(),
-  });
-
-  public readonly getJobQueueDepth = $action({
-    path: `${this.url}/queue`,
-    group: this.group,
-    use: [$secure({ permissions: ["admin:job:read"] })],
-    schema: {
-      response: t.array(jobQueueDepthSchema),
-    },
-    handler: () => this.jobService.getQueueDepth(),
-  });
-
-  public readonly getJobTopFailures = $action({
-    path: `${this.url}/failures`,
-    group: this.group,
-    use: [$secure({ permissions: ["admin:job:read"] })],
-    schema: {
-      query: jobActivityQuerySchema,
-      response: t.array(jobFailureSchema),
-    },
-    handler: ({ query }) => this.jobService.getTopFailures(query.days),
-  });
-
-  public readonly pauseJob = $action({
-    method: "POST",
-    path: `${this.url}/pause`,
-    group: this.group,
-    use: [$secure({ permissions: ["admin:job:trigger"] })],
-    schema: {
-      body: t.object({ name: t.text() }),
-      response: okSchema,
-    },
-    handler: ({ body, user }) => {
-      return this.jobService.pauseJob(body.name, {
-        pausedBy: user?.id,
-        pausedByName: user?.name,
-      });
-    },
-  });
-
-  public readonly resumeJob = $action({
-    method: "POST",
-    path: `${this.url}/resume`,
-    group: this.group,
-    use: [$secure({ permissions: ["admin:job:trigger"] })],
-    schema: {
-      body: t.object({ name: t.text() }),
-      response: okSchema,
-    },
-    handler: async ({ body, user }) => {
-      return this.jobService.resumeJob(body.name, {
-        resumedBy: user?.id,
-        resumedByName: user?.name,
-      });
-    },
-  });
-
-  public readonly getPausedJobs = $action({
-    path: `${this.url}/paused`,
-    group: this.group,
-    use: [$secure({ permissions: ["admin:job:read"] })],
-    schema: {
-      response: t.array(t.text()),
-    },
-    handler: () => this.jobService.getPausedJobs(),
+      }),
   });
 }

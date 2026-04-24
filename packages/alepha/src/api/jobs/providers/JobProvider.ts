@@ -8,7 +8,6 @@ import {
   type TSchema,
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
-import { LockProvider } from "alepha/lock";
 import type { LogEntry } from "alepha/logger";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
@@ -17,9 +16,7 @@ import {
   type JobStatus,
   jobExecutionEntity,
 } from "../entities/jobExecutionEntity.ts";
-import { jobExecutionLogEntity } from "../entities/jobExecutionLogEntity.ts";
 import type {
-  JobItem,
   JobPrimitiveOptions,
   JobPriority,
   JobRetryBackoff,
@@ -29,7 +26,7 @@ import { jobConfig } from "../schemas/jobConfigAtom.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
 
-const PRIORITY_MAP: Record<string, number> = {
+const PRIORITY_MAP: Record<JobPriority, number> = {
   critical: 0,
   high: 1,
   normal: 2,
@@ -43,6 +40,8 @@ const PRIORITY_REVERSE: Record<number, JobPriority> = {
   3: "low",
 };
 
+const SWEEP_CRON = "*/5 * * * *";
+
 // -----------------------------------------------------------------------------------------------------------------
 
 export interface PushOptions {
@@ -50,6 +49,8 @@ export interface PushOptions {
   key?: string;
   priority?: JobPriority;
   scheduledAt?: Date;
+  triggeredBy?: string;
+  triggeredByName?: string;
 }
 
 export interface PushManyItem<T extends TSchema = TSchema> {
@@ -60,8 +61,8 @@ export interface PushManyItem<T extends TSchema = TSchema> {
   scheduledAt?: Date;
 }
 
-export interface JobTriggerContext {
-  payload?: Record<string, unknown>;
+export interface JobTriggerContext<T extends TSchema = TSchema> {
+  payload?: Static<T>;
   triggeredBy?: string;
   triggeredByName?: string;
 }
@@ -71,49 +72,73 @@ export interface CancelContext {
   cancelledByName?: string;
 }
 
-interface JobRegistration {
+interface JobRuntimeRegistration {
   name: string;
   options: JobPrimitiveOptions;
+  type: "cron" | "queue";
 }
 
 // -----------------------------------------------------------------------------------------------------------------
 
+/**
+ * Coordinates cron (scheduler) and queue (push) jobs with a durable outbox
+ * table and a single reconciliation sweep.
+ *
+ * Queue-mode flow:
+ *   push()  → INSERT row (pending) + queue.send({ executionId })
+ *   worker  → SELECT row → UPDATE running → handler → DELETE (ok) / UPDATE (error)
+ *
+ * Cron-mode flow:
+ *   scheduler tick → handler runs inline → INSERT row only on error
+ *
+ * Sweep responsibilities (every `sweepInterval`):
+ *   - re-enqueue pending rows older than `staleThreshold`
+ *   - fail running rows older than `max(timeout*2, runTimeout)`
+ *   - move `scheduled` rows with `scheduledAt <= now` to pending + enqueue
+ *   - trim per-job history beyond `keepLastSuccess` / `keepLastError`
+ */
 export class JobProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly cronProvider = $inject(CronProvider);
-  protected readonly lockProvider = $inject(LockProvider);
   protected readonly config = $state(jobConfig);
   protected readonly log = $logger();
   protected readonly executions = $repository(jobExecutionEntity);
-  protected readonly executionLogs = $repository(jobExecutionLogEntity);
 
-  protected readonly jobs = new Map<string, JobRegistration>();
-  protected readonly pausedJobs = new Set<string>();
+  protected readonly jobs = new Map<string, JobRuntimeRegistration>();
   protected readonly inFlight = new Set<Promise<void>>();
+  protected readonly abortControllers = new Map<string, AbortController>();
+  protected readonly perExecutionLogs = new Map<string, LogEntry[]>();
+  protected stopping = false;
 
   /**
-   * When set, job executions are dispatched through a queue (e.g. `JobQueueProvider`).
-   * When null, jobs execute inline (fire-and-forget). Useful for serverless environments.
+   * Set by `JobQueueProvider` when `AlephaApiJobsQueue` is loaded.
+   * When null, queue-mode jobs cannot be pushed.
    */
   public queueDispatch:
     | ((jobName: string, executionId: string) => Promise<void>)
     | null = null;
-  protected readonly logs = new Map<string, LogEntry[]>();
-  protected readonly abortControllers = new Map<string, AbortController>();
-  protected static readonly SWEEP_CRON = "*/5 * * * *";
-  protected stopping = false;
-  protected workerId = "";
 
-  // --- Registration ---
+  // --- Registration -----------------------------------------------------------------------------------------------
 
   public registerJob(name: string, options: JobPrimitiveOptions): void {
     if (this.jobs.has(name)) {
       throw new AlephaError(`Job already registered: ${name}`);
     }
+    if (options.cron && options.schema) {
+      throw new AlephaError(
+        `Job '${name}' declares both 'cron' and 'schema'. A job must be either cron-only (recurring) or queue-only (push-based). Split into two jobs.`,
+      );
+    }
+    if (!options.cron && !options.schema) {
+      throw new AlephaError(
+        `Job '${name}' must declare either 'cron' (for recurring tasks) or 'schema' (for queue-mode tasks).`,
+      );
+    }
 
-    this.jobs.set(name, { name, options });
-    this.log.debug(`Registered job '${name}'`, {
+    const type: "cron" | "queue" = options.cron ? "cron" : "queue";
+    this.jobs.set(name, { name, options, type });
+    this.log.debug(`Registered ${type} job '${name}'`, {
       cron: options.cron,
       priority: options.priority ?? "normal",
       retries: options.retry?.retries ?? 0,
@@ -122,25 +147,180 @@ export class JobProvider {
     if (options.cron) {
       this.cronProvider.createCronJob(name, options.cron, async () => {
         try {
-          await this.trigger(name, {
-            triggeredBy: "system",
-            triggeredByName: "system (cron)",
-          });
+          await this.runCron(name);
         } catch (error) {
-          this.log.error(`Cron trigger failed for job '${name}'`, error);
+          this.log.error(`Cron tick failed for job '${name}'`, error);
         }
       });
     }
   }
 
-  /**
-   * Get all registered job definitions.
-   */
-  public getRegisteredJobs(): Map<string, JobRegistration> {
+  public getRegisteredJobs(): Map<string, JobRuntimeRegistration> {
     return this.jobs;
   }
 
-  // --- Push ---
+  // --- Cron execution (inline, no queue) --------------------------------------------------------------------------
+
+  protected async runCron(name: string): Promise<void> {
+    const registration = this.getRegistration(name);
+    if (registration.type !== "cron") {
+      throw new AlephaError(`Job '${name}' is not cron-mode`);
+    }
+    if (this.stopping) return;
+
+    const executionId = crypto.randomUUID();
+    const promise = this.executeInline(registration, executionId, {
+      payload: undefined,
+      attempt: 1,
+      triggeredBy: "system",
+      triggeredByName: "system (cron)",
+    });
+    this.inFlight.add(promise);
+    try {
+      await promise;
+    } finally {
+      this.inFlight.delete(promise);
+    }
+  }
+
+  /**
+   * Execute a cron handler inline. Records a row only on error (or always,
+   * when `record: 'all'`). No DB writes on the happy path by default.
+   */
+  protected async executeInline(
+    registration: JobRuntimeRegistration,
+    executionId: string,
+    ctx: {
+      payload: unknown;
+      attempt: number;
+      triggeredBy?: string;
+      triggeredByName?: string;
+    },
+  ): Promise<void> {
+    const opts = registration.options;
+    const name = registration.name;
+    const record = opts.record ?? "error";
+    const contextId = this.alepha.context.createContextId();
+    this.perExecutionLogs.set(contextId, []);
+
+    const abortController = new AbortController();
+    this.abortControllers.set(executionId, abortController);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (opts.timeout) {
+      const ms = this.dt.duration(opts.timeout).as("milliseconds");
+      timeoutId = setTimeout(() => abortController.abort(), ms);
+    }
+
+    const startedAt = this.dt.now();
+
+    try {
+      await this.alepha.context.run(
+        async () => {
+          await this.alepha.events.emit("job:begin", {
+            name,
+            now: startedAt,
+            executionId,
+          });
+
+          try {
+            await opts.handler({
+              payload: ctx.payload,
+              attempt: ctx.attempt,
+              now: startedAt,
+              signal: abortController.signal,
+              executionId,
+            });
+
+            if (record === "all") {
+              await this.writeTerminalRow(executionId, name, "ok", {
+                payload: ctx.payload,
+                attempt: ctx.attempt,
+                startedAt,
+                error: undefined,
+                context: contextId,
+                triggeredBy: ctx.triggeredBy,
+                triggeredByName: ctx.triggeredByName,
+              });
+            }
+
+            await this.alepha.events.emit(
+              "job:success",
+              { name, executionId },
+              { catch: true },
+            );
+          } catch (error) {
+            const err =
+              error instanceof Error ? error : new Error(String(error));
+            if (record !== "none") {
+              await this.writeTerminalRow(executionId, name, "error", {
+                payload: ctx.payload,
+                attempt: ctx.attempt,
+                startedAt,
+                error: err,
+                context: contextId,
+                triggeredBy: ctx.triggeredBy,
+                triggeredByName: ctx.triggeredByName,
+              });
+            }
+            await this.alepha.events.emit(
+              "job:error",
+              { name, error: err, executionId },
+              { catch: true },
+            );
+          } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+            this.abortControllers.delete(executionId);
+            await this.alepha.events.emit(
+              "job:end",
+              { name, executionId },
+              { catch: true },
+            );
+          }
+        },
+        { context: contextId },
+      );
+    } finally {
+      this.perExecutionLogs.delete(contextId);
+    }
+  }
+
+  protected async writeTerminalRow(
+    executionId: string,
+    jobName: string,
+    status: "ok" | "error",
+    fields: {
+      payload: unknown;
+      attempt: number;
+      startedAt: ReturnType<DateTimeProvider["now"]>;
+      error?: Error;
+      context: string;
+      triggeredBy?: string;
+      triggeredByName?: string;
+    },
+  ): Promise<void> {
+    try {
+      const logs =
+        status === "error" ? this.snapshotLogs(fields.context) : undefined;
+      await this.executions.create({
+        id: executionId,
+        jobName,
+        status,
+        payload: fields.payload as Record<string, unknown> | undefined,
+        attempt: fields.attempt,
+        maxAttempts: fields.attempt,
+        startedAt: fields.startedAt.toISOString(),
+        completedAt: this.dt.nowISOString(),
+        error: fields.error?.message,
+        logs,
+        triggeredBy: fields.triggeredBy,
+        triggeredByName: fields.triggeredByName,
+      });
+    } catch (e) {
+      this.log.warn(`Failed to write terminal row for ${executionId}`, e);
+    }
+  }
+
+  // --- Queue push -------------------------------------------------------------------------------------------------
 
   public async push(
     name: string,
@@ -148,15 +328,13 @@ export class JobProvider {
     options?: PushOptions,
   ): Promise<string> {
     const registration = this.getRegistration(name);
-    const opts = registration.options;
-
-    if (!opts.schema) {
+    if (registration.type !== "queue") {
       throw new AlephaError(
-        `Cannot push to job '${name}': no schema defined. Use trigger() for cron-only jobs.`,
+        `Job '${name}' is not queue-mode (no schema declared). Use trigger() instead.`,
       );
     }
-
-    const validated = this.alepha.codec.validate(opts.schema, payload);
+    const opts = registration.options;
+    const validated = this.alepha.codec.validate(opts.schema!, payload);
 
     const priority =
       PRIORITY_MAP[options?.priority ?? opts.priority ?? "normal"];
@@ -169,38 +347,38 @@ export class JobProvider {
     if (options?.scheduledAt) {
       scheduledAt = options.scheduledAt.toISOString();
     } else if (options?.delay) {
-      const now = this.dt.now();
-      scheduledAt = now.add(this.dt.duration(options.delay)).toISOString();
+      scheduledAt = this.dt
+        .now()
+        .add(this.dt.duration(options.delay))
+        .toISOString();
     }
 
-    // Keyed path: atomic upsert to avoid race between concurrent pushes
     if (options?.key) {
-      const now = this.dt.nowISOString();
-      const execution = await this.executions.upsert(
-        {
-          jobName: name,
-          key: options.key,
-          payload: validated as Record<string, unknown>,
-          status,
-          priority,
-          maxAttempts,
-          scheduledAt,
-          createdAt: now,
-          updatedAt: now,
-        },
-        { target: ["jobName", "key"], set: {}, now },
-      );
-
-      // Fresh insert: both timestamps equal the explicit `now` value.
-      // Conflict: updatedAt was bumped by the ON CONFLICT SET clause, so they differ.
-      if (
-        execution.createdAt === execution.updatedAt &&
-        status === "pending" &&
-        !this.stopping
-      ) {
-        await this.scheduleProcessing(name, execution.id);
+      // Key-based dedup: check for existing row first, then insert.
+      // Two queries in the no-conflict path, but deterministic across dialects.
+      const existing = await this.executions.findMany({
+        where: { jobName: { eq: name }, key: { eq: options.key } },
+        limit: 1,
+      });
+      if (existing.length > 0) {
+        return existing[0].id;
       }
-
+      const execution = await this.executions.create({
+        jobName: name,
+        key: options.key,
+        payload: validated as Record<string, unknown>,
+        status,
+        priority,
+        maxAttempts,
+        scheduledAt,
+        triggeredBy: options.triggeredBy,
+        triggeredByName: options.triggeredByName,
+      });
+      if (status === "pending") {
+        await this.dispatchToQueue(name, execution.id);
+      } else if (status === "scheduled" && scheduledAt) {
+        this.scheduleOptimisticDispatch(name, execution.id, scheduledAt);
+      }
       return execution.id;
     }
 
@@ -211,20 +389,36 @@ export class JobProvider {
       priority,
       maxAttempts,
       scheduledAt,
+      triggeredBy: options?.triggeredBy,
+      triggeredByName: options?.triggeredByName,
     });
 
-    this.log.debug(`Pushed job '${name}'`, {
-      executionId: execution.id,
-      status,
-      priority: PRIORITY_REVERSE[priority],
-    });
-
-    // Dispatch to processing if immediate
-    if (status === "pending" && !this.stopping) {
-      await this.scheduleProcessing(name, execution.id);
+    if (status === "pending") {
+      await this.dispatchToQueue(name, execution.id);
+    } else if (status === "scheduled" && scheduledAt) {
+      this.scheduleOptimisticDispatch(name, execution.id, scheduledAt);
     }
-
     return execution.id;
+  }
+
+  /**
+   * Fire a local setTimeout so delayed/retrying rows dispatch as close to
+   * `scheduledAt` as possible, rather than waiting for the next sweep tick.
+   * No-op on stateless runtimes where timers won't survive (the sweep
+   * handles those).
+   */
+  protected scheduleOptimisticDispatch(
+    jobName: string,
+    executionId: string,
+    scheduledAt: string,
+  ): void {
+    const delayMs = Math.max(
+      0,
+      new Date(scheduledAt).getTime() - this.dt.nowMillis(),
+    );
+    this.dt.createTimeout(() => {
+      void this.dispatchScheduled(jobName, executionId);
+    }, delayMs);
   }
 
   public async pushMany(
@@ -234,19 +428,16 @@ export class JobProvider {
     if (items.length === 0) return [];
 
     const registration = this.getRegistration(name);
-    const opts = registration.options;
-
-    if (!opts.schema) {
+    if (registration.type !== "queue") {
       throw new AlephaError(
-        `Cannot push to job '${name}': no schema defined. Use trigger() for cron-only jobs.`,
+        `Job '${name}' is not queue-mode (no schema declared).`,
       );
     }
-
+    const opts = registration.options;
     const maxAttempts = (opts.retry?.retries ?? 0) + 1;
 
-    // Keyed items need upsert logic — fall back to individual push
     const keyed: PushManyItem[] = [];
-    const bulkRows: Array<{
+    const bulk: Array<{
       jobName: string;
       payload: Record<string, unknown>;
       status: JobStatus;
@@ -256,35 +447,34 @@ export class JobProvider {
     }> = [];
 
     for (const item of items) {
-      const validated = this.alepha.codec.validate(opts.schema, item.payload);
+      const validated = this.alepha.codec.validate(opts.schema!, item.payload);
       if (item.key) {
         keyed.push({ ...item, payload: validated as Static<TSchema> });
-      } else {
-        const isDelayed = item.delay || item.scheduledAt;
-        const status: JobStatus = isDelayed ? "scheduled" : "pending";
-        let scheduledAt: string | undefined;
-        if (item.scheduledAt) {
-          scheduledAt = item.scheduledAt.toISOString();
-        } else if (item.delay) {
-          scheduledAt = this.dt
-            .now()
-            .add(this.dt.duration(item.delay))
-            .toISOString();
-        }
-        bulkRows.push({
-          jobName: name,
-          payload: validated as Record<string, unknown>,
-          status,
-          priority: PRIORITY_MAP[item.priority ?? opts.priority ?? "normal"],
-          maxAttempts,
-          scheduledAt,
-        });
+        continue;
       }
+      const isDelayed = item.delay || item.scheduledAt;
+      const status: JobStatus = isDelayed ? "scheduled" : "pending";
+      let scheduledAt: string | undefined;
+      if (item.scheduledAt) {
+        scheduledAt = item.scheduledAt.toISOString();
+      } else if (item.delay) {
+        scheduledAt = this.dt
+          .now()
+          .add(this.dt.duration(item.delay))
+          .toISOString();
+      }
+      bulk.push({
+        jobName: name,
+        payload: validated as Record<string, unknown>,
+        status,
+        priority: PRIORITY_MAP[item.priority ?? opts.priority ?? "normal"],
+        maxAttempts,
+        scheduledAt,
+      });
     }
 
     const ids: string[] = [];
 
-    // Keyed: sequential upserts
     for (const item of keyed) {
       const id = await this.push(name, item.payload, {
         key: item.key,
@@ -295,69 +485,75 @@ export class JobProvider {
       ids.push(id);
     }
 
-    // Non-keyed: single bulk insert
-    if (bulkRows.length > 0) {
-      const created = await this.executions.createMany(bulkRows);
+    if (bulk.length > 0) {
+      const created = await this.executions.createMany(bulk);
       for (const exec of created) {
         ids.push(exec.id);
         if (exec.status === "pending" && !this.stopping) {
-          await this.scheduleProcessing(name, exec.id);
+          await this.dispatchToQueue(name, exec.id);
+        } else if (
+          exec.status === "scheduled" &&
+          exec.scheduledAt &&
+          !this.stopping
+        ) {
+          this.scheduleOptimisticDispatch(name, exec.id, exec.scheduledAt);
         }
       }
     }
 
     this.log.debug(`pushMany '${name}': ${ids.length} jobs created`, {
-      bulk: bulkRows.length,
+      bulk: bulk.length,
       keyed: keyed.length,
     });
 
     return ids;
   }
 
-  // --- Trigger (manual / cron) ---
+  protected async dispatchToQueue(
+    jobName: string,
+    executionId: string,
+  ): Promise<void> {
+    if (this.stopping) return;
+    if (!this.queueDispatch) {
+      throw new AlephaError(
+        `Queue-mode job '${jobName}' cannot be pushed: AlephaApiJobsQueue is not loaded. Add '.with(AlephaApiJobsQueue)' to your app.`,
+      );
+    }
+    await this.queueDispatch(jobName, executionId);
+  }
+
+  // --- Manual trigger (admin / CLI) ------------------------------------------------------------------------------
 
   public async trigger(
     name: string,
     context?: JobTriggerContext,
   ): Promise<void> {
     const registration = this.getRegistration(name);
-    const opts = registration.options;
 
-    if (context?.payload && opts.schema) {
-      // Push-based trigger with payload
-      const id = await this.push(name, context.payload, {});
-      // Update trigger info
-      await this.executions.updateById(id, {
+    if (registration.type === "cron") {
+      const executionId = crypto.randomUUID();
+      await this.executeInline(registration, executionId, {
+        payload: undefined,
+        attempt: 1,
         triggeredBy: context?.triggeredBy,
         triggeredByName: context?.triggeredByName,
       });
       return;
     }
 
-    // Cron-style or manual trigger without payload
-    const maxAttempts = (opts.retry?.retries ?? 0) + 1;
-    const priority = PRIORITY_MAP[opts.priority ?? "normal"];
-
-    const execution = await this.executions.create({
-      jobName: name,
-      status: "pending",
-      priority,
-      maxAttempts,
-      triggeredBy: context?.triggeredBy,
-      triggeredByName: context?.triggeredByName,
-    });
-
-    this.log.debug(`Triggered job '${name}'`, {
-      executionId: execution.id,
-      triggeredBy: context?.triggeredByName ?? context?.triggeredBy,
-    });
-
-    if (!this.stopping) {
-      await this.scheduleProcessing(name, execution.id);
+    // queue-mode: treat as a normal push with the given payload
+    if (!context?.payload) {
+      throw new AlephaError(
+        `Queue-mode job '${name}' requires a payload for manual trigger.`,
+      );
     }
+    await this.push(name, context.payload, {
+      triggeredBy: context.triggeredBy,
+      triggeredByName: context.triggeredByName,
+    });
   }
 
-  // --- Cancel ---
+  // --- Cancel ----------------------------------------------------------------------------------------------------
 
   public async cancel(
     executionId: string,
@@ -367,10 +563,9 @@ export class JobProvider {
     if (!execution) {
       throw new AlephaError(`Execution not found: ${executionId}`);
     }
-
     if (
-      execution.status === "completed" ||
-      execution.status === "dead" ||
+      execution.status === "ok" ||
+      execution.status === "error" ||
       execution.status === "cancelled"
     ) {
       throw new AlephaError(
@@ -378,11 +573,8 @@ export class JobProvider {
       );
     }
 
-    // If running, trigger the AbortSignal
     const controller = this.abortControllers.get(executionId);
-    if (controller) {
-      controller.abort();
-    }
+    if (controller) controller.abort();
 
     await this.executions.updateById(executionId, {
       status: "cancelled",
@@ -398,45 +590,27 @@ export class JobProvider {
     });
   }
 
-  // --- Execution ---
-
-  protected async scheduleProcessing(
-    jobName: string,
-    executionId: string,
-  ): Promise<void> {
-    if (this.pausedJobs.has(jobName)) {
-      this.log.debug(`Job '${jobName}' is paused, deferring`, { executionId });
-      return;
-    }
-
-    const registration = this.getRegistration(jobName);
-    const maxConcurrency = registration.options.concurrency ?? 1;
-    const runningCount = await this.executions.count({
-      jobName: { eq: jobName },
-      status: { eq: "running" },
-    });
-    if (runningCount >= maxConcurrency) {
-      this.log.debug(
-        `Job '${jobName}' at concurrency limit (${runningCount}/${maxConcurrency}), deferring`,
-        { executionId },
-      );
-      return;
-    }
-
-    if (this.queueDispatch) {
-      this.log.debug(`Dispatching job '${jobName}' via queue`, { executionId });
-      await this.queueDispatch(jobName, executionId);
-    } else {
-      this.log.debug(`Executing job '${jobName}' inline`, { executionId });
-      await this.processExecution(jobName, executionId);
-    }
-  }
+  // --- Queue consumer (called by JobQueueProvider) --------------------------------------------------------------
 
   public async processExecution(
     jobName: string,
     executionId: string,
   ): Promise<void> {
-    const promise = this.processExecutionInner(jobName, executionId);
+    const registration = this.jobs.get(jobName);
+    if (!registration) {
+      this.log.warn(`Unknown job '${jobName}' — skipping execution`, {
+        executionId,
+      });
+      return;
+    }
+    if (registration.type !== "queue") {
+      this.log.warn(`Job '${jobName}' is not queue-mode — skipping`, {
+        executionId,
+      });
+      return;
+    }
+
+    const promise = this.processQueueExecution(registration, executionId);
     this.inFlight.add(promise);
     try {
       await promise;
@@ -445,41 +619,39 @@ export class JobProvider {
     }
   }
 
-  protected async processExecutionInner(
-    jobName: string,
+  protected async processQueueExecution(
+    registration: JobRuntimeRegistration,
     executionId: string,
   ): Promise<void> {
-    const registration = this.getRegistration(jobName);
+    const jobName = registration.name;
+    const opts = registration.options;
+    const record = opts.record ?? "error";
 
-    // Claim the execution atomically
     const claimed = await this.claim(executionId);
     if (!claimed) {
       this.log.debug(`Execution ${executionId} already claimed, skipping`);
       return;
     }
 
-    const context = this.alepha.context.createContextId();
-    this.logs.set(context, []);
+    const execution = await this.executions.findById(executionId);
+    if (!execution) return;
 
-    this.log.debug(`Started processing job '${jobName}'`, { executionId });
+    const contextId = this.alepha.context.createContextId();
+    this.perExecutionLogs.set(contextId, []);
+
+    const abortController = new AbortController();
+    this.abortControllers.set(executionId, abortController);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (opts.timeout) {
+      const ms = this.dt.duration(opts.timeout).as("milliseconds");
+      timeoutId = setTimeout(() => abortController.abort(), ms);
+    }
+
+    const now = this.dt.now();
 
     try {
       await this.alepha.context.run(
         async () => {
-          // Create AbortController for timeout + cancellation
-          const abortController = new AbortController();
-          this.abortControllers.set(executionId, abortController);
-
-          // Set up timeout if configured
-          let timeoutId: ReturnType<typeof setTimeout> | undefined;
-          const opts = registration.options;
-          if (opts.timeout) {
-            const ms = this.dt.duration(opts.timeout).as("milliseconds");
-            timeoutId = setTimeout(() => abortController.abort(), ms);
-          }
-
-          const now = this.dt.now();
-
           await this.alepha.events.emit("job:begin", {
             name: jobName,
             now,
@@ -487,41 +659,27 @@ export class JobProvider {
           });
 
           try {
-            // Build items array
-            const execution = await this.executions.findById(executionId);
-            const items: Array<JobItem> = [];
-            if (execution?.payload) {
-              items.push({
-                id: executionId,
-                payload: execution.payload,
-                attempt: execution.attempt,
-              });
-            }
-
-            // Execute handler
-            this.log.debug(`Running job '${jobName}'`, {
-              executionId,
-              attempt: execution?.attempt,
-              items: items.length,
-            });
-
             await opts.handler({
-              items,
+              payload: execution.payload,
+              attempt: execution.attempt,
               now,
               signal: abortController.signal,
+              executionId,
             });
 
-            // Success
-            await this.executions.updateById(executionId, {
-              status: "completed",
-              completedAt: this.dt.nowISOString(),
-              key: null,
-            });
-
-            this.log.info(`Job '${jobName}' completed`, { executionId });
-
-            // Write logs to cold table
-            await this.writeLogs(executionId, context);
+            // Success: either DELETE (keepLastSuccess=0 or record=error)
+            // or UPDATE to 'ok' (record=all and keepLastSuccess>0).
+            const keepSuccess =
+              record === "all" && this.config.keepLastSuccess > 0;
+            if (keepSuccess) {
+              await this.executions.updateById(executionId, {
+                status: "ok",
+                completedAt: this.dt.nowISOString(),
+                key: null,
+              });
+            } else {
+              await this.executions.deleteById(executionId);
+            }
 
             await this.alepha.events.emit(
               "job:success",
@@ -532,81 +690,45 @@ export class JobProvider {
             const err =
               error instanceof Error ? error : new Error(String(error));
 
-            // Check if this was a cancellation
             if (abortController.signal.aborted) {
-              // Already marked as cancelled by cancel() or it's a timeout
-              const currentExecution =
-                await this.executions.findById(executionId);
-              if (currentExecution?.status !== "cancelled") {
-                // Timeout — treat as failure
-                await this.handleFailure(executionId, jobName, err, context);
-              } else {
-                // Was cancelled explicitly — just write logs
-                await this.writeLogs(executionId, context);
+              const current = await this.executions.findById(executionId);
+              if (current?.status === "cancelled") {
                 await this.alepha.events.emit(
                   "job:cancel",
                   { name: jobName, executionId },
                   { catch: true },
                 );
+                return;
               }
-            } else {
-              await this.handleFailure(executionId, jobName, err, context);
             }
+
+            await this.handleFailure(
+              executionId,
+              registration,
+              execution.attempt,
+              err,
+              contextId,
+            );
           } finally {
             if (timeoutId) clearTimeout(timeoutId);
             this.abortControllers.delete(executionId);
-
             await this.alepha.events.emit(
               "job:end",
               { name: jobName, executionId },
               { catch: true },
             );
-
-            // A slot just opened — dispatch next pending job if any
-            await this.dispatchNextPending(jobName);
           }
         },
-        { context },
+        { context: contextId },
       );
     } finally {
-      this.logs.delete(context);
-    }
-  }
-
-  /**
-   * After a job finishes (success, failure, or cancel), dispatch any pending
-   * jobs that were deferred due to the concurrency limit.
-   */
-  protected async dispatchNextPending(jobName: string): Promise<void> {
-    if (this.stopping || this.pausedJobs.has(jobName)) return;
-
-    const registration = this.jobs.get(jobName);
-    if (!registration) return;
-
-    const maxConcurrency = registration.options.concurrency ?? 1;
-    const runningCount = await this.executions.count({
-      jobName: { eq: jobName },
-      status: { eq: "running" },
-    });
-
-    const available = maxConcurrency - runningCount;
-    if (available <= 0) return;
-
-    const pending = await this.executions.findMany({
-      where: { jobName: { eq: jobName }, status: { eq: "pending" } },
-      orderBy: { column: "priority", direction: "asc" },
-      limit: available,
-    });
-
-    for (const exec of pending) {
-      await this.scheduleProcessing(jobName, exec.id);
+      this.perExecutionLogs.delete(contextId);
     }
   }
 
   protected async claim(executionId: string): Promise<boolean> {
     const execution = await this.executions.findById(executionId);
     if (!execution) return false;
-
     try {
       await this.executions.updateOne(
         { id: { eq: executionId }, status: { eq: "pending" } },
@@ -614,7 +736,6 @@ export class JobProvider {
           status: "running",
           attempt: execution.attempt + 1,
           startedAt: this.dt.nowISOString(),
-          workerId: this.workerId,
         },
       );
       return true;
@@ -625,64 +746,56 @@ export class JobProvider {
 
   protected async handleFailure(
     executionId: string,
-    jobName: string,
+    registration: JobRuntimeRegistration,
+    currentAttempt: number,
     error: Error,
-    context: string,
+    contextId: string,
   ): Promise<void> {
-    const execution = await this.executions.findById(executionId);
-    if (!execution) return;
-
-    const registration = this.getRegistration(jobName);
+    const jobName = registration.name;
     const opts = registration.options;
-    const retryOpts = opts.retry;
+    const retry = opts.retry;
+    const maxAttempts = (retry?.retries ?? 0) + 1;
 
     const canRetry =
-      retryOpts &&
-      execution.attempt < execution.maxAttempts &&
-      (retryOpts.when ? retryOpts.when(error) : true);
+      retry &&
+      currentAttempt + 1 < maxAttempts &&
+      (retry.when ? retry.when(error) : true);
 
     if (canRetry) {
-      // Compute next scheduledAt from backoff
-      const nextScheduledAt = this.computeBackoff(retryOpts, execution.attempt);
-
+      const nextScheduledAt = this.computeBackoff(retry, currentAttempt + 1);
       this.log.info(
-        `Job '${jobName}' failed, scheduling retry ${execution.attempt}/${execution.maxAttempts}`,
+        `Job '${jobName}' failed, scheduling retry ${currentAttempt + 1}/${maxAttempts}`,
         { executionId, error: error.message, nextScheduledAt },
       );
-
       await this.executions.updateById(executionId, {
-        status: "retrying",
+        status: "scheduled",
         error: error.message,
         scheduledAt: nextScheduledAt,
+        logs: this.snapshotLogs(contextId),
       });
-
-      await this.writeLogs(executionId, context);
-
-      // Optimistic dispatch: schedule a timeout for the exact backoff delay.
-      // The delayed dispatch sweep is the safety net in case of crash.
+      // Optimistic dispatch: fire a local timer so the retry runs as close to
+      // `scheduledAt` as possible. The sweep is the safety net for worker
+      // crashes and stateless runtimes (CF Workers, where setTimeout won't
+      // survive across invocations anyway).
       const delayMs = Math.max(
         0,
         new Date(nextScheduledAt).getTime() - this.dt.nowMillis(),
       );
-      this.dt.createTimeout(
-        () => void this.dispatchRetrying(jobName, executionId),
-        delayMs,
-      );
+      this.dt.createTimeout(() => {
+        void this.dispatchScheduled(jobName, executionId);
+      }, delayMs);
     } else {
-      // Dead — all retries exhausted or predicate returned false
       this.log.info(
-        `Job '${jobName}' is dead after ${execution.attempt} attempt(s)`,
+        `Job '${jobName}' dead after ${currentAttempt} attempt(s)`,
         { executionId, error: error.message },
       );
-
       await this.executions.updateById(executionId, {
-        status: "dead",
+        status: "error",
         error: error.message,
         completedAt: this.dt.nowISOString(),
         key: null,
+        logs: this.snapshotLogs(contextId),
       });
-
-      await this.writeLogs(executionId, context);
     }
 
     await this.alepha.events.emit(
@@ -692,342 +805,226 @@ export class JobProvider {
     );
   }
 
-  protected computeBackoff(
-    retryOpts: JobRetryOptions,
-    attempt: number,
-  ): string {
+  protected computeBackoff(retry: JobRetryOptions, attempt: number): string {
     const now = this.dt.now();
-
-    if (!retryOpts.backoff) {
-      // Default: 1 second fixed
+    if (!retry.backoff) {
       return now.add(1, "second").toISOString();
     }
-
-    // Fixed backoff shorthand: [5, "second"]
-    if (Array.isArray(retryOpts.backoff)) {
-      const delay = this.dt.duration(retryOpts.backoff);
-      return now.add(delay).toISOString();
+    if (Array.isArray(retry.backoff)) {
+      return now.add(this.dt.duration(retry.backoff)).toISOString();
     }
-
-    // Exponential backoff
-    const backoff = retryOpts.backoff as JobRetryBackoff;
+    const backoff = retry.backoff as JobRetryBackoff;
     const initial = this.dt.duration(backoff.initial).as("milliseconds");
     const factor = backoff.factor ?? 2;
     let delayMs = initial * factor ** (attempt - 1);
-
     if (backoff.max) {
-      const maxMs = this.dt.duration(backoff.max).as("milliseconds");
-      delayMs = Math.min(delayMs, maxMs);
+      delayMs = Math.min(
+        delayMs,
+        this.dt.duration(backoff.max).as("milliseconds"),
+      );
     }
-
     if (backoff.jitter) {
-      // Add up to 25% random jitter
       delayMs = delayMs * (0.75 + Math.random() * 0.5);
     }
-
     return now.add(delayMs, "millisecond").toISOString();
   }
 
-  protected async writeLogs(
-    executionId: string,
-    context: string,
-  ): Promise<void> {
-    const entries = this.logs.get(context);
-    if (!entries || entries.length === 0) return;
+  protected snapshotLogs(contextId: string): LogEntry[] | undefined {
+    const entries = this.perExecutionLogs.get(contextId);
+    if (!entries || entries.length === 0) return undefined;
+    const max = this.config.logMaxEntries;
+    if (max === 0) return undefined;
+    if (entries.length <= max) return [...entries];
+    const truncated = entries.slice(0, max);
+    truncated.push({
+      level: "WARN",
+      message: `Log entries truncated at ${max}`,
+      timestamp: this.dt.nowMillis(),
+      service: "alepha.jobs",
+      module: "JobProvider",
+    } as LogEntry);
+    return truncated;
+  }
 
-    const maxEntries = this.config.logMaxEntries;
-    if (maxEntries === 0) return;
+  // --- Sweep ----------------------------------------------------------------------------------------------------
 
-    let logs = entries;
-    if (logs.length > maxEntries) {
-      logs = logs.slice(0, maxEntries);
-      logs.push({
-        level: "WARN",
-        message: `Log entries truncated at ${maxEntries}`,
-        timestamp: this.dt.nowMillis(),
-        service: "alepha.jobs",
-        module: "JobProvider",
-      } as LogEntry);
-    }
+  protected async sweep(): Promise<void> {
+    if (this.stopping) return;
+    this.log.trace("Starting job sweep");
+    const now = this.dt.now();
+    const nowIso = now.toISOString();
 
     try {
-      await this.executionLogs.create({
-        id: executionId,
-        logs,
+      // 1. Due scheduled rows → pending + dispatch
+      const dueWhere = this.executions.createQueryWhere();
+      dueWhere.status = { eq: "scheduled" };
+      dueWhere.scheduledAt = { lte: nowIso };
+      const due = await this.executions.findMany({
+        where: dueWhere,
+        orderBy: { column: "priority", direction: "asc" },
       });
-    } catch {
-      // Log write failure is not critical
-      this.log.warn(`Failed to write logs for execution ${executionId}`);
+      for (const exec of due) {
+        if (!this.jobs.has(exec.jobName)) continue;
+        await this.executions.updateById(exec.id, { status: "pending" });
+        await this.dispatchToQueueSafe(exec.jobName, exec.id);
+      }
+
+      // 2. Stale pending rows → re-dispatch
+      const staleIso = now
+        .subtract(this.config.staleThreshold, "millisecond")
+        .toISOString();
+      const staleWhere = this.executions.createQueryWhere();
+      staleWhere.status = { eq: "pending" };
+      staleWhere.createdAt = { lte: staleIso };
+      const stale = await this.executions.findMany({
+        where: staleWhere,
+        orderBy: { column: "priority", direction: "asc" },
+      });
+      for (const exec of stale) {
+        if (!this.jobs.has(exec.jobName)) continue;
+        await this.dispatchToQueueSafe(exec.jobName, exec.id);
+      }
+
+      // 3. Crashed running rows → mark as failed + apply retry
+      const runningWhere = this.executions.createQueryWhere();
+      runningWhere.status = { eq: "running" };
+      const running = await this.executions.findMany({ where: runningWhere });
+      const nowMs = now.valueOf();
+      for (const exec of running) {
+        const reg = this.jobs.get(exec.jobName);
+        if (!reg) continue;
+        if (this.abortControllers.has(exec.id)) continue; // still alive locally
+        const crashThresholdMs = reg.options.timeout
+          ? this.dt.duration(reg.options.timeout).as("milliseconds") * 2
+          : this.config.runTimeout;
+        const startedAtMs = exec.startedAt
+          ? new Date(exec.startedAt).getTime()
+          : 0;
+        if (startedAtMs > 0 && nowMs - startedAtMs > crashThresholdMs) {
+          this.log.warn(
+            `Sweep: marking crashed ${exec.jobName} (${exec.id}) as failed`,
+          );
+          const err = new Error(
+            "Execution assumed crashed (recovered by sweep)",
+          );
+          await this.handleFailure(exec.id, reg, exec.attempt, err, "");
+        }
+      }
+
+      // 4. Trim ring buffer per job
+      await this.trimRingBuffers();
+    } catch (e) {
+      this.log.error("Sweep failed", { error: e });
     }
   }
 
-  protected async dispatchRetrying(
+  protected async dispatchToQueueSafe(
+    jobName: string,
+    executionId: string,
+  ): Promise<void> {
+    try {
+      await this.dispatchToQueue(jobName, executionId);
+    } catch (e) {
+      this.log.warn(`Sweep failed to dispatch ${jobName} (${executionId})`, e);
+    }
+  }
+
+  /**
+   * Move a row from `scheduled` → `pending` and dispatch it.
+   * Used by the optimistic retry/delay timer. If the sweep has already moved
+   * the row, or another worker has claimed it, the UPDATE guard fails silently.
+   */
+  protected async dispatchScheduled(
     jobName: string,
     executionId: string,
   ): Promise<void> {
     if (this.stopping) return;
     try {
       await this.executions.updateOne(
-        { id: { eq: executionId }, status: { eq: "retrying" } },
+        { id: { eq: executionId }, status: { eq: "scheduled" } },
         { status: "pending" },
       );
-      await this.scheduleProcessing(jobName, executionId);
+      await this.dispatchToQueueSafe(jobName, executionId);
     } catch {
-      // Already transitioned by another worker or sweep
+      // Row already transitioned (sweep ran, another worker claimed, etc.)
     }
   }
 
-  // --- Internal system sweeps (Section 5 of spec) ---
+  protected async trimRingBuffers(): Promise<void> {
+    for (const [jobName, reg] of this.jobs) {
+      const okLimit = reg.options.keep?.ok ?? this.config.keepLastSuccess;
+      const errLimit = reg.options.keep?.error ?? this.config.keepLastError;
+      if (okLimit > 0) {
+        await this.trimByStatus(jobName, "ok", okLimit);
+      }
+      if (errLimit > 0) {
+        await this.trimByStatus(jobName, "error", errLimit);
+      }
+    }
+  }
 
-  /**
-   * Recovery Sweep (Section 5.1)
-   *
-   * Runs every `recovery.interval` (default: 1 minute).
-   * - Stale `pending` jobs older than `staleThreshold` → re-dispatch.
-   * - Crashed `running` jobs older than `max(job.timeout * 2, recovery.runTimeout)` → mark failed, apply retry policy.
-   */
-  protected async recoverySweep(): Promise<void> {
-    this.log.trace("Starting recovery sweep");
-    if (this.stopping) return;
-
-    const acquired = await this.tryLock("_alepha:jobs:recovery-lock", 300_000);
-    if (!acquired) return;
-
+  protected async trimByStatus(
+    jobName: string,
+    status: "ok" | "error",
+    keep: number,
+  ): Promise<void> {
     try {
-      const now = this.dt.now();
-
-      // 1. Stale pending jobs (priority-ordered)
-      const staleThreshold = now
-        .subtract(this.config.recovery.staleThreshold, "millisecond")
-        .toISOString();
-
-      const pendingWhere = this.executions.createQueryWhere();
-      pendingWhere.status = { eq: "pending" };
-      pendingWhere.createdAt = { lte: staleThreshold };
-
-      const stalePending = await this.executions.findMany({
-        where: pendingWhere,
-        orderBy: { column: "priority", direction: "asc" },
+      const rows = await this.executions.findMany({
+        where: { jobName: { eq: jobName }, status: { eq: status } },
+        orderBy: { column: "startedAt", direction: "desc" },
+        limit: keep + 50,
       });
-
-      for (const exec of stalePending) {
-        if (!this.jobs.has(exec.jobName)) continue;
+      if (rows.length <= keep) return;
+      const toDelete = rows.slice(keep).map((r) => r.id);
+      if (toDelete.length > 0) {
+        await this.executions.deleteMany({ id: { inArray: toDelete } });
         this.log.debug(
-          `Recovery sweep: re-dispatching stale pending job ${exec.jobName} (${exec.id})`,
+          `Trimmed ${toDelete.length} ${status} rows for '${jobName}'`,
         );
-        await this.scheduleProcessing(exec.jobName, exec.id);
-      }
-
-      // 2. Crashed running jobs
-      const runningWhere = this.executions.createQueryWhere();
-      runningWhere.status = { eq: "running" };
-
-      const running = await this.executions.findMany({ where: runningWhere });
-      const nowMs = now.valueOf();
-
-      for (const exec of running) {
-        const registration = this.jobs.get(exec.jobName);
-        if (!registration) continue;
-
-        // If this worker owns it and has an active AbortController, skip (still alive)
-        if (this.abortControllers.has(exec.id)) continue;
-
-        const opts = registration.options;
-        let crashThresholdMs: number;
-        if (opts.timeout) {
-          crashThresholdMs =
-            this.dt.duration(opts.timeout).as("milliseconds") * 2;
-        } else {
-          crashThresholdMs = this.config.recovery.runTimeout;
-        }
-
-        const startedAt = exec.startedAt
-          ? new Date(exec.startedAt).getTime()
-          : 0;
-        if (startedAt > 0 && nowMs - startedAt > crashThresholdMs) {
-          this.log.warn(
-            `Recovery sweep: marking crashed job ${exec.jobName} (${exec.id}) as failed`,
-          );
-          const error = new Error(
-            "Execution assumed crashed (recovered by sweep)",
-          );
-          await this.handleFailure(exec.id, exec.jobName, error, "");
-        }
       }
     } catch (e) {
-      this.log.error("Recovery sweep failed", { error: e });
-    } finally {
-      await this.releaseLock("_alepha:jobs:recovery-lock");
+      this.log.warn(`Failed to trim ${status} rows for '${jobName}'`, e);
     }
   }
 
-  /**
-   * Delayed Dispatch Sweep (Section 5.2)
-   *
-   * Runs every `delayed.interval` (default: 30 seconds).
-   * Scans for `scheduled` and `retrying` jobs where `scheduledAt <= now`,
-   * moves them to `pending`, and dispatches to the queue layer.
-   */
-  protected async delayedDispatchSweep(): Promise<void> {
-    this.log.trace("Starting delayed dispatch sweep");
-    if (this.stopping) return;
-
-    const acquired = await this.tryLock("_alepha:jobs:dispatch-lock", 60_000);
-    if (!acquired) return;
-
-    try {
-      const now = this.dt.nowISOString();
-
-      const where = this.executions.createQueryWhere();
-      where.status = { inArray: ["scheduled", "retrying"] };
-      where.scheduledAt = { lte: now };
-
-      const ready = await this.executions.findMany({
-        where,
-        orderBy: { column: "priority", direction: "asc" },
-      });
-
-      for (const exec of ready) {
-        if (!this.jobs.has(exec.jobName)) continue;
-        await this.executions.updateById(exec.id, { status: "pending" });
-        await this.scheduleProcessing(exec.jobName, exec.id);
-      }
-    } catch (e) {
-      this.log.error("Delayed dispatch sweep failed", { error: e });
-    } finally {
-      await this.releaseLock("_alepha:jobs:dispatch-lock");
-    }
-  }
-
-  /**
-   * Log Purge (Section 5.3)
-   *
-   * Runs daily at 03:00 via cron.
-   * Deletes completed/dead/cancelled execution records older than `logRetentionDays`.
-   */
-  protected async logPurge(): Promise<void> {
-    if (this.stopping) return;
-    try {
-      const cutoff = this.dt
-        .now()
-        .subtract(this.config.logRetentionDays, "day")
-        .toISOString();
-
-      const where = this.executions.createQueryWhere();
-      where.status = { inArray: ["completed", "dead", "cancelled"] };
-      where.completedAt = { lte: cutoff };
-
-      // Bulk-delete logs first (FK-safe), then executions
-      const expiredIds = await this.executions.findMany({
-        where,
-        columns: ["id"] as any,
-      });
-      if (expiredIds.length > 0) {
-        const ids = expiredIds.map((e) => e.id);
-        await this.executionLogs.deleteMany({ id: { inArray: ids } });
-        await this.executions.deleteMany({ id: { inArray: ids } });
-        this.log.info(`Log purge: deleted ${ids.length} old execution records`);
-      }
-    } catch (e) {
-      this.log.error("Log purge failed", { error: e });
-    }
-  }
-
-  // --- Pause / Resume ---
-
-  public pauseJob(name: string): void {
-    this.getRegistration(name);
-    this.pausedJobs.add(name);
-    this.log.info(`Paused job '${name}'`);
-  }
-
-  public async resumeJob(name: string): Promise<void> {
-    this.getRegistration(name);
-    this.pausedJobs.delete(name);
-    this.log.info(`Resumed job '${name}'`);
-
-    // Dispatch any pending items for this job
-    const pending = await this.executions.findMany({
-      where: { jobName: { eq: name }, status: { eq: "pending" } },
-      orderBy: { column: "priority", direction: "asc" },
-    });
-    for (const exec of pending) {
-      await this.scheduleProcessing(name, exec.id);
-    }
-  }
-
-  public isJobPaused(name: string): boolean {
-    return this.pausedJobs.has(name);
-  }
-
-  public getPausedJobs(): string[] {
-    return [...this.pausedJobs];
-  }
-
-  // --- Lock helpers ---
-
-  protected async tryLock(key: string, ttlMs: number): Promise<boolean> {
-    const lockValue = `${this.workerId},${this.dt.nowISOString()}`;
-    const result = await this.lockProvider.set(key, lockValue, true, ttlMs);
-    const [lockId] = result.split(",");
-    return lockId === this.workerId;
-  }
-
-  protected async releaseLock(key: string): Promise<void> {
-    await this.lockProvider.del(key);
-  }
-
-  // --- Lifecycle hooks ---
+  // --- Lifecycle -----------------------------------------------------------------------------------------------
 
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      this.workerId = crypto.randomUUID().slice(0, 12);
+      // Validate that queue-mode jobs have a dispatcher registered.
+      const needsQueue = [...this.jobs.values()].some(
+        (j) => j.type === "queue",
+      );
+      if (needsQueue && !this.queueDispatch) {
+        throw new AlephaError(
+          `Queue-mode jobs are registered but no queue dispatcher is available. Add '.with(AlephaApiJobsQueue)' to your app.`,
+        );
+      }
+
       this.log.info(`Job system OK`, {
-        workerId: this.workerId,
-        dispatch: this.queueDispatch ? "queue" : "inline",
+        dispatch: this.queueDispatch ? "queue" : "inline-only",
+        jobs: this.jobs.size,
       });
 
-      // Set up log capture listener (once)
+      // Capture logs per execution context.
       this.alepha.events.on("log", ({ entry }) => {
         const ctx = entry.context;
         if (!ctx) return;
-        const entries = this.logs.get(ctx);
+        const entries = this.perExecutionLogs.get(ctx);
         if (!entries) return;
         entries.push(entry);
       });
 
-      // Run initial sweeps to recover from previous crashes.
-      // Skipped on serverless — cron triggers handle periodic sweeps instead.
       if (!this.alepha.isServerless()) {
-        await this.delayedDispatchSweep();
-        await this.recoverySweep();
+        await this.sweep();
       }
 
-      // Periodic sweeps via cron (works in serverless environments like Cloudflare Workers)
       this.cronProvider.createCronJob(
-        "_alepha:jobs:recovery",
-        JobProvider.SWEEP_CRON,
+        "api:jobs:sweep",
+        SWEEP_CRON,
         async () => {
-          await this.recoverySweep();
-        },
-        true,
-      );
-      this.cronProvider.createCronJob(
-        "_alepha:jobs:dispatch",
-        JobProvider.SWEEP_CRON,
-        async () => {
-          await this.delayedDispatchSweep();
-        },
-        true,
-      );
-
-      // Daily log purge
-      this.cronProvider.createCronJob(
-        "_alepha:jobs:log-purge",
-        "0 0 * * *",
-        async () => {
-          await this.logPurge();
+          await this.sweep();
         },
         true,
       );
@@ -1038,8 +1035,6 @@ export class JobProvider {
     on: "stop",
     handler: async () => {
       this.stopping = true;
-
-      // Drain: wait for in-flight jobs to finish before aborting
       if (this.inFlight.size > 0) {
         this.log.info(`Draining ${this.inFlight.size} in-flight job(s)...`);
         await Promise.race([
@@ -1047,8 +1042,6 @@ export class JobProvider {
           this.dt.wait([this.config.drainTimeout, "millisecond"]),
         ]);
       }
-
-      // Abort any still-running executions after drain timeout
       if (this.abortControllers.size > 0) {
         this.log.warn(
           `Aborting ${this.abortControllers.size} remaining job(s) after drain timeout`,
@@ -1060,9 +1053,9 @@ export class JobProvider {
     },
   });
 
-  // --- Helpers ---
+  // --- Helpers -------------------------------------------------------------------------------------------------
 
-  protected getRegistration(name: string): JobRegistration {
+  protected getRegistration(name: string): JobRuntimeRegistration {
     const registration = this.jobs.get(name);
     if (!registration) {
       throw new AlephaError(`Job not registered: ${name}`);
@@ -1070,3 +1063,5 @@ export class JobProvider {
     return registration;
   }
 }
+
+export { PRIORITY_MAP, PRIORITY_REVERSE };

@@ -1,7 +1,8 @@
 import { $inject, t } from "alepha";
-import { JobService } from "alepha/api/jobs";
+import { jobExecutionEntity } from "alepha/api/jobs";
+import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action } from "alepha/server";
+import { $action, NotFoundError } from "alepha/server";
 import { NotificationJobs } from "../jobs/NotificationJobs.ts";
 import { notificationDetailResourceSchema } from "../schemas/notificationDetailResourceSchema.ts";
 import { notificationQuerySchema } from "../schemas/notificationQuerySchema.ts";
@@ -10,8 +11,8 @@ import { notificationResourceSchema } from "../schemas/notificationResourceSchem
 export class AdminNotificationController {
   protected readonly url: string = "/notifications";
   protected readonly group: string = "admin:notifications";
-  protected readonly jobService = $inject(JobService);
   protected readonly notificationJobs = $inject(NotificationJobs);
+  protected readonly executions = $repository(jobExecutionEntity);
 
   protected get jobName(): string {
     return this.notificationJobs.sendNotification.name;
@@ -26,13 +27,17 @@ export class AdminNotificationController {
       response: t.page(notificationResourceSchema),
     },
     handler: async ({ query }) => {
-      const result = await this.jobService.findExecutions({
-        ...query,
-        job: this.jobName,
-      });
+      query.sort ??= "-createdAt";
+      const where = this.executions.createQueryWhere();
+      where.jobName = { eq: this.jobName };
+      const page = await this.executions.paginate(
+        query,
+        { where },
+        { count: true },
+      );
       return {
-        ...result,
-        content: result.content.map((exec) => this.toResource(exec)),
+        ...page,
+        content: page.content.map((exec) => this.toResource(exec)),
       } as any;
     },
   });
@@ -48,8 +53,11 @@ export class AdminNotificationController {
       response: notificationDetailResourceSchema,
     },
     handler: async ({ params }) => {
-      const detail = await this.jobService.getExecution(params.id);
-      return this.toDetailResource(detail) as any;
+      const exec = await this.executions.findById(params.id);
+      if (!exec || exec.jobName !== this.jobName) {
+        throw new NotFoundError(`Notification not found: ${params.id}`);
+      }
+      return this.toDetailResource(exec) as any;
     },
   });
 
@@ -76,7 +84,6 @@ export class AdminNotificationController {
     return {
       ...this.toResource(exec),
       variables: payload.variables,
-      rendered: exec.result,
       logs: exec.logs,
     };
   }

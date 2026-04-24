@@ -21,10 +21,12 @@ export class PaymentService {
 
   /**
    * Expires stale payment intents that have been in "processing" status
-   * for more than 30 minutes. Runs every 15 minutes.
+   * for more than 30 minutes. Runs every 5 minutes — shares the CF wrangler
+   * trigger with the jobs sweep so no extra binding is consumed.
    */
   protected readonly expireStaleIntents = $job({
-    cron: "*/15 * * * *",
+    name: "api:payments:expireStaleIntents",
+    cron: "*/5 * * * *",
     handler: async () => {
       const cutoff = this.dateTime.now().subtract(30, "minutes").toISOString();
 

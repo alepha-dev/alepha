@@ -24,11 +24,11 @@ export class UserJobs {
   /**
    * Purge expired sessions from the database.
    *
-   * This job runs daily at 3:00 AM and removes all sessions
-   * where the `expiresAt` timestamp has passed.
+   * Runs hourly (at :00) and deletes sessions whose `expiresAt` has passed.
    */
   public readonly purgeExpiredSessions = $job({
-    cron: "0 0 * * *", // Daily at 3:00 AM
+    name: "api:users:purgeExpiredSessions",
+    cron: "0 * * * *", // Hourly at minute 0
     handler: async () => {
       const now = this.dateTimeProvider.nowISOString();
 

@@ -1,4 +1,4 @@
-import { $module, type Alepha, type Static, t } from "alepha";
+import { $module } from "alepha";
 import type { DateTime } from "alepha/datetime";
 import { AlephaLock } from "alepha/lock";
 import { AlephaQueue } from "alepha/queue";
@@ -12,28 +12,19 @@ import { JobService } from "./services/JobService.ts";
 
 export * from "./controllers/AdminJobController.ts";
 export * from "./entities/jobExecutionEntity.ts";
-export * from "./entities/jobExecutionLogEntity.ts";
 export * from "./primitives/$job.ts";
 export * from "./providers/JobProvider.ts";
 export * from "./providers/JobQueueProvider.ts";
-export * from "./schemas/jobActivitySchema.ts";
 export * from "./schemas/jobConfigAtom.ts";
-export * from "./schemas/jobCronInfoSchema.ts";
-export * from "./schemas/jobExecutionDetailResourceSchema.ts";
 export * from "./schemas/jobExecutionQuerySchema.ts";
 export * from "./schemas/jobExecutionResourceSchema.ts";
-export * from "./schemas/jobFailureSchema.ts";
-export * from "./schemas/jobQueueDepthSchema.ts";
 export * from "./schemas/jobRegistrationSchema.ts";
-export * from "./schemas/jobStatsSchema.ts";
 export * from "./schemas/triggerJobSchema.ts";
 export * from "./services/JobService.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
 
 declare module "alepha" {
-  interface Env extends Partial<Static<typeof jobEnvSchema>> {}
-
   interface Hooks {
     "job:begin": { name: string; now: DateTime; executionId: string };
     "job:success": { name: string; executionId: string };
@@ -45,34 +36,17 @@ declare module "alepha" {
 
 // -----------------------------------------------------------------------------------------------------------------
 
-const jobEnvSchema = t.object({
-  /**
-   * Controls whether the job system dispatches work through a queue or executes inline.
-   *
-   * - `1` — always use queue (force queue even in serverless)
-   * - `0` — never use queue (force inline, useful for testing)
-   * - not set — auto: use queue when NOT serverless (default)
-   */
-  ALEPHA_JOBS_QUEUE: t.optional(
-    t.integer({
-      description:
-        "Set to 1 to always use queue, 0 to disable queue (default: auto-detect based on environment)",
-    }),
-  ),
-});
-
-// -----------------------------------------------------------------------------------------------------------------
-
 /**
- * Job execution framework — unified primitive for deferred, scheduled, and queued work.
+ * Job execution framework — cron and durable queue work with a single primitive.
  *
- * **Features:**
- * - Push-based jobs with typed payloads
- * - Cron scheduling with execution tracking
- * - Retry with exponential backoff
- * - Priority, delay, cancellation
- * - Deduplication via unique keys
- * - Per-execution log capture
+ * A `$job` is either **cron-only** (declares `cron`) or **queue-only** (declares `schema`).
+ * Cron jobs run inline on their schedule and only record errors by default.
+ * Queue jobs use the outbox pattern: push commits to DB first, then notifies via queue.
+ *
+ * **This module provides cron support only.** To enable queue-mode jobs, also
+ * import {@link AlephaApiJobsQueue} — it brings in the queue layer and infrastructure
+ * binding (e.g. Cloudflare Queues). Cron-only deployments (Vercel, CF-without-Queues)
+ * do not need `AlephaApiJobsQueue`.
  *
  * @module alepha.api.jobs
  */
@@ -80,20 +54,18 @@ export const AlephaApiJobs = $module({
   name: "alepha.api.jobs",
   imports: [AlephaScheduler, AlephaLock],
   services: [JobProvider, JobService, AdminJobController],
-  // AlephaQueue + JobQueueProvider are conditional — injected only when queue is enabled.
-  variants: [JobQueueProvider],
-  register: (alepha: Alepha) => {
-    const env = alepha.parseEnv(jobEnvSchema);
-    const useQueue =
-      env.ALEPHA_JOBS_QUEUE === 1
-        ? true
-        : env.ALEPHA_JOBS_QUEUE === 0
-          ? false
-          : !alepha.isServerless();
+});
 
-    if (useQueue) {
-      alepha.with(AlephaQueue);
-      alepha.with(JobQueueProvider);
-    }
-  },
+/**
+ * Queue support for `$job`. Import alongside {@link AlephaApiJobs} when your
+ * app declares queue-mode jobs (any `$job` with a `schema`).
+ *
+ * Adds `JobQueueProvider` which plumbs the outbox dispatch through `AlephaQueue`.
+ *
+ * @module alepha.api.jobs.queue
+ */
+export const AlephaApiJobsQueue = $module({
+  name: "alepha.api.jobs.queue",
+  imports: [AlephaApiJobs, AlephaQueue],
+  services: [JobQueueProvider],
 });

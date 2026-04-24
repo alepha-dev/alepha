@@ -1,34 +1,10 @@
 import { type Static, t } from "alepha";
-import { pageQuerySchema } from "alepha/orm";
 
-export const jobExecutionQuerySchema = t.extend(pageQuerySchema, {
-  job: t.optional(
-    t.text({
-      description: "Filter by job name",
-    }),
-  ),
+export const jobExecutionQuerySchema = t.object({
   status: t.optional(
-    t.enum([
-      "pending",
-      "scheduled",
-      "retrying",
-      "running",
-      "completed",
-      "dead",
-      "cancelled",
-    ]),
+    t.enum(["pending", "running", "scheduled", "ok", "error", "cancelled"]),
   ),
-  priority: t.optional(t.enum(["critical", "high", "normal", "low"])),
-  from: t.optional(
-    t.datetime({
-      description: "From date (ISO)",
-    }),
-  ),
-  to: t.optional(
-    t.datetime({
-      description: "To date (ISO)",
-    }),
-  ),
+  limit: t.optional(t.integer({ minimum: 1, maximum: 200, default: 20 })),
 });
 
 export type JobExecutionQuery = Static<typeof jobExecutionQuerySchema>;

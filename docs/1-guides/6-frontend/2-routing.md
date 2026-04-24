@@ -159,7 +159,33 @@ can: () => userHasPermission("admin")
 
 ## Nested Routing
 
-Define parent-child relationships between pages using the `children` or `parent` option. Parent pages render child content using the `<NestedView />` component.
+Define parent-child relationships between pages using `parent` on the child or `children` on the parent. Parent pages render child content using the `<NestedView />` component.
+
+### Which option to use
+
+The choice is not stylistic — it depends on **who owns the child page**:
+
+- **You own the child** (you wrote the `$page` and can edit it) → set `parent` on the child. The child declares its own place in the tree.
+- **You don't own the child** (it comes from another package or an injected router you can't modify) → add it to `children` on your parent. The parent adopts pages it doesn't control.
+
+The second case is the reason `children` exists. When you `$inject` a router from another package, its `$page` definitions are frozen — you can't reach in and set `parent` on them. `children` is how you mount those external pages under one of your own layouts:
+
+```typescript
+class AppRouter {
+  protected productRouter = $inject(ProductRouter);
+
+  layout = $page({
+    path: "/app",
+    component: () => <Shell><NestedView /></Shell>,
+    children: () => [
+      this.productRouter.catalogPage,
+      this.productRouter.checkoutPage,
+    ],
+  });
+}
+```
+
+When you do own the child, prefer `parent` — it keeps parents free of forward references to their own descendants and reads top-down:
 
 ```typescript
 import { $page } from "alepha/react/router";
@@ -176,7 +202,6 @@ class AppRouter {
         </main>
       </div>
     ),
-    children: () => [this.dashboard, this.settings],
   });
 
   dashboard = $page({
@@ -192,6 +217,8 @@ class AppRouter {
   });
 }
 ```
+
+> ⚠️ **Declare each edge from one side only.** If page B already has `parent: pageA`, do not also list B in `pageA.children`. The link is already established; stating it on both sides creates a TypeScript circular dependency between the two class fields (each references the other before it is initialised).
 
 `<NestedView />` renders the matched child page. It supports an optional `errorBoundary` prop.
 

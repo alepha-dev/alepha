@@ -192,30 +192,46 @@ export interface PagePrimitiveOptions<
   lazy?: () => Promise<{ default: FC<TProps & TPropsParent> }>;
 
   /**
-   * Attach child pages to create nested routes.
-   * This will make the page a parent route.
+   * Attach child pages to create nested routes, adopting them as children of
+   * this page.
    *
-   * **Declare the relationship on ONE side only.** If a child page already
-   * sets `parent: thisPage`, do NOT also add it to `children` here — the link
-   * is already established, and declaring it on both sides creates a
-   * TypeScript circular dependency between the two class fields (each
-   * references the other before it is initialised).
+   * Use this when you want a parent to own children it cannot modify — most
+   * notably pages that come from an injected router in another package, whose
+   * `$page` definitions are frozen and cannot declare `parent` themselves.
    *
-   * Use a thunk (`() => [...]`) when children are declared later in the same
-   * class.
+   * ```ts
+   * layout = $page({
+   *   path: "/app",
+   *   children: () => [
+   *     this.productRouter.catalogPage,  // from $inject(ProductRouter)
+   *     this.productRouter.checkoutPage,
+   *   ],
+   * });
+   * ```
+   *
+   * Use a thunk (`() => [...]`) when the children are defined later in the
+   * same class.
+   *
+   * **Declare each edge from one side only.** If a child already sets
+   * `parent: thisPage`, do NOT also add it to `children` — the link is
+   * already established, and declaring it on both sides creates a TypeScript
+   * circular dependency between the two class fields (each references the
+   * other before it is initialised).
    */
   children?: Array<PagePrimitive> | (() => Array<PagePrimitive>);
 
   /**
    * Define a parent page for nested routing.
    *
-   * **Declare the relationship on ONE side only.** If you set `parent` here,
-   * do NOT also add this page to the parent's `children` array — the link is
+   * Use this when you own the child page and can edit its definition — it is
+   * the simplest way to nest routes and reads top-down. For pages you do NOT
+   * own (e.g. pages exposed by an injected router from another package), let
+   * the parent adopt them via its `children` option instead.
+   *
+   * **Declare each edge from one side only.** If you set `parent` here, do
+   * NOT also add this page to the parent's `children` array — the link is
    * already established, and declaring it on both sides creates a TypeScript
    * circular dependency between the two class fields.
-   *
-   * Preferring `parent` on the child (over `children` on the parent) keeps
-   * parent pages free of forward references to their descendants.
    */
   parent?: PagePrimitive<PageConfigSchema, TPropsParent, any>;
 

@@ -1,6 +1,24 @@
 import { type Static, t } from "alepha";
+import { logEntrySchema } from "alepha/logger";
 import { $entity, db } from "alepha/orm";
 
+/**
+ * Job execution record.
+ *
+ * Stores durable state for queue-mode jobs (outbox pattern) and error records
+ * for cron-mode jobs. Successful executions are trimmed by the sweep to keep
+ * the last N rows per job (configurable via `jobConfig.keepLastSuccess`).
+ *
+ * Status transitions:
+ * - queue push            → pending
+ * - worker claim          → running
+ * - success               → ok
+ * - terminal failure      → error
+ * - retry                 → scheduled (with scheduledAt = now + backoff)
+ * - delay                 → scheduled (with scheduledAt = now + delay)
+ * - sweep picks due ones  → pending
+ * - cancel                → cancelled
+ */
 export const jobExecutionEntity = $entity({
   name: "job_executions",
   schema: t.object({
@@ -11,17 +29,8 @@ export const jobExecutionEntity = $entity({
     jobName: t.text(),
     key: t.optional(t.nullable(t.text())),
 
-    payload: t.optional(t.record(t.text(), t.any())),
     status: db.default(
-      t.enum([
-        "pending",
-        "scheduled",
-        "retrying",
-        "running",
-        "completed",
-        "dead",
-        "cancelled",
-      ]),
+      t.enum(["pending", "running", "scheduled", "ok", "error", "cancelled"]),
       "pending",
     ),
     priority: db.default(t.integer({ minimum: 0, maximum: 3 }), 2),
@@ -29,13 +38,14 @@ export const jobExecutionEntity = $entity({
     attempt: db.default(t.integer(), 0),
     maxAttempts: db.default(t.integer(), 1),
 
+    payload: t.optional(t.record(t.text(), t.any())),
+
     scheduledAt: t.optional(t.datetime()),
     startedAt: t.optional(t.datetime()),
     completedAt: t.optional(t.datetime()),
 
-    result: t.optional(t.record(t.text(), t.any())),
     error: t.optional(t.text()),
-    workerId: t.optional(t.text()),
+    logs: t.optional(t.array(logEntrySchema)),
 
     triggeredBy: t.optional(t.text()),
     triggeredByName: t.optional(t.text()),
@@ -43,9 +53,8 @@ export const jobExecutionEntity = $entity({
     cancelledByName: t.optional(t.text()),
   }),
   indexes: [
-    { columns: ["jobName", "status", "priority", "scheduledAt"] },
-    { columns: ["jobName", "status", "startedAt"] },
-    { columns: ["jobName", "completedAt"] },
+    { columns: ["jobName", "status", "scheduledAt"] },
+    { columns: ["jobName", "startedAt"] },
     { columns: ["jobName", "key"], unique: true },
   ],
 });
@@ -54,9 +63,8 @@ export type JobExecutionEntity = Static<typeof jobExecutionEntity.schema>;
 
 export type JobStatus =
   | "pending"
-  | "scheduled"
-  | "retrying"
   | "running"
-  | "completed"
-  | "dead"
+  | "scheduled"
+  | "ok"
+  | "error"
   | "cancelled";
