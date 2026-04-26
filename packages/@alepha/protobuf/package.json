@@ -19,13 +19,13 @@
     "protobufjs": "^8.0.1"
   },
   "devDependencies": {
-    "alepha": "0.20.1",
+    "alepha": "0.20.2",
     "tsdown": "^0.21.8",
     "typescript": "^6.0.2",
     "vitest": "^4.1.4"
   },
   "peerDependencies": {
-    "alepha": "0.20.1"
+    "alepha": "0.20.2"
   },
   "scripts": {
     "lint": "alepha lint",

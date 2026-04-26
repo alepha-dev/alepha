@@ -1,3 +1,18 @@
+## [0.20.2] - 2026-04-26
+
+### Features
+
+- **jobs**: update job configurations and schemas for improved scheduling and execution tracking (`119e7168`)
+- **api**: remove workflow, subscriptions and issues for now (`4f9ab5f5`)
+- **mqtt**: remove package for now (`371b819a`)
+- **cli**: platform - Cloudflare - implement putSecret method and update secrets handling (`f95a3064`)
+
+### Bug Fixes
+
+- **react/head**: fix dup server+browser inline script (`a36c3385`)
+- **router**: minor fixes for internal router (`a1cdf70a`)
+- **api/users**: fix lazy loading of external api modules (`37257438`)
+
 ## [0.20.1] - 2026-04-23
 
 ### Bug Fixes

@@ -7,7 +7,7 @@
     "stripe"
   ],
   "author": "Feunard",
-  "version": "0.20.1",
+  "version": "0.20.2",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -24,12 +24,12 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.12",
-    "alepha": "0.20.1",
+    "alepha": "0.20.2",
     "typescript": "^6.0.2",
     "vitest": "^4.1.4"
   },
   "peerDependencies": {
-    "alepha": "0.20.1"
+    "alepha": "0.20.2"
   },
   "scripts": {
     "lint": "alepha lint && yarn build:check",
