@@ -8,7 +8,9 @@ export type Service<T extends object = any> =
   | AbstractClass<T>
   | RunFunction<T>;
 
-export type RunFunction<T extends object = any> = (...args: any[]) => T | void;
+export type RunFunction<T extends object = any> = (
+  ...args: any[]
+) => T | undefined;
 
 export type InstantiableClass<T extends object = any> = new (
   ...args: any[]

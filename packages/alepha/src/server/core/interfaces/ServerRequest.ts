@@ -212,6 +212,7 @@ export type ResponseKind = "json" | "text" | "void" | "file" | "any";
 
 export type ResponseBodyType =
   // not: object is not allowed, you want object ? add schema !
+  // biome-ignore lint/suspicious/noConfusingVoidType: handlers may return void (no return statement)
   string | Buffer | StreamLike | undefined | null | void;
 
 export type ServerHandler<

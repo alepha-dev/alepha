@@ -272,9 +272,9 @@ const ActionButton = (_props: ActionProps) => {
       );
     }
 
-    delete (restProps as any).classNameActive;
-    delete (restProps as any).variantActive;
-    delete (restProps as any).propsActive;
+    (restProps as any).classNameActive = undefined;
+    (restProps as any).variantActive = undefined;
+    (restProps as any).propsActive = undefined;
 
     if ("action" in restProps && restProps.action) {
       return (

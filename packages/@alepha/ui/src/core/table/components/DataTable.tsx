@@ -140,10 +140,10 @@ const DataTable = <T extends object, Filters extends TObject>(
     () => {
       if (!props.filters?.properties) return {};
       const defaults = new Set(props.defaultFilters ?? []);
-      return Object.keys(props.filters.properties).reduce(
-        (acc, key) => ({ ...acc, [key]: defaults.has(key) }),
-        {} as FilterVisibility,
-      );
+      return Object.keys(props.filters.properties).reduce((acc, key) => {
+        acc[key] = defaults.has(key);
+        return acc;
+      }, {} as FilterVisibility);
     },
   );
 

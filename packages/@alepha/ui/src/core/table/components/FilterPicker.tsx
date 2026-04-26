@@ -32,18 +32,18 @@ const FilterPicker = ({
   const filterKeys = Object.keys(schema.properties);
 
   const handleShowAll = () => {
-    const newVisibility = filterKeys.reduce(
-      (acc, key) => ({ ...acc, [key]: true }),
-      {} as FilterVisibility,
-    );
+    const newVisibility = filterKeys.reduce((acc, key) => {
+      acc[key] = true;
+      return acc;
+    }, {} as FilterVisibility);
     onVisibilityChange(newVisibility);
   };
 
   const handleHideAll = () => {
-    const newVisibility = filterKeys.reduce(
-      (acc, key) => ({ ...acc, [key]: false }),
-      {} as FilterVisibility,
-    );
+    const newVisibility = filterKeys.reduce((acc, key) => {
+      acc[key] = false;
+      return acc;
+    }, {} as FilterVisibility);
     onVisibilityChange(newVisibility);
   };
 

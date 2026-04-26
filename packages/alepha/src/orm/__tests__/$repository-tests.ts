@@ -1014,6 +1014,7 @@ export const testTransactionThrowsWhenUnsupported = async (alepha: Alepha) => {
         original,
       );
     } else {
+      // biome-ignore lint/performance/noDelete: setting to undefined fails because the prototype has a getter
       delete provider.supportsTransactions;
     }
   }

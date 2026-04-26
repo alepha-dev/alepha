@@ -297,7 +297,7 @@ export class PackageManagerUtils {
   public async removeYarn(root: string): Promise<void> {
     await this.removeFiles(root, [".yarn", ".yarnrc.yml", "yarn.lock"]);
     await this.editPackageJson(root, (pkg) => {
-      delete pkg.packageManager;
+      pkg.packageManager = undefined;
       return pkg;
     });
   }
@@ -305,7 +305,7 @@ export class PackageManagerUtils {
   public async removePnpm(root: string): Promise<void> {
     await this.removeFiles(root, ["pnpm-lock.yaml", "pnpm-workspace.yaml"]);
     await this.editPackageJson(root, (pkg) => {
-      delete pkg.packageManager;
+      pkg.packageManager = undefined;
       return pkg;
     });
   }

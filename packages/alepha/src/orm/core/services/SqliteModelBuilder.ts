@@ -193,10 +193,8 @@ export class SqliteModelBuilder extends ModelBuilder {
         col = col.notNull();
       }
 
-      return {
-        ...columns,
-        [key]: col,
-      };
+      (columns as Record<string, unknown>)[key] = col;
+      return columns;
     }, {}) as SchemaToSqliteBuilder<T>;
   };
 

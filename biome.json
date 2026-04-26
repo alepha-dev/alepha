@@ -26,9 +26,7 @@
     "rules": {
       "suspicious": {
         "noExplicitAny": "off",
-        "noArrayIndexKey": "off",
-        "noConfusingVoidType": "off",
-        "noTemplateCurlyInString": "off"
+        "noArrayIndexKey": "off"
       },
       "correctness": {
         "noUnusedImports": {
@@ -38,12 +36,7 @@
         },
         "noUnusedFunctionParameters": "off",
         "noUnusedVariables": "off",
-        "noEmptyPattern": "off",
         "useExhaustiveDependencies": "off"
-      },
-      "performance": {
-        "noDelete": "off",
-        "noAccumulatingSpread": "off"
       },
       "complexity": {
         "noBannedTypes": "off",

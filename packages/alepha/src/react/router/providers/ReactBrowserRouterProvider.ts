@@ -52,7 +52,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
     previous: PreviousLayerData[] = [],
     meta = {},
     isStale: () => boolean = () => false,
-  ): Promise<string | void> {
+  ): Promise<string | undefined> {
     const { pathname, search } = url;
 
     const entry: Partial<ReactRouterState> = {

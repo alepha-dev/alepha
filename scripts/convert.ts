@@ -122,7 +122,7 @@ async function main(to?: string) {
           )) {
             if (typeof value === "object") {
               if (value.require) {
-                delete value.require;
+                value.require = undefined;
               }
 
               value.types = value.types

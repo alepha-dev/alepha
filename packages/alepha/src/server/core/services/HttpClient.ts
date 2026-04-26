@@ -213,7 +213,7 @@ export class HttpClient {
 
     if (hasHeader || isMultipart(action)) {
       if (typeof init.headers === "object" && "content-type" in init.headers) {
-        delete init.headers["content-type"]; // fetch() will fill this for us
+        delete (init.headers as Record<string, unknown>)["content-type"]; // fetch() will fill this for us
       }
 
       const formData = new FormData();

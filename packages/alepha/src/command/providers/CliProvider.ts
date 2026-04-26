@@ -555,7 +555,7 @@ export class CliProvider {
     const parsed = this.parseFlags(argv, flagDefs);
 
     // Remove the mode flag from parsed result (it's handled separately)
-    delete parsed.__mode__;
+    parsed.__mode__ = undefined;
 
     // apply manually defaults for optional properties that have defaults
     for (const [key, value] of Object.entries(schema.properties)) {

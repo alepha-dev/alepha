@@ -260,7 +260,7 @@ export class ServerSwaggerProvider {
               ? value.description
               : undefined;
           const ref = schema(value);
-          delete ref.description;
+          ref.description = undefined;
           const param: any = {
             name: key,
             in: "path",

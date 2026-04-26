@@ -252,8 +252,10 @@ describe("SecretsCommand", () => {
 
       const output = writes.join("");
       expect(output).toContain("env:");
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions `${{ ... }}` syntax in plain string
       expect(output).toContain("API_KEY: ${{ secrets.API_KEY }}");
       expect(output).toContain(
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions `${{ ... }}` syntax in plain string
         "GITHUB_CLIENT_ID: ${{ secrets.APP_GITHUB_CLIENT_ID }}",
       );
     });

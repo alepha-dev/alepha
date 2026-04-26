@@ -24,10 +24,10 @@ const ColumnPicker = <T extends object, Filters extends TObject>({
   const columnEntries = Object.entries(columns);
 
   const handleShowAll = () => {
-    const newVisibility = columnEntries.reduce(
-      (acc, [key]) => ({ ...acc, [key]: true }),
-      {} as ColumnVisibility,
-    );
+    const newVisibility = columnEntries.reduce((acc, [key]) => {
+      acc[key] = true;
+      return acc;
+    }, {} as ColumnVisibility);
     onVisibilityChange(newVisibility);
   };
 

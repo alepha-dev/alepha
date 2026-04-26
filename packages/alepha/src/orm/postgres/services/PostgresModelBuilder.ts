@@ -244,10 +244,8 @@ export class PostgresModelBuilder extends ModelBuilder {
           col = col.notNull();
         }
 
-        return {
-          ...columns,
-          [key]: col,
-        };
+        (columns as Record<string, unknown>)[key] = col;
+        return columns;
       },
       {},
     ) as FromSchema<T>;

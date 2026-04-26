@@ -319,7 +319,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     }
 
     if (reply.body == null || responseKind === "void") {
-      delete headers["content-type"];
+      delete (headers as Record<string, unknown>)["content-type"];
       reply.body = undefined;
       return;
     }
