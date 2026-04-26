@@ -364,7 +364,7 @@ describe("$resource primitive", () => {
         uri: "protected://resource",
         handler: async ({ context }) => {
           const authHeader = context?.headers?.authorization;
-          if (!authHeader || !authHeader.toString().startsWith("Bearer ")) {
+          if (!authHeader?.toString().startsWith("Bearer ")) {
             throw new Error("Unauthorized");
           }
           return { text: "Secret content" };

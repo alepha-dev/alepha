@@ -192,7 +192,7 @@ export abstract class ModelBuilder {
             // Resolve foreign column references
             const foreignColumns = fkDef.foreignColumns.map((colRef) => {
               const entityCol = colRef();
-              if (!entityCol || !entityCol.entity || !entityCol.name) {
+              if (!entityCol?.entity || !entityCol.name) {
                 throw new AlephaError(
                   `Invalid foreign column reference in ${entity.name}`,
                 );

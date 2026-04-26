@@ -306,6 +306,7 @@ export class ReactServerProvider {
       // Skip SSR for file-like URLs hitting the catch-all wildcard.
       // Bots and crawlers often probe paths like /hello.txt, /wp-login.php, etc.
       // Rendering a full React page for these is wasteful — return a plain 404 instead.
+      // biome-ignore lint/complexity/useOptionalChain: staticFilePattern is `false | RegExp`; optional chaining doesn't narrow `false`
       if (staticFilePattern && staticFilePattern.test(url.pathname)) {
         reply.status = 404;
         reply.headers["content-type"] = "text/plain";

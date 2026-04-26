@@ -78,7 +78,7 @@
   background: rgba(239, 68, 68, 0.15) !important;
 }
 
-.pill-tab:hover .tab-close:active {
+:where(.pill-tab:hover) .tab-close:active {
   transform: translateY(1px);
 }
 

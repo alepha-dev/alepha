@@ -255,7 +255,7 @@ describe("Alepha CLI E2E", () => {
       // Introduce a syntax error
       await writeFile(
         mainServerPath,
-        originalContent + "\n\nconst broken = {",
+        `${originalContent}\n\nconst broken = {`,
         "utf-8",
       );
 

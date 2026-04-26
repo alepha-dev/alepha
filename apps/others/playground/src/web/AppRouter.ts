@@ -12,10 +12,8 @@ import Jobs from "./pages/playgrounds/Jobs.tsx";
 import Notifications from "./pages/playgrounds/Notifications.tsx";
 
 export class AppRouter {
-  // biome-ignore lint/suspicious/noExplicitAny: circular self-reference via `parent: this.layout`
   layout: any = $page({
     component: Layout,
-    // biome-ignore lint/suspicious/noExplicitAny: see above
     children: (): any[] => [
       this.home,
       this.playgroundJobs,
@@ -31,7 +29,6 @@ export class AppRouter {
     ],
   });
 
-  // biome-ignore lint/suspicious/noExplicitAny: self-reference
   home: any = $page({
     parent: this.layout,
     path: "/",
@@ -41,7 +38,6 @@ export class AppRouter {
     component: () => null,
   });
 
-  // biome-ignore lint/suspicious/noExplicitAny: self-reference
   playgroundJobs: any = $page({
     parent: this.layout,
     path: "/playgrounds/jobs",
@@ -49,7 +45,6 @@ export class AppRouter {
     component: Jobs,
   });
 
-  // biome-ignore lint/suspicious/noExplicitAny: self-reference
   playgroundNotifications: any = $page({
     parent: this.layout,
     path: "/playgrounds/notifications",
@@ -57,7 +52,6 @@ export class AppRouter {
     component: Notifications,
   });
 
-  // biome-ignore lint/suspicious/noExplicitAny: self-reference
   playgroundAudits: any = $page({
     parent: this.layout,
     path: "/playgrounds/audits",
@@ -65,7 +59,6 @@ export class AppRouter {
     component: Audits,
   });
 
-  // biome-ignore lint/suspicious/noExplicitAny: self-reference
   adminJobs: any = $page({
     parent: this.layout,
     path: "/resources/jobs",
@@ -73,7 +66,6 @@ export class AppRouter {
     component: AdminJobs,
   });
 
-  // biome-ignore lint/suspicious/noExplicitAny: self-reference
   adminAudits: any = $page({
     parent: this.layout,
     path: "/resources/audits",
@@ -81,7 +73,6 @@ export class AppRouter {
     component: AdminAudits,
   });
 
-  // biome-ignore lint/suspicious/noExplicitAny: self-reference
   adminNotifications: any = $page({
     parent: this.layout,
     path: "/resources/notifications",
@@ -89,7 +80,6 @@ export class AppRouter {
     component: AdminNotifications,
   });
 
-  // biome-ignore lint/suspicious/noExplicitAny: self-reference
   adminFiles: any = $page({
     parent: this.layout,
     path: "/resources/files",
@@ -97,7 +87,6 @@ export class AppRouter {
     component: AdminFiles,
   });
 
-  // biome-ignore lint/suspicious/noExplicitAny: self-reference
   adminParameters: any = $page({
     parent: this.layout,
     path: "/resources/parameters",
@@ -105,7 +94,6 @@ export class AppRouter {
     component: AdminParameters,
   });
 
-  // biome-ignore lint/suspicious/noExplicitAny: self-reference
   demoToasts: any = $page({
     parent: this.layout,
     path: "/demo/toasts",
@@ -113,7 +101,6 @@ export class AppRouter {
     component: Toasts,
   });
 
-  // biome-ignore lint/suspicious/noExplicitAny: self-reference
   demoDialogs: any = $page({
     parent: this.layout,
     path: "/demo/dialogs",

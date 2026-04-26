@@ -336,10 +336,12 @@ export class ServerAuthProvider {
           parameters.scope = scope;
         }
 
+        // biome-ignore lint/complexity/useOptionalChain: oidc is `false | OidcOptions`; optional chaining doesn't narrow `false`
         if (oidc && oidc.responseMode) {
           parameters.response_mode = oidc.responseMode;
         }
 
+        // biome-ignore lint/complexity/useOptionalChain: oidc is `false | OidcOptions`; optional chaining doesn't narrow `false`
         if (oidc && oidc.authorizationParameters) {
           Object.assign(parameters, oidc.authorizationParameters);
         }
@@ -381,10 +383,12 @@ export class ServerAuthProvider {
         parameters.scope = scope;
       }
 
+      // biome-ignore lint/complexity/useOptionalChain: oidc is `false | OidcOptions`; optional chaining doesn't narrow `false`
       if (oidc && oidc.responseMode) {
         parameters.response_mode = oidc.responseMode;
       }
 
+      // biome-ignore lint/complexity/useOptionalChain: oidc is `false | OidcOptions`; optional chaining doesn't narrow `false`
       if (oidc && oidc.authorizationParameters) {
         Object.assign(parameters, oidc.authorizationParameters);
       }

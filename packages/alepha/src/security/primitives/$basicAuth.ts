@@ -39,7 +39,7 @@ export function $basicAuth(options: BasicAuthOptions): Middleware {
 
         const authHeader = request.headers.authorization;
 
-        if (!authHeader || !authHeader.startsWith("Basic ")) {
+        if (!authHeader?.startsWith("Basic ")) {
           sendAuthRequired(request);
           throw new HttpError({
             status: 401,

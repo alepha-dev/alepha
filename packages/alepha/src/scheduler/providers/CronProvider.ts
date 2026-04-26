@@ -67,7 +67,7 @@ export class CronProvider {
         ? this.cronJobs.find((c) => c.name === name)
         : name;
 
-    if (!cron || !cron.running) {
+    if (!cron?.running) {
       return;
     }
 

@@ -113,16 +113,6 @@
   border-right: 0;
 }
 
-.entryLatest .nodeDot {
-  background: var(--color-accent);
-  box-shadow: 0 0 12px var(--color-accent-glow);
-}
-
-.entryLatest .version {
-  background: var(--color-accent);
-  color: #ffffff;
-}
-
 /* -----------------------------------------------------------------------------
    TIMELINE NODE
    ----------------------------------------------------------------------------- */
@@ -147,6 +137,11 @@
   position: relative;
   z-index: 1;
   transition: all var(--duration-normal) ease;
+}
+
+:where(.entryLatest) .nodeDot {
+  background: var(--color-accent);
+  box-shadow: 0 0 12px var(--color-accent-glow);
 }
 
 .entry:hover .nodeDot {
@@ -192,6 +187,11 @@
   padding: 4px 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
+}
+
+.entryLatest .version {
+  background: var(--color-accent);
+  color: #ffffff;
 }
 
 .date {
@@ -291,12 +291,6 @@
   flex-wrap: wrap;
 }
 
-.itemExpanded .message {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: unset;
-}
-
 .scope {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -314,6 +308,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.itemExpanded .message {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
 }
 
 .breaking {

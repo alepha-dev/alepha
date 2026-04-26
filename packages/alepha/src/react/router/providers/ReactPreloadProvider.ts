@@ -65,7 +65,7 @@ export class ReactPreloadProvider {
     handler: ({ response }) => {
       // Only add to HTML responses (SSR pages)
       const contentType = response.headers["content-type"];
-      if (!contentType || !contentType.includes("text/html")) {
+      if (!contentType?.includes("text/html")) {
         return;
       }
 

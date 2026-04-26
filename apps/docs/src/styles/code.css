@@ -61,7 +61,7 @@
   overflow-x: auto;
 }
 
-.code-block pre code {
+:where(.code-block pre) code {
   display: block;
   padding: 16px;
   font-size: 13px;
@@ -211,16 +211,16 @@
    HIGHLIGHT.JS OVERRIDES
    ----------------------------------------------------------------------------- */
 
+code.hljs {
+  padding: 3px 5px;
+}
+
 pre code.hljs {
   display: block;
   overflow-x: auto;
   padding: 1em;
   background: var(--code-bg);
   color: var(--code-text);
-}
-
-code.hljs {
-  padding: 3px 5px;
 }
 
 .hljs {

@@ -26,7 +26,7 @@ export class ThemeProvider {
 
   protected readonly head = $head(() => {
     const theme = this.getTheme();
-    if (!theme || !theme.name) {
+    if (!theme?.name) {
       return {};
     }
     return {

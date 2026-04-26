@@ -751,7 +751,7 @@ describe("McpServerProvider", () => {
           schema: { result: t.text() },
           handler: async ({ context }) => {
             const auth = context?.headers?.authorization;
-            if (!auth || !auth.toString().startsWith("Bearer ")) {
+            if (!auth?.toString().startsWith("Bearer ")) {
               throw new Error("Unauthorized");
             }
             return "Access granted";
