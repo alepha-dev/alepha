@@ -1,5 +1,4 @@
 import { mkdir } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import {
@@ -12,7 +11,11 @@ import {
   type Static,
   t,
 } from "alepha";
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { BetterSQLiteSession } from "drizzle-orm/better-sqlite3/session";
 import type { PgDatabase } from "drizzle-orm/pg-core";
+import { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core/db";
+import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core/dialect";
 import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
@@ -162,7 +165,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite");
+      const { DatabaseSync } = await import("node:sqlite");
 
       const filepath = this.url.replace("sqlite://", "").replace("sqlite:", "");
 
@@ -323,13 +326,6 @@ export class NodeSqliteProvider extends DatabaseProvider {
   protected initDrizzle(): void {
     this.shimDatabaseSync();
 
-    const require = createRequire(import.meta.url);
-    const {
-      BetterSQLiteSession,
-    } = require("drizzle-orm/better-sqlite3/session");
-    const { SQLiteSyncDialect } = require("drizzle-orm/sqlite-core/dialect");
-    const { BaseSQLiteDatabase } = require("drizzle-orm/sqlite-core/db");
-
     const dialect = new SQLiteSyncDialect();
     const session = new BetterSQLiteSession(this.sqlite, dialect, undefined, {
       logger: {
@@ -339,14 +335,16 @@ export class NodeSqliteProvider extends DatabaseProvider {
       },
     });
 
-    this.drizzleDb = new BaseSQLiteDatabase("sync", dialect, session);
+    this.drizzleDb = new BaseSQLiteDatabase(
+      "sync",
+      dialect,
+      session,
+      undefined,
+    );
     this.log.debug("Using node:sqlite with sync driver");
   }
 
   protected async executeMigrations(migrationsFolder: string): Promise<void> {
-    const { migrate } = createRequire(import.meta.url)(
-      "drizzle-orm/better-sqlite3/migrator",
-    );
     migrate(this.drizzleDb, { migrationsFolder });
   }
 }

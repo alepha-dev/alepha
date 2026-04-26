@@ -8,7 +8,7 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  *
  * Creates:
  * - Dockerfile with configurable base image
- * - Copies drizzle migrations if they exist
+ * - Copies migrations directory if it exists
  * - Builds Docker image when `--image` flag is provided
  */
 export class BuildDockerTask extends BuildTask {
@@ -32,7 +32,7 @@ export class BuildDockerTask extends BuildTask {
     await ctx.run({
       name: "generate deploy config (docker)",
       handler: async () => {
-        await this.copyDrizzleMigrations(ctx.root, distDir);
+        await this.copyMigrations(ctx.root, distDir);
         await this.writeDockerfile(
           ctx.root,
           distDir,
@@ -47,14 +47,16 @@ export class BuildDockerTask extends BuildTask {
     }
   }
 
-  protected async copyDrizzleMigrations(
+  protected async copyMigrations(
     root: string,
     distDir: string,
   ): Promise<void> {
-    const drizzleDir = this.fs.join(root, "drizzle");
-    const hasMigrations = await this.fs.exists(drizzleDir);
-    if (hasMigrations) {
-      await this.fs.cp(drizzleDir, this.fs.join(root, distDir, "drizzle"));
+    const migrationsDir = this.fs.join(root, "migrations");
+    if (await this.fs.exists(migrationsDir)) {
+      await this.fs.cp(
+        migrationsDir,
+        this.fs.join(root, distDir, "migrations"),
+      );
     }
   }
 
