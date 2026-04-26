@@ -42,6 +42,12 @@ export class InitCommand {
           description: "Include Tailwind CSS with Vite plugin. Implies --react",
         }),
       ),
+      shadcn: t.optional(
+        t.boolean({
+          description:
+            "Set up shadcn/ui (components.json, cn helper, theme tokens, alepha registry). Implies --react and --tailwind",
+        }),
+      ),
       test: t.optional(
         t.boolean({ description: "Include Vitest and create test directory" }),
       ),

@@ -428,8 +428,18 @@ export class PackageManagerUtils {
     }
 
     if (modes.tailwind) {
-      devDependencies.tailwindcss = "^4.2.0";
-      devDependencies["@tailwindcss/vite"] = "^4.2.0";
+      devDependencies.tailwindcss = alephaDeps.tailwindcss;
+      devDependencies["@tailwindcss/vite"] = alephaDeps["@tailwindcss/vite"];
+    }
+
+    if (modes.shadcn) {
+      // Add `shadcn` CLI as a project devDep — `alepha init --shadcn` runs
+      // `yarn shadcn init` after install to scaffold components.json,
+      // theme tokens, cn() helper, and runtime deps (clsx, tailwind-merge,
+      // class-variance-authority, lucide-react, tw-animate-css). Keeping
+      // the CLI in the project lets users re-run `yarn shadcn add ...`
+      // without `npx`.
+      devDependencies.shadcn = alephaDeps.shadcn;
     }
 
     if (modes.react) {
@@ -463,6 +473,7 @@ export interface DependencyModes {
   react?: boolean;
   expo?: boolean;
   tailwind?: boolean;
+  shadcn?: boolean;
   test?: boolean;
   /**
    * Skip biome/vitest when inside a workspace package (they're at root).

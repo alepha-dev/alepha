@@ -79,7 +79,7 @@ __metadata:
     lucide-react: "npm:^1.11.0"
     react: "npm:^19.2.5"
     react-dom: "npm:^19.2.5"
-    shadcn: "npm:^3.5.0"
+    shadcn: "npm:^4.5.0"
     sonner: "npm:^2.0.7"
     typescript: "npm:^6.0.3"
   languageName: unknown
@@ -114,26 +114,6 @@ __metadata:
     react-dom: "*"
   languageName: unknown
   linkType: soft
-
-"@antfu/ni@npm:^25.0.0":
-  version: 25.0.0
-  resolution: "@antfu/ni@npm:25.0.0"
-  dependencies:
-    ansis: "npm:^4.0.0"
-    fzf: "npm:^0.5.2"
-    package-manager-detector: "npm:^1.3.0"
-    tinyexec: "npm:^1.0.1"
-  bin:
-    na: bin/na.mjs
-    nci: bin/nci.mjs
-    ni: bin/ni.mjs
-    nlx: bin/nlx.mjs
-    nr: bin/nr.mjs
-    nun: bin/nun.mjs
-    nup: bin/nup.mjs
-  checksum: 10c0/a6e5eae4fafde9112088fcb41c3c5aa2e4a8b9a5252ff61ef8c4140c92e57cc85b0a02af48c1d460c66b6ec8adc109395544eaa63942b9af5954e82fdc36f2ea
-  languageName: node
-  linkType: hard
 
 "@asamuzakjp/css-color@npm:^5.1.5":
   version: 5.1.8
@@ -6282,7 +6262,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tailwindcss/vite@npm:^4.1.18":
+"@tailwindcss/vite@npm:^4.1.18, @tailwindcss/vite@npm:^4.2.0":
   version: 4.2.4
   resolution: "@tailwindcss/vite@npm:4.2.4"
   dependencies:
@@ -7789,6 +7769,7 @@ __metadata:
     "@electric-sql/pglite": "npm:^0.4.4"
     "@faker-js/faker": "npm:^10.4.0"
     "@redis/client": "npm:^5.12.1"
+    "@tailwindcss/vite": "npm:^4.2.0"
     "@testing-library/dom": "npm:^10.4.1"
     "@testing-library/react": "npm:^16.3.2"
     "@types/bun": "npm:^1.3.12"
@@ -7810,7 +7791,9 @@ __metadata:
     prom-client: "npm:^15.1.3"
     react: "npm:^19.2.5"
     react-dom: "npm:^19.2.5"
+    shadcn: "npm:^4.5.0"
     swagger-ui-dist: "npm:^5.32.4"
+    tailwindcss: "npm:^4.2.0"
     tsdown: "npm:^0.21.8"
     tsx: "npm:^4.21.0"
     typebox: "npm:^1.1.23"
@@ -7878,7 +7861,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ansis@npm:^4.0.0, ansis@npm:^4.2.0":
+"ansis@npm:^4.2.0":
   version: 4.2.0
   resolution: "ansis@npm:4.2.0"
   checksum: 10c0/cd6a7a681ecd36e72e0d79c1e34f1f3bcb1b15bcbb6f0f8969b4228062d3bfebbef468e09771b00d93b2294370b34f707599d4a113542a876de26823b795b5d2
@@ -11086,13 +11069,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fzf@npm:^0.5.2":
-  version: 0.5.2
-  resolution: "fzf@npm:0.5.2"
-  checksum: 10c0/5b1f945b289855891c4e3cb03db35381f8d85464dceb15b6d32f0fc74e43d7d2b9a13554cf78a86760ba762de39134d40644ccb54e60668a4bc5b15c4765d36e
-  languageName: node
-  linkType: hard
-
 "generator-function@npm:^2.0.0":
   version: 2.0.1
   resolution: "generator-function@npm:2.0.1"
@@ -13646,13 +13622,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"package-manager-detector@npm:^1.3.0":
-  version: 1.6.0
-  resolution: "package-manager-detector@npm:1.6.0"
-  checksum: 10c0/6419d0b840be64fd45bcdcb7a19f09b81b65456d5e7f7a3daac305a4c90643052122f6ac0308afe548ffee75e36148532a2002ea9d292754f1e385aa2e1ea03b
-  languageName: node
-  linkType: hard
-
 "pako@npm:^1.0.3":
   version: 1.0.11
   resolution: "pako@npm:1.0.11"
@@ -15538,11 +15507,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"shadcn@npm:^3.5.0":
-  version: 3.8.5
-  resolution: "shadcn@npm:3.8.5"
+"shadcn@npm:^4.5.0":
+  version: 4.5.0
+  resolution: "shadcn@npm:4.5.0"
   dependencies:
-    "@antfu/ni": "npm:^25.0.0"
     "@babel/core": "npm:^7.28.0"
     "@babel/parser": "npm:^7.28.0"
     "@babel/plugin-transform-typescript": "npm:^7.28.0"
@@ -15579,7 +15547,7 @@ __metadata:
     zod-to-json-schema: "npm:^3.24.6"
   bin:
     shadcn: dist/index.js
-  checksum: 10c0/86401246725399fa9ce61721a03136b0466e2cb18f888d35f706926425bbfa08468204ec2673317c7d500939eb71d07bb410927acb54a79049ef726f5453e2ea
+  checksum: 10c0/c9e585df0bf6040d9c630654381de30268bb805c559051c95cc97af02728cd57a9ea229247d7a70456b30085f64ba78158aafd8cd2382e16a784e33bece2b818
   languageName: node
   linkType: hard
 
@@ -16280,7 +16248,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tailwindcss@npm:4.2.4, tailwindcss@npm:^4.1.18":
+"tailwindcss@npm:4.2.4, tailwindcss@npm:^4.1.18, tailwindcss@npm:^4.2.0":
   version: 4.2.4
   resolution: "tailwindcss@npm:4.2.4"
   checksum: 10c0/1069304b6bf2855daa029ac4af382abb95ed26ae4d05bc09ea01a56e6af3de8b6fb1b4d508d8bbb39abf30a69766e6f2f75835e112ac6fc39ed94ae5d4901048
@@ -16427,17 +16395,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tinyexec@npm:^1.0.1, tinyexec@npm:^1.1.1":
-  version: 1.1.1
-  resolution: "tinyexec@npm:1.1.1"
-  checksum: 10c0/48433cb32573a767e2b63bb92343cbbae4240d05a19a63f7869f9447491305e7bd82d11daccb79b2628b596ad703a25798226c50bfd1d8e63477fb42af6a5b35
-  languageName: node
-  linkType: hard
-
 "tinyexec@npm:^1.0.2":
   version: 1.0.4
   resolution: "tinyexec@npm:1.0.4"
   checksum: 10c0/d4a5bbcf6bdb23527a4b74c4aa566f41432167112fe76f420ec7e3a90a3ecfd3a7d944383e2719fc3987b69400f7b928daf08700d145fb527c2e80ec01e198bd
+  languageName: node
+  linkType: hard
+
+"tinyexec@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "tinyexec@npm:1.1.1"
+  checksum: 10c0/48433cb32573a767e2b63bb92343cbbae4240d05a19a63f7869f9447491305e7bd82d11daccb79b2628b596ad703a25798226c50bfd1d8e63477fb42af6a5b35
   languageName: node
   linkType: hard
 

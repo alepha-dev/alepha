@@ -9,6 +9,7 @@ import { apiHelloControllerTs } from "../templates/apiHelloControllerTs.ts";
 import { apiHelloResponseSchemaTs } from "../templates/apiHelloResponseSchemaTs.ts";
 import { apiIndexTs } from "../templates/apiIndexTs.ts";
 import { biomeJson } from "../templates/biomeJson.ts";
+import { componentsJsonTs } from "../templates/componentsJsonTs.ts";
 import { dummySpecTs } from "../templates/dummySpecTs.ts";
 import { editorconfig } from "../templates/editorconfig.ts";
 import { gitignore } from "../templates/gitignore.ts";
@@ -290,6 +291,7 @@ export class ProjectScaffolder {
     opts: {
       api?: boolean;
       tailwind?: boolean;
+      shadcn?: boolean;
       force?: boolean;
     } = {},
   ): Promise<void> {
@@ -315,6 +317,21 @@ export class ProjectScaffolder {
     // vite.config.ts (Tailwind CSS plugin)
     if (opts.tailwind) {
       await this.ensureFile(root, "vite.config.ts", viteConfigTs(), opts.force);
+    }
+
+    // shadcn/ui: write components.json before running `shadcn init` — the
+    // CLI respects an existing config and skips its interactive prompts,
+    // which lets us pin our aliases (`@/web/*`) and the `@alepha` registry.
+    // The CLI itself writes the cn() helper, theme tokens, and installs
+    // runtime deps (clsx, tailwind-merge, class-variance-authority,
+    // lucide-react, tw-animate-css) — see runShadcnInit below.
+    if (opts.shadcn) {
+      await this.ensureFile(
+        root,
+        "components.json",
+        componentsJsonTs(),
+        opts.force,
+      );
     }
 
     // Web structure
@@ -394,6 +411,7 @@ export class ProjectScaffolder {
       api?: boolean;
       react?: boolean;
       tailwind?: boolean;
+      shadcn?: boolean;
       test?: boolean;
       force?: boolean;
     };
@@ -404,13 +422,17 @@ export class ProjectScaffolder {
       await this.fs.mkdir(root, { force: true });
     }
 
-    // Flag cascading: --tailwind → --react
+    // Flag cascading: --shadcn → --tailwind → --react
+    if (flags.shadcn) {
+      flags.tailwind = true;
+    }
     if (flags.tailwind) {
       flags.react = true;
     }
 
     // When codegen flags are set, target directory must be empty (unless --force)
-    const hasCodegenFlags = flags.api || flags.react || flags.tailwind;
+    const hasCodegenFlags =
+      flags.api || flags.react || flags.tailwind || flags.shadcn;
     if (hasCodegenFlags && !flags.force) {
       const files = await this.fs.ls(root);
       // Allow a directory that only has package.json (common for monorepo packages)
@@ -465,6 +487,7 @@ export class ProjectScaffolder {
           await this.ensureWebProject(root, {
             api: !!flags.api,
             tailwind: !!flags.tailwind,
+            shadcn: !!flags.shadcn,
             force,
           });
         }
@@ -501,6 +524,30 @@ export class ProjectScaffolder {
     // Create test directory if --test flag is set (vitest is in package.json)
     if (flags.test) {
       await this.ensureTestDir(root);
+    }
+
+    // shadcn/ui: run `<pm> shadcn init` against the components.json we wrote
+    // earlier. shadcn detects the existing config, respects our aliases,
+    // injects theme tokens into src/main.css, writes src/web/lib/utils.ts,
+    // and installs runtime deps (clsx, tailwind-merge, etc.).
+    //
+    // Flags chosen to keep this fully non-interactive:
+    //   --yes           skip confirmation prompts (default in shadcn v4 but
+    //                   passed explicitly so older versions also behave)
+    //   --no-monorepo   skip the monorepo prompt — we ship a single-app
+    //                   layout; users opt into monorepo via `--monorepo`
+    //                   on the alepha side later
+    //   --silent        suppress shadcn's own progress output; alepha's
+    //                   runner already prints a status line
+    //
+    // We deliberately do NOT pass `--defaults` (would force Next.js +
+    // base-nova preset) or `--template` (only applies to scratch projects;
+    // ours already has main.server.ts / main.browser.ts).
+    if (flags.shadcn) {
+      await run(`${pmName} shadcn init --yes --no-monorepo --silent`, {
+        alias: "running shadcn init",
+        root,
+      });
     }
 
     await run(`${pmName} run lint`, {

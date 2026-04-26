@@ -34,6 +34,7 @@ ignores:
     - '@fontsource-variable/jetbrains-mono'
     - 'date-fns'
     - 'tw-animate-css'
+    - 'shadcn'
 
 ignore-patterns:
     - 'dist'
