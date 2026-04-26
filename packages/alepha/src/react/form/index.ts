@@ -9,6 +9,8 @@ export * from "./hooks/useForm.ts";
 export * from "./hooks/useFormState.ts";
 export * from "./hooks/useFormValues.ts";
 export * from "./services/FormModel.ts";
+export * from "./services/parseField.ts";
+export * from "./services/prettyName.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

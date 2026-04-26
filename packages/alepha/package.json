@@ -354,6 +354,11 @@
       "import": "./src/react/testing/index.ts",
       "default": "./src/react/testing/index.ts"
     },
+    "./react/ui": {
+      "types": "./src/react/ui/index.ts",
+      "import": "./src/react/ui/index.ts",
+      "default": "./src/react/ui/index.ts"
+    },
     "./react/websocket": {
       "types": "./src/react/websocket/index.ts",
       "import": "./src/react/websocket/index.ts",

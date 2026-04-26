@@ -2,17 +2,10 @@ export type AgentMdType = "claude" | "agents";
 
 export interface AgentMdOptions {
   type: AgentMdType;
-  ui?: boolean;
 }
 
 export const agentMd = (options: AgentMdOptions): string => {
   const header = options.type === "claude" ? `# CLAUDE.md` : `# AGENTS.md`;
-
-  const docs = [`- Framework source: \`node_modules/alepha/src/\``];
-  if (options.ui) {
-    docs.push(`- UI components: \`node_modules/@alepha/ui/src/\``);
-  }
-  docs.push(`- Docs: https://alepha.dev/llms.txt`);
 
   return `${header}
 
@@ -36,6 +29,7 @@ alepha build     # Build
 
 ## Documentation
 
-${docs.join("\n")}
+- Framework source: \`node_modules/alepha/src/\`
+- Docs: https://alepha.dev/llms.txt
 `.trim();
 };

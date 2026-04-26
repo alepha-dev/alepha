@@ -3,17 +3,16 @@
 ## Import
 
 ```typescript
-import { useTheme } from "@alepha/ui/styles.css";
+import { useTheme } from "alepha/react/ui";
 ```
 
 ## Overview
 
-Hook to get and set the current theme.
+Read and update the active theme palette name. UI consumers typically map
+the value to a class on the document root (e.g. `theme-claude`).
 
-Returns a tuple with the current theme, a function to set the theme,
-and expert mode controls for fine-grained customization.
+## Examples
 
-```tsx
-const [theme, setTheme, expert] = useTheme();
-```
+const { theme, setTheme } = useTheme();
+setTheme("claude");
 

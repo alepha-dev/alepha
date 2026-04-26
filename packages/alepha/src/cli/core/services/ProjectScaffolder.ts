@@ -5,7 +5,6 @@ import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import { type AgentMdOptions, agentMd } from "../templates/agentMd.ts";
 import { alephaConfigTs } from "../templates/alephaConfigTs.ts";
-import { apiAppSecurityTs } from "../templates/apiAppSecurityTs.ts";
 import { apiHelloControllerTs } from "../templates/apiHelloControllerTs.ts";
 import { apiHelloResponseSchemaTs } from "../templates/apiHelloResponseSchemaTs.ts";
 import { apiIndexTs } from "../templates/apiIndexTs.ts";
@@ -19,7 +18,6 @@ import { mainCss } from "../templates/mainCss.ts";
 import { mainServerTs } from "../templates/mainServerTs.ts";
 import { tsconfigJson } from "../templates/tsconfigJson.ts";
 import { viteConfigTs } from "../templates/viteConfigTs.ts";
-import { webAdminDashboardTsx } from "../templates/webAdminDashboardTsx.ts";
 import { webAppRouterTs } from "../templates/webAppRouterTs.ts";
 import { webHomeComponentTsx } from "../templates/webHomeComponentTsx.ts";
 import { webIndexTs } from "../templates/webIndexTs.ts";
@@ -241,7 +239,7 @@ export class ProjectScaffolder {
    */
   public async ensureApiProject(
     root: string,
-    opts: { auth?: boolean; adminEmail?: string; force?: boolean } = {},
+    opts: { force?: boolean } = {},
   ): Promise<void> {
     const appName = this.getAppName(root);
 
@@ -257,7 +255,7 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/api/index.ts",
-      apiIndexTs({ appName, auth: opts.auth }),
+      apiIndexTs({ appName }),
       opts.force,
     );
     await this.ensureFile(
@@ -272,16 +270,6 @@ export class ProjectScaffolder {
       apiHelloResponseSchemaTs(),
       opts.force,
     );
-
-    // Create AppSecurity if auth is enabled
-    if (opts.auth) {
-      await this.ensureFile(
-        root,
-        "src/api/AppSecurity.ts",
-        apiAppSecurityTs({ adminEmail: opts.adminEmail }),
-        opts.force,
-      );
-    }
   }
 
   // ===========================================
@@ -300,9 +288,6 @@ export class ProjectScaffolder {
     root: string,
     opts: {
       api?: boolean;
-      ui?: boolean;
-      auth?: boolean;
-      admin?: boolean;
       tailwind?: boolean;
       force?: boolean;
     } = {},
@@ -322,7 +307,7 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/main.css",
-      mainCss({ ui: opts.ui, tailwind: opts.tailwind }),
+      mainCss({ tailwind: opts.tailwind }),
       opts.force,
     );
 
@@ -341,12 +326,7 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/web/AppRouter.ts",
-      webAppRouterTs({
-        api: opts.api,
-        ui: opts.ui,
-        auth: opts.auth,
-        admin: opts.admin,
-      }),
+      webAppRouterTs({ api: opts.api }),
       opts.force,
     );
     await this.ensureFile(
@@ -355,14 +335,6 @@ export class ProjectScaffolder {
       webHomeComponentTsx({ api: opts.api }),
       opts.force,
     );
-    if (opts.admin) {
-      await this.ensureFile(
-        root,
-        "src/web/components/AdminDashboard.tsx",
-        webAdminDashboardTsx(),
-        opts.force,
-      );
-    }
     await this.ensureFile(
       root,
       "src/main.browser.ts",
@@ -413,8 +385,6 @@ export class ProjectScaffolder {
       pm?: "yarn" | "npm" | "pnpm" | "bun";
       api?: boolean;
       react?: boolean;
-      ui?: boolean;
-      saas?: boolean;
       tailwind?: boolean;
       test?: boolean;
       force?: boolean;
@@ -426,21 +396,13 @@ export class ProjectScaffolder {
       await this.fs.mkdir(root, { force: true });
     }
 
-    // Flag cascading: --saas → --api + --ui → --react
-    if (flags.saas) {
-      flags.api = true;
-      flags.ui = true;
-    }
-    if (flags.ui) {
-      flags.react = true;
-    }
+    // Flag cascading: --tailwind → --react
     if (flags.tailwind) {
       flags.react = true;
     }
 
     // When codegen flags are set, target directory must be empty (unless --force)
-    const hasCodegenFlags =
-      flags.saas || flags.api || flags.ui || flags.react || flags.tailwind;
+    const hasCodegenFlags = flags.api || flags.react || flags.tailwind;
     if (hasCodegenFlags && !flags.force) {
       const files = await this.fs.ls(root);
       // Allow a directory that only has package.json (common for monorepo packages)
@@ -464,9 +426,6 @@ export class ProjectScaffolder {
 
     const isExpo = await this.pm.hasExpo(root);
 
-    // Get git email for admin auto-promotion (if saas enabled)
-    const adminEmail = flags.saas ? await this.utils.getGitEmail() : undefined;
-
     const force = !!flags.force;
 
     await run({
@@ -479,7 +438,7 @@ export class ProjectScaffolder {
           tsconfigJson: !workspace.config.tsconfigJson,
           biomeJson: true,
           editorconfig: !workspace.config.editorconfig,
-          agentMd: agentType ? { type: agentType, ui: !!flags.ui } : false,
+          agentMd: agentType ? { type: agentType } : false,
         });
 
         // Create alepha.config.ts with documented options
@@ -492,18 +451,11 @@ export class ProjectScaffolder {
           force,
         });
         if (flags.api) {
-          await this.ensureApiProject(root, {
-            auth: !!flags.saas,
-            adminEmail,
-            force,
-          });
+          await this.ensureApiProject(root, { force });
         }
         if (flags.react && !isExpo) {
           await this.ensureWebProject(root, {
             api: !!flags.api,
-            ui: !!flags.ui,
-            auth: !!flags.saas,
-            admin: !!flags.saas,
             tailwind: !!flags.tailwind,
             force,
           });
@@ -583,14 +535,6 @@ export class ProjectScaffolder {
     this.log.info(
       `  ${c.set("GREY_DARK", "$")} ${c.set("CYAN", `${pmRun} dev`)}`,
     );
-
-    if (adminEmail) {
-      this.log.info("");
-      this.log.info(`  Admin email: ${c.set("GREEN", adminEmail)}`);
-      this.log.info(
-        `  ${c.set("GREY_DARK", "(from git config, change in src/api/AppSecurity.ts)")}`,
-      );
-    }
 
     this.log.info("");
   }

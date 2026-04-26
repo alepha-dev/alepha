@@ -542,7 +542,7 @@ describe("alepha init", () => {
     });
 
     it("should check each codegen flag independently", async () => {
-      for (const flag of ["--react", "--ui", "--saas", "--tailwind"]) {
+      for (const flag of ["--react", "--tailwind"]) {
         const { fs, cli, cmd, json } = createTestEnv();
         await setupProject(fs, json);
         await fs.writeFile("/project/src/existing.ts", "export {}");

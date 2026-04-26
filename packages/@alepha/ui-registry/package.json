@@ -1,0 +1,25 @@
+{
+  "name": "@alepha/ui-registry",
+  "private": true,
+  "description": "Alepha shadcn registry — blocks (auth, admin, app-shell) for Alepha SaaS apps.",
+  "author": "Feunard",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "shadcn build --output ../../../apps/docs/public/r"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.12",
+    "alepha": "0.20.1",
+    "lucide-react": "^1.11.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "shadcn": "^3.5.0",
+    "sonner": "^2.0.7",
+    "typescript": "^6.0.3"
+  }
+}

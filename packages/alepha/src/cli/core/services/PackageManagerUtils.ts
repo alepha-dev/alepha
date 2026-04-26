@@ -402,9 +402,8 @@ export class PackageManagerUtils {
     };
 
     // Only include drizzle-kit when the project uses a database.
-    // React-only projects (--react without --api/--saas) don't need it.
-    const isReactOnly = modes.react && !modes.ui;
-    if (!isReactOnly) {
+    // React-only projects don't need it.
+    if (!modes.react) {
       devDependencies["drizzle-kit"] = alephaDeps["drizzle-kit"];
     }
 
@@ -426,11 +425,6 @@ export class PackageManagerUtils {
 
     if (modes.test) {
       scripts.test = "vitest run";
-    }
-
-    if (modes.ui) {
-      dependencies["@alepha/ui"] = `^${version}`;
-      modes.react = true;
     }
 
     if (modes.tailwind) {
@@ -467,7 +461,6 @@ export class PackageManagerUtils {
 
 export interface DependencyModes {
   react?: boolean;
-  ui?: boolean;
   expo?: boolean;
   tailwind?: boolean;
   test?: boolean;

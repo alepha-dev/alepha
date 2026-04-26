@@ -1,10 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
-const env = loadEnv();
+const repoRoot = dirname(fileURLToPath(import.meta.url));
+loadEnv();
 
 export default defineConfig({
   test: {
+    root: repoRoot,
     testTimeout: 10000,
     globals: true,
     onConsoleLog(log) {
@@ -14,7 +18,7 @@ export default defineConfig({
     },
     coverage: {
       reporter: ["cobertura", "html"],
-      include: ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"],
+      include: ["packages/**/src/**/*.ts", "packages/**/src/**/*.tsx"],
       exclude: [
         "apps/**",
         "scripts/**",
@@ -64,7 +68,7 @@ export default defineConfig({
         // browser tests
         extends: true,
         test: {
-          include: ["packages/*/src/**/*.browser.spec.{ts,tsx}"],
+          include: ["packages/**/src/**/*.browser.spec.{ts,tsx}"],
           name: { label: "jsdom", color: "cyan" },
           environment: "jsdom",
         },

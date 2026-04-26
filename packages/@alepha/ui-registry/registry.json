@@ -1,0 +1,475 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "alepha",
+  "homepage": "https://alepha.dev",
+  "items": [
+    {
+      "name": "control-base",
+      "type": "registry:lib",
+      "title": "Control base",
+      "description": "Shared FormField wrapper and IconHint mapping used by all Control variants.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": ["label"],
+      "files": [
+        {
+          "path": "registry/default/control-base/form-field.tsx",
+          "type": "registry:lib",
+          "target": "components/control/form-field.tsx"
+        },
+        {
+          "path": "registry/default/control-base/icon-hint.tsx",
+          "type": "registry:lib",
+          "target": "components/control/icon-hint.tsx"
+        }
+      ]
+    },
+    {
+      "name": "control-number",
+      "type": "registry:component",
+      "title": "Control: Number",
+      "description": "Number input with optional slider variant.",
+      "dependencies": ["alepha"],
+      "registryDependencies": ["@alepha/control-base", "input", "slider"],
+      "files": [
+        {
+          "path": "registry/default/control-number/control-number.tsx",
+          "type": "registry:component",
+          "target": "components/control/control-number.tsx"
+        }
+      ]
+    },
+    {
+      "name": "control-date",
+      "type": "registry:component",
+      "title": "Control: Date",
+      "description": "Date / date-time / time picker (Calendar in Popover).",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": [
+        "@alepha/control-base",
+        "button",
+        "calendar",
+        "input",
+        "popover"
+      ],
+      "files": [
+        {
+          "path": "registry/default/control-date/control-date.tsx",
+          "type": "registry:component",
+          "target": "components/control/control-date.tsx"
+        }
+      ]
+    },
+    {
+      "name": "control-select",
+      "type": "registry:component",
+      "title": "Control: Select",
+      "description": "Native Select for short enums, Combobox for searchable / async / multi, ToggleGroup for segmented.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": [
+        "@alepha/control-base",
+        "button",
+        "command",
+        "popover",
+        "select",
+        "toggle-group"
+      ],
+      "files": [
+        {
+          "path": "registry/default/control-select/control-select.tsx",
+          "type": "registry:component",
+          "target": "components/control/control-select.tsx"
+        }
+      ]
+    },
+    {
+      "name": "control-object",
+      "type": "registry:component",
+      "title": "Control: Object",
+      "description": "Recursive renderer for nested object schemas.",
+      "dependencies": ["alepha"],
+      "registryDependencies": ["@alepha/control"],
+      "files": [
+        {
+          "path": "registry/default/control-object/control-object.tsx",
+          "type": "registry:component",
+          "target": "components/control/control-object.tsx"
+        }
+      ]
+    },
+    {
+      "name": "control-array",
+      "type": "registry:component",
+      "title": "Control: Array",
+      "description": "Recursive renderer for array schemas (objects or primitives) with add/remove.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": ["@alepha/control", "button"],
+      "files": [
+        {
+          "path": "registry/default/control-array/control-array.tsx",
+          "type": "registry:component",
+          "target": "components/control/control-array.tsx"
+        }
+      ]
+    },
+    {
+      "name": "control",
+      "type": "registry:component",
+      "title": "Control",
+      "description": "Schema-driven form field. Inspects the bound `useForm` input and dispatches to the right primitive or sub-control.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": [
+        "@alepha/control-base",
+        "@alepha/control-number",
+        "@alepha/control-date",
+        "@alepha/control-select",
+        "input",
+        "switch",
+        "textarea"
+      ],
+      "files": [
+        {
+          "path": "registry/default/control/control.tsx",
+          "type": "registry:component",
+          "target": "components/control/control.tsx"
+        }
+      ]
+    },
+    {
+      "name": "auto-form",
+      "type": "registry:component",
+      "title": "AutoForm",
+      "description": "Schema-driven form. Renders one Control per top-level property of a `useForm` schema.",
+      "dependencies": ["alepha"],
+      "registryDependencies": ["@alepha/control", "button"],
+      "files": [
+        {
+          "path": "registry/default/auto-form/auto-form.tsx",
+          "type": "registry:component",
+          "target": "components/auto-form.tsx"
+        }
+      ]
+    },
+    {
+      "name": "use-confirm",
+      "type": "registry:component",
+      "title": "useConfirm",
+      "description": "Imperative confirm dialog hook + provider. Mounts an AlertDialog on demand.",
+      "registryDependencies": ["alert-dialog"],
+      "files": [
+        {
+          "path": "registry/default/use-confirm/use-confirm.tsx",
+          "type": "registry:component",
+          "target": "components/use-confirm.tsx"
+        }
+      ]
+    },
+    {
+      "name": "alepha-table",
+      "type": "registry:component",
+      "title": "AlephaTable",
+      "description": "Paginated, sortable, selectable table wired to Alepha `Page<T>` responses. Supports row actions and bulk actions.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": [
+        "button",
+        "checkbox",
+        "dropdown-menu",
+        "skeleton",
+        "table"
+      ],
+      "files": [
+        {
+          "path": "registry/default/alepha-table/alepha-table.tsx",
+          "type": "registry:component",
+          "target": "components/alepha-table.tsx"
+        }
+      ]
+    },
+    {
+      "name": "app-shell",
+      "type": "registry:component",
+      "title": "AppShell",
+      "description": "Standard SaaS layout: collapsible sidebar + topbar with breadcrumbs. Sidebar/breadcrumb links use alepha's `<Link>` for client-side navigation.",
+      "dependencies": ["alepha"],
+      "registryDependencies": ["sidebar", "breadcrumb", "separator"],
+      "files": [
+        {
+          "path": "registry/default/app-shell/app-shell.tsx",
+          "type": "registry:component",
+          "target": "components/app-shell.tsx"
+        }
+      ]
+    },
+    {
+      "name": "auth-login",
+      "type": "registry:block",
+      "title": "Login",
+      "description": "Login page wired to Alepha auth (credentials + OAuth providers).",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": [
+        "button",
+        "input",
+        "label",
+        "card",
+        "alert",
+        "separator"
+      ],
+      "files": [
+        {
+          "path": "registry/default/auth-login/auth-login.tsx",
+          "type": "registry:component",
+          "target": "components/auth/auth-login.tsx"
+        }
+      ]
+    },
+    {
+      "name": "auth-register",
+      "type": "registry:block",
+      "title": "Register",
+      "description": "Registration page with verification step (email/phone codes) when required by the realm.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": [
+        "@alepha/control",
+        "button",
+        "input",
+        "label",
+        "card",
+        "alert",
+        "separator"
+      ],
+      "files": [
+        {
+          "path": "registry/default/auth-register/auth-register.tsx",
+          "type": "registry:component",
+          "target": "components/auth/auth-register.tsx"
+        }
+      ]
+    },
+    {
+      "name": "auth-reset-password",
+      "type": "registry:block",
+      "title": "Reset password",
+      "description": "Four-step reset flow: email \u2192 code \u2192 new password \u2192 success.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": [
+        "@alepha/control",
+        "button",
+        "input",
+        "label",
+        "card",
+        "alert"
+      ],
+      "files": [
+        {
+          "path": "registry/default/auth-reset-password/auth-reset-password.tsx",
+          "type": "registry:component",
+          "target": "components/auth/auth-reset-password.tsx"
+        }
+      ]
+    },
+    {
+      "name": "auth-verify-email",
+      "type": "registry:block",
+      "title": "Verify email",
+      "description": "Reads `email` and `token` from the URL, calls the verify endpoint, shows the result.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": ["button", "card", "alert"],
+      "files": [
+        {
+          "path": "registry/default/auth-verify-email/auth-verify-email.tsx",
+          "type": "registry:component",
+          "target": "components/auth/auth-verify-email.tsx"
+        }
+      ]
+    },
+    {
+      "name": "admin-users",
+      "type": "registry:block",
+      "title": "Admin: Users",
+      "description": "User list with bulk disable, per-row enable/disable + delete, linked to user profile.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": [
+        "@alepha/alepha-table",
+        "@alepha/use-confirm",
+        "avatar",
+        "badge",
+        "sonner"
+      ],
+      "files": [
+        {
+          "path": "registry/default/admin-users/admin-users.tsx",
+          "type": "registry:component",
+          "target": "components/admin/admin-users.tsx"
+        }
+      ]
+    },
+    {
+      "name": "admin-jobs",
+      "type": "registry:block",
+      "title": "Admin: Jobs",
+      "description": "Registered jobs with run counts, last-run timestamp, and manual trigger.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": ["badge", "button", "table", "sonner"],
+      "files": [
+        {
+          "path": "registry/default/admin-jobs/admin-jobs.tsx",
+          "type": "registry:component",
+          "target": "components/admin/admin-jobs.tsx"
+        }
+      ]
+    },
+    {
+      "name": "admin-audits",
+      "type": "registry:block",
+      "title": "Admin: Audits",
+      "description": "Read-only audit log with paged history of API actions and resource changes.",
+      "dependencies": ["alepha"],
+      "registryDependencies": ["@alepha/alepha-table", "badge"],
+      "files": [
+        {
+          "path": "registry/default/admin-audits/admin-audits.tsx",
+          "type": "registry:component",
+          "target": "components/admin/admin-audits.tsx"
+        }
+      ]
+    },
+    {
+      "name": "admin-files",
+      "type": "registry:block",
+      "title": "Admin: Files",
+      "description": "Stored files across configured buckets with download + delete actions.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": [
+        "@alepha/alepha-table",
+        "@alepha/use-confirm",
+        "badge",
+        "sonner"
+      ],
+      "files": [
+        {
+          "path": "registry/default/admin-files/admin-files.tsx",
+          "type": "registry:component",
+          "target": "components/admin/admin-files.tsx"
+        }
+      ]
+    },
+    {
+      "name": "admin-notifications",
+      "type": "registry:block",
+      "title": "Admin: Notifications",
+      "description": "Delivery log for emails, SMS, and other channels.",
+      "dependencies": ["alepha"],
+      "registryDependencies": ["@alepha/alepha-table", "badge"],
+      "files": [
+        {
+          "path": "registry/default/admin-notifications/admin-notifications.tsx",
+          "type": "registry:component",
+          "target": "components/admin/admin-notifications.tsx"
+        }
+      ]
+    },
+    {
+      "name": "admin-parameters",
+      "type": "registry:block",
+      "title": "Admin: Parameters",
+      "description": "Runtime configuration values. Simplified list view \u2014 extend with tree/history per project.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": [
+        "@alepha/alepha-table",
+        "@alepha/use-confirm",
+        "badge",
+        "sonner"
+      ],
+      "files": [
+        {
+          "path": "registry/default/admin-parameters/admin-parameters.tsx",
+          "type": "registry:component",
+          "target": "components/admin/admin-parameters.tsx"
+        }
+      ]
+    },
+    {
+      "name": "admin-sessions",
+      "type": "registry:block",
+      "title": "Admin: Sessions",
+      "description": "Active user sessions with revoke action.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": [
+        "@alepha/alepha-table",
+        "@alepha/use-confirm",
+        "badge",
+        "sonner"
+      ],
+      "files": [
+        {
+          "path": "registry/default/admin-sessions/admin-sessions.tsx",
+          "type": "registry:component",
+          "target": "components/admin/admin-sessions.tsx"
+        }
+      ]
+    },
+    {
+      "name": "admin-keys",
+      "type": "registry:block",
+      "title": "Admin: API keys",
+      "description": "Programmatic access tokens with revoke action.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": [
+        "@alepha/alepha-table",
+        "@alepha/use-confirm",
+        "badge",
+        "sonner"
+      ],
+      "files": [
+        {
+          "path": "registry/default/admin-keys/admin-keys.tsx",
+          "type": "registry:component",
+          "target": "components/admin/admin-keys.tsx"
+        }
+      ]
+    },
+    {
+      "name": "admin-payments",
+      "type": "registry:block",
+      "title": "Admin: Payments",
+      "description": "Payment intents, charges, and subscriptions.",
+      "dependencies": ["alepha"],
+      "registryDependencies": ["@alepha/alepha-table", "badge"],
+      "files": [
+        {
+          "path": "registry/default/admin-payments/admin-payments.tsx",
+          "type": "registry:component",
+          "target": "components/admin/admin-payments.tsx"
+        }
+      ]
+    },
+    {
+      "name": "saas",
+      "type": "registry:style",
+      "title": "Alepha SaaS preset",
+      "description": "One-shot init: control + auto-form + alepha-table + use-confirm + app-shell + auth + admin blocks.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": [
+        "@alepha/control",
+        "@alepha/auto-form",
+        "@alepha/alepha-table",
+        "@alepha/use-confirm",
+        "@alepha/app-shell",
+        "@alepha/auth-login",
+        "@alepha/auth-register",
+        "@alepha/auth-reset-password",
+        "@alepha/auth-verify-email",
+        "@alepha/admin-users",
+        "@alepha/admin-jobs",
+        "@alepha/admin-audits",
+        "@alepha/admin-files",
+        "@alepha/admin-notifications",
+        "@alepha/admin-parameters",
+        "@alepha/admin-sessions",
+        "@alepha/admin-keys",
+        "@alepha/admin-payments",
+        "sonner",
+        "tooltip"
+      ]
+    }
+  ]
+}

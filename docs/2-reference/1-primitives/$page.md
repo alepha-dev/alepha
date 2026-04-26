@@ -38,16 +38,6 @@ It provides a declarative way to define pages with powerful features:
 - Hierarchical error handling (child → parent)
 - HTTP status code handling (404, 401, etc.)
 
-**Page Animations**
-- CSS-based enter/exit animations
-- Dynamic animations based on page state
-- Custom timing and easing functions
-
-**Lifecycle Management**
-- Server response hooks for headers and status codes
-- Page leave handlers for cleanup (browser only)
-- Permission-based access control
-
 ## Options
 
 | Option | Type | Required | Description |
@@ -60,8 +50,8 @@ It provides a declarative way to define pages with powerful features:
 | `props` | `Object` | No | Default props to pass to the component when rendering the page |
 | `component` | `FC&lt;TProps & TPropsParent&gt;` | No | The component to render when the page is loaded |
 | `lazy` | `Object` | No | Lazy load the component when the page is loaded |
-| `children` | `Array&lt;PagePrimitive&gt; \| (() =&gt; Array&lt;PagePrimitive&gt;)` | No | Attach child pages to create nested routes |
-| `parent` | `PagePrimitive&lt;PageConfigSchema, TPropsParent, any&gt;` | No | Define a parent page for nested routing. |
+| `children` | `Array&lt;PagePrimitive&gt; \| (() =&gt; Array&lt;PagePrimitive&gt;)` | No | Attach child pages to create nested routes, adopting them as children of this page |
+| `parent` | `PagePrimitive&lt;PageConfigSchema, TPropsParent, any&gt;` | No | Define a parent page for nested routing |
 | `can` | `Object` | No | Function to determine if the page can be accessed |
 | `errorHandler` | `ErrorHandler` | No | Catch any error from the `loader` function or during `rendering` |
 | `entries` | `Array&lt;Partial&lt;PageRequestConfig&lt;TConfig&gt;&gt;&gt;` | No | If true, the page will be considered as a static page, immutable and cacheable |

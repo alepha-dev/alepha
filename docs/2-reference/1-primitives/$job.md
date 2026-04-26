@@ -19,6 +19,7 @@ queue job that handles them.
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
+| `name` | `string` | No | Optional explicit job name |
 | `description` | `string` | No | Human-readable description (shown in the admin UI). |
 | `schema` | `T` | No | Payload schema (TypeBox) |
 | `cron` | `string` | No | Cron expression for recurring execution |
@@ -26,5 +27,8 @@ queue job that handles them.
 | `timeout` | `DurationLike` | No | Max execution time per attempt |
 | `priority` | `JobPriority` | No | Default priority for pushed jobs |
 | `record` | `"error" \| "all" \| "none"` | No | Whether to record successful executions |
+| `keep` | `Object` | No | Override the global ring-buffer trim for this job |
+| `ok` | `number` | No |  |
+| `error` | `number` | No |  |
 | `handler` | `Object` | Yes | Handler function |
 

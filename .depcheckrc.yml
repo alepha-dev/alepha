@@ -30,6 +30,10 @@ ignores:
     - 'tailwindcss'
     - '@tailwindcss/vite'
     - '@types/react-is'
+    - '@fontsource-variable/inter'
+    - '@fontsource-variable/jetbrains-mono'
+    - 'date-fns'
+    - 'tw-animate-css'
 
 ignore-patterns:
     - 'dist'

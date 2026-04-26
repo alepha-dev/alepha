@@ -199,7 +199,7 @@ yarn w @package-name typecheck && yarn w @package-name test
 
 ## Notes for AI Assistants
 
-- You are NOT allowed to commit code directly. Instead, provide the modified code and instructions for a human to review and commit.
+- **CRITICAL**: NEVER run `git commit`, `git add`, `git push`, or any git command that modifies history or the index. NEVER, under any circumstances, even if explicitly asked in the moment — the user's standing rule overrides one-off requests. The only allowed git command is `git mv` for renaming/moving files. Provide modified code and let the human review and commit.
 - Update docs/1-guides/ if you change any public API or behavior (docs/3-reference is auto generated from source code)
 - The framework heavily uses TypeScript generics and decorators (`$` prefix indicates a primitive)
 - All async operations should use `Alepha.create()` and proper lifecycle management

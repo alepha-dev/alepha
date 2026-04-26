@@ -13,10 +13,10 @@ npm install alepha
 User notification management.
 
 **Features:**
-- Notification definitions
-- Email/SMS notification sending
-- Job-based delivery with retry and tracking
-- User preferences
+- Notification definitions (email/SMS templates)
+- Queue-based delivery with retry and audit trail (`record: "all"` + no ring buffer trim)
+- Runtime-editable retention window via `$parameter` — purge cron respects it live
+- Admin API for inspecting sent notifications
 
 ## API Reference
 

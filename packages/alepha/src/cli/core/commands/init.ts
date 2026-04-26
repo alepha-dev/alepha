@@ -37,18 +37,6 @@ export class InitCommand {
           description: "Include React dependencies and web module (src/web/)",
         }),
       ),
-      ui: t.optional(
-        t.boolean({
-          description:
-            "Include @alepha/ui (components, auth portal, admin portal)",
-        }),
-      ),
-      saas: t.optional(
-        t.boolean({
-          description:
-            "Include authentication, admin portal, API, UI, and React. Everything you need for a SaaS app.",
-        }),
-      ),
       tailwind: t.optional(
         t.boolean({
           description: "Include Tailwind CSS with Vite plugin. Implies --react",

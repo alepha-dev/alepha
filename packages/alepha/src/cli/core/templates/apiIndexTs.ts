@@ -1,30 +1,16 @@
 export interface ApiIndexTsOptions {
   appName?: string;
-  auth?: boolean;
 }
 
 export const apiIndexTs = (options: ApiIndexTsOptions = {}) => {
-  const { appName = "app", auth = false } = options;
-
-  const imports: string[] = ['import { $module } from "alepha";'];
-  const services: string[] = [];
-
-  if (auth) {
-    imports.push('import { AppSecurity } from "./AppSecurity.ts";');
-    services.push("AppSecurity");
-  }
-
-  imports.push(
-    'import { HelloController } from "./controllers/HelloController.ts";',
-  );
-  services.push("HelloController");
-
+  const { appName = "app" } = options;
   return `
-${imports.join("\n")}
+import { $module } from "alepha";
+import { HelloController } from "./controllers/HelloController.ts";
 
 export const ApiModule = $module({
   name: "${appName}.api",
-  services: [${services.join(", ")}],
+  services: [HelloController],
 });
 `.trim();
 };
