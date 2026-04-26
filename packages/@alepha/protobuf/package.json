@@ -1,5 +1,6 @@
 {
   "name": "@alepha/protobuf",
+  "private": true,
   "description": "Protocol Buffers (Protobuf) codec support for Alepha framework.",
   "author": "Feunard",
   "version": "0.20.1",
