@@ -43,6 +43,13 @@
       "when": 1775408407615,
       "tag": "0005_slow_boom_boom",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1777218918493,
+      "tag": "0006_handy_sentry",
+      "breakpoints": true
     }
   ]
 }
