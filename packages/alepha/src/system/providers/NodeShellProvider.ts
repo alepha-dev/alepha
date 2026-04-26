@@ -115,6 +115,7 @@ export class NodeShellProvider implements ShellProvider {
         command,
         {
           cwd: options.cwd,
+          maxBuffer: 50 * 1024 * 1024,
           env: {
             ...process.env,
             LOG_FORMAT: "pretty",

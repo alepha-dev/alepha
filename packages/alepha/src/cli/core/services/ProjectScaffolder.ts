@@ -18,6 +18,7 @@ import { mainCss } from "../templates/mainCss.ts";
 import { mainServerTs } from "../templates/mainServerTs.ts";
 import { tsconfigJson } from "../templates/tsconfigJson.ts";
 import { viteConfigTs } from "../templates/viteConfigTs.ts";
+import { vitestConfigTs } from "../templates/vitestConfigTs.ts";
 import { webAppRouterTs } from "../templates/webAppRouterTs.ts";
 import { webHomeComponentTsx } from "../templates/webHomeComponentTsx.ts";
 import { webIndexTs } from "../templates/webIndexTs.ts";
@@ -348,11 +349,18 @@ export class ProjectScaffolder {
   // ===========================================
 
   /**
-   * Ensure test directory exists with a dummy test file.
+   * Ensure test directory exists with a dummy test file + a self-contained
+   * `vitest.config.ts`. Pinning `test.root` prevents Vitest from walking up
+   * to a parent monorepo config (e.g. one that boots a Postgres container).
    */
   public async ensureTestDir(root: string): Promise<void> {
     const testDir = this.fs.join(root, "test");
     const dummyPath = this.fs.join(testDir, "dummy.spec.ts");
+    const vitestConfigPath = this.fs.join(root, "vitest.config.ts");
+
+    if (!(await this.fs.exists(vitestConfigPath))) {
+      await this.fs.writeFile(vitestConfigPath, vitestConfigTs());
+    }
 
     if (!(await this.fs.exists(testDir))) {
       await this.fs.mkdir(testDir, { recursive: true });

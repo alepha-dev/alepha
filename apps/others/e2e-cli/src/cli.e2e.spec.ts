@@ -190,8 +190,11 @@ describe("Alepha CLI E2E", () => {
     }
   });
 
-  test("alepha init --saas --test creates project", async () => {
-    const result = await run("yarn alepha init apps/tmp --saas --test", ROOT);
+  test("alepha init --api --react --test creates project", async () => {
+    const result = await run(
+      "yarn alepha init apps/tmp --api --react --test",
+      ROOT,
+    );
 
     if (result.exitCode !== 0) {
       console.log("INIT FAILED:");
