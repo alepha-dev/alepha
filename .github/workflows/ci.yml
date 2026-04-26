@@ -121,6 +121,9 @@ jobs:
       - name: Prepare
         run: yarn copy
 
+      - name: Build Registry
+        run: yarn workspace @alepha/ui-registry build
+
       - name: Build Documentation
         run: cd apps/docs && yarn build && yarn alepha gen:llms
 
@@ -170,6 +173,10 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   verify-windows:
+    # Smoke-test the build/lint/typecheck/CLI flow on Windows.
+    # `yarn test` is intentionally omitted: GitHub `services:` (Postgres, Redis,
+    # S3-mock, EMQX) only attach on Linux runners, so the integration tests
+    # that need those services would fail here. Linux already covers them.
     runs-on: windows-latest
     timeout-minutes: 15
 
