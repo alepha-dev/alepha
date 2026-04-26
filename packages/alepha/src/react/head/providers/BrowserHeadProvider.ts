@@ -154,10 +154,12 @@ export class BrowserHeadProvider {
       | string
       | (Record<string, string | boolean | undefined> & { content?: string }),
   ): void {
-    const el = document.createElement("script");
-
-    // Handle plain string as inline script
+    // Plain string → inline script. Dedupe by exact content match against
+    // any existing inline script (handles SSR-emitted globals that would
+    // otherwise be re-appended on hydration).
     if (typeof script === "string") {
+      if (this.findInlineScriptByContent(document, script)) return;
+      const el = document.createElement("script");
       el.textContent = script;
       document.head.appendChild(el);
       return;
@@ -165,14 +167,18 @@ export class BrowserHeadProvider {
 
     const { content, ...attrs } = script;
 
-    // For scripts with src, check if already exists
+    // src-based scripts: dedupe by src attribute (existing behaviour).
     if (attrs.src) {
-      const existing = document.querySelector(`script[src="${attrs.src}"]`);
-      if (existing) {
-        return;
-      }
+      if (document.querySelector(`script[src="${attrs.src}"]`)) return;
+    } else if (typeof attrs.id === "string") {
+      // id-based dedupe — single source of truth per id.
+      if (document.querySelector(`script#${CSS.escape(attrs.id)}`)) return;
+    } else if (content) {
+      // Inline scripts with `content` and no src/id: fall back to content match.
+      if (this.findInlineScriptByContent(document, content)) return;
     }
 
+    const el = document.createElement("script");
     for (const [key, value] of Object.entries(attrs)) {
       if (value === true) {
         el.setAttribute(key, "");
@@ -180,12 +186,27 @@ export class BrowserHeadProvider {
         el.setAttribute(key, String(value));
       }
     }
-
     if (content) {
       el.textContent = content;
     }
-
     document.head.appendChild(el);
+  }
+
+  /**
+   * Find an existing inline `<script>` tag (no `src`) with matching textContent.
+   * Used to make `renderScriptTag` idempotent across hydration + navigation,
+   * so SSR-emitted global scripts aren't re-appended client-side.
+   */
+  protected findInlineScriptByContent(
+    document: Document,
+    content: string,
+  ): Element | null {
+    for (const existing of document.head.querySelectorAll(
+      "script:not([src])",
+    )) {
+      if (existing.textContent === content) return existing;
+    }
+    return null;
   }
 
   protected renderMetaTag(document: Document, meta: HeadMeta): void {
