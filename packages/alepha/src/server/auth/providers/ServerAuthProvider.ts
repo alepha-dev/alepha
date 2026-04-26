@@ -114,7 +114,7 @@ export class ServerAuthProvider {
       // [feature] support for auth providers with fallback
       if (!request.headers.authorization) {
         for (const provider of this.identities) {
-          if ("fallback" in provider.options && !!provider.options.fallback) {
+          if ("fallback" in provider.options && provider.options.fallback) {
             const token = await provider.options.fallback();
             if (token) {
               request.headers.authorization = `Bearer ${token}`;

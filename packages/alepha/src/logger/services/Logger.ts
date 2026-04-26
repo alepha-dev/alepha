@@ -146,7 +146,7 @@ export class Logger implements LoggerInterface {
     }
 
     let _data: object | Error | undefined;
-    if (typeof data === "object" && !!data) {
+    if (typeof data === "object" && data) {
       _data = data;
     } else if (typeof message === "object" && message) {
       _data = message;

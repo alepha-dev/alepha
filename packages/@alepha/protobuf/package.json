@@ -22,7 +22,7 @@
     "alepha": "0.20.2",
     "tsdown": "^0.21.8",
     "typescript": "^6.0.2",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.5"
   },
   "peerDependencies": {
     "alepha": "0.20.2"

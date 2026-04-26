@@ -411,7 +411,7 @@ export class ServerProvider {
 
       url = url?.split("?")[0];
 
-      if (!!params?.["*"] && `/${params?.["*"]}` === url) {
+      if (params?.["*"] && `/${params?.["*"]}` === url) {
         return true;
       }
     }

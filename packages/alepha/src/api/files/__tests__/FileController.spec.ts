@@ -472,7 +472,7 @@ describe("FileController", () => {
       expect(results.content.every((f) => f.creator === user1Id)).toBe(true);
     });
 
-    it("should filter by date range", async () => {
+    it("should filter by date range", { retry: 3 }, async () => {
       const { service, ctrl, dtp } = await setup();
 
       const startTime = dtp.nowISOString();

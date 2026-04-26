@@ -12,16 +12,16 @@
     ]
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.12",
+    "@biomejs/biome": "^2.4.13",
     "@playwright/test": "^1.59.1",
-    "@types/bun": "^1.3.12",
+    "@types/bun": "^1.3.13",
     "@types/node": "^25.6.0",
-    "@vitest/coverage-v8": "^4.1.4",
-    "@vitest/ui": "^4.1.4",
+    "@vitest/coverage-v8": "^4.1.5",
+    "@vitest/ui": "^4.1.5",
     "alepha": "^0.20.2",
     "depcheck": "^1.4.7",
     "typescript": "^6.0.2",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.5"
   },
   "scripts": {
     "w": "yarn workspace",

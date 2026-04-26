@@ -416,7 +416,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     if (
       "status" in error &&
       typeof error.status === "number" &&
-      !!errorNameByStatus[error.status]
+      errorNameByStatus[error.status]
     ) {
       const status = error.status;
       reply.status = status;
