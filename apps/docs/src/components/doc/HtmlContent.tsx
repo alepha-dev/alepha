@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 interface HtmlContentProps {
   html: string;
@@ -41,15 +41,7 @@ const syncPackageManager = (
 const HtmlContent = (props: HtmlContentProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const html = useMemo(() => {
-    const onclick = (url: string) => {
-      return `event.preventDefault();go('${url}')`;
-    };
-    return props.html.replace(/<a href="\/docs\/(.*)">/gim, (_, arg1) => {
-      const pathname = `${import.meta.env.BASE_URL ?? "/"}docs/${arg1}`;
-      return `<a href="${pathname}" onclick="${onclick(`/docs/${arg1}`)}">`;
-    });
-  }, [props.html]);
+  const html = props.html;
 
   // Set up package manager sync after content is rendered
   useEffect(() => {

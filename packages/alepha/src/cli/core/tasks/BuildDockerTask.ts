@@ -47,10 +47,7 @@ export class BuildDockerTask extends BuildTask {
     }
   }
 
-  protected async copyMigrations(
-    root: string,
-    distDir: string,
-  ): Promise<void> {
+  protected async copyMigrations(root: string, distDir: string): Promise<void> {
     const migrationsDir = this.fs.join(root, "migrations");
     if (await this.fs.exists(migrationsDir)) {
       await this.fs.cp(

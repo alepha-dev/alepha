@@ -28,9 +28,20 @@ export const reactBrowserOptions = $atom({
   name: "alepha.react.browser.options",
   schema: t.object({
     scrollRestoration: t.enum(["top", "manual"]), // TODO: must be per page?
+    /**
+     * Intercept clicks on plain `<a href="/...">` anchors and route them
+     * through the SPA router, so authors don't need `<Link>` everywhere
+     * (notably for SSR/Markdown HTML rendered as raw markup).
+     *
+     * Skips: modifier keys, non-primary mouse buttons, `target` other than
+     * `_self`, `download`, `data-no-router`, non-http(s) schemes, hash-only
+     * hrefs, external origins, and clicks already `defaultPrevented`.
+     */
+    interceptAnchorClicks: t.boolean({ default: true }),
   }),
   default: {
     scrollRestoration: "top" as const,
+    interceptAnchorClicks: true,
   },
 });
 
@@ -325,8 +336,70 @@ export class ReactBrowserProvider {
 
         this.render();
       });
+
+      this.attachAnchorInterceptor();
     },
   });
+
+  /**
+   * Attach a delegated click listener that routes plain `<a href="/...">`
+   * clicks through the SPA router. Returns a detach function (used in tests).
+   *
+   * Bails out on modifier keys, non-primary mouse buttons, `target`, `download`,
+   * `data-no-router`, hash-only/external/non-http hrefs, and already-prevented
+   * events. Honors the runtime `interceptAnchorClicks` flag.
+   */
+  protected attachAnchorInterceptor(): () => void {
+    const onClick = (ev: MouseEvent) => {
+      if (!this.options.interceptAnchorClicks) return;
+      if (ev.defaultPrevented) return;
+      if (ev.button !== 0) return;
+      if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+
+      const node = ev.target as Element | null;
+      const a = node?.closest?.("a");
+      if (!a) return;
+
+      if (a.hasAttribute("download")) return;
+      if (a.hasAttribute("data-no-router")) return;
+
+      const target = a.getAttribute("target");
+      if (target && target !== "_self") return;
+
+      const href = a.getAttribute("href");
+      if (!href) return;
+      if (href.startsWith("#")) return;
+      if (/^[a-z][a-z0-9+.-]*:/i.test(href)) {
+        // absolute scheme: only intercept if it points at our own origin
+        let url: URL;
+        try {
+          url = new URL(href);
+        } catch {
+          return;
+        }
+        if (url.origin !== this.location.origin) return;
+        ev.preventDefault();
+        const path = url.pathname + url.search + url.hash;
+        this.push(this.stripBase(path)).catch((e) => this.log.error(e));
+        return;
+      }
+
+      ev.preventDefault();
+      const url = new URL(href, this.location.href);
+      const path = url.pathname + url.search + url.hash;
+      this.push(this.stripBase(path)).catch((e) => this.log.error(e));
+    };
+
+    this.document.addEventListener("click", onClick);
+    return () => this.document.removeEventListener("click", onClick);
+  }
+
+  protected stripBase(path: string): string {
+    if (this.base && path.startsWith(this.base)) {
+      return path.slice(this.base.length) || "/";
+    }
+    return path;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

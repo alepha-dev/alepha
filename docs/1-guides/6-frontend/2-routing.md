@@ -381,9 +381,43 @@ Options:
 | `format` | `string` | `"base64"` | Encoding format.                      |
 | `push`   | `boolean`| `false`    | Push to history instead of replace.   |
 
-## Link Component
+## Links and Anchor Interception
 
-A convenience component for client-side navigation links.
+Plain `<a href="/...">` anchors are intercepted automatically and routed
+through the SPA router — no `<Link>` wrapper required. This works inside
+React JSX as well as in raw HTML injected into the page (e.g. Markdown
+content rendered from a CMS).
+
+```html
+<a href="/about">About</a>
+```
+
+The interceptor bails out (and lets the browser handle the click natively)
+when any of the following apply:
+
+- the click uses a modifier key (`meta`, `ctrl`, `shift`, `alt`)
+- the mouse button isn't the primary one (middle/right click)
+- the anchor has `target` other than `_self` (e.g. `target="_blank"`)
+- the anchor has a `download` attribute
+- the anchor has a `data-no-router` attribute (explicit opt-out)
+- the `href` uses a non-http(s) scheme (`mailto:`, `tel:`, `data:`, …)
+- the `href` points to a different origin
+- the `href` is hash-only (`#section`)
+- another listener already called `event.preventDefault()`
+
+To force a hard navigation on a same-origin link, opt out per-anchor:
+
+```html
+<a href="/legacy" data-no-router>Legacy page</a>
+```
+
+To disable the global interceptor, set `interceptAnchorClicks: false` on
+the `alepha.react.browser.options` atom.
+
+### `<Link>` component
+
+`<Link>` is still available as a thin wrapper around `<a>` that wires the
+router via `onClick` directly:
 
 ```typescript
 import { Link } from "alepha/react/router";
@@ -391,7 +425,9 @@ import { Link } from "alepha/react/router";
 <Link href="/about">About</Link>
 ```
 
-Wraps a standard `<a>` element with `onClick` handling via the router.
+With the global interceptor enabled, `<Link>` is mostly a stylistic
+preference. Reach for it when you want explicit per-link control or
+intend to extend it with prefetching/active-state logic later.
 
 ## Router Events
 

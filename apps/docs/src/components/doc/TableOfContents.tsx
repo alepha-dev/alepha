@@ -1,11 +1,4 @@
-import { useRouter } from "alepha/react/router";
-import {
-  type CSSProperties,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import styles from "./TableOfContents.module.css";
 
 interface HeadingItem {
@@ -19,12 +12,6 @@ interface TableOfContentsProps {
 }
 
 const TableOfContents = (props: TableOfContentsProps) => {
-  const router = useRouter();
-
-  useLayoutEffect(() => {
-    (window as any).go = (url: string) => router.push(url);
-  }, [props.name, router]);
-
   return (
     <nav
       className={`visible-xl ${styles.container}`}
