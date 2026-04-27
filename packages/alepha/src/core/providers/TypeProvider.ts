@@ -447,7 +447,7 @@ export class TypeProvider {
   /**
    * Create a schema that maps all properties of an object schema to nullable.
    */
-  public nullify = <T extends TSchema>(schema: T, options?: TObjectOptions) =>
+  public nullify = (schema: TSchema, options?: TObjectOptions): TSchema =>
     Type.Mapped(
       Type.Identifier("K"),
       Type.KeyOf(schema),

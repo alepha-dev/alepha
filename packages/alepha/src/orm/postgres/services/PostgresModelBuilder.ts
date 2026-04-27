@@ -323,7 +323,14 @@ export class PostgresModelBuilder extends ModelBuilder {
       return pg.numeric(key);
     }
 
-    if (t.schema.isString(value)) {
+    const isTypeEnum = (value: any): value is { enum: any[] } =>
+      t.schema.isUnsafe(value) &&
+      "type" in value &&
+      value.type === "string" &&
+      "enum" in value &&
+      Array.isArray(value.enum);
+
+    if (t.schema.isString(value) && !isTypeEnum(value)) {
       return this.mapStringToColumn(key, value);
     }
 
@@ -338,13 +345,6 @@ export class PostgresModelBuilder extends ModelBuilder {
     if (t.schema.isRecord(value)) {
       return schema(key, value);
     }
-
-    const isTypeEnum = (value: any): value is { enum: any[] } =>
-      t.schema.isUnsafe(value) &&
-      "type" in value &&
-      value.type === "string" &&
-      "enum" in value &&
-      Array.isArray(value.enum);
 
     if (t.schema.isArray(value)) {
       if (t.schema.isObject(value.items)) {
