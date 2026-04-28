@@ -135,6 +135,14 @@ export class BuildServerTask extends BuildTask {
             chunkFileNames: "[hash].js",
             assetFileNames: "[hash][extname]",
             format: "esm",
+            codeSplitting: {
+              groups: [
+                {
+                  name: "react",
+                  test: /node_modules\/react(\/|-dom\/)/,
+                },
+              ],
+            },
             // Rolldown/Oxc minifier: preserve class and function names
             minify: {
               mangle: { keepNames: true },

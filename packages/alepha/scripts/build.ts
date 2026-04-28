@@ -171,12 +171,19 @@ class AlephaPackageBuilderCli {
           sourcemap: true,
           fixedExtension: false,
           platform: "node", // TODO: node must be enabled only if index.node.ts exists
-          inlineOnly: false,
-          external,
+          deps: {
+            neverBundle: external,
+            skipNodeModulesBundle: true,
+          },
           dts: {
             sourcemap: true,
           },
         });
+
+        const deps = {
+          neverBundle: external,
+          skipNodeModulesBundle: true,
+        };
 
         if (item.workerd) {
           entries.push({
@@ -185,8 +192,7 @@ class AlephaPackageBuilderCli {
             platform: "neutral",
             sourcemap: true,
             dts: false,
-            inlineOnly: false,
-            external,
+            deps,
             inputOptions: {
               resolve: {
                 // platform: "neutral" defaults mainFields to [], so packages
@@ -206,8 +212,7 @@ class AlephaPackageBuilderCli {
             platform: "neutral",
             sourcemap: true,
             dts: false,
-            inlineOnly: false,
-            external,
+            deps,
           });
         }
 
@@ -218,8 +223,7 @@ class AlephaPackageBuilderCli {
             platform: "browser",
             sourcemap: true,
             dts: false,
-            inlineOnly: false,
-            external,
+            deps,
           });
         }
 
@@ -231,8 +235,7 @@ class AlephaPackageBuilderCli {
             sourcemap: true,
             fixedExtension: false,
             dts: false,
-            inlineOnly: false,
-            external,
+            deps,
           });
         }
 
