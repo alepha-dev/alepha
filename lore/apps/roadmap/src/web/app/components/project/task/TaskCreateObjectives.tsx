@@ -1,4 +1,4 @@
-import { ActionButton, type CustomControlProps, Flex } from "@alepha/ui";
+import { ActionButton, type CustomControlProps, Flex } from "@alepha/mantine";
 import { TextInput } from "@mantine/core";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";

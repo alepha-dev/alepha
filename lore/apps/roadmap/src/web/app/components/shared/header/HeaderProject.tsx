@@ -1,4 +1,4 @@
-import { ActionButton, Flex } from "@alepha/ui";
+import { ActionButton, Flex } from "@alepha/mantine";
 import { Center, Menu, SegmentedControl } from "@mantine/core";
 
 import {

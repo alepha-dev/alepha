@@ -1,5 +1,10 @@
-import { DarkModeButton, Flex, LanguageButton, ThemeButton } from "@alepha/ui";
-import { UserButton } from "@alepha/ui/auth";
+import {
+  DarkModeButton,
+  Flex,
+  LanguageButton,
+  ThemeButton,
+} from "@alepha/mantine";
+import { UserButton } from "@alepha/mantine/auth";
 import { useI18n } from "alepha/react/i18n";
 import type { I18n } from "@/web/app/services/I18n.ts";
 

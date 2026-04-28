@@ -1,4 +1,4 @@
-import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
+import { ActionButton, Flex, Text, useToast } from "@alepha/mantine";
 import { AreaChart, BarChart } from "@mantine/charts";
 import {
   Card,

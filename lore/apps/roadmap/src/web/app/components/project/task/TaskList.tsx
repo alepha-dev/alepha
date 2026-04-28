@@ -1,4 +1,4 @@
-import { Flex, Text } from "@alepha/ui";
+import { Flex, Text } from "@alepha/mantine";
 import { useI18n } from "alepha/react/i18n";
 import { useMemo } from "react";
 import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";

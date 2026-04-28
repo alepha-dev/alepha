@@ -1,4 +1,4 @@
-import { Flex, Text } from "@alepha/ui";
+import { Flex, Text } from "@alepha/mantine";
 import { Card, Center, SegmentedControl, Transition } from "@mantine/core";
 import {
   IconBook2,

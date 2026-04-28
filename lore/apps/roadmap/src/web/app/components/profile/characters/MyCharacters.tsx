@@ -1,4 +1,4 @@
-import { Flex, Text } from "@alepha/ui";
+import { Flex, Text } from "@alepha/mantine";
 import { Badge, Progress } from "@mantine/core";
 import { IconCoin, IconCrown, IconSwords } from "@tabler/icons-react";
 import { useInject } from "alepha/react";

@@ -1,4 +1,4 @@
-import { AuthRouter } from "@alepha/ui/auth";
+import { AuthRouter } from "@alepha/mantine/auth";
 import { $hook, $inject, Alepha, t } from "alepha";
 import { ReactAuth } from "alepha/react/auth";
 import { $head, type Head } from "alepha/react/head";

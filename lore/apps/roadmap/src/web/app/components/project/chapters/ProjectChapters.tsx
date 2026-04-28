@@ -1,4 +1,4 @@
-import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
+import { ActionButton, Flex, Text, useToast } from "@alepha/mantine";
 import { Card, Container, Modal, TextInput } from "@mantine/core";
 import { IconBook2, IconPlayerPlay, IconPlayerStop } from "@tabler/icons-react";
 import { useClient, useStore } from "alepha/react";
