@@ -1,3 +1,8 @@
+import { AppShell } from "@alepha/ui/components/app-shell";
+import { ThemeToggle } from "@alepha/ui/components/theme-toggle";
+import { Toaster } from "@alepha/ui/components/ui/sonner";
+import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
+import { ConfirmProvider } from "@alepha/ui/components/use-confirm";
 import { NestedView, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import {
@@ -12,11 +17,6 @@ import {
   Zap,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
-import { AppShell } from "@/web/components/app-shell";
-import { ThemeToggle } from "@/web/components/theme-toggle";
-import { Toaster } from "@/web/components/ui/sonner";
-import { TooltipProvider } from "@/web/components/ui/tooltip";
-import { ConfirmProvider } from "@/web/components/use-confirm";
 
 interface NavItem {
   href: string;

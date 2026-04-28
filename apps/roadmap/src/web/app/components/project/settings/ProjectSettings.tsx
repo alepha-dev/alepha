@@ -1,4 +1,4 @@
-import { ActionButton, Flex, Text } from "@alepha/ui";
+import { ActionButton, Flex, Text } from "@alepha/mantine";
 import { Card, Container, SimpleGrid } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { useAlepha, useClient, useStore } from "alepha/react";

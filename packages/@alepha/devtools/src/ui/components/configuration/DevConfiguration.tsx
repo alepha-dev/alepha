@@ -1,4 +1,4 @@
-import { Flex, ui } from "@alepha/ui";
+import { Flex, ui } from "@alepha/mantine";
 import { SegmentedControl } from "@mantine/core";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 

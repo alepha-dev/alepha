@@ -16,7 +16,6 @@ import {
   type SequencePrimitive,
   schema,
   sql,
-  type ViewPrimitive,
 } from "alepha/orm";
 import type { BuildExtraConfigColumns } from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";
@@ -29,11 +28,9 @@ import {
   type PgTableExtraConfigValue,
   type PgTableWithColumns,
   pgEnum,
-  pgMaterializedView,
   pgSchema,
   pgSequence,
   pgTable,
-  pgView,
   unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -106,36 +103,6 @@ export class PostgresModelBuilder extends ModelBuilder {
     const table = nsp.table(tableName, columns, configFn);
 
     options.tables.set(tableName, table);
-  }
-
-  public buildView(
-    view: ViewPrimitive,
-    options: {
-      tables: Map<string, unknown>;
-      schema: string;
-    },
-  ) {
-    const viewName = view.name;
-    if (options.tables.has(viewName)) {
-      return;
-    }
-
-    const columns = this.schemaToPgColumns(
-      viewName,
-      view.schema,
-      { enum: pgEnum, table: pgTable, sequence: pgSequence } as any,
-      new Map(),
-      options.tables,
-    );
-
-    let drizzleView: unknown;
-    if (view.materialized) {
-      drizzleView = pgMaterializedView(viewName, columns).existing();
-    } else {
-      drizzleView = pgView(viewName, columns).existing();
-    }
-
-    options.tables.set(viewName, drizzleView);
   }
 
   public buildSequence(

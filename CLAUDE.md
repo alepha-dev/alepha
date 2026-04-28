@@ -37,8 +37,7 @@ LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build
   - Examples:
     - `yarn w alepha test` - Run tests for alepha package
     - `yarn w @alepha/ui typecheck` - Type check @alepha/ui package
-    - `yarn w @alepha/ui lint` - Lint @alepha/ui package
-    - `yarn w @alepha/ui build` - Build @alepha/ui package
+    - `yarn w @alepha/devtools build` - Build @alepha/devtools package
 
 ## Architecture
 
@@ -59,10 +58,11 @@ Alepha uses a hybrid monorepo structure:
 - Located in `packages/alepha/src/` with each sub-module as a directory
 
 **Specialized Packages**
-- `@alepha/ui` - UI component library
+- `@alepha/ui` - Shared shadcn-based UI for monorepo apps (sourced from `@alepha/ui-registry`)
+- `@alepha/ui-registry` - shadcn registry source (blocks distributed via `https://alepha.dev/r/*`)
 - `@alepha/devtools` - Development tools and inspection UI
-- `@alepha/bucket-azure` - Azure Blob Storage backend
-- `@alepha/bucket-vercel` - Vercel Blob Storage backend
+- `@alepha/bucket-s3` - S3-compatible Blob Storage backend
+- `@alepha/payments-stripe` - Stripe payments backend
 - `@alepha/protobuf` - Protocol Buffers support
 
 ### Testing
@@ -223,8 +223,3 @@ yarn w @package-name typecheck && yarn w @package-name test
 - **Package imports**: All 50+ core modules can be imported from the `alepha` package (e.g., `import { } from "alepha/security"`)
 - Always use "git mv" for renaming files to preserve git history
 - Tests can be co-located with source code as `*.spec.ts` files (not just in `__tests__` directories)
-- **IMPORTANT**: NEVER use `Box`, `Stack`, or `Group` from Mantine. Always use `Flex` instead:
-  - Import `Flex` from `@alepha/ui` (not `@mantine/core`). Inside `@alepha/ui` source itself, import from `@mantine/core`.
-  - Replace `<Stack>` with `<Flex direction="column">`
-  - Replace `<Group>` with `<Flex>`
-  - Replace `<Box>` with `<Flex>`

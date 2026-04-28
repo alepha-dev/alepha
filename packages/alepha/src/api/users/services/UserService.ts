@@ -1,7 +1,7 @@
 import { $inject, Alepha } from "alepha";
 import type { VerificationController } from "alepha/api/verifications";
 import { $logger } from "alepha/logger";
-import { type Page, parseQueryString } from "alepha/orm";
+import type { Page } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { UserAudits } from "../audits/UserAudits.ts";
@@ -227,10 +227,6 @@ export class UserService {
 
     if (q.roles) {
       where.roles = { arrayContains: q.roles };
-    }
-
-    if (q.query) {
-      Object.assign(where, parseQueryString(q.query));
     }
 
     const result = await this.users(userRealmName).paginate(

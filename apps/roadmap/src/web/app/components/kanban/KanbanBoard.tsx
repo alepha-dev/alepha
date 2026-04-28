@@ -1,4 +1,4 @@
-import { Control, Flex, useToast } from "@alepha/ui";
+import { Control, Flex, useToast } from "@alepha/mantine";
 import {
   DndContext,
   type DragEndEvent,

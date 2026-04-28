@@ -1,4 +1,4 @@
-import { Flex, ui } from "@alepha/ui";
+import { Flex, ui } from "@alepha/mantine";
 import { Badge, CloseButton, ScrollArea, Text, TextInput } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import { useInject } from "alepha/react";

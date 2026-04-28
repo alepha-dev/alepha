@@ -24,7 +24,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/devtools@workspace:packages/@alepha/devtools"
   dependencies:
-    "@alepha/ui": "npm:0.20.1"
+    "@alepha/mantine": "npm:0.20.1"
     "@biomejs/biome": "npm:^2.4.13"
     "@mantine/core": "npm:^9.1.1"
     "@mantine/hooks": "npm:^9.1.1"
@@ -39,6 +39,36 @@ __metadata:
     vitest: "npm:^4.1.5"
   peerDependencies:
     alepha: 0.20.2
+  languageName: unknown
+  linkType: soft
+
+"@alepha/mantine@npm:0.20.1, @alepha/mantine@npm:^0.20.1, @alepha/mantine@workspace:packages/@alepha/mantine":
+  version: 0.0.0-use.local
+  resolution: "@alepha/mantine@workspace:packages/@alepha/mantine"
+  dependencies:
+    "@biomejs/biome": "npm:^2.4.13"
+    "@mantine/core": "npm:^9.1.1"
+    "@mantine/dates": "npm:^9.1.1"
+    "@mantine/hooks": "npm:^9.1.1"
+    "@mantine/modals": "npm:^9.1.1"
+    "@mantine/notifications": "npm:^9.1.1"
+    "@mantine/nprogress": "npm:^9.1.1"
+    "@mantine/spotlight": "npm:^9.1.1"
+    "@tabler/icons-react": "npm:^3.41.1"
+    "@testing-library/dom": "npm:^10.4.1"
+    "@testing-library/react": "npm:^16.3.2"
+    "@types/react-is": "npm:^19.2.0"
+    alepha: "npm:0.20.2"
+    dayjs: "npm:^1.11.20"
+    react: "npm:^19.2.5"
+    react-dom: "npm:^19.2.5"
+    typescript: "npm:^6.0.3"
+    vite: "npm:^8.0.10"
+    vitest: "npm:^4.1.5"
+  peerDependencies:
+    alepha: 0.20.2
+    react: "*"
+    react-dom: "*"
   languageName: unknown
   linkType: soft
 
@@ -85,31 +115,29 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/ui@npm:0.20.1, @alepha/ui@npm:^0.20.1, @alepha/ui@workspace:packages/@alepha/ui":
+"@alepha/ui@workspace:^, @alepha/ui@workspace:packages/@alepha/ui":
   version: 0.0.0-use.local
   resolution: "@alepha/ui@workspace:packages/@alepha/ui"
   dependencies:
     "@biomejs/biome": "npm:^2.4.13"
-    "@mantine/core": "npm:^9.1.1"
-    "@mantine/dates": "npm:^9.1.1"
-    "@mantine/hooks": "npm:^9.1.1"
-    "@mantine/modals": "npm:^9.1.1"
-    "@mantine/notifications": "npm:^9.1.1"
-    "@mantine/nprogress": "npm:^9.1.1"
-    "@mantine/spotlight": "npm:^9.1.1"
-    "@tabler/icons-react": "npm:^3.41.1"
-    "@testing-library/dom": "npm:^10.4.1"
-    "@testing-library/react": "npm:^16.3.2"
-    "@types/react-is": "npm:^19.2.0"
-    alepha: "npm:0.20.2"
-    dayjs: "npm:^1.11.20"
+    "@fontsource-variable/inter": "npm:^5.2.8"
+    "@fontsource-variable/jetbrains-mono": "npm:^5.2.8"
+    alepha: "workspace:^"
+    class-variance-authority: "npm:^0.7.1"
+    clsx: "npm:^2.1.1"
+    cmdk: "npm:^1.1.1"
+    date-fns: "npm:^4.1.0"
+    lucide-react: "npm:^1.11.0"
+    radix-ui: "npm:^1.4.3"
     react: "npm:^19.2.5"
+    react-day-picker: "npm:^9.14.0"
     react-dom: "npm:^19.2.5"
+    sonner: "npm:^2.0.7"
+    tailwind-merge: "npm:^3.5.0"
+    tw-animate-css: "npm:^1.4.0"
     typescript: "npm:^6.0.3"
-    vite: "npm:^8.0.10"
-    vitest: "npm:^4.1.5"
   peerDependencies:
-    alepha: 0.20.2
+    alepha: "workspace:^"
     react: "*"
     react-dom: "*"
   languageName: unknown
@@ -12077,23 +12105,14 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "jobs-playground@workspace:apps/others/playground"
   dependencies:
-    "@fontsource-variable/inter": "npm:^5.2.8"
-    "@fontsource-variable/jetbrains-mono": "npm:^5.2.8"
+    "@alepha/ui": "workspace:^"
     "@tailwindcss/vite": "npm:^4.2.4"
     alepha: "workspace:^"
-    class-variance-authority: "npm:^0.7.1"
-    clsx: "npm:^2.1.1"
-    cmdk: "npm:^1.1.1"
-    date-fns: "npm:^4.1.0"
     lucide-react: "npm:^1.11.0"
-    radix-ui: "npm:^1.4.3"
     react: "npm:^19.2.5"
-    react-day-picker: "npm:^9.14.0"
     react-dom: "npm:^19.2.5"
     sonner: "npm:^2.0.7"
-    tailwind-merge: "npm:^3.5.0"
     tailwindcss: "npm:^4.2.4"
-    tw-animate-css: "npm:^1.4.0"
     vite: "npm:^8.0.10"
     wrangler: "npm:^4.85.0"
   languageName: unknown
@@ -16667,7 +16686,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ui-demo@workspace:apps/others/ui-demo"
   dependencies:
-    "@alepha/ui": "npm:^0.20.1"
+    "@alepha/mantine": "npm:^0.20.1"
     "@types/react": "npm:^19.2.14"
     "@vitejs/plugin-react": "npm:^6.0.1"
     alepha: "npm:^0.20.2"

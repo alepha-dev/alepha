@@ -1,4 +1,4 @@
-import { ActionButton, Control, Flex } from "@alepha/ui";
+import { ActionButton, Control, Flex } from "@alepha/mantine";
 import { modals } from "@mantine/modals";
 import { IconTag } from "@tabler/icons-react";
 import { t } from "alepha";

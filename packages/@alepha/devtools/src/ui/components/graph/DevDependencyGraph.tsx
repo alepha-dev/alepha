@@ -1,4 +1,4 @@
-import { ActionButton, Flex, ui, useDialog } from "@alepha/ui";
+import { ActionButton, Flex, ui, useDialog } from "@alepha/mantine";
 import { Alert, Badge, Loader, Text } from "@mantine/core";
 import {
   IconAlertTriangle,

@@ -1,4 +1,4 @@
-import { Flex } from "@alepha/ui";
+import { Flex } from "@alepha/mantine";
 import "./RoadmapLogo.css";
 
 const RoadmapLogo = () => {

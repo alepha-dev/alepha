@@ -1,4 +1,4 @@
-import { ActionButton, Flex, Text } from "@alepha/ui";
+import { ActionButton, Flex, Text } from "@alepha/mantine";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@mantine/core";

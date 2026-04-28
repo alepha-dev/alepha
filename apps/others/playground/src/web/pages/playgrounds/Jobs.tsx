@@ -1,14 +1,14 @@
-import { useClient } from "alepha/react";
-import { useCallback, useState } from "react";
-import { toast } from "sonner";
-import { Badge } from "@/web/components/ui/badge";
-import { Button } from "@/web/components/ui/button";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "@/web/components/ui/card";
+} from "@alepha/ui/components/ui/card";
+import { useClient } from "alepha/react";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
 import type { PlaygroundController } from "../../../api/PlaygroundController.ts";
 
 interface LogLine {

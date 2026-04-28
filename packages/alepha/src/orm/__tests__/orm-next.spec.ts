@@ -14,8 +14,6 @@ import {
   testPartialIndex,
   testQueryCache,
   testQueryCacheCustomKey,
-  testViewReadOnly,
-  testViewRefreshThrowsForNonMaterialized,
 } from "./orm-next-tests.ts";
 
 const sqlite = () =>
@@ -117,24 +115,5 @@ describe("query caching", () => {
   });
   it("should support custom cache keys (postgres)", async () => {
     await testQueryCacheCustomKey(postgres());
-  });
-});
-
-// =============================================================================
-// Feature 8: Database Views
-// =============================================================================
-
-describe("database views", () => {
-  it("should block writes on view repositories (sqlite)", async () => {
-    await testViewReadOnly(sqlite());
-  });
-  it("should block writes on view repositories (postgres)", async () => {
-    await testViewReadOnly(postgres());
-  });
-  it("should throw on refresh for non-materialized view (sqlite)", async () => {
-    await testViewRefreshThrowsForNonMaterialized(sqlite());
-  });
-  it("should throw on refresh for non-materialized view (postgres)", async () => {
-    await testViewRefreshThrowsForNonMaterialized(postgres());
   });
 });

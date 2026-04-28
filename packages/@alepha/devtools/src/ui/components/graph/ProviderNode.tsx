@@ -1,4 +1,4 @@
-import { Flex, ui } from "@alepha/ui";
+import { Flex, ui } from "@alepha/mantine";
 import { Badge, Text } from "@mantine/core";
 import { Handle, Position } from "@xyflow/react";
 import { getModuleColor } from "./constants.ts";

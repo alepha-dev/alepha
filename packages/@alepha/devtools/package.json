@@ -20,7 +20,7 @@
     "assets"
   ],
   "devDependencies": {
-    "@alepha/ui": "0.20.1",
+    "@alepha/mantine": "0.20.1",
     "@biomejs/biome": "^2.4.13",
     "@mantine/core": "^9.1.1",
     "@mantine/hooks": "^9.1.1",

@@ -1,4 +1,4 @@
-import { ActionButton, type ActionProps } from "@alepha/ui";
+import { ActionButton, type ActionProps } from "@alepha/mantine";
 
 export type MeLayoutNavLinkProps = ActionProps & {
   href: string;

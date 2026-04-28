@@ -1,4 +1,4 @@
-import { Flex } from "@alepha/ui";
+import { Flex } from "@alepha/mantine";
 import { useStore } from "alepha/react";
 import { NestedView } from "alepha/react/router";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";

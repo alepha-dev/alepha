@@ -1,4 +1,4 @@
-import { Flex } from "@alepha/ui";
+import { Flex } from "@alepha/mantine";
 import { Text, UnstyledButton } from "@mantine/core";
 import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
 import type { ReactNode } from "react";

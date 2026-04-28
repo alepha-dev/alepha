@@ -1,4 +1,4 @@
-import { ActionButton, Flex, TypeForm, ui } from "@alepha/ui";
+import { ActionButton, Flex, TypeForm, ui } from "@alepha/mantine";
 import {
   Badge,
   Loader,

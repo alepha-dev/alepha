@@ -485,7 +485,7 @@ export class DocsCommand {
 
   getPackageDirName(pkgName: string, allPackages: string[]): string {
     const safeName = pkgName.replace(/\//g, "-");
-    const order: Record<string, number> = { alepha: 1, "@alepha/ui": 2 };
+    const order: Record<string, number> = { alepha: 1, "@alepha/mantine": 2 };
     if (order[pkgName]) return `${order[pkgName]}-${safeName}`;
     const others = allPackages.filter((p) => !order[p]).sort();
     return `${others.indexOf(pkgName) + 3}-${safeName}`;

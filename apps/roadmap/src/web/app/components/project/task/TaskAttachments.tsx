@@ -1,5 +1,5 @@
-import type { CustomControlProps } from "@alepha/ui";
-import { ActionButton, Flex, useToast } from "@alepha/ui";
+import type { CustomControlProps } from "@alepha/mantine";
+import { ActionButton, Flex, useToast } from "@alepha/mantine";
 import { Loader } from "@mantine/core";
 import { IconUpload } from "@tabler/icons-react";
 import { useClient } from "alepha/react";

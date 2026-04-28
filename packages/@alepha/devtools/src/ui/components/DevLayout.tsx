@@ -3,7 +3,7 @@ import {
   DashboardShell,
   Flex,
   OmnibarButton,
-} from "@alepha/ui";
+} from "@alepha/mantine";
 import {
   IconDashboard,
   IconDatabase,
