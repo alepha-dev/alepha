@@ -1,4 +1,4 @@
-import { Flex } from "@alepha/ui";
+import { Flex } from "@alepha/mantine";
 import { Transition } from "@mantine/core";
 import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
 import TaskHistoryTimeline from "./TaskHistoryTimeline.tsx";

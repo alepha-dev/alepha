@@ -1,4 +1,4 @@
-import { ActionButton, Flex, Text } from "@alepha/ui";
+import { ActionButton, Flex, Text } from "@alepha/mantine";
 import { TextInput } from "@mantine/core";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";

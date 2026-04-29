@@ -1,4 +1,4 @@
-import { DataTable, Flex, Text } from "@alepha/ui";
+import { DataTable, Flex, Text } from "@alepha/mantine";
 import { Badge } from "@mantine/core";
 import { IconSignature, IconTrash, IconUser } from "@tabler/icons-react";
 import { t } from "alepha";

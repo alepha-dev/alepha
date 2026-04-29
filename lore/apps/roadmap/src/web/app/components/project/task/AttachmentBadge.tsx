@@ -1,4 +1,4 @@
-import { ActionButton, Text } from "@alepha/ui";
+import { ActionButton, Text } from "@alepha/mantine";
 import { Badge, HoverCard, Image } from "@mantine/core";
 import { IconFile, IconPhoto, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";

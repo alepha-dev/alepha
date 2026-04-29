@@ -1,4 +1,4 @@
-import { ActionButton, Control, Flex } from "@alepha/ui";
+import { ActionButton, Control, Flex } from "@alepha/mantine";
 import { SimpleGrid } from "@mantine/core";
 import {
   IconDeviceFloppy,

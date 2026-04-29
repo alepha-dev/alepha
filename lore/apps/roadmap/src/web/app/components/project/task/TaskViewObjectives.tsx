@@ -1,4 +1,4 @@
-import { Flex, Text } from "@alepha/ui";
+import { Flex, Text } from "@alepha/mantine";
 import { Checkbox } from "@mantine/core";
 import { IconListCheck } from "@tabler/icons-react";
 import { useClient, useStore } from "alepha/react";

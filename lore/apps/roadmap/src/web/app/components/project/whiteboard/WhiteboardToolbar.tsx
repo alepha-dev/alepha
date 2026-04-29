@@ -1,4 +1,4 @@
-import { ActionButton, Flex } from "@alepha/ui";
+import { ActionButton, Flex } from "@alepha/mantine";
 import { ColorInput, Divider, Tooltip } from "@mantine/core";
 import {
   IconArrowBackUp,

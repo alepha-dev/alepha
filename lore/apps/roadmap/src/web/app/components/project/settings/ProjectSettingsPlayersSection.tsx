@@ -1,4 +1,4 @@
-import { ActionButton, Flex, Text, useToast } from "@alepha/ui";
+import { ActionButton, Flex, Text, useToast } from "@alepha/mantine";
 import { Avatar, Badge, Card, Modal, TextInput } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {

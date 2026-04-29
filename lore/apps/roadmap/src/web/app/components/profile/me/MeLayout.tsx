@@ -1,4 +1,4 @@
-import { Flex, Text } from "@alepha/ui";
+import { Flex, Text } from "@alepha/mantine";
 import { Avatar } from "@mantine/core";
 import { IconUser } from "@tabler/icons-react";
 import { useAuth } from "alepha/react/auth";
