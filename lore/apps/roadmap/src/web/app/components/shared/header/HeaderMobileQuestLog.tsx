@@ -1,12 +1,18 @@
-import { Flex } from "@alepha/mantine";
-import { Burger, Drawer } from "@mantine/core";
+import { Button } from "@alepha/ui/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@alepha/ui/components/ui/sheet";
 import { useEvents, useStore } from "alepha/react";
+import { Menu } from "lucide-react";
 import { useState } from "react";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { theme } from "../../../constants/theme.ts";
 import QuestLog from "../../project/QuestLog.tsx";
 
-const HeaderMobileQuestLog = () => {
+export type HeaderMobileQuestLogProps = {};
+
+const HeaderMobileQuestLog = (_props: HeaderMobileQuestLogProps) => {
   const [show, setShow] = useState(false);
   const [project] = useStore(currentProjectAtom);
 
@@ -22,21 +28,21 @@ const HeaderMobileQuestLog = () => {
   }
 
   return (
-    <Flex hiddenFrom={"lg"}>
-      <Burger opened={show} onClick={() => setShow(true)} />
-      <Drawer
-        flex={1}
-        bg={theme.colors.panel}
-        onClose={() => setShow(false)}
-        position={"left"}
-        opened={show}
-        style={{
-          borderRight: "1px solid var(--mantine-color-dark-4)",
-        }}
-      >
-        <QuestLog />
-      </Drawer>
-    </Flex>
+    <div className="flex lg:hidden">
+      <Sheet open={show} onOpenChange={setShow}>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" aria-label="Quest log">
+            <Menu className="size-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent
+          side="left"
+          className="border-border w-80 overflow-y-auto border-r p-0"
+        >
+          <QuestLog />
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 };
 

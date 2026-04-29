@@ -1,7 +1,8 @@
-import { ActionButton, Flex, useToast } from "@alepha/mantine";
-import { Card } from "@mantine/core";
-import { IconCopy, IconDownload } from "@tabler/icons-react";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Card } from "@alepha/ui/components/ui/card";
 import { useI18n } from "alepha/react/i18n";
+import { Copy, Download } from "lucide-react";
+import { toast } from "sonner";
 import type { Chapter } from "@/api/entities/chapters.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
@@ -11,60 +12,39 @@ export interface ProjectChaptersChangelogProps {
 }
 
 const ProjectChaptersChangelog = (props: ProjectChaptersChangelogProps) => {
-  const { markdown, chapter } = props;
   const { tr } = useI18n<I18n, "en">();
-  const toast = useToast();
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(markdown);
-    toast.success({ message: tr("chapter.changelog.copied") });
+    await navigator.clipboard.writeText(props.markdown);
+    toast.success(String(tr("chapter.changelog.copied")));
   };
 
   const handleDownload = () => {
-    const blob = new Blob([markdown], { type: "text/markdown" });
+    const blob = new Blob([props.markdown], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `chapter-${chapter.number}-changelog.md`;
+    a.download = `chapter-${props.chapter.number}-changelog.md`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
-    <Flex direction="column" gap="md">
-      <Flex gap="xs" justify="end">
-        <ActionButton
-          variant="light"
-          size="sm"
-          leftSection={<IconCopy size={14} />}
-          onClick={handleCopy}
-        >
+    <div className="flex flex-col gap-3">
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={handleCopy}>
+          <Copy className="size-3.5" />
           {tr("chapter.changelog.copy")}
-        </ActionButton>
-        <ActionButton
-          variant="light"
-          size="sm"
-          leftSection={<IconDownload size={14} />}
-          onClick={handleDownload}
-        >
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleDownload}>
+          <Download className="size-3.5" />
           {tr("chapter.changelog.download")}
-        </ActionButton>
-      </Flex>
-      <Card
-        withBorder
-        radius="md"
-        p="md"
-        style={{
-          fontFamily: "monospace",
-          whiteSpace: "pre-wrap",
-          fontSize: "0.85rem",
-          maxHeight: "60vh",
-          overflow: "auto",
-        }}
-      >
-        {markdown}
+        </Button>
+      </div>
+      <Card className="max-h-[60vh] overflow-auto whitespace-pre-wrap p-4 font-mono text-xs">
+        {props.markdown}
       </Card>
-    </Flex>
+    </div>
   );
 };
 

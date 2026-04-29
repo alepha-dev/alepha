@@ -1,5 +1,3 @@
-import { Flex, Text } from "@alepha/mantine";
-import { Progress } from "@mantine/core";
 import { useI18n } from "alepha/react/i18n";
 import type { CharacterInfo } from "@/api/services/CharacterInfo.ts";
 import type { MyCharactersCharacter } from "./MyCharacters.tsx";
@@ -18,32 +16,25 @@ const MyCharactersXPBar = (props: MyCharactersXPBarProps) => {
   const { l } = useI18n();
 
   return (
-    <Flex direction="column" gap="xs">
-      <Flex justify="space-between">
-        <Text size="xs" c="dimmed" fw={500}>
+    <div className="flex flex-col gap-2">
+      <div className="flex justify-between">
+        <span className="text-xs font-medium text-muted-foreground">
           Experience Progress
-        </Text>
-        <Text size="xs" c="dimmed">
+        </span>
+        <span className="text-xs text-muted-foreground">
           {l(currentXp)} / {l(maxXp)} XP
-        </Text>
-      </Flex>
-
-      <Progress
-        value={percentage}
-        size="md"
-        radius="sm"
-        color="blue"
-        styles={{
-          root: {
-            backgroundColor: "var(--mantine-color-dark-6)",
-          },
-        }}
-      />
-
-      <Text size="xs" c="dimmed">
+        </span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-sm bg-muted">
+        <div
+          className="h-full rounded-sm bg-blue-500 transition-all"
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      <span className="text-xs text-muted-foreground">
         Level {level} • {percentage}% to Level {level + 1}
-      </Text>
-    </Flex>
+      </span>
+    </div>
   );
 };
 

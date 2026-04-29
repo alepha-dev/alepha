@@ -1,15 +1,14 @@
-import { TypeForm } from "@alepha/mantine";
-import { Card } from "@mantine/core";
-import { IconTag } from "@tabler/icons-react";
+import { AutoForm } from "@alepha/ui/components/auto-form";
+import { Card } from "@alepha/ui/components/ui/card";
 import { t } from "alepha";
 import { useAlepha, useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import { Tag } from "lucide-react";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { Project } from "@/api/entities/projects.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
-import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 
 export interface ProjectUpdateProps {
@@ -37,12 +36,6 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
           description: String(tr("project.create.public.helper")),
         }),
       ),
-      whiteboard: t.optional(
-        t.boolean({
-          title: String(tr("project.settings.whiteboard")),
-          description: String(tr("project.settings.whiteboard.helper")),
-        }),
-      ),
     }),
     handler: async (values) => {
       const project = await projectApi.updateProjectById({
@@ -61,22 +54,15 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
   });
 
   return (
-    <Card radius={0} withBorder className={"shadow"} bg={theme.colors.card}>
-      <TypeForm
-        columns={{
-          base: 1,
-          md: 2,
-          xl: 2,
-        }}
+    <Card className="bg-card p-4 shadow">
+      <AutoForm
         form={form}
-        fieldControlProps={{
+        fields={{
           title: {
-            icon: <IconTag />,
+            icon: Tag,
           },
         }}
-        submitButtonProps={{
-          children: tr("project.update.submit"),
-        }}
+        submitLabel={String(tr("project.update.submit"))}
       />
     </Card>
   );

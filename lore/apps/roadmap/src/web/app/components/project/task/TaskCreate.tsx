@@ -1,18 +1,11 @@
-import { ActionButton, Control, Flex } from "@alepha/mantine";
-import { SimpleGrid } from "@mantine/core";
-import {
-  IconDeviceFloppy,
-  IconFileText,
-  IconListCheck,
-  IconPlus,
-  IconTag,
-  IconTent,
-} from "@tabler/icons-react";
+import { Control } from "@alepha/ui/components/control/control";
+import { Button } from "@alepha/ui/components/ui/button";
 import { t } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
+import { FileText, ListChecks, Plus, Save, Tag, Tent } from "lucide-react";
 import type { TaskController } from "@/api/controllers/TaskController.ts";
 import type { Project } from "@/api/entities/projects.ts";
 import { taskCreateSchema } from "@/api/schemas/taskCreateSchema.ts";
@@ -63,10 +56,7 @@ const TaskCreate = (props: TaskCreateProps) => {
       }
 
       const task = await taskApi.createTask({
-        body: {
-          ...data,
-          projectId: props.project.id,
-        },
+        body: { ...data, projectId: props.project.id },
       });
 
       if (
@@ -100,146 +90,74 @@ const TaskCreate = (props: TaskCreateProps) => {
     currentProject?.packages || kanbanProject?.project?.packages || [];
 
   return (
-    <form {...form.props}>
-      <Flex direction="column" gap="md">
-        <SimpleGrid
-          cols={{
-            base: 1,
-            md: 2,
-          }}
-          spacing={"sm"}
-        >
-          <Control
-            label={tr("task.create.title")}
-            description={tr("task.create.title.helper")}
-            input={form.input.title}
-            icon={<IconTag />}
-          />
-          <Control
-            label={tr("task.create.package")}
-            description={tr("task.create.package.helper")}
-            input={form.input.package}
-            icon={<IconTent />}
-            select={{
-              creatable: true,
-              loader: () => packages,
-              selectProps: {
-                placeholder: "Enter or select a zone...",
-                limit: 5,
-              },
-            }}
-          />
-        </SimpleGrid>
-
+    <form {...form.props} className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Control
-          description={tr("task.create.description.helper")}
-          label={tr("task.create.description")}
-          custom={TextEditor}
-          input={form.input.description}
-          icon={<IconFileText />}
+          label={tr("task.create.title") as string}
+          description={tr("task.create.title.helper") as string}
+          input={form.input.title}
+          icon={Tag}
         />
-
-        <SimpleGrid
-          cols={{
-            base: 1,
-            md: 2,
-          }}
-          spacing={"sm"}
-        >
-          <Control
-            input={form.input.priority}
-            label={tr("task.create.priority")}
-            description={tr("task.create.priority.helper")}
-            segmented
-            select={{
-              segmentedProps: {
-                data: [
-                  {
-                    label: String(tr("priority.high")),
-                    value: "high",
-                  },
-                  {
-                    label: String(tr("priority.medium")),
-                    value: "medium",
-                  },
-                  {
-                    label: String(tr("priority.low")),
-                    value: "low",
-                  },
-                  {
-                    label: String(tr("priority.none")),
-                    value: "optional",
-                  },
-                ],
-              },
-            }}
-          />
-          <Control
-            input={form.input.complexity}
-            label={tr("task.create.complexity")}
-            description={tr("task.create.complexity.helper")}
-            segmented
-            select={{
-              segmentedProps: {
-                data: [
-                  {
-                    label: "S",
-                    value: "5",
-                  },
-                  {
-                    label: "A",
-                    value: "4",
-                  },
-                  {
-                    label: "B",
-                    value: "3",
-                  },
-                  {
-                    label: "C",
-                    value: "2",
-                  },
-                  {
-                    label: "F",
-                    value: "1",
-                  },
-                ],
-              },
-            }}
-          />
-        </SimpleGrid>
-
         <Control
-          label={tr("task.create.objectives")}
-          description={tr("task.create.objectives.helper")}
-          custom={TaskCreateObjectives}
-          input={form.input.objectives}
-          icon={<IconListCheck />}
+          label={tr("task.create.package") as string}
+          description={tr("task.create.package.helper") as string}
+          input={form.input.package}
+          icon={Tent}
+          combobox
         />
+      </div>
 
-        <br />
+      <Control
+        label={tr("task.create.description") as string}
+        description={tr("task.create.description.helper") as string}
+        input={form.input.description}
+        icon={FileText}
+        custom={TextEditor as never}
+      />
 
-        <Flex>
-          {update ? (
-            <ActionButton
-              variant={"filled"}
-              color={"blue"}
-              form={form}
-              leftSection={<IconDeviceFloppy />}
-            >
-              {tr("task.create.update")}
-            </ActionButton>
-          ) : (
-            <ActionButton
-              variant={"filled"}
-              color={"green"}
-              form={form}
-              leftSection={<IconPlus />}
-            >
-              {tr("task.create.submit")}
-            </ActionButton>
-          )}
-        </Flex>
-      </Flex>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <Control
+          input={form.input.priority}
+          label={tr("task.create.priority") as string}
+          description={tr("task.create.priority.helper") as string}
+          segmented
+        />
+        <Control
+          input={form.input.complexity}
+          label={tr("task.create.complexity") as string}
+          description={tr("task.create.complexity.helper") as string}
+          segmented
+        />
+      </div>
+
+      <Control
+        label={tr("task.create.objectives") as string}
+        description={tr("task.create.objectives.helper") as string}
+        input={form.input.objectives}
+        icon={ListChecks}
+        custom={TaskCreateObjectives as never}
+      />
+
+      {/* package suggestions: hint */}
+      {packages.length > 0 && (
+        <p className="text-muted-foreground text-xs">
+          Existing zones: {packages.join(", ")}
+        </p>
+      )}
+
+      <div className="flex">
+        {update ? (
+          <Button type="submit" disabled={form.submitting}>
+            <Save className="size-4" />
+            {tr("task.create.update")}
+          </Button>
+        ) : (
+          <Button type="submit" disabled={form.submitting}>
+            <Plus className="size-4" />
+            {tr("task.create.submit")}
+          </Button>
+        )}
+      </div>
     </form>
   );
 };

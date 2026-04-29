@@ -1,17 +1,18 @@
-import { ActionButton, Control, Flex, Text, useToast } from "@alepha/mantine";
-import { Card, Container } from "@mantine/core";
-import { IconHammer, IconTag } from "@tabler/icons-react";
+import { Control } from "@alepha/ui/components/control/control";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { t } from "alepha";
 import { useAlepha, useClient } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
+import { Hammer, Tag } from "lucide-react";
 import { useMemo } from "react";
+import { toast } from "sonner";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
-import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 
 const ProjectCreate = () => {
@@ -20,14 +21,13 @@ const ProjectCreate = () => {
   const auth = useAuth();
   const alepha = useAlepha();
   const { tr } = useI18n<I18n, "en">();
-  const toast = useToast();
 
   const initialValues = useMemo(() => {
     try {
       if (router.query.b) {
         return JSON.parse(decodeURIComponent(router.query.b));
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   }, [router.query.b]);
@@ -42,7 +42,7 @@ const ProjectCreate = () => {
       public: t.optional(t.boolean()),
     }),
     onError: (error) => {
-      toast.danger({ message: error.message });
+      toast.error(error.message);
     },
     handler: async (body) => {
       if (!auth.user) {
@@ -72,71 +72,45 @@ const ProjectCreate = () => {
   });
 
   return (
-    <Card
-      withBorder
-      flex={1}
-      radius={0}
-      p={"sm"}
-      bg={theme.colors.panel}
-      style={{
-        borderLeft: 0,
-        borderRight: 0,
-      }}
-    >
-      <Container w={theme.container}>
-        <form {...form.props}>
-          <Flex direction="column" p={"lg"}>
-            <Flex direction="column" gap={0}>
-              <Text size="lg" fw={"bold"}>
-                {tr("project.create.title")}
-              </Text>
-              <Text size={"sm"} c={"dimmed"}>
-                {tr("project.create.description")}
-              </Text>
-            </Flex>
-            <Card
-              withBorder
-              radius={"md"}
-              p={"sm"}
-              bg={theme.colors.card}
-              shadow={"md"}
-            >
-              <Flex
-                direction="column"
-                p={"sm"}
-                style={{ maxWidth: 600 }}
-                gap={"xl"}
-              >
-                <Control
-                  input={form.input.title}
-                  text={{
-                    autoFocus: true,
-                  }}
-                  icon={<IconTag />}
-                  label={tr("project.create.name")}
-                  description={tr("project.create.name.helper")}
-                />
-                <Control
-                  input={form.input.public}
-                  label={tr("project.create.public")}
-                  description={tr("project.create.public.helper")}
-                />
-                <Flex gap={"md"}>
-                  <ActionButton
-                    leftSection={<IconHammer />}
-                    form={form}
-                    variant={"filled"}
-                    color={"green"}
-                  >
-                    {tr("project.create.submit")}
-                  </ActionButton>
-                </Flex>
-              </Flex>
-            </Card>
-          </Flex>
-        </form>
-      </Container>
-    </Card>
+    <div className="mx-auto w-full max-w-3xl p-4">
+      <form {...form.props}>
+        <div className="flex flex-col gap-4 p-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-lg font-bold">
+              {tr("project.create.title")}
+            </span>
+            <span className="text-muted-foreground text-sm">
+              {tr("project.create.description")}
+            </span>
+          </div>
+          <Card className="shadow">
+            <CardContent className="flex max-w-xl flex-col gap-6 p-4">
+              <Control
+                input={form.input.title}
+                icon={Tag}
+                label={String(tr("project.create.name"))}
+                description={String(tr("project.create.name.helper"))}
+              />
+              <Control
+                input={form.input.public}
+                label={String(tr("project.create.public"))}
+                description={String(tr("project.create.public.helper"))}
+              />
+              <div className="flex gap-3">
+                <Button
+                  type="submit"
+                  disabled={form.submitting}
+                  className="bg-green-600 text-white hover:bg-green-700"
+                >
+                  <Hammer className="size-4" />
+                  {tr("project.create.submit")}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </form>
+    </div>
   );
 };
 

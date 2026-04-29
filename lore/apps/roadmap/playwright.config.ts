@@ -19,6 +19,7 @@ export default defineConfig({
     timeout: 120_000,
     command: "yarn start",
     url: `http://localhost:${port}`,
+    reuseExistingServer: true,
     env: {
       SERVER_PORT: `${port}`,
     },

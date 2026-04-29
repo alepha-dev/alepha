@@ -1,12 +1,11 @@
+import { useInject, useStore } from "alepha/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import "./LevelUpAnimation.css";
-import { useInject, useStore } from "alepha/react";
 import type { Character } from "@/api/entities/characters.ts";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
 import { currentProjectCharacterAtom } from "../../atoms/currentProjectCharacterAtom.ts";
 
-export default function LevelUpAnimation() {
+const LevelUpAnimation = () => {
   const [active, setActive] = useState(false);
   const lastCharacter = useRef<Character | undefined>(undefined);
   const info = useInject(CharacterInfo);
@@ -14,7 +13,6 @@ export default function LevelUpAnimation() {
 
   useEffect(() => {
     if (character) {
-      const level = info.getLevelByXp(character.xp);
       if (
         lastCharacter.current != null &&
         lastCharacter.current.projectId === character.projectId &&
@@ -23,7 +21,7 @@ export default function LevelUpAnimation() {
       ) {
         lastCharacter.current = character;
         setActive(true);
-        const timeout = setTimeout(() => setActive(false), 3500);
+        const timeout = setTimeout(() => setActive(false), 3000);
         return () => clearTimeout(timeout);
       }
     }
@@ -34,43 +32,22 @@ export default function LevelUpAnimation() {
     <AnimatePresence>
       {active && (
         <motion.div
-          className="levelup-overlay"
+          className="pointer-events-none fixed inset-0 z-[1000] flex items-center justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="magic-circle"
-            initial={{ scale: 0, rotate: 0, opacity: 0 }}
-            animate={{ scale: [0, 1.2, 1], rotate: 360, opacity: 1 }}
+            className="absolute size-72 rounded-full border-4 border-yellow-400"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: [0, 1.2, 1], opacity: [0, 0.6, 0] }}
             transition={{ duration: 1.5, ease: "easeOut" }}
-          >
-            <motion.div
-              className="magic-aura"
-              initial={{ scale: 0 }}
-              animate={{ scale: [0, 1.5, 1], opacity: [0, 1, 0] }}
-              transition={{ duration: 1.5 }}
-            />
-          </motion.div>
-          {[...Array(20)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="particle"
-              initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-              animate={{
-                x: Math.cos((i / 20) * 2 * Math.PI) * 200,
-                y: Math.sin((i / 20) * 2 * Math.PI) * 200,
-                opacity: 0,
-                scale: 0,
-              }}
-              transition={{ duration: 1.5, delay: 0.2 }}
-            />
-          ))}
+          />
           <motion.div
-            className="levelup-text"
-            initial={{ scale: 0 }}
+            className="text-5xl font-extrabold tracking-wider text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.8)]"
+            initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: [0, 1.5, 1], opacity: [0, 1, 0] }}
-            transition={{ duration: 3.5 }}
+            transition={{ duration: 3 }}
           >
             LEVEL UP!
           </motion.div>
@@ -78,4 +55,6 @@ export default function LevelUpAnimation() {
       )}
     </AnimatePresence>
   );
-}
+};
+
+export default LevelUpAnimation;

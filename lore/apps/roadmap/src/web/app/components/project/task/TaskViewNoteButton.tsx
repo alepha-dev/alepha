@@ -1,13 +1,23 @@
-import { ActionButton, Flex } from "@alepha/mantine";
-import { Card, Drawer, Textarea } from "@mantine/core";
-import { IconNotes } from "@tabler/icons-react";
+import { Button } from "@alepha/ui/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@alepha/ui/components/ui/sheet";
+import { Textarea } from "@alepha/ui/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { NotebookText } from "lucide-react";
 import { useState } from "react";
 import type { TaskController } from "@/api/controllers/TaskController.ts";
 import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
 import { currentAssignedTasksAtom } from "@/web/app/atoms/currentAssignedTasksAtom.ts";
-import { theme } from "@/web/app/constants/theme.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface TaskViewNoteButtonProps {
@@ -22,9 +32,7 @@ const TaskViewNoteButton = (props: TaskViewNoteButtonProps) => {
   const alepha = useAlepha();
   const { tr } = useI18n<I18n, "en">();
 
-  if (!client.updateTaskNote.can()) {
-    return null;
-  }
+  if (!client.updateTaskNote.can()) return null;
 
   const handleSave = async () => {
     const updatedTask = await client.updateTaskNote({
@@ -32,7 +40,6 @@ const TaskViewNoteButton = (props: TaskViewNoteButtonProps) => {
       body: { note: noteText },
     });
     props.onUpdate(updatedTask);
-    // Update local state
     const currentTasks = alepha.store.get(currentAssignedTasksAtom) || [];
     const updatedTasks = currentTasks.map((t) =>
       t.id === updatedTask.id ? updatedTask : t,
@@ -42,56 +49,56 @@ const TaskViewNoteButton = (props: TaskViewNoteButtonProps) => {
   };
 
   return (
-    <Flex>
-      <ActionButton
-        px={"xs"}
-        variant={"minimal"}
-        tooltip={tr("task.view.notes")}
-        onClick={() => {
-          setNoteText(props.task.note || "");
-          setShowDialog(true);
-        }}
-      >
-        <IconNotes size={theme.icon.size.md} />
-      </ActionButton>
-      <Drawer
-        title={tr("task.view.notes.title")}
-        size={"xl"}
-        position={"right"}
-        opened={showDialog}
-        onClose={() => setShowDialog(false)}
-        className={"drawer"}
-      >
-        <Card
-          withBorder
-          bg={theme.colors.card}
-          radius={"md"}
-          className={"shadow"}
-          p={"md"}
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => {
+              setNoteText(props.task.note || "");
+              setShowDialog(true);
+            }}
+          >
+            <NotebookText className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{tr("task.view.notes")}</TooltipContent>
+      </Tooltip>
+
+      <Sheet open={showDialog} onOpenChange={setShowDialog}>
+        <SheetContent
+          side="right"
+          className="w-full overflow-y-auto sm:max-w-2xl"
         >
-          <Flex direction="column" gap={"md"}>
+          <SheetHeader>
+            <SheetTitle>{tr("task.view.notes.title")}</SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col gap-3 p-4">
             <Textarea
-              placeholder={tr("task.view.notes.placeholder")}
+              placeholder={String(tr("task.view.notes.placeholder"))}
               value={noteText}
-              onChange={(e) => setNoteText(e.currentTarget.value)}
-              minRows={10}
-              autosize
+              onChange={(e) => setNoteText(e.target.value)}
+              rows={10}
             />
-            <Flex justify={"flex-end"} gap={"sm"}>
-              <ActionButton
-                variant={"minimal"}
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
                 onClick={() => setShowDialog(false)}
               >
                 {tr("common.cancel")}
-              </ActionButton>
-              <ActionButton variant={"filled"} onClick={handleSave}>
+              </Button>
+              <Button type="button" onClick={handleSave}>
                 {tr("task.view.notes.save")}
-              </ActionButton>
-            </Flex>
-          </Flex>
-        </Card>
-      </Drawer>
-    </Flex>
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 };
 

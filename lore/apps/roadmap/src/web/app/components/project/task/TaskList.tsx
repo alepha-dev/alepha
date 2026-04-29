@@ -1,11 +1,10 @@
-import { Flex, Text } from "@alepha/mantine";
 import { useI18n } from "alepha/react/i18n";
 import { useMemo } from "react";
 import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import TaskGroup from "./TaskGroup.tsx";
 
-interface TaskListProps {
+export interface TaskListProps {
   tasks: TaskResource[];
 }
 
@@ -21,30 +20,27 @@ const TaskList = (props: TaskListProps) => {
     return grouped;
   }, [props.tasks]);
 
-  const packageList = useMemo(() => {
-    return Object.keys(groupByPackage).sort();
-  }, [groupByPackage]);
+  const packageList = useMemo(
+    () => Object.keys(groupByPackage).sort(),
+    [groupByPackage],
+  );
 
   if (packageList.length === 0) {
     return (
-      <Flex
-        p={"sm"}
-        direction={"column"}
-        align="center"
-        justify="center"
-        flex={1}
-      >
-        <Text c={"dimmed"}>{tr("quest-log.empty")}</Text>
-      </Flex>
+      <div className="flex flex-1 flex-col items-center justify-center p-3">
+        <span className="text-muted-foreground text-sm">
+          {tr("quest-log.empty")}
+        </span>
+      </div>
     );
   }
 
   return (
-    <Flex direction="column" gap={"xs"}>
+    <div className="flex flex-col gap-2">
       {packageList.map((key) => (
-        <TaskGroup name={key} tasks={groupByPackage[key]} key={key} />
+        <TaskGroup key={key} name={key} tasks={groupByPackage[key]} />
       ))}
-    </Flex>
+    </div>
   );
 };
 

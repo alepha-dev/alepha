@@ -1,18 +1,13 @@
-import { Flex, Text } from "@alepha/mantine";
-import { Card, Center, SegmentedControl, Transition } from "@mantine/core";
 import {
-  IconBook2,
-  IconBrush,
-  IconChartLine,
-  IconSettings,
-  IconTable,
-} from "@tabler/icons-react";
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@alepha/ui/components/ui/toggle-group";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
+import { BookOpen, ChartLine, Settings, Table } from "lucide-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
-import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 
@@ -20,7 +15,6 @@ type TabValue =
   | "projectBoard"
   | "projectChapters"
   | "projectAnalytics"
-  | "projectWhiteboards"
   | "projectSettings";
 
 const ProjectActions = () => {
@@ -29,106 +23,65 @@ const ProjectActions = () => {
   const { tr } = useI18n<I18n, "en">();
   const routerState = useRouterState();
 
-  const opts = {
-    params: { projectId: String(project?.id) },
-  };
+  if (!project) return null;
 
-  const tabs: Array<{ value: TabValue; label: React.ReactNode }> = [
-    {
-      value: "projectBoard",
-      label: (
-        <Center style={{ gap: 6 }}>
-          <IconTable size={theme.icon.size.sm} />
-          <Flex visibleFrom={"sm"}>
-            <Text size={"sm"}>{tr("project.menu.board")}</Text>
-          </Flex>
-        </Center>
-      ),
-    },
-    {
-      value: "projectChapters",
-      label: (
-        <Center style={{ gap: 6 }}>
-          <IconBook2 size={theme.icon.size.sm} />
-          <Flex visibleFrom={"sm"}>
-            <Text size={"sm"}>{tr("project.menu.chapters")}</Text>
-          </Flex>
-        </Center>
-      ),
-    },
-    ...(project?.whiteboard
-      ? [
-          {
-            value: "projectWhiteboards" as TabValue,
-            label: (
-              <Center style={{ gap: 6 }}>
-                <IconBrush size={theme.icon.size.sm} />
-                <Flex visibleFrom={"sm"}>
-                  <Text size={"sm"}>{tr("project.menu.whiteboards")}</Text>
-                </Flex>
-              </Center>
-            ),
-          },
-        ]
-      : []),
-    {
-      value: "projectAnalytics",
-      label: (
-        <Center style={{ gap: 6 }}>
-          <IconChartLine size={theme.icon.size.sm} />
-          <Flex visibleFrom={"sm"}>
-            <Text size={"sm"}>{tr("project.menu.analytics")}</Text>
-          </Flex>
-        </Center>
-      ),
-    },
-    {
-      value: "projectSettings",
-      label: (
-        <Center style={{ gap: 6 }}>
-          <IconSettings size={theme.icon.size.sm} />
-          <Flex visibleFrom={"sm"}>
-            <Text size={"sm"}>{tr("project.menu.settings")}</Text>
-          </Flex>
-        </Center>
-      ),
-    },
-  ];
+  const opts = {
+    params: { projectId: String(project.id) },
+  };
 
   let name = routerState.name;
   if (name === "projectBoardTable") {
     name = "projectBoard";
   }
 
+  const tabs: Array<{ value: TabValue; icon: React.ReactNode; label: string }> =
+    [
+      {
+        value: "projectBoard",
+        icon: <Table className="size-4" />,
+        label: String(tr("project.menu.board")),
+      },
+      {
+        value: "projectChapters",
+        icon: <BookOpen className="size-4" />,
+        label: String(tr("project.menu.chapters")),
+      },
+      {
+        value: "projectAnalytics",
+        icon: <ChartLine className="size-4" />,
+        label: String(tr("project.menu.analytics")),
+      },
+      {
+        value: "projectSettings",
+        icon: <Settings className="size-4" />,
+        label: String(tr("project.menu.settings")),
+      },
+    ];
+
   return (
-    <Transition mounted={!!project} transition={"fade-down"}>
-      {(styles) => (
-        <Card style={styles} flex={1} py={2} px={2} withBorder radius={"md"}>
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 1,
-              opacity: 0.05,
-              transform: "rotate(2deg) translateY(-25px)",
-              background: "#ffffff",
-            }}
-          />
-          <Flex centerY flex={1}>
-            <SegmentedControl
-              size={"md"}
-              value={name}
-              onChange={(value) => router.push(value as TabValue, opts)}
-              data={tabs}
-            />
-            <Flex flex={1} />
-            <ProjectActionsCreateButton />
-          </Flex>
-        </Card>
-      )}
-    </Transition>
+    <div className="bg-card border-border flex flex-1 items-center gap-2 rounded-md border p-1">
+      <ToggleGroup
+        type="single"
+        value={name}
+        onValueChange={(value) => {
+          if (value) router.push(value as TabValue, opts);
+        }}
+        className="flex"
+      >
+        {tabs.map((tab) => (
+          <ToggleGroupItem
+            key={tab.value}
+            value={tab.value}
+            className="gap-1.5"
+          >
+            {tab.icon}
+            <span className="hidden text-sm sm:inline">{tab.label}</span>
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+      <div className="flex-1" />
+      <ProjectActionsCreateButton />
+    </div>
   );
 };
 

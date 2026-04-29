@@ -1,59 +1,21 @@
-import { RichTextEditor } from "@mantine/tiptap";
-import { useEditor } from "@tiptap/react";
-import { StarterKit } from "@tiptap/starter-kit";
-import type React from "react";
+import { Textarea } from "@alepha/ui/components/ui/textarea";
 
 export interface TextEditorProps {
   value?: string;
   onChange?: (value: string) => void;
+  placeholder?: string;
+  rows?: number;
 }
 
-const TextEditor: React.FC<TextEditorProps> = (props) => {
-  const { value: defaultValue = "", onChange } = props;
-
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: defaultValue,
-    onUpdate({ editor }) {
-      onChange?.(editor.getHTML().trim());
-    },
-  });
-
+const TextEditor = (props: TextEditorProps) => {
   return (
-    <RichTextEditor editor={editor as never} w={"100%"}>
-      <RichTextEditor.Toolbar sticky stickyOffset="var(--docs-header-height)">
-        <RichTextEditor.ControlsGroup>
-          <RichTextEditor.Bold />
-          <RichTextEditor.Italic />
-          <RichTextEditor.Underline />
-          <RichTextEditor.Strikethrough />
-          <RichTextEditor.ClearFormatting />
-          <RichTextEditor.Highlight />
-          <RichTextEditor.CodeBlock />
-        </RichTextEditor.ControlsGroup>
-
-        <RichTextEditor.ControlsGroup>
-          <RichTextEditor.H1 />
-          <RichTextEditor.H2 />
-          <RichTextEditor.H3 />
-          <RichTextEditor.H4 />
-        </RichTextEditor.ControlsGroup>
-
-        <RichTextEditor.ControlsGroup>
-          <RichTextEditor.Blockquote />
-          <RichTextEditor.Hr />
-          <RichTextEditor.BulletList />
-          <RichTextEditor.OrderedList />
-        </RichTextEditor.ControlsGroup>
-
-        <RichTextEditor.ControlsGroup>
-          <RichTextEditor.Undo />
-          <RichTextEditor.Redo />
-        </RichTextEditor.ControlsGroup>
-      </RichTextEditor.Toolbar>
-
-      <RichTextEditor.Content />
-    </RichTextEditor>
+    <Textarea
+      value={props.value ?? ""}
+      onChange={(e) => props.onChange?.(e.target.value)}
+      placeholder={props.placeholder}
+      rows={props.rows ?? 8}
+      className="font-mono text-sm"
+    />
   );
 };
 

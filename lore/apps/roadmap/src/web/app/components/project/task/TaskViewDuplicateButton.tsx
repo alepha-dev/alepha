@@ -1,13 +1,22 @@
-import { ActionButton, Flex } from "@alepha/mantine";
-import { Card, Drawer } from "@mantine/core";
-import { IconCopy } from "@tabler/icons-react";
+import { Button } from "@alepha/ui/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@alepha/ui/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { Copy } from "lucide-react";
 import { useState } from "react";
 import type { TaskController } from "@/api/controllers/TaskController.ts";
 import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { theme } from "@/web/app/constants/theme.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import TaskCreate from "./TaskCreate.tsx";
 
@@ -21,15 +30,9 @@ const TaskViewDuplicateButton = (props: TaskViewDuplicateButtonProps) => {
   const [project] = useStore(currentProjectAtom);
   const { tr } = useI18n<I18n, "en">();
 
-  if (!project) {
-    return null;
-  }
+  if (!project) return null;
+  if (!client.createTask.can()) return null;
 
-  if (!client.createTask.can()) {
-    return null;
-  }
-
-  // Prepare duplicate task data (exclude id and timestamps)
   const duplicateTaskData = {
     title: `${props.task.title} ${tr("task.view.duplicate.suffix")}`,
     description: props.task.description,
@@ -38,46 +41,45 @@ const TaskViewDuplicateButton = (props: TaskViewDuplicateButtonProps) => {
     complexity: props.task.complexity,
     objectives: props.task.objectives.map((obj) => ({
       title: obj.title,
-      completed: false, // Reset completion status for duplicate
+      completed: false,
     })),
   };
 
   return (
-    <Flex>
-      <ActionButton
-        px={"xs"}
-        variant={"minimal"}
-        tooltip={tr("task.view.duplicate")}
-        onClick={() => {
-          setShowDialog(true);
-        }}
-      >
-        <IconCopy size={theme.icon.size.md} />
-      </ActionButton>
-      <Drawer
-        title={tr("task.view.duplicate.title")}
-        size={"xl"}
-        position={"right"}
-        opened={showDialog}
-        onClose={() => setShowDialog(false)}
-        className={"drawer"}
-      >
-        <Card
-          withBorder
-          bg={theme.colors.card}
-          radius={"md"}
-          className={"shadow"}
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => setShowDialog(true)}
+          >
+            <Copy className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{tr("task.view.duplicate")}</TooltipContent>
+      </Tooltip>
+
+      <Sheet open={showDialog} onOpenChange={setShowDialog}>
+        <SheetContent
+          side="right"
+          className="w-full overflow-y-auto sm:max-w-2xl"
         >
-          <TaskCreate
-            project={project}
-            task={duplicateTaskData as TaskResource}
-            onSubmit={() => {
-              setShowDialog(false);
-            }}
-          />
-        </Card>
-      </Drawer>
-    </Flex>
+          <SheetHeader>
+            <SheetTitle>{tr("task.view.duplicate.title")}</SheetTitle>
+          </SheetHeader>
+          <div className="p-4">
+            <TaskCreate
+              project={project}
+              task={duplicateTaskData as TaskResource}
+              onSubmit={() => setShowDialog(false)}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 };
 

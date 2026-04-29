@@ -1,30 +1,24 @@
-import { AlephaMantineProvider, Flex } from "@alepha/mantine";
-import { Input } from "@mantine/core";
+import { Toaster } from "@alepha/ui/components/ui/sonner";
+import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
+import { ConfirmProvider } from "@alepha/ui/components/use-confirm";
 import { NestedView } from "alepha/react/router";
-import { theme } from "../constants/theme.ts";
+import { ColorScheme } from "alepha/react/ui";
 import Header from "./shared/header/Header.tsx";
 
 const Layout = () => {
   return (
-    <AlephaMantineProvider
-      mantine={{
-        theme: {
-          ...theme.mantine,
-          components: {
-            InputWrapper: Input.Wrapper.extend({
-              defaultProps: {
-                inputWrapperOrder: ["label", "input", "description", "error"],
-              },
-            }),
-          },
-        },
-      }}
-    >
-      <Flex h={"100vh"} direction={"column"}>
-        <Header />
-        <NestedView />
-      </Flex>
-    </AlephaMantineProvider>
+    <TooltipProvider>
+      <ConfirmProvider>
+        <ColorScheme />
+        <div className="flex h-screen flex-col">
+          <Header />
+          <div className="flex flex-1 flex-col overflow-auto">
+            <NestedView />
+          </div>
+        </div>
+        <Toaster />
+      </ConfirmProvider>
+    </TooltipProvider>
   );
 };
 

@@ -1,12 +1,13 @@
-import { Flex, Text } from "@alepha/mantine";
-import { Card, HoverCard } from "@mantine/core";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { useInject, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
-import type { ReactNode } from "react";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
 import { currentProjectCharacterAtom } from "../../atoms/currentProjectCharacterAtom.ts";
-import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import LevelUpAnimation from "./LevelUpAnimation.tsx";
 
@@ -20,21 +21,6 @@ const ExperienceBar = () => {
     return null;
   }
 
-  const chunks: Array<ReactNode> = [];
-
-  for (let i = 0; i < 20; i++) {
-    chunks.push(
-      <Card
-        bg={"transparent"}
-        withBorder
-        radius={0}
-        p={0}
-        key={i}
-        className={`experience-bar-chunk n${i}`}
-      />,
-    );
-  }
-
   const level = info.getLevelByXp(character.xp);
   const max = info.getMaxXpForLevel(level);
   const current = info.getCurrentXpForLevel(level, character.xp);
@@ -43,57 +29,31 @@ const ExperienceBar = () => {
   return (
     <>
       <LevelUpAnimation />
-      <Flex p={"xs"}>
-        <Flex
-          flex={1}
-          style={{
-            position: "relative",
-          }}
-        >
-          <Card
-            p={0}
-            bg={theme.colors.panel}
-            style={{ width: "100%", height: 10 }}
-          />
-
-          <Flex
-            className={"experience-bar-progress"}
-            style={{ width: `${percentage}%` }}
-          />
-
-          <Flex w={"100%"} style={{ position: "absolute", height: "100%" }}>
-            {chunks}
-          </Flex>
-
-          <Card
-            withBorder
-            p={0}
-            className={"experience-bar-cursor"}
-            style={{ left: `${percentage}%` }}
-          />
-
-          <Flex
-            flex={1}
-            align="center"
-            justify="center"
-            style={{ position: "absolute", left: 0, top: -4, right: 0 }}
-          >
-            <HoverCard openDelay={1000} position="top">
-              <HoverCard.Target>
-                <Text size={"xs"} className={"experience-bar-text"}>
+      <div className="p-2">
+        <div className="relative flex h-3 w-full items-center">
+          <div className="h-2.5 w-full overflow-hidden rounded-full border border-border bg-muted">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 to-violet-500 transition-all"
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="pointer-events-auto cursor-help text-[10px] font-medium text-foreground/90 mix-blend-difference">
                   XP: {current}/{max}
-                </Text>
-              </HoverCard.Target>
-              <HoverCard.Dropdown>
-                <Flex direction="column" style={{ maxWidth: 256 }}>
-                  <Text>{tr("xp.bar.title")}</Text>
-                  <Text size="sm">{tr("xp.bar.description")}</Text>
-                </Flex>
-              </HoverCard.Dropdown>
-            </HoverCard>
-          </Flex>
-        </Flex>
-      </Flex>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <div className="flex max-w-64 flex-col">
+                  <span className="font-medium">{tr("xp.bar.title")}</span>
+                  <span className="text-sm">{tr("xp.bar.description")}</span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+      </div>
     </>
   );
 };

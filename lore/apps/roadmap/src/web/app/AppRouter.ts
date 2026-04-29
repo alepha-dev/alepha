@@ -1,5 +1,5 @@
-import { AuthRouter } from "@alepha/mantine/auth";
 import { $hook, $inject, Alepha, t } from "alepha";
+import type { RealmController } from "alepha/api/users";
 import { ReactAuth } from "alepha/react/auth";
 import { $head, type Head } from "alepha/react/head";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
@@ -13,16 +13,11 @@ import type { KanbanController } from "../../api/controllers/KanbanController.ts
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectStatsController } from "../../api/controllers/ProjectStatsController.ts";
 import type { TaskController } from "../../api/controllers/TaskController.ts";
-import type { WhiteboardController } from "../../api/controllers/WhiteboardController.ts";
 import { currentAssignedTasksAtom } from "./atoms/currentAssignedTasksAtom.ts";
 import { currentChaptersAtom } from "./atoms/currentChaptersAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectCharacterAtom } from "./atoms/currentProjectCharacterAtom.ts";
 import { currentTaskAtom } from "./atoms/currentTaskAtom.ts";
-import {
-  currentWhiteboardAtom,
-  currentWhiteboardsAtom,
-} from "./atoms/currentWhiteboardsAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { MeRouter } from "./components/profile/me/MeRouter.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
@@ -32,14 +27,13 @@ export class AppRouter {
   taskApi = $client<TaskController>();
   projectApi = $client<ProjectController>();
   projectStatsApi = $client<ProjectStatsController>();
-  whiteboardApi = $client<WhiteboardController>();
   invitationAdminApi = $client<AdminInvitationController>();
   kanbanApi = $client<KanbanController>();
   chapterApi = $client<ChapterController>();
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
   meRouter = $inject(MeRouter);
-  authRouter = $inject(AuthRouter);
+  realmApi = $client<RealmController>();
 
   head = $head(() => {
     const head: Head = {
@@ -66,7 +60,9 @@ export class AppRouter {
 
   layout = $page({
     children: () => [
-      this.home, //
+      this.home,
+      this.login,
+      this.register,
       this.project,
       this.projectCreate,
       this.kanban,
@@ -100,7 +96,6 @@ export class AppRouter {
   onFetchError = $hook({
     on: "client:onError",
     handler: async ({ error }) => {
-      // when user try to access a resource without being logged in (expired session or just no logged in)
       const loginPath = this.router.path("login");
       if (
         this.alepha.isBrowser() &&
@@ -118,6 +113,28 @@ export class AppRouter {
   });
 
   // -------------------------------------------------------------------------------------------------------------------
+
+  login = $page({
+    path: "/auth/login",
+    name: "login",
+    head: { title: "Sign in" },
+    lazy: () => import("./components/auth/AuthLoginPage.tsx"),
+    loader: async () => {
+      const realmConfig = await this.realmApi.getRealmConfig();
+      return { realmConfig };
+    },
+  });
+
+  register = $page({
+    path: "/auth/register",
+    name: "register",
+    head: { title: "Sign up" },
+    lazy: () => import("./components/auth/AuthRegisterPage.tsx"),
+    loader: async () => {
+      const realmConfig = await this.realmApi.getRealmConfig();
+      return { realmConfig };
+    },
+  });
 
   home = $page({
     path: "/",
@@ -157,7 +174,6 @@ export class AppRouter {
       this.projectChapters,
       this.projectSettings,
       this.projectAnalytics,
-      this.projectWhiteboards,
     ],
     path: "/p/:projectId",
     schema: {
@@ -214,7 +230,7 @@ export class AppRouter {
   projectAnalytics = $page({
     path: "/analytics",
     lazy: () => import("./components/project/ProjectStats.tsx"),
-    loader: async ({ params }) => {
+    loader: async () => {
       const stats = await this.projectStatsApi.getProjectStats({
         params: {
           id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
@@ -256,35 +272,6 @@ export class AppRouter {
         players,
         pendingInvitations,
       };
-    },
-  });
-
-  projectWhiteboards = $page({
-    path: "/whiteboards",
-    lazy: () => import("./components/project/ProjectWhiteboards.tsx"),
-    loader: async () => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-
-      const whiteboards = await this.whiteboardApi.getWhiteboards({
-        params: { projectId: project.id },
-      });
-
-      this.alepha.store.set(currentWhiteboardsAtom, whiteboards);
-      if (whiteboards.length > 0) {
-        this.alepha.store.set(currentWhiteboardAtom, whiteboards[0]);
-      }
-
-      return {
-        project,
-        whiteboards,
-      };
-    },
-    onLeave: () => {
-      this.alepha.store.set(currentWhiteboardsAtom, []);
-      this.alepha.store.set(currentWhiteboardAtom, undefined);
     },
   });
 

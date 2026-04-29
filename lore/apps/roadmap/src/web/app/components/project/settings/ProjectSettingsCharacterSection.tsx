@@ -1,11 +1,9 @@
-import { Flex, Text } from "@alepha/mantine";
-import { Card } from "@mantine/core";
-import { IconCircleFilled, IconMoneybag } from "@tabler/icons-react";
+import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { Circle, Wallet } from "lucide-react";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
 import { currentProjectCharacterAtom } from "@/web/app/atoms/currentProjectCharacterAtom.ts";
-import { theme } from "@/web/app/constants/theme.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export type ProjectSettingsCharacterSectionProps = {};
@@ -28,67 +26,49 @@ const ProjectSettingsCharacterSection = (
   const nextXp = helper.getNextXpForLevel(character.xp);
 
   return (
-    <Flex direction="column" gap={"xs"}>
-      <Text>{tr("project.settings.character.title")}</Text>
-      <Card
-        radius={0}
-        withBorder
-        className={"shadow"}
-        bg={theme.colors.card}
-        p={"sm"}
-      >
-        <Flex gap={"md"} align="center">
-          <Flex
-            direction="column"
-            gap={0}
-            flex={1}
-            align="center"
-            justify="center"
-          >
-            <Text size="sm">
+    <div className="flex flex-col gap-2">
+      <span className="text-sm">{tr("project.settings.character.title")}</span>
+      <Card className="bg-card shadow">
+        <CardContent className="flex items-center gap-4 p-4">
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <span className="text-sm">
               {tr("project.settings.character.level", {
                 args: [String(level)],
               })}
-            </Text>
-            <Text size="xs" c={"dimmed"}>
+            </span>
+            <span className="text-muted-foreground text-xs">
               {tr("project.settings.character.nextLevel", {
                 args: [String(i18n.l(nextXp))],
               })}
-            </Text>
-          </Flex>
-          <Flex
-            direction="column"
-            gap={0}
-            flex={1}
-            align="center"
-            justify="center"
-          >
-            <Flex gap={"xs"} align="center" justify="center">
-              <IconMoneybag size={theme.icon.size.md} />
-              <Flex gap={"xs"} align={"center"}>
-                <Flex align={"center"} gap={2}>
-                  <Text size={"sm"}>{gold}</Text>
-                  <IconCircleFilled
-                    color={"var(--color-gold)"}
-                    size={theme.icon.size.xs}
+            </span>
+          </div>
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <div className="flex items-center gap-2">
+              <Wallet className="size-4" />
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5">
+                  <span className="text-sm">{gold}</span>
+                  <Circle
+                    className="size-2 fill-current"
+                    style={{ color: "var(--color-gold)" }}
                   />
-                </Flex>
-                <Flex align={"center"} gap={2}>
-                  <Text size={"sm"}>{silver}</Text>
-                  <IconCircleFilled
-                    color={"var(--color-silver)"}
-                    size={theme.icon.size.xs}
+                </div>
+                <div className="flex items-center gap-0.5">
+                  <span className="text-sm">{silver}</span>
+                  <Circle
+                    className="size-2 fill-current"
+                    style={{ color: "var(--color-silver)" }}
                   />
-                </Flex>
-              </Flex>
-            </Flex>
-            <Text size="xs" c={"dimmed"}>
+                </div>
+              </div>
+            </div>
+            <span className="text-muted-foreground text-xs">
               {tr("project.settings.character.balance")}
-            </Text>
-          </Flex>
-        </Flex>
+            </span>
+          </div>
+        </CardContent>
       </Card>
-    </Flex>
+    </div>
   );
 };
 

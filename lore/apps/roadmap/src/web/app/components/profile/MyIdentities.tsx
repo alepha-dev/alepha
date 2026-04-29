@@ -1,20 +1,19 @@
-import { ActionButton, Control, Flex, Text, useToast } from "@alepha/mantine";
-import { Badge, Modal } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
 import {
-  IconBrandGithub,
-  IconBrandGoogle,
-  IconKey,
-  IconLock,
-  IconShield,
-  IconUser,
-} from "@tabler/icons-react";
-import { t } from "alepha";
-import { useClient } from "alepha/react";
-import { useForm } from "alepha/react/form";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@alepha/ui/components/ui/dialog";
+import { Input } from "@alepha/ui/components/ui/input";
+import { Label } from "@alepha/ui/components/ui/label";
+import { useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useState } from "react";
+import { GitBranch, Key, Lock, Shield, User } from "lucide-react";
+import { type FormEvent, useState } from "react";
 import type { IdentityController } from "@/api/controllers/IdentityController.ts";
+import { Toaster } from "../../services/Toaster.ts";
 
 export interface MyIdentitiesProps {
   identities: Array<{
@@ -28,212 +27,187 @@ export interface MyIdentitiesProps {
 
 const MyIdentities = (props: MyIdentitiesProps) => {
   const { identities } = props;
-  const [opened, { open, close }] = useDisclosure(false);
+  const [opened, setOpened] = useState(false);
   const [localIdentities, setLocalIdentities] = useState(identities);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const identityApi = useClient<IdentityController>();
-  const toast = useToast();
+  const toaster = useInject(Toaster);
   const { l } = useI18n();
 
   const hasPasswordIdentity = localIdentities.some(
     (identity) => identity.provider === "usernamePassword",
   );
 
-  const passwordForm = useForm({
-    schema: t.object({
-      username: t.string({ minLength: 3, maxLength: 30 }),
-      password: t.string({ minLength: 6, maxLength: 128 }),
-      confirmPassword: t.string({ minLength: 6, maxLength: 128 }),
-    }),
-    handler: async (data) => {
-      if (data.password !== data.confirmPassword) {
-        throw new Error("Passwords do not match");
-      }
+  const close = () => {
+    setOpened(false);
+    setUsername("");
+    setPassword("");
+    setConfirmPassword("");
+  };
 
-      await identityApi.setPassword({
-        body: { username: data.username, password: data.password },
-      });
-
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (password !== confirmPassword) {
+      toaster.show("Passwords do not match", "danger");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await identityApi.setPassword({ body: { username, password } });
       setLocalIdentities((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           provider: "usernamePassword",
-          providerUserId: data.username,
+          providerUserId: username,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
       ]);
-
-      toast.success({ message: "Password has been set successfully" });
+      toaster.show("Password has been set successfully", "success");
       close();
-    },
-    onError: (error) => {
-      toast.danger({ message: error.message || "Failed to set password" });
-    },
-  });
+    } catch (error: any) {
+      toaster.show(error?.message || "Failed to set password", "danger");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const providerIcon = (provider: string) => {
-    const size = 16;
-    if (provider === "google") return <IconBrandGoogle size={size} />;
-    if (provider === "github") return <IconBrandGithub size={size} />;
-    if (provider === "usernamePassword") return <IconKey size={size} />;
-    return <IconUser size={size} />;
+    if (provider === "github") return <GitBranch className="size-4" />;
+    if (provider === "usernamePassword") return <Key className="size-4" />;
+    return <User className="size-4" />;
   };
 
   const providerLabel = (provider: string) => {
-    if (provider === "google") return "Google";
     if (provider === "github") return "GitHub";
+    if (provider === "google") return "Google";
     if (provider === "usernamePassword") return "Password";
     return provider;
   };
 
-  const providerColor = (provider: string) => {
-    if (provider === "google") return "red";
-    if (provider === "github") return "gray";
-    if (provider === "usernamePassword") return "blue";
-    return "gray";
-  };
-
   return (
-    <Flex direction="column" gap="lg" flex={1} py="md">
-      <Flex justify="space-between" align="center">
-        <Flex align="center" gap="sm">
-          <IconShield size={20} />
-          <Text size="lg" fw={700}>
-            Identities
-          </Text>
-          <Badge variant="light" size="sm">
-            {localIdentities.length}
-          </Badge>
-        </Flex>
+    <div className="flex flex-1 flex-col gap-6 py-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Shield className="size-5" />
+          <span className="text-lg font-bold">Identities</span>
+          <Badge variant="secondary">{localIdentities.length}</Badge>
+        </div>
         {!hasPasswordIdentity && (
-          <ActionButton
-            size="xs"
-            variant="light"
-            leftSection={<IconLock size={14} />}
-            onClick={open}
-          >
+          <Button variant="secondary" size="sm" onClick={() => setOpened(true)}>
+            <Lock className="size-3.5" />
             Set Password
-          </ActionButton>
+          </Button>
         )}
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="sm">
+      <div className="flex flex-col gap-3">
         {localIdentities.map((identity) => (
-          <Flex
+          <div
             key={identity.id}
-            align="center"
-            gap="md"
-            p="md"
-            bg="var(--alepha-elevated)"
-            style={{
-              borderRadius: "var(--mantine-radius-md)",
-              border: "1px solid var(--alepha-border)",
-            }}
+            className="flex items-center gap-4 rounded-md border border-border bg-card p-4"
           >
-            <Flex
-              w={36}
-              h={36}
-              align="center"
-              justify="center"
-              style={{
-                borderRadius: "var(--mantine-radius-sm)",
-                background: "var(--alepha-surface)",
-              }}
-            >
+            <div className="flex size-9 items-center justify-center rounded-md bg-muted">
               {providerIcon(identity.provider)}
-            </Flex>
-
-            <Flex direction="column" gap={0} flex={1}>
-              <Flex align="center" gap="xs">
-                <Text size="sm" fw={600}>
+            </div>
+            <div className="flex flex-1 flex-col">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">
                   {providerLabel(identity.provider)}
-                </Text>
-                <Badge
-                  variant="dot"
-                  color={providerColor(identity.provider)}
-                  size="xs"
-                >
+                </span>
+                <Badge variant="outline" className="text-xs">
                   Active
                 </Badge>
-              </Flex>
-              <Text size="xs" c="dimmed">
+              </div>
+              <span className="text-xs text-muted-foreground">
                 {identity.provider === "usernamePassword"
                   ? identity.providerUserId
                   : `ID: ${identity.providerUserId}`}
-              </Text>
-            </Flex>
-
-            <Text size="xs" c="dimmed">
+              </span>
+            </div>
+            <span className="text-xs text-muted-foreground">
               {l(identity.createdAt)}
-            </Text>
-          </Flex>
+            </span>
+          </div>
         ))}
 
         {localIdentities.length === 0 && (
-          <Flex
-            align="center"
-            justify="center"
-            direction="column"
-            gap="sm"
-            py="xl"
-          >
-            <IconUser size={40} opacity={0.3} />
-            <Text c="dimmed" ta="center">
+          <div className="flex flex-col items-center justify-center gap-2 py-8">
+            <User className="size-10 opacity-30" />
+            <span className="text-center text-muted-foreground">
               No identities found. This shouldn't happen.
-            </Text>
-          </Flex>
+            </span>
+          </div>
         )}
-      </Flex>
+      </div>
 
-      <Modal opened={opened} onClose={close} title="Set Password" centered>
-        <form {...passwordForm.props}>
-          <Flex direction="column" gap="md">
-            <Text size="sm" c="dimmed">
+      <Dialog open={opened} onOpenChange={(o) => !o && close()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Password</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <span className="text-sm text-muted-foreground">
               Set up a username and password to sign in without external
               providers.
-            </Text>
-
-            <Control
-              input={passwordForm.input.username}
-              label="Username"
-              icon={<IconUser size={16} />}
-              text={{
-                placeholder: "Choose a username",
-                autoComplete: "username",
-              }}
-            />
-
-            <Control
-              input={passwordForm.input.password}
-              label="Password"
-              icon={<IconLock size={16} />}
-              password={{
-                placeholder: "Enter password",
-                autoComplete: "new-password",
-              }}
-            />
-
-            <Control
-              input={passwordForm.input.confirmPassword}
-              label="Confirm Password"
-              icon={<IconLock size={16} />}
-              password={{
-                placeholder: "Confirm password",
-                autoComplete: "new-password",
-              }}
-            />
-
-            <Flex justify="flex-end" gap="sm">
-              <ActionButton variant="subtle" onClick={close}>
+            </span>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Choose a username"
+                autoComplete="username"
+                minLength={3}
+                maxLength={30}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password"
+                autoComplete="new-password"
+                minLength={6}
+                maxLength={128}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                autoComplete="new-password"
+                minLength={6}
+                maxLength={128}
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={close}>
                 Cancel
-              </ActionButton>
-              <ActionButton form={passwordForm}>Set Password</ActionButton>
-            </Flex>
-          </Flex>
-        </form>
-      </Modal>
-    </Flex>
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                Set Password
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

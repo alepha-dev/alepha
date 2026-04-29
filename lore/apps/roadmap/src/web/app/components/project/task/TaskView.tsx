@@ -1,21 +1,21 @@
-import { ActionButton, Flex, Text } from "@alepha/mantine";
-import { Card } from "@mantine/core";
-import { modals } from "@mantine/modals";
-import {
-  IconCircleFilled,
-  IconFileText,
-  IconHistory,
-  IconPaperclip,
-  IconPigMoney,
-  IconSignature,
-  IconSwords,
-  IconTag,
-  IconTrash,
-  IconX,
-} from "@tabler/icons-react";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Card } from "@alepha/ui/components/ui/card";
+import { useConfirm } from "@alepha/ui/components/use-confirm";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
+import { Link, useRouter } from "alepha/react/router";
+import {
+  Circle,
+  FileText,
+  History,
+  Paperclip,
+  PiggyBank,
+  Signature,
+  Swords,
+  Tag,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { TaskController } from "@/api/controllers/TaskController.ts";
 import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
@@ -25,7 +25,6 @@ import { currentAssignedTasksAtom } from "@/web/app/atoms/currentAssignedTasksAt
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentProjectCharacterAtom } from "@/web/app/atoms/currentProjectCharacterAtom.ts";
 import { currentTaskAtom } from "@/web/app/atoms/currentTaskAtom.ts";
-import { theme } from "@/web/app/constants/theme.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import AttachmentBadge from "./AttachmentBadge.tsx";
 import TaskDescription from "./TaskDescription.tsx";
@@ -42,15 +41,29 @@ export interface TaskViewProps {
   onTaskChange?: (task: TaskResource) => void;
 }
 
+interface SectionHeaderProps {
+  icon: React.ReactNode;
+  label: string;
+}
+
+const SectionHeader = (props: SectionHeaderProps) => (
+  <div className="flex items-center justify-center gap-2">
+    {props.icon}
+    <span className="text-lg font-bold">{props.label}</span>
+    <div className="bg-border h-px w-full opacity-30" />
+  </div>
+);
+
 const TaskView = (props: TaskViewProps) => {
   const alepha = useAlepha();
   const taskApi = useClient<TaskController>();
   const router = useRouter<AppRouter>();
   const info = useInject(CharacterInfo);
   const { tr } = useI18n<I18n, "en">();
+  const confirm = useConfirm();
   const [showDialog, setShowDialog] = useState(false);
-
   const [task, setTask] = useState<TaskResource>(props.task);
+
   useEffect(() => {
     setTask(props.task);
   }, [props.task]);
@@ -72,35 +85,21 @@ const TaskView = (props: TaskViewProps) => {
 
   const money = info.getMoneyFromTask(task);
 
-  const openDeleteModal = () =>
-    new Promise<boolean>((resolve) =>
-      modals.openConfirmModal({
-        title: tr("task.view.abandon.title"),
-        centered: true,
-        children: <Text size="sm">{tr("task.view.abandon.confirm")}</Text>,
-        onClose: () => resolve(false),
-        labels: {
-          confirm: tr("task.view.abandon.confirmButton"),
-          cancel: tr("common.cancel"),
-        },
-        confirmProps: { color: "red" },
-        onCancel: () => resolve(false),
-        onConfirm: () => resolve(true),
-      }),
-    );
-
   const abandonTask = {
     disabled: !taskApi.abandonTask.can(),
     onClick: async () => {
-      const confirm = await openDeleteModal();
-      if (!confirm) {
-        return;
-      }
+      const ok = await confirm({
+        title: String(tr("task.view.abandon.title")),
+        description: String(tr("task.view.abandon.confirm")),
+        confirmLabel: String(tr("task.view.abandon.confirmButton")),
+        cancelLabel: String(tr("common.cancel")),
+        destructive: true,
+      });
+      if (!ok) return;
 
       const updatedTask = await taskApi.abandonTask({
         params: { id: task.id },
       });
-
       updateTask(updatedTask);
       alepha.store.set(
         currentAssignedTasksAtom,
@@ -115,234 +114,173 @@ const TaskView = (props: TaskViewProps) => {
   return (
     <Card
       key={task.id}
-      flex={1}
-      withBorder
-      className={"shadow"}
-      bg={theme.colors.card}
-      p={0}
-      m={2}
+      className="bg-card m-0.5 flex flex-1 flex-col gap-0 overflow-hidden border-border p-0 shadow"
     >
-      <Flex direction="column" flex={1} className={"overflow-auto"} gap={0}>
-        <Flex direction="column" flex={1} className={"overflow-auto"} gap={0}>
-          <Flex
-            px={"lg"}
-            py={"md"}
-            direction={"column"}
-            gap={"xl"}
-            flex={1}
-            className={"overflow-auto"}
-          >
-            <Flex col gap={"xs"}>
-              <Flex gap={"xs"} align="center" justify="center">
-                <IconTag size={theme.icon.size.md} />
-                <Text
-                  size="lg"
-                  fw={"bold"}
-                  style={{ textWrap: "nowrap" }}
-                  className={"cinzel-400"}
-                >
-                  {task.title}
-                </Text>
-                {!task.completedAt && project && (
-                  <>
-                    <TaskViewEditButton
-                      task={task}
-                      onUpdate={(it) => {
-                        updateTask(it);
-                        alepha.store.set(currentTaskAtom, it);
-                      }}
-                      showDialog={showDialog}
-                      setShowDialog={setShowDialog}
-                    />
-                    <TaskViewNoteButton
-                      task={task}
-                      onUpdate={(it) => {
-                        updateTask(it);
-                        alepha.store.set(currentTaskAtom, it);
-                      }}
-                    />
-                    <TaskViewDuplicateButton task={task} />
-                  </>
-                )}
-                <Flex
-                  flex={1}
-                  style={{
-                    opacity: 0.1,
-                    height: 1,
-                    backgroundColor: "var(--alepha-text)",
-                  }}
-                />
-                <TaskViewTimer
-                  task={task}
-                  onUpdate={(it) => {
-                    updateTask(it);
-                    alepha.store.set(currentTaskAtom, it);
-                    const tasks =
-                      alepha.store.get(currentAssignedTasksAtom) ?? [];
-                    alepha.store.set(
-                      currentAssignedTasksAtom,
-                      tasks.map((t) => (t.id === it.id ? it : t)),
-                    );
-                  }}
-                />
-                <ActionButton
-                  variant={"minimal"}
-                  px={"xs"}
-                  {...(props.onClose
-                    ? { onClick: props.onClose }
-                    : project
-                      ? {
-                          href: router.path("projectBoard", {
-                            params: { projectId: String(project.id) },
-                          }),
-                        }
-                      : {})}
-                >
-                  <IconX size={theme.icon.size.md} />
-                </ActionButton>
-              </Flex>
-
-              <Text size={"sm"}>
-                {tr("task.view.summary", {
-                  args: [task.priority, info.getRank(task.complexity)],
-                })}
-              </Text>
-            </Flex>
-
-            <Flex col gap={"xs"}>
-              <Flex direction="column" gap={0}>
-                <Flex gap={"xs"} align="center" justify="center">
-                  <IconFileText size={theme.icon.size.lg} />
-                  <Text size="lg" fw={"bold"} className={"cinzel-400"}>
-                    {tr("task.view.description")}
-                  </Text>
-                  <Flex
-                    w={"100%"}
-                    style={{
-                      opacity: 0.1,
-                      height: 1,
-                      backgroundColor: "var(--alepha-text)",
+      <div className="flex flex-1 flex-col overflow-auto">
+        <div className="flex flex-1 flex-col gap-6 overflow-auto px-5 py-4">
+          {/* Title */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-center gap-2">
+              <Tag className="size-5" />
+              <span className="cinzel-400 whitespace-nowrap text-lg font-bold">
+                {task.title}
+              </span>
+              {!task.completedAt && project && (
+                <>
+                  <TaskViewEditButton
+                    task={task}
+                    onUpdate={(it) => {
+                      updateTask(it);
+                      alepha.store.set(currentTaskAtom, it);
+                    }}
+                    showDialog={showDialog}
+                    setShowDialog={setShowDialog}
+                  />
+                  <TaskViewNoteButton
+                    task={task}
+                    onUpdate={(it) => {
+                      updateTask(it);
+                      alepha.store.set(currentTaskAtom, it);
                     }}
                   />
-                </Flex>
-              </Flex>
+                  <TaskViewDuplicateButton task={task} />
+                </>
+              )}
+              <div className="bg-border h-px flex-1 opacity-30" />
+              <TaskViewTimer
+                task={task}
+                onUpdate={(it) => {
+                  updateTask(it);
+                  alepha.store.set(currentTaskAtom, it);
+                  const tasks =
+                    alepha.store.get(currentAssignedTasksAtom) ?? [];
+                  alepha.store.set(
+                    currentAssignedTasksAtom,
+                    tasks.map((t) => (t.id === it.id ? it : t)),
+                  );
+                }}
+              />
+              {props.onClose ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={props.onClose}
+                >
+                  <X className="size-4" />
+                </Button>
+              ) : project ? (
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                >
+                  <Link
+                    href={router.path("projectBoard", {
+                      params: { projectId: String(project.id) },
+                    })}
+                  >
+                    <X className="size-4" />
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+            <span className="text-sm">
+              {tr("task.view.summary", {
+                args: [task.priority, info.getRank(task.complexity)],
+              })}
+            </span>
+          </div>
 
-              <TaskDescription task={task} onEdit={() => setShowDialog(true)} />
-            </Flex>
-
-            <TaskViewObjectives
-              task={task}
-              onTaskUpdate={(updatedTask) => {
-                updateTask(updatedTask);
-                alepha.store.set(currentTaskAtom, updatedTask);
-              }}
+          {/* Description */}
+          <div className="flex flex-col gap-2">
+            <SectionHeader
+              icon={<FileText className="size-5" />}
+              label={String(tr("task.view.description"))}
             />
+            <TaskDescription task={task} onEdit={() => setShowDialog(true)} />
+          </div>
 
-            {task.attachments && task.attachments.length > 0 && (
-              <>
-                <Flex gap={"xs"} align="center" justify="center">
-                  <IconPaperclip size={theme.icon.size.lg} />
-                  <Text className={"cinzel-400"} size="lg" fw={"bold"}>
-                    {tr("task.view.attachments")}
-                  </Text>
-                  <Flex
-                    w={"100%"}
-                    style={{
-                      opacity: 0.1,
-                      height: 1,
-                      backgroundColor: "var(--alepha-text)",
-                    }}
+          {/* Objectives */}
+          <TaskViewObjectives
+            task={task}
+            onTaskUpdate={(updatedTask) => {
+              updateTask(updatedTask);
+              alepha.store.set(currentTaskAtom, updatedTask);
+            }}
+          />
+
+          {/* Attachments */}
+          {task.attachments && task.attachments.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <SectionHeader
+                icon={<Paperclip className="size-5" />}
+                label={String(tr("task.view.attachments"))}
+              />
+              <div className="flex flex-wrap gap-2">
+                {task.attachments.map((fileId) => (
+                  <AttachmentBadge key={fileId} fileId={fileId} disabled />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Rewards */}
+          <div className="flex flex-col gap-2">
+            <SectionHeader
+              icon={<PiggyBank className="size-5" />}
+              label={String(tr("task.view.rewards"))}
+            />
+            <div className="flex items-center gap-2">
+              <span className="text-sm">{tr("task.view.receive")}</span>
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 text-sm">
+                  {info.getGold(money)}
+                  <Circle
+                    className="size-3"
+                    fill="var(--color-gold)"
+                    color="var(--color-gold)"
                   />
-                </Flex>
-                <Flex gap="xs" wrap="wrap">
-                  {task.attachments.map((fileId) => (
-                    <AttachmentBadge key={fileId} fileId={fileId} disabled />
-                  ))}
-                </Flex>
-              </>
-            )}
+                </span>
+                <span className="flex items-center gap-1 text-sm">
+                  {info.getSilver(money)}
+                  <Circle
+                    className="size-3"
+                    fill="var(--color-silver)"
+                    color="var(--color-silver)"
+                  />
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm">{tr("task.view.experience")}</span>
+              <span className="text-sm font-bold">
+                {info.getXpFromTask(task)} XP
+              </span>
+            </div>
+          </div>
 
-            <Flex col gap={"xs"}>
-              <Flex gap={"xs"} align="center" justify="center">
-                <IconPigMoney size={theme.icon.size.lg} />
-                <Text className={"cinzel-400"} size="lg" fw={"bold"}>
-                  {tr("task.view.rewards")}
-                </Text>
-                <Flex
-                  w={"100%"}
-                  style={{
-                    opacity: 0.1,
-                    height: 1,
-                    backgroundColor: "var(--alepha-text)",
-                  }}
-                />
-              </Flex>
+          {/* History */}
+          <div className="flex flex-col gap-2">
+            <SectionHeader
+              icon={<History className="size-5" />}
+              label={String(tr("task.view.history"))}
+            />
+            <TaskHistory task={task} />
+          </div>
+        </div>
 
-              <Flex gap={"sm"}>
-                <Text size={"sm"}>{tr("task.view.receive")}</Text>
-                <Flex gap={"xs"} align={"center"}>
-                  <Flex align={"center"} gap={2}>
-                    <Text size={"sm"}>{info.getGold(money)}</Text>
-                    <IconCircleFilled
-                      color={"var(--color-gold)"}
-                      size={theme.icon.size.xs}
-                    />
-                  </Flex>
-                  <Flex align={"center"} gap={2}>
-                    <Text size={"sm"}>{info.getSilver(money)}</Text>
-                    <IconCircleFilled
-                      color={"var(--color-silver)"}
-                      size={theme.icon.size.xs}
-                    />
-                  </Flex>
-                </Flex>
-              </Flex>
-
-              <Flex gap={"sm"}>
-                <Text size={"sm"}>{tr("task.view.experience")}</Text>
-                <Text size={"sm"} fw={"bold"}>
-                  {info.getXpFromTask(task)} XP
-                </Text>
-              </Flex>
-            </Flex>
-
-            {/* History */}
-            <Flex col>
-              <Flex gap={"xs"} align="center" justify="center">
-                <IconHistory size={theme.icon.size.lg} />
-                <Text className={"cinzel-400"} size="lg" fw={"bold"}>
-                  {tr("task.view.history")}
-                </Text>
-                <Flex
-                  w={"100%"}
-                  style={{
-                    opacity: 0.1,
-                    height: 1,
-                    backgroundColor: "var(--alepha-text)",
-                  }}
-                />
-              </Flex>
-              <TaskHistory task={task} />
-            </Flex>
-          </Flex>
-        </Flex>
         {!task.completedAt && (
-          <Flex p={"xs"}>
-            <Card
-              w={"100%"}
-              p={"xs"}
-              bg={theme.colors.panel}
-              withBorder
-              radius={"md"}
-              className={"shadow"}
-            >
+          <div className="p-2">
+            <Card className="bg-muted border-border w-full rounded-md p-2 shadow">
               {!task.acceptedAt && (
-                <Flex justify={"center"} flex={1}>
-                  <ActionButton
-                    w={"100%"}
-                    c={"blue"}
-                    variant={"minimal"}
-                    leftSection={<IconSignature size={theme.icon.size.md} />}
+                <div className="flex flex-1 justify-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full text-blue-500 hover:text-blue-600"
                     disabled={!taskApi.acceptTask.can()}
                     onClick={async () => {
                       const updatedTask = await taskApi.acceptTask({
@@ -356,28 +294,28 @@ const TaskView = (props: TaskViewProps) => {
                       ]);
                     }}
                   >
+                    <Signature className="size-4" />
                     {tr("task.view.actions.accept")}
-                  </ActionButton>
-                </Flex>
+                  </Button>
+                </div>
               )}
               {task.acceptedAt && (
-                <Flex justify={"space-between"} gap={"xs"}>
-                  <Flex>
-                    <ActionButton
-                      px={"sm"}
-                      textVisibleFrom={"sm"}
-                      c={"red"}
-                      variant={"minimal"}
-                      leftSection={<IconTrash size={theme.icon.size.md} />}
-                      {...abandonTask}
-                    >
+                <div className="flex justify-between gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-red-500 hover:text-red-600"
+                    {...abandonTask}
+                  >
+                    <Trash2 className="size-4" />
+                    <span className="hidden sm:inline">
                       {tr("task.view.actions.abandon")}
-                    </ActionButton>
-                  </Flex>
-                  <ActionButton
-                    c={"green"}
-                    variant={"minimal"}
-                    leftSection={<IconSwords size={theme.icon.size.md} />}
+                    </span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-green-600 hover:text-green-700"
                     disabled={
                       !taskApi.completeTask.can() ||
                       task.objectives.some((o) => !o.completed)
@@ -398,14 +336,15 @@ const TaskView = (props: TaskViewProps) => {
                       handleClose();
                     }}
                   >
+                    <Swords className="size-4" />
                     {tr("task.view.actions.complete")}
-                  </ActionButton>
-                </Flex>
+                  </Button>
+                </div>
               )}
             </Card>
-          </Flex>
+          </div>
         )}
-      </Flex>
+      </div>
     </Card>
   );
 };

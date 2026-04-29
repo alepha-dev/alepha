@@ -1,6 +1,6 @@
-import { ActionButton, Flex } from "@alepha/mantine";
+import { Button } from "@alepha/ui/components/ui/button";
 import { useRouter } from "alepha/react/router";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
+import type { AppRouter } from "../../../AppRouter.ts";
 import HeaderProjectActions from "../../project/ProjectActions.tsx";
 import RoadmapLogo from "../RoadmapLogo.tsx";
 import HeaderActions from "./HeaderActions.tsx";
@@ -12,41 +12,31 @@ const Header = () => {
   const router = useRouter<AppRouter>();
 
   return (
-    <Flex
-      direction={"column"}
-      p={"xs"}
-      px={"md"}
-      gap={"xs"}
-      h={64}
-      align="center"
-      justify="center"
-    >
-      <Flex w={"100%"} px={2}>
-        <Flex gap={"xs"}>
-          <Flex align="center" justify="center" gap={"xs"}>
-            <HeaderMobileQuestLog />
-            <Flex>
-              <ActionButton
-                variant={"minimal"}
-                href={router.path("home")}
-                active={false}
-                leftSection={<RoadmapLogo />}
-              />
-            </Flex>
-            <HeaderProject />
-          </Flex>
-        </Flex>
-        <Flex px={"sm"} flex={1} align="center" justify="center">
-          <Flex visibleFrom={"lg"} maw={"900px"}>
+    <div className="flex h-16 items-center justify-center px-4 py-2">
+      <div className="mx-auto flex w-full max-w-[1200px] items-center gap-2">
+        <div className="flex items-center justify-center gap-2">
+          <HeaderMobileQuestLog />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.push(router.path("home"))}
+            aria-label="Home"
+          >
+            <RoadmapLogo />
+          </Button>
+          <HeaderProject />
+        </div>
+        <div className="hidden flex-1 items-center justify-center px-2 lg:flex">
+          <div className="w-full max-w-[900px]">
             <HeaderProjectActions />
-          </Flex>
-        </Flex>
-        <Flex align="center" justify="end" gap="xs">
+          </div>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
           <HeaderKanbanCreateButton />
           <HeaderActions />
-        </Flex>
-      </Flex>
-    </Flex>
+        </div>
+      </div>
+    </div>
   );
 };
 

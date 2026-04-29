@@ -1,28 +1,27 @@
-import type { CustomControlProps } from "@alepha/mantine";
-import { ActionButton, Flex, useToast } from "@alepha/mantine";
-import { Loader } from "@mantine/core";
-import { IconUpload } from "@tabler/icons-react";
+import { Button } from "@alepha/ui/components/ui/button";
 import { useClient } from "alepha/react";
+import { Loader2, Upload } from "lucide-react";
 import { type ChangeEvent, useRef, useState } from "react";
+import { toast } from "sonner";
 import type { TaskController } from "@/api/controllers/TaskController.ts";
 import AttachmentBadge from "./AttachmentBadge.tsx";
 
 const ACCEPTED_TYPES =
   "image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain,.doc,.docx";
 
-interface TaskAttachmentsProps extends CustomControlProps {
+export interface TaskAttachmentsProps {
+  value?: string[];
+  onChange: (value: string[]) => void;
   disabled?: boolean;
 }
 
 const TaskAttachments = (props: TaskAttachmentsProps) => {
-  const { value: propValue, onChange, disabled } = props;
-  const attachments: string[] = propValue || [];
-  const toast = useToast();
   const taskApi = useClient<TaskController>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [localAttachments, setLocalAttachments] =
-    useState<string[]>(attachments);
+  const [localAttachments, setLocalAttachments] = useState<string[]>(
+    props.value ?? [],
+  );
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -35,24 +34,18 @@ const TaskAttachments = (props: TaskAttachmentsProps) => {
     setUploading(true);
     try {
       const uploadPromises = Array.from(files).map(async (file) => {
-        const result = await taskApi.uploadAttachment({
-          body: { file },
-        });
+        const result = await taskApi.uploadAttachment({ body: { file } });
         return result.fileId;
       });
 
       const newFileIds = await Promise.all(uploadPromises);
       const updated = [...localAttachments, ...newFileIds];
       setLocalAttachments(updated);
-      onChange(updated);
+      props.onChange(updated);
 
-      toast.success({
-        message: `${files.length} file(s) uploaded successfully`,
-      });
+      toast.success(`${files.length} file(s) uploaded successfully`);
     } catch (error) {
-      toast.danger({
-        message: (error as Error)?.message || "Failed to upload file(s)",
-      });
+      toast.error((error as Error)?.message || "Failed to upload file(s)");
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -64,48 +57,52 @@ const TaskAttachments = (props: TaskAttachmentsProps) => {
   const handleRemove = (fileId: string) => {
     const updated = localAttachments.filter((id) => id !== fileId);
     setLocalAttachments(updated);
-    onChange(updated);
+    props.onChange(updated);
   };
 
   return (
-    <Flex direction="column" gap="xs" w="100%">
+    <div className="flex w-full flex-col gap-2">
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
         accept={ACCEPTED_TYPES}
         multiple
-        style={{ display: "none" }}
-        disabled={disabled}
+        className="hidden"
+        disabled={props.disabled}
       />
 
       {localAttachments.length > 0 && (
-        <Flex gap="xs" wrap="wrap">
+        <div className="flex flex-wrap gap-2">
           {localAttachments.map((fileId) => (
             <AttachmentBadge
               key={fileId}
               fileId={fileId}
-              onRemove={disabled ? undefined : handleRemove}
-              disabled={disabled}
+              onRemove={props.disabled ? undefined : handleRemove}
+              disabled={props.disabled}
             />
           ))}
-        </Flex>
+        </div>
       )}
 
-      {!disabled && (
-        <ActionButton
-          variant="light"
+      {!props.disabled && (
+        <Button
+          type="button"
+          variant="outline"
           size="sm"
-          leftSection={
-            uploading ? <Loader size={16} /> : <IconUpload size={16} />
-          }
           onClick={handleUploadClick}
           disabled={uploading}
+          className="self-start"
         >
+          {uploading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Upload className="size-4" />
+          )}
           {uploading ? "Uploading..." : "Attach Files"}
-        </ActionButton>
+        </Button>
       )}
-    </Flex>
+    </div>
   );
 };
 

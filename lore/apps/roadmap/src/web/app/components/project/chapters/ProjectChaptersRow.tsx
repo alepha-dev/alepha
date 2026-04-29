@@ -1,8 +1,8 @@
-import { ActionButton, Flex, Text } from "@alepha/mantine";
-import { Badge, Card } from "@mantine/core";
-import { IconBook2, IconTrash } from "@tabler/icons-react";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { useI18n } from "alepha/react/i18n";
-import { theme } from "@/web/app/constants/theme.ts";
+import { BookOpen, Trash } from "lucide-react";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import type { ChapterWithCount } from "./ProjectChapters.tsx";
 
@@ -13,70 +13,62 @@ export interface ProjectChaptersRowProps {
 }
 
 const ProjectChaptersRow = (props: ProjectChaptersRowProps) => {
-  const { chapter, onDelete, onViewChangelog } = props;
   const { tr } = useI18n<I18n, "en">();
   const i18n = useI18n();
-  const isActive = !chapter.closedAt;
+  const isActive = !props.chapter.closedAt;
 
   return (
-    <Card
-      withBorder
-      radius="md"
-      bg={theme.colors.card}
-      className="shadow"
-      p="sm"
-    >
-      <Flex align="center" justify="space-between" gap="sm">
-        <Flex align="center" gap="sm" flex={1}>
+    <Card className="bg-card shadow">
+      <CardContent className="flex items-center justify-between gap-3 p-3">
+        <div className="flex flex-1 items-center gap-3">
           <Badge
-            size="lg"
-            variant={isActive ? "filled" : "light"}
-            color={isActive ? "green" : "gray"}
+            variant={isActive ? "default" : "secondary"}
+            className={isActive ? "bg-green-600 text-white" : undefined}
           >
-            #{chapter.number}
+            #{props.chapter.number}
           </Badge>
-          <Flex direction="column" gap={0} flex={1}>
-            <Text size="sm" fw={600}>
-              {chapter.title}
-            </Text>
-            <Flex gap="xs">
-              <Text size="xs" c="dimmed">
+          <div className="flex flex-1 flex-col">
+            <span className="text-sm font-semibold">{props.chapter.title}</span>
+            <div className="flex gap-2">
+              <span className="text-muted-foreground text-xs">
                 {tr("chapter.list.quests", {
-                  args: [String(chapter.questCount)],
+                  args: [String(props.chapter.questCount)],
                 })}
-              </Text>
-              {chapter.closedAt && (
-                <Text size="xs" c="dimmed">
+              </span>
+              {props.chapter.closedAt && (
+                <span className="text-muted-foreground text-xs">
                   {tr("chapter.list.closed", {
-                    args: [String(i18n.l(chapter.closedAt, { date: "ll" }))],
+                    args: [
+                      String(i18n.l(props.chapter.closedAt, { date: "ll" })),
+                    ],
                   })}
-                </Text>
+                </span>
               )}
-            </Flex>
-          </Flex>
-        </Flex>
-        <Flex gap="xs">
-          <ActionButton
-            variant="minimal"
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
             size="sm"
-            leftSection={<IconBook2 size={theme.icon.size.sm} />}
-            onClick={() => onViewChangelog(chapter.id)}
+            onClick={() => props.onViewChangelog(props.chapter.id)}
           >
+            <BookOpen className="size-3.5" />
             {tr("chapter.changelog")}
-          </ActionButton>
-          {chapter.questCount === 0 && (
-            <ActionButton
-              variant="light"
-              color="red"
+          </Button>
+          {props.chapter.questCount === 0 && (
+            <Button
+              variant="outline"
               size="sm"
-              leftSection={<IconTrash size={theme.icon.size.sm} />}
-              onClick={() => onDelete(chapter.id)}
+              className="text-destructive"
+              onClick={() => props.onDelete(props.chapter.id)}
             >
+              <Trash className="size-3.5" />
               {tr("chapter.delete")}
-            </ActionButton>
+            </Button>
           )}
-        </Flex>
-      </Flex>
+        </div>
+      </CardContent>
     </Card>
   );
 };

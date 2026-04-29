@@ -1,25 +1,41 @@
-import { ActionButton, Flex, Text, useToast } from "@alepha/mantine";
-import { AreaChart, BarChart } from "@mantine/charts";
+import { Button } from "@alepha/ui/components/ui/button";
 import {
   Card,
-  Container,
-  Grid,
-  Select,
-  SimpleGrid,
-  Title,
-} from "@mantine/core";
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@alepha/ui/components/ui/card";
 import {
-  IconChartBar,
-  IconDownload,
-  IconStar,
-  IconTarget,
-  IconTrendingUp,
-  IconTrophy,
-  IconUsers,
-} from "@tabler/icons-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@alepha/ui/components/ui/select";
 import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import {
+  ChartBar,
+  Download,
+  Star,
+  Target,
+  TrendingUp,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { useState } from "react";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { toast } from "sonner";
 import type { ProjectStatsController } from "@/api/controllers/ProjectStatsController.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -60,9 +76,8 @@ export interface ProjectStatsProps {
 }
 
 const ProjectStats = (props: ProjectStatsProps) => {
-  const { stats } = props;
+  const stats = props.stats;
   const { tr } = useI18n<I18n, "en">();
-  const toast = useToast();
   const alepha = useAlepha();
   const projectStatsApi = useClient<ProjectStatsController>();
   const currentProject = alepha.store.get(currentProjectAtom);
@@ -70,7 +85,7 @@ const ProjectStats = (props: ProjectStatsProps) => {
 
   const handleExportCsv = async () => {
     if (!currentProject) {
-      toast.danger({ message: "No project selected" });
+      toast.error("No project selected");
       return;
     }
 
@@ -79,7 +94,6 @@ const ProjectStats = (props: ProjectStatsProps) => {
         params: { id: currentProject.id },
       });
 
-      // Create blob and download
       const url = window.URL.createObjectURL(
         new Blob([await csvData.text()], { type: "text/csv" }),
       );
@@ -91,13 +105,12 @@ const ProjectStats = (props: ProjectStatsProps) => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
-      toast.success({ message: "Tasks exported to CSV successfully" });
+      toast.success("Tasks exported to CSV successfully");
     } catch (error: any) {
-      toast.danger({ message: error?.message || "Failed to export tasks" });
+      toast.error(error?.message || "Failed to export tasks");
     }
   };
 
-  // Prepare data for charts
   const priorityData = stats.tasksByPriority.map((item) => ({
     priority: item.priority.charAt(0).toUpperCase() + item.priority.slice(1),
     total: item.count,
@@ -118,7 +131,6 @@ const ProjectStats = (props: ProjectStatsProps) => {
     totalTasks: zone.totalTasks,
   }));
 
-  // Filter and aggregate timeline data based on selected range
   const getFilteredTimelineData = () => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -151,7 +163,7 @@ const ProjectStats = (props: ProjectStatsProps) => {
         aggregateByMonth = true;
         break;
       case "all":
-        cutoffDate = new Date(0); // Beginning of time
+        cutoffDate = new Date(0);
         aggregateByMonth = true;
         break;
       default:
@@ -163,23 +175,18 @@ const ProjectStats = (props: ProjectStatsProps) => {
       (item) => new Date(item.date) >= cutoffDate,
     );
 
-    // Aggregate by week
     if (aggregateByWeek) {
       const weekMap = new Map<string, number>();
-
       for (const item of filteredData) {
         const date = new Date(item.date);
-        // Get the Monday of the week
         const monday = new Date(date);
         const day = monday.getDay();
         const diff = monday.getDate() - day + (day === 0 ? -6 : 1);
         monday.setDate(diff);
         monday.setHours(0, 0, 0, 0);
-
         const weekKey = monday.toISOString().split("T")[0];
         weekMap.set(weekKey, (weekMap.get(weekKey) || 0) + item.tasksCompleted);
       }
-
       return Array.from(weekMap.entries())
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([weekStart, tasks]) => ({
@@ -191,10 +198,8 @@ const ProjectStats = (props: ProjectStatsProps) => {
         }));
     }
 
-    // Aggregate by month
     if (aggregateByMonth) {
       const monthMap = new Map<string, number>();
-
       for (const item of filteredData) {
         const date = new Date(item.date);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -203,7 +208,6 @@ const ProjectStats = (props: ProjectStatsProps) => {
           (monthMap.get(monthKey) || 0) + item.tasksCompleted,
         );
       }
-
       return Array.from(monthMap.entries())
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([monthKey, tasks]) => {
@@ -219,7 +223,6 @@ const ProjectStats = (props: ProjectStatsProps) => {
         });
     }
 
-    // Daily data for short ranges
     return filteredData.map((item) => ({
       date: new Date(item.date).toLocaleDateString("en-US", {
         month: "short",
@@ -232,240 +235,194 @@ const ProjectStats = (props: ProjectStatsProps) => {
   const timelineData = getFilteredTimelineData();
 
   return (
-    <Container size="md" w="100%" px={{ base: 0, md: "xs" }}>
-      <Flex direction="column" w="100%" p="lg" gap="lg" style={{ minWidth: 0 }}>
-        <Flex justify="space-between" align="center">
-          <Flex gap="sm" align="center">
-            <IconChartBar size={24} />
-            <Title order={2}>{tr("stats.title")}</Title>
-          </Flex>
-          <ActionButton
-            variant="light"
-            leftSection={<IconDownload size={16} />}
-            onClick={handleExportCsv}
-            size="sm"
-          >
+    <div className="mx-auto w-full max-w-5xl p-4">
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ChartBar className="size-6" />
+            <h2 className="text-xl font-semibold">{tr("stats.title")}</h2>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleExportCsv}>
+            <Download className="size-4" />
             {tr("stats.export")}
-          </ActionButton>
-        </Flex>
+          </Button>
+        </div>
 
-        <Text c="dimmed" size="sm">
-          {tr("stats.subtitle")}
-        </Text>
+        <p className="text-muted-foreground text-sm">{tr("stats.subtitle")}</p>
 
         {/* Overview Cards */}
-        <SimpleGrid cols={{ base: 2, md: 4 }} spacing="md">
-          <Card
-            shadow="sm"
-            padding="lg"
-            radius="md"
-            withBorder
-            bg={"var(--alepha-elevated)"}
-          >
-            <Flex gap="sm">
-              <IconTarget size={20} opacity={0.6} />
-              <Flex direction="column" gap={0} flex={1}>
-                <Text size="xl" fw={700}>
-                  {stats.overview.totalTasks}
-                </Text>
-                <Text size="sm" c="dimmed">
-                  {tr("stats.totalQuests")}
-                </Text>
-              </Flex>
-            </Flex>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <StatCard
+            icon={<Target className="size-5 opacity-60" />}
+            value={stats.overview.totalTasks}
+            label={String(tr("stats.totalQuests"))}
+          />
+          <StatCard
+            icon={<Trophy className="size-5 opacity-60" />}
+            value={stats.overview.completedTasks}
+            label={String(tr("stats.completed"))}
+          />
+          <StatCard
+            icon={<Users className="size-5 opacity-60" />}
+            value={stats.overview.activePlayers}
+            label={String(tr("stats.activeAdventurers"))}
+          />
+          <StatCard
+            icon={<Star className="size-5 opacity-60" />}
+            value={stats.overview.totalXP.toLocaleString()}
+            label={String(tr("stats.totalXp"))}
+          />
+        </div>
+
+        {/* Activity Timeline */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="size-5" />
+              {tr("stats.timeline")}
+            </CardTitle>
+            <Select
+              value={timelineRange}
+              onValueChange={(v) => setTimelineRange(v || "14days")}
+            >
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7days">Last 7 Days</SelectItem>
+                <SelectItem value="14days">Last 14 Days</SelectItem>
+                <SelectItem value="30days">Last 30 Days</SelectItem>
+                <SelectItem value="90days">Last 90 Days</SelectItem>
+                <SelectItem value="1year">Last Year</SelectItem>
+                <SelectItem value="all">All Time</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardHeader>
+          <CardContent>
+            {timelineData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <AreaChart data={timelineData}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Area
+                    type="monotone"
+                    dataKey="tasks"
+                    stroke="#3b82f6"
+                    fill="#3b82f6"
+                    fillOpacity={0.3}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-muted-foreground py-6 text-center text-sm">
+                {tr("stats.noActivity")}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Top Zones */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{tr("stats.topZones")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {zonesData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={zonesData}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="zone" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="totalTasks" fill="#3b82f6" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-muted-foreground py-6 text-center text-sm">
+                {tr("stats.noZones")}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {/* By Priority */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                {tr("stats.byPriority")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {priorityData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={priorityData}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis dataKey="priority" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="completed" fill="#10b981" stackId="a" />
+                    <Bar dataKey="remaining" fill="#9ca3af" stackId="a" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-muted-foreground py-6 text-center text-sm">
+                  {tr("stats.noData")}
+                </p>
+              )}
+            </CardContent>
           </Card>
 
-          <Card
-            shadow="sm"
-            padding="lg"
-            radius="md"
-            withBorder
-            bg={"var(--alepha-elevated)"}
-          >
-            <Flex gap="sm">
-              <IconTrophy size={20} opacity={0.6} />
-              <Flex direction="column" gap={0} flex={1}>
-                <Text size="xl" fw={700}>
-                  {stats.overview.completedTasks}
-                </Text>
-                <Text size="sm" c="dimmed">
-                  {tr("stats.completed")}
-                </Text>
-              </Flex>
-            </Flex>
+          {/* By Complexity */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                {tr("stats.byComplexity")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {complexityData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={complexityData}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis dataKey="complexity" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#6366f1" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-muted-foreground py-6 text-center text-sm">
+                  {tr("stats.noData")}
+                </p>
+              )}
+            </CardContent>
           </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
 
-          <Card
-            shadow="sm"
-            padding="lg"
-            radius="md"
-            withBorder
-            bg={"var(--alepha-elevated)"}
-          >
-            <Flex gap="sm">
-              <IconUsers size={20} opacity={0.6} />
-              <Flex direction="column" gap={0} flex={1}>
-                <Text size="xl" fw={700}>
-                  {stats.overview.activePlayers}
-                </Text>
-                <Text size="sm" c="dimmed">
-                  {tr("stats.activeAdventurers")}
-                </Text>
-              </Flex>
-            </Flex>
-          </Card>
+interface StatCardProps {
+  icon: React.ReactNode;
+  value: number | string;
+  label: string;
+}
 
-          <Card
-            shadow="sm"
-            padding="lg"
-            radius="md"
-            withBorder
-            bg={"var(--alepha-elevated)"}
-          >
-            <Flex gap="sm">
-              <IconStar size={20} opacity={0.6} />
-              <Flex direction="column" gap={0} flex={1}>
-                <Text size="xl" fw={700}>
-                  {stats.overview.totalXP.toLocaleString()}
-                </Text>
-                <Text size="sm" c="dimmed">
-                  {tr("stats.totalXp")}
-                </Text>
-              </Flex>
-            </Flex>
-          </Card>
-        </SimpleGrid>
-
-        <Grid>
-          {/* Activity Timeline */}
-          <Grid.Col span={12}>
-            <Card shadow="sm" padding="lg" radius="md" withBorder>
-              <Flex direction="column" gap="md">
-                <Flex justify="space-between" align="center">
-                  <Flex gap="sm">
-                    <IconTrendingUp size={20} />
-                    <Title order={4}>{tr("stats.timeline")}</Title>
-                  </Flex>
-                  <Select
-                    value={timelineRange}
-                    onChange={(value) => setTimelineRange(value || "14days")}
-                    data={[
-                      { value: "7days", label: "Last 7 Days" },
-                      { value: "14days", label: "Last 14 Days" },
-                      { value: "30days", label: "Last 30 Days" },
-                      { value: "90days", label: "Last 90 Days" },
-                      { value: "1year", label: "Last Year" },
-                      { value: "all", label: "All Time" },
-                    ]}
-                    size="xs"
-                    w={140}
-                  />
-                </Flex>
-                {timelineData.length > 0 ? (
-                  <AreaChart
-                    h={250}
-                    data={timelineData}
-                    dataKey="date"
-                    series={[
-                      {
-                        name: "tasks",
-                        label: "Tasks Completed",
-                        color: "blue.6",
-                      },
-                    ]}
-                    curveType="monotone"
-                    withGradient
-                    withTooltip
-                  />
-                ) : (
-                  <Text c="dimmed" ta="center" py="xl">
-                    {tr("stats.noActivity")}
-                  </Text>
-                )}
-              </Flex>
-            </Card>
-          </Grid.Col>
-
-          {/* Top 6 Zones */}
-          <Grid.Col span={12}>
-            <Card shadow="sm" padding="lg" radius="md" withBorder h="100%">
-              <Flex direction="column" gap="md">
-                <Title order={4}>{tr("stats.topZones")}</Title>
-                {zonesData.length > 0 ? (
-                  <BarChart
-                    h={200}
-                    data={zonesData}
-                    dataKey="zone"
-                    series={[
-                      {
-                        name: "totalTasks",
-                        label: "Total Tasks",
-                        color: "blue.6",
-                      },
-                    ]}
-                    withTooltip
-                  />
-                ) : (
-                  <Text c="dimmed" ta="center" py="xl">
-                    {tr("stats.noZones")}
-                  </Text>
-                )}
-              </Flex>
-            </Card>
-          </Grid.Col>
-
-          {/* Tasks by Priority */}
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Card shadow="sm" padding="lg" radius="md" withBorder h="100%">
-              <Flex direction="column" gap="md">
-                <Title order={4}>{tr("stats.byPriority")}</Title>
-                {priorityData.length > 0 ? (
-                  <BarChart
-                    h={200}
-                    data={priorityData}
-                    dataKey="priority"
-                    series={[
-                      { name: "completed", color: "green.6" },
-                      { name: "remaining", color: "gray.4" },
-                    ]}
-                    tickLine="xy"
-                    withTooltip
-                  />
-                ) : (
-                  <Text c="dimmed" ta="center" py="xl">
-                    {tr("stats.noData")}
-                  </Text>
-                )}
-              </Flex>
-            </Card>
-          </Grid.Col>
-
-          {/* Task Complexity Distribution */}
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Card shadow="sm" padding="lg" radius="md" withBorder h="100%">
-              <Flex direction="column" gap="md">
-                <Title order={4}>{tr("stats.byComplexity")}</Title>
-                {complexityData.length > 0 ? (
-                  <BarChart
-                    h={200}
-                    data={complexityData}
-                    dataKey="complexity"
-                    series={[
-                      { name: "count", label: "Task Count", color: "indigo.6" },
-                    ]}
-                    withTooltip
-                  />
-                ) : (
-                  <Text c="dimmed" ta="center" py="xl">
-                    {tr("stats.noData")}
-                  </Text>
-                )}
-              </Flex>
-            </Card>
-          </Grid.Col>
-        </Grid>
-      </Flex>
-    </Container>
+const StatCard = (props: StatCardProps) => {
+  return (
+    <Card className="shadow-sm">
+      <CardContent className="flex gap-3 p-4">
+        {props.icon}
+        <div className="flex flex-1 flex-col">
+          <span className="text-xl font-bold">{props.value}</span>
+          <span className="text-muted-foreground text-sm">{props.label}</span>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

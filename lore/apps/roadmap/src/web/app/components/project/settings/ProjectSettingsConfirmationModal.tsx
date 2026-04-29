@@ -1,59 +1,80 @@
-import { ActionButton, Flex, Text } from "@alepha/mantine";
-import { TextInput } from "@mantine/core";
-import { modals } from "@mantine/modals";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@alepha/ui/components/ui/alert-dialog";
+import { Input } from "@alepha/ui/components/ui/input";
 import { useI18n } from "alepha/react/i18n";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsConfirmationModalProps {
+  open: boolean;
   project: { title: string };
-  resolve: (value: boolean) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
 }
 
 const ProjectSettingsConfirmationModal = (
   props: ProjectSettingsConfirmationModalProps,
 ) => {
-  const { project, resolve } = props;
   const [inputValue, setInputValue] = useState("");
   const { tr } = useI18n<I18n, "en">();
-  const isValid = inputValue === project.title;
+  const isValid = inputValue === props.project.title;
+
+  useEffect(() => {
+    if (!props.open) setInputValue("");
+  }, [props.open]);
 
   return (
-    <Flex direction="column" gap="md">
-      <Text size="sm">{tr("project.settings.delete.modal.description")}</Text>
-      <Text size="sm">
-        {tr("project.settings.delete.modal.confirm", {
-          args: [project.title],
-        })}
-      </Text>
-      <TextInput
-        value={inputValue}
-        onChange={(event) => setInputValue(event.currentTarget.value)}
-        placeholder={project.title}
-        data-autofocus
-      />
-      <Flex justify="flex-end" gap="sm">
-        <ActionButton
-          variant="default"
-          onClick={() => {
-            resolve(false);
-            modals.closeAll();
-          }}
-        >
-          {tr("project.settings.delete.modal.cancel")}
-        </ActionButton>
-        <ActionButton
-          color="red"
-          disabled={!isValid}
-          onClick={() => {
-            resolve(true);
-            modals.closeAll();
-          }}
-        >
-          {tr("project.settings.delete.modal.submit")}
-        </ActionButton>
-      </Flex>
-    </Flex>
+    <AlertDialog open={props.open} onOpenChange={(o) => !o && props.onCancel()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {tr("project.settings.delete.modal.title")}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {tr("project.settings.delete.modal.description")}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm">
+            {tr("project.settings.delete.modal.confirm", {
+              args: [props.project.title],
+            })}
+          </p>
+          <Input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.currentTarget.value)}
+            placeholder={props.project.title}
+            autoFocus
+          />
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={props.onCancel}>
+            {tr("project.settings.delete.modal.cancel")}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            disabled={!isValid}
+            onClick={(e) => {
+              if (!isValid) {
+                e.preventDefault();
+                return;
+              }
+              props.onConfirm();
+            }}
+            className="bg-destructive text-white hover:bg-destructive/90"
+          >
+            {tr("project.settings.delete.modal.submit")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 

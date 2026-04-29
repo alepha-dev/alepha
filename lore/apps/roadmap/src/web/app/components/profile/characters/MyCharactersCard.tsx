@@ -1,7 +1,6 @@
-import { Flex, Text } from "@alepha/mantine";
-import { Badge, Card } from "@mantine/core";
-import { IconCircleFilled, IconCrown } from "@tabler/icons-react";
+import { Badge } from "@alepha/ui/components/ui/badge";
 import { Localize, useI18n } from "alepha/react/i18n";
+import { Coins, Crown } from "lucide-react";
 import type { CharacterInfo } from "@/api/services/CharacterInfo.ts";
 import type { MyCharactersCharacter } from "./MyCharacters.tsx";
 import MyCharactersXPBar from "./MyCharactersXPBar.tsx";
@@ -19,79 +18,55 @@ const MyCharactersCard = (props: MyCharactersCardProps) => {
   const silver = characterInfo.getSilver(character.balance);
 
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
-      <Flex direction="column" gap="md">
-        <Flex justify="space-between" align="flex-start">
-          <Flex direction="column" gap="xs">
-            <Flex gap="sm">
-              <Text fw={500} size="lg">
-                {character.projectTitle}
-              </Text>
-              {character.owner && (
-                <Badge variant="light" leftSection={<IconCrown size={12} />}>
-                  Owner
-                </Badge>
+    <div className="flex flex-col gap-4 rounded-md border border-border bg-card p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-medium">
+              {character.projectTitle}
+            </span>
+            {character.owner && (
+              <Badge variant="secondary" className="gap-1">
+                <Crown className="size-3" />
+                Owner
+              </Badge>
+            )}
+          </div>
+          <span className="text-sm text-muted-foreground">
+            Created <Localize value={character.createdAt} date="fromNow" />
+          </span>
+        </div>
+
+        <div className="flex gap-6">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-medium text-muted-foreground">
+              Level
+            </span>
+            <span className="text-sm font-medium">{level}</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-medium text-muted-foreground">
+              Balance
+            </span>
+            <div className="flex items-center gap-1">
+              <Coins className="size-3 text-yellow-500" />
+              <span className="text-sm font-medium">{gold}</span>
+              {silver > 0 && (
+                <span className="text-xs text-muted-foreground">{silver}s</span>
               )}
-            </Flex>
-            <Text size="sm" c="dimmed">
-              Created <Localize value={character.createdAt} date="fromNow" />
-            </Text>
-          </Flex>
+            </div>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-medium text-muted-foreground">
+              Total XP
+            </span>
+            <span className="text-sm font-medium">{l(character.xp)}</span>
+          </div>
+        </div>
+      </div>
 
-          <Flex gap="xl">
-            <Flex direction="column" gap={2}>
-              <Text size="xs" c="dimmed" fw={500}>
-                Level
-              </Text>
-              <Text size="sm" fw={500}>
-                {level}
-              </Text>
-            </Flex>
-            <Flex direction="column" gap={2}>
-              <Text size="xs" c="dimmed" fw={500}>
-                Balance
-              </Text>
-              <Flex gap={2}>
-                {gold > 0 && (
-                  <>
-                    <Text size="sm" fw={500}>
-                      {gold}
-                    </Text>
-                    <IconCircleFilled size={10} color="var(--color-gold)" />
-                  </>
-                )}
-                {silver > 0 && (
-                  <>
-                    <Text size="sm" fw={500}>
-                      {silver}
-                    </Text>
-                    <IconCircleFilled size={10} color="var(--color-silver)" />
-                  </>
-                )}
-                {gold === 0 && silver === 0 && (
-                  <Text size="sm" fw={500}>
-                    0
-                  </Text>
-                )}
-              </Flex>
-            </Flex>
-            <Flex direction="column" gap={2}>
-              <Text size="xs" c="dimmed" fw={500}>
-                Total XP
-              </Text>
-              <Text size="sm" fw={500}>
-                {l(character.xp)}
-              </Text>
-            </Flex>
-          </Flex>
-        </Flex>
-
-        <MyCharactersXPBar
-          character={character}
-          characterInfo={characterInfo}
-        />
-      </Flex>
-    </Card>
+      <MyCharactersXPBar character={character} characterInfo={characterInfo} />
+    </div>
   );
 };
 
