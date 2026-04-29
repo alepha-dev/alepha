@@ -15,10 +15,10 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.13",
     "alepha": "0.20.2",
-    "lucide-react": "^1.11.0",
+    "lucide-react": "^1.14.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "shadcn": "^4.5.0",
+    "shadcn": "^4.6.0",
     "sonner": "^2.0.7",
     "typescript": "^6.0.3"
   }

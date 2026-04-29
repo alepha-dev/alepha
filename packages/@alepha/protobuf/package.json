@@ -16,7 +16,7 @@
     "src"
   ],
   "dependencies": {
-    "protobufjs": "^8.0.1"
+    "protobufjs": "^8.0.3"
   },
   "devDependencies": {
     "alepha": "0.20.2",
