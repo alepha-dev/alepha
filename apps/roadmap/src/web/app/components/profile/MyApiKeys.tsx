@@ -1,20 +1,19 @@
-import { ActionButton, Control, Flex, Text } from "@alepha/mantine";
-import { Badge, Card, Code, CopyButton, Modal, Tooltip } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
 import {
-  IconCheck,
-  IconClipboard,
-  IconKey,
-  IconPlus,
-  IconTrash,
-} from "@tabler/icons-react";
-import { t } from "alepha";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@alepha/ui/components/ui/dialog";
+import { Input } from "@alepha/ui/components/ui/input";
+import { Label } from "@alepha/ui/components/ui/label";
 import type { ApiKeyController } from "alepha/api/keys";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
-import { useForm } from "alepha/react/form";
-import { useState } from "react";
-import { theme } from "../../constants/theme.ts";
+import { Check, Clipboard, Key, Plus, Trash2 } from "lucide-react";
+import { type FormEvent, useState } from "react";
+import { Toaster } from "../../services/Toaster.ts";
 
 interface ApiKey {
   id: string;
@@ -32,21 +31,24 @@ export interface MyApiKeysProps {
 const MyApiKeys = (props: MyApiKeysProps) => {
   const dt = useInject(DateTimeProvider);
   const apiKeyApi = useClient<ApiKeyController>();
+  const toaster = useInject(Toaster);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>(props.apiKeys);
-  const [opened, { open, close }] = useDisclosure(false);
+  const [opened, setOpened] = useState(false);
+  const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [newToken, setNewToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const form = useForm({
-    id: "create-api-key",
-    schema: t.object({
-      name: t.string({ minLength: 1, maxLength: 100 }),
-    }),
-    handler: async (data) => {
-      const result = await apiKeyApi.createApiKey({
-        body: {
-          name: data.name,
-        },
-      });
+  const close = () => {
+    setOpened(false);
+    setName("");
+  };
+
+  const handleCreate = async (e: FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const result = await apiKeyApi.createApiKey({ body: { name } });
       setApiKeys((prev) => [
         {
           id: result.id,
@@ -60,253 +62,184 @@ const MyApiKeys = (props: MyApiKeysProps) => {
       ]);
       setNewToken(result.token);
       close();
-    },
-  });
+    } catch (error: any) {
+      toaster.show(error?.message || "Failed to create API key", "danger");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleRevoke = async (id: string) => {
     await apiKeyApi.revokeMyApiKey({ params: { id } });
     setApiKeys((prev) => prev.filter((key) => key.id !== id));
   };
 
+  const handleCopy = async (value: string) => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
-    <Flex direction="column" w="100%" p="xs" gap={0}>
-      <Flex p="xs" justify="space-between">
-        <Flex px={1}>
-          <Text size="xs" c="dimmed">
-            MCP API keys allow Claude and other LLM clients to access all your
-            campaigns.
-          </Text>
-        </Flex>
+    <div className="flex w-full flex-col gap-2 p-2">
+      <div className="flex items-center justify-between p-2">
+        <span className="text-xs text-muted-foreground">
+          MCP API keys allow Claude and other LLM clients to access all your
+          campaigns.
+        </span>
+        <Button size="sm" onClick={() => setOpened(true)}>
+          <Plus className="size-3.5" />
+          Create Key
+        </Button>
+      </div>
 
-        <Flex align="center" justify="center">
-          <ActionButton leftSection={<IconPlus size={16} />} onClick={open}>
-            Create Key
-          </ActionButton>
-        </Flex>
-      </Flex>
-
-      <Card withBorder bg={theme.colors.panel} w="100%" p="xs" radius="md">
-        <Flex direction="column" gap="xs">
-          {apiKeys.length === 0 ? (
-            <Text size="sm" c="dimmed" ta="center" py="md">
-              No API keys yet. Create one to connect Claude or other MCP
-              clients.
-            </Text>
-          ) : (
-            apiKeys.map((key) => (
-              <Card
-                key={key.id}
-                withBorder
-                bg={theme.colors.card}
-                p="sm"
-                radius="sm"
-              >
-                <Flex justify="space-between" wrap="nowrap">
-                  <Flex align="center" gap="sm">
-                    <IconKey size={20} />
-                    <Flex direction="column" gap={0}>
-                      <Flex gap="xs">
-                        <Text size="sm" fw={500}>
-                          {key.name}
-                        </Text>
-                        <Code>...{key.tokenSuffix}</Code>
-                      </Flex>
-                      <Flex gap="xs">
-                        <Text size="xs" c="dimmed">
-                          Created {dt.of(key.createdAt).fromNow()}
-                        </Text>
-                        {key.lastUsedAt && (
-                          <>
-                            <Text size="xs" c="dimmed">
-                              |
-                            </Text>
-                            <Text size="xs" c="dimmed">
-                              Last used {dt.of(key.lastUsedAt).fromNow()}
-                            </Text>
-                          </>
-                        )}
-                        {key.expiresAt && (
-                          <Badge size="xs" color="yellow">
-                            Expires {dt.of(key.expiresAt).fromNow()}
-                          </Badge>
-                        )}
-                      </Flex>
-                    </Flex>
-                  </Flex>
-                  <Tooltip label="Revoke key">
-                    <ActionButton
-                      variant="subtle"
-                      color="red"
-                      onClick={() => handleRevoke(key.id)}
-                    >
-                      <IconTrash size={16} />
-                    </ActionButton>
-                  </Tooltip>
-                </Flex>
-              </Card>
-            ))
-          )}
-        </Flex>
-      </Card>
-
-      <Modal opened={opened} onClose={close} title="Create MCP API Key">
-        <form {...form.props}>
-          <Flex direction="column" gap="md">
-            <Control
-              input={form.input.name}
-              label="Key Name"
-              text={{ placeholder: "e.g., Claude Desktop" }}
-            />
-            <Flex justify="flex-end">
-              <ActionButton variant="subtle" onClick={close}>
-                Cancel
-              </ActionButton>
-              <ActionButton form={form}>Create</ActionButton>
-            </Flex>
-          </Flex>
-        </form>
-      </Modal>
-
-      <Modal
-        opened={!!newToken}
-        onClose={() => setNewToken(null)}
-        title="API Key Created"
-        closeOnClickOutside={false}
-        size="lg"
-      >
-        <Flex direction="column" gap="md">
-          <Text size="sm">
-            Copy this API key now. You won't be able to see it again.
-          </Text>
-          <Flex gap="xs">
-            <Code
-              block
-              style={{
-                flex: 1,
-                wordBreak: "break-all",
-              }}
+      <div className="flex flex-col gap-2 rounded-md border border-border bg-card p-2">
+        {apiKeys.length === 0 ? (
+          <span className="py-4 text-center text-sm text-muted-foreground">
+            No API keys yet. Create one to connect Claude or other MCP clients.
+          </span>
+        ) : (
+          apiKeys.map((key) => (
+            <div
+              key={key.id}
+              className="flex items-center justify-between rounded-md border border-border bg-muted/40 p-3"
             >
-              {newToken}
-            </Code>
-            <CopyButton value={newToken || ""}>
-              {({ copied, copy }) => (
-                <Tooltip label={copied ? "Copied!" : "Copy"}>
-                  <ActionButton
-                    variant="subtle"
-                    color={copied ? "green" : "gray"}
-                    onClick={copy}
-                  >
-                    {copied ? (
-                      <IconCheck size={16} />
-                    ) : (
-                      <IconClipboard size={16} />
+              <div className="flex items-center gap-3">
+                <Key className="size-5" />
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{key.name}</span>
+                    <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                      ...{key.tokenSuffix}
+                    </code>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>Created {dt.of(key.createdAt).fromNow()}</span>
+                    {key.lastUsedAt && (
+                      <>
+                        <span>|</span>
+                        <span>Last used {dt.of(key.lastUsedAt).fromNow()}</span>
+                      </>
                     )}
-                  </ActionButton>
-                </Tooltip>
-              )}
-            </CopyButton>
-          </Flex>
-          <Card withBorder p="sm" bg={theme.colors.panel}>
-            <Text size="xs" fw={500} mb="xs">
-              Claude Code
-            </Text>
-            <Flex gap="xs" wrap="nowrap">
-              <Code
-                block
-                style={{
-                  flex: 1,
-                  wordBreak: "break-all",
-                  fontSize: "11px",
-                }}
+                    {key.expiresAt && (
+                      <Badge variant="secondary" className="text-xs">
+                        Expires {dt.of(key.expiresAt).fromNow()}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-red-500 hover:text-red-600"
+                onClick={() => handleRevoke(key.id)}
+                aria-label="Revoke key"
               >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          ))
+        )}
+      </div>
+
+      <Dialog open={opened} onOpenChange={(o) => !o && close()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create MCP API Key</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="keyName">Key Name</Label>
+              <Input
+                id="keyName"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Claude Desktop"
+                minLength={1}
+                maxLength={100}
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={close}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                Create
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!newToken} onOpenChange={(o) => !o && setNewToken(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>API Key Created</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <span className="text-sm">
+              Copy this API key now. You won't be able to see it again.
+            </span>
+            <div className="flex items-stretch gap-2">
+              <code className="flex-1 break-all rounded-md border border-border bg-muted p-3 text-xs">
+                {newToken}
+              </code>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleCopy(newToken || "")}
+                className={copied ? "text-green-500" : ""}
+                aria-label="Copy"
+              >
+                {copied ? (
+                  <Check className="size-4" />
+                ) : (
+                  <Clipboard className="size-4" />
+                )}
+              </Button>
+            </div>
+            <div className="flex flex-col gap-1 rounded-md border border-border bg-card p-3">
+              <span className="text-xs font-medium">Claude Code</span>
+              <code className="break-all rounded bg-muted p-2 text-[11px]">
                 {`claude mcp add roadmap ${typeof window !== "undefined" ? window.location.origin : ""}/mcp -t http -H "Authorization: Bearer ${newToken}"`}
-              </Code>
-              <CopyButton
-                value={`claude mcp add roadmap ${typeof window !== "undefined" ? window.location.origin : ""}/mcp -t http -H "Authorization: Bearer ${newToken}"`}
-              >
-                {({ copied, copy }) => (
-                  <Tooltip label={copied ? "Copied!" : "Copy"}>
-                    <ActionButton
-                      variant="subtle"
-                      color={copied ? "green" : "gray"}
-                      onClick={copy}
-                    >
-                      {copied ? (
-                        <IconCheck size={16} />
-                      ) : (
-                        <IconClipboard size={16} />
-                      )}
-                    </ActionButton>
-                  </Tooltip>
-                )}
-              </CopyButton>
-            </Flex>
-          </Card>
-          <Card withBorder p="sm" bg={theme.colors.panel}>
-            <Text size="xs" fw={500} mb="xs">
-              MCP Configuration (JSON)
-            </Text>
-            <Code block style={{ wordBreak: "break-all" }}>
-              {JSON.stringify(
-                {
-                  type: "sse",
-                  url: `${typeof window !== "undefined" ? window.location.origin : ""}/mcp`,
-                  headers: {
-                    Authorization: `Bearer ${newToken}`,
+              </code>
+            </div>
+            <div className="flex flex-col gap-1 rounded-md border border-border bg-card p-3">
+              <span className="text-xs font-medium">
+                MCP Configuration (JSON)
+              </span>
+              <code className="break-all rounded bg-muted p-2 text-[11px]">
+                {JSON.stringify(
+                  {
+                    type: "sse",
+                    url: `${typeof window !== "undefined" ? window.location.origin : ""}/mcp`,
+                    headers: { Authorization: `Bearer ${newToken}` },
                   },
-                },
-                null,
-                2,
-              )}
-            </Code>
-          </Card>
-          <Card withBorder p="sm" bg={theme.colors.panel}>
-            <Text size="xs" fw={500} mb="xs">
-              Claude Desktop
-            </Text>
-            <Flex gap="xs" wrap="nowrap">
-              <Code
-                block
-                style={{
-                  flex: 1,
-                  wordBreak: "break-all",
-                  fontSize: "11px",
-                }}
-              >
-                {`${typeof window !== "undefined" ? window.location.origin : ""}/mcp?api_key=${newToken}`}
-              </Code>
-              <CopyButton
-                value={`${typeof window !== "undefined" ? window.location.origin : ""}/mcp?api_key=${newToken}`}
-              >
-                {({ copied, copy }) => (
-                  <Tooltip label={copied ? "Copied!" : "Copy"}>
-                    <ActionButton
-                      variant="subtle"
-                      color={copied ? "green" : "gray"}
-                      onClick={copy}
-                    >
-                      {copied ? (
-                        <IconCheck size={16} />
-                      ) : (
-                        <IconClipboard size={16} />
-                      )}
-                    </ActionButton>
-                  </Tooltip>
+                  null,
+                  2,
                 )}
-              </CopyButton>
-            </Flex>
-          </Card>
-          <Text size="xs" c="dimmed">
-            This key gives access to all your campaigns. Use the project_list
-            tool to see available campaigns, then specify project_name in other
-            tools.
-          </Text>
-          <Flex justify="flex-end">
-            <ActionButton onClick={() => setNewToken(null)}>Done</ActionButton>
-          </Flex>
-        </Flex>
-      </Modal>
-    </Flex>
+              </code>
+            </div>
+            <div className="flex flex-col gap-1 rounded-md border border-border bg-card p-3">
+              <span className="text-xs font-medium">Claude Desktop</span>
+              <code className="break-all rounded bg-muted p-2 text-[11px]">
+                {`${typeof window !== "undefined" ? window.location.origin : ""}/mcp?api_key=${newToken}`}
+              </code>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              This key gives access to all your campaigns. Use the project_list
+              tool to see available campaigns, then specify project_name in
+              other tools.
+            </span>
+            <div className="flex justify-end">
+              <Button onClick={() => setNewToken(null)}>Done</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

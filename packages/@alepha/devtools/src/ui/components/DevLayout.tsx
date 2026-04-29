@@ -1,26 +1,40 @@
-import {
-  DarkModeButton,
-  DashboardShell,
-  Flex,
-  OmnibarButton,
-} from "@alepha/mantine";
-import {
-  IconDashboard,
-  IconDatabase,
-  IconList,
-  IconMail,
-  IconMessage,
-  IconSettings,
-  IconSitemap,
-  IconTopologyRing,
-} from "@tabler/icons-react";
+import { AppShell } from "@alepha/ui/components/app-shell";
+import { ThemeToggle } from "@alepha/ui/components/theme-toggle";
+import { Toaster } from "@alepha/ui/components/ui/sonner";
+import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
+import { ConfirmProvider } from "@alepha/ui/components/use-confirm";
 import { useInject } from "alepha/react";
+import { NestedView, useRouterState } from "alepha/react/router";
+import { ColorScheme } from "alepha/react/ui";
 import { HttpClient } from "alepha/server";
+import {
+  Database,
+  LayoutDashboard,
+  List,
+  Mail,
+  MessageSquare,
+  Network,
+  Settings,
+  Workflow,
+} from "lucide-react";
+import type { ComponentType, SVGProps } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { devMetadataSchema } from "../../schemas/DevMetadata.ts";
 
-export const DevLayout = () => {
+interface NavItem {
+  href: string;
+  label: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+}
+
+interface NavGroup {
+  label?: string;
+  items: NavItem[];
+}
+
+const DevLayout = () => {
   const http = useInject(HttpClient);
+  const state = useRouterState();
   const [entityCount, setEntityCount] = useState<number | null>(null);
 
   const fetchMetadata = useCallback(async () => {
@@ -38,96 +52,74 @@ export const DevLayout = () => {
     fetchMetadata();
   }, [fetchMetadata]);
 
-  const sidebarItems = useMemo(() => {
-    const items: any[] = [
-      {
-        label: "Dashboard",
-        icon: <IconDashboard />,
-        href: "/",
-      },
-      { type: "divider" },
-      {
-        label: "Explorer",
-        icon: <IconSitemap />,
-        href: "/explorer",
-      },
+  const navGroups: NavGroup[] = useMemo(() => {
+    const overview: NavItem[] = [
+      { href: "/", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/explorer", label: "Explorer", icon: Workflow },
     ];
 
     if (entityCount === null || entityCount > 0) {
-      items.push({
-        label: "Database",
-        icon: <IconDatabase />,
-        href: "/db/erd",
-      });
+      overview.push({ href: "/db/erd", label: "Database", icon: Database });
     }
 
-    items.push(
-      {
-        label: "Configuration",
-        icon: <IconSettings />,
-        href: "/conf/env",
-      },
-      { type: "divider" },
-      {
-        label: "Emails",
-        icon: <IconMail />,
-        href: "/emails",
-      },
-      {
-        label: "SMS",
-        icon: <IconMessage />,
-        href: "/sms",
-      },
-      { type: "divider" },
-      {
-        label: "Graph",
-        icon: <IconTopologyRing />,
-        href: "/graph",
-      },
-      {
-        label: "Logs",
-        icon: <IconList />,
-        href: "/logs",
-      },
-    );
+    overview.push({
+      href: "/conf/env",
+      label: "Configuration",
+      icon: Settings,
+    });
 
-    return items;
+    return [
+      { items: overview },
+      {
+        label: "Messaging",
+        items: [
+          { href: "/emails", label: "Emails", icon: Mail },
+          { href: "/sms", label: "SMS", icon: MessageSquare },
+        ],
+      },
+      {
+        label: "Diagnostics",
+        items: [
+          { href: "/graph", label: "Graph", icon: Network },
+          { href: "/logs", label: "Logs", icon: List },
+        ],
+      },
+    ];
   }, [entityCount]);
 
   return (
-    <DashboardShell
-      appShellMainProps={{
-        style: {
-          display: "flex",
-          flexDirection: "column",
-        },
-      }}
-      footer={<Flex />}
-      sidebarProps={{
-        collapsed: true,
-        items: sidebarItems,
-      }}
-      appBarProps={{
-        items: [
-          { position: "left", type: "burger" },
-          {
-            position: "left",
-            element: (
-              <OmnibarButton
-                actionProps={{
-                  variant: "outline",
-                  bd: "1px solid var(--mantine-color-default-border)",
-                }}
-              />
-            ),
-          },
-          {
-            position: "right",
-            element: <DarkModeButton />,
-          },
-        ],
-      }}
-    />
+    <TooltipProvider>
+      <ConfirmProvider>
+        <ColorScheme />
+        <AppShell
+          topbarActions={<ThemeToggle />}
+          brand={
+            <div className="flex items-center gap-2 px-2 py-2 font-semibold group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+              <span className="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded">
+                α
+              </span>
+              <span className="truncate group-data-[collapsible=icon]:hidden">
+                Alepha Devtools
+              </span>
+            </div>
+          }
+          nav={navGroups.map((group) => ({
+            label: group.label,
+            items: group.items.map((it) => ({
+              href: it.href,
+              label: it.label,
+              icon: it.icon,
+              active: state.url.pathname.startsWith(
+                it.href.split("/")[1] ? it.href : "/",
+              ),
+            })),
+          }))}
+        >
+          <NestedView />
+        </AppShell>
+        <Toaster />
+      </ConfirmProvider>
+    </TooltipProvider>
   );
 };
 

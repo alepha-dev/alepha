@@ -1,23 +1,15 @@
 import type { DevEnvMetadata } from "@alepha/devtools";
 import { devMetadataSchema } from "@alepha/devtools";
-import { Flex, ui } from "@alepha/mantine";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Input } from "@alepha/ui/components/ui/input";
 import {
-  Badge,
-  Code,
-  CopyButton,
-  ScrollArea,
-  Text,
-  TextInput,
   Tooltip,
-} from "@mantine/core";
-import {
-  IconCheck,
-  IconCopy,
-  IconSearch,
-  IconVariable,
-} from "@tabler/icons-react";
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
+import { Check, Copy, Search, Variable } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 interface EnvVariable {
@@ -52,7 +44,7 @@ const parseEnvVariables = (envs: DevEnvMetadata[]): EnvVariable[] => {
       let format = prop.format;
 
       if (prop.anyOf) {
-        const nonNull = prop.anyOf.find((t: any) => t.type !== "null");
+        const nonNull = prop.anyOf.find((tt: any) => tt.type !== "null");
         if (nonNull) {
           type = nonNull.type ?? "unknown";
           format = nonNull.format;
@@ -74,77 +66,83 @@ const parseEnvVariables = (envs: DevEnvMetadata[]): EnvVariable[] => {
   );
 };
 
-const EnvLine = ({ variable }: { variable: EnvVariable }) => {
+interface CopyIconProps {
+  value: string;
+}
+
+const CopyIcon = (props: CopyIconProps) => {
+  const [copied, setCopied] = useState(false);
+  const onClick = () => {
+    navigator.clipboard.writeText(props.value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={onClick}
+          className={`shrink-0 ml-1.5 ${copied ? "text-teal-500" : "text-muted-foreground"}`}
+        >
+          {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{copied ? "Copied!" : "Copy"}</TooltipContent>
+    </Tooltip>
+  );
+};
+
+interface EnvLineProps {
+  variable: EnvVariable;
+}
+
+const EnvLine = (props: EnvLineProps) => {
+  const variable = props.variable;
   const hasValue = variable.value !== undefined && variable.value !== "";
   const displayValue = hasValue ? String(variable.value) : "";
   const sensitive = isSensitive(variable.name);
+  const [revealed, setRevealed] = useState(false);
 
   return (
-    <Flex direction="column">
-      {/* Description as comment */}
+    <div className="flex flex-col">
       {variable.description?.split("\n").map((line, i) => (
-        <Text key={i} fz={11} ff="monospace" c="dimmed" fs="italic" lh={1.6}>
+        <span
+          key={i}
+          className="text-muted-foreground font-mono text-[11px] italic leading-relaxed"
+        >
           # {line}
-        </Text>
+        </span>
       ))}
-      <Flex align="center" gap={0} style={{ lineHeight: 1.6 }}>
-        <Text fz={12} ff="monospace" fw={600} c="teal.5" component="span">
+      <div className="flex items-center leading-relaxed">
+        <span className="font-mono text-xs font-semibold text-teal-500">
           {variable.name}
-        </Text>
-        <Text fz={12} ff="monospace" c="dimmed" component="span">
-          =
-        </Text>
+        </span>
+        <span className="text-muted-foreground font-mono text-xs">=</span>
         {hasValue ? (
-          <Text
-            fz={12}
-            ff="monospace"
-            component="span"
+          <span
+            className="font-mono text-xs transition-all"
             style={{
-              filter: sensitive ? "blur(4px)" : undefined,
-              transition: "filter 150ms",
+              filter: sensitive && !revealed ? "blur(4px)" : undefined,
               cursor: sensitive ? "pointer" : undefined,
             }}
-            onMouseEnter={(e) => {
-              if (sensitive) e.currentTarget.style.filter = "none";
-            }}
-            onMouseLeave={(e) => {
-              if (sensitive) e.currentTarget.style.filter = "blur(4px)";
-            }}
+            onMouseEnter={() => sensitive && setRevealed(true)}
+            onMouseLeave={() => sensitive && setRevealed(false)}
           >
             {displayValue}
-          </Text>
+          </span>
         ) : (
-          <Text fz={12} ff="monospace" c="dimmed" fs="italic" component="span">
+          <span className="text-muted-foreground font-mono text-xs italic">
             (not set)
-          </Text>
+          </span>
         )}
-        <Badge
-          size="xs"
-          variant="dot"
-          color="gray"
-          ml="sm"
-          style={{ flexShrink: 0 }}
-        >
+        <Badge variant="outline" className="ml-2 shrink-0 text-[10px]">
           {variable.format || variable.type}
         </Badge>
-        {hasValue && (
-          <CopyButton value={String(variable.value)}>
-            {({ copied, copy }) => (
-              <Tooltip label={copied ? "Copied!" : "Copy"} withArrow>
-                <Flex
-                  ml={6}
-                  onClick={copy}
-                  style={{ cursor: "pointer", flexShrink: 0 }}
-                  c={copied ? "teal" : "dimmed"}
-                >
-                  {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
-                </Flex>
-              </Tooltip>
-            )}
-          </CopyButton>
-        )}
-      </Flex>
-    </Flex>
+        {hasValue && <CopyIcon value={String(variable.value)} />}
+      </div>
+    </div>
   );
 };
 
@@ -176,55 +174,43 @@ export const ConfigEnv = () => {
 
   if (variables.length === 0) {
     return (
-      <Flex align="center" justify="center" style={{ flex: 1 }} c="dimmed">
-        <Flex direction="column" align="center" gap="xs">
-          <IconVariable size={40} opacity={0.3} />
-          <Text fz="sm">No environment variables found</Text>
-          <Text fz="xs" c="dimmed">
+      <div className="text-muted-foreground flex flex-1 items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <Variable className="size-10 opacity-30" />
+          <p className="text-sm">No environment variables found</p>
+          <p className="text-xs">
             Use $env primitive to define expected environment variables
-          </Text>
-        </Flex>
-      </Flex>
+          </p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Flex direction="column" style={{ flex: 1 }}>
-      <Flex
-        p="sm"
-        style={{ borderBottom: `1px solid ${ui.colors.border}`, flexShrink: 0 }}
-      >
-        <Flex gap="sm" align="center">
-          <TextInput
+    <div className="flex flex-1 flex-col">
+      <div className="border-border flex shrink-0 items-center gap-3 border-b p-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="text-muted-foreground absolute left-2 top-1/2 size-3.5 -translate-y-1/2" />
+          <Input
             placeholder="Search variables..."
-            leftSection={<IconSearch size={14} />}
-            size="xs"
+            className="h-8 pl-8 text-xs"
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
-            style={{ flex: 1, maxWidth: 340 }}
           />
-          <Badge variant="light" color="gray" size="sm">
-            {filtered.length} / {variables.length}
-          </Badge>
-        </Flex>
-      </Flex>
-      <ScrollArea style={{ flex: 1 }} p="md">
-        <Code
-          block
-          style={{
-            background: ui.colors.surface,
-            border: `1px solid ${ui.colors.border}`,
-            borderRadius: 8,
-            padding: 16,
-          }}
-        >
-          <Flex direction="column" gap={8}>
+        </div>
+        <Badge variant="secondary">
+          {filtered.length} / {variables.length}
+        </Badge>
+      </div>
+      <div className="flex-1 overflow-auto p-4">
+        <div className="bg-card border-border rounded-lg border p-4">
+          <div className="flex flex-col gap-2">
             {filtered.map((v) => (
               <EnvLine key={v.name} variable={v} />
             ))}
-          </Flex>
-        </Code>
-      </ScrollArea>
-    </Flex>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };

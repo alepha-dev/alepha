@@ -1,13 +1,7 @@
-import { ActionButton, Flex, ui, useDialog } from "@alepha/mantine";
-import { Alert, Badge, Loader, Text } from "@mantine/core";
-import {
-  IconAlertTriangle,
-  IconFocusCentered,
-  IconLock,
-  IconLockOpen,
-  IconMinus,
-  IconPlus,
-} from "@tabler/icons-react";
+import { devMetadataSchema } from "@alepha/devtools";
+import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
 import {
   Background,
   BackgroundVariant,
@@ -20,9 +14,17 @@ import {
 } from "@xyflow/react";
 import { useAction, useInject } from "alepha/react";
 import "@xyflow/react/dist/style.css";
-import { devMetadataSchema } from "@alepha/devtools";
 import { HttpClient } from "alepha/server";
+import {
+  AlertTriangle,
+  Crosshair,
+  Lock,
+  LockOpen,
+  Minus,
+  Plus,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { getModuleColor } from "./constants.ts";
 import { GraphControls } from "./GraphControls.tsx";
 import {
@@ -74,7 +76,6 @@ export const DevDependencyGraph = () => {
 
   const providers = result?.data.providers || [];
 
-  // Get unique modules
   const modules = useMemo(() => {
     const moduleSet = new Set<string>();
     for (const p of providers) {
@@ -83,7 +84,6 @@ export const DevDependencyGraph = () => {
     return Array.from(moduleSet).sort();
   }, [providers]);
 
-  // Build and layout graph
   useEffect(() => {
     if (providers.length === 0) return;
 
@@ -94,12 +94,10 @@ export const DevDependencyGraph = () => {
     setEdges(rawEdges);
   }, [providers, filters, layout, setNodes, setEdges]);
 
-  // Detect circular dependencies
   const circularDeps = useMemo(() => {
     return detectCircularDependencies(nodes as ProviderNodeType[], edges);
   }, [nodes, edges]);
 
-  // Handle node click - highlight dependency chain
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: ProviderNodeType) => {
       setSelectedNode({ id: node.id, data: node.data });
@@ -110,7 +108,6 @@ export const DevDependencyGraph = () => {
         edges,
       );
 
-      // Update nodes with highlight state
       setNodes((nds) =>
         nds.map((n) => ({
           ...n,
@@ -123,7 +120,6 @@ export const DevDependencyGraph = () => {
         })),
       );
 
-      // Update edges with highlight state
       setEdges((eds) =>
         eds.map((e) => ({
           ...e,
@@ -146,7 +142,6 @@ export const DevDependencyGraph = () => {
     [nodes, edges, setNodes, setEdges],
   );
 
-  // Handle pane click - clear selection
   const handlePaneClick = useCallback(() => {
     setSelectedNode(null);
     setNodes((nds) =>
@@ -169,7 +164,6 @@ export const DevDependencyGraph = () => {
     );
   }, [setNodes, setEdges]);
 
-  // Handle node click from details panel
   const handleDetailsNodeClick = useCallback(
     (nodeId: string) => {
       const node = nodes.find((n) => n.id === nodeId) as
@@ -182,31 +176,20 @@ export const DevDependencyGraph = () => {
     [nodes, handleNodeClick],
   );
 
-  const dialog = useDialog();
-
-  // Export as PNG
   const handleExport = useCallback(() => {
-    // Get the react-flow viewport element
-    const viewport = document.querySelector(".react-flow__viewport");
-    if (!viewport) return;
-
-    // Use html2canvas or similar - for now just alert
-    return dialog.alert({
-      title: "Export",
-      message: "Export feature requires html2canvas library. Coming soon!",
-    });
+    toast.info("Export feature requires html2canvas library. Coming soon!");
   }, []);
 
   if (loading) {
     return (
-      <Flex align="center" justify="center" h="100%">
-        <Loader size="sm" />
-      </Flex>
+      <div className="flex h-full w-full items-center justify-center">
+        <span className="text-muted-foreground text-sm">Loading...</span>
+      </div>
     );
   }
 
   return (
-    <Flex p="xl" direction="column" gap="md" w="100%" h="100%" flex={1} mih={0}>
+    <div className="flex h-full w-full min-h-0 flex-1 flex-col gap-3 p-6">
       <GraphControls
         filters={filters}
         onFiltersChange={setFilters}
@@ -219,47 +202,28 @@ export const DevDependencyGraph = () => {
       />
 
       {circularDeps.length > 0 && (
-        <Alert
-          icon={<IconAlertTriangle size={16} />}
-          color="orange"
-          variant="light"
-          p="xs"
-        >
-          <Flex align="center" gap="xs">
-            <Text size="xs">Circular dependencies detected:</Text>
-            {circularDeps.slice(0, 3).map((cycle, i) => (
-              <Badge key={i} size="xs" color="orange" variant="light">
-                {cycle.length} nodes
-              </Badge>
-            ))}
-            {circularDeps.length > 3 && (
-              <Text size="xs" c="dimmed">
-                +{circularDeps.length - 3} more
-              </Text>
-            )}
-          </Flex>
+        <Alert variant="destructive" className="py-2">
+          <AlertTriangle className="size-4" />
+          <AlertDescription>
+            <div className="flex items-center gap-2">
+              <span className="text-xs">Circular dependencies detected:</span>
+              {circularDeps.slice(0, 3).map((cycle, i) => (
+                <Badge key={i} variant="destructive">
+                  {cycle.length} nodes
+                </Badge>
+              ))}
+              {circularDeps.length > 3 && (
+                <span className="text-muted-foreground text-xs">
+                  +{circularDeps.length - 3} more
+                </span>
+              )}
+            </div>
+          </AlertDescription>
         </Alert>
       )}
 
-      <Flex
-        flex={1}
-        h={"100%"}
-        style={{
-          borderRadius: 8,
-          border: `1px solid ${ui.colors.border}`,
-          position: "relative",
-        }}
-      >
-        <Flex
-          h={"100%"}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-          }}
-        >
+      <div className="border-border relative h-full flex-1 rounded-lg border">
+        <div className="absolute inset-0 flex h-full">
           <ReactFlowProvider>
             <ReactFlow
               nodes={nodes}
@@ -281,7 +245,6 @@ export const DevDependencyGraph = () => {
                   getModuleColor((node.data as ProviderNodeData)?.module)
                 }
                 maskColor="rgba(0, 0, 0, 0.5)"
-                style={{ backgroundColor: ui.colors.surface }}
               />
               <FlowControls />
             </ReactFlow>
@@ -292,9 +255,9 @@ export const DevDependencyGraph = () => {
             onClose={() => handlePaneClick()}
             onNodeClick={handleDetailsNodeClick}
           />
-        </Flex>
-      </Flex>
-    </Flex>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -305,48 +268,27 @@ const FlowControls = () => {
   const [isLocked, setIsLocked] = useState(false);
 
   return (
-    <Flex
-      direction="column"
-      gap={4}
-      style={{
-        position: "absolute",
-        bottom: 16,
-        left: 16,
-        zIndex: 10,
-        backgroundColor: ui.colors.elevated,
-        border: `1px solid ${ui.colors.border}`,
-        borderRadius: 8,
-        padding: 4,
-      }}
-    >
-      <ActionButton
+    <div className="bg-card border-border absolute bottom-4 left-4 z-10 flex flex-col gap-1 rounded-lg border p-1">
+      <Button size="sm" variant="ghost" onClick={() => zoomIn()}>
+        <Plus className="size-3.5" />
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => zoomOut()}>
+        <Minus className="size-3.5" />
+      </Button>
+      <Button
         size="sm"
-        variant="subtle"
-        tooltip="Zoom in"
-        onClick={() => zoomIn()}
-        icon={<IconPlus size={14} />}
-      />
-      <ActionButton
-        size="sm"
-        variant="subtle"
-        tooltip="Zoom out"
-        onClick={() => zoomOut()}
-        icon={<IconMinus size={14} />}
-      />
-      <ActionButton
-        size="sm"
-        variant="subtle"
-        tooltip="Fit view"
+        variant="ghost"
         onClick={() => fitView({ padding: 0.2 })}
-        icon={<IconFocusCentered size={14} />}
-      />
-      <ActionButton
-        size="sm"
-        variant="subtle"
-        tooltip={isLocked ? "Unlock" : "Lock"}
-        onClick={() => setIsLocked(!isLocked)}
-        icon={isLocked ? <IconLock size={14} /> : <IconLockOpen size={14} />}
-      />
-    </Flex>
+      >
+        <Crosshair className="size-3.5" />
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setIsLocked(!isLocked)}>
+        {isLocked ? (
+          <Lock className="size-3.5" />
+        ) : (
+          <LockOpen className="size-3.5" />
+        )}
+      </Button>
+    </div>
   );
 };

@@ -60,18 +60,48 @@
       ]
     },
     {
+      "name": "sonner",
+      "type": "registry:ui",
+      "title": "Sonner (Alepha)",
+      "description": "Toaster component using Alepha's useColorMode instead of next-themes.",
+      "dependencies": ["alepha", "lucide-react", "sonner"],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/default/sonner/sonner.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/sonner.tsx"
+        }
+      ]
+    },
+    {
+      "name": "segmented",
+      "type": "registry:ui",
+      "title": "Segmented",
+      "description": "Animated segmented control with a sliding indicator behind the active option.",
+      "dependencies": [],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/default/segmented/segmented.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/segmented.tsx"
+        }
+      ]
+    },
+    {
       "name": "control-select",
       "type": "registry:component",
       "title": "Control: Select",
-      "description": "Native Select for short enums, Combobox for searchable / async / multi, ToggleGroup for segmented.",
+      "description": "Native Select for short enums, Combobox for searchable / async / multi, animated Segmented control for short enums when requested.",
       "dependencies": ["alepha", "lucide-react"],
       "registryDependencies": [
         "@alepha/control-base",
+        "@alepha/segmented",
         "button",
         "command",
         "popover",
-        "select",
-        "toggle-group"
+        "select"
       ],
       "files": [
         {
@@ -160,6 +190,21 @@
           "path": "registry/default/use-confirm/use-confirm.tsx",
           "type": "registry:component",
           "target": "components/use-confirm.tsx"
+        }
+      ]
+    },
+    {
+      "name": "language-toggle",
+      "type": "registry:component",
+      "title": "Language toggle",
+      "description": "Dropdown listing every $dictionary-registered language and switching the active locale via useI18n().setLang.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": ["button", "dropdown-menu"],
+      "files": [
+        {
+          "path": "registry/default/language-toggle/language-toggle.tsx",
+          "type": "registry:component",
+          "target": "components/language-toggle.tsx"
         }
       ]
     },
@@ -292,7 +337,7 @@
         "@alepha/use-confirm",
         "avatar",
         "badge",
-        "sonner"
+        "@alepha/sonner"
       ],
       "files": [
         {
@@ -308,7 +353,7 @@
       "title": "Admin: Jobs",
       "description": "Registered jobs with run counts, last-run timestamp, and manual trigger.",
       "dependencies": ["alepha", "lucide-react"],
-      "registryDependencies": ["badge", "button", "table", "sonner"],
+      "registryDependencies": ["badge", "button", "table", "@alepha/sonner"],
       "files": [
         {
           "path": "registry/default/admin-jobs/admin-jobs.tsx",
@@ -342,7 +387,7 @@
         "@alepha/alepha-table",
         "@alepha/use-confirm",
         "badge",
-        "sonner"
+        "@alepha/sonner"
       ],
       "files": [
         {
@@ -377,7 +422,7 @@
         "@alepha/alepha-table",
         "@alepha/use-confirm",
         "badge",
-        "sonner"
+        "@alepha/sonner"
       ],
       "files": [
         {
@@ -397,7 +442,7 @@
         "@alepha/alepha-table",
         "@alepha/use-confirm",
         "badge",
-        "sonner"
+        "@alepha/sonner"
       ],
       "files": [
         {
@@ -417,7 +462,7 @@
         "@alepha/alepha-table",
         "@alepha/use-confirm",
         "badge",
-        "sonner"
+        "@alepha/sonner"
       ],
       "files": [
         {
@@ -467,7 +512,7 @@
         "@alepha/admin-sessions",
         "@alepha/admin-keys",
         "@alepha/admin-payments",
-        "sonner",
+        "@alepha/sonner",
         "tooltip"
       ]
     }

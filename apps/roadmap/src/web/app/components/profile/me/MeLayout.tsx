@@ -1,70 +1,46 @@
-import { Flex, Text } from "@alepha/mantine";
-import { Avatar } from "@mantine/core";
-import { IconUser } from "@tabler/icons-react";
 import { useAuth } from "alepha/react/auth";
 import { NestedView } from "alepha/react/router";
-import { theme } from "@/web/app/constants/theme.ts";
+import { User } from "lucide-react";
 import MeLayoutMenu from "./MeLayoutMenu.tsx";
 
 const MeLayout = () => {
   const auth = useAuth();
 
   return (
-    <Flex
-      direction="column"
-      flex={1}
-      w="100%"
-      maw={theme.container.xl}
-      mx="auto"
-      className="overflow-auto"
-      p="md"
-      gap="md"
-    >
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 overflow-auto p-4">
       {/* Compact header */}
-      <Flex
-        align="center"
-        gap="md"
-        p="md"
-        bg="var(--alepha-elevated)"
-        style={{
-          borderRadius: "var(--mantine-radius-md)",
-          border: "1px solid var(--alepha-border)",
-        }}
-      >
-        <Avatar
-          src={
-            auth.user?.picture ? `/api/files/${auth.user.picture}` : undefined
-          }
-          size={40}
-          radius="xl"
-        >
-          <IconUser size={20} />
-        </Avatar>
-        <Flex direction="column" gap={0}>
-          <Text size="sm" fw={600}>
+      <div className="flex items-center gap-4 rounded-md border border-border bg-card p-4">
+        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
+          {auth.user?.picture ? (
+            <img
+              src={`/api/files/${auth.user.picture}`}
+              alt="avatar"
+              className="size-full object-cover"
+            />
+          ) : (
+            <User className="size-5" />
+          )}
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm font-semibold">
             {auth.user?.username || "Anonymous"}
-          </Text>
-          <Text size="xs" c="dimmed">
+          </span>
+          <span className="text-xs text-muted-foreground">
             {auth.user?.email}
-          </Text>
-        </Flex>
-      </Flex>
+          </span>
+        </div>
+      </div>
 
       {/* Content */}
-      <Flex
-        className="overflow-auto"
-        flex={1}
-        gap="md"
-        direction={{ base: "column", md: "row" }}
-      >
-        <Flex w={{ base: "100%", md: 196 }} miw={{ md: 196 }}>
+      <div className="flex flex-1 flex-col gap-4 overflow-auto md:flex-row">
+        <div className="md:w-48 md:min-w-48">
           <MeLayoutMenu />
-        </Flex>
-        <Flex flex={1} className="overflow-auto">
+        </div>
+        <div className="flex flex-1 overflow-auto">
           <NestedView />
-        </Flex>
-      </Flex>
-    </Flex>
+        </div>
+      </div>
+    </div>
   );
 };
 

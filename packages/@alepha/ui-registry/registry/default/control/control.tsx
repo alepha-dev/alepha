@@ -102,7 +102,10 @@ export function Control(props: ControlProps) {
   if (
     props.slider ||
     props.number ||
-    (!props.select && (meta.type === "number" || meta.type === "integer"))
+    (!props.select &&
+      !props.segmented &&
+      !props.combobox &&
+      (meta.type === "number" || meta.type === "integer"))
   ) {
     return (
       <ControlNumber

@@ -1,6 +1,5 @@
-import { ActionButton, Flex, Text } from "@alepha/mantine";
+import { Button } from "@alepha/ui/components/ui/button";
 import { useDroppable } from "@dnd-kit/core";
-import { ScrollArea } from "@mantine/core";
 import { useI18n } from "alepha/react/i18n";
 import { useMemo, useState } from "react";
 import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
@@ -25,10 +24,10 @@ const columnKeys = {
   completed: "kanban.column.completed",
 } as const;
 
-const columnColors: Record<ColumnStatus, string> = {
-  new: "var(--mantine-color-blue-5)",
-  accepted: "var(--mantine-color-orange-5)",
-  completed: "var(--mantine-color-green-5)",
+const columnDotClass: Record<ColumnStatus, string> = {
+  new: "bg-blue-500",
+  accepted: "bg-orange-500",
+  completed: "bg-green-500",
 };
 
 const KanbanColumn = (props: KanbanColumnProps) => {
@@ -47,67 +46,34 @@ const KanbanColumn = (props: KanbanColumnProps) => {
   const hasMore = tasks.length > visibleCount;
 
   return (
-    <Flex
-      direction="column"
-      flex={1}
-      miw={280}
-      style={{
-        borderRight: last
-          ? undefined
-          : "1px solid var(--mantine-color-default-border)",
-        overflow: "hidden",
-      }}
+    <div
+      className={`flex flex-1 flex-col overflow-hidden min-w-[280px] ${
+        last ? "" : "border-border border-r"
+      }`}
     >
       {/* Column header */}
-      <Flex
-        align="center"
-        gap="xs"
-        px="sm"
-        py="xs"
-        style={{
-          borderBottom: "1px solid var(--mantine-color-default-border)",
-        }}
-      >
-        <Flex
-          w={8}
-          h={8}
-          style={{
-            borderRadius: "50%",
-            backgroundColor: columnColors[status],
-            flexShrink: 0,
-          }}
+      <div className="flex items-center gap-2 border-border border-b px-3 py-2">
+        <span
+          className={`size-2 shrink-0 rounded-full ${columnDotClass[status]}`}
         />
-        <Text fw={600} size="sm">
-          {tr(columnKeys[status])}
-        </Text>
-        <Text size="xs" c="dimmed">
-          {tasks.length}
-        </Text>
-      </Flex>
+        <span className="text-sm font-semibold">{tr(columnKeys[status])}</span>
+        <span className="text-xs text-muted-foreground">{tasks.length}</span>
+      </div>
 
       {/* Column body — scrollable */}
-      <ScrollArea
-        flex={1}
-        type="auto"
+      <div
         ref={setNodeRef}
-        scrollbarSize={6}
-        style={{
-          backgroundColor: isOver ? "rgba(64, 192, 87, 0.08)" : undefined,
-          transition: "background-color 0.2s ease",
-        }}
+        className={`flex-1 overflow-y-auto transition-colors ${
+          isOver ? "bg-green-500/10" : ""
+        }`}
       >
-        <Flex direction="column" gap={2} p={4} mih={100}>
+        <div className="flex min-h-[100px] flex-col gap-0.5 p-1">
           {tasks.length === 0 && (
-            <Flex
-              align="center"
-              justify="center"
-              py="xl"
-              style={{ opacity: 0.4 }}
-            >
-              <Text size="sm" c="dimmed">
+            <div className="flex items-center justify-center py-8 opacity-40">
+              <span className="text-sm text-muted-foreground">
                 {tr("kanban.empty")}
-              </Text>
-            </Flex>
+              </span>
+            </div>
           )}
           {visibleTasks.map((task) => (
             <KanbanCard
@@ -118,19 +84,20 @@ const KanbanColumn = (props: KanbanColumnProps) => {
             />
           ))}
           {hasMore && (
-            <Flex justify="center" py="xs">
-              <ActionButton
-                variant="subtle"
-                size="compact-xs"
+            <div className="flex justify-center py-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
                 onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
               >
                 {tr("kanban.showMore")}
-              </ActionButton>
-            </Flex>
+              </Button>
+            </div>
           )}
-        </Flex>
-      </ScrollArea>
-    </Flex>
+        </div>
+      </div>
+    </div>
   );
 };
 

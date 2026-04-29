@@ -1,23 +1,20 @@
 import type { DevAtomMetadata } from "@alepha/devtools";
 import { devMetadataSchema } from "@alepha/devtools";
-import { ActionButton, Flex, JsonViewer, ui } from "@alepha/mantine";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Input } from "@alepha/ui/components/ui/input";
 import {
-  Badge,
-  NumberInput,
-  ScrollArea,
-  Switch,
-  Text,
-  Textarea,
-  TextInput,
-} from "@mantine/core";
-import {
-  IconAtom,
-  IconDeviceFloppy,
-  IconRefresh,
-  IconSearch,
-} from "@tabler/icons-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@alepha/ui/components/ui/select";
+import { Switch } from "@alepha/ui/components/ui/switch";
+import { Textarea } from "@alepha/ui/components/ui/textarea";
 import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
+import { Atom, RefreshCw, Save, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TreeView, type TreeViewNode } from "../shared/TreeView.tsx";
 
@@ -67,15 +64,11 @@ const toTreeViewNode = (node: AtomTreeNode): TreeViewNode => {
     id: node.atom ? `atom:${node.atom.name}` : `folder:${node.key}`,
     label: node.label,
     icon: isLeaf ? (
-      <IconAtom
-        size={13}
-        color="var(--mantine-color-violet-text)"
-        style={{ flexShrink: 0 }}
-      />
+      <Atom className="size-3 shrink-0 text-violet-500" />
     ) : undefined,
     badge:
       isLeaf && node.atom?.currentValue !== undefined ? (
-        <Badge size="xs" variant="light" color="green">
+        <Badge variant="default" className="text-[10px]">
           set
         </Badge>
       ) : undefined,
@@ -84,20 +77,18 @@ const toTreeViewNode = (node: AtomTreeNode): TreeViewNode => {
   };
 };
 
-const SchemaEditor = ({
-  schema,
-  value,
-  onChange,
-}: {
+interface SchemaEditorProps {
   schema: any;
   value: any;
   onChange: (value: any) => void;
-}) => {
-  if (!schema) return null;
+}
 
-  let actualSchema = schema;
-  if (schema.anyOf) {
-    const nonNull = schema.anyOf.find((t: any) => t.type !== "null");
+const SchemaEditor = (props: SchemaEditorProps) => {
+  if (!props.schema) return null;
+
+  let actualSchema = props.schema;
+  if (props.schema.anyOf) {
+    const nonNull = props.schema.anyOf.find((tt: any) => tt.type !== "null");
     if (nonNull) actualSchema = nonNull;
   }
 
@@ -105,92 +96,90 @@ const SchemaEditor = ({
 
   if (type === "object" && actualSchema.properties) {
     return (
-      <Flex direction="column" gap="sm">
+      <div className="flex flex-col gap-3">
         {Object.entries(actualSchema.properties).map(
           ([key, propSchema]: [string, any]) => (
-            <Flex key={key}>
-              <Text fz="xs" fw={500} mb={4}>
+            <div key={key} className="flex flex-col gap-1">
+              <span className="text-xs font-medium">
                 {propSchema.title || key}
                 {propSchema.description && (
-                  <Text span fz={10} c="dimmed" ml="xs">
+                  <span className="text-muted-foreground ml-2 text-[10px]">
                     {propSchema.description}
-                  </Text>
+                  </span>
                 )}
-              </Text>
+              </span>
               <SchemaEditor
                 schema={propSchema}
-                value={value?.[key]}
-                onChange={(v) => onChange({ ...value, [key]: v })}
+                value={props.value?.[key]}
+                onChange={(v) => props.onChange({ ...props.value, [key]: v })}
               />
-            </Flex>
+            </div>
           ),
         )}
-      </Flex>
+      </div>
     );
   }
 
   if (type === "boolean") {
     return (
       <Switch
-        checked={value ?? false}
-        onChange={(e) => onChange(e.currentTarget.checked)}
-        size="sm"
+        checked={props.value ?? false}
+        onCheckedChange={(checked) => props.onChange(checked)}
       />
     );
   }
 
   if (type === "number" || type === "integer") {
     return (
-      <NumberInput
-        size="xs"
-        value={value ?? ""}
-        onChange={(v) => onChange(v === "" ? undefined : v)}
-        allowDecimal={type === "number"}
+      <Input
+        type="number"
+        className="h-8 text-xs"
+        value={props.value ?? ""}
+        onChange={(e) =>
+          props.onChange(
+            e.target.value === "" ? undefined : Number(e.target.value),
+          )
+        }
       />
     );
   }
 
   if (actualSchema.enum) {
     return (
-      <select
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value || undefined)}
-        style={{
-          padding: "4px 8px",
-          borderRadius: 4,
-          border: `1px solid ${ui.colors.border}`,
-          backgroundColor: ui.colors.surface,
-          color: "inherit",
-          fontSize: 12,
-          width: "100%",
-        }}
+      <Select
+        value={props.value ?? ""}
+        onValueChange={(v) => props.onChange(v || undefined)}
       >
-        <option value="">Select...</option>
-        {actualSchema.enum.map((opt: string) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger className="h-8 text-xs">
+          <SelectValue placeholder="Select..." />
+        </SelectTrigger>
+        <SelectContent>
+          {actualSchema.enum.map((opt: string) => (
+            <SelectItem key={opt} value={opt}>
+              {opt}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     );
   }
 
   return (
-    <TextInput
-      size="xs"
-      value={value ?? ""}
-      onChange={(e) => onChange(e.target.value || undefined)}
+    <Input
+      className="h-8 text-xs"
+      value={props.value ?? ""}
+      onChange={(e) => props.onChange(e.target.value || undefined)}
     />
   );
 };
 
-const AtomDetailPanel = ({
-  atom,
-  onSave,
-}: {
+interface AtomDetailPanelProps {
   atom: DevAtomMetadata;
   onSave: (value: any) => void;
-}) => {
+}
+
+const AtomDetailPanel = (props: AtomDetailPanelProps) => {
+  const { atom, onSave } = props;
   const [editValue, setEditValue] = useState<any>(
     atom.currentValue ?? atom.defaultValue,
   );
@@ -221,153 +210,124 @@ const AtomDetailPanel = ({
   const useJsonByDefault = !schemaType || schemaType === "array";
 
   return (
-    <Flex direction="column" h="100%">
-      {/* Header */}
-      <Flex
-        px="md"
-        py="sm"
-        style={{
-          borderBottom: `1px solid ${ui.colors.border}`,
-          flexShrink: 0,
-        }}
-      >
-        <Flex align="center" gap="sm">
-          <IconAtom size={16} opacity={0.5} />
-          <Text fz="sm" fw={600} ff="monospace">
-            {atom.name}
-          </Text>
-          <Badge size="xs" variant="light" color={hasValue ? "green" : "gray"}>
+    <div className="flex h-full w-full flex-col">
+      <div className="border-border flex shrink-0 flex-col gap-1 border-b px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Atom className="size-4 opacity-50" />
+          <span className="font-mono text-sm font-semibold">{atom.name}</span>
+          <Badge variant={hasValue ? "default" : "secondary"}>
             {hasValue ? "has value" : "default"}
           </Badge>
-        </Flex>
+        </div>
         {atom.description && (
-          <Text fz="xs" c="dimmed" mt={4}>
-            {atom.description}
-          </Text>
+          <p className="text-muted-foreground text-xs">{atom.description}</p>
         )}
-      </Flex>
+      </div>
 
-      <ScrollArea style={{ flex: 1 }} p="md">
-        <Flex direction="column" gap="lg">
-          {/* Current / Default values */}
-          <Flex gap="lg" wrap="wrap">
-            <Flex style={{ flex: 1, minWidth: 200 }}>
-              <Text
-                fz={10}
-                c="dimmed"
-                tt="uppercase"
-                fw={600}
-                lts={0.5}
-                mb="xs"
-              >
+      <div className="flex-1 overflow-auto p-4">
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-wrap gap-6">
+            <div className="min-w-[200px] flex-1">
+              <p className="text-muted-foreground mb-2 text-[10px] font-semibold uppercase tracking-wider">
                 Current Value
-              </Text>
+              </p>
               {atom.currentValue !== undefined ? (
-                <JsonViewer data={atom.currentValue} maxDepth={3} />
+                <pre className="bg-muted overflow-auto rounded p-2 text-xs">
+                  {JSON.stringify(atom.currentValue, null, 2)}
+                </pre>
               ) : (
-                <Text fz="xs" c="dimmed" fs="italic">
+                <p className="text-muted-foreground text-xs italic">
                   (using default)
-                </Text>
+                </p>
               )}
-            </Flex>
-            <Flex style={{ flex: 1, minWidth: 200 }}>
-              <Text
-                fz={10}
-                c="dimmed"
-                tt="uppercase"
-                fw={600}
-                lts={0.5}
-                mb="xs"
-              >
+            </div>
+            <div className="min-w-[200px] flex-1">
+              <p className="text-muted-foreground mb-2 text-[10px] font-semibold uppercase tracking-wider">
                 Default Value
-              </Text>
+              </p>
               {atom.defaultValue !== undefined ? (
-                <JsonViewer data={atom.defaultValue} maxDepth={3} />
+                <pre className="bg-muted overflow-auto rounded p-2 text-xs">
+                  {JSON.stringify(atom.defaultValue, null, 2)}
+                </pre>
               ) : (
-                <Text fz="xs" c="dimmed" fs="italic">
+                <p className="text-muted-foreground text-xs italic">
                   (no default)
-                </Text>
+                </p>
               )}
-            </Flex>
-          </Flex>
+            </div>
+          </div>
 
-          {/* Editor */}
-          <Flex>
-            <Flex align="center" justify="space-between" mb="sm">
-              <Text fz={10} c="dimmed" tt="uppercase" fw={600} lts={0.5}>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
                 Edit Value
-              </Text>
-              <Flex gap="xs" align="center">
-                <Switch
-                  size="xs"
-                  label="JSON"
-                  checked={jsonMode || useJsonByDefault}
-                  onChange={(e) => setJsonMode(e.currentTarget.checked)}
-                  disabled={useJsonByDefault}
-                />
-                <ActionButton
+              </p>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1 text-xs">
+                  <Switch
+                    checked={jsonMode || useJsonByDefault}
+                    disabled={useJsonByDefault}
+                    onCheckedChange={(checked) => setJsonMode(checked)}
+                  />
+                  JSON
+                </label>
+                <Button
                   size="sm"
-                  variant="light"
-                  tooltip="Reset to default"
+                  variant="ghost"
                   onClick={() => {
                     const val = atom.defaultValue;
                     setEditValue(val);
                     setJsonText(JSON.stringify(val, null, 2));
                     setJsonError(null);
                   }}
-                  icon={<IconRefresh size={14} />}
-                />
-                <ActionButton
-                  size="xs"
-                  icon={<IconDeviceFloppy size={14} />}
+                >
+                  <RefreshCw className="size-3.5" />
+                </Button>
+                <Button
+                  size="sm"
                   onClick={() => onSave(editValue)}
                   disabled={jsonMode && !!jsonError}
                 >
+                  <Save className="size-3.5" />
                   Save
-                </ActionButton>
-              </Flex>
-            </Flex>
+                </Button>
+              </div>
+            </div>
 
             {jsonMode || useJsonByDefault ? (
-              <Textarea
-                value={jsonText}
-                onChange={(e) => handleJsonChange(e.target.value)}
-                autosize
-                minRows={6}
-                maxRows={20}
-                error={jsonError ?? undefined}
-                styles={{
-                  input: { fontFamily: "monospace", fontSize: 12 },
-                }}
-              />
+              <>
+                <Textarea
+                  className="font-mono text-xs"
+                  rows={8}
+                  value={jsonText}
+                  onChange={(e) => handleJsonChange(e.target.value)}
+                />
+                {jsonError && (
+                  <p className="text-destructive text-xs">{jsonError}</p>
+                )}
+              </>
             ) : (
-              <Flex
-                p="sm"
-                style={{
-                  border: `1px solid ${ui.colors.border}`,
-                  borderRadius: 8,
-                  background: ui.colors.surface,
-                }}
-              >
+              <div className="bg-card border-border rounded-lg border p-3">
                 <SchemaEditor
                   schema={atom.schema}
                   value={editValue}
                   onChange={setEditValue}
                 />
-              </Flex>
+              </div>
             )}
-          </Flex>
+          </div>
 
-          {/* Schema info */}
-          <Flex>
-            <Text fz={10} c="dimmed" tt="uppercase" fw={600} lts={0.5} mb="xs">
+          <div>
+            <p className="text-muted-foreground mb-2 text-[10px] font-semibold uppercase tracking-wider">
               Schema
-            </Text>
-            <JsonViewer data={atom.schema} maxDepth={2} />
-          </Flex>
-        </Flex>
-      </ScrollArea>
-    </Flex>
+            </p>
+            <pre className="bg-muted overflow-auto rounded p-2 text-xs">
+              {JSON.stringify(atom.schema, null, 2)}
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -385,7 +345,6 @@ export const ConfigAtoms = () => {
       })
       .then((res) => {
         setAtoms(res.data.atoms);
-        // Auto-expand top-level tree nodes
         const topLevelKeys = new Set<string>();
         for (const atom of res.data.atoms) {
           const first = atom.name.split(".")[0];
@@ -441,49 +400,39 @@ export const ConfigAtoms = () => {
   }, []);
 
   const handleSelect = useCallback((id: string) => {
-    // id is "atom:<name>"
     const name = id.replace(/^atom:/, "");
     setSelectedName(name);
   }, []);
 
   if (atoms.length === 0) {
     return (
-      <Flex align="center" justify="center" style={{ flex: 1 }} c="dimmed">
-        <Flex direction="column" align="center" gap="xs">
-          <IconAtom size={40} opacity={0.3} />
-          <Text fz="sm">No atoms found</Text>
-          <Text fz="xs" c="dimmed">
-            Use $atom primitive to define state atoms
-          </Text>
-        </Flex>
-      </Flex>
+      <div className="text-muted-foreground flex flex-1 items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <Atom className="size-10 opacity-30" />
+          <p className="text-sm">No atoms found</p>
+          <p className="text-xs">Use $atom primitive to define state atoms</p>
+        </div>
+      </div>
     );
   }
 
   const selectedId = selectedName ? `atom:${selectedName}` : "";
 
   return (
-    <Flex style={{ flex: 1, overflow: "hidden" }}>
-      {/* Tree sidebar */}
-      <Flex
-        w={260}
-        style={{
-          borderRight: `1px solid ${ui.colors.border}`,
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <Flex p="xs" style={{ flexShrink: 0 }}>
-          <TextInput
-            placeholder="Search atoms..."
-            leftSection={<IconSearch size={14} />}
-            size="xs"
-            value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
-          />
-        </Flex>
-        <ScrollArea style={{ flex: 1 }} px="xs" pb="xs">
+    <div className="flex flex-1 overflow-hidden">
+      <div className="border-border flex w-[260px] shrink-0 flex-col border-r">
+        <div className="flex shrink-0 p-2">
+          <div className="relative w-full">
+            <Search className="text-muted-foreground absolute left-2 top-1/2 size-3.5 -translate-y-1/2" />
+            <Input
+              placeholder="Search atoms..."
+              className="h-8 pl-8 text-xs"
+              value={search}
+              onChange={(e) => setSearch(e.currentTarget.value)}
+            />
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto px-2 pb-2">
           <TreeView
             nodes={treeViewNodes}
             selectedId={selectedId}
@@ -491,21 +440,20 @@ export const ConfigAtoms = () => {
             onSelect={handleSelect}
             onToggle={handleToggle}
           />
-        </ScrollArea>
-      </Flex>
+        </div>
+      </div>
 
-      {/* Detail panel */}
-      <Flex style={{ flex: 1, overflow: "hidden" }}>
+      <div className="flex flex-1 overflow-hidden">
         {selectedAtom ? (
           <AtomDetailPanel atom={selectedAtom} onSave={handleSave} />
         ) : (
-          <Flex align="center" justify="center" h="100%">
-            <Text c="dimmed" fz="sm">
+          <div className="flex h-full w-full items-center justify-center">
+            <span className="text-muted-foreground text-sm">
               Select an atom to view its details
-            </Text>
-          </Flex>
+            </span>
+          </div>
         )}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 };

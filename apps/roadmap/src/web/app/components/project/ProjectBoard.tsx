@@ -1,4 +1,3 @@
-import { Flex } from "@alepha/mantine";
 import { useStore } from "alepha/react";
 import { NestedView } from "alepha/react/router";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
@@ -10,22 +9,17 @@ const ProjectBoard = () => {
   if (!project) return null;
 
   return (
-    <Flex p={"xs"} flex={1} gap="xs" className="overflow-auto">
-      <Flex
-        visibleFrom="lg"
-        style={{
-          width: "25%",
-          minWidth: 240,
-          maxWidth: 420,
-          flexShrink: 0,
-        }}
+    <div className="flex flex-1 gap-2 overflow-auto p-2">
+      <div
+        className="hidden shrink-0 lg:flex"
+        style={{ width: "25%", minWidth: 240, maxWidth: 420 }}
       >
         <QuestLog />
-      </Flex>
-      <Flex flex={1} className="overflow-auto">
+      </div>
+      <div className="flex flex-1 overflow-auto">
         <NestedView />
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 };
 

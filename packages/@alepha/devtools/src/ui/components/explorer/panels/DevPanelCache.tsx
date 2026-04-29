@@ -1,5 +1,5 @@
-import { Flex, ui } from "@alepha/mantine";
-import { Badge, Card, Text } from "@mantine/core";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Card } from "@alepha/ui/components/ui/card";
 
 const formatTtl = (seconds?: number): string => {
   if (!seconds) return "No TTL";
@@ -9,65 +9,44 @@ const formatTtl = (seconds?: number): string => {
   return `${Math.floor(seconds / 86400)}d`;
 };
 
-export const DevPanelCache = ({ cache }: { cache: any }) => {
+interface DevPanelCacheProps {
+  cache: any;
+}
+
+export const DevPanelCache = (props: DevPanelCacheProps) => {
+  const cache = props.cache;
   return (
-    <Flex direction="column" gap="md">
+    <div className="flex flex-col gap-4">
       <div>
-        <Text fz="lg" fw={600} mb="xs">
-          {cache.name}
-        </Text>
+        <p className="mb-1 text-lg font-semibold">{cache.name}</p>
       </div>
 
-      <Flex gap="xs">
-        <Badge size="xs" variant="light" color="cyan">
-          Cache
-        </Badge>
-        {cache.provider && (
-          <Badge size="xs" variant="outline" color="gray">
-            {cache.provider}
-          </Badge>
-        )}
-        {cache.disabled && (
-          <Badge size="xs" variant="light" color="red">
-            Disabled
-          </Badge>
-        )}
-      </Flex>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="secondary">Cache</Badge>
+        {cache.provider && <Badge variant="outline">{cache.provider}</Badge>}
+        {cache.disabled && <Badge variant="destructive">Disabled</Badge>}
+      </div>
 
-      <Card
-        padding="sm"
-        style={{
-          background: ui.colors.surface,
-          border: `1px solid ${ui.colors.border}`,
-        }}
-      >
-        <Flex direction="column" gap="xs">
-          <Flex justify="space-between">
-            <Text fz="xs" c="dimmed">
-              TTL
-            </Text>
-            <Text fz="sm" ff="monospace">
-              {formatTtl(cache.ttl)}
-            </Text>
-          </Flex>
-          <Flex justify="space-between">
-            <Text fz="xs" c="dimmed">
-              Provider
-            </Text>
-            <Text fz="sm" ff="monospace">
+      <Card className="p-3">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground text-xs">TTL</span>
+            <span className="font-mono text-sm">{formatTtl(cache.ttl)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground text-xs">Provider</span>
+            <span className="font-mono text-sm">
               {cache.provider ?? "default"}
-            </Text>
-          </Flex>
-          <Flex justify="space-between">
-            <Text fz="xs" c="dimmed">
-              Status
-            </Text>
-            <Badge size="xs" color={cache.disabled ? "red" : "green"}>
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground text-xs">Status</span>
+            <Badge variant={cache.disabled ? "destructive" : "default"}>
               {cache.disabled ? "Disabled" : "Active"}
             </Badge>
-          </Flex>
-        </Flex>
+          </div>
+        </div>
       </Card>
-    </Flex>
+    </div>
   );
 };

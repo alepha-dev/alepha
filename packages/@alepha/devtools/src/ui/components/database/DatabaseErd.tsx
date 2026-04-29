@@ -1,5 +1,3 @@
-import { ui } from "@alepha/mantine";
-import { Flex } from "@mantine/core";
 import {
   Background,
   BackgroundVariant,
@@ -40,8 +38,8 @@ const buildGraph = (entities: any[]): { nodes: Node[]; edges: Edge[] } => {
           source: entity.name,
           target: column.ref.entity,
           label: `${column.name} → ${column.ref.column}`,
-          style: { stroke: "var(--mantine-color-blue-6)", strokeWidth: 1.5 },
-          labelStyle: { fontSize: 10, fill: "var(--mantine-color-dimmed)" },
+          style: { stroke: "hsl(var(--primary))", strokeWidth: 1.5 },
+          labelStyle: { fontSize: 10, fill: "hsl(var(--muted-foreground))" },
           animated: true,
         });
       }
@@ -51,8 +49,12 @@ const buildGraph = (entities: any[]): { nodes: Node[]; edges: Edge[] } => {
   return { nodes, edges };
 };
 
-const ErdFlow = ({ entities }: { entities: any[] }) => {
-  const graph = useMemo(() => buildGraph(entities), [entities]);
+interface ErdFlowProps {
+  entities: any[];
+}
+
+const ErdFlow = (props: ErdFlowProps) => {
+  const graph = useMemo(() => buildGraph(props.entities), [props.entities]);
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges);
 
@@ -73,35 +75,25 @@ const ErdFlow = ({ entities }: { entities: any[] }) => {
       minZoom={0.1}
       maxZoom={2}
       proOptions={{ hideAttribution: true }}
-      style={{ background: ui.colors.background }}
+      className="bg-background"
     >
       <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
       <Controls />
-      <MiniMap
-        nodeColor="var(--mantine-color-dark-4)"
-        maskColor="rgba(0,0,0,0.6)"
-        style={{ backgroundColor: ui.colors.surface }}
-      />
+      <MiniMap maskColor="rgba(0,0,0,0.6)" />
     </ReactFlow>
   );
 };
 
-export const DatabaseErd = ({ entities }: { entities: any[] }) => {
+interface DatabaseErdProps {
+  entities: any[];
+}
+
+export const DatabaseErd = (props: DatabaseErdProps) => {
   return (
-    <Flex
-      flex={1}
-      h="100%"
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-      }}
-    >
+    <div className="absolute inset-0 flex h-full flex-1">
       <ReactFlowProvider>
-        <ErdFlow entities={entities} />
+        <ErdFlow entities={props.entities} />
       </ReactFlowProvider>
-    </Flex>
+    </div>
   );
 };

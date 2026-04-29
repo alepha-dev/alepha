@@ -1,15 +1,12 @@
-import { Flex, Text } from "@alepha/mantine";
-import { Card } from "@mantine/core";
-import {
-  IconAntenna,
-  IconKey,
-  IconMail,
-  IconMapRoute,
-  IconShield,
-  IconUser,
-} from "@tabler/icons-react";
 import { useRouter } from "alepha/react/router";
-import { theme } from "@/web/app/constants/theme.ts";
+import {
+  KeyRound,
+  Mail,
+  MapPinned,
+  RadioTower,
+  ShieldCheck,
+  User,
+} from "lucide-react";
 import MeLayoutNavLink from "./MeLayoutNavLink.tsx";
 import type { MeRouter } from "./MeRouter.ts";
 
@@ -17,67 +14,50 @@ const MeLayoutMenu = () => {
   const meRouter = useRouter<MeRouter>();
 
   return (
-    <Card
-      withBorder
-      bg={theme.colors.app}
-      p={"xs"}
-      w={{
-        base: "100%",
-        md: "196px",
-      }}
-    >
-      <Flex
-        flex={1}
-        gap={"xs"}
-        direction={{
-          base: "row",
-          md: "column",
-        }}
+    <div className="flex w-full flex-col gap-1 rounded-md border border-border bg-card p-2">
+      <span className="hidden px-2 pt-1 text-xs text-muted-foreground md:block">
+        General
+      </span>
+      <MeLayoutNavLink
+        href={meRouter.path("profile")}
+        icon={<User className="size-4" />}
       >
-        <Text visibleFrom={"md"} size="xs">
-          General
-        </Text>
-        <MeLayoutNavLink
-          leftSection={<IconUser size={20} />}
-          href={meRouter.path("profile")}
-        >
-          Profile
-        </MeLayoutNavLink>
-        <MeLayoutNavLink
-          leftSection={<IconMapRoute size={20} />}
-          href={meRouter.path("characters")}
-        >
-          Campaigns
-        </MeLayoutNavLink>
-        <MeLayoutNavLink
-          leftSection={<IconMail size={20} />}
-          href={meRouter.path("invitations")}
-        >
-          Invitations
-        </MeLayoutNavLink>
-        <Text visibleFrom={"md"} size="xs">
-          Security
-        </Text>
-        <MeLayoutNavLink
-          leftSection={<IconShield size={20} />}
-          href={meRouter.path("identities")}
-        >
-          Identities
-        </MeLayoutNavLink>
-        <MeLayoutNavLink
-          leftSection={<IconAntenna size={20} />}
-          href={meRouter.path("sessions")}
-        >
-          Sessions
-        </MeLayoutNavLink>
-        <MeLayoutNavLink
-          leftSection={<IconKey size={20} />}
-          href={meRouter.path("apiKeys")}
-        >
-          API Keys
-        </MeLayoutNavLink>
-      </Flex>
-    </Card>
+        Profile
+      </MeLayoutNavLink>
+      <MeLayoutNavLink
+        href={meRouter.path("characters")}
+        icon={<MapPinned className="size-4" />}
+      >
+        Campaigns
+      </MeLayoutNavLink>
+      <MeLayoutNavLink
+        href={meRouter.path("invitations")}
+        icon={<Mail className="size-4" />}
+      >
+        Invitations
+      </MeLayoutNavLink>
+      <span className="hidden px-2 pt-2 text-xs text-muted-foreground md:block">
+        Security
+      </span>
+      <MeLayoutNavLink
+        href={meRouter.path("identities")}
+        icon={<ShieldCheck className="size-4" />}
+      >
+        Identities
+      </MeLayoutNavLink>
+      <MeLayoutNavLink
+        href={meRouter.path("sessions")}
+        icon={<RadioTower className="size-4" />}
+      >
+        Sessions
+      </MeLayoutNavLink>
+      <MeLayoutNavLink
+        href={meRouter.path("apiKeys")}
+        icon={<KeyRound className="size-4" />}
+      >
+        API Keys
+      </MeLayoutNavLink>
+    </div>
   );
 };
 

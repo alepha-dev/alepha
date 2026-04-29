@@ -1,5 +1,5 @@
-import { notifications } from "@mantine/notifications";
 import { $hook, $inject, Alepha } from "alepha";
+import { toast } from "sonner";
 
 export class Toaster {
   alepha = $inject(Alepha);
@@ -17,12 +17,14 @@ export class Toaster {
     message: string,
     intent: "primary" | "success" | "warning" | "danger" = "primary",
   ) {
-    const color =
-      intent === "primary" ? "blue" : intent === "danger" ? "red" : intent;
-    notifications.show({
-      message,
-      color,
-      autoClose: 3000,
-    });
+    if (intent === "success") {
+      toast.success(message);
+    } else if (intent === "danger") {
+      toast.error(message);
+    } else if (intent === "warning") {
+      toast.warning(message);
+    } else {
+      toast(message);
+    }
   }
 }

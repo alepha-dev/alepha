@@ -1,5 +1,3 @@
-import { AlephaUI } from "@alepha/mantine";
-import { AlephaUIAuth } from "@alepha/mantine/auth";
 import { $module } from "alepha";
 import { CharacterInfo } from "../../api/services/CharacterInfo.ts";
 import { AppRouter } from "./AppRouter.ts";
@@ -8,10 +6,6 @@ import { currentChaptersAtom } from "./atoms/currentChaptersAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectCharacterAtom } from "./atoms/currentProjectCharacterAtom.ts";
 import { currentTaskAtom } from "./atoms/currentTaskAtom.ts";
-import {
-  currentWhiteboardAtom,
-  currentWhiteboardsAtom,
-} from "./atoms/currentWhiteboardsAtom.ts";
 import {
   kanbanProjectAtom,
   kanbanReloadAtom,
@@ -30,13 +24,10 @@ export const RoadmapWebApp = $module({
     currentProjectAtom,
     currentProjectCharacterAtom,
     currentTaskAtom,
-    currentWhiteboardAtom,
-    currentWhiteboardsAtom,
     kanbanProjectAtom,
     kanbanReloadAtom,
     userProjectsAtom,
   ],
-  imports: [AlephaUI, AlephaUIAuth],
   register(alepha) {
     alepha.with(CharacterInfo);
   },

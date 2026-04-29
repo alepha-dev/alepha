@@ -30,6 +30,7 @@ ignores:
     - 'bun:test'
     - 'tailwindcss'
     - '@tailwindcss/vite'
+    - '@types/react-dom'
     - '@types/react-is'
     - '@fontsource-variable/inter'
     - '@fontsource-variable/jetbrains-mono'

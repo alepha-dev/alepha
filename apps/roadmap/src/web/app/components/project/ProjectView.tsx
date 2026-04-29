@@ -1,54 +1,22 @@
-import { Flex } from "@alepha/mantine";
-import { Card } from "@mantine/core";
 import { NestedView } from "alepha/react/router";
-import { theme } from "../../constants/theme.ts";
 import ExperienceBar from "../misc/ExperienceBar.tsx";
 import ProjectActions from "./ProjectActions.tsx";
 
 const ProjectView = () => {
   return (
-    <Flex
-      direction={"column"}
-      p={0}
-      gap={0}
-      flex={1}
-      className={"overflow-auto"}
-    >
-      <Card
-        p={0}
-        flex={1}
-        radius={0}
-        bg={theme.colors.panel}
-        withBorder
-        style={{
-          borderLeft: 0,
-          borderRight: 0,
-        }}
-      >
-        <Flex
-          w={"100%"}
-          gap={"xs"}
-          flex={1}
-          className={"overflow-auto"}
-          direction="column"
-        >
-          <Flex hiddenFrom={"lg"} w={"100%"}>
+    <div className="flex flex-1 flex-col overflow-auto">
+      <div className="bg-card border-border flex flex-1 flex-col overflow-auto border-y">
+        <div className="flex w-full flex-1 flex-col gap-2 overflow-auto">
+          <div className="flex w-full lg:hidden">
             <ProjectActions />
-          </Flex>
-          <Flex
-            direction="column"
-            flex={1}
-            gap={"xs"}
-            h={"100%"}
-            w={"100%"}
-            className={"overflow-auto"}
-          >
+          </div>
+          <div className="flex h-full w-full flex-1 flex-col gap-2 overflow-auto">
             <NestedView />
-          </Flex>
-        </Flex>
-      </Card>
+          </div>
+        </div>
+      </div>
       <ExperienceBar />
-    </Flex>
+    </div>
   );
 };
 

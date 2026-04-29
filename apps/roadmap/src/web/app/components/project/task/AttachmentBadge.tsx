@@ -1,6 +1,11 @@
-import { ActionButton, Text } from "@alepha/mantine";
-import { Badge, HoverCard, Image } from "@mantine/core";
-import { IconFile, IconPhoto, IconTrash } from "@tabler/icons-react";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@alepha/ui/components/ui/popover";
+import { File, Image as ImageIcon, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 export interface AttachmentBadgeProps {
@@ -9,99 +14,82 @@ export interface AttachmentBadgeProps {
   disabled?: boolean;
 }
 
-const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"];
-
 const AttachmentBadge = (props: AttachmentBadgeProps) => {
   const { fileId, onRemove, disabled } = props;
   const [isImage, setIsImage] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const fileUrl = `/api/files/${fileId}`;
 
-  const handleImageError = () => {
-    setIsImage(false);
-  };
-
-  const handleImageLoad = () => {
-    setImageLoaded(true);
-  };
+  const handleImageError = () => setIsImage(false);
+  const handleImageLoad = () => setImageLoaded(true);
 
   const badge = (
     <Badge
-      size="lg"
-      variant="light"
-      leftSection={
-        isImage && imageLoaded ? (
-          <IconPhoto size={14} />
-        ) : (
-          <IconFile size={14} />
-        )
-      }
-      rightSection={
-        !disabled &&
-        onRemove && (
-          <ActionButton
-            size="xs"
-            variant="transparent"
-            color="red"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove(fileId);
-            }}
-          >
-            <IconTrash size={12} />
-          </ActionButton>
-        )
-      }
-      style={{ cursor: "pointer" }}
+      variant="secondary"
+      className="flex cursor-pointer items-center gap-1.5 px-2 py-1"
       onClick={() => window.open(fileUrl, "_blank")}
     >
-      {fileId.slice(0, 8)}...
+      {isImage && imageLoaded ? (
+        <ImageIcon className="size-3.5" />
+      ) : (
+        <File className="size-3.5" />
+      )}
+      <span>{fileId.slice(0, 8)}…</span>
+      {!disabled && onRemove && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-4 w-4 p-0 text-red-500 hover:bg-transparent hover:text-red-600"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(fileId);
+          }}
+        >
+          <Trash2 className="size-3" />
+        </Button>
+      )}
     </Badge>
   );
 
-  // Hidden image to detect if file is an image
   const hiddenImage = (
     <img
       src={fileUrl}
       alt=""
-      style={{ display: "none" }}
+      className="hidden"
       onError={handleImageError}
       onLoad={handleImageLoad}
     />
   );
 
-  // If it's an image, wrap with HoverCard for preview
   if (isImage) {
     return (
       <>
         {hiddenImage}
-        <HoverCard
-          width={280}
-          shadow="md"
-          openDelay={300}
-          closeDelay={100}
-          position="top"
-          withArrow
-        >
-          <HoverCard.Target>{badge}</HoverCard.Target>
-          <HoverCard.Dropdown p="xs">
-            <Image
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger
+            asChild
+            onMouseEnter={() => setOpen(true)}
+            onMouseLeave={() => setOpen(false)}
+          >
+            {badge}
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-2">
+            <img
               src={fileUrl}
               alt="Preview"
-              radius="sm"
-              fit="contain"
-              h={200}
-              fallbackSrc=""
+              className="h-48 w-full rounded object-contain"
               onError={handleImageError}
             />
             {imageLoaded && (
-              <Text size="xs" c="dimmed" ta="center" mt="xs">
+              <p className="text-muted-foreground mt-2 text-center text-xs">
                 Click to open full size
-              </Text>
+              </p>
             )}
-          </HoverCard.Dropdown>
-        </HoverCard>
+          </PopoverContent>
+        </Popover>
       </>
     );
   }

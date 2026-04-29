@@ -1,9 +1,9 @@
-import { ActionButton, Flex, Text } from "@alepha/mantine";
-import { Card, Container, SimpleGrid } from "@mantine/core";
-import { modals } from "@mantine/modals";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
+import { useState } from "react";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { Character } from "@/api/entities/characters.ts";
 import type { InvitationEntity } from "@/api/entities/invitations.ts";
@@ -12,7 +12,6 @@ import type { User } from "@/api/entities/users.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "@/web/app/atoms/userProjectsAtom.ts";
-import { theme } from "@/web/app/constants/theme.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import ProjectUpdate from "../ProjectUpdate.tsx";
 import ProjectSettingsCharacterSection from "./ProjectSettingsCharacterSection.tsx";
@@ -26,44 +25,39 @@ export interface ProjectSettingsProps {
 }
 
 const ProjectSettings = (props: ProjectSettingsProps) => {
-  const { players, pendingInvitations } = props;
   const alepha = useAlepha();
   const { tr } = useI18n<I18n, "en">();
   const projectApi = useClient<ProjectController>();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   if (!project) {
     return null;
   }
 
-  const openDeleteModal = () =>
-    new Promise<boolean>((resolve) => {
-      modals.open({
-        id: "delete-campaign-modal",
-        title: tr("project.settings.delete.modal.title"),
-        centered: true,
-        children: (
-          <ProjectSettingsConfirmationModal
-            resolve={resolve}
-            project={project}
-          />
-        ),
-        withCloseButton: false,
-        closeOnClickOutside: false,
-        closeOnEscape: false,
-        onClose: () => resolve(false),
-      });
-    });
+  const handleDelete = async () => {
+    await projectApi.deleteProjectById({ params: { id: project.id } });
+    alepha.store.set(
+      userProjectsAtom,
+      (alepha.store.get(userProjectsAtom) ?? []).filter(
+        (p) => p.id !== project.id,
+      ),
+    );
+    setDeleteModalOpen(false);
+    router.push("home");
+  };
 
   return (
-    <Container size="md" w="100%" px={{ base: 0, md: "xs" }}>
-      <Flex direction="column" flex={1} p={"md"} gap={"lg"}>
+    <div className="mx-auto w-full max-w-4xl p-4">
+      <div className="flex flex-col gap-6">
         {/* General */}
-        <Flex direction="column" gap={"xs"}>
-          <Text>{tr("project.settings.general.title")}</Text>
+        <div className="flex flex-col gap-2">
+          <span className="text-sm">
+            {tr("project.settings.general.title")}
+          </span>
           <ProjectUpdate project={project} />
-        </Flex>
+        </div>
 
         {/* Character */}
         <ProjectSettingsCharacterSection />
@@ -71,69 +65,43 @@ const ProjectSettings = (props: ProjectSettingsProps) => {
         {/* Players */}
         <ProjectSettingsPlayersSection
           project={project}
-          players={players}
-          pendingInvitations={pendingInvitations}
+          players={props.players}
+          pendingInvitations={props.pendingInvitations}
         />
 
         {/* Danger Zone */}
-        <Flex direction="column" gap={"xs"}>
-          <Text>{tr("project.settings.danger.title")}</Text>
-          <Card
-            radius={0}
-            withBorder
-            className={"shadow"}
-            bg={theme.colors.card}
-            p={"sm"}
-          >
-            <SimpleGrid
-              cols={{
-                base: 1,
-                xs: 2,
-              }}
-            >
-              <Flex direction="column" gap={0}>
-                <Text size={"sm"}>{tr("project.settings.actions.delete")}</Text>
-                <Text size="xs" c={"dimmed"}>
+        <div className="flex flex-col gap-2">
+          <span className="text-sm">{tr("project.settings.danger.title")}</span>
+          <Card className="bg-card shadow">
+            <CardContent className="grid grid-cols-1 gap-4 p-4 xs:grid-cols-2">
+              <div className="flex flex-col gap-0">
+                <span className="text-sm">
+                  {tr("project.settings.actions.delete")}
+                </span>
+                <span className="text-muted-foreground text-xs">
                   {tr("project.settings.actions.delete.helper")}
-                </Text>
-              </Flex>
-              <Flex justify={"end"} align={"center"}>
-                <ActionButton
-                  flex={{
-                    base: 1,
-                    xs: "unset",
-                  }}
-                  color={"red"}
-                  onClick={async () => {
-                    const confirmed = await openDeleteModal();
-                    if (!confirmed) {
-                      return;
-                    }
-
-                    projectApi
-                      .deleteProjectById({
-                        params: { id: project.id },
-                      })
-                      .then(() => {
-                        alepha.store.set(
-                          userProjectsAtom,
-                          (alepha.store.get(userProjectsAtom) ?? []).filter(
-                            (p) => p.id !== project.id,
-                          ),
-                        );
-
-                        router.push("home");
-                      });
-                  }}
+                </span>
+              </div>
+              <div className="flex items-center justify-end">
+                <Button
+                  variant="destructive"
+                  onClick={() => setDeleteModalOpen(true)}
                 >
                   {tr("project.settings.actions.delete")}
-                </ActionButton>
-              </Flex>
-            </SimpleGrid>
+                </Button>
+              </div>
+            </CardContent>
           </Card>
-        </Flex>
-      </Flex>
-    </Container>
+        </div>
+
+        <ProjectSettingsConfirmationModal
+          open={deleteModalOpen}
+          project={project}
+          onCancel={() => setDeleteModalOpen(false)}
+          onConfirm={handleDelete}
+        />
+      </div>
+    </div>
   );
 };
 

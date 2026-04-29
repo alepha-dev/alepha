@@ -1,26 +1,35 @@
-import { ActionButton, Flex, JsonViewer, TypeForm, ui } from "@alepha/mantine";
+import { AutoForm } from "@alepha/ui/components/auto-form";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Card } from "@alepha/ui/components/ui/card";
+import { Textarea } from "@alepha/ui/components/ui/textarea";
 import {
-  Badge,
-  Card,
-  Code,
-  JsonInput,
-  Tabs,
-  Text,
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@alepha/ui/components/ui/toggle-group";
+import {
   Tooltip,
-} from "@mantine/core";
-import { IconPlayerPlay, IconSchema } from "@tabler/icons-react";
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { jsonSchemaToTypeBox, t } from "alepha";
 import { useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { HttpClient } from "alepha/server";
+import { Braces, Play } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-const methodColors: Record<string, string> = {
-  GET: "teal",
-  POST: "blue",
-  PUT: "orange",
-  PATCH: "yellow",
-  DELETE: "red",
+const methodVariant = (
+  method: string,
+): "default" | "secondary" | "destructive" | "outline" => {
+  switch (method.toUpperCase()) {
+    case "DELETE":
+      return "destructive";
+    case "GET":
+      return "secondary";
+    default:
+      return "default";
+  }
 };
 
 const EMPTY_SCHEMA = t.object({});
@@ -42,33 +51,37 @@ const formatPermission = (perm: any): string =>
 const getMiddlewareSummary = (
   name: string,
   opts: any,
-): { label: string; color: string }[] | null => {
+): { label: string }[] | null => {
   if (!opts) return null;
   switch (name) {
     case "$rateLimit":
-      if (opts.max) return [{ label: `max:${opts.max}`, color: "red" }];
+      if (opts.max) return [{ label: `max:${opts.max}` }];
       break;
     case "$circuit":
-      if (opts.threshold)
-        return [{ label: `threshold:${opts.threshold}`, color: "red" }];
+      if (opts.threshold) return [{ label: `threshold:${opts.threshold}` }];
       break;
     case "$throttle":
-      if (opts.rate) return [{ label: `rate:${opts.rate}`, color: "yellow" }];
+      if (opts.rate) return [{ label: `rate:${opts.rate}` }];
       break;
     case "$retry":
-      if (opts.max) return [{ label: `max:${opts.max}`, color: "blue" }];
+      if (opts.max) return [{ label: `max:${opts.max}` }];
       break;
     case "$cors":
-      if (opts.origin) return [{ label: String(opts.origin), color: "blue" }];
+      if (opts.origin) return [{ label: String(opts.origin) }];
       break;
     case "$lock":
-      if (opts.key) return [{ label: `key:${opts.key}`, color: "pink" }];
+      if (opts.key) return [{ label: `key:${opts.key}` }];
       break;
   }
   return null;
 };
 
-const MiddlewareEntry = ({ mw }: { mw: any }) => {
+interface MiddlewareEntryProps {
+  mw: any;
+}
+
+const MiddlewareEntry = (props: MiddlewareEntryProps) => {
+  const mw = props.mw;
   const opts = mw.options;
   const hasSecureDetails =
     opts?.roles?.length ||
@@ -79,29 +92,23 @@ const MiddlewareEntry = ({ mw }: { mw: any }) => {
   const summary =
     mw.name !== "$secure" ? getMiddlewareSummary(mw.name, opts) : null;
 
-  const nameBadge = (
-    <Badge size="sm" variant="light" color="violet">
-      {mw.name}
-    </Badge>
-  );
+  const nameBadge = <Badge variant="secondary">{mw.name}</Badge>;
 
   return (
-    <Flex gap="xs" wrap="wrap" align="center">
+    <div className="flex flex-wrap items-center gap-2">
       {opts && !hasSecureDetails && !summary && mw.name !== "$secure" ? (
-        <Tooltip
-          label={JSON.stringify(opts, null, 2)}
-          multiline
-          maw={400}
-          styles={{ tooltip: { fontFamily: "monospace", fontSize: 11 } }}
-        >
-          {nameBadge}
+        <Tooltip>
+          <TooltipTrigger asChild>{nameBadge}</TooltipTrigger>
+          <TooltipContent className="max-w-md font-mono text-xs">
+            <pre>{JSON.stringify(opts, null, 2)}</pre>
+          </TooltipContent>
         </Tooltip>
       ) : (
         nameBadge
       )}
       {opts?.roles?.length > 0 &&
         opts.roles.map((role: string) => (
-          <Badge key={role} size="xs" variant="dot" color="cyan">
+          <Badge key={role} variant="outline" className="text-xs">
             {role}
           </Badge>
         ))}
@@ -109,39 +116,44 @@ const MiddlewareEntry = ({ mw }: { mw: any }) => {
         opts.permissions.map((perm: any) => (
           <Badge
             key={formatPermission(perm)}
-            size="xs"
-            variant="dot"
-            color="orange"
+            variant="outline"
+            className="text-xs"
           >
             {formatPermission(perm)}
           </Badge>
         ))}
       {opts?.issuers?.length > 0 &&
         opts.issuers.map((issuer: string) => (
-          <Badge key={issuer} size="xs" variant="dot" color="green">
+          <Badge key={issuer} variant="outline" className="text-xs">
             {issuer}
           </Badge>
         ))}
       {opts?.optional && (
-        <Badge size="xs" variant="outline" color="gray">
+        <Badge variant="outline" className="text-xs">
           optional
         </Badge>
       )}
       {summary?.map((item) => (
-        <Badge key={item.label} size="xs" variant="dot" color={item.color}>
+        <Badge key={item.label} variant="outline" className="text-xs">
           {item.label}
         </Badge>
       ))}
-    </Flex>
+    </div>
   );
 };
 
-export const DevPanelAction = ({ action }: { action: any }) => {
+interface DevPanelActionProps {
+  action: any;
+}
+
+export const DevPanelAction = (props: DevPanelActionProps) => {
+  const action = props.action;
   const http = useInject(HttpClient);
   const [body, setBody] = useState("{}");
   const [response, setResponse] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [timing, setTiming] = useState<number>(0);
+  const [tab, setTab] = useState<string>("schema");
 
   const actionKey = `${action.method}:${action.fullPath}`;
 
@@ -168,7 +180,6 @@ export const DevPanelAction = ({ action }: { action: any }) => {
     [paramsSchema],
   );
 
-  // Track whether we're using TypeForm or JsonInput for the body
   const useTypeFormBody = !!bodySchema;
   const bodyRef = useRef(body);
   bodyRef.current = body;
@@ -178,7 +189,6 @@ export const DevPanelAction = ({ action }: { action: any }) => {
     setResponse(null);
     const start = performance.now();
     try {
-      // Build URL with path param substitution
       let url = action.fullPath;
       if (paramsSchema) {
         const params = paramsForm.currentValues;
@@ -189,7 +199,6 @@ export const DevPanelAction = ({ action }: { action: any }) => {
         }
       }
 
-      // Append query params
       if (querySchema) {
         const qp = queryForm.currentValues;
         const searchParams = new URLSearchParams();
@@ -202,7 +211,6 @@ export const DevPanelAction = ({ action }: { action: any }) => {
         if (qs) url += `?${qs}`;
       }
 
-      // Get body
       let parsedBody: any;
       if (action.method !== "GET") {
         if (useTypeFormBody) {
@@ -244,256 +252,151 @@ export const DevPanelAction = ({ action }: { action: any }) => {
     paramsSchema,
   ]);
 
+  const renderJsonCard = (label: string, data: any) => (
+    <div>
+      <p className="text-muted-foreground mb-2 text-xs font-semibold uppercase">
+        {label}
+      </p>
+      <Card className="p-3">
+        <pre className="overflow-auto text-xs">
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      </Card>
+    </div>
+  );
+
   return (
-    <Flex direction="column" gap="md">
+    <div className="flex w-full flex-col gap-4">
       <div>
-        <Flex gap="sm" mb="xs">
-          <Badge
-            size="lg"
-            variant="light"
-            color={methodColors[action.method] ?? "gray"}
-          >
-            {action.method}
-          </Badge>
-          <Code fz="sm">{action.fullPath}</Code>
-          {action.secure && (
-            <Badge size="xs" variant="outline" color="yellow">
-              Secure
-            </Badge>
-          )}
-        </Flex>
+        <div className="mb-2 flex items-center gap-2">
+          <Badge variant={methodVariant(action.method)}>{action.method}</Badge>
+          <code className="bg-muted rounded px-2 py-0.5 text-sm">
+            {action.fullPath}
+          </code>
+          {action.secure && <Badge variant="outline">Secure</Badge>}
+        </div>
         {action.description && (
-          <Text fz="sm" c="dimmed">
-            {action.description}
-          </Text>
+          <p className="text-muted-foreground text-sm">{action.description}</p>
         )}
       </div>
 
       {action.middlewares?.length > 0 && (
         <div>
-          <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
+          <p className="text-muted-foreground mb-2 text-xs font-semibold uppercase">
             Middleware
-          </Text>
-          <Flex direction="column" gap="xs">
+          </p>
+          <div className="flex flex-col gap-2">
             {action.middlewares.map((mw: any) => (
               <MiddlewareEntry key={mw.name} mw={mw} />
             ))}
-          </Flex>
+          </div>
         </div>
       )}
 
-      <Tabs defaultValue="schema">
-        <Tabs.List>
-          <Tabs.Tab value="schema" leftSection={<IconSchema size={14} />}>
-            Schema
-          </Tabs.Tab>
-          <Tabs.Tab value="tryit" leftSection={<IconPlayerPlay size={14} />}>
-            Try It
-          </Tabs.Tab>
-        </Tabs.List>
+      <ToggleGroup
+        type="single"
+        variant="outline"
+        size="sm"
+        value={tab}
+        onValueChange={(v) => v && setTab(v)}
+      >
+        <ToggleGroupItem value="schema">
+          <Braces className="size-3.5" /> Schema
+        </ToggleGroupItem>
+        <ToggleGroupItem value="tryit">
+          <Play className="size-3.5" /> Try It
+        </ToggleGroupItem>
+      </ToggleGroup>
 
-        <Tabs.Panel value="schema" pt="md">
-          <Flex direction="column" gap="md">
-            {action.body && (
-              <div>
-                <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
-                  Request Body
-                </Text>
-                <Card
-                  padding="sm"
-                  style={{
-                    background: ui.colors.surface,
-                    border: `1px solid ${ui.colors.border}`,
-                  }}
-                >
-                  <JsonViewer
-                    data={action.body}
-                    defaultExpandedDepth={2}
-                    size="xs"
-                  />
-                </Card>
-              </div>
+      {tab === "schema" && (
+        <div className="flex flex-col gap-4">
+          {action.body && renderJsonCard("Request Body", action.body)}
+          {action.params && renderJsonCard("Path Parameters", action.params)}
+          {action.query && renderJsonCard("Query Parameters", action.query)}
+          {action.response && renderJsonCard("Response", action.response)}
+          {!action.body &&
+            !action.params &&
+            !action.query &&
+            !action.response && (
+              <p className="text-muted-foreground text-sm">
+                No schema defined for this action.
+              </p>
             )}
-            {action.params && (
-              <div>
-                <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
-                  Path Parameters
-                </Text>
-                <Card
-                  padding="sm"
-                  style={{
-                    background: ui.colors.surface,
-                    border: `1px solid ${ui.colors.border}`,
-                  }}
-                >
-                  <JsonViewer
-                    data={action.params}
-                    defaultExpandedDepth={2}
-                    size="xs"
-                  />
-                </Card>
-              </div>
-            )}
-            {action.query && (
-              <div>
-                <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
-                  Query Parameters
-                </Text>
-                <Card
-                  padding="sm"
-                  style={{
-                    background: ui.colors.surface,
-                    border: `1px solid ${ui.colors.border}`,
-                  }}
-                >
-                  <JsonViewer
-                    data={action.query}
-                    defaultExpandedDepth={2}
-                    size="xs"
-                  />
-                </Card>
-              </div>
-            )}
-            {action.response && (
-              <div>
-                <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
-                  Response
-                </Text>
-                <Card
-                  padding="sm"
-                  style={{
-                    background: ui.colors.surface,
-                    border: `1px solid ${ui.colors.border}`,
-                  }}
-                >
-                  <JsonViewer
-                    data={action.response}
-                    defaultExpandedDepth={2}
-                    size="xs"
-                  />
-                </Card>
-              </div>
-            )}
-            {!action.body &&
-              !action.params &&
-              !action.query &&
-              !action.response && (
-                <Text c="dimmed" fz="sm">
-                  No schema defined for this action.
-                </Text>
+        </div>
+      )}
+
+      {tab === "tryit" && (
+        <div className="flex flex-col gap-4">
+          {paramsSchema && (
+            <div>
+              <p className="text-muted-foreground mb-2 text-xs font-semibold uppercase">
+                Path Parameters
+              </p>
+              <AutoForm form={paramsForm} noSubmit />
+            </div>
+          )}
+          {querySchema && (
+            <div>
+              <p className="text-muted-foreground mb-2 text-xs font-semibold uppercase">
+                Query Parameters
+              </p>
+              <AutoForm form={queryForm} noSubmit />
+            </div>
+          )}
+          {action.method !== "GET" && (
+            <div>
+              <p className="text-muted-foreground mb-2 text-xs font-semibold uppercase">
+                Request Body
+              </p>
+              {bodySchema ? (
+                <AutoForm form={bodyForm} noSubmit />
+              ) : (
+                <Textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  rows={6}
+                  className="font-mono text-xs"
+                />
               )}
-          </Flex>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="tryit" pt="md">
-          <Flex direction="column" gap="md">
-            {paramsSchema && (
-              <div>
-                <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
-                  Path Parameters
-                </Text>
-                <TypeForm
-                  form={paramsForm}
-                  skipSubmitButton
-                  skipFormElement
-                  columns={1}
-                />
-              </div>
+            </div>
+          )}
+          <div className="flex items-center gap-3">
+            <Button size="sm" disabled={loading} onClick={execute}>
+              <Play className="size-3.5" />
+              {loading ? "Sending..." : "Send Request"}
+            </Button>
+            {timing > 0 && (
+              <span className="text-muted-foreground text-xs">{timing}ms</span>
             )}
-            {querySchema && (
-              <div>
-                <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
-                  Query Parameters
-                </Text>
-                <TypeForm
-                  form={queryForm}
-                  skipSubmitButton
-                  skipFormElement
-                  columns={1}
-                />
-              </div>
-            )}
-            {action.method !== "GET" && (
-              <div>
-                <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
-                  Request Body
-                </Text>
-                {bodySchema ? (
-                  <TypeForm
-                    form={bodyForm}
-                    skipSubmitButton
-                    skipFormElement
-                    columns={1}
-                  />
+          </div>
+          {response && (
+            <div>
+              <p className="text-muted-foreground mb-2 text-xs font-semibold uppercase">
+                Response
+              </p>
+              <Card className="p-3">
+                {response.error ? (
+                  <p className="text-destructive text-sm">{response.error}</p>
                 ) : (
-                  <JsonInput
-                    value={body}
-                    onChange={setBody}
-                    formatOnBlur
-                    autosize
-                    minRows={4}
-                    maxRows={12}
-                    styles={{
-                      input: { fontFamily: "monospace", fontSize: 12 },
-                    }}
-                  />
+                  <>
+                    <Badge
+                      variant={
+                        response.status < 400 ? "default" : "destructive"
+                      }
+                      className="mb-2"
+                    >
+                      {response.status}
+                    </Badge>
+                    <pre className="overflow-auto text-xs">
+                      {JSON.stringify(response.data, null, 2)}
+                    </pre>
+                  </>
                 )}
-              </div>
-            )}
-            <Flex>
-              <ActionButton
-                size="xs"
-                loading={loading}
-                onClick={execute}
-                color={methodColors[action.method] ?? "blue"}
-                icon={<IconPlayerPlay size={14} />}
-              >
-                Send Request
-              </ActionButton>
-              {timing > 0 && (
-                <Text fz="xs" c="dimmed">
-                  {timing}ms
-                </Text>
-              )}
-            </Flex>
-            {response && (
-              <div>
-                <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
-                  Response
-                </Text>
-                <Card
-                  padding="sm"
-                  style={{
-                    background: ui.colors.surface,
-                    border: `1px solid ${ui.colors.border}`,
-                  }}
-                >
-                  {response.error ? (
-                    <Text c="red" fz="sm">
-                      {response.error}
-                    </Text>
-                  ) : (
-                    <>
-                      <Badge
-                        size="xs"
-                        mb="xs"
-                        color={response.status < 400 ? "teal" : "red"}
-                      >
-                        {response.status}
-                      </Badge>
-                      <JsonViewer
-                        data={response.data}
-                        defaultExpandedDepth={3}
-                        size="xs"
-                      />
-                    </>
-                  )}
-                </Card>
-              </div>
-            )}
-          </Flex>
-        </Tabs.Panel>
-      </Tabs>
-    </Flex>
+              </Card>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };

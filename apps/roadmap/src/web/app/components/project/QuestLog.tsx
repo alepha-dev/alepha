@@ -1,11 +1,11 @@
-import { ActionButton, Flex, Text } from "@alepha/mantine";
-import { Card, TextInput } from "@mantine/core";
-import { IconBook2, IconSearch, IconX } from "@tabler/icons-react";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Card } from "@alepha/ui/components/ui/card";
+import { Input } from "@alepha/ui/components/ui/input";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { BookOpen, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { currentAssignedTasksAtom } from "../../atoms/currentAssignedTasksAtom.ts";
-import { theme } from "../../constants/theme.ts";
 import type { I18n } from "../../services/I18n.ts";
 import TaskList from "./task/TaskList.tsx";
 
@@ -14,12 +14,10 @@ const QuestLog = () => {
   const { tr } = useI18n<I18n, "en">();
   const [searchValue, setSearchValue] = useState<string>("");
 
-  // Client-side filtering of tasks based on search
   const filteredTasks = useMemo(() => {
     if (!searchValue.trim()) {
       return tasks;
     }
-
     return tasks.filter((task) =>
       task.title.toLowerCase().includes(searchValue.toLowerCase().trim()),
     );
@@ -32,82 +30,48 @@ const QuestLog = () => {
   const handleClearSearch = () => {
     setSearchValue("");
   };
+
   return (
-    <Card
-      flex={1}
-      h={"100%"}
-      p={0}
-      radius={"md"}
-      withBorder
-      className={"shadow-2"}
-      bg={theme.colors.card}
-      w={"100%"}
-      style={{
-        position: "relative",
-      }}
-    >
-      <Flex gap={"xs"} p={"xs"}>
-        <Flex align="center" justify="center" px={"xs"} visibleFrom={"xl"}>
-          <IconBook2 size={theme.icon.size.xl} />
-        </Flex>
-        <Card
-          radius={"md"}
-          className={"shadow"}
-          withBorder
-          bg={theme.colors.panel}
-          flex={1}
-          p={0}
-        >
-          <Flex flex={1} px={"xs"} align={"center"}>
-            <Flex px={2} gap={"xs"} align="center" justify="center">
-              <Text size="xs">{tr("quest-log.quests")}</Text>
-              <Card
-                radius={"md"}
-                withBorder
-                p={0}
-                px={6}
-                style={{ padding: "0 4px" }}
-              >
-                <Text size="xs">{filteredTasks.length}/25</Text>
-              </Card>
-            </Flex>
-            <Flex flex={1} />
-          </Flex>
+    <Card className="bg-card relative flex h-full w-full flex-1 flex-col gap-2 rounded-md p-0 shadow">
+      <div className="flex gap-2 p-2">
+        <div className="hidden items-center justify-center px-2 xl:flex">
+          <BookOpen className="size-6" />
+        </div>
+        <Card className="bg-muted flex flex-1 flex-row items-center rounded-md p-0 px-2 shadow">
+          <div className="flex items-center justify-center gap-2 px-1">
+            <span className="text-xs">{tr("quest-log.quests")}</span>
+            <Card className="rounded-md px-1.5 py-0">
+              <span className="text-xs">{filteredTasks.length}/25</span>
+            </Card>
+          </div>
+          <div className="flex-1" />
         </Card>
-      </Flex>
-      <Flex px={"xs"}>
-        <TextInput
-          size={"xs"}
-          radius={"xl"}
-          disabled={tasks.length === 0}
-          placeholder={tr("quest-log.search")}
-          flex={1}
-          value={searchValue}
-          onChange={handleSearchChange}
-          leftSection={<IconSearch size={theme.icon.size.xs} />}
-          rightSection={
-            searchValue && (
-              <ActionButton
-                size="xs"
-                variant="subtle"
-                onClick={handleClearSearch}
-                color="gray"
-                px="xs"
-              >
-                <IconX size={theme.icon.size.xs} />
-              </ActionButton>
-            )
-          }
-        />
-      </Flex>
-      <Flex
-        direction={"column"}
-        gap={"xs"}
-        className={"overflow-auto"}
-        p={"xs"}
-      >
+      </div>
+      <div className="flex px-2">
+        <div className="relative flex-1">
+          <Search className="text-muted-foreground absolute top-1/2 left-2 size-3.5 -translate-y-1/2" />
+          <Input
+            disabled={tasks.length === 0}
+            placeholder={tr("quest-log.search")}
+            value={searchValue}
+            onChange={handleSearchChange}
+            className="h-8 rounded-full pr-8 pl-7 text-xs"
+          />
+          {searchValue && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleClearSearch}
+              className="absolute top-1/2 right-1 size-6 -translate-y-1/2"
+            >
+              <X className="size-3.5" />
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-col gap-2 overflow-auto p-2">
         <TaskList tasks={filteredTasks} />
-      </Flex>
+      </div>
     </Card>
   );
 };

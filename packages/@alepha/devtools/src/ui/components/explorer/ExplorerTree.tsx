@@ -1,14 +1,14 @@
-import { Text } from "@mantine/core";
 import {
-  IconApi,
-  IconBroadcast,
-  IconDatabase,
-  IconFileText,
-  IconFolder,
-  IconFolderOpen,
-  IconRoute,
-  IconStack2,
-} from "@tabler/icons-react";
+  Database,
+  FileText,
+  Folder,
+  FolderOpen,
+  Layers,
+  Radio,
+  Route,
+  Zap,
+} from "lucide-react";
+import type { ComponentType } from "react";
 import { useMemo } from "react";
 import { TreeView, type TreeViewNode } from "../shared/TreeView.tsx";
 
@@ -20,83 +20,54 @@ export interface TreeNode {
   data?: any;
 }
 
-// Method badge: use Mantine's light variant colors (scheme-aware)
-const METHOD_COLORS: Record<string, { color: string; bg: string }> = {
-  GET: {
-    color: "var(--mantine-color-green-text)",
-    bg: "var(--mantine-color-green-light)",
-  },
-  POST: {
-    color: "var(--mantine-color-blue-text)",
-    bg: "var(--mantine-color-blue-light)",
-  },
-  PUT: {
-    color: "var(--mantine-color-orange-text)",
-    bg: "var(--mantine-color-orange-light)",
-  },
-  PATCH: {
-    color: "var(--mantine-color-yellow-text)",
-    bg: "var(--mantine-color-yellow-light)",
-  },
-  DELETE: {
-    color: "var(--mantine-color-red-text)",
-    bg: "var(--mantine-color-red-light)",
-  },
+const METHOD_CLASS: Record<string, string> = {
+  GET: "text-green-600 bg-green-500/10",
+  POST: "text-blue-600 bg-blue-500/10",
+  PUT: "text-orange-600 bg-orange-500/10",
+  PATCH: "text-yellow-600 bg-yellow-500/10",
+  DELETE: "text-red-600 bg-red-500/10",
 };
 
-const nodeIcons: Record<string, any> = {
-  page: IconFileText,
-  queue: IconStack2,
-  topic: IconBroadcast,
-  cache: IconDatabase,
+const nodeIcons: Record<string, ComponentType<{ className?: string }>> = {
+  page: FileText,
+  queue: Layers,
+  topic: Radio,
+  cache: Database,
 };
 
-// Use Mantine text colors: these adapt to light/dark scheme
-const nodeColors: Record<string, string> = {
-  page: "var(--mantine-color-blue-text)",
-  queue: "var(--mantine-color-orange-text)",
-  topic: "var(--mantine-color-pink-text)",
-  cache: "var(--mantine-color-cyan-text)",
+const nodeIconClass: Record<string, string> = {
+  page: "text-blue-500",
+  queue: "text-orange-500",
+  topic: "text-pink-500",
+  cache: "text-cyan-500",
 };
 
-const folderIcons: Record<string, { icon: any; color: string }> = {
-  actions: { icon: IconApi, color: "var(--mantine-color-teal-text)" },
-  pages: { icon: IconFileText, color: "var(--mantine-color-blue-text)" },
-  queues: { icon: IconStack2, color: "var(--mantine-color-orange-text)" },
-  topics: { icon: IconBroadcast, color: "var(--mantine-color-pink-text)" },
-  caches: { icon: IconDatabase, color: "var(--mantine-color-cyan-text)" },
-  routes: { icon: IconRoute, color: "var(--mantine-color-violet-text)" },
+const folderIcons: Record<
+  string,
+  { icon: ComponentType<{ className?: string }>; className: string }
+> = {
+  actions: { icon: Zap, className: "text-teal-500" },
+  pages: { icon: FileText, className: "text-blue-500" },
+  queues: { icon: Layers, className: "text-orange-500" },
+  topics: { icon: Radio, className: "text-pink-500" },
+  caches: { icon: Database, className: "text-cyan-500" },
+  routes: { icon: Route, className: "text-violet-500" },
 };
 
-const MethodBadge = ({ method }: { method: string }) => {
-  const upper = method.toUpperCase();
+interface MethodBadgeProps {
+  method: string;
+}
+
+const MethodBadge = (props: MethodBadgeProps) => {
+  const upper = props.method.toUpperCase();
   const short = upper === "DELETE" ? "DEL" : upper;
-  const colors = METHOD_COLORS[upper] ?? {
-    color: "var(--mantine-color-dimmed)",
-    bg: "var(--mantine-color-default-hover)",
-  };
+  const cls = METHOD_CLASS[upper] ?? "text-muted-foreground bg-muted";
   return (
-    <Text
-      component="span"
-      fz={9}
-      fw={700}
-      ff="monospace"
-      lh={1}
-      style={{
-        paddingTop: 5,
-        color: colors.color,
-        background: colors.bg,
-        padding: "2px 4px",
-        borderRadius: 3,
-        flexShrink: 0,
-        letterSpacing: 0.3,
-        width: 32,
-        textAlign: "center",
-        display: "inline-block",
-      }}
+    <span
+      className={`inline-block w-8 shrink-0 rounded px-1 py-0.5 text-center font-mono text-[9px] font-bold leading-none ${cls}`}
     >
       {short}
-    </Text>
+    </span>
   );
 };
 
@@ -113,26 +84,18 @@ const toTreeViewNode = (
     const knownFolder = folderIcons[node.id];
     if (knownFolder) {
       const Icon = knownFolder.icon;
-      icon = (
-        <Icon size={15} color={knownFolder.color} style={{ flexShrink: 0 }} />
-      );
+      icon = <Icon className={`size-3.5 shrink-0 ${knownFolder.className}`} />;
     } else {
       const isOpen = openNodes.has(node.id);
-      const Icon = isOpen ? IconFolderOpen : IconFolder;
-      icon = (
-        <Icon
-          size={15}
-          color="var(--mantine-color-dimmed)"
-          style={{ flexShrink: 0 }}
-        />
-      );
+      const Icon = isOpen ? FolderOpen : Folder;
+      icon = <Icon className="size-3.5 text-muted-foreground shrink-0" />;
     }
   } else if (isAction) {
     icon = <MethodBadge method={node.data?.method ?? "GET"} />;
   } else {
-    const Icon = nodeIcons[node.type] ?? IconFileText;
-    const color = nodeColors[node.type] ?? "var(--mantine-color-dimmed)";
-    icon = <Icon size={15} color={color} style={{ flexShrink: 0 }} />;
+    const Icon = nodeIcons[node.type] ?? FileText;
+    const cls = nodeIconClass[node.type] ?? "text-muted-foreground";
+    icon = <Icon className={`size-3.5 shrink-0 ${cls}`} />;
   }
 
   return {
@@ -152,27 +115,20 @@ interface ExplorerTreeProps {
   onToggle: (id: string) => void;
 }
 
-export const ExplorerTree = ({
-  nodes,
-  selectedId,
-  openNodes,
-  search,
-  onSelect,
-  onToggle,
-}: ExplorerTreeProps) => {
+export const ExplorerTree = (props: ExplorerTreeProps) => {
   const treeViewNodes = useMemo(
-    () => nodes.map((n) => toTreeViewNode(n, openNodes)),
-    [nodes, openNodes],
+    () => props.nodes.map((n) => toTreeViewNode(n, props.openNodes)),
+    [props.nodes, props.openNodes],
   );
 
   return (
     <TreeView
       nodes={treeViewNodes}
-      selectedId={selectedId}
-      openNodes={openNodes}
-      search={search}
-      onSelect={onSelect}
-      onToggle={onToggle}
+      selectedId={props.selectedId}
+      openNodes={props.openNodes}
+      search={props.search}
+      onSelect={props.onSelect}
+      onToggle={props.onToggle}
     />
   );
 };

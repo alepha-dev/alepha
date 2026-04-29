@@ -1,69 +1,33 @@
-import { Text } from "@alepha/mantine";
-import { Card } from "@mantine/core";
 import { useInject } from "alepha/react";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
-import { theme } from "@/web/app/constants/theme.ts";
 
 export interface TaskComplexityProps {
   complexity: number;
 }
 
 const TaskComplexity = (props: TaskComplexityProps) => {
-  const { complexity } = props;
   const info = useInject(CharacterInfo);
-  const cardProps = {
-    p: 0,
-    w: 25,
-    h: 25,
-    radius: "md",
-    withBorder: true,
-    align: "center",
-  };
-  const renderComplexityText = (n: number) => {
-    return (
-      <Text size="md" fw={"bold"} lh={"24px"}>
-        {info.getRank(n)}
-      </Text>
-    );
-  };
-  if (complexity === 5)
-    return (
-      <Card
-        {...cardProps}
-        className={"shadow-2"}
-        style={{ borderColor: theme.colors.gold }}
-        bg={theme.colors.panel}
-      >
-        {renderComplexityText(complexity)}
-      </Card>
-    );
-  if (complexity === 4)
-    return (
-      <Card
-        {...cardProps}
-        className={"shadow"}
-        style={{ borderColor: theme.colors.silver }}
-        bg={theme.colors.panel}
-      >
-        {renderComplexityText(complexity)}
-      </Card>
-    );
-  if (complexity === 3)
-    return (
-      <Card {...cardProps} className={"shadow"} bg={theme.colors.panel}>
-        {renderComplexityText(complexity)}
-      </Card>
-    );
-  if (complexity === 2)
-    return (
-      <Card {...cardProps} bg={theme.colors.panel}>
-        {renderComplexityText(complexity)}
-      </Card>
-    );
+  const { complexity } = props;
+
+  const ringClass =
+    complexity === 5
+      ? "border-yellow-400 shadow"
+      : complexity === 4
+        ? "border-zinc-300 shadow"
+        : complexity === 3
+          ? "border-border shadow-sm"
+          : "border-border";
+
+  const bgClass = complexity === 1 ? "bg-card" : "bg-muted";
+
   return (
-    <Card {...cardProps} bg={theme.colors.card}>
-      {renderComplexityText(complexity)}
-    </Card>
+    <div
+      className={`flex size-[25px] items-center justify-center rounded-md border ${ringClass} ${bgClass}`}
+    >
+      <span className="text-sm font-bold leading-none">
+        {info.getRank(complexity)}
+      </span>
+    </div>
   );
 };
 

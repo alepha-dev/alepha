@@ -1,51 +1,38 @@
-import { Flex, JsonViewer, ui } from "@alepha/mantine";
-import { Badge, Card, Text } from "@mantine/core";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Card } from "@alepha/ui/components/ui/card";
 
-export const DevPanelQueue = ({ queue }: { queue: any }) => {
+interface DevPanelQueueProps {
+  queue: any;
+}
+
+export const DevPanelQueue = (props: DevPanelQueueProps) => {
+  const queue = props.queue;
   return (
-    <Flex direction="column" gap="md">
+    <div className="flex flex-col gap-4">
       <div>
-        <Text fz="lg" fw={600} mb="xs">
-          {queue.name}
-        </Text>
+        <p className="mb-1 text-lg font-semibold">{queue.name}</p>
         {queue.description && (
-          <Text fz="sm" c="dimmed">
-            {queue.description}
-          </Text>
+          <p className="text-muted-foreground text-sm">{queue.description}</p>
         )}
       </div>
 
-      <Flex gap="xs">
-        <Badge size="xs" variant="light" color="orange">
-          Queue
-        </Badge>
-        {queue.provider && (
-          <Badge size="xs" variant="outline" color="gray">
-            {queue.provider}
-          </Badge>
-        )}
-      </Flex>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="secondary">Queue</Badge>
+        {queue.provider && <Badge variant="outline">{queue.provider}</Badge>}
+      </div>
 
       {queue.schema && (
         <div>
-          <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
+          <p className="text-muted-foreground mb-2 text-xs font-semibold uppercase">
             Job Schema
-          </Text>
-          <Card
-            padding="sm"
-            style={{
-              background: ui.colors.surface,
-              border: `1px solid ${ui.colors.border}`,
-            }}
-          >
-            <JsonViewer
-              data={queue.schema}
-              defaultExpandedDepth={2}
-              size="xs"
-            />
+          </p>
+          <Card className="p-3">
+            <pre className="overflow-auto text-xs">
+              {JSON.stringify(queue.schema, null, 2)}
+            </pre>
           </Card>
         </div>
       )}
-    </Flex>
+    </div>
   );
 };

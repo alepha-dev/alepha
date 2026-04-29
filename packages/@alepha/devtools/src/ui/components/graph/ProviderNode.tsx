@@ -1,5 +1,4 @@
-import { Flex, ui } from "@alepha/mantine";
-import { Badge, Text } from "@mantine/core";
+import { Badge } from "@alepha/ui/components/ui/badge";
 import { Handle, Position } from "@xyflow/react";
 import { getModuleColor } from "./constants.ts";
 import type { ProviderNodeData } from "./types.ts";
@@ -9,21 +8,22 @@ interface ProviderNodeProps {
   selected?: boolean;
 }
 
-export const ProviderNode = ({ data, selected }: ProviderNodeProps) => {
+export const ProviderNode = (props: ProviderNodeProps) => {
+  const { data, selected } = props;
   const moduleColor = getModuleColor(data.module);
   const isFaded = data.isFaded && !data.isHighlighted;
   const isModule = data.isModule;
 
+  const isActive = selected || data.isSelected;
+
   return (
-    <Flex
-      p="xs"
+    <div
+      className="bg-card flex p-2 transition-all"
       style={{
         borderRadius: isModule ? 12 : 8,
-        border: `2px solid ${selected || data.isSelected ? moduleColor : ui.colors.border}`,
-        backgroundColor: ui.colors.surface,
+        border: `2px solid ${isActive ? moduleColor : "hsl(var(--border))"}`,
         minWidth: isModule ? 200 : 160,
         opacity: isFaded ? 0.3 : 1,
-        transition: "opacity 0.2s, border-color 0.2s",
         boxShadow: data.isHighlighted ? `0 0 10px ${moduleColor}` : undefined,
       }}
     >
@@ -38,28 +38,29 @@ export const ProviderNode = ({ data, selected }: ProviderNodeProps) => {
         }}
       />
 
-      <Flex direction="column" gap={4}>
+      <div className="flex flex-col gap-1">
         {isModule ? (
           <>
-            <Text size="xs" fw={600} style={{ wordBreak: "break-word" }}>
+            <span className="break-words text-xs font-semibold">
               {data.label}
-            </Text>
-            <Text size="xs" c="dimmed">
+            </span>
+            <span className="text-muted-foreground text-xs">
               {data.providerCount} services
-            </Text>
+            </span>
           </>
         ) : (
           <>
-            <Text size="xs" fw={600} style={{ wordBreak: "break-word" }}>
+            <span className="break-words text-xs font-semibold">
               {data.label.split(".").pop()}
-            </Text>
+            </span>
             {data.module && (
               <Badge
-                size="xs"
-                variant="light"
+                variant="outline"
+                className="text-[10px]"
                 style={{
                   backgroundColor: `${moduleColor}20`,
                   color: moduleColor,
+                  borderColor: `${moduleColor}40`,
                 }}
               >
                 {data.module}
@@ -68,19 +69,19 @@ export const ProviderNode = ({ data, selected }: ProviderNodeProps) => {
           </>
         )}
 
-        <Flex gap={4}>
+        <div className="flex gap-2">
           {data.dependencies.length > 0 && (
-            <Text size="xs" c="dimmed">
+            <span className="text-muted-foreground text-xs">
               {data.dependencies.length} deps
-            </Text>
+            </span>
           )}
           {data.dependents.length > 0 && (
-            <Text size="xs" c="dimmed">
+            <span className="text-muted-foreground text-xs">
               {data.dependents.length} refs
-            </Text>
+            </span>
           )}
-        </Flex>
-      </Flex>
+        </div>
+      </div>
 
       <Handle
         type="source"
@@ -92,6 +93,6 @@ export const ProviderNode = ({ data, selected }: ProviderNodeProps) => {
           border: "none",
         }}
       />
-    </Flex>
+    </div>
   );
 };

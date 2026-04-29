@@ -1,14 +1,22 @@
-import { ActionButton, Flex, Text, useToast } from "@alepha/mantine";
-import { Card, Container, Modal, TextInput } from "@mantine/core";
-import { IconBook2, IconPlayerPlay, IconPlayerStop } from "@tabler/icons-react";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@alepha/ui/components/ui/dialog";
+import { Input } from "@alepha/ui/components/ui/input";
+import { Label } from "@alepha/ui/components/ui/label";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { BookOpen, Play, Square } from "lucide-react";
 import { useCallback, useState } from "react";
+import { toast } from "sonner";
 import type { ChapterController } from "@/api/controllers/ChapterController.ts";
 import type { Chapter } from "@/api/entities/chapters.ts";
 import { currentChaptersAtom } from "@/web/app/atoms/currentChaptersAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { theme } from "@/web/app/constants/theme.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import ProjectChaptersChangelog from "./ProjectChaptersChangelog.tsx";
 import ProjectChaptersCloseModal from "./ProjectChaptersCloseModal.tsx";
@@ -21,7 +29,6 @@ const ProjectChapters = () => {
   const [project] = useStore(currentProjectAtom);
   const [chapters, setChapters] = useStore(currentChaptersAtom);
   const chapterApi = useClient<ChapterController>();
-  const toast = useToast();
   const [showStartForm, setShowStartForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [changelogModal, setChangelogModal] = useState<{
@@ -62,19 +69,15 @@ const ProjectChapters = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      await chapterApi.deleteChapter({
-        params: { id },
-      });
+      await chapterApi.deleteChapter({ params: { id } });
       await reload();
     } catch {
-      toast.danger({ message: tr("chapter.delete.error") });
+      toast.error(String(tr("chapter.delete.error")));
     }
   };
 
   const handleViewChangelog = async (id: number) => {
-    const result = await chapterApi.getChapterChangelog({
-      params: { id },
-    });
+    const result = await chapterApi.getChapterChangelog({ params: { id } });
     setChangelogModal({
       markdown: result.markdown,
       chapter: result.chapter,
@@ -84,104 +87,95 @@ const ProjectChapters = () => {
   if (!project) return null;
 
   return (
-    <Container size="md" w="100%" px={{ base: 0, md: "xs" }}>
-      <Flex direction="column" flex={1} p="md" gap="md">
+    <div className="mx-auto w-full max-w-4xl p-4">
+      <div className="flex flex-col gap-4">
         {/* Active chapter banner */}
         {activeChapter && (
-          <Card
-            withBorder
-            radius="md"
-            bg={theme.colors.card}
-            className="shadow"
-            p="md"
-          >
-            <Flex align="center" justify="space-between" gap="md">
-              <Flex align="center" gap="sm">
-                <IconBook2
-                  size={theme.icon.size.md}
-                  color="var(--mantine-color-green-6)"
-                />
-                <Flex direction="column" gap={0}>
-                  <Text size="sm" fw={600}>
+          <Card className="bg-card shadow">
+            <CardContent className="flex items-center justify-between gap-4 p-4">
+              <div className="flex items-center gap-3">
+                <BookOpen className="size-5 text-green-600" />
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold">
                     {tr("chapter.banner.active")}
-                  </Text>
-                  <Text size="lg" fw={700}>
+                  </span>
+                  <span className="text-lg font-bold">
                     {tr("chapter.banner.title", {
                       args: [String(activeChapter.number), activeChapter.title],
                     })}
-                  </Text>
-                </Flex>
-              </Flex>
-              <ActionButton
-                color="orange"
-                leftSection={<IconPlayerStop size={theme.icon.size.sm} />}
+                  </span>
+                </div>
+              </div>
+              <Button
+                variant="outline"
                 onClick={() => setCloseModal(activeChapter as ChapterWithCount)}
               >
+                <Square className="size-4" />
                 {tr("chapter.close")}
-              </ActionButton>
-            </Flex>
+              </Button>
+            </CardContent>
           </Card>
         )}
 
         {/* Start new chapter */}
         {!activeChapter && (
-          <Card
-            withBorder
-            radius="md"
-            bg={theme.colors.card}
-            className="shadow"
-            p="md"
-          >
-            {showStartForm ? (
-              <Flex gap="sm" align="end">
-                <TextInput
-                  flex={1}
-                  label={tr("chapter.start.title")}
-                  placeholder={tr("chapter.start.placeholder")}
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.currentTarget.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleStart();
-                  }}
-                  data-autofocus
-                />
-                <ActionButton color="green" onClick={handleStart}>
-                  {tr("chapter.start")}
-                </ActionButton>
-                <ActionButton
-                  variant="default"
-                  onClick={() => {
-                    setShowStartForm(false);
-                    setNewTitle("");
-                  }}
-                >
-                  {tr("chapter.start.cancel")}
-                </ActionButton>
-              </Flex>
-            ) : (
-              <Flex align="center" justify="space-between">
-                <Text size="sm" c="dimmed">
-                  {tr("chapter.list.noActive")}
-                </Text>
-                <ActionButton
-                  color="green"
-                  leftSection={<IconPlayerPlay size={theme.icon.size.sm} />}
-                  onClick={() => setShowStartForm(true)}
-                >
-                  {tr("chapter.start")}
-                </ActionButton>
-              </Flex>
-            )}
+          <Card className="bg-card shadow">
+            <CardContent className="p-4">
+              {showStartForm ? (
+                <div className="flex items-end gap-2">
+                  <div className="flex flex-1 flex-col gap-1.5">
+                    <Label>{tr("chapter.start.title")}</Label>
+                    <Input
+                      placeholder={String(tr("chapter.start.placeholder"))}
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.currentTarget.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleStart();
+                      }}
+                      autoFocus
+                    />
+                  </div>
+                  <Button
+                    onClick={handleStart}
+                    className="bg-green-600 text-white hover:bg-green-700"
+                  >
+                    {tr("chapter.start")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowStartForm(false);
+                      setNewTitle("");
+                    }}
+                  >
+                    {tr("chapter.start.cancel")}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-sm">
+                    {tr("chapter.list.noActive")}
+                  </span>
+                  <Button
+                    onClick={() => setShowStartForm(true)}
+                    className="bg-green-600 text-white hover:bg-green-700"
+                  >
+                    <Play className="size-4" />
+                    {tr("chapter.start")}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
           </Card>
         )}
 
         {/* Chapter list */}
-        <Flex direction="column" gap="xs">
-          <Text fw={600}>{tr("chapter.list.title")}</Text>
+        <div className="flex flex-col gap-2">
+          <span className="font-semibold">{tr("chapter.list.title")}</span>
           {(!chapters || chapters.length === 0) && (
-            <Text size="sm" c="dimmed">
+            <span className="text-muted-foreground text-sm">
               {tr("chapter.list.empty")}
-            </Text>
+            </span>
           )}
           {chapters?.map((chapter) => (
             <ProjectChaptersRow
@@ -191,49 +185,55 @@ const ProjectChapters = () => {
               onViewChangelog={handleViewChangelog}
             />
           ))}
-        </Flex>
+        </div>
 
-        {/* Close Chapter Modal */}
-        <Modal
-          opened={!!closeModal}
-          onClose={() => setCloseModal(null)}
-          title={tr("chapter.close.modal.title")}
-          centered
+        {/* Close Chapter Dialog */}
+        <Dialog
+          open={!!closeModal}
+          onOpenChange={(o) => !o && setCloseModal(null)}
         >
-          {closeModal && (
-            <ProjectChaptersCloseModal
-              chapter={closeModal}
-              onConfirm={(title) => handleClose(closeModal.id, title)}
-              onCancel={() => setCloseModal(null)}
-            />
-          )}
-        </Modal>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{tr("chapter.close.modal.title")}</DialogTitle>
+            </DialogHeader>
+            {closeModal && (
+              <ProjectChaptersCloseModal
+                chapter={closeModal}
+                onConfirm={(title) => handleClose(closeModal.id, title)}
+                onCancel={() => setCloseModal(null)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
 
-        {/* Changelog Modal */}
-        <Modal
-          opened={!!changelogModal}
-          onClose={() => setChangelogModal(null)}
-          title={
-            changelogModal
-              ? tr("chapter.changelog.title", {
-                  args: [
-                    String(changelogModal.chapter.number),
-                    changelogModal.chapter.title,
-                  ],
-                })
-              : ""
-          }
-          size="lg"
+        {/* Changelog Dialog */}
+        <Dialog
+          open={!!changelogModal}
+          onOpenChange={(o) => !o && setChangelogModal(null)}
         >
-          {changelogModal && (
-            <ProjectChaptersChangelog
-              markdown={changelogModal.markdown}
-              chapter={changelogModal.chapter}
-            />
-          )}
-        </Modal>
-      </Flex>
-    </Container>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>
+                {changelogModal
+                  ? tr("chapter.changelog.title", {
+                      args: [
+                        String(changelogModal.chapter.number),
+                        changelogModal.chapter.title,
+                      ],
+                    })
+                  : ""}
+              </DialogTitle>
+            </DialogHeader>
+            {changelogModal && (
+              <ProjectChaptersChangelog
+                markdown={changelogModal.markdown}
+                chapter={changelogModal.chapter}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
   );
 };
 

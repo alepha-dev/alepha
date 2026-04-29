@@ -218,7 +218,7 @@ export const apiFeatures = [
   {
     icon: IconUserCheck,
     title: "Auth UI",
-    module: "@alepha/mantine/auth",
+    module: "@alepha/ui/components/auth/auth-login",
     description: "Ready-to-use authentication components.",
     slug: "packages-alepha-ui-auth",
   },
@@ -239,7 +239,7 @@ export const apiFeatures = [
   {
     icon: IconLayoutDashboard,
     title: "Admin UI",
-    module: "@alepha/mantine/admin",
+    module: "@alepha/ui/components/admin/admin-users",
     description: "Auto-generated admin panel.",
     slug: "packages-alepha-ui-admin",
   },

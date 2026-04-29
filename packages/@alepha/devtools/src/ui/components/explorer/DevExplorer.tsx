@@ -1,11 +1,10 @@
 import { devMetadataSchema } from "@alepha/devtools";
-import { Flex, ui } from "@alepha/mantine";
-import { ScrollArea, Text, TextInput } from "@mantine/core";
-import { IconSearch } from "@tabler/icons-react";
+import { Input } from "@alepha/ui/components/ui/input";
 import { t } from "alepha";
 import { useInject } from "alepha/react";
 import { useQueryParams } from "alepha/react/router";
 import { HttpClient } from "alepha/server";
+import { Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ExplorerTree, type TreeNode } from "./ExplorerTree.tsx";
 import { DevPanelAction } from "./panels/DevPanelAction.tsx";
@@ -22,7 +21,6 @@ const querySchema = t.object({
 const buildTree = (metadata: any): TreeNode[] => {
   const nodes: TreeNode[] = [];
 
-  // Actions grouped by group name, split on ":" for nested folders
   if (metadata.actions?.length > 0) {
     const actionsRoot: TreeNode = {
       id: "actions",
@@ -31,7 +29,6 @@ const buildTree = (metadata: any): TreeNode[] => {
       children: [],
     };
 
-    // Group actions by their group name
     const groups = new Map<string, any[]>();
     for (const action of metadata.actions) {
       const group = action.group || "default";
@@ -39,7 +36,6 @@ const buildTree = (metadata: any): TreeNode[] => {
       groups.get(group)!.push(action);
     }
 
-    // Insert each group into the tree, splitting on ":"
     for (const [group, actions] of Array.from(groups.entries()).sort(
       ([a], [b]) => a.localeCompare(b),
     )) {
@@ -62,7 +58,6 @@ const buildTree = (metadata: any): TreeNode[] => {
         current = child;
       }
 
-      // Add action leaves to the deepest folder
       const actionLeaves = actions
         .sort((a: any, b: any) => a.name.localeCompare(b.name))
         .map((action: any) => ({
@@ -78,12 +73,10 @@ const buildTree = (metadata: any): TreeNode[] => {
     nodes.push(actionsRoot);
   }
 
-  // Pages (tree respecting parent/child)
   if (metadata.pages?.length > 0) {
     const pageNodeMap = new Map<string, TreeNode>();
     const rootPages: TreeNode[] = [];
 
-    // Create all page nodes
     for (const page of metadata.pages) {
       pageNodeMap.set(page.name, {
         id: `page:${page.name}`,
@@ -94,10 +87,8 @@ const buildTree = (metadata: any): TreeNode[] => {
       });
     }
 
-    // Build parent/child relationships using both parentName and childrenNames
     const attached = new Set<string>();
 
-    // 1) parent → child (from parentName on each page)
     for (const page of metadata.pages) {
       if (page.parentName && pageNodeMap.has(page.parentName)) {
         const parent = pageNodeMap.get(page.parentName)!;
@@ -109,7 +100,6 @@ const buildTree = (metadata: any): TreeNode[] => {
       }
     }
 
-    // 2) parent → children (from childrenNames on each page)
     for (const page of metadata.pages) {
       if (page.childrenNames) {
         const parentNode = pageNodeMap.get(page.name)!;
@@ -123,14 +113,12 @@ const buildTree = (metadata: any): TreeNode[] => {
       }
     }
 
-    // Remaining pages without a parent go to root
     for (const page of metadata.pages) {
       if (!attached.has(page.name)) {
         rootPages.push(pageNodeMap.get(page.name)!);
       }
     }
 
-    // Remove empty children arrays for leaf nodes
     const cleanChildren = (nodes: TreeNode[]) => {
       for (const node of nodes) {
         if (node.children?.length === 0) {
@@ -150,7 +138,6 @@ const buildTree = (metadata: any): TreeNode[] => {
     });
   }
 
-  // Queues
   if (metadata.queues?.length > 0) {
     nodes.push({
       id: "queues",
@@ -165,7 +152,6 @@ const buildTree = (metadata: any): TreeNode[] => {
     });
   }
 
-  // Topics
   if (metadata.topics?.length > 0) {
     nodes.push({
       id: "topics",
@@ -180,7 +166,6 @@ const buildTree = (metadata: any): TreeNode[] => {
     });
   }
 
-  // Caches
   if (metadata.caches?.length > 0) {
     nodes.push({
       id: "caches",
@@ -287,27 +272,21 @@ export const DevExplorer = () => {
   );
 
   return (
-    <Flex style={{ flex: 1, overflow: "hidden" }}>
+    <div className="flex flex-1 overflow-hidden">
       {/* Tree sidebar */}
-      <Flex
-        w={280}
-        style={{
-          borderRight: `1px solid ${ui.colors.border}`,
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <Flex p="xs">
-          <TextInput
-            placeholder="Search..."
-            size="xs"
-            leftSection={<IconSearch size={14} />}
-            value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
-          />
-        </Flex>
-        <ScrollArea style={{ flex: 1 }} px="xs" pb="xs">
+      <div className="border-border flex w-[280px] shrink-0 flex-col border-r">
+        <div className="flex p-2">
+          <div className="relative w-full">
+            <Search className="text-muted-foreground absolute left-2 top-1/2 size-3.5 -translate-y-1/2" />
+            <Input
+              placeholder="Search..."
+              className="h-8 pl-8 text-xs"
+              value={search}
+              onChange={(e) => setSearch(e.currentTarget.value)}
+            />
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto px-2 pb-2">
           <ExplorerTree
             nodes={tree}
             selectedId={selectedId}
@@ -316,17 +295,17 @@ export const DevExplorer = () => {
             onSelect={handleSelect}
             onToggle={handleToggle}
           />
-        </ScrollArea>
-      </Flex>
+        </div>
+      </div>
 
       {/* Detail panel */}
-      <Flex style={{ flex: 1, overflow: "auto" }} p="lg">
+      <div className="flex flex-1 overflow-auto p-6">
         {!selectedData && (
-          <Flex align="center" justify="center" h="100%">
-            <Text c="dimmed" fz="sm">
+          <div className="flex h-full w-full items-center justify-center">
+            <span className="text-muted-foreground text-sm">
               Select a resource from the tree
-            </Text>
-          </Flex>
+            </span>
+          </div>
         )}
         {selectedData?.type === "action" && selectedData.data && (
           <DevPanelAction action={selectedData.data} />
@@ -343,8 +322,8 @@ export const DevExplorer = () => {
         {selectedData?.type === "cache" && selectedData.data && (
           <DevPanelCache cache={selectedData.data} />
         )}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 };
 

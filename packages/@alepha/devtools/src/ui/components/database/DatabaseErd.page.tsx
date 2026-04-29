@@ -1,5 +1,4 @@
 import { devMetadataSchema } from "@alepha/devtools";
-import { Flex } from "@mantine/core";
 import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useEffect, useState } from "react";
@@ -19,9 +18,9 @@ const DatabaseErdPage = () => {
   }, [http]);
 
   return (
-    <Flex flex={1} style={{ position: "relative" }}>
+    <div className="relative flex flex-1">
       <DatabaseErd entities={entities} />
-    </Flex>
+    </div>
   );
 };
 

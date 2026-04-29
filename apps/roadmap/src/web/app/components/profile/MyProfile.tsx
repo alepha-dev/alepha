@@ -1,34 +1,26 @@
-import { Flex, Text, useToast } from "@alepha/mantine";
-import {
-  Avatar,
-  Badge,
-  Divider,
-  Progress,
-  RingProgress,
-  Tooltip,
-} from "@mantine/core";
-import {
-  IconBrandGithub,
-  IconBrandGoogle,
-  IconCamera,
-  IconCoin,
-  IconFlame,
-  IconKey,
-  IconShieldCheck,
-  IconStar,
-  IconSwords,
-  IconUser,
-} from "@tabler/icons-react";
+import { Badge } from "@alepha/ui/components/ui/badge";
 import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { currentUserAtom } from "alepha/security";
+import {
+  Camera,
+  Coins,
+  Flame,
+  GitBranch,
+  Key,
+  ShieldCheck,
+  Star,
+  Swords,
+  User,
+} from "lucide-react";
 import { type ChangeEvent, useRef, useState } from "react";
 import type { UserController } from "@/api/controllers/UserController.ts";
-import type { User } from "@/api/entities/users.ts";
+import type { User as UserEntity } from "@/api/entities/users.ts";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
+import { Toaster } from "../../services/Toaster.ts";
 
-export interface ProfileProps {
-  user: User;
+export interface MyProfileProps {
+  user: UserEntity;
   characters: Array<{
     id: number;
     projectId: number;
@@ -48,13 +40,13 @@ export interface ProfileProps {
   }>;
 }
 
-const MyProfile = (props: ProfileProps) => {
+const MyProfile = (props: MyProfileProps) => {
   const { user, characters, identities } = props;
   const [, setUser] = useStore(currentUserAtom);
   const characterInfo = useInject(CharacterInfo);
   const userApi = useClient<UserController>();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const toast = useToast();
+  const toaster = useInject(Toaster);
   const [uploading, setUploading] = useState(false);
   const [currentUser, setCurrentUser] = useState(user);
   const { l } = useI18n();
@@ -64,26 +56,11 @@ const MyProfile = (props: ProfileProps) => {
     (sum, char) => sum + characterInfo.getGold(char.balance),
     0,
   );
-  const totalSilver = characters.reduce(
-    (sum, char) => sum + characterInfo.getSilver(char.balance),
-    0,
-  );
   const highestLevel =
     characters.length > 0
       ? Math.max(
           ...characters.map((char) => characterInfo.getLevelByXp(char.xp)),
         )
-      : 0;
-
-  const xpProgress =
-    highestLevel > 0 && characters.length > 0
-      ? (() => {
-          const best = characters.reduce((a, b) => (a.xp > b.xp ? a : b));
-          const level = characterInfo.getLevelByXp(best.xp);
-          const maxXp = characterInfo.getMaxXpForLevel(level);
-          const currentXp = characterInfo.getCurrentXpForLevel(level, best.xp);
-          return Math.round((currentXp / maxXp) * 100);
-        })()
       : 0;
 
   const handleAvatarClick = () => fileInputRef.current?.click();
@@ -97,11 +74,12 @@ const MyProfile = (props: ProfileProps) => {
       const updatedUser = await userApi.updateAvatar({ body: { file } });
       setCurrentUser(updatedUser);
       setUser({ ...user, picture: updatedUser.picture });
-      toast.success({ message: "Avatar updated successfully" });
+      toaster.show("Avatar updated successfully", "success");
     } catch (error) {
-      toast.danger({
-        message: (error as Error)?.message || "Failed to update avatar",
-      });
+      toaster.show(
+        (error as Error)?.message || "Failed to update avatar",
+        "danger",
+      );
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -109,11 +87,9 @@ const MyProfile = (props: ProfileProps) => {
   };
 
   const providerIcon = (provider: string) => {
-    const size = 14;
-    if (provider === "google") return <IconBrandGoogle size={size} />;
-    if (provider === "github") return <IconBrandGithub size={size} />;
-    if (provider === "usernamePassword") return <IconKey size={size} />;
-    return <IconUser size={size} />;
+    if (provider === "github") return <GitBranch className="size-3.5" />;
+    if (provider === "usernamePassword") return <Key className="size-3.5" />;
+    return <User className="size-3.5" />;
   };
 
   const providerLabel = (provider: string) => {
@@ -122,194 +98,102 @@ const MyProfile = (props: ProfileProps) => {
   };
 
   return (
-    <Flex direction="column" gap="lg" flex={1} py="md">
-      {/* Hero — Avatar + Identity */}
-      <Flex
-        gap="xl"
-        align="center"
-        p="xl"
-        bg="var(--alepha-elevated)"
-        style={{
-          borderRadius: "var(--mantine-radius-lg)",
-          border: "1px solid var(--alepha-border)",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        <Flex direction="column" align="center" gap="xs" style={{ zIndex: 1 }}>
-          <Flex
-            style={{ position: "relative", cursor: "pointer" }}
-            onClick={handleAvatarClick}
-          >
-            <Avatar
-              src={
-                currentUser.picture
-                  ? `/api/files/${currentUser.picture}`
-                  : undefined
-              }
-              size={100}
-              radius="xl"
-              style={{
-                border: "3px solid var(--alepha-border)",
-              }}
-            >
-              <IconUser size={48} />
-            </Avatar>
-            <Flex
-              align="center"
-              justify="center"
-              style={{
-                position: "absolute",
-                bottom: 0,
-                right: 0,
-                width: 28,
-                height: 28,
-                borderRadius: "50%",
-                background: "var(--alepha-surface)",
-                border: "2px solid var(--alepha-border)",
-              }}
-            >
-              <IconCamera size={14} />
-            </Flex>
-          </Flex>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            style={{ display: "none" }}
-          />
-          {uploading && (
-            <Text size="xs" c="dimmed">
-              Uploading...
-            </Text>
+    <div className="flex flex-1 flex-col gap-6 py-4">
+      {/* Hero */}
+      <div className="flex items-center gap-6 rounded-lg border border-border bg-card p-6">
+        <button
+          type="button"
+          onClick={handleAvatarClick}
+          className="relative size-24 shrink-0 cursor-pointer overflow-hidden rounded-full border-2 border-border bg-muted"
+        >
+          {currentUser.picture ? (
+            <img
+              src={`/api/files/${currentUser.picture}`}
+              alt="avatar"
+              className="size-full object-cover"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center">
+              <User className="size-12" />
+            </div>
           )}
-        </Flex>
+          <div className="absolute right-0 bottom-0 flex size-7 items-center justify-center rounded-full border-2 border-border bg-card">
+            <Camera className="size-3.5" />
+          </div>
+        </button>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+        />
 
-        <Flex direction="column" gap={4} style={{ zIndex: 1 }} flex={1}>
-          <Flex align="center" gap="sm">
-            <Text size="xl" fw={700} lh={1.2}>
+        <div className="flex flex-1 flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-bold">
               {user.username || "Anonymous"}
-            </Text>
+            </span>
             {highestLevel > 0 && (
-              <Badge
-                variant="light"
-                color="yellow"
-                size="sm"
-                leftSection={<IconStar size={10} />}
-              >
+              <Badge variant="secondary" className="gap-1">
+                <Star className="size-3" />
                 Lv. {highestLevel}
               </Badge>
             )}
-          </Flex>
-
-          <Text size="sm" c="dimmed">
-            {user.email}
-          </Text>
-
-          <Flex gap="xs" mt={4}>
+          </div>
+          <span className="text-sm text-muted-foreground">{user.email}</span>
+          <div className="mt-1 flex flex-wrap gap-1">
             {user.roles.map((role: string) => (
               <Badge
                 key={role}
-                variant="dot"
-                color={role === "admin" ? "red" : "blue"}
-                size="xs"
+                variant={role === "admin" ? "destructive" : "outline"}
+                className="text-xs"
               >
                 {role}
               </Badge>
             ))}
-          </Flex>
-
-          <Text size="xs" c="dimmed" mt={2}>
+          </div>
+          <span className="mt-1 text-xs text-muted-foreground">
             Adventurer since {l(user.createdAt, { date: "LL" })}
-          </Text>
-        </Flex>
-
-        {/* XP Ring */}
-        {highestLevel > 0 && (
-          <Flex direction="column" align="center" gap={2}>
-            <RingProgress
-              size={80}
-              thickness={6}
-              roundCaps
-              sections={[{ value: xpProgress, color: "blue" }]}
-              label={
-                <Flex align="center" justify="center">
-                  <Text size="xs" fw={700} ta="center">
-                    {xpProgress}%
-                  </Text>
-                </Flex>
-              }
-            />
-            <Text size="xs" c="dimmed">
-              Next level
-            </Text>
-          </Flex>
-        )}
-      </Flex>
+          </span>
+          {uploading && (
+            <span className="text-xs text-muted-foreground">Uploading...</span>
+          )}
+        </div>
+      </div>
 
       {/* Stats Row */}
-      <Flex gap="md">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard
-          icon={<IconFlame size={18} color="var(--mantine-color-orange-5)" />}
+          icon={<Flame className="size-4 text-orange-500" />}
           label="Experience"
           value={`${l(totalXP)} XP`}
         />
         <StatCard
-          icon={<IconCoin size={18} color="var(--mantine-color-yellow-5)" />}
+          icon={<Coins className="size-4 text-yellow-500" />}
           label="Treasury"
-          value={
-            <Flex gap={6} align="baseline">
-              <Text size="lg" fw={700} c="yellow.5">
-                {l(totalGold)}
-              </Text>
-              <Text size="xs" c="yellow.5">
-                gold
-              </Text>
-              <Text size="sm" fw={600} c="dimmed">
-                {totalSilver}
-              </Text>
-              <Text size="xs" c="dimmed">
-                silver
-              </Text>
-            </Flex>
-          }
+          value={`${l(totalGold)} gold`}
         />
         <StatCard
-          icon={<IconSwords size={18} color="var(--mantine-color-teal-5)" />}
+          icon={<Swords className="size-4 text-teal-500" />}
           label="Characters"
           value={String(characters.length)}
         />
-      </Flex>
+      </div>
 
       {/* Characters + Security */}
-      <Flex gap="md" direction={{ base: "column", md: "row" }}>
-        {/* Active Characters */}
-        <Flex
-          direction="column"
-          gap="sm"
-          flex={1}
-          p="lg"
-          bg="var(--alepha-elevated)"
-          style={{
-            borderRadius: "var(--mantine-radius-md)",
-            border: "1px solid var(--alepha-border)",
-          }}
-        >
-          <Flex align="center" gap="xs">
-            <IconSwords size={16} />
-            <Text size="sm" fw={600}>
-              Active Characters
-            </Text>
-          </Flex>
-
+      <div className="flex flex-col gap-4 md:flex-row">
+        <div className="flex flex-1 flex-col gap-3 rounded-md border border-border bg-card p-5">
+          <div className="flex items-center gap-2">
+            <Swords className="size-4" />
+            <span className="text-sm font-semibold">Active Characters</span>
+          </div>
           {characters.length === 0 && (
-            <Text size="sm" c="dimmed">
+            <span className="text-sm text-muted-foreground">
               No characters yet. Join a campaign to begin your adventure.
-            </Text>
+            </span>
           )}
-
-          <Flex direction="column" gap="xs">
+          <div className="flex flex-col gap-2">
             {characters.slice(0, 5).map((char) => {
               const level = characterInfo.getLevelByXp(char.xp);
               const maxXp = characterInfo.getMaxXpForLevel(level);
@@ -319,138 +203,84 @@ const MyProfile = (props: ProfileProps) => {
               );
               const progress = Math.round((currentXp / maxXp) * 100);
               const gold = characterInfo.getGold(char.balance);
-              const silver = characterInfo.getSilver(char.balance);
 
               return (
-                <Flex
+                <div
                   key={char.id}
-                  align="center"
-                  gap="sm"
-                  p="xs"
-                  px="sm"
-                  bg="var(--alepha-surface)"
-                  style={{
-                    borderRadius: "var(--mantine-radius-sm)",
-                    border: "1px solid var(--alepha-border)",
-                  }}
+                  className="flex flex-col gap-2 rounded-md border border-border bg-muted/40 p-3"
                 >
-                  <Flex direction="column" flex={1} gap={2}>
-                    <Flex align="center" justify="space-between">
-                      <Flex align="center" gap="xs">
-                        <Text size="sm" fw={600}>
-                          {char.projectTitle}
-                        </Text>
-                        {char.owner && (
-                          <Badge variant="light" size="xs" color="orange">
-                            Owner
-                          </Badge>
-                        )}
-                      </Flex>
-                      <Flex align="center" gap={6}>
-                        <Tooltip label={`${gold}g ${silver}s`}>
-                          <Flex align="center" gap={2}>
-                            <IconCoin
-                              size={12}
-                              color="var(--mantine-color-yellow-5)"
-                            />
-                            <Text size="xs" c="yellow.5" fw={600}>
-                              {gold}
-                            </Text>
-                          </Flex>
-                        </Tooltip>
-                        <Badge variant="light" size="xs">
-                          Lv. {level}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold">
+                        {char.projectTitle}
+                      </span>
+                      {char.owner && (
+                        <Badge variant="secondary" className="text-xs">
+                          Owner
                         </Badge>
-                      </Flex>
-                    </Flex>
-                    <Progress
-                      value={progress}
-                      size="xs"
-                      radius="xl"
-                      color="blue"
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <Coins className="size-3 text-yellow-500" />
+                        <span className="text-xs font-semibold text-yellow-500">
+                          {gold}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        Lv. {level}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-blue-500 transition-all"
+                      style={{ width: `${progress}%` }}
                     />
-                  </Flex>
-                </Flex>
+                  </div>
+                </div>
               );
             })}
-          </Flex>
-
+          </div>
           {characters.length > 5 && (
-            <Text size="xs" c="dimmed" ta="center">
+            <span className="text-center text-xs text-muted-foreground">
               +{characters.length - 5} more characters
-            </Text>
+            </span>
           )}
-        </Flex>
+        </div>
 
-        {/* Security */}
-        <Flex
-          direction="column"
-          gap="sm"
-          w={{ base: "100%", md: 280 }}
-          miw={{ md: 280 }}
-          p="lg"
-          bg="var(--alepha-elevated)"
-          style={{
-            borderRadius: "var(--mantine-radius-md)",
-            border: "1px solid var(--alepha-border)",
-          }}
-        >
-          <Flex align="center" gap="xs">
-            <IconShieldCheck size={16} />
-            <Text size="sm" fw={600}>
-              Security
-            </Text>
-          </Flex>
-
-          <Flex direction="column" gap="xs">
+        <div className="flex w-full flex-col gap-3 rounded-md border border-border bg-card p-5 md:w-72 md:min-w-72">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="size-4" />
+            <span className="text-sm font-semibold">Security</span>
+          </div>
+          <div className="flex flex-col gap-2">
             {identities.map((identity) => (
-              <Flex
+              <div
                 key={identity.id}
-                align="center"
-                gap="sm"
-                p="xs"
-                px="sm"
-                bg="var(--alepha-surface)"
-                style={{
-                  borderRadius: "var(--mantine-radius-sm)",
-                  border: "1px solid var(--alepha-border)",
-                }}
+                className="flex items-center gap-2 rounded-md border border-border bg-muted/40 p-2"
               >
                 {providerIcon(identity.provider)}
-                <Text size="sm" flex={1}>
+                <span className="flex-1 text-sm">
                   {providerLabel(identity.provider)}
-                </Text>
-                <Flex
-                  w={8}
-                  h={8}
-                  style={{
-                    borderRadius: "50%",
-                    background: "var(--mantine-color-green-6)",
-                  }}
-                />
-              </Flex>
+                </span>
+                <span className="size-2 rounded-full bg-green-500" />
+              </div>
             ))}
-          </Flex>
-
-          <Divider color="var(--alepha-border)" my={4} />
-
-          <Flex justify="space-between" align="center">
-            <Text size="xs" c="dimmed">
-              Last activity
-            </Text>
-            <Text size="xs" c="dimmed">
+          </div>
+          <div className="mt-1 flex items-center justify-between border-border border-t pt-2">
+            <span className="text-xs text-muted-foreground">Last activity</span>
+            <span className="text-xs text-muted-foreground">
               {l(user.updatedAt, { date: "ll" })}
-            </Text>
-          </Flex>
-        </Flex>
-      </Flex>
-    </Flex>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
 export default MyProfile;
-
-// ---------------------------------------------------------
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -460,30 +290,14 @@ interface StatCardProps {
 
 const StatCard = (props: StatCardProps) => {
   return (
-    <Flex
-      direction="column"
-      gap={4}
-      flex={1}
-      p="md"
-      bg="var(--alepha-elevated)"
-      style={{
-        borderRadius: "var(--mantine-radius-md)",
-        border: "1px solid var(--alepha-border)",
-      }}
-    >
-      <Flex align="center" gap="xs">
+    <div className="flex flex-col gap-1 rounded-md border border-border bg-card p-4">
+      <div className="flex items-center gap-2">
         {props.icon}
-        <Text size="xs" c="dimmed" tt="uppercase" fw={600} lh={1}>
+        <span className="text-xs font-semibold uppercase text-muted-foreground">
           {props.label}
-        </Text>
-      </Flex>
-      {typeof props.value === "string" ? (
-        <Text size="lg" fw={700}>
-          {props.value}
-        </Text>
-      ) : (
-        props.value
-      )}
-    </Flex>
+        </span>
+      </div>
+      <span className="text-lg font-bold">{props.value}</span>
+    </div>
   );
 };

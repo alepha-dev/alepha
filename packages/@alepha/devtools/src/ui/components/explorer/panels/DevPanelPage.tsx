@@ -1,96 +1,65 @@
-import { Flex, JsonViewer, ui } from "@alepha/mantine";
-import { Badge, Card, Code, Text } from "@mantine/core";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Card } from "@alepha/ui/components/ui/card";
 
-export const DevPanelPage = ({ page }: { page: any }) => {
+interface DevPanelPageProps {
+  page: any;
+}
+
+export const DevPanelPage = (props: DevPanelPageProps) => {
+  const page = props.page;
   return (
-    <Flex direction="column" gap="md">
+    <div className="flex flex-col gap-4">
       <div>
-        <Text fz="lg" fw={600} mb="xs">
-          {page.label || page.name}
-        </Text>
+        <p className="mb-1 text-lg font-semibold">{page.label || page.name}</p>
         {page.path && (
-          <Code fz="sm" mb="xs">
+          <code className="bg-muted mb-1 rounded px-1.5 py-0.5 text-sm">
             {page.path}
-          </Code>
+          </code>
         )}
         {page.description && (
-          <Text fz="sm" c="dimmed">
-            {page.description}
-          </Text>
+          <p className="text-muted-foreground text-sm">{page.description}</p>
         )}
       </div>
 
-      <Flex gap="xs">
-        {page.hasLazy && (
-          <Badge size="xs" variant="light" color="blue">
-            Lazy
-          </Badge>
-        )}
+      <div className="flex flex-wrap items-center gap-2">
+        {page.hasLazy && <Badge variant="secondary">Lazy</Badge>}
         {page.hasParent && (
-          <Badge size="xs" variant="light" color="gray">
-            Parent: {page.parentName ?? "?"}
-          </Badge>
+          <Badge variant="secondary">Parent: {page.parentName ?? "?"}</Badge>
         )}
-        {page.hasChildren && (
-          <Badge size="xs" variant="light" color="teal">
-            Children
-          </Badge>
-        )}
+        {page.hasChildren && <Badge variant="secondary">Children</Badge>}
         {page.hasErrorHandler && (
-          <Badge size="xs" variant="light" color="red">
-            Error Handler
-          </Badge>
+          <Badge variant="destructive">Error Handler</Badge>
         )}
-        {page.hasResolve && (
-          <Badge size="xs" variant="light" color="violet">
-            Loader
-          </Badge>
-        )}
-        {page.client && (
-          <Badge size="xs" variant="light" color="orange">
-            Client Only
-          </Badge>
-        )}
-        {page.static && (
-          <Badge size="xs" variant="light" color="cyan">
-            Static
-          </Badge>
-        )}
-      </Flex>
+        {page.hasResolve && <Badge variant="secondary">Loader</Badge>}
+        {page.client && <Badge variant="secondary">Client Only</Badge>}
+        {page.static && <Badge variant="secondary">Static</Badge>}
+      </div>
 
       {page.params && (
         <div>
-          <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
+          <p className="text-muted-foreground mb-2 text-xs font-semibold uppercase">
             Path Parameters
-          </Text>
-          <Card
-            padding="sm"
-            style={{
-              background: ui.colors.surface,
-              border: `1px solid ${ui.colors.border}`,
-            }}
-          >
-            <JsonViewer data={page.params} defaultExpandedDepth={2} size="xs" />
+          </p>
+          <Card className="p-3">
+            <pre className="overflow-auto text-xs">
+              {JSON.stringify(page.params, null, 2)}
+            </pre>
           </Card>
         </div>
       )}
 
       {page.query && (
         <div>
-          <Text fz="xs" c="dimmed" mb="xs" tt="uppercase" fw={600}>
+          <p className="text-muted-foreground mb-2 text-xs font-semibold uppercase">
             Query Parameters
-          </Text>
-          <Card
-            padding="sm"
-            style={{
-              background: ui.colors.surface,
-              border: `1px solid ${ui.colors.border}`,
-            }}
-          >
-            <JsonViewer data={page.query} defaultExpandedDepth={2} size="xs" />
+          </p>
+          <Card className="p-3">
+            <pre className="overflow-auto text-xs">
+              {JSON.stringify(page.query, null, 2)}
+            </pre>
           </Card>
         </div>
       )}
-    </Flex>
+    </div>
   );
 };

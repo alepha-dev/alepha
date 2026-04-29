@@ -25,3 +25,20 @@ export const DropdownMenuGroup: (props: { children?: ReactNode }) => any = () =>
   null;
 export const DropdownMenuShortcut: (props: { children?: ReactNode }) => any =
   () => null;
+export const DropdownMenuCheckboxItem: (props: {
+  checked?: boolean;
+  onCheckedChange?: (checked: boolean) => void;
+  disabled?: boolean;
+  className?: string;
+  children?: ReactNode;
+}) => any = () => null;
+export const DropdownMenuRadioGroup: (props: {
+  value?: string;
+  onValueChange?: (value: string) => void;
+  children?: ReactNode;
+}) => any = () => null;
+export const DropdownMenuRadioItem: (props: {
+  value: string;
+  className?: string;
+  children?: ReactNode;
+}) => any = () => null;

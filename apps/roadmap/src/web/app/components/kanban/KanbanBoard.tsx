@@ -1,4 +1,5 @@
-import { Control, Flex, useToast } from "@alepha/mantine";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Sheet, SheetContent } from "@alepha/ui/components/ui/sheet";
 import {
   DndContext,
   type DragEndEvent,
@@ -6,11 +7,9 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { Badge, Drawer, Loader } from "@mantine/core";
-import { t } from "alepha";
-import { useClient, useStore } from "alepha/react";
-import { useForm } from "alepha/react/form";
+import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { TaskController } from "@/api/controllers/TaskController.ts";
@@ -21,12 +20,13 @@ import {
   kanbanReloadAtom,
 } from "../../atoms/kanbanProjectAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { Toaster } from "../../services/Toaster.ts";
 import TaskView from "../project/task/TaskView.tsx";
 import KanbanColumn from "./KanbanColumn.tsx";
 
 type TaskStatus = "new" | "accepted" | "completed";
 
-interface KanbanBoardProps {
+export interface KanbanBoardProps {
   project: Project;
   tasks: TaskResource[];
   readOnly: boolean;
@@ -35,7 +35,7 @@ interface KanbanBoardProps {
 const KanbanBoard = (props: KanbanBoardProps) => {
   const { project, tasks: initialTasks, readOnly } = props;
   const [tasks, setTasks] = useState<TaskResource[]>(initialTasks);
-  const [activeZones, setActiveZones] = useState<string[]>([]);
+  const [zoneFilter, setZoneFilter] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskResource | null>(null);
   const [, setKanbanProject] = useStore(kanbanProjectAtom);
@@ -43,12 +43,8 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const taskApi = useClient<TaskController>();
   const kanbanApi = useClient<KanbanController>();
   const { tr } = useI18n<I18n, "en">();
-  const toast = useToast();
+  const toaster = useInject(Toaster);
   const dndId = useId();
-
-  const zonesLoader = useCallback(async () => {
-    return project.packages;
-  }, [project.packages]);
 
   useEffect(() => {
     setKanbanProject({ project, readOnly });
@@ -65,24 +61,18 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     }),
   );
 
-  const filterForm = useForm({
-    schema: t.object({
-      zones: t.optional(t.array(t.string())),
-    }),
-    handler: async (values) => {
-      setActiveZones(values.zones ?? []);
-    },
-    onChange: async () => {
-      await filterForm.submit();
-    },
-  });
+  const toggleZone = useCallback((zone: string) => {
+    setZoneFilter((prev) =>
+      prev.includes(zone) ? prev.filter((z) => z !== zone) : [...prev, zone],
+    );
+  }, []);
 
   const filteredTasks = useMemo(() => {
-    if (activeZones.length > 0) {
-      return tasks.filter((task) => activeZones.includes(task.package));
+    if (zoneFilter.length > 0) {
+      return tasks.filter((task) => zoneFilter.includes(task.package));
     }
     return tasks;
-  }, [tasks, activeZones]);
+  }, [tasks, zoneFilter]);
 
   const grouped = useMemo(() => {
     const result: Record<TaskStatus, TaskResource[]> = {
@@ -131,12 +121,12 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     if (fromStatus === toStatus) return;
 
     if (fromStatus === "completed") {
-      toast.danger({ message: String(tr("kanban.error.completedCannotMove")) });
+      toaster.show(String(tr("kanban.error.completedCannotMove")), "danger");
       return;
     }
 
     if (fromStatus === "new" && toStatus === "completed") {
-      toast.warning({ message: String(tr("kanban.error.acceptFirst")) });
+      toaster.show(String(tr("kanban.error.acceptFirst")), "warning");
       return;
     }
 
@@ -150,39 +140,48 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       }
       await reload();
     } catch (error: any) {
-      toast.danger({
-        message: error?.message || String(tr("kanban.error.actionFailed")),
-      });
+      toaster.show(
+        error?.message || String(tr("kanban.error.actionFailed")),
+        "danger",
+      );
     }
   };
 
   return (
-    <Flex direction="column" flex={1} style={{ overflow: "hidden" }}>
+    <div className="flex flex-1 flex-col overflow-hidden">
       {/* Filter nav */}
-      <Flex surface borderedBottom centerY gap="xs" px="sm" py={6}>
+      <div className="flex items-center gap-2 border-border border-b bg-card px-3 py-1.5">
         {readOnly && (
-          <Badge size="xs" variant="light" color="gray">
+          <Badge variant="secondary" className="text-xs">
             {tr("kanban.readOnly")}
           </Badge>
         )}
-        {loading && <Loader type="dots" size="xs" />}
-        <Flex flex={1} gap="xs">
-          <Control
-            size={"xs"}
-            input={filterForm.input.zones}
-            select={{
-              label: "",
-              multiSelectProps: {
-                placeholder: "Zones",
-              },
-              loader: zonesLoader,
-            }}
-          />
-        </Flex>
-      </Flex>
+        {loading && (
+          <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+        )}
+        <div className="flex flex-1 flex-wrap items-center gap-1.5">
+          {project.packages.map((zone) => {
+            const active = zoneFilter.includes(zone);
+            return (
+              <button
+                key={zone}
+                type="button"
+                onClick={() => toggleZone(zone)}
+                className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                  active
+                    ? "border-border bg-muted text-foreground"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {zone}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Columns */}
-      <Flex flex={1} style={{ overflow: "hidden" }}>
+      <div className="flex flex-1 overflow-hidden">
         <DndContext id={dndId} sensors={sensors} onDragEnd={handleDragEnd}>
           <KanbanColumn
             status="new"
@@ -204,32 +203,33 @@ const KanbanBoard = (props: KanbanBoardProps) => {
             last
           />
         </DndContext>
-      </Flex>
+      </div>
 
-      {/* Task detail drawer */}
-      <Drawer
-        position="right"
-        size="xl"
-        opened={!!selectedTask}
-        onClose={closeDrawer}
-        withCloseButton={false}
-        padding={0}
-        className="drawer"
+      {/* Task detail sheet */}
+      <Sheet
+        open={!!selectedTask}
+        onOpenChange={(open) => !open && closeDrawer()}
       >
-        {selectedTask && (
-          <TaskView
-            task={selectedTask}
-            onClose={closeDrawer}
-            onTaskChange={(updated) => {
-              setSelectedTask(updated);
-              setTasks((prev) =>
-                prev.map((t) => (t.id === updated.id ? updated : t)),
-              );
-            }}
-          />
-        )}
-      </Drawer>
-    </Flex>
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-full p-0 sm:max-w-2xl"
+        >
+          {selectedTask && (
+            <TaskView
+              task={selectedTask}
+              onClose={closeDrawer}
+              onTaskChange={(updated) => {
+                setSelectedTask(updated);
+                setTasks((prev) =>
+                  prev.map((t) => (t.id === updated.id ? updated : t)),
+                );
+              }}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 };
 

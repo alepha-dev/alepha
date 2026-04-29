@@ -1,5 +1,7 @@
-import { Flex, ui } from "@alepha/mantine";
-import { SegmentedControl } from "@mantine/core";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@alepha/ui/components/ui/toggle-group";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 
 export const DevDatabase = () => {
@@ -8,28 +10,26 @@ export const DevDatabase = () => {
   const tab = state.url.pathname.startsWith("/db/editor") ? "editor" : "erd";
 
   const handleTabChange = (value: string) => {
+    if (!value) return;
     router.push(value === "editor" ? "/db/editor" : "/db/erd");
   };
 
   return (
-    <Flex direction="column" style={{ flex: 1 }}>
-      <Flex
-        px="md"
-        py="xs"
-        style={{ borderBottom: `1px solid ${ui.colors.border}` }}
-      >
-        <SegmentedControl
-          size="xs"
+    <div className="flex flex-1 flex-col">
+      <div className="border-border flex border-b px-4 py-2">
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
           value={tab}
-          onChange={handleTabChange}
-          data={[
-            { label: "ERD", value: "erd" },
-            { label: "Editor", value: "editor" },
-          ]}
-        />
-      </Flex>
+          onValueChange={handleTabChange}
+        >
+          <ToggleGroupItem value="erd">ERD</ToggleGroupItem>
+          <ToggleGroupItem value="editor">Editor</ToggleGroupItem>
+        </ToggleGroup>
+      </div>
       <NestedView />
-    </Flex>
+    </div>
   );
 };
 

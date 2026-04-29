@@ -1,22 +1,21 @@
-import { ActionButton, Flex, Text } from "@alepha/mantine";
-import { IconMinus, IconPlus } from "@tabler/icons-react";
+import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
+import { Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import { openRenameZoneModal } from "./RenameZoneModal.tsx";
 import TaskItem from "./TaskItem.tsx";
 
-interface TaskGroupProps {
+export interface TaskGroupProps {
   name: string;
   tasks: TaskResource[];
 }
 
 const TaskGroup = (props: TaskGroupProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(true);
 
-  // sort by complexity
   const tasks = [...props.tasks].sort((a, b) =>
     a.complexity - b.complexity > 0 ? -1 : 1,
   );
@@ -27,50 +26,43 @@ const TaskGroup = (props: TaskGroupProps) => {
   };
 
   return (
-    <Flex direction="column" gap={2}>
-      <Flex p={0} align="center" justify="center" gap={"xs"}>
-        <Flex gap={2} align="center" justify="center">
-          <ActionButton
-            size={"xs"}
-            variant={"minimal"}
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            px="xs"
-          >
-            {isCollapsed ? <IconMinus size={10} /> : <IconPlus size={10} />}
-          </ActionButton>
-          <ActionButton
-            px={"xs"}
-            size={"xs"}
-            variant={"minimal"}
-            onClick={handleRenameZone}
-          >
-            <Text fw={"bold"}>{props.name}</Text>
-          </ActionButton>
-        </Flex>
-        <Flex flex={1} align="center" justify="center" px={2}>
-          <Flex
-            style={{
-              height: 1,
-              opacity: 0.2,
-              width: "100%",
-              backgroundColor: "var(--alepha-text-muted)",
-            }}
-          />
-        </Flex>
-        <Flex>
-          <Text c={"dimmed"} size="sm">
-            {tr("task.group.quests", { args: [String(props.tasks.length)] })}
-          </Text>
-        </Flex>
-      </Flex>
-      {isCollapsed && (
-        <Flex direction="column" gap={0}>
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-2 px-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          {isExpanded ? (
+            <Minus className="size-3" />
+          ) : (
+            <Plus className="size-3" />
+          )}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2"
+          onClick={handleRenameZone}
+        >
+          <span className="text-sm font-bold">{props.name}</span>
+        </Button>
+        <div className="bg-border h-px flex-1 opacity-30" />
+        <span className="text-muted-foreground text-sm">
+          {tr("task.group.quests", { args: [String(props.tasks.length)] })}
+        </span>
+      </div>
+      {isExpanded && (
+        <div className="flex flex-col gap-0.5">
           {tasks.map((item, index) => (
             <TaskItem key={item.id} task={item} index={index} />
           ))}
-        </Flex>
+        </div>
       )}
-    </Flex>
+    </div>
   );
 };
 

@@ -1,83 +1,48 @@
-import { Flex, ui } from "@alepha/mantine";
-import { Badge, Text } from "@mantine/core";
-import { IconKey, IconLink } from "@tabler/icons-react";
+import { Badge } from "@alepha/ui/components/ui/badge";
 import { Handle, type NodeProps, Position } from "@xyflow/react";
+import { Key, Link2 } from "lucide-react";
 
-export const EntityNode = ({ data }: NodeProps) => {
-  const entity = data as any;
+export const EntityNode = (props: NodeProps) => {
+  const entity = props.data as any;
 
   return (
-    <div
-      style={{
-        background: ui.colors.surface,
-        border: `1px solid ${ui.colors.border}`,
-        borderRadius: 8,
-        minWidth: 240,
-        overflow: "hidden",
-      }}
-    >
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{ background: "var(--mantine-color-blue-6)" }}
-      />
+    <div className="bg-card border-border min-w-[240px] overflow-hidden rounded-lg border">
+      <Handle type="target" position={Position.Top} />
 
       {/* Header */}
-      <div
-        style={{
-          padding: "8px 12px",
-          borderBottom: `1px solid ${ui.colors.border}`,
-          background: ui.colors.elevated,
-        }}
-      >
-        <Flex gap="xs">
-          <Text fz="sm" fw={700}>
-            {entity.name}
-          </Text>
-          <Badge size="xs" variant="light" color="gray">
+      <div className="bg-muted border-border border-b px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold">{entity.name}</span>
+          <Badge variant="secondary" className="text-[10px]">
             {entity.provider}
           </Badge>
-        </Flex>
+        </div>
       </div>
 
       {/* Columns */}
-      <Flex direction="column" gap={0} p={0}>
+      <div className="flex flex-col">
         {(entity.columns ?? []).map((col: any) => (
-          <Flex
+          <div
             key={col.name}
-            gap="xs"
-            px="sm"
-            py={4}
-            style={{ borderBottom: `1px solid ${ui.colors.border}20` }}
-            wrap="nowrap"
+            className="border-border/20 flex flex-nowrap items-center gap-2 border-b px-3 py-1"
           >
-            {col.primaryKey && (
-              <IconKey size={10} color="var(--mantine-color-yellow-6)" />
+            {col.primaryKey && <Key className="size-2.5 text-yellow-500" />}
+            {col.ref && <Link2 className="size-2.5 text-blue-500" />}
+            {!col.primaryKey && !col.ref && (
+              <span className="inline-block w-2.5" />
             )}
-            {col.ref && (
-              <IconLink size={10} color="var(--mantine-color-blue-6)" />
-            )}
-            {!col.primaryKey && !col.ref && <span style={{ width: 10 }} />}
-            <Text fz={11} ff="monospace" style={{ flex: 1 }}>
-              {col.name}
-            </Text>
-            <Text fz={10} c="dimmed" ff="monospace">
+            <span className="flex-1 font-mono text-[11px]">{col.name}</span>
+            <span className="text-muted-foreground font-mono text-[10px]">
               {col.type}
-            </Text>
+            </span>
             {col.nullable && (
-              <Text fz={9} c="dimmed">
-                ?
-              </Text>
+              <span className="text-muted-foreground text-[9px]">?</span>
             )}
-          </Flex>
+          </div>
         ))}
-      </Flex>
+      </div>
 
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        style={{ background: "var(--mantine-color-blue-6)" }}
-      />
+      <Handle type="source" position={Position.Bottom} />
     </div>
   );
 };

@@ -659,7 +659,7 @@ export class TreeCommand {
           let displayName: string;
           if (isInsidePackages) {
             // Strip order prefix and convert to package name
-            // 1-alepha → alepha, 2-@alepha-ui → @alepha/mantine
+            // 1-alepha → alepha, 2-@alepha-ui-registry → @alepha/ui-registry
             const withoutPrefix = categoryName.replace(/^\d+-/, "");
             displayName = withoutPrefix.replace(/^@alepha-/, "@alepha/");
           } else {

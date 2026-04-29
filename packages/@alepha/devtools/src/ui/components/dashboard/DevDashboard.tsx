@@ -1,34 +1,28 @@
 import { devMetadataSchema } from "@alepha/devtools";
-import { ActionButton, Flex, ui } from "@alepha/mantine";
-import {
-  Badge,
-  Card,
-  Grid,
-  ScrollArea,
-  SimpleGrid,
-  Text,
-  Title,
-} from "@mantine/core";
-import {
-  IconApi,
-  IconAtom,
-  IconBrandNodejs,
-  IconBroadcast,
-  IconClock,
-  IconCpu,
-  IconDatabase,
-  IconFileText,
-  IconPlug,
-  IconRefresh,
-  IconRoute,
-  IconServer,
-  IconSettings,
-  IconStack2,
-  IconVariable,
-} from "@tabler/icons-react";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Card } from "@alepha/ui/components/ui/card";
 import { useInject } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 import { HttpClient } from "alepha/server";
+import {
+  Atom,
+  Cable,
+  Clock,
+  Cpu,
+  Database,
+  FileText,
+  Layers,
+  Plug,
+  Radio,
+  RefreshCw,
+  Route,
+  Server,
+  Settings,
+  Variable,
+  Zap,
+} from "lucide-react";
+import type { ComponentType } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface LogEntry {
@@ -55,18 +49,18 @@ const formatBytes = (bytes: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const levelColors: Record<string, string> = {
-  ERROR: "red",
-  WARN: "yellow",
-  INFO: "blue",
-  DEBUG: "gray",
-  TRACE: "dimmed",
+const levelClass: Record<string, string> = {
+  ERROR: "text-red-500 bg-red-500/10",
+  WARN: "text-yellow-600 bg-yellow-500/10",
+  INFO: "text-blue-500 bg-blue-500/10",
+  DEBUG: "text-muted-foreground bg-muted",
+  TRACE: "text-muted-foreground bg-muted",
 };
 
-const eventTypeColors: Record<string, string> = {
-  http: "teal",
-  db: "violet",
-  error: "red",
+const eventTypeClass: Record<string, string> = {
+  http: "text-teal-500 bg-teal-500/10",
+  db: "text-violet-500 bg-violet-500/10",
+  error: "text-red-500 bg-red-500/10",
 };
 
 const detectEventType = (data: any): string | undefined => {
@@ -138,364 +132,219 @@ export const DevDashboard = () => {
   const primitiveStats = useMemo(() => {
     if (!metadata) return [];
     return [
-      {
-        label: "Actions",
-        count: metadata.actions?.length ?? 0,
-        icon: IconApi,
-        color: "teal",
-      },
-      {
-        label: "Pages",
-        count: metadata.pages?.length ?? 0,
-        icon: IconFileText,
-        color: "blue",
-      },
+      { label: "Actions", count: metadata.actions?.length ?? 0, icon: Zap },
+      { label: "Pages", count: metadata.pages?.length ?? 0, icon: FileText },
       {
         label: "Entities",
         count: metadata.entities?.length ?? 0,
-        icon: IconDatabase,
-        color: "violet",
+        icon: Database,
       },
-      {
-        label: "Queues",
-        count: metadata.queues?.length ?? 0,
-        icon: IconStack2,
-        color: "orange",
-      },
-      {
-        label: "Topics",
-        count: metadata.topics?.length ?? 0,
-        icon: IconBroadcast,
-        color: "pink",
-      },
-      {
-        label: "Caches",
-        count: metadata.caches?.length ?? 0,
-        icon: IconRoute,
-        color: "cyan",
-      },
+      { label: "Queues", count: metadata.queues?.length ?? 0, icon: Layers },
+      { label: "Topics", count: metadata.topics?.length ?? 0, icon: Radio },
+      { label: "Caches", count: metadata.caches?.length ?? 0, icon: Route },
       {
         label: "Providers",
         count: metadata.providers?.length ?? 0,
-        icon: IconPlug,
-        color: "grape",
+        icon: Plug,
       },
-      {
-        label: "Atoms",
-        count: metadata.atoms?.length ?? 0,
-        icon: IconAtom,
-        color: "lime",
-      },
-      {
-        label: "Env Vars",
-        count: metadata.envs?.length ?? 0,
-        icon: IconVariable,
-        color: "yellow",
-      },
+      { label: "Atoms", count: metadata.atoms?.length ?? 0, icon: Atom },
+      { label: "Env Vars", count: metadata.envs?.length ?? 0, icon: Variable },
     ];
   }, [metadata]);
 
   return (
-    <Flex
-      p="lg"
-      w={"100%"}
-      flex={1}
-      direction="column"
-      style={{ overflow: "auto" }}
-    >
-      <Flex direction="column" gap="lg">
+    <div className="flex w-full flex-1 flex-col overflow-auto p-6">
+      <div className="flex flex-col gap-6">
         {/* App Stats */}
         <div>
-          <Flex justify="space-between" align="center" mb="sm">
-            <Title order={5} c="dimmed" tt="uppercase" fz="xs" fw={600} lts={1}>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
               System
-            </Title>
-            <ActionButton
-              size="xs"
-              variant="subtle"
-              color="gray"
-              loading={reloading}
+            </h2>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={reloading}
               onClick={handleReload}
-              icon={<IconRefresh size={14} />}
             >
+              <RefreshCw
+                className={`size-3.5 ${reloading ? "animate-spin" : ""}`}
+              />
               Reload
-            </ActionButton>
-          </Flex>
-          <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 6 }} spacing="sm">
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {system && (
               <>
                 <StatCard
-                  icon={IconServer}
+                  icon={Server}
                   label="Runtime"
                   value={system.runtime === "bun" ? "Bun" : "Node.js"}
                 />
                 <StatCard
-                  icon={IconBrandNodejs}
+                  icon={Cable}
                   label="Version"
                   value={system.nodeVersion}
                 />
+                <StatCard icon={Settings} label="Mode" value={system.mode} />
                 <StatCard
-                  icon={IconSettings}
-                  label="Mode"
-                  value={system.mode}
-                />
-                <StatCard
-                  icon={IconRoute}
+                  icon={Route}
                   label="Port"
                   value={String(system.port)}
                 />
                 <StatCard
-                  icon={IconClock}
+                  icon={Clock}
                   label="Uptime"
                   value={formatUptime(system.uptime)}
                 />
                 <StatCard
-                  icon={IconCpu}
+                  icon={Cpu}
                   label="Memory"
                   value={formatBytes(system.memoryUsage)}
                 />
               </>
             )}
-          </SimpleGrid>
+          </div>
         </div>
 
-        <Grid gap="lg">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
           {/* Recent Events */}
-          <Grid.Col span={{ base: 12, md: 7 }}>
-            <Card
-              padding="md"
-              radius="md"
-              style={{
-                background: ui.colors.surface,
-                border: `1px solid ${ui.colors.border}`,
-              }}
-            >
-              <Title
-                order={5}
-                mb="sm"
-                c="dimmed"
-                tt="uppercase"
-                fz="xs"
-                fw={600}
-                lts={1}
-              >
-                Recent Events
-              </Title>
-              <ScrollArea h={280}>
-                <Flex direction="column" gap={4}>
-                  {events.length === 0 && (
-                    <Text c="dimmed" fz="sm" ta="center" py="xl">
-                      No events yet
-                    </Text>
-                  )}
-                  {events.map((entry, i) => {
-                    const eventType = detectEventType(entry.data) ?? "log";
-                    return (
-                      <Flex
-                        key={`${entry.timestamp}-${i}`}
-                        gap="xs"
-                        px="xs"
-                        py={4}
-                        style={{
-                          borderRadius: 4,
-                          cursor: "pointer",
-                          transition: "background 150ms",
-                        }}
-                        onMouseEnter={(e) => {
-                          (e.currentTarget as HTMLElement).style.background =
-                            `${ui.colors.elevated}`;
-                        }}
-                        onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLElement).style.background =
-                            "transparent";
-                        }}
+          <Card className="p-4 md:col-span-7">
+            <h3 className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider">
+              Recent Events
+            </h3>
+            <div className="h-[280px] overflow-auto">
+              <div className="flex flex-col gap-1">
+                {events.length === 0 && (
+                  <p className="text-muted-foreground py-8 text-center text-sm">
+                    No events yet
+                  </p>
+                )}
+                {events.map((entry, i) => {
+                  const eventType = detectEventType(entry.data) ?? "log";
+                  return (
+                    <div
+                      key={`${entry.timestamp}-${i}`}
+                      className="hover:bg-muted/50 flex items-center gap-2 rounded px-2 py-1 transition-colors"
+                    >
+                      <span className="text-muted-foreground w-14 shrink-0 font-mono text-xs">
+                        {new Date(entry.timestamp).toLocaleTimeString("en", {
+                          hour12: false,
+                        })}
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className={`shrink-0 text-[10px] ${eventTypeClass[eventType] ?? ""}`}
                       >
-                        <Text
-                          fz="xs"
-                          c="dimmed"
-                          ff="monospace"
-                          w={55}
-                          style={{ flexShrink: 0 }}
-                        >
-                          {new Date(entry.timestamp).toLocaleTimeString("en", {
-                            hour12: false,
-                          })}
-                        </Text>
-                        <Badge
-                          size="xs"
-                          variant="light"
-                          color={eventTypeColors[eventType] ?? "gray"}
-                          style={{ flexShrink: 0 }}
-                        >
-                          {eventType === "http"
-                            ? "HTTP"
-                            : eventType === "db"
-                              ? "DB"
-                              : "LOG"}
-                        </Badge>
-                        <Text
-                          fz="xs"
-                          ff="monospace"
-                          truncate
-                          style={{ flex: 1 }}
-                        >
-                          {formatEvent(entry)}
-                        </Text>
-                      </Flex>
-                    );
-                  })}
-                </Flex>
-              </ScrollArea>
-            </Card>
-          </Grid.Col>
+                        {eventType === "http"
+                          ? "HTTP"
+                          : eventType === "db"
+                            ? "DB"
+                            : "LOG"}
+                      </Badge>
+                      <span className="flex-1 truncate font-mono text-xs">
+                        {formatEvent(entry)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
 
           {/* Recent Logs */}
-          <Grid.Col span={{ base: 12, md: 5 }}>
-            <Card
-              padding="md"
-              radius="md"
-              style={{
-                background: ui.colors.surface,
-                border: `1px solid ${ui.colors.border}`,
-              }}
-            >
-              <Flex justify="space-between" mb="sm">
-                <Title
-                  order={5}
-                  c="dimmed"
-                  tt="uppercase"
-                  fz="xs"
-                  fw={600}
-                  lts={1}
-                >
-                  Recent Logs
-                </Title>
-                <Text
-                  fz="xs"
-                  c="blue"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => router.push("/logs")}
-                >
-                  View all
-                </Text>
-              </Flex>
-              <ScrollArea h={280}>
-                <Flex direction="column" gap={4}>
-                  {logs.length === 0 && (
-                    <Text c="dimmed" fz="sm" ta="center" py="xl">
-                      No logs yet
-                    </Text>
-                  )}
-                  {logs.map((entry, i) => (
-                    <Flex
-                      key={`${entry.timestamp}-${i}`}
-                      gap="xs"
-                      px="xs"
-                      py={4}
-                      style={{ borderRadius: 4 }}
+          <Card className="p-4 md:col-span-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+                Recent Logs
+              </h3>
+              <button
+                type="button"
+                className="text-blue-500 text-xs hover:underline"
+                onClick={() => router.push("/logs")}
+              >
+                View all
+              </button>
+            </div>
+            <div className="h-[280px] overflow-auto">
+              <div className="flex flex-col gap-1">
+                {logs.length === 0 && (
+                  <p className="text-muted-foreground py-8 text-center text-sm">
+                    No logs yet
+                  </p>
+                )}
+                {logs.map((entry, i) => (
+                  <div
+                    key={`${entry.timestamp}-${i}`}
+                    className="flex items-center gap-2 rounded px-2 py-1"
+                  >
+                    <span
+                      className={`w-14 shrink-0 rounded px-1 py-0.5 text-center text-[10px] font-bold ${levelClass[entry.level] ?? ""}`}
                     >
-                      <Badge
-                        size="xs"
-                        variant="light"
-                        color={levelColors[entry.level] ?? "gray"}
-                        w={50}
-                        style={{ flexShrink: 0 }}
-                      >
-                        {entry.level}
-                      </Badge>
-                      <Text
-                        fz="xs"
-                        c="dimmed"
-                        w={80}
-                        truncate
-                        style={{ flexShrink: 0 }}
-                      >
-                        {entry.module}
-                      </Text>
-                      <Text fz="xs" ff="monospace" truncate style={{ flex: 1 }}>
-                        {entry.message}
-                      </Text>
-                    </Flex>
-                  ))}
-                </Flex>
-              </ScrollArea>
-            </Card>
-          </Grid.Col>
-        </Grid>
+                      {entry.level}
+                    </span>
+                    <span className="text-muted-foreground w-20 shrink-0 truncate text-xs">
+                      {entry.module}
+                    </span>
+                    <span className="flex-1 truncate font-mono text-xs">
+                      {entry.message}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        </div>
 
         {/* Primitives Stats */}
         <div>
-          <Title
-            order={5}
-            mb="sm"
-            c="dimmed"
-            tt="uppercase"
-            fz="xs"
-            fw={600}
-            lts={1}
-          >
+          <h2 className="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wider">
             Primitives
-          </Title>
-          <SimpleGrid cols={{ base: 2, sm: 3, md: 5 }} spacing="sm">
+          </h2>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
             {primitiveStats.map((stat) => (
-              <Card
-                key={stat.label}
-                padding="sm"
-                radius="md"
-                style={{
-                  background: ui.colors.surface,
-                  border: `1px solid ${ui.colors.border}`,
-                }}
-              >
-                <Flex gap="sm">
-                  <stat.icon size={18} opacity={0.5} />
-                  <div style={{ flex: 1 }}>
-                    <Text fz="xs" c="dimmed">
+              <Card key={stat.label} className="p-3">
+                <div className="flex items-center gap-3">
+                  <stat.icon className="size-4 opacity-50" />
+                  <div className="flex-1">
+                    <p className="text-muted-foreground text-xs">
                       {stat.label}
-                    </Text>
-                    <Text fz="lg" fw={700} lh={1.2}>
+                    </p>
+                    <p className="text-lg font-bold leading-tight">
                       {stat.count}
-                    </Text>
+                    </p>
                   </div>
-                </Flex>
+                </div>
               </Card>
             ))}
-          </SimpleGrid>
+          </div>
         </div>
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 };
 
-const StatCard = ({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: any;
+interface StatCardProps {
+  icon: ComponentType<{ className?: string }>;
   label: string;
   value: string;
-}) => (
-  <Card
-    padding="sm"
-    radius="md"
-    style={{
-      background: ui.colors.surface,
-      border: `1px solid ${ui.colors.border}`,
-    }}
-  >
-    <Flex gap="xs">
-      <Icon size={16} opacity={0.4} />
-      <div>
-        <Text fz={10} c="dimmed" tt="uppercase" lts={0.5}>
-          {label}
-        </Text>
-        <Text fz="sm" fw={600} ff="monospace" lh={1.3}>
-          {value}
-        </Text>
+}
+
+const StatCard = (props: StatCardProps) => {
+  const Icon = props.icon;
+  return (
+    <Card className="p-3">
+      <div className="flex items-center gap-2">
+        <Icon className="size-4 opacity-40" />
+        <div>
+          <p className="text-muted-foreground text-[10px] uppercase tracking-wider">
+            {props.label}
+          </p>
+          <p className="font-mono text-sm font-semibold">{props.value}</p>
+        </div>
       </div>
-    </Flex>
-  </Card>
-);
+    </Card>
+  );
+};
 
 export default DevDashboard;

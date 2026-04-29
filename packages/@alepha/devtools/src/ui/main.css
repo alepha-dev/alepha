@@ -1,17 +1,19 @@
-@import "@alepha/mantine/styles";
+@import "@alepha/ui/styles.css";
 
 .devtools-tree-node:hover {
-  background: var(--mantine-color-default-hover) !important;
+  background: var(--accent);
 }
 
 .devtools-tree-node:active {
-  background: var(--mantine-color-default-border) !important;
+  background: var(--accent);
 }
 
 .devtools-tree-node[data-selected="true"] {
-  background: var(--mantine-primary-color-light) !important;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .devtools-tree-node[data-selected="true"]:hover {
-  background: var(--mantine-primary-color-light-hover) !important;
+  background: var(--primary);
+  filter: brightness(0.95);
 }

@@ -1,5 +1,6 @@
-import { ActionButton, Flex, Text } from "@alepha/mantine";
-import { TextInput } from "@mantine/core";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Input } from "@alepha/ui/components/ui/input";
+import { Label } from "@alepha/ui/components/ui/label";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -12,35 +13,38 @@ export interface ProjectChaptersCloseModalProps {
 }
 
 const ProjectChaptersCloseModal = (props: ProjectChaptersCloseModalProps) => {
-  const { chapter, onConfirm, onCancel } = props;
   const { tr } = useI18n<I18n, "en">();
-  const [title, setTitle] = useState(chapter.title);
+  const [title, setTitle] = useState(props.chapter.title);
 
   return (
-    <Flex direction="column" gap="md">
-      <Text size="sm">{tr("chapter.close.modal.description")}</Text>
-      <TextInput
-        label={tr("chapter.close.modal.label")}
-        value={title}
-        onChange={(e) => setTitle(e.currentTarget.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && title.trim()) onConfirm(title.trim());
-        }}
-        data-autofocus
-      />
-      <Flex justify="end" gap="sm">
-        <ActionButton variant="default" onClick={onCancel}>
+    <div className="flex flex-col gap-3">
+      <p className="text-sm">{tr("chapter.close.modal.description")}</p>
+      <div className="flex flex-col gap-1.5">
+        <Label>{tr("chapter.close.modal.label")}</Label>
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && title.trim())
+              props.onConfirm(title.trim());
+          }}
+          autoFocus
+        />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={props.onCancel}>
           {tr("chapter.start.cancel")}
-        </ActionButton>
-        <ActionButton
-          color="orange"
+        </Button>
+        <Button
+          variant="outline"
           disabled={!title.trim()}
-          onClick={() => onConfirm(title.trim())}
+          onClick={() => props.onConfirm(title.trim())}
+          className="bg-orange-600 text-white hover:bg-orange-700"
         >
           {tr("chapter.close")}
-        </ActionButton>
-      </Flex>
-    </Flex>
+        </Button>
+      </div>
+    </div>
   );
 };
 

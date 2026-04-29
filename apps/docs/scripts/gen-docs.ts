@@ -485,10 +485,15 @@ export class DocsCommand {
 
   getPackageDirName(pkgName: string, allPackages: string[]): string {
     const safeName = pkgName.replace(/\//g, "-");
-    const order: Record<string, number> = { alepha: 1, "@alepha/mantine": 2 };
+    const order: Record<string, number> = {
+      alepha: 1,
+      "@alepha/ui-registry": 2,
+      "@alepha/ui": 3,
+    };
     if (order[pkgName]) return `${order[pkgName]}-${safeName}`;
+    const reservedCount = Object.keys(order).length;
     const others = allPackages.filter((p) => !order[p]).sort();
-    return `${others.indexOf(pkgName) + 3}-${safeName}`;
+    return `${others.indexOf(pkgName) + reservedCount + 1}-${safeName}`;
   }
 
   getAlephaModuleFilePath(

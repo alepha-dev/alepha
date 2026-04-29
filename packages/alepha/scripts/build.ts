@@ -37,7 +37,7 @@ class AlephaPackageBuilderCli {
       external: t.optional(
         t.text({
           description:
-            "Comma-separated additional external packages (e.g. --external=alepha,@alepha/mantine/styles). Bare package names auto-expand to include all their subpath exports.",
+            "Comma-separated additional external packages (e.g. --external=alepha,@alepha/ui/styles.css). Bare package names auto-expand to include all their subpath exports.",
         }),
       ),
     }),
@@ -91,11 +91,6 @@ class AlephaPackageBuilderCli {
       if (packageName === "alepha") {
         pkgData.exports["./tsconfig.base"] = "./tsconfig.base.json";
         pkgData.exports["./package.json"] = "./package.json";
-      }
-
-      if (packageName === "@alepha/mantine") {
-        pkgData.exports["./styles"] = "./src/core/styles.css";
-        pkgData.exports["./styles.css"] = "./src/core/styles.css";
       }
 
       await this.fs.writeFile(

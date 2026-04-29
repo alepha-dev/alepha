@@ -1,17 +1,20 @@
-import { Flex, JsonViewer, ui } from "@alepha/mantine";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Input } from "@alepha/ui/components/ui/input";
 import {
-  Badge,
-  CloseButton,
-  Code,
-  ScrollArea,
-  SegmentedControl,
   Select,
-  Text,
-  TextInput,
-} from "@mantine/core";
-import { IconSearch } from "@tabler/icons-react";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@alepha/ui/components/ui/select";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@alepha/ui/components/ui/toggle-group";
 import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
+import { Search, X } from "lucide-react";
 import {
   type MouseEvent as ReactMouseEvent,
   useCallback,
@@ -32,17 +35,17 @@ interface LogEntry {
   stack?: string;
 }
 
-const LEVEL_COLORS: Record<string, string> = {
-  ERROR: "red",
-  WARN: "yellow",
-  INFO: "blue",
-  DEBUG: "gray",
-  TRACE: "dark",
+const LEVEL_CLASS: Record<string, string> = {
+  ERROR: "text-red-500 bg-red-500/10",
+  WARN: "text-yellow-600 bg-yellow-500/10",
+  INFO: "text-blue-500 bg-blue-500/10",
+  DEBUG: "text-muted-foreground bg-muted",
+  TRACE: "text-muted-foreground bg-muted",
 };
 
-const TYPE_COLORS: Record<string, string> = {
-  http: "teal",
-  db: "violet",
+const TYPE_CLASS: Record<string, string> = {
+  http: "text-teal-500 bg-teal-500/10",
+  db: "text-violet-500 bg-violet-500/10",
 };
 
 const detectEventType = (data: any): string | undefined => {
@@ -78,12 +81,12 @@ const formatRelative = (ts: number): string => {
   return `${Math.floor(diff / 3_600_000)}h ago`;
 };
 
-type ColumnDef = {
+interface ColumnDef {
   key: string;
   label: string;
   defaultWidth: number;
   minWidth: number;
-};
+}
 
 const COLUMNS: ColumnDef[] = [
   { key: "time", label: "Time", defaultWidth: 105, minWidth: 60 },
@@ -99,14 +102,12 @@ export const DevLogs = () => {
   const [total, setTotal] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  // Filters
   const [level, setLevel] = useState("DEBUG");
   const [typeFilter, setTypeFilter] = useState("");
   const [moduleFilter, setModuleFilter] = useState("");
   const [search, setSearch] = useState("");
   const [timeRange, setTimeRange] = useState("0");
 
-  // Column widths
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
     const widths: Record<string, number> = {};
     for (const col of COLUMNS) {
@@ -115,7 +116,6 @@ export const DevLogs = () => {
     return widths;
   });
 
-  // Resize state
   const resizeRef = useRef<{
     colKey: string;
     startX: number;
@@ -155,7 +155,6 @@ export const DevLogs = () => {
     document.body.style.userSelect = "none";
   };
 
-  // Available modules (collected from logs)
   const modules = useMemo(() => {
     const set = new Set<string>();
     for (const log of logs) {
@@ -181,7 +180,6 @@ export const DevLogs = () => {
       const newLogs = (res.data as any)?.logs ?? [];
       setLogs(newLogs);
       setTotal((res.data as any)?.total ?? 0);
-      // Reset selection when logs change to avoid stale index
       setSelectedIndex(null);
     } catch {
       // silently fail
@@ -197,464 +195,304 @@ export const DevLogs = () => {
   const selectedLog = selectedIndex !== null ? logs[selectedIndex] : null;
 
   return (
-    <Flex style={{ flex: 1, overflow: "hidden" }} direction="column">
+    <div className="flex flex-1 flex-col overflow-hidden">
       {/* Filters bar */}
-      <Flex
-        px="md"
-        py="xs"
-        style={{
-          borderBottom: `1px solid ${ui.colors.border}`,
-          flexShrink: 0,
-        }}
-      >
-        <Flex gap="sm" align="center" wrap="wrap">
-          <SegmentedControl
-            size="xs"
+      <div className="border-border flex shrink-0 items-center gap-3 border-b px-4 py-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
             value={level}
-            onChange={setLevel}
-            data={["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]}
-          />
+            onValueChange={(v) => v && setLevel(v)}
+          >
+            <ToggleGroupItem value="TRACE">TRACE</ToggleGroupItem>
+            <ToggleGroupItem value="DEBUG">DEBUG</ToggleGroupItem>
+            <ToggleGroupItem value="INFO">INFO</ToggleGroupItem>
+            <ToggleGroupItem value="WARN">WARN</ToggleGroupItem>
+            <ToggleGroupItem value="ERROR">ERROR</ToggleGroupItem>
+          </ToggleGroup>
           <Select
-            size="xs"
-            placeholder="Type"
-            clearable
-            value={typeFilter || null}
-            onChange={(v) => setTypeFilter(v ?? "")}
-            data={[
-              { value: "http", label: "HTTP" },
-              { value: "db", label: "DB Query" },
-            ]}
-            w={120}
-          />
+            value={typeFilter || "all"}
+            onValueChange={(v) => setTypeFilter(v === "all" ? "" : v)}
+          >
+            <SelectTrigger className="h-8 w-[120px] text-xs">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="http">HTTP</SelectItem>
+              <SelectItem value="db">DB Query</SelectItem>
+            </SelectContent>
+          </Select>
           <Select
-            size="xs"
-            placeholder="Module"
-            clearable
-            searchable
-            value={moduleFilter || null}
-            onChange={(v) => setModuleFilter(v ?? "")}
-            data={modules}
-            w={150}
-          />
-          <Select
-            size="xs"
-            value={timeRange}
-            onChange={(v) => setTimeRange(v ?? "0")}
-            data={TIME_RANGES}
-            w={120}
-          />
-          <TextInput
-            size="xs"
-            placeholder="Search..."
-            leftSection={<IconSearch size={14} />}
-            value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
-            style={{ flex: 1, minWidth: 150, maxWidth: 300 }}
-          />
-          <Badge variant="light" color="gray" size="sm">
-            {total} total
-          </Badge>
-        </Flex>
-      </Flex>
+            value={moduleFilter || "all"}
+            onValueChange={(v) => setModuleFilter(v === "all" ? "" : v)}
+          >
+            <SelectTrigger className="h-8 w-[150px] text-xs">
+              <SelectValue placeholder="Module" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All modules</SelectItem>
+              {modules.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={timeRange} onValueChange={(v) => setTimeRange(v)}>
+            <SelectTrigger className="h-8 w-[120px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TIME_RANGES.map((r) => (
+                <SelectItem key={r.value} value={r.value}>
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="relative max-w-[300px] flex-1 min-w-[150px]">
+            <Search className="text-muted-foreground absolute left-2 top-1/2 size-3.5 -translate-y-1/2" />
+            <Input
+              placeholder="Search..."
+              className="h-8 pl-8 text-xs"
+              value={search}
+              onChange={(e) => setSearch(e.currentTarget.value)}
+            />
+          </div>
+          <Badge variant="secondary">{total} total</Badge>
+        </div>
+      </div>
 
       {/* Main area: table + detail */}
-      <Flex style={{ flex: 1, overflow: "hidden" }}>
-        {/* Log table */}
-        <Flex direction="column" style={{ flex: 1, overflow: "hidden" }}>
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden">
           {/* Table header */}
-          <Flex
-            style={{
-              borderBottom: `1px solid ${ui.colors.border}`,
-              flexShrink: 0,
-            }}
-          >
+          <div className="border-border flex shrink-0 border-b">
             {COLUMNS.map((col) => (
-              <Flex
+              <div
                 key={col.key}
-                align="center"
-                px="xs"
-                py={4}
+                className="relative flex items-center px-2 py-1 select-none"
                 style={{
                   width: colWidths[col.key],
                   minWidth: col.minWidth,
                   flexShrink: 0,
-                  position: "relative",
-                  userSelect: "none",
                 }}
               >
-                <Text fz={10} c="dimmed" tt="uppercase" fw={600} lts={0.5}>
+                <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
                   {col.label}
-                </Text>
+                </span>
                 <div
                   onMouseDown={(e) => startResize(col.key, e)}
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 4,
-                    cursor: "col-resize",
-                    background: "transparent",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.background =
-                      ui.colors.border;
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!resizeRef.current) {
-                      (e.currentTarget as HTMLElement).style.background =
-                        "transparent";
-                    }
-                  }}
+                  className="hover:bg-border absolute right-0 top-0 bottom-0 w-1 cursor-col-resize"
                 />
-              </Flex>
+              </div>
             ))}
-            <Flex align="center" px="xs" py={4} style={{ flex: 1 }}>
-              <Text fz={10} c="dimmed" tt="uppercase" fw={600} lts={0.5}>
+            <div className="flex flex-1 items-center px-2 py-1">
+              <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
                 Message
-              </Text>
-            </Flex>
-          </Flex>
+              </span>
+            </div>
+          </div>
 
           {/* Table body */}
-          <ScrollArea style={{ flex: 1 }}>
+          <div className="flex-1 overflow-auto">
             {logs.length === 0 && (
-              <Flex align="center" justify="center" py="xl" c="dimmed">
-                <Text fz="sm">No logs match the current filters</Text>
-              </Flex>
+              <div className="text-muted-foreground flex items-center justify-center py-8">
+                <p className="text-sm">No logs match the current filters</p>
+              </div>
             )}
             {logs.map((entry, i) => {
               const isSelected = selectedIndex === i;
               const eventType = detectEventType(entry.data);
 
               return (
-                <Flex
+                <button
+                  type="button"
                   key={`${entry.timestamp}-${i}`}
                   onClick={() => setSelectedIndex(isSelected ? null : i)}
-                  style={{
-                    borderBottom: `1px solid ${ui.colors.border}20`,
-                    background: isSelected ? ui.colors.elevated : "transparent",
-                    cursor: "pointer",
-                    transition: "background 100ms",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) {
-                      (e.currentTarget as HTMLElement).style.background =
-                        `${ui.colors.elevated}80`;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) {
-                      (e.currentTarget as HTMLElement).style.background =
-                        "transparent";
-                    }
-                  }}
+                  className={`border-border/20 flex w-full border-b text-left transition-colors ${
+                    isSelected ? "bg-muted" : "hover:bg-muted/50"
+                  }`}
                 >
-                  {/* Time */}
-                  <Flex
-                    align="center"
-                    px="xs"
-                    py={4}
-                    style={{
-                      width: colWidths.time,
-                      flexShrink: 0,
-                      overflow: "hidden",
-                    }}
+                  <div
+                    className="flex items-center overflow-hidden px-2 py-1"
+                    style={{ width: colWidths.time, flexShrink: 0 }}
                   >
-                    <Text fz={11} ff="monospace" c="dimmed" truncate>
+                    <span className="text-muted-foreground truncate font-mono text-[11px]">
                       {formatTime(entry.timestamp)}
-                    </Text>
-                  </Flex>
+                    </span>
+                  </div>
 
-                  {/* Level */}
-                  <Flex
-                    align="center"
-                    px="xs"
-                    py={4}
-                    style={{
-                      width: colWidths.level,
-                      flexShrink: 0,
-                      overflow: "hidden",
-                    }}
+                  <div
+                    className="flex items-center overflow-hidden px-2 py-1"
+                    style={{ width: colWidths.level, flexShrink: 0 }}
                   >
-                    <Badge
-                      size="xs"
-                      variant="light"
-                      color={LEVEL_COLORS[entry.level] ?? "gray"}
+                    <span
+                      className={`rounded px-1 py-0.5 text-[10px] font-bold ${LEVEL_CLASS[entry.level] ?? "bg-muted"}`}
                     >
                       {entry.level}
-                    </Badge>
-                  </Flex>
+                    </span>
+                  </div>
 
-                  {/* Type */}
-                  <Flex
-                    align="center"
-                    px="xs"
-                    py={4}
-                    style={{
-                      width: colWidths.type,
-                      flexShrink: 0,
-                      overflow: "hidden",
-                    }}
+                  <div
+                    className="flex items-center overflow-hidden px-2 py-1"
+                    style={{ width: colWidths.type, flexShrink: 0 }}
                   >
                     {eventType && (
-                      <Badge
-                        size="xs"
-                        variant="dot"
-                        color={TYPE_COLORS[eventType] ?? "gray"}
+                      <span
+                        className={`rounded px-1 py-0.5 text-[10px] font-bold ${TYPE_CLASS[eventType] ?? "bg-muted"}`}
                       >
-                        {eventType === "http"
-                          ? "HTTP"
-                          : eventType === "db"
-                            ? "DB"
-                            : eventType}
-                      </Badge>
+                        {eventType === "http" ? "HTTP" : "DB"}
+                      </span>
                     )}
-                  </Flex>
+                  </div>
 
-                  {/* Context */}
-                  <Flex
-                    align="center"
-                    px="xs"
-                    py={4}
-                    style={{
-                      width: colWidths.context,
-                      flexShrink: 0,
-                      overflow: "hidden",
-                    }}
+                  <div
+                    className="flex items-center overflow-hidden px-2 py-1"
+                    style={{ width: colWidths.context, flexShrink: 0 }}
                   >
                     {entry.context && (
-                      <Text fz={11} ff="monospace" c="dimmed" truncate>
+                      <span className="text-muted-foreground truncate font-mono text-[11px]">
                         {entry.context}
-                      </Text>
+                      </span>
                     )}
-                  </Flex>
+                  </div>
 
-                  {/* Module */}
-                  <Flex
-                    align="center"
-                    px="xs"
-                    py={4}
-                    style={{
-                      width: colWidths.module,
-                      flexShrink: 0,
-                      overflow: "hidden",
-                    }}
+                  <div
+                    className="flex items-center overflow-hidden px-2 py-1"
+                    style={{ width: colWidths.module, flexShrink: 0 }}
                   >
-                    <Text fz={11} c="dimmed" truncate>
+                    <span className="text-muted-foreground truncate text-[11px]">
                       {entry.module}
-                    </Text>
-                  </Flex>
+                    </span>
+                  </div>
 
-                  {/* Message */}
-                  <Flex
-                    align="center"
-                    px="xs"
-                    py={4}
-                    style={{ flex: 1, overflow: "hidden" }}
-                  >
-                    <Text fz={11} ff="monospace" truncate>
+                  <div className="flex flex-1 items-center overflow-hidden px-2 py-1">
+                    <span className="truncate font-mono text-[11px]">
                       {entry.message}
-                    </Text>
-                  </Flex>
-                </Flex>
+                    </span>
+                  </div>
+                </button>
               );
             })}
-          </ScrollArea>
-        </Flex>
+          </div>
+        </div>
 
         {/* Detail panel */}
         {selectedLog && (
-          <Flex
-            w={400}
-            style={{
-              borderLeft: `1px solid ${ui.colors.border}`,
-              flexShrink: 0,
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <Flex
-              px="md"
-              py="xs"
-              align="center"
-              justify="space-between"
-              style={{
-                borderBottom: `1px solid ${ui.colors.border}`,
-                flexShrink: 0,
-              }}
-            >
-              <Text fz="xs" fw={600} tt="uppercase" c="dimmed" lts={0.5}>
+          <div className="border-border flex w-[400px] shrink-0 flex-col overflow-hidden border-l">
+            <div className="border-border flex shrink-0 items-center justify-between border-b px-4 py-2">
+              <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
                 Log Detail
-              </Text>
-              <CloseButton size="xs" onClick={() => setSelectedIndex(null)} />
-            </Flex>
-            <ScrollArea style={{ flex: 1 }} p="md">
-              <Flex direction="column" gap="md">
-                {/* Meta */}
-                <Flex gap="xs" wrap="wrap">
-                  <Badge
-                    size="sm"
-                    variant="light"
-                    color={LEVEL_COLORS[selectedLog.level] ?? "gray"}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedIndex(null)}
+              >
+                <X className="size-3.5" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-wrap gap-2">
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${LEVEL_CLASS[selectedLog.level] ?? "bg-muted"}`}
                   >
                     {selectedLog.level}
-                  </Badge>
+                  </span>
                   {detectEventType(selectedLog.data) && (
-                    <Badge
-                      size="sm"
-                      variant="dot"
-                      color={
-                        TYPE_COLORS[detectEventType(selectedLog.data)!] ??
-                        "gray"
-                      }
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${
+                        TYPE_CLASS[detectEventType(selectedLog.data)!] ??
+                        "bg-muted"
+                      }`}
                     >
                       {detectEventType(selectedLog.data) === "http"
                         ? "HTTP"
                         : "DB"}
-                    </Badge>
+                    </span>
                   )}
                   {selectedLog.module && (
                     <Badge
-                      size="sm"
                       variant="outline"
-                      color="gray"
-                      style={{ cursor: "pointer" }}
+                      className="cursor-pointer"
                       onClick={() => setModuleFilter(selectedLog.module)}
                     >
                       {selectedLog.module}
                     </Badge>
                   )}
-                </Flex>
+                </div>
 
-                {/* Timestamp */}
-                <Flex direction="column">
-                  <Text
-                    fz={10}
-                    c="dimmed"
-                    tt="uppercase"
-                    fw={600}
-                    lts={0.5}
-                    mb={4}
-                  >
+                <div className="flex flex-col">
+                  <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-wider">
                     Timestamp
-                  </Text>
-                  <Text fz="xs" ff="monospace">
+                  </p>
+                  <p className="font-mono text-xs">
                     {new Date(selectedLog.timestamp).toISOString()}
-                  </Text>
-                  <Text fz="xs" c="dimmed">
+                  </p>
+                  <p className="text-muted-foreground text-xs">
                     {formatRelative(selectedLog.timestamp)}
-                  </Text>
-                </Flex>
+                  </p>
+                </div>
 
-                {/* Context */}
                 {selectedLog.context && (
-                  <Flex direction="column">
-                    <Text
-                      fz={10}
-                      c="dimmed"
-                      tt="uppercase"
-                      fw={600}
-                      lts={0.5}
-                      mb={4}
-                    >
+                  <div className="flex flex-col">
+                    <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-wider">
                       Context
-                    </Text>
-                    <Text fz="xs" ff="monospace">
-                      {selectedLog.context}
-                    </Text>
-                  </Flex>
+                    </p>
+                    <p className="font-mono text-xs">{selectedLog.context}</p>
+                  </div>
                 )}
 
-                {/* Message */}
-                <Flex direction="column">
-                  <Text
-                    fz={10}
-                    c="dimmed"
-                    tt="uppercase"
-                    fw={600}
-                    lts={0.5}
-                    mb={4}
-                  >
+                <div className="flex flex-col">
+                  <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-wider">
                     Message
-                  </Text>
-                  <Text
-                    fz="xs"
-                    ff="monospace"
-                    style={{ whiteSpace: "pre-wrap" }}
-                  >
+                  </p>
+                  <p className="whitespace-pre-wrap font-mono text-xs">
                     {selectedLog.message}
-                  </Text>
-                </Flex>
+                  </p>
+                </div>
 
-                {/* Service */}
                 {selectedLog.service && (
-                  <Flex direction="column">
-                    <Text
-                      fz={10}
-                      c="dimmed"
-                      tt="uppercase"
-                      fw={600}
-                      lts={0.5}
-                      mb={4}
-                    >
+                  <div className="flex flex-col">
+                    <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-wider">
                       Service
-                    </Text>
-                    <Text fz="xs" ff="monospace">
-                      {selectedLog.service}
-                    </Text>
-                  </Flex>
+                    </p>
+                    <p className="font-mono text-xs">{selectedLog.service}</p>
+                  </div>
                 )}
 
-                {/* Structured data */}
                 {selectedLog.data && (
-                  <Flex direction="column">
-                    <Text
-                      fz={10}
-                      c="dimmed"
-                      tt="uppercase"
-                      fw={600}
-                      lts={0.5}
-                      mb={4}
-                    >
+                  <div className="flex flex-col">
+                    <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-wider">
                       Data
-                    </Text>
-                    <JsonViewer data={selectedLog.data} maxDepth={4} />
-                  </Flex>
+                    </p>
+                    <pre className="bg-muted overflow-auto rounded p-2 text-xs">
+                      {JSON.stringify(selectedLog.data, null, 2)}
+                    </pre>
+                  </div>
                 )}
 
-                {/* Stack trace */}
                 {selectedLog.stack && (
-                  <Flex direction="column">
-                    <Text
-                      fz={10}
-                      c="dimmed"
-                      tt="uppercase"
-                      fw={600}
-                      lts={0.5}
-                      mb={4}
-                    >
+                  <div className="flex flex-col">
+                    <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-wider">
                       Stack Trace
-                    </Text>
-                    <Code
-                      block
-                      style={{
-                        fontSize: 11,
-                        maxHeight: 300,
-                        overflow: "auto",
-                      }}
-                    >
+                    </p>
+                    <pre className="bg-muted max-h-[300px] overflow-auto rounded p-2 text-[11px]">
                       {selectedLog.stack}
-                    </Code>
-                  </Flex>
+                    </pre>
+                  </div>
                 )}
-              </Flex>
-            </ScrollArea>
-          </Flex>
+              </div>
+            </div>
+          </div>
         )}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 };
 

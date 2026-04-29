@@ -60,6 +60,19 @@ Alepha uses a hybrid monorepo structure:
 **Specialized Packages**
 - `@alepha/ui` - Shared shadcn-based UI for monorepo apps (sourced from `@alepha/ui-registry`)
 - `@alepha/ui-registry` - shadcn registry source (blocks distributed via `https://alepha.dev/r/*`)
+
+**@alepha/ui ↔ @alepha/ui-registry workflow**
+- `@alepha/ui-registry` is the **source of truth** for all custom Alepha components (controls, admin blocks, auth pages, etc.)
+- `@alepha/ui` is the **monorepo consumer** — it pulls components from the registry via `shadcn add`
+- **Never manually create/edit component files in `@alepha/ui`** that originate from the registry. Use the shadcn CLI instead.
+- To sync registry components into `@alepha/ui`:
+  1. Build the registry: `yarn w @alepha/ui-registry build`
+  2. Serve the built output: `cd apps/docs/public && python3 -m http.server 8765` (or run the docs dev server)
+  3. From `packages/@alepha/ui`, run: `npx shadcn add @alepha/<component-name>`
+  4. **Known issue**: `alepha` is a peer dep in `@alepha/ui`, so before running `shadcn add`, temporarily remove `alepha` from `peerDependencies` in `packages/@alepha/ui/package.json`, then restore it after.
+  5. **Known issue**: shadcn may rewrite `@/components/ui/X` imports as `@alepha/components/ui/X` (missing `/ui` segment). After adding, verify imports use `@alepha/ui/components/ui/X` and fix with: `sed -i '' 's|@alepha/components/|@alepha/ui/components/|g' <files>`
+- To add a **new** component: create it in `@alepha/ui-registry/registry/default/<name>/`, register it in `registry.json`, then `shadcn add` it into `@alepha/ui`
+- The `components.json` in `@alepha/ui` configures the `@alepha` registry at `http://localhost:8765/r/{name}.json`
 - `@alepha/devtools` - Development tools and inspection UI
 - `@alepha/bucket-s3` - S3-compatible Blob Storage backend
 - `@alepha/payments-stripe` - Stripe payments backend

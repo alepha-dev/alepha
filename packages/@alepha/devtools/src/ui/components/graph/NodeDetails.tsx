@@ -1,11 +1,7 @@
-import { ActionButton, Flex, ui } from "@alepha/mantine";
-import { Badge, Divider, Paper, ScrollArea, Text } from "@mantine/core";
-import {
-  IconArrowDown,
-  IconArrowUp,
-  IconBox,
-  IconX,
-} from "@tabler/icons-react";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Separator } from "@alepha/ui/components/ui/separator";
+import { ArrowDown, ArrowUp, Box, X } from "lucide-react";
 import { getModuleColor } from "./constants.ts";
 import type { ProviderNodeData } from "./types.ts";
 
@@ -15,160 +11,137 @@ interface NodeDetailsProps {
   onNodeClick: (nodeId: string) => void;
 }
 
-export const NodeDetails = ({
-  node,
-  onClose,
-  onNodeClick,
-}: NodeDetailsProps) => {
-  if (!node) return null;
+export const NodeDetails = (props: NodeDetailsProps) => {
+  if (!props.node) return null;
 
-  const { data } = node;
+  const { data } = props.node;
   const moduleColor = getModuleColor(data.module);
   const isModule = data.isModule;
 
   return (
-    <Paper
-      p="md"
-      style={{
-        position: "absolute",
-        top: 16,
-        right: 16,
-        width: 280,
-        backgroundColor: ui.colors.elevated,
-        border: `1px solid ${ui.colors.border}`,
-        borderRadius: 8,
-        zIndex: 10,
-      }}
-    >
-      <Flex justify="space-between" align="start" mb="sm">
-        <Flex style={{ flex: 1 }}>
-          <Text size="sm" fw={600} style={{ wordBreak: "break-word" }}>
+    <div className="bg-card border-border absolute right-4 top-4 z-10 w-[280px] rounded-lg border p-4 shadow-lg">
+      <div className="mb-3 flex items-start justify-between">
+        <div className="flex flex-1 flex-col gap-1">
+          <span className="break-words text-sm font-semibold">
             {data.label}
-          </Text>
+          </span>
           {!isModule && data.module && (
             <Badge
-              size="xs"
-              variant="light"
-              mt={4}
+              variant="outline"
+              className="w-fit text-[10px]"
               style={{
                 backgroundColor: `${moduleColor}20`,
                 color: moduleColor,
+                borderColor: `${moduleColor}40`,
               }}
             >
               {data.module}
             </Badge>
           )}
           {isModule && data.providerCount !== undefined && (
-            <Text size="xs" c="dimmed" mt={4}>
+            <span className="text-muted-foreground text-xs">
               {data.providerCount} services
-            </Text>
+            </span>
           )}
-        </Flex>
-        <ActionButton
-          size="sm"
-          variant="subtle"
-          onClick={onClose}
-          icon={<IconX size={14} />}
-        />
-      </Flex>
+        </div>
+        <Button size="sm" variant="ghost" onClick={props.onClose}>
+          <X className="size-3.5" />
+        </Button>
+      </div>
 
       {!isModule && data.aliases && data.aliases.length > 0 && (
         <>
-          <Divider my="xs" />
-          <Text size="xs" c="dimmed" mb={4}>
-            Aliases
-          </Text>
-          <Flex gap={4} wrap="wrap">
+          <Separator className="my-2" />
+          <p className="text-muted-foreground mb-1 text-xs">Aliases</p>
+          <div className="flex flex-wrap gap-1">
             {data.aliases.map((alias) => (
-              <Badge key={alias} size="xs" variant="outline">
+              <Badge key={alias} variant="outline" className="text-[10px]">
                 {alias}
               </Badge>
             ))}
-          </Flex>
+          </div>
         </>
       )}
 
       {isModule && data.providers && data.providers.length > 0 && (
         <>
-          <Divider my="xs" />
-          <Flex align="center" gap={4} mb={4}>
-            <IconBox size={12} opacity={0.5} />
-            <Text size="xs" c="dimmed">
+          <Separator className="my-2" />
+          <div className="mb-1 flex items-center gap-1">
+            <Box className="size-3 opacity-50" />
+            <span className="text-muted-foreground text-xs">
               Services ({data.providers.length})
-            </Text>
-          </Flex>
-          <ScrollArea h={100}>
-            <Flex direction="column" gap={2}>
+            </span>
+          </div>
+          <div className="h-[100px] overflow-auto">
+            <div className="flex flex-col gap-0.5">
               {data.providers.map((provider) => (
-                <Text key={provider} size="xs">
+                <span key={provider} className="text-xs">
                   {provider.split(".").pop()}
-                </Text>
+                </span>
               ))}
-            </Flex>
-          </ScrollArea>
+            </div>
+          </div>
         </>
       )}
 
-      <Divider my="xs" />
+      <Separator className="my-2" />
 
-      <ScrollArea h={isModule ? 120 : 200}>
-        <Flex direction="column" gap="xs">
+      <div className="overflow-auto" style={{ height: isModule ? 120 : 200 }}>
+        <div className="flex flex-col gap-3">
           {data.dependencies.length > 0 && (
-            <Flex>
-              <Flex align="center" gap={4} mb={4}>
-                <IconArrowDown size={12} opacity={0.5} />
-                <Text size="xs" c="dimmed">
+            <div>
+              <div className="mb-1 flex items-center gap-1">
+                <ArrowDown className="size-3 opacity-50" />
+                <span className="text-muted-foreground text-xs">
                   {isModule ? "Depends on" : "Dependencies"} (
                   {data.dependencies.length})
-                </Text>
-              </Flex>
-              <Flex direction="column" gap={2}>
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
                 {data.dependencies.map((dep) => (
-                  <Text
+                  <button
+                    type="button"
                     key={dep}
-                    size="xs"
-                    style={{ cursor: "pointer" }}
-                    c="blue"
-                    onClick={() => onNodeClick(dep)}
+                    className="text-left text-xs text-blue-500 hover:underline"
+                    onClick={() => props.onNodeClick(dep)}
                   >
                     {dep}
-                  </Text>
+                  </button>
                 ))}
-              </Flex>
-            </Flex>
+              </div>
+            </div>
           )}
 
           {data.dependents.length > 0 && (
-            <Flex>
-              <Flex align="center" gap={4} mb={4}>
-                <IconArrowUp size={12} opacity={0.5} />
-                <Text size="xs" c="dimmed">
+            <div>
+              <div className="mb-1 flex items-center gap-1">
+                <ArrowUp className="size-3 opacity-50" />
+                <span className="text-muted-foreground text-xs">
                   Used by ({data.dependents.length})
-                </Text>
-              </Flex>
-              <Flex direction="column" gap={2}>
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
                 {data.dependents.map((dep) => (
-                  <Text
+                  <button
+                    type="button"
                     key={dep}
-                    size="xs"
-                    style={{ cursor: "pointer" }}
-                    c="blue"
-                    onClick={() => onNodeClick(dep)}
+                    className="text-left text-xs text-blue-500 hover:underline"
+                    onClick={() => props.onNodeClick(dep)}
                   >
                     {dep}
-                  </Text>
+                  </button>
                 ))}
-              </Flex>
-            </Flex>
+              </div>
+            </div>
           )}
 
           {data.dependencies.length === 0 && data.dependents.length === 0 && (
-            <Text size="xs" c="dimmed">
+            <span className="text-muted-foreground text-xs">
               No dependencies
-            </Text>
+            </span>
           )}
-        </Flex>
-      </ScrollArea>
-    </Paper>
+        </div>
+      </div>
+    </div>
   );
 };

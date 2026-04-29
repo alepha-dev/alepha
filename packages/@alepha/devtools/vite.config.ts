@@ -1,7 +1,9 @@
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
   base: "/__devtools",
+  plugins: [tailwindcss()],
   server: {
     port: 3001,
     proxy: {

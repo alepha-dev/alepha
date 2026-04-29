@@ -1,25 +1,34 @@
-import { ActionButton, Flex, Text, useToast } from "@alepha/mantine";
-import { Avatar, Badge, Card, Modal, TextInput } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import {
-  IconCircleFilled,
-  IconCrown,
-  IconMail,
-  IconPlus,
-  IconUser,
-  IconUsers,
-} from "@tabler/icons-react";
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@alepha/ui/components/ui/dialog";
+import { Input } from "@alepha/ui/components/ui/input";
+import { Label } from "@alepha/ui/components/ui/label";
 import { useClient, useInject } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { Localize, useI18n } from "alepha/react/i18n";
+import {
+  Circle,
+  Crown,
+  Mail,
+  Plus,
+  User as UserIcon,
+  Users,
+} from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { Character } from "@/api/entities/characters.ts";
 import type { InvitationEntity } from "@/api/entities/invitations.ts";
 import type { Project } from "@/api/entities/projects.ts";
 import type { User } from "@/api/entities/users.ts";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
-import { theme } from "@/web/app/constants/theme.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsPlayersSectionProps {
@@ -31,43 +40,39 @@ export interface ProjectSettingsPlayersSectionProps {
 const ProjectSettingsPlayersSection = (
   props: ProjectSettingsPlayersSectionProps,
 ) => {
-  const { project, players, pendingInvitations = [] } = props;
   const characterInfo = useInject(CharacterInfo);
   const invitationApi = useClient<InvitationController>();
   const auth = useAuth();
-  const toast = useToast();
   const { l } = useI18n();
   const { tr } = useI18n<I18n, "en">();
 
-  const [opened, { open, close }] = useDisclosure(false);
+  const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const players = props.players;
+  const pendingInvitations = props.pendingInvitations ?? [];
+
   const handleInvite = async () => {
     if (!email.trim()) {
-      toast.danger({ message: "Please enter an email address" });
+      toast.error("Please enter an email address");
       return;
     }
-
     setLoading(true);
     try {
       await invitationApi.createInvitation({
         body: {
           email: email.trim(),
           resourceType: "project",
-          resourceId: String(project.id),
+          resourceId: String(props.project.id),
         },
       });
-
-      toast.success({ message: `Invitation sent to ${email}` });
-
+      toast.success(`Invitation sent to ${email}`);
       setEmail("");
-      close();
+      setOpen(false);
       window.location.reload();
     } catch (error: any) {
-      toast.danger({
-        message: error.message || "Failed to send invitation",
-      });
+      toast.error(error.message || "Failed to send invitation");
     } finally {
       setLoading(false);
     }
@@ -75,201 +80,174 @@ const ProjectSettingsPlayersSection = (
 
   return (
     <>
-      <Modal
-        opened={opened}
-        onClose={close}
-        title={tr("project.settings.players.invite.title")}
-      >
-        <Flex direction="column" gap="md">
-          <Text size="sm" c="dimmed">
-            {tr("project.settings.players.invite.description", {
-              args: [project.title],
-            })}
-          </Text>
-          <TextInput
-            label={tr("project.settings.players.invite.email")}
-            placeholder="player@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.currentTarget.value)}
-            leftSection={<IconMail size={16} />}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleInvite();
-              }
-            }}
-          />
-          <Flex gap="sm" justify="flex-end">
-            <ActionButton variant="light" onClick={close}>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {tr("project.settings.players.invite.title")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <p className="text-muted-foreground text-sm">
+              {tr("project.settings.players.invite.description", {
+                args: [props.project.title],
+              })}
+            </p>
+            <div className="flex flex-col gap-1.5">
+              <Label>{tr("project.settings.players.invite.email")}</Label>
+              <div className="relative">
+                <Mail className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2" />
+                <Input
+                  className="pl-8"
+                  placeholder="player@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleInvite();
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
               {tr("project.settings.players.invite.cancel")}
-            </ActionButton>
-            <ActionButton onClick={handleInvite} loading={loading}>
+            </Button>
+            <Button onClick={handleInvite} disabled={loading}>
               {tr("project.settings.players.invite.submit")}
-            </ActionButton>
-          </Flex>
-        </Flex>
-      </Modal>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <Flex direction="column" gap={"xs"}>
-        <Flex justify="space-between" align="center">
-          <Flex gap="sm" align="center">
-            <Text>{tr("project.settings.players.title")}</Text>
-            <Badge variant="light" size="sm">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">
+              {tr("project.settings.players.title")}
+            </span>
+            <Badge variant="secondary">
               {players.length + pendingInvitations.length}
             </Badge>
-          </Flex>
-          {project.createdBy === auth.user?.id && (
-            <ActionButton
-              variant="light"
-              size="xs"
-              leftSection={<IconPlus size={14} />}
-              onClick={open}
-            >
+          </div>
+          {props.project.createdBy === auth.user?.id && (
+            <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+              <Plus className="size-3.5" />
               {tr("project.settings.players.invite.action")}
-            </ActionButton>
+            </Button>
           )}
-        </Flex>
+        </div>
 
-        <Flex direction="column" gap="sm">
+        <div className="flex flex-col gap-2">
           {players.map((player) => {
             const level = characterInfo.getLevelByXp(player.xp);
             const gold = characterInfo.getGold(player.balance);
             const silver = characterInfo.getSilver(player.balance);
 
             return (
-              <Card
-                withBorder
-                key={player.id}
-                radius={0}
-                className={"shadow"}
-                bg={theme.colors.card}
-                p={"sm"}
-              >
-                <Flex gap="lg" align="center">
-                  <Avatar
-                    src={
-                      player.user.picture
-                        ? `/api/files/${player.user.picture}`
-                        : undefined
-                    }
-                    size={40}
-                    radius="md"
-                  >
-                    <IconUser size={20} />
-                  </Avatar>
+              <Card key={player.id} className="bg-card shadow">
+                <CardContent className="flex items-center gap-4 p-3">
+                  {player.user.picture ? (
+                    <img
+                      alt="avatar"
+                      src={`/api/files/${player.user.picture}`}
+                      className="size-10 rounded-md"
+                    />
+                  ) : (
+                    <div className="bg-muted flex size-10 items-center justify-center rounded-md">
+                      <UserIcon className="size-5" />
+                    </div>
+                  )}
 
-                  <Flex direction="column" flex={1}>
-                    <Flex gap="sm" align="center">
-                      <Text fw={500} size="sm">
+                  <div className="flex flex-1 flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">
                         {player.user.username}
-                      </Text>
+                      </span>
                       {player.owner && (
-                        <Badge
-                          variant="light"
-                          size="xs"
-                          leftSection={<IconCrown size={10} />}
-                        >
+                        <Badge variant="secondary" className="gap-1">
+                          <Crown className="size-3" />
                           Owner
                         </Badge>
                       )}
-                    </Flex>
-                    <Text size="xs" c="dimmed">
+                    </div>
+                    <span className="text-muted-foreground text-xs">
                       {player.user.email}
-                    </Text>
-                  </Flex>
+                    </span>
+                  </div>
 
-                  <Flex align={"center"} gap="lg">
-                    <Flex direction="column" gap={0}>
-                      <Text size="xs" c="dimmed">
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-muted-foreground text-xs">
                         Lv. {level}
-                      </Text>
-                      <Text size="xs" c="dimmed">
+                      </span>
+                      <span className="text-muted-foreground text-xs">
                         {l(player.xp)} XP
-                      </Text>
-                    </Flex>
-                    <Flex gap={2}>
+                      </span>
+                    </div>
+                    <div className="flex gap-1">
                       {gold > 0 && (
-                        <>
-                          <Text size="xs" fw={500}>
-                            {gold}
-                          </Text>
-                          <IconCircleFilled
-                            size={8}
-                            color="var(--color-gold)"
+                        <div className="flex items-center gap-0.5">
+                          <span className="text-xs font-medium">{gold}</span>
+                          <Circle
+                            className="size-2 fill-current"
+                            style={{ color: "var(--color-gold)" }}
                           />
-                        </>
+                        </div>
                       )}
                       {silver > 0 && (
-                        <>
-                          <Text size="xs" fw={500}>
-                            {silver}
-                          </Text>
-                          <IconCircleFilled
-                            size={8}
-                            color="var(--color-silver)"
+                        <div className="flex items-center gap-0.5">
+                          <span className="text-xs font-medium">{silver}</span>
+                          <Circle
+                            className="size-2 fill-current"
+                            style={{ color: "var(--color-silver)" }}
                           />
-                        </>
+                        </div>
                       )}
-                    </Flex>
-                  </Flex>
+                    </div>
+                  </div>
 
-                  <Text size="xs" c="dimmed">
+                  <span className="text-muted-foreground text-xs">
                     <Localize value={player.createdAt} date="fromNow" />
-                  </Text>
-                </Flex>
+                  </span>
+                </CardContent>
               </Card>
             );
           })}
 
           {pendingInvitations.map((invitation) => (
-            <Card
-              key={invitation.id}
-              radius={0}
-              withBorder
-              className={"shadow"}
-              bg={theme.colors.card}
-              p={"sm"}
-              style={{ opacity: 0.6 }}
-            >
-              <Flex gap="lg" align="center">
-                <Avatar size={40} radius="md" color="gray">
-                  <IconMail size={20} />
-                </Avatar>
-
-                <Flex direction="column" flex={1}>
-                  <Flex gap="sm" align="center">
-                    <Text fw={500} size="sm">
+            <Card key={invitation.id} className="bg-card shadow opacity-60">
+              <CardContent className="flex items-center gap-4 p-3">
+                <div className="bg-muted flex size-10 items-center justify-center rounded-md">
+                  <Mail className="size-5" />
+                </div>
+                <div className="flex flex-1 flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">
                       {invitation.email}
-                    </Text>
-                    <Badge variant="light" size="xs">
-                      Pending
-                    </Badge>
-                  </Flex>
-                  <Text size="xs" c="dimmed">
+                    </span>
+                    <Badge variant="secondary">Pending</Badge>
+                  </div>
+                  <span className="text-muted-foreground text-xs">
                     <Localize value={invitation.createdAt} date="fromNow" />
-                  </Text>
-                </Flex>
-              </Flex>
+                  </span>
+                </div>
+              </CardContent>
             </Card>
           ))}
 
           {players.length === 0 && pendingInvitations.length === 0 && (
-            <Card
-              radius={0}
-              withBorder
-              className={"shadow"}
-              bg={theme.colors.card}
-              p={"md"}
-            >
-              <Flex align="center" justify="center" direction="column" gap="sm">
-                <IconUsers size={32} opacity={0.5} />
-                <Text c="dimmed" size="sm" ta="center">
+            <Card className="bg-card shadow">
+              <CardContent className="flex flex-col items-center justify-center gap-2 p-6">
+                <Users className="size-8 opacity-50" />
+                <span className="text-muted-foreground text-center text-sm">
                   {tr("project.settings.players.empty")}
-                </Text>
-              </Flex>
+                </span>
+              </CardContent>
             </Card>
           )}
-        </Flex>
-      </Flex>
+        </div>
+      </div>
     </>
   );
 };

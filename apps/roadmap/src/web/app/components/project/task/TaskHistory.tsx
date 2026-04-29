@@ -1,26 +1,15 @@
-import { Flex } from "@alepha/mantine";
-import { Transition } from "@mantine/core";
 import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
 import TaskHistoryTimeline from "./TaskHistoryTimeline.tsx";
 
-const TaskHistory = (props: { task: TaskResource }) => {
-  const task = props.task;
+export interface TaskHistoryProps {
+  task: TaskResource;
+}
 
+const TaskHistory = (props: TaskHistoryProps) => {
   return (
-    <Flex>
-      <Transition
-        mounted={!!task}
-        transition="fade-right"
-        duration={400}
-        timingFunction="ease"
-      >
-        {(styles) => (
-          <Flex flex={1} py={"md"} direction={"column"} style={styles}>
-            {task ? <TaskHistoryTimeline task={task} /> : null}
-          </Flex>
-        )}
-      </Transition>
-    </Flex>
+    <div className="flex flex-1 flex-col py-3">
+      {props.task ? <TaskHistoryTimeline task={props.task} /> : null}
+    </div>
   );
 };
 

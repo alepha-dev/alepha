@@ -1,10 +1,8 @@
-import { ActionButton, Flex, Text } from "@alepha/mantine";
+import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Badge } from "@mantine/core";
-import { IconExclamationMark, IconSparkles } from "@tabler/icons-react";
+import { AlertTriangle, Sparkles } from "lucide-react";
 import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
-import { theme } from "../../constants/theme.ts";
 import TaskComplexity from "../project/task/TaskComplexity.tsx";
 
 export interface KanbanCardProps {
@@ -13,16 +11,18 @@ export interface KanbanCardProps {
   onSelect: (task: TaskResource) => void;
 }
 
-const getPriorityColor = (priority: string) => {
+const priorityVariant = (
+  priority: string,
+): "default" | "secondary" | "destructive" | "outline" => {
   switch (priority) {
     case "high":
-      return "red";
+      return "destructive";
     case "medium":
-      return "orange";
+      return "default";
     case "low":
-      return "gray";
+      return "secondary";
     default:
-      return "dark";
+      return "outline";
   }
 };
 
@@ -38,72 +38,55 @@ const KanbanCard = (props: KanbanCardProps) => {
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : undefined,
-    padding: 4,
   };
 
+  const cursorClass = readOnly
+    ? "cursor-pointer"
+    : isDragging
+      ? "cursor-grabbing"
+      : "cursor-grab";
+
   return (
-    <div ref={setNodeRef} style={style}>
-      <ActionButton
-        w="100%"
-        h="auto"
-        px="xs"
-        py={6}
-        mb={2}
-        justify="start"
-        variant="default"
+    <div ref={setNodeRef} style={style} className="p-1">
+      <button
+        type="button"
         onClick={() => onSelect(task)}
         {...(readOnly ? {} : { ...attributes, ...listeners })}
-        style={{
-          cursor: readOnly ? "pointer" : isDragging ? "grabbing" : "grab",
-        }}
+        className={`group flex w-full items-center gap-2 overflow-hidden rounded-md border border-border bg-card px-2 py-1.5 text-left shadow-sm transition-colors hover:bg-muted ${cursorClass}`}
       >
-        <Flex flex={1} align="center" gap="sm" style={{ overflow: "hidden" }}>
-          <TaskComplexity complexity={task.complexity} />
-          <Flex direction="column" flex={1} style={{ overflow: "hidden" }}>
-            <Text
-              fw={500}
-              size="sm"
-              lineClamp={1}
-              td={task.completedAt ? "line-through" : undefined}
-              c={task.completedAt ? "dimmed" : undefined}
-            >
-              {task.title}
-            </Text>
-            <Flex align="center" gap={4}>
-              <Text size="xs" c="dimmed">
-                {task.package}
-              </Text>
-              {task.metadata.objectivesProgress.total > 0 && (
-                <Text size="10px" c="dimmed">
-                  {task.metadata.objectivesProgress.completed}/
-                  {task.metadata.objectivesProgress.total}
-                </Text>
-              )}
-            </Flex>
-          </Flex>
-          <Flex align="center" gap={4}>
-            <Badge
-              size="xs"
-              color={getPriorityColor(task.priority)}
-              variant="light"
-            >
-              {task.priority}
-            </Badge>
-            {task.priority === "high" && (
-              <IconExclamationMark
-                size={theme.icon.size.sm}
-                color="var(--mantine-color-red-5)"
-              />
+        <TaskComplexity complexity={task.complexity} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <span
+            className={`truncate text-sm font-medium ${
+              task.completedAt ? "text-muted-foreground line-through" : ""
+            }`}
+          >
+            {task.title}
+          </span>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground">
+              {task.package}
+            </span>
+            {task.metadata.objectivesProgress.total > 0 && (
+              <span className="text-[10px] text-muted-foreground">
+                {task.metadata.objectivesProgress.completed}/
+                {task.metadata.objectivesProgress.total}
+              </span>
             )}
-            {task.priority === "optional" && (
-              <IconSparkles
-                size={theme.icon.size.sm}
-                color="var(--mantine-color-gray-5)"
-              />
-            )}
-          </Flex>
-        </Flex>
-      </ActionButton>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <Badge variant={priorityVariant(task.priority)} className="text-xs">
+            {task.priority}
+          </Badge>
+          {task.priority === "high" && (
+            <AlertTriangle className="size-3.5 text-red-500" />
+          )}
+          {task.priority === "optional" && (
+            <Sparkles className="size-3.5 text-muted-foreground" />
+          )}
+        </div>
+      </button>
     </div>
   );
 };

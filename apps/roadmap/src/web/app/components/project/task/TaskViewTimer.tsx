@@ -1,15 +1,16 @@
-import { ActionButton, Flex, Text } from "@alepha/mantine";
+import { Button } from "@alepha/ui/components/ui/button";
 import {
-  IconClock,
-  IconPlayerPause,
-  IconPlayerPlay,
-} from "@tabler/icons-react";
-import { ClientOnly, useClient } from "alepha/react";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
+import { DateTimeProvider } from "alepha/datetime";
+import { ClientOnly, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { Clock, Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { TaskController } from "@/api/controllers/TaskController.ts";
 import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
-import { theme } from "@/web/app/constants/theme.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface TaskViewTimerProps {
@@ -21,148 +22,106 @@ const TaskViewTimer = (props: TaskViewTimerProps) => {
   const { task } = props;
   const { tr } = useI18n<I18n, "en">();
   const client = useClient<TaskController>();
+  const dateTime = useInject(DateTimeProvider);
   const [currentTime, setCurrentTime] = useState<number>(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Calculate total time from all sessions
   const calculateTotalTime = () => {
     if (!task.timerSessions) return 0;
-
     let total = 0;
-    const now = new Date();
-
+    const now = dateTime.nowMillis();
     for (const session of task.timerSessions) {
-      const start = new Date(session.startedAt);
-      const stop = session.stoppedAt ? new Date(session.stoppedAt) : now;
-      total += stop.getTime() - start.getTime();
+      const start = new Date(session.startedAt).getTime();
+      const stop = session.stoppedAt
+        ? new Date(session.stoppedAt).getTime()
+        : now;
+      total += stop - start;
     }
-
-    return Math.floor(total / 1000); // Return in seconds
+    return Math.floor(total / 1000);
   };
 
-  // Check if timer is running
   const isTimerRunning = () => {
     if (!task.timerSessions || task.timerSessions.length === 0) return false;
     const lastSession = task.timerSessions[task.timerSessions.length - 1];
     return lastSession && !lastSession.stoppedAt;
   };
 
-  // Format time display
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    if (minutes > 0) {
-      return `${minutes}m ${secs}s`;
-    }
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m ${secs}s`;
     return `${secs}s`;
   };
 
-  // Start/stop timer
   const toggleTimer = async () => {
     if (isTimerRunning()) {
-      const updatedTask = await client.stopTimer({
-        params: { id: task.id },
-      });
+      const updatedTask = await client.stopTimer({ params: { id: task.id } });
       props.onUpdate(updatedTask);
-
-      // Clear interval
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     } else {
-      const updatedTask = await client.startTimer({
-        params: { id: task.id },
-      });
+      const updatedTask = await client.startTimer({ params: { id: task.id } });
       props.onUpdate(updatedTask);
     }
   };
 
-  // Update timer display
   useEffect(() => {
-    // Set initial time
     setCurrentTime(calculateTotalTime());
-
-    // If timer is running, update every second
     if (isTimerRunning()) {
       intervalRef.current = setInterval(() => {
         setCurrentTime(calculateTotalTime());
       }, 1000);
     }
-
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.timerSessions]);
 
-  // Don't show timer if task is not accepted or already completed
-  if (!task.acceptedAt || task.completedAt) {
-    return null;
-  }
-
-  // Don't show if user doesn't have permission
-  if (!client.startTimer.can() && !client.stopTimer.can()) {
-    return null;
-  }
+  if (!task.acceptedAt || task.completedAt) return null;
+  if (!client.startTimer.can() && !client.stopTimer.can()) return null;
 
   const running = isTimerRunning();
 
   return (
-    <Flex align="center">
-      <Flex
-        className={"shadow"}
-        align="center"
-        gap="xs"
-        ml={"xs"}
-        px={"xs"}
-        py={2}
-        bdrs={"md"}
-        miw={150}
-        justify={"end"}
-        bd={"1px solid var(--alepha-border)"}
-      >
-        <IconClock size={theme.icon.size.sm} opacity={0.6} />
+    <div className="flex items-center">
+      <div className="border-border flex min-w-[150px] items-center justify-end gap-2 rounded-md border px-2 py-0.5 shadow-sm">
+        <Clock className="size-4 opacity-60" />
         <ClientOnly>
-          <Text size="sm" fw={500}>
-            {formatTime(currentTime)}
-          </Text>
+          <span className="text-sm font-medium">{formatTime(currentTime)}</span>
         </ClientOnly>
-        <ActionButton
-          bd={0}
-          px={"xs"}
-          variant={"minimal"}
-          tooltip={
-            running ? tr("task.view.timer.pause") : tr("task.view.timer.start")
-          }
-          onClick={toggleTimer}
-          disabled={!client.startTimer.can() && !client.stopTimer.can()}
-        >
-          {running ? (
-            <IconPlayerPause size={theme.icon.size.md} />
-          ) : (
-            <IconPlayerPlay size={theme.icon.size.md} />
-          )}
-        </ActionButton>
-      </Flex>
-
-      <Flex
-        flex={1}
-        ml={"xs"}
-        style={{
-          width: 32,
-          opacity: 0.1,
-          height: 1,
-          backgroundColor: "var(--alepha-text)",
-        }}
-      />
-    </Flex>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1"
+              onClick={toggleTimer}
+              disabled={!client.startTimer.can() && !client.stopTimer.can()}
+            >
+              {running ? (
+                <Pause className="size-4" />
+              ) : (
+                <Play className="size-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {running
+              ? tr("task.view.timer.pause")
+              : tr("task.view.timer.start")}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      <div className="bg-border ml-2 h-px w-8 opacity-40" />
+    </div>
   );
 };
 

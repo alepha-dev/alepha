@@ -1,23 +1,13 @@
-import { ActionButton, Flex, TypeForm, ui } from "@alepha/mantine";
-import {
-  Badge,
-  Loader,
-  ScrollArea,
-  Text,
-  TextInput,
-  UnstyledButton,
-} from "@mantine/core";
-import {
-  IconDatabase,
-  IconPlus,
-  IconSearch,
-  IconTrash,
-} from "@tabler/icons-react";
+import { AutoForm } from "@alepha/ui/components/auto-form";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Input } from "@alepha/ui/components/ui/input";
 import { jsonSchemaToTypeBox, t } from "alepha";
 import { useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useRouter, useRouterState } from "alepha/react/router";
 import { HttpClient } from "alepha/server";
+import { Database, Plus, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TreeView, type TreeViewNode } from "../shared/TreeView.tsx";
 
@@ -29,69 +19,61 @@ const toTypeBoxSchema = (jsonSchema: any): any => {
     const converted = jsonSchemaToTypeBox(jsonSchema);
     if (converted?.properties) return converted;
   } catch {
-    // Schema conversion failed
+    // ignore
   }
   return null;
 };
 
-const RecordForm = ({
-  entity,
-  record,
-  isNew,
-  onSave,
-  onDelete,
-  pkColumn,
-}: {
+interface RecordFormProps {
   entity: any;
   record: any;
   isNew: boolean;
   onSave: (values: any) => void;
   onDelete: () => void;
   pkColumn: string;
-}) => {
+}
+
+const RecordForm = (props: RecordFormProps) => {
   const schema = useMemo(() => {
-    const jsonSchema = isNew ? entity.insertSchema : entity.updateSchema;
+    const jsonSchema = props.isNew
+      ? props.entity.insertSchema
+      : props.entity.updateSchema;
     return toTypeBoxSchema(jsonSchema) ?? EMPTY_SCHEMA;
-  }, [entity, isNew]);
+  }, [props.entity, props.isNew]);
 
   const form = useForm(
     {
       schema,
       handler: () => {},
-      initialValues: isNew ? undefined : record,
+      initialValues: props.isNew ? undefined : props.record,
     },
-    [schema, record, isNew],
+    [schema, props.record, props.isNew],
   );
 
   return (
-    <Flex direction="column" gap="md">
-      <Flex justify="space-between">
-        <Text fz="sm" fw={600}>
-          {isNew
+    <div className="flex w-full flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold">
+          {props.isNew
             ? "New Record"
-            : `Edit Record (${pkColumn}: ${record?.[pkColumn]})`}
-        </Text>
-        <Flex gap="xs">
-          <ActionButton size="xs" onClick={() => onSave(form.currentValues)}>
-            {isNew ? "Create" : "Save"}
-          </ActionButton>
-          {!isNew && (
-            <ActionButton
-              size="sm"
-              variant="light"
-              intent="danger"
-              onClick={onDelete}
-              icon={<IconTrash size={14} />}
-            />
+            : `Edit Record (${props.pkColumn}: ${props.record?.[props.pkColumn]})`}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => props.onSave(form.currentValues)}>
+            {props.isNew ? "Create" : "Save"}
+          </Button>
+          {!props.isNew && (
+            <Button size="sm" variant="destructive" onClick={props.onDelete}>
+              <Trash2 className="size-3.5" />
+            </Button>
           )}
-        </Flex>
-      </Flex>
-      <TypeForm form={form} skipSubmitButton skipFormElement columns={1} />
-    </Flex>
+        </div>
+      </div>
+      <AutoForm form={form} noSubmit />
+    </div>
   );
 };
 
-/** Parse /db/editor/:table/:id from pathname */
 const parseEditorPath = (pathname: string) => {
   const prefix = "/db/editor/";
   if (!pathname.startsWith(prefix)) return { table: "", recordId: "" };
@@ -104,7 +86,12 @@ const parseEditorPath = (pathname: string) => {
   };
 };
 
-export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
+interface DatabaseEditorProps {
+  entities: any[];
+}
+
+export const DatabaseEditor = (props: DatabaseEditorProps) => {
+  const entities = props.entities;
   const http = useInject(HttpClient);
   const router = useRouter();
   const state = useRouterState();
@@ -190,7 +177,7 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
       }
       await fetchRecords();
     } catch {
-      // handle error
+      // ignore
     }
   };
 
@@ -205,7 +192,7 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
       router.push(`/db/editor/${encodeURIComponent(selectedEntity)}`);
       await fetchRecords();
     } catch {
-      // handle error
+      // ignore
     }
   };
 
@@ -216,15 +203,9 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
     return filtered.map((e) => ({
       id: `entity:${e.name}`,
       label: e.name,
-      icon: (
-        <IconDatabase
-          size={13}
-          color="var(--mantine-color-blue-text)"
-          style={{ flexShrink: 0 }}
-        />
-      ),
+      icon: <Database className="size-3 shrink-0 text-blue-500" />,
       badge: (
-        <Badge size="xs" variant="light" color="gray">
+        <Badge variant="secondary" className="text-[10px]">
           {e.columns?.length ?? 0}
         </Badge>
       ),
@@ -243,27 +224,21 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
   const selectedEntityId = selectedEntity ? `entity:${selectedEntity}` : "";
 
   return (
-    <Flex style={{ flex: 1, overflow: "hidden" }}>
+    <div className="flex flex-1 overflow-hidden">
       {/* Entity list */}
-      <Flex
-        w={200}
-        style={{
-          borderRight: `1px solid ${ui.colors.border}`,
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <Flex p="xs">
-          <TextInput
-            size="xs"
-            placeholder="Filter tables..."
-            leftSection={<IconSearch size={14} />}
-            value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
-          />
-        </Flex>
-        <ScrollArea style={{ flex: 1 }} px="xs">
+      <div className="border-border flex w-[200px] shrink-0 flex-col border-r">
+        <div className="flex p-2">
+          <div className="relative w-full">
+            <Search className="text-muted-foreground absolute left-2 top-1/2 size-3.5 -translate-y-1/2" />
+            <Input
+              placeholder="Filter tables..."
+              className="h-8 pl-8 text-xs"
+              value={search}
+              onChange={(e) => setSearch(e.currentTarget.value)}
+            />
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto px-2">
           <TreeView
             nodes={entityNodes}
             selectedId={selectedEntityId}
@@ -272,118 +247,79 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
             onToggle={() => {}}
             showLeafCount={false}
           />
-        </ScrollArea>
-      </Flex>
+        </div>
+      </div>
 
       {/* Records list */}
       {selectedEntity && (
-        <Flex
-          w={200}
-          style={{
-            borderRight: `1px solid ${ui.colors.border}`,
-            flexShrink: 0,
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <Flex
-            px="xs"
-            py="xs"
-            style={{
-              borderBottom: `1px solid ${ui.colors.border}`,
-              flexShrink: 0,
-            }}
-          >
-            <Flex gap="xs" justify="space-between">
-              <Text fz={10} c="dimmed" tt="uppercase" fw={600} lts={0.5}>
-                Records{" "}
-                {pageInfo?.totalElements != null &&
-                  `(${pageInfo.totalElements})`}
-              </Text>
-              <ActionButton
-                size="xs"
-                variant="subtle"
-                color="teal"
-                onClick={navigateToNew}
-                icon={<IconPlus size={14} />}
-              />
-            </Flex>
-          </Flex>
-          <ScrollArea style={{ flex: 1 }} px="xs" py="xs">
-            <UnstyledButton
-              w="100%"
-              py={4}
-              className="devtools-tree-node"
-              data-selected={isNew || undefined}
-              style={{
-                borderRadius: 6,
-                paddingLeft: 8,
-                paddingRight: 8,
-                transition: "background 100ms ease",
-              }}
+        <div className="border-border flex w-[200px] shrink-0 flex-col border-r">
+          <div className="border-border flex shrink-0 items-center justify-between border-b px-2 py-2">
+            <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
+              Records{" "}
+              {pageInfo?.totalElements != null && `(${pageInfo.totalElements})`}
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="size-6 p-0"
               onClick={navigateToNew}
             >
-              <Flex gap={8} wrap="nowrap">
-                <IconPlus
-                  size={13}
-                  color="var(--mantine-color-teal-text)"
-                  style={{ flexShrink: 0 }}
-                />
-                <Text fz={12} c="teal">
-                  New Record
-                </Text>
-              </Flex>
-            </UnstyledButton>
+              <Plus className="size-3.5 text-teal-500" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-auto px-2 py-2">
+            <button
+              type="button"
+              data-selected={isNew || undefined}
+              className="hover:bg-muted/50 data-[selected=true]:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1 transition-colors"
+              onClick={navigateToNew}
+            >
+              <Plus className="size-3 shrink-0 text-teal-500" />
+              <span className="text-xs text-teal-500">New Record</span>
+            </button>
             {loading ? (
-              <Flex justify="center" py="md">
-                <Loader size="xs" />
-              </Flex>
+              <p className="text-muted-foreground py-4 text-center text-xs">
+                Loading...
+              </p>
             ) : (
               records.map((record, i) => {
                 const idVal = record[pkColumn] ?? i;
                 const isActive = !isNew && String(idVal) === recordId;
                 return (
-                  <UnstyledButton
+                  <button
+                    type="button"
                     key={String(idVal)}
-                    w="100%"
-                    py={4}
-                    className="devtools-tree-node"
                     data-selected={isActive || undefined}
-                    style={{
-                      borderRadius: 6,
-                      paddingLeft: 8,
-                      paddingRight: 8,
-                      transition: "background 100ms ease",
-                    }}
+                    className="hover:bg-muted/50 data-[selected=true]:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1 transition-colors"
                     onClick={() => navigateToRecord(record)}
                   >
-                    <Text fz={12} ff="monospace" truncate>
+                    <span className="truncate font-mono text-xs">
                       {pkColumn}: {String(idVal)}
-                    </Text>
-                  </UnstyledButton>
+                    </span>
+                  </button>
                 );
               })
             )}
-          </ScrollArea>
-        </Flex>
+          </div>
+        </div>
       )}
 
       {/* Editor panel */}
-      <Flex style={{ flex: 1, overflow: "auto" }} p="md">
+      <div className="flex flex-1 overflow-auto p-4">
         {!selectedEntity && (
-          <Flex align="center" justify="center" h="100%">
-            <Text c="dimmed" fz="sm">
+          <div className="flex h-full w-full items-center justify-center">
+            <span className="text-muted-foreground text-sm">
               Select a table to browse records
-            </Text>
-          </Flex>
+            </span>
+          </div>
         )}
 
         {selectedEntity && !selectedRecord && !isNew && (
-          <Flex align="center" justify="center" h="100%">
-            <Text c="dimmed" fz="sm">
+          <div className="flex h-full w-full items-center justify-center">
+            <span className="text-muted-foreground text-sm">
               Select a record or create a new one
-            </Text>
-          </Flex>
+            </span>
+          </div>
         )}
 
         {(selectedRecord || isNew) && entity && (
@@ -396,7 +332,7 @@ export const DatabaseEditor = ({ entities }: { entities: any[] }) => {
             pkColumn={pkColumn}
           />
         )}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 };

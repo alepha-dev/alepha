@@ -1,30 +1,31 @@
-import { ActionButton, type CustomControlProps, Flex } from "@alepha/mantine";
-import { TextInput } from "@mantine/core";
-import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Input } from "@alepha/ui/components/ui/input";
+import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { theme } from "@/web/app/constants/theme.ts";
 
 export interface Objective {
   title: string;
   completed: boolean;
 }
 
-interface ObjectiveEditorProps extends CustomControlProps {}
+export interface TaskCreateObjectivesProps {
+  value?: Objective[];
+  onChange: (value: Objective[]) => void;
+}
 
-const TaskCreateObjectives = (props: ObjectiveEditorProps) => {
-  const [objectives, setObjectives] = useState<Objective[]>(props.value || []);
+const TaskCreateObjectives = (props: TaskCreateObjectivesProps) => {
+  const [objectives, setObjectives] = useState<Objective[]>(props.value ?? []);
   const [newObjective, setNewObjective] = useState<string>("");
 
   const addObjective = () => {
-    if (newObjective.trim()) {
-      const list = [
-        ...objectives,
-        { title: newObjective.trim(), completed: false },
-      ];
-      setObjectives(list);
-      setNewObjective("");
-      props.onChange(list);
-    }
+    if (!newObjective.trim()) return;
+    const list = [
+      ...objectives,
+      { title: newObjective.trim(), completed: false },
+    ];
+    setObjectives(list);
+    setNewObjective("");
+    props.onChange(list);
   };
 
   const removeObjective = (index: number) => {
@@ -41,35 +42,31 @@ const TaskCreateObjectives = (props: ObjectiveEditorProps) => {
   };
 
   return (
-    <Flex fill direction="column" gap={2}>
+    <div className="flex w-full flex-col gap-1.5">
       {objectives.map((objective, index) => (
-        <Flex key={index} gap="xs" align="center">
-          <TextInput
-            size={"xs"}
-            flex={1}
+        <div key={index} className="flex items-center gap-2">
+          <Input
             value={objective.title}
-            onChange={(e) => updateObjective(index, e.currentTarget.value)}
+            onChange={(e) => updateObjective(index, e.target.value)}
             placeholder="Objective description"
-            rightSection={
-              <ActionButton
-                color="red"
-                variant="subtle"
-                onClick={() => removeObjective(index)}
-              >
-                <IconTrash size={theme.icon.size.sm} />
-              </ActionButton>
-            }
+            className="flex-1"
           />
-        </Flex>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-red-500 hover:text-red-600"
+            onClick={() => removeObjective(index)}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
       ))}
 
-      <Flex gap="xs" align="center">
-        <TextInput
-          size={"xs"}
-          flex={1}
-          w={"300px"}
+      <div className="flex items-center gap-2">
+        <Input
           value={newObjective}
-          onChange={(e) => setNewObjective(e.currentTarget.value)}
+          onChange={(e) => setNewObjective(e.target.value)}
           placeholder="Add new objective..."
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -77,18 +74,19 @@ const TaskCreateObjectives = (props: ObjectiveEditorProps) => {
               addObjective();
             }
           }}
-          rightSection={
-            <ActionButton
-              size={"xs"}
-              icon={IconPlus}
-              variant="minimal"
-              onClick={addObjective}
-              disabled={!newObjective.trim()}
-            />
-          }
+          className="flex-1"
         />
-      </Flex>
-    </Flex>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={addObjective}
+          disabled={!newObjective.trim()}
+        >
+          <Plus className="size-4" />
+        </Button>
+      </div>
+    </div>
   );
 };
 

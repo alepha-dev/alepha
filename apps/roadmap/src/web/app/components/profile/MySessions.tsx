@@ -1,19 +1,13 @@
-import { ActionButton, Flex, Text } from "@alepha/mantine";
-import { Card } from "@mantine/core";
-import {
-  IconCircleFilled,
-  IconDeviceDesktop,
-  IconDeviceMobile,
-} from "@tabler/icons-react";
+import { Button } from "@alepha/ui/components/ui/button";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
+import { Circle, Monitor, Smartphone } from "lucide-react";
 import { useState } from "react";
 import type {
   SessionController,
   UserSession,
 } from "@/api/controllers/SessionController.ts";
-import { theme } from "../../constants/theme.ts";
 
 export interface MySessionsProps {
   sessions: Array<UserSession>;
@@ -26,118 +20,77 @@ const MySessions = (props: MySessionsProps) => {
   const sessionApi = useClient<SessionController>();
 
   return (
-    <Flex direction="column" w="100%" p={"xs"} gap={0}>
-      <Flex p={"xs"} justify={"space-between"}>
-        <Flex px={1}>
-          <Text size="xs" c={"dimmed"}>
-            You can revoke any session to log out from it.
-          </Text>
-        </Flex>
+    <div className="flex w-full flex-col gap-2 p-2">
+      <div className="flex items-center justify-between p-2">
+        <span className="text-xs text-muted-foreground">
+          You can revoke any session to log out from it.
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-red-500 hover:text-red-600"
+          onClick={async () => {
+            await sessionApi.revokeAllSessions();
+            auth.logout();
+          }}
+        >
+          Revoke All
+        </Button>
+      </div>
 
-        <Flex align="center" justify="center">
-          <ActionButton
-            c={"red"}
-            variant={"minimal"}
-            onClick={async () => {
-              await sessionApi.revokeAllSessions();
-              auth.logout();
-            }}
+      <div className="flex flex-col gap-2 rounded-md border border-border bg-card p-2">
+        {sessions.map((session) => (
+          <div
+            key={session.id}
+            className="flex items-center gap-3 rounded-md border border-border bg-muted/40 p-3 shadow-sm"
           >
-            Revoke All
-          </ActionButton>
-        </Flex>
-      </Flex>
-
-      <Card withBorder bg={theme.colors.panel} w="100%" p={"xs"} radius={"md"}>
-        <Flex direction="column" gap={"xs"}>
-          {sessions.map((session) => (
-            <Card
-              radius="md"
-              className={"shadow"}
-              withBorder
-              bg={theme.colors.card}
-              p={"xs"}
-              w={"100%"}
-              key={session.id}
+            <Circle
+              className={`size-3 ${session.current ? "fill-green-500 text-green-500" : "fill-muted-foreground text-muted-foreground"}`}
+            />
+            <div className="flex items-center justify-center">
+              {session.userAgent?.device === "MOBILE" ? (
+                <Smartphone className="size-4" />
+              ) : (
+                <Monitor className="size-4" />
+              )}
+            </div>
+            <div className="flex flex-1 flex-col">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">
+                  {session.userAgent?.browser} ({session.userAgent?.os})
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {session.ip}
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Signed in {dt.of(session.createdAt).fromNow()}
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:inline-flex"
+              onClick={async () => {
+                if (session.current) {
+                  auth.logout();
+                } else {
+                  await sessionApi.revokeSession({
+                    params: { sessionId: session.id },
+                  });
+                  setSessions((prev) =>
+                    prev.filter((s) => s.id !== session.id),
+                  );
+                }
+              }}
             >
-              <Flex px={"sm"}>
-                <IconCircleFilled
-                  size={12}
-                  color={session.current ? "green" : "gray"}
-                />
-
-                <Flex align="center" justify="center" px={"xs"}>
-                  {session.userAgent?.device === "MOBILE" ? (
-                    <IconDeviceMobile />
-                  ) : (
-                    <IconDeviceDesktop />
-                  )}
-                </Flex>
-
-                <Flex direction="column" gap={0}>
-                  <Flex align="center" gap={"xs"}>
-                    <Text size="sm">
-                      {session.userAgent?.browser} ({session.userAgent?.os}){" "}
-                    </Text>
-                    <Text size="xs">{session.ip}</Text>
-                  </Flex>
-                  <Text size="xs" c={"dimmed"}>
-                    Signed in {dt.of(session.createdAt).fromNow()}
-                  </Text>
-                </Flex>
-
-                <Flex flex={1} />
-
-                <Flex align="center" justify="center" visibleFrom={"sm"}>
-                  <ActionButton
-                    variant={"minimal"}
-                    onClick={async () => {
-                      if (session.current) {
-                        auth.logout();
-                      } else {
-                        await sessionApi.revokeSession({
-                          params: {
-                            sessionId: session.id,
-                          },
-                        });
-                        setSessions((prev) =>
-                          prev.filter((s) => s.id !== session.id),
-                        );
-                      }
-                    }}
-                  >
-                    {session.current ? "Sign out" : "Revoke"}
-                  </ActionButton>
-                </Flex>
-              </Flex>
-            </Card>
-          ))}
-        </Flex>
-      </Card>
-    </Flex>
+              {session.current ? "Sign out" : "Revoke"}
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
 
 export default MySessions;
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-// Support only Android for now
-
-const getDeviceIconFromUserAgent = (userAgent: string) => {
-  if (userAgent.includes("Android")) {
-    return <IconDeviceMobile />;
-  } else {
-    return <IconDeviceDesktop />;
-  }
-};
-
-const getOsFromUserAgent = (userAgent: string) => {
-  if (userAgent.includes("Android")) {
-    return "Android";
-  } else if (userAgent.includes("Win64")) {
-    return "Windows";
-  } else {
-    return "Windows";
-  }
-};

@@ -1,6 +1,4 @@
-import { Flex } from "@alepha/mantine";
-import { Text, UnstyledButton } from "@mantine/core";
-import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
@@ -53,44 +51,32 @@ const countLeaves = (nodes: TreeViewNode[]): number => {
   return count;
 };
 
-export const TreeView = ({
-  nodes,
-  selectedId,
-  openNodes,
-  search = "",
-  onSelect,
-  onToggle,
-  showLeafCount = true,
-}: TreeViewProps) => {
-  const filtered = useMemo(() => filterTree(nodes, search), [nodes, search]);
+export const TreeView = (props: TreeViewProps) => {
+  const showLeafCount = props.showLeafCount ?? true;
+  const filtered = useMemo(
+    () => filterTree(props.nodes, props.search ?? ""),
+    [props.nodes, props.search],
+  );
 
   return (
-    <Flex direction="column" gap={2} style={{ minHeight: 0 }}>
+    <div className="flex min-h-0 flex-col gap-0.5">
       {filtered.map((node) => (
         <TreeViewItem
           key={node.id}
           node={node}
           depth={0}
-          selectedId={selectedId}
-          openNodes={openNodes}
-          onSelect={onSelect}
-          onToggle={onToggle}
+          selectedId={props.selectedId}
+          openNodes={props.openNodes}
+          onSelect={props.onSelect}
+          onToggle={props.onToggle}
           showLeafCount={showLeafCount}
         />
       ))}
-    </Flex>
+    </div>
   );
 };
 
-const TreeViewItem = ({
-  node,
-  depth,
-  selectedId,
-  openNodes,
-  onSelect,
-  onToggle,
-  showLeafCount,
-}: {
+interface TreeViewItemProps {
   node: TreeViewNode;
   depth: number;
   selectedId: string;
@@ -98,7 +84,18 @@ const TreeViewItem = ({
   onSelect: (id: string) => void;
   onToggle: (id: string) => void;
   showLeafCount: boolean;
-}) => {
+}
+
+const TreeViewItem = (props: TreeViewItemProps) => {
+  const {
+    node,
+    depth,
+    selectedId,
+    openNodes,
+    onSelect,
+    onToggle,
+    showLeafCount,
+  } = props;
   const isFolder = !!node.children && node.children.length > 0;
   const isOpen = openNodes.has(node.id);
   const isSelected = selectedId === node.id;
@@ -106,17 +103,11 @@ const TreeViewItem = ({
 
   return (
     <>
-      <UnstyledButton
-        w="100%"
-        py={4}
-        className="devtools-tree-node"
+      <button
+        type="button"
         data-selected={isSelected || undefined}
-        style={{
-          borderRadius: 6,
-          paddingLeft: 8 + depth * 20,
-          paddingRight: 8,
-          transition: "background 100ms ease",
-        }}
+        className="hover:bg-muted/50 data-[selected=true]:bg-muted flex w-full items-center rounded-md py-1 pr-2 text-left transition-colors"
+        style={{ paddingLeft: 8 + depth * 20 }}
         onClick={() => {
           if (isFolder) {
             onToggle(node.id);
@@ -125,51 +116,32 @@ const TreeViewItem = ({
           }
         }}
       >
-        <Flex gap={8} wrap="nowrap">
-          {isFolder ? (
-            <Flex
-              style={{
-                width: 14,
-                flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-              {isOpen ? (
-                <IconChevronDown size={14} opacity={0.5} />
+        <div className="flex w-full flex-nowrap items-center gap-2">
+          <div className="flex w-3.5 shrink-0 items-center">
+            {isFolder ? (
+              isOpen ? (
+                <ChevronDown className="size-3.5 opacity-50" />
               ) : (
-                <IconChevronRight size={14} opacity={0.5} />
-              )}
-            </Flex>
-          ) : (
-            <Flex
-              style={{
-                width: 14,
-                flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-              }}
-            />
-          )}
+                <ChevronRight className="size-3.5 opacity-50" />
+              )
+            ) : null}
+          </div>
           {node.icon}
-          <Text
-            fz={12}
-            fw={isSelected ? 600 : 400}
-            truncate
-            style={{ flex: 1 }}
+          <span
+            className={`flex-1 truncate text-xs ${isSelected ? "font-semibold" : "font-normal"}`}
           >
             {node.label}
-          </Text>
+          </span>
           {node.badge}
           {isFolder && showLeafCount && leafCount > 0 && (
-            <Text fz={10} c="dimmed" style={{ flexShrink: 0 }}>
+            <span className="text-muted-foreground shrink-0 text-[10px]">
               {leafCount}
-            </Text>
+            </span>
           )}
-        </Flex>
-      </UnstyledButton>
+        </div>
+      </button>
       {isFolder && isOpen && (
-        <Flex direction="column" gap={2} style={{ minHeight: 0 }}>
+        <div className="flex min-h-0 flex-col gap-0.5">
           {node.children!.map((child) => (
             <TreeViewItem
               key={child.id}
@@ -182,7 +154,7 @@ const TreeViewItem = ({
               showLeafCount={showLeafCount}
             />
           ))}
-        </Flex>
+        </div>
       )}
     </>
   );

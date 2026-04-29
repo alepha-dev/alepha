@@ -1,30 +1,14 @@
-import { $ui, midnightTheme } from "@alepha/mantine";
-import {
-  IconDashboard,
-  IconDatabase,
-  IconList,
-  IconMail,
-  IconMessage,
-  IconSettings,
-  IconSitemap,
-  IconTopologyRing,
-} from "@tabler/icons-react";
 import { $page } from "alepha/react/router";
 
 export class AppRouter {
-  ui = $ui({
-    themes: [midnightTheme],
-  });
-
   layout = $page({
-    parent: this.ui.root,
+    path: "/",
     lazy: () => import("./components/DevLayout.tsx"),
   });
 
   dashboard = $page({
     path: "/",
     label: "Dashboard",
-    icon: <IconDashboard />,
     parent: this.layout,
     lazy: () => import("./components/dashboard/DevDashboard.tsx"),
   });
@@ -32,7 +16,6 @@ export class AppRouter {
   explorer = $page({
     path: "/explorer",
     label: "Explorer",
-    icon: <IconSitemap />,
     parent: this.layout,
     lazy: () => import("./components/explorer/DevExplorer.tsx"),
   });
@@ -47,7 +30,6 @@ export class AppRouter {
   dbErd = $page({
     path: "/erd",
     label: "Database",
-    icon: <IconDatabase />,
     parent: this.db,
     lazy: () => import("./components/database/DatabaseErd.page.tsx"),
   });
@@ -55,7 +37,6 @@ export class AppRouter {
   dbEditor = $page({
     path: "/editor",
     label: "Database",
-    icon: <IconDatabase />,
     parent: this.db,
     lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
   });
@@ -82,7 +63,6 @@ export class AppRouter {
   confEnv = $page({
     path: "/env",
     label: "Configuration",
-    icon: <IconSettings />,
     parent: this.conf,
     lazy: () => import("./components/configuration/ConfigEnv.page.tsx"),
   });
@@ -90,7 +70,6 @@ export class AppRouter {
   confAtoms = $page({
     path: "/atoms",
     label: "Configuration",
-    icon: <IconSettings />,
     parent: this.conf,
     lazy: () => import("./components/configuration/ConfigAtoms.page.tsx"),
   });
@@ -98,7 +77,6 @@ export class AppRouter {
   graph = $page({
     path: "/graph",
     label: "Graph",
-    icon: <IconTopologyRing />,
     parent: this.layout,
     lazy: () => import("./components/graph/DevDependencyGraph.tsx"),
   });
@@ -106,7 +84,6 @@ export class AppRouter {
   emails = $page({
     path: "/emails",
     label: "Emails",
-    icon: <IconMail />,
     parent: this.layout,
     lazy: () => import("./components/emails/DevEmails.tsx"),
   });
@@ -114,7 +91,6 @@ export class AppRouter {
   sms = $page({
     path: "/sms",
     label: "SMS",
-    icon: <IconMessage />,
     parent: this.layout,
     lazy: () => import("./components/sms/DevSms.tsx"),
   });
@@ -122,7 +98,6 @@ export class AppRouter {
   logs = $page({
     path: "/logs",
     label: "Logs",
-    icon: <IconList />,
     parent: this.layout,
     lazy: () => import("./components/logs/DevLogs.tsx"),
   });

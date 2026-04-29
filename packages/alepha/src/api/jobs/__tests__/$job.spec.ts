@@ -232,7 +232,11 @@ describe("$job — queue mode (outbox)", () => {
       { payload: { n: 3 } },
     ]);
     expect(ids).toHaveLength(3);
-    await new Promise((r) => setTimeout(r, 100));
+    // Poll: outbox dispatch is async, 100ms can be tight under CI load.
+    const deadline = Date.now() + 2000;
+    while (seen.length < 3 && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 25));
+    }
     expect(seen.sort()).toEqual([1, 2, 3]);
   });
 
