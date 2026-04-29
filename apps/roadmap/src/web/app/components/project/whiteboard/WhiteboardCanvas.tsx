@@ -1,4 +1,4 @@
-import { ActionButton, Flex, useToast } from "@alepha/ui";
+import { ActionButton, Flex, useToast } from "@alepha/mantine";
 import {
   Card,
   Divider,

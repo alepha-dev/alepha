@@ -2,7 +2,6 @@ import { AlephaError } from "alepha";
 import type { SQL } from "drizzle-orm";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type { SequencePrimitive } from "../primitives/$sequence.ts";
-import type { ViewPrimitive } from "../primitives/$view.ts";
 
 /**
  * Database-specific table configuration functions
@@ -39,17 +38,6 @@ export abstract class ModelBuilder {
       tables: Map<string, unknown>;
       enums: Map<string, unknown>;
       schemas: Map<string, unknown>;
-      schema: string;
-    },
-  ): void;
-
-  /**
-   * Build a view from a view primitive.
-   */
-  abstract buildView(
-    view: ViewPrimitive,
-    options: {
-      tables: Map<string, unknown>;
       schema: string;
     },
   ): void;

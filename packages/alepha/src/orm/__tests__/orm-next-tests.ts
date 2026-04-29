@@ -1,8 +1,8 @@
-import { type Alepha, AlephaError, t } from "alepha";
+import { type Alepha, t } from "alepha";
 import { sql } from "drizzle-orm";
 import { expect } from "vitest";
 import { PG_GENERATED } from "../core/constants/PG_SYMBOLS.ts";
-import { $entity, $repository, $view, db, pgAttr } from "../core/index.ts";
+import { $entity, $repository, db, pgAttr } from "../core/index.ts";
 
 // ============================================================================
 // Shared entity definitions
@@ -424,69 +424,4 @@ export const testQueryCacheCustomKey = async (alepha: Alepha) => {
     { cache: { ttl: 60_000, key: "all-orders" } },
   );
   expect(cached).toHaveLength(1);
-};
-
-// ============================================================================
-// Feature 8: Database Views
-// ============================================================================
-
-export const testViewReadOnly = async (alepha: Alepha) => {
-  // Create the underlying table
-  const itemEntity = $entity({
-    name: "view_items",
-    schema: t.object({
-      id: db.primaryKey(),
-      name: t.text(),
-      price: t.number(),
-    }),
-  });
-
-  // Create a view
-  const itemView = $view({
-    name: "view_items_summary",
-    schema: t.object({
-      id: t.integer(),
-      name: t.text(),
-      price: t.number(),
-    }),
-    query: sql`SELECT id, name, price FROM view_items`,
-  });
-
-  class App {
-    items = $repository(itemEntity);
-    summary = $repository(itemView);
-  }
-
-  const app = alepha.inject(App);
-  await alepha.start();
-
-  // Verify the repository detects it's a view
-  expect(app.summary.isReadOnly).toBe(true);
-  expect(app.items.isReadOnly).toBe(false);
-
-  // Write operations should throw on views
-  await expect(
-    app.summary.create({ id: 1, name: "test", price: 10 } as any),
-  ).rejects.toThrow(AlephaError);
-};
-
-export const testViewRefreshThrowsForNonMaterialized = async (
-  alepha: Alepha,
-) => {
-  const view = $view({
-    name: "non_mat_view",
-    schema: t.object({
-      id: t.integer(),
-    }),
-    query: sql`SELECT 1 as id`,
-  });
-
-  class App {
-    repo = $repository(view);
-  }
-
-  const app = alepha.inject(App);
-  await alepha.start();
-
-  await expect(app.repo.refresh()).rejects.toThrow(AlephaError);
 };

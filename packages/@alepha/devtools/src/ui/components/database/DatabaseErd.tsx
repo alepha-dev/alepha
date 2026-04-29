@@ -1,4 +1,4 @@
-import { ui } from "@alepha/ui";
+import { ui } from "@alepha/mantine";
 import { Flex } from "@mantine/core";
 import {
   Background,

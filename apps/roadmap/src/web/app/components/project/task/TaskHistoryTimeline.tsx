@@ -1,4 +1,4 @@
-import { Flex, Text, ui } from "@alepha/ui";
+import { Flex, Text, ui } from "@alepha/mantine";
 import { Timeline } from "@mantine/core";
 import {
   IconCheckbox,

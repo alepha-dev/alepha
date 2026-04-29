@@ -1,4 +1,4 @@
-import { Flex, ui } from "@alepha/ui";
+import { Flex, ui } from "@alepha/mantine";
 import { Badge, Text } from "@mantine/core";
 import { IconKey, IconLink } from "@tabler/icons-react";
 import { Handle, type NodeProps, Position } from "@xyflow/react";

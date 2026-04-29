@@ -35,7 +35,6 @@ Each layer builds on the previous.
 | **Backend**  | Database, queues, storage, API | `$entity`, `$action`, `$queue`, `$bucket`, `$scheduler` |
 | **Frontend** | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                |
 | **Modules**  | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
-| **Admin**    | Admin panel & auth UI | `$uiAdmin`, `$uiAuth`                                   |
 
 ## Example
 

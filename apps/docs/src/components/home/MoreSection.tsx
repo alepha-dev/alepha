@@ -100,7 +100,9 @@ const MoreSection = () => {
                 }}
               >
                 Some modules like{" "}
-                <span style={{ color: "var(--color-cyan)" }}>@alepha/ui</span>{" "}
+                <span style={{ color: "var(--color-cyan)" }}>
+                  @alepha/mantine
+                </span>{" "}
                 and cloud storage providers are separate packages, but installed
                 seamlessly by the Alepha CLI.
                 <span

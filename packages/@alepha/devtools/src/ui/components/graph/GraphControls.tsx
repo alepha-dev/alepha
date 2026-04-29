@@ -1,4 +1,4 @@
-import { ActionButton, Flex, ui } from "@alepha/ui";
+import { ActionButton, Flex, ui } from "@alepha/mantine";
 import {
   Badge,
   Checkbox,

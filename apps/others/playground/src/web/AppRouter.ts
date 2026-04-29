@@ -1,9 +1,9 @@
+import { AdminAudits } from "@alepha/ui/components/admin/admin-audits";
+import { AdminFiles } from "@alepha/ui/components/admin/admin-files";
+import { AdminJobs } from "@alepha/ui/components/admin/admin-jobs";
+import { AdminNotifications } from "@alepha/ui/components/admin/admin-notifications";
+import { AdminParameters } from "@alepha/ui/components/admin/admin-parameters";
 import { $page, Redirection } from "alepha/react/router";
-import { AdminAudits } from "@/web/components/admin/admin-audits";
-import { AdminFiles } from "@/web/components/admin/admin-files";
-import { AdminJobs } from "@/web/components/admin/admin-jobs";
-import { AdminNotifications } from "@/web/components/admin/admin-notifications";
-import { AdminParameters } from "@/web/components/admin/admin-parameters";
 import { Layout } from "./Layout.tsx";
 import Dialogs from "./pages/demo/Dialogs.tsx";
 import Toasts from "./pages/demo/Toasts.tsx";

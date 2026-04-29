@@ -1,11 +1,11 @@
-import { toast } from "sonner";
-import { Button } from "@/web/components/ui/button";
+import { Button } from "@alepha/ui/components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "@/web/components/ui/card";
+} from "@alepha/ui/components/ui/card";
+import { toast } from "sonner";
 
 const Toasts = () => {
   return (

@@ -1,4 +1,4 @@
-import { ActionButton, Flex } from "@alepha/ui";
+import { ActionButton, Flex } from "@alepha/mantine";
 import { Card, Drawer } from "@mantine/core";
 import { IconEdit } from "@tabler/icons-react";
 import { useClient, useStore } from "alepha/react";

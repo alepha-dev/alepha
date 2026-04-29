@@ -1,6 +1,6 @@
 import type { DevEnvMetadata } from "@alepha/devtools";
 import { devMetadataSchema } from "@alepha/devtools";
-import { Flex, ui } from "@alepha/ui";
+import { Flex, ui } from "@alepha/mantine";
 import {
   Badge,
   Code,

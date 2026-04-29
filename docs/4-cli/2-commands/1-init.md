@@ -11,8 +11,11 @@ alepha init
 # With React support
 alepha init --react
 
-# With the full UI kit
-alepha init --ui
+# With Tailwind CSS
+alepha init --tailwind
+
+# With shadcn/ui pre-wired
+alepha init --shadcn
 ```
 
 That's it. You now have a working Alepha project. Run `alepha dev` to start building.
@@ -21,11 +24,13 @@ That's it. You now have a working Alepha project. Run `alepha dev` to start buil
 
 The `init` command is your project bootstrap. It handles the tedious setup work that every project needs:
 
-1. **Creates configuration files** — `tsconfig.json`, `biome.json`, `vite.config.ts`, `.editorconfig`
+1. **Creates configuration files** — `tsconfig.json`, `biome.json`, `alepha.config.ts`, `.editorconfig`
 2. **Sets up package.json** — Adds Alepha dependencies and standard scripts
 3. **Configures your package manager** — Works with Yarn, pnpm, npm, or Bun
 4. **Installs dependencies** — Gets everything ready to run
-5. **Creates starter files** — Adds `src/main.ts` so you have something to work with
+5. **Creates starter files** — Adds `src/main.server.ts` so you have something to work with
+6. **Initializes git** — Runs `git init` and writes a `.gitignore` if you're not already in a repo
+7. **Drops an agent doc** — Writes `CLAUDE.md` (if the `claude` CLI is installed) or `AGENTS.md` so coding agents understand the project
 
 ## Options
 
@@ -33,25 +38,45 @@ The `init` command is your project bootstrap. It handles the tedious setup work 
 |------|-------------|
 | `--api` | Include API module structure (`src/api/`) |
 | `--react`, `-r` | Include React dependencies and web module (`src/web/`) |
-| `--ui` | Include @alepha/ui component library (implies `--react`) |
-| `--auth` | Include authentication (implies `--api --ui --react`) |
-| `--admin` | Include admin portal (implies `--auth`) |
-| `--tailwind` | Include Tailwind CSS with Vite plugin (implies `--react`) |
-| `--test` | Set up Vitest and create a test directory |
+| `--tailwind` | Include Tailwind CSS with the Vite plugin (implies `--react`) |
+| `--shadcn` | Set up shadcn/ui — `components.json`, `cn()` helper, theme tokens, the `@alepha` registry (implies `--tailwind`, so also `--react`) |
+| `--test` | Set up Vitest and create a `test/` directory |
 | `--pm <manager>` | Package manager to use: `yarn`, `npm`, `pnpm`, or `bun` |
 | `--force`, `-f` | Override existing files |
+
+You can also pass a path as the first positional argument:
+
+```bash
+alepha init my-app --react
+```
+
+This creates `./my-app/` and scaffolds into it.
+
+## Flag Cascading
+
+Flags imply each other so you don't have to repeat yourself:
+
+- `--shadcn` → `--tailwind` → `--react`
+- `--tailwind` → `--react`
+
+So `alepha init --shadcn` is the same as `alepha init --react --tailwind --shadcn`.
+
+## Empty Directory Check
+
+When any code-generation flag is set (`--api`, `--react`, `--tailwind`, `--shadcn`), the target directory must be empty (a lone `package.json` is allowed, since that's normal for a workspace package). Use `--force` to overwrite existing files.
+
+`alepha init` with no flags is always safe to run — it only fills in missing config files, never overwrites.
 
 ## Package Manager Detection
 
 If you don't specify `--pm`, `init` figures it out automatically:
 
-1. If running under Bun → uses Bun
-2. If `yarn.lock` exists → uses Yarn
-3. If `pnpm-lock.yaml` exists → uses pnpm
-4. If `bun.lock` exists → uses Bun
-5. If `package-lock.json` exists → uses npm
-6. Inside a workspace → uses the workspace package manager
-7. Otherwise → uses npm
+1. If `yarn.lock` exists → uses Yarn
+2. If `pnpm-lock.yaml` exists → uses pnpm
+3. If `bun.lock` exists → uses Bun
+4. If `package-lock.json` exists → uses npm
+5. Inside a workspace → inherits the workspace's package manager
+6. Otherwise → uses npm
 
 ## Project Flavors
 
@@ -61,13 +86,25 @@ If you don't specify `--pm`, `init` figures it out automatically:
 alepha init
 ```
 
-Creates a minimal server-side project. Perfect for APIs, CLI tools, or background workers.
+A minimal server-side project. Perfect for APIs, CLI tools, or background workers.
 
 **You get:**
-- `src/main.ts` — Your entry point
-- `tsconfig.json` — TypeScript configuration
-- `vite.config.ts` — Build configuration
-- `biome.json` — Linting and formatting rules
+- `src/main.server.ts` — Server entry point
+- `tsconfig.json`, `biome.json`, `.editorconfig`, `alepha.config.ts`
+- `package.json` with `alepha`, `vite`, `drizzle-kit` (handy if you add a database later)
+
+### With API Module
+
+```bash
+alepha init --api
+```
+
+Backend with an example controller scaffolded.
+
+**Additional files:**
+- `src/api/index.ts`
+- `src/api/controllers/HelloController.ts`
+- `src/api/schemas/helloResponseSchema.ts`
 
 ### Full-Stack React
 
@@ -79,24 +116,49 @@ Sets up a full-stack application with server-side rendering.
 
 **Additional files:**
 - `src/main.browser.ts` — Browser entry point
-- `src/main.server.ts` — Server entry point
-- `src/AppRouter.ts` — Your route definitions
+- `src/main.css` — Global styles
+- `src/web/index.ts`, `src/web/AppRouter.ts`, `src/web/components/Home.tsx`
+- `public/favicon.svg`
 
 **Additional dependencies:**
-- `alepha/react` — SSR React integration
-- `react` and `react-dom` — React itself
-- `@types/react` — TypeScript definitions
+- `react`, `react-dom`, `@types/react`
 
-### With UI Components
+### With Tailwind CSS
 
 ```bash
-alepha init --ui
+alepha init --tailwind
 ```
 
-Everything from `--react`, plus the Alepha UI component library.
+Everything from `--react`, plus Tailwind v4 wired up via the official Vite plugin.
+
+**Additional files:**
+- `vite.config.ts` — Imports `@tailwindcss/vite`
+- `src/main.css` — Includes `@import "tailwindcss"`
 
 **Additional dependencies:**
-- `@alepha/ui` — Pre-built components (buttons, forms, modals, etc.)
+- `tailwindcss`, `@tailwindcss/vite`
+
+### With shadcn/ui
+
+```bash
+alepha init --shadcn
+```
+
+Everything from `--tailwind`, plus shadcn/ui pre-configured. Alepha writes a tuned `components.json` with `@/web/*` aliases and the `@alepha` registry pre-wired, then runs `<pm> shadcn init --yes --no-monorepo --silent`. shadcn injects theme tokens into `src/main.css`, writes the `cn()` helper at `src/web/lib/utils.ts`, and installs runtime deps.
+
+**Additional files:**
+- `components.json` — shadcn project config
+- `src/web/lib/utils.ts` — `cn()` helper (written by shadcn)
+
+**Additional dependencies:**
+- `shadcn` (CLI, kept as devDep so you can run `yarn shadcn add ...` later without `npx`)
+- `clsx`, `tailwind-merge`, `class-variance-authority`, `lucide-react`, `tw-animate-css` (installed by `shadcn init`)
+
+After this you can immediately install Alepha registry blocks:
+
+```bash
+yarn shadcn add @alepha/auth-login
+```
 
 ### With Testing
 
@@ -104,18 +166,20 @@ Everything from `--react`, plus the Alepha UI component library.
 alepha init --test
 ```
 
-Sets up Vitest for testing your code.
+Sets up Vitest for testing your code. Combine with any other flag.
 
 **Additional files:**
+- `vitest.config.ts` — Pins `test.root` so a parent monorepo's vitest config doesn't take over
 - `test/dummy.spec.ts` — A starter test file
 
 **Additional dependencies:**
-- `vitest` — Fast, Vite-native test runner
+- `vitest`
 
-You can combine flags:
+You can combine flags freely:
 
 ```bash
 alepha init --react --test
+alepha init --shadcn --test
 ```
 
 ## Generated Files
@@ -127,22 +191,21 @@ A TypeScript configuration tuned for modern development:
 - ESNext target and module system
 - Bundler module resolution
 - Strict mode enabled
-- Path aliases configured
 
 ### vite.config.ts
 
-A minimal Vite configuration that just works:
+Only created when `--tailwind` (or `--shadcn`) is set:
 
 ```typescript
-import alepha from "@alepha/vite";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [alepha()],
+  plugins: [tailwindcss()],
 });
 ```
 
-The Alepha Vite plugin handles React, SSR, and production builds automatically.
+Without `--tailwind`, Alepha's CLI uses its own internal Vite setup — you don't need a `vite.config.ts` at all.
 
 ### biome.json
 
@@ -152,6 +215,25 @@ Linting and formatting rules that make sense:
 - Import organization
 - TypeScript-aware rules
 - Fast — Biome is written in Rust
+
+### components.json
+
+Only created with `--shadcn`. Aliases are pre-set to match Alepha's `src/web/` convention:
+
+```json
+{
+  "aliases": {
+    "components": "@/web/components",
+    "utils": "@/web/lib/utils",
+    "ui": "@/web/components/ui",
+    "lib": "@/web/lib",
+    "hooks": "@/web/hooks"
+  },
+  "registries": {
+    "@alepha": "https://alepha.dev/r/{name}.json"
+  }
+}
+```
 
 ### package.json Scripts
 
@@ -169,29 +251,32 @@ Your package.json gets these scripts:
 }
 ```
 
-## Expo Projects
+With `--test`, a `"test": "vitest run"` script is added.
 
-If your project has Expo installed, `init` adapts automatically:
+## Workspace Awareness
 
-- Skips `vite.config.ts` (Expo has its own bundler)
-- Works with Expo's toolchain
+If you run `alepha init` inside a monorepo workspace package (i.e. there's a workspace root above with its own `package.json`), the command adapts:
 
-> **Expo Detection**
->
-> Expo detection is automatic — if `expo` is in your dependencies, Alepha knows.
+- Skips workspace-level configs (`tsconfig.json`, `.editorconfig`) if they already exist higher up
+- Skips package-manager bootstrapping (the workspace already owns it)
+- Skips git init and `CLAUDE.md`/`AGENTS.md` (those belong at the workspace root)
+- Skips local `biome`/`vitest` devDeps (assumed to live at the workspace root)
+- Runs install from the workspace root, not the package
+
+## Expo Detection
+
+If your project has Expo in its dependencies, `init` skips the React web scaffolding (browser entry, web tree, public assets) — Expo owns that part of the toolchain. The server-side and API scaffolding still applies.
 
 ## Running Init on Existing Projects
 
-Already have a project? No problem. Running `init` on an existing project:
+Already have a project? No problem. Running `alepha init` (no flags) on an existing project:
 
-- **Won't overwrite** your existing files (except for merging package.json)
+- **Won't overwrite** your existing files
 - **Adds missing** configuration files
 - **Updates** package.json with Alepha dependencies and scripts
 - **Installs** any new dependencies
 
-> **Safe to Re-run**
->
-> It's safe to run `init` multiple times. Use it when you want to add React to an existing backend project, or when you need to regenerate configuration files.
+Use `--force` if you want to regenerate files. Code-generation flags require an empty directory unless `--force` is set.
 
 ## After Init
 
@@ -214,10 +299,10 @@ alepha verify
 
 ## Tips
 
-**Start small.** Begin with `alepha init` (no flags) and add React later if you need it. You can always run `init --react` on an existing project.
+**Start small.** Begin with `alepha init` (no flags) and add features later. You can always run `init --react` or `init --shadcn --force` on top of an existing project.
 
-**Use --test from the start.** Tests are easier to write when you start early. The `--test` flag gives you a working test setup immediately.
+**Use `--test` from the start.** Tests are easier to write when you start early. The `--test` flag gives you a working Vitest setup immediately.
 
-**Pick a package manager and stick with it.** Mixing package managers causes headaches. If you're unsure, Yarn or pnpm are solid choices for their speed and reliability.
+**Pick a package manager and stick with it.** Mixing package managers causes headaches. If you're unsure, Yarn or pnpm are solid choices.
 
 **Check the generated files.** The configurations are sensible defaults, but you might want to tweak them. They're yours now.

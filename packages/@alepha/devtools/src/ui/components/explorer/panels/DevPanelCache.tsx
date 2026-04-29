@@ -1,4 +1,4 @@
-import { Flex, ui } from "@alepha/ui";
+import { Flex, ui } from "@alepha/mantine";
 import { Badge, Card, Text } from "@mantine/core";
 
 const formatTtl = (seconds?: number): string => {

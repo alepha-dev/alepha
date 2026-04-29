@@ -1,4 +1,4 @@
-import { Flex } from "@alepha/ui";
+import { Flex } from "@alepha/mantine";
 import { Card } from "@mantine/core";
 import { NestedView } from "alepha/react/router";
 import { theme } from "../../constants/theme.ts";

@@ -1,4 +1,4 @@
-import { $ui, midnightTheme } from "@alepha/ui";
+import { $ui, midnightTheme } from "@alepha/mantine";
 import {
   IconDashboard,
   IconDatabase,

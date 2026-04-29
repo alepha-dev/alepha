@@ -1,5 +1,5 @@
-import { AlephaUI } from "@alepha/ui";
-import { AlephaUIAuth } from "@alepha/ui/auth";
+import { AlephaUI } from "@alepha/mantine";
+import { AlephaUIAuth } from "@alepha/mantine/auth";
 import { $module } from "alepha";
 import { CharacterInfo } from "../../api/services/CharacterInfo.ts";
 import { AppRouter } from "./AppRouter.ts";

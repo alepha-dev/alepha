@@ -1,4 +1,4 @@
-import { Flex, Text } from "@alepha/ui";
+import { Flex, Text } from "@alepha/mantine";
 import { Card, HoverCard } from "@mantine/core";
 import { useInject, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";

@@ -1,4 +1,4 @@
-import { ActionButton, Control, Flex, Text, useToast } from "@alepha/ui";
+import { ActionButton, Control, Flex, Text, useToast } from "@alepha/mantine";
 import { Card, Container } from "@mantine/core";
 import { IconHammer, IconTag } from "@tabler/icons-react";
 import { t } from "alepha";

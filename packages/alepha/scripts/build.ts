@@ -37,7 +37,7 @@ class AlephaPackageBuilderCli {
       external: t.optional(
         t.text({
           description:
-            "Comma-separated additional external packages (e.g. --external=alepha,@alepha/ui/styles). Bare package names auto-expand to include all their subpath exports.",
+            "Comma-separated additional external packages (e.g. --external=alepha,@alepha/mantine/styles). Bare package names auto-expand to include all their subpath exports.",
         }),
       ),
     }),
@@ -93,7 +93,7 @@ class AlephaPackageBuilderCli {
         pkgData.exports["./package.json"] = "./package.json";
       }
 
-      if (packageName === "@alepha/ui") {
+      if (packageName === "@alepha/mantine") {
         pkgData.exports["./styles"] = "./src/core/styles.css";
         pkgData.exports["./styles.css"] = "./src/core/styles.css";
       }

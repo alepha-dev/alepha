@@ -1,5 +1,5 @@
 import { devMetadataSchema } from "@alepha/devtools";
-import { Flex, ui } from "@alepha/ui";
+import { Flex, ui } from "@alepha/mantine";
 import { ScrollArea, Text, TextInput } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import { t } from "alepha";

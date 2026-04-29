@@ -114,11 +114,7 @@ export abstract class Repository<T extends TObject> {
   constructor(entity: EntityPrimitive<T>, provider = DatabaseProvider) {
     this.entity = entity;
     this.provider = this.alepha.inject(provider);
-    if ((entity as any).isView) {
-      this.provider.registerView(entity as any);
-    } else {
-      this.provider.registerEntity(entity as EntityPrimitive);
-    }
+    this.provider.registerEntity(entity as EntityPrimitive);
   }
 
   /**
@@ -148,13 +144,6 @@ export abstract class Repository<T extends TObject> {
    */
   public get tableName(): string {
     return this.entity.name;
-  }
-
-  /**
-   * Whether this repository is backed by a view (read-only).
-   */
-  public get isReadOnly(): boolean {
-    return (this.entity as any).isView === true;
   }
 
   /**
@@ -663,7 +652,6 @@ export abstract class Repository<T extends TObject> {
     data: Static<TObjectInsert<T>>,
     opts: StatementOptions = {},
   ): Promise<Static<T>> {
-    this.assertWritable();
     this.stampOrganization(data);
     await this.alepha.events.emit("repository:create:before", {
       tableName: this.tableName,
@@ -705,7 +693,6 @@ export abstract class Repository<T extends TObject> {
     values: Array<Static<TObjectInsert<T>>>,
     opts: StatementOptions & { batchSize?: number } = {},
   ): Promise<Static<T>[]> {
-    this.assertWritable();
     if (values.length === 0) {
       return [];
     }
@@ -784,7 +771,6 @@ export abstract class Repository<T extends TObject> {
       set?: WithSQL<Static<TObjectUpdate<T>>>;
     } = {},
   ): Promise<Static<T>> {
-    this.assertWritable();
     this.stampOrganization(data);
     await this.alepha.events.emit("repository:create:before", {
       tableName: this.tableName,
@@ -857,7 +843,6 @@ export abstract class Repository<T extends TObject> {
     data: WithSQL<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
   ): Promise<Static<T>> {
-    this.assertWritable();
     await this.alepha.events.emit("repository:update:before", {
       tableName: this.tableName,
       where,
@@ -938,7 +923,6 @@ export abstract class Repository<T extends TObject> {
     entity: Static<T>,
     opts: StatementOptions = {},
   ): Promise<void> {
-    this.assertWritable();
     const row = entity as any;
 
     const id = row[this.id.key];
@@ -1024,7 +1008,6 @@ export abstract class Repository<T extends TObject> {
     data: WithSQL<Static<TObjectUpdate<T>>>,
     opts: StatementOptions = {},
   ): Promise<Array<number | string>> {
-    this.assertWritable();
     await this.alepha.events.emit("repository:update:before", {
       tableName: this.tableName,
       where,
@@ -1076,7 +1059,6 @@ export abstract class Repository<T extends TObject> {
     where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
   ): Promise<Array<number | string>> {
-    this.assertWritable();
     const deletedAt = this.deletedAt();
     if (deletedAt && !opts.force) {
       return await this.updateMany(
@@ -1637,29 +1619,6 @@ export abstract class Repository<T extends TObject> {
     }
 
     return entity as Static<T>;
-  }
-
-  /**
-   * Throw if this repository is read-only (backed by a view).
-   */
-  protected assertWritable(): void {
-    if (this.isReadOnly) {
-      throw new AlephaError(
-        `Cannot write to view '${this.tableName}'. Views are read-only.`,
-      );
-    }
-  }
-
-  /**
-   * Refresh a materialized view. PostgreSQL only.
-   */
-  public async refresh(): Promise<void> {
-    if (!(this.entity as any).materialized) {
-      throw new AlephaError(
-        `Cannot refresh '${this.tableName}'. Only materialized views support refresh.`,
-      );
-    }
-    await this.provider.execute(`REFRESH MATERIALIZED VIEW ${this.tableName}`);
   }
 
   /**

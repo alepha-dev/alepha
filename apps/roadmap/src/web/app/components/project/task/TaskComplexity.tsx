@@ -1,4 +1,4 @@
-import { Text } from "@alepha/ui";
+import { Text } from "@alepha/mantine";
 import { Card } from "@mantine/core";
 import { useInject } from "alepha/react";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";

@@ -1,6 +1,6 @@
 import type { DevAtomMetadata } from "@alepha/devtools";
 import { devMetadataSchema } from "@alepha/devtools";
-import { ActionButton, Flex, JsonViewer, ui } from "@alepha/ui";
+import { ActionButton, Flex, JsonViewer, ui } from "@alepha/mantine";
 import {
   Badge,
   NumberInput,

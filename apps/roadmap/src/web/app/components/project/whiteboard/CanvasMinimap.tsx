@@ -1,4 +1,4 @@
-import { Flex, Text } from "@alepha/ui";
+import { Flex, Text } from "@alepha/mantine";
 import { Paper } from "@mantine/core";
 import { useI18n } from "alepha/react/i18n";
 import type { WhiteboardElement } from "@/api/entities/whiteboards.ts";

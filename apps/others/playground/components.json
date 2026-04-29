@@ -5,16 +5,16 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "src/main.css",
+    "css": "../../../packages/@alepha/ui/src/styles.css",
     "baseColor": "neutral",
     "cssVariables": true
   },
   "aliases": {
-    "components": "@/web/components",
-    "utils": "@/web/lib/utils",
-    "ui": "@/web/components/ui",
-    "lib": "@/web/lib",
-    "hooks": "@/web/hooks"
+    "components": "@alepha/ui/components",
+    "utils": "@alepha/ui/lib/utils",
+    "ui": "@alepha/ui/components/ui",
+    "lib": "@alepha/ui/lib",
+    "hooks": "@alepha/ui/hooks"
   },
   "iconLibrary": "lucide",
   "registries": {

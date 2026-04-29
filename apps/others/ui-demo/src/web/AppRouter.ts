@@ -1,4 +1,4 @@
-import { $uiDemo } from "@alepha/ui/demo";
+import { $uiDemo } from "@alepha/mantine/demo";
 import { $page } from "alepha/react/router";
 
 export class AppRouter {

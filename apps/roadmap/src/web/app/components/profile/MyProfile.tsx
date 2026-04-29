@@ -1,4 +1,4 @@
-import { Flex, Text, useToast } from "@alepha/ui";
+import { Flex, Text, useToast } from "@alepha/mantine";
 import {
   Avatar,
   Badge,

@@ -1,4 +1,4 @@
-import { ActionButton, Flex, JsonViewer, TypeForm, ui } from "@alepha/ui";
+import { ActionButton, Flex, JsonViewer, TypeForm, ui } from "@alepha/mantine";
 import {
   Badge,
   Card,

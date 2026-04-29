@@ -1,4 +1,4 @@
-import { TypeForm } from "@alepha/ui";
+import { TypeForm } from "@alepha/mantine";
 import { Card } from "@mantine/core";
 import { IconTag } from "@tabler/icons-react";
 import { t } from "alepha";

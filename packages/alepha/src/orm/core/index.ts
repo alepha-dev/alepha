@@ -4,7 +4,6 @@ import type { PgTransaction } from "drizzle-orm/pg-core";
 import { DbMigrationMode } from "./modes/DbMigrationMode.ts";
 import { $entity } from "./primitives/$entity.ts";
 import { $sequence } from "./primitives/$sequence.ts";
-import { $view } from "./primitives/$view.ts";
 import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
 import { BunSqliteProvider } from "./providers/drivers/BunSqliteProvider.ts";
 import { CloudflareD1Provider } from "./providers/drivers/CloudflareD1Provider.ts";
@@ -102,7 +101,7 @@ export const SqliteProvider = NodeSqliteProvider;
 
 export const AlephaOrm = $module({
   name: "alepha.orm",
-  primitives: [$sequence, $entity, $view],
+  primitives: [$sequence, $entity],
   imports: [AlephaDateTime],
   services: [
     SqliteModelBuilder,

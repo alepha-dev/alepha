@@ -1,4 +1,4 @@
-import { ActionButton, Flex } from "@alepha/ui";
+import { ActionButton, Flex } from "@alepha/mantine";
 import { useRouter } from "alepha/react/router";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import HeaderProjectActions from "../../project/ProjectActions.tsx";

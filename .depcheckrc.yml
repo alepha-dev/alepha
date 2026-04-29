@@ -1,6 +1,7 @@
 ignores:
     - 'alepha'
     - '@alepha/ui'
+    - '@alepha/mantine'
     - '@alepha/mqtt'
     - '@alepha/devtools'
     - '@vitejs/plugin-react'
