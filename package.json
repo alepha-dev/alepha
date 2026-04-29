@@ -23,6 +23,20 @@
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"
   },
+  "dependenciesMeta": {
+    "esbuild": {
+      "built": true
+    },
+    "msw": {
+      "built": true
+    },
+    "sharp": {
+      "built": true
+    },
+    "workerd": {
+      "built": true
+    }
+  },
   "scripts": {
     "w": "yarn workspace",
     "a": "yarn alepha",

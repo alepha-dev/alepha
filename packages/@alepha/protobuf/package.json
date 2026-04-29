@@ -18,6 +18,11 @@
   "dependencies": {
     "protobufjs": "^8.0.3"
   },
+  "dependenciesMeta": {
+    "protobufjs": {
+      "built": true
+    }
+  },
   "devDependencies": {
     "alepha": "0.20.2",
     "tsdown": "^0.21.10",

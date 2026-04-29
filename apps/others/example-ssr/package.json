@@ -28,5 +28,10 @@
     "better-sqlite3": "^12.9.0",
     "vite": "^8.0.10",
     "wrangler": "^4.86.0"
+  },
+  "dependenciesMeta": {
+    "better-sqlite3": {
+      "built": true
+    }
   }
 }
