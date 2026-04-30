@@ -553,13 +553,13 @@ describe("alepha init", () => {
       expect(
         fs.wasWrittenMatching(
           "/project/src/api/providers/RealmProvider.ts",
-          /ADMIN_EMAIL/,
+          /adminEmails:/,
         ),
       ).toBe(true);
       expect(
         fs.wasWrittenMatching(
           "/project/src/api/providers/RealmProvider.ts",
-          /adminEmails:/,
+          /\$permission\(\s*\{[\s\S]*group:\s*"admin"[\s\S]*name:\s*"ui"/,
         ),
       ).toBe(true);
     });
@@ -621,15 +621,6 @@ describe("alepha init", () => {
       );
       expect(
         fs.wasWritten("/project/src/web/components/admin/Sessions.tsx"),
-      ).toBe(true);
-      expect(
-        fs.wasWritten("/project/src/web/components/admin/ApiKeys.tsx"),
-      ).toBe(true);
-      expect(
-        fs.wasWritten("/project/src/web/components/admin/Parameters.tsx"),
-      ).toBe(true);
-      expect(
-        fs.wasWritten("/project/src/web/components/admin/Audits.tsx"),
       ).toBe(true);
     });
 

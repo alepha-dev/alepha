@@ -51,13 +51,12 @@ ${classMembers.join("\n\n")}
  */
 const saasAppRouterTs =
   () => `import type { RealmController } from "alepha/api/users";
-import { $inject, Alepha } from "alepha";
 import { $page, NotFound } from "alepha/react/router";
+import { $secure } from "alepha/security";
 import { $client } from "alepha/server/links";
 import type { HelloController } from "../api/controllers/HelloController.ts";
 
 export class AppRouter {
-  protected readonly alepha = $inject(Alepha);
   protected readonly api = $client<HelloController>();
   protected readonly realmApi = $client<RealmController>();
 
@@ -106,9 +105,11 @@ export class AppRouter {
     lazy: () => import("./components/auth/VerifyEmail.tsx"),
   });
 
-  // ── /admin — sidebar shell + nested admin pages ────────────────────────
+  // ── /admin — gated by 'admin:ui' permission, declared in RealmProvider.
+  // Children inherit the gate via the parent chain.
   adminLayout = $page({
     path: "/admin",
+    use: [$secure({ permissions: ["admin:ui"] })],
     lazy: () => import("./components/admin/AdminLayout.tsx"),
   });
 
@@ -124,27 +125,6 @@ export class AppRouter {
     path: "/sessions",
     head: { title: "Sessions" },
     lazy: () => import("./components/admin/Sessions.tsx"),
-  });
-
-  adminApiKeys = $page({
-    parent: this.adminLayout,
-    path: "/api-keys",
-    head: { title: "API keys" },
-    lazy: () => import("./components/admin/ApiKeys.tsx"),
-  });
-
-  adminParameters = $page({
-    parent: this.adminLayout,
-    path: "/parameters",
-    head: { title: "Parameters" },
-    lazy: () => import("./components/admin/Parameters.tsx"),
-  });
-
-  adminAudits = $page({
-    parent: this.adminLayout,
-    path: "/audits",
-    head: { title: "Audits" },
-    lazy: () => import("./components/admin/Audits.tsx"),
   });
 
   notFound = $page({ path: "/*", component: NotFound });

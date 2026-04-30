@@ -13,13 +13,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConfirmProvider } from "@/components/use-confirm";
 import { NestedView, useRouterState } from "alepha/react/router";
-import {
-  KeyRound,
-  Network,
-  Settings,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
+import { ShieldCheck, Users } from "lucide-react";
 
 const NAV = [
   {
@@ -27,14 +21,6 @@ const NAV = [
     items: [
       { href: "/admin/users", label: "Users", icon: Users },
       { href: "/admin/sessions", label: "Sessions", icon: ShieldCheck },
-      { href: "/admin/api-keys", label: "API keys", icon: KeyRound },
-    ],
-  },
-  {
-    label: "System",
-    items: [
-      { href: "/admin/parameters", label: "Parameters", icon: Settings },
-      { href: "/admin/audits", label: "Audits", icon: Network },
     ],
   },
 ] as const;

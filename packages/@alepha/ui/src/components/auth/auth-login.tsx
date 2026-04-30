@@ -1,8 +1,7 @@
+import { Control } from "@alepha/ui/components/control/control";
 import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Label } from "@alepha/ui/components/ui/label";
 import { Separator } from "@alepha/ui/components/ui/separator";
 import { AlephaError, t } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
@@ -10,7 +9,7 @@ import { useAuth } from "alepha/react/auth";
 import { FormValidationError, useForm } from "alepha/react/form";
 import { useRouter } from "alepha/react/router";
 import { HttpError } from "alepha/server";
-import { AlertCircle, Lock, User } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { useMemo } from "react";
 
 export interface AuthLoginProps {
@@ -53,12 +52,6 @@ export function AuthLogin(props: AuthLoginProps) {
     const parts = loginMethods.map((m) => labels[m]);
     return `${parts.slice(0, -1).join(", ")} or ${parts[parts.length - 1]}`;
   }, [loginMethods]);
-
-  const autoComplete = loginMethods.includes("email")
-    ? "email"
-    : loginMethods.includes("phone")
-      ? "tel"
-      : "username";
 
   const form = useForm({
     schema: t.object({
@@ -139,31 +132,15 @@ export function AuthLogin(props: AuthLoginProps) {
 
             {credentialsProvider && (
               <form {...form.props} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="identifier">{identifierLabel}</Label>
-                  <div className="relative">
-                    <User className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-                    <Input
-                      id="identifier"
-                      autoComplete={autoComplete}
-                      className="pl-9"
-                      {...form.input.identifier.props}
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Lock className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-                    <Input
-                      id="password"
-                      type="password"
-                      autoComplete="current-password"
-                      className="pl-9"
-                      {...form.input.password.props}
-                    />
-                  </div>
-                </div>
+                <Control
+                  label={identifierLabel}
+                  input={form.input.identifier}
+                />
+                <Control
+                  label="Password"
+                  input={form.input.password}
+                  password
+                />
                 <Button type="submit" disabled={form.submitting}>
                   Sign in
                 </Button>

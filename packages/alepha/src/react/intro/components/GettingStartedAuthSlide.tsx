@@ -8,7 +8,7 @@ import type { GettingStartedSlide } from "./GettingStarted.tsx";
  * Returns undefined if auth routes are not configured.
  */
 export const useAuthSlide = (): GettingStartedSlide | undefined => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
 
   // Check if auth routes exist
@@ -19,8 +19,6 @@ export const useAuthSlide = (): GettingStartedSlide | undefined => {
 
   // User is logged in - show user info and logout option
   if (user) {
-    const logoutAnchorProps = router.anchor(router.path("logout"));
-
     return {
       text: "Welcome back!",
       sub: `You're signed in as ${user.email || user.username || "user"}.`,
@@ -33,7 +31,16 @@ export const useAuthSlide = (): GettingStartedSlide | undefined => {
           num: "→",
           text: (
             <>
-              <a {...logoutAnchorProps}>Sign out</a> to test the login flow
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  logout();
+                }}
+              >
+                Sign out
+              </a>{" "}
+              to test the login flow
             </>
           ),
         },

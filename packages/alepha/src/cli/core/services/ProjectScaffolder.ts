@@ -19,9 +19,6 @@ import { mainCss } from "../templates/mainCss.ts";
 import { mainServerTs } from "../templates/mainServerTs.ts";
 import { saasAdminLayoutTsx } from "../templates/saasAdminLayoutTsx.ts";
 import {
-  saasAdminApiKeysTsx,
-  saasAdminAuditsTsx,
-  saasAdminParametersTsx,
   saasAdminSessionsTsx,
   saasAdminUsersTsx,
 } from "../templates/saasAdminPagesTsx.ts";
@@ -413,7 +410,7 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/web/index.ts",
-      webIndexTs({ appName }),
+      webIndexTs({ appName, saas: opts.saas }),
       opts.force,
     );
     await this.ensureFile(
@@ -487,24 +484,6 @@ export class ProjectScaffolder {
         root,
         "src/web/components/admin/Sessions.tsx",
         saasAdminSessionsTsx(),
-        opts.force,
-      );
-      await this.ensureFile(
-        root,
-        "src/web/components/admin/ApiKeys.tsx",
-        saasAdminApiKeysTsx(),
-        opts.force,
-      );
-      await this.ensureFile(
-        root,
-        "src/web/components/admin/Parameters.tsx",
-        saasAdminParametersTsx(),
-        opts.force,
-      );
-      await this.ensureFile(
-        root,
-        "src/web/components/admin/Audits.tsx",
-        saasAdminAuditsTsx(),
         opts.force,
       );
     }

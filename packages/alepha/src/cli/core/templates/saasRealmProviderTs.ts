@@ -1,8 +1,7 @@
 export interface SaasRealmProviderOptions {
   /**
-   * Email seeded as the default admin when the `ADMIN_EMAIL` env var isn't set.
-   * Detected from `git config user.email` at init time; falls through to
-   * `admin@example.com` if git isn't configured.
+   * Email seeded as the default admin. Detected from `git config user.email`
+   * at init time; falls through to `admin@example.com` if git isn't configured.
    */
   adminEmail?: string;
 }
@@ -10,42 +9,33 @@ export interface SaasRealmProviderOptions {
 /**
  * Realm provider scaffolded by `alepha init --saas`.
  *
- * - Reads `ADMIN_EMAIL` from env so each environment can pick its own admin.
- * - Falls back to the developer's git email (captured at scaffold time) so the
- *   freshly-initialized project already has a valid admin without any manual
- *   wiring.
- * - Enables the realm features that the auth + admin UI expects: notifications
- *   (verification + password reset emails), apiKeys (admin API key panel),
- *   audits (admin audit log), and jobs (session purge cron).
+ * Minimal hello-world setup: credentials login with email, one admin seeded
+ * with the developer's git email at scaffold time, and an `admin:ui`
+ * permission used by the AppRouter to gate `/admin/*`. The default `admin`
+ * role grants `*` (so it inherits `admin:ui`); the default `user` role
+ * excludes `admin:*` (so non-admins get a 403 before the shell renders).
+ *
+ * Add `$env`, more permissions, or stricter settings as the project grows.
  */
 export const saasRealmProviderTs = (options: SaasRealmProviderOptions = {}) => {
   const adminEmail = options.adminEmail ?? "admin@example.com";
-  return `import { $env, t } from "alepha";
-import { $realm } from "alepha/api/users";
+  return `import { $realm } from "alepha/api/users";
+import { $permission } from "alepha/security";
 
 export class RealmProvider {
-  env = $env(
-    t.object({
-      ADMIN_EMAIL: t.optional(t.email()),
-    }),
-  );
-
-  // Seeded with your git email at \`alepha init --saas\` time. Override per
-  // environment by exporting ADMIN_EMAIL in your \`.env\` (or platform secrets).
-  protected readonly defaultAdminEmail = ${JSON.stringify(adminEmail)};
+  /**
+   * Permission required to open the admin UI. Wired into AppRouter.adminLayout
+   * via \`$secure({ permissions: ["admin:ui"] })\`.
+   */
+  adminUi = $permission({
+    group: "admin",
+    name: "ui",
+    description: "Access to the admin UI shell",
+  });
 
   realm = $realm({
-    features: {
-      apiKeys: true,
-      audits: true,
-      jobs: true,
-      notifications: true,
-    },
     settings: {
-      username: "required",
-      resetPasswordAllowed: true,
-      verifyEmailRequired: true,
-      adminEmails: [this.env.ADMIN_EMAIL ?? this.defaultAdminEmail],
+      adminEmails: [${JSON.stringify(adminEmail)}],
     },
     identities: {
       credentials: true,

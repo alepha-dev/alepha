@@ -253,9 +253,8 @@
       "description": "Login page wired to Alepha auth (credentials + OAuth providers).",
       "dependencies": ["alepha", "lucide-react"],
       "registryDependencies": [
+        "@alepha/control",
         "button",
-        "input",
-        "label",
         "card",
         "alert",
         "separator"
@@ -493,7 +492,7 @@
       "name": "saas",
       "type": "registry:style",
       "title": "Alepha SaaS preset",
-      "description": "One-shot init: control + auto-form + alepha-table + use-confirm + app-shell + auth + admin blocks.",
+      "description": "One-shot init: control + auto-form + alepha-table + use-confirm + app-shell + auth pages + admin (users, sessions). Add more admin-* blocks as needed.",
       "dependencies": ["alepha", "lucide-react"],
       "registryDependencies": [
         "@alepha/control",
@@ -506,14 +505,7 @@
         "@alepha/auth-reset-password",
         "@alepha/auth-verify-email",
         "@alepha/admin-users",
-        "@alepha/admin-jobs",
-        "@alepha/admin-audits",
-        "@alepha/admin-files",
-        "@alepha/admin-notifications",
-        "@alepha/admin-parameters",
         "@alepha/admin-sessions",
-        "@alepha/admin-keys",
-        "@alepha/admin-payments",
         "@alepha/sonner",
         "tooltip"
       ]

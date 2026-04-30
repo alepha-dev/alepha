@@ -1,7 +1,8 @@
 /**
  * Admin pages — each is a thin wrapper around the matching `admin-*`
- * registry component (placed at `src/components/admin/*`). Drop-in
- * replacements once you `shadcn add` more.
+ * registry component (placed at `src/components/admin/*`). The starter
+ * ships with Users + Sessions; add more by `shadcn add @alepha/admin-…`
+ * and a matching `$page(...)` in AppRouter.
  */
 
 export const saasAdminUsersTsx = () =>
@@ -22,34 +23,4 @@ const AdminSessionsPage = () => {
 };
 
 export default AdminSessionsPage;
-`;
-
-export const saasAdminApiKeysTsx = () =>
-  `import { AdminApiKeys } from "@/components/admin/admin-keys";
-
-const AdminApiKeysPage = () => {
-  return <AdminApiKeys />;
-};
-
-export default AdminApiKeysPage;
-`;
-
-export const saasAdminParametersTsx = () =>
-  `import { AdminParameters } from "@/components/admin/admin-parameters";
-
-const AdminParametersPage = () => {
-  return <AdminParameters />;
-};
-
-export default AdminParametersPage;
-`;
-
-export const saasAdminAuditsTsx = () =>
-  `import { AdminAudits } from "@/components/admin/admin-audits";
-
-const AdminAuditsPage = () => {
-  return <AdminAudits />;
-};
-
-export default AdminAuditsPage;
 `;
