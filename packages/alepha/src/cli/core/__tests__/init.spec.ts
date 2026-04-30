@@ -494,6 +494,223 @@ describe("alepha init", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // SaaS preset (--saas flag)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("--saas flag", () => {
+    it("should imply --shadcn / --tailwind / --react / --api", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--saas", root: "/project" });
+
+      // shadcn → components.json + main.css uses tailwind
+      expect(fs.wasWritten("/project/components.json")).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/src/main.css", /@import "tailwindcss"/),
+      ).toBe(true);
+      // tailwind → vite.config.ts
+      expect(fs.wasWritten("/project/vite.config.ts")).toBe(true);
+      // react → web/ tree
+      expect(fs.wasWritten("/project/src/web/AppRouter.ts")).toBe(true);
+      expect(fs.wasWritten("/project/src/main.browser.ts")).toBe(true);
+      // api → api/ tree
+      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(true);
+    });
+
+    it("should wire AlephaApiUsers into api/index.ts", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--saas", root: "/project" });
+
+      expect(
+        fs.wasWrittenMatching("/project/src/api/index.ts", /AlephaApiUsers/),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/src/api/index.ts",
+          /imports:\s*\[AlephaApiUsers\]/,
+        ),
+      ).toBe(true);
+    });
+
+    it("should scaffold src/api/providers/RealmProvider.ts with $realm", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--saas", root: "/project" });
+
+      expect(fs.wasWritten("/project/src/api/providers/RealmProvider.ts")).toBe(
+        true,
+      );
+      expect(
+        fs.wasWrittenMatching(
+          "/project/src/api/providers/RealmProvider.ts",
+          /\$realm\(/,
+        ),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/src/api/providers/RealmProvider.ts",
+          /ADMIN_EMAIL/,
+        ),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/src/api/providers/RealmProvider.ts",
+          /adminEmails:/,
+        ),
+      ).toBe(true);
+    });
+
+    it("should register RealmProvider in the API module", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--saas", root: "/project" });
+
+      expect(
+        fs.wasWrittenMatching(
+          "/project/src/api/index.ts",
+          /services:\s*\[HelloController,\s*RealmProvider\]/,
+        ),
+      ).toBe(true);
+    });
+
+    it("should scaffold auth pages + AuthLayout", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--saas", root: "/project" });
+
+      expect(
+        fs.wasWritten("/project/src/web/components/auth/AuthLayout.tsx"),
+      ).toBe(true);
+      expect(fs.wasWritten("/project/src/web/components/auth/Login.tsx")).toBe(
+        true,
+      );
+      expect(
+        fs.wasWritten("/project/src/web/components/auth/Register.tsx"),
+      ).toBe(true);
+      expect(
+        fs.wasWritten("/project/src/web/components/auth/ResetPassword.tsx"),
+      ).toBe(true);
+      expect(
+        fs.wasWritten("/project/src/web/components/auth/VerifyEmail.tsx"),
+      ).toBe(true);
+    });
+
+    it("should scaffold admin AppShell + admin pages", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--saas", root: "/project" });
+
+      expect(
+        fs.wasWritten("/project/src/web/components/admin/AdminLayout.tsx"),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/src/web/components/admin/AdminLayout.tsx",
+          /AppShell/,
+        ),
+      ).toBe(true);
+      expect(fs.wasWritten("/project/src/web/components/admin/Users.tsx")).toBe(
+        true,
+      );
+      expect(
+        fs.wasWritten("/project/src/web/components/admin/Sessions.tsx"),
+      ).toBe(true);
+      expect(
+        fs.wasWritten("/project/src/web/components/admin/ApiKeys.tsx"),
+      ).toBe(true);
+      expect(
+        fs.wasWritten("/project/src/web/components/admin/Parameters.tsx"),
+      ).toBe(true);
+      expect(
+        fs.wasWritten("/project/src/web/components/admin/Audits.tsx"),
+      ).toBe(true);
+    });
+
+    it("should wire /auth and /admin routes into AppRouter", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--saas", root: "/project" });
+
+      expect(
+        fs.wasWrittenMatching(
+          "/project/src/web/AppRouter.ts",
+          /authLayout\s*=\s*\$page/,
+        ),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/src/web/AppRouter.ts",
+          /adminLayout\s*=\s*\$page/,
+        ),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/src/web/AppRouter.ts",
+          /adminUsers\s*=\s*\$page/,
+        ),
+      ).toBe(true);
+    });
+
+    it("should default the shadcn preset to b0", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--shadcn", root: "/project" });
+
+      expect(
+        shell.wasCalledMatching(/shadcn\s+init.*--preset\s+b0\b/),
+      ).toBe(true);
+    });
+
+    it("should let --shadcn <id> override the preset", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, {
+        argv: "--shadcn bOgTgBE1b",
+        root: "/project",
+      });
+
+      expect(
+        shell.wasCalledMatching(/shadcn\s+init.*--preset\s+bOgTgBE1b\b/),
+      ).toBe(true);
+    });
+
+    it("should let --saas <id> override the preset", async () => {
+      const { fs, shell, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, {
+        argv: "--saas bOgTgBE1b",
+        root: "/project",
+      });
+
+      expect(
+        shell.wasCalledMatching(/shadcn\s+init.*--preset\s+bOgTgBE1b\b/),
+      ).toBe(true);
+    });
+
+    it("should add the @alepha/saas registry bundle in one shot", async () => {
+      const { fs, cli, cmd, shell, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--saas", root: "/project" });
+
+      expect(
+        shell.wasCalledMatching(/shadcn\s+add\s+@alepha\/saas/),
+      ).toBe(true);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Non-empty directory guard (codegen flags)
   // ─────────────────────────────────────────────────────────────────────────────
 

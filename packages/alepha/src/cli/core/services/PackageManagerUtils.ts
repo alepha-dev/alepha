@@ -402,8 +402,9 @@ export class PackageManagerUtils {
     };
 
     // Only include drizzle-kit when the project uses a database.
-    // React-only projects don't need it.
-    if (!modes.react) {
+    // - React-only projects skip it (no ORM in scope).
+    // - SaaS pulls AlephaApiUsers which DOES need a DB → keep drizzle-kit.
+    if (!modes.react || modes.saas) {
       devDependencies["drizzle-kit"] = alephaDeps["drizzle-kit"];
     }
 
@@ -474,6 +475,11 @@ export interface DependencyModes {
   expo?: boolean;
   tailwind?: boolean;
   shadcn?: boolean;
+  /**
+   * SaaS starter: implies `shadcn` + adds the alepha auth + admin registry
+   * components on top via `shadcn add @alepha/...`.
+   */
+  saas?: boolean;
   test?: boolean;
   /**
    * Skip biome/vitest when inside a workspace package (they're at root).

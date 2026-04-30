@@ -198,6 +198,20 @@ describe("Code Verification", () => {
     const { parameters, controller, dateTimeProvider, target } =
       await createTest();
 
+    // Anchor test time at noon to keep all `limitPerDay` inserts inside the
+    // same calendar day — running near midnight (real wall-clock) used to
+    // make the cooldown travel cross day boundaries and reset the window.
+    const now = dateTimeProvider.now();
+    const noon = now.startOf("day").add(12, "hours");
+    if (noon.diff(now) > 0) {
+      await dateTimeProvider.travel(noon.diff(now), "milliseconds");
+    } else {
+      await dateTimeProvider.travel(
+        noon.add(1, "day").diff(now),
+        "milliseconds",
+      );
+    }
+
     for (let i = 0; i < parameters.limitPerDay; i++) {
       await controller.requestVerificationCode({
         params: {

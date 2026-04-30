@@ -43,9 +43,15 @@ export class InitCommand {
         }),
       ),
       shadcn: t.optional(
-        t.boolean({
+        t.union([t.boolean(), t.text()], {
           description:
-            "Set up shadcn/ui (components.json, cn helper, theme tokens, alepha registry). Implies --react and --tailwind",
+            "Set up shadcn/ui (components.json, cn helper, theme tokens, alepha registry). Pass an optional preset id (default: b0). Implies --react and --tailwind",
+        }),
+      ),
+      saas: t.optional(
+        t.union([t.boolean(), t.text()], {
+          description:
+            "Scaffold a SaaS starter: auth (login/register/reset/verify) + admin panel (/admin AppShell with users/sessions/api-keys/parameters/audits). Pass an optional preset id (default: b0). Implies --shadcn and --api",
         }),
       ),
       test: t.optional(

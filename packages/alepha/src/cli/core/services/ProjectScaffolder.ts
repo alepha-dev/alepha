@@ -2,7 +2,7 @@ import { basename, dirname } from "node:path";
 import { $inject, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
-import { FileSystemProvider } from "alepha/system";
+import { FileSystemProvider, ShellProvider } from "alepha/system";
 import { type AgentMdOptions, agentMd } from "../templates/agentMd.ts";
 import { alephaConfigTs } from "../templates/alephaConfigTs.ts";
 import { apiHelloControllerTs } from "../templates/apiHelloControllerTs.ts";
@@ -17,6 +17,22 @@ import { logoSvg } from "../templates/logoSvg.ts";
 import { mainBrowserTs } from "../templates/mainBrowserTs.ts";
 import { mainCss } from "../templates/mainCss.ts";
 import { mainServerTs } from "../templates/mainServerTs.ts";
+import { saasAdminLayoutTsx } from "../templates/saasAdminLayoutTsx.ts";
+import {
+  saasAdminApiKeysTsx,
+  saasAdminAuditsTsx,
+  saasAdminParametersTsx,
+  saasAdminSessionsTsx,
+  saasAdminUsersTsx,
+} from "../templates/saasAdminPagesTsx.ts";
+import { saasAuthLayoutTsx } from "../templates/saasAuthLayoutTsx.ts";
+import {
+  saasAuthLoginTsx,
+  saasAuthRegisterTsx,
+  saasAuthResetPasswordTsx,
+  saasAuthVerifyEmailTsx,
+} from "../templates/saasAuthPagesTsx.ts";
+import { saasRealmProviderTs } from "../templates/saasRealmProviderTs.ts";
 import { tsconfigJson } from "../templates/tsconfigJson.ts";
 import { viteConfigTs } from "../templates/viteConfigTs.ts";
 import { vitestConfigTs } from "../templates/vitestConfigTs.ts";
@@ -42,6 +58,7 @@ export class ProjectScaffolder {
   protected readonly log = $logger();
   protected readonly colors = $inject(ConsoleColorProvider);
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly shell = $inject(ShellProvider);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly utils = $inject(AlephaCliUtils);
 
@@ -71,7 +88,13 @@ export class ProjectScaffolder {
        */
       checkWorkspace?: boolean;
       packageJson?: boolean | DependencyModes;
-      tsconfigJson?: boolean;
+      /**
+       * `true` writes a tsconfig.json if one doesn't already exist (parent
+       * dirs included). `"local"` writes one when none exists *in this
+       * directory* — used by shadcn since the CLI reads the local
+       * tsconfig directly for import-alias detection.
+       */
+      tsconfigJson?: boolean | "local";
       biomeJson?: boolean;
       editorconfig?: boolean;
       agentMd?: false | AgentMdOptions;
@@ -92,7 +115,12 @@ export class ProjectScaffolder {
       );
     }
     if (opts.tsconfigJson) {
-      tasks.push(this.ensureTsConfig(root, { force }));
+      tasks.push(
+        this.ensureTsConfig(root, {
+          force,
+          localOnly: opts.tsconfigJson === "local",
+        }),
+      );
     }
     if (opts.biomeJson) {
       tasks.push(this.ensureBiomeConfig(root, { force, checkWorkspace }));
@@ -113,10 +141,15 @@ export class ProjectScaffolder {
 
   public async ensureTsConfig(
     root: string,
-    opts: { force?: boolean } = {},
+    opts: { force?: boolean; localOnly?: boolean } = {},
   ): Promise<void> {
-    // Check if tsconfig.json exists in current or parent directories
-    if (!opts.force && (await this.existsInParents(root, "tsconfig.json"))) {
+    // Check if tsconfig.json exists in current or parent directories.
+    // `localOnly: true` skips the parent walk — needed when a tool reads the
+    // local tsconfig directly (shadcn does this for import-alias detection).
+    const exists = opts.localOnly
+      ? await this.fs.exists(this.fs.join(root, "tsconfig.json"))
+      : await this.existsInParents(root, "tsconfig.json");
+    if (!opts.force && exists) {
       return;
     }
     await this.fs.writeFile(
@@ -241,7 +274,7 @@ export class ProjectScaffolder {
    */
   public async ensureApiProject(
     root: string,
-    opts: { force?: boolean } = {},
+    opts: { saas?: boolean; force?: boolean } = {},
   ): Promise<void> {
     const appName = this.getAppName(root);
 
@@ -257,7 +290,7 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/api/index.ts",
-      apiIndexTs({ appName }),
+      apiIndexTs({ appName, saas: opts.saas }),
       opts.force,
     );
     await this.ensureFile(
@@ -272,6 +305,38 @@ export class ProjectScaffolder {
       apiHelloResponseSchemaTs(),
       opts.force,
     );
+
+    if (opts.saas) {
+      await this.fs.mkdir(this.fs.join(root, "src/api/providers"), {
+        recursive: true,
+      });
+      const adminEmail = await this.detectGitEmail();
+      await this.ensureFile(
+        root,
+        "src/api/providers/RealmProvider.ts",
+        saasRealmProviderTs({ adminEmail }),
+        opts.force,
+      );
+    }
+  }
+
+  /**
+   * Best-effort lookup for the developer's git email (used as the seeded
+   * `adminEmails` entry in the SaaS realm). Returns undefined if git isn't
+   * available or if `user.email` isn't configured — the template falls back
+   * to `admin@example.com` in that case.
+   */
+  protected async detectGitEmail(): Promise<string | undefined> {
+    try {
+      const stdout = (await this.shell.run("git config --get user.email", {
+        capture: true,
+      })) as unknown as string;
+      const email = (stdout ?? "").trim();
+      if (!email || !email.includes("@")) return undefined;
+      return email;
+    } catch {
+      return undefined;
+    }
   }
 
   // ===========================================
@@ -292,6 +357,7 @@ export class ProjectScaffolder {
       api?: boolean;
       tailwind?: boolean;
       shadcn?: boolean;
+      saas?: boolean;
       force?: boolean;
     } = {},
   ): Promise<void> {
@@ -301,6 +367,15 @@ export class ProjectScaffolder {
     await this.fs.mkdir(this.fs.join(root, "src/web/components"), {
       recursive: true,
     });
+
+    if (opts.saas) {
+      await this.fs.mkdir(this.fs.join(root, "src/web/components/auth"), {
+        recursive: true,
+      });
+      await this.fs.mkdir(this.fs.join(root, "src/web/components/admin"), {
+        recursive: true,
+      });
+    }
 
     // public/favicon.svg
     await this.fs.mkdir(this.fs.join(root, "public"), { recursive: true });
@@ -344,7 +419,7 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/web/AppRouter.ts",
-      webAppRouterTs({ api: opts.api }),
+      webAppRouterTs({ api: opts.api, saas: opts.saas }),
       opts.force,
     );
     await this.ensureFile(
@@ -359,6 +434,80 @@ export class ProjectScaffolder {
       mainBrowserTs(),
       opts.force,
     );
+
+    if (opts.saas) {
+      // Auth — layout + 4 pages, each a thin wrapper around the registry
+      // component that `shadcn add @alepha/auth-*` drops at
+      // src/web/components/auth-*.tsx.
+      await this.ensureFile(
+        root,
+        "src/web/components/auth/AuthLayout.tsx",
+        saasAuthLayoutTsx(),
+        opts.force,
+      );
+      await this.ensureFile(
+        root,
+        "src/web/components/auth/Login.tsx",
+        saasAuthLoginTsx(),
+        opts.force,
+      );
+      await this.ensureFile(
+        root,
+        "src/web/components/auth/Register.tsx",
+        saasAuthRegisterTsx(),
+        opts.force,
+      );
+      await this.ensureFile(
+        root,
+        "src/web/components/auth/ResetPassword.tsx",
+        saasAuthResetPasswordTsx(),
+        opts.force,
+      );
+      await this.ensureFile(
+        root,
+        "src/web/components/auth/VerifyEmail.tsx",
+        saasAuthVerifyEmailTsx(),
+        opts.force,
+      );
+
+      // Admin — AppShell layout + 5 admin-* pages
+      await this.ensureFile(
+        root,
+        "src/web/components/admin/AdminLayout.tsx",
+        saasAdminLayoutTsx(),
+        opts.force,
+      );
+      await this.ensureFile(
+        root,
+        "src/web/components/admin/Users.tsx",
+        saasAdminUsersTsx(),
+        opts.force,
+      );
+      await this.ensureFile(
+        root,
+        "src/web/components/admin/Sessions.tsx",
+        saasAdminSessionsTsx(),
+        opts.force,
+      );
+      await this.ensureFile(
+        root,
+        "src/web/components/admin/ApiKeys.tsx",
+        saasAdminApiKeysTsx(),
+        opts.force,
+      );
+      await this.ensureFile(
+        root,
+        "src/web/components/admin/Parameters.tsx",
+        saasAdminParametersTsx(),
+        opts.force,
+      );
+      await this.ensureFile(
+        root,
+        "src/web/components/admin/Audits.tsx",
+        saasAdminAuditsTsx(),
+        opts.force,
+      );
+    }
   }
 
   // ===========================================
@@ -411,7 +560,10 @@ export class ProjectScaffolder {
       api?: boolean;
       react?: boolean;
       tailwind?: boolean;
-      shadcn?: boolean;
+      /** boolean toggle, or a string preset id (default `b0` when bare). */
+      shadcn?: boolean | string;
+      /** boolean toggle, or a string preset id (default `b0` when bare). */
+      saas?: boolean | string;
       test?: boolean;
       force?: boolean;
     };
@@ -422,9 +574,33 @@ export class ProjectScaffolder {
       await this.fs.mkdir(root, { force: true });
     }
 
-    // Flag cascading: --shadcn → --tailwind → --react
-    if (flags.shadcn) {
-      flags.tailwind = true;
+    // `--shadcn` / `--saas` are union flags: bare → true, string → preset.
+    // Capture the preset string (default `b0`), then normalize both flags
+    // to plain booleans so the rest of the pipeline keeps its boolean
+    // contract with PackageManagerUtils + ensureWebProject etc.
+    const shadcnPreset =
+      (typeof flags.saas === "string" && flags.saas) ||
+      (typeof flags.shadcn === "string" && flags.shadcn) ||
+      "b0";
+
+    // Cast to a narrower view so downstream sees pure booleans.
+    const f = flags as Omit<typeof flags, "shadcn" | "saas"> & {
+      shadcn?: boolean;
+      saas?: boolean;
+    };
+    f.shadcn = !!flags.shadcn;
+    f.saas = !!flags.saas;
+
+    // Flag cascading:
+    //   --saas    → --shadcn + --api
+    //   --shadcn  → --tailwind
+    //   --tailwind→ --react
+    if (f.saas) {
+      f.shadcn = true;
+      f.api = true;
+    }
+    if (f.shadcn) {
+      f.tailwind = true;
     }
     if (flags.tailwind) {
       flags.react = true;
@@ -432,7 +608,7 @@ export class ProjectScaffolder {
 
     // When codegen flags are set, target directory must be empty (unless --force)
     const hasCodegenFlags =
-      flags.api || flags.react || flags.tailwind || flags.shadcn;
+      flags.api || flags.react || flags.tailwind || flags.shadcn || flags.saas;
     if (hasCodegenFlags && !flags.force) {
       const files = await this.fs.ls(root);
       // Allow a directory that only has package.json (common for monorepo packages)
@@ -463,9 +639,14 @@ export class ProjectScaffolder {
       handler: async () => {
         await this.ensureConfig(root, {
           force,
-          packageJson: { ...flags, isPackage: workspace.isPackage },
-          // Skip workspace-level configs if they exist at workspace root
-          tsconfigJson: !workspace.config.tsconfigJson,
+          packageJson: { ...f, isPackage: workspace.isPackage },
+          // Skip workspace-level configs if they exist at workspace root —
+          // unless --shadcn is set: the shadcn CLI reads the local
+          // tsconfig.json directly to detect import aliases (it doesn't
+          // follow `extends`), so we must ensure one exists in the package.
+          tsconfigJson: f.shadcn
+            ? "local"
+            : !workspace.config.tsconfigJson,
           biomeJson: true,
           editorconfig: !workspace.config.editorconfig,
           agentMd: agentType ? { type: agentType } : false,
@@ -481,13 +662,14 @@ export class ProjectScaffolder {
           force,
         });
         if (flags.api) {
-          await this.ensureApiProject(root, { force });
+          await this.ensureApiProject(root, { saas: !!flags.saas, force });
         }
         if (flags.react && !isExpo) {
           await this.ensureWebProject(root, {
             api: !!flags.api,
             tailwind: !!flags.tailwind,
             shadcn: !!flags.shadcn,
+            saas: !!flags.saas,
             force,
           });
         }
@@ -543,17 +725,59 @@ export class ProjectScaffolder {
     // We deliberately do NOT pass `--defaults` (would force Next.js +
     // base-nova preset) or `--template` (only applies to scratch projects;
     // ours already has main.server.ts / main.browser.ts).
+    // Each PM has a different way to exec a project-local binary.
+    const exec = pmExecPrefix(pmName);
+
     if (flags.shadcn) {
-      await run(`${pmName} shadcn init --yes --no-monorepo --silent`, {
-        alias: "running shadcn init",
+      // Fully non-interactive shadcn init. The `--preset` arg is what makes
+      // this work — without it shadcn falls back to interactive prompts even
+      // with --yes/--force. Defaults: vite template + radix base + reinstall
+      // (so the components.json we pre-wrote stays canonical).
+      await run(
+        `${exec} shadcn init --no-monorepo --base radix -t vite --yes --force --reinstall --preset ${escapeShellArg(shadcnPreset)}`,
+        { alias: `running shadcn init (preset ${shadcnPreset})`, root },
+      );
+      // Re-pin our aliases + alepha registry — `shadcn init --force`
+      // overwrites components.json with the template defaults.
+      await this.fs.writeFile(
+        this.fs.join(root, "components.json"),
+        componentsJsonTs(),
+      );
+    }
+
+    // SaaS preset: pull in the auth + admin registry components from the
+    // public alepha registry (already wired via components.json's
+    // `registries: { "@alepha": "https://alepha.dev/r/{name}.json" }`).
+    // Each `shadcn add` writes the component into src/web/components/* and
+    // pulls its peer primitives + dependencies (sonner, etc.).
+    if (flags.saas) {
+      // Pull the public SaaS bundle in one shot — it aggregates control,
+      // auto-form, alepha-table, use-confirm, app-shell, every auth-*, and
+      // every admin-* block. Definition lives at
+      // https://alepha.dev/r/saas.json (see @alepha/ui-registry).
+      // `--yes --overwrite` is the only combo that works non-interactively
+      // when registry items would replace files we pre-wrote (auth-login etc.
+      // overlap with shadcn primitives like button/input).
+      await run(`${exec} shadcn add @alepha/saas --yes --overwrite`, {
+        alias: "adding alepha saas registry bundle",
         root,
       });
     }
 
-    await run(`${pmName} run lint`, {
-      alias: "running linter",
-      root,
-    });
+    // Best-effort lint: shadcn-imported registry components occasionally
+    // trip biome rules (e.g. noArrayIndexKey on a Fragment loop). The user
+    // can fix or silence these later — don't block the whole init.
+    try {
+      await run(`${pmName} run lint`, {
+        alias: "running linter",
+        root,
+      });
+    } catch (err) {
+      this.log.warn(
+        "Linter reported issues during init — continuing. Run `lint` again later to inspect.",
+        { error: err instanceof Error ? err.message : String(err) },
+      );
+    }
 
     // Initialize git repository if not in a workspace package
     if (!workspace.isPackage) {
@@ -634,3 +858,33 @@ export class ProjectScaffolder {
     }
   }
 }
+
+/**
+ * Map a package manager name to the command that runs a project-local binary.
+ *
+ * - npm:  `npx`
+ * - yarn: `yarn` (yarn auto-resolves binary names; `yarn shadcn ...` works)
+ * - pnpm: `pnpm exec`
+ * - bun:  `bunx`
+ *
+ * Used to invoke `shadcn init` / `shadcn add` regardless of the user's PM —
+ * `npm shadcn ...` is invalid (it tries to run a script named `shadcn`).
+ */
+/** Quote a value so it survives shell parsing. */
+const escapeShellArg = (value: string): string => {
+  if (/^[A-Za-z0-9_./@:-]+$/.test(value)) return value;
+  return `'${value.replace(/'/g, "'\\''")}'`;
+};
+
+const pmExecPrefix = (pmName: string): string => {
+  switch (pmName) {
+    case "npm":
+      return "npx";
+    case "pnpm":
+      return "pnpm exec";
+    case "bun":
+      return "bunx";
+    default:
+      return "yarn";
+  }
+};

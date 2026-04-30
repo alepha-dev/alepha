@@ -134,6 +134,7 @@ export class VerificationService {
       type: entry.type,
       target: entry.target,
       code: this.hashCode(token),
+      createdAt: this.dateTimeProvider.nowISOString(),
     });
 
     this.log.info("Verification created", {

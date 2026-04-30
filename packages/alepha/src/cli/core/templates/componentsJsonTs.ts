@@ -3,9 +3,11 @@
  * `shadcn add` where to drop primitives, which tailwind tokens to use,
  * which icon library to wire up, and which custom registries to resolve.
  *
- * The aliases below match Alepha's `src/web/` convention (instead of the
- * shadcn default `src/components/`), so `shadcn add` writes into the same
- * tree as Alepha's own CLI scaffolds.
+ * Aliases follow shadcn's defaults (`@/components`, `@/lib/utils`) so the
+ * CLI honors them across `init` + `add` calls. Alepha app code lives at
+ * `src/web/` (Home, AppRouter, …) and the shadcn primitives live at
+ * `src/components/` — kept separate to make the registry components
+ * trivially upgradable via `shadcn add --overwrite`.
  *
  * The `registries` block pre-wires the public Alepha registry — consumers
  * can immediately run e.g. `shadcn add @alepha/auth-login`.
@@ -23,11 +25,11 @@ export const componentsJsonTs = () =>
     "cssVariables": true
   },
   "aliases": {
-    "components": "@/web/components",
-    "utils": "@/web/lib/utils",
-    "ui": "@/web/components/ui",
-    "lib": "@/web/lib",
-    "hooks": "@/web/hooks"
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
   },
   "iconLibrary": "lucide",
   "registries": {
