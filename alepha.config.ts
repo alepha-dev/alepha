@@ -61,6 +61,7 @@ export default (alepha: Alepha) => {
         await run(`cd apps/docs && yarn alepha gen:llms`);
         await run(`yarn clean`);
         await run(`yarn copy`);
+        await run(`yarn`);
       },
     }),
   };

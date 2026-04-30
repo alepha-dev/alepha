@@ -644,9 +644,7 @@ export class ProjectScaffolder {
           // unless --shadcn is set: the shadcn CLI reads the local
           // tsconfig.json directly to detect import aliases (it doesn't
           // follow `extends`), so we must ensure one exists in the package.
-          tsconfigJson: f.shadcn
-            ? "local"
-            : !workspace.config.tsconfigJson,
+          tsconfigJson: f.shadcn ? "local" : !workspace.config.tsconfigJson,
           biomeJson: true,
           editorconfig: !workspace.config.editorconfig,
           agentMd: agentType ? { type: agentType } : false,

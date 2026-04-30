@@ -665,9 +665,9 @@ describe("alepha init", () => {
 
       await cli.run(cmd.init, { argv: "--shadcn", root: "/project" });
 
-      expect(
-        shell.wasCalledMatching(/shadcn\s+init.*--preset\s+b0\b/),
-      ).toBe(true);
+      expect(shell.wasCalledMatching(/shadcn\s+init.*--preset\s+b0\b/)).toBe(
+        true,
+      );
     });
 
     it("should let --shadcn <id> override the preset", async () => {
@@ -704,9 +704,9 @@ describe("alepha init", () => {
 
       await cli.run(cmd.init, { argv: "--saas", root: "/project" });
 
-      expect(
-        shell.wasCalledMatching(/shadcn\s+add\s+@alepha\/saas/),
-      ).toBe(true);
+      expect(shell.wasCalledMatching(/shadcn\s+add\s+@alepha\/saas/)).toBe(
+        true,
+      );
     });
   });
 
