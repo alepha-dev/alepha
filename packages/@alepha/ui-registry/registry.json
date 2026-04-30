@@ -14,12 +14,12 @@
         {
           "path": "registry/default/control-base/form-field.tsx",
           "type": "registry:lib",
-          "target": "components/control/form-field.tsx"
+          "target": "components/control-base/form-field.tsx"
         },
         {
           "path": "registry/default/control-base/icon-hint.tsx",
           "type": "registry:lib",
-          "target": "components/control/icon-hint.tsx"
+          "target": "components/control-base/icon-hint.tsx"
         }
       ]
     },
@@ -34,7 +34,7 @@
         {
           "path": "registry/default/control-number/control-number.tsx",
           "type": "registry:component",
-          "target": "components/control/control-number.tsx"
+          "target": "components/control-number/control-number.tsx"
         }
       ]
     },
@@ -55,7 +55,7 @@
         {
           "path": "registry/default/control-date/control-date.tsx",
           "type": "registry:component",
-          "target": "components/control/control-date.tsx"
+          "target": "components/control-date/control-date.tsx"
         }
       ]
     },
@@ -107,7 +107,7 @@
         {
           "path": "registry/default/control-select/control-select.tsx",
           "type": "registry:component",
-          "target": "components/control/control-select.tsx"
+          "target": "components/control-select/control-select.tsx"
         }
       ]
     },
@@ -122,7 +122,7 @@
         {
           "path": "registry/default/control-object/control-object.tsx",
           "type": "registry:component",
-          "target": "components/control/control-object.tsx"
+          "target": "components/control-object/control-object.tsx"
         }
       ]
     },
@@ -137,7 +137,7 @@
         {
           "path": "registry/default/control-array/control-array.tsx",
           "type": "registry:component",
-          "target": "components/control/control-array.tsx"
+          "target": "components/control-array/control-array.tsx"
         }
       ]
     },
@@ -149,6 +149,8 @@
       "dependencies": ["alepha", "lucide-react"],
       "registryDependencies": [
         "@alepha/control-base",
+        "@alepha/control-array",
+        "@alepha/control-object",
         "@alepha/control-number",
         "@alepha/control-date",
         "@alepha/control-select",
