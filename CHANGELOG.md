@@ -1,3 +1,15 @@
+## [0.20.3] - 2026-04-30
+
+### Features
+
+- **react/router**: add a delegated anchor-click interceptor (`fbbf5885`)
+- **cli**: init - add "--shadcn" (`dda47a53`)
+
+### Bug Fixes
+
+- **ui-registry**: update registry targets for control components and add new dependencies (`f638f01c`)
+- **cli**: fix build + copy migrations (`0ed986a4`)
+
 ## [0.20.2] - 2026-04-26
 
 ### Features
