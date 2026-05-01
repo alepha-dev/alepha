@@ -93,14 +93,14 @@ const TaskCreate = (props: TaskCreateProps) => {
     <form {...form.props} className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Control
-          label={tr("task.create.title") as string}
-          description={tr("task.create.title.helper") as string}
+          label={tr("task.create.title")}
+          description={tr("task.create.title.helper")}
           input={form.input.title}
           icon={Tag}
         />
         <Control
-          label={tr("task.create.package") as string}
-          description={tr("task.create.package.helper") as string}
+          label={tr("task.create.package")}
+          description={tr("task.create.package.helper")}
           input={form.input.package}
           icon={Tent}
           combobox
@@ -108,8 +108,8 @@ const TaskCreate = (props: TaskCreateProps) => {
       </div>
 
       <Control
-        label={tr("task.create.description") as string}
-        description={tr("task.create.description.helper") as string}
+        label={tr("task.create.description")}
+        description={tr("task.create.description.helper")}
         input={form.input.description}
         icon={FileText}
         custom={TextEditor as never}
@@ -118,21 +118,21 @@ const TaskCreate = (props: TaskCreateProps) => {
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Control
           input={form.input.priority}
-          label={tr("task.create.priority") as string}
-          description={tr("task.create.priority.helper") as string}
+          label={tr("task.create.priority")}
+          description={tr("task.create.priority.helper")}
           segmented
         />
         <Control
           input={form.input.complexity}
-          label={tr("task.create.complexity") as string}
-          description={tr("task.create.complexity.helper") as string}
+          label={tr("task.create.complexity")}
+          description={tr("task.create.complexity.helper")}
           segmented
         />
       </div>
 
       <Control
-        label={tr("task.create.objectives") as string}
-        description={tr("task.create.objectives.helper") as string}
+        label={tr("task.create.objectives")}
+        description={tr("task.create.objectives.helper")}
         input={form.input.objectives}
         icon={ListChecks}
         custom={TaskCreateObjectives as never}

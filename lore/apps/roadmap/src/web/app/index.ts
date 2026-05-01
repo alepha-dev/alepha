@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { AlephaReactUi } from "alepha/react/ui";
 import { CharacterInfo } from "../../api/services/CharacterInfo.ts";
 import { AppRouter } from "./AppRouter.ts";
 import { currentAssignedTasksAtom } from "./atoms/currentAssignedTasksAtom.ts";
@@ -17,6 +18,7 @@ import { Toaster } from "./services/Toaster.ts";
 
 export const RoadmapWebApp = $module({
   name: "roadmap.web.app",
+  imports: [AlephaReactUi],
   services: [Toaster, I18n, AppRouter, MeRouter],
   atoms: [
     currentAssignedTasksAtom,
