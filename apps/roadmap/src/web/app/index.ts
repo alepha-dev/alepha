@@ -14,12 +14,13 @@ import {
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { MeRouter } from "./components/profile/me/MeRouter.ts";
 import { I18n } from "./services/I18n.ts";
+import { ThemesProvider } from "./services/ThemesProvider.ts";
 import { Toaster } from "./services/Toaster.ts";
 
 export const RoadmapWebApp = $module({
   name: "roadmap.web.app",
   imports: [AlephaReactUi],
-  services: [Toaster, I18n, AppRouter, MeRouter],
+  services: [Toaster, I18n, ThemesProvider, AppRouter, MeRouter],
   atoms: [
     currentAssignedTasksAtom,
     currentChaptersAtom,

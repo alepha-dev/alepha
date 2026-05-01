@@ -112,7 +112,6 @@ __metadata:
     tw-animate-css: "npm:^1.4.0"
     typescript: "npm:^6.0.3"
   peerDependencies:
-    alepha: "workspace:^"
     react: "*"
     react-dom: "*"
   languageName: unknown

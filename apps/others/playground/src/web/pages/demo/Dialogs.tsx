@@ -5,12 +5,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@alepha/ui/components/ui/card";
-import { useConfirm } from "@alepha/ui/components/use-confirm";
+import { useDialog } from "@alepha/ui/components/use-dialog";
+import { useToast } from "@alepha/ui/components/use-toast";
 import { useState } from "react";
-import { toast } from "sonner";
 
 const Dialogs = () => {
-  const confirm = useConfirm();
+  const dialog = useDialog();
+  const toast = useToast();
   const [lastResult, setLastResult] = useState<string | null>(null);
 
   return (
@@ -19,7 +20,7 @@ const Dialogs = () => {
         <div>
           <h1 className="text-lg font-semibold">Dialogs</h1>
           <p className="text-muted-foreground text-sm">
-            Exercise confirm dialogs via <code>useConfirm</code>.
+            Exercise <code>useDialog()</code> — confirm, alert, prompt, toast.
           </p>
         </div>
         {lastResult && (
@@ -41,7 +42,7 @@ const Dialogs = () => {
               variant="outline"
               size="sm"
               onClick={async () => {
-                const ok = await confirm({
+                const ok = await dialog.confirm({
                   title: "Continue?",
                   description: "Are you sure you want to proceed?",
                 });
@@ -54,7 +55,7 @@ const Dialogs = () => {
               variant="outline"
               size="sm"
               onClick={async () => {
-                const ok = await confirm({
+                const ok = await dialog.confirm({
                   title: "Delete forever?",
                   description: "This cannot be undone.",
                   confirmLabel: "Delete",
@@ -66,6 +67,113 @@ const Dialogs = () => {
               }}
             >
               destructive
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+              Alert
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await dialog.alert({
+                  title: "Heads up",
+                  description: "This is an informational message.",
+                });
+                setLastResult("alert: dismissed");
+              }}
+            >
+              alert
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+              Prompt
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const value = await dialog.prompt({
+                  title: "What's your name?",
+                  label: "Name",
+                  placeholder: "Ada",
+                  defaultValue: "",
+                });
+                setLastResult(`prompt: ${JSON.stringify(value)}`);
+              }}
+            >
+              prompt
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const value = await dialog.prompt({
+                  title: "Email",
+                  label: "Email address",
+                  validate: (v) =>
+                    /.+@.+\..+/.test(v) ? null : "Enter a valid email",
+                });
+                setLastResult(`validated prompt: ${JSON.stringify(value)}`);
+              }}
+            >
+              prompt + validate
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+              Toast
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast("Plain toast")}
+            >
+              toast
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast.success("Saved!")}
+            >
+              success
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast.error("Something blew up")}
+            >
+              error
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                toast.promise(new Promise((r) => setTimeout(r, 1500)), {
+                  loading: "Working...",
+                  success: "Done",
+                  error: "Failed",
+                })
+              }
+            >
+              promise
             </Button>
           </CardContent>
         </Card>

@@ -1,6 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import { useConfirm } from "@alepha/ui/components/use-confirm";
+import { useDialog } from "@alepha/ui/components/use-dialog";
 import type { Page } from "alepha";
 import type { FileController } from "alepha/api/files";
 import { useClient } from "alepha/react";
@@ -21,7 +21,7 @@ const formatBytes = (n: number) => {
 
 export function AdminFiles() {
   const client = useClient<FileController>();
-  const confirm = useConfirm();
+  const dialog = useDialog();
   const { l } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -34,7 +34,7 @@ export function AdminFiles() {
   );
 
   const handleDelete = async (file: any) => {
-    const ok = await confirm({
+    const ok = await dialog.confirm({
       title: "Delete file",
       description: `Permanently delete "${file.fileName}"?`,
       destructive: true,

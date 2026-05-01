@@ -20,10 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@alepha/ui/components/ui/select";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@alepha/ui/components/ui/toggle-group";
+import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { cn } from "@alepha/ui/lib/utils";
 import type { Async } from "alepha";
 import { useAction } from "alepha/react";
@@ -84,6 +81,8 @@ export function ControlSelect(props: ControlSelectProps) {
 
   const [staticData, setStaticData] = useState<SelectOption[]>([]);
   const enumKey = JSON.stringify(enumValues);
+  const min = meta.constraints.minimum;
+  const max = meta.constraints.maximum;
   useEffect(() => {
     if (props.loader) return;
     if (isBoolean && enumValues.length === 0) {
@@ -91,10 +90,20 @@ export function ControlSelect(props: ControlSelectProps) {
         { value: "true", label: "Yes" },
         { value: "false", label: "No" },
       ]);
+    } else if (
+      isNumeric &&
+      enumValues.length === 0 &&
+      typeof min === "number" &&
+      typeof max === "number" &&
+      max - min <= 20
+    ) {
+      const range: SelectOption[] = [];
+      for (let i = min; i <= max; i++) range.push(String(i));
+      setStaticData(range);
     } else {
       setStaticData(enumValues);
     }
-  }, [props.loader, enumKey, isBoolean]);
+  }, [props.loader, enumKey, isBoolean, isNumeric, min, max]);
 
   const data = props.loader ? asyncData : staticData;
 
@@ -115,17 +124,15 @@ export function ControlSelect(props: ControlSelectProps) {
         error={meta.error}
         required={meta.required}
       >
-        <ToggleGroup
-          type="single"
-          value={value != null ? String(value) : ""}
-          onValueChange={(v) => v && setValue(coerce(v))}
-        >
-          {data.slice(0, 10).map((o) => (
-            <ToggleGroupItem key={optValue(o)} value={optValue(o)}>
-              {optLabel(o)}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+        <Segmented
+          value={value != null ? String(value) : undefined}
+          onChange={(v) => setValue(coerce(v))}
+          options={data.slice(0, 10).map((o) => ({
+            value: optValue(o),
+            label: optLabel(o),
+          }))}
+          fullWidth
+        />
       </FormField>
     );
   }

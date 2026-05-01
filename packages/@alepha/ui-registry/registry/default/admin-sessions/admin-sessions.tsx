@@ -7,11 +7,11 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
-import { useConfirm } from "@/registry/default/use-confirm/use-confirm";
+import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 
 export function AdminSessions() {
   const client = useClient<AdminSessionController>();
-  const confirm = useConfirm();
+  const dialog = useDialog();
   const { l } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -24,7 +24,7 @@ export function AdminSessions() {
   );
 
   const handleRevoke = async (s: SessionEntity) => {
-    const ok = await confirm({
+    const ok = await dialog.confirm({
       title: "Revoke session",
       description: "The user will be signed out from this session.",
       destructive: true,

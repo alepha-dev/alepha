@@ -1,8 +1,10 @@
-import { Link } from "alepha/react/router";
+import { Link, NestedView } from "alepha/react/router";
 import { useSidebarState } from "alepha/react/ui";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import { Fragment } from "react";
+import { Toaster } from "@/components/ui/sonner";
+import { DialogProvider } from "@/components/use-dialog";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -63,14 +65,14 @@ export interface AppShellProps {
   /** Branding shown at the top of the sidebar. */
   brand?: ReactNode;
   /** Sidebar navigation groups. */
-  nav: NavGroup[];
+  nav?: NavGroup[];
   /** Content rendered at the bottom of the sidebar (user menu, etc.). */
   sidebarFooter?: ReactNode;
   /** Breadcrumb crumbs (last one is rendered as the current page). */
   breadcrumbs?: { label: string; href?: string }[];
   /** Top-bar right-side content (search, theme toggle, user menu). */
   topbarActions?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 /**
@@ -79,79 +81,85 @@ export interface AppShellProps {
  */
 export function AppShell(props: AppShellProps) {
   const { collapsed, setCollapsed } = useSidebarState();
+  const nav = props.nav ?? [];
   return (
-    <SidebarProvider
-      open={!collapsed}
-      onOpenChange={(o: boolean) => setCollapsed(!o)}
-    >
-      <Sidebar collapsible="icon">
-        <SidebarHeader>{props.brand}</SidebarHeader>
-        <SidebarContent>
-          {props.nav.map((group, gi) => (
-            <SidebarGroup key={gi}>
-              {group.label && (
-                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-              )}
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {group.items.map((item) => {
-                    const Icon = item.icon;
+    <DialogProvider>
+      <SidebarProvider
+        open={!collapsed}
+        onOpenChange={(o: boolean) => setCollapsed(!o)}
+      >
+        <Sidebar collapsible="icon">
+          <SidebarHeader>{props.brand}</SidebarHeader>
+          <SidebarContent>
+            {nav.map((group, gi) => (
+              <SidebarGroup key={gi}>
+                {group.label && (
+                  <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                )}
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <SidebarMenuItem key={item.href}>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={item.active}
+                            tooltip={item.label}
+                          >
+                            <Link href={item.href}>
+                              {Icon && <Icon className="size-4" />}
+                              <span>{item.label}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ))}
+          </SidebarContent>
+          {props.sidebarFooter && (
+            <SidebarFooter>{props.sidebarFooter}</SidebarFooter>
+          )}
+        </Sidebar>
+        <SidebarInset>
+          <header className="bg-background flex h-14 shrink-0 items-center gap-2 border-b px-4">
+            <StatefulSidebarTrigger />
+            <Separator orientation="vertical" className="mx-2 h-4" />
+            {props.breadcrumbs && props.breadcrumbs.length > 0 && (
+              <Breadcrumb>
+                <BreadcrumbList>
+                  {props.breadcrumbs.map((crumb, i) => {
+                    const last = i === props.breadcrumbs!.length - 1;
                     return (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={item.active}
-                          tooltip={item.label}
-                        >
-                          <Link href={item.href}>
-                            {Icon && <Icon className="size-4" />}
-                            <span>{item.label}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
+                      <Fragment key={i}>
+                        <BreadcrumbItem>
+                          {last || !crumb.href ? (
+                            <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                          ) : (
+                            <BreadcrumbLink asChild>
+                              <Link href={crumb.href}>{crumb.label}</Link>
+                            </BreadcrumbLink>
+                          )}
+                        </BreadcrumbItem>
+                        {!last && <BreadcrumbSeparator />}
+                      </Fragment>
                     );
                   })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          ))}
-        </SidebarContent>
-        {props.sidebarFooter && (
-          <SidebarFooter>{props.sidebarFooter}</SidebarFooter>
-        )}
-      </Sidebar>
-      <SidebarInset>
-        <header className="bg-background flex h-14 shrink-0 items-center gap-2 border-b px-4">
-          <StatefulSidebarTrigger />
-          <Separator orientation="vertical" className="mx-2 h-4" />
-          {props.breadcrumbs && props.breadcrumbs.length > 0 && (
-            <Breadcrumb>
-              <BreadcrumbList>
-                {props.breadcrumbs.map((crumb, i) => {
-                  const last = i === props.breadcrumbs!.length - 1;
-                  return (
-                    <Fragment key={i}>
-                      <BreadcrumbItem>
-                        {last || !crumb.href ? (
-                          <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                        ) : (
-                          <BreadcrumbLink asChild>
-                            <Link href={crumb.href}>{crumb.label}</Link>
-                          </BreadcrumbLink>
-                        )}
-                      </BreadcrumbItem>
-                      {!last && <BreadcrumbSeparator />}
-                    </Fragment>
-                  );
-                })}
-              </BreadcrumbList>
-            </Breadcrumb>
-          )}
-          <div className="flex-1" />
-          {props.topbarActions}
-        </header>
-        <main className="flex-1 overflow-auto">{props.children}</main>
-      </SidebarInset>
-    </SidebarProvider>
+                </BreadcrumbList>
+              </Breadcrumb>
+            )}
+            <div className="flex-1" />
+            {props.topbarActions}
+          </header>
+          <main className="flex-1 overflow-auto">
+            {props.children ?? <NestedView />}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+      <Toaster />
+    </DialogProvider>
   );
 }

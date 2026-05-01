@@ -1,6 +1,7 @@
 import type { Page } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useClient } from "alepha/react";
+import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Eye, Trash2, UserCheck, UserX } from "lucide-react";
@@ -9,7 +10,7 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
-import { useConfirm } from "@/registry/default/use-confirm/use-confirm";
+import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 
 export interface AdminUsersProps {
   userRealmName?: string;
@@ -17,9 +18,10 @@ export interface AdminUsersProps {
 
 export function AdminUsers(props: AdminUsersProps) {
   const client = useClient<AdminUserController>();
+  const { user: currentUser } = useAuth();
   const router = useRouter();
   const { l } = useI18n();
-  const confirm = useConfirm();
+  const dialog = useDialog();
   const [refreshKey, setRefreshKey] = useState(0);
 
   const fetcher = useCallback(
@@ -35,9 +37,15 @@ export function AdminUsers(props: AdminUsersProps) {
     [client, props.userRealmName, refreshKey],
   );
 
+  const isSelf = (user: UserEntity) => currentUser?.id === user.id;
+
   const handleToggleEnabled = async (user: UserEntity) => {
+    if (isSelf(user)) {
+      toast.error("You cannot disable your own account");
+      return;
+    }
     const enable = !user.enabled;
-    const ok = await confirm({
+    const ok = await dialog.confirm({
       title: enable ? "Enable user" : "Disable user",
       description: enable
         ? `Enable ${user.email || user.username || "this user"}?`
@@ -55,7 +63,7 @@ export function AdminUsers(props: AdminUsersProps) {
   };
 
   const handleDelete = async (user: UserEntity) => {
-    const ok = await confirm({
+    const ok = await dialog.confirm({
       title: "Delete user",
       description: `Permanently delete ${user.email || user.username || "this user"}? This action cannot be undone.`,
       destructive: true,
@@ -70,12 +78,12 @@ export function AdminUsers(props: AdminUsersProps) {
   };
 
   const handleBulkDisable = async (items: UserEntity[], clear: () => void) => {
-    const enabled = items.filter((u) => u.enabled);
+    const enabled = items.filter((u) => u.enabled && !isSelf(u));
     if (enabled.length === 0) {
       toast.error("No active users in selection");
       return;
     }
-    const ok = await confirm({
+    const ok = await dialog.confirm({
       title: "Disable users",
       description: `Disable ${enabled.length} user(s)? They will no longer be able to sign in.`,
       destructive: true,
@@ -177,17 +185,21 @@ export function AdminUsers(props: AdminUsersProps) {
             icon: Eye,
             onClick: () => router.push(`/admin/users/${u.id}` as never),
           },
-          {
-            label: u.enabled ? "Disable user" : "Enable user",
-            icon: u.enabled ? UserX : UserCheck,
-            onClick: () => handleToggleEnabled(u),
-          },
-          {
-            label: "Delete user",
-            icon: Trash2,
-            destructive: true,
-            onClick: () => handleDelete(u),
-          },
+          ...(!isSelf(u)
+            ? [
+                {
+                  label: u.enabled ? "Disable user" : "Enable user",
+                  icon: u.enabled ? UserX : UserCheck,
+                  onClick: () => handleToggleEnabled(u),
+                },
+                {
+                  label: "Delete user",
+                  icon: Trash2,
+                  destructive: true,
+                  onClick: () => handleDelete(u),
+                },
+              ]
+            : []),
         ]}
       />
     </div>

@@ -7,7 +7,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
-import { useConfirm } from "@/registry/default/use-confirm/use-confirm";
+import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 
 const formatBytes = (n: number) => {
   if (!n) return "0 B";
@@ -21,7 +21,7 @@ const formatBytes = (n: number) => {
 
 export function AdminFiles() {
   const client = useClient<FileController>();
-  const confirm = useConfirm();
+  const dialog = useDialog();
   const { l } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -34,7 +34,7 @@ export function AdminFiles() {
   );
 
   const handleDelete = async (file: any) => {
-    const ok = await confirm({
+    const ok = await dialog.confirm({
       title: "Delete file",
       description: `Permanently delete "${file.fileName}"?`,
       destructive: true,

@@ -2,7 +2,7 @@ import { AppShell } from "@alepha/ui/components/app-shell";
 import { ThemeToggle } from "@alepha/ui/components/theme-toggle";
 import { Toaster } from "@alepha/ui/components/ui/sonner";
 import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
-import { ConfirmProvider } from "@alepha/ui/components/use-confirm";
+import { DialogProvider } from "@alepha/ui/components/use-dialog";
 import { NestedView, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import {
@@ -77,7 +77,7 @@ export const Layout = () => {
 
   return (
     <TooltipProvider>
-      <ConfirmProvider>
+      <DialogProvider>
         <ColorScheme />
         <AppShell
           topbarActions={<ThemeToggle />}
@@ -108,7 +108,7 @@ export const Layout = () => {
           <NestedView />
         </AppShell>
         <Toaster />
-      </ConfirmProvider>
+      </DialogProvider>
     </TooltipProvider>
   );
 };

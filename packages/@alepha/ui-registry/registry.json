@@ -182,16 +182,91 @@
       ]
     },
     {
-      "name": "use-confirm",
+      "name": "use-dialog",
       "type": "registry:component",
-      "title": "useConfirm",
-      "description": "Imperative confirm dialog hook + provider. Mounts an AlertDialog on demand.",
-      "registryDependencies": ["alert-dialog"],
+      "title": "useDialog",
+      "description": "Imperative dialog hook (confirm, alert, prompt). Mounts an AlertDialog on demand.",
+      "registryDependencies": ["alert-dialog", "input"],
       "files": [
         {
-          "path": "registry/default/use-confirm/use-confirm.tsx",
+          "path": "registry/default/use-dialog/use-dialog.tsx",
           "type": "registry:component",
-          "target": "components/use-confirm.tsx"
+          "target": "components/use-dialog.tsx"
+        }
+      ]
+    },
+    {
+      "name": "use-toast",
+      "type": "registry:component",
+      "title": "useToast",
+      "description": "Imperative toast hook — thin facade over sonner. Requires a <Toaster /> mounted in the tree.",
+      "dependencies": ["sonner"],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/default/use-toast/use-toast.tsx",
+          "type": "registry:component",
+          "target": "components/use-toast.tsx"
+        }
+      ]
+    },
+    {
+      "name": "button-dark",
+      "type": "registry:component",
+      "title": "Button: Dark",
+      "description": "Three-state color-mode toggle (light/dark/system) wired to Alepha's UI cookie via useColorMode().",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": ["button"],
+      "files": [
+        {
+          "path": "registry/default/button-dark/button-dark.tsx",
+          "type": "registry:component",
+          "target": "components/button-dark.tsx"
+        }
+      ]
+    },
+    {
+      "name": "button-language",
+      "type": "registry:component",
+      "title": "Button: Language",
+      "description": "Dropdown listing every $dictionary-registered language. Labels resolved via tr('language.<code>').",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": ["button", "dropdown-menu"],
+      "files": [
+        {
+          "path": "registry/default/button-language/button-language.tsx",
+          "type": "registry:component",
+          "target": "components/button-language.tsx"
+        }
+      ]
+    },
+    {
+      "name": "button-theme",
+      "type": "registry:component",
+      "title": "Button: Theme",
+      "description": "Theme picker reading available themes from uiThemeListAtom and the selected id from useTheme(). Lazy-loads a per-theme font stylesheet.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": ["button", "dropdown-menu"],
+      "files": [
+        {
+          "path": "registry/default/button-theme/button-theme.tsx",
+          "type": "registry:component",
+          "target": "components/button-theme.tsx"
+        }
+      ]
+    },
+    {
+      "name": "button-user",
+      "type": "registry:component",
+      "title": "Button: User",
+      "description": "Account button: sign-in icon when logged out, user icon with menu (email + admin + logout) when logged in. Compound subcomponents Email/AdminMenuItem/LogoutMenuItem for custom layouts.",
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": ["button", "dropdown-menu"],
+      "files": [
+        {
+          "path": "registry/default/button-user/button-user.tsx",
+          "type": "registry:component",
+          "target": "components/button-user.tsx"
         }
       ]
     },
@@ -236,8 +311,8 @@
       "type": "registry:component",
       "title": "AppShell",
       "description": "Standard SaaS layout: collapsible sidebar + topbar with breadcrumbs. Sidebar/breadcrumb links use alepha's `<Link>` for client-side navigation.",
-      "dependencies": ["alepha"],
-      "registryDependencies": ["sidebar", "breadcrumb", "separator"],
+      "dependencies": ["alepha", "lucide-react"],
+      "registryDependencies": ["sidebar", "breadcrumb", "separator", "@alepha/use-dialog", "@alepha/sonner"],
       "files": [
         {
           "path": "registry/default/app-shell/app-shell.tsx",
@@ -335,7 +410,7 @@
       "dependencies": ["alepha", "lucide-react"],
       "registryDependencies": [
         "@alepha/alepha-table",
-        "@alepha/use-confirm",
+        "@alepha/use-dialog",
         "avatar",
         "badge",
         "@alepha/sonner"
@@ -386,7 +461,7 @@
       "dependencies": ["alepha", "lucide-react"],
       "registryDependencies": [
         "@alepha/alepha-table",
-        "@alepha/use-confirm",
+        "@alepha/use-dialog",
         "badge",
         "@alepha/sonner"
       ],
@@ -421,7 +496,7 @@
       "dependencies": ["alepha", "lucide-react"],
       "registryDependencies": [
         "@alepha/alepha-table",
-        "@alepha/use-confirm",
+        "@alepha/use-dialog",
         "badge",
         "@alepha/sonner"
       ],
@@ -441,7 +516,7 @@
       "dependencies": ["alepha", "lucide-react"],
       "registryDependencies": [
         "@alepha/alepha-table",
-        "@alepha/use-confirm",
+        "@alepha/use-dialog",
         "badge",
         "@alepha/sonner"
       ],
@@ -461,7 +536,7 @@
       "dependencies": ["alepha", "lucide-react"],
       "registryDependencies": [
         "@alepha/alepha-table",
-        "@alepha/use-confirm",
+        "@alepha/use-dialog",
         "badge",
         "@alepha/sonner"
       ],
@@ -492,13 +567,14 @@
       "name": "saas",
       "type": "registry:style",
       "title": "Alepha SaaS preset",
-      "description": "One-shot init: control + auto-form + alepha-table + use-confirm + app-shell + auth pages + admin (users, sessions). Add more admin-* blocks as needed.",
+      "description": "One-shot init: control + auto-form + alepha-table + use-dialog + use-toast + app-shell + auth pages + admin (users, sessions). Add more admin-* blocks as needed.",
       "dependencies": ["alepha", "lucide-react"],
       "registryDependencies": [
         "@alepha/control",
         "@alepha/auto-form",
         "@alepha/alepha-table",
-        "@alepha/use-confirm",
+        "@alepha/use-dialog",
+        "@alepha/use-toast",
         "@alepha/app-shell",
         "@alepha/auth-login",
         "@alepha/auth-register",

@@ -733,7 +733,7 @@ export class ProjectScaffolder {
     // pulls its peer primitives + dependencies (sonner, etc.).
     if (flags.saas) {
       // Pull the public SaaS bundle in one shot — it aggregates control,
-      // auto-form, alepha-table, use-confirm, app-shell, every auth-*, and
+      // auto-form, alepha-table, use-dialog, app-shell, every auth-*, and
       // every admin-* block. Definition lives at
       // https://alepha.dev/r/saas.json (see @alepha/ui-registry).
       // `--yes --overwrite` is the only combo that works non-interactively

@@ -1,20 +1,13 @@
-import { LanguageToggle } from "@alepha/ui/components/language-toggle";
-import { ThemeToggle } from "@alepha/ui/components/theme-toggle";
-import { Button } from "@alepha/ui/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
+import { ButtonDark } from "@alepha/ui/components/button-dark";
+import { ButtonLanguage } from "@alepha/ui/components/button-language";
+import { ButtonTheme } from "@alepha/ui/components/button-theme";
+import { ButtonUser } from "@alepha/ui/components/button-user";
+import { DropdownMenuItem } from "@alepha/ui/components/ui/dropdown-menu";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { LogIn, LogOut, User } from "lucide-react";
+import { UserCircle2 } from "lucide-react";
 import type { I18n } from "../../../services/I18n.ts";
-import { ThemePicker } from "../ThemePicker.tsx";
 
 export type HeaderActionsProps = {};
 
@@ -23,48 +16,29 @@ const HeaderActions = (_props: HeaderActionsProps) => {
   const auth = useAuth();
   const router = useRouter();
 
-  if (!auth.user) {
-    return (
-      <div className="flex items-center gap-1">
-        <LanguageToggle />
-        <ThemePicker />
-        <ThemeToggle mode="toggle" />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push(router.path("login"))}
-          className="gap-2"
-        >
-          <LogIn className="size-4" />
-          {tr("header.actions.login")}
-        </Button>
-      </div>
-    );
-  }
-
-  const displayName =
-    auth.user.username ?? auth.user.email ?? auth.user.id ?? "User";
+  const goLogin = () => router.push(router.path("login"));
+  const goAdmin = () => router.push("/admin");
+  const goProfile = () => router.push("me");
 
   return (
     <div className="flex items-center gap-1">
-      <ThemePicker />
-      <ThemeToggle mode="toggle" />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="gap-2">
-            <User className="size-4" />
-            <span className="hidden sm:inline">{displayName}</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => auth.logout()}>
-            <LogOut className="size-4" />
-            {tr("header.actions.logout")}
+      <ButtonLanguage label={tr("header.actions.language" as never)} />
+      <ButtonTheme />
+      <ButtonDark />
+      <ButtonUser onSignIn={goLogin}>
+        <ButtonUser.Email />
+        <ButtonUser.AdminMenuItem
+          label={tr("header.actions.admin" as never)}
+          onClick={goAdmin}
+        />
+        {auth.user && (
+          <DropdownMenuItem onClick={goProfile}>
+            <UserCircle2 className="size-4" />
+            {tr("header.actions.profile")}
           </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        )}
+        <ButtonUser.LogoutMenuItem label={tr("header.actions.logout")} />
+      </ButtonUser>
     </div>
   );
 };

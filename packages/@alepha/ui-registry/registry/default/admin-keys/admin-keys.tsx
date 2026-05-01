@@ -7,11 +7,11 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
-import { useConfirm } from "@/registry/default/use-confirm/use-confirm";
+import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 
 export function AdminKeys() {
   const client = useClient<AdminApiKeyController>();
-  const confirm = useConfirm();
+  const dialog = useDialog();
   const { l } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -24,7 +24,7 @@ export function AdminKeys() {
   );
 
   const handleRevoke = async (k: any) => {
-    const ok = await confirm({
+    const ok = await dialog.confirm({
       title: "Revoke API key",
       description: `Revoke "${k.name}"? Any apps using this key will lose access.`,
       destructive: true,

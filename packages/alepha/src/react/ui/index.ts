@@ -1,10 +1,13 @@
 import { $module } from "alepha";
 import type { UiState } from "./atoms/uiAtom.ts";
+import type { UiThemeList } from "./atoms/uiThemeListAtom.ts";
+import { uiThemeListAtom } from "./atoms/uiThemeListAtom.ts";
 import { UiPersistence } from "./services/UiPersistence.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./atoms/uiAtom.ts";
+export * from "./atoms/uiThemeListAtom.ts";
 export * from "./components/ColorScheme.tsx";
 export * from "./hooks/useColorMode.ts";
 export * from "./hooks/useSidebarState.ts";
@@ -16,6 +19,7 @@ export * from "./services/UiPersistence.ts";
 declare module "alepha" {
   export interface State {
     "alepha.react.ui": UiState;
+    "alepha.react.ui.themes": UiThemeList;
   }
 }
 
@@ -31,5 +35,6 @@ declare module "alepha" {
  */
 export const AlephaReactUi = $module({
   name: "alepha.react.ui",
+  atoms: [uiThemeListAtom],
   services: [UiPersistence],
 });

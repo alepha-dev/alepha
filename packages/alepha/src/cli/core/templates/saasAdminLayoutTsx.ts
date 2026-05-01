@@ -11,7 +11,7 @@ export const saasAdminLayoutTsx = () =>
   `import { AppShell } from "@/components/app-shell";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ConfirmProvider } from "@/components/use-confirm";
+import { DialogProvider } from "@/components/use-dialog";
 import { NestedView, useRouterState } from "alepha/react/router";
 import { ShieldCheck, Users } from "lucide-react";
 
@@ -39,7 +39,7 @@ const AdminLayout = () => {
 
   return (
     <TooltipProvider>
-      <ConfirmProvider>
+      <DialogProvider>
         <AppShell
           brand={
             <a
@@ -68,7 +68,7 @@ const AdminLayout = () => {
           <NestedView />
         </AppShell>
         <Toaster />
-      </ConfirmProvider>
+      </DialogProvider>
     </TooltipProvider>
   );
 };

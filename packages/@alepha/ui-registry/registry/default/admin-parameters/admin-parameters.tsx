@@ -7,7 +7,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
-import { useConfirm } from "@/registry/default/use-confirm/use-confirm";
+import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 
 /**
  * Simplified parameters admin — list view only. The full Mantine version
@@ -16,7 +16,7 @@ import { useConfirm } from "@/registry/default/use-confirm/use-confirm";
  */
 export function AdminParameters() {
   const client = useClient<AdminParameterController>();
-  const confirm = useConfirm();
+  const dialog = useDialog();
   const { l } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -49,7 +49,7 @@ export function AdminParameters() {
   );
 
   const handleDelete = async (p: any) => {
-    const ok = await confirm({
+    const ok = await dialog.confirm({
       title: "Delete parameter",
       description: `Delete "${p.name}"? Apps reading this key will fall back to defaults.`,
       destructive: true,
