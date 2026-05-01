@@ -1,6 +1,6 @@
 import { Control } from "@alepha/ui/components/control/control";
-import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { Button } from "@alepha/ui/components/ui/button";
+import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { t } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
