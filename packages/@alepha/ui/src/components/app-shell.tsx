@@ -1,10 +1,3 @@
-import { Link, NestedView } from "alepha/react/router";
-import { useSidebarState } from "alepha/react/ui";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import type { ComponentType, ReactNode, SVGProps } from "react";
-import { Fragment } from "react";
-import { Toaster } from "@alepha/ui/components/ui/sonner";
-import { DialogProvider } from "@alepha/ui/components/use-dialog";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -29,6 +22,13 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from "@alepha/ui/components/ui/sidebar";
+import { Toaster } from "@alepha/ui/components/ui/sonner";
+import { DialogProvider } from "@alepha/ui/components/use-dialog";
+import { Link, NestedView } from "alepha/react/router";
+import { useSidebarState } from "alepha/react/ui";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
+import { Fragment } from "react";
 
 function StatefulSidebarTrigger() {
   const { collapsed, toggle } = useSidebarState();

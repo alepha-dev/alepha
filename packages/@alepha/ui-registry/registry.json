@@ -312,7 +312,13 @@
       "title": "AppShell",
       "description": "Standard SaaS layout: collapsible sidebar + topbar with breadcrumbs. Sidebar/breadcrumb links use alepha's `<Link>` for client-side navigation.",
       "dependencies": ["alepha", "lucide-react"],
-      "registryDependencies": ["sidebar", "breadcrumb", "separator", "@alepha/use-dialog", "@alepha/sonner"],
+      "registryDependencies": [
+        "sidebar",
+        "breadcrumb",
+        "separator",
+        "@alepha/use-dialog",
+        "@alepha/sonner"
+      ],
       "files": [
         {
           "path": "registry/default/app-shell/app-shell.tsx",

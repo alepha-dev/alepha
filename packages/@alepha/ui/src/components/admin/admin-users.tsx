@@ -1,3 +1,7 @@
+import { AlephaTable } from "@alepha/ui/components/alepha-table";
+import { Avatar, AvatarFallback } from "@alepha/ui/components/ui/avatar";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { useDialog } from "@alepha/ui/components/use-dialog";
 import type { Page } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useClient } from "alepha/react";
@@ -7,10 +11,6 @@ import { useRouter } from "alepha/react/router";
 import { Eye, Trash2, UserCheck, UserX } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback } from "@alepha/ui/components/ui/avatar";
-import { Badge } from "@alepha/ui/components/ui/badge";
-import { AlephaTable } from "@alepha/ui/components/alepha-table";
-import { useDialog } from "@alepha/ui/components/use-dialog";
 
 export interface AdminUsersProps {
   userRealmName?: string;

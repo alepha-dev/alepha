@@ -3,8 +3,6 @@ import { useSidebarState } from "alepha/react/ui";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import { Fragment } from "react";
-import { Toaster } from "@/components/ui/sonner";
-import { DialogProvider } from "@/components/use-dialog";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -29,6 +27,8 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
+import { DialogProvider } from "@/components/use-dialog";
 
 function StatefulSidebarTrigger() {
   const { collapsed, toggle } = useSidebarState();

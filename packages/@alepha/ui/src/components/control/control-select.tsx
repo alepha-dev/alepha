@@ -13,6 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@alepha/ui/components/ui/popover";
+import { Segmented } from "@alepha/ui/components/ui/segmented";
 import {
   Select,
   SelectContent,
@@ -20,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@alepha/ui/components/ui/select";
-import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { cn } from "@alepha/ui/lib/utils";
 import type { Async } from "alepha";
 import { useAction } from "alepha/react";
