@@ -44,7 +44,6 @@
     "verify": "yarn alepha verify",
     "clean": "yarn alepha clean",
     "copy": "yarn workspaces foreach -Apt run copy",
-    "convert": "node scripts/convert.ts",
     "lint": "yarn alepha lint",
     "typecheck": "yarn workspaces foreach -Apt run typecheck",
     "test": "yarn vitest run",

@@ -3,7 +3,7 @@ import { $inject, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
-import { type AgentMdOptions, agentMd } from "../templates/agentMd.ts";
+import { agentMd } from "../templates/agentMd.ts";
 import { alephaConfigTs } from "../templates/alephaConfigTs.ts";
 import { apiHelloControllerTs } from "../templates/apiHelloControllerTs.ts";
 import { apiHelloResponseSchemaTs } from "../templates/apiHelloResponseSchemaTs.ts";
@@ -94,7 +94,7 @@ export class ProjectScaffolder {
       tsconfigJson?: boolean | "local";
       biomeJson?: boolean;
       editorconfig?: boolean;
-      agentMd?: false | AgentMdOptions;
+      agentMd?: boolean;
     },
   ): Promise<void> {
     const tasks: Promise<void>[] = [];
@@ -126,7 +126,7 @@ export class ProjectScaffolder {
       tasks.push(this.ensureEditorConfig(root, { force, checkWorkspace }));
     }
     if (opts.agentMd) {
-      tasks.push(this.ensureAgentMd(root, { ...opts.agentMd, force }));
+      tasks.push(this.ensureAgentMd(root, { force }));
     }
 
     await Promise.all(tasks);
@@ -214,12 +214,19 @@ export class ProjectScaffolder {
     return true;
   }
 
+  /**
+   * Ensure AGENTS.md (cross-tool standard, canonical source) exists, with a
+   * CLAUDE.md stub that imports it via Claude Code's `@` syntax. Single
+   * source of truth, cross-platform, no symlink needed.
+   */
   public async ensureAgentMd(
     root: string,
-    options: AgentMdOptions & { force?: boolean },
+    options: { force?: boolean } = {},
   ): Promise<void> {
-    const filename = options.type === "claude" ? "CLAUDE.md" : "AGENTS.md";
-    await this.ensureFile(root, filename, agentMd(options), options.force);
+    await Promise.all([
+      this.ensureFile(root, "AGENTS.md", agentMd(), options.force),
+      this.ensureFile(root, "CLAUDE.md", "@AGENTS.md\n", options.force),
+    ]);
   }
 
   /**
@@ -602,12 +609,9 @@ export class ProjectScaffolder {
     // Detect workspace context (are we inside packages/ or apps/ of a monorepo?)
     const workspace = await this.pm.getWorkspaceContext(root);
 
-    // Detect agent type: claude CLI → CLAUDE.md, else → AGENTS.md
-    let agentType: "claude" | "agents" | false = false;
-    if (!workspace.isPackage) {
-      const hasClaudeCli = await this.utils.isInstalledAsync("claude");
-      agentType = hasClaudeCli ? "claude" : "agents";
-    }
+    // Always emit both AGENTS.md and CLAUDE.md at project roots (skip for
+    // monorepo sub-packages where agent files live at workspace root).
+    const writeAgentMd = !workspace.isPackage;
 
     const isExpo = await this.pm.hasExpo(root);
 
@@ -626,7 +630,7 @@ export class ProjectScaffolder {
           tsconfigJson: f.shadcn ? "local" : !workspace.config.tsconfigJson,
           biomeJson: true,
           editorconfig: !workspace.config.editorconfig,
-          agentMd: agentType ? { type: agentType } : false,
+          agentMd: writeAgentMd,
         });
 
         // Create alepha.config.ts with documented options

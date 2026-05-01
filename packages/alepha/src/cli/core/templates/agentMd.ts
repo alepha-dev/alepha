@@ -1,13 +1,5 @@
-export type AgentMdType = "claude" | "agents";
-
-export interface AgentMdOptions {
-  type: AgentMdType;
-}
-
-export const agentMd = (options: AgentMdOptions): string => {
-  const header = options.type === "claude" ? `# CLAUDE.md` : `# AGENTS.md`;
-
-  return `${header}
+export const agentMd = (): string => {
+  return `# AGENTS.md
 
 This is an **Alepha** project.
 

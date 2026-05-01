@@ -98,25 +98,24 @@ describe("alepha init", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("AI agent files", () => {
-    it("should create CLAUDE.md when claude CLI is installed", async () => {
-      const { fs, shell, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json);
-      shell.installedCommands.add("claude");
-
-      await cli.run(cmd.init, { root: "/project" });
-
-      expect(fs.wasWritten("/project/CLAUDE.md")).toBe(true);
-      expect(fs.wasWritten("/project/AGENTS.md")).toBe(false);
-    });
-
-    it("should create AGENTS.md when claude CLI is not installed", async () => {
+    it("should create both AGENTS.md and CLAUDE.md", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
       await cli.run(cmd.init, { root: "/project" });
 
       expect(fs.wasWritten("/project/AGENTS.md")).toBe(true);
-      expect(fs.wasWritten("/project/CLAUDE.md")).toBe(false);
+      expect(fs.wasWritten("/project/CLAUDE.md")).toBe(true);
+    });
+
+    it("should write CLAUDE.md as a stub importing AGENTS.md", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      const claude = await fs.readTextFile("/project/CLAUDE.md");
+      expect(claude.trim()).toBe("@AGENTS.md");
     });
 
     it("should include Alepha instructions in agent file", async () => {
