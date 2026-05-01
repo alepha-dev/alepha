@@ -1,6 +1,6 @@
 import { Toaster } from "@alepha/ui/components/ui/sonner";
 import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
-import { ConfirmProvider } from "@alepha/ui/components/use-confirm";
+import { DialogProvider } from "@alepha/ui/components/use-dialog";
 import { NestedView } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import Header from "./shared/header/Header.tsx";
@@ -8,7 +8,7 @@ import Header from "./shared/header/Header.tsx";
 const Layout = () => {
   return (
     <TooltipProvider>
-      <ConfirmProvider>
+      <DialogProvider>
         <ColorScheme />
         <div className="flex h-screen flex-col">
           <Header />
@@ -17,7 +17,7 @@ const Layout = () => {
           </div>
         </div>
         <Toaster />
-      </ConfirmProvider>
+      </DialogProvider>
     </TooltipProvider>
   );
 };

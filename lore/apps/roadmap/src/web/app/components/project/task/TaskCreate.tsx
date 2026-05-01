@@ -1,4 +1,5 @@
 import { Control } from "@alepha/ui/components/control/control";
+import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { Button } from "@alepha/ui/components/ui/button";
 import { t } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
@@ -103,7 +104,7 @@ const TaskCreate = (props: TaskCreateProps) => {
           description={tr("task.create.package.helper")}
           input={form.input.package}
           icon={Tent}
-          combobox
+          text
         />
       </div>
 
@@ -126,7 +127,20 @@ const TaskCreate = (props: TaskCreateProps) => {
           input={form.input.complexity}
           label={tr("task.create.complexity")}
           description={tr("task.create.complexity.helper")}
-          segmented
+          custom={({ value, onChange }) => (
+            <Segmented
+              value={value != null ? String(value) : undefined}
+              onChange={(v) => onChange(Number(v))}
+              options={[
+                { value: "1", label: "F" },
+                { value: "2", label: "C" },
+                { value: "3", label: "B" },
+                { value: "4", label: "A" },
+                { value: "5", label: "S" },
+              ]}
+              fullWidth
+            />
+          )}
         />
       </div>
 

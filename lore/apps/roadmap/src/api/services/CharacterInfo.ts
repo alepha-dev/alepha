@@ -10,6 +10,7 @@ export class CharacterInfo {
    * Get rank of the quest based on its complexity. It's not for user level.
    */
   getRank(n: number): string {
+    if (n === 1) return "F";
     if (n === 2) return "C";
     if (n === 3) return "B";
     if (n === 4) return "A";

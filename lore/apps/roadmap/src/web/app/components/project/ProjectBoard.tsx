@@ -16,7 +16,7 @@ const ProjectBoard = () => {
       >
         <QuestLog />
       </div>
-      <div className="flex flex-1 overflow-auto">
+      <div className="flex flex-1 flex-col overflow-auto">
         <NestedView />
       </div>
     </div>

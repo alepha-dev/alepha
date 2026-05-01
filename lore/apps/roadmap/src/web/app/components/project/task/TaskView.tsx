@@ -1,6 +1,6 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card } from "@alepha/ui/components/ui/card";
-import { useConfirm } from "@alepha/ui/components/use-confirm";
+import { useDialog } from "@alepha/ui/components/use-dialog";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
@@ -60,7 +60,7 @@ const TaskView = (props: TaskViewProps) => {
   const router = useRouter<AppRouter>();
   const info = useInject(CharacterInfo);
   const { tr } = useI18n<I18n, "en">();
-  const confirm = useConfirm();
+  const dialog = useDialog();
   const [showDialog, setShowDialog] = useState(false);
   const [task, setTask] = useState<TaskResource>(props.task);
 
@@ -88,7 +88,7 @@ const TaskView = (props: TaskViewProps) => {
   const abandonTask = {
     disabled: !taskApi.abandonTask.can(),
     onClick: async () => {
-      const ok = await confirm({
+      const ok = await dialog.confirm({
         title: String(tr("task.view.abandon.title")),
         description: String(tr("task.view.abandon.confirm")),
         confirmLabel: String(tr("task.view.abandon.confirmButton")),

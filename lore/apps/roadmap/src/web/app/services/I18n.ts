@@ -7,12 +7,16 @@ export class I18n {
         en: "English",
         fr: "Français",
 
+        "language.en": "English",
+        "language.fr": "Français",
+
         "header.title": "Roadmap",
         "header.project.addTask": "Create New Quest",
         "header.addTask.name": "Quest Name",
         "header.actions.profile": "Profile",
         "header.actions.login": "Sign In",
         "header.actions.logout": "Logout",
+        "header.actions.admin": "Admin Panel",
         "header.actions.profile.level": "Level $1",
 
         "quest-log.quests": "Quests:",
@@ -247,12 +251,16 @@ export class I18n {
   fr = $dictionary({
     lazy: async () => ({
       default: {
+        "language.en": "English",
+        "language.fr": "Français",
+
         "header.title": "Roadmap",
         "header.project.addTask": "Forger une nouvelle quête",
         "header.addTask.name": "Nom de la quête",
         "header.actions.profile": "Héros",
         "header.actions.login": "Se connecter",
         "header.actions.logout": "Deconnexion",
+        "header.actions.admin": "Panneau admin",
         "header.actions.profile.level": "Niveau $1",
 
         "quest-log.title": "Journal des quêtes",
