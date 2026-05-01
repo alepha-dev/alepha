@@ -25,7 +25,7 @@ const HeaderActions = (_props: HeaderActionsProps) => {
       <ButtonLanguage label={tr("header.actions.language" as never)} />
       <ButtonTheme />
       <ButtonDark />
-      <ButtonUser onSignIn={goLogin}>
+      <ButtonUser onSignIn={goLogin} label={tr("header.actions.login")}>
         <ButtonUser.Email />
         <ButtonUser.AdminMenuItem
           label={tr("header.actions.admin" as never)}
