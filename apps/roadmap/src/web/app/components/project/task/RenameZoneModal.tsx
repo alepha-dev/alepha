@@ -58,7 +58,7 @@ const RenameZoneForm = (props: RenameZoneFormProps) => {
       <Control
         input={form.input.zoneName}
         icon={Tag}
-        label={tr("zone.rename.name") as string}
+        label={tr("zone.rename.name")}
       />
       <div className="flex flex-col gap-2">
         <Button type="submit" disabled={formState.loading}>

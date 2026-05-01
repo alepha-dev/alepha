@@ -7,8 +7,9 @@ import {
   DropdownMenuTrigger,
 } from "@alepha/ui/components/ui/dropdown-menu";
 import { cn } from "@alepha/ui/lib/utils";
+import { useTheme } from "alepha/react/ui";
 import { Check, Palette } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 interface ThemeDef {
   id: string;
@@ -28,7 +29,7 @@ interface ThemeDef {
 
 const THEMES: ThemeDef[] = [
   {
-    id: "shadcn",
+    id: "default",
     label: "Default",
     swatch: ["#0a0a0a", "#f4f4f5", "#ffffff", "#71717a"],
     fontHref:
@@ -90,55 +91,29 @@ const THEMES: ThemeDef[] = [
   },
 ];
 
-const STORAGE_KEY = "roadmap.theme";
 const FONT_LINK_ID = "roadmap-theme-fonts";
-const THEME_IDS = THEMES.map((t) => t.id);
 
 const findTheme = (id: string): ThemeDef =>
   THEMES.find((t) => t.id === id) ?? THEMES[0];
 
-const applyTheme = (id: string) => {
-  const html = document.documentElement;
-  for (const tid of THEME_IDS) {
-    html.classList.remove(`theme-${tid}`);
-  }
-  if (id !== "shadcn") {
-    html.classList.add(`theme-${id}`);
-  }
-
-  // Swap (or remove) the lazy-loaded font stylesheet.
-  const existing = document.getElementById(FONT_LINK_ID);
-  existing?.remove();
-  const theme = findTheme(id);
-  if (theme.fontHref) {
-    const link = document.createElement("link");
-    link.id = FONT_LINK_ID;
-    link.rel = "stylesheet";
-    link.href = theme.fontHref;
-    document.head.appendChild(link);
-  }
-};
-
-const readStoredTheme = (): string => {
-  if (typeof window === "undefined") return "shadcn";
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  return THEME_IDS.includes(raw ?? "") ? (raw as string) : "shadcn";
-};
-
 export const ThemePicker = () => {
-  const [theme, setTheme] = useState<string>("shadcn");
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    const initial = readStoredTheme();
-    setTheme(initial);
-    applyTheme(initial);
-  }, []);
+    if (typeof document === "undefined") return;
+    const existing = document.getElementById(FONT_LINK_ID);
+    existing?.remove();
+    const def = findTheme(theme);
+    if (def.fontHref) {
+      const link = document.createElement("link");
+      link.id = FONT_LINK_ID;
+      link.rel = "stylesheet";
+      link.href = def.fontHref;
+      document.head.appendChild(link);
+    }
+  }, [theme]);
 
-  const select = (id: string) => {
-    setTheme(id);
-    applyTheme(id);
-    window.localStorage.setItem(STORAGE_KEY, id);
-  };
+  const select = (id: string) => setTheme(id);
 
   return (
     <DropdownMenu>
