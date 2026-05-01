@@ -120,9 +120,6 @@ jobs:
       - name: Build
         run: yarn build
 
-      - name: Convert to JavaScript
-        run: yarn convert js
-
       - name: Copy agent templates
         run: |
           cp packages/alepha/assets/agents-template.md packages/alepha/CLAUDE.md

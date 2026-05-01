@@ -39,5 +39,10 @@
     "framework"
   ],
   "main": "./src/index.ts",
-  "types": "./src/index.ts"
+  "types": "./src/index.ts",
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "bin": "./dist/index.js"
+  }
 }

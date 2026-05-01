@@ -48,5 +48,17 @@
     "type": "git",
     "url": "git+https://github.com/feunard/alepha.git"
   },
-  "homepage": "https://github.com/feunard/alepha"
+  "homepage": "https://github.com/feunard/alepha",
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      },
+      "./package.json": "./package.json"
+    }
+  }
 }

@@ -55,14 +55,16 @@ class AlephaPackageBuilderCli {
       });
 
       pkgData.exports = {};
+      const publishExports: Record<string, any> = {};
 
       for (const item of modules) {
         let m = `./${item.name.replace("core", "")}`;
         if (m.endsWith("/")) m = m.slice(0, -1);
         const path = m;
 
+        // Dev shape: package.json points at src so the monorepo works
+        // without a build step. Order matters for resolver compatibility.
         pkgData.exports[path] = {};
-        // order is important here for compatibility
         pkgData.exports[path].types = `./src/${item.name}/index.ts`;
         if (item.native) {
           pkgData.exports[path]["react-native"] =
@@ -86,12 +88,74 @@ class AlephaPackageBuilderCli {
 
         pkgData.exports[path].import = `./src/${item.name}/index.ts`;
         pkgData.exports[path].default = `./src/${item.name}/index.ts`;
+
+        // Publish shape: same structure but pointing at dist. yarn/npm
+        // applies publishConfig fields at publish time, so consumers
+        // installing from the registry receive the dist-mapped package.json.
+        publishExports[path] = {};
+        publishExports[path].types = `./dist/${item.name}/index.d.ts`;
+        if (item.native) {
+          publishExports[path]["react-native"] =
+            `./dist/${item.name}/index.native.js`;
+        } else if (item.browser) {
+          publishExports[path]["react-native"] =
+            `./dist/${item.name}/index.browser.js`;
+        }
+
+        if (item.workerd) {
+          publishExports[path].workerd = `./dist/${item.name}/index.workerd.js`;
+        }
+
+        if (item.browser) {
+          publishExports[path].browser = `./dist/${item.name}/index.browser.js`;
+        }
+
+        if (item.bun) {
+          publishExports[path].bun = `./dist/${item.name}/index.bun.js`;
+        }
+
+        publishExports[path].import = `./dist/${item.name}/index.js`;
+        publishExports[path].default = `./dist/${item.name}/index.js`;
       }
 
       if (packageName === "alepha") {
         pkgData.exports["./tsconfig.base"] = "./tsconfig.base.json";
         pkgData.exports["./package.json"] = "./package.json";
+        publishExports["./tsconfig.base"] = "./tsconfig.base.json";
+        publishExports["./package.json"] = "./package.json";
       }
+
+      // publishConfig is honored by yarn/npm at publish time and overrides
+      // the matching top-level fields in the published package.json. The
+      // dev package.json keeps src-pointing fields so the monorepo works
+      // build-free; consumers installing from the registry get the dist
+      // shape automatically.
+      const toDistPath = (value: string) =>
+        value
+          .replace("/src/", "/dist/")
+          .replace(/\.tsx?$/, value.includes("/index.") ? ".js" : ".js");
+      const toDistTypes = (value: string) =>
+        value.replace("/src/", "/dist/").replace(/\.tsx?$/, ".d.ts");
+      const remapBin = (bin: unknown): unknown => {
+        if (typeof bin === "string") return toDistPath(bin);
+        if (bin && typeof bin === "object") {
+          return Object.fromEntries(
+            Object.entries(bin as Record<string, string>).map(([k, v]) => [
+              k,
+              toDistPath(v),
+            ]),
+          );
+        }
+        return bin;
+      };
+
+      pkgData.publishConfig = {
+        ...(pkgData.publishConfig ?? {}),
+        ...(pkgData.main ? { main: toDistPath(pkgData.main) } : {}),
+        ...(pkgData.types ? { types: toDistTypes(pkgData.types) } : {}),
+        ...(pkgData.bin ? { bin: remapBin(pkgData.bin) } : {}),
+        exports: publishExports,
+      };
 
       await this.fs.writeFile(
         "package.json",

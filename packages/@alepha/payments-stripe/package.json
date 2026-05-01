@@ -54,5 +54,21 @@
       "import": "./src/platform/index.ts",
       "default": "./src/platform/index.ts"
     }
+  },
+  "publishConfig": {
+    "main": "./dist/core/index.js",
+    "types": "./dist/core/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/core/index.d.ts",
+        "import": "./dist/core/index.js",
+        "default": "./dist/core/index.js"
+      },
+      "./platform": {
+        "types": "./dist/platform/index.d.ts",
+        "import": "./dist/platform/index.js",
+        "default": "./dist/platform/index.js"
+      }
+    }
   }
 }
