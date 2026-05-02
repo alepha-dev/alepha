@@ -33,7 +33,8 @@ export class PlaygroundDevAuth {
     handler: async ({ request }) => {
       if (request.user) return;
       request.user = {
-        id: "dev-admin",
+        // FileService and other admin entities require a UUID creator.
+        id: "00000000-0000-4000-8000-000000000001",
         name: "Playground Dev",
         email: "dev@alepha.local",
         realm: "dev",

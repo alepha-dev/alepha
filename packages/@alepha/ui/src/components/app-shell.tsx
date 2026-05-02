@@ -24,11 +24,75 @@ import {
 } from "@alepha/ui/components/ui/sidebar";
 import { Toaster } from "@alepha/ui/components/ui/sonner";
 import { DialogProvider } from "@alepha/ui/components/use-dialog";
+import { useEvents } from "alepha/react";
 import { Link, NestedView } from "alepha/react/router";
 import { useSidebarState } from "alepha/react/ui";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
-import { Fragment } from "react";
+import { Fragment, useRef, useState } from "react";
+
+export interface NavigationProgressOptions {
+  /** Tailwind classes applied to the bar. Defaults to `bg-primary`. */
+  className?: string;
+  /** Bar height in pixels. Defaults to 2. */
+  height?: number;
+}
+
+function NavigationProgress(options: NavigationProgressOptions) {
+  const [progress, setProgress] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEvents(
+    {
+      "react:transition:begin": () => {
+        setProgress(0);
+        setVisible(true);
+        setIsLoading(true);
+        let current = 0;
+        intervalRef.current = setInterval(() => {
+          current += (90 - current) * 0.1;
+          setProgress(Math.min(90, current));
+        }, 100);
+      },
+      "react:transition:end": () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        setProgress(100);
+        setIsLoading(false);
+        setTimeout(() => {
+          setVisible(false);
+          setProgress(0);
+        }, 200);
+      },
+    },
+    [],
+  );
+
+  if (!visible) return null;
+  const height = options.height ?? 2;
+  const barClassName = options.className ?? "bg-primary";
+  return (
+    <div
+      className="fixed top-0 left-0 right-0 z-50 pointer-events-none"
+      style={{ height }}
+    >
+      <div
+        className={`h-full ${barClassName}`}
+        style={{
+          width: `${progress}%`,
+          transition: isLoading
+            ? "width 0.1s ease-out"
+            : "width 0.2s ease-out, opacity 0.2s ease-out",
+          opacity: isLoading ? 1 : 0,
+        }}
+      />
+    </div>
+  );
+}
 
 function StatefulSidebarTrigger() {
   const { collapsed, toggle } = useSidebarState();
@@ -72,6 +136,19 @@ export interface AppShellProps {
   breadcrumbs?: { label: string; href?: string }[];
   /** Top-bar right-side content (search, theme toggle, user menu). */
   topbarActions?: ReactNode;
+  /**
+   * Layout variant.
+   * - `sidebar` (default): sidebar and page sit flush side-by-side.
+   * - `inset`: sidebar uses the global background; the page is a rounded card with margin.
+   * - `floating`: the page uses the global background; the sidebar is a rounded card with margin.
+   */
+  variant?: "sidebar" | "floating" | "inset";
+  /**
+   * Top loading bar shown during route transitions.
+   * `true` (default) enables it with default styling, `false` disables it,
+   * or pass an options object to customize.
+   */
+  progress?: boolean | NavigationProgressOptions;
   children?: ReactNode;
 }
 
@@ -82,13 +159,18 @@ export interface AppShellProps {
 export function AppShell(props: AppShellProps) {
   const { collapsed, setCollapsed } = useSidebarState();
   const nav = props.nav ?? [];
+  const variant = props.variant ?? "sidebar";
+  const progress = props.progress ?? true;
   return (
     <DialogProvider>
+      {progress !== false && (
+        <NavigationProgress {...(progress === true ? {} : progress)} />
+      )}
       <SidebarProvider
         open={!collapsed}
         onOpenChange={(o: boolean) => setCollapsed(!o)}
       >
-        <Sidebar collapsible="icon">
+        <Sidebar collapsible="icon" variant={variant}>
           <SidebarHeader>{props.brand}</SidebarHeader>
           <SidebarContent>
             {nav.map((group, gi) => (

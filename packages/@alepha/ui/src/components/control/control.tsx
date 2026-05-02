@@ -6,6 +6,10 @@ import { ControlDate } from "@alepha/ui/components/control/control-date";
 import { ControlNumber } from "@alepha/ui/components/control/control-number";
 import { ControlObject } from "@alepha/ui/components/control/control-object";
 import { ControlSelect } from "@alepha/ui/components/control/control-select";
+import {
+  ControlUpload,
+  type ControlUploadProps,
+} from "@alepha/ui/components/control/control-upload";
 import { FormField } from "@alepha/ui/components/control/form-field";
 import {
   type IconComponent,
@@ -72,6 +76,14 @@ export interface ControlProps {
   placeholder?: string;
   /** Allow user to create new entries in select / multi-select. */
   createNewEntry?: boolean | ((query: string) => unknown);
+  /**
+   * Render a managed upload control (image preview, multi, drag-drop)
+   * that calls `FileController.uploadFile` and stores the file ID(s) in
+   * the form value. Pass `true` for defaults or an options object.
+   */
+  upload?:
+    | boolean
+    | Pick<ControlUploadProps, "multi" | "accept" | "maxSize" | "bucket">;
 }
 
 /**
@@ -153,6 +165,26 @@ export function Control(props: ControlProps) {
           arrayProps?.renderTabName as ControlArrayProps["renderTabName"]
         }
         forceTabs={arrayProps?.forceTabs as boolean | undefined}
+      />,
+    );
+  }
+
+  // ── File: managed upload (image preview, multi, drag-drop) ──────
+  // Checked early so it wins over the array→combobox branch below
+  // when the schema is `t.array(t.string())` with $control.upload.
+  if (merged.upload) {
+    const uploadOpts =
+      typeof merged.upload === "object"
+        ? (merged.upload as Partial<ControlUploadProps>)
+        : {};
+    return wrapWithSlots(
+      merged,
+      <ControlUpload
+        input={props.input}
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        disabled={merged.disabled}
+        {...uploadOpts}
       />,
     );
   }

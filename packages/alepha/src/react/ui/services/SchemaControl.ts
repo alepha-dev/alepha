@@ -115,6 +115,25 @@ export interface SchemaControl {
   top?: unknown;
   bottom?: unknown;
 
+  // ── File upload ───────────────────────────────────────────────────
+  /**
+   * Render a managed upload control (image preview, multi, drag-drop)
+   * that posts to the file API and stores the resulting file ID(s) in
+   * the form. Pass `true` for defaults or an options object:
+   *
+   * ```ts
+   * $control: { upload: { multi: true, accept: "image/*", maxSize: 5_000_000 } }
+   * ```
+   */
+  upload?:
+    | boolean
+    | {
+        multi?: boolean;
+        accept?: string;
+        maxSize?: number;
+        bucket?: string;
+      };
+
   // ── Array specifics ───────────────────────────────────────────────
   arrayProps?: {
     confirmDelete?: boolean | { title?: string; message?: string };

@@ -1,9 +1,11 @@
 import { Link } from "alepha/react/router";
 import {
+  Calendar,
   CreditCard,
   KeyRound,
   ListChecks,
   MapPin,
+  Upload,
   UserPlus,
 } from "lucide-react";
 
@@ -13,6 +15,8 @@ const cards = [
   { href: "/demo/forms/address", title: "Address", icon: MapPin },
   { href: "/demo/forms/payment", title: "Payment", icon: CreditCard },
   { href: "/demo/forms/selects", title: "Select variants", icon: ListChecks },
+  { href: "/demo/forms/upload", title: "File upload", icon: Upload },
+  { href: "/demo/forms/dates", title: "Date / time", icon: Calendar },
 ];
 
 const FormsIndex = () => (

@@ -7,7 +7,7 @@
       "name": "control-base",
       "type": "registry:lib",
       "title": "Control base",
-      "description": "Shared FormField wrapper and IconHint mapping used by all Control variants.",
+      "description": "Shared FormField wrapper, IconHint mapping, and grid helpers used by all Control variants.",
       "dependencies": ["alepha", "lucide-react"],
       "registryDependencies": ["label"],
       "files": [
@@ -20,6 +20,26 @@
           "path": "registry/default/control-base/icon-hint.tsx",
           "type": "registry:lib",
           "target": "components/control-base/icon-hint.tsx"
+        },
+        {
+          "path": "registry/default/control-base/grid.tsx",
+          "type": "registry:lib",
+          "target": "components/control-base/grid.tsx"
+        }
+      ]
+    },
+    {
+      "name": "control-upload",
+      "type": "registry:component",
+      "title": "Control: Upload",
+      "description": "File upload control wrapping FileController.uploadFile. Stores file IDs in the form value, with image preview, drag-drop, and multi mode.",
+      "dependencies": ["alepha", "lucide-react", "sonner"],
+      "registryDependencies": ["@alepha/control-base", "button"],
+      "files": [
+        {
+          "path": "registry/default/control-upload/control-upload.tsx",
+          "type": "registry:component",
+          "target": "components/control-upload/control-upload.tsx"
         }
       ]
     },
@@ -154,6 +174,7 @@
         "@alepha/control-number",
         "@alepha/control-date",
         "@alepha/control-select",
+        "@alepha/control-upload",
         "input",
         "switch",
         "textarea"

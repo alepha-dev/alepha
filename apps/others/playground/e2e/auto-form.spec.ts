@@ -1,0 +1,96 @@
+import { expect, test } from "@playwright/test";
+
+test.describe("AutoForm demo — schema-driven flow", () => {
+  test("function $control toggles apiToken visibility", async ({ page }) => {
+    await page.goto("/demo/auto-form");
+
+    // initially viewer → no Api Token row
+    await expect(page.getByLabel("Api Token")).toHaveCount(0);
+
+    // pick admin
+    await page.getByRole("combobox").filter({ hasText: "viewer" }).click();
+    await page.getByRole("option", { name: "admin" }).click();
+
+    await expect(page.getByLabel("Api Token")).toBeVisible();
+
+    // back to viewer → row hidden again
+    await page.getByRole("combobox").filter({ hasText: "admin" }).click();
+    await page.getByRole("option", { name: "viewer" }).click();
+    await expect(page.getByLabel("Api Token")).toHaveCount(0);
+  });
+
+  test("ControlObject Initialize reveals nested fields", async ({ page }) => {
+    await page.goto("/demo/auto-form");
+    await page.getByRole("button", { name: "Initialize" }).click();
+    await expect(page.locator('input[name="address.street"]')).toBeVisible();
+    await expect(page.locator('input[name="address.city"]')).toBeVisible();
+    await expect(page.locator('input[name="address.zip"]')).toBeVisible();
+  });
+
+  test("ControlArray switches to tabs at >4 items", async ({ page }) => {
+    await page.goto("/demo/auto-form");
+
+    // add 5 contacts via the contacts (+) button
+    const addBtn = page.getByRole("button", { name: "Add" });
+    for (let i = 0; i < 5; i++) await addBtn.click();
+
+    // tabs render with our renderTabName: "Contact #1" .. "#5"
+    for (let i = 1; i <= 5; i++) {
+      await expect(
+        page.getByRole("button", { name: `Contact #${i}` }),
+      ).toBeVisible();
+    }
+  });
+
+  test("required validation surfaces inline + form error popover", async ({
+    page,
+  }) => {
+    await page.goto("/demo/auto-form");
+    await page.locator('input[name="username"]').fill("");
+    await page.getByRole("button", { name: "Save" }).click();
+
+    // inline message under the field
+    await expect(page.getByRole("alert")).toContainText(/fewer than 2/);
+    // form-level error icon in the bottom bar
+    await expect(
+      page.getByRole("button", { name: "Form errors" }),
+    ).toBeVisible();
+  });
+});
+
+test.describe("Upload control", () => {
+  test("single image upload stores UUID in form value", async ({ page }) => {
+    await page.goto("/demo/forms/upload");
+
+    const fileChooserPromise = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "Choose a file" }).first().click();
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles("./e2e/fixtures/sample.txt");
+
+    await expect(page.getByText("sample.txt")).toBeVisible({ timeout: 10_000 });
+
+    // wait until Save is enabled (form not in flight)
+    const save = page.getByRole("button", { name: "Save" });
+    await expect(save).toBeEnabled();
+    await save.click();
+
+    // sonner adds the toast asynchronously; first toast contains the form JSON
+    await expect(page.locator("[data-sonner-toast]").first()).toContainText(
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/,
+      { timeout: 5_000 },
+    );
+  });
+
+  test("× removes the uploaded file from the form", async ({ page }) => {
+    await page.goto("/demo/forms/upload");
+
+    const fileChooserPromise = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "Choose a file" }).first().click();
+    const fc = await fileChooserPromise;
+    await fc.setFiles("./e2e/fixtures/sample.txt");
+
+    await expect(page.getByText("sample.txt")).toBeVisible({ timeout: 10_000 });
+    await page.getByRole("button", { name: "Remove" }).first().click();
+    await expect(page.getByText("sample.txt")).toHaveCount(0);
+  });
+});

@@ -8,11 +8,13 @@ import { Layout } from "./Layout.tsx";
 import AutoFormDemo from "./pages/demo/AutoForm.tsx";
 import Dialogs from "./pages/demo/Dialogs.tsx";
 import AddressForm from "./pages/demo/forms/Address.tsx";
+import DatesForm from "./pages/demo/forms/Dates.tsx";
 import FormsIndex from "./pages/demo/forms/Forms.tsx";
 import LoginForm from "./pages/demo/forms/Login.tsx";
 import PaymentForm from "./pages/demo/forms/Payment.tsx";
 import RegisterForm from "./pages/demo/forms/Register.tsx";
 import SelectsForm from "./pages/demo/forms/Selects.tsx";
+import UploadDemo from "./pages/demo/forms/Upload.tsx";
 import Toasts from "./pages/demo/Toasts.tsx";
 import Audits from "./pages/playgrounds/Audits.tsx";
 import Jobs from "./pages/playgrounds/Jobs.tsx";
@@ -40,6 +42,8 @@ export class AppRouter {
       this.demoFormsAddress,
       this.demoFormsPayment,
       this.demoFormsSelects,
+      this.demoFormsUpload,
+      this.demoFormsDates,
     ],
   });
 
@@ -163,5 +167,17 @@ export class AppRouter {
     path: "/demo/forms/selects",
     head: { title: "Select variants" },
     component: SelectsForm,
+  });
+
+  demoFormsUpload = $page({
+    path: "/demo/forms/upload",
+    head: { title: "File upload" },
+    component: UploadDemo,
+  });
+
+  demoFormsDates = $page({
+    path: "/demo/forms/dates",
+    head: { title: "Date / time" },
+    component: DatesForm,
   });
 }

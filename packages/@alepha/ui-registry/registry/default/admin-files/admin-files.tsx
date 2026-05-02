@@ -2,10 +2,11 @@ import type { Page } from "alepha";
 import type { FileController } from "alepha/api/files";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Download, Trash2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { Download, Trash2, Upload } from "lucide-react";
+import { type ChangeEvent, useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
 import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 
@@ -24,6 +25,24 @@ export function AdminFiles() {
   const dialog = useDialog();
   const { l } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      await client.uploadFile({ body: { file } });
+      toast.success(`Uploaded ${file.name}`);
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      toast.error(`Upload failed: ${(err as Error).message}`);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
@@ -36,7 +55,7 @@ export function AdminFiles() {
   const handleDelete = async (file: any) => {
     const ok = await dialog.confirm({
       title: "Delete file",
-      description: `Permanently delete "${file.fileName}"?`,
+      description: `Permanently delete "${file.name}"?`,
       destructive: true,
     });
     if (!ok) return;
@@ -47,20 +66,37 @@ export function AdminFiles() {
 
   return (
     <div className="p-6">
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleUpload}
+      />
       <AlephaTable
         fetch={fetcher}
         header={
-          <div>
-            <h1 className="text-lg font-semibold">Files</h1>
-            <p className="text-muted-foreground text-sm">
-              Stored files across configured buckets.
-            </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-lg font-semibold">Files</h1>
+              <p className="text-muted-foreground text-sm">
+                Stored files across configured buckets.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="size-4 mr-1" />
+              {uploading ? "Uploading…" : "Upload"}
+            </Button>
           </div>
         }
         columns={{
-          fileName: {
+          name: {
             label: "Name",
-            cell: (f) => <span className="font-medium">{f.fileName}</span>,
+            cell: (f) => <span className="font-medium">{f.name}</span>,
           },
           size: {
             label: "Size",
@@ -96,7 +132,7 @@ export function AdminFiles() {
             label: "Download",
             icon: Download,
             onClick: () => {
-              if (f.url) window.open(f.url, "_blank");
+              window.open(`/api/files/${f.id}`, "_blank");
             },
           },
           {

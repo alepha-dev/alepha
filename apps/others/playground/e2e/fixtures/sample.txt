@@ -1,0 +1,1 @@
+Sample upload payload for e2e tests.

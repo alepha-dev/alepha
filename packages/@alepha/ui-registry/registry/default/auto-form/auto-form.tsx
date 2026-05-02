@@ -109,7 +109,7 @@ export interface AutoFormProps<T extends TObject> {
  * carrying `$control` metadata configure themselves.
  */
 export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
-  const { dirty } = useFormState(props.form, ["dirty"]);
+  const { dirty, loading } = useFormState(props.form, ["dirty", "loading"]);
   const inputs = props.form.input as Record<string, never>;
   const schema =
     (props.form.options.schema as TObject) ??
@@ -173,6 +173,7 @@ export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
           <BottomBar
             form={props.form}
             dirty={dirty}
+            loading={loading}
             disabled={props.disabled}
             disabledIfPristine={props.disabledIfPristine}
             submitLabel={props.submitLabel}
@@ -266,6 +267,7 @@ function GroupBlock(props: GroupBlockProps) {
 interface BottomBarProps {
   form: FormModel<TObject>;
   dirty?: boolean;
+  loading?: boolean;
   disabled?: boolean;
   disabledIfPristine?: boolean;
   submitLabel?: string;
@@ -323,7 +325,7 @@ function BottomBar(props: BottomBarProps) {
             type="submit"
             disabled={
               props.disabled ||
-              props.form.submitting ||
+              props.loading ||
               (props.disabledIfPristine && !props.dirty)
             }
           >

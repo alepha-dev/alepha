@@ -58,6 +58,7 @@ export function ControlDate(props: ControlDateProps) {
           <Clock className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             id={meta.id}
+            name={props.input.props.name}
             type="time"
             className="pl-9"
             disabled={props.disabled}

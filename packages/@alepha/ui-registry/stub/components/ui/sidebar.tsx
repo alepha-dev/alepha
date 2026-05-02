@@ -8,6 +8,7 @@ export const SidebarProvider: (props: {
 }) => any = () => null;
 export const Sidebar: (props: {
   collapsible?: "icon" | "offcanvas" | "none";
+  variant?: "sidebar" | "floating" | "inset";
   className?: string;
   children?: ReactNode;
 }) => any = () => null;

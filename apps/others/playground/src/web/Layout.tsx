@@ -82,6 +82,7 @@ export const Layout = () => {
       <DialogProvider>
         <ColorScheme />
         <AppShell
+          variant={"floating"}
           topbarActions={<ThemeToggle />}
           brand={
             <a
