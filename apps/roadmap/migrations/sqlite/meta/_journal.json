@@ -50,6 +50,13 @@
       "when": 1777218918493,
       "tag": "0006_handy_sentry",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1777758984941,
+      "tag": "0007_material_dazzler",
+      "breakpoints": true
     }
   ]
 }

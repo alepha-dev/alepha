@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readLatestEmailCode } from "./global-setup.ts";
 
 test.use({ storageState: "./e2e/.admin-state.json" });
 
@@ -44,6 +45,67 @@ test.describe("Admin Files: upload + list + delete", () => {
     await expect(page.getByText('Permanently delete "sample.txt"?')).toBeHidden(
       { timeout: 5_000 },
     );
+  });
+});
+
+test.describe("Admin Users: enable / disable toggle", () => {
+  test("disabling a user blocks login; re-enabling restores it", async ({
+    page,
+    request,
+  }) => {
+    // Create a fresh, verified user via the API.
+    const email = `toggle-${Date.now()}@example.com`;
+    const password = "togglepw123";
+    const intent = await request.post("/api/users/register", {
+      data: { email, password },
+    });
+    expect(intent.status()).toBe(200);
+    const { intentId, expectEmailVerification } = await intent.json();
+    const code = expectEmailVerification
+      ? await readLatestEmailCode(email)
+      : undefined;
+    const complete = await request.post("/api/users/register/complete", {
+      data: { intentId, emailCode: code },
+    });
+    expect(complete.status()).toBe(200);
+
+    // Sanity: the new user can log in.
+    const initialLogin = await request.post(
+      "/_auth/token?provider=credentials",
+      { data: { username: email, password } },
+    );
+    expect(initialLogin.status()).toBe(200);
+
+    // Visit /admin/users and find the row by email.
+    await page.goto("/admin/users");
+    const row = page.locator("tbody tr").filter({ hasText: email }).first();
+    await expect(row).toBeVisible({ timeout: 10_000 });
+
+    // Open the row actions menu and disable.
+    await row.locator("button[aria-haspopup]").click();
+    await page.getByRole("menuitem", { name: /Disable user/ }).click();
+    await page.getByRole("button", { name: "Confirm" }).click();
+    await expect(row).toContainText(/Disabled/i, { timeout: 10_000 });
+
+    // Disabled user can no longer authenticate.
+    const blockedLogin = await request.post(
+      "/_auth/token?provider=credentials",
+      { data: { username: email, password } },
+    );
+    expect(blockedLogin.status()).not.toBe(200);
+
+    // Re-enable via the same row.
+    await row.locator("button[aria-haspopup]").click();
+    await page.getByRole("menuitem", { name: /Enable user/ }).click();
+    await page.getByRole("button", { name: "Confirm" }).click();
+    await expect(row).toContainText(/Active/i, { timeout: 10_000 });
+
+    // Login works again.
+    const restoredLogin = await request.post(
+      "/_auth/token?provider=credentials",
+      { data: { username: email, password } },
+    );
+    expect(restoredLogin.status()).toBe(200);
   });
 });
 
