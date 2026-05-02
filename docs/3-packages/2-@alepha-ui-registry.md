@@ -675,6 +675,7 @@ yarn shadcn add @alepha/app-shell
 | `breadcrumbs` | `Object` | No | Breadcrumb crumbs (last one is rendered as the current page). |
 | `topbarActions` | `ReactNode` | No | Top-bar right-side content (search, theme toggle, user menu). |
 | `variant` | `"sidebar" \| "floating" \| "inset"` | No | Layout variant |
+| `headerOutside` | `boolean` | No | When `variant="inset"`, lift the header out of the floating card so it sits on the sidebar background — only the main page becomes the card |
 | `progress` | `boolean \| NavigationProgressOptions` | No | Top loading bar shown during route transitions |
 | `children` | `ReactNode` | No | Page content |
 

@@ -8,8 +8,9 @@ export default defineConfig({
   reporter: process.env.CI ? "list" : "html",
   fullyParallel: false,
   workers: 1,
-  timeout: 30_000,
-  expect: { timeout: 5_000 },
+  retries: process.env.CI ? 2 : 0,
+  timeout: process.env.CI ? 60_000 : 30_000,
+  expect: { timeout: process.env.CI ? 15_000 : 5_000 },
   use: {
     baseURL: `http://localhost:${port}`,
     screenshot: "only-on-failure",

@@ -236,6 +236,12 @@ export interface AppShellProps {
    */
   variant?: "sidebar" | "floating" | "inset";
   /**
+   * When `variant="inset"`, lift the header out of the floating card so it
+   * sits on the sidebar background — only the main page becomes the card.
+   * Has no effect on other variants.
+   */
+  headerOutside?: boolean;
+  /**
    * Top loading bar shown during route transitions.
    * `true` (default) enables it with default styling, `false` disables it,
    * or pass an options object to customize.
@@ -256,6 +262,51 @@ export function AppShell(props: AppShellProps) {
   const nav = props.nav ?? [];
   const variant = props.variant ?? "sidebar";
   const progress = props.progress ?? true;
+  const headerOutside = !!props.headerOutside && variant === "inset";
+
+  const headerNode = (
+    <header
+      className={
+        headerOutside
+          ? "bg-sidebar flex h-14 shrink-0 items-center gap-2 px-4"
+          : "bg-background flex h-14 shrink-0 items-center gap-2 border-b px-4"
+      }
+    >
+      <StatefulSidebarTrigger />
+      <Separator orientation="vertical" className="mx-2 h-4" />
+      {props.breadcrumbs && props.breadcrumbs.length > 0 && (
+        <Breadcrumb>
+          <BreadcrumbList>
+            {props.breadcrumbs.map((crumb, i) => {
+              const last = i === props.breadcrumbs!.length - 1;
+              return (
+                <Fragment key={i}>
+                  <BreadcrumbItem>
+                    {last || !crumb.href ? (
+                      <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink asChild>
+                        <Link href={crumb.href}>{crumb.label}</Link>
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
+                  {!last && <BreadcrumbSeparator />}
+                </Fragment>
+              );
+            })}
+          </BreadcrumbList>
+        </Breadcrumb>
+      )}
+      <div className="flex-1" />
+      {props.topbarActions}
+    </header>
+  );
+
+  const mainNode = (
+    <main className="flex-1 overflow-auto">
+      {props.children ?? <NestedView />}
+    </main>
+  );
   return (
     <DialogProvider>
       {progress !== false && (
@@ -290,40 +341,19 @@ export function AppShell(props: AppShellProps) {
             <SidebarFooter>{props.sidebarFooter}</SidebarFooter>
           )}
         </Sidebar>
-        <SidebarInset>
-          <header className="bg-background flex h-14 shrink-0 items-center gap-2 border-b px-4">
-            <StatefulSidebarTrigger />
-            <Separator orientation="vertical" className="mx-2 h-4" />
-            {props.breadcrumbs && props.breadcrumbs.length > 0 && (
-              <Breadcrumb>
-                <BreadcrumbList>
-                  {props.breadcrumbs.map((crumb, i) => {
-                    const last = i === props.breadcrumbs!.length - 1;
-                    return (
-                      <Fragment key={i}>
-                        <BreadcrumbItem>
-                          {last || !crumb.href ? (
-                            <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                          ) : (
-                            <BreadcrumbLink asChild>
-                              <Link href={crumb.href}>{crumb.label}</Link>
-                            </BreadcrumbLink>
-                          )}
-                        </BreadcrumbItem>
-                        {!last && <BreadcrumbSeparator />}
-                      </Fragment>
-                    );
-                  })}
-                </BreadcrumbList>
-              </Breadcrumb>
-            )}
-            <div className="flex-1" />
-            {props.topbarActions}
-          </header>
-          <main className="flex-1 overflow-auto">
-            {props.children ?? <NestedView />}
-          </main>
-        </SidebarInset>
+        {headerOutside ? (
+          <div className="bg-sidebar flex flex-1 flex-col">
+            {headerNode}
+            <div className="bg-background m-2 mt-0 flex flex-1 flex-col overflow-hidden rounded-xl border shadow-sm">
+              {mainNode}
+            </div>
+          </div>
+        ) : (
+          <SidebarInset>
+            {headerNode}
+            {mainNode}
+          </SidebarInset>
+        )}
       </SidebarProvider>
       <Toaster />
     </DialogProvider>
