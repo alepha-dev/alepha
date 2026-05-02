@@ -5,7 +5,7 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "../../../packages/@alepha/ui/src/styles.css",
+    "css": "../../packages/@alepha/ui/src/styles.css",
     "baseColor": "neutral",
     "cssVariables": true
   },

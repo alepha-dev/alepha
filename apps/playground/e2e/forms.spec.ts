@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Form gallery index", () => {
-  test("lists all 6 forms", async ({ page }) => {
+  test("lists all forms in the gallery cards", async ({ page }) => {
     await page.goto("/demo/forms");
+    // Scope to the gallery grid (cards), avoiding the sidebar links.
+    const gallery = page.locator("main").filter({ hasText: "Form gallery" });
     for (const title of [
       "Login",
       "Register",
@@ -12,7 +14,7 @@ test.describe("Form gallery index", () => {
       "File upload",
       "Date / time",
     ]) {
-      await expect(page.getByRole("link", { name: title })).toBeVisible();
+      await expect(gallery.getByRole("link", { name: title })).toBeVisible();
     }
   });
 });

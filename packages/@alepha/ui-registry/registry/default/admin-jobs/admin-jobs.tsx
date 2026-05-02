@@ -19,7 +19,7 @@ const POLL_MS = 30_000;
 
 export function AdminJobs() {
   const client = useClient<AdminJobController>();
-  const { l } = useI18n();
+  const { l, tr } = useI18n();
   const [jobs, setJobs] = useState<JobRegistration[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +28,9 @@ export function AdminJobs() {
       const data = await client.listJobs();
       setJobs(data);
     } catch {
-      toast.error("Failed to load jobs");
+      toast.error(
+        tr("admin.jobs.loadFailed", { default: "Failed to load jobs" }),
+      );
     } finally {
       setLoading(false);
     }
@@ -45,11 +47,20 @@ export function AdminJobs() {
   const trigger = async (name: string) => {
     try {
       await client.triggerJob({ params: { name }, body: {} });
-      toast.success(`Triggered ${name}`);
+      toast.success(
+        tr("admin.jobs.triggered", {
+          default: `Triggered ${name}`,
+          args: [name],
+        }),
+      );
       void load();
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
       toast.error(
-        `Failed to trigger: ${e instanceof Error ? e.message : String(e)}`,
+        tr("admin.jobs.triggerFailed", {
+          default: `Failed to trigger: ${msg}`,
+          args: [msg],
+        }),
       );
     }
   };
@@ -58,29 +69,50 @@ export function AdminJobs() {
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">Jobs</h1>
+          <h1 className="text-lg font-semibold">
+            {tr("admin.jobs.title", { default: "Jobs" })}
+          </h1>
           <p className="text-muted-foreground text-sm">
-            {jobs.length} registered job{jobs.length === 1 ? "" : "s"}
+            {jobs.length === 1
+              ? tr("admin.jobs.countOne", { default: "1 registered job" })
+              : tr("admin.jobs.countMany", {
+                  default: `${jobs.length} registered jobs`,
+                  args: [String(jobs.length)],
+                })}
           </p>
         </div>
         <Button variant="outline" onClick={load} disabled={loading}>
           <RefreshCw
             className={loading ? "mr-2 size-4 animate-spin" : "mr-2 size-4"}
           />
-          Refresh
+          {tr("admin.jobs.refresh", { default: "Refresh" })}
         </Button>
       </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Schedule</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Last run</TableHead>
-              <TableHead className="text-right">OK</TableHead>
-              <TableHead className="text-right">Errors</TableHead>
+              <TableHead>
+                {tr("admin.jobs.colName", { default: "Name" })}
+              </TableHead>
+              <TableHead>
+                {tr("admin.jobs.colType", { default: "Type" })}
+              </TableHead>
+              <TableHead>
+                {tr("admin.jobs.colSchedule", { default: "Schedule" })}
+              </TableHead>
+              <TableHead>
+                {tr("admin.jobs.colPriority", { default: "Priority" })}
+              </TableHead>
+              <TableHead>
+                {tr("admin.jobs.colLastRun", { default: "Last run" })}
+              </TableHead>
+              <TableHead className="text-right">
+                {tr("admin.jobs.colOk", { default: "OK" })}
+              </TableHead>
+              <TableHead className="text-right">
+                {tr("admin.jobs.colErrors", { default: "Errors" })}
+              </TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -113,7 +145,7 @@ export function AdminJobs() {
                 <TableCell className="text-muted-foreground text-xs">
                   {job.recent.lastRun
                     ? String(l(job.recent.lastRun, { date: "fromNow" }))
-                    : "never"}
+                    : tr("admin.jobs.never", { default: "never" })}
                 </TableCell>
                 <TableCell className="text-right">{job.recent.ok}</TableCell>
                 <TableCell className="text-right">
@@ -132,7 +164,7 @@ export function AdminJobs() {
                     onClick={() => trigger(job.name)}
                   >
                     <Play className="mr-2 size-4" />
-                    Trigger
+                    {tr("admin.jobs.trigger", { default: "Trigger" })}
                   </Button>
                 </TableCell>
               </TableRow>
@@ -143,7 +175,7 @@ export function AdminJobs() {
                   colSpan={8}
                   className="text-muted-foreground py-8 text-center"
                 >
-                  No jobs registered.
+                  {tr("admin.jobs.none", { default: "No jobs registered." })}
                 </TableCell>
               </TableRow>
             )}

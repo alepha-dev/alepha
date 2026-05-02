@@ -3,12 +3,33 @@ import { cn } from "@alepha/ui/lib/utils";
 import type { ReactNode } from "react";
 
 export interface FormFieldProps {
+  /**
+   * `id` linked to the inner control's `htmlFor`.
+   */
   id?: string;
+  /**
+   * Label text rendered above the control.
+   */
   label?: string;
+  /**
+   * Helper text rendered below the control.
+   */
   description?: string;
+  /**
+   * Error message. When set, marks descendant inputs invalid via `data-invalid`.
+   */
   error?: string;
+  /**
+   * Show a required marker (`*`) next to the label.
+   */
   required?: boolean;
+  /**
+   * Extra classes applied to the wrapper.
+   */
   className?: string;
+  /**
+   * The control to wrap.
+   */
   children: ReactNode;
 }
 

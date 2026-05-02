@@ -28,7 +28,5 @@ queue job that handles them.
 | `priority` | `JobPriority` | No | Default priority for pushed jobs |
 | `record` | `"error" \| "all" \| "none"` | No | Whether to record successful executions |
 | `keep` | `Object` | No | Override the global ring-buffer trim for this job |
-| `ok` | `number` | No |  |
-| `error` | `number` | No |  |
 | `handler` | `Object` | Yes | Handler function |
 

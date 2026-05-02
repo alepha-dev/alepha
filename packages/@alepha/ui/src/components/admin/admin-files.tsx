@@ -23,7 +23,7 @@ const formatBytes = (n: number) => {
 export function AdminFiles() {
   const client = useClient<FileController>();
   const dialog = useDialog();
-  const { l } = useI18n();
+  const { l, tr } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,10 +34,21 @@ export function AdminFiles() {
     setUploading(true);
     try {
       await client.uploadFile({ body: { file } });
-      toast.success(`Uploaded ${file.name}`);
+      toast.success(
+        tr("admin.files.uploaded", {
+          default: `Uploaded ${file.name}`,
+          args: [file.name],
+        }),
+      );
       setRefreshKey((k) => k + 1);
     } catch (err) {
-      toast.error(`Upload failed: ${(err as Error).message}`);
+      const msg = (err as Error).message;
+      toast.error(
+        tr("admin.files.uploadFailed", {
+          default: `Upload failed: ${msg}`,
+          args: [msg],
+        }),
+      );
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -54,13 +65,16 @@ export function AdminFiles() {
 
   const handleDelete = async (file: any) => {
     const ok = await dialog.confirm({
-      title: "Delete file",
-      description: `Permanently delete "${file.name}"?`,
+      title: tr("admin.files.deleteTitle", { default: "Delete file" }),
+      description: tr("admin.files.deleteConfirm", {
+        default: `Permanently delete "${file.name}"?`,
+        args: [file.name],
+      }),
       destructive: true,
     });
     if (!ok) return;
     await client.deleteFile({ params: { id: file.id } });
-    toast.success("File deleted");
+    toast.success(tr("admin.files.deleted", { default: "File deleted" }));
     setRefreshKey((k) => k + 1);
   };
 
@@ -77,9 +91,13 @@ export function AdminFiles() {
         header={
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h1 className="text-lg font-semibold">Files</h1>
+              <h1 className="text-lg font-semibold">
+                {tr("admin.files.title", { default: "Files" })}
+              </h1>
               <p className="text-muted-foreground text-sm">
-                Stored files across configured buckets.
+                {tr("admin.files.subtitle", {
+                  default: "Stored files across configured buckets.",
+                })}
               </p>
             </div>
             <Button
@@ -89,17 +107,19 @@ export function AdminFiles() {
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="size-4 mr-1" />
-              {uploading ? "Uploading…" : "Upload"}
+              {uploading
+                ? tr("admin.files.uploading", { default: "Uploading…" })
+                : tr("admin.files.upload", { default: "Upload" })}
             </Button>
           </div>
         }
         columns={{
           name: {
-            label: "Name",
+            label: tr("admin.files.colName", { default: "Name" }),
             cell: (f) => <span className="font-medium">{f.name}</span>,
           },
           size: {
-            label: "Size",
+            label: tr("admin.files.colSize", { default: "Size" }),
             align: "right",
             cell: (f) => (
               <span className="text-muted-foreground text-xs">
@@ -108,17 +128,20 @@ export function AdminFiles() {
             ),
           },
           mimeType: {
-            label: "Type",
+            label: tr("admin.files.colType", { default: "Type" }),
             cell: (f) => (
-              <Badge variant="secondary">{f.mimeType ?? "unknown"}</Badge>
+              <Badge variant="secondary">
+                {f.mimeType ??
+                  tr("admin.files.unknown", { default: "unknown" })}
+              </Badge>
             ),
           },
           bucket: {
-            label: "Bucket",
+            label: tr("admin.files.colBucket", { default: "Bucket" }),
             cell: (f) => <code className="text-xs">{f.bucket ?? "—"}</code>,
           },
           createdAt: {
-            label: "Uploaded",
+            label: tr("admin.files.colUploaded", { default: "Uploaded" }),
             sortable: true,
             cell: (f) => (
               <span className="text-muted-foreground text-xs">
@@ -129,14 +152,14 @@ export function AdminFiles() {
         }}
         rowActions={(f) => [
           {
-            label: "Download",
+            label: tr("admin.files.download", { default: "Download" }),
             icon: Download,
             onClick: () => {
               window.open(`/api/files/${f.id}`, "_blank");
             },
           },
           {
-            label: "Delete",
+            label: tr("admin.files.delete", { default: "Delete" }),
             icon: Trash2,
             destructive: true,
             onClick: () => handleDelete(f),

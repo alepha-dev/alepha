@@ -31,34 +31,97 @@ import {
 } from "@/registry/default/control-upload/control-upload";
 
 export interface ControlProps {
+  /**
+   * Bound `InputField` from `useForm`. Carries value, schema, and error state.
+   */
   input: BaseInputField;
+  /**
+   * Field label. Falls back to schema `title` or the field name.
+   */
   label?: string;
+  /**
+   * Helper text shown below the control. Falls back to schema `description`.
+   */
   description?: string;
-  /** Force a specific input variant. */
+  /**
+   * Force a specific input variant — renders a single-line text input.
+   */
   text?: boolean;
+  /**
+   * Force a textarea.
+   */
   area?: boolean;
+  /**
+   * Force a masked password input.
+   */
   password?: boolean;
+  /**
+   * Force a `<Switch>` (boolean toggle).
+   */
   switch?: boolean;
+  /**
+   * Force a numeric input.
+   */
   number?: boolean;
+  /**
+   * Force the file-upload control (alias for `upload`).
+   */
   file?: boolean;
+  /**
+   * Force a date picker.
+   */
   date?: boolean;
+  /**
+   * Force a date-time picker.
+   */
   datetime?: boolean;
+  /**
+   * Force a time picker.
+   */
   time?: boolean;
+  /**
+   * Force a `<Select>`.
+   */
   select?: boolean;
+  /**
+   * Force a combobox (searchable select).
+   */
   combobox?: boolean;
+  /**
+   * Force a `<Segmented>` control (one option visible at a time).
+   */
   segmented?: boolean;
+  /**
+   * Force a slider (numeric only).
+   */
   slider?: boolean;
+  /**
+   * Force a nested `<ControlObject>` for object-typed schemas.
+   */
   object?: boolean;
+  /**
+   * Force a nested `<ControlArray>` for array-typed schemas.
+   */
   array?: boolean;
-  /** Custom render component receiving `{value, onChange}`. */
+  /**
+   * Custom render component receiving `{value, onChange}`.
+   */
   custom?: ComponentType<{ value: unknown; onChange: (v: unknown) => void }>;
-  /** Override icon — pass `null` to remove the schema-inferred icon. */
+  /**
+   * Override icon — pass `null` to remove the schema-inferred icon.
+   */
   icon?: IconComponent | string | null;
-  /** Disable the control. */
+  /**
+   * Disable the control.
+   */
   disabled?: boolean;
-  /** Render slot before the control. */
+  /**
+   * Render slot before the control.
+   */
   top?: ReactNode;
-  /** Render slot after the control. */
+  /**
+   * Render slot after the control.
+   */
   bottom?: ReactNode;
   /**
    * Width slot inside an `<AutoForm>` group (mapped to a CSS grid column
@@ -70,11 +133,17 @@ export interface ControlProps {
    * propagated to children. `0` (default) = no throttle.
    */
   throttle?: number;
-  /** HTML `autocomplete` hint passed to the underlying input. */
+  /**
+   * HTML `autocomplete` hint passed to the underlying input.
+   */
   autoComplete?: string;
-  /** HTML `placeholder` passed to the underlying input. */
+  /**
+   * HTML `placeholder` passed to the underlying input.
+   */
   placeholder?: string;
-  /** Allow user to create new entries in select / multi-select. */
+  /**
+   * Allow user to create new entries in select / multi-select.
+   */
   createNewEntry?: boolean | ((query: string) => unknown);
   /**
    * Render a managed upload control (image preview, multi, drag-drop)

@@ -46,11 +46,14 @@ test.describe("AutoForm demo — schema-driven flow", () => {
     page,
   }) => {
     await page.goto("/demo/auto-form");
-    await page.locator('input[name="username"]').fill("");
+    const username = page.locator('input[name="username"]');
+    await username.click();
+    await username.fill("");
+    await username.blur();
     await page.getByRole("button", { name: "Save" }).click();
 
     // inline message under the field
-    await expect(page.getByRole("alert")).toContainText(/fewer than 2/);
+    await expect(page.getByRole("alert").first()).toContainText(/fewer than 2/);
     // form-level error icon in the bottom bar
     await expect(
       page.getByRole("button", { name: "Form errors" }),
@@ -59,6 +62,8 @@ test.describe("AutoForm demo — schema-driven flow", () => {
 });
 
 test.describe("Upload control", () => {
+  test.use({ storageState: "./e2e/.admin-state.json" });
+
   test("single image upload stores UUID in form value", async ({ page }) => {
     await page.goto("/demo/forms/upload");
 

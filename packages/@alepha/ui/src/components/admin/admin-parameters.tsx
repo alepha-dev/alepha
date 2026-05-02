@@ -17,7 +17,7 @@ import { toast } from "sonner";
 export function AdminParameters() {
   const client = useClient<AdminParameterController>();
   const dialog = useDialog();
-  const { l } = useI18n();
+  const { l, tr } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);
 
   const fetcher = useCallback(
@@ -50,13 +50,20 @@ export function AdminParameters() {
 
   const handleDelete = async (p: any) => {
     const ok = await dialog.confirm({
-      title: "Delete parameter",
-      description: `Delete "${p.name}"? Apps reading this key will fall back to defaults.`,
+      title: tr("admin.parameters.deleteTitle", {
+        default: "Delete parameter",
+      }),
+      description: tr("admin.parameters.deleteConfirm", {
+        default: `Delete "${p.name}"? Apps reading this key will fall back to defaults.`,
+        args: [p.name],
+      }),
       destructive: true,
     });
     if (!ok) return;
     await client.deleteParameter({ params: { name: p.name } });
-    toast.success("Parameter deleted");
+    toast.success(
+      tr("admin.parameters.deleted", { default: "Parameter deleted" }),
+    );
     setRefreshKey((k) => k + 1);
   };
 
@@ -66,19 +73,23 @@ export function AdminParameters() {
         fetch={fetcher}
         header={
           <div>
-            <h1 className="text-lg font-semibold">Parameters</h1>
+            <h1 className="text-lg font-semibold">
+              {tr("admin.parameters.title", { default: "Parameters" })}
+            </h1>
             <p className="text-muted-foreground text-sm">
-              Runtime configuration values.
+              {tr("admin.parameters.subtitle", {
+                default: "Runtime configuration values.",
+              })}
             </p>
           </div>
         }
         columns={{
           key: {
-            label: "Name",
+            label: tr("admin.parameters.colName", { default: "Name" }),
             cell: (p) => <code className="text-sm font-medium">{p.name}</code>,
           },
           value: {
-            label: "Value",
+            label: tr("admin.parameters.colValue", { default: "Value" }),
             cell: (p) => (
               <code className="text-muted-foreground line-clamp-1 text-xs">
                 {typeof p.value === "string"
@@ -88,13 +99,13 @@ export function AdminParameters() {
             ),
           },
           type: {
-            label: "Type",
+            label: tr("admin.parameters.colType", { default: "Type" }),
             cell: (p) => (
               <Badge variant="secondary">{p.type ?? "string"}</Badge>
             ),
           },
           updatedAt: {
-            label: "Updated",
+            label: tr("admin.parameters.colUpdated", { default: "Updated" }),
             sortable: true,
             cell: (p) => (
               <span className="text-muted-foreground text-xs">
@@ -105,7 +116,7 @@ export function AdminParameters() {
         }}
         rowActions={(p) => [
           {
-            label: "Delete",
+            label: tr("admin.parameters.delete", { default: "Delete" }),
             icon: Trash2,
             destructive: true,
             onClick: () => handleDelete(p),

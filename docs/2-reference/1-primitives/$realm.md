@@ -27,17 +27,7 @@ Environment Variables:
 | `secret` | `string` | No | Secret key for signing tokens |
 | `issuer` | `Partial&lt;IssuerPrimitiveOptions&gt;` | No | Issuer configuration options |
 | `entities` | `Object` | No | Override entities. |
-| `users` | `Repository&lt;typeof users.schema&gt;` | No |  |
-| `identities` | `Repository&lt;typeof identities.schema&gt;` | No |  |
-| `sessions` | `Repository&lt;typeof sessions.schema&gt;` | No |  |
 | `settings` | `Partial&lt;RealmAuthSettings&gt;` | No |  |
 | `identities` | `Object` | No |  |
-| `credentials` | `true` | No |  |
-| `google` | `true` | No |  |
-| `github` | `true` | No |  |
-| `apple` | `true` | No |  |
-| `facebook` | `true` | No |  |
-| `microsoft` | `true` | No |  |
-| `franceconnect` | `true` | No |  |
 | `features` | `Partial&lt;RealmFeatures&gt;` | No | Enable or disable realm features |
 

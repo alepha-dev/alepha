@@ -8,6 +8,7 @@ import {
   useFieldValue,
   useFormState,
 } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
 import { File as FileIcon, Loader2, Upload, X } from "lucide-react";
 import {
   type ChangeEvent,
@@ -19,8 +20,17 @@ import {
 import { toast } from "sonner";
 
 export interface ControlUploadProps {
+  /**
+   * Bound `InputField` from `useForm`. Stores the uploaded file ID(s).
+   */
   input: BaseInputField;
+  /**
+   * Field label. Falls back to schema `title`.
+   */
   label?: string;
+  /**
+   * Helper text shown below the dropzone.
+   */
   description?: string;
   /**
    * Multi-file mode. The form value becomes an `Array<string>` of file
@@ -32,10 +42,17 @@ export interface ControlUploadProps {
    * `".pdf,.docx"`).
    */
   accept?: string;
-  /** Max size per file (bytes). Files over the limit are rejected. */
+  /**
+   * Max size per file (bytes). Files over the limit are rejected.
+   */
   maxSize?: number;
-  /** Bucket name passed to the upload endpoint. */
+  /**
+   * Bucket name passed to the upload endpoint.
+   */
   bucket?: string;
+  /**
+   * Disable the dropzone.
+   */
   disabled?: boolean;
 }
 
@@ -44,7 +61,9 @@ interface UploadedFileMeta {
   name: string;
   mimeType?: string;
   size?: number;
-  /** Object URL for image preview, when applicable. */
+  /**
+   * Object URL for image preview, when applicable.
+   */
   previewUrl?: string;
 }
 
@@ -60,6 +79,7 @@ export function ControlUpload(props: ControlUploadProps) {
   const form = useFormState(props.input, ["error"]);
   const [value, setValue] = useFieldValue(props.input);
   const client = useClient<FileController>();
+  const { tr } = useI18n();
   const inputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -86,7 +106,9 @@ export function ControlUpload(props: ControlUploadProps) {
   const handleFiles = async (files: FileList) => {
     if (!files.length) return;
     if (!props.multi && files.length > 1) {
-      toast.error("Only one file allowed");
+      toast.error(
+        tr("controlUpload.singleOnly", { default: "Only one file allowed" }),
+      );
       return;
     }
 
@@ -100,7 +122,12 @@ export function ControlUpload(props: ControlUploadProps) {
         const file = files[i];
 
         if (props.maxSize && file.size > props.maxSize) {
-          toast.error(`${file.name} exceeds ${formatBytes(props.maxSize)}`);
+          toast.error(
+            tr("controlUpload.tooBig", {
+              default: `${file.name} exceeds ${formatBytes(props.maxSize)}`,
+              args: [file.name, formatBytes(props.maxSize)],
+            }),
+          );
           continue;
         }
 
@@ -133,12 +160,21 @@ export function ControlUpload(props: ControlUploadProps) {
       if (newIds.length) {
         toast.success(
           newIds.length === 1
-            ? "File uploaded"
-            : `${newIds.length} files uploaded`,
+            ? tr("controlUpload.uploadedOne", { default: "File uploaded" })
+            : tr("controlUpload.uploadedMany", {
+                default: `${newIds.length} files uploaded`,
+                args: [String(newIds.length)],
+              }),
         );
       }
     } catch (e) {
-      toast.error(`Upload failed: ${(e as Error).message}`);
+      const msg = (e as Error).message;
+      toast.error(
+        tr("controlUpload.failed", {
+          default: `Upload failed: ${msg}`,
+          args: [msg],
+        }),
+      );
     } finally {
       setUploading(false);
       setProgress(0);
@@ -206,7 +242,7 @@ export function ControlUpload(props: ControlUploadProps) {
             variant="ghost"
             size="icon"
             className="size-7 shrink-0"
-            aria-label="Remove"
+            aria-label={tr("controlUpload.remove", { default: "Remove" })}
             onClick={() => removeOne(id)}
           >
             <X className="size-4" />
@@ -239,18 +275,25 @@ export function ControlUpload(props: ControlUploadProps) {
         {uploading ? (
           <>
             <Loader2 className="size-4 mr-1 animate-spin" />
-            Uploading…
+            {tr("controlUpload.uploading", { default: "Uploading…" })}
           </>
         ) : (
           <>
             <Upload className="size-4 mr-1" />
-            {props.multi ? "Choose files" : "Choose a file"}
+            {props.multi
+              ? tr("controlUpload.chooseFiles", { default: "Choose files" })
+              : tr("controlUpload.chooseFile", { default: "Choose a file" })}
           </>
         )}
       </Button>
       <p className="text-muted-foreground mt-2 text-xs">
-        or drag and drop here
-        {props.maxSize ? ` · max ${formatBytes(props.maxSize)}` : ""}
+        {tr("controlUpload.dragDrop", { default: "or drag and drop here" })}
+        {props.maxSize
+          ? ` · ${tr("controlUpload.max", {
+              default: `max ${formatBytes(props.maxSize)}`,
+              args: [formatBytes(props.maxSize)],
+            })}`
+          : ""}
       </p>
     </div>
   );

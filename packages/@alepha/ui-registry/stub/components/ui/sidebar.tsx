@@ -31,6 +31,18 @@ export const SidebarMenuButton: (props: {
   asChild?: boolean;
   isActive?: boolean;
   tooltip?: string;
+  onClick?: (e: any) => void;
+  className?: string;
+  children?: ReactNode;
+}) => any = () => null;
+export const SidebarMenuSub: (props: { children?: ReactNode }) => any = () =>
+  null;
+export const SidebarMenuSubItem: (props: { children?: ReactNode }) => any =
+  () => null;
+export const SidebarMenuSubButton: (props: {
+  asChild?: boolean;
+  isActive?: boolean;
+  size?: "sm" | "md";
   children?: ReactNode;
 }) => any = () => null;
 export const SidebarTrigger: (props: ComponentProps<"button">) => any = () =>

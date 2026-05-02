@@ -10,13 +10,37 @@ import { FormField } from "@/registry/default/control-base/form-field";
 import { iconFor } from "@/registry/default/control-base/icon-hint";
 
 export interface ControlNumberProps {
+  /**
+   * Bound numeric `InputField` from `useForm`.
+   */
   input: BaseInputField;
+  /**
+   * Field label. Falls back to schema `title`.
+   */
   label?: string;
+  /**
+   * Helper text shown below the input.
+   */
   description?: string;
+  /**
+   * Render as a slider instead of a number input.
+   */
   slider?: boolean;
+  /**
+   * Minimum allowed value. Falls back to schema `minimum`.
+   */
   min?: number;
+  /**
+   * Maximum allowed value. Falls back to schema `maximum`.
+   */
   max?: number;
+  /**
+   * Step size. Falls back to schema `multipleOf`, then 1.
+   */
   step?: number;
+  /**
+   * Disable the input.
+   */
   disabled?: boolean;
 }
 

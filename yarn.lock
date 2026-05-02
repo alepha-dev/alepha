@@ -11670,23 +11670,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jobs-playground@workspace:apps/others/playground":
-  version: 0.0.0-use.local
-  resolution: "jobs-playground@workspace:apps/others/playground"
-  dependencies:
-    "@alepha/ui": "workspace:^"
-    "@tailwindcss/vite": "npm:^4.2.4"
-    alepha: "workspace:^"
-    lucide-react: "npm:^1.14.0"
-    react: "npm:^19.2.5"
-    react-dom: "npm:^19.2.5"
-    sonner: "npm:^2.0.7"
-    tailwindcss: "npm:^4.2.4"
-    vite: "npm:^8.0.10"
-    wrangler: "npm:^4.86.0"
-  languageName: unknown
-  linkType: soft
-
 "jose@npm:5.9.6":
   version: 5.9.6
   resolution: "jose@npm:5.9.6"
@@ -13412,6 +13395,23 @@ __metadata:
   checksum: 10c0/207f4cb976682f27e8324eb49cf71937c98fbb8341a0b8f6142bc6f664825b30e049a54a21b5c034e823ee3c3d412f10d74bd21de78e17452a6a496c2991f57c
   languageName: node
   linkType: hard
+
+"playground@workspace:apps/playground":
+  version: 0.0.0-use.local
+  resolution: "playground@workspace:apps/playground"
+  dependencies:
+    "@alepha/ui": "workspace:^"
+    "@tailwindcss/vite": "npm:^4.2.4"
+    alepha: "workspace:^"
+    lucide-react: "npm:^1.14.0"
+    react: "npm:^19.2.5"
+    react-dom: "npm:^19.2.5"
+    sonner: "npm:^2.0.7"
+    tailwindcss: "npm:^4.2.4"
+    vite: "npm:^8.0.10"
+    wrangler: "npm:^4.86.0"
+  languageName: unknown
+  linkType: soft
 
 "playwright-core@npm:1.59.1":
   version: 1.59.1

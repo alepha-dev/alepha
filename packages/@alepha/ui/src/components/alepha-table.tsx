@@ -40,9 +40,13 @@ export interface ColumnDef<T> {
   label: string;
   cell: (item: T) => ReactNode;
   sortable?: boolean;
-  /** Sort key sent to the API. Defaults to the column key. */
+  /**
+   * Sort key sent to the API. Defaults to the column key.
+   */
   sortKey?: string;
-  /** When `true`, column is hidden by default (toggleable later). */
+  /**
+   * When `true`, column is hidden by default (toggleable later).
+   */
   defaultHidden?: boolean;
   className?: string;
   align?: "left" | "right" | "center";
@@ -64,25 +68,53 @@ export interface BulkAction<T> {
 }
 
 export interface AlephaTableProps<T> {
-  /** Fetcher invoked with paging + sort. Should return an Alepha `Page<T>`. */
+  /**
+   * Fetcher invoked with paging + sort. Should return an Alepha `Page<T>`.
+   */
   fetch: (params: {
     page: number;
     size: number;
     sort?: string;
   }) => Promise<Page<T>>;
+  /**
+   * Column definitions, keyed by the property name they read from.
+   */
   columns: Record<string, ColumnDef<T>>;
+  /**
+   * Per-row action menu builder. Return an array of `RowAction` per item.
+   */
   rowActions?: (item: T) => RowAction<T>[];
+  /**
+   * Actions applied to selected rows (enables checkbox column).
+   */
   bulkActions?: BulkAction<T>[];
-  /** Default page size. */
+  /**
+   * Default page size.
+   */
   defaultSize?: number;
-  /** Stable row identifier. Defaults to `item.id`. */
+  /**
+   * Stable row identifier. Defaults to `item.id`.
+   */
   rowKey?: (item: T) => string;
+  /**
+   * Click handler invoked when a row is clicked (excluding action buttons).
+   */
   onRowClick?: (item: T) => void;
-  /** Header content rendered above the table (e.g., title + filters). */
+  /**
+   * Header content rendered above the table (e.g., title + filters).
+   */
   header?: ReactNode;
-  /** Auto-refresh interval in ms (only when document is visible). */
+  /**
+   * Auto-refresh interval in ms (only when document is visible).
+   */
   pollMs?: number;
+  /**
+   * Extra classes applied to the outer wrapper.
+   */
   className?: string;
+  /**
+   * Message shown when the page is empty. Defaults to "No results".
+   */
   emptyMessage?: string;
 }
 

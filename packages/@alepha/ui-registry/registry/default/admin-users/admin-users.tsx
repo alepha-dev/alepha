@@ -13,6 +13,9 @@ import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
 import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 
 export interface AdminUsersProps {
+  /**
+   * Realm name to query users from. Defaults to the configured user realm.
+   */
   userRealmName?: string;
 }
 
@@ -20,7 +23,7 @@ export function AdminUsers(props: AdminUsersProps) {
   const client = useClient<AdminUserController>();
   const { user: currentUser } = useAuth();
   const router = useRouter();
-  const { l } = useI18n();
+  const { l, tr } = useI18n();
   const dialog = useDialog();
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -39,17 +42,35 @@ export function AdminUsers(props: AdminUsersProps) {
 
   const isSelf = (user: UserEntity) => currentUser?.id === user.id;
 
+  const userLabel = (u: UserEntity) =>
+    u.email ||
+    u.username ||
+    tr("admin.users.thisUser", { default: "this user" });
+
   const handleToggleEnabled = async (user: UserEntity) => {
     if (isSelf(user)) {
-      toast.error("You cannot disable your own account");
+      toast.error(
+        tr("admin.users.cantDisableSelf", {
+          default: "You cannot disable your own account",
+        }),
+      );
       return;
     }
     const enable = !user.enabled;
+    const label = userLabel(user);
     const ok = await dialog.confirm({
-      title: enable ? "Enable user" : "Disable user",
+      title: enable
+        ? tr("admin.users.enableTitle", { default: "Enable user" })
+        : tr("admin.users.disableTitle", { default: "Disable user" }),
       description: enable
-        ? `Enable ${user.email || user.username || "this user"}?`
-        : `Disable ${user.email || user.username || "this user"}? They will no longer be able to sign in.`,
+        ? tr("admin.users.enableConfirm", {
+            default: `Enable ${label}?`,
+            args: [label],
+          })
+        : tr("admin.users.disableConfirm", {
+            default: `Disable ${label}? They will no longer be able to sign in.`,
+            args: [label],
+          }),
       destructive: !enable,
     });
     if (!ok) return;
@@ -58,14 +79,22 @@ export function AdminUsers(props: AdminUsersProps) {
       query: { userRealmName: props.userRealmName },
       body: { enabled: enable },
     });
-    toast.success(enable ? "User enabled" : "User disabled");
+    toast.success(
+      enable
+        ? tr("admin.users.enabled", { default: "User enabled" })
+        : tr("admin.users.disabled", { default: "User disabled" }),
+    );
     setRefreshKey((k) => k + 1);
   };
 
   const handleDelete = async (user: UserEntity) => {
+    const label = userLabel(user);
     const ok = await dialog.confirm({
-      title: "Delete user",
-      description: `Permanently delete ${user.email || user.username || "this user"}? This action cannot be undone.`,
+      title: tr("admin.users.deleteTitle", { default: "Delete user" }),
+      description: tr("admin.users.deleteConfirm", {
+        default: `Permanently delete ${label}? This action cannot be undone.`,
+        args: [label],
+      }),
       destructive: true,
     });
     if (!ok) return;
@@ -73,19 +102,26 @@ export function AdminUsers(props: AdminUsersProps) {
       params: { id: user.id },
       query: { userRealmName: props.userRealmName },
     });
-    toast.success("User deleted");
+    toast.success(tr("admin.users.deleted", { default: "User deleted" }));
     setRefreshKey((k) => k + 1);
   };
 
   const handleBulkDisable = async (items: UserEntity[], clear: () => void) => {
     const enabled = items.filter((u) => u.enabled && !isSelf(u));
     if (enabled.length === 0) {
-      toast.error("No active users in selection");
+      toast.error(
+        tr("admin.users.noneSelected", {
+          default: "No active users in selection",
+        }),
+      );
       return;
     }
     const ok = await dialog.confirm({
-      title: "Disable users",
-      description: `Disable ${enabled.length} user(s)? They will no longer be able to sign in.`,
+      title: tr("admin.users.bulkDisableTitle", { default: "Disable users" }),
+      description: tr("admin.users.bulkDisableConfirm", {
+        default: `Disable ${enabled.length} user(s)? They will no longer be able to sign in.`,
+        args: [String(enabled.length)],
+      }),
       destructive: true,
     });
     if (!ok) return;
@@ -96,7 +132,12 @@ export function AdminUsers(props: AdminUsersProps) {
         body: { enabled: false },
       });
     }
-    toast.success(`${enabled.length} user(s) disabled`);
+    toast.success(
+      tr("admin.users.bulkDisabled", {
+        default: `${enabled.length} user(s) disabled`,
+        args: [String(enabled.length)],
+      }),
+    );
     clear();
     setRefreshKey((k) => k + 1);
   };
@@ -107,7 +148,9 @@ export function AdminUsers(props: AdminUsersProps) {
         fetch={fetcher}
         bulkActions={[
           {
-            label: "Disable selected",
+            label: tr("admin.users.bulkDisable", {
+              default: "Disable selected",
+            }),
             icon: UserX,
             destructive: true,
             onClick: handleBulkDisable,
@@ -115,12 +158,12 @@ export function AdminUsers(props: AdminUsersProps) {
         ]}
         columns={{
           user: {
-            label: "User",
+            label: tr("admin.users.colUser", { default: "User" }),
             cell: (u) => {
               const name =
                 `${u.firstName || ""} ${u.lastName || ""}`.trim() ||
                 u.username ||
-                "Anonymous";
+                tr("admin.users.anonymous", { default: "Anonymous" });
               return (
                 <div className="flex items-center gap-3">
                   <Avatar>
@@ -139,7 +182,7 @@ export function AdminUsers(props: AdminUsersProps) {
             },
           },
           roles: {
-            label: "Roles",
+            label: tr("admin.users.colRoles", { default: "Roles" }),
             cell: (u) =>
               u.roles.length > 0 ? (
                 <div className="flex gap-1">
@@ -150,27 +193,33 @@ export function AdminUsers(props: AdminUsersProps) {
                   ))}
                 </div>
               ) : (
-                <span className="text-muted-foreground text-xs">No roles</span>
+                <span className="text-muted-foreground text-xs">
+                  {tr("admin.users.noRoles", { default: "No roles" })}
+                </span>
               ),
           },
           enabled: {
-            label: "Status",
+            label: tr("admin.users.colStatus", { default: "Status" }),
             cell: (u) => (
               <Badge variant={u.enabled ? "default" : "destructive"}>
-                {u.enabled ? "Active" : "Disabled"}
+                {u.enabled
+                  ? tr("admin.users.active", { default: "Active" })
+                  : tr("admin.users.statusDisabled", { default: "Disabled" })}
               </Badge>
             ),
           },
           emailVerified: {
-            label: "Email",
+            label: tr("admin.users.colEmail", { default: "Email" }),
             cell: (u) => (
               <Badge variant={u.emailVerified ? "default" : "outline"}>
-                {u.emailVerified ? "Verified" : "Unverified"}
+                {u.emailVerified
+                  ? tr("admin.users.verified", { default: "Verified" })
+                  : tr("admin.users.unverified", { default: "Unverified" })}
               </Badge>
             ),
           },
           createdAt: {
-            label: "Joined",
+            label: tr("admin.users.colJoined", { default: "Joined" }),
             sortable: true,
             cell: (u) => (
               <span className="text-muted-foreground text-xs">
@@ -181,19 +230,23 @@ export function AdminUsers(props: AdminUsersProps) {
         }}
         rowActions={(u) => [
           {
-            label: "View profile",
+            label: tr("admin.users.viewProfile", { default: "View profile" }),
             icon: Eye,
             onClick: () => router.push(`/admin/users/${u.id}` as never),
           },
           ...(!isSelf(u)
             ? [
                 {
-                  label: u.enabled ? "Disable user" : "Enable user",
+                  label: u.enabled
+                    ? tr("admin.users.disableUser", { default: "Disable user" })
+                    : tr("admin.users.enableUser", { default: "Enable user" }),
                   icon: u.enabled ? UserX : UserCheck,
                   onClick: () => handleToggleEnabled(u),
                 },
                 {
-                  label: "Delete user",
+                  label: tr("admin.users.deleteUser", {
+                    default: "Delete user",
+                  }),
                   icon: Trash2,
                   destructive: true,
                   onClick: () => handleDelete(u),

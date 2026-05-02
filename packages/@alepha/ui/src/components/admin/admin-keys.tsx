@@ -12,7 +12,7 @@ import { toast } from "sonner";
 export function AdminKeys() {
   const client = useClient<AdminApiKeyController>();
   const dialog = useDialog();
-  const { l } = useI18n();
+  const { l, tr } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);
 
   const fetcher = useCallback(
@@ -25,13 +25,16 @@ export function AdminKeys() {
 
   const handleRevoke = async (k: any) => {
     const ok = await dialog.confirm({
-      title: "Revoke API key",
-      description: `Revoke "${k.name}"? Any apps using this key will lose access.`,
+      title: tr("admin.keys.revokeTitle", { default: "Revoke API key" }),
+      description: tr("admin.keys.revokeConfirm", {
+        default: `Revoke "${k.name}"? Any apps using this key will lose access.`,
+        args: [k.name],
+      }),
       destructive: true,
     });
     if (!ok) return;
     await client.revokeApiKey({ params: { id: k.id } });
-    toast.success("API key revoked");
+    toast.success(tr("admin.keys.revoked", { default: "API key revoked" }));
     setRefreshKey((rk) => rk + 1);
   };
 
@@ -41,27 +44,31 @@ export function AdminKeys() {
         fetch={fetcher}
         header={
           <div>
-            <h1 className="text-lg font-semibold">API keys</h1>
+            <h1 className="text-lg font-semibold">
+              {tr("admin.keys.title", { default: "API keys" })}
+            </h1>
             <p className="text-muted-foreground text-sm">
-              Programmatic access tokens.
+              {tr("admin.keys.subtitle", {
+                default: "Programmatic access tokens.",
+              })}
             </p>
           </div>
         }
         columns={{
           name: {
-            label: "Name",
+            label: tr("admin.keys.colName", { default: "Name" }),
             cell: (k) => <span className="font-medium">{k.name}</span>,
           },
           prefix: {
-            label: "Prefix",
+            label: tr("admin.keys.colPrefix", { default: "Prefix" }),
             cell: (k) => <code className="text-xs">{k.prefix ?? "—"}</code>,
           },
           owner: {
-            label: "Owner",
+            label: tr("admin.keys.colOwner", { default: "Owner" }),
             cell: (k) => <span className="text-sm">{k.userId ?? "—"}</span>,
           },
           scopes: {
-            label: "Scopes",
+            label: tr("admin.keys.colScopes", { default: "Scopes" }),
             cell: (k) =>
               Array.isArray(k.scopes) && k.scopes.length ? (
                 <div className="flex flex-wrap gap-1">
@@ -76,7 +83,7 @@ export function AdminKeys() {
               ),
           },
           createdAt: {
-            label: "Created",
+            label: tr("admin.keys.colCreated", { default: "Created" }),
             sortable: true,
             cell: (k) => (
               <span className="text-muted-foreground text-xs">
@@ -87,7 +94,7 @@ export function AdminKeys() {
         }}
         rowActions={(k) => [
           {
-            label: "Revoke",
+            label: tr("admin.keys.revoke", { default: "Revoke" }),
             icon: Trash2,
             destructive: true,
             onClick: () => handleRevoke(k),

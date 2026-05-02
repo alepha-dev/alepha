@@ -7,6 +7,7 @@ import type {
 import { resetPasswordRequestSchema } from "alepha/api/users";
 import { useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { useState } from "react";
@@ -19,7 +20,13 @@ import { Control } from "@/registry/default/control/control";
 import { iconFor } from "@/registry/default/control-base/icon-hint";
 
 export interface AuthResetPasswordProps {
+  /**
+   * Realm configuration (controls verification channel and password rules).
+   */
   realmConfig: RealmConfig;
+  /**
+   * Route to the login page, used after a successful reset.
+   */
   loginPath?: string;
 }
 
@@ -34,6 +41,7 @@ interface State {
 
 export function AuthResetPassword(props: AuthResetPasswordProps) {
   const router = useRouter();
+  const { tr } = useI18n();
   const userCtrl = useClient<UserController>();
   const [state, setState] = useState<State>({ step: "email" });
   const [error, setError] = useState<string | null>(null);
@@ -67,10 +75,16 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
       }),
       handler: async (data) => {
         if (data.password !== data.confirmPassword) {
-          throw new AlephaError("Passwords do not match");
+          throw new AlephaError(
+            tr("auth.reset.passwordsMismatch", {
+              default: "Passwords do not match",
+            }),
+          );
         }
         if (!state.intent || !state.code) {
-          throw new AlephaError("Invalid reset state");
+          throw new AlephaError(
+            tr("auth.reset.invalidState", { default: "Invalid reset state" }),
+          );
         }
         await userCtrl.completePasswordReset({
           body: {
@@ -102,7 +116,13 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
       });
       setState((s) => ({ ...s, intent }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to resend code");
+      setError(
+        e instanceof Error
+          ? e.message
+          : tr("auth.reset.resendFailed", {
+              default: "Failed to resend code",
+            }),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -124,46 +144,60 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                 <Alert>
                   <AlertCircle className="size-4" />
                   <AlertDescription>
-                    Password reset is not available. Please contact your
-                    administrator.
+                    {tr("auth.reset.disabled", {
+                      default:
+                        "Password reset is not available. Please contact your administrator.",
+                    })}
                   </AlertDescription>
                 </Alert>
                 <Button asChild>
                   <a href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}>
-                    Back to sign in
+                    {tr("auth.reset.backToSignIn", {
+                      default: "Back to sign in",
+                    })}
                   </a>
                 </Button>
               </>
             ) : state.step === "email" ? (
               <form {...emailForm.props} className="flex flex-col gap-4">
                 <h2 className="text-center text-lg font-semibold">
-                  Reset password
+                  {tr("auth.reset.title", { default: "Reset password" })}
                 </h2>
                 <p className="text-muted-foreground text-sm">
-                  Enter your email address to reset your password
+                  {tr("auth.reset.emailHint", {
+                    default: "Enter your email address to reset your password",
+                  })}
                 </p>
                 <Control
-                  label="Email"
+                  label={tr("auth.reset.email", { default: "Email" })}
                   input={emailForm.input.email}
                   icon={iconFor("email")}
                 />
                 <Button type="submit" disabled={emailForm.submitting}>
-                  Send verification code
+                  {tr("auth.reset.sendCode", {
+                    default: "Send verification code",
+                  })}
                 </Button>
               </form>
             ) : state.step === "code" ? (
               <div className="flex flex-col gap-4">
                 <h2 className="text-center text-lg font-semibold">
-                  Reset password
+                  {tr("auth.reset.title", { default: "Reset password" })}
                 </h2>
                 <Alert>
                   <Info className="size-4" />
                   <AlertDescription>
-                    We&apos;ve sent a verification code to your email.
+                    {tr("auth.reset.codeSent", {
+                      default: "We've sent a verification code to your email.",
+                    })}
                   </AlertDescription>
                 </Alert>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="code">Enter the 6-digit code</Label>
+                  <Label htmlFor="code">
+                    {tr("auth.reset.codeLabel", {
+                      default: "Enter the 6-digit code",
+                    })}
+                  </Label>
                   <Input
                     id="code"
                     inputMode="numeric"
@@ -177,36 +211,44 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                   />
                 </div>
                 <Button onClick={handleCodeSubmit} disabled={code.length !== 6}>
-                  Continue
+                  {tr("auth.reset.continue", { default: "Continue" })}
                 </Button>
                 <Button
                   variant="ghost"
                   onClick={handleResend}
                   disabled={submitting}
                 >
-                  Resend code
+                  {tr("auth.reset.resend", { default: "Resend code" })}
                 </Button>
               </div>
             ) : state.step === "password" ? (
               <form {...passwordForm.props} className="flex flex-col gap-4">
                 <h2 className="text-center text-lg font-semibold">
-                  Reset password
+                  {tr("auth.reset.title", { default: "Reset password" })}
                 </h2>
                 <p className="text-muted-foreground text-sm">
-                  Create your new password
+                  {tr("auth.reset.newPasswordHint", {
+                    default: "Create your new password",
+                  })}
                 </p>
                 <Control
-                  label="New password"
+                  label={tr("auth.reset.newPassword", {
+                    default: "New password",
+                  })}
                   input={passwordForm.input.password}
                   password
                 />
                 <Control
-                  label="Confirm password"
+                  label={tr("auth.reset.confirmPassword", {
+                    default: "Confirm password",
+                  })}
                   input={passwordForm.input.confirmPassword}
                   password
                 />
                 <Button type="submit" disabled={passwordForm.submitting}>
-                  Set new password
+                  {tr("auth.reset.setPassword", {
+                    default: "Set new password",
+                  })}
                 </Button>
               </form>
             ) : (
@@ -214,12 +256,16 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                 <Alert>
                   <CheckCircle2 className="size-4" />
                   <AlertDescription>
-                    Your password has been reset successfully.
+                    {tr("auth.reset.success", {
+                      default: "Your password has been reset successfully.",
+                    })}
                   </AlertDescription>
                 </Alert>
                 <Button asChild>
                   <a href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}>
-                    Back to sign in
+                    {tr("auth.reset.backToSignIn", {
+                      default: "Back to sign in",
+                    })}
                   </a>
                 </Button>
               </>
@@ -227,7 +273,9 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
           </CardContent>
         </Card>
         <Button variant="ghost" asChild>
-          <a href={redirect}>Cancel</a>
+          <a href={redirect}>
+            {tr("auth.reset.cancel", { default: "Cancel" })}
+          </a>
         </Button>
       </div>
     </div>

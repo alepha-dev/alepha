@@ -12,7 +12,7 @@ import { toast } from "sonner";
 export function AdminSessions() {
   const client = useClient<AdminSessionController>();
   const dialog = useDialog();
-  const { l } = useI18n();
+  const { l, tr } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);
 
   const fetcher = useCallback(
@@ -25,13 +25,15 @@ export function AdminSessions() {
 
   const handleRevoke = async (s: SessionEntity) => {
     const ok = await dialog.confirm({
-      title: "Revoke session",
-      description: "The user will be signed out from this session.",
+      title: tr("admin.sessions.revokeTitle", { default: "Revoke session" }),
+      description: tr("admin.sessions.revokeConfirm", {
+        default: "The user will be signed out from this session.",
+      }),
       destructive: true,
     });
     if (!ok) return;
     await client.deleteSession({ params: { id: s.id } });
-    toast.success("Session revoked");
+    toast.success(tr("admin.sessions.revoked", { default: "Session revoked" }));
     setRefreshKey((k) => k + 1);
   };
 
@@ -41,27 +43,31 @@ export function AdminSessions() {
         fetch={fetcher}
         header={
           <div>
-            <h1 className="text-lg font-semibold">Sessions</h1>
+            <h1 className="text-lg font-semibold">
+              {tr("admin.sessions.title", { default: "Sessions" })}
+            </h1>
             <p className="text-muted-foreground text-sm">
-              Active user sessions.
+              {tr("admin.sessions.subtitle", {
+                default: "Active user sessions.",
+              })}
             </p>
           </div>
         }
         columns={{
           user: {
-            label: "User",
+            label: tr("admin.sessions.colUser", { default: "User" }),
             cell: (s) => (
               <span className="font-medium">{(s as any).userId ?? "—"}</span>
             ),
           },
           ip: {
-            label: "IP",
+            label: tr("admin.sessions.colIp", { default: "IP" }),
             cell: (s) => (
               <code className="text-xs">{(s as any).ip ?? "—"}</code>
             ),
           },
           userAgent: {
-            label: "Device",
+            label: tr("admin.sessions.colDevice", { default: "Device" }),
             cell: (s) => (
               <span className="text-muted-foreground line-clamp-1 text-xs">
                 {(s as any).userAgent ?? "—"}
@@ -69,7 +75,7 @@ export function AdminSessions() {
             ),
           },
           createdAt: {
-            label: "Started",
+            label: tr("admin.sessions.colStarted", { default: "Started" }),
             sortable: true,
             cell: (s) => (
               <span className="text-muted-foreground text-xs">
@@ -78,10 +84,12 @@ export function AdminSessions() {
             ),
           },
           status: {
-            label: "Status",
+            label: tr("admin.sessions.colStatus", { default: "Status" }),
             cell: (s) => (
               <Badge variant={(s as any).revokedAt ? "outline" : "default"}>
-                {(s as any).revokedAt ? "Revoked" : "Active"}
+                {(s as any).revokedAt
+                  ? tr("admin.sessions.revokedBadge", { default: "Revoked" })
+                  : tr("admin.sessions.active", { default: "Active" })}
               </Badge>
             ),
           },
@@ -91,7 +99,7 @@ export function AdminSessions() {
             ? []
             : [
                 {
-                  label: "Revoke",
+                  label: tr("admin.sessions.revoke", { default: "Revoke" }),
                   icon: LogOut,
                   destructive: true,
                   onClick: () => handleRevoke(s),

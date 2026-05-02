@@ -4,6 +4,7 @@ import {
   type FormModel,
   useFormState,
 } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
 import { AlertCircle, RotateCcw, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -17,11 +18,17 @@ import { spanClass, widthFor } from "@/registry/default/control-base/grid";
 import { iconFor } from "@/registry/default/control-base/icon-hint";
 
 export interface AutoFormGroup {
-  /** Group title shown in the header. */
+  /**
+   * Group title shown in the header.
+   */
   title?: string;
-  /** Icon name (lucide) for the group header. */
+  /**
+   * Icon name (lucide) for the group header.
+   */
   icon?: string;
-  /** Visibility predicate. Group is omitted when this returns false. */
+  /**
+   * Visibility predicate. Group is omitted when this returns false.
+   */
   can?: () => boolean;
   /**
    * Field names from the form schema. Each renders as a `<Control>`.
@@ -48,13 +55,22 @@ export interface AutoFormAction {
 }
 
 export interface AutoFormProps<T extends TObject> {
+  /**
+   * Form model returned by `useForm()`. The schema drives every field.
+   */
   form: FormModel<T>;
 
-  /** Header icon (lucide name). */
+  /**
+   * Header icon (lucide name).
+   */
   icon?: string;
-  /** Header title. */
+  /**
+   * Header title.
+   */
   title?: string;
-  /** Header description / subtitle. */
+  /**
+   * Header description / subtitle.
+   */
   description?: string;
 
   /**
@@ -70,36 +86,61 @@ export interface AutoFormProps<T extends TObject> {
    */
   autoGroup?: boolean | { defaultTitle?: string; defaultIcon?: string };
 
-  /** Per-field control overrides keyed by field name (also works without groups). */
+  /**
+   * Per-field control overrides keyed by field name (also works without groups).
+   */
   fields?: Partial<
     Record<keyof T["properties"] & string, Partial<Omit<ControlProps, "input">>>
   >;
 
-  /** Submit button label. */
+  /**
+   * Submit button label.
+   */
   submitLabel?: string;
-  /** Hide built-in submit button. */
+  /**
+   * Hide built-in submit button.
+   */
   noSubmit?: boolean;
-  /** Disable submit when form is pristine (not dirty). */
+  /**
+   * Disable submit when form is pristine (not dirty).
+   */
   disabledIfPristine?: boolean;
-  /** Disable the entire form (cascades to controls). */
+  /**
+   * Disable the entire form (cascades to controls).
+   */
   disabled?: boolean;
 
-  /** Cancel button — hidden when omitted. */
+  /**
+   * Cancel button — hidden when omitted.
+   */
   onCancel?: () => void;
-  /** Skip the reset button in the bottom bar. */
+  /**
+   * Skip the reset button in the bottom bar.
+   */
   skipReset?: boolean;
-  /** Skip the entire bottom bar. */
+  /**
+   * Skip the entire bottom bar.
+   */
   skipBottomBar?: boolean;
 
-  /** Extra action buttons in the bottom bar (left side). */
+  /**
+   * Extra action buttons in the bottom bar (left side).
+   */
   actions?: AutoFormAction[];
 
-  /** Extra content rendered above the bottom bar. */
+  /**
+   * Extra content rendered above the bottom bar.
+   */
   footer?: ReactNode;
 
-  /** Throttle (ms) for text inputs. Propagated to every Control. */
+  /**
+   * Throttle (ms) for text inputs. Propagated to every Control.
+   */
   throttle?: number;
 
+  /**
+   * Extra classes applied to the form wrapper.
+   */
   className?: string;
 }
 
@@ -278,6 +319,7 @@ interface BottomBarProps {
 }
 
 function BottomBar(props: BottomBarProps) {
+  const { tr } = useI18n();
   return (
     <div className="bg-card flex items-center gap-2 border rounded-md p-2">
       {props.onCancel && (
@@ -288,7 +330,7 @@ function BottomBar(props: BottomBarProps) {
           disabled={props.disabled}
         >
           <X className="size-4 mr-1" />
-          Cancel
+          {tr("autoForm.cancel", { default: "Cancel" })}
         </Button>
       )}
       {!props.skipReset && (
@@ -299,7 +341,7 @@ function BottomBar(props: BottomBarProps) {
           disabled={props.disabled || !props.dirty}
         >
           <RotateCcw className="size-4 mr-1" />
-          Reset
+          {tr("autoForm.reset", { default: "Reset" })}
         </Button>
       )}
       {props.actions?.map((action, i) => {
@@ -329,7 +371,7 @@ function BottomBar(props: BottomBarProps) {
               (props.disabledIfPristine && !props.dirty)
             }
           >
-            {props.submitLabel ?? "Save"}
+            {props.submitLabel ?? tr("autoForm.save", { default: "Save" })}
           </Button>
         )}
       </div>
@@ -345,6 +387,7 @@ interface FormErrorPopoverProps {
 
 function FormErrorPopover(props: FormErrorPopoverProps) {
   const { error } = useFormState(props.form, ["error"]);
+  const { tr } = useI18n();
   const [open, setOpen] = useState(false);
   // close popover when error clears
   useEffect(() => {
@@ -362,7 +405,7 @@ function FormErrorPopover(props: FormErrorPopoverProps) {
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="Form errors"
+          aria-label={tr("autoForm.errors", { default: "Form errors" })}
           className="text-destructive"
         >
           <AlertCircle className="size-4" />
@@ -370,7 +413,9 @@ function FormErrorPopover(props: FormErrorPopoverProps) {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-2">
         <p className="text-destructive text-sm font-medium px-2 py-1">
-          {items.length === 1 ? "Error" : "Errors"}
+          {items.length === 1
+            ? tr("autoForm.error", { default: "Error" })
+            : tr("autoForm.errors", { default: "Errors" })}
         </p>
         <ul className="flex flex-col gap-1">
           {items.map((it, i) => (
@@ -380,7 +425,9 @@ function FormErrorPopover(props: FormErrorPopoverProps) {
                 onClick={() => focusError(it.path, props.form.id)}
                 className="hover:bg-accent w-full rounded text-left text-xs px-2 py-1"
               >
-                <span className="font-medium">{it.path || "Form"}</span>
+                <span className="font-medium">
+                  {it.path || tr("autoForm.formLabel", { default: "Form" })}
+                </span>
                 <span className="text-muted-foreground"> — {it.message}</span>
               </button>
             </li>

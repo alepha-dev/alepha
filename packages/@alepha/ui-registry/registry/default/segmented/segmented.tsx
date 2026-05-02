@@ -12,13 +12,37 @@ export interface SegmentedOption {
 
 export interface SegmentedProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange"> {
+  /**
+   * Selectable options. Each one renders as a segment.
+   */
   options: SegmentedOption[];
+  /**
+   * Controlled value. Pair with `onChange` for full control.
+   */
   value?: string;
+  /**
+   * Initial value when uncontrolled.
+   */
   defaultValue?: string;
+  /**
+   * Called when the active segment changes.
+   */
   onChange?: (value: string) => void;
+  /**
+   * Visual size — `sm`, `md` (default), or `lg`.
+   */
   size?: "sm" | "md" | "lg";
+  /**
+   * Stretch segments to fill the available width.
+   */
   fullWidth?: boolean;
+  /**
+   * Disable all segments.
+   */
   disabled?: boolean;
+  /**
+   * Optional form name (used when rendered inside a form).
+   */
   name?: string;
 }
 

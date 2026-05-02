@@ -15,7 +15,7 @@ const formatAmount = (cents: number, currency = "USD") => {
 
 export function AdminPayments() {
   const client = useClient<AdminPaymentController>();
-  const { l } = useI18n();
+  const { l, tr } = useI18n();
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
@@ -31,15 +31,19 @@ export function AdminPayments() {
         fetch={fetcher}
         header={
           <div>
-            <h1 className="text-lg font-semibold">Payments</h1>
+            <h1 className="text-lg font-semibold">
+              {tr("admin.payments.title", { default: "Payments" })}
+            </h1>
             <p className="text-muted-foreground text-sm">
-              Payment intents, charges, and subscriptions.
+              {tr("admin.payments.subtitle", {
+                default: "Payment intents, charges, and subscriptions.",
+              })}
             </p>
           </div>
         }
         columns={{
           createdAt: {
-            label: "When",
+            label: tr("admin.payments.colWhen", { default: "When" }),
             sortable: true,
             cell: (p) => (
               <span className="text-muted-foreground text-xs">
@@ -48,7 +52,7 @@ export function AdminPayments() {
             ),
           },
           amount: {
-            label: "Amount",
+            label: tr("admin.payments.colAmount", { default: "Amount" }),
             align: "right",
             cell: (p) => (
               <span className="font-medium tabular-nums">
@@ -57,7 +61,7 @@ export function AdminPayments() {
             ),
           },
           customer: {
-            label: "Customer",
+            label: tr("admin.payments.colCustomer", { default: "Customer" }),
             cell: (p) => (
               <span className="text-sm">
                 {p.customerEmail ?? p.customerId ?? "—"}
@@ -65,11 +69,11 @@ export function AdminPayments() {
             ),
           },
           provider: {
-            label: "Provider",
+            label: tr("admin.payments.colProvider", { default: "Provider" }),
             cell: (p) => <Badge variant="secondary">{p.provider ?? "—"}</Badge>,
           },
           status: {
-            label: "Status",
+            label: tr("admin.payments.colStatus", { default: "Status" }),
             cell: (p) => {
               const s = p.status ?? "pending";
               const variant =

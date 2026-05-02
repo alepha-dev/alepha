@@ -18,7 +18,4 @@ Create a new role.
 | `description` | `string` | No | Describe the role. |
 | `issuer` | `string \| IssuerPrimitive` | No |  |
 | `permissions` | `Array&lt;` | No |  |
-| `name` | `string` | Yes |  |
-| `ownership` | `boolean` | No |  |
-| `exclude` | `string[]` | No |  |
 

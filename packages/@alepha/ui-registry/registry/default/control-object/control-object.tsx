@@ -6,6 +6,7 @@ import {
   useFieldValue,
   useFormState,
 } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,19 +14,41 @@ import { Control, type ControlProps } from "@/registry/default/control/control";
 import { spanClass, widthFor } from "@/registry/default/control-base/grid";
 
 export interface ControlObjectProps {
+  /**
+   * Bound object `InputField` from `useForm`.
+   */
   input: BaseInputField;
+  /**
+   * Field label. Falls back to schema `title`.
+   */
   label?: string;
+  /**
+   * Helper text shown below the group.
+   */
   description?: string;
-  /** Number of grid columns. @default 1 */
+  /**
+   * Number of grid columns. @default 1
+   */
   columns?: 1 | 2 | 3 | 4;
-  /** "fieldset" wraps in a bordered container with legend. "plain" renders fields only. */
+  /**
+   * "fieldset" wraps in a bordered container with legend. "plain" renders fields only.
+   */
   variant?: "fieldset" | "plain";
-  /** Per-field control props override, keyed by field name. */
+  /**
+   * Per-field control props override, keyed by field name.
+   */
   controlProps?: Record<string, Partial<Omit<ControlProps, "input">>>;
+  /**
+   * Disable the group and all inner controls.
+   */
   disabled?: boolean;
-  /** Default expanded state. @default true */
+  /**
+   * Default expanded state. @default true
+   */
   defaultExpanded?: boolean;
-  /** Allow the user to clear the object (sets value to undefined). */
+  /**
+   * Allow the user to clear the object (sets value to undefined).
+   */
   clearable?: boolean;
 }
 
@@ -33,6 +56,7 @@ export function ControlObject(props: ControlObjectProps) {
   const form = useFormState(props.input, ["error"]);
   const [value, setValue] = useFieldValue(props.input);
   const [expanded, setExpanded] = useState(props.defaultExpanded ?? true);
+  const { tr } = useI18n();
 
   if (!props.input?.props) return null;
 
@@ -84,7 +108,9 @@ export function ControlObject(props: ControlObjectProps) {
             variant="outline"
             size="icon"
             className="size-8 shrink-0"
-            aria-label="Initialize"
+            aria-label={tr("controlObject.initialize", {
+              default: "Initialize",
+            })}
             onClick={() => setValue({})}
           >
             <Plus className="size-4" />
@@ -95,7 +121,7 @@ export function ControlObject(props: ControlObjectProps) {
             variant="ghost"
             size="icon"
             className="size-8 shrink-0"
-            aria-label="Clear"
+            aria-label={tr("controlObject.clear", { default: "Clear" })}
             onClick={() => setValue(undefined)}
           >
             <Trash2 className="size-4" />
@@ -129,7 +155,11 @@ export function ControlObject(props: ControlObjectProps) {
             variant="ghost"
             size="icon"
             className="size-8 shrink-0"
-            aria-label={expanded ? "Collapse" : "Expand"}
+            aria-label={
+              expanded
+                ? tr("controlObject.collapse", { default: "Collapse" })
+                : tr("controlObject.expand", { default: "Expand" })
+            }
             onClick={() => setExpanded((e) => !e)}
           >
             {expanded ? (

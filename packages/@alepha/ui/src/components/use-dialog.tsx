@@ -24,7 +24,9 @@ export interface ConfirmOptions {
   description?: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  /** When `true`, styles the confirm button as destructive. */
+  /**
+   * When `true`, styles the confirm button as destructive.
+   */
   destructive?: boolean;
 }
 
@@ -42,7 +44,9 @@ export interface PromptOptions {
   placeholder?: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  /** Optional inline validator. Return `null` for valid, or an error string. */
+  /**
+   * Optional inline validator. Return `null` for valid, or an error string.
+   */
   validate?: (value: string) => string | null;
 }
 

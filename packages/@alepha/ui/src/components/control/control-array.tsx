@@ -18,6 +18,7 @@ import {
   parseField,
   useFormState,
 } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
 import {
   ArrowDown,
   ArrowUp,
@@ -34,19 +35,54 @@ interface ArrayItem {
 }
 
 export interface ControlArrayProps {
+  /**
+   * Bound array `InputField` from `useForm`.
+   */
   input: BaseInputField;
+  /**
+   * Field label. Falls back to schema `title`.
+   */
   label?: string;
+  /**
+   * Helper text shown below the array.
+   */
   description?: string;
+  /**
+   * Minimum number of items (Add button disables when reached).
+   */
   min?: number;
+  /**
+   * Maximum number of items (Add button disables when reached).
+   */
   max?: number;
+  /**
+   * Override the "Add item" button label.
+   */
   addLabel?: string;
+  /**
+   * Number of grid columns for each item's inner fields.
+   */
   columns?: 1 | 2 | 3 | 4;
+  /**
+   * "fieldset" wraps in a bordered container with legend; "plain" renders items only.
+   */
   variant?: "fieldset" | "plain";
+  /**
+   * Per-field `<Control>` overrides for items, keyed by inner field name.
+   */
   controlProps?: Record<string, Partial<Omit<ControlProps, "input">>>;
+  /**
+   * Override props applied to every item (when items are primitive, not objects).
+   */
   itemControlProps?: Partial<Omit<ControlProps, "input">>;
+  /**
+   * Disable add/remove and all inner controls.
+   */
   disabled?: boolean;
 
-  /** Default expanded state. @default true */
+  /**
+   * Default expanded state. @default true
+   */
   defaultExpanded?: boolean;
 
   /**
@@ -55,10 +91,14 @@ export interface ControlArrayProps {
    */
   confirmDelete?: boolean | { title?: string; message?: string };
 
-  /** Compute the visible label for each item header (and tab name in tabs mode). */
+  /**
+   * Compute the visible label for each item header (and tab name in tabs mode).
+   */
   renderTabName?: (i: number, value: unknown) => string;
 
-  /** Force tabs mode even for short arrays. Default heuristic: items > 4 OR nested object/array fields. */
+  /**
+   * Force tabs mode even for short arrays. Default heuristic: items > 4 OR nested object/array fields.
+   */
   forceTabs?: boolean;
 }
 
@@ -157,6 +197,7 @@ const buildFieldInput = (
 
 export function ControlArray(props: ControlArrayProps) {
   const form = useFormState(props.input, ["error"]);
+  const { tr } = useI18n();
   const { items, setItems, nextKey } = useArrayItems(props.input);
   const [expanded, setExpanded] = useState(props.defaultExpanded ?? true);
   const [activeTab, setActiveTab] = useState(0);
@@ -303,7 +344,7 @@ export function ControlArray(props: ControlArrayProps) {
         className="size-7"
         disabled={props.disabled || index === 0 || items.length < 2}
         onClick={() => handleMove(index, -1)}
-        aria-label="Move up"
+        aria-label={tr("controlArray.moveUp", { default: "Move up" })}
       >
         <ArrowUp className="size-3.5" />
       </Button>
@@ -314,7 +355,7 @@ export function ControlArray(props: ControlArrayProps) {
         className="size-7"
         disabled={props.disabled || items.length <= min}
         onClick={() => handleRemove(index)}
-        aria-label="Remove"
+        aria-label={tr("controlArray.remove", { default: "Remove" })}
       >
         <Trash2 className="size-3.5" />
       </Button>
@@ -327,7 +368,7 @@ export function ControlArray(props: ControlArrayProps) {
           props.disabled || index === items.length - 1 || items.length < 2
         }
         onClick={() => handleMove(index, 1)}
-        aria-label="Move down"
+        aria-label={tr("controlArray.moveDown", { default: "Move down" })}
       >
         <ArrowDown className="size-3.5" />
       </Button>
@@ -387,7 +428,9 @@ export function ControlArray(props: ControlArrayProps) {
         className="size-8 shrink-0"
         disabled={props.disabled || items.length >= max}
         onClick={handleAdd}
-        aria-label={props.addLabel ?? "Add"}
+        aria-label={
+          props.addLabel ?? tr("controlArray.add", { default: "Add" })
+        }
       >
         <Plus className="size-4" />
       </Button>
@@ -414,7 +457,11 @@ export function ControlArray(props: ControlArrayProps) {
           variant="ghost"
           size="icon"
           className="size-8 shrink-0"
-          aria-label={expanded ? "Collapse" : "Expand"}
+          aria-label={
+            expanded
+              ? tr("controlArray.collapse", { default: "Collapse" })
+              : tr("controlArray.expand", { default: "Expand" })
+          }
           onClick={() => setExpanded((e) => !e)}
         >
           {expanded ? (
@@ -431,11 +478,19 @@ export function ControlArray(props: ControlArrayProps) {
     if (pendingDelete == null) return null;
     const cd = props.confirmDelete;
     const title =
-      typeof cd === "object" ? (cd.title ?? "Delete item") : "Delete item";
+      typeof cd === "object"
+        ? (cd.title ??
+          tr("controlArray.deleteTitle", { default: "Delete item" }))
+        : tr("controlArray.deleteTitle", { default: "Delete item" });
     const message =
       typeof cd === "object"
-        ? (cd.message ?? "Are you sure you want to delete this item?")
-        : "Are you sure you want to delete this item?";
+        ? (cd.message ??
+          tr("controlArray.deleteConfirm", {
+            default: "Are you sure you want to delete this item?",
+          }))
+        : tr("controlArray.deleteConfirm", {
+            default: "Are you sure you want to delete this item?",
+          });
     return (
       <Dialog
         open={pendingDelete != null}
@@ -448,7 +503,7 @@ export function ControlArray(props: ControlArrayProps) {
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setPendingDelete(null)}>
-              Cancel
+              {tr("controlArray.cancel", { default: "Cancel" })}
             </Button>
             <Button
               variant="destructive"
@@ -457,7 +512,7 @@ export function ControlArray(props: ControlArrayProps) {
                 setPendingDelete(null);
               }}
             >
-              Delete
+              {tr("controlArray.delete", { default: "Delete" })}
             </Button>
           </DialogFooter>
         </DialogContent>

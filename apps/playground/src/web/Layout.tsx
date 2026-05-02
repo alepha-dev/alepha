@@ -1,19 +1,22 @@
 import { AppShell } from "@alepha/ui/components/app-shell";
+import { ButtonLanguage } from "@alepha/ui/components/button-language";
+import { ButtonUser } from "@alepha/ui/components/button-user";
 import { ThemeToggle } from "@alepha/ui/components/theme-toggle";
 import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
 import { DialogProvider } from "@alepha/ui/components/use-dialog";
-import { NestedView, useRouterState } from "alepha/react/router";
+import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import {
   Bell,
+  Calendar,
+  CreditCard,
   FileSearch,
-  Files,
+  KeyRound,
   ListChecks,
   Megaphone,
   MessageSquareWarning,
-  Settings2,
-  ShieldAlert,
-  Timer,
+  Upload,
+  UserPlus,
   Zap,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
@@ -30,16 +33,6 @@ interface NavGroup {
 }
 
 const NAV: NavGroup[] = [
-  {
-    label: "Resources",
-    items: [
-      { href: "/resources/jobs", label: "Jobs", icon: Timer },
-      { href: "/resources/notifications", label: "Notifications", icon: Bell },
-      { href: "/resources/audits", label: "Audit log", icon: ShieldAlert },
-      { href: "/resources/files", label: "Files", icon: Files },
-      { href: "/resources/parameters", label: "Parameters", icon: Settings2 },
-    ],
-  },
   {
     label: "Playgrounds",
     items: [
@@ -61,6 +54,16 @@ const NAV: NavGroup[] = [
       { href: "/demo/forms", label: "Form gallery", icon: ListChecks },
     ],
   },
+  {
+    label: "Forms gallery",
+    items: [
+      { href: "/demo/forms/login", label: "Login", icon: KeyRound },
+      { href: "/demo/forms/register", label: "Register", icon: UserPlus },
+      { href: "/demo/forms/payment", label: "Payment", icon: CreditCard },
+      { href: "/demo/forms/upload", label: "Upload", icon: Upload },
+      { href: "/demo/forms/dates", label: "Dates", icon: Calendar },
+    ],
+  },
 ];
 
 const findCrumbs = (pathname: string): { label: string; href?: string }[] => {
@@ -76,14 +79,24 @@ const findCrumbs = (pathname: string): { label: string; href?: string }[] => {
 export const Layout = () => {
   const state = useRouterState();
   const crumbs = findCrumbs(state.url.pathname);
+  const router = useRouter();
 
   return (
     <TooltipProvider>
       <DialogProvider>
         <ColorScheme />
         <AppShell
-          variant={"floating"}
-          topbarActions={<ThemeToggle />}
+          variant="floating"
+          topbarActions={
+            <>
+              <ButtonLanguage />
+              <ThemeToggle />
+              <ButtonUser
+                onSignIn={() => router.push("/auth/login")}
+                onAdminClick={() => router.push("/admin/users")}
+              />
+            </>
+          }
           brand={
             <a
               href="/"

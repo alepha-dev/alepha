@@ -8,7 +8,7 @@ import { useCallback } from "react";
 
 export function AdminAudits() {
   const client = useClient<AdminAuditController>();
-  const { l } = useI18n();
+  const { l, tr } = useI18n();
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
@@ -24,15 +24,20 @@ export function AdminAudits() {
         fetch={fetcher}
         header={
           <div>
-            <h1 className="text-lg font-semibold">Audit log</h1>
+            <h1 className="text-lg font-semibold">
+              {tr("admin.audits.title", { default: "Audit log" })}
+            </h1>
             <p className="text-muted-foreground text-sm">
-              Read-only history of API actions and resource changes.
+              {tr("admin.audits.subtitle", {
+                default:
+                  "Read-only history of API actions and resource changes.",
+              })}
             </p>
           </div>
         }
         columns={{
           createdAt: {
-            label: "When",
+            label: tr("admin.audits.colWhen", { default: "When" }),
             sortable: true,
             cell: (a) => (
               <span className="text-muted-foreground text-xs">
@@ -41,13 +46,13 @@ export function AdminAudits() {
             ),
           },
           action: {
-            label: "Action",
+            label: tr("admin.audits.colAction", { default: "Action" }),
             cell: (a) => (
               <code className="text-xs font-medium">{a.action}</code>
             ),
           },
           resource: {
-            label: "Resource",
+            label: tr("admin.audits.colResource", { default: "Resource" }),
             cell: (a) => (
               <span className="font-mono text-xs">
                 {a.resourceType
@@ -57,7 +62,7 @@ export function AdminAudits() {
             ),
           },
           actor: {
-            label: "Actor",
+            label: tr("admin.audits.colActor", { default: "Actor" }),
             cell: (a) => (
               <span className="text-sm">
                 {(a as any).userEmail ?? (a as any).userId ?? "—"}
@@ -65,10 +70,12 @@ export function AdminAudits() {
             ),
           },
           status: {
-            label: "Status",
+            label: tr("admin.audits.colStatus", { default: "Status" }),
             cell: (a) => (
               <Badge variant={a.success ? "default" : "destructive"}>
-                {a.success ? "OK" : "Failed"}
+                {a.success
+                  ? tr("admin.audits.ok", { default: "OK" })
+                  : tr("admin.audits.failed", { default: "Failed" })}
               </Badge>
             ),
           },

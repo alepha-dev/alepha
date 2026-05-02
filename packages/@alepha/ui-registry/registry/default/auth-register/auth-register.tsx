@@ -7,6 +7,7 @@ import type {
 import { useClient } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useForm } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { AlertCircle } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -20,7 +21,13 @@ import { Control } from "@/registry/default/control/control";
 import { iconFor } from "@/registry/default/control-base/icon-hint";
 
 export interface AuthRegisterProps {
+  /**
+   * Realm configuration (drives required fields, verification step, OAuth buttons).
+   */
   realmConfig: RealmConfig;
+  /**
+   * Route to the login page. When set, a "Sign in" link is shown.
+   */
   loginPath?: string;
 }
 
@@ -36,6 +43,7 @@ export function AuthRegister(props: AuthRegisterProps) {
   const auth = useAuth();
   const userCtrl = useClient<UserController>();
   const router = useRouter();
+  const { tr } = useI18n();
   const redirect = router.query.r || "/";
 
   const [state, setState] = useState<State>({ phase: "form" });
@@ -71,7 +79,11 @@ export function AuthRegister(props: AuthRegisterProps) {
     schema,
     handler: async (data) => {
       if (data.password !== data.confirmPassword) {
-        throw new AlephaError("Passwords do not match");
+        throw new AlephaError(
+          tr("auth.register.passwordsMismatch", {
+            default: "Passwords do not match",
+          }),
+        );
       }
       const intent = await userCtrl.createRegistrationIntent({
         query: { userRealmName: props.realmConfig.realmName },
@@ -137,7 +149,11 @@ export function AuthRegister(props: AuthRegisterProps) {
       await router.push(redirect);
     } catch (err) {
       setVerifyError(
-        err instanceof Error ? err.message : "Verification failed",
+        err instanceof Error
+          ? err.message
+          : tr("auth.register.verifyFailed", {
+              default: "Verification failed",
+            }),
       );
     } finally {
       setSubmitting(false);
@@ -157,10 +173,14 @@ export function AuthRegister(props: AuthRegisterProps) {
         <Card>
           <CardContent className="flex flex-col gap-4 p-6">
             <h2 className="text-center text-lg font-semibold">
-              Verify your account
+              {tr("auth.register.verifyTitle", {
+                default: "Verify your account",
+              })}
             </h2>
             <p className="text-muted-foreground text-center text-sm">
-              Please enter the verification code(s) sent to you.
+              {tr("auth.register.verifyHint", {
+                default: "Please enter the verification code(s) sent to you.",
+              })}
             </p>
             {verifyError && (
               <Alert variant="destructive">
@@ -170,7 +190,11 @@ export function AuthRegister(props: AuthRegisterProps) {
             )}
             {state.intent.expectEmailVerification && (
               <div className="flex flex-col gap-2">
-                <Label htmlFor="emailCode">Email verification code</Label>
+                <Label htmlFor="emailCode">
+                  {tr("auth.register.emailCode", {
+                    default: "Email verification code",
+                  })}
+                </Label>
                 <Input
                   id="emailCode"
                   inputMode="numeric"
@@ -185,7 +209,11 @@ export function AuthRegister(props: AuthRegisterProps) {
             )}
             {state.intent.expectPhoneVerification && (
               <div className="flex flex-col gap-2">
-                <Label htmlFor="phoneCode">Phone verification code</Label>
+                <Label htmlFor="phoneCode">
+                  {tr("auth.register.phoneCode", {
+                    default: "Phone verification code",
+                  })}
+                </Label>
                 <Input
                   id="phoneCode"
                   inputMode="numeric"
@@ -199,10 +227,14 @@ export function AuthRegister(props: AuthRegisterProps) {
               </div>
             )}
             <Button onClick={handleVerify} disabled={!canSubmit || submitting}>
-              Complete registration
+              {tr("auth.register.verifySubmit", {
+                default: "Complete registration",
+              })}
             </Button>
             <Button variant="ghost" onClick={() => setState({ phase: "form" })}>
-              Back to registration
+              {tr("auth.register.verifyBack", {
+                default: "Back to registration",
+              })}
             </Button>
           </CardContent>
         </Card>
@@ -228,13 +260,17 @@ export function AuthRegister(props: AuthRegisterProps) {
               <Alert>
                 <AlertCircle className="size-4" />
                 <AlertDescription>
-                  Registration is not available. Please contact your
-                  administrator.
+                  {tr("auth.register.disabled", {
+                    default:
+                      "Registration is not available. Please contact your administrator.",
+                  })}
                 </AlertDescription>
               </Alert>
               <Button asChild>
                 <a href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}>
-                  Back to sign in
+                  {tr("auth.register.backToSignIn", {
+                    default: "Back to sign in",
+                  })}
                 </a>
               </Button>
             </>
@@ -244,14 +280,16 @@ export function AuthRegister(props: AuthRegisterProps) {
                 <form {...form.props} className="flex flex-col gap-4">
                   {settings.username !== "none" && form.input.username && (
                     <Control
-                      label="Username"
+                      label={tr("auth.register.username", {
+                        default: "Username",
+                      })}
                       input={form.input.username}
                       icon={iconFor("user")}
                     />
                   )}
                   {settings.email !== "none" && form.input.email && (
                     <Control
-                      label="Email"
+                      label={tr("auth.register.email", { default: "Email" })}
                       input={form.input.email}
                       icon={iconFor("email")}
                     />
@@ -259,55 +297,71 @@ export function AuthRegister(props: AuthRegisterProps) {
                   {settings.phoneNumber !== "none" &&
                     form.input.phoneNumber && (
                       <Control
-                        label="Phone number"
+                        label={tr("auth.register.phone", {
+                          default: "Phone number",
+                        })}
                         input={form.input.phoneNumber}
                         icon={iconFor("phone")}
                       />
                     )}
                   <Control
-                    label="Password"
+                    label={tr("auth.register.password", {
+                      default: "Password",
+                    })}
                     input={form.input.password}
                     password
                   />
                   <Control
-                    label="Confirm password"
+                    label={tr("auth.register.confirmPassword", {
+                      default: "Confirm password",
+                    })}
                     input={form.input.confirmPassword}
                     password
                   />
                   <Button type="submit" disabled={form.submitting}>
-                    Create account
+                    {tr("auth.register.submit", { default: "Create account" })}
                   </Button>
                 </form>
               )}
               {showDivider && (
                 <div className="flex items-center gap-3">
                   <Separator className="flex-1" />
-                  <span className="text-muted-foreground text-xs">OR</span>
+                  <span className="text-muted-foreground text-xs">
+                    {tr("auth.register.or", { default: "OR" })}
+                  </span>
                   <Separator className="flex-1" />
                 </div>
               )}
-              {externalMethods.map((method) => (
-                <Button
-                  key={method.name}
-                  variant="outline"
-                  onClick={() =>
-                    auth.login(method.name, {
-                      redirect,
-                      realm: props.realmConfig.realmName,
-                    })
-                  }
-                >
-                  Continue with{" "}
-                  {method.name.charAt(0).toUpperCase() + method.name.slice(1)}
-                </Button>
-              ))}
+              {externalMethods.map((method) => {
+                const provider =
+                  method.name.charAt(0).toUpperCase() + method.name.slice(1);
+                return (
+                  <Button
+                    key={method.name}
+                    variant="outline"
+                    onClick={() =>
+                      auth.login(method.name, {
+                        redirect,
+                        realm: props.realmConfig.realmName,
+                      })
+                    }
+                  >
+                    {tr("auth.register.continueWith", {
+                      default: `Continue with ${provider}`,
+                      args: [provider],
+                    })}
+                  </Button>
+                );
+              })}
               <p className="text-muted-foreground text-center text-sm">
-                Already have an account?{" "}
+                {tr("auth.register.haveAccount", {
+                  default: "Already have an account?",
+                })}{" "}
                 <a
                   href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}
                   className="text-foreground underline-offset-4 hover:underline"
                 >
-                  Sign in
+                  {tr("auth.register.signIn", { default: "Sign in" })}
                 </a>
               </p>
             </>
@@ -315,7 +369,9 @@ export function AuthRegister(props: AuthRegisterProps) {
         </CardContent>
       </Card>
       <Button variant="ghost" asChild>
-        <a href={redirect}>Cancel</a>
+        <a href={redirect}>
+          {tr("auth.register.cancel", { default: "Cancel" })}
+        </a>
       </Button>
     </Centered>
   );

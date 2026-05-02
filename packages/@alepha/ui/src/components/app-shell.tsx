@@ -20,6 +20,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
 } from "@alepha/ui/components/ui/sidebar";
 import { Toaster } from "@alepha/ui/components/ui/sonner";
@@ -27,14 +30,18 @@ import { DialogProvider } from "@alepha/ui/components/use-dialog";
 import { useEvents } from "alepha/react";
 import { Link, NestedView } from "alepha/react/router";
 import { useSidebarState } from "alepha/react/ui";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import { Fragment, useRef, useState } from "react";
 
 export interface NavigationProgressOptions {
-  /** Tailwind classes applied to the bar. Defaults to `bg-primary`. */
+  /**
+   * Tailwind classes applied to the bar. Defaults to `bg-primary`.
+   */
   className?: string;
-  /** Bar height in pixels. Defaults to 2. */
+  /**
+   * Bar height in pixels. Defaults to 2.
+   */
   height?: number;
 }
 
@@ -114,10 +121,85 @@ type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
 export interface NavItem {
   label: string;
-  href: string;
+  /**
+   * Required for leaf items. Ignored when `children` is provided (the parent becomes a toggle group).
+   */
+  href?: string;
   icon?: IconType;
-  /** When provided, renders as the active marker. Compare against current path. */
+  /**
+   * When provided, renders as the active marker. Compare against current path.
+   */
   active?: boolean;
+  /**
+   * Nested items. When set, the parent becomes a collapsible group.
+   */
+  children?: NavItem[];
+  /**
+   * Initial open state for groups. Defaults to true if any descendant is active.
+   */
+  defaultOpen?: boolean;
+}
+
+function hasActiveDescendant(item: NavItem): boolean {
+  if (item.active) return true;
+  return (item.children ?? []).some(hasActiveDescendant);
+}
+
+function SidebarNavItem(props: { item: NavItem }) {
+  const { item } = props;
+  const Icon = item.icon;
+  const children = item.children;
+  const isGroup = !!children && children.length > 0;
+  const [open, setOpen] = useState(
+    item.defaultOpen ?? (isGroup ? hasActiveDescendant(item) : false),
+  );
+
+  if (!isGroup) {
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={item.active} tooltip={item.label}>
+          <Link href={item.href ?? "#"}>
+            {Icon && <Icon className="size-4" />}
+            <span>{item.label}</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  }
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        onClick={() => setOpen((v) => !v)}
+        isActive={item.active}
+        tooltip={item.label}
+      >
+        {Icon && <Icon className="size-4" />}
+        <span className="flex-1 text-left">{item.label}</span>
+        <ChevronRight
+          className={`size-4 transition-transform ${open ? "rotate-90" : ""}`}
+        />
+      </SidebarMenuButton>
+      {open && (
+        <SidebarMenuSub>
+          {children.map((child, ci) => (
+            <SidebarMenuSubItem key={child.href ?? ci}>
+              {child.children && child.children.length > 0 ? (
+                <SidebarNavItem item={child} />
+              ) : (
+                <SidebarMenuSubButton asChild isActive={child.active}>
+                  <Link href={child.href ?? "#"}>
+                    {child.icon && <child.icon className="size-4" />}
+                    <span>{child.label}</span>
+                  </Link>
+                </SidebarMenuSubButton>
+              )}
+            </SidebarMenuSubItem>
+          ))}
+        </SidebarMenuSub>
+      )}
+    </SidebarMenuItem>
+  );
 }
 
 export interface NavGroup {
@@ -126,15 +208,25 @@ export interface NavGroup {
 }
 
 export interface AppShellProps {
-  /** Branding shown at the top of the sidebar. */
+  /**
+   * Branding shown at the top of the sidebar.
+   */
   brand?: ReactNode;
-  /** Sidebar navigation groups. */
+  /**
+   * Sidebar navigation groups.
+   */
   nav?: NavGroup[];
-  /** Content rendered at the bottom of the sidebar (user menu, etc.). */
+  /**
+   * Content rendered at the bottom of the sidebar (user menu, etc.).
+   */
   sidebarFooter?: ReactNode;
-  /** Breadcrumb crumbs (last one is rendered as the current page). */
+  /**
+   * Breadcrumb crumbs (last one is rendered as the current page).
+   */
   breadcrumbs?: { label: string; href?: string }[];
-  /** Top-bar right-side content (search, theme toggle, user menu). */
+  /**
+   * Top-bar right-side content (search, theme toggle, user menu).
+   */
   topbarActions?: ReactNode;
   /**
    * Layout variant.
@@ -149,6 +241,9 @@ export interface AppShellProps {
    * or pass an options object to customize.
    */
   progress?: boolean | NavigationProgressOptions;
+  /**
+   * Page content. Defaults to `<NestedView />` (renders the active route).
+   */
   children?: ReactNode;
 }
 
@@ -180,23 +275,12 @@ export function AppShell(props: AppShellProps) {
                 )}
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {group.items.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton
-                            asChild
-                            isActive={item.active}
-                            tooltip={item.label}
-                          >
-                            <Link href={item.href}>
-                              {Icon && <Icon className="size-4" />}
-                              <span>{item.label}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
+                    {group.items.map((item, ii) => (
+                      <SidebarNavItem
+                        key={item.href ?? `${gi}-${ii}`}
+                        item={item}
+                      />
+                    ))}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>

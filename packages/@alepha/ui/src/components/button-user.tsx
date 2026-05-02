@@ -30,7 +30,9 @@ export interface ButtonUserProps {
    * hidden even if the user has the permission.
    */
   onAdminClick?: () => void;
-  /** Optional aria-label override for the trigger. */
+  /**
+   * Optional aria-label override for the trigger.
+   */
   label?: string;
 }
 
@@ -103,7 +105,9 @@ const DefaultMenu = (props: DefaultMenuProps) => {
 };
 
 export interface ButtonUserEmailProps {
-  /** Optional fallback when the user has no email. Defaults to username, then id. */
+  /**
+   * Optional fallback when the user has no email. Defaults to username, then id.
+   */
   fallback?: string;
 }
 
@@ -123,9 +127,13 @@ const Email = (props: ButtonUserEmailProps) => {
 };
 
 export interface ButtonUserAdminMenuItemProps {
-  /** Called when the item is clicked. */
+  /**
+   * Called when the item is clicked.
+   */
   onClick: () => void;
-  /** Item label. Defaults to `"Admin Panel"`. */
+  /**
+   * Item label. Defaults to `"Admin Panel"`.
+   */
   label?: string;
   /**
    * Permission name checked via `useAuth().can(...)`. Defaults to
@@ -147,7 +155,9 @@ const AdminMenuItem = (props: ButtonUserAdminMenuItemProps) => {
 };
 
 export interface ButtonUserLogoutMenuItemProps {
-  /** Item label. Defaults to `"Logout"`. */
+  /**
+   * Item label. Defaults to `"Logout"`.
+   */
   label?: string;
 }
 

@@ -38,23 +38,54 @@ export type SelectOption =
   | {
       value: string;
       label: string;
-      /** Optional secondary line shown under the label in the dropdown. */
+      /**
+       * Optional secondary line shown under the label in the dropdown.
+       */
       description?: string;
-      /** Optional small badge rendered next to the label. */
+      /**
+       * Optional small badge rendered next to the label.
+       */
       tag?: string;
     };
 
 type LoaderMode = "static" | "short" | "long";
 
 export interface ControlSelectProps {
+  /**
+   * Bound `InputField` from `useForm`. Single or multi value depending on schema.
+   */
   input: BaseInputField;
+  /**
+   * Field label. Falls back to schema `title`.
+   */
   label?: string;
+  /**
+   * Helper text shown below the input.
+   */
   description?: string;
+  /**
+   * Render as a `<Segmented>` control (best for 2–4 options).
+   */
   segmented?: boolean;
+  /**
+   * Render as a searchable combobox instead of a native select.
+   */
   combobox?: boolean;
+  /**
+   * Async option loader. Triggers long-mode (server-side search) above `loaderThreshold` options.
+   */
   loader?: (search: string, resolve?: string[]) => Async<SelectOption[]>;
+  /**
+   * Option count above which `loader` is invoked on every search instead of once. Defaults to ~50.
+   */
   loaderThreshold?: number;
+  /**
+   * Debounce in ms applied to search queries when calling `loader` in long mode.
+   */
   loaderDebounce?: number;
+  /**
+   * Disable the control.
+   */
   disabled?: boolean;
   /**
    * Inline option list (overrides schema `enum`). Accepts either a static

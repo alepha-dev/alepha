@@ -54,7 +54,6 @@ It provides a declarative way to define pages with powerful features:
 | `parent` | `PagePrimitive&lt;PageConfigSchema, TPropsParent, any&gt;` | No | Define a parent page for nested routing |
 | `can` | `Object` | No | Function to determine if the page can be accessed |
 | `errorHandler` | `ErrorHandler` | No | Catch any error from the `loader` function or during `rendering` |
-| `entries` | `Array&lt;Partial&lt;PageRequestConfig&lt;TConfig&gt;&gt;&gt;` | No | If true, the page will be considered as a static page, immutable and cacheable |
 | `ssr` | `boolean` | No | Enable or disable server-side rendering for this page |
 | `onServerResponse` | `Object` | No | Called before the server response is sent to the client |
 | `onEnter` | `Object` | No | Called when user enters the page |

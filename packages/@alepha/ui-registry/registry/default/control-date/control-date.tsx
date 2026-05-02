@@ -18,15 +18,33 @@ import { cn } from "@/lib/utils";
 import { FormField } from "@/registry/default/control-base/form-field";
 
 export interface ControlDateProps {
+  /**
+   * Bound `InputField` from `useForm`. Stores an ISO string.
+   */
   input: BaseInputField;
+  /**
+   * Field label. Falls back to schema `title`.
+   */
   label?: string;
+  /**
+   * Helper text shown below the picker.
+   */
   description?: string;
-  /** Force date-only mode regardless of schema format. */
+  /**
+   * Force date-only mode regardless of schema format.
+   */
   date?: boolean;
-  /** Force date-time mode regardless of schema format. */
+  /**
+   * Force date-time mode regardless of schema format.
+   */
   datetime?: boolean;
-  /** Force time-only mode regardless of schema format. */
+  /**
+   * Force time-only mode regardless of schema format.
+   */
   time?: boolean;
+  /**
+   * Disable the picker.
+   */
   disabled?: boolean;
 }
 

@@ -31,11 +31,7 @@ services behind a single endpoint.
 | `target` | `string \| (() =&gt; string)` | Yes | Target URL to which matching requests should be forwarded |
 | `disabled` | `boolean` | No | Whether this proxy is disabled |
 | `beforeRequest` | `Object` | No | Hook called before forwarding the request to the target server |
-| `request` | `ServerRequest` | Yes |  |
-| `proxyRequest` | `RequestInit` | Yes |  |
 | `afterResponse` | `Object` | No | Hook called after receiving the response from the target server |
-| `request` | `ServerRequest` | Yes |  |
-| `proxyResponse` | `Response` | Yes |  |
 | `rewrite` | `Object` | No | Function to rewrite the URL before sending to the target server |
 
 ## Examples

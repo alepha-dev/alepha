@@ -230,15 +230,21 @@ export class I18nProvider<
     return value;
   };
 
+  /**
+   * Look up `key` in the registered dictionaries. The `(string & {})` arm
+   * keeps autocomplete for the typed dictionary keys while allowing shared
+   * library components to pass arbitrary string keys (with a `default`
+   * fallback) without casting to `as never`.
+   */
   public readonly tr = (
-    key: keyof ServiceDictionary<S>[K],
+    key: keyof ServiceDictionary<S>[K] | (string & {}),
     options: {
       args?: string[];
       default?: string;
     } = {},
   ) => {
     const translation = this.translate(key as string, options.args || []);
-    if (translation === key && options.default) {
+    if (translation === (key as string) && options.default) {
       return options.default;
     }
     return translation;

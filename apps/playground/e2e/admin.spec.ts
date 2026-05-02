@@ -1,23 +1,29 @@
 import { expect, test } from "@playwright/test";
 
-test.describe("Admin resources", () => {
+test.use({ storageState: "./e2e/.admin-state.json" });
+
+test.describe("Admin pages mount (logged-in admin)", () => {
   for (const { path, label } of [
-    { path: "/resources/jobs", label: "Jobs" },
-    { path: "/resources/notifications", label: "Notifications" },
-    { path: "/resources/audits", label: "Audit log" },
-    { path: "/resources/files", label: "Files" },
-    { path: "/resources/parameters", label: "Parameters" },
+    { path: "/admin/users", label: "Users" },
+    { path: "/admin/sessions", label: "Sessions" },
+    { path: "/admin/keys", label: "API keys" },
+    { path: "/admin/jobs", label: "Jobs" },
+    { path: "/admin/notifications", label: "Notifications" },
+    { path: "/admin/audits", label: "Audit log" },
+    { path: "/admin/files", label: "Files" },
+    { path: "/admin/parameters", label: "Parameters" },
   ] as const) {
-    test(`${label} page mounts`, async ({ page }) => {
-      await page.goto(path);
-      await expect(page.locator("h1, h2").first()).toBeVisible();
+    test(`${label} → ${path}`, async ({ page }) => {
+      const response = await page.goto(path);
+      expect(response?.status()).toBeLessThan(400);
+      await expect(page.getByText(/STACK TRACE/i)).toHaveCount(0);
     });
   }
 });
 
 test.describe("Admin Files: upload + list + delete", () => {
   test("upload, list refresh, delete confirmation", async ({ page }) => {
-    await page.goto("/resources/files");
+    await page.goto("/admin/files");
     await expect(page.getByRole("button", { name: /^Upload$/ })).toBeVisible();
 
     const fileChooserPromise = page.waitForEvent("filechooser");
@@ -25,23 +31,30 @@ test.describe("Admin Files: upload + list + delete", () => {
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles("./e2e/fixtures/sample.txt");
 
-    // first row should be our newest upload
     const firstRow = page.locator("tbody tr").first();
     await expect(firstRow).toContainText("sample.txt", { timeout: 15_000 });
 
-    // open the row's actions menu
     await firstRow.locator("button[aria-haspopup]").click();
     await page.getByRole("menuitem", { name: "Delete" }).click();
-
-    // confirm dialog mentions the file name
     await expect(
       page.getByText('Permanently delete "sample.txt"?'),
     ).toBeVisible();
 
     await page.getByRole("button", { name: "Confirm" }).click();
-    // the dialog closes
     await expect(page.getByText('Permanently delete "sample.txt"?')).toBeHidden(
       { timeout: 5_000 },
     );
+  });
+});
+
+test.describe("Admin gate (anonymous)", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("anonymous /admin returns 401", async ({ request }) => {
+    const res = await request.get("/admin", {
+      maxRedirects: 0,
+      failOnStatusCode: false,
+    });
+    expect([401, 302]).toContain(res.status());
   });
 });

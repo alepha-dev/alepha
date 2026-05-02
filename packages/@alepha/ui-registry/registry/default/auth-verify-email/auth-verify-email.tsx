@@ -1,5 +1,6 @@
 import type { UserController } from "alepha/api/users";
 import { useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
 import { AlertCircle, CheckCircle2, Loader2, MailCheck } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -10,8 +11,13 @@ import { Card, CardContent } from "@/components/ui/card";
 export type VerifyEmailStep = "verifying" | "success" | "error";
 
 export interface AuthVerifyEmailProps {
+  /**
+   * Route to the login page, shown as a CTA on success/failure.
+   */
   loginPath?: string;
-  /** Render a fixed step (useful for storybook / testing). */
+  /**
+   * Render a fixed step (useful for storybook / testing).
+   */
   step?: VerifyEmailStep;
 }
 
@@ -24,6 +30,7 @@ export function AuthVerifyEmail(props: AuthVerifyEmailProps) {
 
 function Stateful(props: { loginPath?: string }) {
   const state = useRouterState();
+  const { tr } = useI18n();
   const userCtrl = useClient<UserController>();
   const [step, setStep] = useState<VerifyEmailStep>("verifying");
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +41,11 @@ function Stateful(props: { loginPath?: string }) {
   useEffect(() => {
     const verify = async () => {
       if (!email || !token) {
-        setError("Invalid verification link. Email and token are required.");
+        setError(
+          tr("auth.verify.invalidLink", {
+            default: "Invalid verification link. Email and token are required.",
+          }),
+        );
         setStep("error");
         return;
       }
@@ -45,13 +56,16 @@ function Stateful(props: { loginPath?: string }) {
         setError(
           err instanceof Error
             ? err.message
-            : "Failed to verify your email. The link may have expired or is invalid.",
+            : tr("auth.verify.failed", {
+                default:
+                  "Failed to verify your email. The link may have expired or is invalid.",
+              }),
         );
         setStep("error");
       }
     };
     void verify();
-  }, [email, token, userCtrl]);
+  }, [email, token, userCtrl, tr]);
 
   return <View step={step} error={error} loginPath={props.loginPath} />;
 }
@@ -61,6 +75,7 @@ function View(props: {
   error?: string | null;
   loginPath?: string;
 }) {
+  const { tr } = useI18n();
   return (
     <div className="flex min-h-svh flex-1 items-center justify-center p-6">
       <div className="flex w-full max-w-sm flex-col gap-4">
@@ -70,10 +85,14 @@ function View(props: {
               <>
                 <Loader2 className="text-muted-foreground size-12 animate-spin" />
                 <h2 className="text-center text-lg font-semibold">
-                  Verifying your email...
+                  {tr("auth.verify.verifying", {
+                    default: "Verifying your email...",
+                  })}
                 </h2>
                 <p className="text-muted-foreground text-center text-sm">
-                  Please wait while we verify your email address.
+                  {tr("auth.verify.verifyingHint", {
+                    default: "Please wait while we verify your email address.",
+                  })}
                 </p>
               </>
             )}
@@ -81,17 +100,23 @@ function View(props: {
               <>
                 <MailCheck className="size-12 text-green-600" />
                 <h2 className="text-center text-lg font-semibold">
-                  Email verified
+                  {tr("auth.verify.successTitle", {
+                    default: "Email verified",
+                  })}
                 </h2>
                 <Alert>
                   <CheckCircle2 className="size-4" />
                   <AlertDescription>
-                    Your email has been verified successfully.
+                    {tr("auth.verify.success", {
+                      default: "Your email has been verified successfully.",
+                    })}
                   </AlertDescription>
                 </Alert>
                 <Button asChild className="w-full">
                   <a href={props.loginPath ?? "/auth/login"}>
-                    Sign in to your account
+                    {tr("auth.verify.signIn", {
+                      default: "Sign in to your account",
+                    })}
                   </a>
                 </Button>
               </>
@@ -100,17 +125,26 @@ function View(props: {
               <>
                 <AlertCircle className="text-destructive size-12" />
                 <h2 className="text-center text-lg font-semibold">
-                  Email verification failed
+                  {tr("auth.verify.errorTitle", {
+                    default: "Email verification failed",
+                  })}
                 </h2>
                 <Alert variant="destructive">
                   <AlertCircle className="size-4" />
                   <AlertDescription>
                     {props.error ||
-                      "Failed to verify your email. The link may have expired or is invalid."}
+                      tr("auth.verify.failed", {
+                        default:
+                          "Failed to verify your email. The link may have expired or is invalid.",
+                      })}
                   </AlertDescription>
                 </Alert>
                 <Button asChild className="w-full">
-                  <a href={props.loginPath ?? "/auth/login"}>Back to sign in</a>
+                  <a href={props.loginPath ?? "/auth/login"}>
+                    {tr("auth.verify.backToSignIn", {
+                      default: "Back to sign in",
+                    })}
+                  </a>
                 </Button>
               </>
             )}

@@ -47,14 +47,4 @@ class UserController {
 |--------|------|----------|-------------|
 | `store` | `true \| DurationLike \| CachePrimitiveOptions` | No | If true, enables storing cached responses |
 | `etag` | `true` | No | If true, enables ETag support for the cached responses. |
-| `public` | `boolean` | No | Indicates that the response may be cached by any cache. |
-| `private` | `boolean` | No | Indicates that the response is intended for a single user and must not be stored by a shared cache. |
-| `noCache` | `boolean` | No | Forces caches to submit the request to the origin server for validation before releasing a cached copy. |
-| `noStore` | `boolean` | No | Instructs caches not to store the response. |
-| `maxAge` | `number \| DurationLike` | No | Maximum amount of time a resource is considered fresh |
-| `sMaxAge` | `number \| DurationLike` | No | Overrides max-age for shared caches (e.g., CDNs) |
-| `mustRevalidate` | `boolean` | No | Indicates that once a resource becomes stale, caches must not use it without successful validation. |
-| `proxyRevalidate` | `boolean` | No | Similar to must-revalidate, but only for shared caches. |
-| `immutable` | `boolean` | No | Indicates that the response can be stored but must be revalidated before each use. |
-| `staleWhileRevalidate` | `number \| DurationLike` | No | Time window (in seconds or DurationLike) during which a stale response may be served while a fresh one is fetched in the background |
 
