@@ -9,15 +9,19 @@ import { $client } from "alepha/server/links";
 import { createElement } from "react";
 import type { AdminInvitationController } from "../../api/controllers/AdminInvitationController.ts";
 import type { ChapterController } from "../../api/controllers/ChapterController.ts";
+import type { FolioController } from "../../api/controllers/FolioController.ts";
 import type { KanbanController } from "../../api/controllers/KanbanController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectStatsController } from "../../api/controllers/ProjectStatsController.ts";
 import type { TaskController } from "../../api/controllers/TaskController.ts";
 import { currentAssignedTasksAtom } from "./atoms/currentAssignedTasksAtom.ts";
 import { currentChaptersAtom } from "./atoms/currentChaptersAtom.ts";
+import { currentFolioAtom } from "./atoms/currentFolioAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectCharacterAtom } from "./atoms/currentProjectCharacterAtom.ts";
 import { currentTaskAtom } from "./atoms/currentTaskAtom.ts";
+import { folioTagsAtom } from "./atoms/folioTagsAtom.ts";
+import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { MeRouter } from "./components/profile/me/MeRouter.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
@@ -30,6 +34,7 @@ export class AppRouter {
   invitationAdminApi = $client<AdminInvitationController>();
   kanbanApi = $client<KanbanController>();
   chapterApi = $client<ChapterController>();
+  folioApi = $client<FolioController>();
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
   meRouter = $inject(MeRouter);
@@ -66,6 +71,7 @@ export class AppRouter {
       this.project,
       this.projectCreate,
       this.kanban,
+      this.lore,
       this.meRouter.me,
       this.notFound,
     ],
@@ -323,6 +329,69 @@ export class AppRouter {
       if (HttpError.is(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
+    },
+  });
+
+  // -------------------------------------------------------------------------------------------------------------------
+  // Lore — personal markdown notes ("folios")
+  // -------------------------------------------------------------------------------------------------------------------
+
+  lore = $page({
+    name: "lore",
+    children: () => [this.loreNew, this.loreFolio, this.loreFolioEdit],
+    path: "/lore",
+    head: { title: "Lore" },
+    lazy: () => import("./components/lore/LoreLayout.tsx"),
+    loader: async () => {
+      const [folios, tags] = await Promise.all([
+        this.folioApi.list({ query: { limit: 100 } }),
+        this.folioApi.listTags(),
+      ]);
+      this.alepha.store.set(userFoliosAtom, folios);
+      this.alepha.store.set(folioTagsAtom, tags);
+    },
+    onLeave: () => {
+      this.alepha.store.set(currentFolioAtom, undefined);
+    },
+  });
+
+  loreNew = $page({
+    name: "loreNew",
+    path: "/new",
+    head: { title: "New folio" },
+    lazy: () => import("./components/lore/FolioCreatePage.tsx"),
+    loader: async () => {
+      this.alepha.store.set(currentFolioAtom, undefined);
+      return {};
+    },
+  });
+
+  loreFolio = $page({
+    name: "loreFolio",
+    path: "/:id",
+    schema: {
+      params: t.object({ id: t.uuid() }),
+    },
+    lazy: () => import("./components/lore/FolioView.tsx"),
+    loader: async ({ params }) => {
+      const folio = await this.folioApi.get({ params: { id: params.id } });
+      this.alepha.store.set(currentFolioAtom, folio);
+      return { folio };
+    },
+  });
+
+  loreFolioEdit = $page({
+    name: "loreFolioEdit",
+    path: "/:id/edit",
+    schema: {
+      params: t.object({ id: t.uuid() }),
+    },
+    head: { title: "Edit folio" },
+    lazy: () => import("./components/lore/FolioEditPage.tsx"),
+    loader: async ({ params }) => {
+      const folio = await this.folioApi.get({ params: { id: params.id } });
+      this.alepha.store.set(currentFolioAtom, folio);
+      return { folio };
     },
   });
 

@@ -2,6 +2,7 @@ import { $module } from "alepha";
 import { AdminInvitationController } from "./controllers/AdminInvitationController.ts";
 import { ChapterController } from "./controllers/ChapterController.ts";
 import { CharacterController } from "./controllers/CharacterController.ts";
+import { FolioController } from "./controllers/FolioController.ts";
 import { IdentityController } from "./controllers/IdentityController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
@@ -36,5 +37,6 @@ export const RoadmapApi = $module({
     AdminInvitationController,
     WhiteboardController,
     KanbanController,
+    FolioController,
   ],
 });
