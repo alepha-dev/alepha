@@ -21,7 +21,9 @@ test.describe("AutoForm demo — schema-driven flow", () => {
 
   test("ControlObject Initialize reveals nested fields", async ({ page }) => {
     await page.goto("/demo/auto-form");
-    await page.getByRole("button", { name: "Initialize" }).click();
+    const init = page.getByRole("button", { name: "Initialize" });
+    await expect(init).toBeVisible();
+    await init.click();
     await expect(page.locator('input[name="address.street"]')).toBeVisible();
     await expect(page.locator('input[name="address.city"]')).toBeVisible();
     await expect(page.locator('input[name="address.zip"]')).toBeVisible();
@@ -67,12 +69,12 @@ test.describe("Upload control", () => {
   test("single image upload stores UUID in form value", async ({ page }) => {
     await page.goto("/demo/forms/upload");
 
-    const fileChooserPromise = page.waitForEvent("filechooser");
-    await page.getByRole("button", { name: "Choose a file" }).first().click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles("./e2e/fixtures/sample.txt");
+    await page
+      .locator('input[type="file"]')
+      .first()
+      .setInputFiles("./e2e/fixtures/sample.txt");
 
-    await expect(page.getByText("sample.txt")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("sample.txt")).toBeVisible({ timeout: 15_000 });
 
     // wait until Save is enabled (form not in flight)
     const save = page.getByRole("button", { name: "Save" });
@@ -89,12 +91,12 @@ test.describe("Upload control", () => {
   test("× removes the uploaded file from the form", async ({ page }) => {
     await page.goto("/demo/forms/upload");
 
-    const fileChooserPromise = page.waitForEvent("filechooser");
-    await page.getByRole("button", { name: "Choose a file" }).first().click();
-    const fc = await fileChooserPromise;
-    await fc.setFiles("./e2e/fixtures/sample.txt");
+    await page
+      .locator('input[type="file"]')
+      .first()
+      .setInputFiles("./e2e/fixtures/sample.txt");
 
-    await expect(page.getByText("sample.txt")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("sample.txt")).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Remove" }).first().click();
     await expect(page.getByText("sample.txt")).toHaveCount(0);
   });

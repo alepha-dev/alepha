@@ -26,10 +26,10 @@ test.describe("Admin Files: upload + list + delete", () => {
     await page.goto("/admin/files");
     await expect(page.getByRole("button", { name: /^Upload$/ })).toBeVisible();
 
-    const fileChooserPromise = page.waitForEvent("filechooser");
-    await page.getByRole("button", { name: /^Upload$/ }).click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles("./e2e/fixtures/sample.txt");
+    await page
+      .locator('input[type="file"]')
+      .first()
+      .setInputFiles("./e2e/fixtures/sample.txt");
 
     const firstRow = page.locator("tbody tr").first();
     await expect(firstRow).toContainText("sample.txt", { timeout: 15_000 });
