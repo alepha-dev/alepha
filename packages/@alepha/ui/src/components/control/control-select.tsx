@@ -33,7 +33,16 @@ import {
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-export type SelectOption = string | { value: string; label: string };
+export type SelectOption =
+  | string
+  | {
+      value: string;
+      label: string;
+      /** Optional secondary line shown under the label in the dropdown. */
+      description?: string;
+      /** Optional small badge rendered next to the label. */
+      tag?: string;
+    };
 
 type LoaderMode = "static" | "short" | "long";
 
@@ -46,10 +55,32 @@ export interface ControlSelectProps {
   loader?: (search: string, resolve?: string[]) => Async<SelectOption[]>;
   loaderThreshold?: number;
   loaderDebounce?: number;
+  disabled?: boolean;
+  /**
+   * Inline option list (overrides schema `enum`). Accepts either a static
+   * array or an async function `(query) => SelectOption[]`. The async form
+   * is mapped to a long-mode loader.
+   */
+  items?:
+    | SelectOption[]
+    | ((query: string) => SelectOption[] | Promise<SelectOption[]>);
+  /**
+   * Allow the user to add a new option by typing. When `true`, the typed
+   * query becomes the value (and label) of a freshly created entry. When a
+   * function, the function builds the option from the query.
+   *
+   * - For multi-select fields: each entry is appended to the value array.
+   * - For single fields: behaves like a regular text input with a dropdown
+   *   suggesting existing options.
+   */
+  createNewEntry?: boolean | ((query: string) => Exclude<SelectOption, string>);
 }
 
 const optValue = (o: SelectOption) => (typeof o === "string" ? o : o.value);
 const optLabel = (o: SelectOption) => (typeof o === "string" ? o : o.label);
+const optDesc = (o: SelectOption) =>
+  typeof o === "string" ? undefined : o.description;
+const optTag = (o: SelectOption) => (typeof o === "string" ? undefined : o.tag);
 
 export function ControlSelect(props: ControlSelectProps) {
   const form = useFormState(props.input, ["error"]);
@@ -65,7 +96,19 @@ export function ControlSelect(props: ControlSelectProps) {
   const isNumeric = meta.type === "number" || meta.type === "integer";
   const isBoolean = meta.type === "boolean";
 
-  const enumValues = (meta.enum as SelectOption[] | undefined) ?? [];
+  // Normalize items prop: array → static; function → loader
+  const itemsArray = Array.isArray(props.items)
+    ? (props.items as SelectOption[])
+    : undefined;
+  const itemsLoader =
+    typeof props.items === "function"
+      ? (props.items as (q: string) => Async<SelectOption[]>)
+      : undefined;
+
+  const enumValues =
+    itemsArray ?? (meta.enum as SelectOption[] | undefined) ?? [];
+
+  const effectiveLoader = props.loader ?? itemsLoader;
 
   const {
     data: asyncData,
@@ -73,7 +116,7 @@ export function ControlSelect(props: ControlSelectProps) {
     mode,
     search,
   } = useAsyncLoader(
-    props.loader,
+    effectiveLoader,
     props.loaderThreshold ?? 100,
     props.loaderDebounce ?? 300,
     props.input.initialValue,
@@ -84,7 +127,7 @@ export function ControlSelect(props: ControlSelectProps) {
   const min = meta.constraints.minimum;
   const max = meta.constraints.maximum;
   useEffect(() => {
-    if (props.loader) return;
+    if (effectiveLoader) return;
     if (isBoolean && enumValues.length === 0) {
       setStaticData([
         { value: "true", label: "Yes" },
@@ -103,9 +146,9 @@ export function ControlSelect(props: ControlSelectProps) {
     } else {
       setStaticData(enumValues);
     }
-  }, [props.loader, enumKey, isBoolean, isNumeric, min, max]);
+  }, [effectiveLoader, enumKey, isBoolean, isNumeric, min, max]);
 
-  const data = props.loader ? asyncData : staticData;
+  const data = effectiveLoader ? asyncData : staticData;
 
   if (!props.input?.props) return null;
 
@@ -127,6 +170,7 @@ export function ControlSelect(props: ControlSelectProps) {
         <Segmented
           value={value != null ? String(value) : undefined}
           onChange={(v) => setValue(coerce(v))}
+          disabled={props.disabled}
           options={data.slice(0, 10).map((o) => ({
             value: optValue(o),
             label: optLabel(o),
@@ -152,10 +196,12 @@ export function ControlSelect(props: ControlSelectProps) {
           data={data}
           loading={loading}
           multi={isArray}
+          disabled={props.disabled}
           value={value}
           onChange={(v) => setValue(v)}
           coerce={coerce}
           onSearch={mode === "long" ? search.run : undefined}
+          createNewEntry={props.createNewEntry}
         />
       </FormField>
     );
@@ -173,8 +219,9 @@ export function ControlSelect(props: ControlSelectProps) {
       <Select
         value={value != null ? String(value) : undefined}
         onValueChange={(v) => setValue(coerce(v))}
+        disabled={props.disabled}
       >
-        <SelectTrigger id={meta.id}>
+        <SelectTrigger id={meta.id} className="w-full">
           <SelectValue placeholder="Select…" />
         </SelectTrigger>
         <SelectContent>
@@ -194,10 +241,12 @@ interface ComboboxProps {
   data: SelectOption[];
   loading: boolean;
   multi: boolean;
+  disabled?: boolean;
   value: unknown;
   onChange: (v: unknown) => void;
   coerce: (v: string) => unknown;
   onSearch?: (q: string) => void;
+  createNewEntry?: ControlSelectProps["createNewEntry"];
 }
 
 function Combobox(props: ComboboxProps) {
@@ -245,6 +294,7 @@ function Combobox(props: ComboboxProps) {
         <Button
           id={props.id}
           variant="outline"
+          disabled={props.disabled}
           className={cn(
             "w-full justify-between font-normal",
             selected.length === 0 && "text-muted-foreground",
@@ -274,11 +324,15 @@ function Combobox(props: ComboboxProps) {
               </div>
             ) : (
               <>
-                <CommandEmpty>No results.</CommandEmpty>
+                <CommandEmpty>
+                  {props.createNewEntry ? "" : "No results."}
+                </CommandEmpty>
                 <CommandGroup>
                   {props.data.map((o) => {
                     const v = optValue(o);
                     const isSelected = selected.includes(v);
+                    const desc = optDesc(o);
+                    const tag = optTag(o);
                     return (
                       <CommandItem
                         key={v}
@@ -287,14 +341,46 @@ function Combobox(props: ComboboxProps) {
                       >
                         <Check
                           className={cn(
-                            "mr-2 size-4",
+                            "mr-2 size-4 shrink-0",
                             isSelected ? "opacity-100" : "opacity-0",
                           )}
                         />
-                        {optLabel(o)}
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            {tag && (
+                              <span className="bg-muted text-muted-foreground rounded px-1 text-[10px] uppercase tracking-wide">
+                                {tag}
+                              </span>
+                            )}
+                            <span className="truncate">{optLabel(o)}</span>
+                          </div>
+                          {desc && (
+                            <span className="text-muted-foreground text-xs truncate">
+                              {desc}
+                            </span>
+                          )}
+                        </div>
                       </CommandItem>
                     );
                   })}
+                  {props.createNewEntry &&
+                    query &&
+                    !props.data.some((o) => optValue(o) === query) && (
+                      <CommandItem
+                        value={`__create__${query}`}
+                        onSelect={() => {
+                          const built =
+                            typeof props.createNewEntry === "function"
+                              ? props.createNewEntry(query)
+                              : { value: query, label: query };
+                          handleSelect(built.value);
+                          setQuery("");
+                        }}
+                      >
+                        <span className="mr-2">+</span>
+                        Create "{query}"
+                      </CommandItem>
+                    )}
                 </CommandGroup>
               </>
             )}

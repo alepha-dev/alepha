@@ -1,4 +1,7 @@
-import { ControlArray } from "@alepha/ui/components/control/control-array";
+import {
+  ControlArray,
+  type ControlArrayProps,
+} from "@alepha/ui/components/control/control-array";
 import { ControlDate } from "@alepha/ui/components/control/control-date";
 import { ControlNumber } from "@alepha/ui/components/control/control-number";
 import { ControlObject } from "@alepha/ui/components/control/control-object";
@@ -8,17 +11,20 @@ import {
   type IconComponent,
   iconFor,
 } from "@alepha/ui/components/control/icon-hint";
+import { Button } from "@alepha/ui/components/ui/button";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Switch } from "@alepha/ui/components/ui/switch";
 import { Textarea } from "@alepha/ui/components/ui/textarea";
+import { useAlepha } from "alepha/react";
 import {
   type BaseInputField,
   parseField,
   useFieldValue,
   useFormState,
 } from "alepha/react/form";
-import { Eye, EyeOff } from "lucide-react";
-import { type ComponentType, type ReactNode, useState } from "react";
+import { resolveSchemaControl, type SchemaControl } from "alepha/react/ui";
+import { Eye, EyeOff, X } from "lucide-react";
+import { type ComponentType, type ReactNode, useEffect, useState } from "react";
 
 export interface ControlProps {
   input: BaseInputField;
@@ -43,16 +49,43 @@ export interface ControlProps {
   /** Custom render component receiving `{value, onChange}`. */
   custom?: ComponentType<{ value: unknown; onChange: (v: unknown) => void }>;
   /** Override icon — pass `null` to remove the schema-inferred icon. */
-  icon?: IconComponent | null;
+  icon?: IconComponent | string | null;
+  /** Disable the control. */
+  disabled?: boolean;
+  /** Render slot before the control. */
+  top?: ReactNode;
+  /** Render slot after the control. */
+  bottom?: ReactNode;
+  /**
+   * Width slot inside an `<AutoForm>` group (mapped to a CSS grid column
+   * span). Read by the parent group; ignored when rendering standalone.
+   */
+  width?: 100 | 75 | 66 | 50 | 33 | 25;
+  /**
+   * Throttle text input onChange in ms. Set by `<AutoForm throttle>` and
+   * propagated to children. `0` (default) = no throttle.
+   */
+  throttle?: number;
+  /** HTML `autocomplete` hint passed to the underlying input. */
+  autoComplete?: string;
+  /** HTML `placeholder` passed to the underlying input. */
+  placeholder?: string;
+  /** Allow user to create new entries in select / multi-select. */
+  createNewEntry?: boolean | ((query: string) => unknown);
 }
 
 /**
  * Schema-driven form field renderer. Inspects the bound `InputField` from
- * `useForm` and dispatches to the appropriate sub-control or primitive.
+ * `useForm`, evaluates `schema.$control` (object or function), merges the
+ * result with explicit props, and dispatches to the right sub-control.
  */
 export function Control(props: ControlProps) {
   const form = useFormState(props.input, ["error"]);
   const [value, setValue] = useFieldValue(props.input);
+
+  // Function-form `$control` reads other fields → re-render on any
+  // change. Static `$control` (object) does not need this subscription.
+  useDynamicControlRefresh(props.input);
 
   if (!props.input?.props) return null;
 
@@ -62,186 +95,241 @@ export function Control(props: ControlProps) {
     error: form.error,
   });
 
+  // ── Resolve $control (object | function | false) ─────────────────
+  const resolved = resolveSchemaControl(meta.control, {
+    form: props.input.form,
+    value,
+  });
+  if (resolved === null) return null;
+
+  const merged = {
+    ...props,
+    ...(resolved as Partial<ControlProps>),
+  } as ControlProps & Partial<SchemaControl>;
+
   // ── Custom escape hatch ──────────────────────────────────────────
-  if (props.custom) {
-    const Custom = props.custom;
-    return (
+  if (merged.custom) {
+    const Custom = merged.custom;
+    return wrapWithSlots(
+      merged,
       <FormField
         id={meta.id}
-        label={meta.label}
-        description={meta.description}
+        label={merged.label ?? meta.label}
+        description={merged.description ?? meta.description}
         error={meta.error}
         required={meta.required}
       >
         <Custom value={value} onChange={(v) => setValue(v)} />
-      </FormField>
+      </FormField>,
     );
   }
 
   // ── Recursive: object / array of objects ─────────────────────────
-  if (props.object || meta.isObject) {
-    return (
+  if (merged.object || meta.isObject) {
+    return wrapWithSlots(
+      merged,
       <ControlObject
         input={props.input}
-        label={props.label}
-        description={props.description}
-      />
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        disabled={merged.disabled}
+      />,
     );
   }
-  if (props.array || meta.isArrayOfObjects) {
-    return (
+  if (merged.array || meta.isArrayOfObjects) {
+    const arrayProps = (merged as { arrayProps?: Record<string, unknown> })
+      .arrayProps;
+    return wrapWithSlots(
+      merged,
       <ControlArray
         input={props.input}
-        label={props.label}
-        description={props.description}
-      />
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        disabled={merged.disabled}
+        confirmDelete={
+          arrayProps?.confirmDelete as ControlArrayProps["confirmDelete"]
+        }
+        renderTabName={
+          arrayProps?.renderTabName as ControlArrayProps["renderTabName"]
+        }
+        forceTabs={arrayProps?.forceTabs as boolean | undefined}
+      />,
     );
   }
 
   // ── Number / slider ──────────────────────────────────────────────
   if (
-    props.slider ||
-    props.number ||
-    (!props.select &&
-      !props.segmented &&
-      !props.combobox &&
+    merged.slider ||
+    merged.number ||
+    (!merged.select &&
+      !merged.segmented &&
+      !merged.combobox &&
       (meta.type === "number" || meta.type === "integer"))
   ) {
-    return (
+    return wrapWithSlots(
+      merged,
       <ControlNumber
         input={props.input}
-        label={props.label}
-        description={props.description}
-        slider={props.slider}
-      />
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        slider={merged.slider}
+        disabled={merged.disabled}
+      />,
     );
   }
 
-  // ── Select-like: enum, primitive array, segmented, combobox ──────
+  // ── Items provided → select / multi / combobox ───────────────────
+  const items = (merged as Record<string, unknown>).items as
+    | undefined
+    | unknown[]
+    | ((q: string) => unknown);
   if (
-    props.select ||
-    props.combobox ||
-    props.segmented ||
+    merged.select ||
+    merged.combobox ||
+    merged.segmented ||
     meta.isEnum ||
-    (meta.isArray && !meta.isArrayOfObjects)
+    (meta.isArray && !meta.isArrayOfObjects) ||
+    items != null
   ) {
-    return (
+    return wrapWithSlots(
+      merged,
       <ControlSelect
         input={props.input}
-        label={props.label}
-        description={props.description}
-        segmented={props.segmented}
-        combobox={props.combobox}
-      />
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        segmented={merged.segmented}
+        combobox={merged.combobox}
+        items={items as never}
+        disabled={merged.disabled}
+        createNewEntry={
+          merged.createNewEntry as boolean | ((q: string) => never) | undefined
+        }
+      />,
     );
   }
 
-  // ── Boolean → switch (or select if `select` is forced) ───────────
-  if (meta.type === "boolean") {
-    if (props.switch !== false) {
-      return (
-        <FormField
-          id={meta.id}
-          label={meta.label}
-          description={meta.description}
-          error={meta.error}
-          required={meta.required}
-        >
+  // ── Boolean → switch ─────────────────────────────────────────────
+  if (meta.type === "boolean" && merged.switch !== false) {
+    return wrapWithSlots(
+      merged,
+      <FormField
+        id={meta.id}
+        label={merged.label ?? meta.label}
+        description={merged.description ?? meta.description}
+        error={meta.error}
+        required={meta.required}
+      >
+        <div className="flex h-9 items-center">
           <Switch
             id={meta.id}
+            disabled={merged.disabled}
             checked={Boolean(value)}
             onCheckedChange={(v) => setValue(v)}
           />
-        </FormField>
-      );
-    }
+        </div>
+      </FormField>,
+    );
   }
 
   // ── Date / time ──────────────────────────────────────────────────
   if (
-    props.date ||
-    props.datetime ||
-    props.time ||
+    merged.date ||
+    merged.datetime ||
+    merged.time ||
     meta.format === "date" ||
     meta.format === "date-time" ||
     meta.format === "time"
   ) {
-    return (
+    return wrapWithSlots(
+      merged,
       <ControlDate
         input={props.input}
-        label={props.label}
-        description={props.description}
-        date={props.date}
-        datetime={props.datetime}
-        time={props.time}
-      />
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        date={merged.date}
+        datetime={merged.datetime}
+        time={merged.time}
+        disabled={merged.disabled}
+      />,
     );
   }
 
-  // ── File ─────────────────────────────────────────────────────────
-  if (props.file) {
-    return (
+  // ── File (raw) ───────────────────────────────────────────────────
+  if (merged.file) {
+    return wrapWithSlots(
+      merged,
       <FormField
         id={meta.id}
-        label={meta.label}
-        description={meta.description}
+        label={merged.label ?? meta.label}
+        description={merged.description ?? meta.description}
         error={meta.error}
         required={meta.required}
       >
         <Input
           id={meta.id}
+          name={props.input.props.name}
           type="file"
+          disabled={merged.disabled}
           onChange={(e) => setValue(e.target.files?.[0])}
         />
-      </FormField>
+      </FormField>,
     );
   }
 
-  // ── Textarea ─────────────────────────────────────────────────────
-  if (props.area) {
-    return (
+  // ── Auto-textarea: explicit `area` or maxLength > 256 ────────────
+  const maxLength = meta.constraints.maxLength ?? 0;
+  if (merged.area || maxLength > 256) {
+    const rows = maxLength > 1024 ? 6 : maxLength > 512 ? 4 : 2;
+    return wrapWithSlots(
+      merged,
       <FormField
         id={meta.id}
-        label={meta.label}
-        description={meta.description}
+        label={merged.label ?? meta.label}
+        description={merged.description ?? meta.description}
         error={meta.error}
         required={meta.required}
       >
         <Textarea
           id={meta.id}
-          rows={4}
+          name={props.input.props.name}
+          rows={rows}
+          disabled={merged.disabled}
+          maxLength={maxLength || undefined}
+          autoComplete={merged.autoComplete}
+          placeholder={merged.placeholder}
           value={String(value ?? "")}
           onChange={(e) => setValue(e.target.value)}
         />
-      </FormField>
+      </FormField>,
     );
   }
 
   // ── Password ─────────────────────────────────────────────────────
   const isPassword =
-    props.password ||
+    merged.password ||
     meta.iconHint === "password" ||
     meta.format === "password";
   if (isPassword) {
-    return (
+    return wrapWithSlots(
+      merged,
       <PasswordControl
         id={meta.id}
-        label={meta.label}
-        description={meta.description}
+        name={props.input.props.name}
+        label={merged.label ?? meta.label}
+        description={merged.description ?? meta.description}
         error={meta.error}
         required={meta.required}
-        icon={
-          props.icon === null ? undefined : (props.icon ?? iconFor("password"))
-        }
+        disabled={merged.disabled}
+        autoComplete={merged.autoComplete}
+        icon={resolveIcon(merged.icon, "password")}
         value={String(value ?? "")}
         onChange={(v) => setValue(v)}
-      />
+      />,
     );
   }
 
   // ── Default text input with format-driven HTML5 type + icon ──────
-  const Icon =
-    props.icon === null ? undefined : (props.icon ?? iconFor(meta.iconHint));
+  const Icon = resolveIcon(merged.icon, meta.iconHint);
   const htmlType =
     meta.format === "email"
       ? "email"
@@ -251,47 +339,102 @@ export function Control(props: ControlProps) {
           ? "tel"
           : "text";
 
-  return (
+  // ── Nullable clear button (cross) ────────────────────────────────
+  const isNullable =
+    !meta.required && value != null && value !== "" && !merged.disabled;
+
+  return wrapWithSlots(
+    merged,
     <FormField
       id={meta.id}
-      label={meta.label}
-      description={meta.description}
+      label={merged.label ?? meta.label}
+      description={merged.description ?? meta.description}
       error={meta.error}
       required={meta.required}
     >
-      <IconWrap icon={Icon}>
+      <div className="relative">
+        {Icon && (
+          <Icon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2 pointer-events-none" />
+        )}
         <Input
           id={meta.id}
+          name={props.input.props.name}
           type={htmlType}
+          disabled={merged.disabled}
+          autoComplete={merged.autoComplete}
+          placeholder={merged.placeholder}
           value={String(value ?? "")}
           minLength={meta.constraints.minLength}
           maxLength={meta.constraints.maxLength}
           pattern={meta.constraints.pattern}
-          className={Icon ? "pl-9" : undefined}
+          className={(Icon ? "pl-9" : "") + (isNullable ? " pr-9" : "")}
           onChange={(e) => setValue(e.target.value)}
         />
-      </IconWrap>
-    </FormField>
+        {isNullable && (
+          <button
+            type="button"
+            onClick={() => setValue(undefined)}
+            aria-label="Clear"
+            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 p-1"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
+    </FormField>,
   );
 }
 
-function IconWrap(props: { icon?: IconComponent; children: ReactNode }) {
-  if (!props.icon) return <>{props.children}</>;
-  const Icon = props.icon;
+const useDynamicControlRefresh = (input: BaseInputField | undefined) => {
+  const alepha = useAlepha();
+  const [, bump] = useState(0);
+  const isDynamic =
+    typeof (input?.schema as { $control?: unknown } | undefined)?.$control ===
+    "function";
+  useEffect(() => {
+    if (!isDynamic || !input?.form) return;
+    const formId = input.form.id;
+    return alepha.events.on("form:change", (e) => {
+      if (e.id === formId && e.path !== input.path) bump((n) => n + 1);
+    });
+  }, [alepha, input?.form, input?.path, isDynamic]);
+};
+
+const resolveIcon = (
+  icon: ControlProps["icon"],
+  fallback?: string | null,
+): IconComponent | undefined => {
+  if (icon === null) return undefined;
+  if (typeof icon === "string") return iconFor(icon);
+  if (icon) return icon;
+  return iconFor(fallback);
+};
+
+const wrapWithSlots = (
+  props: ControlProps & Partial<SchemaControl>,
+  body: ReactNode,
+): ReactNode => {
+  const top = (props.top as ReactNode) ?? null;
+  const bottom = (props.bottom as ReactNode) ?? null;
+  if (!top && !bottom) return body;
   return (
-    <div className="relative">
-      <Icon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-      {props.children}
+    <div className="flex flex-col gap-1">
+      {top}
+      {body}
+      {bottom}
     </div>
   );
-}
+};
 
 interface PasswordControlProps {
   id?: string;
+  name?: string;
   label?: string;
   description?: string;
   error?: string;
   required?: boolean;
+  disabled?: boolean;
+  autoComplete?: string;
   icon?: IconComponent;
   value: string;
   onChange: (v: string) => void;
@@ -310,24 +453,29 @@ function PasswordControl(props: PasswordControlProps) {
     >
       <div className="relative">
         {Icon && (
-          <Icon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Icon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2 pointer-events-none" />
         )}
         <Input
           id={props.id}
+          name={props.name}
           type={reveal ? "text" : "password"}
-          autoComplete="current-password"
+          autoComplete={props.autoComplete ?? "current-password"}
+          disabled={props.disabled}
           value={props.value}
           onChange={(e) => props.onChange(e.target.value)}
           className={Icon ? "pr-9 pl-9" : "pr-9"}
         />
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
+          disabled={props.disabled}
           onClick={() => setReveal((r) => !r)}
           aria-label={reveal ? "Hide password" : "Show password"}
-          className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
+          className="text-muted-foreground hover:text-foreground absolute top-1/2 right-1 size-7 -translate-y-1/2"
         >
           {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-        </button>
+        </Button>
       </div>
     </FormField>
   );

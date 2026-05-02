@@ -5,7 +5,14 @@ import { AdminNotifications } from "@alepha/ui/components/admin/admin-notificati
 import { AdminParameters } from "@alepha/ui/components/admin/admin-parameters";
 import { $page, Redirection } from "alepha/react/router";
 import { Layout } from "./Layout.tsx";
+import AutoFormDemo from "./pages/demo/AutoForm.tsx";
 import Dialogs from "./pages/demo/Dialogs.tsx";
+import AddressForm from "./pages/demo/forms/Address.tsx";
+import FormsIndex from "./pages/demo/forms/Forms.tsx";
+import LoginForm from "./pages/demo/forms/Login.tsx";
+import PaymentForm from "./pages/demo/forms/Payment.tsx";
+import RegisterForm from "./pages/demo/forms/Register.tsx";
+import SelectsForm from "./pages/demo/forms/Selects.tsx";
 import Toasts from "./pages/demo/Toasts.tsx";
 import Audits from "./pages/playgrounds/Audits.tsx";
 import Jobs from "./pages/playgrounds/Jobs.tsx";
@@ -26,6 +33,13 @@ export class AppRouter {
       this.adminParameters,
       this.demoToasts,
       this.demoDialogs,
+      this.demoAutoForm,
+      this.demoForms,
+      this.demoFormsLogin,
+      this.demoFormsRegister,
+      this.demoFormsAddress,
+      this.demoFormsPayment,
+      this.demoFormsSelects,
     ],
   });
 
@@ -106,5 +120,48 @@ export class AppRouter {
     path: "/demo/dialogs",
     head: { title: "Dialogs demo" },
     component: Dialogs,
+  });
+
+  demoAutoForm: any = $page({
+    parent: this.layout,
+    path: "/demo/auto-form",
+    head: { title: "AutoForm demo" },
+    component: AutoFormDemo,
+  });
+
+  demoForms = $page({
+    path: "/demo/forms",
+    head: { title: "Forms gallery" },
+    component: FormsIndex,
+  });
+
+  demoFormsLogin = $page({
+    path: "/demo/forms/login",
+    head: { title: "Login form" },
+    component: LoginForm,
+  });
+
+  demoFormsRegister = $page({
+    path: "/demo/forms/register",
+    head: { title: "Register form" },
+    component: RegisterForm,
+  });
+
+  demoFormsAddress = $page({
+    path: "/demo/forms/address",
+    head: { title: "Address form" },
+    component: AddressForm,
+  });
+
+  demoFormsPayment = $page({
+    path: "/demo/forms/payment",
+    head: { title: "Payment form" },
+    component: PaymentForm,
+  });
+
+  demoFormsSelects = $page({
+    path: "/demo/forms/selects",
+    head: { title: "Select variants" },
+    component: SelectsForm,
   });
 }

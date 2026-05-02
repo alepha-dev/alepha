@@ -27,6 +27,7 @@ export interface ControlDateProps {
   datetime?: boolean;
   /** Force time-only mode regardless of schema format. */
   time?: boolean;
+  disabled?: boolean;
 }
 
 export function ControlDate(props: ControlDateProps) {
@@ -59,6 +60,7 @@ export function ControlDate(props: ControlDateProps) {
             id={meta.id}
             type="time"
             className="pl-9"
+            disabled={props.disabled}
             value={value ?? ""}
             onChange={(e) => setValue(e.target.value)}
           />
@@ -79,6 +81,7 @@ export function ControlDate(props: ControlDateProps) {
         id={meta.id}
         value={value}
         withTime={isDateTime}
+        disabled={props.disabled}
         onChange={(v) => setValue(v)}
       />
     </FormField>
@@ -89,6 +92,7 @@ interface DatePopoverProps {
   id?: string;
   value?: string;
   withTime: boolean;
+  disabled?: boolean;
   onChange: (value: string | undefined) => void;
 }
 
@@ -134,6 +138,7 @@ function DatePopover(props: DatePopoverProps) {
         <Button
           id={props.id}
           variant="outline"
+          disabled={props.disabled}
           className={cn(
             "w-full justify-start text-left font-normal",
             !date && "text-muted-foreground",

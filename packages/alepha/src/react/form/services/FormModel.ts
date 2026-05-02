@@ -140,15 +140,23 @@ export class FormModel<T extends TObject> {
 
   public readonly reset = (event?: FormEventLike) => {
     event?.preventDefault?.();
+    // Snapshot all keys that need notification — both keys present
+    // before reset (so subscribers learn the cleared value) and keys
+    // restored from initialValues. Without the union, fields that were
+    // typed but absent from initialValues stay visually stale.
+    const keys = new Set<string>([
+      ...Object.keys(this.values),
+      ...Object.keys(this.initialValues),
+    ]);
     for (const key in this.values) {
       delete this.values[key];
     }
     Object.assign(this.values, { ...this.initialValues });
-    for (const [key, value] of Object.entries(this.values)) {
+    for (const key of keys) {
       const path = `/${key.replaceAll(".", "/")}`;
       this.alepha.events.emit(
         "form:change",
-        { id: this.id, path, value },
+        { id: this.id, path, value: this.values[key] },
         { catch: true },
       );
     }
@@ -356,10 +364,11 @@ export class FormModel<T extends TObject> {
       name: key,
     };
 
-    if (options.id) {
-      attr.id = `${options.id}-${key}`;
-      (attr as any)["data-testid"] = attr.id;
-    }
+    // Use the form's runtime id (always set — comes from `useId()` when
+    // no explicit `options.id` was provided). This guarantees stable
+    // per-field DOM ids without forcing callers to pass `id`.
+    attr.id = `${this.id}-${key}`;
+    (attr as any)["data-testid"] = attr.id;
 
     if (t.schema.isString(field)) {
       if (field.maxLength != null) {

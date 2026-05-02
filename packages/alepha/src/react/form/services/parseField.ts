@@ -45,6 +45,12 @@ export interface FieldMeta {
   constraints: FieldConstraints;
   testId?: string;
   schema: TSchema;
+  /**
+   * Raw `$control` value from the schema, untyped here. The UI layer
+   * (`alepha/react/ui`) provides the strict {@link SchemaControl} type and
+   * a `resolveSchemaControl` helper to evaluate the function form.
+   */
+  control?: unknown;
 }
 
 export interface ParseFieldOptions {
@@ -77,6 +83,7 @@ export const parseField = (
     pattern?: string;
     properties?: unknown;
     items?: { properties?: unknown };
+    $control?: unknown;
   };
 
   const label =
@@ -132,6 +139,7 @@ export const parseField = (
       | string
       | undefined,
     schema: input.schema,
+    control: schema.$control,
   };
 };
 

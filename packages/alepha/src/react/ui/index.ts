@@ -12,6 +12,7 @@ export * from "./components/ColorScheme.tsx";
 export * from "./hooks/useColorMode.ts";
 export * from "./hooks/useSidebarState.ts";
 export * from "./hooks/useTheme.ts";
+export * from "./services/SchemaControl.ts";
 export * from "./services/UiPersistence.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

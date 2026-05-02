@@ -18,10 +18,10 @@ Instead, it lazy-loads devtools via Vite's SSR module loader at runtime.
 
 Usage in `alepha.config.ts`:
 ```ts
-import { AlephaCliDevtoolsPlugin } from "alepha/devtools/plugin";
+import { devtools } from "alepha/cli/devtools";
 
 export default defineConfig({
-  services: [AlephaCliDevtoolsPlugin],
+  plugins: [devtools()],
 });
 ```
 

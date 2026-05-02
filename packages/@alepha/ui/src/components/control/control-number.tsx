@@ -17,6 +17,7 @@ export interface ControlNumberProps {
   min?: number;
   max?: number;
   step?: number;
+  disabled?: boolean;
 }
 
 export function ControlNumber(props: ControlNumberProps) {
@@ -51,6 +52,7 @@ export function ControlNumber(props: ControlNumberProps) {
             min={lo}
             max={hi}
             step={props.step ?? 1}
+            disabled={props.disabled}
             value={[Number(value ?? lo)]}
             onValueChange={(v) => setValue(v[0])}
             className="flex-1"
@@ -82,6 +84,7 @@ export function ControlNumber(props: ControlNumberProps) {
           min={min}
           max={max}
           step={props.step}
+          disabled={props.disabled}
           value={value ?? ""}
           onChange={(e) => {
             const v = e.target.value;

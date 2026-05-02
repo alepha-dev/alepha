@@ -3,8 +3,10 @@ import {
   AtSign,
   Calendar,
   Clock,
+  Cog,
   File,
   Hash,
+  Key,
   Link,
   List,
   Lock,
@@ -32,9 +34,19 @@ const map: Record<IconHint, IconComponent> = {
   switch: ToggleLeft,
 };
 
+const namedIcons: Record<string, IconComponent> = {
+  ...map,
+  key: Key,
+  cog: Cog,
+};
+
 /**
- * Maps a semantic {@link IconHint} to a lucide icon component.
- * Returns `undefined` if the hint is unknown or not provided.
+ * Maps a semantic {@link IconHint} or an icon name string to a lucide
+ * component. Returns `undefined` if not found.
  */
-export const iconFor = (hint?: IconHint): IconComponent | undefined =>
-  hint ? map[hint] : undefined;
+export const iconFor = (
+  hint?: IconHint | string | null,
+): IconComponent | undefined => {
+  if (!hint) return undefined;
+  return namedIcons[hint as string];
+};

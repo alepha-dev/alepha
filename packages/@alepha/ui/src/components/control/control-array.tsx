@@ -3,6 +3,14 @@ import {
   type ControlProps,
 } from "@alepha/ui/components/control/control";
 import { Button } from "@alepha/ui/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@alepha/ui/components/ui/dialog";
 import type { TObject, TSchema } from "alepha";
 import { useAlepha } from "alepha/react";
 import {
@@ -10,7 +18,14 @@ import {
   parseField,
   useFormState,
 } from "alepha/react/form";
-import { Plus, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ArrayItem {
@@ -29,6 +44,22 @@ export interface ControlArrayProps {
   variant?: "fieldset" | "plain";
   controlProps?: Record<string, Partial<Omit<ControlProps, "input">>>;
   itemControlProps?: Partial<Omit<ControlProps, "input">>;
+  disabled?: boolean;
+
+  /** Default expanded state. @default true */
+  defaultExpanded?: boolean;
+
+  /**
+   * Confirm before deleting an item. Pass `true` for default copy or an
+   * object to override title/message.
+   */
+  confirmDelete?: boolean | { title?: string; message?: string };
+
+  /** Compute the visible label for each item header (and tab name in tabs mode). */
+  renderTabName?: (i: number, value: unknown) => string;
+
+  /** Force tabs mode even for short arrays. Default heuristic: items > 4 OR nested object/array fields. */
+  forceTabs?: boolean;
 }
 
 const colsClass: Record<number, string> = {
@@ -127,6 +158,9 @@ const buildFieldInput = (
 export function ControlArray(props: ControlArrayProps) {
   const form = useFormState(props.input, ["error"]);
   const { items, setItems, nextKey } = useArrayItems(props.input);
+  const [expanded, setExpanded] = useState(props.defaultExpanded ?? true);
+  const [activeTab, setActiveTab] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<number | null>(null);
 
   if (!props.input?.props) return null;
 
@@ -142,10 +176,27 @@ export function ControlArray(props: ControlArrayProps) {
   const itemSchema = (schema as { items: TSchema }).items;
   const objectItemSchema =
     itemSchema && "properties" in itemSchema ? (itemSchema as TObject) : null;
-  const { min = 0, max = Number.POSITIVE_INFINITY, columns = 1 } = props;
   const fieldNames = objectItemSchema
     ? Object.keys(objectItemSchema.properties)
     : [];
+
+  // Schema-driven max/min if present
+  const schemaMax = (schema as { maxItems?: number }).maxItems;
+  const schemaMin = (schema as { minItems?: number }).minItems;
+  const min = props.min ?? schemaMin ?? 0;
+  const max = props.max ?? schemaMax ?? Number.POSITIVE_INFINITY;
+  const columns = props.columns ?? 1;
+
+  // Tabs heuristic: forced or nested complex item or many items
+  const hasComplexFields = objectItemSchema
+    ? fieldNames.some((n) => {
+        const p = objectItemSchema.properties[n] as { type?: string };
+        return p?.type === "object" || p?.type === "array";
+      })
+    : false;
+  const useTabs =
+    props.forceTabs ||
+    (objectItemSchema && (items.length > 4 || hasComplexFields));
 
   const handleAdd = () => {
     if (items.length >= max) return;
@@ -159,11 +210,31 @@ export function ControlArray(props: ControlArrayProps) {
       value = "";
     }
     setItems([...items, { key: nextKey(), value }]);
+    if (useTabs) setActiveTab(items.length);
   };
 
   const handleRemove = (index: number) => {
     if (items.length <= min) return;
+    if (props.confirmDelete) {
+      setPendingDelete(index);
+      return;
+    }
+    doRemove(index);
+  };
+
+  const doRemove = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
+    if (useTabs)
+      setActiveTab(Math.max(0, Math.min(activeTab, items.length - 2)));
+  };
+
+  const handleMove = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= items.length) return;
+    const next = [...items];
+    [next[index], next[target]] = [next[target], next[index]];
+    setItems(next);
+    if (useTabs) setActiveTab(target);
   };
 
   const updateItem = (index: number, value: unknown) => {
@@ -179,94 +250,240 @@ export function ControlArray(props: ControlArrayProps) {
     setItems(next);
   };
 
-  const list = (
+  const tabName = (i: number): string => {
+    if (props.renderTabName) {
+      try {
+        return props.renderTabName(i, items[i]?.value);
+      } catch {
+        // fall through
+      }
+    }
+    return `${meta.label} #${i + 1}`;
+  };
+
+  const renderItemBody = (item: ArrayItem, index: number) =>
+    objectItemSchema ? (
+      <div className={`grid gap-3 ${colsClass[columns]}`}>
+        {fieldNames.map((name) => {
+          const fieldProps = props.controlProps?.[name] ?? {};
+          const fieldInput = buildFieldInput(
+            props.input,
+            objectItemSchema,
+            name,
+            index,
+            item.value as Record<string, unknown>,
+            (f, v) => updateField(index, f, v),
+          );
+          return (
+            <Control
+              key={name}
+              input={fieldInput}
+              disabled={props.disabled}
+              {...fieldProps}
+            />
+          );
+        })}
+      </div>
+    ) : (
+      <Control
+        input={buildItemInput(props.input, itemSchema, index, item.value, (v) =>
+          updateItem(index, v),
+        )}
+        disabled={props.disabled}
+        {...props.itemControlProps}
+      />
+    );
+
+  const itemActions = (index: number) => (
+    <div className="flex shrink-0 flex-col gap-1">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-7"
+        disabled={props.disabled || index === 0 || items.length < 2}
+        onClick={() => handleMove(index, -1)}
+        aria-label="Move up"
+      >
+        <ArrowUp className="size-3.5" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-7"
+        disabled={props.disabled || items.length <= min}
+        onClick={() => handleRemove(index)}
+        aria-label="Remove"
+      >
+        <Trash2 className="size-3.5" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-7"
+        disabled={
+          props.disabled || index === items.length - 1 || items.length < 2
+        }
+        onClick={() => handleMove(index, 1)}
+        aria-label="Move down"
+      >
+        <ArrowDown className="size-3.5" />
+      </Button>
+    </div>
+  );
+
+  const flatList = (
     <div className="flex flex-col gap-2">
       {items.map((item, index) => (
         <div
           key={item.key}
           className="bg-muted/30 flex items-start gap-2 rounded-md border p-3"
         >
-          <div className="flex-1">
-            {objectItemSchema ? (
-              <div className={`grid gap-3 ${colsClass[columns]}`}>
-                {fieldNames.map((name) => {
-                  const fieldProps = props.controlProps?.[name] ?? {};
-                  const fieldInput = buildFieldInput(
-                    props.input,
-                    objectItemSchema,
-                    name,
-                    index,
-                    item.value as Record<string, unknown>,
-                    (f, v) => updateField(index, f, v),
-                  );
-                  return (
-                    <Control key={name} input={fieldInput} {...fieldProps} />
-                  );
-                })}
-              </div>
-            ) : (
-              <Control
-                input={buildItemInput(
-                  props.input,
-                  itemSchema,
-                  index,
-                  item.value,
-                  (v) => updateItem(index, v),
-                )}
-                {...props.itemControlProps}
-              />
-            )}
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => handleRemove(index)}
-            disabled={items.length <= min}
-            aria-label="Remove"
-          >
-            <Trash2 className="size-4" />
-          </Button>
+          <div className="flex-1 min-w-0">{renderItemBody(item, index)}</div>
+          {itemActions(index)}
         </div>
       ))}
+    </div>
+  );
+
+  const tabs = useTabs && items.length > 0 && (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-1 border-b pb-1">
+        {items.map((item, i) => (
+          <Button
+            key={item.key}
+            type="button"
+            variant={i === activeTab ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab(i)}
+          >
+            {tabName(i)}
+          </Button>
+        ))}
+      </div>
+      {items[activeTab] && (
+        <div className="bg-muted/30 flex items-start gap-2 rounded-md border p-3">
+          <div className="flex-1 min-w-0">
+            {renderItemBody(items[activeTab], activeTab)}
+          </div>
+          {itemActions(activeTab)}
+        </div>
+      )}
+    </div>
+  );
+
+  const list = (
+    <div className="flex flex-col gap-2">{useTabs ? tabs : flatList}</div>
+  );
+
+  const headerControls = (
+    <div className="flex items-start gap-3">
       <Button
         type="button"
         variant="outline"
+        size="icon"
+        className="size-8 shrink-0"
+        disabled={props.disabled || items.length >= max}
         onClick={handleAdd}
-        disabled={items.length >= max}
-        className="w-full border-dashed"
+        aria-label={props.addLabel ?? "Add"}
       >
-        <Plus className="mr-2 size-4" />
-        {props.addLabel ?? "Add"}
+        <Plus className="size-4" />
       </Button>
+      <div className="flex flex-col min-w-0 flex-1">
+        <div className="text-sm font-medium leading-tight">
+          {meta.label}
+          {meta.required && <span className="text-destructive ml-0.5">*</span>}
+          <span className="text-muted-foreground ml-2 text-xs">
+            ({items.length})
+          </span>
+        </div>
+        {meta.description && (
+          <p className="text-muted-foreground text-xs leading-tight">
+            {meta.description}
+          </p>
+        )}
+        {meta.error && (
+          <p className="text-destructive text-xs leading-tight">{meta.error}</p>
+        )}
+      </div>
+      {items.length > 0 && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-8 shrink-0"
+          aria-label={expanded ? "Collapse" : "Expand"}
+          onClick={() => setExpanded((e) => !e)}
+        >
+          {expanded ? (
+            <ChevronDown className="size-4" />
+          ) : (
+            <ChevronRight className="size-4" />
+          )}
+        </Button>
+      )}
     </div>
   );
+
+  const confirmContent = (() => {
+    if (pendingDelete == null) return null;
+    const cd = props.confirmDelete;
+    const title =
+      typeof cd === "object" ? (cd.title ?? "Delete item") : "Delete item";
+    const message =
+      typeof cd === "object"
+        ? (cd.message ?? "Are you sure you want to delete this item?")
+        : "Are you sure you want to delete this item?";
+    return (
+      <Dialog
+        open={pendingDelete != null}
+        onOpenChange={(v) => !v && setPendingDelete(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>{message}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPendingDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                doRemove(pendingDelete);
+                setPendingDelete(null);
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  })();
 
   if (props.variant === "plain") {
     return (
       <div className="flex flex-col gap-2">
-        {meta.label && <p className="text-sm font-medium">{meta.label}</p>}
-        {meta.description && (
-          <p className="text-muted-foreground text-xs">{meta.description}</p>
-        )}
-        {list}
-        {meta.error && <p className="text-destructive text-xs">{meta.error}</p>}
+        {headerControls}
+        {expanded && items.length > 0 && list}
+        {confirmContent}
       </div>
     );
   }
 
   return (
-    <fieldset className="border-border rounded-md border p-4">
-      {meta.label && (
-        <legend className="px-1 text-sm font-medium">{meta.label}</legend>
-      )}
-      <div className="flex flex-col gap-3">
-        {meta.description && (
-          <p className="text-muted-foreground text-xs">{meta.description}</p>
-        )}
-        {list}
-        {meta.error && <p className="text-destructive text-xs">{meta.error}</p>}
-      </div>
+    <fieldset
+      className={`rounded-md border p-3 ${
+        meta.error ? "border-destructive" : "border-border"
+      }`}
+    >
+      {headerControls}
+      {expanded && items.length > 0 && <div className="mt-3">{list}</div>}
+      {confirmContent}
     </fieldset>
   );
 }

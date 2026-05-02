@@ -1,6 +1,5 @@
 import { AppShell } from "@alepha/ui/components/app-shell";
 import { ThemeToggle } from "@alepha/ui/components/theme-toggle";
-import { Toaster } from "@alepha/ui/components/ui/sonner";
 import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
 import { DialogProvider } from "@alepha/ui/components/use-dialog";
 import { NestedView, useRouterState } from "alepha/react/router";
@@ -9,6 +8,7 @@ import {
   Bell,
   FileSearch,
   Files,
+  ListChecks,
   Megaphone,
   MessageSquareWarning,
   Settings2,
@@ -57,6 +57,8 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/demo/toasts", label: "Toasts", icon: Megaphone },
       { href: "/demo/dialogs", label: "Dialogs", icon: MessageSquareWarning },
+      { href: "/demo/auto-form", label: "AutoForm", icon: ListChecks },
+      { href: "/demo/forms", label: "Form gallery", icon: ListChecks },
     ],
   },
 ];
@@ -107,7 +109,6 @@ export const Layout = () => {
         >
           <NestedView />
         </AppShell>
-        <Toaster />
       </DialogProvider>
     </TooltipProvider>
   );
