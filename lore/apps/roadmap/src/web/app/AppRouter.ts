@@ -69,6 +69,7 @@ export class AppRouter {
       this.meRouter.me,
       this.notFound,
     ],
+    ssr: false,
     lazy: () => import("./components/Layout.tsx"),
     loader: async ({ user }) => {
       if (user) {
