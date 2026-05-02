@@ -19,10 +19,13 @@ export default defineConfig({
   },
   webServer: {
     reuseExistingServer: !process.env.CI,
-    command: "yarn dev",
+    command: "yarn start",
     url: `http://localhost:${port}`,
-    env: { SERVER_PORT: String(port) },
-    timeout: 60_000,
+    env: {
+      SERVER_PORT: String(port),
+      DATABASE_URL: ":memory:",
+    },
+    timeout: 180_000,
     stdout: "ignore",
     stderr: "pipe",
   },

@@ -1,3 +1,5 @@
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { type FullConfig, request } from "@playwright/test";
 
 const port = Number(process.env.E2E_PORT ?? 5174);
@@ -11,12 +13,16 @@ const ADMIN_PASSWORD = "adminadmin";
  *
  * Tests that need admin access opt in via `test.use({ storageState })`
  * — see admin.spec.ts. Public/anon tests stay on the default empty state.
+ *
+ * Realm has `verifyEmailRequired: true`, so registration completion needs
+ * a code. In dev, alepha writes outgoing emails to `node_modules/.alepha/emails/`
+ * via `LocalEmailProvider` — we read the most recent email for the admin
+ * address and extract the 6-digit code from the HTML body.
  */
 export default async function globalSetup(_config: FullConfig) {
   const baseURL = `http://localhost:${port}`;
   const ctx = await request.newContext({ baseURL });
 
-  // Register admin (intent + complete). Conflict is fine — admin already exists.
   const intent = await ctx.post("/api/users/register", {
     data: {
       username: ADMIN_USERNAME,
@@ -27,8 +33,12 @@ export default async function globalSetup(_config: FullConfig) {
 
   if (intent.status() === 200) {
     const intentBody = await intent.json();
+    const emailCode = intentBody.expectEmailVerification
+      ? await readLatestEmailCode(ADMIN_EMAIL)
+      : undefined;
+
     const complete = await ctx.post("/api/users/register/complete", {
-      data: { intentId: intentBody.intentId },
+      data: { intentId: intentBody.intentId, emailCode },
     });
     if (complete.status() !== 200 && complete.status() !== 409) {
       const text = await complete.text();
@@ -41,7 +51,6 @@ export default async function globalSetup(_config: FullConfig) {
     throw new Error(`Register failed (${intent.status()}): ${text}`);
   }
 
-  // Login via credentials provider.
   const login = await ctx.post("/_auth/token?provider=credentials", {
     data: {
       username: ADMIN_EMAIL,
@@ -55,4 +64,46 @@ export default async function globalSetup(_config: FullConfig) {
 
   await ctx.storageState({ path: "./e2e/.admin-state.json" });
   await ctx.dispose();
+}
+
+/**
+ * Reads the most recent email written by `LocalEmailProvider` for the given
+ * recipient and extracts the 6-digit verification code embedded in the HTML
+ * body. Polls briefly because the verification job is queued.
+ */
+export async function readLatestEmailCode(
+  recipient: string,
+  options: { dir?: string; timeoutMs?: number; since?: Date } = {},
+): Promise<string> {
+  const dir = options.dir ?? "node_modules/.alepha/emails";
+  const timeoutMs = options.timeoutMs ?? 10_000;
+  const sinceMs = options.since?.getTime() ?? 0;
+  const sanitized = recipient.replace(/[^a-zA-Z0-9@.-]/g, "_");
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    try {
+      const files = (await readdir(dir))
+        .filter((f) => f.startsWith(`${sanitized},`) && f.endsWith(".eml.json"))
+        .sort()
+        .reverse();
+      if (files[0]) {
+        const raw = await readFile(join(dir, files[0]), "utf8");
+        const { body, sentAt } = JSON.parse(raw) as {
+          body: string;
+          sentAt: string;
+        };
+        if (new Date(sentAt).getTime() >= sinceMs) {
+          const match = body.match(/\b(\d{6})\b/);
+          if (match) return match[1];
+        }
+      }
+    } catch {
+      // dir may not exist yet on first run
+    }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  throw new Error(
+    `No verification email for ${recipient} arrived within ${timeoutMs}ms (looked in ${dir})`,
+  );
 }

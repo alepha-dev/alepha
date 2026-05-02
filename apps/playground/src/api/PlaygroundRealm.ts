@@ -30,7 +30,7 @@ export class PlaygroundRealm {
       username: "optional",
       firstNameLastName: "optional",
       phoneNumber: "none",
-      verifyEmailRequired: false,
+      verifyEmailRequired: true,
       verifyPhoneRequired: false,
       resetPasswordAllowed: true,
       captchaRequired: false,

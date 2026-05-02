@@ -5,9 +5,9 @@
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build --stats",
-    "start": "node dist",
-    "wrangler": "cd dist && wrangler",
-    "wrangler:dev": "cd dist && wrangler dev",
+    "start": "yarn build && LOG_LEVEL=info LOG_FORMAT=pretty node dist",
+    "wrangler": "alepha build --target=cloudflare && cd dist && wrangler",
+    "wrangler:dev": "alepha build --target=cloudflare && cd dist && wrangler dev",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui"
   },
