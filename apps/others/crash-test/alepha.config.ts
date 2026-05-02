@@ -13,11 +13,13 @@ export default defineConfig({
   //   runtime: "node",
   // },
   //
-  // platform: {
-  //   environments: {
-  //     production: { adapter: "cloudflare" },
-  //   },
-  // },
+  // plugins: [
+  //   platform({
+  //     environments: {
+  //       production: { adapter: "cloudflare" },
+  //     },
+  //   }),
+  // ],
   //
   // env: {
   //   VITE_BUILD_DATE: new Date().toISOString(),

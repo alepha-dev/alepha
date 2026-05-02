@@ -73,6 +73,11 @@ export class BuildCloudflareTask extends BuildTask {
       };
     }
 
+    wrangler.observability ??= {
+      enabled: true,
+      head_sampling_rate: 1,
+    };
+
     this.enhanceDomain(wrangler);
     this.enhanceCron(ctx, wrangler);
     this.enhanceDatabase(wrangler);

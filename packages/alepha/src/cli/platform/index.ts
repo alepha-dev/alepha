@@ -1,6 +1,5 @@
-import { $module } from "alepha";
+import { $context, $module } from "alepha";
 import { AlephaCli } from "alepha/cli";
-import { cliConfigPlugins } from "alepha/cli/config";
 import { CloudflareAdapter } from "./adapters/CloudflareAdapter.ts";
 import { VercelAdapter } from "./adapters/VercelAdapter.ts";
 import {
@@ -20,14 +19,6 @@ import { SecretFilterService } from "./services/SecretFilterService.ts";
 import { VercelApi } from "./services/VercelApi.ts";
 import { VercelCli } from "./services/VercelCli.ts";
 import { WranglerApi } from "./services/WranglerApi.ts";
-
-// ---------------------------------------------------------------------------
-
-declare module "alepha/cli/config" {
-  interface AlephaCliConfig {
-    platform?: PlatformOptions;
-  }
-}
 
 // ---------------------------------------------------------------------------
 
@@ -51,15 +42,16 @@ declare module "alepha/cli/config" {
  * Configuration in `alepha.config.ts`:
  *
  * ```typescript
- * import { AlephaCliPlatformPlugin } from "alepha/cli/platform";
+ * import { platform } from "alepha/cli/platform";
  *
  * export default defineConfig({
- *   services: [AlephaCliPlatformPlugin],
- *   platform: {
- *     environments: {
- *       production: { adapter: "cloudflare", domain: "myapp.com" },
- *     },
- *   },
+ *   plugins: [
+ *     platform({
+ *       environments: {
+ *         production: { adapter: "cloudflare", domain: "myapp.com" },
+ *       },
+ *     }),
+ *   ],
  * });
  * ```
  */
@@ -85,13 +77,12 @@ export const AlephaCliPlatformPlugin = $module({
   ],
 });
 
-// ---------------------------------------------------------------------------
-
-cliConfigPlugins.push((config, alepha) => {
-  if (config.platform) {
-    alepha.set(platformOptions, config.platform);
-  }
-});
+export const platform = (options: PlatformOptions) => {
+  return () => {
+    const { alepha } = $context();
+    alepha.with(AlephaCliPlatformPlugin).set(platformOptions, options);
+  };
+};
 
 // ---------------------------------------------------------------------------
 

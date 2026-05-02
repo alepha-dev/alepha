@@ -1,4 +1,4 @@
-import type { Alepha } from "alepha";
+import type { Alepha, Service } from "alepha";
 import {
   type AppEntryOptions,
   appEntryOptions,
@@ -7,15 +7,6 @@ import {
   type DevOptions,
   devOptions,
 } from "alepha/cli";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export type AlephaCliConfigPlugin = (
-  config: AlephaCliConfig,
-  alepha: Alepha,
-) => void;
-
-export const cliConfigPlugins: AlephaCliConfigPlugin[] = [];
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -28,7 +19,12 @@ export interface AlephaCliConfig {
   /**
    * Register more services to the Alepha CLI (enhancements, commands, etc.).
    */
-  services?: Array<any>;
+  services?: Array<Service>;
+
+  /**
+   * @alias services Register more services to the Alepha CLI (enhancements, commands, etc.).
+   */
+  plugins?: Array<Service>;
 
   /**
    * Configure Alepha build command.
@@ -58,6 +54,12 @@ export const defineConfig = (config: AlephaCliConfig) => {
       }
     }
 
+    if (config.plugins) {
+      for (const it of config.plugins) {
+        alepha.with(it);
+      }
+    }
+
     if (config.env) {
       for (const [key, value] of Object.entries(config.env)) {
         process.env[key] = String(value);
@@ -74,10 +76,6 @@ export const defineConfig = (config: AlephaCliConfig) => {
 
     if (config.entry) {
       alepha.set(appEntryOptions, config.entry);
-    }
-
-    for (const plugin of cliConfigPlugins) {
-      plugin(config, alepha);
     }
 
     return {};

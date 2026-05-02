@@ -1,27 +1,18 @@
 import { defineConfig } from "alepha/cli/config";
+import { platform } from "alepha/cli/platform";
 
 export default defineConfig({
-  platform: {
-    environments: {
-      prod: { adapter: "cloudflare" },
-    },
-  },
+  plugins: [
+    platform({
+      environments: {
+        production: { adapter: "cloudflare" },
+      },
+    }),
+  ],
   build: {
     target: "cloudflare",
     sitemap: {
       hostname: "https://example-ssr.alepha.dev",
-    },
-    cloudflare: {
-      config: {
-        observability: {
-          logs: {
-            enabled: true,
-            head_sampling_rate: 1,
-            invocation_logs: true,
-            persist: true,
-          },
-        },
-      },
     },
   },
 });

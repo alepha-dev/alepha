@@ -1,16 +1,7 @@
-import { $module } from "alepha";
-import { cliConfigPlugins } from "alepha/cli/config";
+import { $context, $module } from "alepha";
 import { type VendorOptions, vendorOptions } from "./atoms/vendorOptions.ts";
 import { VendorCommand } from "./commands/VendorCommand.ts";
 import { VendorService } from "./services/VendorService.ts";
-
-// ---------------------------------------------------------------------------
-
-declare module "alepha/cli/config" {
-  interface AlephaCliConfig {
-    vendor?: VendorOptions;
-  }
-}
 
 // ---------------------------------------------------------------------------
 
@@ -28,14 +19,15 @@ declare module "alepha/cli/config" {
  * Configuration in `alepha.config.ts`:
  *
  * ```typescript
- * import { AlephaCliVendorPlugin } from "alepha/cli/vendor";
+ * import { vendor } from "alepha/cli/vendor";
  *
  * export default defineConfig({
- *   services: [AlephaCliVendorPlugin],
- *   vendor: {
- *     branch: "main",
- *     packages: ["alepha", "@alepha/bucket-s3"],
- *   },
+ *   plugins: [
+ *     vendor({
+ *       branch: "main",
+ *       packages: ["alepha", "@alepha/bucket-s3"],
+ *     }),
+ *   ],
  * });
  * ```
  */
@@ -45,13 +37,12 @@ export const AlephaCliVendorPlugin = $module({
   services: [VendorCommand, VendorService],
 });
 
-// ---------------------------------------------------------------------------
-
-cliConfigPlugins.push((config, alepha) => {
-  if (config.vendor) {
-    alepha.set(vendorOptions, config.vendor);
-  }
-});
+export const vendor = (options: VendorOptions) => {
+  return () => {
+    const { alepha } = $context();
+    alepha.with(AlephaCliVendorPlugin).set(vendorOptions, options);
+  };
+};
 
 // ---------------------------------------------------------------------------
 

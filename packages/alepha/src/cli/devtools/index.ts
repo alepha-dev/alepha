@@ -1,21 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import { $module, AlephaError } from "alepha";
+import { $context, $module, AlephaError } from "alepha";
 import { ViteDevServerProvider } from "alepha/cli";
-import { cliConfigPlugins } from "alepha/cli/config";
 import {
   type DevtoolsOptions,
   devtoolsOptions,
 } from "./atoms/devtoolsOptions.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-declare module "alepha/cli/config" {
-  interface AlephaCliConfig {
-    devtools?: DevtoolsOptions;
-  }
-}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -106,10 +97,10 @@ const DEVTOOLS_OVERLAY_SCRIPT = `
  *
  * Usage in `alepha.config.ts`:
  * ```ts
- * import { AlephaCliDevtoolsPlugin } from "alepha/devtools/plugin";
+ * import { devtools } from "alepha/cli/devtools";
  *
  * export default defineConfig({
- *   services: [AlephaCliDevtoolsPlugin],
+ *   plugins: [devtools()],
  * });
  * ```
  *
@@ -197,13 +188,12 @@ export const AlephaCliDevtoolsPlugin = $module({
   },
 });
 
-// ---------------------------------------------------------------------------------------------------------------------
-
-cliConfigPlugins.push((config, alepha) => {
-  if (config.devtools) {
-    alepha.set(devtoolsOptions, config.devtools);
-  }
-});
+export const devtools = (options: DevtoolsOptions = {}) => {
+  return () => {
+    const { alepha } = $context();
+    alepha.with(AlephaCliDevtoolsPlugin).set(devtoolsOptions, options);
+  };
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
