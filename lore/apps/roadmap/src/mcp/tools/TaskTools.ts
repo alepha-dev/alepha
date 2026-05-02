@@ -73,6 +73,8 @@ export class TaskTools {
   task_list = $tool({
     description:
       "List tasks for the project. Can filter by status (new, accepted, completed) and search by title.",
+    title: "List quests",
+    annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: taskListParamsSchema,
       result: taskListResultSchema,
@@ -121,6 +123,7 @@ export class TaskTools {
    */
   task_create = $tool({
     description: "Create a new task in the project.",
+    title: "Create quest",
     schema: {
       params: taskCreateParamsSchema,
       result: taskCreateResultSchema,
@@ -157,6 +160,8 @@ export class TaskTools {
   task_accept = $tool({
     description:
       "Accept a task to start working on it. This assigns the task to you.",
+    title: "Accept quest",
+    annotations: { idempotentHint: true },
     schema: {
       params: taskAcceptParamsSchema,
       result: taskAcceptResultSchema,
@@ -180,6 +185,12 @@ export class TaskTools {
   task_complete = $tool({
     description:
       "Mark a task as complete. All objectives must be completed first.",
+    title: "Complete quest",
+    annotations: {
+      // destructive: state-altering, awards XP and gold; cannot be undone
+      destructiveHint: true,
+      idempotentHint: true,
+    },
     schema: {
       params: taskCompleteParamsSchema,
       result: taskCompleteResultSchema,
@@ -209,6 +220,8 @@ export class TaskTools {
   task_update = $tool({
     description:
       "Update a task's properties. Only non-completed tasks can be updated.",
+    title: "Update quest",
+    annotations: { idempotentHint: true },
     schema: {
       params: taskUpdateParamsSchema,
       result: taskUpdateResultSchema,

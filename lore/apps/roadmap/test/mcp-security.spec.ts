@@ -669,17 +669,19 @@ describe("MCP Security Integration", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // SSE Endpoint
+  // Streamable HTTP transport — GET should be rejected (no legacy SSE GET stream)
   // ---------------------------------------------------------------------------
 
-  describe("SSE Endpoint", () => {
-    it("should return SSE stream on GET /mcp", async ({ expect }) => {
+  describe("GET /mcp", () => {
+    it("should reject with 405 Method Not Allowed (legacy SSE GET removed)", async ({
+      expect,
+    }) => {
       const response = await fetch(`${ctx.baseUrl}/mcp`, {
         method: "GET",
       });
 
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toBe("text/event-stream");
+      expect(response.status).toBe(405);
+      expect(response.headers.get("allow")).toBe("POST");
     });
   });
 });

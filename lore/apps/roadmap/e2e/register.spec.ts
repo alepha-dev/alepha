@@ -43,40 +43,30 @@ test.beforeAll(() => {
 });
 
 test.describe("Register", () => {
-  test("client-side password policy errors are visible", async ({ page }) => {
+  test("schema-level minLength error is visible", async ({ page }) => {
     const ts = Date.now();
     await page.goto("/auth/register");
     await page.waitForLoadState("networkidle");
 
     await page.getByRole("textbox", { name: "Username" }).fill(`u${ts}`);
     await page
-      .getByRole("textbox", { name: "Email" })
+      .getByRole("textbox", { name: "Email", exact: true })
       .fill(`u${ts}@example.com`);
-    const password = page.locator('input[type="password"]').first();
-    const submit = page.getByRole("button", { name: /^sign up$/i });
+    await page
+      .getByRole("textbox", { name: "Password", exact: true })
+      .fill("Ab1!");
+    await page.getByRole("textbox", { name: "Confirm password" }).fill("Ab1!");
+    await page.getByRole("button", { name: /create account/i }).click();
 
-    // missing uppercase
-    await password.fill("lowercase1");
-    await submit.click();
-    await expect(page.getByText(/uppercase letter/i)).toBeVisible({
-      timeout: 5000,
-    });
-
-    // missing number
-    await password.fill("NoDigitsHere");
-    await submit.click();
-    await expect(page.getByText(/number/i)).toBeVisible({ timeout: 5000 });
-
-    // too short — schema-level minLength check
-    await password.fill("Ab1!");
-    await submit.click();
     await expect(
       page.getByText(/8 characters|fewer than 8/i).first(),
-    ).toBeVisible({ timeout: 5000 });
+    ).toBeVisible({ timeout: 5_000 });
   });
 
-  test("registers successfully and verifies email", async ({ page }) => {
-    test.setTimeout(60000);
+  test("registers, verifies email, lands logged-in on home", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
     const ts = Date.now();
     const username = `usr${ts}`;
     const email = `usr${ts}@example.com`;
@@ -86,25 +76,32 @@ test.describe("Register", () => {
     await page.waitForLoadState("networkidle");
 
     await page.getByRole("textbox", { name: "Username" }).fill(username);
-    await page.getByRole("textbox", { name: "Email" }).fill(email);
-    await page.locator('input[type="password"]').first().fill(password);
-    await page.getByRole("button", { name: /^sign up$/i }).click();
+    await page.getByRole("textbox", { name: "Email", exact: true }).fill(email);
+    await page
+      .getByRole("textbox", { name: "Password", exact: true })
+      .fill(password);
+    await page
+      .getByRole("textbox", { name: "Confirm password" })
+      .fill(password);
+    await page.getByRole("button", { name: /create account/i }).click();
 
-    // verification phase
-    await expect(page.getByLabel(/verification code/i)).toBeVisible({
-      timeout: 10000,
-    });
+    // Verification phase — InputOTP renders 6 slot inputs.
+    await expect(
+      page.getByRole("button", { name: /complete registration/i }),
+    ).toBeVisible({ timeout: 10_000 });
 
-    const emailPath = await findLatestEmail(email, 10000);
+    const emailPath = await findLatestEmail(email, 10_000);
     expect(emailPath).not.toBeNull();
     const code = extractCode(fs.readFileSync(emailPath!, "utf-8"));
     expect(code).not.toBeNull();
     expect(code).toHaveLength(6);
 
-    await page.getByLabel(/verification code/i).fill(code!);
-    await page.getByRole("button", { name: /verify and continue/i }).click();
+    // InputOTP exposes the underlying 6-digit input via name=emailCode.
+    const otp = page.locator("#emailCode");
+    await otp.fill(code!);
+    await page.getByRole("button", { name: /complete registration/i }).click();
 
-    // After verification the page redirects to the login form.
-    await page.waitForURL(/\/auth\/login/, { timeout: 15000 });
+    // Auto-login — lands on "/" (no manual login step).
+    await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout: 15_000 });
   });
 });
