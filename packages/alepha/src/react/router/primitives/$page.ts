@@ -10,7 +10,6 @@ import {
   type TSchema,
 } from "alepha";
 import { $cache } from "alepha/cache";
-import type { ClientOnlyProps } from "alepha/react";
 import type { Head } from "alepha/react/head";
 import type { ServerRequest } from "alepha/server";
 import type { FC, ReactNode } from "react";
@@ -297,10 +296,35 @@ export interface PagePrimitiveOptions<
       };
 
   /**
-   * If true, force the page to be rendered only on the client-side (browser).
-   * It uses the `<ClientOnly/>` component to render the page.
+   * Enable or disable server-side rendering for this page.
+   *
+   * - `true` (default): the page component is rendered on the server and
+   *   hydrated on the client.
+   * - `false`: the loader still runs on the server (so data is preloaded and
+   *   serialized for hydration), but the component is rendered only on the
+   *   client. The server emits no HTML for this page.
+   *
+   * **Decided at the leaf, inherited as default by descendants.**
+   *
+   * The effective value is determined by the matched leaf page: walk up the
+   * parent chain and use the nearest explicit `ssr` value. Setting
+   * `ssr: false` on a parent therefore acts as the default for its children;
+   * a child can override with `ssr: true`.
+   *
+   * Skipping rendering while keeping the loader is the recommended strategy
+   * for CPU-constrained server environments (e.g. Cloudflare Workers) and
+   * heavy admin/dashboard views where SSR provides little SEO value.
+   *
+   * @example
+   * ```ts
+   * root  = $page({ ssr: false });               // default for children
+   * home  = $page({ parent: root, ssr: true });  // overrides → SSR
+   * about = $page({ parent: root });             // inherits  → no SSR
+   * ```
+   *
+   * @default true
    */
-  client?: boolean | ClientOnlyProps;
+  ssr?: boolean;
 
   /**
    * Called before the server response is sent to the client. (server only)

@@ -470,6 +470,14 @@ export class ReactPageProvider {
       }
     }
 
+    // If the matched leaf opts out of SSR (own value or inherited from
+    // parents), wrap the root layer in ClientOnly so the server emits no
+    // HTML for the route chain. Loaders have already run above.
+    if (state.layers.length > 0 && !this.isSSR(route)) {
+      const rootLayer = state.layers[0];
+      rootLayer.element = createElement(ClientOnly, {}, rootLayer.element);
+    }
+
     return { state };
   }
 
@@ -598,14 +606,6 @@ export class ReactPageProvider {
   ): ReactNode {
     view ??= this.renderEmptyView();
 
-    const element = page.client
-      ? createElement(
-          ClientOnly,
-          typeof page.client === "object" ? page.client : {},
-          view,
-        )
-      : view;
-
     return createElement(
       RouterLayerContext.Provider,
       {
@@ -616,8 +616,26 @@ export class ReactPageProvider {
             this.getErrorHandler(page) ?? ((error) => this.renderError(error)),
         },
       },
-      element,
+      view,
     );
+  }
+
+  /**
+   * Resolve the effective `ssr` value for a route by walking up the parent
+   * chain. Returns the nearest explicit `ssr` value, defaulting to `true`.
+   *
+   * The decision is made at the leaf: a parent's `ssr` only acts as a default
+   * for descendants that did not set their own value.
+   */
+  public isSSR(route: PageRoute): boolean {
+    let current: PageRoute | undefined = route;
+    while (current) {
+      if (typeof current.ssr === "boolean") {
+        return current.ssr;
+      }
+      current = current.parent;
+    }
+    return true;
   }
 
   protected map(

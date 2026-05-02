@@ -419,22 +419,6 @@ describe("$page primitive tests", () => {
     expect(await app.staticPage.fetch().then((it) => it.html)).toBe(html);
   });
 
-  test("$page - client-side only rendering", async ({ expect }) => {
-    class App {
-      clientOnly = $page({
-        path: "/client",
-        client: true,
-        component: () => "Client only",
-      });
-    }
-
-    const app = alepha.inject(App);
-    await alepha.start();
-
-    const clientRendered = await app.clientOnly.fetch();
-    expect(clientRendered.html).toBe("");
-  });
-
   test("$page - server response handler", async ({ expect }) => {
     const mockHandler = vi.fn();
 
