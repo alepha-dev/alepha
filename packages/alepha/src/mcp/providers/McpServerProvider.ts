@@ -1,4 +1,4 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, TypeBoxError } from "alepha";
 import { $logger } from "alepha/logger";
 import {
   McpError,
@@ -11,13 +11,14 @@ import {
   createErrorResponse,
   createInternalError,
   createResponse,
+  isSupportedProtocolVersion,
   MCP_PROTOCOL_VERSION,
+  SUPPORTED_PROTOCOL_VERSIONS,
 } from "../helpers/jsonrpc.ts";
 import type {
   JsonRpcRequest,
   JsonRpcResponse,
   McpCapabilities,
-  McpContent,
   McpContext,
   McpInitializeResult,
   McpPromptDescriptor,
@@ -55,7 +56,20 @@ export class McpServerProvider {
 
   protected initialized = false;
 
-  protected serverInfo: McpServerInfo = {
+  /**
+   * Protocol version negotiated with the client during `initialize`.
+   * Used by transports to validate the `MCP-Protocol-Version` header on
+   * subsequent HTTP requests (per spec 2025-06-18+).
+   */
+  public negotiatedVersion: string = MCP_PROTOCOL_VERSION;
+
+  /**
+   * Server identity returned during `initialize`. Consumers may override
+   * fields directly (e.g. `mcpServer.serverInfo = { name: "roadmap-mcp",
+   * version: "0.20.3", description: "..." }`) — the `description` field
+   * is supported per spec 2025-11-25 (minor change #2).
+   */
+  public serverInfo: McpServerInfo = {
     name: "alepha-mcp",
     version: "1.0.0",
   };
@@ -243,15 +257,25 @@ export class McpServerProvider {
   protected handleInitialize(
     params: Record<string, unknown>,
   ): McpInitializeResult {
+    const requested = params.protocolVersion;
+    // Echo the client's version when supported, otherwise reply with our
+    // preferred version (highest entry in SUPPORTED_PROTOCOL_VERSIONS).
+    // The client can then decide to retry, downgrade, or disconnect.
+    const negotiated = isSupportedProtocolVersion(requested)
+      ? requested
+      : SUPPORTED_PROTOCOL_VERSIONS[0];
+
     this.log.info("MCP client initializing", {
       clientInfo: params.clientInfo,
-      protocolVersion: params.protocolVersion,
+      requestedProtocolVersion: requested,
+      negotiatedProtocolVersion: negotiated,
     });
 
     this.initialized = true;
+    this.negotiatedVersion = negotiated;
 
     return {
-      protocolVersion: MCP_PROTOCOL_VERSION,
+      protocolVersion: negotiated,
       capabilities: this.getCapabilities(),
       serverInfo: this.serverInfo,
     };
@@ -276,24 +300,58 @@ export class McpServerProvider {
 
     const tool = this.tools.get(name);
     if (!tool) {
+      // McpToolNotFoundError is intentionally a JSON-RPC protocol error,
+      // not a tool execution error — see SEP-1303 (only validation/runtime
+      // failures of an existing tool are reported via isError: true).
       throw new McpToolNotFoundError(name);
     }
 
     try {
       const result = await tool.execute(args, context);
 
-      const content: McpContent[] = [
-        {
-          type: "text",
-          text:
-            typeof result === "string"
-              ? result
-              : JSON.stringify(result ?? null),
-        },
-      ];
+      const callResult: McpToolCallResult = {
+        content: [
+          {
+            type: "text",
+            text:
+              typeof result === "string"
+                ? result
+                : JSON.stringify(result ?? null),
+          },
+        ],
+      };
 
-      return { content };
+      // Spec 2025-06-18: when the tool declares an outputSchema, the server
+      // MUST populate `structuredContent` with the validated result. The
+      // text-stringified `content` block remains as a back-compat fallback.
+      if (tool.hasOutputSchema() && result !== undefined) {
+        callResult.structuredContent = result;
+      }
+
+      return callResult;
     } catch (error) {
+      // Spec 2025-11-25 / SEP-1303: input-validation failures (and other
+      // tool-runtime errors) are returned as Tool Execution Errors, not
+      // JSON-RPC protocol errors, so the model can self-correct.
+      // For TypeBox validation errors we surface the failing path so the
+      // model knows which argument was malformed.
+      if (error instanceof TypeBoxError) {
+        const path = error.value?.path || "/";
+        const message = error.value?.message || error.message;
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Validation error at ${path}: ${message}`,
+            },
+          ],
+          structuredContent: {
+            errors: [{ path, message }],
+          },
+          isError: true,
+        };
+      }
+
       return {
         content: [
           {

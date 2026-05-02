@@ -52,6 +52,11 @@ export class ProjectTools {
   project_list = $tool({
     description:
       "List all projects (campaigns) the user has access to. Use this to find available projects before querying tasks.",
+    title: "List campaigns",
+    annotations: {
+      readOnlyHint: true,
+      idempotentHint: true,
+    },
     schema: {
       params: t.object({}),
       result: projectListResultSchema,
@@ -76,6 +81,11 @@ export class ProjectTools {
   project_info = $tool({
     description:
       "Get information about a project, including packages/zones and active tasks.",
+    title: "Campaign info",
+    annotations: {
+      readOnlyHint: true,
+      idempotentHint: true,
+    },
     schema: {
       params: projectInfoParamsSchema,
       result: projectInfoResultSchema,

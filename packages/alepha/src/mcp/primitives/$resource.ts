@@ -1,6 +1,7 @@
 import { $inject, createPrimitive, KIND, Primitive } from "alepha";
 import type {
   McpContext,
+  McpIcon,
   McpResourceDescriptor,
   ResourceContent,
   ResourceHandler,
@@ -77,6 +78,17 @@ export interface ResourcePrimitiveOptions {
    * @example "User Profile"
    */
   name?: string;
+
+  /**
+   * Human-friendly display title (spec 2025-11-25). Distinct from `name`,
+   * which remains the programmatic identifier.
+   */
+  title?: string;
+
+  /**
+   * Optional icons surfaced in client UIs (spec 2025-11-25 / SEP-973).
+   */
+  icons?: McpIcon[];
 
   /**
    * Description of what this resource contains.
@@ -159,12 +171,17 @@ export class ResourcePrimitive extends Primitive<ResourcePrimitiveOptions> {
    * Convert the resource to an MCP resource descriptor for protocol messages.
    */
   public toDescriptor(): McpResourceDescriptor {
-    return {
+    const descriptor: McpResourceDescriptor = {
       uri: this.uri,
       name: this.name,
       description: this.description,
       mimeType: this.mimeType,
     };
+    if (this.options.title) descriptor.title = this.options.title;
+    if (this.options.icons && this.options.icons.length > 0) {
+      descriptor.icons = this.options.icons;
+    }
+    return descriptor;
   }
 }
 

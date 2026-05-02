@@ -12,7 +12,32 @@ import type {
 
 export const JSONRPC_VERSION = "2.0" as const;
 
-export const MCP_PROTOCOL_VERSION = "2024-11-05" as const;
+/**
+ * The latest MCP protocol revision Alepha targets.
+ * See {@link SUPPORTED_PROTOCOL_VERSIONS} for the full negotiation list.
+ */
+export const MCP_PROTOCOL_VERSION = "2025-11-25" as const;
+
+/**
+ * Protocol versions Alepha will accept during `initialize` negotiation,
+ * highest preference first. The server echoes back whichever version the
+ * client requested if it appears here, otherwise picks the first entry.
+ */
+export const SUPPORTED_PROTOCOL_VERSIONS = [
+  "2025-11-25",
+  "2025-06-18",
+  "2025-03-26",
+  "2024-11-05",
+] as const;
+
+export type SupportedProtocolVersion =
+  (typeof SUPPORTED_PROTOCOL_VERSIONS)[number];
+
+export const isSupportedProtocolVersion = (
+  v: unknown,
+): v is SupportedProtocolVersion =>
+  typeof v === "string" &&
+  (SUPPORTED_PROTOCOL_VERSIONS as readonly string[]).includes(v);
 
 export const JsonRpcErrorCodes = {
   PARSE_ERROR: -32700,

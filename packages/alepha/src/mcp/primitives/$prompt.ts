@@ -10,6 +10,7 @@ import {
 } from "alepha";
 import type {
   McpContext,
+  McpIcon,
   McpPromptArgument,
   McpPromptDescriptor,
   PromptHandlerArgs,
@@ -81,6 +82,12 @@ export interface PromptPrimitiveOptions<T extends TObject> {
   name?: string;
 
   /**
+   * Human-friendly display title (spec 2025-11-25). Distinct from `name`,
+   * which remains the programmatic identifier.
+   */
+  title?: string;
+
+  /**
    * Description of what this prompt does.
    *
    * Helps users understand the purpose of the prompt.
@@ -88,6 +95,11 @@ export interface PromptPrimitiveOptions<T extends TObject> {
    * @example "Generate a personalized greeting message"
    */
   description?: string;
+
+  /**
+   * Optional icons surfaced in client UIs (spec 2025-11-25 / SEP-973).
+   */
+  icons?: McpIcon[];
 
   /**
    * TypeBox schema defining the prompt arguments.
@@ -157,13 +169,18 @@ export class PromptPrimitive<T extends TObject> extends Primitive<
    * Convert the prompt to an MCP prompt descriptor for protocol messages.
    */
   public toDescriptor(): McpPromptDescriptor {
-    return {
+    const descriptor: McpPromptDescriptor = {
       name: this.name,
       description: this.description,
       arguments: this.options.args
         ? this.schemaToArguments(this.options.args)
         : [],
     };
+    if (this.options.title) descriptor.title = this.options.title;
+    if (this.options.icons && this.options.icons.length > 0) {
+      descriptor.icons = this.options.icons;
+    }
+    return descriptor;
   }
 
   /**

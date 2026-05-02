@@ -25,7 +25,7 @@ describe("jsonrpc constants", () => {
   });
 
   test("MCP_PROTOCOL_VERSION should be defined", () => {
-    expect(MCP_PROTOCOL_VERSION).toBe("2024-11-05");
+    expect(MCP_PROTOCOL_VERSION).toBe("2025-11-25");
   });
 
   test("JsonRpcErrorCodes should have correct values", () => {

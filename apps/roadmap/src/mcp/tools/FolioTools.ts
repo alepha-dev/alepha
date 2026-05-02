@@ -50,6 +50,11 @@ export class FolioTools {
   folio_list = $tool({
     description:
       "List the user's folios (personal markdown notes), newest first. Use `tag` to narrow by a tag. Returns id, title, tags, updatedAt — call folio_get to read full content.",
+    title: "List folios",
+    annotations: {
+      readOnlyHint: true,
+      idempotentHint: true,
+    },
     schema: {
       params: t.object({
         tag: t.optional(t.string()),
@@ -77,6 +82,11 @@ export class FolioTools {
   folio_search = $tool({
     description:
       "Search the user's folios by free-text query (matches title, tags, and content, case-insensitive). Returns id/title/tags + a ~200-char snippet around the match — use this before folio_get when looking something up.",
+    title: "Search folios",
+    annotations: {
+      readOnlyHint: true,
+      idempotentHint: true,
+    },
     schema: {
       params: t.object({
         query: t.string({ minLength: 1 }),
@@ -114,6 +124,11 @@ export class FolioTools {
   folio_tags = $tool({
     description:
       "List every tag the user has ever used. Helpful before creating a folio so you can reuse existing tags instead of inventing new ones.",
+    title: "List folio tags",
+    annotations: {
+      readOnlyHint: true,
+      idempotentHint: true,
+    },
     schema: {
       params: t.object({}),
       result: t.object({ tags: t.array(t.string()) }),
@@ -127,6 +142,11 @@ export class FolioTools {
   folio_get = $tool({
     description:
       "Get the full content of a folio by id (markdown). Use folio_search or folio_list to find the id first.",
+    title: "Get folio",
+    annotations: {
+      readOnlyHint: true,
+      idempotentHint: true,
+    },
     schema: {
       params: t.object({ id: t.uuid() }),
       result: folioFullSchema,
@@ -149,6 +169,10 @@ export class FolioTools {
   folio_create = $tool({
     description:
       "Create a new folio. `content` is markdown. `tags` should reuse existing tags when possible (call folio_tags to list them).",
+    title: "Create folio",
+    annotations: {
+      // not idempotent — repeated calls create duplicate folios
+    },
     schema: {
       params: t.object({
         title: t.string({ minLength: 1, maxLength: 200 }),
@@ -179,6 +203,10 @@ export class FolioTools {
   folio_update = $tool({
     description:
       "Update a folio. Any omitted field stays unchanged. Pass the full new tag array (it replaces the existing one).",
+    title: "Update folio",
+    annotations: {
+      idempotentHint: true,
+    },
     schema: {
       params: t.object({
         id: t.uuid(),
@@ -210,6 +238,11 @@ export class FolioTools {
 
   folio_delete = $tool({
     description: "Delete a folio. This cannot be undone.",
+    title: "Delete folio",
+    annotations: {
+      destructiveHint: true,
+      idempotentHint: true, // deleting an already-deleted folio is a no-op
+    },
     schema: {
       params: t.object({ id: t.uuid() }),
       result: t.object({ ok: t.boolean() }),

@@ -3,7 +3,12 @@ import { iconFor } from "@alepha/ui/components/control/icon-hint";
 import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { Input } from "@alepha/ui/components/ui/input";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@alepha/ui/components/ui/input-otp";
 import { Label } from "@alepha/ui/components/ui/label";
 import { Separator } from "@alepha/ui/components/ui/separator";
 import { AlephaError, t } from "alepha";
@@ -189,41 +194,59 @@ export function AuthRegister(props: AuthRegisterProps) {
               </Alert>
             )}
             {state.intent.expectEmailVerification && (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col items-center gap-2">
                 <Label htmlFor="emailCode">
                   {tr("auth.register.emailCode", {
                     default: "Email verification code",
                   })}
                 </Label>
-                <Input
+                <InputOTP
                   id="emailCode"
-                  inputMode="numeric"
                   maxLength={6}
                   autoComplete="one-time-code"
                   value={emailCode}
-                  onChange={(e) =>
-                    setEmailCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                  }
-                />
+                  onChange={setEmailCode}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                  </InputOTPGroup>
+                  <InputOTPSeparator />
+                  <InputOTPGroup>
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
               </div>
             )}
             {state.intent.expectPhoneVerification && (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col items-center gap-2">
                 <Label htmlFor="phoneCode">
                   {tr("auth.register.phoneCode", {
                     default: "Phone verification code",
                   })}
                 </Label>
-                <Input
+                <InputOTP
                   id="phoneCode"
-                  inputMode="numeric"
                   maxLength={6}
                   autoComplete="one-time-code"
                   value={phoneCode}
-                  onChange={(e) =>
-                    setPhoneCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                  }
-                />
+                  onChange={setPhoneCode}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                  </InputOTPGroup>
+                  <InputOTPSeparator />
+                  <InputOTPGroup>
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
               </div>
             )}
             <Button onClick={handleVerify} disabled={!canSubmit || submitting}>

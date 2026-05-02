@@ -59,6 +59,8 @@ export class ChapterTools {
   chapter_list = $tool({
     description:
       "List all chapters for a project. Chapters are iterative milestones that capture completed quests.",
+    title: "List chapters",
+    annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: chapterListParamsSchema,
       result: chapterListResultSchema,
@@ -93,6 +95,7 @@ export class ChapterTools {
   chapter_start = $tool({
     description:
       "Start a new chapter for a project. Only one chapter can be active at a time. Quests completed while a chapter is active are automatically attached to it.",
+    title: "Start chapter",
     schema: {
       params: chapterStartParamsSchema,
       result: chapterStartResultSchema,
@@ -126,6 +129,11 @@ export class ChapterTools {
   chapter_close = $tool({
     description:
       "Close an active chapter. No more quests will be attached to it after closing.",
+    title: "Close chapter",
+    annotations: {
+      destructiveHint: true, // can't be reopened, finalizes the chapter
+      idempotentHint: true,
+    },
     schema: {
       params: chapterCloseParamsSchema,
       result: chapterCloseResultSchema,
@@ -151,6 +159,8 @@ export class ChapterTools {
   chapter_changelog = $tool({
     description:
       "Generate a Markdown changelog for a chapter, listing all completed quests grouped by zone.",
+    title: "Chapter changelog",
+    annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: chapterChangelogParamsSchema,
       result: chapterChangelogResultSchema,

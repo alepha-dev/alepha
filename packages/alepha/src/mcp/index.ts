@@ -3,7 +3,7 @@ import { $prompt } from "./primitives/$prompt.ts";
 import { $resource } from "./primitives/$resource.ts";
 import { $tool } from "./primitives/$tool.ts";
 import { McpServerProvider } from "./providers/McpServerProvider.ts";
-import { SseMcpTransport } from "./transports/SseMcpTransport.ts";
+import { StreamableHttpMcpTransport } from "./transports/StreamableHttpMcpTransport.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -28,12 +28,15 @@ export {
   createParseError,
   createResponse,
   isNotification,
+  isSupportedProtocolVersion,
   isValidJsonRpcRequest,
   JSONRPC_VERSION,
   JsonRpcErrorCodes,
   JsonRpcParseError,
   MCP_PROTOCOL_VERSION,
   parseMessage,
+  SUPPORTED_PROTOCOL_VERSIONS,
+  type SupportedProtocolVersion,
 } from "./helpers/jsonrpc.ts";
 export type {
   JsonRpcError,
@@ -88,8 +91,10 @@ export { $tool, ToolPrimitive } from "./primitives/$tool.ts";
 export { McpServerProvider } from "./providers/McpServerProvider.ts";
 export {
   mcpSseOptions,
+  mcpStreamableHttpOptions,
   SseMcpTransport,
-} from "./transports/SseMcpTransport.ts";
+  StreamableHttpMcpTransport,
+} from "./transports/StreamableHttpMcpTransport.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -101,7 +106,7 @@ export {
  * - MCP tool definitions
  * - MCP prompt definitions
  * - JSON-RPC protocol
- * - SSE and Stdio transports
+ * - Streamable HTTP transport (spec 2025-03-26+)
  *
  * @module alepha.mcp
  */
@@ -109,6 +114,6 @@ export const AlephaMcp = $module({
   name: "alepha.mcp",
   primitives: [$tool, $resource, $prompt],
   services: [McpServerProvider],
-  // Transports are opt-in — user wires the one(s) they need via alepha.with(SseMcpTransport).
-  variants: [SseMcpTransport],
+  // Transports are opt-in — user wires the one(s) they need via alepha.with(StreamableHttpMcpTransport).
+  variants: [StreamableHttpMcpTransport],
 });

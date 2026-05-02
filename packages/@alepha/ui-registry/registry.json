@@ -374,11 +374,11 @@
       "type": "registry:block",
       "title": "Register",
       "description": "Registration page with verification step (email/phone codes) when required by the realm.",
-      "dependencies": ["alepha", "lucide-react"],
+      "dependencies": ["alepha", "lucide-react", "input-otp"],
       "registryDependencies": [
         "@alepha/control",
         "button",
-        "input",
+        "input-otp",
         "label",
         "card",
         "alert",

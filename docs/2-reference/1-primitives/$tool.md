@@ -24,7 +24,10 @@ Each tool has a name, description, typed parameters, and a handler function.
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `name` | `string` | No | The name of the tool |
+| `title` | `string` | No | Human-friendly display title (spec 2025-11-25) |
 | `description` | `string` | Yes | A human-readable description of what the tool does |
+| `annotations` | `McpToolAnnotations` | No | Behavior hints (spec 2025-03-26+) |
+| `icons` | `McpIcon[]` | No | Icons surfaced in client tool palettes / picker UIs (spec 2025-11-25). |
 | `schema` | `T` | No | TypeBox schema defining the tool's parameters and result type |
 | `handler` | `Object` | Yes | The handler function that executes when the tool is called |
 

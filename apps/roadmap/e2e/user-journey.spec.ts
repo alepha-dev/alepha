@@ -104,16 +104,23 @@ test.describe("User Journey", () => {
       await page.waitForLoadState("networkidle");
 
       await page.getByRole("textbox", { name: "Username" }).fill(testUsername);
-      await page.getByRole("textbox", { name: "Email" }).fill(testEmail);
-      await page.locator('input[type="password"]').first().fill(testPassword);
+      await page
+        .getByRole("textbox", { name: "Email", exact: true })
+        .fill(testEmail);
+      await page
+        .getByRole("textbox", { name: "Password", exact: true })
+        .fill(testPassword);
+      await page
+        .getByRole("textbox", { name: "Confirm password" })
+        .fill(testPassword);
 
-      await page.getByRole("button", { name: /^sign up$/i }).click();
-      await expect(page.getByLabel(/verification code/i)).toBeVisible({
-        timeout: 10_000,
-      });
+      await page.getByRole("button", { name: /create account/i }).click();
+      await expect(
+        page.getByRole("button", { name: /complete registration/i }),
+      ).toBeVisible({ timeout: 10_000 });
     });
 
-    // ── Verify email ───────────────────────────────────────────────────────
+    // ── Verify email + auto-login lands on "/" ─────────────────────────────
     await test.step("submit email verification code", async () => {
       const emailPath = await findLatestEmail(testEmail, 10_000);
       expect(emailPath).not.toBeNull();
@@ -121,27 +128,13 @@ test.describe("User Journey", () => {
       expect(code).not.toBeNull();
       expect(code).toHaveLength(6);
 
-      await page.getByLabel(/verification code/i).fill(code!);
-      await page.getByRole("button", { name: /verify and continue/i }).click();
-
-      // Register flow ends on the login page (no auto-login).
-      await page.waitForURL(/\/auth\/login/, { timeout: 15_000 });
-    });
-
-    // ── Login ──────────────────────────────────────────────────────────────
-    await test.step("login via UI", async () => {
-      // Identifier label is realm-driven; matches "Username", "Email" or
-      // "Username or email" depending on settings.
+      await page.locator("#emailCode").fill(code!);
       await page
-        .getByRole("textbox", { name: /username|email/i })
-        .first()
-        .fill(testUsername);
-      await page.locator('input[type="password"]').first().fill(testPassword);
+        .getByRole("button", { name: /complete registration/i })
+        .click();
 
-      // Header has "Sign In" (capitalized I); the form button is "Sign in".
-      // Use exact case to scope to the form submit button.
-      await page.getByRole("button", { name: "Sign in", exact: true }).click();
-      await page.waitForURL(/\/$/, { timeout: 15_000 });
+      // Registry block auto-logs the user in and sends them to "/".
+      await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout: 15_000 });
     });
 
     // ── Create campaign ────────────────────────────────────────────────────

@@ -10,7 +10,9 @@ import {
 } from "alepha";
 import type {
   McpContext,
+  McpIcon,
   McpJsonSchema,
+  McpToolAnnotations,
   McpToolDescriptor,
   ToolHandlerArgs,
   ToolHandlerResult,
@@ -85,6 +87,15 @@ export interface ToolPrimitiveOptions<T extends ToolPrimitiveSchema> {
   name?: string;
 
   /**
+   * Human-friendly display title (spec 2025-11-25). Distinct from `name`,
+   * which remains the programmatic identifier. Clients use `title` in
+   * tool palettes / picker UIs.
+   *
+   * @example "Search Lore"
+   */
+  title?: string;
+
+  /**
    * A human-readable description of what the tool does.
    *
    * This description is sent to the LLM to help it understand
@@ -94,6 +105,18 @@ export interface ToolPrimitiveOptions<T extends ToolPrimitiveSchema> {
    * @example "Retrieve current weather data for a given location"
    */
   description: string;
+
+  /**
+   * Behavior hints (spec 2025-03-26+). Clients use these to gate UI prompts
+   * (e.g. require confirmation before a tool with `destructiveHint: true`).
+   * None are guarantees — they are heuristics for the client, not the model.
+   */
+  annotations?: McpToolAnnotations;
+
+  /**
+   * Icons surfaced in client tool palettes / picker UIs (spec 2025-11-25).
+   */
+  icons?: McpIcon[];
 
   /**
    * TypeBox schema defining the tool's parameters and result type.
@@ -141,6 +164,15 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
     return this.options.description;
   }
 
+  /**
+   * Whether the tool declared a result schema. When true, `tools/call`
+   * responses include `structuredContent` populated with the validated
+   * result (spec 2025-06-18).
+   */
+  public hasOutputSchema(): boolean {
+    return !!this.options.schema?.result;
+  }
+
   protected onInit(): void {
     this.mcpServer.registerTool(this);
   }
@@ -184,21 +216,57 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
 
   /**
    * Convert the tool to an MCP tool descriptor for protocol messages.
+   *
+   * Emits the spec 2025-11-25 surface: `title`, `annotations`, `icons`,
+   * and (when `schema.result` is defined) `outputSchema` so the server
+   * can populate `structuredContent` on call results.
    */
   public toDescriptor(): McpToolDescriptor {
-    return {
+    const inputSchema: McpJsonSchema = this.options.schema?.params
+      ? this.schemaToJsonSchema(this.options.schema.params)
+      : { type: "object", properties: {}, required: [] };
+
+    const descriptor: McpToolDescriptor = {
       name: this.name,
       description: this.description,
-      inputSchema: this.options.schema?.params
-        ? this.schemaToJsonSchema(this.options.schema.params)
-        : { type: "object", properties: {}, required: [] },
+      inputSchema,
     };
+
+    if (this.options.title) descriptor.title = this.options.title;
+    if (this.options.annotations)
+      descriptor.annotations = this.options.annotations;
+    if (this.options.icons && this.options.icons.length > 0) {
+      descriptor.icons = this.options.icons;
+    }
+
+    // Output schema is emitted when the tool declares `schema.result`,
+    // unlocking structured content on tools/call responses.
+    if (this.options.schema?.result) {
+      const out = this.propertyToJsonSchema(this.options.schema.result);
+      // The result schema may be a primitive — wrap so the descriptor
+      // value is always a JSON Schema object with `type`.
+      descriptor.outputSchema = (
+        typeof out === "object" && out !== null && "type" in out
+          ? out
+          : { type: "object", properties: {}, required: [] }
+      ) as McpJsonSchema;
+    }
+
+    return descriptor;
   }
 
   /**
    * Convert a TypeBox schema to JSON Schema format.
+   *
+   * Emits the 2020-12 dialect annotation at the root (spec 2025-11-25 /
+   * SEP-1613 — JSON Schema 2020-12 is the default dialect for MCP).
+   * The TypeBox shapes Alepha emits today are already 2020-12-compatible;
+   * this is just the dialect declaration.
    */
-  protected schemaToJsonSchema(schema: TObject): McpJsonSchema {
+  protected schemaToJsonSchema(
+    schema: TObject,
+    options?: { root?: boolean },
+  ): McpJsonSchema {
     const properties: Record<string, unknown> = {};
     const required: string[] = [];
 
@@ -211,11 +279,19 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
       }
     }
 
-    return {
+    const result: McpJsonSchema = {
       type: "object",
       properties,
       required,
     };
+
+    // Annotate the dialect on the root schema only (avoid noise on nested
+    // sub-schemas where MCP doesn't expect $schema).
+    if (options?.root !== false) {
+      result.$schema = "https://json-schema.org/draft/2020-12/schema";
+    }
+
+    return result;
   }
 
   /**
@@ -251,7 +327,7 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
         result.items = this.propertyToJsonSchema(schema.items as TSchema);
       }
     } else if (t.schema.isObject(schema)) {
-      Object.assign(result, this.schemaToJsonSchema(schema));
+      Object.assign(result, this.schemaToJsonSchema(schema, { root: false }));
     } else if (t.schema.isUnsafe(schema) || t.schema.isOptional(schema)) {
       // Handle Unsafe types (like t.enum) and optional wrappers by checking the underlying type property
       const schemaAny = schema as { type?: string; enum?: unknown[] };

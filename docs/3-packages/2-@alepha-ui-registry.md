@@ -81,7 +81,7 @@ yarn shadcn add @alepha/auth-register
 | `realmConfig` | `RealmConfig` | Yes | Realm configuration (drives required fields, verification step, OAuth buttons). |
 | `loginPath` | `string` | No | Route to the login page |
 
-**Dependencies:** `alepha`, `lucide-react`, `@alepha/control`, `shadcn:button`, `shadcn:input`, `shadcn:label`, `shadcn:card`, `shadcn:alert`, `shadcn:separator`
+**Dependencies:** `alepha`, `lucide-react`, `input-otp`, `@alepha/control`, `shadcn:button`, `shadcn:input-otp`, `shadcn:label`, `shadcn:card`, `shadcn:alert`, `shadcn:separator`
 
 #### `@alepha/auth-reset-password` — Reset password
 

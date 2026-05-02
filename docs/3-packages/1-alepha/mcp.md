@@ -17,7 +17,7 @@ Model Context Protocol for AI tool integration.
 - MCP tool definitions
 - MCP prompt definitions
 - JSON-RPC protocol
-- SSE and Stdio transports
+- Streamable HTTP transport (spec 2025-03-26+)
 
 ## API Reference
 

@@ -25,6 +25,8 @@ such as files, database records, API responses, or computed data.
 |--------|------|----------|-------------|
 | `uri` | `string` | Yes | The URI that identifies this resource |
 | `name` | `string` | No | Human-readable name for the resource |
+| `title` | `string` | No | Human-friendly display title (spec 2025-11-25) |
+| `icons` | `McpIcon[]` | No | Optional icons surfaced in client UIs (spec 2025-11-25 / SEP-973). |
 | `description` | `string` | No | Description of what this resource contains |
 | `mimeType` | `string` | No | MIME type of the resource content |
 | `handler` | `ResourceHandler` | Yes | Handler function that returns the resource content |
