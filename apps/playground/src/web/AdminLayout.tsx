@@ -1,8 +1,11 @@
-import type { NavGroup, NavItem } from "@alepha/ui/components/app-shell/app-shell";
+import type {
+  NavGroup,
+  NavItem,
+} from "@alepha/ui/components/app-shell/app-shell";
 import { AppShell } from "@alepha/ui/components/app-shell/app-shell";
 import { ButtonLanguage } from "@alepha/ui/components/button-language/button-language";
+import { ButtonTheme } from "@alepha/ui/components/button-theme/button-theme";
 import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
-import { ThemeToggle } from "@alepha/ui/components/theme-toggle";
 import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
 import { NestedView, useRouterState } from "alepha/react/router";
@@ -160,7 +163,7 @@ export const AdminLayout = () => {
           topbarActions={
             <>
               <ButtonLanguage />
-              <ThemeToggle />
+              <ButtonTheme />
               <ButtonUser />
             </>
           }

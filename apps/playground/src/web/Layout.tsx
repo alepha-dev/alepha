@@ -1,7 +1,7 @@
 import { AppShell } from "@alepha/ui/components/app-shell/app-shell";
 import { ButtonLanguage } from "@alepha/ui/components/button-language/button-language";
+import { ButtonTheme } from "@alepha/ui/components/button-theme/button-theme";
 import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
-import { ThemeToggle } from "@alepha/ui/components/theme-toggle";
 import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
@@ -90,7 +90,7 @@ export const Layout = () => {
           topbarActions={
             <>
               <ButtonLanguage />
-              <ThemeToggle />
+              <ButtonTheme />
               <ButtonUser
                 onSignIn={() => router.push("/auth/login")}
                 onAdminClick={() => router.push("/admin/users")}
