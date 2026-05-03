@@ -5,7 +5,7 @@ import { AdminKeys } from "@alepha/ui/components/admin/admin-keys";
 import { AdminNotifications } from "@alepha/ui/components/admin/admin-notifications";
 import { AdminSessions } from "@alepha/ui/components/admin/admin-sessions";
 import { AdminUsers } from "@alepha/ui/components/admin/admin-users";
-import { AppShell } from "@alepha/ui/components/app-shell";
+import { AppShell } from "@alepha/ui/components/app-shell/app-shell";
 import { $page, Redirection } from "alepha/react/router";
 import { $secure } from "alepha/security";
 import {

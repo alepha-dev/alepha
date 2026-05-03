@@ -1,4 +1,4 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table";
+import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
