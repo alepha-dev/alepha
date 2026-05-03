@@ -8,6 +8,13 @@
       "when": 1777755301206,
       "tag": "0000_abnormal_redwing",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1777814136295,
+      "tag": "0001_mature_wonder_man",
+      "breakpoints": true
     }
   ]
 }

@@ -121,6 +121,18 @@ export const realmAuthSettingsAtom = $atom({
         minimum: 1000,
       }),
     }),
+    refreshToken: t.object({
+      expirationIdle: t.optional(
+        t.integer({
+          description:
+            "Maximum time in milliseconds a refresh token may stay unused before being invalidated. " +
+            "When set, sessions whose last refresh is older than this window are rejected and deleted, " +
+            "even if the absolute `expiresAt` has not been reached. Recommended for SaaS auth posture " +
+            "(SOC2/ISO27001). Leave undefined to disable idle invalidation (default).",
+          minimum: 1000,
+        }),
+      ),
+    }),
   }),
   default: {
     // for a fresh hello world setup, we accept registration and email login
@@ -148,6 +160,9 @@ export const realmAuthSettingsAtom = $atom({
       ipMaxAttempts: 15,
       accountMaxAttempts: 5,
       windowMs: 15 * 60 * 1000,
+    },
+    refreshToken: {
+      // expirationIdle: undefined — opt-in
     },
   },
 });

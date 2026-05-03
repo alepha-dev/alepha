@@ -649,6 +649,7 @@ yarn shadcn add @alepha/alepha-table
 | `onRowClick` | `Object` | No | Click handler invoked when a row is clicked (excluding action buttons). |
 | `header` | `ReactNode` | No | Header content rendered above the table (e.g., title + filters). |
 | `pollMs` | `number` | No | Auto-refresh interval in ms (only when document is visible). |
+| `form` | `FormModel&lt;TObject&gt;` | No | Filter form |
 | `className` | `string` | No | Extra classes applied to the outer wrapper. |
 | `emptyMessage` | `string` | No | Message shown when the page is empty |
 

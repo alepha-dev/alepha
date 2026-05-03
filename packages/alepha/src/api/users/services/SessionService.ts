@@ -523,6 +523,7 @@ export class SessionService {
     const session = await this.sessions(userRealmName).create({
       userId: user.id,
       expiresAt,
+      lastUsedAt: this.dateTimeProvider.nowISOString(),
       ip: request?.ip,
       userAgent: request?.userAgent,
       refreshToken,
@@ -563,6 +564,27 @@ export class SessionService {
       throw new UnauthorizedError("Session expired");
     }
 
+    // Idle timeout check — opt-in via realm settings.
+    // Falls back to createdAt when lastUsedAt is null (pre-migration rows or
+    // sessions that never refreshed since the column was introduced).
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const settings = await realm.getSettings();
+    const idleMs = settings.refreshToken?.expirationIdle;
+    if (idleMs && idleMs > 0) {
+      const lastUsedRef = session.lastUsedAt ?? session.createdAt;
+      const idleSince = now.diff(this.dateTimeProvider.of(lastUsedRef));
+      if (idleSince > idleMs) {
+        this.log.info("Session expired (idle timeout)", {
+          sessionId: session.id,
+          userId: session.userId,
+          idleMs: idleSince,
+          thresholdMs: idleMs,
+        });
+        await this.sessions(userRealmName).deleteById(session.id);
+        throw new UnauthorizedError("Session expired");
+      }
+    }
+
     const user = await this.users(userRealmName).getOne({
       where: {
         id: { eq: session.userId },
@@ -581,6 +603,11 @@ export class SessionService {
 
     // Auto-promote to admin if configured (handles "I promote you admin" case)
     await this.ensureAdminRole(user, userRealmName);
+
+    // Update lastUsedAt — sliding-window for idle timeout enforcement.
+    await this.sessions(userRealmName).updateById(session.id, {
+      lastUsedAt: now.toISOString(),
+    });
 
     this.log.debug("Session refreshed", {
       sessionId: session.id,

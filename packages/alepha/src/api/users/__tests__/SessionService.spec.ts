@@ -916,4 +916,103 @@ describe("alepha/api/users - SessionService.refreshSession", () => {
       sessionService.refreshSession(refreshToken),
     ).rejects.toThrowError();
   });
+
+  describe("refresh-token idle timeout", () => {
+    it("should refresh successfully when used within the idle window", async ({
+      expect,
+    }) => {
+      const { sessionService, userService, alepha, dateTimeProvider } =
+        await setup();
+
+      const realmProvider = alepha.inject(RealmProvider);
+      realmProvider.register("idle-ok", {
+        settings: {
+          refreshToken: { expirationIdle: 60 * 60 * 1000 }, // 1 hour
+        } as never,
+      });
+
+      const user = await userService.users("idle-ok").create({
+        realm: "idle-ok",
+        email: "idle-ok@example.com",
+        roles: ["user"],
+      });
+
+      const { refreshToken } = await sessionService.createSession(
+        user,
+        24 * 3600,
+        "idle-ok",
+      );
+
+      // Half the idle window — still well inside.
+      await dateTimeProvider.travel(30, "minutes");
+
+      const result = await sessionService.refreshSession(
+        refreshToken,
+        "idle-ok",
+      );
+      expect(result.user.id).toBe(user.id);
+    });
+
+    it("should reject refresh and delete session when idle window is exceeded", async ({
+      expect,
+    }) => {
+      const { sessionService, userService, alepha, dateTimeProvider } =
+        await setup();
+
+      const realmProvider = alepha.inject(RealmProvider);
+      realmProvider.register("idle-strict", {
+        settings: {
+          refreshToken: { expirationIdle: 5 * 60 * 1000 }, // 5 minutes
+        } as never,
+      });
+
+      const user = await userService.users("idle-strict").create({
+        realm: "idle-strict",
+        email: "idle-strict@example.com",
+        roles: ["user"],
+      });
+
+      const { refreshToken } = await sessionService.createSession(
+        user,
+        7 * 24 * 3600, // 7 day absolute expiry — well beyond idle threshold
+        "idle-strict",
+      );
+
+      // Idle past the threshold (but absolute expiry is still days away).
+      await dateTimeProvider.travel(10, "minutes");
+
+      await expect(
+        sessionService.refreshSession(refreshToken, "idle-strict"),
+      ).rejects.toThrowError(UnauthorizedError);
+
+      // Session deleted — second refresh fails too (row gone).
+      await expect(
+        sessionService.refreshSession(refreshToken, "idle-strict"),
+      ).rejects.toThrowError();
+    });
+
+    it("should not enforce idle when expirationIdle is undefined (default)", async ({
+      expect,
+    }) => {
+      const { sessionService, userService, dateTimeProvider } = await setup();
+
+      const user = await userService.users().create({
+        username: "idle-defaultuser",
+        email: "idle-default@example.com",
+        roles: ["user"],
+      });
+
+      const { refreshToken } = await sessionService.createSession(
+        user,
+        7 * 24 * 3600,
+      );
+
+      // Travel days into the future. With no idleTtl configured, refresh
+      // should still succeed (only absolute expiresAt matters).
+      await dateTimeProvider.travel(3, "days");
+
+      const result = await sessionService.refreshSession(refreshToken);
+      expect(result.user.id).toBe(user.id);
+    });
+  });
 });

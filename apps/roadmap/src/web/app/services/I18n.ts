@@ -54,7 +54,19 @@ export class I18n {
         "lore.confirm-delete-message": "This cannot be undone.",
         "lore.updated": "Updated $1",
 
+        "board.filter.search": "Search",
+        "board.filter.status": "Status",
+        "board.filter.package": "Zone",
+        "board.filter.apply": "Apply",
+        "board.filter.reset": "Reset",
+
+        "dashboard.character": "Hero",
+        "dashboard.purse": "Purse",
+        "dashboard.chapter": "Active chapter",
+        "dashboard.chapter.none": "No open chapter",
+
         "project.menu.create-task": "Create Quest",
+        "project.menu.dashboard": "Tavern",
         "project.menu.board": "Board",
         "project.menu.players": "Adventurers",
         "project.menu.analytics": "Chronicles",
@@ -323,7 +335,13 @@ export class I18n {
         "lore.confirm-delete-message": "Cette action est irréversible.",
         "lore.updated": "Mis à jour $1",
 
+        "dashboard.character": "Héros",
+        "dashboard.purse": "Bourse",
+        "dashboard.chapter": "Chapitre actif",
+        "dashboard.chapter.none": "Aucun chapitre ouvert",
+
         "project.menu.create-task": "Créer quête",
+        "project.menu.dashboard": "Taverne",
         "project.menu.board": "Tableau",
         "project.menu.players": "Aventuriers",
         "project.menu.analytics": "Chroniques",

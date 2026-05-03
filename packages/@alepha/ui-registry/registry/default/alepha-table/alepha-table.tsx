@@ -1,4 +1,6 @@
-import type { Page } from "alepha";
+import type { Page, TObject } from "alepha";
+import { useAlepha } from "alepha/react";
+import type { FormModel } from "alepha/react/form";
 import {
   ChevronLeft,
   ChevronRight,
@@ -75,6 +77,7 @@ export interface AlephaTableProps<T> {
     page: number;
     size: number;
     sort?: string;
+    filters?: Record<string, any>;
   }) => Promise<Page<T>>;
   /**
    * Column definitions, keyed by the property name they read from.
@@ -109,6 +112,13 @@ export interface AlephaTableProps<T> {
    */
   pollMs?: number;
   /**
+   * Filter form. The table refetches whenever the form emits
+   * `form:submit:success`, passing `form.currentValues` as `filters` to
+   * `fetch`. Row actions can call `form.submit()` after a mutation to
+   * refresh the table.
+   */
+  form?: FormModel<TObject>;
+  /**
    * Extra classes applied to the outer wrapper.
    */
   className?: string;
@@ -136,23 +146,39 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const [loading, setLoading] = useState(false);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [refreshKey, setRefreshKey] = useState(0);
+  const alepha = useAlepha();
+  const form = props.form;
 
   const sortParam = sort ? `${sort.field},${sort.direction}` : undefined;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await props.fetch({ page, size, sort: sortParam });
+      const res = await props.fetch({
+        page,
+        size,
+        sort: sortParam,
+        filters: form?.currentValues,
+      });
       setData(res.content);
       setMeta(res.page);
     } finally {
       setLoading(false);
     }
-  }, [props.fetch, page, size, sortParam, refreshKey]);
+  }, [props.fetch, page, size, sortParam, refreshKey, form]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!form) return;
+    return alepha.events.on("form:submit:success", (event) => {
+      if (event.id !== form.id) return;
+      setPage(0);
+      setRefreshKey((k) => k + 1);
+    });
+  }, [alepha, form]);
 
   useEffect(() => {
     if (!props.pollMs) return;

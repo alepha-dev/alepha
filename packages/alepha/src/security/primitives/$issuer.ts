@@ -75,9 +75,12 @@ export interface IssuerSettings {
      */
     expiration?: DurationLike;
 
-    // TODO: expirationIdle (max inactive time before the token is invalidated).
-    // Requires tracking lastUsedAt on session refresh and rejecting tokens
-    // that have been idle longer than the threshold.
+    /**
+     * Idle invalidation is enforced by session-backed realms via
+     * `realmAuthSettings.refreshToken.expirationIdle` (in `alepha/api/users`).
+     * Token-only refresh (no `onRefreshSession`) does not support idle
+     * invalidation — it has no stateful row to track `lastUsedAt`.
+     */
   };
 
   onCreateSession?: (

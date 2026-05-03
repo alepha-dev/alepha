@@ -71,6 +71,10 @@ export class RealmProvider {
           ...realmAuthSettingsAtom.options.default.loginRateLimit,
           ...realmOptions.settings?.loginRateLimit,
         },
+        refreshToken: {
+          ...realmAuthSettingsAtom.options.default.refreshToken,
+          ...realmOptions.settings?.refreshToken,
+        },
       },
       features,
       getSettings: async function () {

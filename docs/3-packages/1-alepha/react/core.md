@@ -40,3 +40,4 @@ Full-stack React framework with server-side rendering.
 - [`useClient`](/docs/reference-react-hooks-useclient) — Hook to get a virtual client for the specified scope.
 - [`useEvents`](/docs/reference-react-hooks-useevents) — Allow subscribing to multiple Alepha events. See {@link Hooks} for available events.
 - [`useInject`](/docs/reference-react-hooks-useinject) — Hook to inject a service instance.
+- [`useQuery`](/docs/reference-react-hooks-usequery) — Hook for declarative data fetching with automatic execution and refetch.
