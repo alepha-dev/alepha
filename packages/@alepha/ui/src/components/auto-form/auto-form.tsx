@@ -2,8 +2,8 @@ import {
   Control,
   type ControlProps,
 } from "@alepha/ui/components/control/control";
-import { spanClass, widthFor } from "@alepha/ui/components/control/grid";
-import { iconFor } from "@alepha/ui/components/control/icon-hint";
+import { spanClass, widthFor } from "@alepha/ui/components/control-base/grid";
+import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
   Popover,

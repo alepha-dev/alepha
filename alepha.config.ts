@@ -48,6 +48,10 @@ export default (alepha: Alepha) => {
 
         await run(`yarn clean`);
         await run(`yarn copy`);
+        await run(`yarn w @alepha/ui sync`);
+        await run(
+          `git diff --exit-code -- packages/@alepha/ui/src packages/@alepha/ui-registry`,
+        );
         await run(`yarn lint`);
         await run([`yarn typecheck`, `yarn test`, `yarn check-dependencies`]);
         await run(`yarn build`);

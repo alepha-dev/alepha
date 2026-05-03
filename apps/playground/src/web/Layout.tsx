@@ -1,9 +1,9 @@
-import { AppShell } from "@alepha/ui/components/app-shell";
-import { ButtonLanguage } from "@alepha/ui/components/button-language";
-import { ButtonUser } from "@alepha/ui/components/button-user";
+import { AppShell } from "@alepha/ui/components/app-shell/app-shell";
+import { ButtonLanguage } from "@alepha/ui/components/button-language/button-language";
+import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
 import { ThemeToggle } from "@alepha/ui/components/theme-toggle";
 import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
-import { DialogProvider } from "@alepha/ui/components/use-dialog";
+import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import {

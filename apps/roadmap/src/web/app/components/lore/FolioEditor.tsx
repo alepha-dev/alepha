@@ -1,5 +1,5 @@
 import { Control } from "@alepha/ui/components/control/control";
-import { ControlSelect } from "@alepha/ui/components/control/control-select";
+import { ControlSelect } from "@alepha/ui/components/control-select/control-select";
 import { Button } from "@alepha/ui/components/ui/button";
 import { t } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";

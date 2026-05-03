@@ -1,4 +1,4 @@
-import { FormField } from "@alepha/ui/components/control/form-field";
+import { FormField } from "@alepha/ui/components/control-base/form-field";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Calendar } from "@alepha/ui/components/ui/calendar";
 import { Input } from "@alepha/ui/components/ui/input";

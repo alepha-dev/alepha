@@ -1,5 +1,5 @@
-import { FormField } from "@alepha/ui/components/control/form-field";
-import { iconFor } from "@alepha/ui/components/control/icon-hint";
+import { FormField } from "@alepha/ui/components/control-base/form-field";
+import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Slider } from "@alepha/ui/components/ui/slider";
 import {

@@ -32,7 +32,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import { DialogProvider } from "@/components/use-dialog";
+import { DialogProvider } from "@/registry/default/use-dialog/use-dialog";
 
 export interface NavigationProgressOptions {
   /**

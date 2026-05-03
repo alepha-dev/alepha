@@ -1,4 +1,4 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table";
+import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import type { Page } from "alepha";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";

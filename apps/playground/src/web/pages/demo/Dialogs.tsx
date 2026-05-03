@@ -5,8 +5,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@alepha/ui/components/ui/card";
-import { useDialog } from "@alepha/ui/components/use-dialog";
-import { useToast } from "@alepha/ui/components/use-toast";
+import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useState } from "react";
 
 const Dialogs = () => {

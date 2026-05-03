@@ -1,8 +1,8 @@
-import { AppShell } from "@alepha/ui/components/app-shell";
-import { ThemeToggle } from "@alepha/ui/components/theme-toggle";
+import { AppShell } from "@alepha/ui/components/app-shell/app-shell";
+import { ButtonTheme } from "@alepha/ui/components/button-theme/button-theme";
 import { Toaster } from "@alepha/ui/components/ui/sonner";
 import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
-import { DialogProvider } from "@alepha/ui/components/use-dialog";
+import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useInject } from "alepha/react";
 import { NestedView, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
@@ -92,7 +92,7 @@ const DevLayout = () => {
       <DialogProvider>
         <ColorScheme />
         <AppShell
-          topbarActions={<ThemeToggle />}
+          topbarActions={<ButtonTheme />}
           brand={
             <div className="flex items-center gap-2 px-2 py-2 font-semibold group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
               <span className="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded">

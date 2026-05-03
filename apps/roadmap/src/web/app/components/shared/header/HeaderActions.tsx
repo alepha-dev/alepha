@@ -1,7 +1,7 @@
-import { ButtonDark } from "@alepha/ui/components/button-dark";
-import { ButtonLanguage } from "@alepha/ui/components/button-language";
-import { ButtonTheme } from "@alepha/ui/components/button-theme";
-import { ButtonUser } from "@alepha/ui/components/button-user";
+import { ButtonDark } from "@alepha/ui/components/button-dark/button-dark";
+import { ButtonLanguage } from "@alepha/ui/components/button-language/button-language";
+import { ButtonTheme } from "@alepha/ui/components/button-theme/button-theme";
+import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
 import { DropdownMenuItem } from "@alepha/ui/components/ui/dropdown-menu";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";

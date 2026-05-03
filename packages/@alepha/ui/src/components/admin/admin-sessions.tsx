@@ -1,6 +1,6 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table";
+import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import { useDialog } from "@alepha/ui/components/use-dialog";
+import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import type { Page } from "alepha";
 import type { AdminSessionController, SessionEntity } from "alepha/api/users";
 import { useClient } from "alepha/react";

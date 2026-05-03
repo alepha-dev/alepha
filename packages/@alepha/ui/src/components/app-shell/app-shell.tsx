@@ -26,7 +26,7 @@ import {
   SidebarProvider,
 } from "@alepha/ui/components/ui/sidebar";
 import { Toaster } from "@alepha/ui/components/ui/sonner";
-import { DialogProvider } from "@alepha/ui/components/use-dialog";
+import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useEvents } from "alepha/react";
 import { Link, NestedView } from "alepha/react/router";
 import { useSidebarState } from "alepha/react/ui";

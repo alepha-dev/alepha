@@ -1,5 +1,5 @@
 import { Control } from "@alepha/ui/components/control/control";
-import { iconFor } from "@alepha/ui/components/control/icon-hint";
+import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
 import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";

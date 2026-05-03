@@ -1,20 +1,20 @@
 import {
   ControlArray,
   type ControlArrayProps,
-} from "@alepha/ui/components/control/control-array";
-import { ControlDate } from "@alepha/ui/components/control/control-date";
-import { ControlNumber } from "@alepha/ui/components/control/control-number";
-import { ControlObject } from "@alepha/ui/components/control/control-object";
-import { ControlSelect } from "@alepha/ui/components/control/control-select";
-import {
-  ControlUpload,
-  type ControlUploadProps,
-} from "@alepha/ui/components/control/control-upload";
-import { FormField } from "@alepha/ui/components/control/form-field";
+} from "@alepha/ui/components/control-array/control-array";
+import { FormField } from "@alepha/ui/components/control-base/form-field";
 import {
   type IconComponent,
   iconFor,
-} from "@alepha/ui/components/control/icon-hint";
+} from "@alepha/ui/components/control-base/icon-hint";
+import { ControlDate } from "@alepha/ui/components/control-date/control-date";
+import { ControlNumber } from "@alepha/ui/components/control-number/control-number";
+import { ControlObject } from "@alepha/ui/components/control-object/control-object";
+import { ControlSelect } from "@alepha/ui/components/control-select/control-select";
+import {
+  ControlUpload,
+  type ControlUploadProps,
+} from "@alepha/ui/components/control-upload/control-upload";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Switch } from "@alepha/ui/components/ui/switch";

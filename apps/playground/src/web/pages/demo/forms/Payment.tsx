@@ -1,4 +1,4 @@
-import { AutoForm } from "@alepha/ui/components/auto-form";
+import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { t } from "alepha";
 import { useForm } from "alepha/react/form";
 import { toast } from "sonner";

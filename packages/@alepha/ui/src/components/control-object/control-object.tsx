@@ -2,7 +2,7 @@ import {
   Control,
   type ControlProps,
 } from "@alepha/ui/components/control/control";
-import { spanClass, widthFor } from "@alepha/ui/components/control/grid";
+import { spanClass, widthFor } from "@alepha/ui/components/control-base/grid";
 import { Button } from "@alepha/ui/components/ui/button";
 import type { TObject } from "alepha";
 import {

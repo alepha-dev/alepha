@@ -1,4 +1,4 @@
-import { AutoForm } from "@alepha/ui/components/auto-form";
+import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card } from "@alepha/ui/components/ui/card";

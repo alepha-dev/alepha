@@ -1,6 +1,6 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card } from "@alepha/ui/components/ui/card";
-import { useDialog } from "@alepha/ui/components/use-dialog";
+import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";

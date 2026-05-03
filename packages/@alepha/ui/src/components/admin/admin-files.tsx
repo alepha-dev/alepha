@@ -1,7 +1,7 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table";
+import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
-import { useDialog } from "@alepha/ui/components/use-dialog";
+import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import type { Page } from "alepha";
 import type { FileController } from "alepha/api/files";
 import { useClient } from "alepha/react";
