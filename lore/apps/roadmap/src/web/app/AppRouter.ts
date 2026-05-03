@@ -177,7 +177,9 @@ export class AppRouter {
 
   project = $page({
     children: () => [
+      this.projectDashboard,
       this.projectBoard,
+      this.projectTask,
       this.projectChapters,
       this.projectSettings,
       this.projectAnalytics,
@@ -218,14 +220,13 @@ export class AppRouter {
     },
   });
 
-  projectBoard = $page({
-    children: () => [this.projectBoardTable, this.projectTask],
+  projectDashboard = $page({
     path: "/",
-    lazy: () => import("./components/project/ProjectBoard.tsx"),
+    lazy: () => import("./components/project/ProjectDashboard.tsx"),
   });
 
-  projectBoardTable = $page({
-    path: "/",
+  projectBoard = $page({
+    path: "/board",
     lazy: () => import("./components/project/ProjectBoardTable.tsx"),
   });
 

@@ -5,13 +5,14 @@ import {
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-import { BookOpen, ChartLine, Settings, Table } from "lucide-react";
+import { BookOpen, ChartLine, Home, Settings, Table } from "lucide-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 
 type TabValue =
+  | "projectDashboard"
   | "projectBoard"
   | "projectChapters"
   | "projectAnalytics"
@@ -29,13 +30,15 @@ const ProjectActions = () => {
     params: { projectId: String(project.id) },
   };
 
-  let name = routerState.name;
-  if (name === "projectBoardTable") {
-    name = "projectBoard";
-  }
+  const name = routerState.name;
 
   const tabs: Array<{ value: TabValue; icon: React.ReactNode; label: string }> =
     [
+      {
+        value: "projectDashboard",
+        icon: <Home className="size-4" />,
+        label: String(tr("project.menu.dashboard")),
+      },
       {
         value: "projectBoard",
         icon: <Table className="size-4" />,

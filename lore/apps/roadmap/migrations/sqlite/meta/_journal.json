@@ -57,6 +57,13 @@
       "when": 1777758984941,
       "tag": "0007_material_dazzler",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1777814148702,
+      "tag": "0008_tough_gambit",
+      "breakpoints": true
     }
   ]
 }
