@@ -21,7 +21,7 @@
   ],
   "devDependencies": {
     "@alepha/ui": "workspace:^",
-    "@biomejs/biome": "^2.4.13",
+    "@biomejs/biome": "^2.4.14",
     "@tailwindcss/vite": "^4.2.4",
     "@xyflow/react": "^12.10.2",
     "alepha": "0.20.3",
