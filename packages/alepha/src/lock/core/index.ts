@@ -13,6 +13,37 @@ export * from "./providers/MemoryLockProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+declare module "alepha" {
+  interface Hooks {
+    /**
+     * Fires when a lock is successfully acquired.
+     */
+    "lock:acquired": {
+      name: string;
+      id: string;
+      maxDurationMs: number;
+    };
+    /**
+     * Fires when a lock is released (handler completed or threw).
+     */
+    "lock:released": {
+      name: string;
+      id: string;
+      heldMs: number;
+    };
+    /**
+     * Fires when a lock acquisition contends with another holder.
+     * Emitted whether the caller eventually acquires (`wait: true`) or fails.
+     */
+    "lock:contended": {
+      name: string;
+      id: string;
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 /**
  * Resource locking for distributed systems.
  *

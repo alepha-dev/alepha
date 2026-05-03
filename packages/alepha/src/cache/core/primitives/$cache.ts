@@ -239,6 +239,12 @@ export class CachePrimitive<
       ttl: px > 0 ? px : undefined,
       compress: this.options.compress,
     });
+
+    await this.alepha.events.emit("cache:set", {
+      container: this.container,
+      key,
+      ttlMs: px > 0 ? px : undefined,
+    });
   }
 
   public async get(key: string): Promise<TReturn | undefined> {
@@ -250,7 +256,14 @@ export class CachePrimitive<
       return undefined;
     }
 
-    return this.provider.getTyped<TReturn>(this.container, key);
+    const value = await this.provider.getTyped<TReturn>(this.container, key);
+
+    await this.alepha.events.emit(
+      value === undefined ? "cache:miss" : "cache:hit",
+      { container: this.container, key },
+    );
+
+    return value;
   }
 
   protected $provider(): CacheProvider {

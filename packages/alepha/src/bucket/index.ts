@@ -40,6 +40,14 @@ declare module "alepha" {
       id: string;
       bucket: BucketPrimitive;
     };
+    /**
+     * Triggered when a file is downloaded from a bucket.
+     */
+    "bucket:file:downloaded": {
+      id: string;
+      file: FileLike;
+      bucket: BucketPrimitive;
+    };
   }
 }
 

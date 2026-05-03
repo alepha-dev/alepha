@@ -43,7 +43,7 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
   return createMiddleware({
     name: "$lock",
     options: options as unknown as Record<string, unknown>,
-    handler: ({ next }) => {
+    handler: ({ alepha, next }) => {
       const id = crypto.randomUUID();
       const maxDurationMs = dateTimeProvider
         .duration(options.maxDuration ?? [5, "minutes"])
@@ -71,11 +71,13 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
 
         // Lock already ended (grace period active)
         if (endedAtStr) {
+          await alepha.events.emit("lock:contended", { name, id });
           throw new LockAcquireError(name);
         }
 
         // Lock held by someone else
         if (lockId !== id) {
+          await alepha.events.emit("lock:contended", { name, id });
           if (options.wait) {
             // Poll until lock is released
             const start = dateTimeProvider.nowMillis();
@@ -109,10 +111,21 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
         }
 
         // We hold the lock — execute handler
+        const acquiredAt = dateTimeProvider.nowMillis();
+        await alepha.events.emit("lock:acquired", {
+          name,
+          id,
+          maxDurationMs,
+        });
         try {
           return await next(...args);
         } finally {
           await lockProvider.del(name);
+          await alepha.events.emit("lock:released", {
+            name,
+            id,
+            heldMs: dateTimeProvider.nowMillis() - acquiredAt,
+          });
         }
       };
     },

@@ -288,7 +288,15 @@ export class BucketPrimitive extends Primitive<BucketPrimitiveOptions> {
    * Downloads a file from the bucket.
    */
   public async download(fileId: string): Promise<FileLike> {
-    return this.provider.download(this.name, fileId);
+    const file = await this.provider.download(this.name, fileId);
+
+    await this.alepha.events.emit("bucket:file:downloaded", {
+      id: fileId,
+      bucket: this,
+      file,
+    });
+
+    return file;
   }
 
   protected $provider() {

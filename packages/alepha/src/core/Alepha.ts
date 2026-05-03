@@ -827,7 +827,7 @@ export class Alepha {
   }
 
   /**
-   * Alias for {@link Alepha#with}.
+   * @alias {@link Alepha#with}.
    */
   public register<T extends object>(
     serviceEntry: ServiceEntry<T> | { default: ServiceEntry<T> },
@@ -849,6 +849,16 @@ export class Alepha {
       opts.parent !== undefined ? opts.parent : (__alephaRef?.parent ?? Alepha);
 
     const transient = lifetime === "transient";
+    // TODO: warn-once when scoped lifetime silently falls back to the global
+    //   singleton registry. This happens when AsyncLocalStorage is not available
+    //   (typically in the browser, where AlsProvider is a no-op) — the user
+    //   asked for per-request isolation and got a cross-request singleton.
+    //   Today this is silent. Plan: detect (this.context.get("registry") === undefined)
+    //   on a "scoped" inject, log a one-shot warning via the Logger module
+    //   ("[alepha] scoped DI requested for <Service> but no AsyncLocalStorage
+    //   context — falling back to singleton. This is expected in browser
+    //   builds; in server runtimes ensure the request is wrapped in
+    //   alepha.context.run()."). Gate behind a Set<Service> so we don't spam.
     const registry =
       lifetime === "scoped"
         ? (this.context.get<Map<Service, ServiceDefinition>>("registry") ??

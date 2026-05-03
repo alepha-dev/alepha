@@ -12,6 +12,35 @@ export * from "./providers/MemoryCacheProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+declare module "alepha" {
+  interface Hooks {
+    /**
+     * Fires when a cache lookup finds a value.
+     */
+    "cache:hit": {
+      container: string;
+      key: string;
+    };
+    /**
+     * Fires when a cache lookup does not find a value.
+     */
+    "cache:miss": {
+      container: string;
+      key: string;
+    };
+    /**
+     * Fires when a value is written to the cache.
+     */
+    "cache:set": {
+      container: string;
+      key: string;
+      ttlMs?: number;
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 /**
  * Type-safe caching with TTL support.
  *
