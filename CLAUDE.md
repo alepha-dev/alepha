@@ -74,7 +74,6 @@ Alepha uses a hybrid monorepo structure:
 - To add a **new** component: create it in `@alepha/ui-registry/registry/default/<name>/`, register it in `registry.json`, then `shadcn add` it into `@alepha/ui`
 - The `components.json` in `@alepha/ui` configures the `@alepha` registry at `http://localhost:8765/r/{name}.json`
 - `@alepha/devtools` - Development tools and inspection UI
-- `@alepha/bucket-s3` - S3-compatible Blob Storage backend
 - `@alepha/payments-stripe` - Stripe payments backend
 - `@alepha/protobuf` - Protocol Buffers support
 

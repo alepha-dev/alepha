@@ -1,6 +1,11 @@
 import { Alepha } from "alepha";
 import { describe, test } from "vitest";
 import {
+  AlephaBucket,
+  FileStorageProvider,
+  NodeS3BucketProvider,
+} from "../index.ts";
+import {
   TestApp,
   testCustomFileId,
   testDeleteFile,
@@ -13,14 +18,16 @@ import {
   testNonExistentFileError,
   testUploadAndExistence,
   testUploadIntoBuckets,
-} from "../../../../alepha/src/bucket/__tests__/shared.ts";
-import { AlephaBucketS3, S3FileStorageProvider } from "../index.ts";
+} from "./shared.ts";
 
-const alepha = Alepha.create().with(AlephaBucketS3).with(TestApp);
+const alepha = Alepha.create()
+  .with({ provide: FileStorageProvider, use: NodeS3BucketProvider })
+  .with(AlephaBucket)
+  .with(TestApp);
 
-const provider = alepha.inject(S3FileStorageProvider);
+const provider = alepha.inject(NodeS3BucketProvider);
 
-describe("S3FileStorageProvider", () => {
+describe("NodeS3BucketProvider", () => {
   test("should upload a file and return a fileId", async () => {
     await testUploadAndExistence(provider);
   });

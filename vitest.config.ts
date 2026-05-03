@@ -38,7 +38,7 @@ export default defineConfig({
       TZ: "Europe/Paris",
       // database connection string for tests, installed via docker-compose
       DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:15432/postgres",
-      // S3-compatible storage (MinIO via docker-compose) for testing @alepha/bucket-s3
+      // S3-compatible storage (MinIO via docker-compose) for testing NodeS3BucketProvider
       S3_ENDPOINT: "http://127.0.0.1:19090",
       S3_REGION: "us-east-1",
       S3_ACCESS_KEY_ID: "mock",

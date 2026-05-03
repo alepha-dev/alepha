@@ -7,6 +7,7 @@ import {
 import { FileStorageProvider } from "./providers/FileStorageProvider.ts";
 import { LocalFileStorageProvider } from "./providers/LocalFileStorageProvider.ts";
 import { MemoryFileStorageProvider } from "./providers/MemoryFileStorageProvider.ts";
+import { NodeS3BucketProvider } from "./providers/NodeS3BucketProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -16,6 +17,7 @@ export * from "./providers/CloudflareR2Provider.ts";
 export * from "./providers/FileStorageProvider.ts";
 export * from "./providers/LocalFileStorageProvider.ts";
 export * from "./providers/MemoryFileStorageProvider.ts";
+export * from "./providers/NodeS3BucketProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -61,15 +63,22 @@ export const AlephaBucket = $module({
   name: "alepha.bucket",
   primitives: [$bucket],
   services: [FileStorageProvider],
-  variants: [MemoryFileStorageProvider, LocalFileStorageProvider],
+  variants: [
+    MemoryFileStorageProvider,
+    LocalFileStorageProvider,
+    NodeS3BucketProvider,
+  ],
   register: (alepha) => {
+    const useS3 = !!alepha.env.S3_ENDPOINT;
     alepha.with({
       optional: true,
       provide: FileStorageProvider,
       use:
         alepha.isTest() || alepha.isServerless()
           ? MemoryFileStorageProvider
-          : LocalFileStorageProvider,
+          : useS3
+            ? NodeS3BucketProvider
+            : LocalFileStorageProvider,
     });
   },
 });
