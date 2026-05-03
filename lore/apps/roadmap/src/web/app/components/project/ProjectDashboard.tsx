@@ -9,7 +9,6 @@ import { currentChaptersAtom } from "../../atoms/currentChaptersAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentProjectCharacterAtom } from "../../atoms/currentProjectCharacterAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
-import QuestLog from "./QuestLog.tsx";
 
 const ProjectDashboard = () => {
   const [project] = useStore(currentProjectAtom);
@@ -31,7 +30,7 @@ const ProjectDashboard = () => {
   return (
     <div className="flex flex-1 flex-col gap-3 overflow-auto p-3">
       <div className="grid gap-3 md:grid-cols-3">
-        <Card className="flex flex-col gap-1 rounded-md p-3 shadow">
+        <Card className="flex flex-col gap-1 rounded-md py-0 p-3 shadow">
           <div className="text-muted-foreground flex items-center gap-2 text-xs">
             <Sparkles className="size-3.5" />
             {tr("dashboard.character")}
@@ -46,7 +45,7 @@ const ProjectDashboard = () => {
           </div>
         </Card>
 
-        <Card className="flex flex-col gap-1 rounded-md p-3 shadow">
+        <Card className="flex flex-col gap-1 rounded-md py-0 p-3 shadow">
           <div className="text-muted-foreground flex items-center gap-2 text-xs">
             <Coins className="size-3.5" />
             {tr("dashboard.purse")}
@@ -60,7 +59,7 @@ const ProjectDashboard = () => {
         </Card>
 
         <Card
-          className={`flex flex-col gap-1 rounded-md p-3 shadow ${activeChapter ? "cursor-pointer hover:border-primary/50" : ""}`}
+          className={`flex flex-col gap-1 rounded-md py-0 p-3 shadow ${activeChapter ? "cursor-pointer hover:border-primary/50" : ""}`}
           onClick={() => {
             if (activeChapter) {
               router.push("projectChapters", {
@@ -85,10 +84,6 @@ const ProjectDashboard = () => {
             </span>
           )}
         </Card>
-      </div>
-
-      <div className="flex min-h-0 flex-1">
-        <QuestLog />
       </div>
     </div>
   );
