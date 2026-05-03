@@ -691,6 +691,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@cloudflare/workers-types@npm:^4.20260503.1":
+  version: 4.20260503.1
+  resolution: "@cloudflare/workers-types@npm:4.20260503.1"
+  checksum: 10c0/2662341d1f0601bcaef16e184ff5fe6fbdbbdd7d75ce8af08b43018d97a26f7a0851045dfe8d9b5b6e4ed3cd630d1d1b90a509ec90f796631e2998aac5a864f7
+  languageName: node
+  linkType: hard
+
 "@colors/colors@npm:1.5.0":
   version: 1.5.0
   resolution: "@colors/colors@npm:1.5.0"
@@ -5982,6 +5989,7 @@ __metadata:
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
     "@biomejs/biome": "npm:^2.4.14"
+    "@cloudflare/workers-types": "npm:^4.20260503.1"
     "@electric-sql/pglite": "npm:^0.4.5"
     "@faker-js/faker": "npm:^10.4.0"
     "@redis/client": "npm:^5.12.1"

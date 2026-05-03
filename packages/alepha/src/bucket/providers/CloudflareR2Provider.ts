@@ -1,3 +1,4 @@
+import type { R2Bucket } from "@cloudflare/workers-types";
 import {
   $env,
   $hook,
@@ -11,142 +12,6 @@ import { $logger } from "alepha/logger";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import { $bucket } from "../primitives/$bucket.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * R2Bucket interface matching Cloudflare's R2 API.
- */
-export interface R2Bucket {
-  put(
-    key: string,
-    value:
-      | ReadableStream
-      | ArrayBuffer
-      | ArrayBufferView
-      | string
-      | Blob
-      | null,
-    options?: R2PutOptions,
-  ): Promise<R2Object | null>;
-  get(key: string, options?: R2GetOptions): Promise<R2ObjectBody | null>;
-  head(key: string): Promise<R2Object | null>;
-  delete(keys: string | string[]): Promise<void>;
-  list(options?: R2ListOptions): Promise<R2Objects>;
-  createMultipartUpload(
-    key: string,
-    options?: R2MultipartOptions,
-  ): Promise<R2MultipartUpload>;
-}
-
-export interface R2Object {
-  key: string;
-  version: string;
-  size: number;
-  etag: string;
-  httpEtag: string;
-  checksums: R2Checksums;
-  uploaded: Date;
-  httpMetadata?: R2HTTPMetadata;
-  customMetadata?: Record<string, string>;
-  range?: R2Range;
-  storageClass: string;
-}
-
-export interface R2ObjectBody extends R2Object {
-  body: ReadableStream;
-  bodyUsed: boolean;
-  arrayBuffer(): Promise<ArrayBuffer>;
-  text(): Promise<string>;
-  json<T>(): Promise<T>;
-  blob(): Promise<Blob>;
-}
-
-export interface R2PutOptions {
-  onlyIf?: R2Conditional;
-  httpMetadata?: R2HTTPMetadata;
-  customMetadata?: Record<string, string>;
-  md5?: ArrayBuffer | string;
-  sha1?: ArrayBuffer | string;
-  sha256?: ArrayBuffer | string;
-  sha384?: ArrayBuffer | string;
-  sha512?: ArrayBuffer | string;
-  storageClass?: string;
-}
-
-export interface R2GetOptions {
-  onlyIf?: R2Conditional;
-  range?: R2Range;
-}
-
-export interface R2ListOptions {
-  limit?: number;
-  prefix?: string;
-  cursor?: string;
-  delimiter?: string;
-  startAfter?: string;
-  include?: ("httpMetadata" | "customMetadata")[];
-}
-
-export interface R2Objects {
-  objects: R2Object[];
-  truncated: boolean;
-  cursor?: string;
-  delimitedPrefixes: string[];
-}
-
-export interface R2Checksums {
-  md5?: ArrayBuffer;
-  sha1?: ArrayBuffer;
-  sha256?: ArrayBuffer;
-  sha384?: ArrayBuffer;
-  sha512?: ArrayBuffer;
-}
-
-export interface R2HTTPMetadata {
-  contentType?: string;
-  contentLanguage?: string;
-  contentDisposition?: string;
-  contentEncoding?: string;
-  cacheControl?: string;
-  cacheExpiry?: Date;
-}
-
-export interface R2Conditional {
-  etagMatches?: string;
-  etagDoesNotMatch?: string;
-  uploadedBefore?: Date;
-  uploadedAfter?: Date;
-  secondsGranularity?: boolean;
-}
-
-export interface R2Range {
-  offset?: number;
-  length?: number;
-  suffix?: number;
-}
-
-export interface R2MultipartOptions {
-  httpMetadata?: R2HTTPMetadata;
-  customMetadata?: Record<string, string>;
-  storageClass?: string;
-}
-
-export interface R2MultipartUpload {
-  key: string;
-  uploadId: string;
-  uploadPart(
-    partNumber: number,
-    value: ReadableStream | ArrayBuffer | ArrayBufferView | string | Blob,
-  ): Promise<R2UploadedPart>;
-  abort(): Promise<void>;
-  complete(uploadedParts: R2UploadedPart[]): Promise<R2Object>;
-}
-
-export interface R2UploadedPart {
-  partNumber: number;
-  etag: string;
-}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -311,7 +176,7 @@ export class CloudflareR2Provider implements FileStorageProvider {
       type: contentType,
       size: object.size,
       lastModified: object.uploaded.getTime(),
-      stream: () => object.body,
+      stream: () => object.body as unknown as ReadableStream,
       arrayBuffer: () => object.arrayBuffer(),
       text: () => object.text(),
     };
