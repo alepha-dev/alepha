@@ -414,8 +414,8 @@ interface StatCardProps {
 
 const StatCard = (props: StatCardProps) => {
   return (
-    <Card className="shadow-sm">
-      <CardContent className="flex gap-3 p-4">
+    <Card className="gap-0 py-0 shadow-sm">
+      <CardContent className="flex items-center gap-3 p-4">
         {props.icon}
         <div className="flex flex-1 flex-col">
           <span className="text-xl font-bold">{props.value}</span>

@@ -484,10 +484,32 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     if (route.schema?.headers) {
       try {
-        request.headers = this.alepha.codec.validate(
-          route.schema.headers,
-          request.headers,
-        ) as any;
+        const schemaHeaders = route.schema.headers;
+
+        // Per-key decode (mirrors `query` handling): coerces declared header
+        // values from strings to their schema types (int/bool/date). Then
+        // validate the decoded subset against the full schema so TypeBox
+        // produces consistent error messages (missing-required, type
+        // mismatch). Finally merge the decoded values back into
+        // `request.headers` so undeclared headers (auth, cookie, user-agent,
+        // ...) survive the validation step intact.
+        const decoded: Record<string, unknown> = {};
+        for (const key of Object.keys(schemaHeaders.properties)) {
+          const lcKey = key.toLowerCase();
+          const value = request.headers[lcKey];
+          if (value == null) continue;
+          decoded[key] = this.alepha.codec.decode(
+            schemaHeaders.properties[key],
+            value,
+          );
+        }
+
+        this.alepha.codec.validate(schemaHeaders, decoded);
+
+        for (const [key, value] of Object.entries(decoded)) {
+          (request.headers as Record<string, unknown>)[key.toLowerCase()] =
+            value;
+        }
       } catch (error) {
         throw new ValidationError("Invalid request header", error);
       }

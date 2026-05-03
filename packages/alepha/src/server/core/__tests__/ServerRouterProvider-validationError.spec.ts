@@ -187,5 +187,120 @@ describe("ServerRouterProvider - request validation error", () => {
       expect(json.message).toMatch(/^Invalid request header:/);
       expect(json.message.toLowerCase()).toMatch(/x-api-version|required/);
     });
+
+    it("should coerce string header values to declared schema types", async ({
+      expect,
+    }) => {
+      const seen: { version?: unknown } = {};
+      class CoerceApp {
+        captured = $route({
+          method: "GET",
+          path: "/coerce",
+          schema: {
+            headers: t.object({
+              "x-api-version": t.integer(),
+            }),
+          },
+          handler: ({ headers }) => {
+            seen.version = headers["x-api-version"];
+          },
+        });
+      }
+
+      const alepha = Alepha.create({
+        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+      }).with(CoerceApp);
+
+      await alepha.start();
+      const host = alepha.inject(ServerProvider).hostname;
+      const response = await fetch(`${host}/coerce`, {
+        headers: { "x-api-version": "42" },
+      });
+      await alepha.stop();
+
+      expect([200, 204]).toContain(response.status);
+      expect(seen.version).toBe(42);
+      expect(typeof seen.version).toBe("number");
+    });
+
+    it("should preserve undeclared headers (auth, user-agent, ...)", async ({
+      expect,
+    }) => {
+      const seen: { authorization?: string; userAgent?: string } = {};
+      class PreserveApp {
+        check = $route({
+          method: "GET",
+          path: "/preserve",
+          schema: {
+            headers: t.object({
+              "x-api-version": t.integer(),
+            }),
+          },
+          handler: ({ headers }) => {
+            const all = headers as unknown as Record<string, string>;
+            seen.authorization = all.authorization;
+            seen.userAgent = all["user-agent"];
+          },
+        });
+      }
+
+      const alepha = Alepha.create({
+        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+      }).with(PreserveApp);
+
+      await alepha.start();
+      const host = alepha.inject(ServerProvider).hostname;
+      const response = await fetch(`${host}/preserve`, {
+        headers: {
+          "x-api-version": "1",
+          authorization: "Bearer abc.def.ghi",
+          "user-agent": "MyClient/1.0",
+        },
+      });
+      await alepha.stop();
+
+      expect([200, 204]).toContain(response.status);
+      expect(seen.authorization).toBe("Bearer abc.def.ghi");
+      expect(seen.userAgent).toBe("MyClient/1.0");
+    });
+
+    it("should accept schema keys regardless of case (lowercase normalization)", async ({
+      expect,
+    }) => {
+      const seen: { version?: unknown } = {};
+      class CaseApp {
+        // Schema declares keys with mixed case — Node lowercases incoming
+        // header names, so the framework must lowercase schema keys when
+        // matching values.
+        check = $route({
+          method: "GET",
+          path: "/case",
+          schema: {
+            headers: t.object({
+              "X-Api-Version": t.integer(),
+            }),
+          },
+          handler: ({ headers }) => {
+            seen.version = (headers as Record<string, unknown>)[
+              "x-api-version"
+            ];
+          },
+        });
+      }
+
+      const alepha = Alepha.create({
+        env: { NODE_ENV: "production", SERVER_PORT: 0 },
+      }).with(CaseApp);
+
+      await alepha.start();
+      const host = alepha.inject(ServerProvider).hostname;
+      const response = await fetch(`${host}/case`, {
+        headers: { "x-api-version": "7" },
+      });
+      await alepha.stop();
+
+      expect([200, 204]).toContain(response.status);
+      expect(seen.version).toBe(7);
+    });
   });
 });

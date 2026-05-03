@@ -256,7 +256,7 @@ export class ActionPrimitive<
 
   public get route(): ServerRoute {
     return {
-      ...(this.options as any), // TODO: fix schema.header mapping
+      ...this.options,
       method: this.method,
       path: `${this.prefix}${this.path}`,
       handler: this.handler,
@@ -399,10 +399,21 @@ export class ActionPrimitive<
       }
 
       if (serverActionRequest.headers && this.options.schema?.headers) {
-        serverActionRequest.headers = this.alepha.codec.encode(
-          this.options.schema.headers,
-          serverActionRequest.headers,
-        ) as Record<string, any>;
+        // Per-key encode (matches the server-side decode pattern in
+        // ServerRouterProvider.validateRequest): coerces declared headers via
+        // the schema, leaves undeclared ones untouched. Schema keys are
+        // lowercased to match Node's incoming header convention.
+        const schemaHeaders = this.options.schema.headers;
+        const headers = serverActionRequest.headers as Record<string, unknown>;
+        for (const key of Object.keys(schemaHeaders.properties)) {
+          const lcKey = key.toLowerCase();
+          if (headers[lcKey] !== undefined) {
+            headers[lcKey] = this.alepha.codec.encode(
+              schemaHeaders.properties[key],
+              headers[lcKey],
+            );
+          }
+        }
       }
 
       if (serverActionRequest.body && this.options.schema?.body) {
