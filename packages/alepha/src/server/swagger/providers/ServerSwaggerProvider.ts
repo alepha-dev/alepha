@@ -201,14 +201,12 @@ export class ServerSwaggerProvider {
         hasSecurity = true;
       }
 
-      const g = t.raw;
-
       if (
-        g.IsObject(route.options.schema.body) ||
-        g.IsArray(route.options.schema.body)
+        t.schema.isObject(route.options.schema.body) ||
+        t.schema.isArray(route.options.schema.body)
       ) {
         if (
-          g.IsObject(route.options.schema.body) &&
+          t.schema.isObject(route.options.schema.body) &&
           this.isBodyMultipart(route.options.schema.body)
         ) {
           operation.requestBody = {
@@ -231,7 +229,7 @@ export class ServerSwaggerProvider {
         }
       }
 
-      if (g.IsObject(route.options.schema.query)) {
+      if (t.schema.isObject(route.options.schema.query)) {
         operation.parameters ??= [];
         const requiredKeys: string[] =
           route.options.schema.query.required ?? [];
@@ -250,7 +248,7 @@ export class ServerSwaggerProvider {
         }
       }
 
-      if (g.IsObject(route.options.schema.params)) {
+      if (t.schema.isObject(route.options.schema.params)) {
         operation.parameters ??= [];
         for (const [key, value] of Object.entries(
           route.options.schema.params.properties,

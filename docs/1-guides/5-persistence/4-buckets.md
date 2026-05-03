@@ -96,31 +96,30 @@ The default provider depends on the environment:
 |----------|---------|-------------|
 | `MemoryFileStorageProvider` | `alepha/bucket` | In-memory storage for testing |
 | `LocalFileStorageProvider` | `alepha/bucket` | Local filesystem storage |
-| `CloudflareR2Provider` | `alepha/bucket` | Cloudflare R2 (S3-compatible) |
-| `S3FileStorageProvider` | `@alepha/bucket-s3` | AWS S3 / MinIO |
+| `CloudflareR2Provider` | `alepha/bucket` | Cloudflare R2 (Workers binding) |
+| `NodeS3BucketProvider` | `alepha/bucket` | AWS S3 / Cloudflare R2 / MinIO / DigitalOcean Spaces / any S3-compatible service (Node.js, powered by `s3mini`) |
 
 ### Configuring a Provider
 
 Override the default provider globally:
 
 ```typescript
-import { AlephaBucket, FileStorageProvider } from "alepha/bucket";
-import { S3FileStorageProvider } from "@alepha/bucket-s3";
+import { AlephaBucket, FileStorageProvider, NodeS3BucketProvider } from "alepha/bucket";
 
 const alepha = Alepha.create()
   .with(AlephaBucket)
-  .with({ provide: FileStorageProvider, use: S3FileStorageProvider });
+  .with({ provide: FileStorageProvider, use: NodeS3BucketProvider });
 ```
 
 Or per bucket:
 
 ```typescript
-import { S3FileStorageProvider } from "@alepha/bucket-s3";
+import { NodeS3BucketProvider } from "alepha/bucket";
 
 class MediaService {
   images = $bucket({
     name: "user-images",
-    provider: S3FileStorageProvider,
+    provider: NodeS3BucketProvider,
   });
 
   tempFiles = $bucket({

@@ -3,10 +3,10 @@ import {
   $inject,
   Alepha,
   AlephaError,
+  SchemaValidator,
   type Static,
   type TObject,
   t,
-  Value,
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
@@ -49,6 +49,7 @@ export class ParameterProvider {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly lockProvider = $inject(LockProvider);
+  protected readonly schemaValidator = $inject(SchemaValidator);
   protected readonly repo = $repository(parameters);
 
   /**
@@ -757,7 +758,7 @@ export class ParameterProvider {
     if (param.options.migrate) {
       try {
         const migrated = param.options.migrate(dbValue);
-        if (Value.Check(schema, migrated)) {
+        if (this.isValid(schema, migrated)) {
           if (JSON.stringify(migrated) === JSON.stringify(dbValue)) {
             return null;
           }
@@ -785,7 +786,7 @@ export class ParameterProvider {
       schemaKeys,
     );
 
-    if (Value.Check(schema, stripped)) {
+    if (this.isValid(schema, stripped)) {
       if (JSON.stringify(stripped) === JSON.stringify(dbValue)) {
         return null;
       }
@@ -805,7 +806,7 @@ export class ParameterProvider {
       schemaKeys,
     );
 
-    if (Value.Check(schema, merged)) {
+    if (this.isValid(schema, merged)) {
       return {
         value: merged,
         description: "Auto-migrated: merged with defaults",
@@ -854,6 +855,22 @@ export class ParameterProvider {
       : param?.options.default;
     for (const fn of subs) {
       fn(value);
+    }
+  }
+
+  /**
+   * Probe whether a value matches the schema, without throwing or mutating.
+   */
+  protected isValid(schema: TObject, value: unknown): boolean {
+    try {
+      this.schemaValidator.validate(schema, value, {
+        trim: false,
+        nullToUndefined: false,
+        deleteUndefined: false,
+      });
+      return true;
+    } catch {
+      return false;
     }
   }
 

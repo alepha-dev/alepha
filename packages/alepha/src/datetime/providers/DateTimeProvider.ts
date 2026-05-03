@@ -9,24 +9,189 @@ import { $hook, $inject, Alepha } from "alepha";
 import DayjsApi, {
   type Dayjs,
   type ManipulateType,
+  type OpUnitType,
   type PluginFunc,
+  type QUnitType,
 } from "dayjs";
-import dayjsDuration from "dayjs/plugin/duration.js";
+import dayjsDuration, { type DurationUnitType } from "dayjs/plugin/duration.js";
 import dayjsLocalizedFormat from "dayjs/plugin/localizedFormat.js";
 import dayjsRelativeTime from "dayjs/plugin/relativeTime.js";
 import dayjsTimezone from "dayjs/plugin/timezone.js";
 import dayjsUtc from "dayjs/plugin/utc.js";
 
-export type DateTime = DayjsApi.Dayjs;
-export type Duration = dayjsDuration.Duration;
-export type DurationLike =
-  | number
-  | dayjsDuration.Duration
-  | [number, ManipulateType];
+export type { DurationUnitType, ManipulateType, OpUnitType, QUnitType };
 
-export const dayjs = DayjsApi;
+export type DateTimeInput = string | number | Date | DateTime | Dayjs;
+
+export type DurationLike = number | Duration | [number, ManipulateType];
+
+/**
+ * Immutable wrapper around the underlying date-time engine.
+ *
+ * Designed to isolate consumers from the engine in use (currently dayjs).
+ * Methods that produce a new value return a new `DateTime` instance.
+ */
+export class DateTime {
+  protected readonly inner: Dayjs;
+
+  constructor(inner: Dayjs) {
+    this.inner = inner;
+  }
+
+  /**
+   * Add a duration to this date-time.
+   */
+  add(amount: number, unit?: ManipulateType): DateTime;
+  add(duration: Duration): DateTime;
+  add(amount: number | Duration, unit?: ManipulateType): DateTime {
+    if (amount instanceof Duration) {
+      return new DateTime(this.inner.add(amount.toDayjs()));
+    }
+    return new DateTime(this.inner.add(amount, unit));
+  }
+
+  /**
+   * Subtract a duration from this date-time.
+   */
+  subtract(amount: number, unit?: ManipulateType): DateTime;
+  subtract(duration: Duration): DateTime;
+  subtract(amount: number | Duration, unit?: ManipulateType): DateTime {
+    if (amount instanceof Duration) {
+      return new DateTime(this.inner.subtract(amount.toDayjs()));
+    }
+    return new DateTime(this.inner.subtract(amount, unit));
+  }
+
+  startOf(unit: OpUnitType): DateTime {
+    return new DateTime(this.inner.startOf(unit));
+  }
+
+  endOf(unit: OpUnitType): DateTime {
+    return new DateTime(this.inner.endOf(unit));
+  }
+
+  isAfter(other: DateTimeInput): boolean {
+    return this.inner.isAfter(toDayjs(other));
+  }
+
+  isBefore(other: DateTimeInput): boolean {
+    return this.inner.isBefore(toDayjs(other));
+  }
+
+  isSame(other: DateTimeInput, unit?: OpUnitType): boolean {
+    return this.inner.isSame(toDayjs(other), unit);
+  }
+
+  diff(other: DateTimeInput, unit?: QUnitType | OpUnitType): number {
+    return this.inner.diff(toDayjs(other), unit);
+  }
+
+  tz(timezone: string): DateTime {
+    return new DateTime(this.inner.tz(timezone));
+  }
+
+  locale(lang: string): DateTime {
+    return new DateTime(this.inner.locale(lang));
+  }
+
+  format(template?: string): string {
+    return this.inner.format(template);
+  }
+
+  fromNow(withoutSuffix?: boolean): string {
+    return this.inner.fromNow(withoutSuffix);
+  }
+
+  toISOString(): string {
+    return this.inner.toISOString();
+  }
+
+  toDate(): Date {
+    return this.inner.toDate();
+  }
+
+  valueOf(): number {
+    return this.inner.valueOf();
+  }
+
+  unix(): number {
+    return this.inner.unix();
+  }
+
+  toJSON(): string {
+    return this.inner.toISOString();
+  }
+
+  toString(): string {
+    return this.inner.toISOString();
+  }
+
+  /**
+   * Escape hatch for the underlying dayjs instance.
+   *
+   * Use sparingly — anything calling this becomes coupled to dayjs and
+   * will need to migrate when the engine is replaced.
+   */
+  toDayjs(): Dayjs {
+    return this.inner;
+  }
+}
+
+/**
+ * Immutable wrapper around the underlying duration engine.
+ */
+export class Duration {
+  protected readonly inner: dayjsDuration.Duration;
+
+  constructor(inner: dayjsDuration.Duration) {
+    this.inner = inner;
+  }
+
+  asMilliseconds(): number {
+    return this.inner.asMilliseconds();
+  }
+
+  asSeconds(): number {
+    return this.inner.asSeconds();
+  }
+
+  asMinutes(): number {
+    return this.inner.asMinutes();
+  }
+
+  asHours(): number {
+    return this.inner.asHours();
+  }
+
+  asDays(): number {
+    return this.inner.asDays();
+  }
+
+  as(unit: DurationUnitType): number {
+    return this.inner.as(unit);
+  }
+
+  toISOString(): string {
+    return this.inner.toISOString();
+  }
+
+  /**
+   * Escape hatch for the underlying dayjs duration.
+   */
+  toDayjs(): dayjsDuration.Duration {
+    return this.inner;
+  }
+}
+
 export const isDateTime = (value: unknown): value is DateTime => {
-  return dayjs.isDayjs(value);
+  return value instanceof DateTime;
+};
+
+const toDayjs = (value: DateTimeInput): Dayjs => {
+  if (value instanceof DateTime) {
+    return value.toDayjs();
+  }
+  return DayjsApi(value as any);
 };
 
 export class DateTimeProvider {
@@ -45,7 +210,7 @@ export class DateTimeProvider {
 
   constructor() {
     for (const plugin of DateTimeProvider.PLUGINS) {
-      dayjs.extend(plugin);
+      DayjsApi.extend(plugin);
     }
   }
 
@@ -81,33 +246,34 @@ export class DateTimeProvider {
   });
 
   public setLocale(locale: string): void {
-    dayjs.locale(locale);
+    DayjsApi.locale(locale);
   }
 
   public isDateTime(value: unknown): value is DateTime {
-    return dayjs.isDayjs(value);
+    return value instanceof DateTime;
   }
 
   /**
    * Create a new UTC DateTime instance.
    */
-  public utc(
-    date: string | number | Date | Dayjs | null | undefined,
-  ): DateTime {
-    return dayjs.utc(date);
+  public utc(date: DateTimeInput | null | undefined): DateTime {
+    return new DateTime(DayjsApi.utc(unwrap(date)));
   }
 
   /**
    * Create a new DateTime instance.
    */
-  public of(date: string | number | Date | Dayjs | null | undefined): DateTime {
-    return dayjs(date);
+  public of(date: DateTimeInput | null | undefined): DateTime {
+    if (date instanceof DateTime) {
+      return date;
+    }
+    return new DateTime(DayjsApi(date as any));
   }
 
   /**
    * Get the current date as a string.
    */
-  public toISOString(date: Date | string | DateTime = this.now()): string {
+  public toISOString(date: DateTimeInput = this.now()): string {
     return this.of(date).toISOString();
   }
 
@@ -152,7 +318,7 @@ export class DateTimeProvider {
       return this.ref;
     }
 
-    return dayjs();
+    return new DateTime(DayjsApi());
   }
 
   /**
@@ -162,12 +328,16 @@ export class DateTimeProvider {
     duration: DurationLike,
     unit?: ManipulateType,
   ): Duration => {
+    if (duration instanceof Duration) {
+      return duration;
+    }
+
     if (Array.isArray(duration)) {
-      return dayjs.duration(duration[0], duration[1]);
+      return new Duration(DayjsApi.duration(duration[0], duration[1]));
     }
 
     if (typeof duration === "number") {
-      return dayjs.duration(duration, unit || "milliseconds");
+      return new Duration(DayjsApi.duration(duration, unit || "milliseconds"));
     }
 
     return duration;
@@ -175,7 +345,9 @@ export class DateTimeProvider {
 
   public isDurationLike(value: unknown): value is DurationLike {
     try {
-      return dayjs.isDuration(this.duration(value as DurationLike));
+      return DayjsApi.isDuration(
+        this.duration(value as DurationLike).toDayjs(),
+      );
     } catch {
       return false;
     }
@@ -261,7 +433,7 @@ export class DateTimeProvider {
   ): Timeout {
     if (this.ref && now) {
       const next = this.of(now).add(this.duration(duration));
-      if (next < this.now()) {
+      if (next.valueOf() < this.now().valueOf()) {
         callback();
       }
       return {
@@ -402,6 +574,13 @@ export class DateTimeProvider {
     this.ref = null;
   }
 }
+
+const unwrap = (value: DateTimeInput | null | undefined): any => {
+  if (value instanceof DateTime) {
+    return value.toDayjs();
+  }
+  return value;
+};
 
 export interface Interval {
   timer?: any;

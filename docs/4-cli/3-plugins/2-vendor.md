@@ -52,7 +52,7 @@ import { defineConfig } from "alepha/cli/config";
 export default defineConfig({
   services: [AlephaCliVendor],
   vendor: {
-    packages: ["alepha", "@alepha/bucket-s3"],
+    packages: ["alepha", "@alepha/payments-stripe"],
   },
 });
 ```

@@ -1,4 +1,4 @@
-import { type TObject, t, Value } from "alepha";
+import { $inject, SchemaValidator, type TObject, t } from "alepha";
 import { getTableName, type SQL, sql } from "drizzle-orm";
 import type { PgSelectBase, PgTableWithColumns } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
@@ -8,6 +8,8 @@ import type { DatabaseProvider } from "../providers/drivers/DatabaseProvider.ts"
 import type { PgJoin } from "./QueryManager.ts";
 
 export class PgRelationManager {
+  protected readonly schemaValidator = $inject(SchemaValidator);
+
   /**
    * Recursively build joins for the query builder based on the relations map
    */
@@ -103,7 +105,7 @@ export class PgRelationManager {
     joins: PgJoin[],
     parentPath?: string,
   ): TObject {
-    const schema = Value.Clone(baseSchema) as TObject;
+    const schema = this.schemaValidator.clone(baseSchema) as TObject;
 
     // Group joins by parent
     const joinsAtThisLevel = joins.filter((j) => j.parent === parentPath);

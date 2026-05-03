@@ -6,9 +6,9 @@ import {
   $state,
   Alepha,
   AlephaError,
+  SchemaValidator,
   type Static,
   t,
-  Value,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import { WebSocket, WebSocketServer } from "ws";
@@ -495,6 +495,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
 export class NodeWebSocketConnection implements WebSocketConnection {
   protected readonly log = $logger();
+  protected readonly schemaValidator = $inject(SchemaValidator);
   public metadata?: Record<string, any>;
 
   constructor(
@@ -556,10 +557,15 @@ export class NodeWebSocketConnection implements WebSocketConnection {
 
       // Validate message against schema (out = client→server)
       const outSchema = this.endpoint.channel.options.schema.out;
-      if (!Value.Check(outSchema, message)) {
-        const errors = Array.from(Value.Errors(outSchema, message));
+      try {
+        this.schemaValidator.validate(outSchema, message, {
+          trim: false,
+          nullToUndefined: false,
+          deleteUndefined: false,
+        });
+      } catch (err) {
         throw new WebSocketValidationError(
-          `Message validation failed: ${errors.map((e: any) => e.message).join(", ")}`,
+          `Message validation failed: ${(err as Error).message}`,
         );
       }
 

@@ -3,9 +3,9 @@ import {
   $inject,
   Alepha,
   AlephaError,
+  SchemaValidator,
   type Static,
   t,
-  Value,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
@@ -50,6 +50,7 @@ export class WebSocketChannelConnection<
   TServer extends TWSObject,
 > {
   protected readonly alepha = $inject(Alepha);
+  protected readonly schemaValidator = $inject(SchemaValidator);
   protected readonly log = $logger();
   protected ws?: WebSocket;
   protected reconnectAttempts = 0;
@@ -346,11 +347,16 @@ export class WebSocketChannelConnection<
 
     // Validate outgoing message against schema
     const outSchema = this.channel.options.schema.out;
-    if (!Value.Check(outSchema, message)) {
-      const errors = Array.from(Value.Errors(outSchema, message));
-      this.log.warn("Message validation failed", { errors });
+    try {
+      this.schemaValidator.validate(outSchema, message, {
+        trim: false,
+        nullToUndefined: false,
+        deleteUndefined: false,
+      });
+    } catch (err) {
+      this.log.warn("Message validation failed", { error: err });
       throw new AlephaError(
-        `Message validation failed: ${errors.map((e) => e.message).join(", ")}`,
+        `Message validation failed: ${(err as Error).message}`,
       );
     }
 

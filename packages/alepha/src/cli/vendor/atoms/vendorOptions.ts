@@ -28,7 +28,7 @@ export const vendorOptions = $atom({
       /**
        * Package directory names under `packages/` to sync.
        *
-       * @example ["alepha", "@alepha/bucket-s3"]
+       * @example ["alepha", "@alepha/payments-stripe"]
        */
       packages: t.array(t.text()),
     }),

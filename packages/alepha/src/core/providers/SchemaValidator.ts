@@ -1,8 +1,9 @@
 import type { TSchema } from "typebox";
 import { Compile, type Validator } from "typebox/compile";
+import * as Value from "typebox/value";
 import { TypeBoxError } from "../errors/TypeBoxError.ts";
 import { $hook } from "../primitives/$hook.ts";
-import { type Static, t, Value } from "./TypeProvider.ts";
+import { type Static, t } from "./TypeProvider.ts";
 
 export class SchemaValidator {
   protected cache = new Map<TSchema, Validator>();
@@ -36,6 +37,13 @@ export class SchemaValidator {
       }
       throw error;
     }
+  }
+
+  /**
+   * Deep clone a schema. Useful when a schema is going to be mutated.
+   */
+  public clone<T extends TSchema>(schema: T): T {
+    return Value.Clone(schema);
   }
 
   protected getValidator<T extends TSchema>(schema: T): Validator<{}, T> {

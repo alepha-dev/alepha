@@ -36,6 +36,7 @@ export * from "./providers/Json.ts";
 export * from "./providers/JsonSchemaCodec.ts";
 export * from "./providers/KeylessJsonSchemaCodec.ts";
 export * from "./providers/SchemaCodec.ts";
+export * from "./providers/SchemaValidator.ts";
 export * from "./providers/StateManager.ts";
 export * from "./providers/TypeProvider.ts";
 export * from "./schemas/pageQuerySchema.ts";

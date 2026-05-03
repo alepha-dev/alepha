@@ -40,7 +40,7 @@ export const updateSchema = <T extends TObject>(
     }
 
     if (t.schema.isOptional(prop)) {
-      newProperties[key] = t.optional(t.union([prop, t.raw.Null()]));
+      newProperties[key] = t.optional(t.union([prop, t.null()]));
     } else {
       newProperties[key] = prop;
     }

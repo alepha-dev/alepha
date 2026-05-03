@@ -26,3 +26,7 @@ Date and time operations.
 - [`$interval`](/docs/reference-primitives-$interval) — Run a function periodically.
 - [`$throttle`](/docs/reference-primitives-$throttle) — Middleware that rate-controls handler execution using a token bucket.
 - [`$timeout`](/docs/reference-primitives-$timeout) — Middleware that aborts handler execution if it exceeds a duration limit.
+
+### Providers
+
+- [`DateTime`](/docs/reference-providers-datetime) — Immutable wrapper around the underlying date-time engine.

@@ -25,7 +25,7 @@ import { VendorService } from "./services/VendorService.ts";
  *   plugins: [
  *     vendor({
  *       branch: "main",
- *       packages: ["alepha", "@alepha/bucket-s3"],
+ *       packages: ["alepha", "@alepha/payments-stripe"],
  *     }),
  *   ],
  * });
