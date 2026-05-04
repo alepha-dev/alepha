@@ -127,4 +127,4 @@ jobs:
 
       - name: Publish to NPM
         run: |
-          yarn workspaces foreach --no-private -Apt exec npm publish --access=public
+          yarn workspaces foreach --no-private -Apt npm publish --tolerate-republish --access public
