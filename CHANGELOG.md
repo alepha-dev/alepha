@@ -1,3 +1,7 @@
+## [0.20.5] - 2026-05-04
+
+No public changes in range 0.20.4..HEAD
+
 ## [0.20.4] - 2026-05-04
 
 ### Features
