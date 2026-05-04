@@ -1,6 +1,5 @@
 #! /usr/bin/env node
 import { access, readdir, readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import * as os from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { $inject, AlephaError, run, t } from "alepha";
@@ -175,46 +174,24 @@ class AlephaPackageBuilderCli {
         JSON.stringify(modules, null, 2),
       );
 
-      const external: (string | RegExp)[] = modules.map((it) => {
-        if (it.name.endsWith("core")) {
-          return `${packageName}/${it.name.replace("core", "")}`.slice(0, -1);
-        }
+      const flagExternals = (flags.external ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
 
-        return `${packageName}/${it.name}`;
-      });
-
-      external.push("bun");
-      external.push("bun:sqlite");
-
-      if (flags.external) {
-        const entries = flags.external
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        for (const entry of entries) {
-          external.push(entry);
-          // If the entry is a bare package name, also externalize all its
-          // sub-paths by reading its package.json exports.
-          if (!entry.includes("/") || entry.startsWith("@")) {
-            const [scope, name] = entry.startsWith("@")
-              ? entry.split("/")
-              : [null, entry];
-            if (scope && !name) continue;
-            try {
-              const require = createRequire(this.fs.join(root, "package.json"));
-              const pkgJsonPath = require.resolve(`${entry}/package.json`);
-              const pkgBuf = await this.fs.readFile(pkgJsonPath);
-              const pkg = JSON.parse(pkgBuf.toString("utf-8"));
-              for (const exp of Object.keys(pkg.exports ?? {})) {
-                if (exp === "." || exp.endsWith(".json")) continue;
-                external.push(`${entry}${exp.slice(1)}`);
-              }
-            } catch {
-              // ignore if package not installed
-            }
-          }
-        }
-      }
+      const external: (string | RegExp)[] = [
+        "bun",
+        "bun:sqlite",
+        toExternalPattern(packageName),
+        // `vite` bundles a copy of `postcss` whose .d.ts uses
+        // `import { atRule, AtRule, ... }` (no `type` modifier), which
+        // rolldown's dts bundler rejects with [MISSING_EXPORT].
+        toExternalPattern("vite"),
+        // Types-only package: rolldown's dts bundler can't import its
+        // interfaces (e.g. `R2Bucket`) as values.
+        toExternalPattern("@cloudflare/workers-types"),
+        ...flagExternals.map(toExternalPattern),
+      ];
 
       await run.rm(this.dist);
 
@@ -232,7 +209,6 @@ class AlephaPackageBuilderCli {
           platform: "node", // TODO: node must be enabled only if index.node.ts exists
           deps: {
             neverBundle: external,
-            skipNodeModulesBundle: true,
           },
           dts: {
             sourcemap: true,
@@ -241,7 +217,6 @@ class AlephaPackageBuilderCli {
 
         const deps = {
           neverBundle: external,
-          skipNodeModulesBundle: true,
         };
 
         if (item.workerd) {
@@ -304,7 +279,7 @@ class AlephaPackageBuilderCli {
         );
         await this.fs.writeFile(
           config,
-          `export default ${JSON.stringify(entries, null, 2)};`,
+          `export default ${stringify(entries)};`,
         );
 
         // /!\ Warning /!\
@@ -345,6 +320,34 @@ run(AlephaPackageBuilderCli, {
 // ---------------------------------------------------------------------------
 // Module analysis utilities
 // ---------------------------------------------------------------------------
+
+/**
+ * Build a regex matching a package name and all its sub-paths
+ * (e.g. `vite` matches `vite`, `vite/client`, `vite/dist/...`).
+ */
+function toExternalPattern(pkg: string): RegExp {
+  return new RegExp(`^${pkg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(/|$)`);
+}
+
+/**
+ * JSON.stringify with RegExp support — emits `new RegExp(...)` so
+ * externalization patterns survive the round-trip through the config file
+ * loaded by `npx tsdown -c=...`.
+ */
+function stringify(value: unknown): string {
+  const TAG = "__REGEX__";
+  const json = JSON.stringify(
+    value,
+    (_, v) =>
+      v instanceof RegExp ? `${TAG}${v.source}${TAG}${v.flags}${TAG}` : v,
+    2,
+  );
+  return json.replace(
+    new RegExp(`"${TAG}(.*?)${TAG}(.*?)${TAG}"`, "g"),
+    (_, source, flags) =>
+      `new RegExp(${JSON.stringify(JSON.parse(`"${source}"`))}, ${JSON.stringify(flags)})`,
+  );
+}
 
 async function getAllFiles(dir: string): Promise<string[]> {
   const files: string[] = [];
