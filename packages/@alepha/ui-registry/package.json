@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.14",
-    "alepha": "0.20.3",
+    "alepha": "0.20.4",
     "lucide-react": "^1.14.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

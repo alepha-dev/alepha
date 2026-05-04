@@ -1,3 +1,21 @@
+## [0.20.4] - 2026-05-04
+
+### Features
+
+- **server**: improve $action header validator (`0df3f96c`)
+- **api/users**: add session max idle (`4cd1a359`)
+- **react**: add useQuery (sugar for useAction + HttpClient) (`661c8050`)
+- **core**: start to isolate TypeBox and Dayjs access for future migration (generic type validator and Temporal API) [BREAKING] (`fefc4579`)
+- **bucket**: add native support of s3, no more external package for node.js runtime (`ba75b593`)
+- **mcp**: upgrade spec version (`0eec48c1`)
+- **ui**: add AutoForm + examples (`2986cc73`)
+- **cli**: config - refactor alepha.config.ts to use plugins (`de1f2c2d`)
+- **react/router**: add $page ssr: boolean to avoid server rendering on pages (`8e7d14b3`)
+
+### Bug Fixes
+
+- **core**: fix dependency bundle (`9a197279`)
+
 ## [0.20.3] - 2026-04-30
 
 ### Features
