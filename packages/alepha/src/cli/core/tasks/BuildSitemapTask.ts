@@ -39,7 +39,14 @@ export class BuildSitemapTask extends BuildTask {
     const pages = ctx.alepha.primitives("page") as any[];
     return pages.filter((page) => {
       const options = page.options;
+      const path: string = options.path ?? "";
       if (options.children) {
+        return false;
+      }
+      if (path.includes("*")) {
+        return false;
+      }
+      if (path === "/404") {
         return false;
       }
       if (!options.schema?.params) {

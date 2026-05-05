@@ -23,7 +23,6 @@ export class AppRouter {
       description:
         "Alepha is a TypeScript-first framework with React SSR, schema validation, and modern backend tools. Build production-ready apps in days, not months.",
       image: "https://alepha.dev/og-image.png",
-      url: "https://alepha.dev/",
       siteName: "Alepha",
       locale: "en_US",
       type: "website",
