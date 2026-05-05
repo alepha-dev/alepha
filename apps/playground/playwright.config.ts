@@ -22,6 +22,7 @@ export default defineConfig({
     command: "yarn start",
     url: `http://localhost:${port}`,
     env: {
+      NODE_ENV: "production",
       SERVER_PORT: String(port),
       DATABASE_URL: ":memory:",
     },

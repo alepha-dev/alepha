@@ -735,7 +735,7 @@ yarn shadcn add @alepha/language-toggle
 
 #### `@alepha/saas` — Alepha SaaS preset
 
-One-shot init: control + auto-form + alepha-table + use-dialog + use-toast + app-shell + auth pages + admin (users, sessions). Add more admin-* blocks as needed.
+One-shot init: control + auto-form + alepha-table + use-dialog + use-toast + app-shell + auth pages + admin (users, sessions) + topbar buttons (dark/theme/user/language) + language toggle. Add more admin-* blocks as needed.
 
 **Install**
 
@@ -743,7 +743,7 @@ One-shot init: control + auto-form + alepha-table + use-dialog + use-toast + app
 yarn shadcn add @alepha/saas
 ```
 
-**Dependencies:** `alepha`, `lucide-react`, `@alepha/control`, `@alepha/auto-form`, `@alepha/alepha-table`, `@alepha/use-dialog`, `@alepha/use-toast`, `@alepha/app-shell`, `@alepha/auth-login`, `@alepha/auth-register`, `@alepha/auth-reset-password`, `@alepha/auth-verify-email`, `@alepha/admin-users`, `@alepha/admin-sessions`, `@alepha/sonner`, `shadcn:tooltip`
+**Dependencies:** `alepha`, `lucide-react`, `@alepha/control`, `@alepha/auto-form`, `@alepha/alepha-table`, `@alepha/use-dialog`, `@alepha/use-toast`, `@alepha/app-shell`, `@alepha/auth-login`, `@alepha/auth-register`, `@alepha/auth-reset-password`, `@alepha/auth-verify-email`, `@alepha/admin-users`, `@alepha/admin-sessions`, `@alepha/button-dark`, `@alepha/button-language`, `@alepha/button-theme`, `@alepha/button-user`, `@alepha/language-toggle`, `@alepha/sonner`, `shadcn:tooltip`
 
 #### `@alepha/segmented` — Segmented
 

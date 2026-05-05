@@ -56,23 +56,25 @@ export function AdminSessions() {
         columns={{
           user: {
             label: tr("admin.sessions.colUser", { default: "User" }),
-            cell: (s) => (
-              <span className="font-medium">{(s as any).userId ?? "—"}</span>
-            ),
+            cell: (s) => <span className="font-medium">{s.userId ?? "—"}</span>,
           },
           ip: {
             label: tr("admin.sessions.colIp", { default: "IP" }),
-            cell: (s) => (
-              <code className="text-xs">{(s as any).ip ?? "—"}</code>
-            ),
+            cell: (s) => <code className="text-xs">{s.ip ?? "—"}</code>,
           },
           userAgent: {
             label: tr("admin.sessions.colDevice", { default: "Device" }),
-            cell: (s) => (
-              <span className="text-muted-foreground line-clamp-1 text-xs">
-                {(s as any).userAgent ?? "—"}
-              </span>
-            ),
+            cell: (s) => {
+              const ua = s.userAgent;
+              const text = ua
+                ? [ua.browser, ua.os].filter(Boolean).join(" • ") || "—"
+                : "—";
+              return (
+                <span className="text-muted-foreground line-clamp-1 text-xs">
+                  {text}
+                </span>
+              );
+            },
           },
           createdAt: {
             label: tr("admin.sessions.colStarted", { default: "Started" }),

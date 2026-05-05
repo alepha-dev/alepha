@@ -18,7 +18,7 @@ Queue-mode flow:
 Cron-mode flow:
   scheduler tick → handler runs inline → INSERT row only on error
 
-Sweep responsibilities (every `sweepInterval`):
+Sweep responsibilities (every `sweepCron`):
   - re-enqueue pending rows older than `staleThreshold`
   - fail running rows older than `max(timeout*2, runTimeout)`
   - move `scheduled` rows with `scheduledAt <= now` to pending + enqueue
