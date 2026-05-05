@@ -700,8 +700,6 @@ export class ProjectScaffolder {
     //   --no-monorepo   skip the monorepo prompt — we ship a single-app
     //                   layout; users opt into monorepo via `--monorepo`
     //                   on the alepha side later
-    //   --silent        suppress shadcn's own progress output; alepha's
-    //                   runner already prints a status line
     //
     // We deliberately do NOT pass `--defaults` (would force Next.js +
     // base-nova preset) or `--template` (only applies to scratch projects;
