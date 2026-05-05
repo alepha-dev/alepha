@@ -4,8 +4,9 @@ export const jobConfig = $atom({
   name: "alepha.jobs",
   description: "Configuration for the $job primitive.",
   schema: t.object({
-    sweepInterval: t.integer({
-      description: "Sweep cron interval in milliseconds.",
+    sweepCron: t.text({
+      description:
+        "Cron expression for the sweep tick. Must be minute-granular at minimum (cron resolution). On Cloudflare Workers this expression is emitted into wrangler.jsonc by the build.",
     }),
     staleThreshold: t.integer({
       description: "Pending age (ms) before the sweep re-dispatches it.",
@@ -29,7 +30,7 @@ export const jobConfig = $atom({
     }),
   }),
   default: {
-    sweepInterval: 300_000,
+    sweepCron: "*/5 * * * *",
     staleThreshold: 300_000,
     runTimeout: 1_800_000,
     keepLastSuccess: 10,

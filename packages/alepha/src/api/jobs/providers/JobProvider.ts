@@ -10,7 +10,7 @@ import {
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import type { LogEntry } from "alepha/logger";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
+import { $repository, DbEntityNotFoundError } from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
 import {
   type JobStatus,
@@ -39,8 +39,6 @@ const PRIORITY_REVERSE: Record<number, JobPriority> = {
   2: "normal",
   3: "low",
 };
-
-const SWEEP_CRON = "*/5 * * * *";
 
 // -----------------------------------------------------------------------------------------------------------------
 
@@ -91,7 +89,7 @@ interface JobRuntimeRegistration {
  * Cron-mode flow:
  *   scheduler tick → handler runs inline → INSERT row only on error
  *
- * Sweep responsibilities (every `sweepInterval`):
+ * Sweep responsibilities (every `sweepCron`):
  *   - re-enqueue pending rows older than `staleThreshold`
  *   - fail running rows older than `max(timeout*2, runTimeout)`
  *   - move `scheduled` rows with `scheduledAt <= now` to pending + enqueue
@@ -627,14 +625,11 @@ export class JobProvider {
     const opts = registration.options;
     const record = opts.record ?? "error";
 
-    const claimed = await this.claim(executionId);
-    if (!claimed) {
+    const execution = await this.claim(executionId);
+    if (!execution) {
       this.log.debug(`Execution ${executionId} already claimed, skipping`);
       return;
     }
-
-    const execution = await this.executions.findById(executionId);
-    if (!execution) return;
 
     const contextId = this.alepha.context.createContextId();
     this.perExecutionLogs.set(contextId, []);
@@ -726,21 +721,28 @@ export class JobProvider {
     }
   }
 
-  protected async claim(executionId: string): Promise<boolean> {
-    const execution = await this.executions.findById(executionId);
-    if (!execution) return false;
+  /**
+   * Transition pending → running and return the post-update row.
+   * Two round-trips: read current attempt, then guarded UPDATE … RETURNING.
+   * Returns null when the row is gone or already claimed by another worker.
+   * The returned row replaces a separate post-claim findById, so the dispatch
+   * path is 2 queries instead of 3.
+   */
+  protected async claim(executionId: string) {
+    const current = await this.executions.findById(executionId);
+    if (!current) return null;
     try {
-      await this.executions.updateOne(
+      return await this.executions.updateOne(
         { id: { eq: executionId }, status: { eq: "pending" } },
         {
           status: "running",
-          attempt: execution.attempt + 1,
+          attempt: current.attempt + 1,
           startedAt: this.dt.nowISOString(),
         },
       );
-      return true;
-    } catch {
-      return false;
+    } catch (e) {
+      if (e instanceof DbEntityNotFoundError) return null;
+      throw e;
     }
   }
 
@@ -1022,7 +1024,7 @@ export class JobProvider {
 
       this.cronProvider.createCronJob(
         "api:jobs:sweep",
-        SWEEP_CRON,
+        this.config.sweepCron,
         async () => {
           await this.sweep();
         },
