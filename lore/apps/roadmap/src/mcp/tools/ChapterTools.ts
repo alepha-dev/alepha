@@ -1,8 +1,8 @@
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
+import { CampaignController } from "../../api/controllers/CampaignController.ts";
 import { ChapterController } from "../../api/controllers/ChapterController.ts";
-import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import {
   chapterChangelogParamsSchema,
   chapterChangelogResultSchema,
@@ -19,46 +19,46 @@ import {
  */
 export class ChapterTools {
   protected readonly chapterController = $inject(ChapterController);
-  protected readonly projectController = $inject(ProjectController);
+  protected readonly campaignController = $inject(CampaignController);
 
   /**
-   * Resolve project ID from params (by ID or name).
+   * Resolve campaign ID from params (by ID or name).
    */
-  protected async resolveProjectId(
-    project?: number,
-    projectName?: string,
+  protected async resolveCampaignId(
+    campaign?: number,
+    campaignName?: string,
   ): Promise<number> {
-    const projects = await this.projectController.getMyProjects();
+    const campaigns = await this.campaignController.getMyCampaigns();
 
-    if (project) {
-      const found = projects.find((p) => p.id === project);
+    if (campaign) {
+      const found = campaigns.find((p) => p.id === campaign);
       if (!found) {
-        throw new NotFoundError(`Project with ID ${project} not found`);
+        throw new NotFoundError(`Campaign with ID ${campaign} not found`);
       }
       return found.id;
     }
 
-    if (projectName) {
-      const found = projects.find(
-        (p) => p.title.toLowerCase() === projectName.toLowerCase(),
+    if (campaignName) {
+      const found = campaigns.find(
+        (p) => p.title.toLowerCase() === campaignName.toLowerCase(),
       );
       if (!found) {
-        throw new NotFoundError(`Project "${projectName}" not found`);
+        throw new NotFoundError(`Campaign "${campaignName}" not found`);
       }
       return found.id;
     }
 
     throw new BadRequestError(
-      "Project is required. Specify project ID or project_name.",
+      "Campaign is required. Specify campaign ID or campaign_name.",
     );
   }
 
   /**
-   * List all chapters for a project.
+   * List all chapters for a campaign.
    */
   chapter_list = $tool({
     description:
-      "List all chapters for a project. Chapters are iterative milestones that capture completed quests.",
+      "List all chapters for a campaign. Chapters are iterative milestones that capture completed quests.",
     title: "List chapters",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -66,13 +66,13 @@ export class ChapterTools {
       result: chapterListResultSchema,
     },
     handler: async ({ params }) => {
-      const projectId = await this.resolveProjectId(
-        params.project,
-        params.project_name,
+      const campaignId = await this.resolveCampaignId(
+        params.campaign,
+        params.campaign_name,
       );
 
       const result = await this.chapterController.getChapters({
-        params: { projectId },
+        params: { campaignId },
       });
 
       return {
@@ -94,20 +94,20 @@ export class ChapterTools {
    */
   chapter_start = $tool({
     description:
-      "Start a new chapter for a project. Only one chapter can be active at a time. Quests completed while a chapter is active are automatically attached to it.",
+      "Start a new chapter for a campaign. Only one chapter can be active at a time. Quests completed while a chapter is active are automatically attached to it.",
     title: "Start chapter",
     schema: {
       params: chapterStartParamsSchema,
       result: chapterStartResultSchema,
     },
     handler: async ({ params }) => {
-      const projectId = await this.resolveProjectId(
-        params.project,
-        params.project_name,
+      const campaignId = await this.resolveCampaignId(
+        params.campaign,
+        params.campaign_name,
       );
 
       const chapter = await this.chapterController.startChapter({
-        params: { projectId },
+        params: { campaignId },
         body: {
           title: params.title,
           description: params.description,

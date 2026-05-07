@@ -3,19 +3,19 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { Character } from "@/api/entities/characters.ts";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
-import { currentProjectCharacterAtom } from "../../atoms/currentProjectCharacterAtom.ts";
+import { currentCampaignCharacterAtom } from "../../atoms/currentCampaignCharacterAtom.ts";
 
 const LevelUpAnimation = () => {
   const [active, setActive] = useState(false);
   const lastCharacter = useRef<Character | undefined>(undefined);
   const info = useInject(CharacterInfo);
-  const [character] = useStore(currentProjectCharacterAtom);
+  const [character] = useStore(currentCampaignCharacterAtom);
 
   useEffect(() => {
     if (character) {
       if (
         lastCharacter.current != null &&
-        lastCharacter.current.projectId === character.projectId &&
+        lastCharacter.current.campaignId === character.campaignId &&
         info.getLevelByXp(character.xp) >
           info.getLevelByXp(lastCharacter.current.xp)
       ) {

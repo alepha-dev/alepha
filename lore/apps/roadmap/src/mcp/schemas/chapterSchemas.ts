@@ -1,11 +1,11 @@
 import { t } from "alepha";
-import { projectParamsSchema } from "./commonSchemas.ts";
+import { campaignParamsSchema } from "./commonSchemas.ts";
 
 // -----------------------------------------------------------------------------
 // chapter_list
 // -----------------------------------------------------------------------------
 
-export const chapterListParamsSchema = projectParamsSchema;
+export const chapterListParamsSchema = campaignParamsSchema;
 
 export const chapterListResultSchema = t.object({
   chapters: t.array(
@@ -25,7 +25,7 @@ export const chapterListResultSchema = t.object({
 // chapter_start
 // -----------------------------------------------------------------------------
 
-export const chapterStartParamsSchema = t.extend(projectParamsSchema, {
+export const chapterStartParamsSchema = t.extend(campaignParamsSchema, {
   title: t.optional(
     t.string({
       description:

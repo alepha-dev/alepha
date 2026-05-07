@@ -6,27 +6,27 @@ import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 import { chapters } from "../entities/chapters.ts";
-import { tasks } from "../entities/tasks.ts";
+import { quests } from "../entities/quests.ts";
 import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 
 export class ChapterController {
   log = $logger();
   chapters = $repository(chapters);
-  tasks = $repository(tasks);
+  quests = $repository(quests);
   database = $inject(DatabaseProvider);
   dt = $inject(DateTimeProvider);
   security = $inject(AppSecurityProvider);
 
   getChapters = $action({
     use: [
-      $secure({ permissions: ["task:read"] }),
+      $secure({ permissions: ["quest:read"] }),
       $etag({
         control: { private: true, maxAge: 30, staleWhileRevalidate: 120 },
       }),
     ],
     schema: {
       params: t.object({
-        projectId: t.integer(),
+        campaignId: t.integer(),
       }),
       response: t.array(
         t.extend(chapters.schema, {
@@ -35,11 +35,11 @@ export class ChapterController {
       ),
     },
     handler: async ({ params, user }) => {
-      await this.security.checkOwnership(params.projectId, user);
+      await this.security.checkOwnership(params.campaignId, user);
 
       const allChapters = await this.chapters.findMany({
         where: {
-          projectId: { eq: params.projectId },
+          campaignId: { eq: params.campaignId },
         },
         orderBy: [{ column: "number", direction: "desc" }],
       });
@@ -50,10 +50,10 @@ export class ChapterController {
       if (chapterIds.length > 0) {
         const counts = await this.chapters.query(
           sql`
-            SELECT ${this.tasks.table.chapterId} as "chapterId", COUNT(*) as count
-            FROM ${this.tasks.table}
-            WHERE ${this.tasks.table.chapterId} IN ${chapterIds}
-            GROUP BY ${this.tasks.table.chapterId}
+            SELECT ${this.quests.table.chapterId} as "chapterId", COUNT(*) as count
+            FROM ${this.quests.table}
+            WHERE ${this.quests.table.chapterId} IN ${chapterIds}
+            GROUP BY ${this.quests.table.chapterId}
           `,
           t.object({
             chapterId: t.integer(),
@@ -74,10 +74,10 @@ export class ChapterController {
   });
 
   startChapter = $action({
-    use: [$secure({ permissions: ["task:create"] })],
+    use: [$secure({ permissions: ["quest:create"] })],
     schema: {
       params: t.object({
-        projectId: t.integer(),
+        campaignId: t.integer(),
       }),
       body: t.object({
         title: t.optional(t.string({ minLength: 1, maxLength: 100 })),
@@ -86,12 +86,12 @@ export class ChapterController {
       response: chapters.schema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.checkOwnership(params.projectId, user);
+      await this.security.checkOwnership(params.campaignId, user);
 
       // Check no active chapter exists
       const active = await this.chapters.findMany({
         where: {
-          projectId: { eq: params.projectId },
+          campaignId: { eq: params.campaignId },
           closedAt: { isNull: true },
         },
       });
@@ -105,7 +105,7 @@ export class ChapterController {
       // Compute next number
       const existing = await this.chapters.findMany({
         where: {
-          projectId: { eq: params.projectId },
+          campaignId: { eq: params.campaignId },
         },
         orderBy: [{ column: "number", direction: "desc" }],
         limit: 1,
@@ -114,7 +114,7 @@ export class ChapterController {
       const nextNumber = existing.length > 0 ? existing[0].number + 1 : 1;
 
       return await this.chapters.create({
-        projectId: params.projectId,
+        campaignId: params.campaignId,
         number: nextNumber,
         title: body.title || randomChapterName(),
         description: body.description ?? "",
@@ -123,7 +123,7 @@ export class ChapterController {
   });
 
   closeChapter = $action({
-    use: [$secure({ permissions: ["task:create"] })],
+    use: [$secure({ permissions: ["quest:create"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -135,7 +135,7 @@ export class ChapterController {
     },
     handler: async ({ params, body, user }) => {
       const chapter = await this.chapters.getById(params.id);
-      await this.security.checkOwnership(chapter.projectId, user);
+      await this.security.checkOwnership(chapter.campaignId, user);
 
       if (chapter.closedAt) {
         throw new BadRequestError("Chapter is already closed.");
@@ -149,7 +149,7 @@ export class ChapterController {
   });
 
   deleteChapter = $action({
-    use: [$secure({ permissions: ["task:delete"] })],
+    use: [$secure({ permissions: ["quest:delete"] })],
     schema: {
       params: t.object({
         id: t.integer(),
@@ -158,10 +158,10 @@ export class ChapterController {
     },
     handler: async ({ params, user }) => {
       const chapter = await this.chapters.getById(params.id);
-      await this.security.checkOwnership(chapter.projectId, user);
+      await this.security.checkOwnership(chapter.campaignId, user);
 
       // Only allow deleting empty chapters
-      const attachedTasks = await this.tasks.findMany({
+      const attachedQuests = await this.quests.findMany({
         where: {
           chapterId: { eq: chapter.id },
         },
@@ -169,7 +169,7 @@ export class ChapterController {
         limit: 1,
       });
 
-      if (attachedTasks.length > 0) {
+      if (attachedQuests.length > 0) {
         throw new BadRequestError(
           "Cannot delete a chapter that has quests attached.",
         );
@@ -182,7 +182,7 @@ export class ChapterController {
 
   getChapterChangelog = $action({
     use: [
-      $secure({ permissions: ["task:read"] }),
+      $secure({ permissions: ["quest:read"] }),
       $etag({
         control: { private: true, maxAge: 60, staleWhileRevalidate: 600 },
       }),
@@ -203,28 +203,28 @@ export class ChapterController {
     },
     handler: async ({ params, user }) => {
       const chapter = await this.chapters.getById(params.id);
-      await this.security.checkOwnership(chapter.projectId, user);
+      await this.security.checkOwnership(chapter.campaignId, user);
 
-      const chapterTasks = await this.tasks.findMany({
+      const chapterQuests = await this.quests.findMany({
         where: {
           chapterId: { eq: chapter.id },
         },
       });
 
       // Group by zone
-      const byZone = new Map<string, typeof chapterTasks>();
-      for (const task of chapterTasks) {
-        const zone = task.package || "Uncategorized";
+      const byZone = new Map<string, typeof chapterQuests>();
+      for (const quest of chapterQuests) {
+        const zone = quest.zone || "Uncategorized";
         if (!byZone.has(zone)) {
           byZone.set(zone, []);
         }
-        byZone.get(zone)!.push(task);
+        byZone.get(zone)!.push(quest);
       }
 
       // Collect unique contributors
       const contributors = new Set<string>();
-      for (const task of chapterTasks) {
-        if (task.completedBy) contributors.add(task.completedBy);
+      for (const quest of chapterQuests) {
+        if (quest.completedBy) contributors.add(quest.completedBy);
       }
 
       // Build markdown
@@ -238,17 +238,17 @@ export class ChapterController {
       }
 
       lines.push(
-        `> ${chapterTasks.length} quest(s) completed across ${byZone.size} zone(s) by ${contributors.size} adventurer(s)`,
+        `> ${chapterQuests.length} quest(s) completed across ${byZone.size} zone(s) by ${contributors.size} adventurer(s)`,
       );
       lines.push("");
 
-      for (const [zone, zoneTasks] of byZone) {
+      for (const [zone, zoneQuests] of byZone) {
         lines.push(`## ${zone}`);
         lines.push("");
-        for (const task of zoneTasks) {
+        for (const quest of zoneQuests) {
           const priority =
-            task.priority !== "optional" ? ` [${task.priority}]` : "";
-          lines.push(`- ${task.title}${priority}`);
+            quest.priority !== "optional" ? ` [${quest.priority}]` : "";
+          lines.push(`- ${quest.title}${priority}`);
         }
         lines.push("");
       }
@@ -257,7 +257,7 @@ export class ChapterController {
         markdown: lines.join("\n"),
         chapter,
         stats: {
-          questCount: chapterTasks.length,
+          questCount: chapterQuests.length,
           zoneCount: byZone.size,
           contributorCount: contributors.size,
         },

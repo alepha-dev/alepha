@@ -64,6 +64,13 @@
       "when": 1777814148702,
       "tag": "0008_tough_gambit",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1778165547000,
+      "tag": "0009_rename_to_campaign_quest",
+      "breakpoints": true
     }
   ]
 }

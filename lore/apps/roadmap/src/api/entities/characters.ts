@@ -1,7 +1,7 @@
 import { type Static, t } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
-import { projects } from "./projects.ts";
+import { campaigns } from "./campaigns.ts";
 
 export const characters = $entity({
   name: "characters",
@@ -12,7 +12,7 @@ export const characters = $entity({
     userId: db.ref(t.uuid(), () => users.cols.id, {
       onDelete: "cascade",
     }),
-    projectId: db.ref(t.integer(), () => projects.cols.id, {
+    campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
       onDelete: "cascade",
     }),
     xp: t.integer(),
@@ -21,7 +21,7 @@ export const characters = $entity({
   }),
   indexes: [
     {
-      columns: ["userId", "projectId"],
+      columns: ["userId", "campaignId"],
       unique: true,
     },
   ],

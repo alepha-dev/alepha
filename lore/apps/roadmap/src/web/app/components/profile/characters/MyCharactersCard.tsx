@@ -23,7 +23,7 @@ const MyCharactersCard = (props: MyCharactersCardProps) => {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <span className="text-lg font-medium">
-              {character.projectTitle}
+              {character.campaignTitle}
             </span>
             {character.owner && (
               <Badge variant="secondary" className="gap-1">

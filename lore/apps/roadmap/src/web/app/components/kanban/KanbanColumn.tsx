@@ -2,7 +2,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { useDroppable } from "@dnd-kit/core";
 import { useI18n } from "alepha/react/i18n";
 import { useMemo, useState } from "react";
-import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
+import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "../../services/I18n.ts";
 import KanbanCard from "./KanbanCard.tsx";
 
@@ -12,10 +12,10 @@ type ColumnStatus = "new" | "accepted" | "completed";
 
 export interface KanbanColumnProps {
   status: ColumnStatus;
-  tasks: TaskResource[];
+  quests: QuestResource[];
   readOnly: boolean;
   last?: boolean;
-  onSelect: (task: TaskResource) => void;
+  onSelect: (quest: QuestResource) => void;
 }
 
 const columnKeys = {
@@ -31,7 +31,7 @@ const columnDotClass: Record<ColumnStatus, string> = {
 };
 
 const KanbanColumn = (props: KanbanColumnProps) => {
-  const { status, tasks, readOnly, last, onSelect } = props;
+  const { status, quests, readOnly, last, onSelect } = props;
   const { tr } = useI18n<I18n, "en">();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const { setNodeRef, isOver } = useDroppable({
@@ -39,11 +39,11 @@ const KanbanColumn = (props: KanbanColumnProps) => {
     data: { type: "column", status },
   });
 
-  const visibleTasks = useMemo(
-    () => tasks.slice(0, visibleCount),
-    [tasks, visibleCount],
+  const visibleQuests = useMemo(
+    () => quests.slice(0, visibleCount),
+    [quests, visibleCount],
   );
-  const hasMore = tasks.length > visibleCount;
+  const hasMore = quests.length > visibleCount;
 
   return (
     <div
@@ -57,7 +57,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
           className={`size-2 shrink-0 rounded-full ${columnDotClass[status]}`}
         />
         <span className="text-sm font-semibold">{tr(columnKeys[status])}</span>
-        <span className="text-xs text-muted-foreground">{tasks.length}</span>
+        <span className="text-xs text-muted-foreground">{quests.length}</span>
       </div>
 
       {/* Column body — scrollable */}
@@ -68,17 +68,17 @@ const KanbanColumn = (props: KanbanColumnProps) => {
         }`}
       >
         <div className="flex min-h-[100px] flex-col gap-0.5 p-1">
-          {tasks.length === 0 && (
+          {quests.length === 0 && (
             <div className="flex items-center justify-center py-8 opacity-40">
               <span className="text-sm text-muted-foreground">
                 {tr("kanban.empty")}
               </span>
             </div>
           )}
-          {visibleTasks.map((task) => (
+          {visibleQuests.map((quest) => (
             <KanbanCard
-              key={task.id}
-              task={task}
+              key={quest.id}
+              quest={quest}
               readOnly={readOnly}
               onSelect={onSelect}
             />

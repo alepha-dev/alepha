@@ -4,9 +4,9 @@ import { useAlepha, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Check, Mail, X } from "lucide-react";
 import { useState } from "react";
+import type { CampaignController } from "@/api/controllers/CampaignController.ts";
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
-import type { ProjectController } from "@/api/controllers/ProjectController.ts";
-import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
+import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
 import { Toaster } from "../../services/Toaster.ts";
 
 export interface MyInvitationsProps {
@@ -25,7 +25,7 @@ export interface MyInvitationsProps {
 const MyInvitations = (props: MyInvitationsProps) => {
   const [invitations, setInvitations] = useState(props.invitations);
   const invitationApi = useClient<InvitationController>();
-  const projectApi = useClient<ProjectController>();
+  const campaignApi = useClient<CampaignController>();
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
     {},
   );
@@ -38,7 +38,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
     try {
       await invitationApi.acceptInvitation({ params: { id: invitationId } });
       setInvitations(await invitationApi.getMyInvitations());
-      alepha.store.set(userProjectsAtom, await projectApi.getMyProjects());
+      alepha.store.set(userCampaignsAtom, await campaignApi.getMyCampaigns());
       toaster.show(
         "You have joined the campaign! A character has been created for you.",
         "success",

@@ -7,14 +7,14 @@ import { useInject, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
-import { currentProjectCharacterAtom } from "../../atoms/currentProjectCharacterAtom.ts";
+import { currentCampaignCharacterAtom } from "../../atoms/currentCampaignCharacterAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import LevelUpAnimation from "./LevelUpAnimation.tsx";
 
 const ExperienceBar = () => {
   const auth = useAuth();
   const { tr } = useI18n<I18n, "en">();
-  const [character] = useStore(currentProjectCharacterAtom);
+  const [character] = useStore(currentCampaignCharacterAtom);
   const info = useInject(CharacterInfo);
 
   if (!auth.user || !character) {

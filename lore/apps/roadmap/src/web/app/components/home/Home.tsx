@@ -15,29 +15,29 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { AppRouter } from "../../AppRouter.ts";
-import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
+import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import RoadmapLogo from "../shared/RoadmapLogo.tsx";
 
-type Project = {
+type Campaign = {
   id: number;
   title: string;
   updatedAt: string;
   public?: boolean;
-  packages: string[];
+  zones: string[];
 };
 
 const Home = () => {
   const { tr } = useI18n<I18n, "en">();
-  const [projects = []] = useStore(userProjectsAtom);
+  const [campaigns = []] = useStore(userCampaignsAtom);
   const router = useRouter<AppRouter>();
   const dt = useInject(DateTimeProvider);
   const auth = useAuth();
 
-  const sorted = [...projects].sort((a, b) =>
+  const sorted = [...campaigns].sort((a, b) =>
     a.updatedAt > b.updatedAt ? -1 : 1,
   );
-  const createPath = router.path("projectCreate");
+  const createPath = router.path("campaignCreate");
 
   return (
     <div className="bg-background flex flex-col">
@@ -80,14 +80,14 @@ const Home = () => {
 
         {sorted.length > 0 ? (
           <div className="mt-4 flex flex-col divide-y rounded-lg border">
-            {sorted.map((project) => (
+            {sorted.map((campaign) => (
               <CampaignCard
-                key={project.id}
-                project={project}
-                href={router.path("project", {
-                  params: { projectId: project.id },
+                key={campaign.id}
+                campaign={campaign}
+                href={router.path("campaign", {
+                  params: { campaignId: campaign.id },
                 })}
-                relativeTime={dt.of(project.updatedAt).fromNow()}
+                relativeTime={dt.of(campaign.updatedAt).fromNow()}
               />
             ))}
           </div>
@@ -150,20 +150,20 @@ const Hero = (props: HeroProps) => {
  * ──────────────────────────────────────────────────────────────────────── */
 
 interface CampaignCardProps {
-  project: Project;
+  campaign: Campaign;
   href: string;
   relativeTime: string;
 }
 
 const CampaignCard = (props: CampaignCardProps) => {
-  const zones = props.project.packages.length;
+  const zones = props.campaign.zones.length;
   return (
     <Link
       href={props.href}
       className="group hover:bg-muted/50 flex items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors"
     >
       <span className="line-clamp-1 flex-1 truncate font-medium">
-        {props.project.title}
+        {props.campaign.title}
       </span>
       <span className="text-muted-foreground hidden text-xs sm:inline">
         Updated {props.relativeTime}
@@ -174,7 +174,7 @@ const CampaignCard = (props: CampaignCardProps) => {
           </>
         )}
       </span>
-      {props.project.public && (
+      {props.campaign.public && (
         <Badge variant="outline" className="gap-1 text-[10px]">
           <Globe2 className="size-3" />
           Public

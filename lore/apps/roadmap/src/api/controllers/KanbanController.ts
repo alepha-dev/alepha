@@ -6,34 +6,34 @@ import {
   type UserAccountToken,
 } from "alepha/security";
 import { $action, UnauthorizedError } from "alepha/server";
+import { campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
-import { projects } from "../entities/projects.ts";
-import { tasks } from "../entities/tasks.ts";
-import { taskResourceSchema } from "../schemas/taskResourceSchema.ts";
-import { TaskResourceMapper } from "../services/TaskResourceMapper.ts";
+import { quests } from "../entities/quests.ts";
+import { questResourceSchema } from "../schemas/questResourceSchema.ts";
+import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 
 export class KanbanController {
-  protected projects = $repository(projects);
-  protected tasks = $repository(tasks);
+  protected campaigns = $repository(campaigns);
+  protected quests = $repository(quests);
   protected characters = $repository(characters);
   protected alepha = $inject(Alepha);
   protected security = $inject(SecurityProvider);
-  protected taskMapper = $inject(TaskResourceMapper);
+  protected questMapper = $inject(QuestResourceMapper);
 
   /**
-   * Get all tasks for a project, grouped for kanban display.
-   * No $secure — supports unauthenticated access to public projects.
+   * Get all quests for a campaign, grouped for kanban display.
+   * No $secure — supports unauthenticated access to public campaigns.
    */
   getBoard = $action({
     method: "GET",
-    path: "/kanban/:projectId",
+    path: "/kanban/:campaignId",
     schema: {
       params: t.object({
-        projectId: t.integer(),
+        campaignId: t.integer(),
       }),
       response: t.object({
-        project: projects.schema,
-        tasks: t.array(taskResourceSchema),
+        campaign: campaigns.schema,
+        quests: t.array(questResourceSchema),
         readOnly: t.boolean(),
       }),
     },
@@ -56,23 +56,23 @@ export class KanbanController {
           }
         }
       } catch {
-        // Not authenticated — fine for public projects
+        // Not authenticated — fine for public campaigns
       }
 
-      const project = await this.projects.getOne({
-        where: { id: { eq: params.projectId } },
+      const campaign = await this.campaigns.getOne({
+        where: { id: { eq: params.campaignId } },
       });
 
-      // Private project requires authentication + membership
-      if (!project.public) {
+      // Private campaign requires authentication + membership
+      if (!campaign.public) {
         if (!user) {
           throw new UnauthorizedError("Authentication required");
         }
-        if (project.createdBy !== user.id) {
+        if (campaign.createdBy !== user.id) {
           // Must be a member — getOne throws NotFoundError if not found
           await this.characters.getOne({
             where: {
-              projectId: { eq: project.id },
+              campaignId: { eq: campaign.id },
               userId: { eq: user.id },
             },
           });
@@ -82,12 +82,12 @@ export class KanbanController {
       // Determine write access
       let readOnly = true;
       if (user) {
-        if (project.createdBy === user.id) {
+        if (campaign.createdBy === user.id) {
           readOnly = false;
         } else {
           const character = await this.characters.findOne({
             where: {
-              projectId: { eq: project.id },
+              campaignId: { eq: campaign.id },
               userId: { eq: user.id },
             },
           });
@@ -95,9 +95,9 @@ export class KanbanController {
         }
       }
 
-      const allTasks = await this.tasks.findMany({
+      const allQuests = await this.quests.findMany({
         where: {
-          projectId: { eq: params.projectId },
+          campaignId: { eq: params.campaignId },
         },
         orderBy: [
           { column: "priority", direction: "desc" },
@@ -106,8 +106,10 @@ export class KanbanController {
       });
 
       return {
-        project,
-        tasks: allTasks.map((task) => this.taskMapper.mapTaskToResource(task)),
+        campaign,
+        quests: allQuests.map((quest) =>
+          this.questMapper.mapQuestToResource(quest),
+        ),
         readOnly,
       };
     },

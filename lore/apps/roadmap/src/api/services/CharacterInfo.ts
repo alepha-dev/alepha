@@ -1,4 +1,4 @@
-import type { Task } from "../entities/tasks.ts";
+import type { Quest } from "../entities/quests.ts";
 
 export class CharacterInfo {
   levels = [
@@ -7,7 +7,7 @@ export class CharacterInfo {
   ];
 
   /**
-   * Get rank of the quest based on its complexity. It's not for user level.
+   * Get rank of the quest based on its difficulty. It's not for user level.
    */
   getRank(n: number): string {
     if (n === 1) return "F";
@@ -18,10 +18,10 @@ export class CharacterInfo {
     return "F";
   }
 
-  getMoneyFromTask(task: Task): number {
-    const baseMoney = task.complexity * 40;
+  getMoneyFromQuest(quest: Quest): number {
+    const baseMoney = quest.difficulty * 40;
     const priorityBonus =
-      task.priority === "high" ? 200 : task.priority === "medium" ? 100 : 0;
+      quest.priority === "high" ? 200 : quest.priority === "medium" ? 100 : 0;
     return baseMoney + priorityBonus;
   }
 
@@ -33,10 +33,10 @@ export class CharacterInfo {
     return balance % 100;
   }
 
-  getXpFromTask(task: Task) {
+  getXpFromQuest(quest: Quest) {
     const priority =
-      task.priority === "high" ? 300 : task.priority === "medium" ? 180 : 80;
-    return task.complexity * 150 + priority;
+      quest.priority === "high" ? 300 : quest.priority === "medium" ? 180 : 80;
+    return quest.difficulty * 150 + priority;
   }
 
   getLevelByXp(xp: number): number {

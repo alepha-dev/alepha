@@ -1,15 +1,15 @@
 import { t } from "alepha";
-import { taskStatusSchema } from "../../api/schemas/taskResourceSchema.ts";
+import { questStatusSchema } from "../../api/schemas/questResourceSchema.ts";
 
 /**
- * Task priority levels.
+ * Quest priority levels.
  */
 export const prioritySchema = t.enum(["optional", "low", "medium", "high"]);
 
-export { taskStatusSchema };
+export { questStatusSchema };
 
 /**
- * Task objective.
+ * Quest objective.
  */
 export const objectiveSchema = t.object({
   title: t.string(),
@@ -17,19 +17,19 @@ export const objectiveSchema = t.object({
 });
 
 /**
- * Common project identification params for MCP tools.
- * Either project ID or project_name must be provided.
+ * Common campaign identification params for MCP tools.
+ * Either campaign ID or campaign_name must be provided.
  */
-export const projectParamsSchema = t.object({
-  project: t.optional(
+export const campaignParamsSchema = t.object({
+  campaign: t.optional(
     t.integer({
-      description: "Project ID. Required if project_name is not provided.",
+      description: "Campaign ID. Required if campaign_name is not provided.",
     }),
   ),
-  project_name: t.optional(
+  campaign_name: t.optional(
     t.string({
       description:
-        "Project name (campaign title). Case-insensitive. Required if project is not provided.",
+        "Campaign name (campaign title). Case-insensitive. Required if campaign is not provided.",
     }),
   ),
 });

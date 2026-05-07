@@ -1,6 +1,6 @@
 import { type Static, t } from "alepha";
 import { $entity, db } from "alepha/orm";
-import { projects } from "./projects.ts";
+import { campaigns } from "./campaigns.ts";
 
 export const chapters = $entity({
   name: "chapters",
@@ -8,7 +8,7 @@ export const chapters = $entity({
     id: db.primaryKey(t.integer()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    projectId: db.ref(t.integer(), () => projects.cols.id, {
+    campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
       onDelete: "cascade",
     }),
     number: t.integer({ minimum: 1 }),
@@ -17,8 +17,8 @@ export const chapters = $entity({
     closedAt: t.optional(t.datetime()),
   }),
   indexes: [
-    { columns: ["projectId"] },
-    { columns: ["projectId", "number"], unique: true },
+    { columns: ["campaignId"] },
+    { columns: ["campaignId", "number"], unique: true },
   ],
 });
 

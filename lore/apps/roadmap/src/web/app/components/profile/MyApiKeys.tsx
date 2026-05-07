@@ -229,8 +229,8 @@ const MyApiKeys = (props: MyApiKeysProps) => {
               </code>
             </div>
             <span className="text-xs text-muted-foreground">
-              This key gives access to all your campaigns. Use the project_list
-              tool to see available campaigns, then specify project_name in
+              This key gives access to all your campaigns. Use the campaign_list
+              tool to see available campaigns, then specify campaign_name in
               other tools.
             </span>
             <div className="flex justify-end">

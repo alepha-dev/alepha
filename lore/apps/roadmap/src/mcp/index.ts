@@ -1,19 +1,19 @@
 import { $module } from "alepha";
 import { StreamableHttpMcpTransport } from "alepha/mcp";
-import { ProjectResources } from "./resources/ProjectResources.ts";
+import { CampaignResources } from "./resources/CampaignResources.ts";
+import { CampaignTools } from "./tools/CampaignTools.ts";
 import { ChapterTools } from "./tools/ChapterTools.ts";
 import { FolioTools } from "./tools/FolioTools.ts";
-import { ProjectTools } from "./tools/ProjectTools.ts";
-import { TaskTools } from "./tools/TaskTools.ts";
+import { QuestTools } from "./tools/QuestTools.ts";
 
 export const RoadmapMcp = $module({
   name: "roadmap.mcp",
   services: [
     StreamableHttpMcpTransport,
-    TaskTools,
-    ProjectTools,
+    QuestTools,
+    CampaignTools,
     ChapterTools,
     FolioTools,
-    ProjectResources,
+    CampaignResources,
   ],
 });

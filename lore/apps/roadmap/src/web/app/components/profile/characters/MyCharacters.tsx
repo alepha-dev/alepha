@@ -7,8 +7,8 @@ import MyCharactersCard from "./MyCharactersCard.tsx";
 
 export interface MyCharactersCharacter {
   id: number;
-  projectId: number;
-  projectTitle: string;
+  campaignId: number;
+  campaignTitle: string;
   xp: number;
   balance: number;
   owner?: boolean;

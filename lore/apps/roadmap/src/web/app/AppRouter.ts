@@ -8,29 +8,29 @@ import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 import type { AdminInvitationController } from "../../api/controllers/AdminInvitationController.ts";
+import type { CampaignController } from "../../api/controllers/CampaignController.ts";
+import type { CampaignStatsController } from "../../api/controllers/CampaignStatsController.ts";
 import type { ChapterController } from "../../api/controllers/ChapterController.ts";
 import type { FolioController } from "../../api/controllers/FolioController.ts";
 import type { KanbanController } from "../../api/controllers/KanbanController.ts";
-import type { ProjectController } from "../../api/controllers/ProjectController.ts";
-import type { ProjectStatsController } from "../../api/controllers/ProjectStatsController.ts";
-import type { TaskController } from "../../api/controllers/TaskController.ts";
-import { currentAssignedTasksAtom } from "./atoms/currentAssignedTasksAtom.ts";
+import type { QuestController } from "../../api/controllers/QuestController.ts";
+import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
+import { currentCampaignAtom } from "./atoms/currentCampaignAtom.ts";
+import { currentCampaignCharacterAtom } from "./atoms/currentCampaignCharacterAtom.ts";
 import { currentChaptersAtom } from "./atoms/currentChaptersAtom.ts";
 import { currentFolioAtom } from "./atoms/currentFolioAtom.ts";
-import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
-import { currentProjectCharacterAtom } from "./atoms/currentProjectCharacterAtom.ts";
-import { currentTaskAtom } from "./atoms/currentTaskAtom.ts";
+import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { folioTagsAtom } from "./atoms/folioTagsAtom.ts";
+import { userCampaignsAtom } from "./atoms/userCampaignsAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
-import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { MeRouter } from "./components/profile/me/MeRouter.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 
 export class AppRouter {
   alepha = $inject(Alepha);
-  taskApi = $client<TaskController>();
-  projectApi = $client<ProjectController>();
-  projectStatsApi = $client<ProjectStatsController>();
+  questApi = $client<QuestController>();
+  campaignApi = $client<CampaignController>();
+  campaignStatsApi = $client<CampaignStatsController>();
   invitationAdminApi = $client<AdminInvitationController>();
   kanbanApi = $client<KanbanController>();
   chapterApi = $client<ChapterController>();
@@ -44,7 +44,7 @@ export class AppRouter {
     const head: Head = {
       title: "Roadmap",
       titleSeparator: " - ",
-      description: "Roadmap - Gamified project management",
+      description: "Roadmap - Gamified campaign management",
     };
 
     head.link = [
@@ -68,8 +68,8 @@ export class AppRouter {
       this.home,
       this.login,
       this.register,
-      this.project,
-      this.projectCreate,
+      this.campaign,
+      this.campaignCreate,
       this.kanban,
       this.lore,
       this.meRouter.me,
@@ -80,8 +80,8 @@ export class AppRouter {
     loader: async ({ user }) => {
       if (user) {
         this.alepha.store.set(
-          userProjectsAtom,
-          await this.projectApi.getMyProjects(),
+          userCampaignsAtom,
+          await this.campaignApi.getMyCampaigns(),
         );
       }
     },
@@ -151,16 +151,16 @@ export class AppRouter {
     },
   });
 
-  projectCreate = $page({
-    path: "/p-new",
-    lazy: () => import("./components/project/ProjectCreate.tsx"),
+  campaignCreate = $page({
+    path: "/c-new",
+    lazy: () => import("./components/campaign/CampaignCreate.tsx"),
   });
 
   kanban = $page({
-    path: "/k/:projectId",
+    path: "/k/:campaignId",
     schema: {
       params: t.object({
-        projectId: t.integer(),
+        campaignId: t.integer(),
       }),
     },
     head: {
@@ -169,79 +169,79 @@ export class AppRouter {
     lazy: () => import("./components/kanban/KanbanBoard.tsx"),
     loader: async ({ params }) => {
       const data = await this.kanbanApi.getBoard({
-        params: { projectId: params.projectId },
+        params: { campaignId: params.campaignId },
       });
       return data;
     },
   });
 
-  project = $page({
+  campaign = $page({
     children: () => [
-      this.projectDashboard,
-      this.projectBoard,
-      this.projectTask,
-      this.projectChapters,
-      this.projectSettings,
-      this.projectAnalytics,
+      this.campaignDashboard,
+      this.campaignBoard,
+      this.campaignQuest,
+      this.campaignChapters,
+      this.campaignSettings,
+      this.campaignChronicles,
     ],
-    path: "/p/:projectId",
+    path: "/c/:campaignId",
     schema: {
       params: t.object({
-        projectId: t.integer(),
+        campaignId: t.integer(),
       }),
     },
-    lazy: () => import("./components/project/ProjectView.tsx"),
+    lazy: () => import("./components/campaign/CampaignView.tsx"),
     loader: async ({ params }) => {
-      const { character, tasks, ...project } =
-        await this.projectApi.getProjectById({
+      const { character, quests, ...campaign } =
+        await this.campaignApi.getCampaignById({
           params: {
-            id: params.projectId,
+            id: params.campaignId,
           },
         });
 
       const chapters = await this.chapterApi.getChapters({
-        params: { projectId: params.projectId },
+        params: { campaignId: params.campaignId },
       });
 
-      this.alepha.store.set(currentProjectAtom, project);
-      this.alepha.store.set(currentProjectCharacterAtom, character);
-      this.alepha.store.set(currentAssignedTasksAtom, tasks);
+      this.alepha.store.set(currentCampaignAtom, campaign);
+      this.alepha.store.set(currentCampaignCharacterAtom, character);
+      this.alepha.store.set(currentAssignedQuestsAtom, quests);
       this.alepha.store.set(currentChaptersAtom, chapters);
 
       return {
-        project,
+        campaign,
       };
     },
     onLeave: () => {
-      this.alepha.store.set(currentProjectCharacterAtom, undefined);
-      this.alepha.store.set(currentProjectAtom, undefined);
-      this.alepha.store.set(currentAssignedTasksAtom, []);
+      this.alepha.store.set(currentCampaignCharacterAtom, undefined);
+      this.alepha.store.set(currentCampaignAtom, undefined);
+      this.alepha.store.set(currentAssignedQuestsAtom, []);
       this.alepha.store.set(currentChaptersAtom, undefined);
     },
   });
 
-  projectDashboard = $page({
+  campaignDashboard = $page({
     path: "/",
-    lazy: () => import("./components/project/ProjectDashboard.tsx"),
+    lazy: () => import("./components/campaign/CampaignDashboard.tsx"),
   });
 
-  projectBoard = $page({
+  campaignBoard = $page({
     path: "/board",
-    lazy: () => import("./components/project/ProjectBoardTable.tsx"),
+    lazy: () => import("./components/campaign/CampaignBoardTable.tsx"),
   });
 
-  projectChapters = $page({
+  campaignChapters = $page({
     path: "/chapters",
-    lazy: () => import("./components/project/chapters/ProjectChapters.tsx"),
+    lazy: () => import("./components/campaign/chapters/CampaignChapters.tsx"),
   });
 
-  projectAnalytics = $page({
-    path: "/analytics",
-    lazy: () => import("./components/project/ProjectStats.tsx"),
+  campaignChronicles = $page({
+    path: "/chronicles",
+    lazy: () => import("./components/campaign/CampaignStats.tsx"),
     loader: async () => {
-      const stats = await this.projectStatsApi.getProjectStats({
+      const stats = await this.campaignStatsApi.getCampaignStats({
         params: {
-          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+          id: this.alepha.store.get(currentCampaignAtom)?.id ?? -1,
         },
       });
       return {
@@ -250,24 +250,24 @@ export class AppRouter {
     },
   });
 
-  projectSettings = $page({
+  campaignSettings = $page({
     path: "/settings",
-    lazy: () => import("./components/project/settings/ProjectSettings.tsx"),
+    lazy: () => import("./components/campaign/settings/CampaignSettings.tsx"),
     loader: async () => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
+      const campaign = this.alepha.store.get(currentCampaignAtom);
+      if (!campaign) {
+        throw new NotFoundError("Campaign not found");
       }
 
-      const [players, pendingInvitations] = await Promise.all([
-        this.projectApi.getProjectPlayers({
-          params: { id: project.id },
+      const [adventurers, pendingInvitations] = await Promise.all([
+        this.campaignApi.getCampaignAdventurers({
+          params: { id: campaign.id },
         }),
         this.invitationAdminApi
           .findInvitations({
             query: {
-              resourceType: "project",
-              resourceId: String(project.id),
+              resourceType: "campaign",
+              resourceId: String(campaign.id),
               status: "pending",
             },
           })
@@ -276,18 +276,18 @@ export class AppRouter {
       ]);
 
       return {
-        project,
-        players,
+        campaign,
+        adventurers,
         pendingInvitations,
       };
     },
   });
 
-  projectTask = $page({
-    path: "/q/:taskId",
+  campaignQuest = $page({
+    path: "/q/:questId",
     schema: {
       params: t.object({
-        taskId: t.integer(),
+        questId: t.integer(),
       }),
     },
     animation: ({ meta }) => {
@@ -313,18 +313,18 @@ export class AppRouter {
         };
       }
     },
-    lazy: () => import("./components/project/task/TaskView.tsx"),
+    lazy: () => import("./components/campaign/quest/QuestView.tsx"),
     loader: async ({ params }) => {
-      const task = await this.taskApi.getTaskById({
+      const quest = await this.questApi.getQuestById({
         params: {
-          id: params.taskId,
+          id: params.questId,
         },
       });
-      this.alepha.store.set(currentTaskAtom, task);
-      return { task };
+      this.alepha.store.set(currentQuestAtom, quest);
+      return { quest };
     },
     onLeave: () => {
-      this.alepha.store.set(currentTaskAtom, undefined);
+      this.alepha.store.set(currentQuestAtom, undefined);
     },
     errorHandler: (error) => {
       if (HttpError.is(error, 404)) {
