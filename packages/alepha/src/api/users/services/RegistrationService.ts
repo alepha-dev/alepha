@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { $inject, Alepha, AlephaError } from "alepha";
 import type { VerificationController } from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
+import { DatabaseCacheProvider } from "alepha/cache/database";
 import { CaptchaProvider } from "alepha/captcha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -16,6 +17,7 @@ import type { CompleteRegistrationRequest } from "../schemas/completeRegistratio
 import type { RegisterRequest } from "../schemas/registerRequestSchema.ts";
 import type { RegistrationIntentResponse } from "../schemas/registrationIntentResponseSchema.ts";
 import { CredentialService } from "./CredentialService.ts";
+import { UsernameSlugger } from "./UsernameSlugger.ts";
 
 /**
  * Intent stored in cache during the registration flow.
@@ -50,13 +52,24 @@ export class RegistrationService {
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly credentialService = $inject(CredentialService);
   protected readonly captchaProvider = $inject(CaptchaProvider);
+  protected readonly usernameSlugger = $inject(UsernameSlugger);
 
   protected readonly intentCache = $cache<RegistrationIntent>({
+    // Pinned to the SQL-backed cache so:
+    // - phase 2 reliably reads the partial-registration payload phase 1 wrote;
+    // - the password hash held in the intent never lives in a distributed
+    //   K/V outside the user's own DB unless they explicitly opt in.
+    provider: DatabaseCacheProvider,
     name: "api:users:registrations",
     ttl: [INTENT_TTL_MINUTES, "minutes"],
   });
 
   protected readonly rateLimitCache = $cache<number>({
+    // Use the SQL-backed cache so `incr()` is atomic (`INSERT ... ON CONFLICT
+    // DO UPDATE SET count = count + 1`). Cloudflare KV silently coalesces
+    // concurrent writes to the same key, which makes the limiter useless
+    // against bursts.
+    provider: DatabaseCacheProvider,
     name: "api:users:registration-rate-limit",
     ttl: [15, "minutes"],
   });
@@ -128,9 +141,16 @@ export class RegistrationService {
       throw new BadRequestError("Username is required");
     }
 
+    // In "email" mode the server is authoritative — any username sent in
+    // the request is dropped on the floor and replaced by the slugger
+    // output below.
+    if (realmSettings?.username === "email") {
+      body.username = undefined;
+    }
+
     if (body.username) {
       // Security note: usernameRegExp is admin-controlled (from realmAuthSettingsAtom),
-      // not user input. Default is ^[a-zA-Z0-9_]{3,30}$ which is ReDoS-safe.
+      // not user input. Default is ^[a-zA-Z0-9_-]{3,30}$ which is ReDoS-safe.
       // No need for regex timeout or safe-regex validation here.
       const usernameRegExp = realmSettings?.usernameRegExp;
       if (usernameRegExp) {
@@ -144,6 +164,17 @@ export class RegistrationService {
             "Username does not meet the required format",
           );
         }
+      }
+
+      // Manual usernames must also clear the realm blocklist — same set
+      // that the slugger uses, so apps can't be sidestepped by clients
+      // POSTing the reserved name directly.
+      if (await this.usernameSlugger.isBlocked(userRealmName, body.username)) {
+        this.log.debug("Registration rejected: username is blocked", {
+          userRealmName,
+          username: body.username,
+        });
+        throw new BadRequestError("This username is not available");
       }
     }
 
@@ -159,6 +190,23 @@ export class RegistrationService {
         userRealmName,
       });
       throw new BadRequestError("Phone number is required");
+    }
+
+    // In "email" mode, derive the username from the email *now* so that
+    // checkUserAvailability picks it up too, the DB unique index sees a
+    // concrete value, and the persisted intent already carries the final
+    // username.
+    if (realmSettings?.username === "email") {
+      if (!body.email) {
+        throw new BadRequestError(
+          "Email is required to derive a username from email",
+        );
+      }
+      const base = this.usernameSlugger.slug(body.email);
+      body.username = await this.usernameSlugger.pickAvailable(
+        userRealmName,
+        base,
+      );
     }
 
     // Check for existing users (username, email, phone)

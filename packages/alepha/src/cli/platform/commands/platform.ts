@@ -697,10 +697,16 @@ export class PlatformCommand {
     } catch {}
 
     try {
+      // Provision KV only when the user actually wants it: a `$cache` declared
+      // *without* an explicit `provider` falls back to the runtime default
+      // (CloudflareKVProvider on workerd). Any explicit choice — `"memory"`,
+      // `DatabaseCacheProvider`, a Redis provider, or a custom one — opts out
+      // of the platform default and therefore should not trigger KV
+      // provisioning. See platform.ts hasKV docs and `$cache.options.provider`.
       hasKV =
         alepha
           .primitives("cache")
-          .filter((it: any) => it.options?.provider !== "memory").length > 0;
+          .filter((it: any) => it.options?.provider == null).length > 0;
     } catch {}
 
     try {

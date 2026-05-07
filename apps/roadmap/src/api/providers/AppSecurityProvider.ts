@@ -24,8 +24,17 @@ export class AppSecurityProvider {
       notifications: true,
     },
     settings: {
-      username: "required",
-      usernameRegExp: "^[a-zA-Z0-9_@.]{3,30}$",
+      // Auto-derive a stable handle from the registration email at signup
+      // (and from the OAuth profile email on Google/GitHub login). The
+      // registration form never shows a username input — the slugger does
+      // its work server-side and the DB unique index settles ties via the
+      // `-<random>` retry path. Same handle gets shown in the UI, used in
+      // mentions, and embedded in profile URLs.
+      username: "email",
+      // Reserved handles that no user — credentials or OAuth — should be
+      // able to claim. Default empty in the framework; we opt in here for a
+      // few obvious ones.
+      usernameBlocklist: ["admin", "root", "me", "api", "support", "system"],
       resetPasswordAllowed: true,
       verifyEmailRequired: true,
       adminEmails: this.env.ADMIN_EMAIL ? [this.env.ADMIN_EMAIL] : [],

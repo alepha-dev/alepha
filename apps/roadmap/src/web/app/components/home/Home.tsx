@@ -10,6 +10,7 @@ import { Link, useRouter } from "alepha/react/router";
 import { ArrowRight, Globe2, ScrollText, Sparkles } from "lucide-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
+import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
 import RoadmapLogo from "../shared/RoadmapLogo.tsx";
 
@@ -41,7 +42,9 @@ const Home = () => {
           welcomeTitle={String(tr("home.title"))}
           subtitle={String(tr("home.subtitle"))}
           createLabel={String(tr("home.create-campaign"))}
-          adventurerName={auth.user?.username}
+          adventurerName={
+            auth.user ? displayName(auth.user, "") || undefined : undefined
+          }
         />
 
         <Separator className="my-10" />

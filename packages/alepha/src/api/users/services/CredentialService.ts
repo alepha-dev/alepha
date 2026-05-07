@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { $inject, Alepha } from "alepha";
 import type { VerificationController } from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
+import { DatabaseCacheProvider } from "alepha/cache/database";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { CryptoProvider } from "alepha/security";
@@ -52,6 +53,10 @@ export class CredentialService {
   }
 
   protected readonly intentCache = $cache<PasswordResetIntent>({
+    // Use the SQL-backed cache so phase-2 reads what phase-1 wrote with
+    // strong consistency, and so bare deployments don't need a distributed
+    // KV resource just to support password reset.
+    provider: DatabaseCacheProvider,
     name: "api:users:password-reset-intents",
     ttl: [INTENT_TTL_MINUTES, "minutes"],
   });

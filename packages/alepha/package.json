@@ -187,6 +187,11 @@
       "import": "./src/cache/core/index.ts",
       "default": "./src/cache/core/index.ts"
     },
+    "./cache/database": {
+      "types": "./src/cache/database/index.ts",
+      "import": "./src/cache/database/index.ts",
+      "default": "./src/cache/database/index.ts"
+    },
     "./cache/redis": {
       "types": "./src/cache/redis/index.ts",
       "import": "./src/cache/redis/index.ts",
@@ -591,6 +596,11 @@
         "workerd": "./dist/cache/core/index.workerd.js",
         "import": "./dist/cache/core/index.js",
         "default": "./dist/cache/core/index.js"
+      },
+      "./cache/database": {
+        "types": "./dist/cache/database/index.d.ts",
+        "import": "./dist/cache/database/index.js",
+        "default": "./dist/cache/database/index.js"
       },
       "./cache/redis": {
         "types": "./dist/cache/redis/index.d.ts",

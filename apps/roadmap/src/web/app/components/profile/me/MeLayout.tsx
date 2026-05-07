@@ -1,6 +1,7 @@
 import { useAuth } from "alepha/react/auth";
 import { NestedView } from "alepha/react/router";
 import { User } from "lucide-react";
+import { displayName } from "../../../services/displayName.ts";
 import MeLayoutMenu from "./MeLayoutMenu.tsx";
 
 const MeLayout = () => {
@@ -23,7 +24,7 @@ const MeLayout = () => {
         </div>
         <div className="flex flex-col">
           <span className="text-sm font-semibold">
-            {auth.user?.username || "Anonymous"}
+            {displayName(auth.user)}
           </span>
           <span className="text-xs text-muted-foreground">
             {auth.user?.email}

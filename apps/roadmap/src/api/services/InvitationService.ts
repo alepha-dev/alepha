@@ -511,18 +511,13 @@ export class InvitationService {
   }
 
   protected formatInviterName(user?: UserEntity): string | undefined {
-    if (!user) {
+    if (!user?.email) {
       return undefined;
     }
-
-    if (user.firstName && user.lastName) {
-      return `${user.firstName} ${user.lastName}`;
-    }
-
-    if (user.firstName) {
-      return user.firstName;
-    }
-
-    return user.username ?? user.email;
+    // Use the local-part of the email — same convention as the UI's
+    // `displayName` helper. We don't surface firstName / lastName / username
+    // anywhere any more.
+    const at = user.email.indexOf("@");
+    return at > 0 ? user.email.slice(0, at) : user.email;
   }
 }

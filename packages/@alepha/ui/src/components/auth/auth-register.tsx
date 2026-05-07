@@ -301,15 +301,17 @@ export function AuthRegister(props: AuthRegisterProps) {
             <>
               {credentialsProvider && (
                 <form {...form.props} className="flex flex-col gap-4">
-                  {settings.username !== "none" && form.input.username && (
-                    <Control
-                      label={tr("auth.register.username", {
-                        default: "Username",
-                      })}
-                      input={form.input.username}
-                      icon={iconFor("user")}
-                    />
-                  )}
+                  {settings.username !== "none" &&
+                    settings.username !== "email" &&
+                    form.input.username && (
+                      <Control
+                        label={tr("auth.register.username", {
+                          default: "Username",
+                        })}
+                        input={form.input.username}
+                        icon={iconFor("user")}
+                      />
+                    )}
                   {settings.email !== "none" && form.input.email && (
                     <Control
                       label={tr("auth.register.email", { default: "Email" })}

@@ -16,8 +16,21 @@ export class ApiKeyService {
 
   /**
    * Cache validated API keys for 15 minutes.
+   *
+   * Pinned to per-isolate memory:
+   * - The cache replaces a single indexed SELECT on `api_keys`. Routing it
+   *   through a distributed K/V (KV/Redis) buys little — the SELECT is
+   *   already cheap — and pinning to DB would actively trade one SQL read
+   *   for another.
+   * - Cold-start gives a fresh DB read on every new isolate, which is
+   *   *better* for revocation visibility than a distributed cache that
+   *   keeps serving stale entries until its own TTL.
+   * - Avoids provisioning KV/Redis just for this one cache. Users who need
+   *   cross-isolate sharing for high-throughput API auth can override
+   *   globally via `alepha.with({ provide: CacheProvider, use: ... })`.
    */
   protected readonly validationCache = $cache<ApiKeyEntity | null, [string]>({
+    provider: "memory",
     name: "api:keys:validation",
     ttl: [15, "minutes"],
   });

@@ -29,6 +29,7 @@ import type { Character } from "@/api/entities/characters.ts";
 import type { InvitationEntity } from "@/api/entities/invitations.ts";
 import type { User } from "@/api/entities/users.ts";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
+import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface CampaignSettingsAdventurersSectionProps {
@@ -162,7 +163,7 @@ const CampaignSettingsAdventurersSection = (
                   <div className="flex flex-1 flex-col">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">
-                        {adventurer.user.username}
+                        {displayName(adventurer.user)}
                       </span>
                       {adventurer.owner && (
                         <Badge variant="secondary" className="gap-1">

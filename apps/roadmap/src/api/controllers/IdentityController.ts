@@ -40,7 +40,6 @@ export class IdentityController {
     use: [$secure({ permissions: ["identity:update"] })],
     schema: {
       body: t.object({
-        username: t.string({ minLength: 3, maxLength: 50 }),
         password: t.string({ minLength: 6, maxLength: 128 }),
       }),
       response: t.object({
@@ -48,7 +47,15 @@ export class IdentityController {
       }),
     },
     handler: async ({ user, body }) => {
-      const { username, password } = body;
+      const { password } = body;
+
+      // The logged-in user's email is the identifier — no username to ask for
+      // since `username: "none"` in the realm settings.
+      if (!user.email) {
+        throw new AlephaError(
+          "Cannot set password without an email on the account",
+        );
+      }
 
       // Check if usernamePassword identity already exists
       const existingIdentity = await this.identities.findOne({
@@ -62,26 +69,15 @@ export class IdentityController {
         throw new AlephaError("Password identity already exists for this user");
       }
 
-      // Check if username is already taken
-      const existingUsername = await this.identities.findOne({
-        where: {
-          provider: { eq: "usernamePassword" },
-          providerUserId: { eq: username },
-        },
-      });
-
-      if (existingUsername) {
-        throw new AlephaError("Username is already taken");
-      }
-
       // Hash the password
       const hashedPassword = await this.crypto.hashPassword(password);
 
-      // Create the identity
+      // Create the identity. `providerUserId` is the email — the only
+      // identifier we collect.
       await this.identities.create({
         userId: user.id,
         provider: "usernamePassword",
-        providerUserId: username,
+        providerUserId: user.email,
         providerData: {
           password: hashedPassword,
         },

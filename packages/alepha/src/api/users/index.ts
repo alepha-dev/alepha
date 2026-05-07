@@ -14,6 +14,7 @@ import { IdentityService } from "./services/IdentityService.ts";
 import { RegistrationService } from "./services/RegistrationService.ts";
 import { SessionCrudService } from "./services/SessionCrudService.ts";
 import { SessionService } from "./services/SessionService.ts";
+import { UsernameSlugger } from "./services/UsernameSlugger.ts";
 import { UserService } from "./services/UserService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -54,6 +55,7 @@ export * from "./services/IdentityService.ts";
 export * from "./services/RegistrationService.ts";
 export * from "./services/SessionCrudService.ts";
 export * from "./services/SessionService.ts";
+export * from "./services/UsernameSlugger.ts";
 export * from "./services/UserService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -82,6 +84,7 @@ export const AlephaApiUsers = $module({
     CredentialService,
     RegistrationService,
     UserService,
+    UsernameSlugger,
     IdentityService,
     UserController,
     AdminUserController,

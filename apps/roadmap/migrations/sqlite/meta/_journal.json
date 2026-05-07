@@ -85,6 +85,13 @@
       "when": 1778168340449,
       "tag": "0011_folio_campaign_required",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1778186669152,
+      "tag": "0012_acoustic_kronos",
+      "breakpoints": true
     }
   ]
 }

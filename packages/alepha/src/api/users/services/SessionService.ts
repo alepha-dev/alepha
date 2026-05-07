@@ -17,6 +17,7 @@ import { UserAudits } from "../audits/UserAudits.ts";
 import type { UserEntity } from "../entities/users.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
+import { UsernameSlugger } from "./UsernameSlugger.ts";
 
 export class SessionService {
   protected readonly alepha = $inject(Alepha);
@@ -27,6 +28,7 @@ export class SessionService {
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly fileController = $client<FileController>();
   protected readonly cacheProvider = $inject(CacheProvider);
+  protected readonly usernameSlugger = $inject(UsernameSlugger);
 
   protected userAudits(realmName?: string) {
     const realm = this.realmProvider.getRealm(realmName);
@@ -110,69 +112,24 @@ export class SessionService {
   /**
    * Generate a unique username from an OAuth profile.
    *
-   * 1. Extract candidate from email prefix
-   * 2. Sanitize against realm's usernameRegExp (strip invalid chars, truncate)
-   * 3. Check case-insensitive uniqueness, append suffix (2, 3, ...) if taken
-   * 4. Fall back to "user" + random 6-char alphanumeric if all else fails
+   * Routes through {@link UsernameSlugger}, which is the same code path as
+   * `username: "email"` registration. The OAuth profile's email is the
+   * primary signal; if absent (rare — most IDPs return one), we fall back
+   * to `profile.name`, then to a random handle. The slugger applies the
+   * realm's `usernameBlocklist` and retries on collision.
    */
   protected async generateUniqueUsername(
     profile: OAuth2Profile,
-    realmSettings: any,
-    users: any,
+    _realmSettings: any,
+    _users: any,
+    realmName?: string,
   ): Promise<string> {
-    const maxLength = 30;
-    const maxSuffixAttempts = 10;
-
-    // Extract candidate from email or profile name
-    let candidate = profile.email?.split("@")[0] ?? profile.name ?? "";
-
-    // Strip characters not allowed in usernames (keep alphanumeric, underscore, dot, hyphen)
-    candidate = candidate.replace(/[^a-zA-Z0-9_.-]/g, "");
-
-    // If realm has a custom regex, further sanitize
-    if (realmSettings?.usernameRegExp) {
-      try {
-        const regex = new RegExp(realmSettings.usernameRegExp);
-        if (!regex.test(candidate)) {
-          // Strip to basic alphanumeric as safe fallback
-          candidate = candidate.replace(/[^a-zA-Z0-9_]/g, "");
-        }
-      } catch {
-        // Invalid regex, continue with sanitized candidate
-      }
-    }
-
-    // Ensure minimum length
-    if (candidate.length < 3) {
-      candidate = `user${candidate}`;
-    }
-
-    // Truncate to leave room for suffix
-    candidate = candidate.slice(0, maxLength - 2);
-
-    // Check uniqueness (case-insensitive exact match)
-    const isAvailable = async (name: string) => {
-      const existing = await users.findOne({
-        where: { username: { ilike: name } },
-      });
-      return !existing;
-    };
-
-    if (await isAvailable(candidate)) {
-      return candidate;
-    }
-
-    // Try with numeric suffix
-    for (let i = 2; i <= maxSuffixAttempts + 1; i++) {
-      const withSuffix = `${candidate}${i}`;
-      if (withSuffix.length <= maxLength && (await isAvailable(withSuffix))) {
-        return withSuffix;
-      }
-    }
-
-    // Final fallback: random username
-    const random = Math.random().toString(36).slice(2, 8);
-    return `user${random}`;
+    const seed =
+      profile.email ??
+      profile.name ??
+      `user-${Math.random().toString(36).slice(2, 8)}`;
+    const base = this.usernameSlugger.slug(seed);
+    return this.usernameSlugger.pickAvailable(realmName, base);
   }
 
   /**
@@ -766,6 +723,7 @@ export class SessionService {
       profile,
       realmSettings,
       users,
+      userRealmName,
     );
 
     const user = await users.create({

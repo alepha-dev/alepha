@@ -4,11 +4,11 @@ import {
   $state,
   AlephaError,
   createPrimitive,
-  type InstantiableClass,
   KIND,
   type MiddlewareMetadata,
   OPTIONS,
   Primitive,
+  type Service,
   type Static,
   t,
 } from "alepha";
@@ -112,9 +112,26 @@ export interface CachePrimitiveOptions<
 
   /**
    * The store provider for the cache.
-   * If not provided, the default store provider will be used.
+   *
+   * Accepts:
+   * - `"memory"` — short-circuits to {@link MemoryCacheProvider} regardless
+   *   of the default `CacheProvider` binding. Useful for caches that must
+   *   stay process-local (e.g. ETag, HTTP client).
+   * - A {@link CacheProvider} class (concrete OR abstract) — resolved via
+   *   `alepha.inject(...)` at primitive construction. Use this to opt a
+   *   specific cache into a non-default backend (e.g.
+   *   `provider: DatabaseCacheProvider` to keep one cache in SQL while the
+   *   rest of the app uses Cloudflare KV).
+   * - `undefined` — falls back to whatever is bound to `CacheProvider` in
+   *   the container. On Cloudflare workers this is
+   *   {@link CloudflareKVProvider} by default; on Node it's
+   *   {@link MemoryCacheProvider}.
+   *
+   * Note: passing an *abstract* class works because Alepha's DI resolves
+   * through substitutions, e.g. `alepha.with({ provide: CacheProvider, use:
+   * MyCacheProvider })`.
    */
-  provider?: InstantiableClass<CacheProvider> | "memory";
+  provider?: Service<CacheProvider> | "memory";
 
   /**
    * The time-to-live for the cache in seconds.

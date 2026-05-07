@@ -17,6 +17,7 @@ import { type ChangeEvent, useRef, useState } from "react";
 import type { UserController } from "@/api/controllers/UserController.ts";
 import type { User as UserEntity } from "@/api/entities/users.ts";
 import { CharacterInfo } from "@/api/services/CharacterInfo.ts";
+import { displayName } from "../../services/displayName.ts";
 import { Toaster } from "../../services/Toaster.ts";
 
 export interface MyProfileProps {
@@ -131,9 +132,7 @@ const MyProfile = (props: MyProfileProps) => {
 
         <div className="flex flex-1 flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-bold">
-              {user.username || "Anonymous"}
-            </span>
+            <span className="text-xl font-bold">{displayName(user)}</span>
             {highestLevel > 0 && (
               <Badge variant="secondary" className="gap-1">
                 <Star className="size-3" />

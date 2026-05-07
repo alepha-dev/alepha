@@ -14,6 +14,31 @@ const fieldRequirement = (description: string) =>
     description,
   });
 
+/**
+ * Username-specific field requirement, extending {@link FieldRequirement}
+ * with an additional auto-derivation mode.
+ *
+ * - `"none"` / `"optional"` / `"required"`: same as {@link FieldRequirement}.
+ * - `"email"`: Field is hidden in the registration UI and the value is
+ *   auto-derived from the user's email at signup. Same handling on
+ *   credentials and OAuth flows. See `UsernameSlugger` for the rule and
+ *   collision behavior.
+ */
+export type UsernameFieldRequirement = FieldRequirement | "email";
+
+const usernameFieldRequirement = (description: string) =>
+  t.union(
+    [
+      t.const("none"),
+      t.const("optional"),
+      t.const("required"),
+      t.const("email"),
+    ],
+    {
+      description,
+    },
+  );
+
 export const realmAuthSettingsAtom = $atom({
   name: "alepha.api.users.realmAuthSettings",
   schema: t.object({
@@ -42,10 +67,19 @@ export const realmAuthSettingsAtom = $atom({
     email: fieldRequirement(
       "Email address field requirement for user accounts",
     ),
-    username: fieldRequirement("Username field requirement for user accounts"),
+    username: usernameFieldRequirement(
+      "Username field requirement for user accounts",
+    ),
     usernameRegExp: t.string({
       description:
         "Regular expression that usernames must match (if username is enabled)",
+    }),
+    usernameBlocklist: t.array(t.text(), {
+      description:
+        "Usernames that the slugger / manual registration must reject. " +
+        "Default empty so apps can register `admin`/`root`/`me`/etc. if " +
+        "they want; populate it explicitly for handles you want to keep " +
+        "off-limits.",
     }),
     phoneNumber: fieldRequirement(
       "Phone number field requirement for user accounts",
@@ -138,8 +172,12 @@ export const realmAuthSettingsAtom = $atom({
     // for a fresh hello world setup, we accept registration and email login
     registrationAllowed: true,
     email: "required" as FieldRequirement,
-    username: "none" as FieldRequirement,
-    usernameRegExp: "^[a-zA-Z0-9_]{3,30}$",
+    username: "none" as UsernameFieldRequirement,
+    // Allow hyphens by default so the UsernameSlugger output (`ni-foures-testkv`)
+    // matches without app overrides. Existing `[a-zA-Z0-9_]` usernames remain
+    // valid because the new pattern is a strict superset.
+    usernameRegExp: "^[a-zA-Z0-9_-]{3,30}$",
+    usernameBlocklist: [] as string[],
     phoneNumber: "none" as FieldRequirement,
     verifyEmailRequired: false,
     verifyPhoneRequired: false,

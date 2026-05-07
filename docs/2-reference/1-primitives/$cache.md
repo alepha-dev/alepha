@@ -44,7 +44,7 @@ getUserData = $cache({
 | `name` | `string` | No | The cache name |
 | `handler` | `Object` | No | Function which returns cached data. |
 | `key` | `Object` | No | The key generator for the cache |
-| `provider` | `InstantiableClass&lt;CacheProvider&gt; \| "memory"` | No | The store provider for the cache |
+| `provider` | `Service&lt;CacheProvider&gt; \| "memory"` | No | The store provider for the cache |
 | `ttl` | `DurationLike` | No | The time-to-live for the cache in seconds |
 | `disabled` | `boolean` | No | If the cache is disabled. |
 | `compress` | `boolean` | No | Enable gzip compression for cached values |
