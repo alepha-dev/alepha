@@ -157,6 +157,20 @@ export class LocalFileStorageProvider implements FileStorageProvider {
     }
   }
 
+  public async deleteMany(
+    bucketName: string,
+    fileIds: string[],
+  ): Promise<void> {
+    await Promise.all(
+      fileIds.map((id) =>
+        unlink(this.path(bucketName, id)).catch((error) => {
+          if (this.isErrorNoEntry(error)) return;
+          throw new AlephaError("Error deleting file", { cause: error });
+        }),
+      ),
+    );
+  }
+
   protected stat(bucket: string, fileId: string): Promise<fs.Stats> {
     return stat(this.path(bucket, fileId));
   }

@@ -17,6 +17,11 @@ const folioListQuerySchema = t.object({
   offset: t.optional(t.integer({ minimum: 0, default: 0 })),
   tag: t.optional(t.string()),
   q: t.optional(t.string()),
+  campaignId: t.optional(t.integer()),
+});
+
+const tagListQuerySchema = t.object({
+  campaignId: t.optional(t.integer()),
 });
 
 export class FolioController {
@@ -37,6 +42,9 @@ export class FolioController {
     },
     handler: async ({ query, user }) => {
       const where: Record<string, unknown> = { userId: { eq: user.id } };
+      if (query.campaignId !== undefined) {
+        where.campaignId = { eq: query.campaignId };
+      }
       if (query.q) {
         where.searchText = { like: `%${query.q.toLowerCase()}%` };
       }
@@ -60,11 +68,16 @@ export class FolioController {
     use: [$secure({ permissions: ["folio:read"] })],
     description: "Return the distinct set of tags used by the current user.",
     schema: {
+      query: tagListQuerySchema,
       response: t.array(t.string()),
     },
-    handler: async ({ user }) => {
+    handler: async ({ query, user }) => {
+      const where: Record<string, unknown> = { userId: { eq: user.id } };
+      if (query.campaignId !== undefined) {
+        where.campaignId = { eq: query.campaignId };
+      }
       const rows = await this.folios.findMany({
-        where: { userId: { eq: user.id } },
+        where,
         columns: ["tags"],
       });
       const tags = new Set<string>();
@@ -100,6 +113,7 @@ export class FolioController {
         title: t.string({ minLength: 1, maxLength: 200 }),
         content: t.optional(t.string()),
         tags: t.optional(t.array(t.string())),
+        campaignId: t.integer(),
       }),
       response: folios.schema,
     },
@@ -107,6 +121,7 @@ export class FolioController {
       const tags = (body.tags ?? []).map((t) => t.trim()).filter(Boolean);
       return this.folios.create({
         userId: user.id,
+        campaignId: body.campaignId,
         title: body.title,
         content: body.content ?? "",
         tags,

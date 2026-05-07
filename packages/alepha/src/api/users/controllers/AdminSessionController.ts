@@ -74,4 +74,33 @@ export class AdminSessionController {
       return { ok: true, id: params.id };
     },
   });
+
+  /**
+   * Delete many sessions in one repository call.
+   */
+  public readonly deleteSessions = $action({
+    method: "POST",
+    path: `${this.url}/delete`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:session:delete"] })],
+    description: "Delete many sessions",
+    schema: {
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
+      body: t.object({
+        ids: t.array(t.uuid(), { minItems: 1, maxItems: 1000 }),
+      }),
+      response: t.object({
+        deleted: t.array(t.string()),
+      }),
+    },
+    handler: async ({ body, query }) => {
+      const deleted = await this.sessionService.deleteSessions(
+        body.ids,
+        query.userRealmName,
+      );
+      return { deleted };
+    },
+  });
 }

@@ -487,6 +487,24 @@ export class ParameterProvider {
   }
 
   /**
+   * Delete all versions of many parameters by name in one repository call.
+   */
+  public async deleteMany(names: string[]): Promise<string[]> {
+    if (names.length === 0) return [];
+    await this.repo.deleteMany({ name: { inArray: names } });
+    for (const name of names) {
+      this.cachedCurrent.delete(name);
+      this.cachedNext.delete(name);
+      this.loaded.delete(name);
+      this.loadPromises.delete(name);
+      this.loadGeneration.delete(name);
+      this.migrationChecked.delete(name);
+    }
+    this.log.info("Parameters deleted", { count: names.length });
+    return names;
+  }
+
+  /**
    * Get a specific version of a parameter.
    */
   public async getVersion(

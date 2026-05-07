@@ -38,10 +38,54 @@ export function AdminKeys() {
     setRefreshKey((rk) => rk + 1);
   };
 
+  const handleBulkRevoke = async (items: any[], clear: () => void) => {
+    const targets = items.filter((k) => !k.revokedAt);
+    if (targets.length === 0) {
+      toast.error(
+        tr("admin.keys.noneSelected", {
+          default: "No active API keys in selection",
+        }),
+      );
+      return;
+    }
+    const ok = await dialog.confirm({
+      title: tr("admin.keys.bulkRevokeTitle", {
+        default: "Revoke API keys",
+      }),
+      description: tr("admin.keys.bulkRevokeConfirm", {
+        default: `Revoke ${targets.length} API key(s)? Any apps using these keys will lose access.`,
+        args: [String(targets.length)],
+      }),
+      destructive: true,
+    });
+    if (!ok) return;
+    const res = await client.revokeApiKeys({
+      body: { ids: targets.map((k) => k.id) },
+    });
+    toast.success(
+      tr("admin.keys.bulkRevoked", {
+        default: `${res.revoked.length} API key(s) revoked`,
+        args: [String(res.revoked.length)],
+      }),
+    );
+    clear();
+    setRefreshKey((rk) => rk + 1);
+  };
+
   return (
     <div className="p-6">
       <AlephaTable
         fetch={fetcher}
+        bulkActions={[
+          {
+            label: tr("admin.keys.bulkRevoke", {
+              default: "Revoke selected",
+            }),
+            icon: Trash2,
+            destructive: true,
+            onClick: handleBulkRevoke,
+          },
+        ]}
         header={
           <div>
             <h1 className="text-lg font-semibold">

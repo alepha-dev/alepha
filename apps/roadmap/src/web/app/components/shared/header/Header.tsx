@@ -5,7 +5,6 @@ import HeaderCampaignActions from "../../campaign/CampaignActions.tsx";
 import RoadmapLogo from "../RoadmapLogo.tsx";
 import HeaderActions from "./HeaderActions.tsx";
 import HeaderCampaign from "./HeaderCampaign.tsx";
-import HeaderKanbanCreateButton from "./HeaderKanbanCreateButton.tsx";
 import HeaderMobileQuestLog from "./HeaderMobileQuestLog.tsx";
 
 const Header = () => {
@@ -31,7 +30,6 @@ const Header = () => {
         </div>
       </div>
       <div className="ml-auto flex items-center gap-2">
-        <HeaderKanbanCreateButton />
         <HeaderActions />
       </div>
     </div>

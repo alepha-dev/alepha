@@ -68,8 +68,10 @@ export class I18n {
         "campaign.menu.create-quest": "Create Quest",
         "campaign.menu.dashboard": "Tavern",
         "campaign.menu.board": "Board",
+        "campaign.menu.kanban": "Kanban",
         "campaign.menu.adventurers": "Adventurers",
         "campaign.menu.chronicles": "Chronicles",
+        "campaign.menu.lore": "Lore",
         "campaign.menu.whiteboards": "Draw",
         "campaign.menu.settings": "Settings",
 
@@ -344,8 +346,10 @@ export class I18n {
         "campaign.menu.create-quest": "Créer quête",
         "campaign.menu.dashboard": "Taverne",
         "campaign.menu.board": "Tableau",
+        "campaign.menu.kanban": "Kanban",
         "campaign.menu.adventurers": "Aventuriers",
         "campaign.menu.chronicles": "Chroniques",
+        "campaign.menu.lore": "Lore",
         "campaign.menu.whiteboards": "Dessiner",
         "campaign.menu.settings": "Paramètres",
 

@@ -78,6 +78,30 @@ export function AdminFiles() {
     setRefreshKey((k) => k + 1);
   };
 
+  const handleBulkDelete = async (items: any[], clear: () => void) => {
+    if (items.length === 0) return;
+    const ok = await dialog.confirm({
+      title: tr("admin.files.bulkDeleteTitle", { default: "Delete files" }),
+      description: tr("admin.files.bulkDeleteConfirm", {
+        default: `Permanently delete ${items.length} file(s)? This cannot be undone.`,
+        args: [String(items.length)],
+      }),
+      destructive: true,
+    });
+    if (!ok) return;
+    const res = await client.deleteFiles({
+      body: { ids: items.map((f) => f.id) },
+    });
+    toast.success(
+      tr("admin.files.bulkDeleted", {
+        default: `${res.deleted.length} file(s) deleted`,
+        args: [String(res.deleted.length)],
+      }),
+    );
+    clear();
+    setRefreshKey((k) => k + 1);
+  };
+
   return (
     <div className="p-6">
       <input
@@ -88,6 +112,16 @@ export function AdminFiles() {
       />
       <AlephaTable
         fetch={fetcher}
+        bulkActions={[
+          {
+            label: tr("admin.files.bulkDelete", {
+              default: "Delete selected",
+            }),
+            icon: Trash2,
+            destructive: true,
+            onClick: handleBulkDelete,
+          },
+        ]}
         header={
           <div className="flex items-start justify-between gap-3">
             <div>

@@ -5,7 +5,15 @@ import {
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-import { BookOpen, ChartLine, Home, Settings, Table } from "lucide-react";
+import {
+  BookOpen,
+  ChartLine,
+  Columns3,
+  Home,
+  ScrollText,
+  Settings,
+  Table,
+} from "lucide-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -14,8 +22,10 @@ import CampaignActionsCreateButton from "./CampaignActionsCreateButton.tsx";
 type TabValue =
   | "campaignDashboard"
   | "campaignBoard"
+  | "campaignKanban"
   | "campaignChapters"
   | "campaignChronicles"
+  | "campaignLore"
   | "campaignSettings";
 
 const CampaignActions = () => {
@@ -45,6 +55,11 @@ const CampaignActions = () => {
         label: String(tr("campaign.menu.board")),
       },
       {
+        value: "campaignKanban",
+        icon: <Columns3 className="size-4" />,
+        label: String(tr("campaign.menu.kanban")),
+      },
+      {
         value: "campaignChapters",
         icon: <BookOpen className="size-4" />,
         label: String(tr("campaign.menu.chapters")),
@@ -53,6 +68,11 @@ const CampaignActions = () => {
         value: "campaignChronicles",
         icon: <ChartLine className="size-4" />,
         label: String(tr("campaign.menu.chronicles")),
+      },
+      {
+        value: "campaignLore",
+        icon: <ScrollText className="size-4" />,
+        label: String(tr("campaign.menu.lore")),
       },
       {
         value: "campaignSettings",

@@ -37,10 +37,57 @@ export function AdminSessions() {
     setRefreshKey((k) => k + 1);
   };
 
+  const handleBulkRevoke = async (
+    items: SessionEntity[],
+    clear: () => void,
+  ) => {
+    const targets = items.filter((s) => !(s as any).revokedAt);
+    if (targets.length === 0) {
+      toast.error(
+        tr("admin.sessions.noneSelected", {
+          default: "No active sessions in selection",
+        }),
+      );
+      return;
+    }
+    const ok = await dialog.confirm({
+      title: tr("admin.sessions.bulkRevokeTitle", {
+        default: "Revoke sessions",
+      }),
+      description: tr("admin.sessions.bulkRevokeConfirm", {
+        default: `Revoke ${targets.length} session(s)? Affected users will be signed out.`,
+        args: [String(targets.length)],
+      }),
+      destructive: true,
+    });
+    if (!ok) return;
+    const res = await client.deleteSessions({
+      body: { ids: targets.map((s) => s.id) },
+    });
+    toast.success(
+      tr("admin.sessions.bulkRevoked", {
+        default: `${res.deleted.length} session(s) revoked`,
+        args: [String(res.deleted.length)],
+      }),
+    );
+    clear();
+    setRefreshKey((k) => k + 1);
+  };
+
   return (
     <div className="p-6">
       <AlephaTable<SessionEntity>
         fetch={fetcher}
+        bulkActions={[
+          {
+            label: tr("admin.sessions.bulkRevoke", {
+              default: "Revoke selected",
+            }),
+            icon: LogOut,
+            destructive: true,
+            onClick: handleBulkRevoke,
+          },
+        ]}
         header={
           <div>
             <h1 className="text-lg font-semibold">

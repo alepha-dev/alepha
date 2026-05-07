@@ -267,4 +267,30 @@ export class AdminParameterController {
       return { ok: true };
     },
   });
+
+  /**
+   * Delete many parameters (all versions of each) in one request.
+   */
+  deleteParameters = $action({
+    group: this.group,
+    use: [$secure({ permissions: ["admin:parameter:delete"] })],
+    description: "Delete all versions of many parameters by name.",
+    path: "/parameters/delete",
+    method: "POST",
+    schema: {
+      body: t.object({
+        names: t.array(t.string({ minLength: 1 }), {
+          minItems: 1,
+          maxItems: 1000,
+        }),
+      }),
+      response: t.object({
+        deleted: t.array(t.string()),
+      }),
+    },
+    handler: async ({ body }) => {
+      const deleted = await this.provider.deleteMany(body.names);
+      return { deleted };
+    },
+  });
 }

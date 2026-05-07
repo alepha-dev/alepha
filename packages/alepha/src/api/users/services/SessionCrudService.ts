@@ -71,4 +71,20 @@ export class SessionCrudService {
     await this.sessions(userRealmName).deleteById(id);
     this.log.info("Session deleted", { id });
   }
+
+  /**
+   * Delete many sessions by ID in one repository call.
+   */
+  public async deleteSessions(
+    ids: string[],
+    userRealmName?: string,
+  ): Promise<string[]> {
+    if (ids.length === 0) return [];
+    this.log.trace("Deleting sessions", { count: ids.length, userRealmName });
+    const deleted = await this.sessions(userRealmName).deleteMany({
+      id: { inArray: ids },
+    });
+    this.log.info("Sessions deleted", { count: deleted.length });
+    return deleted.map(String);
+  }
 }

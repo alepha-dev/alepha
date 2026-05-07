@@ -2,26 +2,67 @@ import type { Page } from "alepha";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useCallback } from "react";
+import { Trash2 } from "lucide-react";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
+import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 
 export function AdminAudits() {
   const client = useClient<AdminAuditController>();
+  const dialog = useDialog();
   const { l, tr } = useI18n();
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
       const res = await client.findAudits({ query: params as never });
       return res as Page<AuditEntity>;
     },
-    [client],
+    [client, refreshKey],
   );
+
+  const handleBulkDelete = async (items: AuditEntity[], clear: () => void) => {
+    if (items.length === 0) return;
+    const ok = await dialog.confirm({
+      title: tr("admin.audits.bulkDeleteTitle", {
+        default: "Delete audit entries",
+      }),
+      description: tr("admin.audits.bulkDeleteConfirm", {
+        default: `Delete ${items.length} audit record(s)? Audit logs are usually retained for compliance — this cannot be undone.`,
+        args: [String(items.length)],
+      }),
+      destructive: true,
+    });
+    if (!ok) return;
+    const res = await client.deleteAudits({
+      body: { ids: items.map((a) => a.id) },
+    });
+    toast.success(
+      tr("admin.audits.bulkDeleted", {
+        default: `${res.deleted.length} audit(s) deleted`,
+        args: [String(res.deleted.length)],
+      }),
+    );
+    clear();
+    setRefreshKey((k) => k + 1);
+  };
 
   return (
     <div className="p-6">
       <AlephaTable<AuditEntity>
         fetch={fetcher}
+        bulkActions={[
+          {
+            label: tr("admin.audits.bulkDelete", {
+              default: "Delete selected",
+            }),
+            icon: Trash2,
+            destructive: true,
+            onClick: handleBulkDelete,
+          },
+        ]}
         header={
           <div>
             <h1 className="text-lg font-semibold">

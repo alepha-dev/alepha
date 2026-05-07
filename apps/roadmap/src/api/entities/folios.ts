@@ -1,6 +1,7 @@
 import { type Static, t } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
+import { campaigns } from "./campaigns.ts";
 
 export const folios = $entity({
   name: "folios",
@@ -9,6 +10,9 @@ export const folios = $entity({
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     userId: db.ref(t.uuid(), () => users.cols.id, { onDelete: "cascade" }),
+    campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
+      onDelete: "cascade",
+    }),
     title: t.string({ minLength: 1, maxLength: 200 }),
     content: db.default(t.string(), ""),
     tags: db.default(t.array(t.string()), []),
@@ -21,6 +25,7 @@ export const folios = $entity({
   indexes: [
     { columns: ["userId", "updatedAt"] },
     { columns: ["userId", "title"] },
+    { columns: ["campaignId", "userId", "updatedAt"] },
   ],
 });
 

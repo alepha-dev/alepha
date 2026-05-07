@@ -2,7 +2,7 @@ import { $inject, t } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action, NotFoundError } from "alepha/server";
+import { $action, NotFoundError, okSchema } from "alepha/server";
 import { NotificationJobs } from "../jobs/NotificationJobs.ts";
 import { notificationDetailResourceSchema } from "../schemas/notificationDetailResourceSchema.ts";
 import { notificationQuerySchema } from "../schemas/notificationQuerySchema.ts";
@@ -58,6 +58,53 @@ export class AdminNotificationController {
         throw new NotFoundError(`Notification not found: ${params.id}`);
       }
       return this.toDetailResource(exec) as any;
+    },
+  });
+
+  public readonly deleteNotification = $action({
+    method: "DELETE",
+    path: `${this.url}/:id`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:notification:delete"] })],
+    description: "Delete a notification record",
+    schema: {
+      params: t.object({
+        id: t.uuid(),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params }) => {
+      const exec = await this.executions.findById(params.id);
+      if (!exec || exec.jobName !== this.jobName) {
+        throw new NotFoundError(`Notification not found: ${params.id}`);
+      }
+      await this.executions.deleteById(params.id);
+      return { ok: true, id: params.id };
+    },
+  });
+
+  public readonly deleteNotifications = $action({
+    method: "POST",
+    path: `${this.url}/delete`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:notification:delete"] })],
+    description: "Delete many notification records in one call",
+    schema: {
+      body: t.object({
+        ids: t.array(t.uuid(), { minItems: 1, maxItems: 1000 }),
+      }),
+      response: t.object({
+        deleted: t.array(t.uuid()),
+      }),
+    },
+    handler: async ({ body }) => {
+      // Constrain to this job's executions so an admin can't delete arbitrary
+      // job rows through this endpoint.
+      const deleted = await this.executions.deleteMany({
+        id: { inArray: body.ids },
+        jobName: { eq: this.jobName },
+      });
+      return { deleted: deleted.map(String) };
     },
   });
 

@@ -278,6 +278,27 @@ export class BucketPrimitive extends Primitive<BucketPrimitiveOptions> {
   }
 
   /**
+   * Delete many files in one round-trip when the underlying provider supports
+   * batch (R2/S3 up to 1000 keys per call). Emits one `bucket:file:deleted`
+   * event per id unless `skipHook` is set.
+   */
+  public async deleteMany(fileIds: string[], skipHook = false): Promise<void> {
+    if (fileIds.length === 0) return;
+    await this.provider.deleteMany(this.name, fileIds);
+
+    if (skipHook) {
+      return;
+    }
+
+    for (const id of fileIds) {
+      await this.alepha.events.emit("bucket:file:deleted", {
+        id,
+        bucket: this,
+      });
+    }
+  }
+
+  /**
    * Checks if a file exists in the bucket.
    */
   public async exists(fileId: string): Promise<boolean> {

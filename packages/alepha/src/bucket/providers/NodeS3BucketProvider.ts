@@ -215,4 +215,39 @@ export class NodeS3BucketProvider implements FileStorageProvider {
       throw error;
     }
   }
+
+  public async deleteMany(
+    bucketName: string,
+    fileIds: string[],
+  ): Promise<void> {
+    if (fileIds.length === 0) return;
+    this.log.trace(
+      `Deleting ${fileIds.length} files from bucket '${bucketName}'...`,
+    );
+    const client = this.getClient(bucketName);
+    // S3 DeleteObjects caps at 1000 keys per request.
+    for (let i = 0; i < fileIds.length; i += 1000) {
+      const chunk = fileIds.slice(i, i + 1000);
+      try {
+        // bun:s3 client exposes a per-key deleteObject; some SDKs also expose
+        // deleteObjects(keys: string[]). Prefer batch when available.
+        const batch = (
+          client as unknown as {
+            deleteObjects?: (keys: string[]) => Promise<unknown>;
+          }
+        ).deleteObjects;
+        if (typeof batch === "function") {
+          await batch.call(client, chunk);
+        } else {
+          await Promise.all(chunk.map((id) => client.deleteObject(id)));
+        }
+      } catch (error) {
+        this.log.error(`Failed to delete files: ${error}`);
+        if (error instanceof Error) {
+          throw new FileNotFoundError("Error deleting files", { cause: error });
+        }
+        throw error;
+      }
+    }
+  }
 }

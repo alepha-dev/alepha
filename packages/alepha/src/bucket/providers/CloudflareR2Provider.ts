@@ -210,6 +210,21 @@ export class CloudflareR2Provider implements FileStorageProvider {
     await r2.delete(key);
   }
 
+  public async deleteMany(
+    bucketName: string,
+    fileIds: string[],
+  ): Promise<void> {
+    if (fileIds.length === 0) return;
+    const r2 = this.getR2();
+    const keys = fileIds.map((id) => this.key(bucketName, id));
+    this.log.trace(`Deleting ${keys.length} keys from '${bucketName}'`);
+    // R2 binding accepts a string[] and silently ignores missing keys.
+    // Chunk at 1000 to stay within the documented batch limit.
+    for (let i = 0; i < keys.length; i += 1000) {
+      await r2.delete(keys.slice(i, i + 1000));
+    }
+  }
+
   /**
    * Build the full R2 key: {prefix}/{bucketName}/{fileId}
    */

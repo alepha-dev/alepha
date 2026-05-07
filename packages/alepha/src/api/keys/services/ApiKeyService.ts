@@ -180,6 +180,35 @@ export class ApiKeyService {
     });
   }
 
+  /**
+   * Revoke many API keys in one repository call (admin only). Already-revoked
+   * keys are silently skipped. Returns the ids that were actually revoked.
+   */
+  public async revokeManyByAdmin(ids: string[]): Promise<string[]> {
+    if (ids.length === 0) return [];
+
+    const keys = await this.repo.findMany({
+      where: { id: { inArray: ids } },
+      columns: ["id", "tokenHash", "revokedAt"],
+    });
+    const toRevoke = keys.filter((k) => !k.revokedAt);
+    if (toRevoke.length === 0) return [];
+
+    await Promise.all(
+      toRevoke.map((k) => this.validationCache.invalidate(k.tokenHash)),
+    );
+
+    await this.repo.updateMany(
+      { id: { inArray: toRevoke.map((k) => k.id) } },
+      {
+        revokedAt: this.dateTimeProvider.now().toISOString(),
+      },
+    );
+
+    this.log.info("API keys revoked by admin", { count: toRevoke.length });
+    return toRevoke.map((k) => k.id);
+  }
+
   // -------------------------------------------------------------------------
   // User Operations
   // -------------------------------------------------------------------------

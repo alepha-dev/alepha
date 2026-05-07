@@ -73,4 +73,27 @@ export class AdminApiKeyController {
       return { ok: true, id: params.id };
     },
   });
+
+  /**
+   * Revoke many API keys in one request.
+   */
+  public readonly revokeApiKeys = $action({
+    method: "POST",
+    path: `${this.url}/revoke`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:api-key:delete"] })],
+    description: "Revoke many API keys",
+    schema: {
+      body: t.object({
+        ids: t.array(t.uuid(), { minItems: 1, maxItems: 1000 }),
+      }),
+      response: t.object({
+        revoked: t.array(t.uuid()),
+      }),
+    },
+    handler: async ({ body }) => {
+      const revoked = await this.apiKeyService.revokeManyByAdmin(body.ids);
+      return { revoked };
+    },
+  });
 }

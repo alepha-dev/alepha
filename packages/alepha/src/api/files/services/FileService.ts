@@ -325,6 +325,47 @@ export class FileService {
   }
 
   /**
+   * Delete many files in one round-trip per bucket. The database rows are
+   * removed in a single `deleteMany`, and each affected bucket gets a single
+   * `bucket.deleteMany` call (R2/S3 batch where supported).
+   */
+  public async deleteFiles(ids: string[]): Promise<string[]> {
+    if (ids.length === 0) return [];
+
+    const files = await this.fileRepository.findMany({
+      where: { id: { inArray: ids } },
+      columns: ["id", "bucket", "blobId"],
+    });
+    if (files.length === 0) return [];
+
+    const dbDeleted = await this.fileRepository.deleteMany({
+      id: { inArray: files.map((f) => f.id) },
+    });
+
+    const blobsByBucket = new Map<string, string[]>();
+    for (const f of files) {
+      const list = blobsByBucket.get(f.bucket) ?? [];
+      list.push(f.blobId);
+      blobsByBucket.set(f.bucket, list);
+    }
+
+    for (const [bucketName, blobIds] of blobsByBucket) {
+      try {
+        await this.bucket(bucketName).deleteMany(blobIds, true);
+      } catch (e) {
+        // DB rows already gone — log and continue. Orphaned blobs are
+        // recoverable; orphaned DB rows would be worse.
+        this.log.warn(
+          `Failed to bulk-delete ${blobIds.length} files from bucket ${bucketName}`,
+          e,
+        );
+      }
+    }
+
+    return dbDeleted.map(String);
+  }
+
+  /**
    * Retrieves a file entity by its ID.
    * If already an entity object, returns it as-is (convenience method).
    *

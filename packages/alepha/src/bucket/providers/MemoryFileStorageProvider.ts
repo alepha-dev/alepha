@@ -70,6 +70,15 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
     delete this.files[fileKey];
   }
 
+  public async deleteMany(
+    bucketName: string,
+    fileIds: string[],
+  ): Promise<void> {
+    for (const id of fileIds) {
+      delete this.files[`${bucketName}/${id}`];
+    }
+  }
+
   protected createId(): string {
     return randomUUID();
   }

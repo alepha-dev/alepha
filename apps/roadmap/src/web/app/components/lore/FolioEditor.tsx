@@ -10,6 +10,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { AppRouter } from "../../AppRouter.ts";
+import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import { currentFolioAtom } from "../../atoms/currentFolioAtom.ts";
 import { folioTagsAtom } from "../../atoms/folioTagsAtom.ts";
 import { userFoliosAtom } from "../../atoms/userFoliosAtom.ts";
@@ -47,6 +48,8 @@ const FolioEditor = (props: FolioEditorProps) => {
   const folioApi = useClient<FolioController>();
   const [folios, setFolios] = useStore(userFoliosAtom);
   const [tags, setTags] = useStore(folioTagsAtom);
+  const [campaign] = useStore(currentCampaignAtom);
+  const campaignId = campaign ? String(campaign.id) : "";
 
   const isEdit = !!props.folio;
 
@@ -65,7 +68,9 @@ const FolioEditor = (props: FolioEditorProps) => {
               params: { id: props.folio.id },
               body: data,
             })
-          : await folioApi.create({ body: data });
+          : await folioApi.create({
+              body: { ...data, campaignId: campaign?.id },
+            });
 
       // Update sidebar list
       const next = isEdit
@@ -80,17 +85,25 @@ const FolioEditor = (props: FolioEditorProps) => {
 
       alepha.store.set(currentFolioAtom, saved);
 
-      await router.push(router.path("loreFolio", { params: { id: saved.id } }));
+      await router.push(
+        router.path("campaignLoreFolio", {
+          params: { campaignId, id: saved.id },
+        }),
+      );
     },
   });
 
   const handleBack = async () => {
     if (isEdit && props.folio) {
       await router.push(
-        router.path("loreFolio", { params: { id: props.folio.id } }),
+        router.path("campaignLoreFolio", {
+          params: { campaignId, id: props.folio.id },
+        }),
       );
     } else {
-      await router.push(router.path("lore"));
+      await router.push(
+        router.path("campaignLore", { params: { campaignId } }),
+      );
     }
   };
 

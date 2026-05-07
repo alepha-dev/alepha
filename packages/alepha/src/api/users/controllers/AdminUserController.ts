@@ -119,4 +119,36 @@ export class AdminUserController {
       return { ok: true, id: params.id };
     },
   });
+
+  /**
+   * Delete many users in one request. Each id is processed sequentially so
+   * cascades and side-effects run as if called one-by-one. Errors on a single
+   * id surface with that id in the response.
+   */
+  public readonly deleteUsers = $action({
+    method: "POST",
+    path: `${this.url}/delete`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:user:delete"] })],
+    description: "Delete many users",
+    schema: {
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
+      body: t.object({
+        ids: t.array(t.uuid(), { minItems: 1, maxItems: 1000 }),
+      }),
+      response: t.object({
+        deleted: t.array(t.uuid()),
+      }),
+    },
+    handler: async ({ body, query }) => {
+      const deleted: string[] = [];
+      for (const id of body.ids) {
+        await this.userService.deleteUser(id, query.userRealmName);
+        deleted.push(id);
+      }
+      return { deleted };
+    },
+  });
 }

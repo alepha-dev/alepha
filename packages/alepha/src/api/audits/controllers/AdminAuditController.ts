@@ -1,6 +1,8 @@
 import { $inject, t } from "alepha";
+import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
+import { audits } from "../entities/audits.ts";
 import { auditQuerySchema } from "../schemas/auditQuerySchema.ts";
 import { auditResourceSchema } from "../schemas/auditResourceSchema.ts";
 import { createAuditSchema } from "../schemas/createAuditSchema.ts";
@@ -19,6 +21,7 @@ export class AdminAuditController {
   protected readonly url = "/audits";
   protected readonly group = "admin:audits";
   protected readonly auditService = $inject(AuditService);
+  protected readonly repo = $repository(audits);
 
   /**
    * Find audit entries with filtering and pagination.
@@ -50,6 +53,32 @@ export class AdminAuditController {
       response: auditResourceSchema,
     },
     handler: ({ params }) => this.auditService.getById(params.id),
+  });
+
+  /**
+   * Delete many audit entries by id in one repository call. Use with care —
+   * audit logs are usually retained for compliance reasons.
+   */
+  public readonly deleteAudits = $action({
+    method: "POST",
+    path: `${this.url}/delete`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:audit:delete"] })],
+    description: "Delete many audit entries",
+    schema: {
+      body: t.object({
+        ids: t.array(t.text(), { minItems: 1, maxItems: 1000 }),
+      }),
+      response: t.object({
+        deleted: t.array(t.text()),
+      }),
+    },
+    handler: async ({ body }) => {
+      const deleted = await this.repo.deleteMany({
+        id: { inArray: body.ids },
+      });
+      return { deleted: deleted.map(String) };
+    },
   });
 
   /**

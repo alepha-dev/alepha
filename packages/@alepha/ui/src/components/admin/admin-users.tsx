@@ -106,6 +106,39 @@ export function AdminUsers(props: AdminUsersProps) {
     setRefreshKey((k) => k + 1);
   };
 
+  const handleBulkDelete = async (items: UserEntity[], clear: () => void) => {
+    const targets = items.filter((u) => !isSelf(u));
+    if (targets.length === 0) {
+      toast.error(
+        tr("admin.users.noneSelected", {
+          default: "No deletable users in selection",
+        }),
+      );
+      return;
+    }
+    const ok = await dialog.confirm({
+      title: tr("admin.users.bulkDeleteTitle", { default: "Delete users" }),
+      description: tr("admin.users.bulkDeleteConfirm", {
+        default: `Delete ${targets.length} user(s)? This cannot be undone.`,
+        args: [String(targets.length)],
+      }),
+      destructive: true,
+    });
+    if (!ok) return;
+    const res = await client.deleteUsers({
+      query: { userRealmName: props.userRealmName },
+      body: { ids: targets.map((u) => u.id) },
+    });
+    toast.success(
+      tr("admin.users.bulkDeleted", {
+        default: `${res.deleted.length} user(s) deleted`,
+        args: [String(res.deleted.length)],
+      }),
+    );
+    clear();
+    setRefreshKey((k) => k + 1);
+  };
+
   const handleBulkDisable = async (items: UserEntity[], clear: () => void) => {
     const enabled = items.filter((u) => u.enabled && !isSelf(u));
     if (enabled.length === 0) {
@@ -154,6 +187,14 @@ export function AdminUsers(props: AdminUsersProps) {
             icon: UserX,
             destructive: true,
             onClick: handleBulkDisable,
+          },
+          {
+            label: tr("admin.users.bulkDelete", {
+              default: "Delete selected",
+            }),
+            icon: Trash2,
+            destructive: true,
+            onClick: handleBulkDelete,
           },
         ]}
         columns={{

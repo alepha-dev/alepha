@@ -40,4 +40,13 @@ export abstract class FileStorageProvider {
    * @param fileId - Identifier of the file to delete
    */
   abstract delete(bucketName: string, fileId: string): Promise<void>;
+
+  /**
+   * Delete multiple files in one round-trip where the provider supports
+   * batch (R2/S3, up to 1000 per call). Memory/Local fall back to a loop.
+   *
+   * @param bucketName - Container name
+   * @param fileIds - Identifiers of the files to delete
+   */
+  abstract deleteMany(bucketName: string, fileIds: string[]): Promise<void>;
 }

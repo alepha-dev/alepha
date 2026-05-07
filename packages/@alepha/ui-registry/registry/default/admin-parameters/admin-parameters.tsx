@@ -67,10 +67,47 @@ export function AdminParameters() {
     setRefreshKey((k) => k + 1);
   };
 
+  const handleBulkDelete = async (items: any[], clear: () => void) => {
+    if (items.length === 0) return;
+    const ok = await dialog.confirm({
+      title: tr("admin.parameters.bulkDeleteTitle", {
+        default: "Delete parameters",
+      }),
+      description: tr("admin.parameters.bulkDeleteConfirm", {
+        default: `Delete ${items.length} parameter(s)? Apps reading these keys will fall back to defaults.`,
+        args: [String(items.length)],
+      }),
+      destructive: true,
+    });
+    if (!ok) return;
+    const res = await client.deleteParameters({
+      body: { names: items.map((p) => p.name) },
+    });
+    toast.success(
+      tr("admin.parameters.bulkDeleted", {
+        default: `${res.deleted.length} parameter(s) deleted`,
+        args: [String(res.deleted.length)],
+      }),
+    );
+    clear();
+    setRefreshKey((k) => k + 1);
+  };
+
   return (
     <div className="p-6">
       <AlephaTable
         fetch={fetcher}
+        rowKey={(p: any) => p.name}
+        bulkActions={[
+          {
+            label: tr("admin.parameters.bulkDelete", {
+              default: "Delete selected",
+            }),
+            icon: Trash2,
+            destructive: true,
+            onClick: handleBulkDelete,
+          },
+        ]}
         header={
           <div>
             <h1 className="text-lg font-semibold">

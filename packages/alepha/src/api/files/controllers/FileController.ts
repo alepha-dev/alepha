@@ -51,6 +51,30 @@ export class FileController {
   });
 
   /**
+   * POST /files/delete - Delete many files in one request, batching the
+   * underlying bucket calls per bucket (R2/S3 batch where supported).
+   */
+  public readonly deleteFiles = $action({
+    method: "POST",
+    path: `${this.url}/delete`,
+    group: `admin:${this.group}`,
+    use: [$secure({ permissions: ["admin:file:delete"] })],
+    description: "Delete many files",
+    schema: {
+      body: t.object({
+        ids: t.array(t.uuid(), { minItems: 1, maxItems: 1000 }),
+      }),
+      response: t.object({
+        deleted: t.array(t.string()),
+      }),
+    },
+    handler: async ({ body }) => {
+      const deleted = await this.fileService.deleteFiles(body.ids);
+      return { deleted };
+    },
+  });
+
+  /**
    * POST /files - Uploads a new file to storage.
    * Creates a database record with metadata and calculates checksum.
    * Optionally specify bucket and expiration date.
