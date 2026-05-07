@@ -70,8 +70,7 @@ export class AppRouter {
       this.register,
       this.campaign,
       this.campaignCreate,
-      this.kanban,
-      this.lore,
+      this.kanbanRedirect,
       this.meRouter.me,
       this.notFound,
     ],
@@ -156,22 +155,15 @@ export class AppRouter {
     lazy: () => import("./components/campaign/CampaignCreate.tsx"),
   });
 
-  kanban = $page({
+  /**
+   * Legacy redirect — old shared `/k/:campaignId` links now go to the
+   * integrated `campaignKanban` tab under the campaign layout.
+   */
+  kanbanRedirect = $page({
+    name: "kanbanRedirect",
     path: "/k/:campaignId",
-    schema: {
-      params: t.object({
-        campaignId: t.integer(),
-      }),
-    },
-    head: {
-      title: "Kanban",
-    },
-    lazy: () => import("./components/kanban/KanbanBoard.tsx"),
-    loader: async ({ params }) => {
-      const data = await this.kanbanApi.getBoard({
-        params: { campaignId: params.campaignId },
-      });
-      return data;
+    loader: async ({ params }): Promise<unknown> => {
+      throw new Redirection(`/c/${params.campaignId}/kanban`);
     },
   });
 
@@ -183,6 +175,8 @@ export class AppRouter {
       this.campaignChapters,
       this.campaignSettings,
       this.campaignChronicles,
+      this.campaignLore,
+      this.campaignKanban,
     ],
     path: "/c/:campaignId",
     schema: {
@@ -233,6 +227,23 @@ export class AppRouter {
   campaignChapters = $page({
     path: "/chapters",
     lazy: () => import("./components/campaign/chapters/CampaignChapters.tsx"),
+  });
+
+  campaignKanban = $page({
+    name: "campaignKanban",
+    path: "/kanban",
+    head: { title: "Kanban" },
+    lazy: () => import("./components/kanban/KanbanBoard.tsx"),
+    loader: async () => {
+      const campaign = this.alepha.store.get(currentCampaignAtom);
+      if (!campaign) {
+        throw new NotFoundError("Campaign not found");
+      }
+      const data = await this.kanbanApi.getBoard({
+        params: { campaignId: campaign.id },
+      });
+      return data;
+    },
   });
 
   campaignChronicles = $page({
@@ -334,19 +345,28 @@ export class AppRouter {
   });
 
   // -------------------------------------------------------------------------------------------------------------------
-  // Lore — personal markdown notes ("folios")
+  // Lore — campaign-scoped markdown notes ("folios")
   // -------------------------------------------------------------------------------------------------------------------
 
-  lore = $page({
-    name: "lore",
-    children: () => [this.loreNew, this.loreFolio, this.loreFolioEdit],
+  campaignLore = $page({
+    name: "campaignLore",
+    children: () => [
+      this.campaignLoreNew,
+      this.campaignLoreFolio,
+      this.campaignLoreFolioEdit,
+    ],
     path: "/lore",
     head: { title: "Lore" },
     lazy: () => import("./components/lore/LoreLayout.tsx"),
     loader: async () => {
+      const campaign = this.alepha.store.get(currentCampaignAtom);
+      const campaignId = campaign?.id;
+      if (campaignId === undefined) {
+        throw new NotFoundError("Campaign not found");
+      }
       const [folios, tags] = await Promise.all([
-        this.folioApi.list({ query: { limit: 100 } }),
-        this.folioApi.listTags(),
+        this.folioApi.list({ query: { limit: 100, campaignId } }),
+        this.folioApi.listTags({ query: { campaignId } }),
       ]);
       this.alepha.store.set(userFoliosAtom, folios);
       this.alepha.store.set(folioTagsAtom, tags);
@@ -356,8 +376,8 @@ export class AppRouter {
     },
   });
 
-  loreNew = $page({
-    name: "loreNew",
+  campaignLoreNew = $page({
+    name: "campaignLoreNew",
     path: "/new",
     head: { title: "New folio" },
     lazy: () => import("./components/lore/FolioCreatePage.tsx"),
@@ -367,8 +387,8 @@ export class AppRouter {
     },
   });
 
-  loreFolio = $page({
-    name: "loreFolio",
+  campaignLoreFolio = $page({
+    name: "campaignLoreFolio",
     path: "/:id",
     schema: {
       params: t.object({ id: t.uuid() }),
@@ -381,8 +401,8 @@ export class AppRouter {
     },
   });
 
-  loreFolioEdit = $page({
-    name: "loreFolioEdit",
+  campaignLoreFolioEdit = $page({
+    name: "campaignLoreFolioEdit",
     path: "/:id/edit",
     schema: {
       params: t.object({ id: t.uuid() }),

@@ -7,10 +7,12 @@ import {
 } from "@alepha/ui/components/ui/sheet";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useRouterState } from "alepha/react/router";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
+import { kanbanReloadAtom } from "../../atoms/kanbanCampaignAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import QuestCreate from "./quest/QuestCreate.tsx";
 
@@ -23,6 +25,9 @@ const CampaignActionsCreateButton = (
   const { tr } = useI18n<I18n, "en">();
   const client = useClient<QuestController>();
   const [campaign] = useStore(currentCampaignAtom);
+  const [reloadKey, setReloadKey] = useStore(kanbanReloadAtom);
+  const routerState = useRouterState();
+  const onKanban = routerState.name === "campaignKanban";
 
   if (!campaign) {
     return null;
@@ -53,6 +58,14 @@ const CampaignActionsCreateButton = (
             <QuestCreate
               campaign={campaign}
               onSubmit={() => setShowDialog(false)}
+              onCreated={
+                onKanban
+                  ? () => {
+                      setShowDialog(false);
+                      setReloadKey({ key: (reloadKey?.key ?? 0) + 1 });
+                    }
+                  : undefined
+              }
             />
           </div>
         </SheetContent>

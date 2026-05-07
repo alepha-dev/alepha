@@ -7,13 +7,7 @@ import { useInject, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import {
-  ArrowRight,
-  BookOpen,
-  Globe2,
-  ScrollText,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, Globe2, ScrollText, Sparkles } from "lucide-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -49,27 +43,6 @@ const Home = () => {
           createLabel={String(tr("home.create-campaign"))}
           adventurerName={auth.user?.username}
         />
-
-        {auth.user && (
-          <>
-            <Separator className="my-10" />
-            <Link
-              href={router.path("lore")}
-              className="hover:bg-muted/50 group flex items-center gap-3 rounded-lg border p-4 transition-colors"
-            >
-              <div className="bg-muted text-muted-foreground inline-flex size-10 shrink-0 items-center justify-center rounded-full">
-                <BookOpen className="size-5" />
-              </div>
-              <div className="flex flex-1 flex-col">
-                <span className="font-medium">{tr("home.lore")}</span>
-                <span className="text-muted-foreground text-xs">
-                  {tr("home.lore-description")}
-                </span>
-              </div>
-              <ArrowRight className="text-muted-foreground size-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </>
-        )}
 
         <Separator className="my-10" />
 

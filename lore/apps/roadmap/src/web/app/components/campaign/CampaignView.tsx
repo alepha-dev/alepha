@@ -10,9 +10,19 @@ const ROUTES_WITH_QUEST_LOG = new Set([
   "campaignQuest",
 ]);
 
+const ROUTES_FULL_WIDTH = new Set([
+  "campaignKanban",
+  "campaignLore",
+  "campaignLoreNew",
+  "campaignLoreFolio",
+  "campaignLoreFolioEdit",
+]);
+
 const CampaignView = () => {
   const routerState = useRouterState();
-  const showQuestLog = ROUTES_WITH_QUEST_LOG.has(routerState.name ?? "");
+  const name = routerState.name ?? "";
+  const showQuestLog = ROUTES_WITH_QUEST_LOG.has(name);
+  const fullWidth = ROUTES_FULL_WIDTH.has(name);
 
   return (
     <div className="flex flex-1 flex-col overflow-auto">
@@ -32,6 +42,10 @@ const CampaignView = () => {
               <div className="flex flex-1 flex-col overflow-auto">
                 <NestedView />
               </div>
+            </div>
+          ) : fullWidth ? (
+            <div className="flex w-full flex-1 flex-col overflow-auto">
+              <NestedView />
             </div>
           ) : (
             <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col overflow-auto p-2">

@@ -16,6 +16,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { AppRouter } from "../../AppRouter.ts";
+import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import { currentFolioAtom } from "../../atoms/currentFolioAtom.ts";
 import { folioTagsAtom } from "../../atoms/folioTagsAtom.ts";
 import { userFoliosAtom } from "../../atoms/userFoliosAtom.ts";
@@ -31,6 +32,8 @@ const FolioView = () => {
   const [folio] = useStore(currentFolioAtom);
   const [folios, setFolios] = useStore(userFoliosAtom);
   const [, setTags] = useStore(folioTagsAtom);
+  const [campaign] = useStore(currentCampaignAtom);
+  const campaignId = campaign ? String(campaign.id) : "";
 
   const deleteAction = useAction(
     {
@@ -43,7 +46,9 @@ const FolioView = () => {
         for (const f of remaining) for (const t of f.tags) remainingTags.add(t);
         setTags([...remainingTags].sort());
         alepha.store.set(currentFolioAtom, undefined);
-        await router.push(router.path("lore"));
+        await router.push(
+          router.path("campaignLore", { params: { campaignId } }),
+        );
       },
     },
     [folio, folios, folioApi, alepha, router, setFolios, setTags],
@@ -67,7 +72,9 @@ const FolioView = () => {
         </h1>
         <Button asChild variant="ghost" size="icon">
           <Link
-            href={router.path("loreFolioEdit", { params: { id: folio.id } })}
+            href={router.path("campaignLoreFolioEdit", {
+              params: { campaignId, id: folio.id },
+            })}
             aria-label={String(tr("lore.edit"))}
           >
             <Pencil className="size-4" />

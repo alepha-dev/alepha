@@ -8,6 +8,7 @@ import { Link, useRouter } from "alepha/react/router";
 import { BookOpen, Plus, Search, Tag } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
+import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import { currentFolioAtom } from "../../atoms/currentFolioAtom.ts";
 import { folioTagsAtom } from "../../atoms/folioTagsAtom.ts";
 import { userFoliosAtom } from "../../atoms/userFoliosAtom.ts";
@@ -19,6 +20,8 @@ const LoreSidebar = () => {
   const [folios] = useStore(userFoliosAtom);
   const [tags] = useStore(folioTagsAtom);
   const [current] = useStore(currentFolioAtom);
+  const [campaign] = useStore(currentCampaignAtom);
+  const campaignId = campaign ? String(campaign.id) : "";
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
@@ -42,7 +45,7 @@ const LoreSidebar = () => {
         <h2 className="flex-1 text-sm font-semibold">{tr("lore.title")}</h2>
         <Button asChild size="icon" variant="ghost" className="size-7">
           <Link
-            href={router.path("loreNew")}
+            href={router.path("campaignLoreNew", { params: { campaignId } })}
             aria-label={String(tr("lore.new"))}
           >
             <Plus className="size-4" />
@@ -103,7 +106,9 @@ const LoreSidebar = () => {
             return (
               <Link
                 key={folio.id}
-                href={router.path("loreFolio", { params: { id: folio.id } })}
+                href={router.path("campaignLoreFolio", {
+                  params: { campaignId, id: folio.id },
+                })}
                 className={`hover:bg-muted flex flex-col gap-0.5 px-4 py-2 text-sm transition-colors ${
                   isActive ? "bg-muted" : ""
                 }`}
