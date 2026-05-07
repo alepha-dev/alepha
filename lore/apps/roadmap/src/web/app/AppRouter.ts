@@ -68,6 +68,7 @@ export class AppRouter {
       this.home,
       this.login,
       this.register,
+      this.resetPassword,
       this.campaign,
       this.campaignCreate,
       this.kanbanRedirect,
@@ -136,6 +137,17 @@ export class AppRouter {
     name: "register",
     head: { title: "Sign up" },
     lazy: () => import("./components/auth/AuthRegisterPage.tsx"),
+    loader: async () => {
+      const realmConfig = await this.realmApi.getRealmConfig();
+      return { realmConfig };
+    },
+  });
+
+  resetPassword = $page({
+    path: "/auth/reset-password",
+    name: "resetPassword",
+    head: { title: "Reset password" },
+    lazy: () => import("./components/auth/AuthResetPasswordPage.tsx"),
     loader: async () => {
       const realmConfig = await this.realmApi.getRealmConfig();
       return { realmConfig };

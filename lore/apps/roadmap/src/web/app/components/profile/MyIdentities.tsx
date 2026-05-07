@@ -29,7 +29,6 @@ const MyIdentities = (props: MyIdentitiesProps) => {
   const { identities } = props;
   const [opened, setOpened] = useState(false);
   const [localIdentities, setLocalIdentities] = useState(identities);
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -43,7 +42,6 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 
   const close = () => {
     setOpened(false);
-    setUsername("");
     setPassword("");
     setConfirmPassword("");
   };
@@ -56,13 +54,18 @@ const MyIdentities = (props: MyIdentitiesProps) => {
     }
     setSubmitting(true);
     try {
-      await identityApi.setPassword({ body: { username, password } });
+      const { success } = await identityApi.setPassword({
+        body: { password },
+      });
+      if (!success) {
+        throw new Error("Server rejected the password change");
+      }
       setLocalIdentities((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           provider: "usernamePassword",
-          providerUserId: username,
+          providerUserId: "",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -152,22 +155,9 @@ const MyIdentities = (props: MyIdentitiesProps) => {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <span className="text-sm text-muted-foreground">
-              Set up a username and password to sign in without external
-              providers.
+              Set up a password to sign in with your email address without going
+              through an external provider.
             </span>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Choose a username"
-                autoComplete="username"
-                minLength={3}
-                maxLength={30}
-                required
-              />
-            </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="password">Password</Label>
               <Input

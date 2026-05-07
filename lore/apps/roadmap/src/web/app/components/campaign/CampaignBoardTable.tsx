@@ -30,6 +30,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
+import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
 import QuestDifficulty from "./quest/QuestDifficulty.tsx";
 
@@ -191,7 +192,10 @@ const CampaignBoardTable = () => {
                 <div className="flex items-center gap-2">
                   {renderAvatar(quest.acceptedBy)}
                   <span className="text-sm">
-                    {users.find((u) => u.id === quest.acceptedBy)?.username}
+                    {displayName(
+                      users.find((u) => u.id === quest.acceptedBy),
+                      "",
+                    )}
                   </span>
                 </div>
               ) : (
