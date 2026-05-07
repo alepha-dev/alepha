@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import type { CronProvider } from "alepha/scheduler";
 import { FileSystemProvider } from "alepha/system";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
@@ -47,7 +48,11 @@ export class BuildVercelTask extends BuildTask {
     await this.fs.mkdir(funcDir);
     await this.fs.mkdir(staticDir);
 
-    await this.writeOutputConfig(outputDir, ctx.options.vercel?.config);
+    await this.writeOutputConfig(
+      outputDir,
+      ctx.options.vercel?.config,
+      this.collectCronJobs(ctx),
+    );
     await this.writeVcConfig(funcDir);
     await this.writeHandler(funcDir);
     await this.copyServerBundle(dist, funcDir);
@@ -56,19 +61,61 @@ export class BuildVercelTask extends BuildTask {
   }
 
   /**
+   * Collect every registered `$scheduler` / `$job({ cron })` and turn it
+   * into a Vercel Cron entry. Vercel hits `path` on the configured
+   * `schedule`; the entry-point handler routes that to a `serverless:cron`
+   * event so `CronProvider` runs the matching job in-process.
+   *
+   * Mirrors the equivalent in `BuildCloudflareTask.enhanceCron`, except
+   * Vercel needs one path per job (it doesn't dispatch by cron expression
+   * the way Cloudflare does).
+   */
+  protected collectCronJobs(
+    ctx: BuildTaskContext,
+  ): { path: string; schedule: string }[] {
+    if (ctx.alepha.primitives("scheduler").length === 0) {
+      // `$job` registers cron jobs through the same provider, so the
+      // primitives count covers both `$scheduler` and `$job({ cron })`.
+    }
+
+    let cronProvider: CronProvider | undefined;
+    try {
+      cronProvider = ctx.alepha.inject("CronProvider") as CronProvider;
+    } catch {}
+
+    const jobs = cronProvider?.getCronJobs();
+    if (!jobs || jobs.length === 0) {
+      return [];
+    }
+
+    return jobs.map((job) => ({
+      path: `/_alepha/cron/${encodeURIComponent(job.name)}`,
+      schedule: job.expression,
+    }));
+  }
+
+  /**
    * Write .vercel/output/config.json with Build Output API v3 format.
+   *
+   * `userCrons` are merged with auto-collected `$scheduler` / `$job({ cron })`
+   * entries — explicit user config wins on conflicting paths.
    */
   protected async writeOutputConfig(
     outputDir: string,
     config?: { crons?: { path: string; schedule: string }[] },
+    autoCrons: { path: string; schedule: string }[] = [],
   ): Promise<void> {
     const outputConfig: Record<string, any> = {
       version: 3,
       routes: [{ handle: "filesystem" }, { src: "/(.*)", dest: "/index" }],
     };
 
-    if (config?.crons && config.crons.length > 0) {
-      outputConfig.crons = config.crons;
+    const merged = new Map<string, { path: string; schedule: string }>();
+    for (const c of autoCrons) merged.set(c.path, c);
+    for (const c of config?.crons ?? []) merged.set(c.path, c);
+    const crons = [...merged.values()];
+    if (crons.length > 0) {
+      outputConfig.crons = crons;
     }
 
     await this.fs.writeFile(
@@ -102,6 +149,8 @@ export class BuildVercelTask extends BuildTask {
     const handlerCode = `
 import "./index.js";
 
+const CRON_PREFIX = "/_alepha/cron/";
+
 export default async (req, res) => {
   try {
     await __alepha.start();
@@ -109,6 +158,36 @@ export default async (req, res) => {
     __alepha.log.error("Failed to start Alepha for request", err);
     res.writeHead(500, { "content-type": "text/plain" });
     res.end("Internal Server Error");
+    return;
+  }
+
+  // Vercel Cron triggers are HTTP GETs to a configured path. We route them
+  // to the CronProvider via an event so the same job declaration works on
+  // Vercel, Cloudflare, and long-running Node alike. Vercel signs cron
+  // requests with \`Authorization: Bearer \${CRON_SECRET}\`; the secret is
+  // available as \`process.env.CRON_SECRET\`. When set, we require the
+  // header to match before triggering.
+  const url = req.url || "";
+  if (url.startsWith(CRON_PREFIX)) {
+    const expected = process.env.CRON_SECRET;
+    if (expected) {
+      const got = (req.headers?.authorization || "").replace(/^Bearer\\s+/i, "");
+      if (got !== expected) {
+        res.writeHead(401, { "content-type": "text/plain" });
+        res.end("Unauthorized");
+        return;
+      }
+    }
+    const name = decodeURIComponent(url.slice(CRON_PREFIX.length).split("?")[0]);
+    try {
+      await __alepha.events.emit("serverless:cron", { name });
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end("ok");
+    } catch (err) {
+      __alepha.log.error(\`Cron trigger '\${name}' failed\`, err);
+      res.writeHead(500, { "content-type": "text/plain" });
+      res.end("cron failed");
+    }
     return;
   }
 

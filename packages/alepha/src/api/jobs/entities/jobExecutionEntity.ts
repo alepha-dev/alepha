@@ -10,11 +10,11 @@ import { $entity, db } from "alepha/orm";
  * the last N rows per job (configurable via `jobConfig.keepLastSuccess`).
  *
  * Status transitions:
- * - queue push            → pending
+ * - queue push            → pending (or `scheduled` if `delay`/`scheduledAt` was given)
  * - worker claim          → running
- * - success               → ok
+ * - success               → ok (or row deleted, depending on `record` and `keepLastSuccess`)
  * - terminal failure      → error
- * - retry                 → scheduled (with scheduledAt = now + backoff)
+ * - retryable failure     → scheduled (with scheduledAt = now; sweep picks it up)
  * - delay                 → scheduled (with scheduledAt = now + delay)
  * - sweep picks due ones  → pending
  * - cancel                → cancelled

@@ -30,6 +30,20 @@ declare module "alepha" {
     };
 
     "scheduler:end": { name: string; context: string };
+
+    /**
+     * Generic serverless cron trigger event.
+     *
+     * Emitted by serverless platform entry points (Vercel `/api/cron/...`,
+     * etc.) to trigger a registered cron job by name. `CronProvider`
+     * listens to this and calls `trigger(name)` so the same `$scheduler`
+     * / `$job({ cron })` declarations work across runtimes.
+     *
+     * Cloudflare Workers uses the platform-specific `cloudflare:scheduled`
+     * event instead (matched by cron expression), see
+     * `WorkerdCronProvider`.
+     */
+    "serverless:cron": { name: string };
   }
 }
 

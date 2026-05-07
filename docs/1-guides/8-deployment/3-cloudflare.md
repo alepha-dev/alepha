@@ -107,6 +107,27 @@ If your project has a React frontend, the built client assets are placed in `dis
 
 At runtime, `CloudflareQueueProvider` replaces the default queue provider and `WorkerdWorkerProvider` handles message consumption via push-based `queue` events (no polling).
 
+## Jobs without a queue (direct mode)
+
+Cloudflare Queues are powerful but overkill for low-volume apps. By default, `$job` falls back to **direct mode** when `AlephaApiJobsQueue` is not loaded:
+
+- `push()` writes a row to the outbox table, then schedules the handler in-process so the HTTP response returns immediately.
+- If the worker invocation ends before the handler finishes, the next reconciliation sweep re-dispatches the row.
+
+This is the recommended default on Cloudflare Workers when you don't want a Queues binding. Add `.with(AlephaApiJobsQueue)` only when you need a real queue.
+
+## Retry granularity
+
+`$job` retries are **sweep-driven** on every platform — there's no exponential backoff. When a handler fails, the row is marked `scheduled` with `scheduledAt = now`, and the next sweep tick (configured by `jobConfig.sweepCron`, default `*/5 * * * *`) picks it up.
+
+Practically this means:
+
+- A job retried 3 times can take up to ~15 minutes total to fail terminally.
+- The first retry can happen anywhere between a few seconds and ~5 minutes after the failure, depending on when the next sweep tick fires.
+- If you need tighter retry latency, lower `sweepCron` in your `jobConfig` atom.
+
+This is identical on Node, Docker, and Cloudflare — no platform-specific timing surprises.
+
 ## Limitations
 
 - **Redis-based features** (`$lock` with Redis, `$cache` with Redis, `$topic` with Redis) are not available

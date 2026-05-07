@@ -70,3 +70,21 @@ Works on:
 - Bare metal servers
 - Any container runtime
 - systemd, PM2, or any process manager
+
+## Multi-replica `$job` cron jobs
+
+When you run more than one replica (e.g. 10 Docker instances behind a load balancer), `$job({ cron, ... })` acquires a per-job distributed lock by default so the handler runs **once per tick across the fleet**, not once per replica. The default `MemoryLockProvider` is per-process — to get cross-replica coordination, register a real lock provider:
+
+```ts
+import { AlephaLockRedis } from "alepha/lock/redis";
+
+const app = Alepha.create()
+  .with(AlephaLockRedis)   // Redis-backed lock store
+  .with(AlephaApiJobs);
+```
+
+Set `lock: false` on a `$job` if you genuinely want every replica to fire the handler.
+
+## Retry granularity
+
+`$job` retries are sweep-driven on every platform: no exponential backoff. A failing handler is rescheduled with `scheduledAt = now` and the next sweep tick (default `*/5 * * * *`, configurable via `jobConfig.sweepCron`) picks it up. Lower `sweepCron` if you need tighter retry latency.

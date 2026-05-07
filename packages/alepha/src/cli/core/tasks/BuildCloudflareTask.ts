@@ -235,11 +235,23 @@ export class BuildCloudflareTask extends BuildTask {
     const workerCode = `
 import "./index.js";
 
+// Stash the per-invocation \`executionCtx.waitUntil\` in the Alepha store
+// so background work (notably $job direct dispatch) can keep the isolate
+// alive past the response.
+const setWaitUntil = (executionCtx) => {
+  if (executionCtx && typeof executionCtx.waitUntil === "function") {
+    __alepha.set("cloudflare.waitUntil", (p) => executionCtx.waitUntil(p));
+  } else {
+    __alepha.set("cloudflare.waitUntil", undefined);
+  }
+};
+
 export default {
-  fetch: async (request, env) => {
+  fetch: async (request, env, executionCtx) => {
     const ctx = { req: request, res: undefined };
 
     __alepha.set("cloudflare.env", env);
+    setWaitUntil(executionCtx);
 
     try {
       await __alepha.start();
@@ -253,8 +265,9 @@ export default {
     return ctx.res;
   },
 
-  scheduled: async (event, env, ctx) => {
+  scheduled: async (event, env, executionCtx) => {
     __alepha.set("cloudflare.env", env);
+    setWaitUntil(executionCtx);
 
     try {
       await __alepha.start();
@@ -269,8 +282,9 @@ export default {
     });
   },
 
-  queue: async (batch, env) => {
+  queue: async (batch, env, executionCtx) => {
     __alepha.set("cloudflare.env", env);
+    setWaitUntil(executionCtx);
 
     try {
       await __alepha.start();

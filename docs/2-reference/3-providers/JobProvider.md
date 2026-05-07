@@ -8,19 +8,28 @@ import { JobProvider } from "alepha/api/jobs";
 
 ## Overview
 
-Coordinates cron (scheduler) and queue (push) jobs with a durable outbox
-table and a single reconciliation sweep.
+Coordinates cron and push jobs with a durable outbox table and a single
+reconciliation sweep. The actual delivery channel (queue / direct) is
+abstracted behind {@link JobDispatcher}, substituted by DI:
 
-Queue-mode flow:
-  push()  → INSERT row (pending) + queue.send({ executionId })
-  worker  → SELECT row → UPDATE running → handler → DELETE (ok) / UPDATE (error)
+- **DirectJobDispatcher** (default, registered by `AlephaApiJobs`) —
+  runs the handler in-process right after `push()` returns.
+- **QueueJobDispatcher** (registered by `AlephaApiJobsQueue`) — sends
+  the executionId through `AlephaQueue` so a pool of workers can pick
+  it up.
 
-Cron-mode flow:
-  scheduler tick → handler runs inline → INSERT row only on error
+Push flow:
+  push()  → INSERT row (pending) → dispatcher.dispatch(jobName, id)
+  worker  → claim → UPDATE running → handler → DELETE/UPDATE on success
+          → UPDATE error / scheduled (retry) on failure
+
+Cron flow:
+  scheduler tick → acquire lock → executeInline (no retry)
+                                → enqueue + dispatch (retry declared)
 
 Sweep responsibilities (every `sweepCron`):
   - re-enqueue pending rows older than `staleThreshold`
-  - fail running rows older than `max(timeout*2, runTimeout)`
-  - move `scheduled` rows with `scheduledAt <= now` to pending + enqueue
+  - mark crashed running rows as failed and apply retry policy
+  - move `scheduled` rows with `scheduledAt <= now` to pending + dispatch
   - trim per-job history beyond `keepLastSuccess` / `keepLastError`
 

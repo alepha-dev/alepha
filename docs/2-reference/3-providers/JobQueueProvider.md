@@ -8,9 +8,13 @@ import { JobQueueProvider } from "alepha/api/jobs";
 
 ## Overview
 
-Plumbs outbox-style dispatch through `AlephaQueue`.
+Queue-backed `JobDispatcher` registered by `AlephaApiJobsQueue`.
 
-Registered only when the app imports `AlephaApiJobsQueue`. Sets
-`JobProvider.queueDispatch` eagerly at instantiation so queue-mode jobs
-can dispatch regardless of start-hook ordering.
+Extends {@link JobDispatcher} and substitutes the default
+`DirectJobDispatcher` so that `$job.push()` is delivered through
+`AlephaQueue` (e.g. Cloudflare Queues, Redis, in-memory) instead of
+being processed in-process.
+
+The class is also kept as a `JobQueueProvider` export name for backwards
+compatibility — it has always been the queue path's entry point.
 

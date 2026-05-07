@@ -5,8 +5,9 @@ import { NotFoundError } from "alepha/server";
 import { jobExecutionEntity } from "../entities/jobExecutionEntity.ts";
 import { $job } from "../primitives/$job.ts";
 import type { JobTriggerContext } from "../providers/JobProvider.ts";
-import { JobProvider } from "../providers/JobProvider.ts";
+import { JobProvider, PRIORITY_REVERSE } from "../providers/JobProvider.ts";
 import type { JobExecutionQuery } from "../schemas/jobExecutionQuerySchema.ts";
+import type { JobExecutionResource } from "../schemas/jobExecutionResourceSchema.ts";
 import type { JobRegistration } from "../schemas/jobRegistrationSchema.ts";
 
 /**
@@ -29,6 +30,22 @@ export class JobService {
       cancel:
         status === "pending" || status === "running" || status === "scheduled",
     };
+  }
+
+  /**
+   * Convert the int-priority storage column into the public enum string.
+   * The cast through `unknown` skips TypeScript's structural check between
+   * the entity-level row (`priority: number`) and the resource schema
+   * (`priority: enum`); the runtime values are correct.
+   */
+  protected toResource<T extends { priority: number; status: string }>(
+    row: T,
+  ): JobExecutionResource {
+    return {
+      ...row,
+      priority: PRIORITY_REVERSE[row.priority] ?? "normal",
+      can: this.computeCan(row.status),
+    } as unknown as JobExecutionResource;
   }
 
   /**
@@ -87,14 +104,13 @@ export class JobService {
       result.push({
         name,
         description: opts.description,
-        type: reg.type,
+        type: this.jobProvider.effectiveMode(name),
         cron: opts.cron,
         priority: (opts.priority ?? "normal") as JobRegistration["priority"],
         timeout: opts.timeout ? String(opts.timeout) : undefined,
         retry: opts.retry
           ? {
               retries: opts.retry.retries,
-              hasBackoff: Boolean(opts.retry.backoff),
             }
           : undefined,
         recent: counts,
@@ -121,10 +137,7 @@ export class JobService {
       orderBy: { column: "startedAt", direction: "desc" },
       limit: query.limit ?? 20,
     });
-    return rows.map((row) => ({
-      ...row,
-      can: this.computeCan(row.status),
-    }));
+    return rows.map((row) => this.toResource(row));
   }
 
   /**
@@ -135,10 +148,7 @@ export class JobService {
     if (!execution) {
       throw new NotFoundError(`Execution not found: ${id}`);
     }
-    return {
-      ...execution,
-      can: this.computeCan(execution.status),
-    };
+    return this.toResource(execution);
   }
 
   /**

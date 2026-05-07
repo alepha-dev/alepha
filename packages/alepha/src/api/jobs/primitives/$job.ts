@@ -40,16 +40,8 @@ export interface JobHandlerArgs<T extends TSchema = TSchema> {
   executionId: string;
 }
 
-export interface JobRetryBackoff {
-  initial: DurationLike;
-  factor?: number;
-  max?: DurationLike;
-  jitter?: boolean;
-}
-
 export interface JobRetryOptions {
   retries: number;
-  backoff?: DurationLike | JobRetryBackoff;
   when?: (error: Error) => boolean;
 }
 
@@ -81,10 +73,31 @@ export interface JobPrimitiveOptions<T extends TSchema = TSchema>
   cron?: string;
 
   /**
-   * Retry policy for queue-mode jobs.
+   * Retry policy for queue-mode and direct-mode jobs.
    * Cron-mode jobs do not retry — the next tick re-runs.
+   *
+   * Retries are picked up by the reconciliation sweep, so retry granularity
+   * is bounded by `sweepCron` (default 5 minutes). The first retry may run
+   * earlier than 5 minutes if the sweep tick happens sooner.
    */
   retry?: JobRetryOptions;
+
+  /**
+   * **Cron-mode only.** Whether to acquire a distributed lock around the
+   * cron tick so that only one instance of a multi-replica deployment runs
+   * the handler per tick.
+   *
+   * Has **no effect** on queue-mode and direct-mode jobs — those rely on
+   * the outbox `claim()` UPDATE-guard to serialize work instead, which is
+   * always on.
+   *
+   * To get cross-instance coordination on Docker / Node deployments,
+   * register a real `LockProvider` (e.g. `alepha/lock/redis`). The default
+   * `MemoryLockProvider` is per-process only.
+   *
+   * @default true
+   */
+  lock?: boolean;
 
   /**
    * Max execution time per attempt. Handler receives an `AbortSignal`.

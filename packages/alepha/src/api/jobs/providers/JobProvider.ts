@@ -8,6 +8,7 @@ import {
   type TSchema,
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
+import { LockProvider } from "alepha/lock";
 import type { LogEntry } from "alepha/logger";
 import { $logger } from "alepha/logger";
 import { $repository, DbEntityNotFoundError } from "alepha/orm";
@@ -16,13 +17,11 @@ import {
   type JobStatus,
   jobExecutionEntity,
 } from "../entities/jobExecutionEntity.ts";
-import type {
-  JobPrimitiveOptions,
-  JobPriority,
-  JobRetryBackoff,
-  JobRetryOptions,
-} from "../primitives/$job.ts";
+import type { JobPrimitiveOptions, JobPriority } from "../primitives/$job.ts";
 import { jobConfig } from "../schemas/jobConfigAtom.ts";
+import { DirectJobDispatcher } from "./DirectJobDispatcher.ts";
+import type { JobDispatcher } from "./JobDispatcher.ts";
+import { JobQueueProvider } from "./JobQueueProvider.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
 
@@ -70,36 +69,74 @@ export interface CancelContext {
   cancelledByName?: string;
 }
 
+/**
+ * The declared shape of the job (set at registration time).
+ *
+ * **Important** — this `kind` is the *declared* form. The *effective*
+ * runtime mode (cron / queue / direct) is exposed by
+ * `JobProvider.effectiveMode(name)` and the `JobRegistration.type` field on
+ * the admin schema. Don't conflate the two: a `queue` kind can run as
+ * `direct` at runtime when no queue dispatcher is loaded.
+ */
 interface JobRuntimeRegistration {
   name: string;
   options: JobPrimitiveOptions;
-  type: "cron" | "queue";
+  kind: "cron" | "queue";
 }
+
+export type JobEffectiveMode = "cron" | "queue" | "direct";
 
 // -----------------------------------------------------------------------------------------------------------------
 
 /**
- * Coordinates cron (scheduler) and queue (push) jobs with a durable outbox
- * table and a single reconciliation sweep.
+ * Coordinates cron and push jobs with a durable outbox table and a single
+ * reconciliation sweep. The actual delivery channel (queue / direct) is
+ * abstracted behind {@link JobDispatcher}, substituted by DI:
  *
- * Queue-mode flow:
- *   push()  → INSERT row (pending) + queue.send({ executionId })
- *   worker  → SELECT row → UPDATE running → handler → DELETE (ok) / UPDATE (error)
+ * - **DirectJobDispatcher** (default, registered by `AlephaApiJobs`) —
+ *   runs the handler in-process right after `push()` returns.
+ * - **QueueJobDispatcher** (registered by `AlephaApiJobsQueue`) — sends
+ *   the executionId through `AlephaQueue` so a pool of workers can pick
+ *   it up.
  *
- * Cron-mode flow:
- *   scheduler tick → handler runs inline → INSERT row only on error
+ * Push flow:
+ *   push()  → INSERT row (pending) → dispatcher.dispatch(jobName, id)
+ *   worker  → claim → UPDATE running → handler → DELETE/UPDATE on success
+ *           → UPDATE error / scheduled (retry) on failure
+ *
+ * Cron flow:
+ *   scheduler tick → acquire lock → executeInline (no retry)
+ *                                 → enqueue + dispatch (retry declared)
  *
  * Sweep responsibilities (every `sweepCron`):
  *   - re-enqueue pending rows older than `staleThreshold`
- *   - fail running rows older than `max(timeout*2, runTimeout)`
- *   - move `scheduled` rows with `scheduledAt <= now` to pending + enqueue
+ *   - mark crashed running rows as failed and apply retry policy
+ *   - move `scheduled` rows with `scheduledAt <= now` to pending + dispatch
  *   - trim per-job history beyond `keepLastSuccess` / `keepLastError`
  */
 export class JobProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly cronProvider = $inject(CronProvider);
+  protected readonly lockProvider = $inject(LockProvider);
   protected readonly config = $state(jobConfig);
+
+  /**
+   * Resolved at first use (after the container is fully wired) — picks
+   * the queue dispatcher when `AlephaApiJobsQueue` was loaded, otherwise
+   * the direct dispatcher. Lazy because both dispatchers inject
+   * `JobProvider` themselves; resolving them at field-init time would
+   * create a circular construction.
+   */
+  protected dispatcherRef?: JobDispatcher;
+  public get dispatcher(): JobDispatcher {
+    if (!this.dispatcherRef) {
+      this.dispatcherRef = this.alepha.has(JobQueueProvider)
+        ? this.alepha.inject(JobQueueProvider)
+        : this.alepha.inject(DirectJobDispatcher);
+    }
+    return this.dispatcherRef;
+  }
   protected readonly log = $logger();
   protected readonly executions = $repository(jobExecutionEntity);
 
@@ -108,14 +145,6 @@ export class JobProvider {
   protected readonly abortControllers = new Map<string, AbortController>();
   protected readonly perExecutionLogs = new Map<string, LogEntry[]>();
   protected stopping = false;
-
-  /**
-   * Set by `JobQueueProvider` when `AlephaApiJobsQueue` is loaded.
-   * When null, queue-mode jobs cannot be pushed.
-   */
-  public queueDispatch:
-    | ((jobName: string, executionId: string) => Promise<void>)
-    | null = null;
 
   // --- Registration -----------------------------------------------------------------------------------------------
 
@@ -134,9 +163,9 @@ export class JobProvider {
       );
     }
 
-    const type: "cron" | "queue" = options.cron ? "cron" : "queue";
-    this.jobs.set(name, { name, options, type });
-    this.log.debug(`Registered ${type} job '${name}'`, {
+    const kind: "cron" | "queue" = options.cron ? "cron" : "queue";
+    this.jobs.set(name, { name, options, kind });
+    this.log.debug(`Registered ${kind} job '${name}'`, {
       cron: options.cron,
       priority: options.priority ?? "normal",
       retries: options.retry?.retries ?? 0,
@@ -157,28 +186,200 @@ export class JobProvider {
     return this.jobs;
   }
 
+  /**
+   * Resolves what *actually* runs at dispatch time. Cron jobs are always
+   * "cron"; non-cron jobs delegate to the active `JobDispatcher` (queue
+   * vs. direct), which is determined by which modules the app loaded.
+   */
+  public effectiveMode(name: string): JobEffectiveMode {
+    const reg = this.getRegistration(name);
+    if (reg.kind === "cron") return "cron";
+    return this.dispatcher.kind;
+  }
+
   // --- Cron execution (inline, no queue) --------------------------------------------------------------------------
 
   protected async runCron(name: string): Promise<void> {
     const registration = this.getRegistration(name);
-    if (registration.type !== "cron") {
+    if (registration.kind !== "cron") {
       throw new AlephaError(`Job '${name}' is not cron-mode`);
     }
-    if (this.stopping) return;
-
-    const executionId = crypto.randomUUID();
-    const promise = this.executeInline(registration, executionId, {
-      payload: undefined,
-      attempt: 1,
+    await this.runCronLocked(registration, {
       triggeredBy: "system",
       triggeredByName: "system (cron)",
     });
-    this.inFlight.add(promise);
-    try {
-      await promise;
-    } finally {
-      this.inFlight.delete(promise);
+  }
+
+  /**
+   * Cron-mode runner that respects the per-job distributed lock.
+   * Used by both the scheduled tick and manual `trigger()` calls so that an
+   * admin-triggered run on one instance can't race a scheduled run on another.
+   *
+   * **Two paths depending on `retry`:**
+   *
+   * - **No `retry`** — runs the handler inline. No DB row on success;
+   *   error row only on failure. The "next tick" is the implicit retry.
+   * - **`retry` declared** — enqueues a synthetic execution row and hands
+   *   it to the dispatcher. The handler then runs through the same path
+   *   as a queue/direct push (claim, retry-on-fail, sweep recovery). Use
+   *   this when a single failed tick must not block work for the whole
+   *   `cron` interval (e.g. once-daily jobs).
+   */
+  protected async runCronLocked(
+    registration: JobRuntimeRegistration,
+    ctx: { triggeredBy?: string; triggeredByName?: string },
+  ): Promise<void> {
+    if (this.stopping) return;
+
+    const useLock = registration.options.lock !== false;
+    if (useLock) {
+      const acquired = await this.acquireCronLock(registration);
+      if (!acquired) {
+        this.log.debug(
+          `Cron '${registration.name}' skipped — another instance holds the lock`,
+        );
+        return;
+      }
     }
+
+    try {
+      if (registration.options.retry) {
+        await this.enqueueCronExecution(registration, ctx);
+        return;
+      }
+
+      const executionId = crypto.randomUUID();
+      const promise = this.executeInline(registration, executionId, {
+        payload: undefined,
+        attempt: 1,
+        triggeredBy: ctx.triggeredBy,
+        triggeredByName: ctx.triggeredByName,
+      });
+      this.inFlight.add(promise);
+      try {
+        await promise;
+      } finally {
+        this.inFlight.delete(promise);
+      }
+    } finally {
+      if (useLock) {
+        await this.releaseCronLock(registration);
+      }
+    }
+  }
+
+  /**
+   * Materialize a cron tick into the outbox so it goes through the normal
+   * retry/sweep path. Used when the user opts into `retry` on a cron job —
+   * a transient failure no longer means "wait for the next cron tick", it
+   * means "the sweep will retry within `sweepCron`".
+   */
+  protected async enqueueCronExecution(
+    registration: JobRuntimeRegistration,
+    ctx: { triggeredBy?: string; triggeredByName?: string },
+  ): Promise<void> {
+    const opts = registration.options;
+    const maxAttempts = (opts.retry?.retries ?? 0) + 1;
+    const execution = await this.executions.create({
+      jobName: registration.name,
+      payload: undefined,
+      status: "pending",
+      priority: PRIORITY_MAP[opts.priority ?? "normal"],
+      maxAttempts,
+      triggeredBy: ctx.triggeredBy,
+      triggeredByName: ctx.triggeredByName,
+    });
+    await this.dispatch(registration.name, execution.id);
+  }
+
+  /**
+   * Acquire a per-job NX lock keyed by `cron-job:<name>` so that a single
+   * tick across all replicas runs exactly one execution. Auto-expires after
+   * `2 * timeout` (or 5 minutes if no per-job timeout) so a crashed worker
+   * cannot permanently block the cron from firing.
+   *
+   * **Caveat — same-process double-fire is not prevented.** The lock value
+   * is a per-process holder id, so two concurrent ticks on the same process
+   * (e.g. a scheduled tick overlapping an admin `trigger()` call) will both
+   * see "we own it". This is acceptable for the multi-replica use case the
+   * lock targets; a process that overlaps its own cron handler should set a
+   * smaller `timeout` or use idempotent handler logic. A future fix can add
+   * a per-process Set guard before reaching the LockProvider.
+   */
+  protected async acquireCronLock(
+    registration: JobRuntimeRegistration,
+  ): Promise<boolean> {
+    const lockKey = this.cronLockKey(registration.name);
+    const ttlMs = registration.options.timeout
+      ? this.dt.duration(registration.options.timeout).as("milliseconds") * 2
+      : 5 * 60 * 1000;
+    const value = `${this.lockHolderId},${this.dt.nowISOString()}`;
+    try {
+      const stored = await this.lockProvider.set(lockKey, value, true, ttlMs);
+      const [holderId] = stored.split(",");
+      return holderId === this.lockHolderId;
+    } catch (e) {
+      this.log.warn(`Cron lock acquire failed for '${registration.name}'`, e);
+      return true; // Fail-open: better to risk a duplicate than to silently miss a tick.
+    }
+  }
+
+  /**
+   * Update only when the row is still in one of the expected statuses.
+   * Logs and returns silently when the guard rejects — this happens when a
+   * concurrent operation (most often `cancel()`) has already moved the row
+   * into a terminal state. We must not overwrite that.
+   */
+  protected async guardedUpdate(
+    executionId: string,
+    expectedStatuses: JobStatus[],
+    patch: Parameters<typeof this.executions.updateById>[1],
+    label: string,
+  ): Promise<void> {
+    try {
+      await this.executions.updateOne(
+        { id: { eq: executionId }, status: { inArray: expectedStatuses } },
+        patch,
+      );
+    } catch (e) {
+      if (e instanceof DbEntityNotFoundError) {
+        this.log.debug(
+          `${label}: row ${executionId} not in expected status — skipping write`,
+        );
+        return;
+      }
+      throw e;
+    }
+  }
+
+  protected async releaseCronLock(
+    registration: JobRuntimeRegistration,
+  ): Promise<void> {
+    try {
+      await this.lockProvider.del(this.cronLockKey(registration.name));
+    } catch (e) {
+      this.log.debug(
+        `Cron lock release failed for '${registration.name}' (will expire by TTL)`,
+        e,
+      );
+    }
+  }
+
+  protected cronLockKey(jobName: string): string {
+    return `alepha.api.jobs.cron:${jobName}`;
+  }
+
+  /**
+   * Stable per-process id used as the lock value — survives multiple ticks.
+   * Lazy so that Cloudflare Workers (which forbid random in global scope)
+   * stay happy.
+   */
+  protected lockHolderIdValue?: string;
+  protected get lockHolderId(): string {
+    if (!this.lockHolderIdValue) {
+      this.lockHolderIdValue = crypto.randomUUID();
+    }
+    return this.lockHolderIdValue;
   }
 
   /**
@@ -326,7 +527,7 @@ export class JobProvider {
     options?: PushOptions,
   ): Promise<string> {
     const registration = this.getRegistration(name);
-    if (registration.type !== "queue") {
+    if (registration.kind !== "queue") {
       throw new AlephaError(
         `Job '${name}' is not queue-mode (no schema declared). Use trigger() instead.`,
       );
@@ -373,7 +574,7 @@ export class JobProvider {
         triggeredByName: options.triggeredByName,
       });
       if (status === "pending") {
-        await this.dispatchToQueue(name, execution.id);
+        await this.dispatch(name, execution.id);
       } else if (status === "scheduled" && scheduledAt) {
         this.scheduleOptimisticDispatch(name, execution.id, scheduledAt);
       }
@@ -392,7 +593,7 @@ export class JobProvider {
     });
 
     if (status === "pending") {
-      await this.dispatchToQueue(name, execution.id);
+      await this.dispatch(name, execution.id);
     } else if (status === "scheduled" && scheduledAt) {
       this.scheduleOptimisticDispatch(name, execution.id, scheduledAt);
     }
@@ -426,7 +627,7 @@ export class JobProvider {
     if (items.length === 0) return [];
 
     const registration = this.getRegistration(name);
-    if (registration.type !== "queue") {
+    if (registration.kind !== "queue") {
       throw new AlephaError(
         `Job '${name}' is not queue-mode (no schema declared).`,
       );
@@ -485,10 +686,13 @@ export class JobProvider {
 
     if (bulk.length > 0) {
       const created = await this.executions.createMany(bulk);
+      // Collect pending rows so we hand them to the dispatcher in a single
+      // batch — the queue dispatcher can fan them out in one network call.
+      const toDispatch: Array<{ jobName: string; executionId: string }> = [];
       for (const exec of created) {
         ids.push(exec.id);
         if (exec.status === "pending" && !this.stopping) {
-          await this.dispatchToQueue(name, exec.id);
+          toDispatch.push({ jobName: name, executionId: exec.id });
         } else if (
           exec.status === "scheduled" &&
           exec.scheduledAt &&
@@ -496,6 +700,9 @@ export class JobProvider {
         ) {
           this.scheduleOptimisticDispatch(name, exec.id, exec.scheduledAt);
         }
+      }
+      if (toDispatch.length > 0) {
+        await this.dispatchMany(toDispatch);
       }
     }
 
@@ -507,17 +714,28 @@ export class JobProvider {
     return ids;
   }
 
-  protected async dispatchToQueue(
+  /**
+   * Hand a single execution to the active `JobDispatcher`. Whether that
+   * results in a queue send or in-process execution depends on which
+   * dispatcher is wired (see {@link JobDispatcher}).
+   */
+  protected async dispatch(
     jobName: string,
     executionId: string,
   ): Promise<void> {
     if (this.stopping) return;
-    if (!this.queueDispatch) {
-      throw new AlephaError(
-        `Queue-mode job '${jobName}' cannot be pushed: AlephaApiJobsQueue is not loaded. Add '.with(AlephaApiJobsQueue)' to your app.`,
-      );
-    }
-    await this.queueDispatch(jobName, executionId);
+    await this.dispatcher.dispatch(jobName, executionId);
+  }
+
+  /**
+   * Batched variant. Used by `pushMany` so a backing queue can do a single
+   * batch network call (e.g. Cloudflare Queues `sendBatch`).
+   */
+  protected async dispatchMany(
+    items: Array<{ jobName: string; executionId: string }>,
+  ): Promise<void> {
+    if (this.stopping || items.length === 0) return;
+    await this.dispatcher.dispatchMany(items);
   }
 
   // --- Manual trigger (admin / CLI) ------------------------------------------------------------------------------
@@ -528,11 +746,8 @@ export class JobProvider {
   ): Promise<void> {
     const registration = this.getRegistration(name);
 
-    if (registration.type === "cron") {
-      const executionId = crypto.randomUUID();
-      await this.executeInline(registration, executionId, {
-        payload: undefined,
-        attempt: 1,
+    if (registration.kind === "cron") {
+      await this.runCronLocked(registration, {
         triggeredBy: context?.triggeredBy,
         triggeredByName: context?.triggeredByName,
       });
@@ -601,10 +816,13 @@ export class JobProvider {
       });
       return;
     }
-    if (registration.type !== "queue") {
-      this.log.warn(`Job '${jobName}' is not queue-mode — skipping`, {
-        executionId,
-      });
+    // Both `queue` and cron-with-retry execute through the outbox path —
+    // the DB-level `claim()` is the actual concurrency guard.
+    if (registration.kind !== "queue" && !registration.options.retry) {
+      this.log.warn(
+        `Job '${jobName}' has no outbox path (no schema and no retry) — skipping`,
+        { executionId },
+      );
       return;
     }
 
@@ -758,46 +976,67 @@ export class JobProvider {
     const retry = opts.retry;
     const maxAttempts = (retry?.retries ?? 0) + 1;
 
+    // `retries: 2` means "1 initial + 2 retries = 3 total attempts". Retry
+    // while we have not yet *executed* the maxAttempts'th attempt — i.e.
+    // currentAttempt (the one that just failed) is strictly less than
+    // maxAttempts. The off-by-one fix: previously this was
+    // `currentAttempt + 1 < maxAttempts`, which only ran 2 attempts for
+    // `retries: 2`.
     const canRetry =
       retry &&
-      currentAttempt + 1 < maxAttempts &&
+      currentAttempt < maxAttempts &&
       (retry.when ? retry.when(error) : true);
 
     if (canRetry) {
-      const nextScheduledAt = this.computeBackoff(retry, currentAttempt + 1);
+      // Retries are sweep-driven: write the row as `scheduled` with
+      // `scheduledAt = now`. The next sweep tick (every `sweepCron`,
+      // default 5 minutes) re-dispatches it. This means the first retry
+      // can land anywhere from a few seconds to ~5 minutes later — the
+      // exact moment depends on when the next sweep tick fires.
+      //
+      // We deliberately do NOT use exponential backoff or a local timer.
+      // - Exponential backoff was platform-dependent (precise on Node
+      //   via setTimeout, but degraded to "next sweep" on Cloudflare
+      //   Workers where timers don't survive invocations). The behavior
+      //   is now identical everywhere.
+      // - Sweep-only retry keeps the retry path observable from a single
+      //   place (the DB) and removes a class of races between the timer
+      //   and the sweep.
+      const nextScheduledAt = this.dt.nowISOString();
       this.log.info(
-        `Job '${jobName}' failed, scheduling retry ${currentAttempt + 1}/${maxAttempts}`,
-        { executionId, error: error.message, nextScheduledAt },
+        `Job '${jobName}' failed, scheduling retry ${currentAttempt + 1}/${maxAttempts} (sweep will pick up)`,
+        { executionId, error: error.message },
       );
-      await this.executions.updateById(executionId, {
-        status: "scheduled",
-        error: error.message,
-        scheduledAt: nextScheduledAt,
-        logs: this.snapshotLogs(contextId),
-      });
-      // Optimistic dispatch: fire a local timer so the retry runs as close to
-      // `scheduledAt` as possible. The sweep is the safety net for worker
-      // crashes and stateless runtimes (CF Workers, where setTimeout won't
-      // survive across invocations anyway).
-      const delayMs = Math.max(
-        0,
-        new Date(nextScheduledAt).getTime() - this.dt.nowMillis(),
+      // Guard with `status: running` so a concurrent cancel that has already
+      // flipped the row to 'cancelled' is not overwritten by the retry write.
+      await this.guardedUpdate(
+        executionId,
+        ["running"],
+        {
+          status: "scheduled",
+          error: error.message,
+          scheduledAt: nextScheduledAt,
+          logs: this.snapshotLogs(contextId),
+        },
+        "retry-after-failure",
       );
-      this.dt.createTimeout(() => {
-        void this.dispatchScheduled(jobName, executionId);
-      }, delayMs);
     } else {
       this.log.info(
         `Job '${jobName}' dead after ${currentAttempt} attempt(s)`,
         { executionId, error: error.message },
       );
-      await this.executions.updateById(executionId, {
-        status: "error",
-        error: error.message,
-        completedAt: this.dt.nowISOString(),
-        key: null,
-        logs: this.snapshotLogs(contextId),
-      });
+      await this.guardedUpdate(
+        executionId,
+        ["running"],
+        {
+          status: "error",
+          error: error.message,
+          completedAt: this.dt.nowISOString(),
+          key: null,
+          logs: this.snapshotLogs(contextId),
+        },
+        "terminal-failure",
+      );
     }
 
     await this.alepha.events.emit(
@@ -805,30 +1044,6 @@ export class JobProvider {
       { name: jobName, error, executionId },
       { catch: true },
     );
-  }
-
-  protected computeBackoff(retry: JobRetryOptions, attempt: number): string {
-    const now = this.dt.now();
-    if (!retry.backoff) {
-      return now.add(1, "second").toISOString();
-    }
-    if (Array.isArray(retry.backoff)) {
-      return now.add(this.dt.duration(retry.backoff)).toISOString();
-    }
-    const backoff = retry.backoff as JobRetryBackoff;
-    const initial = this.dt.duration(backoff.initial).as("milliseconds");
-    const factor = backoff.factor ?? 2;
-    let delayMs = initial * factor ** (attempt - 1);
-    if (backoff.max) {
-      delayMs = Math.min(
-        delayMs,
-        this.dt.duration(backoff.max).as("milliseconds"),
-      );
-    }
-    if (backoff.jitter) {
-      delayMs = delayMs * (0.75 + Math.random() * 0.5);
-    }
-    return now.add(delayMs, "millisecond").toISOString();
   }
 
   protected snapshotLogs(contextId: string): LogEntry[] | undefined {
@@ -868,7 +1083,7 @@ export class JobProvider {
       for (const exec of due) {
         if (!this.jobs.has(exec.jobName)) continue;
         await this.executions.updateById(exec.id, { status: "pending" });
-        await this.dispatchToQueueSafe(exec.jobName, exec.id);
+        await this.dispatchSafe(exec.jobName, exec.id);
       }
 
       // 2. Stale pending rows → re-dispatch
@@ -884,7 +1099,7 @@ export class JobProvider {
       });
       for (const exec of stale) {
         if (!this.jobs.has(exec.jobName)) continue;
-        await this.dispatchToQueueSafe(exec.jobName, exec.id);
+        await this.dispatchSafe(exec.jobName, exec.id);
       }
 
       // 3. Crashed running rows → mark as failed + apply retry
@@ -920,12 +1135,12 @@ export class JobProvider {
     }
   }
 
-  protected async dispatchToQueueSafe(
+  protected async dispatchSafe(
     jobName: string,
     executionId: string,
   ): Promise<void> {
     try {
-      await this.dispatchToQueue(jobName, executionId);
+      await this.dispatch(jobName, executionId);
     } catch (e) {
       this.log.warn(`Sweep failed to dispatch ${jobName} (${executionId})`, e);
     }
@@ -946,7 +1161,7 @@ export class JobProvider {
         { id: { eq: executionId }, status: { eq: "scheduled" } },
         { status: "pending" },
       );
-      await this.dispatchToQueueSafe(jobName, executionId);
+      await this.dispatchSafe(jobName, executionId);
     } catch {
       // Row already transitioned (sweep ran, another worker claimed, etc.)
     }
@@ -994,19 +1209,25 @@ export class JobProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      // Validate that queue-mode jobs have a dispatcher registered.
-      const needsQueue = [...this.jobs.values()].some(
-        (j) => j.type === "queue",
-      );
-      if (needsQueue && !this.queueDispatch) {
-        throw new AlephaError(
-          `Queue-mode jobs are registered but no queue dispatcher is available. Add '.with(AlephaApiJobsQueue)' to your app.`,
-        );
+      // Summarize effective modes once at start so operators can see at a
+      // glance what each job will do. No validation is needed here: queue
+      // jobs gracefully fall back to direct mode when AlephaApiJobsQueue
+      // isn't loaded.
+      const modes: Record<JobEffectiveMode, number> = {
+        cron: 0,
+        queue: 0,
+        direct: 0,
+      };
+      const perJob: Record<string, JobEffectiveMode> = {};
+      for (const [name] of this.jobs) {
+        const m = this.effectiveMode(name);
+        modes[m]++;
+        perJob[name] = m;
       }
-
       this.log.info(`Job system OK`, {
-        dispatch: this.queueDispatch ? "queue" : "inline-only",
+        modes,
         jobs: this.jobs.size,
+        perJob,
       });
 
       // Capture logs per execution context.

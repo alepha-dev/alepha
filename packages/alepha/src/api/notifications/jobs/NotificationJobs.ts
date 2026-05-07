@@ -55,12 +55,6 @@ export class NotificationJobs {
     schema: notificationPayloadSchema,
     retry: {
       retries: 3,
-      backoff: {
-        initial: [5, "seconds"],
-        factor: 4,
-        max: [10, "minutes"],
-        jitter: true,
-      },
     },
     timeout: [30, "seconds"],
     record: "all",

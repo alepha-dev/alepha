@@ -80,14 +80,11 @@ export class PlaygroundJobs {
     },
   });
 
-  /** Always fails — exercises retry with exponential backoff. */
+  /** Always fails — exercises sweep-driven retries (every ~5 minutes). */
   public readonly flaky = $job({
-    description: "Always throws — watch the retry + backoff cycle.",
+    description: "Always throws — watch the sweep-driven retry cycle.",
     schema: t.object({ v: t.integer() }),
-    retry: {
-      retries: 3,
-      backoff: { initial: [2, "seconds"], factor: 2, max: [30, "seconds"] },
-    },
+    retry: { retries: 3 },
     handler: async ({ attempt }) => {
       throw new Error(`flaky failed on attempt ${attempt}`);
     },

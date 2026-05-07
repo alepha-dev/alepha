@@ -42,6 +42,19 @@ export class CronProvider {
     },
   });
 
+  /**
+   * Generic serverless cron trigger. Vercel's platform-emitted entry
+   * point fires `serverless:cron` with the job name; we run the matching
+   * job in-process. On long-running runtimes this listener is harmless
+   * (no one fires the event).
+   */
+  protected readonly onServerlessCron = $hook({
+    on: "serverless:cron",
+    handler: async ({ name }) => {
+      await this.trigger(name);
+    },
+  });
+
   protected boot(name: string | CronJob) {
     const cron =
       typeof name === "string"
