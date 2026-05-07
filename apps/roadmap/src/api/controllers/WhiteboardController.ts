@@ -26,16 +26,16 @@ export class WhiteboardController {
     use: [$secure({ permissions: ["whiteboard:read"] })],
     schema: {
       params: t.object({
-        projectId: t.integer(),
+        campaignId: t.integer(),
       }),
       response: t.array(whiteboards.schema),
     },
     handler: async ({ params, user }) => {
-      await this.security.checkOwnership(params.projectId, user);
+      await this.security.checkOwnership(params.campaignId, user);
 
       return this.whiteboards.findMany({
         where: {
-          projectId: { eq: params.projectId },
+          campaignId: { eq: params.campaignId },
         },
       });
     },
@@ -45,17 +45,17 @@ export class WhiteboardController {
     use: [$secure({ permissions: ["whiteboard:create"] })],
     schema: {
       body: t.object({
-        projectId: t.integer(),
+        campaignId: t.integer(),
         title: t.string({ minLength: 1, maxLength: 50 }),
       }),
       response: whiteboards.schema,
     },
     handler: async ({ body, user }) => {
-      await this.security.checkOwnership(body.projectId, user);
+      await this.security.checkOwnership(body.campaignId, user);
 
       return this.whiteboards.create({
         title: body.title,
-        projectId: body.projectId,
+        campaignId: body.campaignId,
         createdBy: user.id,
         data: { elements: [] },
       });
@@ -72,7 +72,7 @@ export class WhiteboardController {
     },
     handler: async ({ params, user }) => {
       const whiteboard = await this.whiteboards.getById(params.id);
-      await this.security.checkOwnership(whiteboard.projectId, user);
+      await this.security.checkOwnership(whiteboard.campaignId, user);
       return whiteboard;
     },
   });
@@ -91,7 +91,7 @@ export class WhiteboardController {
     },
     handler: async ({ params, body, user }) => {
       const whiteboard = await this.whiteboards.getById(params.id);
-      await this.security.checkOwnership(whiteboard.projectId, user);
+      await this.security.checkOwnership(whiteboard.campaignId, user);
 
       const updateData: { title?: string; data?: WhiteboardData } = {};
       if (body.title !== undefined) {
@@ -115,7 +115,7 @@ export class WhiteboardController {
     },
     handler: async ({ params, user }) => {
       const whiteboard = await this.whiteboards.getById(params.id);
-      await this.security.checkOwnership(whiteboard.projectId, user);
+      await this.security.checkOwnership(whiteboard.campaignId, user);
 
       await this.whiteboards.deleteById(params.id);
       return { ok: true };

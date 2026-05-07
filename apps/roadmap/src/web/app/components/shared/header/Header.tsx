@@ -1,12 +1,12 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { useRouter } from "alepha/react/router";
 import type { AppRouter } from "../../../AppRouter.ts";
-import HeaderProjectActions from "../../project/ProjectActions.tsx";
+import HeaderCampaignActions from "../../campaign/CampaignActions.tsx";
 import RoadmapLogo from "../RoadmapLogo.tsx";
 import HeaderActions from "./HeaderActions.tsx";
+import HeaderCampaign from "./HeaderCampaign.tsx";
 import HeaderKanbanCreateButton from "./HeaderKanbanCreateButton.tsx";
 import HeaderMobileQuestLog from "./HeaderMobileQuestLog.tsx";
-import HeaderProject from "./HeaderProject.tsx";
 
 const Header = () => {
   const router = useRouter<AppRouter>();
@@ -23,11 +23,11 @@ const Header = () => {
         >
           <RoadmapLogo />
         </Button>
-        <HeaderProject />
+        <HeaderCampaign />
       </div>
       <div className="hidden flex-1 items-center justify-center px-2 lg:flex">
         <div className="w-full max-w-[900px]">
-          <HeaderProjectActions />
+          <HeaderCampaignActions />
         </div>
       </div>
       <div className="ml-auto flex items-center gap-2">

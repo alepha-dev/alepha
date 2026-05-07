@@ -2,12 +2,12 @@ import { t } from "alepha";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
+import { campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
-import { projects } from "../entities/projects.ts";
 
 export class CharacterController {
   characters = $repository(characters);
-  projects = $repository(projects);
+  campaigns = $repository(campaigns);
 
   getMyCharacters = $action({
     use: [$secure({ permissions: ["character:read"] })],
@@ -15,8 +15,8 @@ export class CharacterController {
       response: t.array(
         t.object({
           id: t.integer(),
-          projectId: t.integer(),
-          projectTitle: t.string(),
+          campaignId: t.integer(),
+          campaignTitle: t.string(),
           xp: t.integer(),
           balance: t.integer(),
           owner: t.optional(t.boolean()),
@@ -35,25 +35,25 @@ export class CharacterController {
         return [];
       }
 
-      // Fetch projects for each character
-      const userProjects = await this.projects.findMany({
-        where: { id: { inArray: userCharacters.map((c) => c.projectId) } },
+      // Fetch campaigns for each character
+      const userCampaigns = await this.campaigns.findMany({
+        where: { id: { inArray: userCharacters.map((c) => c.campaignId) } },
       });
 
       return (
         await Promise.all(
           userCharacters.map(async (character) => {
-            const project = userProjects.find(
-              (p) => p.id === character.projectId,
+            const campaign = userCampaigns.find(
+              (p) => p.id === character.campaignId,
             );
-            if (!project) {
+            if (!campaign) {
               return;
             }
 
             return {
               id: character.id,
-              projectId: character.projectId,
-              projectTitle: project?.title ?? "Unknown Project",
+              campaignId: character.campaignId,
+              campaignTitle: campaign?.title ?? "Unknown Campaign",
               xp: character.xp,
               balance: character.balance,
               owner: character.owner,

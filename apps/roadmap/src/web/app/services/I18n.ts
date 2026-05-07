@@ -11,8 +11,8 @@ export class I18n {
         "language.fr": "Français",
 
         "header.title": "Roadmap",
-        "header.project.addTask": "Create New Quest",
-        "header.addTask.name": "Quest Name",
+        "header.campaign.addQuest": "Create New Quest",
+        "header.addQuest.name": "Quest Name",
         "header.actions.profile": "Profile",
         "header.actions.login": "Sign In",
         "header.actions.logout": "Logout",
@@ -56,7 +56,7 @@ export class I18n {
 
         "board.filter.search": "Search",
         "board.filter.status": "Status",
-        "board.filter.package": "Zone",
+        "board.filter.zone": "Zone",
         "board.filter.apply": "Apply",
         "board.filter.reset": "Reset",
 
@@ -65,112 +65,113 @@ export class I18n {
         "dashboard.chapter": "Active chapter",
         "dashboard.chapter.none": "No open chapter",
 
-        "project.menu.create-task": "Create Quest",
-        "project.menu.dashboard": "Tavern",
-        "project.menu.board": "Board",
-        "project.menu.players": "Adventurers",
-        "project.menu.analytics": "Chronicles",
-        "project.menu.whiteboards": "Draw",
-        "project.menu.settings": "Settings",
+        "campaign.menu.create-quest": "Create Quest",
+        "campaign.menu.dashboard": "Tavern",
+        "campaign.menu.board": "Board",
+        "campaign.menu.adventurers": "Adventurers",
+        "campaign.menu.chronicles": "Chronicles",
+        "campaign.menu.whiteboards": "Draw",
+        "campaign.menu.settings": "Settings",
 
-        "task.create.submit": "Add Quest to Campaign",
-        "task.create.update": "Update Quest",
-        "task.create.complexity": "Difficulty",
-        "task.create.complexity.helper":
+        "quest.create.submit": "Add Quest to Campaign",
+        "quest.create.update": "Update Quest",
+        "quest.create.difficulty": "Difficulty",
+        "quest.create.difficulty.helper":
           "Rate how challenging this quest will be",
-        "task.create.priority": "Priority",
-        "task.create.priority.helper":
+        "quest.create.priority": "Priority",
+        "quest.create.priority.helper":
           "How urgently this quest must be fulfilled",
-        "task.create.description": "Quest Description",
-        "task.create.description.helper":
+        "quest.create.description": "Quest Description",
+        "quest.create.description.helper":
           "Describe the quest, its objectives, and any relevant details",
-        "task.create.package": "Zone",
-        "task.create.package.helper": "Where the quest takes place",
-        "task.create.title": "Name",
-        "task.create.title.helper": "Short and descriptive name",
-        "task.create.objectives": "Objectives",
-        "task.create.objectives.helper": "List of objectives for this quest",
-        "task.create.attachments": "Attachments",
-        "task.create.attachments.helper": "Attach files to this quest",
+        "quest.create.zone": "Zone",
+        "quest.create.zone.helper": "Where the quest takes place",
+        "quest.create.title": "Name",
+        "quest.create.title.helper": "Short and descriptive name",
+        "quest.create.objectives": "Objectives",
+        "quest.create.objectives.helper": "List of objectives for this quest",
+        "quest.create.attachments": "Attachments",
+        "quest.create.attachments.helper": "Attach files to this quest",
 
         "priority.high": "High",
         "priority.medium": "Normal",
         "priority.low": "Low",
         "priority.none": "None",
 
-        "project.create.title": "Create a new campaign",
-        "project.create.description":
+        "campaign.create.title": "Create a new campaign",
+        "campaign.create.description":
           "Raise your banner! Forge quests, recruit adventurers and progress together toward victory.",
 
-        "project.create.name": "Campaign Name",
-        "project.create.name.helper":
+        "campaign.create.name": "Campaign Name",
+        "campaign.create.name.helper":
           "Set a short name for identifying your campaign.",
-        "project.create.public": "Public",
-        "project.create.public.helper":
+        "campaign.create.public": "Public",
+        "campaign.create.public.helper":
           "If enabled, your campaign will be visible across the realm, not just to you and your adventurers.",
-        "project.create.submit": "Create Campaign",
+        "campaign.create.submit": "Create Campaign",
 
-        "task.view.summary": "This quest has $1 priority. Difficulty tier: $2.",
-        "task.view.description": "Description",
-        "task.view.rewards": "Rewards",
-        "task.view.receive": "You will receive:",
-        "task.view.experience": "Experience:",
-        "task.view.created": "created",
-        "task.view.actions.complete": "Complete Quest",
-        "task.view.actions.abandon": "Abandon Quest",
-        "task.view.noObjectives": "No objectives for this quest.",
-        "task.view.objectives": "Objectives",
-        "task.view.attachments": "Attachments",
+        "quest.view.summary":
+          "This quest has $1 priority. Difficulty tier: $2.",
+        "quest.view.description": "Description",
+        "quest.view.rewards": "Rewards",
+        "quest.view.receive": "You will receive:",
+        "quest.view.experience": "Experience:",
+        "quest.view.created": "created",
+        "quest.view.actions.complete": "Complete Quest",
+        "quest.view.actions.abandon": "Abandon Quest",
+        "quest.view.noObjectives": "No objectives for this quest.",
+        "quest.view.objectives": "Objectives",
+        "quest.view.attachments": "Attachments",
 
-        "task.view.actions.accept": "Sign and Accept the Quest",
+        "quest.view.actions.accept": "Sign and Accept the Quest",
 
-        "task.view.history": "History",
-        "task.view.history.assigned": "Courageous Choice",
-        "task.view.history.unassigned": "Fateful Decision",
-        "task.view.history.completed": "At Long Last",
-        "task.view.history.created": "A New Dawn",
-        "task.view.history.objectiveCompleted": "Objective Achieved",
-        "task.view.history.changed": "Notable Change",
-        "task.view.history.objectiveCompletedBy":
+        "quest.view.history": "History",
+        "quest.view.history.assigned": "Courageous Choice",
+        "quest.view.history.unassigned": "Fateful Decision",
+        "quest.view.history.completed": "At Long Last",
+        "quest.view.history.created": "A New Dawn",
+        "quest.view.history.objectiveCompleted": "Objective Achieved",
+        "quest.view.history.changed": "Notable Change",
+        "quest.view.history.objectiveCompletedBy":
           "An objective has been fulfilled.",
-        "task.view.history.actionBy": "Quest has been $1.",
-        "task.view.history.questCompletedBy":
+        "quest.view.history.actionBy": "Quest has been $1.",
+        "quest.view.history.questCompletedBy":
           "The quest has been completed. Victory!",
-        "task.view.history.questCreatedBy": "A new quest has been forged.",
+        "quest.view.history.questCreatedBy": "A new quest has been forged.",
 
-        "project.settings.players.title": "Adventurers",
-        "project.settings.players.empty":
+        "campaign.settings.adventurers.title": "Adventurers",
+        "campaign.settings.adventurers.empty":
           "No adventurers in this campaign yet.",
-        "project.settings.players.invite.action": "Invite",
-        "project.settings.players.invite.title": "Invite Adventurer",
-        "project.settings.players.invite.description":
+        "campaign.settings.adventurers.invite.action": "Invite",
+        "campaign.settings.adventurers.invite.title": "Invite Adventurer",
+        "campaign.settings.adventurers.invite.description":
           'Enter the email address of the adventurer you want to invite to "$1".',
-        "project.settings.players.invite.email": "Email Address",
-        "project.settings.players.invite.cancel": "Cancel",
-        "project.settings.players.invite.submit": "Send Invitation",
+        "campaign.settings.adventurers.invite.email": "Email Address",
+        "campaign.settings.adventurers.invite.cancel": "Cancel",
+        "campaign.settings.adventurers.invite.submit": "Send Invitation",
 
-        "project.settings.danger.title": "Danger Zone",
-        "project.settings.actions.delete": "Delete this campaign",
-        "project.settings.actions.delete.helper":
+        "campaign.settings.danger.title": "Danger Zone",
+        "campaign.settings.actions.delete": "Delete this campaign",
+        "campaign.settings.actions.delete.helper":
           "Sometimes retreat is the only option. All quests and progress will be lost forever.",
 
-        "project.settings.general.title": "General",
-        "project.settings.whiteboard": "Whiteboard",
-        "project.settings.whiteboard.helper":
+        "campaign.settings.general.title": "General",
+        "campaign.settings.whiteboard": "Whiteboard",
+        "campaign.settings.whiteboard.helper":
           "Enable the drawing canvas to sketch plans and map out your quests.",
-        "project.settings.character.title": "Character",
-        "project.settings.character.level": "Level $1",
-        "project.settings.character.nextLevel": "$1 XP to next level",
-        "project.settings.character.balance": "Balance",
-        "project.settings.delete.modal.title": "Delete Campaign",
-        "project.settings.delete.modal.description":
+        "campaign.settings.character.title": "Character",
+        "campaign.settings.character.level": "Level $1",
+        "campaign.settings.character.nextLevel": "$1 XP to next level",
+        "campaign.settings.character.balance": "Balance",
+        "campaign.settings.delete.modal.title": "Delete Campaign",
+        "campaign.settings.delete.modal.description":
           "This action cannot be undone. This will permanently destroy the campaign and all its quests.",
-        "project.settings.delete.modal.confirm": "Please type $1 to confirm:",
-        "project.settings.delete.modal.cancel": "Cancel",
-        "project.settings.delete.modal.submit": "Delete Campaign",
-        "project.update.submit": "Save Changes",
+        "campaign.settings.delete.modal.confirm": "Please type $1 to confirm:",
+        "campaign.settings.delete.modal.cancel": "Cancel",
+        "campaign.settings.delete.modal.submit": "Delete Campaign",
+        "campaign.update.submit": "Save Changes",
 
-        "project.menu.chapters": "Chapters",
+        "campaign.menu.chapters": "Chapters",
 
         "chapter.start": "Start Chapter",
         "chapter.start.title": "Chapter Title",
@@ -211,30 +212,30 @@ export class I18n {
           "You must accept the quest before completing it",
         "kanban.error.actionFailed": "Action failed",
 
-        "task.view.abandon.title": "Abandon the quest",
-        "task.view.abandon.confirm":
-          "Are you sure you want to abandon this quest? You will lose all progress on this task.",
-        "task.view.abandon.confirmButton": "Abandon Quest",
-        "task.view.edit": "Edit",
-        "task.view.notes": "Notes",
-        "task.view.notes.title": "Quest Notes",
-        "task.view.notes.placeholder": "Add your notes here...",
-        "task.view.notes.save": "Save",
-        "task.view.duplicate": "Duplicate",
-        "task.view.duplicate.title": "Duplicate Quest",
-        "task.view.duplicate.suffix": "(Copy)",
-        "task.view.timer.pause": "Pause timer",
-        "task.view.timer.start": "Start timer",
-        "task.view.timer.running": "Timer Running",
-        "task.view.timer.description":
+        "quest.view.abandon.title": "Abandon the quest",
+        "quest.view.abandon.confirm":
+          "Are you sure you want to abandon this quest? You will lose all progress on this quest.",
+        "quest.view.abandon.confirmButton": "Abandon Quest",
+        "quest.view.edit": "Edit",
+        "quest.view.notes": "Notes",
+        "quest.view.notes.title": "Quest Notes",
+        "quest.view.notes.placeholder": "Add your notes here...",
+        "quest.view.notes.save": "Save",
+        "quest.view.duplicate": "Duplicate",
+        "quest.view.duplicate.title": "Duplicate Quest",
+        "quest.view.duplicate.suffix": "(Copy)",
+        "quest.view.timer.pause": "Pause timer",
+        "quest.view.timer.start": "Start timer",
+        "quest.view.timer.running": "Timer Running",
+        "quest.view.timer.description":
           "Time tracking is active for this quest.",
 
-        "task.item.bonus": "Bonus",
-        "task.item.bonus.description": "This quest is optional.",
-        "task.item.highPriority": "High Priority !",
-        "task.item.highPriority.description": "Which means more rewards.",
+        "quest.item.bonus": "Bonus",
+        "quest.item.bonus.description": "This quest is optional.",
+        "quest.item.highPriority": "High Priority !",
+        "quest.item.highPriority.description": "Which means more rewards.",
 
-        "task.group.quests": "$1 quest(s)",
+        "quest.group.quests": "$1 quest(s)",
 
         "zone.rename.title": "Rename Zone",
         "zone.rename.name": "Zone Name",
@@ -252,7 +253,7 @@ export class I18n {
         "stats.timeline": "Activity Timeline",
         "stats.topZones": "Top 6 Zones",
         "stats.byPriority": "Quests by Priority",
-        "stats.byComplexity": "Quest Difficulty",
+        "stats.byDifficulty": "Quest Difficulty",
         "stats.noActivity": "No recent activity",
         "stats.noData": "No data available",
         "stats.noZones": "No zones yet",
@@ -273,7 +274,7 @@ export class I18n {
         "common.success": "Success",
         "common.noResults": "No results",
 
-        "whiteboard.editTask": "Edit Task",
+        "whiteboard.editQuest": "Edit Quest",
         "whiteboard.drawingSaved": "Drawing saved",
         "whiteboard.invalidImage": "Invalid image type",
         "whiteboard.imageAdded": "Image added",
@@ -291,8 +292,8 @@ export class I18n {
         "language.fr": "Français",
 
         "header.title": "Roadmap",
-        "header.project.addTask": "Forger une nouvelle quête",
-        "header.addTask.name": "Nom de la quête",
+        "header.campaign.addQuest": "Forger une nouvelle quête",
+        "header.addQuest.name": "Nom de la quête",
         "header.actions.profile": "Héros",
         "header.actions.login": "Se connecter",
         "header.actions.logout": "Deconnexion",
@@ -340,112 +341,114 @@ export class I18n {
         "dashboard.chapter": "Chapitre actif",
         "dashboard.chapter.none": "Aucun chapitre ouvert",
 
-        "project.menu.create-task": "Créer quête",
-        "project.menu.dashboard": "Taverne",
-        "project.menu.board": "Tableau",
-        "project.menu.players": "Aventuriers",
-        "project.menu.analytics": "Chroniques",
-        "project.menu.whiteboards": "Dessiner",
-        "project.menu.settings": "Paramètres",
+        "campaign.menu.create-quest": "Créer quête",
+        "campaign.menu.dashboard": "Taverne",
+        "campaign.menu.board": "Tableau",
+        "campaign.menu.adventurers": "Aventuriers",
+        "campaign.menu.chronicles": "Chroniques",
+        "campaign.menu.whiteboards": "Dessiner",
+        "campaign.menu.settings": "Paramètres",
 
-        "task.create.submit": "Ajouter la quête à la campagne",
-        "task.create.update": "Modifier la quête",
-        "task.create.complexity": "Difficulté",
-        "task.create.complexity.helper":
+        "quest.create.submit": "Ajouter la quête à la campagne",
+        "quest.create.update": "Modifier la quête",
+        "quest.create.difficulty": "Difficulté",
+        "quest.create.difficulty.helper":
           "Estimez le niveau de défi de cette quête",
-        "task.create.priority": "Priorité",
-        "task.create.priority.helper":
+        "quest.create.priority": "Priorité",
+        "quest.create.priority.helper":
           "À quelle vitesse cette quête doit être accomplie",
-        "task.create.description": "Description de la quête",
-        "task.create.description.helper":
+        "quest.create.description": "Description de la quête",
+        "quest.create.description.helper":
           "Décrivez le but, les épreuves et les détails importants.",
-        "task.create.package": "Zone",
-        "task.create.package.helper": "Royaume ou lieu où se déroule la quête",
-        "task.create.title": "Nom",
-        "task.create.title.helper": "Un nom court et héroïque",
-        "task.create.objectives": "Objectifs",
-        "task.create.objectives.helper": "Liste des objectifs pour cette quête",
-        "task.create.attachments": "Pièces jointes",
-        "task.create.attachments.helper": "Joindre des fichiers à cette quête",
+        "quest.create.zone": "Zone",
+        "quest.create.zone.helper": "Royaume ou lieu où se déroule la quête",
+        "quest.create.title": "Nom",
+        "quest.create.title.helper": "Un nom court et héroïque",
+        "quest.create.objectives": "Objectifs",
+        "quest.create.objectives.helper":
+          "Liste des objectifs pour cette quête",
+        "quest.create.attachments": "Pièces jointes",
+        "quest.create.attachments.helper": "Joindre des fichiers à cette quête",
 
         "priority.high": "Urgente",
         "priority.medium": "Normal",
         "priority.low": "Peu",
         "priority.none": "Aucune",
 
-        "project.create.title": "Forger une nouvelle campagne",
-        "project.create.description":
+        "campaign.create.title": "Forger une nouvelle campagne",
+        "campaign.create.description":
           "Levez votre bannière ! Créez des quêtes, recrutez des aventuriers et progressez ensemble vers la victoire.",
 
-        "project.create.name": "Nom de la campagne",
-        "project.create.name.helper": "Un nom marquant pour votre épopée.",
-        "project.create.public": "Publique",
-        "project.create.public.helper":
+        "campaign.create.name": "Nom de la campagne",
+        "campaign.create.name.helper": "Un nom marquant pour votre épopée.",
+        "campaign.create.public": "Publique",
+        "campaign.create.public.helper":
           "Si activé, votre campagne sera visible dans tout le royaume, pas seulement par vos compagnons.",
-        "project.create.submit": "Lancer la campagne",
+        "campaign.create.submit": "Lancer la campagne",
 
-        "task.view.summary":
+        "quest.view.summary":
           "Cette quête est de priorité $1 et de difficulté $2.",
-        "task.view.description": "Description",
-        "task.view.rewards": "Récompenses",
-        "task.view.receive": "Vous obtiendrez :",
-        "task.view.experience": "Expérience :",
-        "task.view.created": "forgée",
-        "task.view.actions.complete": "Marquer comme accomplie",
-        "task.view.actions.abandon": "Abandonner la quête",
-        "task.view.noObjectives": "Aucun objectif défini.",
-        "task.view.objectives": "Objectifs",
-        "task.view.attachments": "Pièces jointes",
+        "quest.view.description": "Description",
+        "quest.view.rewards": "Récompenses",
+        "quest.view.receive": "Vous obtiendrez :",
+        "quest.view.experience": "Expérience :",
+        "quest.view.created": "forgée",
+        "quest.view.actions.complete": "Marquer comme accomplie",
+        "quest.view.actions.abandon": "Abandonner la quête",
+        "quest.view.noObjectives": "Aucun objectif défini.",
+        "quest.view.objectives": "Objectifs",
+        "quest.view.attachments": "Pièces jointes",
 
-        "task.view.actions.accept": "Signer et accepter la quête",
+        "quest.view.actions.accept": "Signer et accepter la quête",
 
-        "task.view.history": "Historique",
-        "task.view.history.assigned": "Choix courageux",
-        "task.view.history.unassigned": "Décision fatidique",
-        "task.view.history.completed": "Enfin !",
-        "task.view.history.created": "Une aube nouvelle",
-        "task.view.history.objectiveCompleted": "Objectif accompli",
-        "task.view.history.changed": "Changement notable",
-        "task.view.history.objectiveCompletedBy": "Un objectif a été accompli.",
-        "task.view.history.actionBy": "La quête a été $1.",
-        "task.view.history.questCompletedBy":
+        "quest.view.history": "Historique",
+        "quest.view.history.assigned": "Choix courageux",
+        "quest.view.history.unassigned": "Décision fatidique",
+        "quest.view.history.completed": "Enfin !",
+        "quest.view.history.created": "Une aube nouvelle",
+        "quest.view.history.objectiveCompleted": "Objectif accompli",
+        "quest.view.history.changed": "Changement notable",
+        "quest.view.history.objectiveCompletedBy":
+          "Un objectif a été accompli.",
+        "quest.view.history.actionBy": "La quête a été $1.",
+        "quest.view.history.questCompletedBy":
           "La quête a été accomplie. Victoire !",
-        "task.view.history.questCreatedBy": "Une nouvelle quête a été forgée.",
+        "quest.view.history.questCreatedBy": "Une nouvelle quête a été forgée.",
 
-        "project.settings.players.title": "Aventuriers",
-        "project.settings.players.empty":
+        "campaign.settings.adventurers.title": "Aventuriers",
+        "campaign.settings.adventurers.empty":
           "Aucun aventurier dans cette campagne pour le moment.",
-        "project.settings.players.invite.action": "Inviter",
-        "project.settings.players.invite.title": "Inviter un aventurier",
-        "project.settings.players.invite.description":
+        "campaign.settings.adventurers.invite.action": "Inviter",
+        "campaign.settings.adventurers.invite.title": "Inviter un aventurier",
+        "campaign.settings.adventurers.invite.description":
           "Entrez l'adresse e-mail de l'aventurier que vous souhaitez inviter dans « $1 ».",
-        "project.settings.players.invite.email": "Adresse e-mail",
-        "project.settings.players.invite.cancel": "Annuler",
-        "project.settings.players.invite.submit": "Envoyer l'invitation",
+        "campaign.settings.adventurers.invite.email": "Adresse e-mail",
+        "campaign.settings.adventurers.invite.cancel": "Annuler",
+        "campaign.settings.adventurers.invite.submit": "Envoyer l'invitation",
 
-        "project.settings.danger.title": "Zone à risques",
-        "project.settings.actions.delete": "Détruire cette campagne",
-        "project.settings.actions.delete.helper":
+        "campaign.settings.danger.title": "Zone à risques",
+        "campaign.settings.actions.delete": "Détruire cette campagne",
+        "campaign.settings.actions.delete.helper":
           "Parfois, il faut abandonner le combat… mais sachez que toutes les quêtes et les progrès seront perdus.",
 
-        "project.settings.general.title": "Général",
-        "project.settings.whiteboard": "Tableau blanc",
-        "project.settings.whiteboard.helper":
+        "campaign.settings.general.title": "Général",
+        "campaign.settings.whiteboard": "Tableau blanc",
+        "campaign.settings.whiteboard.helper":
           "Activer le canevas de dessin pour esquisser vos plans et cartographier vos quêtes.",
-        "project.settings.character.title": "Personnage",
-        "project.settings.character.level": "Niveau $1",
-        "project.settings.character.nextLevel":
+        "campaign.settings.character.title": "Personnage",
+        "campaign.settings.character.level": "Niveau $1",
+        "campaign.settings.character.nextLevel":
           "$1 XP avant le prochain niveau",
-        "project.settings.character.balance": "Bourse",
-        "project.settings.delete.modal.title": "Détruire la campagne",
-        "project.settings.delete.modal.description":
+        "campaign.settings.character.balance": "Bourse",
+        "campaign.settings.delete.modal.title": "Détruire la campagne",
+        "campaign.settings.delete.modal.description":
           "Cette action est irréversible. La campagne et toutes ses quêtes seront définitivement perdues.",
-        "project.settings.delete.modal.confirm": "Tapez $1 pour confirmer :",
-        "project.settings.delete.modal.cancel": "Annuler",
-        "project.settings.delete.modal.submit": "Détruire la campagne",
-        "project.update.submit": "Modifier",
+        "campaign.settings.delete.modal.confirm": "Tapez $1 pour confirmer :",
+        "campaign.settings.delete.modal.cancel": "Annuler",
+        "campaign.settings.delete.modal.submit": "Détruire la campagne",
+        "campaign.update.submit": "Modifier",
 
-        "project.menu.chapters": "Chapitres",
+        "campaign.menu.chapters": "Chapitres",
 
         "chapter.start": "Ouvrir un chapitre",
         "chapter.start.title": "Titre du chapitre",
@@ -480,38 +483,38 @@ export class I18n {
         "kanban.empty": "Aucune quête",
         "kanban.showMore": "Afficher plus",
         "kanban.readOnly": "Lecture seule",
-        "kanban.filter.packages": "Zones",
+        "kanban.filter.zones": "Zones",
         "kanban.error.completedCannotMove":
           "Les quêtes terminées ne peuvent pas être déplacées",
         "kanban.error.acceptFirst":
           "Vous devez d'abord accepter la quête avant de la terminer",
         "kanban.error.actionFailed": "L'action a échoué",
 
-        "task.view.abandon.title": "Abandonner la quête",
-        "task.view.abandon.confirm":
+        "quest.view.abandon.title": "Abandonner la quête",
+        "quest.view.abandon.confirm":
           "Êtes-vous sûr de vouloir abandonner cette quête ? Vous perdrez toute progression.",
-        "task.view.abandon.confirmButton": "Abandonner la quête",
-        "task.view.edit": "Modifier",
-        "task.view.notes": "Notes",
-        "task.view.notes.title": "Notes de quête",
-        "task.view.notes.placeholder": "Ajoutez vos notes ici...",
-        "task.view.notes.save": "Enregistrer",
-        "task.view.duplicate": "Dupliquer",
-        "task.view.duplicate.title": "Dupliquer la quête",
-        "task.view.duplicate.suffix": "(Copie)",
-        "task.view.timer.pause": "Mettre en pause",
-        "task.view.timer.start": "Démarrer le chrono",
-        "task.view.timer.running": "Chrono actif",
-        "task.view.timer.description":
+        "quest.view.abandon.confirmButton": "Abandonner la quête",
+        "quest.view.edit": "Modifier",
+        "quest.view.notes": "Notes",
+        "quest.view.notes.title": "Notes de quête",
+        "quest.view.notes.placeholder": "Ajoutez vos notes ici...",
+        "quest.view.notes.save": "Enregistrer",
+        "quest.view.duplicate": "Dupliquer",
+        "quest.view.duplicate.title": "Dupliquer la quête",
+        "quest.view.duplicate.suffix": "(Copie)",
+        "quest.view.timer.pause": "Mettre en pause",
+        "quest.view.timer.start": "Démarrer le chrono",
+        "quest.view.timer.running": "Chrono actif",
+        "quest.view.timer.description":
           "Le suivi du temps est actif pour cette quête.",
 
-        "task.item.bonus": "Bonus",
-        "task.item.bonus.description": "Cette quête est optionnelle.",
-        "task.item.highPriority": "Priorité haute !",
-        "task.item.highPriority.description":
+        "quest.item.bonus": "Bonus",
+        "quest.item.bonus.description": "Cette quête est optionnelle.",
+        "quest.item.highPriority": "Priorité haute !",
+        "quest.item.highPriority.description":
           "Ce qui signifie plus de récompenses.",
 
-        "task.group.quests": "$1 quête(s)",
+        "quest.group.quests": "$1 quête(s)",
 
         "zone.rename.title": "Renommer la zone",
         "zone.rename.name": "Nom de la zone",
@@ -529,7 +532,7 @@ export class I18n {
         "stats.timeline": "Chronologie d'activité",
         "stats.topZones": "Top 6 des zones",
         "stats.byPriority": "Quêtes par priorité",
-        "stats.byComplexity": "Difficulté des quêtes",
+        "stats.byDifficulty": "Difficulté des quêtes",
         "stats.noActivity": "Aucune activité récente",
         "stats.noData": "Aucune donnée disponible",
         "stats.noZones": "Aucune zone pour le moment",
@@ -550,7 +553,7 @@ export class I18n {
         "common.success": "Succès",
         "common.noResults": "Aucun résultat",
 
-        "whiteboard.editTask": "Modifier la quête",
+        "whiteboard.editQuest": "Modifier la quête",
         "whiteboard.drawingSaved": "Dessin sauvegardé",
         "whiteboard.invalidImage": "Type d'image invalide",
         "whiteboard.imageAdded": "Image ajoutée",

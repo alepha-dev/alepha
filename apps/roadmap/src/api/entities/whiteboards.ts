@@ -1,17 +1,17 @@
 import { type Static, t } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
-import { projects } from "./projects.ts";
+import { campaigns } from "./campaigns.ts";
 
 export const whiteboardElementSchema = t.object({
   id: t.string(),
-  type: t.enum(["task", "rect", "circle", "arrow", "text", "line", "image"]),
+  type: t.enum(["quest", "rect", "circle", "arrow", "text", "line", "image"]),
   x: t.number(),
   y: t.number(),
   width: t.optional(t.number()),
   height: t.optional(t.number()),
   rotation: t.optional(t.number()),
-  taskId: t.optional(t.integer()),
+  questId: t.optional(t.integer()),
   text: t.optional(t.string()),
   points: t.optional(t.array(t.number())),
   stroke: t.optional(t.string()),
@@ -32,7 +32,7 @@ export const whiteboards = $entity({
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     title: t.string({ minLength: 1, maxLength: 50 }),
-    projectId: db.ref(t.integer(), () => projects.cols.id, {
+    campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
       onDelete: "cascade",
     }),
     createdBy: db.ref(t.uuid(), () => users.cols.id, {
@@ -42,7 +42,7 @@ export const whiteboards = $entity({
   }),
   indexes: [
     {
-      columns: ["projectId"],
+      columns: ["campaignId"],
     },
   ],
 });

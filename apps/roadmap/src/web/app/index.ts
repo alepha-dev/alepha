@@ -2,16 +2,16 @@ import { $module } from "alepha";
 import { AlephaReactUi } from "alepha/react/ui";
 import { CharacterInfo } from "../../api/services/CharacterInfo.ts";
 import { AppRouter } from "./AppRouter.ts";
-import { currentAssignedTasksAtom } from "./atoms/currentAssignedTasksAtom.ts";
+import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
+import { currentCampaignAtom } from "./atoms/currentCampaignAtom.ts";
+import { currentCampaignCharacterAtom } from "./atoms/currentCampaignCharacterAtom.ts";
 import { currentChaptersAtom } from "./atoms/currentChaptersAtom.ts";
-import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
-import { currentProjectCharacterAtom } from "./atoms/currentProjectCharacterAtom.ts";
-import { currentTaskAtom } from "./atoms/currentTaskAtom.ts";
+import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import {
-  kanbanProjectAtom,
+  kanbanCampaignAtom,
   kanbanReloadAtom,
-} from "./atoms/kanbanProjectAtom.ts";
-import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
+} from "./atoms/kanbanCampaignAtom.ts";
+import { userCampaignsAtom } from "./atoms/userCampaignsAtom.ts";
 import { MeRouter } from "./components/profile/me/MeRouter.ts";
 import { I18n } from "./services/I18n.ts";
 import { ThemesProvider } from "./services/ThemesProvider.ts";
@@ -22,14 +22,14 @@ export const RoadmapWebApp = $module({
   imports: [AlephaReactUi],
   services: [Toaster, I18n, ThemesProvider, AppRouter, MeRouter],
   atoms: [
-    currentAssignedTasksAtom,
+    currentAssignedQuestsAtom,
     currentChaptersAtom,
-    currentProjectAtom,
-    currentProjectCharacterAtom,
-    currentTaskAtom,
-    kanbanProjectAtom,
+    currentCampaignAtom,
+    currentCampaignCharacterAtom,
+    currentQuestAtom,
+    kanbanCampaignAtom,
     kanbanReloadAtom,
-    userProjectsAtom,
+    userCampaignsAtom,
   ],
   register(alepha) {
     alepha.with(CharacterInfo);

@@ -197,7 +197,7 @@ describe("MCP Security Integration", () => {
   describe("Basic Authentication", () => {
     it("should reject request without authentication", async ({ expect }) => {
       const result = await mcpRequest(ctx.baseUrl, "tools/call", {
-        name: "project_list",
+        name: "campaign_list",
         arguments: {},
       });
 
@@ -212,7 +212,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
 
@@ -227,7 +227,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { token },
       );
 
@@ -239,7 +239,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: "Bearer ak_invalid_token_12345678" },
       );
 
@@ -253,7 +253,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: "Bearer" }, // Missing token
       );
 
@@ -268,7 +268,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Basic ${token}` }, // Wrong scheme
       );
 
@@ -290,7 +290,7 @@ describe("MCP Security Integration", () => {
       const beforeRevoke = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
       expect(isErrorResponse(beforeRevoke.data)).toBe(false);
@@ -305,7 +305,7 @@ describe("MCP Security Integration", () => {
       const afterRevoke = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
       expect(afterRevoke.status).toBe(200);
@@ -323,7 +323,7 @@ describe("MCP Security Integration", () => {
       const beforeExpiry = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
       expect(isErrorResponse(beforeExpiry.data)).toBe(false);
@@ -335,7 +335,7 @@ describe("MCP Security Integration", () => {
       const afterExpiry = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
       expect(afterExpiry.status).toBe(200);
@@ -356,7 +356,7 @@ describe("MCP Security Integration", () => {
       const result1 = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${token1}` },
       );
       expect(isErrorResponse(result1.data)).toBe(false);
@@ -364,7 +364,7 @@ describe("MCP Security Integration", () => {
       const result2 = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${token2}` },
       );
       expect(isErrorResponse(result2.data)).toBe(false);
@@ -392,7 +392,7 @@ describe("MCP Security Integration", () => {
       const result1 = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${token1}` },
       );
       expect(result1.status).toBe(200);
@@ -402,7 +402,7 @@ describe("MCP Security Integration", () => {
       const result2 = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${token2}` },
       );
       expect(isErrorResponse(result2.data)).toBe(false);
@@ -414,26 +414,26 @@ describe("MCP Security Integration", () => {
   // ---------------------------------------------------------------------------
 
   describe("User Isolation", () => {
-    it("should isolate projects between users", async ({ expect }) => {
+    it("should isolate campaigns between users", async ({ expect }) => {
       const user1 = await createTestUser(ctx);
       const user2 = await createTestUser(ctx);
 
       const { token: token1 } = await createApiKey(ctx, user1);
       const { token: token2 } = await createApiKey(ctx, user2);
 
-      // User1 lists projects (should be empty, but distinct from user2)
+      // User1 lists campaigns (should be empty, but distinct from user2)
       const result1 = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${token1}` },
       );
 
-      // User2 lists projects
+      // User2 lists campaigns
       const result2 = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${token2}` },
       );
 
@@ -463,7 +463,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
       expect(isErrorResponse(result.data)).toBe(false);
@@ -492,8 +492,8 @@ describe("MCP Security Integration", () => {
 
       // Should include roadmap tools
       const toolNames = result.data.result?.tools?.map((t) => t.name) ?? [];
-      expect(toolNames).toContain("project_list");
-      expect(toolNames).toContain("task_list");
+      expect(toolNames).toContain("campaign_list");
+      expect(toolNames).toContain("quest_list");
     });
 
     it("should return error for unknown tool", async ({ expect }) => {
@@ -561,7 +561,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: "" },
       );
 
@@ -578,7 +578,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${jwtLikeToken}` },
       );
 
@@ -598,7 +598,7 @@ describe("MCP Security Integration", () => {
         mcpRequest(
           ctx.baseUrl,
           "tools/call",
-          { name: "project_list", arguments: {} },
+          { name: "campaign_list", arguments: {} },
           { authorization: `Bearer ${token}` },
         ),
       );
@@ -628,7 +628,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${token}` },
       );
       expect(result.status).toBe(200);
@@ -643,7 +643,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${longToken}` },
       );
 
@@ -658,7 +658,7 @@ describe("MCP Security Integration", () => {
       const result = await mcpRequest(
         ctx.baseUrl,
         "tools/call",
-        { name: "project_list", arguments: {} },
+        { name: "campaign_list", arguments: {} },
         { authorization: `Bearer ${weirdToken}` },
       );
 

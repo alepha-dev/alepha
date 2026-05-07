@@ -9,8 +9,8 @@ import { expect, type Page, test } from "@playwright/test";
  *
  * The flow drives the real shadcn UI everywhere except the quest *form* — for
  * that we hit the API directly because the current Combobox can't author a new
- * zone for a brand-new project. We still walk the rest through the UI: list,
- * task view, accept, complete.
+ * zone for a brand-new campaign. We still walk the rest through the UI: list,
+ * quest view, accept, complete.
  */
 
 const timestamp = Date.now();
@@ -18,7 +18,7 @@ const testUsername = `testuser${timestamp}`;
 const testEmail = `test${timestamp}@example.com`;
 const testPassword = "TestPassword123!";
 const testCampaignTitle = `Camp${timestamp}`.slice(0, 20);
-const testTaskTitle = `Quest${timestamp}`;
+const testQuestTitle = `Quest${timestamp}`;
 
 const emailDir = path.join(process.cwd(), "node_modules/.alepha/emails");
 
@@ -138,26 +138,26 @@ test.describe("User Journey", () => {
     });
 
     // ── Create campaign ────────────────────────────────────────────────────
-    let projectId = 0;
+    let campaignId = 0;
     await test.step("create campaign via UI", async () => {
-      await page.goto("/p-new");
+      await page.goto("/c-new");
       await page.waitForLoadState("networkidle");
 
       await page.locator('input[type="text"]').first().fill(testCampaignTitle);
 
       await page.getByRole("button", { name: /create campaign/i }).click();
-      await page.waitForURL(/\/p\/\d+/, { timeout: 15_000 });
+      await page.waitForURL(/\/c\/\d+/, { timeout: 15_000 });
 
-      const match = page.url().match(/\/p\/(\d+)/);
+      const match = page.url().match(/\/c\/(\d+)/);
       expect(match).not.toBeNull();
-      projectId = Number(match![1]);
+      campaignId = Number(match![1]);
       await expect(page.getByText(testCampaignTitle).first()).toBeVisible();
     });
 
     // ── Seed quest via API ─────────────────────────────────────────────────
-    let taskId = 0;
+    let questId = 0;
     await test.step("seed quest via API", async () => {
-      const url = await apiPath(page, "createTask");
+      const url = await apiPath(page, "createQuest");
       const created = await page.evaluate(
         async ({ url, body }) => {
           const r = await fetch(url, {
@@ -167,33 +167,35 @@ test.describe("User Journey", () => {
             body: JSON.stringify(body),
           });
           if (!r.ok) {
-            throw new Error(`createTask failed: ${r.status} ${await r.text()}`);
+            throw new Error(
+              `createQuest failed: ${r.status} ${await r.text()}`,
+            );
           }
           return r.json() as Promise<{ id: number }>;
         },
         {
           url,
           body: {
-            title: testTaskTitle,
+            title: testQuestTitle,
             description: "Seeded quest for e2e",
-            package: "Main",
+            zone: "Main",
             priority: "medium",
-            complexity: 3,
-            projectId,
+            difficulty: 3,
+            campaignId,
             objectives: [],
             attachments: [],
           },
         },
       );
-      taskId = created.id;
-      expect(taskId).toBeGreaterThan(0);
+      questId = created.id;
+      expect(questId).toBeGreaterThan(0);
     });
 
-    // ── Verify quest appears + open task view ──────────────────────────────
-    await test.step("open task view via UI", async () => {
-      await page.goto(`/p/${projectId}/q/${taskId}`);
+    // ── Verify quest appears + open quest view ──────────────────────────────
+    await test.step("open quest view via UI", async () => {
+      await page.goto(`/c/${campaignId}/q/${questId}`);
       await page.waitForLoadState("networkidle");
-      await expect(page.getByText(testTaskTitle).first()).toBeVisible({
+      await expect(page.getByText(testQuestTitle).first()).toBeVisible({
         timeout: 10_000,
       });
     });
@@ -213,11 +215,11 @@ test.describe("User Journey", () => {
     // ── Complete quest ─────────────────────────────────────────────────────
     await test.step("complete quest", async () => {
       await page.getByRole("button", { name: /complete.*quest/i }).click();
-      // Server transitions the task to completed; UI either stays on the page
+      // Server transitions the quest to completed; UI either stays on the page
       // showing a completed badge or animates back to the board. Either way,
       // we should remain inside the campaign URL space.
       await page.waitForLoadState("networkidle");
-      expect(page.url()).toContain(`/p/${projectId}`);
+      expect(page.url()).toContain(`/c/${campaignId}`);
     });
   });
 });

@@ -2,11 +2,11 @@ import { $env, t } from "alepha";
 import { $realm } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
+import { type Campaign, campaigns } from "../entities/campaigns.ts";
 import { type Character, characters } from "../entities/characters.ts";
-import { type Project, projects } from "../entities/projects.ts";
 
 export class AppSecurityProvider {
-  projects = $repository(projects);
+  campaigns = $repository(campaigns);
   characters = $repository(characters);
 
   env = $env(
@@ -38,32 +38,32 @@ export class AppSecurityProvider {
   });
 
   async checkOwnership(
-    projectId: number,
+    campaignId: number,
     user: UserAccountToken,
-  ): Promise<ProjectGuard> {
-    const project = await this.projects.getOne({
+  ): Promise<CampaignGuard> {
+    const campaign = await this.campaigns.getOne({
       where: {
-        id: { eq: projectId },
+        id: { eq: campaignId },
       },
     });
 
-    if (project.createdBy !== user.id && !project.public && user.ownership) {
+    if (campaign.createdBy !== user.id && !campaign.public && user.ownership) {
       return {
-        project,
+        campaign,
         character: await this.characters.getOne({
           where: {
-            projectId: { eq: projectId },
+            campaignId: { eq: campaignId },
             userId: { eq: user.id },
           },
         }),
       };
     }
 
-    return { project };
+    return { campaign };
   }
 }
 
-export interface ProjectGuard {
-  project: Project;
+export interface CampaignGuard {
+  campaign: Campaign;
   character?: Character;
 }

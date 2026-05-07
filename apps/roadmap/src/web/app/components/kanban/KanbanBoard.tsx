@@ -12,44 +12,46 @@ import { useI18n } from "alepha/react/i18n";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
-import type { TaskController } from "@/api/controllers/TaskController.ts";
-import type { Project } from "@/api/entities/projects.ts";
-import type { TaskResource } from "@/api/schemas/taskResourceSchema.ts";
+import type { QuestController } from "@/api/controllers/QuestController.ts";
+import type { Campaign } from "@/api/entities/campaigns.ts";
+import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import {
-  kanbanProjectAtom,
+  kanbanCampaignAtom,
   kanbanReloadAtom,
-} from "../../atoms/kanbanProjectAtom.ts";
+} from "../../atoms/kanbanCampaignAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { Toaster } from "../../services/Toaster.ts";
-import TaskView from "../project/task/TaskView.tsx";
+import QuestView from "../campaign/quest/QuestView.tsx";
 import KanbanColumn from "./KanbanColumn.tsx";
 
-type TaskStatus = "new" | "accepted" | "completed";
+type QuestStatus = "new" | "accepted" | "completed";
 
 export interface KanbanBoardProps {
-  project: Project;
-  tasks: TaskResource[];
+  campaign: Campaign;
+  quests: QuestResource[];
   readOnly: boolean;
 }
 
 const KanbanBoard = (props: KanbanBoardProps) => {
-  const { project, tasks: initialTasks, readOnly } = props;
-  const [tasks, setTasks] = useState<TaskResource[]>(initialTasks);
+  const { campaign, quests: initialQuests, readOnly } = props;
+  const [quests, setQuests] = useState<QuestResource[]>(initialQuests);
   const [zoneFilter, setZoneFilter] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<TaskResource | null>(null);
-  const [, setKanbanProject] = useStore(kanbanProjectAtom);
+  const [selectedQuest, setSelectedQuest] = useState<QuestResource | null>(
+    null,
+  );
+  const [, setKanbanCampaign] = useStore(kanbanCampaignAtom);
   const [reloadKey] = useStore(kanbanReloadAtom);
-  const taskApi = useClient<TaskController>();
+  const questApi = useClient<QuestController>();
   const kanbanApi = useClient<KanbanController>();
   const { tr } = useI18n<I18n, "en">();
   const toaster = useInject(Toaster);
   const dndId = useId();
 
   useEffect(() => {
-    setKanbanProject({ project, readOnly });
-    return () => setKanbanProject(undefined as any);
-  }, [project, readOnly]);
+    setKanbanCampaign({ campaign, readOnly });
+    return () => setKanbanCampaign(undefined as any);
+  }, [campaign, readOnly]);
 
   useEffect(() => {
     if (reloadKey?.key) reload();
@@ -67,56 +69,56 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     );
   }, []);
 
-  const filteredTasks = useMemo(() => {
+  const filteredQuests = useMemo(() => {
     if (zoneFilter.length > 0) {
-      return tasks.filter((task) => zoneFilter.includes(task.package));
+      return quests.filter((quest) => zoneFilter.includes(quest.zone));
     }
-    return tasks;
-  }, [tasks, zoneFilter]);
+    return quests;
+  }, [quests, zoneFilter]);
 
   const grouped = useMemo(() => {
-    const result: Record<TaskStatus, TaskResource[]> = {
+    const result: Record<QuestStatus, QuestResource[]> = {
       new: [],
       accepted: [],
       completed: [],
     };
-    for (const task of filteredTasks) {
-      result[task.metadata.status].push(task);
+    for (const quest of filteredQuests) {
+      result[quest.metadata.status].push(quest);
     }
     result.completed.sort(
       (a, b) =>
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
     return result;
-  }, [filteredTasks]);
+  }, [filteredQuests]);
 
   const reload = async () => {
     setLoading(true);
     try {
       const data = await kanbanApi.getBoard({
-        params: { projectId: project.id },
+        params: { campaignId: campaign.id },
       });
-      setTasks(data.tasks);
+      setQuests(data.quests);
     } finally {
       setLoading(false);
     }
   };
 
   const closeDrawer = () => {
-    setSelectedTask(null);
+    setSelectedQuest(null);
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) return;
 
-    const taskData = active.data.current;
+    const questData = active.data.current;
     const columnData = over.data.current;
-    if (taskData?.type !== "task" || columnData?.type !== "column") return;
+    if (questData?.type !== "quest" || columnData?.type !== "column") return;
 
-    const task = taskData.task as TaskResource;
-    const fromStatus = task.metadata.status;
-    const toStatus = columnData.status as TaskStatus;
+    const quest = questData.quest as QuestResource;
+    const fromStatus = quest.metadata.status;
+    const toStatus = columnData.status as QuestStatus;
 
     if (fromStatus === toStatus) return;
 
@@ -132,11 +134,11 @@ const KanbanBoard = (props: KanbanBoardProps) => {
 
     try {
       if (fromStatus === "new" && toStatus === "accepted") {
-        await taskApi.acceptTask({ params: { id: task.id } });
+        await questApi.acceptQuest({ params: { id: quest.id } });
       } else if (fromStatus === "accepted" && toStatus === "new") {
-        await taskApi.abandonTask({ params: { id: task.id } });
+        await questApi.abandonQuest({ params: { id: quest.id } });
       } else if (fromStatus === "accepted" && toStatus === "completed") {
-        await taskApi.completeTask({ params: { id: task.id } });
+        await questApi.completeQuest({ params: { id: quest.id } });
       }
       await reload();
     } catch (error: any) {
@@ -160,7 +162,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
         )}
         <div className="flex flex-1 flex-wrap items-center gap-1.5">
-          {project.packages.map((zone) => {
+          {campaign.zones.map((zone) => {
             const active = zoneFilter.includes(zone);
             return (
               <button
@@ -185,29 +187,29 @@ const KanbanBoard = (props: KanbanBoardProps) => {
         <DndContext id={dndId} sensors={sensors} onDragEnd={handleDragEnd}>
           <KanbanColumn
             status="new"
-            tasks={grouped.new}
+            quests={grouped.new}
             readOnly={readOnly}
-            onSelect={setSelectedTask}
+            onSelect={setSelectedQuest}
           />
           <KanbanColumn
             status="accepted"
-            tasks={grouped.accepted}
+            quests={grouped.accepted}
             readOnly={readOnly}
-            onSelect={setSelectedTask}
+            onSelect={setSelectedQuest}
           />
           <KanbanColumn
             status="completed"
-            tasks={grouped.completed}
+            quests={grouped.completed}
             readOnly={readOnly}
-            onSelect={setSelectedTask}
+            onSelect={setSelectedQuest}
             last
           />
         </DndContext>
       </div>
 
-      {/* Task detail sheet */}
+      {/* Quest detail sheet */}
       <Sheet
-        open={!!selectedTask}
+        open={!!selectedQuest}
         onOpenChange={(open) => !open && closeDrawer()}
       >
         <SheetContent
@@ -215,13 +217,13 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           showCloseButton={false}
           className="w-full p-0 sm:max-w-2xl"
         >
-          {selectedTask && (
-            <TaskView
-              task={selectedTask}
+          {selectedQuest && (
+            <QuestView
+              quest={selectedQuest}
               onClose={closeDrawer}
-              onTaskChange={(updated) => {
-                setSelectedTask(updated);
-                setTasks((prev) =>
+              onQuestChange={(updated) => {
+                setSelectedQuest(updated);
+                setQuests((prev) =>
                   prev.map((t) => (t.id === updated.id ? updated : t)),
                 );
               }}

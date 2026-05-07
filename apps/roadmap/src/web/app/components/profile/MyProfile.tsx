@@ -23,8 +23,8 @@ export interface MyProfileProps {
   user: UserEntity;
   characters: Array<{
     id: number;
-    projectId: number;
-    projectTitle: string;
+    campaignId: number;
+    campaignTitle: string;
     xp: number;
     balance: number;
     owner?: boolean;
@@ -212,7 +212,7 @@ const MyProfile = (props: MyProfileProps) => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold">
-                        {char.projectTitle}
+                        {char.campaignTitle}
                       </span>
                       {char.owner && (
                         <Badge variant="secondary" className="text-xs">

@@ -7,14 +7,14 @@ import {
 import { useEvents, useStore } from "alepha/react";
 import { Menu } from "lucide-react";
 import { useState } from "react";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import QuestLog from "../../project/QuestLog.tsx";
+import { currentCampaignAtom } from "../../../atoms/currentCampaignAtom.ts";
+import QuestLog from "../../campaign/QuestLog.tsx";
 
 export type HeaderMobileQuestLogProps = {};
 
 const HeaderMobileQuestLog = (_props: HeaderMobileQuestLogProps) => {
   const [show, setShow] = useState(false);
-  const [project] = useStore(currentProjectAtom);
+  const [campaign] = useStore(currentCampaignAtom);
 
   useEvents(
     {
@@ -23,7 +23,7 @@ const HeaderMobileQuestLog = (_props: HeaderMobileQuestLogProps) => {
     [],
   );
 
-  if (!project) {
+  if (!campaign) {
     return null;
   }
 

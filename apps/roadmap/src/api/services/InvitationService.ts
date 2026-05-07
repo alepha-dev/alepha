@@ -5,9 +5,9 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, type Page } from "alepha/orm";
 import { BadRequestError, ForbiddenError } from "alepha/server";
+import { campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
 import { type InvitationEntity, invitations } from "../entities/invitations.ts";
-import { projects } from "../entities/projects.ts";
 import { AppSecurityProvider } from "./../providers/AppSecurityProvider.ts";
 import type { CreateInvitation } from "../schemas/createInvitationSchema.ts";
 import { invitationConfigAtom } from "../schemas/invitationConfigAtom.ts";
@@ -45,7 +45,7 @@ export class InvitationService {
   protected readonly log = $logger();
   protected readonly repo = $repository(invitations);
   protected readonly users = $repository(users);
-  protected readonly projects = $repository(projects);
+  protected readonly campaigns = $repository(campaigns);
   protected readonly characters = $repository(characters);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -70,7 +70,7 @@ export class InvitationService {
     });
 
     if (existingUser) {
-      const alreadyMember = await this.isProjectMember(
+      const alreadyMember = await this.isCampaignMember(
         data.resourceId,
         existingUser.id,
       );
@@ -182,7 +182,7 @@ export class InvitationService {
       throw new BadRequestError("Invitation has expired");
     }
 
-    const alreadyMember = await this.isProjectMember(
+    const alreadyMember = await this.isCampaignMember(
       invitation.resourceId,
       acceptedBy.id,
     );
@@ -203,7 +203,7 @@ export class InvitationService {
     }
 
     await this.characters.create({
-      projectId: Number(invitation.resourceId),
+      campaignId: Number(invitation.resourceId),
       userId: acceptedBy.id,
       xp: 0,
       balance: 0,
@@ -328,10 +328,10 @@ export class InvitationService {
       let resourceName = inv.resourceType;
 
       try {
-        const project = await this.projects.getOne({
+        const campaign = await this.campaigns.getOne({
           where: { id: { eq: Number(inv.resourceId) } },
         });
-        resourceName = project.title;
+        resourceName = campaign.title;
       } catch (error) {
         this.log.warn("Failed to load resource info for invitation", {
           invitationId: inv.id,
@@ -483,13 +483,13 @@ export class InvitationService {
     return ids.length;
   }
 
-  protected async isProjectMember(
-    projectId: string,
+  protected async isCampaignMember(
+    campaignId: string,
     userId: string,
   ): Promise<boolean> {
     const character = await this.characters.findOne({
       where: {
-        projectId: { eq: Number(projectId) },
+        campaignId: { eq: Number(campaignId) },
         userId: { eq: userId },
       },
     });
