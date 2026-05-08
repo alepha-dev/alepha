@@ -25,9 +25,9 @@
     "alepha": "^0.20.5",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.14.0",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
-    "react-is": "^19.2.5",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-is": "^19.2.6",
     "react-markdown": "^10.1.0",
     "recharts": "^3.8.1",
     "remark-gfm": "^4.0.1",
@@ -36,17 +36,17 @@
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@tailwindcss/vite": "^4.2.4",
-    "@types/node": "^25.6.0",
+    "@types/node": "^25.6.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "better-sqlite3": "^12.9.0",
     "drizzle-kit": "^0.31.10",
     "tailwindcss": "^4.2.4",
     "typescript": "^6.0.3",
-    "vercel": "^53.1.1",
-    "vite": "^8.0.10",
+    "vercel": "^53.2.0",
+    "vite": "^8.0.11",
     "vitest": "^4.1.5",
-    "wrangler": "^4.88.0"
+    "wrangler": "^4.90.0"
   },
   "dependenciesMeta": {
     "better-sqlite3": {
