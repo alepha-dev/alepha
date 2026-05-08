@@ -48,7 +48,6 @@ test.describe("Register", () => {
     await page.goto("/auth/register");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("textbox", { name: "Username" }).fill(`u${ts}`);
     await page
       .getByRole("textbox", { name: "Email", exact: true })
       .fill(`u${ts}@example.com`);
@@ -68,14 +67,12 @@ test.describe("Register", () => {
   }) => {
     test.setTimeout(60_000);
     const ts = Date.now();
-    const username = `usr${ts}`;
     const email = `usr${ts}@example.com`;
     const password = "GoodPassw0rd";
 
     await page.goto("/auth/register");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("textbox", { name: "Username" }).fill(username);
     await page.getByRole("textbox", { name: "Email", exact: true }).fill(email);
     await page
       .getByRole("textbox", { name: "Password", exact: true })
