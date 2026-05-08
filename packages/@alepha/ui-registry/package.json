@@ -16,8 +16,8 @@
     "@biomejs/biome": "^2.4.14",
     "alepha": "0.20.5",
     "lucide-react": "^1.14.0",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "shadcn": "^4.7.0",
     "sonner": "^2.0.7",
     "typescript": "^6.0.3"
