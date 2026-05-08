@@ -14,7 +14,6 @@ import { expect, type Page, test } from "@playwright/test";
  */
 
 const timestamp = Date.now();
-const testUsername = `testuser${timestamp}`;
 const testEmail = `test${timestamp}@example.com`;
 const testPassword = "TestPassword123!";
 const testCampaignTitle = `Camp${timestamp}`.slice(0, 20);
@@ -103,7 +102,6 @@ test.describe("User Journey", () => {
       await page.goto("/auth/register");
       await page.waitForLoadState("networkidle");
 
-      await page.getByRole("textbox", { name: "Username" }).fill(testUsername);
       await page
         .getByRole("textbox", { name: "Email", exact: true })
         .fill(testEmail);
