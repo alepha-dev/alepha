@@ -1,3 +1,15 @@
+## [0.20.6] - 2026-05-09
+
+### Features
+
+- **api/users**: $realm - allow username as email (`beb700a0`)
+
+### Bug Fixes
+
+- **api/jobs**: improve job direct call, add vercel support (`a7b93248`)
+- **cli**: build - improve build sitemap task (`80ebe8a2`)
+- **ui**: update registry inputs (`de2fdf2f`)
+
 ## [0.20.5] - 2026-05-04
 
 No public changes in range 0.20.4..HEAD
