@@ -92,6 +92,13 @@
       "when": 1778186669152,
       "tag": "0012_acoustic_kronos",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1778367395489,
+      "tag": "0013_mature_blue_blade",
+      "breakpoints": true
     }
   ]
 }
