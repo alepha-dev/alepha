@@ -112,7 +112,11 @@ export type JobEffectiveMode = "cron" | "queue" | "direct";
  *   - re-enqueue pending rows older than `staleThreshold`
  *   - mark crashed running rows as failed and apply retry policy
  *   - move `scheduled` rows with `scheduledAt <= now` to pending + dispatch
- *   - trim per-job history beyond `keepLastSuccess` / `keepLastError`
+ *
+ * Trim runs on its own cron (`trimCron`, default hourly):
+ *   - per-job history trimmed beyond `keepLastSuccess` / `keepLastError`
+ *   - decoupled from sweep because trim cost scales with job count, not
+ *     retry latency — running it every sweep is wasted work for most apps.
  */
 export class JobProvider {
   protected readonly alepha = $inject(Alepha);
@@ -1127,9 +1131,6 @@ export class JobProvider {
           await this.handleFailure(exec.id, reg, exec.attempt, err, "");
         }
       }
-
-      // 4. Trim ring buffer per job
-      await this.trimRingBuffers();
     } catch (e) {
       this.log.error("Sweep failed", { error: e });
     }
@@ -1188,7 +1189,7 @@ export class JobProvider {
     try {
       const rows = await this.executions.findMany({
         where: { jobName: { eq: jobName }, status: { eq: status } },
-        orderBy: { column: "startedAt", direction: "desc" },
+        orderBy: { column: "createdAt", direction: "desc" },
         limit: keep + 50,
       });
       if (rows.length <= keep) return;
@@ -1248,6 +1249,20 @@ export class JobProvider {
         this.config.sweepCron,
         async () => {
           await this.sweep();
+        },
+        true,
+      );
+
+      this.cronProvider.createCronJob(
+        "api:jobs:trim",
+        this.config.trimCron,
+        async () => {
+          if (this.stopping) return;
+          try {
+            await this.trimRingBuffers();
+          } catch (e) {
+            this.log.error("Trim failed", { error: e });
+          }
         },
         true,
       );

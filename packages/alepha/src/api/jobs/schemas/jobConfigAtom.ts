@@ -8,6 +8,10 @@ export const jobConfig = $atom({
       description:
         "Cron expression for the sweep tick. Must be minute-granular at minimum (cron resolution). On Cloudflare Workers this expression is emitted into wrangler.jsonc by the build.",
     }),
+    trimCron: t.text({
+      description:
+        "Cron expression for the ring-buffer trim tick (per-job keepLastSuccess/keepLastError enforcement). Decoupled from `sweepCron` because trim is bounded by job execution rate, not retry latency — running it every sweep is wasted work for most apps.",
+    }),
     staleThreshold: t.integer({
       description: "Pending age (ms) before the sweep re-dispatches it.",
     }),
@@ -31,6 +35,7 @@ export const jobConfig = $atom({
   }),
   default: {
     sweepCron: "*/5 * * * *",
+    trimCron: "0 * * * *",
     staleThreshold: 300_000,
     runTimeout: 1_800_000,
     keepLastSuccess: 10,

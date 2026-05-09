@@ -26,6 +26,7 @@ export const audits = $entity({
   schema: t.object({
     id: db.primaryKey(t.bigint()),
     createdAt: db.createdAt(),
+    organizationId: db.organization(),
 
     /**
      * Audit event type (e.g., "auth", "user", "payment", "system").

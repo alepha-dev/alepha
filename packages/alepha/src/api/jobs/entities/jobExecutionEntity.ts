@@ -54,6 +54,7 @@ export const jobExecutionEntity = $entity({
   }),
   indexes: [
     { columns: ["jobName", "status", "scheduledAt"] },
+    { columns: ["jobName", "status", "createdAt"] },
     { columns: ["jobName", "startedAt"] },
     { columns: ["jobName", "key"], unique: true },
   ],
