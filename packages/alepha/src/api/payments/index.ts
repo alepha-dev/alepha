@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { AdminPaymentController } from "./controllers/AdminPaymentController.ts";
+import { MockCheckoutController } from "./controllers/MockCheckoutController.ts";
 import { PaymentController } from "./controllers/PaymentController.ts";
 import { MemoryPaymentProvider } from "./providers/MemoryPaymentProvider.ts";
 import { PaymentProvider } from "./providers/PaymentProvider.ts";
@@ -7,6 +8,7 @@ import { PaymentMethodService } from "./services/PaymentMethodService.ts";
 import { PaymentService } from "./services/PaymentService.ts";
 
 export * from "./controllers/AdminPaymentController.ts";
+export * from "./controllers/MockCheckoutController.ts";
 export * from "./controllers/PaymentController.ts";
 export * from "./entities/paymentIntents.ts";
 export * from "./entities/paymentMethods.ts";
@@ -67,11 +69,12 @@ export const AlephaApiPayments = $module({
   services: [
     AdminPaymentController,
     PaymentController,
+    MockCheckoutController,
     PaymentProvider,
+    MemoryPaymentProvider,
     PaymentService,
     PaymentMethodService,
   ],
-  variants: [MemoryPaymentProvider],
   register: (alepha) => {
     alepha.with({
       optional: true,

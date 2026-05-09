@@ -39,7 +39,7 @@ export class MemoryPaymentProvider implements PaymentProvider {
       status,
     });
     return {
-      url: `/payments/mock-checkout/${intent.id}`,
+      url: `/payments/mock-checkout/${intent.id}?returnUrl=${encodeURIComponent(options.returnUrl)}`,
       providerRef,
     };
   }

@@ -95,20 +95,28 @@ export class StripePaymentProvider implements PaymentProvider {
       success_url: options.returnUrl,
       cancel_url: options.returnUrl,
       metadata: { intentId: intent.id },
+      // Force eager PaymentIntent creation. Without expand, Stripe may return
+      // `payment_intent: null` for sessions that lazy-create the PI (depends
+      // on enabled payment methods / account configuration).
+      expand: ["payment_intent"],
     });
 
-    if (!session.url || !session.payment_intent) {
-      throw new AlephaError(
-        "Stripe checkout session is missing URL or payment intent",
-      );
+    if (!session.url) {
+      throw new AlephaError("Stripe checkout session is missing URL");
     }
+
+    // Prefer the PaymentIntent ID (used by webhook matching). Fall back to
+    // the Session ID for sessions where the PI is created lazily — webhooks
+    // for those will match via metadata.intentId instead.
+    const providerRef = session.payment_intent
+      ? typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent.id
+      : session.id;
 
     return {
       url: session.url,
-      providerRef:
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : session.payment_intent.id,
+      providerRef,
     };
   }
 
