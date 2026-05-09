@@ -28,6 +28,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/payments-mollie@workspace:packages/@alepha/payments-mollie":
+  version: 0.0.0-use.local
+  resolution: "@alepha/payments-mollie@workspace:packages/@alepha/payments-mollie"
+  dependencies:
+    "@biomejs/biome": "npm:^2.4.14"
+    "@mollie/api-client": "npm:^4.5.0"
+    alepha: "npm:0.20.6"
+    typescript: "npm:^6.0.3"
+    vitest: "npm:^4.1.5"
+  peerDependencies:
+    alepha: 0.20.6
+  languageName: unknown
+  linkType: soft
+
 "@alepha/payments-stripe@workspace:packages/@alepha/payments-stripe":
   version: 0.0.0-use.local
   resolution: "@alepha/payments-stripe@workspace:packages/@alepha/payments-stripe"
@@ -2465,6 +2479,17 @@ __metadata:
     zod:
       optional: false
   checksum: 10c0/7c4bc339205b1652330cd4e6b121cc859079655f2b9c0506bbb15563ba0d07924bda3d949705530532db7f4d2cb86d633dc8f92bc32803d97c7bece2ac63e29f
+  languageName: node
+  linkType: hard
+
+"@mollie/api-client@npm:^4.5.0":
+  version: 4.5.0
+  resolution: "@mollie/api-client@npm:4.5.0"
+  dependencies:
+    "@types/node-fetch": "npm:^2.6.13"
+    node-fetch: "npm:^2.7.0"
+    ruply: "npm:^1.0.1"
+  checksum: 10c0/65551f91b5e7c6e955ed6face1b2ed6ca198015f9803caf931a537589e5955355b310b1d4b7b144a2429cee60a44e7681af7ee8f5751b2536aa6db025ccd19c1
   languageName: node
   linkType: hard
 
@@ -5231,6 +5256,16 @@ __metadata:
   version: 2.1.0
   resolution: "@types/ms@npm:2.1.0"
   checksum: 10c0/5ce692ffe1549e1b827d99ef8ff71187457e0eb44adbae38fdf7b9a74bae8d20642ee963c14516db1d35fa2652e65f47680fdf679dcbde52bbfadd021f497225
+  languageName: node
+  linkType: hard
+
+"@types/node-fetch@npm:^2.6.13":
+  version: 2.6.13
+  resolution: "@types/node-fetch@npm:2.6.13"
+  dependencies:
+    "@types/node": "npm:*"
+    form-data: "npm:^4.0.4"
+  checksum: 10c0/6313c89f62c50bd0513a6839cdff0a06727ac5495ccbb2eeda51bb2bbbc4f3c0a76c0393a491b7610af703d3d2deb6cf60e37e59c81ceeca803ffde745dbf309
   languageName: node
   linkType: hard
 
@@ -9268,7 +9303,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"form-data@npm:^4.0.0":
+"form-data@npm:^4.0.0, form-data@npm:^4.0.4":
   version: 4.0.5
   resolution: "form-data@npm:4.0.5"
   dependencies:
@@ -12127,7 +12162,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-fetch@npm:^2.6.7":
+"node-fetch@npm:^2.6.7, node-fetch@npm:^2.7.0":
   version: 2.7.0
   resolution: "node-fetch@npm:2.7.0"
   dependencies:
@@ -14074,6 +14109,13 @@ __metadata:
   dependencies:
     queue-microtask: "npm:^1.2.2"
   checksum: 10c0/200b5ab25b5b8b7113f9901bfe3afc347e19bb7475b267d55ad0eb86a62a46d77510cb0f232507c9e5d497ebda569a08a9867d0d14f57a82ad5564d991588b39
+  languageName: node
+  linkType: hard
+
+"ruply@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "ruply@npm:1.0.1"
+  checksum: 10c0/1d7fba47584eeca336207a80321be36123072c1458e9747e991fe1c54971c9ca56dd67feddaac59008adcf79d8fa9867811bb6b84d68ebe01d7aa6c20c4d2f60
   languageName: node
   linkType: hard
 

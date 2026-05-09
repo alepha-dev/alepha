@@ -54,19 +54,29 @@ export abstract class PaymentProvider {
   ): Promise<RefundResult>;
 
   /**
-   * Parse and verify an incoming PSP webhook request.
+   * Parse and verify the authenticity of an incoming PSP webhook request.
    *
-   * Implementations MUST verify the webhook signature before returning.
-   * Throw an error if the signature is invalid or missing — this is the
-   * only authentication on the webhook endpoint (no $secure middleware).
+   * Implementations MUST establish authenticity before returning. Two
+   * common strategies, both acceptable:
    *
-   * Failure to verify signatures allows attackers to forge payment
-   * confirmations by POSTing fake webhook events.
+   * - Signature verification (Stripe, Adyen): verify an HMAC header
+   *   against the raw body using a shared secret. Throw if invalid.
+   * - Re-fetch (Mollie, legacy webhooks): the body only carries an id;
+   *   call back into the PSP API with your authenticated client to
+   *   fetch the real resource state. The fetch itself is the auth —
+   *   an attacker can POST a fake id but cannot influence the result.
+   *
+   * Throw an error if authenticity cannot be established. This endpoint
+   * has no $secure middleware; provider verification is its only auth.
    */
   abstract parseWebhook(request: Request): Promise<WebhookEvent>;
 
   /**
-   * Store a payment method token with the PSP.
+   * Store a payment method token with the PSP and return the saved
+   * instrument's reference. Implementations that don't support
+   * tokenize-then-attach (e.g. Mollie, where mandates are created by
+   * making a "first" payment) MAY throw to signal the host app to use
+   * the checkout flow with `setup_future_usage`-style options instead.
    */
   abstract createPaymentMethod(
     userId: string,
@@ -74,7 +84,8 @@ export abstract class PaymentProvider {
   ): Promise<CreatePaymentMethodResult>;
 
   /**
-   * Delete a stored payment method from the PSP.
+   * Delete a stored payment method from the PSP. Implementations that
+   * don't manage payment methods directly MAY no-op.
    */
   abstract deletePaymentMethod(providerRef: string): Promise<void>;
 

@@ -1,0 +1,64 @@
+{
+  "name": "@alepha/payments-mollie",
+  "description": "Mollie payment provider for alepha/payments.",
+  "keywords": [
+    "alepha",
+    "payments",
+    "mollie"
+  ],
+  "author": "Feunard",
+  "version": "0.20.6",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "main": "./src/core/index.ts",
+  "types": "./src/core/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "dependencies": {
+    "@mollie/api-client": "^4.5.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.14",
+    "alepha": "0.20.6",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  },
+  "peerDependencies": {
+    "alepha": "0.20.6"
+  },
+  "scripts": {
+    "lint": "alepha lint && yarn build:check",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "node ../../alepha/scripts/build.ts",
+    "build:check": "node ../../alepha/scripts/build.ts --check"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
+  "homepage": "https://github.com/feunard/alepha",
+  "exports": {
+    ".": {
+      "types": "./src/core/index.ts",
+      "import": "./src/core/index.ts",
+      "default": "./src/core/index.ts"
+    }
+  },
+  "publishConfig": {
+    "main": "./dist/core/index.js",
+    "types": "./dist/core/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/core/index.d.ts",
+        "import": "./dist/core/index.js",
+        "default": "./dist/core/index.js"
+      }
+    }
+  }
+}

@@ -1,0 +1,142 @@
+# Payment Providers
+
+A `PaymentProvider` is the bridge between Alepha's lifecycle and a real payment service provider. The abstract class defines eight methods covering the full intent lifecycle:
+
+```typescript
+abstract class PaymentProvider {
+  createSession(intent, { returnUrl, authorize }): Promise<{ url, providerRef }>;
+  capturePayment(providerRef, amount): Promise<void>;
+  voidPayment(providerRef): Promise<void>;
+  refundPayment(providerRef, amount): Promise<{ providerRef }>;
+  parseWebhook(request): Promise<{ providerRef, status, raw }>;
+  createPaymentMethod(userId, token): Promise<CreatePaymentMethodResult>;
+  deletePaymentMethod(providerRef): Promise<void>;
+  expireSession(providerRef): Promise<void>;
+}
+```
+
+`PaymentService` and `PaymentMethodService` call these methods; you never call them directly.
+
+Two implementations ship with the framework: `@alepha/payments-stripe` and `@alepha/payments-mollie`. Both compose with `AlephaApiPayments` the same way:
+
+```typescript
+import { AlephaApiPayments } from "alepha/api/payments";
+import { AlephaPaymentsStripe } from "@alepha/payments-stripe";
+// or:
+import { AlephaPaymentsMollie } from "@alepha/payments-mollie";
+
+const alepha = Alepha.create()
+  .with(AlephaApiPayments)
+  .with(AlephaPaymentsStripe);
+```
+
+The provider module declares `register: alepha.with({ provide: PaymentProvider, use: ... })` — the `MemoryPaymentProvider` default is overridden automatically.
+
+## Stripe
+
+```bash
+yarn add @alepha/payments-stripe
+```
+
+### Environment
+
+| Variable | Description |
+|---|---|
+| `STRIPE_SECRET_KEY` | API key (`sk_test_...` / `sk_live_...`). |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret returned by `webhookEndpoints.create`. |
+
+### Webhook security
+
+Stripe signs webhook payloads with HMAC-SHA256. `StripePaymentProvider.parseWebhook` calls `stripe.webhooks.constructEvent(body, signature, secret)` and throws if the signature is missing or invalid. This is the only authentication on `/api/payments/webhook`.
+
+### Webhook provisioning
+
+The optional CLI plugin `@alepha/payments-stripe/platform` provisions the webhook endpoint automatically during `alepha platform up`:
+
+```typescript
+// alepha.config.ts
+import { AlephaCliPlatformPlugin } from "alepha/cli/platform";
+import { AlephaCliPlatformStripePlugin } from "@alepha/payments-stripe/platform";
+
+export default defineConfig({
+  services: [AlephaCliPlatformPlugin, AlephaCliPlatformStripePlugin],
+  platform: { /* ... */ },
+});
+```
+
+The hook reads `STRIPE_SECRET_KEY` from `.env.<env>`, creates or updates the webhook endpoint at `${baseUrl}/api/payments/webhook`, and writes the generated `STRIPE_WEBHOOK_SECRET` back to `.env.<env>` so the orchestrator pushes it to the worker. Skips silently if the API key is not set.
+
+### Customer mapping
+
+`StripePaymentProvider` caches a mapping of Alepha `userId` → Stripe customer ID (TTL 30 days). On a cache miss it searches Stripe by `metadata.alepha_user_id` and creates a new customer if none is found.
+
+### Saved payment methods
+
+Stripe's tokenize-then-attach model maps directly: the client tokenizes a card via Stripe.js, posts the token to `POST /api/payments/payment-methods`, and `StripePaymentProvider.createPaymentMethod` calls `paymentMethods.attach(token, { customer })`.
+
+## Mollie
+
+```bash
+yarn add @alepha/payments-mollie
+```
+
+### Environment
+
+| Variable | Description |
+|---|---|
+| `MOLLIE_API_KEY` | Mollie test or live API key. |
+| `MOLLIE_WEBHOOK_URL` | _(optional)_ Public URL Mollie POSTs webhooks to. Typically `https://app.example.com/api/payments/webhook`. Omit in dev to skip webhooks. |
+
+### Webhook security
+
+Mollie does not sign webhook payloads. The body carries only `id=tr_xxx`. `MolliePaymentProvider.parseWebhook` re-fetches the payment via the authenticated SDK client — the fetch itself is the authentication boundary. An attacker can POST a fake id, but the lookup either misses or returns a payment whose state we already trust (because it came from Mollie's API, not the request body).
+
+### Per-payment webhook URLs
+
+Unlike Stripe (one global endpoint), Mollie's webhook URL is attached to each payment at create time. The provider reads `MOLLIE_WEBHOOK_URL` once and threads it into every `payments.create` call. There is no platform hook to provision because there is nothing to provision.
+
+### Limitations
+
+- **`createPaymentMethod` throws.** Mollie creates mandates implicitly via a `sequenceType: "first"` checkout payment — there is no tokenize-then-attach flow. For recurring billing, route the first payment through the checkout flow with a customer attached; subsequent off-session charges then use the mandate.
+- **`deletePaymentMethod` is a no-op.** Mandates are tied to customers; the entity does not yet track the customer↔mandate relationship needed to revoke safely. A future iteration will call `customers.mandates.revoke`.
+- **Manual capture (`authorize: true`)** is supported for cards only. Other methods (iDEAL, SEPA, Bancontact) reject the option at create time.
+
+## Choosing a provider
+
+| Criterion | Stripe | Mollie |
+|---|---|---|
+| Coverage | Global; strong in US. | EU-focused; strong in NL/DE/BE/FR. |
+| Methods | Cards, Apple/Google Pay, ACH, SEPA, Klarna, etc. | Cards, iDEAL, Bancontact, SEPA, Klarna, gift cards, Apple Pay. |
+| Webhook security | HMAC signature. | Re-fetch by id. |
+| Saved cards | Tokenize-then-attach. | Mandate-via-first-payment. |
+| Manual capture | All card types. | Cards only. |
+| Platform fees | Stripe Connect. | Mollie Connect (OAuth). |
+
+For most EU SaaS apps either works; for marketplaces with US sellers, Stripe is the path of least resistance.
+
+## Writing your own provider
+
+Extend the abstract class and register it the same way:
+
+```typescript
+import { $module } from "alepha";
+import { AlephaApiPayments, PaymentProvider } from "alepha/api/payments";
+
+class AdyenPaymentProvider implements PaymentProvider {
+  // ... implement the eight methods ...
+}
+
+export const AlephaPaymentsAdyen = $module({
+  name: "alepha.payments.adyen",
+  services: [AdyenPaymentProvider],
+  imports: [AlephaApiPayments],
+  register: (alepha) =>
+    alepha.with({ provide: PaymentProvider, use: AdyenPaymentProvider }),
+});
+```
+
+Three things to get right:
+
+1. **`parseWebhook` must establish authenticity** — either signature verification or re-fetch. The webhook endpoint has no other auth.
+2. **Status mapping is your contract with `PaymentService`.** The service understands `authorized`, `captured`, `failed`. Anything else is logged and ignored — use that to silently drop transient states (`open`, `pending`).
+3. **Amounts are integers** in Alepha's storage (minor units / cents). PSPs that want decimal strings (Mollie) need a converter.

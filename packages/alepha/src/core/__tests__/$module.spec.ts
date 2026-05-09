@@ -156,7 +156,7 @@ describe("$module", () => {
     expect(alepha.inject(Provider).kind).toBe("memory");
   });
 
-  it("should run imports, then register(), then auto-inject services", async ({
+  it("should run register() before imports, then auto-inject services", async ({
     expect,
   }) => {
     const order: string[] = [];
@@ -188,6 +188,6 @@ describe("$module", () => {
     const alepha = Alepha.create().with(OuterModule);
     await alepha.start();
 
-    expect(order).toEqual(["inner-ctor", "register", "own-ctor"]);
+    expect(order).toEqual(["register", "inner-ctor", "own-ctor"]);
   });
 });
