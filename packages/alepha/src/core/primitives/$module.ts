@@ -82,13 +82,13 @@ export const $module = (options: ModulePrimitiveOptions): Service<Module> => {
         }
       }
 
-      for (const mod of imports) {
-        alepha.with(mod);
-      }
-
       // register() runs BEFORE services so substitutions it records
       // (e.g. `alepha.with({ provide, use })`) apply to the subsequent auto-injection.
       options.register?.(alepha);
+
+      for (const mod of imports) {
+        alepha.with(mod);
+      }
 
       for (const service of services) {
         alepha.inject(service, {
