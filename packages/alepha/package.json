@@ -151,6 +151,11 @@
       "import": "./src/api/payments/index.ts",
       "default": "./src/api/payments/index.ts"
     },
+    "./api/subscriptions": {
+      "types": "./src/api/subscriptions/index.ts",
+      "import": "./src/api/subscriptions/index.ts",
+      "default": "./src/api/subscriptions/index.ts"
+    },
     "./api/users": {
       "types": "./src/api/users/index.ts",
       "react-native": "./src/api/users/index.browser.ts",
@@ -560,6 +565,11 @@
         "types": "./dist/api/payments/index.d.ts",
         "import": "./dist/api/payments/index.js",
         "default": "./dist/api/payments/index.js"
+      },
+      "./api/subscriptions": {
+        "types": "./dist/api/subscriptions/index.d.ts",
+        "import": "./dist/api/subscriptions/index.js",
+        "default": "./dist/api/subscriptions/index.js"
       },
       "./api/users": {
         "types": "./dist/api/users/index.d.ts",
