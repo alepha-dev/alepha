@@ -71,10 +71,10 @@ export const AlephaApiPayments = $module({
     PaymentController,
     MockCheckoutController,
     PaymentProvider,
-    MemoryPaymentProvider,
     PaymentService,
     PaymentMethodService,
   ],
+  variants: [MemoryPaymentProvider],
   register: (alepha) => {
     alepha.with({
       optional: true,
