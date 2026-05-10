@@ -122,7 +122,12 @@ export class CampaignController {
         id: t.integer(),
       }),
       body: t.partial(
-        t.pick(campaigns.insertSchema, ["title", "public", "whiteboard"]),
+        t.pick(campaigns.insertSchema, [
+          "title",
+          "public",
+          "whiteboard",
+          "beacons",
+        ]),
       ),
       response: campaigns.schema,
     },
@@ -139,6 +144,10 @@ export class CampaignController {
 
       if (body.whiteboard != null) {
         campaign.whiteboard = body.whiteboard;
+      }
+
+      if (body.beacons !== undefined) {
+        campaign.beacons = body.beacons;
       }
 
       await this.campaigns.save(campaign);

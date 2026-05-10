@@ -1,4 +1,9 @@
+import { useClient, useStore } from "alepha/react";
 import { NestedView, useRouterState } from "alepha/react/router";
+import { useEffect } from "react";
+import type { BeaconController } from "@/api/controllers/BeaconController.ts";
+import { currentBeaconCountAtom } from "../../atoms/currentBeaconCountAtom.ts";
+import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import ExperienceBar from "../misc/ExperienceBar.tsx";
 import CampaignActions from "./CampaignActions.tsx";
 import QuestLog from "./QuestLog.tsx";
@@ -18,11 +23,62 @@ const ROUTES_FULL_WIDTH = new Set([
   "campaignLoreFolioEdit",
 ]);
 
+const BEACON_POLL_INTERVAL_MS = 30_000;
+
 const CampaignView = () => {
   const routerState = useRouterState();
   const name = routerState.name ?? "";
   const showQuestLog = ROUTES_WITH_QUEST_LOG.has(name);
   const fullWidth = ROUTES_FULL_WIDTH.has(name);
+
+  const [campaign] = useStore(currentCampaignAtom);
+  const [, setBeaconCount] = useStore(currentBeaconCountAtom);
+  const setCount = (n: number) => setBeaconCount({ count: n });
+  const beaconApi = useClient<BeaconController>();
+
+  /**
+   * Piggyback poll on `beaconApi.list` for the inbox badge. Skips when the
+   * tab is hidden (mirrors the DevTools polling pattern) and silently
+   * ignores errors — campaigns without beacons enabled simply stay at 0.
+   */
+  useEffect(() => {
+    if (!campaign) {
+      setCount(0);
+      return;
+    }
+
+    const campaignId = campaign.id;
+    let cancelled = false;
+
+    const refresh = async () => {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState !== "visible"
+      ) {
+        return;
+      }
+      try {
+        const { items } = await beaconApi.list({
+          params: { campaignId },
+          query: { status: "new" },
+        });
+        if (!cancelled) {
+          setCount(items.length);
+        }
+      } catch {
+        // silently ignore — beacons may be disabled on this campaign
+      }
+    };
+
+    refresh();
+    const handle = window.setInterval(refresh, BEACON_POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(handle);
+      setCount(0);
+    };
+  }, [campaign?.id]);
 
   return (
     <div className="flex flex-1 flex-col overflow-auto">
