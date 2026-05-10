@@ -41,14 +41,30 @@ export class ServerAuthProvider {
   protected readonly serverLinksProvider = $inject(ServerLinksProvider);
 
   /**
-   * Validates that a redirect URI is a safe relative path.
-   * Prevents open redirect attacks by rejecting absolute URLs and protocol-relative URLs.
+   * Validates that a redirect URI is a safe relative path, or — when
+   * COOKIE_PARENT_DOMAIN is configured — an https URL whose host is the
+   * parent domain or a subdomain of it. Used by SaaS deployments where the
+   * OAuth callback dispatches users back to their tenant subdomain.
+   *
+   * Prevents open redirect attacks by rejecting any other absolute URL.
    */
   protected validateRedirectUri(uri: string): string {
-    if (!uri.startsWith("/") || uri.startsWith("//")) {
-      return "/";
+    if (uri.startsWith("/") && !uri.startsWith("//")) {
+      return uri;
     }
-    return uri;
+    const parent = this.alepha.env.COOKIE_PARENT_DOMAIN;
+    if (typeof parent === "string" && parent) {
+      try {
+        const parsed = new URL(uri);
+        const parentHost = parent.startsWith(".") ? parent.slice(1) : parent;
+        if (parsed.protocol !== "https:") return "/";
+        if (parsed.host === parentHost) return uri;
+        if (parsed.host.endsWith(`.${parentHost}`)) return uri;
+      } catch {
+        // fall through
+      }
+    }
+    return "/";
   }
 
   public get identities(): Array<AuthPrimitive> {
