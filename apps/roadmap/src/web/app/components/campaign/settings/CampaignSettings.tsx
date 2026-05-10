@@ -15,6 +15,7 @@ import { userCampaignsAtom } from "@/web/app/atoms/userCampaignsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import CampaignUpdate from "../CampaignUpdate.tsx";
 import CampaignSettingsAdventurersSection from "./CampaignSettingsAdventurersSection.tsx";
+import CampaignSettingsBeaconsSection from "./CampaignSettingsBeaconsSection.tsx";
 import CampaignSettingsCharacterSection from "./CampaignSettingsCharacterSection.tsx";
 import CampaignSettingsConfirmationModal from "./CampaignSettingsConfirmationModal.tsx";
 
@@ -68,6 +69,9 @@ const CampaignSettings = (props: CampaignSettingsProps) => {
           adventurers={props.adventurers}
           pendingInvitations={props.pendingInvitations}
         />
+
+        {/* Beacons */}
+        <CampaignSettingsBeaconsSection campaignId={campaign.id} />
 
         {/* Danger Zone */}
         <div className="flex flex-col gap-2">

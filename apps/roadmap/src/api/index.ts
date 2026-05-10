@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { AdminInvitationController } from "./controllers/AdminInvitationController.ts";
+import { BeaconController } from "./controllers/BeaconController.ts";
 import { CampaignController } from "./controllers/CampaignController.ts";
 import { CampaignStatsController } from "./controllers/CampaignStatsController.ts";
 import { ChapterController } from "./controllers/ChapterController.ts";
@@ -14,6 +15,7 @@ import { UserController } from "./controllers/UserController.ts";
 import { WhiteboardController } from "./controllers/WhiteboardController.ts";
 import { InvitationJobs } from "./jobs/InvitationJobs.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
+import { BeaconRateLimiter } from "./services/BeaconRateLimiter.ts";
 import { CharacterInfo } from "./services/CharacterInfo.ts";
 import { InvitationService } from "./services/InvitationService.ts";
 
@@ -24,6 +26,7 @@ export const RoadmapApi = $module({
     CharacterInfo,
     InvitationService,
     InvitationJobs,
+    BeaconRateLimiter,
     // Controllers
     QuestController,
     CampaignController,
@@ -38,5 +41,6 @@ export const RoadmapApi = $module({
     WhiteboardController,
     KanbanController,
     FolioController,
+    BeaconController,
   ],
 });

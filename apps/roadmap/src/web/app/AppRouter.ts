@@ -8,6 +8,7 @@ import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 import type { AdminInvitationController } from "../../api/controllers/AdminInvitationController.ts";
+import type { BeaconController } from "../../api/controllers/BeaconController.ts";
 import type { CampaignController } from "../../api/controllers/CampaignController.ts";
 import type { CampaignStatsController } from "../../api/controllers/CampaignStatsController.ts";
 import type { ChapterController } from "../../api/controllers/ChapterController.ts";
@@ -33,6 +34,7 @@ export class AppRouter {
   campaignStatsApi = $client<CampaignStatsController>();
   invitationAdminApi = $client<AdminInvitationController>();
   kanbanApi = $client<KanbanController>();
+  beaconApi = $client<BeaconController>();
   chapterApi = $client<ChapterController>();
   folioApi = $client<FolioController>();
   router = $inject(ReactRouter);
@@ -72,6 +74,7 @@ export class AppRouter {
       this.campaign,
       this.campaignCreate,
       this.kanbanRedirect,
+      this.beaconForm,
       this.meRouter.me,
       this.notFound,
     ],
@@ -189,6 +192,7 @@ export class AppRouter {
       this.campaignChronicles,
       this.campaignLore,
       this.campaignKanban,
+      this.campaignBeacons,
     ],
     path: "/c/:campaignId",
     schema: {
@@ -255,6 +259,24 @@ export class AppRouter {
         params: { campaignId: campaign.id },
       });
       return data;
+    },
+  });
+
+  campaignBeacons = $page({
+    name: "campaignBeacons",
+    path: "/beacons",
+    head: { title: "Beacons" },
+    lazy: () => import("./components/campaign/beacons/CampaignBeacons.tsx"),
+    loader: async () => {
+      const campaign = this.alepha.store.get(currentCampaignAtom);
+      if (!campaign) {
+        throw new NotFoundError("Campaign not found");
+      }
+      const { items } = await this.beaconApi.list({
+        params: { campaignId: campaign.id },
+        query: { status: "new" },
+      });
+      return { items };
     },
   });
 
@@ -426,6 +448,17 @@ export class AppRouter {
       this.alepha.store.set(currentFolioAtom, folio);
       return { folio };
     },
+  });
+
+  beaconForm = $page({
+    name: "beaconForm",
+    path: "/c/:campaignId/beacons/form",
+    schema: {
+      params: t.object({ campaignId: t.integer() }),
+      query: t.object({ t: t.string() }),
+    },
+    ssr: false,
+    lazy: () => import("./components/campaign/beacons/BeaconForm.tsx"),
   });
 
   notFound = $page({

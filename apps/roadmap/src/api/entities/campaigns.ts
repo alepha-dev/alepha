@@ -16,6 +16,14 @@ export const campaigns = $entity({
     public: t.optional(t.boolean()),
     whiteboard: t.optional(t.boolean()),
     zones: db.default(t.array(t.string()), []),
+    beacons: t.optional(
+      t.object({
+        enabled: t.boolean(),
+        publicToken: t.string({ minLength: 16, maxLength: 64 }),
+        allowedOrigins: t.array(t.string({ maxLength: 256 })),
+        rateLimitPerMin: t.optional(t.integer({ minimum: 1, maximum: 60 })),
+      }),
+    ),
   }),
   indexes: [
     {

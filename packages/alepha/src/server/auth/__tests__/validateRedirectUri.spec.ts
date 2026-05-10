@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
-import { AlephaServerAuth, ServerAuthProvider } from "alepha/server/auth";
 import { describe, it } from "vitest";
+import { AlephaServerAuth } from "../index.ts";
+import { ServerAuthProvider } from "../providers/ServerAuthProvider.ts";
 
 class ProviderProbe extends ServerAuthProvider {
   public probeValidate(uri: string) {
