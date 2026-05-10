@@ -1,5 +1,6 @@
 {
   "name": "@alepha/payments-mollie",
+  "private": true,
   "description": "Mollie payment provider for alepha/payments.",
   "keywords": [
     "alepha",

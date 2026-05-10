@@ -96,7 +96,6 @@ src/
 | Primitive | Import | Purpose |
 |-----------|--------|---------|
 | `$command` | `alepha/command` | CLI commands |
-| `$channel` | `alepha/websocket` | WebSocket channels |
 | `$swagger` | `alepha/server` | OpenAPI docs |
 | `$proxy` | `alepha/server` | HTTP proxy |
 | `$tool` | `alepha/mcp` | MCP tool definition |

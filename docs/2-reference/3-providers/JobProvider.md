@@ -31,5 +31,9 @@ Sweep responsibilities (every `sweepCron`):
   - re-enqueue pending rows older than `staleThreshold`
   - mark crashed running rows as failed and apply retry policy
   - move `scheduled` rows with `scheduledAt <= now` to pending + dispatch
-  - trim per-job history beyond `keepLastSuccess` / `keepLastError`
+
+Trim runs on its own cron (`trimCron`, default hourly):
+  - per-job history trimmed beyond `keepLastSuccess` / `keepLastError`
+  - decoupled from sweep because trim cost scales with job count, not
+    retry latency — running it every sweep is wasted work for most apps.
 
