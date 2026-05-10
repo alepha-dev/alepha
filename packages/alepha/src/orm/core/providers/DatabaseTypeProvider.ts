@@ -189,11 +189,17 @@ export class DatabaseTypeProvider {
    * Creates an organization column for multi-tenant row scoping.
    *
    * When present, queries are automatically filtered by the current user's organization.
-   * Rows with `null` organization are considered global and visible to everyone.
    * On create, the column is auto-stamped with the current user's organization.
+   *
+   * @param options.nullable - When `false`, the column is NOT NULL in the database and
+   *   the ORM rejects inserts that arrive without an organization context.
+   *   Defaults to `true` (nullable) for backward compatibility: NULL rows are visible
+   *   to every tenant, which is the historic "global row" semantics.
    */
-  public readonly organization = () =>
-    pgAttr(t.optional(t.uuid()), PG_ORGANIZATION);
+  public readonly organization = (options?: { nullable?: boolean }) => {
+    const nullable = options?.nullable ?? true;
+    return pgAttr(nullable ? t.optional(t.uuid()) : t.uuid(), PG_ORGANIZATION);
+  };
 
   /**
    * Creates a reference to another table or schema. Basically a foreign key.

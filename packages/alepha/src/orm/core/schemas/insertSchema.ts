@@ -1,6 +1,10 @@
 import type { TObject, TOptional } from "alepha";
 import { t } from "alepha";
-import { PG_DEFAULT, PG_GENERATED } from "../constants/PG_SYMBOLS.ts";
+import {
+  PG_DEFAULT,
+  PG_GENERATED,
+  PG_ORGANIZATION,
+} from "../constants/PG_SYMBOLS.ts";
 
 /**
  * Transforms a TObject schema for insert operations.
@@ -18,6 +22,7 @@ export type TObjectInsert<T extends TObject> = TObject<{
     ? never
     : K]: T["properties"][K] extends
     | { [PG_DEFAULT]: any }
+    | { [PG_ORGANIZATION]: any }
     | { "~optional": true }
     ? TOptional<T["properties"][K]>
     : T["properties"][K];
@@ -34,7 +39,10 @@ export const insertSchema = <T extends TObject>(obj: T): TObjectInsert<T> => {
       continue;
     }
 
-    if (PG_DEFAULT in prop) {
+    if (PG_DEFAULT in prop || PG_ORGANIZATION in prop) {
+      // PG_DEFAULT fields have a server-side default; PG_ORGANIZATION fields are
+      // auto-stamped by stampOrganization() inside create(). Both are optional
+      // at the TypeScript call-site even when the DB column is NOT NULL.
       newProperties[key] = t.optional(prop);
     } else {
       newProperties[key] = prop;
