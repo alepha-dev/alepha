@@ -24,7 +24,7 @@
     "@mollie/api-client": "^4.5.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.14",
+    "@biomejs/biome": "^2.4.15",
     "alepha": "0.20.6",
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"

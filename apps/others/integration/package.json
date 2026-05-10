@@ -11,7 +11,7 @@
     "alepha": "^0.20.6"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.14",
+    "@biomejs/biome": "^2.4.15",
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"
   }

@@ -13,7 +13,7 @@
     "build": "shadcn build --output ../../../apps/docs/public/r"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.14",
+    "@biomejs/biome": "^2.4.15",
     "alepha": "0.20.6",
     "lucide-react": "^1.14.0",
     "react": "^19.2.6",
