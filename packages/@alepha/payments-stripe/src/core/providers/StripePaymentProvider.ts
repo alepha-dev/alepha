@@ -218,6 +218,49 @@ export class StripePaymentProvider implements PaymentProvider {
     await this.stripe.paymentMethods.detach(providerRef);
   }
 
+  public async createConnectAccount(opts: {
+    country?: string;
+    email?: string;
+  }): Promise<{ id: string }> {
+    const account = await this.stripe.accounts.create({
+      type: "express",
+      country: opts.country ?? "FR",
+      email: opts.email,
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+    });
+    return { id: account.id };
+  }
+
+  public async createAccountOnboardingLink(opts: {
+    account: string;
+    refreshUrl: string;
+    returnUrl: string;
+  }): Promise<{ url: string }> {
+    const link = await this.stripe.accountLinks.create({
+      account: opts.account,
+      refresh_url: opts.refreshUrl,
+      return_url: opts.returnUrl,
+      type: "account_onboarding",
+    });
+    return { url: link.url };
+  }
+
+  public async getConnectAccountStatus(accountId: string): Promise<{
+    detailsSubmitted: boolean;
+    chargesEnabled: boolean;
+    payoutsEnabled: boolean;
+  }> {
+    const account = await this.stripe.accounts.retrieve(accountId);
+    return {
+      detailsSubmitted: account.details_submitted ?? false,
+      chargesEnabled: account.charges_enabled ?? false,
+      payoutsEnabled: account.payouts_enabled ?? false,
+    };
+  }
+
   public async expireSession(
     providerRef: string,
     options: { stripeAccount?: string } = {},
