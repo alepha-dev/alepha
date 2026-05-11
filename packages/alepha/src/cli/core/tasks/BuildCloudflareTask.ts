@@ -99,6 +99,22 @@ export class BuildCloudflareTask extends BuildTask {
       return;
     }
 
+    if (domain.includes("*")) {
+      const zone = process.env.CLOUDFLARE_ZONE;
+      if (!zone) {
+        throw new Error(
+          `Wildcard domain "${domain}" requires CLOUDFLARE_ZONE to be set (the parent zone name, e.g. "alepha.dev").`,
+        );
+      }
+      wrangler.routes = [
+        {
+          pattern: domain.endsWith("/*") ? domain : `${domain}/*`,
+          zone_name: zone,
+        },
+      ];
+      return;
+    }
+
     wrangler.routes = [
       {
         pattern: domain,

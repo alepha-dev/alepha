@@ -12,7 +12,7 @@ import {
 } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { currentUserAtom } from "alepha/security";
+import { currentTenantAtom, currentUserAtom } from "alepha/security";
 import {
   asc,
   avg,
@@ -1472,8 +1472,8 @@ export abstract class Repository<T extends TObject> {
       return where;
     }
 
-    const user = this.alepha.store.get(currentUserAtom);
-    if (!user?.organization) {
+    const value = this.resolveOrganizationValue();
+    if (!value) {
       return where;
     }
 
@@ -1482,7 +1482,7 @@ export abstract class Repository<T extends TObject> {
         where,
         {
           or: [
-            { [orgField.key]: { eq: user.organization } },
+            { [orgField.key]: { eq: value } },
             { [orgField.key]: { isNull: true } },
           ],
         } as any,
@@ -1500,10 +1500,30 @@ export abstract class Repository<T extends TObject> {
       return;
     }
 
-    const user = this.alepha.store.get(currentUserAtom);
-    if (user?.organization) {
-      data[orgField.key] = user.organization;
+    const value = this.resolveOrganizationValue();
+    if (value) {
+      data[orgField.key] = value;
     }
+  }
+
+  /**
+   * Resolve the value used for `PG_ORGANIZATION` scoping.
+   *
+   * Priority:
+   * 1. Request-bound tenant (`currentTenantAtom`) — set by an app-level
+   *    middleware from the request `Host`. Lets cross-tenant users (admins,
+   *    agency operators) be scoped to the tenant they are acting in rather
+   *    than the one they belong to.
+   * 2. Authenticated user's `organization` — the legacy single-tenant case.
+   */
+  protected resolveOrganizationValue(): string | undefined {
+    const tenant = this.alepha.store.get(currentTenantAtom);
+    if (tenant?.id) {
+      return tenant.id;
+    }
+
+    const user = this.alepha.store.get(currentUserAtom);
+    return user?.organization;
   }
 
   protected organizationField(): PgAttrField | undefined {

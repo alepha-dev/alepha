@@ -10,6 +10,7 @@ import { $logger } from "alepha/logger";
 import { ForbiddenError } from "alepha/server";
 import type { JSONWebKeySet, JWTPayload } from "jose";
 import type { JWTVerifyOptions } from "jose/jwt/verify";
+import { currentTenantAtom } from "../atoms/currentTenantAtom.ts";
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";
 import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
@@ -109,6 +110,23 @@ export class SecurityProvider {
 
         // Parse and validate JWT
         const { result } = await this.jwt.parse(token, realmName);
+
+        // Reject tokens whose tenant claim doesn't match the tenant resolved
+        // for the current request. Prevents a token minted on tenant A from
+        // being replayed on tenant B (subdomain spoofing, leaked bearer
+        // tokens). Tokens minted without a tenant claim (no active tenant at
+        // session creation) pass through — single-tenant apps are unaffected.
+        const claimTenant = this.getTenantFromPayload(result.payload);
+        if (claimTenant) {
+          const activeTenant = this.alepha.store.get(currentTenantAtom)?.id;
+          if (activeTenant && activeTenant !== claimTenant) {
+            this.log.warn("JWT tenant claim does not match active tenant", {
+              claim: claimTenant,
+              active: activeTenant,
+            });
+            return null;
+          }
+        }
 
         // Extract user info from JWT payload
         return this.createUserFromPayload(result.payload, realmName);
@@ -925,6 +943,25 @@ export class SecurityProvider {
 
     if (typeof payload.organization === "string") {
       return payload.organization;
+    }
+  }
+
+  /**
+   * Extracts the tenant id from the JWT payload, when present.
+   *
+   * Tokens minted with no active tenant (single-tenant apps, server-to-server
+   * calls before any request-scoped middleware runs) omit the claim, in which
+   * case the resolver does not enforce a tenant match.
+   */
+  public getTenantFromPayload(
+    payload: Record<string, any>,
+  ): string | undefined {
+    if (!payload) {
+      return;
+    }
+
+    if (typeof payload.tenant === "string") {
+      return payload.tenant;
     }
   }
 }

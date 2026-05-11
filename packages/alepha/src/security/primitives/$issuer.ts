@@ -1,4 +1,11 @@
-import { $inject, AlephaError, createPrimitive, KIND, Primitive } from "alepha";
+import {
+  $inject,
+  Alepha,
+  AlephaError,
+  createPrimitive,
+  KIND,
+  Primitive,
+} from "alepha";
 import {
   DateTimeProvider,
   type Duration,
@@ -7,6 +14,7 @@ import {
 import { $logger } from "alepha/logger";
 import type { ServerRequest } from "alepha/server";
 import type { JSONWebKeySet, JWTPayload } from "jose";
+import { currentTenantAtom } from "../atoms/currentTenantAtom.ts";
 import { SecurityError } from "../errors/SecurityError.ts";
 import type { IssuerResolver } from "../interfaces/IssuerResolver.ts";
 import { JwtProvider } from "../providers/JwtProvider.ts";
@@ -119,6 +127,7 @@ export interface IssuerExternal {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
+  protected readonly alepha = $inject(Alepha);
   protected readonly securityProvider = $inject(SecurityProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly jwt = $inject(JwtProvider);
@@ -302,6 +311,12 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
       aud: this.name,
     });
 
+    // Bind the token to the tenant the request is acting in. The default JWT
+    // resolver compares this claim against `currentTenantAtom` on every
+    // request, so a token minted on `b14.club.alepha.dev` is rejected on
+    // `viska.club.alepha.dev` even when the user belongs to both.
+    const tenant = this.alepha.store.get(currentTenantAtom)?.id;
+
     const access_token = await this.jwt.create(
       {
         // jwt
@@ -318,6 +333,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         // our claims
         organization: user.organization,
         roles: user.roles,
+        tenant,
       },
       this.name,
     );

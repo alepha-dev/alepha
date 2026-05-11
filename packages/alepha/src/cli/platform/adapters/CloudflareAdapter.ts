@@ -1,4 +1,4 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
@@ -168,7 +168,15 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
 
     if (ctx.envConfig.domain) {
+      if (ctx.envConfig.domain.includes("*") && !ctx.envConfig.zone) {
+        throw new AlephaError(
+          `Wildcard domain "${ctx.envConfig.domain}" requires "zone" to be set in the environment config (the Cloudflare zone name, e.g. "alepha.dev").`,
+        );
+      }
       env.CLOUDFLARE_DOMAIN = ctx.envConfig.domain;
+      if (ctx.envConfig.zone) {
+        env.CLOUDFLARE_ZONE = ctx.envConfig.zone;
+      }
     }
 
     if (ctx.envConfig.jurisdiction) {
@@ -229,6 +237,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     "DATABASE_URL",
     "R2_BUCKET_NAME",
     "CLOUDFLARE_DOMAIN",
+    "CLOUDFLARE_ZONE",
     "CLOUDFLARE_JURISDICTION",
     "HYPERDRIVE_ID",
     "POSTGRES_SCHEMA",

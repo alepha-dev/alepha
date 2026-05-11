@@ -64,8 +64,20 @@ export const platformOptions = $atom({
            *
            * On Cloudflare this is attached as a custom-domain route.
            * Omit to use the adapter's default `*.workers.dev` / preview URL.
+           *
+           * Wildcards are supported for multi-tenant SaaS apps:
+           * `"*.club.alepha.dev"` routes every subdomain to the worker.
+           * Wildcard patterns require `zone` to be set, and the wildcard DNS
+           * record must already exist (proxied) in the Cloudflare zone.
            */
           domain: t.optional(t.text()),
+          /**
+           * Cloudflare zone name (e.g. "alepha.dev") that owns `domain`.
+           *
+           * Required when `domain` contains a wildcard (`*`). Ignored for
+           * plain custom domains, which Cloudflare resolves automatically.
+           */
+          zone: t.optional(t.text()),
           /**
            * Cloudflare data jurisdiction for R2 buckets and D1 databases.
            * - "eu": data stays within the EU
@@ -99,6 +111,7 @@ export type PlatformOptions = Static<typeof platformOptions.schema>;
 export interface EnvironmentConfig {
   adapter: "cloudflare" | "vercel";
   domain?: string;
+  zone?: string;
   vars?: Record<string, string>;
   jurisdiction?: "eu" | "fedramp";
   accountId?: string;

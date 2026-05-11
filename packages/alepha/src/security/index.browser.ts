@@ -2,6 +2,7 @@ import { $module } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./atoms/currentTenantAtom.ts";
 export * from "./atoms/currentUserAtom.ts";
 export * from "./errors/InvalidCredentialsError.ts";
 export * from "./errors/InvalidPermissionError.ts";

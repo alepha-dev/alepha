@@ -123,9 +123,10 @@ export class PlatformOrchestrator {
 
     if (envConfig.domain) {
       this.log.info("");
-      this.log.info(
-        `  ${c.set("GREEN", "\u2192")} ${c.set("CYAN", `https://${envConfig.domain}`)}`,
-      );
+      const display = envConfig.domain.includes("*")
+        ? `https://${envConfig.domain} (wildcard route)`
+        : `https://${envConfig.domain}`;
+      this.log.info(`  ${c.set("GREEN", "\u2192")} ${c.set("CYAN", display)}`);
       this.log.info("");
     } else {
       for (const url of urls) {
@@ -206,7 +207,11 @@ export class PlatformOrchestrator {
     const hooks = this.alepha.services(PlatformHook);
     if (hooks.length === 0) return;
 
-    const baseUrl = ctx.envConfig.domain
+    // Wildcard domains aren't a concrete URL — fall back to the worker URL so
+    // hooks (Stripe webhooks, etc.) receive a usable endpoint.
+    const hasUsableDomain =
+      ctx.envConfig.domain && !ctx.envConfig.domain.includes("*");
+    const baseUrl = hasUsableDomain
       ? `https://${ctx.envConfig.domain}`
       : deployUrls[0];
 
