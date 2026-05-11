@@ -66,10 +66,18 @@ export function $cache(options: any = {}): any {
   const mw: any = <T extends (...args: any[]) => any>(handler: T): T => {
     return (async (...args: any[]) => {
       const key = instance.key(...args);
-      const cached = await instance.get(key);
-      if (cached !== undefined) return cached;
+      const read = await instance.read(key);
 
-      const result = await handler(...args);
+      if (read.value !== undefined) {
+        if (read.stale) {
+          instance.scheduleRefresh(key, () => handler(...args));
+        }
+        return read.value;
+      }
+
+      const result = await instance.runSingleFlight(key, () =>
+        handler(...args),
+      );
       // Fire-and-forget — cache write failures must not break the handler result
       instance.set(key, result).catch(() => {});
       return result;
@@ -85,6 +93,34 @@ export function $cache(options: any = {}): any {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Options for the in-memory L1 tier.
+ */
+export interface CacheMemoryTierOptions {
+  /**
+   * TTL for the in-memory tier. Should be ≤ the remote `ttl`.
+   * Bounds the cross-isolate staleness window after invalidation.
+   *
+   * @default min(ttl, 30s)
+   */
+  ttl?: DurationLike;
+
+  /**
+   * LRU bound — max entries kept in memory before eviction.
+   *
+   * @default 500
+   */
+  max?: number;
+
+  /**
+   * Also cache provider misses (`undefined`) in memory for this duration.
+   * Prevents hammering the remote tier on cold/unknown keys.
+   *
+   * @default off
+   */
+  negative?: DurationLike;
+}
 
 export interface CachePrimitiveOptions<
   TReturn = any,
@@ -151,6 +187,35 @@ export interface CachePrimitiveOptions<
    * Reduces storage size by 60-80% for JSON payloads at the cost of CPU.
    */
   compress?: boolean;
+
+  /**
+   * Add an in-process L1 memory tier in front of `provider`.
+   *
+   * Reads check memory first, fall back to the provider on miss. Writes go
+   * to both tiers (write-through), so own-writes are immediately visible.
+   *
+   * Caveats:
+   * - Per-process only. Each Worker isolate / Node process has its own L1.
+   *   `invalidate()` clears the local L1 + the remote provider; other
+   *   processes keep their L1 until its TTL expires.
+   * - Use a short L1 TTL to bound the cross-isolate staleness window.
+   *
+   * @default off
+   */
+  memory?: true | CacheMemoryTierOptions;
+
+  /**
+   * Stale-while-revalidate window. After `ttl` expires, the cached value
+   * remains servable for `stale` longer; reads in this window return the
+   * stale value immediately and trigger ONE background refresh
+   * (single-flight per key).
+   *
+   * Requires a `handler` (primitive mode) OR middleware mode wrapping a
+   * handler — the cache needs to know how to recompute.
+   *
+   * @default off
+   */
+  stale?: DurationLike;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -186,6 +251,27 @@ declare module "alepha" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+const DEFAULT_MEMORY_MAX = 500;
+const DEFAULT_MEMORY_TTL_MS = 30_000;
+const SWR_MARKER = "__swr" as const;
+
+type SwrEnvelope = {
+  [SWR_MARKER]: 1;
+  v: unknown;
+  f: number;
+};
+
+type L1Entry<T> = {
+  value: T | undefined;
+  expiresAt: number;
+  negative: boolean;
+};
+
+type ReadResult<T> = {
+  value: T | undefined;
+  stale: boolean;
+};
+
 export class CachePrimitive<
   TReturn = any,
   TParameter extends any[] = any[],
@@ -193,6 +279,46 @@ export class CachePrimitive<
   protected readonly settings = $state(cacheOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   public readonly provider = this.$provider();
+
+  protected readonly memoryStore?: Map<string, L1Entry<TReturn>>;
+  protected readonly memoryMax: number = DEFAULT_MEMORY_MAX;
+  protected readonly memoryTtlMs: number = 0;
+  protected readonly negativeTtlMs: number = 0;
+
+  protected readonly inflightRefreshes = new Map<string, Promise<TReturn>>();
+
+  constructor(
+    args: ConstructorParameters<
+      typeof Primitive<CachePrimitiveOptions<TReturn, TParameter>>
+    >[0],
+  ) {
+    super(args);
+    const mem = this.options.memory;
+    if (mem) {
+      this.memoryStore = new Map();
+      const memOpts: CacheMemoryTierOptions = mem === true ? {} : mem;
+      this.memoryMax = memOpts.max ?? DEFAULT_MEMORY_MAX;
+      // Default L1 TTL: min(remote ttl, 30s). If remote ttl is 0/infinite, use 30s.
+      if (memOpts.ttl !== undefined) {
+        this.memoryTtlMs = this.dateTimeProvider
+          .duration(memOpts.ttl)
+          .as("milliseconds");
+      } else {
+        const remoteTtlMs = this.options.ttl
+          ? this.dateTimeProvider.duration(this.options.ttl).as("milliseconds")
+          : 0;
+        this.memoryTtlMs =
+          remoteTtlMs > 0
+            ? Math.min(remoteTtlMs, DEFAULT_MEMORY_TTL_MS)
+            : DEFAULT_MEMORY_TTL_MS;
+      }
+      if (memOpts.negative !== undefined) {
+        this.negativeTtlMs = this.dateTimeProvider
+          .duration(memOpts.negative)
+          .as("milliseconds");
+      }
+    }
+  }
 
   public get container(): string {
     return (
@@ -208,16 +334,18 @@ export class CachePrimitive<
     }
 
     const key = this.key(...args);
-    const cached = await this.get(key);
-    if (cached !== undefined) {
-      return cached;
+    const read = await this.read(key);
+
+    if (read.value !== undefined) {
+      if (read.stale) {
+        this.scheduleRefresh(key, () => handler(...args));
+      }
+      return read.value;
     }
 
-    const result = await handler(...args);
+    const result = await this.runSingleFlight(key, () => handler(...args));
     // note: when exception occurs, don't cache the result
-
     await this.set(key, result);
-
     return result;
   }
 
@@ -226,10 +354,29 @@ export class CachePrimitive<
   }
 
   public async incr(key: string, amount = 1): Promise<number> {
-    return this.provider.incr(this.container, key, amount);
+    const result = await this.provider.incr(this.container, key, amount);
+    // L1 is no longer authoritative after atomic incr on remote.
+    this.delL1(key);
+    return result;
   }
 
   public async invalidate(...keys: string[]): Promise<void> {
+    if (this.memoryStore) {
+      if (keys.length === 0) {
+        this.memoryStore.clear();
+      } else {
+        for (const key of keys) {
+          if (key.endsWith("*")) {
+            const prefix = key.slice(0, -1);
+            for (const k of this.memoryStore.keys()) {
+              if (k.startsWith(prefix)) this.memoryStore.delete(k);
+            }
+          } else {
+            this.memoryStore.delete(key);
+          }
+        }
+      }
+    }
     await this.provider.invalidateKeys(this.container, keys);
   }
 
@@ -246,41 +393,193 @@ export class CachePrimitive<
       return;
     }
 
-    const px = this.dateTimeProvider
+    const freshTtlMs = this.dateTimeProvider
       .duration(
         ttl ?? this.options.ttl ?? [this.settings.defaultTtl, "seconds"],
       )
       .as("milliseconds");
 
-    await this.provider.setTyped(this.container, key, value, {
-      ttl: px > 0 ? px : undefined,
+    const staleMs = this.options.stale
+      ? this.dateTimeProvider.duration(this.options.stale).as("milliseconds")
+      : 0;
+
+    const providerTtlMs = freshTtlMs > 0 ? freshTtlMs + staleMs : 0;
+    const now = this.dateTimeProvider.nowMillis();
+    const freshUntil = freshTtlMs > 0 ? now + freshTtlMs : 0;
+
+    const payload =
+      this.options.stale && freshTtlMs > 0
+        ? ({ [SWR_MARKER]: 1, v: value, f: freshUntil } satisfies SwrEnvelope)
+        : value;
+
+    await this.provider.setTyped(this.container, key, payload, {
+      ttl: providerTtlMs > 0 ? providerTtlMs : undefined,
       compress: this.options.compress,
     });
+
+    // Write-through to L1 (raw value, not wrapped).
+    this.setL1(key, {
+      value,
+      expiresAt:
+        this.memoryTtlMs > 0
+          ? now + this.memoryTtlMs
+          : Number.POSITIVE_INFINITY,
+      negative: false,
+    });
+
+    // A fresh write supersedes any pending refresh for this key.
+    this.inflightRefreshes.delete(key);
 
     await this.alepha.events.emit("cache:set", {
       container: this.container,
       key,
-      ttlMs: px > 0 ? px : undefined,
+      ttlMs: providerTtlMs > 0 ? providerTtlMs : undefined,
     });
   }
 
   public async get(key: string): Promise<TReturn | undefined> {
+    const read = await this.read(key);
+    return read.value;
+  }
+
+  /**
+   * Internal read that also reports whether the value is stale (SWR
+   * grace window). Middleware and `run()` use this to decide whether to
+   * schedule a background refresh.
+   */
+  public async read(key: string): Promise<ReadResult<TReturn>> {
     if (
       !this.alepha.isStarted() ||
       this.options.disabled ||
       !this.settings.enabled
     ) {
-      return undefined;
+      return { value: undefined, stale: false };
     }
 
-    const value = await this.provider.getTyped<TReturn>(this.container, key);
+    const now = this.dateTimeProvider.nowMillis();
 
-    await this.alepha.events.emit(
-      value === undefined ? "cache:miss" : "cache:hit",
-      { container: this.container, key },
+    // L1 check
+    if (this.memoryStore) {
+      const entry = this.memoryStore.get(key);
+      if (entry !== undefined) {
+        if (entry.expiresAt > now) {
+          // LRU touch
+          this.memoryStore.delete(key);
+          this.memoryStore.set(key, entry);
+          await this.alepha.events.emit("cache:hit", {
+            container: this.container,
+            key,
+          });
+          return {
+            value: entry.negative ? undefined : entry.value,
+            stale: false,
+          };
+        }
+        this.memoryStore.delete(key);
+      }
+    }
+
+    // L2 check
+    const raw = await this.provider.getTyped<TReturn | SwrEnvelope>(
+      this.container,
+      key,
     );
 
-    return value;
+    if (raw === undefined) {
+      // Negative caching
+      if (this.memoryStore && this.negativeTtlMs > 0) {
+        this.setL1(key, {
+          value: undefined,
+          expiresAt: now + this.negativeTtlMs,
+          negative: true,
+        });
+      }
+      await this.alepha.events.emit("cache:miss", {
+        container: this.container,
+        key,
+      });
+      return { value: undefined, stale: false };
+    }
+
+    let value: TReturn;
+    let stale = false;
+
+    if (this.isSwrEnvelope(raw)) {
+      value = raw.v as TReturn;
+      stale = raw.f > 0 && raw.f <= now;
+    } else {
+      value = raw as TReturn;
+    }
+
+    // Populate L1 (write-back from L2 read)
+    if (this.memoryStore && this.memoryTtlMs > 0) {
+      this.setL1(key, {
+        value,
+        expiresAt: now + this.memoryTtlMs,
+        negative: false,
+      });
+    }
+
+    await this.alepha.events.emit(stale ? "cache:stale" : "cache:hit", {
+      container: this.container,
+      key,
+    });
+
+    return { value, stale };
+  }
+
+  /**
+   * Run a handler under single-flight: concurrent callers for the same
+   * key share one in-flight promise.
+   */
+  public async runSingleFlight(
+    key: string,
+    handler: () => Promise<TReturn> | TReturn,
+  ): Promise<TReturn> {
+    const existing = this.inflightRefreshes.get(key);
+    if (existing) {
+      return existing;
+    }
+    const promise = (async () => {
+      try {
+        return await handler();
+      } finally {
+        this.inflightRefreshes.delete(key);
+      }
+    })();
+    this.inflightRefreshes.set(key, promise);
+    return promise;
+  }
+
+  /**
+   * Schedule a background refresh for a stale key. At most one refresh
+   * per key is in-flight at any time; failures are swallowed (the stale
+   * value keeps being served until expiry).
+   */
+  public scheduleRefresh(
+    key: string,
+    handler: () => Promise<TReturn> | TReturn,
+  ): void {
+    if (this.inflightRefreshes.has(key)) {
+      return;
+    }
+    const promise = (async () => {
+      try {
+        const result = await handler();
+        await this.set(key, result);
+        await this.alepha.events.emit("cache:revalidate", {
+          container: this.container,
+          key,
+        });
+        return result;
+      } finally {
+        this.inflightRefreshes.delete(key);
+      }
+    })();
+    promise.catch(() => {
+      // swallow: stale value keeps serving until expiry
+    });
+    this.inflightRefreshes.set(key, promise);
   }
 
   protected $provider(): CacheProvider {
@@ -293,6 +592,33 @@ export class CachePrimitive<
     }
 
     return this.alepha.inject(this.options.provider);
+  }
+
+  protected isSwrEnvelope(value: unknown): value is SwrEnvelope {
+    return (
+      value !== null &&
+      typeof value === "object" &&
+      (value as Record<string, unknown>)[SWR_MARKER] === 1 &&
+      "f" in (value as Record<string, unknown>) &&
+      "v" in (value as Record<string, unknown>)
+    );
+  }
+
+  protected setL1(key: string, entry: L1Entry<TReturn>): void {
+    if (!this.memoryStore) return;
+    if (this.memoryStore.has(key)) {
+      this.memoryStore.delete(key);
+    }
+    this.memoryStore.set(key, entry);
+    while (this.memoryStore.size > this.memoryMax) {
+      const first = this.memoryStore.keys().next().value;
+      if (first === undefined) break;
+      this.memoryStore.delete(first);
+    }
+  }
+
+  protected delL1(key: string): void {
+    this.memoryStore?.delete(key);
   }
 }
 

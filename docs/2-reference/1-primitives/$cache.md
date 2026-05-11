@@ -48,4 +48,6 @@ getUserData = $cache({
 | `ttl` | `DurationLike` | No | The time-to-live for the cache in seconds |
 | `disabled` | `boolean` | No | If the cache is disabled. |
 | `compress` | `boolean` | No | Enable gzip compression for cached values |
+| `memory` | `true \| CacheMemoryTierOptions` | No | Add an in-process L1 memory tier in front of `provider` |
+| `stale` | `DurationLike` | No | Stale-while-revalidate window |
 
