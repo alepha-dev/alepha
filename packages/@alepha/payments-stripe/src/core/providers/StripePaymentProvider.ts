@@ -70,11 +70,22 @@ export class StripePaymentProvider implements PaymentProvider {
 
   public async createSession(
     intent: PaymentIntentEntity,
-    options: { returnUrl: string; authorize?: boolean; stripeAccount?: string },
+    options: {
+      returnUrl: string;
+      authorize?: boolean;
+      stripeAccount?: string;
+      applicationFeeAmount?: number;
+    },
   ): Promise<CreateSessionResult> {
     const customer = intent.userId
       ? await this.getOrCreateCustomer(intent.userId)
       : undefined;
+
+    const paymentIntentData: Stripe.Checkout.SessionCreateParams["payment_intent_data"] =
+      options.authorize ? { capture_method: "manual" } : {};
+    if (options.applicationFeeAmount && options.applicationFeeAmount > 0) {
+      paymentIntentData.application_fee_amount = options.applicationFeeAmount;
+    }
 
     const session = await this.stripe.checkout.sessions.create(
       {
@@ -90,9 +101,10 @@ export class StripePaymentProvider implements PaymentProvider {
             quantity: 1,
           },
         ],
-        payment_intent_data: options.authorize
-          ? { capture_method: "manual" }
-          : undefined,
+        payment_intent_data:
+          Object.keys(paymentIntentData).length > 0
+            ? paymentIntentData
+            : undefined,
         success_url: options.returnUrl,
         cancel_url: options.returnUrl,
         metadata: { intentId: intent.id },

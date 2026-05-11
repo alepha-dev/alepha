@@ -29,7 +29,12 @@ export class MemoryPaymentProvider implements PaymentProvider {
 
   public async createSession(
     intent: PaymentIntentEntity,
-    options: { returnUrl: string; authorize?: boolean; stripeAccount?: string },
+    options: {
+      returnUrl: string;
+      authorize?: boolean;
+      stripeAccount?: string;
+      applicationFeeAmount?: number;
+    },
   ): Promise<CreateSessionResult> {
     const providerRef = `mem_session_${randomUUID()}`;
     const status = options.authorize ? "authorized" : "captured";

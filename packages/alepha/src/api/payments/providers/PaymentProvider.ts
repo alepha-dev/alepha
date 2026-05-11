@@ -31,7 +31,12 @@ export abstract class PaymentProvider {
    */
   abstract createSession(
     intent: PaymentIntentEntity,
-    options: { returnUrl: string; authorize?: boolean; stripeAccount?: string },
+    options: {
+      returnUrl: string;
+      authorize?: boolean;
+      stripeAccount?: string;
+      applicationFeeAmount?: number;
+    },
   ): Promise<CreateSessionResult>;
 
   /**
