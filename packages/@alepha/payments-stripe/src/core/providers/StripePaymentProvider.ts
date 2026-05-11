@@ -273,6 +273,76 @@ export class StripePaymentProvider implements PaymentProvider {
     };
   }
 
+  public async createCheckoutSubscription(opts: {
+    priceId: string;
+    successUrl: string;
+    cancelUrl: string;
+    customerEmail?: string;
+    customerId?: string;
+    metadata?: Record<string, string>;
+  }): Promise<{ url: string; sessionId: string }> {
+    const session = await this.stripe.checkout.sessions.create({
+      mode: "subscription",
+      line_items: [{ price: opts.priceId, quantity: 1 }],
+      success_url: opts.successUrl,
+      cancel_url: opts.cancelUrl,
+      customer: opts.customerId,
+      customer_email: opts.customerId ? undefined : opts.customerEmail,
+      metadata: opts.metadata,
+      subscription_data: opts.metadata
+        ? { metadata: opts.metadata }
+        : undefined,
+    });
+    if (!session.url)
+      throw new Error("Stripe Checkout session created without url");
+    return { url: session.url, sessionId: session.id };
+  }
+
+  public async retrieveSubscription(
+    subscriptionId: string,
+  ): Promise<Stripe.Subscription> {
+    return this.stripe.subscriptions.retrieve(subscriptionId);
+  }
+
+  public async cancelSubscription(
+    subscriptionId: string,
+    opts: { atPeriodEnd?: boolean } = {},
+  ): Promise<Stripe.Subscription> {
+    if (opts.atPeriodEnd === false) {
+      return this.stripe.subscriptions.cancel(subscriptionId);
+    }
+    return this.stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true,
+    });
+  }
+
+  public async createBillingPortalSession(opts: {
+    customerId: string;
+    returnUrl: string;
+  }): Promise<{ url: string }> {
+    const session = await this.stripe.billingPortal.sessions.create({
+      customer: opts.customerId,
+      return_url: opts.returnUrl,
+    });
+    return { url: session.url };
+  }
+
+  /**
+   * Verify + construct a Stripe webhook event using the platform-level
+   * webhook secret (STRIPE_WEBHOOK_SECRET). Distinct from the Connect
+   * webhook secret used in StripeConnectWebhookController.
+   */
+  public constructPlatformEvent(
+    rawBody: string,
+    signature: string,
+  ): Stripe.Event {
+    return this.stripe.webhooks.constructEvent(
+      rawBody,
+      signature,
+      this.env.STRIPE_WEBHOOK_SECRET,
+    );
+  }
+
   public async expireSession(
     providerRef: string,
     options: { stripeAccount?: string } = {},
