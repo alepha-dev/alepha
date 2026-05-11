@@ -79,6 +79,7 @@ export class PaymentService {
     returnUrl: string,
     authorize?: boolean,
     userId?: string,
+    options?: { stripeAccount?: string },
   ): Promise<{ url: string; intentId: string }> {
     const intent = await this.getIntent(intentId);
     this.assertStatus(intent, "created", "createSession");
@@ -96,6 +97,7 @@ export class PaymentService {
     const result = await this.provider.createSession(intent, {
       returnUrl,
       authorize,
+      stripeAccount: options?.stripeAccount,
     });
 
     await this.intentRepo.updateById(intent.id, {

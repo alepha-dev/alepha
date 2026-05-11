@@ -70,36 +70,41 @@ export class StripePaymentProvider implements PaymentProvider {
 
   public async createSession(
     intent: PaymentIntentEntity,
-    options: { returnUrl: string; authorize?: boolean },
+    options: { returnUrl: string; authorize?: boolean; stripeAccount?: string },
   ): Promise<CreateSessionResult> {
     const customer = intent.userId
       ? await this.getOrCreateCustomer(intent.userId)
       : undefined;
 
-    const session = await this.stripe.checkout.sessions.create({
-      mode: "payment",
-      customer,
-      line_items: [
-        {
-          price_data: {
-            currency: intent.currency,
-            unit_amount: intent.amount,
-            product_data: { name: "Payment" },
+    const session = await this.stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        customer,
+        line_items: [
+          {
+            price_data: {
+              currency: intent.currency,
+              unit_amount: intent.amount,
+              product_data: { name: "Payment" },
+            },
+            quantity: 1,
           },
-          quantity: 1,
-        },
-      ],
-      payment_intent_data: options.authorize
-        ? { capture_method: "manual" }
+        ],
+        payment_intent_data: options.authorize
+          ? { capture_method: "manual" }
+          : undefined,
+        success_url: options.returnUrl,
+        cancel_url: options.returnUrl,
+        metadata: { intentId: intent.id },
+        // Force eager PaymentIntent creation. Without expand, Stripe may return
+        // `payment_intent: null` for sessions that lazy-create the PI (depends
+        // on enabled payment methods / account configuration).
+        expand: ["payment_intent"],
+      },
+      options.stripeAccount
+        ? { stripeAccount: options.stripeAccount }
         : undefined,
-      success_url: options.returnUrl,
-      cancel_url: options.returnUrl,
-      metadata: { intentId: intent.id },
-      // Force eager PaymentIntent creation. Without expand, Stripe may return
-      // `payment_intent: null` for sessions that lazy-create the PI (depends
-      // on enabled payment methods / account configuration).
-      expand: ["payment_intent"],
-    });
+    );
 
     if (!session.url) {
       throw new AlephaError("Stripe checkout session is missing URL");
@@ -123,24 +128,41 @@ export class StripePaymentProvider implements PaymentProvider {
   public async capturePayment(
     providerRef: string,
     amount: number,
+    options: { stripeAccount?: string } = {},
   ): Promise<void> {
-    await this.stripe.paymentIntents.capture(providerRef, {
-      amount_to_capture: amount,
-    });
+    await this.stripe.paymentIntents.capture(
+      providerRef,
+      { amount_to_capture: amount },
+      options.stripeAccount
+        ? { stripeAccount: options.stripeAccount }
+        : undefined,
+    );
   }
 
-  public async voidPayment(providerRef: string): Promise<void> {
-    await this.stripe.paymentIntents.cancel(providerRef);
+  public async voidPayment(
+    providerRef: string,
+    options: { stripeAccount?: string } = {},
+  ): Promise<void> {
+    await this.stripe.paymentIntents.cancel(
+      providerRef,
+      undefined,
+      options.stripeAccount
+        ? { stripeAccount: options.stripeAccount }
+        : undefined,
+    );
   }
 
   public async refundPayment(
     providerRef: string,
     amount: number,
+    options: { stripeAccount?: string } = {},
   ): Promise<RefundResult> {
-    const refund = await this.stripe.refunds.create({
-      payment_intent: providerRef,
-      amount,
-    });
+    const refund = await this.stripe.refunds.create(
+      { payment_intent: providerRef, amount },
+      options.stripeAccount
+        ? { stripeAccount: options.stripeAccount }
+        : undefined,
+    );
     return { providerRef: refund.id };
   }
 
@@ -196,14 +218,24 @@ export class StripePaymentProvider implements PaymentProvider {
     await this.stripe.paymentMethods.detach(providerRef);
   }
 
-  public async expireSession(providerRef: string): Promise<void> {
+  public async expireSession(
+    providerRef: string,
+    options: { stripeAccount?: string } = {},
+  ): Promise<void> {
+    const requestOptions = options.stripeAccount
+      ? { stripeAccount: options.stripeAccount }
+      : undefined;
     try {
-      const sessions = await this.stripe.checkout.sessions.list({
-        payment_intent: providerRef,
-        limit: 1,
-      });
+      const sessions = await this.stripe.checkout.sessions.list(
+        { payment_intent: providerRef, limit: 1 },
+        requestOptions,
+      );
       if (sessions.data.length > 0) {
-        await this.stripe.checkout.sessions.expire(sessions.data[0].id);
+        await this.stripe.checkout.sessions.expire(
+          sessions.data[0].id,
+          undefined,
+          requestOptions,
+        );
       }
     } catch (error) {
       this.log.warn(
