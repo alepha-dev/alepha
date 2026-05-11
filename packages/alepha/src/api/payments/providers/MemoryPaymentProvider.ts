@@ -88,8 +88,8 @@ export class MemoryPaymentProvider implements PaymentProvider {
   }
 
   public async createPaymentMethod(
-    userId: string,
-    token: string,
+    _userId: string,
+    _token: string,
   ): Promise<CreatePaymentMethodResult> {
     const providerRef = `mem_pm_${randomUUID()}`;
     const result: CreatePaymentMethodResult = {
