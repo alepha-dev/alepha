@@ -58,7 +58,7 @@ export class ChapterTools {
    */
   chapter_list = $tool({
     description:
-      "List all chapters for a campaign. Chapters are iterative milestones that capture completed quests.",
+      "List all chapters for a campaign, both active (open) and closed. Chapters are iterative milestones that capture completed quests. Sorted by chapter number ascending. Each entry includes id, number, title, description, questCount, createdAt, and closedAt (undefined for the active chapter).",
     title: "List chapters",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {

@@ -18,18 +18,20 @@ export const objectiveSchema = t.object({
 
 /**
  * Common campaign identification params for MCP tools.
- * Either campaign ID or campaign_name must be provided.
+ * Either campaign ID or campaign_name must be provided. If both are passed,
+ * `campaign` (the ID) wins.
  */
 export const campaignParamsSchema = t.object({
   campaign: t.optional(
     t.integer({
-      description: "Campaign ID. Required if campaign_name is not provided.",
+      description:
+        "Campaign ID. Required if campaign_name is not provided. Takes precedence if both are provided.",
     }),
   ),
   campaign_name: t.optional(
     t.string({
       description:
-        "Campaign name (campaign title). Case-insensitive. Required if campaign is not provided.",
+        "Campaign name (campaign title). Case-insensitive. Required if campaign is not provided. Ignored when campaign is also provided.",
     }),
   ),
 });

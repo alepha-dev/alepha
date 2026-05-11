@@ -10,6 +10,10 @@ import {
   questCompleteResultSchema,
   questCreateParamsSchema,
   questCreateResultSchema,
+  questDeleteParamsSchema,
+  questDeleteResultSchema,
+  questGetParamsSchema,
+  questGetResultSchema,
   questListParamsSchema,
   questListResultSchema,
   questUpdateParamsSchema,
@@ -215,11 +219,47 @@ export class QuestTools {
   });
 
   /**
+   * Get a single quest by ID.
+   */
+  quest_get = $tool({
+    description:
+      "Fetch a single quest by ID, including its current objectives, description, status, and timestamps. Use this before quest_update to see current state.",
+    title: "Get quest",
+    annotations: { readOnlyHint: true, idempotentHint: true },
+    schema: {
+      params: questGetParamsSchema,
+      result: questGetResultSchema,
+    },
+    handler: async ({ params }) => {
+      const quest = await this.questController.getQuestById({
+        params: { id: params.id },
+      });
+
+      return {
+        id: quest.id,
+        title: quest.title,
+        description: quest.description,
+        zone: quest.zone,
+        priority: quest.priority,
+        difficulty: quest.difficulty,
+        status: this.getQuestStatus(quest),
+        objectives: quest.objectives,
+        campaignId: quest.campaignId,
+        chapterId: quest.chapterId,
+        createdAt: quest.createdAt,
+        updatedAt: quest.updatedAt,
+        acceptedAt: quest.acceptedAt,
+        completedAt: quest.completedAt,
+      };
+    },
+  });
+
+  /**
    * Update a quest.
    */
   quest_update = $tool({
     description:
-      "Update a quest's properties. Only non-completed quests can be updated.",
+      "Update a quest's properties. Only non-completed quests can be updated. Omitted fields stay unchanged. Note: passing `objectives` REPLACES the entire objectives array — fetch the current quest first (quest_get or quest_list) and pass back the full list with your edits.",
     title: "Update quest",
     annotations: { idempotentHint: true },
     schema: {
@@ -244,6 +284,29 @@ export class QuestTools {
         title: quest.title,
         updatedAt: quest.updatedAt,
       };
+    },
+  });
+
+  /**
+   * Delete a quest.
+   */
+  quest_delete = $tool({
+    description:
+      "Permanently delete a quest. Use this to clean up mistakenly-created quests. Only the quest creator or campaign owner can delete. Cannot be undone.",
+    title: "Delete quest",
+    annotations: {
+      destructiveHint: true,
+      idempotentHint: true,
+    },
+    schema: {
+      params: questDeleteParamsSchema,
+      result: questDeleteResultSchema,
+    },
+    handler: async ({ params }) => {
+      await this.questController.deleteQuest({
+        params: { id: params.id },
+      });
+      return { ok: true };
     },
   });
 }
