@@ -56,7 +56,7 @@ export class FolioTools {
    */
   protected async resolveCampaignId(
     campaign?: number,
-    campaignName?: string,
+    campaign_name?: string,
   ): Promise<number> {
     const campaigns = await this.campaignController.getMyCampaigns();
 
@@ -68,12 +68,12 @@ export class FolioTools {
       return found.id;
     }
 
-    if (campaignName) {
+    if (campaign_name) {
       const found = campaigns.find(
-        (p) => p.title.toLowerCase() === campaignName.toLowerCase(),
+        (p) => p.title.toLowerCase() === campaign_name.toLowerCase(),
       );
       if (!found) {
-        throw new NotFoundError(`Campaign "${campaignName}" not found`);
+        throw new NotFoundError(`Campaign "${campaign_name}" not found`);
       }
       return found.id;
     }
@@ -94,7 +94,7 @@ export class FolioTools {
     schema: {
       params: t.object({
         campaign: t.optional(t.integer()),
-        campaignName: t.optional(t.string()),
+        campaign_name: t.optional(t.string()),
         tag: t.optional(t.string()),
         limit: t.optional(t.integer({ minimum: 1, maximum: 100, default: 20 })),
       }),
@@ -104,8 +104,8 @@ export class FolioTools {
     },
     handler: async ({ params }) => {
       const campaignId =
-        params.campaign || params.campaignName
-          ? await this.resolveCampaignId(params.campaign, params.campaignName)
+        params.campaign || params.campaign_name
+          ? await this.resolveCampaignId(params.campaign, params.campaign_name)
           : undefined;
       const folios = await this.folioController.list({
         query: { tag: params.tag, limit: params.limit ?? 20, campaignId },
@@ -133,7 +133,7 @@ export class FolioTools {
       params: t.object({
         query: t.string({ minLength: 1 }),
         campaign: t.optional(t.integer()),
-        campaignName: t.optional(t.string()),
+        campaign_name: t.optional(t.string()),
         tag: t.optional(t.string()),
         limit: t.optional(t.integer({ minimum: 1, maximum: 50, default: 10 })),
       }),
@@ -151,8 +151,8 @@ export class FolioTools {
     },
     handler: async ({ params }) => {
       const campaignId =
-        params.campaign || params.campaignName
-          ? await this.resolveCampaignId(params.campaign, params.campaignName)
+        params.campaign || params.campaign_name
+          ? await this.resolveCampaignId(params.campaign, params.campaign_name)
           : undefined;
       const folios = await this.folioController.list({
         query: {
@@ -185,14 +185,14 @@ export class FolioTools {
     schema: {
       params: t.object({
         campaign: t.optional(t.integer()),
-        campaignName: t.optional(t.string()),
+        campaign_name: t.optional(t.string()),
       }),
       result: t.object({ tags: t.array(t.string()) }),
     },
     handler: async ({ params }) => {
       const campaignId =
-        params.campaign || params.campaignName
-          ? await this.resolveCampaignId(params.campaign, params.campaignName)
+        params.campaign || params.campaign_name
+          ? await this.resolveCampaignId(params.campaign, params.campaign_name)
           : undefined;
       const tags = await this.folioController.listTags({
         query: { campaignId },
@@ -238,7 +238,7 @@ export class FolioTools {
     schema: {
       params: t.object({
         campaign: t.optional(t.integer()),
-        campaignName: t.optional(t.string()),
+        campaign_name: t.optional(t.string()),
         title: t.string({ minLength: 1, maxLength: 200 }),
         content: t.optional(t.string()),
         tags: t.optional(t.array(t.string())),
@@ -248,7 +248,7 @@ export class FolioTools {
     handler: async ({ params }) => {
       const campaignId = await this.resolveCampaignId(
         params.campaign,
-        params.campaignName,
+        params.campaign_name,
       );
       const folio = await this.folioController.create({
         body: {

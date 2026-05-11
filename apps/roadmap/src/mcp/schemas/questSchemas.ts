@@ -7,6 +7,19 @@ import {
 } from "./commonSchemas.ts";
 
 // -----------------------------------------------------------------------------
+// Shared field descriptions
+// -----------------------------------------------------------------------------
+
+const PRIORITY_DESCRIPTION =
+  "Quest priority. Ordered low → high: optional < low < medium < high. `optional` is below `low`.";
+const DIFFICULTY_DESCRIPTION =
+  "Quest difficulty from 1 (trivial) to 5 (epic). Higher means harder; affects XP and gold rewards.";
+const ZONE_DESCRIPTION =
+  "Functional area or module within the campaign — analogous to an Epic in Jira, or a module/package in a codebase (e.g. 'auth', 'billing', 'ui'). Required (every quest must have a zone). Free-form string, NOT constrained to a pre-declared list — passing a new value implicitly registers it on the campaign on first use. Case-SENSITIVE: 'Auth' and 'auth' are distinct zones, so reuse the exact casing of existing ones. Call campaign_info to see the campaign's current zones before picking a value.";
+const DESCRIPTION_DESCRIPTION =
+  "Quest description in Markdown. Plain text also works. HTML is not supported and any tags will be stripped.";
+
+// -----------------------------------------------------------------------------
 // quest_list
 // -----------------------------------------------------------------------------
 
@@ -57,6 +70,33 @@ export const questListResultSchema = t.object({
 });
 
 // -----------------------------------------------------------------------------
+// quest_get
+// -----------------------------------------------------------------------------
+
+export const questGetParamsSchema = t.object({
+  id: t.integer({
+    description: "Quest ID to fetch",
+  }),
+});
+
+export const questGetResultSchema = t.object({
+  id: t.integer(),
+  title: t.string(),
+  description: t.string(),
+  zone: t.string(),
+  priority: prioritySchema,
+  difficulty: t.integer(),
+  status: questStatusSchema,
+  objectives: t.array(objectiveSchema),
+  campaignId: t.integer(),
+  chapterId: t.optional(t.integer()),
+  createdAt: t.datetime(),
+  updatedAt: t.datetime(),
+  acceptedAt: t.optional(t.datetime()),
+  completedAt: t.optional(t.datetime()),
+});
+
+// -----------------------------------------------------------------------------
 // quest_create
 // -----------------------------------------------------------------------------
 
@@ -65,16 +105,16 @@ export const questCreateParamsSchema = t.extend(campaignParamsSchema, {
     description: "Quest title",
   }),
   description: t.string({
-    description: "Quest description (supports HTML)",
+    description: DESCRIPTION_DESCRIPTION,
   }),
   zone: t.string({
-    description: "Zone/zone the quest belongs to",
+    description: ZONE_DESCRIPTION,
   }),
   priority: t.enum(["optional", "low", "medium", "high"], {
-    description: "Quest priority level",
+    description: PRIORITY_DESCRIPTION,
   }),
   difficulty: t.integer({
-    description: "Quest difficulty (1-5)",
+    description: DIFFICULTY_DESCRIPTION,
     minimum: 1,
     maximum: 5,
   }),
@@ -140,29 +180,30 @@ export const questUpdateParamsSchema = t.object({
   ),
   description: t.optional(
     t.string({
-      description: "New quest description",
+      description: `New ${DESCRIPTION_DESCRIPTION}`,
     }),
   ),
   zone: t.optional(
     t.string({
-      description: "New zone/zone",
+      description: `New ${ZONE_DESCRIPTION}`,
     }),
   ),
   priority: t.optional(
     t.enum(["optional", "low", "medium", "high"], {
-      description: "New priority level",
+      description: `New ${PRIORITY_DESCRIPTION}`,
     }),
   ),
   difficulty: t.optional(
     t.integer({
-      description: "New difficulty (1-5)",
+      description: `New ${DIFFICULTY_DESCRIPTION}`,
       minimum: 1,
       maximum: 5,
     }),
   ),
   objectives: t.optional(
     t.array(objectiveSchema, {
-      description: "Updated list of objectives",
+      description:
+        "Updated list of objectives. Pass the full new array (it REPLACES the existing one — omitted objectives will be deleted). Omit this field entirely to leave objectives unchanged.",
     }),
   ),
 });
@@ -171,4 +212,18 @@ export const questUpdateResultSchema = t.object({
   id: t.integer(),
   title: t.string(),
   updatedAt: t.datetime(),
+});
+
+// -----------------------------------------------------------------------------
+// quest_delete
+// -----------------------------------------------------------------------------
+
+export const questDeleteParamsSchema = t.object({
+  id: t.integer({
+    description: "Quest ID to delete",
+  }),
+});
+
+export const questDeleteResultSchema = t.object({
+  ok: t.boolean(),
 });

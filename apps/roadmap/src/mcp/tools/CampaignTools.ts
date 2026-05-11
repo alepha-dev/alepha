@@ -51,7 +51,7 @@ export class CampaignTools {
    */
   campaign_list = $tool({
     description:
-      "List all campaigns (campaigns) the user has access to. Use this to find available campaigns before querying quests.",
+      "List all campaigns the user has access to (owned + adventurer-in). Use this to find the campaign id (required by most other tools) and check the title for campaign_name lookups. Each entry includes id, title, public (boolean), isOwner (boolean).",
     title: "List campaigns",
     annotations: {
       readOnlyHint: true,
@@ -80,7 +80,7 @@ export class CampaignTools {
    */
   campaign_info = $tool({
     description:
-      "Get information about a campaign, including zones/zones and active quests.",
+      "Get information about a campaign, including its zones (functional areas) and currently active quests. Call this before quest_create to see existing zones and reuse them with the correct casing.",
     title: "Campaign info",
     annotations: {
       readOnlyHint: true,
