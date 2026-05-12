@@ -220,9 +220,14 @@ export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
       // top-level key is the first segment after the leading slash.
       const top = ev.path.replace(/^\//, "").split("/")[0];
       const fieldSchema = (schema.properties as Record<string, unknown>)?.[top];
+      const fieldConfig = (props.fields as Record<string, any> | undefined)?.[
+        top
+      ];
       // Text fields (incl. optional/nullable wrappers) should NOT auto-commit
       // on keystroke; they commit via Enter or the inline tick button.
-      if (isStringSchema(fieldSchema)) return;
+      // Uploads commit a uuid string when the upload finishes — those MUST
+      // auto-save even though the field schema is a string.
+      if (!fieldConfig?.upload && isStringSchema(fieldSchema)) return;
       if (handle) clearTimeout(handle);
       handle = setTimeout(() => props.form.submit(), autoSaveDelay);
     });
