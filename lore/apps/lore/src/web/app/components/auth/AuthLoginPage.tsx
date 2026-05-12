@@ -21,6 +21,15 @@ const AuthLoginPage = (props: AuthLoginPageProps) => {
   const settings = props.realmConfig.settings;
   const queryError = router.query.error;
 
+  const safeRedirect = (() => {
+    const raw = router.query.r;
+    if (typeof raw !== "string" || raw.length === 0) return "/";
+    // Only allow same-origin paths, and never bounce back into the auth flow.
+    if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+    if (raw.startsWith("/auth/")) return "/";
+    return raw;
+  })();
+
   const credentialsProvider = props.realmConfig.authenticationMethods.find(
     (it) => it.type === "CREDENTIALS",
   );
@@ -60,7 +69,7 @@ const AuthLoginPage = (props: AuthLoginPageProps) => {
           password: data.password,
           realm: props.realmConfig.realmName,
         });
-        await router.push(router.query.r || "/");
+        await router.push(safeRedirect);
       } catch (err) {
         if (
           err instanceof HttpError &&
@@ -133,7 +142,7 @@ const AuthLoginPage = (props: AuthLoginPageProps) => {
                 variant="outline"
                 onClick={() =>
                   auth.login(method.name, {
-                    redirect: router.query.r || "/",
+                    redirect: safeRedirect,
                     realm: props.realmConfig.realmName,
                   })
                 }

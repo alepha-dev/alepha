@@ -8,7 +8,7 @@ import { useAuth } from "alepha/react/auth";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Hammer, Sparkles, Tag } from "lucide-react";
+import { ArrowLeft, Hammer, Sparkles, Tag } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import type { CampaignController } from "@/api/controllers/CampaignController.ts";
@@ -76,6 +76,17 @@ const CampaignCreate = () => {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12 md:pt-24">
       <div className="flex flex-col gap-6">
+        <div className="flex">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("home")}
+          >
+            <ArrowLeft className="size-4" />
+            {tr("home.title")}
+          </Button>
+        </div>
         <div className="flex flex-col gap-3">
           <div className="text-muted-foreground inline-flex items-center gap-2 text-xs uppercase tracking-widest">
             <Sparkles className="size-4" />
