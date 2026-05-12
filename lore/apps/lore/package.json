@@ -1,0 +1,56 @@
+{
+  "private": true,
+  "name": "lore",
+  "type": "module",
+  "scripts": {
+    "dev": "alepha dev",
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "alepha build --stats",
+    "build&start": "alepha build && LOG_LEVEL=debug LOG_FORMAT=pretty node dist",
+    "db:generate": "alepha db migrations create",
+    "build:docker": "alepha build --docker && cd dist && docker build -t alepha/lore .",
+    "deploy": "alepha platform up -e production",
+    "studio": "alepha db studio",
+    "start": "yarn build && LOG_LEVEL=trace LOG_FORMAT=pretty DATABASE_URL=:memory: node dist",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:headed": "playwright test --headed"
+  },
+  "dependencies": {
+    "@alepha/ui": "workspace:^",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/utilities": "^3.2.2",
+    "alepha": "^0.20.6",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^1.14.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-is": "^19.2.6",
+    "react-markdown": "^10.1.0",
+    "recharts": "^3.8.1",
+    "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/node": "^25.6.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "better-sqlite3": "^12.9.0",
+    "drizzle-kit": "^0.31.10",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^6.0.3",
+    "vercel": "^53.3.1",
+    "vite": "^8.0.11",
+    "vitest": "^4.1.5",
+    "wrangler": "^4.90.0"
+  },
+  "dependenciesMeta": {
+    "better-sqlite3": {
+      "built": true
+    }
+  }
+}
