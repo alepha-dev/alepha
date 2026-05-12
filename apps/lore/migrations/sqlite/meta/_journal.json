@@ -122,34 +122,6 @@
       "breakpoints": true
     },
     {
-      "idx": 17,
-      "version": "6",
-      "when": 1778600000000,
-      "tag": "0017_remove_whiteboard_add_features",
-      "breakpoints": true
-    },
-    {
-      "idx": 18,
-      "version": "6",
-      "when": 1779000000000,
-      "tag": "0018_add_campaign_icon",
-      "breakpoints": true
-    },
-    {
-      "idx": 19,
-      "version": "6",
-      "when": 1779200000000,
-      "tag": "0019_add_chapter_release_fields",
-      "breakpoints": true
-    },
-    {
-      "idx": 20,
-      "version": "6",
-      "when": 1779300000000,
-      "tag": "0020_kanban_columns",
-      "breakpoints": true
-    },
-    {
       "idx": 21,
       "version": "6",
       "when": 1778618239223,

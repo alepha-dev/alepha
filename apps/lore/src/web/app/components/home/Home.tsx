@@ -217,9 +217,7 @@ const EmptyState = (props: EmptyStateProps) => {
         <div className="bg-muted text-muted-foreground inline-flex size-12 items-center justify-center rounded-full">
           <ScrollText className="size-5" />
         </div>
-        <h3 className="text-base font-semibold">
-          {tr("home.empty.title")}
-        </h3>
+        <h3 className="text-base font-semibold">{tr("home.empty.title")}</h3>
         <p className="text-muted-foreground max-w-sm text-sm">
           {tr("home.empty.subtitle")}
         </p>

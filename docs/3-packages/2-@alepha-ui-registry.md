@@ -322,11 +322,7 @@ yarn shadcn add @alepha/control-array
 
 #### `@alepha/control-base` — Control base
 
-Label + description + error wrapper shared by every Control variant.
-
-When `error` is set, applies a red ring to any descendant `<input>`,
-`<textarea>`, or trigger button via the `data-invalid` attribute (so we
-don't have to thread `error` through every leaf widget).
+Read the ambient auto-save flag (see {@link FormFieldAutoSaveProvider}).
 
 **Install**
 
@@ -344,6 +340,7 @@ yarn shadcn add @alepha/control-base
 | `error` | `string` | No | Error message |
 | `required` | `boolean` | No | Show a required marker (`*`) next to the label. |
 | `className` | `string` | No | Extra classes applied to the wrapper. |
+| `layout` | `FormFieldLayout` | No | Layout variant |
 | `children` | `ReactNode` | Yes | The control to wrap. |
 
 **Dependencies:** `alepha`, `lucide-react`, `shadcn:label`
@@ -484,7 +481,8 @@ yarn shadcn add @alepha/control-upload
 
 #### `@alepha/button-dark` — Button: Dark
 
-Three-state color-mode toggle: cycles `light → dark → system` on click.
+Color-mode toggle. Default is a two-state Sun ↔ Moon flip; opt into the
+three-state `light → dark → system` cycle with `withSystem`.
 Reads/writes the persisted UI cookie via `useColorMode()`.
 
 **Install**
@@ -498,6 +496,8 @@ yarn shadcn add @alepha/button-dark
 | Prop | Type | Required | Description |
 |------|------|----------|-------------|
 | `label` | `string` | No | Optional aria-label override |
+| `withSystem` | `boolean` | No | When `true`, the button cycles through three states `light → dark → system` |
+| `variant` | `"ghost" \| "outline"` | No | Visual variant |
 
 **Dependencies:** `alepha`, `lucide-react`, `shadcn:button`
 
@@ -523,6 +523,7 @@ yarn shadcn add @alepha/button-language
 | Prop | Type | Required | Description |
 |------|------|----------|-------------|
 | `label` | `string` | No | Optional aria-label override |
+| `variant` | `"ghost" \| "outline"` | No | Visual variant |
 
 **Dependencies:** `alepha`, `lucide-react`, `shadcn:button`, `shadcn:dropdown-menu`
 
@@ -554,6 +555,7 @@ yarn shadcn add @alepha/button-theme
 |------|------|----------|-------------|
 | `label` | `string` | No | Optional aria-label override |
 | `heading` | `string` | No | Optional dropdown header |
+| `variant` | `"ghost" \| "outline"` | No | Visual variant |
 
 **Dependencies:** `alepha`, `lucide-react`, `shadcn:button`, `shadcn:dropdown-menu`
 
@@ -576,6 +578,7 @@ yarn shadcn add @alepha/button-user
 | `onSignIn` | `Object` | No | Called when the user clicks the sign-in icon (logged-out state) |
 | `onAdminClick` | `Object` | No | Called when the user clicks the default "Admin Panel" menu item |
 | `label` | `string` | No | Optional aria-label override for the trigger. |
+| `variant` | `"ghost" \| "outline"` | No | Visual variant |
 
 **Dependencies:** `alepha`, `lucide-react`, `shadcn:button`, `shadcn:dropdown-menu`
 
@@ -679,6 +682,8 @@ yarn shadcn add @alepha/app-shell
 | `headerOutside` | `boolean` | No | When `variant="inset"`, lift the header out of the floating card so it sits on the sidebar background — only the main page becomes the card |
 | `progress` | `boolean \| NavigationProgressOptions` | No | Top loading bar shown during route transitions |
 | `children` | `ReactNode` | No | Page content |
+| `embedded` | `boolean` | No | When `true`, the shell assumes it is mounted inside an outer provider tree and skips its own `&lt;DialogProvider&gt;` and `&lt;Toaster /&gt;` wrappers |
+| `fill` | `boolean` | No | When `true`, the shell fills its parent container instead of the viewport (`min-h-svh`) |
 
 **Dependencies:** `alepha`, `lucide-react`, `shadcn:sidebar`, `shadcn:breadcrumb`, `shadcn:separator`, `@alepha/use-dialog`, `@alepha/sonner`
 
@@ -716,6 +721,8 @@ yarn shadcn add @alepha/auto-form
 | `footer` | `ReactNode` | No | Extra content rendered above the bottom bar. |
 | `throttle` | `number` | No | Throttle (ms) for text inputs |
 | `className` | `string` | No | Extra classes applied to the form wrapper. |
+| `layout` | `"stack" \| "row"` | No | Visual layout for every nested Control |
+| `autoSave` | `boolean \| { delay?: number }` | No | Auto-commit edits instead of showing a Save button |
 
 **Dependencies:** `alepha`, `@alepha/control`, `shadcn:button`
 

@@ -132,8 +132,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           : fallback;
         // If the quest lives in a column that was renamed/deleted, drop it
         // into the first accepted lane rather than losing it on the board.
-        const bucketKey =
-          targetKey && byKey[targetKey] ? targetKey : fallback;
+        const bucketKey = targetKey && byKey[targetKey] ? targetKey : fallback;
         if (bucketKey && byKey[bucketKey]) byKey[bucketKey].push(quest);
       }
     }

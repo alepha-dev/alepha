@@ -114,6 +114,12 @@ export interface ControlSelectProps {
 
 const optValue = (o: SelectOption) => (typeof o === "string" ? o : o.value);
 const optLabel = (o: SelectOption) => (typeof o === "string" ? o : o.label);
+const optDesc = (o: SelectOption) =>
+  typeof o === "string" ? undefined : o.description;
+const optTag = (o: SelectOption) => (typeof o === "string" ? undefined : o.tag);
+const optIcon = (o: SelectOption): ReactNode =>
+  typeof o === "string" ? undefined : o.icon;
+
 /**
  * Friendly label for plain string options: "optional" → "Optional",
  * "in_progress" → "In Progress". Custom `{ value, label }` items pass through
@@ -123,11 +129,6 @@ const titlecase = (s: string) =>
   s.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 const segmentedLabel = (o: SelectOption) =>
   typeof o === "string" ? titlecase(o) : o.label;
-const optDesc = (o: SelectOption) =>
-  typeof o === "string" ? undefined : o.description;
-const optTag = (o: SelectOption) => (typeof o === "string" ? undefined : o.tag);
-const optIcon = (o: SelectOption): ReactNode =>
-  typeof o === "string" ? undefined : o.icon;
 
 export function ControlSelect(props: ControlSelectProps) {
   const form = useFormState(props.input, ["error"]);
@@ -170,7 +171,7 @@ export function ControlSelect(props: ControlSelectProps) {
   );
 
   const [staticData, setStaticData] = useState<SelectOption[]>([]);
-  const enumKey = enumValues.map(optValue).join("");
+  const enumKey = enumValues.map(optValue).join("");
   const min = meta.constraints.minimum;
   const max = meta.constraints.maximum;
   useEffect(() => {

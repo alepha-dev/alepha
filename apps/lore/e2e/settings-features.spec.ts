@@ -100,15 +100,16 @@ test.describe("Campaign settings — feature toggles", () => {
     expect(match).not.toBeNull();
     const campaignId = match![1];
 
-    // Sidebar: Kanban is OFF by default → link not visible
-    await expect(page.getByRole("link", { name: /^Kanban$/ })).toHaveCount(0);
+    // Sidebar link points to the kanban board (/c/:id/kanban), separate
+    // from the settings sub-nav link (/c/:id/settings/kanban).
+    const sidebarKanban = page.locator(`a[href="/c/${campaignId}/kanban"]`);
 
-    // Navigate to settings
-    await page.goto(`/c/${campaignId}/settings`);
+    // Kanban is OFF by default → sidebar link not visible
+    await expect(sidebarKanban).toHaveCount(0);
+
+    // Navigate directly to the Kanban settings sub-page
+    await page.goto(`/c/${campaignId}/settings/kanban`);
     await page.waitForLoadState("networkidle");
-
-    // Click "Kanban" in the settings left nav
-    await page.getByRole("button", { name: /^Kanban$/ }).click();
 
     // Switch should be unchecked
     const kanbanSwitch = page.getByRole("switch", { name: /enable/i });
@@ -120,21 +121,18 @@ test.describe("Campaign settings — feature toggles", () => {
       timeout: 5_000,
     });
 
-    // Sidebar should now show Kanban link
-    await expect(page.getByRole("link", { name: /^Kanban$/ })).toBeVisible({
-      timeout: 5_000,
-    });
+    // Sidebar should now show the board Kanban link
+    await expect(sidebarKanban).toBeVisible({ timeout: 5_000 });
 
     // Reload, verify persistence: Switch still ON and sidebar link still there
     await page.reload();
     await page.waitForLoadState("networkidle");
-    await page.getByRole("button", { name: /^Kanban$/ }).click();
     await expect(page.getByRole("switch", { name: /enable/i })).toHaveAttribute(
       "data-state",
       "checked",
       { timeout: 5_000 },
     );
-    await expect(page.getByRole("link", { name: /^Kanban$/ })).toBeVisible();
+    await expect(sidebarKanban).toBeVisible();
 
     // Toggle back OFF
     await page.getByRole("switch", { name: /enable/i }).click();
@@ -143,6 +141,6 @@ test.describe("Campaign settings — feature toggles", () => {
       "unchecked",
       { timeout: 5_000 },
     );
-    await expect(page.getByRole("link", { name: /^Kanban$/ })).toHaveCount(0);
+    await expect(sidebarKanban).toHaveCount(0);
   });
 });
