@@ -419,6 +419,67 @@ export class CloudflareApi {
     );
   }
 
+  /**
+   * Fetch the current worker bindings via the script-settings endpoint.
+   * Used to merge new secrets into the existing binding set in one PATCH
+   * (avoids the per-secret `putSecret` calls, each of which creates a
+   * Cloudflare deployment — pushing 7 secrets meant 7 deployment rows).
+   *
+   * Secret bindings come back with `name` + `type` but no `text` (they're
+   * write-only on Cloudflare's side); to preserve them across a PATCH we
+   * forward each one as `{ type, name }` and Cloudflare keeps the stored
+   * value.
+   */
+  public async getWorkerSettings(
+    scriptName: string,
+  ): Promise<{ bindings: Array<{ type: string; name: string }> }> {
+    const accountId = await this.resolveAccountId();
+    return await this.fetch<{
+      bindings: Array<{ type: string; name: string }>;
+    }>(`/accounts/${accountId}/workers/scripts/${scriptName}/settings`);
+  }
+
+  /**
+   * Replace the worker's binding set in one call (= one Cloudflare
+   * deployment, regardless of how many secrets are being updated).
+   *
+   * The endpoint expects multipart FormData with a `settings` field whose
+   * value is a JSON-encoded `{ bindings: [...] }` — the `fetch` helper
+   * above is JSON-only, so this one bypasses it and calls `globalThis.fetch`
+   * directly. Mirrors what `wrangler secret bulk` does internally.
+   */
+  public async patchWorkerBindings(
+    scriptName: string,
+    bindings: Array<{ type: string; name: string; text?: string }>,
+  ): Promise<void> {
+    const accountId = await this.resolveAccountId();
+    const token = await this.resolveToken();
+    const url = `${CloudflareApi.BASE}/accounts/${accountId}/workers/scripts/${scriptName}/settings`;
+
+    const form = new FormData();
+    form.set("settings", JSON.stringify({ bindings }));
+
+    const response = await globalThis.fetch(url, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+
+    const json = (await response.json().catch(() => null)) as {
+      success?: boolean;
+      errors?: CloudflareApiError[];
+    } | null;
+
+    if (!response.ok || !json?.success) {
+      const messages = json?.errors?.map((e) => e.message).join(", ");
+      throw new AlephaError(
+        `Cloudflare API error (PATCH /workers/scripts/${scriptName}/settings): ${
+          messages ?? response.statusText
+        }`,
+      );
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Core fetch
   // -------------------------------------------------------------------------

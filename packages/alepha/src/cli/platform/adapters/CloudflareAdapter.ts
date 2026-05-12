@@ -264,20 +264,42 @@ export class CloudflareAdapter extends PlatformAdapter {
       return;
     }
 
-    // Push secrets to each worker via the REST API (one PUT per secret).
-    // Historically we shelled out to `wrangler secret bulk`, but it has an
-    // open hang issue (workers-sdk#10555) and is redundant given putSecret.
+    // Push all secrets for a worker in a single PATCH so each `up` only
+    // mints one new deployment for the secrets step (regardless of how many
+    // are being updated). Loop-based `putSecret` worked but generated N
+    // deployment rows per push, cluttering the CF dashboard.
+    //
+    // Implementation mirrors `wrangler secret bulk`:
+    //   1. GET current worker bindings via `/script/{name}/settings`.
+    //   2. Keep all non-secret bindings as-is (D1, R2, KV, etc. — these
+    //      were set by `wrangler deploy` and would be wiped by a bare
+    //      PATCH).
+    //   3. Keep any secret bindings we are NOT overwriting (forwarded as
+    //      `{type,name}` only — CF preserves the stored value).
+    //   4. Add/overwrite the secrets we want with `{type,name,text}`.
+    //   5. PATCH the merged binding list in one call.
     for (const app of ctx.apps) {
       const workerName = ctx.naming.worker(
         ctx.apps.length > 1 ? app.name : undefined,
       );
 
       await run({
-        name: `push secrets to ${workerName}`,
+        name: `push secrets to ${workerName} (bulk)`,
         handler: async () => {
-          for (const [name, value] of Object.entries(secrets)) {
-            await this.api.putSecret(workerName, name, value);
-          }
+          const settings = await this.api.getWorkerSettings(workerName);
+          const overwriting = new Set(Object.keys(secrets));
+          const inherit = (settings.bindings ?? [])
+            .filter((b) => b.type !== "secret_text" || !overwriting.has(b.name))
+            .map((b) => ({ type: b.type, name: b.name }));
+          const upsert = Object.entries(secrets).map(([name, text]) => ({
+            type: "secret_text" as const,
+            name,
+            text,
+          }));
+          await this.api.patchWorkerBindings(workerName, [
+            ...inherit,
+            ...upsert,
+          ]);
         },
       });
     }

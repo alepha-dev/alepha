@@ -131,6 +131,23 @@ class MemoryCloudflareApi extends CloudflareApi {
     this.secrets.set(scriptName, existing);
   }
 
+  public override async getWorkerSettings(scriptName: string) {
+    return { bindings: this.secrets.get(scriptName) ?? [] };
+  }
+
+  public override async patchWorkerBindings(
+    scriptName: string,
+    bindings: Array<{ type: string; name: string; text?: string }>,
+  ) {
+    // Mirror the prod path: keep the bindings list as the merged result.
+    // Tests assert on `api.secrets.get(scriptName)`, so we record only
+    // secret_text bindings there.
+    const next = bindings
+      .filter((b) => b.type === "secret_text")
+      .map((b) => ({ name: b.name, type: "secret_text" as const }));
+    this.secrets.set(scriptName, next);
+  }
+
   public override async listDeployments() {
     return [];
   }
