@@ -367,7 +367,7 @@ yarn shadcn add @alepha/control-date
 | `time` | `boolean` | No | Force time-only mode regardless of schema format. |
 | `disabled` | `boolean` | No | Disable the picker. |
 
-**Dependencies:** `alepha`, `lucide-react`, `@alepha/control-base`, `shadcn:button`, `shadcn:calendar`, `shadcn:input`, `shadcn:popover`
+**Dependencies:** `alepha`, `lucide-react`, `@alepha/control-base`, `shadcn:button`, `@alepha/calendar`, `shadcn:input`, `shadcn:popover`
 
 #### `@alepha/control-number` — Control: Number
 
@@ -725,6 +725,18 @@ yarn shadcn add @alepha/auto-form
 | `autoSave` | `boolean \| { delay?: number }` | No | Auto-commit edits instead of showing a Save button |
 
 **Dependencies:** `alepha`, `@alepha/control`, `shadcn:button`
+
+#### `@alepha/calendar` — Calendar (Alepha)
+
+shadcn Calendar updated for react-day-picker v10 (drops the removed `table` classname).
+
+**Install**
+
+```bash
+yarn shadcn add @alepha/calendar
+```
+
+**Dependencies:** `lucide-react`, `react-day-picker`, `shadcn:button`
 
 #### `@alepha/language-toggle` — Language toggle
 

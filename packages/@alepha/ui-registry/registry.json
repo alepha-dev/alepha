@@ -67,7 +67,7 @@
       "registryDependencies": [
         "@alepha/control-base",
         "button",
-        "calendar",
+        "@alepha/calendar",
         "input",
         "popover"
       ],
@@ -91,6 +91,21 @@
           "path": "registry/default/sonner/sonner.tsx",
           "type": "registry:ui",
           "target": "components/ui/sonner.tsx"
+        }
+      ]
+    },
+    {
+      "name": "calendar",
+      "type": "registry:ui",
+      "title": "Calendar (Alepha)",
+      "description": "shadcn Calendar updated for react-day-picker v10 (drops the removed `table` classname).",
+      "dependencies": ["lucide-react", "react-day-picker"],
+      "registryDependencies": ["button"],
+      "files": [
+        {
+          "path": "registry/default/calendar/calendar.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/calendar.tsx"
         }
       ]
     },

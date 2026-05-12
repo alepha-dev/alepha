@@ -17,3 +17,7 @@ export type ButtonProps = ComponentProps<"button"> & {
 };
 
 export const Button: (props: ButtonProps) => any = () => null;
+
+export const buttonVariants: (
+  options?: Pick<ButtonProps, "variant" | "size"> & { className?: string },
+) => string = () => "";

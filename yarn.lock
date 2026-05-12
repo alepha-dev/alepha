@@ -81,6 +81,7 @@ __metadata:
     alepha: "npm:0.20.6"
     lucide-react: "npm:^1.14.0"
     react: "npm:^19.2.6"
+    react-day-picker: "npm:^10.0.0"
     react-dom: "npm:^19.2.6"
     shadcn: "npm:^4.7.0"
     sonner: "npm:^2.0.7"
