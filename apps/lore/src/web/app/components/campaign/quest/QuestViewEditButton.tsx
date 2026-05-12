@@ -57,21 +57,19 @@ const QuestViewEditButton = (props: QuestViewEditButtonProps) => {
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent
           side="right"
-          className="w-full overflow-y-auto sm:max-w-2xl"
+          className="flex w-full flex-col gap-0 p-0 sm:max-w-2xl"
         >
-          <SheetHeader>
+          <SheetHeader className="shrink-0">
             <SheetTitle>{tr("quest.create.update")}</SheetTitle>
           </SheetHeader>
-          <div className="p-4">
-            <QuestCreate
-              campaign={campaign}
-              quest={props.quest}
-              onSubmit={(quest) => {
-                setShowDialog(false);
-                props.onUpdate(quest);
-              }}
-            />
-          </div>
+          <QuestCreate
+            campaign={campaign}
+            quest={props.quest}
+            onSubmit={(quest) => {
+              setShowDialog(false);
+              props.onUpdate(quest);
+            }}
+          />
         </SheetContent>
       </Sheet>
     </>

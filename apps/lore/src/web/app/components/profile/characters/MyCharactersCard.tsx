@@ -1,6 +1,6 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Localize, useI18n } from "alepha/react/i18n";
-import { Coins, Crown } from "lucide-react";
+import { Circle, Crown } from "lucide-react";
 import type { CharacterInfo } from "@/api/services/CharacterInfo.ts";
 import type { MyCharactersCharacter } from "./MyCharacters.tsx";
 import MyCharactersXPBar from "./MyCharactersXPBar.tsx";
@@ -48,11 +48,24 @@ const MyCharactersCard = (props: MyCharactersCardProps) => {
             <span className="text-xs font-medium text-muted-foreground">
               Balance
             </span>
-            <div className="flex items-center gap-1">
-              <Coins className="size-3 text-yellow-500" />
-              <span className="text-sm font-medium">{gold}</span>
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-sm font-medium">
+                {gold}
+                <Circle
+                  className="size-3"
+                  fill="var(--color-gold)"
+                  color="var(--color-gold)"
+                />
+              </span>
               {silver > 0 && (
-                <span className="text-xs text-muted-foreground">{silver}s</span>
+                <span className="flex items-center gap-1 text-sm font-medium">
+                  {silver}
+                  <Circle
+                    className="size-3"
+                    fill="var(--color-silver)"
+                    color="var(--color-silver)"
+                  />
+                </span>
               )}
             </div>
           </div>

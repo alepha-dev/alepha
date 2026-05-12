@@ -430,12 +430,12 @@ export class CloudflareApi {
    * forward each one as `{ type, name }` and Cloudflare keeps the stored
    * value.
    */
-  public async getWorkerSettings(
-    scriptName: string,
-  ): Promise<{ bindings: Array<{ type: string; name: string }> }> {
+  public async getWorkerSettings(scriptName: string): Promise<{
+    bindings: Array<{ type: string; name: string; text?: string }>;
+  }> {
     const accountId = await this.resolveAccountId();
     return await this.fetch<{
-      bindings: Array<{ type: string; name: string }>;
+      bindings: Array<{ type: string; name: string; text?: string }>;
     }>(`/accounts/${accountId}/workers/scripts/${scriptName}/settings`);
   }
 

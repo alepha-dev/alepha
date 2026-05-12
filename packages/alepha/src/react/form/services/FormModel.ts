@@ -44,8 +44,12 @@ export class FormModel<T extends TObject> {
     }
 
     if (options.initialValues) {
+      // Decode against a partial of the schema so callers can supply incomplete
+      // initial values (the form's whole job is to collect them). Codecs still
+      // run on whatever's provided; missing fields stay undefined and only the
+      // full schema is enforced at submit time.
       const decoded = this.alepha.codec.decode(
-        options.schema,
+        t.partial(options.schema),
         options.initialValues,
       ) as Record<string, any>;
       Object.assign(this.values, decoded);
@@ -113,8 +117,10 @@ export class FormModel<T extends TObject> {
   }
 
   public readonly setInitialValues = (values: Record<string, any>) => {
+    // Same partial-decode rationale as the constructor — initial values may be
+    // incomplete; full schema is enforced only at submit time.
     const decoded = this.alepha.codec.decode(
-      this.options.schema,
+      t.partial(this.options.schema),
       values,
     ) as Record<string, any>;
 
@@ -132,7 +138,7 @@ export class FormModel<T extends TObject> {
       const path = `/${key.replaceAll(".", "/")}`;
       this.alepha.events.emit(
         "form:change",
-        { id: this.id, path, value },
+        { id: this.id, path, value, initial: true },
         { catch: true },
       );
     }

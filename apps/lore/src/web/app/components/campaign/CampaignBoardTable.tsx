@@ -102,7 +102,7 @@ const CampaignBoardTable = () => {
   }));
 
   return (
-    <div className="flex flex-1 flex-col gap-3 overflow-auto p-3">
+    <div className="flex flex-1 flex-col gap-3 overflow-auto">
       <form
         {...filters.props}
         className="flex flex-wrap items-end gap-2 rounded-md border bg-card p-2"
@@ -148,6 +148,7 @@ const CampaignBoardTable = () => {
 
       <AlephaTable<QuestResource>
         key={campaign.id}
+        className="min-h-0 flex-1"
         defaultSize={25}
         emptyMessage={String(tr("common.noResults"))}
         form={filters}

@@ -1,6 +1,7 @@
 import { Control } from "@alepha/ui/components/control/control";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Segmented } from "@alepha/ui/components/ui/segmented";
+import { Separator } from "@alepha/ui/components/ui/separator";
 import { t } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
@@ -39,7 +40,11 @@ const QuestCreate = (props: QuestCreateProps) => {
   const form = useForm({
     id: "quest-create",
     schema: t.omit(questCreateSchema, ["campaignId"]),
-    initialValues: props.quest as QuestResource,
+    initialValues: {
+      ...(props.quest as QuestResource),
+      priority: props.quest?.priority ?? "optional",
+      difficulty: props.quest?.difficulty ?? 1,
+    },
     handler: async (data) => {
       if (props.quest?.id) {
         const resp = await questApi.updateQuestById({
@@ -87,75 +92,74 @@ const QuestCreate = (props: QuestCreateProps) => {
   const zones = currentCampaign?.zones || kanbanCampaign?.campaign?.zones || [];
 
   return (
-    <form {...form.props} className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+    <form {...form.props} className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Control
+            label={tr("quest.create.title")}
+            description={tr("quest.create.title.helper")}
+            input={form.input.title}
+            icon={Tag}
+          />
+          <Control
+            label={tr("quest.create.zone")}
+            description={tr("quest.create.zone.helper")}
+            input={form.input.zone}
+            icon={Tent}
+            combobox
+            createNewEntry
+            items={zones}
+          />
+        </div>
+
         <Control
-          label={tr("quest.create.title")}
-          description={tr("quest.create.title.helper")}
-          input={form.input.title}
-          icon={Tag}
+          label={tr("quest.create.description")}
+          description={tr("quest.create.description.helper")}
+          input={form.input.description}
+          icon={FileText}
+          custom={TextEditor as never}
         />
+
+        <Separator />
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Control
+            input={form.input.priority}
+            label={tr("quest.create.priority")}
+            description={tr("quest.create.priority.helper")}
+            segmented
+          />
+          <Control
+            input={form.input.difficulty}
+            label={tr("quest.create.difficulty")}
+            description={tr("quest.create.difficulty.helper")}
+            custom={({ value, onChange }) => (
+              <Segmented
+                value={value != null ? String(value) : undefined}
+                onChange={(v) => onChange(Number(v))}
+                options={[
+                  { value: "1", label: "F" },
+                  { value: "2", label: "C" },
+                  { value: "3", label: "B" },
+                  { value: "4", label: "A" },
+                  { value: "5", label: "S" },
+                ]}
+                fullWidth
+              />
+            )}
+          />
+        </div>
+
         <Control
-          label={tr("quest.create.zone")}
-          description={tr("quest.create.zone.helper")}
-          input={form.input.zone}
-          icon={Tent}
-          text
+          label={tr("quest.create.objectives")}
+          description={tr("quest.create.objectives.helper")}
+          input={form.input.objectives}
+          icon={ListChecks}
+          custom={QuestCreateObjectives as never}
         />
       </div>
 
-      <Control
-        label={tr("quest.create.description")}
-        description={tr("quest.create.description.helper")}
-        input={form.input.description}
-        icon={FileText}
-        custom={TextEditor as never}
-      />
-
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Control
-          input={form.input.priority}
-          label={tr("quest.create.priority")}
-          description={tr("quest.create.priority.helper")}
-          segmented
-        />
-        <Control
-          input={form.input.difficulty}
-          label={tr("quest.create.difficulty")}
-          description={tr("quest.create.difficulty.helper")}
-          custom={({ value, onChange }) => (
-            <Segmented
-              value={value != null ? String(value) : undefined}
-              onChange={(v) => onChange(Number(v))}
-              options={[
-                { value: "1", label: "F" },
-                { value: "2", label: "C" },
-                { value: "3", label: "B" },
-                { value: "4", label: "A" },
-                { value: "5", label: "S" },
-              ]}
-              fullWidth
-            />
-          )}
-        />
-      </div>
-
-      <Control
-        label={tr("quest.create.objectives")}
-        description={tr("quest.create.objectives.helper")}
-        input={form.input.objectives}
-        icon={ListChecks}
-        custom={QuestCreateObjectives as never}
-      />
-
-      {/* zone suggestions: hint */}
-      {zones.length > 0 && (
-        <p className="text-muted-foreground text-xs">
-          Existing zones: {zones.join(", ")}
-        </p>
-      )}
-
-      <div className="flex">
+      <div className="bg-background flex shrink-0 justify-end gap-2 border-t p-4">
         {update ? (
           <Button type="submit" disabled={form.submitting}>
             <Save className="size-4" />

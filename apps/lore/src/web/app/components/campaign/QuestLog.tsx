@@ -1,9 +1,20 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card } from "@alepha/ui/components/ui/card";
 import { Input } from "@alepha/ui/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { BookOpen, Search, X } from "lucide-react";
+import {
+  BookOpen,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Search,
+  X,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -13,6 +24,12 @@ const QuestLog = () => {
   const [quests = []] = useStore(currentAssignedQuestsAtom);
   const { tr } = useI18n<I18n, "en">();
   const [searchValue, setSearchValue] = useState<string>("");
+  // Global collapse directive — bumped on click. QuestGroup listens to
+  // `collapseSignal.version` and snaps its local state to `collapsed`.
+  const [collapseSignal, setCollapseSignal] = useState({
+    collapsed: false,
+    version: 0,
+  });
 
   const filteredQuests = useMemo(() => {
     if (!searchValue.trim()) {
@@ -31,8 +48,15 @@ const QuestLog = () => {
     setSearchValue("");
   };
 
+  const toggleAll = () => {
+    setCollapseSignal((s) => ({
+      collapsed: !s.collapsed,
+      version: s.version + 1,
+    }));
+  };
+
   return (
-    <Card className="bg-card relative flex h-full w-full flex-1 flex-col gap-2 rounded-md p-0 shadow">
+    <Card className="relative flex h-full w-full flex-1 flex-col gap-2 rounded-md p-0 shadow">
       <div className="flex gap-2 p-2">
         <div className="hidden items-center justify-center px-2 xl:flex">
           <BookOpen className="size-6" />
@@ -45,6 +69,33 @@ const QuestLog = () => {
             </Card>
           </div>
           <div className="flex-1" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                onClick={toggleAll}
+                aria-label={
+                  collapseSignal.collapsed
+                    ? String(tr("quest-log.expand-all" as never))
+                    : String(tr("quest-log.collapse-all" as never))
+                }
+              >
+                {collapseSignal.collapsed ? (
+                  <ChevronsUpDown className="size-3.5" />
+                ) : (
+                  <ChevronsDownUp className="size-3.5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {collapseSignal.collapsed
+                ? tr("quest-log.expand-all" as never)
+                : tr("quest-log.collapse-all" as never)}
+            </TooltipContent>
+          </Tooltip>
         </Card>
       </div>
       <div className="flex px-2">
@@ -69,8 +120,8 @@ const QuestLog = () => {
           )}
         </div>
       </div>
-      <div className="flex flex-col gap-2 overflow-auto p-2">
-        <QuestList quests={filteredQuests} />
+      <div className="flex flex-1 flex-col gap-2 overflow-auto p-2 pb-[50px]">
+        <QuestList quests={filteredQuests} collapseSignal={collapseSignal} />
       </div>
     </Card>
   );

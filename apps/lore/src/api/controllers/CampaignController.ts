@@ -1,11 +1,22 @@
 import { $inject, t } from "alepha";
+import { files } from "alepha/api/files";
 import { users } from "alepha/api/users";
+import { $bucket } from "alepha/bucket";
 import { $logger } from "alepha/logger";
 import { $repository, pageQuerySchema } from "alepha/orm";
-import { $secure } from "alepha/security";
-import { $action, ForbiddenError, okSchema } from "alepha/server";
+import { $secure, type UserAccountToken } from "alepha/security";
+import {
+  $action,
+  BadRequestError,
+  ForbiddenError,
+  okSchema,
+} from "alepha/server";
 import { $etag } from "alepha/server/etag";
-import { campaigns } from "../entities/campaigns.ts";
+import {
+  campaignFeaturesSchema,
+  campaigns,
+  defaultCampaignFeatures,
+} from "../entities/campaigns.ts";
 import { chapters } from "../entities/chapters.ts";
 import { type Character, characters } from "../entities/characters.ts";
 import { quests } from "../entities/quests.ts";
@@ -21,13 +32,23 @@ export class CampaignController {
   quests = $repository(quests);
   chapters = $repository(chapters);
   users = $repository(users);
+  fileRepo = $repository(files);
   security = $inject(AppSecurityProvider);
   questMapper = $inject(QuestResourceMapper);
+
+  /**
+   * Bucket for campaign icons (avatars). Image-only, 2 MB cap.
+   */
+  iconBucket = $bucket({
+    name: "campaign-icons",
+    maxSize: 2 * 1024 * 1024,
+    mimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
+  });
 
   createCampaign = $action({
     use: [$secure({ permissions: ["campaign:create"] })],
     schema: {
-      body: t.pick(campaigns.insertSchema, ["title", "public"]),
+      body: t.pick(campaigns.insertSchema, ["title", "public", "icon"]),
       response: campaigns.schema,
     },
     handler: async ({ body, user }) => {
@@ -41,6 +62,10 @@ export class CampaignController {
         throw new ForbiddenError(
           "You have reached the maximum number of campaigns allowed.",
         );
+      }
+
+      if (body.icon) {
+        await this.assertIconBelongsToUser(body.icon, user);
       }
 
       const campaign = await this.campaigns.create({
@@ -121,9 +146,18 @@ export class CampaignController {
       params: t.object({
         id: t.integer(),
       }),
-      body: t.partial(
-        t.pick(campaigns.insertSchema, ["title", "public", "whiteboard"]),
-      ),
+      body: t.object({
+        title: t.optional(
+          t.string({
+            minLength: 3,
+            maxLength: 24,
+          }),
+        ),
+        public: t.optional(t.boolean()),
+        icon: t.optional(t.nullable(t.uuid())),
+        features: t.optional(t.partial(campaignFeaturesSchema)),
+        chapterDuration: t.optional(t.nullable(t.string())),
+      }),
       response: campaigns.schema,
     },
     handler: async ({ params, body, user }) => {
@@ -137,14 +171,47 @@ export class CampaignController {
         campaign.public = body.public;
       }
 
-      if (body.whiteboard != null) {
-        campaign.whiteboard = body.whiteboard;
+      if ("icon" in body) {
+        if (body.icon == null) {
+          campaign.icon = undefined;
+        } else {
+          await this.assertIconBelongsToUser(body.icon, user);
+          campaign.icon = body.icon;
+        }
+      }
+
+      if ("chapterDuration" in body) {
+        campaign.chapterDuration = body.chapterDuration ?? undefined;
+      }
+
+      if (body.features) {
+        campaign.features = {
+          ...defaultCampaignFeatures,
+          ...campaign.features,
+          ...body.features,
+        };
       }
 
       await this.campaigns.save(campaign);
       return campaign;
     },
   });
+
+  protected async assertIconBelongsToUser(
+    iconId: string,
+    user: UserAccountToken,
+  ): Promise<void> {
+    const found = await this.fileRepo.findOne({
+      where: {
+        id: { eq: iconId },
+        creator: { eq: user.id },
+        bucket: { eq: this.iconBucket.name },
+      },
+    });
+    if (!found) {
+      throw new BadRequestError("Invalid icon reference");
+    }
+  }
 
   getCampaignById = $action({
     use: [$secure({ permissions: ["campaign:read"] })],
@@ -276,6 +343,61 @@ export class CampaignController {
     },
   });
 
+  getZones = $action({
+    use: [$secure({ permissions: ["campaign:read"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      response: t.array(
+        t.object({
+          name: t.string(),
+          questCount: t.integer(),
+          firstQuestAt: t.optional(t.string()),
+        }),
+      ),
+    },
+    handler: async ({ params, user }) => {
+      const { campaign } = await this.security.checkOwnership(params.id, user);
+
+      const campaignQuests = await this.quests.findMany({
+        where: { campaignId: { eq: params.id } },
+      });
+
+      // Aggregate per zone: union of campaign.zones + zones found on quests so
+      // empty zones (no quests) still appear, and orphan zones (quest with a
+      // zone the campaign forgot) aren't lost.
+      const stats = new Map<
+        string,
+        { questCount: number; firstQuestAt?: string }
+      >();
+      for (const name of campaign.zones ?? []) {
+        stats.set(name, { questCount: 0 });
+      }
+      for (const quest of campaignQuests) {
+        const prev = stats.get(quest.zone) ?? { questCount: 0 };
+        const ts =
+          typeof quest.createdAt === "string"
+            ? quest.createdAt
+            : new Date(quest.createdAt as never).toISOString();
+        const firstQuestAt =
+          prev.firstQuestAt && prev.firstQuestAt < ts ? prev.firstQuestAt : ts;
+        stats.set(quest.zone, {
+          questCount: prev.questCount + 1,
+          firstQuestAt,
+        });
+      }
+
+      return [...stats.entries()]
+        .map(([name, s]) => ({
+          name,
+          questCount: s.questCount,
+          firstQuestAt: s.firstQuestAt,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    },
+  });
+
   renameZone = $action({
     use: [$secure({ permissions: ["campaign:update"] })],
     schema: {
@@ -316,6 +438,141 @@ export class CampaignController {
       });
 
       return { ok: true };
+    },
+  });
+
+  // ── Kanban column CRUD ──────────────────────────────────────────────
+
+  addKanbanColumn = $action({
+    use: [$secure({ permissions: ["campaign:update"] })],
+    schema: {
+      params: t.object({ id: t.integer() }),
+      body: t.object({
+        name: t.string({ minLength: 1, maxLength: 24 }),
+      }),
+      response: t.array(t.string()),
+    },
+    handler: async ({ params, body, user }) => {
+      const { campaign } = await this.security.checkOwnership(params.id, user);
+      const current = campaign.kanbanColumns ?? [];
+      const name = body.name.trim();
+      if (!name) {
+        throw new BadRequestError("Column name must not be empty.");
+      }
+      if (current.length >= 5) {
+        throw new BadRequestError(
+          "A campaign can have at most 5 kanban columns.",
+        );
+      }
+      if (current.includes(name)) {
+        throw new BadRequestError("A column with this name already exists.");
+      }
+      const updated = [...current, name];
+      await this.campaigns.updateById(params.id, { kanbanColumns: updated });
+      return updated;
+    },
+  });
+
+  renameKanbanColumn = $action({
+    use: [$secure({ permissions: ["campaign:update"] })],
+    schema: {
+      params: t.object({ id: t.integer() }),
+      body: t.object({
+        oldName: t.string(),
+        newName: t.string({ minLength: 1, maxLength: 24 }),
+      }),
+      response: t.array(t.string()),
+    },
+    handler: async ({ params, body, user }) => {
+      const { campaign } = await this.security.checkOwnership(params.id, user);
+      const current = campaign.kanbanColumns ?? [];
+      const newName = body.newName.trim();
+      if (!current.includes(body.oldName)) {
+        throw new BadRequestError("Column not found.");
+      }
+      if (newName === body.oldName) return current;
+      if (current.includes(newName)) {
+        throw new BadRequestError("A column with this name already exists.");
+      }
+
+      // Cascade-rename onto every quest that lives in that column.
+      const affected = await this.quests.findMany({
+        where: {
+          campaignId: { eq: params.id },
+          kanbanColumn: { eq: body.oldName },
+        },
+      });
+      for (const quest of affected) {
+        await this.quests.updateById(quest.id, { kanbanColumn: newName });
+      }
+
+      const updated = current.map((c) => (c === body.oldName ? newName : c));
+      await this.campaigns.updateById(params.id, { kanbanColumns: updated });
+      return updated;
+    },
+  });
+
+  deleteKanbanColumn = $action({
+    use: [$secure({ permissions: ["campaign:update"] })],
+    schema: {
+      params: t.object({ id: t.integer() }),
+      body: t.object({ name: t.string() }),
+      response: t.array(t.string()),
+    },
+    handler: async ({ params, body, user }) => {
+      const { campaign } = await this.security.checkOwnership(params.id, user);
+      const current = campaign.kanbanColumns ?? [];
+      if (!current.includes(body.name)) {
+        throw new BadRequestError("Column not found.");
+      }
+      if (current.length <= 1) {
+        throw new BadRequestError("A campaign must keep at least one column.");
+      }
+
+      // Refuse if any quest still lives in this column.
+      const occupants = await this.quests.count({
+        campaignId: { eq: params.id },
+        kanbanColumn: { eq: body.name },
+      });
+      if (occupants > 0) {
+        throw new BadRequestError(
+          "Move or complete the quests in this column before deleting it.",
+        );
+      }
+
+      const updated = current.filter((c) => c !== body.name);
+      await this.campaigns.updateById(params.id, { kanbanColumns: updated });
+      return updated;
+    },
+  });
+
+  reorderKanbanColumns = $action({
+    use: [$secure({ permissions: ["campaign:update"] })],
+    schema: {
+      params: t.object({ id: t.integer() }),
+      body: t.object({
+        columns: t.array(t.string(), { minItems: 1, maxItems: 5 }),
+      }),
+      response: t.array(t.string()),
+    },
+    handler: async ({ params, body, user }) => {
+      const { campaign } = await this.security.checkOwnership(params.id, user);
+      const current = campaign.kanbanColumns ?? [];
+      // Must reorder the exact same set — additions/removals go through the
+      // dedicated endpoints so concurrent edits can't drop a column silently.
+      if (
+        body.columns.length !== current.length ||
+        new Set(body.columns).size !== body.columns.length ||
+        body.columns.some((c) => !current.includes(c))
+      ) {
+        throw new BadRequestError(
+          "Reordered list must contain the same columns.",
+        );
+      }
+      await this.campaigns.updateById(params.id, {
+        kanbanColumns: body.columns,
+      });
+      return body.columns;
     },
   });
 }

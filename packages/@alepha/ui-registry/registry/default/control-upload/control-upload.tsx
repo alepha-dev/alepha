@@ -11,12 +11,25 @@ import { File as FileIcon, Loader2, Upload, X } from "lucide-react";
 import {
   type ChangeEvent,
   type DragEvent,
+  useEffect,
   useId,
   useRef,
   useState,
 } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { FormField } from "@/registry/default/control-base/form-field";
 
 export interface ControlUploadProps {
@@ -86,6 +99,41 @@ export function ControlUpload(props: ControlUploadProps) {
   const [progress, setProgress] = useState(0);
   const [meta, setMeta] = useState<Map<string, UploadedFileMeta>>(new Map());
   const [dragOver, setDragOver] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+
+  /**
+   * Backfill `meta` for ids that arrived from form state (e.g. after a page
+   * reload) so the renderer can show a thumbnail / chip instead of the raw
+   * uuid. We can't infer the real mime type without an extra request, so we
+   * fall back to a stub entry pointing at `/api/files/:id` and let the
+   * `<img>` `onError` swap to the generic file chip.
+   */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: we only care about
+  // value-content changes.
+  useEffect(() => {
+    const ids: string[] = props.multi
+      ? Array.isArray(value)
+        ? (value as string[])
+        : []
+      : value
+        ? [value as string]
+        : [];
+    setMeta((current) => {
+      let changed = false;
+      const next = new Map(current);
+      for (const id of ids) {
+        if (!next.has(id)) {
+          next.set(id, {
+            id,
+            name: id,
+            previewUrl: `/api/files/${id}`,
+          });
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [Array.isArray(value) ? value.join(",") : value, props.multi]);
 
   if (!props.input?.props) return null;
 
@@ -186,7 +234,7 @@ export function ControlUpload(props: ControlUploadProps) {
     if (e.target.files) handleFiles(e.target.files);
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     if (props.disabled) return;
@@ -209,93 +257,104 @@ export function ControlUpload(props: ControlUploadProps) {
 
   const renderItem = (id: string) => {
     const item = meta.get(id);
-    const isImage = item?.mimeType?.startsWith("image/");
+    const acceptsImage = (props.accept ?? "").includes("image");
+    const mimeIsImage = item?.mimeType?.startsWith("image/");
+    const isImage =
+      mimeIsImage || (acceptsImage && !!item?.previewUrl && !item?.mimeType);
+
+    const canClear = !props.disabled && !fieldMeta.required;
 
     return (
       <div
         key={id}
-        className="bg-muted/30 flex items-center gap-3 rounded-md border p-2"
+        className={`relative flex h-9 cursor-zoom-in items-center rounded-md border border-input bg-transparent pl-1 dark:bg-input/30 ${canClear ? "pr-9" : "pr-2"}`}
+        onClick={() => setPreviewId(id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setPreviewId(id);
+          }
+        }}
+        role="button"
+        tabIndex={0}
       >
         {isImage && item?.previewUrl ? (
-          <img
-            src={item.previewUrl}
-            alt={item.name}
-            className="size-12 shrink-0 rounded object-cover"
-          />
+          <ItemThumb url={item.previewUrl} alt={item.name ?? id} />
         ) : (
-          <div className="bg-muted text-muted-foreground flex size-12 shrink-0 items-center justify-center rounded">
-            <FileIcon className="size-5" />
+          <div className="bg-muted text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded">
+            <FileIcon className="size-4" />
           </div>
         )}
-        <div className="flex flex-col min-w-0 flex-1">
-          <span className="truncate text-sm font-medium">
-            {item?.name ?? id}
-          </span>
-          <span className="text-muted-foreground text-xs">
-            {item?.mimeType ?? "uploaded"}
-            {item?.size != null && ` · ${formatBytes(item.size)}`}
-          </span>
-        </div>
-        {!props.disabled && (
-          <Button
+        {canClear && (
+          <button
             type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7 shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              removeOne(id);
+            }}
             aria-label={tr("controlUpload.remove", { default: "Remove" })}
-            onClick={() => removeOne(id)}
+            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 p-1"
           >
-            <X className="size-4" />
-          </Button>
+            <X className="size-3.5" />
+          </button>
         )}
       </div>
     );
   };
 
+  const previewItem = previewId ? meta.get(previewId) : undefined;
+  const previewIsImage = previewItem
+    ? previewItem.mimeType?.startsWith("image/") ||
+      ((props.accept ?? "").includes("image") &&
+        !!previewItem.previewUrl &&
+        !previewItem.mimeType)
+    : false;
+  const previewHasName =
+    !!previewItem?.name && previewItem.name !== previewItem.id;
+
+  const dragDropHint =
+    tr("controlUpload.dragDrop", { default: "Upload or drag and drop here" }) +
+    (props.maxSize
+      ? ` · ${tr("controlUpload.max", {
+          default: `max ${formatBytes(props.maxSize)}`,
+          args: [formatBytes(props.maxSize)],
+        })}`
+      : "");
+
   const dropZone = (
-    <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragOver(true);
-      }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={handleDrop}
-      className={
-        "rounded-md border border-dashed p-4 text-center text-sm transition " +
-        (dragOver ? "border-primary bg-primary/5" : "border-border bg-muted/20")
-      }
-    >
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={props.disabled || uploading}
-        onClick={() => fileInputRef.current?.click()}
-      >
-        {uploading ? (
-          <>
-            <Loader2 className="size-4 mr-1 animate-spin" />
-            {tr("controlUpload.uploading", { default: "Uploading…" })}
-          </>
-        ) : (
-          <>
-            <Upload className="size-4 mr-1" />
-            {props.multi
-              ? tr("controlUpload.chooseFiles", { default: "Choose files" })
-              : tr("controlUpload.chooseFile", { default: "Choose a file" })}
-          </>
-        )}
-      </Button>
-      <p className="text-muted-foreground mt-2 text-xs">
-        {tr("controlUpload.dragDrop", { default: "or drag and drop here" })}
-        {props.maxSize
-          ? ` · ${tr("controlUpload.max", {
-              default: `max ${formatBytes(props.maxSize)}`,
-              args: [formatBytes(props.maxSize)],
-            })}`
-          : ""}
-      </p>
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={props.disabled || uploading}
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          className={dragOver ? "border-primary bg-primary/5" : ""}
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="size-4 mr-1 animate-spin" />
+              {tr("controlUpload.uploading", { default: "Uploading…" })}
+            </>
+          ) : (
+            <>
+              <Upload className="size-4 mr-1" />
+              {props.multi
+                ? tr("controlUpload.chooseFiles", { default: "Choose files" })
+                : tr("controlUpload.chooseFile", { default: "Choose a file" })}
+            </>
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{dragDropHint}</TooltipContent>
+    </Tooltip>
   );
 
   return (
@@ -332,7 +391,71 @@ export function ControlUpload(props: ControlUploadProps) {
           </div>
         )}
       </div>
+
+      <Dialog
+        open={previewId !== null}
+        onOpenChange={(o) => !o && setPreviewId(null)}
+      >
+        <DialogContent className="w-fit max-w-fit p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>
+              {previewHasName
+                ? previewItem?.name
+                : tr("controlUpload.savedFile", { default: "Saved file" })}
+            </DialogTitle>
+            <DialogDescription>
+              {previewItem?.mimeType ?? "uploaded"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-4">
+            {previewIsImage && previewItem?.previewUrl ? (
+              <img
+                src={previewItem.previewUrl}
+                alt={previewItem.name ?? ""}
+                className="size-72 rounded object-contain"
+              />
+            ) : (
+              <div className="bg-muted text-muted-foreground flex size-72 items-center justify-center rounded">
+                <FileIcon className="size-16" />
+              </div>
+            )}
+          </div>
+          {(previewHasName || previewItem?.mimeType) && (
+            <div className="flex flex-col gap-0 border-t bg-muted/30 px-4 py-2">
+              {previewHasName && (
+                <span className="truncate text-sm font-medium">
+                  {previewItem?.name}
+                </span>
+              )}
+              {previewItem?.mimeType && (
+                <span className="text-muted-foreground truncate text-xs">
+                  {previewItem.mimeType}
+                </span>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </FormField>
+  );
+}
+
+function ItemThumb(props: { url: string; alt: string }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return (
+      <div className="bg-muted text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded">
+        <FileIcon className="size-4" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={props.url}
+      alt={props.alt}
+      className="size-7 shrink-0 rounded object-cover"
+      onError={() => setBroken(true)}
+    />
   );
 }
 

@@ -28,8 +28,8 @@ const CampaignSettingsCharacterSection = (
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm">{tr("campaign.settings.character.title")}</span>
-      <Card className="bg-card shadow">
-        <CardContent className="flex items-center gap-4 p-4">
+      <Card className="py-4 shadow">
+        <CardContent className="flex items-center gap-4 px-4">
           <div className="flex flex-1 flex-col items-center justify-center">
             <span className="text-sm">
               {tr("campaign.settings.character.level", {

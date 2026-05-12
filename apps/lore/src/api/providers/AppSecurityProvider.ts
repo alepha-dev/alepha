@@ -2,6 +2,7 @@ import { $env, t } from "alepha";
 import { $realm } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
+import { ForbiddenError } from "alepha/server";
 import { type Campaign, campaigns } from "../entities/campaigns.ts";
 import { type Character, characters } from "../entities/characters.ts";
 
@@ -57,15 +58,16 @@ export class AppSecurityProvider {
     });
 
     if (campaign.createdBy !== user.id && !campaign.public && user.ownership) {
-      return {
-        campaign,
-        character: await this.characters.getOne({
-          where: {
-            campaignId: { eq: campaignId },
-            userId: { eq: user.id },
-          },
-        }),
-      };
+      const character = await this.characters.findOne({
+        where: {
+          campaignId: { eq: campaignId },
+          userId: { eq: user.id },
+        },
+      });
+      if (!character) {
+        throw new ForbiddenError("Not a member of this campaign");
+      }
+      return { campaign, character };
     }
 
     return { campaign };

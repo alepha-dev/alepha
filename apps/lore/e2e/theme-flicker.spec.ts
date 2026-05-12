@@ -6,14 +6,14 @@ const cookieValue = (mode: string, theme: string) =>
   );
 
 test.describe("theme no-flash", () => {
-  test("dark mode + theme-claude applied before paint via boot script", async ({
+  test("dark mode + theme-arcane applied before paint via boot script", async ({
     context,
     page,
   }) => {
     await context.addCookies([
       {
         name: "alepha-ui",
-        value: cookieValue("dark", "claude"),
+        value: cookieValue("dark", "arcane"),
         url: "http://localhost:3303",
       },
     ]);
@@ -22,7 +22,7 @@ test.describe("theme no-flash", () => {
 
     const klass = await page.evaluate(() => document.documentElement.className);
     expect(klass).toContain("dark");
-    expect(klass).toContain("theme-claude");
+    expect(klass).toContain("theme-arcane");
   });
 
   test("no dark class without cookie + system=light", async ({

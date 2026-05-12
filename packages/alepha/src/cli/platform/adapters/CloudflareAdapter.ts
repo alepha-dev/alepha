@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { $inject, Alepha, AlephaError } from "alepha";
 import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
@@ -269,15 +270,28 @@ export class CloudflareAdapter extends PlatformAdapter {
     // are being updated). Loop-based `putSecret` worked but generated N
     // deployment rows per push, cluttering the CF dashboard.
     //
+    // Skip the PATCH entirely when nothing changed: we stamp a sha256 of the
+    // sorted secret set onto the worker as a plain_text binding called
+    // `ALEPHA_SECRETS_HASH`. On the next deploy we GET the settings, compare
+    // the stored hash to the freshly-computed one, and bail out if they
+    // match. The hash lives on Cloudflare (not on disk), so the cache works
+    // identically in CI and locally.
+    //
+    // Net deploy count per `up`:
+    //   - code change, secrets unchanged: 1 (wrangler deploy only)
+    //   - secrets changed:                 2 (wrangler deploy + bulk PATCH)
+    //
     // Implementation mirrors `wrangler secret bulk`:
     //   1. GET current worker bindings via `/script/{name}/settings`.
-    //   2. Keep all non-secret bindings as-is (D1, R2, KV, etc. — these
-    //      were set by `wrangler deploy` and would be wiped by a bare
-    //      PATCH).
-    //   3. Keep any secret bindings we are NOT overwriting (forwarded as
-    //      `{type,name}` only — CF preserves the stored value).
-    //   4. Add/overwrite the secrets we want with `{type,name,text}`.
+    //   2. Compare ALEPHA_SECRETS_HASH binding to local hash → skip on match.
+    //   3. Keep all non-secret bindings (D1, R2, KV, etc.) and any secret
+    //      bindings we are NOT overwriting (forwarded as `{type,name}` only
+    //      — CF preserves their stored values).
+    //   4. Add/overwrite secrets as `{type,name,text}`, plus a fresh
+    //      ALEPHA_SECRETS_HASH binding so subsequent runs see it.
     //   5. PATCH the merged binding list in one call.
+    const hash = computeSecretsHash(secrets);
+
     for (const app of ctx.apps) {
       const workerName = ctx.naming.worker(
         ctx.apps.length > 1 ? app.name : undefined,
@@ -287,23 +301,62 @@ export class CloudflareAdapter extends PlatformAdapter {
         name: `push secrets to ${workerName} (bulk)`,
         handler: async () => {
           const settings = await this.api.getWorkerSettings(workerName);
+          const existingBindings = settings.bindings ?? [];
+
+          const existingHashBinding = existingBindings.find(
+            (b) =>
+              b.type === "plain_text" &&
+              b.name === CloudflareAdapter.SECRETS_HASH_BINDING,
+          );
+
+          if (existingHashBinding?.text === hash) {
+            this.log.info(
+              `Secrets for ${workerName} unchanged (hash ${hash.slice(0, 8)}…), skipping push.`,
+            );
+            return;
+          }
+
           const overwriting = new Set(Object.keys(secrets));
-          const inherit = (settings.bindings ?? [])
-            .filter((b) => b.type !== "secret_text" || !overwriting.has(b.name))
+          const inherit = existingBindings
+            .filter(
+              (b) =>
+                // Drop the old hash binding — we'll write a fresh one below.
+                !(
+                  b.type === "plain_text" &&
+                  b.name === CloudflareAdapter.SECRETS_HASH_BINDING
+                ) &&
+                // Drop secret bindings we're about to overwrite. Keep the
+                // rest of the bindings (D1, R2, KV, untouched secrets) as
+                // `{type,name}` only — CF preserves stored values.
+                (b.type !== "secret_text" || !overwriting.has(b.name)),
+            )
             .map((b) => ({ type: b.type, name: b.name }));
+
           const upsert = Object.entries(secrets).map(([name, text]) => ({
             type: "secret_text" as const,
             name,
             text,
           }));
+
           await this.api.patchWorkerBindings(workerName, [
             ...inherit,
             ...upsert,
+            {
+              type: "plain_text",
+              name: CloudflareAdapter.SECRETS_HASH_BINDING,
+              text: hash,
+            },
           ]);
         },
       });
     }
   }
+
+  /**
+   * Plain-text binding used to fingerprint the deployed secret set so the
+   * next `up` can skip the PATCH when nothing has changed.
+   */
+  static readonly SECRETS_HASH_BINDING = "ALEPHA_SECRETS_HASH";
 
   // -------------------------------------------------------------------------
   // provision (REST API)
@@ -930,4 +983,17 @@ export class CloudflareAdapter extends PlatformAdapter {
       createdAt: version?.metadata.created_on,
     };
   }
+}
+
+/**
+ * Stable SHA-256 of the secret set. Keys are sorted so reordering `.env`
+ * lines does not invalidate the cache. Used as a fingerprint by
+ * `CloudflareAdapter.secrets` — see the comment block there.
+ */
+function computeSecretsHash(secrets: Record<string, string>): string {
+  const sorted = Object.keys(secrets)
+    .sort()
+    .map((k) => `${k}=${secrets[k]}`)
+    .join("\n");
+  return createHash("sha256").update(sorted).digest("hex");
 }

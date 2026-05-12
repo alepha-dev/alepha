@@ -86,7 +86,7 @@ const AuthLoginPage = (props: AuthLoginPageProps) => {
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="flex w-full max-w-sm flex-col gap-4">
         <Card>
-          <CardContent className="flex flex-col gap-4 p-6">
+          <CardContent className="flex flex-col gap-4">
             {settings.displayName && (
               <h2 className="text-center text-lg font-semibold">
                 {settings.displayName}

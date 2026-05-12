@@ -2,6 +2,10 @@ import {
   Control,
   type ControlProps,
 } from "@alepha/ui/components/control/control";
+import {
+  FormFieldAutoSaveProvider,
+  FormFieldLayoutProvider,
+} from "@alepha/ui/components/control-base/form-field";
 import { spanClass, widthFor } from "@alepha/ui/components/control-base/grid";
 import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
 import { Button } from "@alepha/ui/components/ui/button";
@@ -11,6 +15,7 @@ import {
   PopoverTrigger,
 } from "@alepha/ui/components/ui/popover";
 import type { TObject } from "alepha";
+import { useAlepha } from "alepha/react";
 import {
   type BaseInputField,
   type FormModel,
@@ -19,6 +24,18 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { AlertCircle, RotateCcw, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
+
+/**
+ * Detect a `t.string()` schema (incl. optional/nullable wrappers) so the
+ * auto-save effect can skip keystroke commits on text fields.
+ */
+function isStringSchema(schema: unknown): boolean {
+  if (!schema || typeof schema !== "object") return false;
+  const s = schema as { type?: unknown; anyOf?: unknown[] };
+  if (s.type === "string") return true;
+  if (Array.isArray(s.anyOf)) return s.anyOf.some(isStringSchema);
+  return false;
+}
 
 export interface AutoFormGroup {
   /**
@@ -145,6 +162,28 @@ export interface AutoFormProps<T extends TObject> {
    * Extra classes applied to the form wrapper.
    */
   className?: string;
+
+  /**
+   * Visual layout for every nested Control.
+   * - `"stack"` (default): label on top, control below — the classic form look.
+   * - `"row"`: settings-style — each control sits on its own line with the
+   *   label/description on the left and the control on the right. Each
+   *   group renders as a bordered card with horizontal dividers.
+   */
+  layout?: "stack" | "row";
+
+  /**
+   * Auto-commit edits instead of showing a Save button.
+   *
+   * When enabled, every field change schedules a debounced `form.submit()`
+   * and the bottom bar is hidden by default. Pass an options object to
+   * customize the debounce delay (default 600ms).
+   *
+   * The `handler` you pass to `useForm` is the auto-commit target — it
+   * runs once per quiescent edit, and any thrown error stops the loop
+   * until the user edits again.
+   */
+  autoSave?: boolean | { delay?: number };
 }
 
 /**
@@ -155,11 +194,44 @@ export interface AutoFormProps<T extends TObject> {
 export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
   const { dirty, loading } = useFormState(props.form, ["dirty", "loading"]);
   const inputs = props.form.input as Record<string, never>;
+
   const schema =
     (props.form.options.schema as TObject) ??
     ({
       properties: {},
     } as TObject);
+
+  // ── Auto-save ─────────────────────────────────────────────────────
+  // Text fields (string) are intentionally excluded: typing should not commit
+  // on every keystroke. They commit via Enter (native submit) or the inline
+  // tick button. Booleans / selects / uploads / etc. auto-commit on change.
+  const autoSave = props.autoSave;
+  const autoSaveDelay =
+    typeof autoSave === "object" ? (autoSave?.delay ?? 600) : 600;
+  const autoSaveEnabled = !!autoSave;
+  const alepha = useAlepha();
+  useEffect(() => {
+    if (!autoSaveEnabled) return;
+    let handle: ReturnType<typeof setTimeout> | undefined;
+    const off = alepha.events.on("form:change", (ev) => {
+      if (ev.id !== props.form.id) return;
+      if (ev.initial) return;
+      // FormModel paths look like "/title" or "/contacts/0/email". The
+      // top-level key is the first segment after the leading slash.
+      const top = ev.path.replace(/^\//, "").split("/")[0];
+      const fieldSchema = (schema.properties as Record<string, unknown>)?.[top];
+      // Text fields (incl. optional/nullable wrappers) should NOT auto-commit
+      // on keystroke; they commit via Enter or the inline tick button.
+      if (isStringSchema(fieldSchema)) return;
+      if (handle) clearTimeout(handle);
+      handle = setTimeout(() => props.form.submit(), autoSaveDelay);
+    });
+    return () => {
+      off();
+      if (handle) clearTimeout(handle);
+    };
+  }, [alepha, autoSaveEnabled, autoSaveDelay, props.form, schema]);
+  const skipBottomBar = props.skipBottomBar ?? autoSaveEnabled;
 
   const resolvedGroups: AutoFormGroup[] = useMemo(() => {
     if (props.groups) return props.groups.filter((g) => g.can?.() !== false);
@@ -199,21 +271,26 @@ export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
           </div>
         )}
 
-        {resolvedGroups.map((group, gi) => (
-          <GroupBlock
-            key={gi}
-            group={group}
-            inputs={inputs}
-            disabled={props.disabled}
-            throttle={props.throttle}
-            fields={props.fields}
-            multiGroup={resolvedGroups.length > 1}
-          />
-        ))}
+        <FormFieldLayoutProvider value={props.layout ?? "stack"}>
+          <FormFieldAutoSaveProvider value={autoSaveEnabled}>
+            {resolvedGroups.map((group, gi) => (
+              <GroupBlock
+                key={gi}
+                group={group}
+                inputs={inputs}
+                disabled={props.disabled}
+                throttle={props.throttle}
+                fields={props.fields}
+                multiGroup={resolvedGroups.length > 1}
+                layout={props.layout ?? "stack"}
+              />
+            ))}
+          </FormFieldAutoSaveProvider>
+        </FormFieldLayoutProvider>
 
         {props.footer}
 
-        {!props.skipBottomBar && (
+        {!skipBottomBar && (
           <BottomBar
             form={props.form}
             dirty={dirty}
@@ -241,6 +318,7 @@ interface GroupBlockProps {
   disabled?: boolean;
   throttle?: number;
   multiGroup?: boolean;
+  layout: "stack" | "row";
 }
 
 function GroupBlock(props: GroupBlockProps) {
@@ -272,6 +350,33 @@ function GroupBlock(props: GroupBlockProps) {
   // Naked group: no title, no icon → no card chrome (lets solo complex
   // fields render with just their own header).
   const isNaked = !group.title && !Icon;
+
+  // Row layout: each group becomes a divider-stacked card, every Control
+  // takes a full row through its own FormField row layout (via context).
+  if (props.layout === "row") {
+    return (
+      <div>
+        {group.title && (
+          <div className="mb-2 flex items-center gap-2 px-1">
+            {Icon && <Icon className="text-muted-foreground size-4" />}
+            <span className="text-sm font-medium">{group.title}</span>
+          </div>
+        )}
+        <div className="bg-card divide-y rounded-lg border">
+          {items.map((it) => (
+            <Control
+              key={it.name}
+              input={it.input}
+              {...it.props}
+              disabled={props.disabled || it.props.disabled}
+              throttle={it.props.throttle ?? props.throttle}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const wrapperCls =
     props.multiGroup && !isNaked ? "border rounded-md overflow-hidden" : "";
 

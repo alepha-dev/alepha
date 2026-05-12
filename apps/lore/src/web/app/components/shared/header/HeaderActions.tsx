@@ -22,10 +22,17 @@ const HeaderActions = (_props: HeaderActionsProps) => {
 
   return (
     <div className="flex items-center gap-1">
-      <ButtonLanguage label={tr("header.actions.language" as never)} />
-      <ButtonTheme />
-      <ButtonDark />
-      <ButtonUser onSignIn={goLogin} label={tr("header.actions.login")}>
+      <ButtonLanguage
+        variant="outline"
+        label={tr("header.actions.language" as never)}
+      />
+      <ButtonTheme variant="outline" />
+      <ButtonDark variant="outline" />
+      <ButtonUser
+        variant="outline"
+        onSignIn={goLogin}
+        label={tr("header.actions.login")}
+      >
         <ButtonUser.Email />
         <ButtonUser.AdminMenuItem
           label={tr("header.actions.admin" as never)}

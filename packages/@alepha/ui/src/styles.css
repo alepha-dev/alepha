@@ -145,3 +145,10 @@ code,
 pre {
   font-family: var(--font-mono);
 }
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}

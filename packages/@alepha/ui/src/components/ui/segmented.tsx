@@ -51,6 +51,11 @@ const sizeClass: Record<NonNullable<SegmentedProps["size"]>, string> = {
   lg: "h-10 text-sm px-4",
 };
 
+interface ThumbRect {
+  left: number;
+  width: number;
+}
+
 export function Segmented(props: SegmentedProps) {
   const {
     options,
@@ -70,6 +75,56 @@ export function Segmented(props: SegmentedProps) {
   );
   const value = controlled !== undefined ? controlled : uncontrolled;
 
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const itemRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
+  const [thumb, setThumb] = React.useState<ThumbRect | null>(null);
+  const [animate, setAnimate] = React.useState(false);
+
+  const activeIndex = options.findIndex((opt) => opt.value === value);
+
+  React.useLayoutEffect(() => {
+    if (activeIndex < 0) {
+      setThumb(null);
+      return;
+    }
+    const el = itemRefs.current[activeIndex];
+    const container = containerRef.current;
+    if (!el || !container) return;
+    const elRect = el.getBoundingClientRect();
+    const parentRect = container.getBoundingClientRect();
+    setThumb({
+      left: elRect.left - parentRect.left,
+      width: elRect.width,
+    });
+  }, [activeIndex, options.length, size, fullWidth]);
+
+  React.useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(() => {
+      if (activeIndex < 0) return;
+      const el = itemRefs.current[activeIndex];
+      const container = containerRef.current;
+      if (!el || !container) return;
+      const elRect = el.getBoundingClientRect();
+      const parentRect = container.getBoundingClientRect();
+      setThumb({
+        left: elRect.left - parentRect.left,
+        width: elRect.width,
+      });
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [activeIndex]);
+
+  // Enable animation only after the first measurement so the thumb doesn't
+  // slide from (0,0) on initial paint.
+  React.useEffect(() => {
+    if (thumb && !animate) {
+      const id = requestAnimationFrame(() => setAnimate(true));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [thumb, animate]);
+
   const handleSelect = (next: string) => {
     if (controlled === undefined) setUncontrolled(next);
     onChange?.(next);
@@ -77,26 +132,43 @@ export function Segmented(props: SegmentedProps) {
 
   return (
     <div
+      ref={containerRef}
       role="radiogroup"
       aria-disabled={disabled || undefined}
       data-slot="segmented"
       className={cn(
-        "inline-flex items-center",
+        "border-input bg-muted/40 relative inline-flex items-center rounded-md border p-0.5",
         fullWidth && "flex w-full",
         disabled && "opacity-50",
         className,
       )}
       {...rest}
     >
+      {thumb && (
+        <span
+          aria-hidden
+          data-slot="segmented-thumb"
+          className={cn(
+            "bg-primary pointer-events-none absolute top-0.5 bottom-0.5 rounded-[calc(var(--radius)-2px)] shadow-sm",
+            animate && "transition-[transform,width] duration-200 ease-out",
+          )}
+          style={{
+            transform: `translateX(${thumb.left}px)`,
+            width: thumb.width,
+            left: 0,
+          }}
+        />
+      )}
       {options.map((opt, index) => {
         const active = opt.value === value;
         const itemDisabled = disabled || opt.disabled;
-        const isFirst = index === 0;
-        const isLast = index === options.length - 1;
 
         return (
           <button
             key={opt.value}
+            ref={(el) => {
+              itemRefs.current[index] = el;
+            }}
             type="button"
             role="radio"
             aria-checked={active}
@@ -108,16 +180,13 @@ export function Segmented(props: SegmentedProps) {
             value={opt.value}
             onClick={() => !itemDisabled && handleSelect(opt.value)}
             className={cn(
-              "inline-flex min-w-0 items-center justify-center border font-medium whitespace-nowrap",
+              "relative z-10 inline-flex min-w-0 items-center justify-center rounded-[calc(var(--radius)-2px)] font-medium whitespace-nowrap",
               "transition-colors duration-150 ease-in-out",
-              "focus-visible:ring-ring/50 focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-[3px]",
+              "focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-[3px]",
               sizeClass[size],
-              isFirst && "rounded-l-md",
-              isLast && "rounded-r-md",
-              !isFirst && "-ml-px",
               active
-                ? "bg-primary text-primary-foreground border-primary z-[1]"
-                : "bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground",
+                ? "text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground",
               itemDisabled && "cursor-not-allowed opacity-50",
               fullWidth && "flex-1",
             )}

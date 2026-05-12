@@ -1,6 +1,51 @@
 import { Label } from "@alepha/ui/components/ui/label";
 import { cn } from "@alepha/ui/lib/utils";
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
+
+export type FormFieldLayout = "stack" | "row";
+
+/**
+ * Ambient layout for every nested `<FormField>`. Defaults to `"stack"`.
+ * `<AutoForm layout="row">` wraps its tree in this context so every Control
+ * variant renders as a settings-style row without prop drilling.
+ */
+const FormFieldLayoutContext = createContext<FormFieldLayout>("stack");
+
+export function FormFieldLayoutProvider(props: {
+  value: FormFieldLayout;
+  children: ReactNode;
+}) {
+  return (
+    <FormFieldLayoutContext.Provider value={props.value}>
+      {props.children}
+    </FormFieldLayoutContext.Provider>
+  );
+}
+
+/**
+ * Ambient flag enabling the inline save (tick) affordance on text Controls.
+ * Set by `<AutoForm autoSave>`; standalone Controls never show the tick
+ * unless explicitly placed inside this provider.
+ */
+const FormFieldAutoSaveContext = createContext<boolean>(false);
+
+export function FormFieldAutoSaveProvider(props: {
+  value: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <FormFieldAutoSaveContext.Provider value={props.value}>
+      {props.children}
+    </FormFieldAutoSaveContext.Provider>
+  );
+}
+
+/**
+ * Read the ambient auto-save flag (see {@link FormFieldAutoSaveProvider}).
+ */
+export function useFormFieldAutoSave(): boolean {
+  return useContext(FormFieldAutoSaveContext);
+}
 
 export interface FormFieldProps {
   /**
@@ -28,6 +73,15 @@ export interface FormFieldProps {
    */
   className?: string;
   /**
+   * Layout variant.
+   * - `"stack"` (default): label on top, control below, description under.
+   * - `"row"`: settings-style — label/description on the left, control on
+   *   the right. Stacks on narrow viewports.
+   *
+   * When omitted, falls back to the ambient `<FormFieldLayoutProvider>`.
+   */
+  layout?: FormFieldLayout;
+  /**
    * The control to wrap.
    */
   children: ReactNode;
@@ -41,17 +95,58 @@ export interface FormFieldProps {
  * don't have to thread `error` through every leaf widget).
  */
 export function FormField(props: FormFieldProps) {
+  const ambient = useContext(FormFieldLayoutContext);
+  const layout = props.layout ?? ambient;
+  const invalidClasses = props.error
+    ? "[&_input]:border-destructive [&_input]:focus-visible:ring-destructive/30 [&_textarea]:border-destructive [&_textarea]:focus-visible:ring-destructive/30 [&_[role=combobox]]:border-destructive"
+    : "";
+  const dataInvalid = props.error ? true : undefined;
+
+  if (layout === "row") {
+    return (
+      <div
+        className={cn(
+          "flex flex-col gap-3 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6",
+          invalidClasses,
+          props.className,
+        )}
+        data-invalid={dataInvalid}
+      >
+        <div className="flex flex-col gap-0.5">
+          {props.label && (
+            <Label htmlFor={props.id} className="font-medium">
+              {props.label}
+              {props.required && (
+                <span className="text-destructive ml-0.5" aria-hidden>
+                  *
+                </span>
+              )}
+            </Label>
+          )}
+          {props.description && !props.error && (
+            <p className="text-muted-foreground text-xs">{props.description}</p>
+          )}
+          {props.error && (
+            <p
+              className="text-destructive text-xs flex items-center gap-1"
+              role="alert"
+            >
+              <span aria-hidden>⚠</span>
+              {props.error}
+            </p>
+          )}
+        </div>
+        <div className="flex min-w-0 justify-start sm:justify-end">
+          {props.children}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className={cn(
-        "flex flex-col gap-1.5",
-        // child styling hooks: any input/textarea/select inside picks up
-        // a destructive ring when the wrapper is invalid
-        props.error &&
-          "[&_input]:border-destructive [&_input]:focus-visible:ring-destructive/30 [&_textarea]:border-destructive [&_textarea]:focus-visible:ring-destructive/30 [&_[role=combobox]]:border-destructive",
-        props.className,
-      )}
-      data-invalid={props.error ? true : undefined}
+      className={cn("flex flex-col gap-1.5", invalidClasses, props.className)}
+      data-invalid={dataInvalid}
     >
       {props.label && (
         <Label htmlFor={props.id}>

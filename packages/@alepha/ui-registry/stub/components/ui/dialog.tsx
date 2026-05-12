@@ -13,10 +13,19 @@ export const DialogContent: (props: {
   className?: string;
   children?: ReactNode;
 }) => any = () => null;
-export const DialogHeader: (props: { children?: ReactNode }) => any = () =>
-  null;
-export const DialogFooter: (props: { children?: ReactNode }) => any = () =>
-  null;
-export const DialogTitle: (props: { children?: ReactNode }) => any = () => null;
-export const DialogDescription: (props: { children?: ReactNode }) => any = () =>
-  null;
+export const DialogHeader: (props: {
+  className?: string;
+  children?: ReactNode;
+}) => any = () => null;
+export const DialogFooter: (props: {
+  className?: string;
+  children?: ReactNode;
+}) => any = () => null;
+export const DialogTitle: (props: {
+  className?: string;
+  children?: ReactNode;
+}) => any = () => null;
+export const DialogDescription: (props: {
+  className?: string;
+  children?: ReactNode;
+}) => any = () => null;

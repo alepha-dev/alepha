@@ -2,7 +2,10 @@ import {
   ControlArray,
   type ControlArrayProps,
 } from "@alepha/ui/components/control-array/control-array";
-import { FormField } from "@alepha/ui/components/control-base/form-field";
+import {
+  FormField,
+  useFormFieldAutoSave,
+} from "@alepha/ui/components/control-base/form-field";
 import {
   type IconComponent,
   iconFor,
@@ -10,7 +13,10 @@ import {
 import { ControlDate } from "@alepha/ui/components/control-date/control-date";
 import { ControlNumber } from "@alepha/ui/components/control-number/control-number";
 import { ControlObject } from "@alepha/ui/components/control-object/control-object";
-import { ControlSelect } from "@alepha/ui/components/control-select/control-select";
+import {
+  ControlSelect,
+  type SelectOption,
+} from "@alepha/ui/components/control-select/control-select";
 import {
   ControlUpload,
   type ControlUploadProps,
@@ -27,7 +33,7 @@ import {
   useFormState,
 } from "alepha/react/form";
 import { resolveSchemaControl, type SchemaControl } from "alepha/react/ui";
-import { Eye, EyeOff, X } from "lucide-react";
+import { Check, Eye, EyeOff, X } from "lucide-react";
 import { type ComponentType, type ReactNode, useEffect, useState } from "react";
 
 export interface ControlProps {
@@ -146,6 +152,13 @@ export interface ControlProps {
    */
   createNewEntry?: boolean | ((query: string) => unknown);
   /**
+   * Inline option list for select / combobox controls. Static array or
+   * async loader. Overrides schema-derived `enum` when present.
+   */
+  items?:
+    | SelectOption[]
+    | ((query: string) => SelectOption[] | Promise<SelectOption[]>);
+  /**
    * Render a managed upload control (image preview, multi, drag-drop)
    * that calls `FileController.uploadFile` and stores the file ID(s) in
    * the form value. Pass `true` for defaults or an options object.
@@ -161,7 +174,8 @@ export interface ControlProps {
  * result with explicit props, and dispatches to the right sub-control.
  */
 export function Control(props: ControlProps) {
-  const form = useFormState(props.input, ["error"]);
+  const form = useFormState(props.input, ["error", "dirty"]);
+  const autoSaveEnabled = useFormFieldAutoSave();
   const [value, setValue] = useFieldValue(props.input);
 
   // Function-form `$control` reads other fields → re-render on any
@@ -440,9 +454,16 @@ export function Control(props: ControlProps) {
           ? "tel"
           : "text";
 
-  // ── Nullable clear button (cross) ────────────────────────────────
+  // ── Right-side affordance: tick (when dirty) or clear (when nullable) ─
+  // Tick only renders inside an `<AutoForm autoSave>` tree (or any caller
+  // that explicitly wraps with `<FormFieldAutoSaveProvider value>`).
+  const showSave = autoSaveEnabled && !!form.dirty && !merged.disabled;
   const isNullable =
     !meta.required && value != null && value !== "" && !merged.disabled;
+  const showClear = !showSave && isNullable;
+  // Reserve a fixed right gutter for any editable field so the tick/clear
+  // can swap in without nudging the input width.
+  const reserveGutter = !merged.disabled;
 
   return wrapWithSlots(
     merged,
@@ -468,10 +489,20 @@ export function Control(props: ControlProps) {
           minLength={meta.constraints.minLength}
           maxLength={meta.constraints.maxLength}
           pattern={meta.constraints.pattern}
-          className={(Icon ? "pl-9" : "") + (isNullable ? " pr-9" : "")}
+          className={(Icon ? "pl-9" : "") + (reserveGutter ? " pr-9" : "")}
           onChange={(e) => setValue(e.target.value)}
         />
-        {isNullable && (
+        {showSave && (
+          <button
+            type="button"
+            onClick={() => props.input.form.submit()}
+            aria-label="Save"
+            className="text-primary hover:text-primary/80 absolute top-1/2 right-2 -translate-y-1/2 p-1"
+          >
+            <Check className="size-3.5" />
+          </button>
+        )}
+        {showClear && (
           <button
             type="button"
             onClick={() => setValue(undefined)}

@@ -16,7 +16,16 @@ export * from "./services/prettyName.ts";
 
 declare module "alepha" {
   interface Hooks {
-    "form:change": { id: string; path: string; value: any };
+    "form:change": {
+      id: string;
+      path: string;
+      value: any;
+      /**
+       * Programmatic reset (e.g. `setInitialValues` after the parent updates
+       * its state). Subscribers tracking dirty state should ignore these.
+       */
+      initial?: boolean;
+    };
     "form:submit:begin": { id: string };
     "form:submit:success": { id: string; values: Record<string, any> };
     "form:submit:error": { id: string; error: Error };

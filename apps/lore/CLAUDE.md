@@ -12,7 +12,7 @@ All user-facing strings still go through `I18n.ts` for EN/FR localization.
 src/
 ├── api/                  # Backend
 │   ├── controllers/      # 10 controllers (QuestController, CampaignController, KanbanController, etc.)
-│   ├── entities/         # 9 entities (campaigns, quests, characters, whiteboards, etc.)
+│   ├── entities/         # entities (campaigns, quests, characters, etc.)
 │   ├── providers/        # AppSecurityProvider (permission checks)
 │   ├── schemas/          # Request/response schemas
 │   └── services/         # CharacterInfo (XP, levels, ranks)
@@ -39,7 +39,6 @@ src/
 | `/c/:campaignId/players` | CampaignAdventurers | Adventurers & invitations |
 | `/c/:campaignId/chronicles` | CampaignStats | Chronicles / stats |
 | `/c/:campaignId/settings` | CampaignSettings | Campaign settings |
-| `/c/:campaignId/whiteboards` | CampaignWhiteboards | Interactive canvas |
 | `/c/:campaignId/q/:questId` | QuestView | Quest detail (animated transitions) |
 | `/c/:campaignId/petitions` | CampaignPetitions | Owner inbox: triage user-submitted bug/feature requests |
 | `/c/:campaignId/request` | CampaignPetitionRequest | First-party petition form (login required) |
@@ -138,7 +137,6 @@ Defined in `api/services/CharacterInfo.ts`:
 ## Key Dependencies
 
 - `@dnd-kit/core` — drag & drop (kanban, quest board)
-- `konva` / `react-konva` — whiteboard canvas
 - `@mantine/tiptap` + `@tiptap/*` — rich text editor for quest descriptions
 - `recharts` — chronicles charts
 - `framer-motion` + `animate.css` — animations (level up, transitions)
@@ -161,3 +159,46 @@ yarn w lore e2e          # Playwright e2e tests
 - `e2e/user-journey.spec.ts` — End-to-end with Playwright
 
 Petition-flow e2e coverage in `e2e/user-journey.spec.ts` ("petition end-to-end" test).
+
+## Manual testing via Playwright (Claude)
+
+When you need to drive the app yourself with the Playwright MCP, use these shortcuts.
+
+### Servers
+
+| Mode | Command | URL | Database |
+|---|---|---|---|
+| **Dev** (HMR, no build) | `yarn w lore dev` | http://localhost:5173 | `node_modules/.alepha/sqlite.db` (persistent) |
+| **Prod-like** (build + run) | `yarn w lore start` | http://localhost:3000 | in-memory (`DATABASE_URL=:memory:`) — wiped on restart |
+
+Dev mode is what you usually want — it keeps state between runs and emails accumulate on disk.
+
+### Accounts
+
+The realm admin (`apps/lore/.env` → `ADMIN_EMAIL=ni.foures@gmail.com`) is auto-bootstrapped on first start. Use that for owner/admin flows.
+
+To test a fresh signup:
+
+1. POST `/auth/register` via the UI with a throwaway email like `feat$(date +%s)@example.com`.
+2. The verification email lands as a JSON file in `node_modules/.alepha/emails/<email>,<timestamp>.eml.json` — open it, grab the `verify` URL from the HTML body, and load it in the browser to confirm.
+3. Same flow for password reset (`/auth/reset-password`).
+
+### Mail inbox
+
+There's no SMTP — dev mode persists every sent email as JSON under `node_modules/.alepha/emails/`. Filename is `<recipient>,<ISO timestamp>.eml.json`. Read with `cat`/`jq`, scrape links with `grep -oE 'href="[^"]+"'`.
+
+### Reset the dev database
+
+```bash
+rm /Users/nfo/git/alepha/apps/lore/node_modules/.alepha/sqlite.db
+yarn w lore dev   # recreates + runs migrations from migrations/sqlite/
+```
+
+Clears all campaigns, characters, sessions, etc. Migrations auto-apply on boot. Optionally also `rm -rf node_modules/.alepha/emails/` to clear the inbox.
+
+### Playwright tips
+
+- Hostname is `localhost`, no HTTPS in dev/prod-like.
+- The session cookie persists across reloads; if you need a clean slate, clear cookies via `context.clearCookies()` rather than relaunching the browser.
+- Pages load lazily — wait for the visible text of a known route element (e.g. "Campaigns") before asserting.
+- `claude-in-chrome` MCP works fine; the deferred `playwright` MCP is what most of the existing e2e specs target.

@@ -21,14 +21,21 @@ export class I18n {
 
         "quest-log.quests": "Quests:",
         "quest-log.search": "Find by name, zone...",
-        "quest-log.empty": "No quests available.",
+        "quest-log.empty": "No quests yet",
+        "quest-log.empty-description":
+          "The kingdom is quiet. Forge a new quest to set your party in motion.",
 
         "home.title": "Welcome, Adventurer",
         "home.subtitle":
-          "Your journey begins here. Pick a campaign and start completing quests.",
+          "Your journey begins here. Forge quests, recruit adventurers and chronicle your party's deeds across the realm.",
         "home.no-campaign": "You don't have any campaigns yet.",
         "home.campaigns": "Your recent campaigns",
         "home.create-campaign": "New Campaign",
+        "home.start-first-campaign": "Start your first campaign",
+        "home.already-registered": "Already registered? Sign in",
+        "home.empty.title": "Your quest log is empty",
+        "home.empty.subtitle":
+          "Raise your banner and forge a campaign — every legend starts somewhere.",
         "home.folios": "Open your Folios",
         "home.folios-description":
           "Personal markdown notes — searchable, taggable, AI-accessible via MCP.",
@@ -66,14 +73,15 @@ export class I18n {
         "dashboard.chapter.none": "No open chapter",
 
         "campaign.menu.create-quest": "Create Quest",
-        "campaign.menu.dashboard": "Tavern",
         "campaign.menu.board": "Board",
         "campaign.menu.kanban": "Kanban",
         "campaign.menu.adventurers": "Adventurers",
         "campaign.menu.chronicles": "Chronicles",
         "campaign.menu.folios": "Folios",
-        "campaign.menu.whiteboards": "Draw",
         "campaign.menu.settings": "Settings",
+        "campaign.menu.group.inn": "Inn",
+        "campaign.menu.group.library": "Library",
+        "campaign.menu.group.castle": "Castle",
 
         "quest.create.submit": "Add Quest to Campaign",
         "quest.create.update": "Update Quest",
@@ -83,7 +91,7 @@ export class I18n {
         "quest.create.priority": "Priority",
         "quest.create.priority.helper":
           "How urgently this quest must be fulfilled",
-        "quest.create.description": "Quest Description",
+        "quest.create.description": "Description",
         "quest.create.description.helper":
           "Describe the quest, its objectives, and any relevant details",
         "quest.create.zone": "Zone",
@@ -104,7 +112,7 @@ export class I18n {
         "campaign.create.description":
           "Raise your banner! Forge quests, recruit adventurers and progress together toward victory.",
 
-        "campaign.create.name": "Campaign Name",
+        "campaign.create.name": "Name",
         "campaign.create.name.helper":
           "Set a short name for identifying your campaign.",
         "campaign.create.public": "Public",
@@ -157,10 +165,52 @@ export class I18n {
         "campaign.settings.actions.delete.helper":
           "Sometimes retreat is the only option. All quests and progress will be lost forever.",
 
-        "campaign.settings.general.title": "General",
-        "campaign.settings.whiteboard": "Whiteboard",
-        "campaign.settings.whiteboard.helper":
-          "Enable the drawing canvas to sketch plans and map out your quests.",
+        "campaign.settings.general.title": "Campaign",
+        "campaign.settings.nav.general": "General",
+        "campaign.settings.nav.adventurers": "Adventurers",
+        "campaign.settings.nav.zones": "Zones",
+        "campaign.settings.nav.group.features": "Features",
+        "campaign.settings.zones.title": "Zones",
+        "campaign.settings.zones.description":
+          "Areas of your campaign. Each quest belongs to a zone. Rename a zone to refactor it across every quest.",
+        "campaign.settings.zones.column.name": "Zone",
+        "campaign.settings.zones.column.quests": "Quests",
+        "campaign.settings.zones.column.firstQuest": "First quest",
+        "campaign.settings.zones.empty":
+          "No zones yet. Forge a quest and pick a zone — it appears here.",
+        "campaign.settings.zones.rename.action": "Rename",
+        "campaign.settings.zones.rename.title": "Rename zone",
+        "campaign.settings.zones.rename.description":
+          'Rename "$1" — every quest in this zone will follow.',
+        "campaign.settings.zones.rename.label": "New name",
+        "campaign.settings.zones.rename.cancel": "Cancel",
+        "campaign.settings.zones.rename.submit": "Rename",
+        "campaign.settings.zones.never": "—",
+        "campaign.settings.nav.kanban": "Kanban",
+        "campaign.settings.nav.folios": "Folios",
+        "campaign.settings.nav.petitions": "Petitions",
+        "campaign.settings.nav.chapters": "Chapters",
+        "campaign.settings.feature.enable": "Enable",
+        "campaign.settings.feature.enabled": "Enabled",
+        "campaign.settings.feature.disabled": "Disabled",
+        "campaign.settings.feature.empty":
+          "No options yet. Toggle the feature on to make it available; settings will appear here as the system grows.",
+        "campaign.settings.feature.kanban.description":
+          "A drag & drop board to move quests between New, In Progress and Completed.",
+        "campaign.settings.kanban.columns.title": "In-progress columns",
+        "campaign.settings.kanban.columns.description":
+          "Split the in-progress lane into named sub-columns (e.g. In review → In dev → In test). Up to 5. New and Completed stay fixed.",
+        "campaign.settings.kanban.columns.add": "Add column",
+        "campaign.settings.kanban.columns.placeholder": "Column name",
+        "campaign.settings.kanban.columns.delete": "Delete",
+        "campaign.settings.kanban.columns.save": "Save",
+        "campaign.settings.kanban.columns.cancel": "Cancel",
+        "campaign.settings.feature.folios.description":
+          "Markdown notes attached to the campaign — searchable, taggable, AI-accessible.",
+        "campaign.settings.feature.petitions.description":
+          "Let adventurers submit bug reports and feature requests for you to triage.",
+        "campaign.settings.feature.chapters.description":
+          "Group quests into chapters with start / end dates and changelogs.",
         "campaign.settings.character.title": "Character",
         "campaign.settings.character.level": "Level $1",
         "campaign.settings.character.nextLevel": "$1 XP to next level",
@@ -201,6 +251,46 @@ export class I18n {
           "No active chapter. Start one to automatically track completed quests.",
         "chapter.list.quests": "$1 quest(s)",
         "chapter.list.closed": "Closed $1",
+        "chapter.list.closesIn": "Closes $1",
+        "chapter.tags": "Tags",
+        "chapter.tags.placeholder": "Add a tag…",
+        "chapter.tags.empty": "No tags",
+        "chapter.start.description": "Notes (optional)",
+        "chapter.start.reroll": "Reroll name",
+        "chapter.detail.title": "Chapter #$1 — $2",
+        "chapter.detail.editTitle": "Title",
+        "chapter.detail.editDescription": "Notes",
+        "chapter.detail.save": "Save",
+        "chapter.detail.saved": "Chapter updated",
+        "chapter.page.eyebrow": "The Tome",
+        "chapter.page.title": "Chapters",
+        "chapter.page.subtitle":
+          "Each chapter is a release in your saga. Start one, gather quests, then seal it to forge a permanent changelog.",
+        "chapter.hero.eyebrow": "Chapter $1 · Now playing",
+        "chapter.hero.empty.title": "No active chapter",
+        "chapter.hero.empty.subtitle":
+          "Open a new chapter to start chronicling what your party accomplishes — every completed quest will be sealed into its changelog when you close it.",
+        "chapter.hero.stat.quests": "Quests",
+        "chapter.hero.stat.tags": "Tags",
+        "chapter.hero.stat.started": "Started",
+        "chapter.hero.stat.closesIn": "Closes",
+        "chapter.hero.progress": "Time spent",
+        "chapter.stats.chapters": "Chapters",
+        "chapter.stats.quests": "Quests recorded",
+        "chapter.stats.tags": "Unique tags",
+        "chapter.history.title": "History",
+        "chapter.history.empty":
+          "No closed chapters yet. Once you seal a chapter, it will appear here as a permanent record.",
+        "chapter.row.startedNow": "Started $1",
+        "chapter.status.active": "Active",
+        "chapter.status.closed": "Closed",
+
+        "campaign.settings.chapters.release.title": "Release cadence",
+        "campaign.settings.chapters.duration.manual": "Manual close only",
+        "campaign.settings.chapters.duration.1w": "1 week",
+        "campaign.settings.chapters.duration.2w": "2 weeks",
+        "campaign.settings.chapters.duration.1mo": "1 month",
+        "campaign.settings.chapters.duration.3mo": "3 months",
 
         "kanban.column.new": "New",
         "kanban.column.accepted": "In Progress",
@@ -237,7 +327,10 @@ export class I18n {
         "quest.item.highPriority": "High Priority !",
         "quest.item.highPriority.description": "Which means more rewards.",
 
-        "quest.group.quests": "$1 quest(s)",
+        "quest.group.quests": "$1 quests",
+        "quest.group.quests.one": "1 quest",
+        "quest-log.collapse-all": "Collapse all",
+        "quest-log.expand-all": "Expand all",
 
         "zone.rename.title": "Rename Zone",
         "zone.rename.name": "Zone Name",
@@ -276,15 +369,6 @@ export class I18n {
         "common.success": "Success",
         "common.noResults": "No results",
 
-        "whiteboard.editQuest": "Edit Quest",
-        "whiteboard.drawingSaved": "Drawing saved",
-        "whiteboard.invalidImage": "Invalid image type",
-        "whiteboard.imageAdded": "Image added",
-        "whiteboard.uploadFailed": "Failed to upload image",
-        "whiteboard.quests": "Quests",
-        "whiteboard.allOnBoard": "All quests on board",
-        "whiteboard.emptyCanvas": "Empty canvas",
-
         "campaign.menu.petitions": "Petitions",
 
         "petitions.title": "Petitions",
@@ -292,11 +376,23 @@ export class I18n {
         "petitions.empty.pending":
           "No pending petitions. New requests from adventurers will appear here.",
         "petitions.empty.status": "No $1 petitions.",
+        "petitions.empty.selectOne": "Select a petition from the list",
+        "petitions.back": "Back",
+        "petitions.integrate.title": "Integrate on your website",
+        "petitions.integrate.helper":
+          "Paste one of these snippets on your site so visitors can report bugs or request features. The link opens the request form for this campaign on Lore.",
+        "petitions.integrate.simple": "Plain link",
+        "petitions.integrate.dynamic":
+          "Dynamic link (auto-captures current URL/path)",
+        "petitions.integrate.copy": "Copy",
+        "petitions.integrate.copied": "Snippet copied to clipboard",
         "petitions.filter.pending": "Pending",
         "petitions.filter.accepted": "Accepted",
         "petitions.filter.rejected": "Rejected",
         "petitions.filter.all": "All",
         "petitions.accept": "Promote to Quest",
+        "petitions.promote": "Promote to Quest",
+        "petitions.createQuest": "Create Quest",
         "petitions.reject": "Reject",
         "petitions.rejected": "Petition rejected",
         "petitions.rejectError": "Failed to reject petition",
@@ -388,14 +484,21 @@ export class I18n {
         "quest-log.title": "Journal des quêtes",
         "quest-log.quests": "Quêtes :",
         "quest-log.search": "Chercher par nom, zone ou difficulté...",
-        "quest-log.empty":
-          "Aucune quête en attente. Le royaume est bien calme...",
+        "quest-log.empty": "Aucune quête en attente",
+        "quest-log.empty-description":
+          "Le royaume est bien calme. Forgez une nouvelle quête pour lancer votre compagnie.",
 
         "home.title": "Bienvenue dans l’aventure Lore",
-        "home.subtitle": "Un monde où Alepha déploie toute sa magie.",
+        "home.subtitle":
+          "Votre périple commence ici. Forgez des quêtes, ralliez des aventuriers et chroniquez les exploits de votre équipée à travers le royaume.",
         "home.no-campaign": "Vous n’avez encore lancé aucune campagne.",
         "home.campaigns": "Campagnes",
         "home.create-campaign": "Lancer une nouvelle campagne",
+        "home.start-first-campaign": "Lancer votre première campagne",
+        "home.already-registered": "Déjà inscrit ? Se connecter",
+        "home.empty.title": "Votre carnet de quêtes est vide",
+        "home.empty.subtitle":
+          "Levez votre bannière et forgez une campagne — toute légende commence quelque part.",
         "home.folios": "Ouvrir vos Folios",
         "home.folios-description":
           "Notes markdown personnelles — recherche, tags, accès IA via MCP.",
@@ -427,14 +530,15 @@ export class I18n {
         "dashboard.chapter.none": "Aucun chapitre ouvert",
 
         "campaign.menu.create-quest": "Créer quête",
-        "campaign.menu.dashboard": "Taverne",
         "campaign.menu.board": "Tableau",
         "campaign.menu.kanban": "Kanban",
         "campaign.menu.adventurers": "Aventuriers",
         "campaign.menu.chronicles": "Chroniques",
         "campaign.menu.folios": "Folios",
-        "campaign.menu.whiteboards": "Dessiner",
         "campaign.menu.settings": "Paramètres",
+        "campaign.menu.group.inn": "Auberge",
+        "campaign.menu.group.library": "Bibliothèque",
+        "campaign.menu.group.castle": "Château",
 
         "quest.create.submit": "Ajouter la quête à la campagne",
         "quest.create.update": "Modifier la quête",
@@ -466,7 +570,7 @@ export class I18n {
         "campaign.create.description":
           "Levez votre bannière ! Créez des quêtes, recrutez des aventuriers et progressez ensemble vers la victoire.",
 
-        "campaign.create.name": "Nom de la campagne",
+        "campaign.create.name": "Nom",
         "campaign.create.name.helper": "Un nom marquant pour votre épopée.",
         "campaign.create.public": "Publique",
         "campaign.create.public.helper":
@@ -518,10 +622,44 @@ export class I18n {
         "campaign.settings.actions.delete.helper":
           "Parfois, il faut abandonner le combat… mais sachez que toutes les quêtes et les progrès seront perdus.",
 
-        "campaign.settings.general.title": "Général",
-        "campaign.settings.whiteboard": "Tableau blanc",
-        "campaign.settings.whiteboard.helper":
-          "Activer le canevas de dessin pour esquisser vos plans et cartographier vos quêtes.",
+        "campaign.settings.general.title": "Campagne",
+        "campaign.settings.nav.general": "Général",
+        "campaign.settings.nav.adventurers": "Aventuriers",
+        "campaign.settings.nav.zones": "Zones",
+        "campaign.settings.nav.group.features": "Fonctionnalités",
+        "campaign.settings.zones.title": "Zones",
+        "campaign.settings.zones.description":
+          "Les zones de votre campagne. Chaque quête appartient à une zone. Renommer une zone met à jour toutes ses quêtes.",
+        "campaign.settings.zones.column.name": "Zone",
+        "campaign.settings.zones.column.quests": "Quêtes",
+        "campaign.settings.zones.column.firstQuest": "Première quête",
+        "campaign.settings.zones.empty":
+          "Aucune zone pour l'instant. Créez une quête et choisissez une zone — elle apparaîtra ici.",
+        "campaign.settings.zones.rename.action": "Renommer",
+        "campaign.settings.zones.rename.title": "Renommer la zone",
+        "campaign.settings.zones.rename.description":
+          "Renommer « $1 » — toutes les quêtes de cette zone suivront.",
+        "campaign.settings.zones.rename.label": "Nouveau nom",
+        "campaign.settings.zones.rename.cancel": "Annuler",
+        "campaign.settings.zones.rename.submit": "Renommer",
+        "campaign.settings.zones.never": "—",
+        "campaign.settings.nav.kanban": "Kanban",
+        "campaign.settings.nav.folios": "Folios",
+        "campaign.settings.nav.petitions": "Pétitions",
+        "campaign.settings.nav.chapters": "Chapitres",
+        "campaign.settings.feature.enable": "Activer",
+        "campaign.settings.feature.enabled": "Activé",
+        "campaign.settings.feature.disabled": "Désactivé",
+        "campaign.settings.feature.empty":
+          "Aucune option pour l’instant. Activez la fonctionnalité pour la rendre disponible — les réglages apparaîtront ici.",
+        "campaign.settings.feature.kanban.description":
+          "Un tableau drag & drop pour déplacer les quêtes entre Nouvelle, En cours et Terminée.",
+        "campaign.settings.feature.folios.description":
+          "Notes markdown rattachées à la campagne — cherchables, taguables, accessibles à l’IA.",
+        "campaign.settings.feature.petitions.description":
+          "Permet aux aventuriers de signaler bugs et demandes de fonctionnalités.",
+        "campaign.settings.feature.chapters.description":
+          "Regroupez les quêtes en chapitres avec dates de début / fin et historique.",
         "campaign.settings.character.title": "Personnage",
         "campaign.settings.character.level": "Niveau $1",
         "campaign.settings.character.nextLevel":
@@ -563,6 +701,47 @@ export class I18n {
           "Aucun chapitre actif. Ouvrez-en un pour enregistrer automatiquement les quêtes accomplies.",
         "chapter.list.quests": "$1 quête(s)",
         "chapter.list.closed": "Clos le $1",
+        "chapter.list.closesIn": "Clôture $1",
+        "chapter.tags": "Étiquettes",
+        "chapter.tags.placeholder": "Ajouter une étiquette…",
+        "chapter.tags.empty": "Aucune étiquette",
+        "chapter.start.description": "Notes (optionnel)",
+        "chapter.start.reroll": "Régénérer le nom",
+        "chapter.detail.title": "Chapitre #$1 — $2",
+        "chapter.detail.editTitle": "Titre",
+        "chapter.detail.editDescription": "Notes",
+        "chapter.detail.save": "Enregistrer",
+        "chapter.detail.saved": "Chapitre mis à jour",
+        "chapter.page.eyebrow": "Le Tome",
+        "chapter.page.title": "Chapitres",
+        "chapter.page.subtitle":
+          "Chaque chapitre est une release de votre saga. Ouvrez-en un, accumulez les quêtes, puis scellez-le pour figer son changelog.",
+        "chapter.hero.eyebrow": "Chapitre $1 · En cours",
+        "chapter.hero.empty.title": "Aucun chapitre actif",
+        "chapter.hero.empty.subtitle":
+          "Ouvrez un nouveau chapitre pour commencer à chroniquer les exploits de votre équipée — chaque quête accomplie sera scellée dans le changelog à la clôture.",
+        "chapter.hero.stat.quests": "Quêtes",
+        "chapter.hero.stat.tags": "Étiquettes",
+        "chapter.hero.stat.started": "Ouvert",
+        "chapter.hero.stat.closesIn": "Clôture",
+        "chapter.hero.progress": "Temps écoulé",
+        "chapter.stats.chapters": "Chapitres",
+        "chapter.stats.quests": "Quêtes enregistrées",
+        "chapter.stats.tags": "Étiquettes uniques",
+        "chapter.history.title": "Historique",
+        "chapter.history.empty":
+          "Aucun chapitre clôturé. Une fois scellés, vos chapitres apparaîtront ici comme un témoignage permanent.",
+        "chapter.row.startedNow": "Ouvert $1",
+        "chapter.status.active": "Actif",
+        "chapter.status.closed": "Clos",
+
+        "campaign.settings.chapters.release.title": "Cadence de publication",
+        "campaign.settings.chapters.duration.manual":
+          "Clôture manuelle uniquement",
+        "campaign.settings.chapters.duration.1w": "1 semaine",
+        "campaign.settings.chapters.duration.2w": "2 semaines",
+        "campaign.settings.chapters.duration.1mo": "1 mois",
+        "campaign.settings.chapters.duration.3mo": "3 mois",
 
         "kanban.column.new": "Nouvelles",
         "kanban.column.accepted": "En cours",
@@ -601,7 +780,10 @@ export class I18n {
         "quest.item.highPriority.description":
           "Ce qui signifie plus de récompenses.",
 
-        "quest.group.quests": "$1 quête(s)",
+        "quest.group.quests": "$1 quêtes",
+        "quest.group.quests.one": "1 quête",
+        "quest-log.collapse-all": "Tout réduire",
+        "quest-log.expand-all": "Tout déplier",
 
         "zone.rename.title": "Renommer la zone",
         "zone.rename.name": "Nom de la zone",
@@ -640,15 +822,6 @@ export class I18n {
         "common.success": "Succès",
         "common.noResults": "Aucun résultat",
 
-        "whiteboard.editQuest": "Modifier la quête",
-        "whiteboard.drawingSaved": "Dessin sauvegardé",
-        "whiteboard.invalidImage": "Type d'image invalide",
-        "whiteboard.imageAdded": "Image ajoutée",
-        "whiteboard.uploadFailed": "Échec de l'envoi de l'image",
-        "whiteboard.quests": "Quêtes",
-        "whiteboard.allOnBoard": "Toutes les quêtes sont sur le tableau",
-        "whiteboard.emptyCanvas": "Canevas vide",
-
         "campaign.menu.petitions": "Pétitions",
 
         "petitions.title": "Pétitions",
@@ -656,11 +829,23 @@ export class I18n {
         "petitions.empty.pending":
           "Aucune pétition en attente. Les requêtes des aventuriers apparaîtront ici.",
         "petitions.empty.status": "Aucune pétition $1.",
+        "petitions.empty.selectOne": "Sélectionnez une pétition dans la liste",
+        "petitions.back": "Retour",
+        "petitions.integrate.title": "Intégrer sur votre site",
+        "petitions.integrate.helper":
+          "Collez l'un de ces extraits sur votre site pour que vos visiteurs puissent signaler un bug ou demander une fonctionnalité. Le lien ouvre le formulaire pour cette campagne sur Lore.",
+        "petitions.integrate.simple": "Lien simple",
+        "petitions.integrate.dynamic":
+          "Lien dynamique (capture l'URL/chemin courant)",
+        "petitions.integrate.copy": "Copier",
+        "petitions.integrate.copied": "Extrait copié",
         "petitions.filter.pending": "En attente",
         "petitions.filter.accepted": "Acceptées",
         "petitions.filter.rejected": "Rejetées",
         "petitions.filter.all": "Toutes",
         "petitions.accept": "Promouvoir en quête",
+        "petitions.promote": "Promouvoir en quête",
+        "petitions.createQuest": "Créer une quête",
         "petitions.reject": "Rejeter",
         "petitions.rejected": "Pétition rejetée",
         "petitions.rejectError": "Échec du rejet de la pétition",

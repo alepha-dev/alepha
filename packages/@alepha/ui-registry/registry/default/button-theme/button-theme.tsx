@@ -23,6 +23,11 @@ export interface ButtonThemeProps {
    * Optional dropdown header. Defaults to `"Themes"`.
    */
   heading?: string;
+  /**
+   * Visual variant. Defaults to `"ghost"` (minimal). Pass `"outline"` for a
+   * bordered toolbar look.
+   */
+  variant?: "ghost" | "outline";
 }
 
 /**
@@ -72,7 +77,7 @@ export function ButtonTheme(props: ButtonThemeProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="ghost"
+          variant={props.variant ?? "ghost"}
           size="icon"
           aria-label={props.label ?? "Pick theme"}
         >

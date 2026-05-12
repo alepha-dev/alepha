@@ -7,7 +7,7 @@ import {
   useFormState,
 } from "alepha/react/form";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -46,6 +46,11 @@ export type SelectOption =
        * Optional small badge rendered next to the label.
        */
       tag?: string;
+      /**
+       * Optional icon/element rendered before the label, in both the
+       * dropdown row and (for single-select) the trigger when selected.
+       */
+      icon?: ReactNode;
     };
 
 type LoaderMode = "static" | "short" | "long";
@@ -112,6 +117,18 @@ const optLabel = (o: SelectOption) => (typeof o === "string" ? o : o.label);
 const optDesc = (o: SelectOption) =>
   typeof o === "string" ? undefined : o.description;
 const optTag = (o: SelectOption) => (typeof o === "string" ? undefined : o.tag);
+const optIcon = (o: SelectOption): ReactNode =>
+  typeof o === "string" ? undefined : o.icon;
+
+/**
+ * Friendly label for plain string options: "optional" → "Optional",
+ * "in_progress" → "In Progress". Custom `{ value, label }` items pass through
+ * untouched.
+ */
+const titlecase = (s: string) =>
+  s.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const segmentedLabel = (o: SelectOption) =>
+  typeof o === "string" ? titlecase(o) : o.label;
 
 export function ControlSelect(props: ControlSelectProps) {
   const form = useFormState(props.input, ["error"]);
@@ -154,7 +171,7 @@ export function ControlSelect(props: ControlSelectProps) {
   );
 
   const [staticData, setStaticData] = useState<SelectOption[]>([]);
-  const enumKey = JSON.stringify(enumValues);
+  const enumKey = enumValues.map(optValue).join("");
   const min = meta.constraints.minimum;
   const max = meta.constraints.maximum;
   useEffect(() => {
@@ -204,7 +221,7 @@ export function ControlSelect(props: ControlSelectProps) {
           disabled={props.disabled}
           options={data.slice(0, 10).map((o) => ({
             value: optValue(o),
-            label: optLabel(o),
+            label: segmentedLabel(o),
           }))}
           fullWidth
         />
@@ -256,11 +273,21 @@ export function ControlSelect(props: ControlSelectProps) {
           <SelectValue placeholder="Select…" />
         </SelectTrigger>
         <SelectContent>
-          {data.map((o) => (
-            <SelectItem key={optValue(o)} value={optValue(o)}>
-              {optLabel(o)}
-            </SelectItem>
-          ))}
+          {data.map((o) => {
+            const icon = optIcon(o);
+            return (
+              <SelectItem key={optValue(o)} value={optValue(o)}>
+                {icon ? (
+                  <span className="flex items-center gap-2">
+                    <span className="flex shrink-0 items-center">{icon}</span>
+                    <span>{optLabel(o)}</span>
+                  </span>
+                ) : (
+                  optLabel(o)
+                )}
+              </SelectItem>
+            );
+          })}
         </SelectContent>
       </Select>
     </FormField>
@@ -364,6 +391,7 @@ function Combobox(props: ComboboxProps) {
                     const isSelected = selected.includes(v);
                     const desc = optDesc(o);
                     const tag = optTag(o);
+                    const icon = optIcon(o);
                     return (
                       <CommandItem
                         key={v}
@@ -376,6 +404,11 @@ function Combobox(props: ComboboxProps) {
                             isSelected ? "opacity-100" : "opacity-0",
                           )}
                         />
+                        {icon && (
+                          <span className="mr-2 flex shrink-0 items-center">
+                            {icon}
+                          </span>
+                        )}
                         <div className="flex flex-col min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             {tag && (

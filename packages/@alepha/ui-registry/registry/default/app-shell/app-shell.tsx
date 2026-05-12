@@ -24,12 +24,14 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarProvider,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { DialogProvider } from "@/registry/default/use-dialog/use-dialog";
@@ -102,14 +104,15 @@ function NavigationProgress(options: NavigationProgressOptions) {
 }
 
 function StatefulSidebarTrigger() {
-  const { collapsed, toggle } = useSidebarState();
-  const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
+  const { toggleSidebar, isMobile, openMobile, state } = useSidebar();
+  const open = isMobile ? openMobile : state === "expanded";
+  const Icon = open ? PanelLeftClose : PanelLeftOpen;
   return (
     <Button
       variant="ghost"
       size="icon"
-      onClick={toggle}
-      aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      onClick={toggleSidebar}
+      aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
       className="size-8"
     >
       <Icon className="size-4" />
@@ -138,6 +141,10 @@ export interface NavItem {
    * Initial open state for groups. Defaults to true if any descendant is active.
    */
   defaultOpen?: boolean;
+  /**
+   * Optional trailing badge (e.g. unread count). Hidden when the sidebar is collapsed to icons.
+   */
+  badge?: ReactNode;
 }
 
 function hasActiveDescendant(item: NavItem): boolean {
@@ -163,6 +170,9 @@ function SidebarNavItem(props: { item: NavItem }) {
             <span>{item.label}</span>
           </Link>
         </SidebarMenuButton>
+        {item.badge != null && item.badge !== false && (
+          <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>
+        )}
       </SidebarMenuItem>
     );
   }
@@ -251,6 +261,18 @@ export interface AppShellProps {
    * Page content. Defaults to `<NestedView />` (renders the active route).
    */
   children?: ReactNode;
+  /**
+   * When `true`, the shell assumes it is mounted inside an outer provider tree
+   * and skips its own `<DialogProvider>` and `<Toaster />` wrappers. Use this
+   * when a parent layout already provides them.
+   */
+  embedded?: boolean;
+  /**
+   * When `true`, the shell fills its parent container instead of the viewport
+   * (`min-h-svh`). Use when a parent layout owns the height (e.g. when a
+   * sticky footer sits below the shell).
+   */
+  fill?: boolean;
 }
 
 /**
@@ -307,14 +329,15 @@ export function AppShell(props: AppShellProps) {
       {props.children ?? <NestedView />}
     </main>
   );
-  return (
-    <DialogProvider>
+  const renderBody = () => (
+    <>
       {progress !== false && (
         <NavigationProgress {...(progress === true ? {} : progress)} />
       )}
       <SidebarProvider
         open={!collapsed}
         onOpenChange={(o: boolean) => setCollapsed(!o)}
+        className={props.fill ? "min-h-0 h-full" : undefined}
       >
         <Sidebar collapsible="icon" variant={variant}>
           <SidebarHeader>{props.brand}</SidebarHeader>
@@ -349,12 +372,28 @@ export function AppShell(props: AppShellProps) {
             </div>
           </div>
         ) : (
-          <SidebarInset>
+          <SidebarInset
+            className={
+              variant === "inset"
+                ? "md:peer-data-[variant=inset]:overflow-hidden"
+                : undefined
+            }
+          >
             {headerNode}
             {mainNode}
           </SidebarInset>
         )}
       </SidebarProvider>
+    </>
+  );
+
+  if (props.embedded) {
+    return renderBody();
+  }
+
+  return (
+    <DialogProvider>
+      {renderBody()}
       <Toaster />
     </DialogProvider>
   );

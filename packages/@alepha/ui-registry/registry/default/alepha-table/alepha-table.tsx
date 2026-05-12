@@ -263,7 +263,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
         </div>
       )}
 
-      <div className="rounded-md border">
+      <div className="flex flex-1 flex-col overflow-auto rounded-md border min-h-0">
         <Table>
           <TableHeader>
             <TableRow>

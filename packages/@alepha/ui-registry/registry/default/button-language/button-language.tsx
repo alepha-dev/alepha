@@ -13,6 +13,11 @@ export interface ButtonLanguageProps {
    * Optional aria-label override. Defaults to `"Switch language"`.
    */
   label?: string;
+  /**
+   * Visual variant. Defaults to `"ghost"` (minimal). Pass `"outline"` for a
+   * bordered toolbar look.
+   */
+  variant?: "ghost" | "outline";
 }
 
 /**
@@ -37,7 +42,7 @@ export function ButtonLanguage(props: ButtonLanguageProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="ghost"
+          variant={props.variant ?? "ghost"}
           size="icon"
           aria-label={props.label ?? "Switch language"}
         >

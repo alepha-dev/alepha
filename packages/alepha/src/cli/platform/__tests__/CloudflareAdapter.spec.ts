@@ -131,21 +131,27 @@ class MemoryCloudflareApi extends CloudflareApi {
     this.secrets.set(scriptName, existing);
   }
 
+  // Full binding set (all types), used by the bulk-PATCH path. Existing
+  // tests read `api.secrets` which we keep as a secret_text-only projection
+  // of this map.
+  public bindings: Map<
+    string,
+    Array<{ type: string; name: string; text?: string }>
+  > = new Map();
+
   public override async getWorkerSettings(scriptName: string) {
-    return { bindings: this.secrets.get(scriptName) ?? [] };
+    return { bindings: this.bindings.get(scriptName) ?? [] };
   }
 
   public override async patchWorkerBindings(
     scriptName: string,
     bindings: Array<{ type: string; name: string; text?: string }>,
   ) {
-    // Mirror the prod path: keep the bindings list as the merged result.
-    // Tests assert on `api.secrets.get(scriptName)`, so we record only
-    // secret_text bindings there.
-    const next = bindings
+    this.bindings.set(scriptName, bindings);
+    const secretView = bindings
       .filter((b) => b.type === "secret_text")
       .map((b) => ({ name: b.name, type: "secret_text" as const }));
-    this.secrets.set(scriptName, next);
+    this.secrets.set(scriptName, secretView);
   }
 
   public override async listDeployments() {
@@ -505,6 +511,100 @@ describe("CloudflareAdapter", () => {
 
       const pushed = api.secrets.get("acme-portal-production") ?? [];
       expect(pushed.map((s) => s.name)).toEqual(["ONLY_SECRET"]);
+    });
+
+    test("skips PATCH when ALEPHA_SECRETS_HASH binding matches", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        apps: [
+          {
+            name: "api",
+            path: "apps/api",
+            entry: { root: "/project/apps/api", server: "src/main.ts" },
+            resources: {
+              hasDatabase: false,
+              hasBucket: false,
+              hasKV: false,
+              hasQueue: false,
+              hasCron: false,
+            },
+          },
+        ],
+      });
+
+      await fs.writeFile(
+        "/project/.env.production",
+        ["APP_SECRET=my-secret", "GOOGLE_API_KEY=sk-123"].join("\n"),
+      );
+
+      const run = createMockRun();
+
+      // First push lands the hash binding on the worker.
+      await adapter.secrets(ctx, run);
+
+      const firstBindings = api.bindings.get("acme-portal-production") ?? [];
+      const hashBinding = firstBindings.find(
+        (b) => b.name === "ALEPHA_SECRETS_HASH",
+      );
+      expect(hashBinding?.type).toBe("plain_text");
+      expect(hashBinding?.text).toMatch(/^[a-f0-9]{64}$/);
+
+      // Mutate the bindings to a sentinel set we can watch for accidental
+      // overwrites. If the second `secrets()` call decides to PATCH again,
+      // the sentinel would be wiped.
+      api.bindings.set("acme-portal-production", [
+        ...firstBindings,
+        { type: "plain_text", name: "__SENTINEL__", text: "untouched" },
+      ]);
+
+      await adapter.secrets(ctx, run);
+
+      const afterBindings = api.bindings.get("acme-portal-production") ?? [];
+      expect(afterBindings.find((b) => b.name === "__SENTINEL__")?.text).toBe(
+        "untouched",
+      );
+    });
+
+    test("PATCHes when secrets changed (hash mismatch)", async ({ expect }) => {
+      const { adapter, fs, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        apps: [
+          {
+            name: "api",
+            path: "apps/api",
+            entry: { root: "/project/apps/api", server: "src/main.ts" },
+            resources: {
+              hasDatabase: false,
+              hasBucket: false,
+              hasKV: false,
+              hasQueue: false,
+              hasCron: false,
+            },
+          },
+        ],
+      });
+
+      await fs.writeFile("/project/.env.production", "APP_SECRET=v1");
+
+      const run = createMockRun();
+      await adapter.secrets(ctx, run);
+      const firstHash = api.bindings
+        .get("acme-portal-production")
+        ?.find((b) => b.name === "ALEPHA_SECRETS_HASH")?.text;
+
+      // Same key, different value → hash should change → fresh PATCH.
+      await fs.writeFile("/project/.env.production", "APP_SECRET=v2");
+      await adapter.secrets(ctx, run);
+
+      const secondHash = api.bindings
+        .get("acme-portal-production")
+        ?.find((b) => b.name === "ALEPHA_SECRETS_HASH")?.text;
+
+      expect(firstHash).toBeTruthy();
+      expect(secondHash).toBeTruthy();
+      expect(secondHash).not.toBe(firstHash);
     });
   });
 

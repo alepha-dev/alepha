@@ -114,7 +114,7 @@ const QuestView = (props: QuestViewProps) => {
   return (
     <Card
       key={quest.id}
-      className="bg-card m-0.5 flex flex-1 flex-col gap-0 overflow-hidden border-border p-0 shadow"
+      className="m-0.5 flex flex-1 flex-col gap-0 overflow-hidden border-border p-0 shadow"
     >
       <div className="flex flex-1 flex-col overflow-auto">
         <div className="flex flex-1 flex-col gap-6 overflow-auto px-5 py-4">

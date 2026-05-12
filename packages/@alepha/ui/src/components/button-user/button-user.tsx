@@ -34,6 +34,11 @@ export interface ButtonUserProps {
    * Optional aria-label override for the trigger.
    */
   label?: string;
+  /**
+   * Visual variant. Defaults to `"ghost"` (minimal). Pass `"outline"` for a
+   * bordered toolbar look.
+   */
+  variant?: "ghost" | "outline";
 }
 
 /**
@@ -60,7 +65,7 @@ export function ButtonUser(props: ButtonUserProps) {
   if (!auth.user) {
     return (
       <Button
-        variant="ghost"
+        variant={props.variant ?? "ghost"}
         size="icon"
         aria-label={props.label ?? "Sign in"}
         disabled={!props.onSignIn}
@@ -75,7 +80,7 @@ export function ButtonUser(props: ButtonUserProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="ghost"
+          variant={props.variant ?? "ghost"}
           size="icon"
           aria-label={props.label ?? "Account menu"}
         >

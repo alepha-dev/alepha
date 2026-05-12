@@ -5,6 +5,7 @@ export const SidebarProvider: (props: {
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  className?: string;
 }) => any = () => null;
 export const Sidebar: (props: {
   collapsible?: "icon" | "offcanvas" | "none";
@@ -45,10 +46,16 @@ export const SidebarMenuSubButton: (props: {
   size?: "sm" | "md";
   children?: ReactNode;
 }) => any = () => null;
+export const SidebarMenuBadge: (props: {
+  className?: string;
+  children?: ReactNode;
+}) => any = () => null;
 export const SidebarTrigger: (props: ComponentProps<"button">) => any = () =>
   null;
-export const SidebarInset: (props: { children?: ReactNode }) => any = () =>
-  null;
+export const SidebarInset: (props: {
+  className?: string;
+  children?: ReactNode;
+}) => any = () => null;
 export const SidebarRail: (props: Record<string, never>) => any = () => null;
 export const useSidebar: () => {
   state: "expanded" | "collapsed";

@@ -146,8 +146,8 @@ const CampaignSettingsAdventurersSection = (
             const silver = characterInfo.getSilver(adventurer.balance);
 
             return (
-              <Card key={adventurer.id} className="bg-card shadow">
-                <CardContent className="flex items-center gap-4 p-3">
+              <Card key={adventurer.id} className="py-3 shadow">
+                <CardContent className="flex items-center gap-4 px-3">
                   {adventurer.user.picture ? (
                     <img
                       alt="avatar"
@@ -217,8 +217,8 @@ const CampaignSettingsAdventurersSection = (
           })}
 
           {pendingInvitations.map((invitation) => (
-            <Card key={invitation.id} className="bg-card shadow opacity-60">
-              <CardContent className="flex items-center gap-4 p-3">
+            <Card key={invitation.id} className="py-3 shadow opacity-60">
+              <CardContent className="flex items-center gap-4 px-3">
                 <div className="bg-muted flex size-10 items-center justify-center rounded-md">
                   <Mail className="size-5" />
                 </div>
@@ -238,8 +238,8 @@ const CampaignSettingsAdventurersSection = (
           ))}
 
           {adventurers.length === 0 && pendingInvitations.length === 0 && (
-            <Card className="bg-card shadow">
-              <CardContent className="flex flex-col items-center justify-center gap-2 p-6">
+            <Card className="shadow">
+              <CardContent className="flex flex-col items-center justify-center gap-2">
                 <Users className="size-8 opacity-50" />
                 <span className="text-muted-foreground text-center text-sm">
                   {tr("campaign.settings.adventurers.empty")}

@@ -1,4 +1,5 @@
 import { Control } from "@alepha/ui/components/control/control";
+import { ControlUpload } from "@alepha/ui/components/control-upload/control-upload";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { t } from "alepha";
@@ -7,7 +8,7 @@ import { useAuth } from "alepha/react/auth";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Hammer, Tag } from "lucide-react";
+import { Hammer, Sparkles, Tag } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import type { CampaignController } from "@/api/controllers/CampaignController.ts";
@@ -40,6 +41,7 @@ const CampaignCreate = () => {
         maxLength: 24,
       }),
       public: t.optional(t.boolean()),
+      icon: t.optional(t.uuid()),
     }),
     onError: (error) => {
       toast.error(error.message);
@@ -72,19 +74,32 @@ const CampaignCreate = () => {
   });
 
   return (
-    <div className="mx-auto w-full max-w-3xl p-4">
-      <form {...form.props}>
-        <div className="flex flex-col gap-4 p-4">
-          <div className="flex flex-col gap-1">
-            <span className="text-lg font-bold">
-              {tr("campaign.create.title")}
-            </span>
-            <span className="text-muted-foreground text-sm">
-              {tr("campaign.create.description")}
-            </span>
+    <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12 md:pt-24">
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3">
+          <div className="text-muted-foreground inline-flex items-center gap-2 text-xs uppercase tracking-widest">
+            <Sparkles className="size-4" />
+            {tr("home.create-campaign")}
           </div>
-          <Card className="shadow">
-            <CardContent className="flex max-w-xl flex-col gap-6 p-4">
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+            {tr("campaign.create.title")}
+          </h1>
+          <p className="text-muted-foreground max-w-xl text-base">
+            {tr("campaign.create.description")}
+          </p>
+        </div>
+
+        <Card className="shadow-sm">
+          <CardContent className="flex flex-col gap-6">
+            <form {...form.props} className="flex flex-col gap-6">
+              <ControlUpload
+                input={form.input.icon}
+                label="Icon"
+                accept="image/*"
+                maxSize={2 * 1024 * 1024}
+                bucket="campaign-icons"
+                disabled={form.submitting}
+              />
               <Control
                 input={form.input.title}
                 icon={Tag}
@@ -99,17 +114,18 @@ const CampaignCreate = () => {
               <div className="flex gap-3">
                 <Button
                   type="submit"
+                  size="lg"
                   disabled={form.submitting}
-                  className="bg-green-600 text-white hover:bg-green-700"
+                  className="h-12 px-8 text-base"
                 >
-                  <Hammer className="size-4" />
+                  <Hammer className="size-5" />
                   {tr("campaign.create.submit")}
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </form>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

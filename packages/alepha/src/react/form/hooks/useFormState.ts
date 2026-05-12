@@ -43,8 +43,15 @@ export const useFormState = <
         alepha.events.on("form:change", (event) => {
           if (event.id === form.id) {
             if (!path || event.path === path) {
+              // `initial: true` marks a programmatic reset (e.g. parent
+              // re-rendering with fresh data via `setInitialValues`). Treat
+              // it like a reset: clear dirty, don't mark dirty.
               if (hasDirty) {
-                setDirty(true);
+                if (event.initial) {
+                  setDirty(false);
+                } else {
+                  setDirty(true);
+                }
               }
               if (hasErrors) {
                 setError(undefined);

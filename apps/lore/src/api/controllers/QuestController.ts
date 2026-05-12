@@ -12,7 +12,6 @@ import {
   okSchema,
 } from "alepha/server";
 import { campaigns } from "../entities/campaigns.ts";
-import { chapters } from "../entities/chapters.ts";
 import { characters } from "../entities/characters.ts";
 import { petitions } from "../entities/petitions.ts";
 import { type Quest, quests } from "../entities/quests.ts";
@@ -68,7 +67,6 @@ export class QuestController {
   quests = $repository(quests);
   campaigns = $repository(campaigns);
   characters = $repository(characters);
-  chapters = $repository(chapters);
   petitions = $repository(petitions);
   characterInfo = $inject(CharacterInfo);
   dt = $inject(DateTimeProvider);
@@ -329,6 +327,7 @@ export class QuestController {
 
       quest.acceptedAt = undefined;
       quest.acceptedBy = undefined;
+      quest.kanbanColumn = undefined;
       quest.history.push({
         at: this.dt.nowISOString(),
         by: user.id,
@@ -357,16 +356,57 @@ export class QuestController {
         },
       });
 
-      await this.security.checkOwnership(quest.campaignId, user);
+      const { campaign } = await this.security.checkOwnership(
+        quest.campaignId,
+        user,
+      );
 
       quest.acceptedAt = this.dt.nowISOString();
       quest.acceptedBy = user.id;
+      // When kanban is on, drop the freshly-accepted quest into the first
+      // configured sub-column so it has a place to live on the board.
+      if (campaign.features?.kanban) {
+        quest.kanbanColumn = campaign.kanbanColumns?.[0];
+      }
       quest.history.push({
         at: this.dt.nowISOString(),
         by: user.id,
         action: "assigned",
       });
 
+      await this.quests.save(quest);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  setQuestKanbanColumn = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      body: t.object({
+        kanbanColumn: t.string(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
+      });
+      const { campaign } = await this.security.checkOwnership(
+        quest.campaignId,
+        user,
+      );
+      const columns = campaign.kanbanColumns ?? [];
+      if (!columns.includes(body.kanbanColumn)) {
+        throw new BadRequestError("Unknown kanban column for this campaign.");
+      }
+      quest.kanbanColumn = body.kanbanColumn;
       await this.quests.save(quest);
       return this.mapQuestToResource(quest);
     },
@@ -419,19 +459,7 @@ export class QuestController {
       character.balance += money;
       quest.completedAt = this.dt.nowISOString();
       quest.completedBy = user.id;
-
-      // Auto-attach to active chapter
-      const activeChapters = await this.chapters.findMany({
-        where: {
-          campaignId: { eq: quest.campaignId },
-          closedAt: { isNull: true },
-        },
-        limit: 1,
-      });
-
-      if (activeChapters.length > 0) {
-        quest.chapterId = activeChapters[0].id;
-      }
+      quest.kanbanColumn = undefined;
 
       await Promise.all([
         this.characters.save(character),
