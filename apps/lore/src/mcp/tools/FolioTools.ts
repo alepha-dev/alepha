@@ -3,22 +3,7 @@ import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 import { CampaignController } from "../../api/controllers/CampaignController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
-
-const folioRefSchema = t.object({
-  id: t.uuid(),
-  title: t.string(),
-  tags: t.array(t.string()),
-  updatedAt: t.string(),
-});
-
-const folioFullSchema = t.object({
-  id: t.uuid(),
-  title: t.string(),
-  tags: t.array(t.string()),
-  content: t.string(),
-  createdAt: t.string(),
-  updatedAt: t.string(),
-});
+import { folioFullSchema, folioRefSchema } from "../schemas/index.ts";
 
 /**
  * Pull a ~200-character window around the first match of `query` in `text`.

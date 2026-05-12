@@ -1,12 +1,11 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Copy } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { currentCampaignAtom } from "@/web/app/atoms/currentCampaignAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import CampaignSettingsFeatureSection from "./CampaignSettingsFeatureSection.tsx";
+import CampaignSettingsPetitionsPageSnippet from "./CampaignSettingsPetitionsPageSnippet.tsx";
 import { useCampaignFeatureToggle } from "./useCampaignFeatureToggle.ts";
 
 const CampaignSettingsPetitionsPage = () => {
@@ -65,14 +64,14 @@ const CampaignSettingsPetitionsPage = () => {
             </span>
           </div>
 
-          <Snippet
+          <CampaignSettingsPetitionsPageSnippet
             label={String(tr("petitions.integrate.simple"))}
             code={linkSnippet}
             onCopy={() => copy(linkSnippet)}
             copyLabel={String(tr("petitions.integrate.copy"))}
           />
 
-          <Snippet
+          <CampaignSettingsPetitionsPageSnippet
             label={String(tr("petitions.integrate.dynamic"))}
             code={dynamicSnippet}
             onCopy={() => copy(dynamicSnippet)}
@@ -83,29 +82,5 @@ const CampaignSettingsPetitionsPage = () => {
     </div>
   );
 };
-
-interface SnippetProps {
-  label: string;
-  code: string;
-  onCopy: () => void;
-  copyLabel: string;
-}
-
-const Snippet = (props: SnippetProps) => (
-  <div className="flex flex-col gap-1.5">
-    <div className="flex items-center justify-between">
-      <span className="text-xs font-medium uppercase tracking-wide">
-        {props.label}
-      </span>
-      <Button variant="outline" size="sm" onClick={props.onCopy}>
-        <Copy className="size-3.5" />
-        {props.copyLabel}
-      </Button>
-    </div>
-    <pre className="bg-muted/40 max-h-64 overflow-auto rounded-md border p-3 font-mono text-xs">
-      {props.code}
-    </pre>
-  </div>
-);
 
 export default CampaignSettingsPetitionsPage;

@@ -1,5 +1,7 @@
 import {
+  type ChangeEvent,
   createContext,
+  type KeyboardEvent,
   type ReactNode,
   useCallback,
   useContext,
@@ -134,7 +136,7 @@ export function DialogProvider(props: { children: ReactNode }) {
       {props.children}
       <AlertDialog
         open={!!pending}
-        onOpenChange={(o) => {
+        onOpenChange={(o: boolean) => {
           if (!o) resolve(cancelValue);
         }}
       >
@@ -150,17 +152,23 @@ export function DialogProvider(props: { children: ReactNode }) {
           {pending?.kind === "prompt" && (
             <div className="flex flex-col gap-2">
               {opts?.label && (
-                <label className="text-sm font-medium">{opts.label}</label>
+                <label
+                  htmlFor="alepha-dialog-prompt-input"
+                  className="text-sm font-medium"
+                >
+                  {opts.label}
+                </label>
               )}
               <Input
+                id="alepha-dialog-prompt-input"
                 autoFocus
                 value={promptValue}
                 placeholder={opts?.placeholder}
-                onChange={(e) => {
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
                   setPromptValue(e.target.value);
                   if (promptError) setPromptError(null);
                 }}
-                onKeyDown={(e) => {
+                onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
                     handlePromptConfirm();

@@ -8,10 +8,10 @@
  * `@/components/*` alias.
  */
 export const saasAdminLayoutTsx = () =>
-  `import { AppShell } from "@/components/app-shell";
+  `import { AppShell } from "@/components/app-shell/app-shell";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { DialogProvider } from "@/components/use-dialog";
+import { DialogProvider } from "@/components/use-dialog/use-dialog";
 import { NestedView, useRouterState } from "alepha/react/router";
 import { ShieldCheck, Users } from "lucide-react";
 

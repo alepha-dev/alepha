@@ -12,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@alepha/ui/components/ui/select";
-import { useAlepha, useClient } from "alepha/react";
+import { DateTimeProvider } from "alepha/datetime";
+import { useAlepha, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   ChartBar,
@@ -80,6 +81,7 @@ const CampaignStats = (props: CampaignStatsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const alepha = useAlepha();
   const campaignStatsApi = useClient<CampaignStatsController>();
+  const dt = useInject(DateTimeProvider);
   const currentCampaign = alepha.store.get(currentCampaignAtom);
   const [timelineRange, setTimelineRange] = useState<string>("14days");
 
@@ -132,7 +134,7 @@ const CampaignStats = (props: CampaignStatsProps) => {
   }));
 
   const getFilteredTimelineData = () => {
-    const now = new Date();
+    const now = new Date(dt.nowMillis());
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     let cutoffDate: Date;

@@ -13,11 +13,46 @@ This is an **Alepha** project.
 ## Commands
 
 \`\`\`bash
-alepha lint      # Format and lint
-alepha typecheck # Type checking
-alepha test      # Run tests
-alepha build     # Build
+alepha lint              # Format and lint
+alepha typecheck         # Type checking
+alepha test              # Run tests
+alepha build             # Build
+alepha platform plan     # Show planned cloud topology (requires platform plugin)
+alepha platform up       # Provision + deploy to a configured environment
+alepha platform status   # Inspect deployed resources
 \`\`\`
+
+## Cloud deployment (Cloudflare Workers)
+
+Add the \`platform\` plugin to \`alepha.config.ts\` to manage cloud
+provisioning, deploy, secrets, and DB migrations end-to-end:
+
+\`\`\`ts
+import { defineConfig } from "alepha/cli/config";
+import { platform } from "alepha/cli/platform";
+
+export default defineConfig({
+  plugins: [
+    platform({
+      environments: {
+        production: {
+          adapter: "cloudflare",
+          domain: "yourapp.com",
+          // zone: "yourapp.com",     // required only for wildcard domains
+          // jurisdiction: "eu",       // optional: EU data residency
+        },
+      },
+    }),
+  ],
+});
+\`\`\`
+
+Then: \`alepha platform up --env production\` (auth via \`wrangler login\` on first run).
+
+Supported adapters: \`cloudflare\`, \`vercel\`. The Cloudflare adapter provisions
+D1 (or Hyperdrive when \`DATABASE_URL\` is postgres), KV, R2, Queues, and pushes
+secrets via \`wrangler secret bulk\`. Set \`build.target: "cloudflare"\` in
+\`alepha.config.ts\` if you only want the build artifact without the orchestrator.
 
 ## Documentation
 
