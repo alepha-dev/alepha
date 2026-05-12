@@ -21,6 +21,29 @@ const makeApp = () =>
 const makeAppDirect = () =>
   Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
 
+/**
+ * Poll `fn` until `predicate` returns true, or throw on timeout.
+ * Use this instead of `setTimeout(r, fixedMs)` — fixed sleeps race the
+ * in-memory queue under CI load and produce flaky failures.
+ */
+async function waitFor<T>(
+  fn: () => Promise<T> | T,
+  predicate: (v: T) => boolean,
+  { timeout = 2000, interval = 10, label = "condition" } = {},
+): Promise<T> {
+  const deadline = Date.now() + timeout;
+  let last: T = await fn();
+  while (Date.now() < deadline) {
+    if (predicate(last)) return last;
+    await new Promise((r) => setTimeout(r, interval));
+    last = await fn();
+  }
+  if (predicate(last)) return last;
+  throw new Error(
+    `waitFor: ${label} not met within ${timeout}ms; last value: ${JSON.stringify(last)}`,
+  );
+}
+
 describe("$job — registration validation", () => {
   it("rejects jobs declaring both cron and schema", async ({ expect }) => {
     const alepha = makeApp();
@@ -136,13 +159,12 @@ describe("$job — queue mode (outbox)", () => {
     await alepha.start();
     await app.work.push({ n: 42 });
 
-    // Memory queue is synchronous-ish; processing completes promptly.
-    await new Promise((r) => setTimeout(r, 50));
-
+    const rows = await waitFor(
+      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      (r) => r.length === 0 && received !== undefined,
+      { label: "row deleted on success" },
+    );
     expect(received).toEqual({ n: 42 });
-    const rows = await app.executions.findMany({
-      where: { jobName: { eq: "App.work" } },
-    });
     expect(rows).toHaveLength(0);
   });
 
@@ -159,10 +181,11 @@ describe("$job — queue mode (outbox)", () => {
     const app = alepha.inject(App);
     await alepha.start();
     await app.work.push({ n: 1 });
-    await new Promise((r) => setTimeout(r, 50));
-    const rows = await app.executions.findMany({
-      where: { jobName: { eq: "App.work" } },
-    });
+    const rows = await waitFor(
+      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      (r) => r.length === 1 && r[0].status === "ok",
+      { label: "row reaches status=ok" },
+    );
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("ok");
   });
@@ -209,11 +232,12 @@ describe("$job — queue mode (outbox)", () => {
     const app = alepha.inject(App);
     await alepha.start();
     await app.work.push({ v: 1 }, { delay: [1, "hour"] });
-    await new Promise((r) => setTimeout(r, 50));
+    const rows = await waitFor(
+      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      (r) => r.length === 1 && r[0].status === "scheduled",
+      { label: "row reaches status=scheduled" },
+    );
     expect(calls).toBe(0);
-    const rows = await app.executions.findMany({
-      where: { jobName: { eq: "App.work" } },
-    });
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("scheduled");
     expect(rows[0].scheduledAt).toBeTruthy();
@@ -265,10 +289,12 @@ describe("$job — queue mode (outbox)", () => {
     const app = alepha.inject(App);
     await alepha.start();
     await app.work.push({ v: 1 });
-    await new Promise((r) => setTimeout(r, 50));
-    const rows = await app.executions.findMany({
-      where: { jobName: { eq: "App.work" } },
-    });
+    const rows = await waitFor(
+      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      (r) =>
+        r.length === 1 && r[0].status === "scheduled" && r[0].attempt === 1,
+      { label: "row rescheduled after first failure" },
+    );
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("scheduled");
     expect(rows[0].attempt).toBe(1);
@@ -297,10 +323,11 @@ describe("$job — queue mode (outbox)", () => {
     const app = alepha.inject(App);
     await alepha.start();
     await app.work.push({ v: 1 });
-    await new Promise((r) => setTimeout(r, 100));
-    const rows = await app.executions.findMany({
-      where: { jobName: { eq: "App.work" } },
-    });
+    const rows = await waitFor(
+      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      (r) => r.length === 1 && r[0].status === "error",
+      { label: "row reaches terminal status=error" },
+    );
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("error");
     expect(rows[0].error).toBe("dead");
@@ -579,18 +606,31 @@ describe("$job — retry semantics", () => {
 
     await app.work.push({ v: 1 });
 
-    // First attempt runs immediately. Subsequent retries are sweep-driven.
-    await new Promise((r) => setTimeout(r, 100));
+    // First attempt runs immediately, then the row is rescheduled with attempt=1.
+    // Wait for that stable state before sweeping (sweep needs status=scheduled).
+    await waitFor(
+      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      (r) => r[0]?.status === "scheduled" && r[0]?.attempt === 1,
+      { label: "row rescheduled after attempt 1" },
+    );
     expect(attempts).toBe(1);
 
     const provider = alepha.inject(JobProvider);
     // Trigger sweeps manually — each one should claim and run the next attempt.
     await (provider as any).sweep();
-    await new Promise((r) => setTimeout(r, 50));
+    await waitFor(
+      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      (r) => r[0]?.status === "scheduled" && r[0]?.attempt === 2,
+      { label: "row rescheduled after attempt 2" },
+    );
     expect(attempts).toBe(2);
 
     await (provider as any).sweep();
-    await new Promise((r) => setTimeout(r, 50));
+    await waitFor(
+      () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+      (r) => r[0]?.status === "error" && r[0]?.attempt === 3,
+      { label: "row terminal after attempt 3" },
+    );
     expect(attempts).toBe(3);
 
     // After 3 attempts the row is terminal — no more retries.
@@ -640,11 +680,16 @@ describe("$job — cancel race", () => {
 
     await app.slow.cancel(id);
 
-    // Give the handler's abort path a moment to execute and (without the
-    // guard) try to overwrite the row.
-    await new Promise((r) => setTimeout(r, 100));
-
-    const final = await app.executions.findById(id);
+    // Confirm the row is `cancelled` and stays that way — without the guard,
+    // the handler's abort path would race to overwrite to `error`. Poll for a
+    // stable window so the (buggy) overwrite would be caught.
+    const settleDeadline = Date.now() + 300;
+    let final: any;
+    while (Date.now() < settleDeadline) {
+      final = await app.executions.findById(id);
+      if (final?.status !== "cancelled") break;
+      await new Promise((r) => setTimeout(r, 20));
+    }
     expect(final?.status).toBe("cancelled");
     expect(final?.error).toBeFalsy();
   });
@@ -695,11 +740,16 @@ describe("$job — cron + retry (outbox path)", () => {
 
     // Sweep picks it up and runs attempt 2 → terminal.
     await (provider as any).sweep();
-    await new Promise((r) => setTimeout(r, 100));
-    expect(attempts).toBe(2);
-    const rows2 = await app.executions.findMany({
-      where: { jobName: { eq: "App.tick" } },
-    });
+    await waitFor(
+      () => attempts,
+      (n) => n === 2,
+      { label: "second attempt runs after cron sweep" },
+    );
+    const rows2 = await waitFor(
+      () => app.executions.findMany({ where: { jobName: { eq: "App.tick" } } }),
+      (r) => r[0]?.status === "error",
+      { label: "row reaches terminal error" },
+    );
     expect(rows2[0].status).toBe("error");
   });
 });
@@ -765,12 +815,14 @@ describe("$job — admin resource shape", () => {
     await alepha.start();
 
     const id = await app.work.push({ v: 1 });
-    // Wait for the handler to finish so the row is `ok` (record: all keeps it).
-    await new Promise((r) => setTimeout(r, 100));
-
     const { JobService } = await import("../services/JobService.ts");
     const svc = alepha.inject(JobService);
-    const resource = await svc.getExecution(id);
+    // Wait for the handler to finish so the row is `ok` (record: all keeps it).
+    const resource = await waitFor(
+      () => svc.getExecution(id),
+      (r) => r?.status === "ok",
+      { label: "execution reaches status=ok" },
+    );
     expect(resource.priority).toBe("high");
     expect(typeof resource.priority).toBe("string");
   });
