@@ -39,7 +39,7 @@ const FoliosSidebar = () => {
   }, [folios, deferredQuery, activeTag]);
 
   return (
-    <aside className="bg-muted/40 mb-3 ml-3 flex w-72 shrink-0 flex-col overflow-hidden rounded-xl border shadow-sm">
+    <aside className="flex w-72 shrink-0 flex-col overflow-hidden border-r">
       <div className="flex items-center gap-2 px-4 py-3">
         <BookOpen className="size-5" />
         <h2 className="flex-1 text-sm font-semibold">{tr("folios.title")}</h2>

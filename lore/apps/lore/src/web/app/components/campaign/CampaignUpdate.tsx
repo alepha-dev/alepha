@@ -1,10 +1,9 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
-import { Card } from "@alepha/ui/components/ui/card";
 import { t } from "alepha";
 import { useAlepha, useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { Tag } from "lucide-react";
+import { Globe2, Lock, Tag } from "lucide-react";
 import type { CampaignController } from "@/api/controllers/CampaignController.ts";
 import type { Campaign } from "@/api/entities/campaigns.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
@@ -23,24 +22,27 @@ const CampaignUpdate = (props: CampaignUpdateProps) => {
   const form = useForm({
     initialValues: props.campaign,
     schema: t.object({
-      title: t.optional(
-        t.string({
-          title: String(tr("campaign.create.name")),
-          minLength: 3,
-          maxLength: 24,
-        }),
-      ),
+      icon: t.optional(t.nullable(t.uuid())),
+      title: t.string({
+        title: String(tr("campaign.create.name")),
+        minLength: 3,
+        maxLength: 24,
+      }),
       public: t.optional(
         t.boolean({
-          title: String(tr("campaign.create.public")),
-          description: String(tr("campaign.create.public.helper")),
+          title: "Visibility",
+          description: "Public campaign will be visible by the outside world.",
         }),
       ),
     }),
     handler: async (values) => {
       const campaign = await campaignApi.updateCampaignById({
         params: { id: props.campaign.id },
-        body: values,
+        body: {
+          ...values,
+          // Force null so the server can distinguish "cleared" from "absent".
+          icon: values.icon ?? null,
+        },
       });
 
       alepha.store.set(currentCampaignAtom, campaign);
@@ -54,17 +56,40 @@ const CampaignUpdate = (props: CampaignUpdateProps) => {
   });
 
   return (
-    <Card className="bg-card p-4 shadow">
-      <AutoForm
-        form={form}
-        fields={{
-          title: {
-            icon: Tag,
+    <AutoForm
+      form={form}
+      layout="row"
+      autoSave
+      groups={[{ fields: ["icon", "title", "public"] }]}
+      fields={{
+        icon: {
+          label: "Icon",
+          upload: {
+            accept: "image/*",
+            maxSize: 2 * 1024 * 1024,
+            bucket: "campaign-icons",
           },
-        }}
-        submitLabel={String(tr("campaign.update.submit"))}
-      />
-    </Card>
+        },
+        title: {
+          icon: Tag,
+        },
+        public: {
+          select: true,
+          items: [
+            {
+              value: "true",
+              label: "Public",
+              icon: <Globe2 className="size-4" />,
+            },
+            {
+              value: "false",
+              label: "Private",
+              icon: <Lock className="size-4" />,
+            },
+          ],
+        },
+      }}
+    />
   );
 };
 

@@ -22,9 +22,20 @@ import {
 import type { I18n } from "../../services/I18n.ts";
 import { Toaster } from "../../services/Toaster.ts";
 import QuestView from "../campaign/quest/QuestView.tsx";
-import KanbanColumn from "./KanbanColumn.tsx";
+import KanbanColumn, {
+  type ColumnDescriptor,
+  type ColumnKind,
+} from "./KanbanColumn.tsx";
 
 type QuestStatus = "new" | "accepted" | "completed";
+
+const SUB_COLUMN_DOTS = [
+  "bg-orange-500",
+  "bg-amber-500",
+  "bg-yellow-500",
+  "bg-lime-500",
+  "bg-teal-500",
+];
 
 export interface KanbanBoardProps {
   campaign: Campaign;
@@ -76,21 +87,62 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     return quests;
   }, [quests, zoneFilter]);
 
+  const subColumns = campaign.kanbanColumns ?? ["In Progress"];
+
+  const columns: ColumnDescriptor[] = useMemo(() => {
+    const cols: ColumnDescriptor[] = [
+      {
+        key: "column-new",
+        kind: "new",
+        label: String(tr("kanban.column.new")),
+        dotClass: "bg-blue-500",
+      },
+    ];
+    subColumns.forEach((name, idx) => {
+      cols.push({
+        key: `column-accepted:${name}`,
+        kind: "accepted",
+        subColumn: name,
+        label: name,
+        dotClass: SUB_COLUMN_DOTS[idx % SUB_COLUMN_DOTS.length],
+      });
+    });
+    cols.push({
+      key: "column-completed",
+      kind: "completed",
+      label: String(tr("kanban.column.completed")),
+      dotClass: "bg-green-500",
+    });
+    return cols;
+  }, [subColumns, tr]);
+
   const grouped = useMemo(() => {
-    const result: Record<QuestStatus, QuestResource[]> = {
-      new: [],
-      accepted: [],
-      completed: [],
-    };
+    const byKey: Record<string, QuestResource[]> = {};
+    for (const col of columns) byKey[col.key] = [];
+    const fallback = columns.find((c) => c.kind === "accepted")?.key;
     for (const quest of filteredQuests) {
-      result[quest.metadata.status].push(quest);
+      const status = quest.metadata.status;
+      if (status === "new") {
+        byKey["column-new"].push(quest);
+      } else if (status === "completed") {
+        byKey["column-completed"].push(quest);
+      } else {
+        const targetKey = quest.kanbanColumn
+          ? `column-accepted:${quest.kanbanColumn}`
+          : fallback;
+        // If the quest lives in a column that was renamed/deleted, drop it
+        // into the first accepted lane rather than losing it on the board.
+        const bucketKey =
+          targetKey && byKey[targetKey] ? targetKey : fallback;
+        if (bucketKey && byKey[bucketKey]) byKey[bucketKey].push(quest);
+      }
     }
-    result.completed.sort(
+    byKey["column-completed"]?.sort(
       (a, b) =>
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
-    return result;
-  }, [filteredQuests]);
+    return byKey;
+  }, [filteredQuests, columns]);
 
   const reload = async () => {
     setLoading(true);
@@ -117,27 +169,46 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     if (questData?.type !== "quest" || columnData?.type !== "column") return;
 
     const quest = questData.quest as QuestResource;
-    const fromStatus = quest.metadata.status;
-    const toStatus = columnData.status as QuestStatus;
+    const fromStatus = quest.metadata.status as QuestStatus;
+    const toKind = columnData.kind as ColumnKind;
+    const toSubColumn = columnData.subColumn as string | undefined;
 
-    if (fromStatus === toStatus) return;
+    // No-op if the card was dropped onto its current column.
+    if (fromStatus === toKind) {
+      if (toKind !== "accepted") return;
+      if (quest.kanbanColumn === toSubColumn) return;
+    }
 
     if (fromStatus === "completed") {
       toaster.show(String(tr("kanban.error.completedCannotMove")), "danger");
       return;
     }
 
-    if (fromStatus === "new" && toStatus === "completed") {
+    if (fromStatus === "new" && toKind === "completed") {
       toaster.show(String(tr("kanban.error.acceptFirst")), "warning");
       return;
     }
 
     try {
-      if (fromStatus === "new" && toStatus === "accepted") {
+      if (fromStatus === "new" && toKind === "accepted") {
+        // Accept the quest then (if needed) move it to the chosen sub-column;
+        // acceptQuest drops it in the first column by default.
         await questApi.acceptQuest({ params: { id: quest.id } });
-      } else if (fromStatus === "accepted" && toStatus === "new") {
+        if (toSubColumn && toSubColumn !== subColumns[0]) {
+          await questApi.setQuestKanbanColumn({
+            params: { id: quest.id },
+            body: { kanbanColumn: toSubColumn },
+          });
+        }
+      } else if (fromStatus === "accepted" && toKind === "new") {
         await questApi.abandonQuest({ params: { id: quest.id } });
-      } else if (fromStatus === "accepted" && toStatus === "completed") {
+      } else if (fromStatus === "accepted" && toKind === "accepted") {
+        if (!toSubColumn) return;
+        await questApi.setQuestKanbanColumn({
+          params: { id: quest.id },
+          body: { kanbanColumn: toSubColumn },
+        });
+      } else if (fromStatus === "accepted" && toKind === "completed") {
         await questApi.completeQuest({ params: { id: quest.id } });
       }
       await reload();
@@ -185,25 +256,16 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       {/* Columns */}
       <div className="flex flex-1 overflow-hidden">
         <DndContext id={dndId} sensors={sensors} onDragEnd={handleDragEnd}>
-          <KanbanColumn
-            status="new"
-            quests={grouped.new}
-            readOnly={readOnly}
-            onSelect={setSelectedQuest}
-          />
-          <KanbanColumn
-            status="accepted"
-            quests={grouped.accepted}
-            readOnly={readOnly}
-            onSelect={setSelectedQuest}
-          />
-          <KanbanColumn
-            status="completed"
-            quests={grouped.completed}
-            readOnly={readOnly}
-            onSelect={setSelectedQuest}
-            last
-          />
+          {columns.map((descriptor, idx) => (
+            <KanbanColumn
+              key={descriptor.key}
+              descriptor={descriptor}
+              quests={grouped[descriptor.key] ?? []}
+              readOnly={readOnly}
+              onSelect={setSelectedQuest}
+              last={idx === columns.length - 1}
+            />
+          ))}
         </DndContext>
       </div>
 

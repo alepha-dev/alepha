@@ -68,10 +68,10 @@ const QuestItem = (props: QuestItemProps) => {
     <Link
       href={targetHref}
       className={[
-        "border-border flex items-center gap-2 rounded-md border px-2 py-1.5 transition-colors",
+        "flex items-center gap-2 rounded-md border bg-card px-2 py-1.5 transition-colors hover:bg-accent",
         isActive
-          ? "bg-primary text-primary-foreground"
-          : "bg-card hover:bg-accent",
+          ? "border-primary ring-1 ring-primary/40 ring-inset"
+          : "border-border",
       ].join(" ")}
     >
       <div className="flex flex-1 items-center gap-2">

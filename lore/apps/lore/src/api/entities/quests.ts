@@ -19,6 +19,13 @@ export const quests = $entity({
     difficulty: t.integer({ minimum: 1, maximum: 5 }),
     acceptedAt: t.optional(t.datetime()),
     completedAt: t.optional(t.datetime()),
+    /**
+     * Kanban sub-column the quest sits in while `status === "accepted"`.
+     * Only used when the campaign's `kanban` feature is on. Free-form text
+     * that must match one of the campaign's configured `kanbanColumns`.
+     * Cleared when the quest moves back to "New" or forward to "Completed".
+     */
+    kanbanColumn: t.optional(t.string()),
     objectives: db.default(
       t.array(
         t.object({

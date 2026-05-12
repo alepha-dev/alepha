@@ -44,9 +44,9 @@ export class AppRouter {
 
   head = $head(() => {
     const head: Head = {
-      title: "Lore",
-      titleSeparator: " - ",
-      description: "Lore - Gamified campaign management",
+      title: "Alepha Lore",
+      description:
+        "Alepha Lore - gamified project and knowledge management for builders.",
     };
 
     head.link = [
@@ -58,7 +58,8 @@ export class AppRouter {
       { name: "theme-color", content: "#010409" },
       {
         name: "keywords",
-        content: "Alepha, Lore, open-source, applications, platform",
+        content:
+          "Alepha Lore, project management, task tracking, knowledge management, MCP, AI, quests, open-source",
       },
     ];
 
@@ -128,7 +129,7 @@ export class AppRouter {
   login = $page({
     path: "/auth/login",
     name: "login",
-    head: { title: "Sign in" },
+    head: { title: "Sign in › Alepha Lore" },
     lazy: () => import("./components/auth/AuthLoginPage.tsx"),
     loader: async () => {
       const realmConfig = await this.realmApi.getRealmConfig();
@@ -139,7 +140,7 @@ export class AppRouter {
   register = $page({
     path: "/auth/register",
     name: "register",
-    head: { title: "Sign up" },
+    head: { title: "Sign up › Alepha Lore" },
     lazy: () => import("./components/auth/AuthRegisterPage.tsx"),
     loader: async () => {
       const realmConfig = await this.realmApi.getRealmConfig();
@@ -150,7 +151,7 @@ export class AppRouter {
   resetPassword = $page({
     path: "/auth/reset-password",
     name: "resetPassword",
-    head: { title: "Reset password" },
+    head: { title: "Reset password › Alepha Lore" },
     lazy: () => import("./components/auth/AuthResetPasswordPage.tsx"),
     loader: async () => {
       const realmConfig = await this.realmApi.getRealmConfig();
@@ -161,13 +162,11 @@ export class AppRouter {
   home = $page({
     path: "/",
     lazy: () => import("./components/home/Home.tsx"),
-    head: {
-      title: "Home",
-    },
   });
 
   campaignCreate = $page({
     path: "/c-new",
+    head: { title: "New campaign › Alepha Lore" },
     lazy: () => import("./components/campaign/CampaignCreate.tsx"),
   });
 
@@ -185,7 +184,6 @@ export class AppRouter {
 
   campaign = $page({
     children: () => [
-      this.campaignDashboard,
       this.campaignBoard,
       this.campaignQuest,
       this.campaignChapters,
@@ -200,6 +198,11 @@ export class AppRouter {
       params: t.object({
         campaignId: t.integer(),
       }),
+    },
+    head: (props) => {
+      const campaign = (props as { campaign?: { title?: string } } | undefined)
+        ?.campaign;
+      return { title: campaign?.title ?? "Campaign" };
     },
     lazy: () => import("./components/campaign/CampaignView.tsx"),
     loader: async ({ params }) => {
@@ -231,25 +234,28 @@ export class AppRouter {
     },
   });
 
-  campaignDashboard = $page({
-    path: "/",
-    lazy: () => import("./components/campaign/CampaignDashboard.tsx"),
-  });
-
   campaignBoard = $page({
-    path: "/board",
+    path: "/",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Board`,
+    }),
     lazy: () => import("./components/campaign/CampaignBoardTable.tsx"),
   });
 
   campaignChapters = $page({
     path: "/chapters",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Chapters`,
+    }),
     lazy: () => import("./components/campaign/chapters/CampaignChapters.tsx"),
   });
 
   campaignKanban = $page({
     name: "campaignKanban",
     path: "/kanban",
-    head: { title: "Kanban" },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Kanban`,
+    }),
     lazy: () => import("./components/kanban/KanbanBoard.tsx"),
     loader: async () => {
       const campaign = this.alepha.store.get(currentCampaignAtom);
@@ -266,7 +272,9 @@ export class AppRouter {
   campaignPetitions = $page({
     name: "campaignPetitions",
     path: "/petitions",
-    head: { title: "Petitions" },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Petitions`,
+    }),
     lazy: () => import("./components/campaign/petitions/CampaignPetitions.tsx"),
     loader: async () => {
       const campaign = this.alepha.store.get(currentCampaignAtom);
@@ -283,6 +291,9 @@ export class AppRouter {
 
   campaignChronicles = $page({
     path: "/chronicles",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Chronicles`,
+    }),
     lazy: () => import("./components/campaign/CampaignStats.tsx"),
     loader: async () => {
       const stats = await this.campaignStatsApi.getCampaignStats({
@@ -298,13 +309,46 @@ export class AppRouter {
 
   campaignSettings = $page({
     path: "/settings",
+    children: () => [
+      this.campaignSettingsGeneral,
+      this.campaignSettingsAdventurers,
+      this.campaignSettingsZones,
+      this.campaignSettingsKanban,
+      this.campaignSettingsFolios,
+      this.campaignSettingsPetitions,
+      this.campaignSettingsChapters,
+    ],
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Settings`,
+    }),
     lazy: () => import("./components/campaign/settings/CampaignSettings.tsx"),
+  });
+
+  campaignSettingsGeneral = $page({
+    name: "campaignSettingsGeneral",
+    path: "/",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › General`,
+    }),
+    lazy: () =>
+      import("./components/campaign/settings/CampaignSettingsGeneral.tsx"),
+  });
+
+  campaignSettingsAdventurers = $page({
+    name: "campaignSettingsAdventurers",
+    path: "/adventurers",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Adventurers`,
+    }),
+    lazy: () =>
+      import(
+        "./components/campaign/settings/CampaignSettingsAdventurersPage.tsx"
+      ),
     loader: async () => {
       const campaign = this.alepha.store.get(currentCampaignAtom);
       if (!campaign) {
         throw new NotFoundError("Campaign not found");
       }
-
       const [adventurers, pendingInvitations] = await Promise.all([
         this.campaignApi.getCampaignAdventurers({
           params: { id: campaign.id },
@@ -320,13 +364,70 @@ export class AppRouter {
           .then((page) => page.content)
           .catch(() => []),
       ]);
-
-      return {
-        campaign,
-        adventurers,
-        pendingInvitations,
-      };
+      return { adventurers, pendingInvitations };
     },
+  });
+
+  campaignSettingsZones = $page({
+    name: "campaignSettingsZones",
+    path: "/zones",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Zones`,
+    }),
+    lazy: () =>
+      import("./components/campaign/settings/CampaignSettingsZones.tsx"),
+    loader: async () => {
+      const campaign = this.alepha.store.get(currentCampaignAtom);
+      if (!campaign) {
+        throw new NotFoundError("Campaign not found");
+      }
+      const zones = await this.campaignApi.getZones({
+        params: { id: campaign.id },
+      });
+      return { zones };
+    },
+  });
+
+  campaignSettingsKanban = $page({
+    name: "campaignSettingsKanban",
+    path: "/kanban",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Kanban`,
+    }),
+    lazy: () =>
+      import("./components/campaign/settings/CampaignSettingsKanbanPage.tsx"),
+  });
+
+  campaignSettingsFolios = $page({
+    name: "campaignSettingsFolios",
+    path: "/folios",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Folios`,
+    }),
+    lazy: () =>
+      import("./components/campaign/settings/CampaignSettingsFoliosPage.tsx"),
+  });
+
+  campaignSettingsPetitions = $page({
+    name: "campaignSettingsPetitions",
+    path: "/petitions",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Petitions`,
+    }),
+    lazy: () =>
+      import(
+        "./components/campaign/settings/CampaignSettingsPetitionsPage.tsx"
+      ),
+  });
+
+  campaignSettingsChapters = $page({
+    name: "campaignSettingsChapters",
+    path: "/chapters",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Chapters`,
+    }),
+    lazy: () =>
+      import("./components/campaign/settings/CampaignSettingsChaptersPage.tsx"),
   });
 
   campaignQuest = $page({
@@ -335,6 +436,13 @@ export class AppRouter {
       params: t.object({
         questId: t.integer(),
       }),
+    },
+    head: (props, previous) => {
+      const questTitle = (props as { quest?: { title?: string } } | undefined)
+        ?.quest?.title;
+      return {
+        title: `${previous?.title ?? ""} › ${questTitle ?? "Quest"}`,
+      };
     },
     animation: ({ meta }) => {
       if (meta.transition) {
@@ -391,7 +499,9 @@ export class AppRouter {
       this.campaignFoliosFolioEdit,
     ],
     path: "/folios",
-    head: { title: "Folios" },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Folios`,
+    }),
     lazy: () => import("./components/folios/FoliosLayout.tsx"),
     loader: async () => {
       const campaign = this.alepha.store.get(currentCampaignAtom);
@@ -414,7 +524,9 @@ export class AppRouter {
   campaignFoliosNew = $page({
     name: "campaignFoliosNew",
     path: "/new",
-    head: { title: "New folio" },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › New`,
+    }),
     lazy: () => import("./components/folios/FolioCreatePage.tsx"),
     loader: async () => {
       this.alepha.store.set(currentFolioAtom, undefined);
@@ -427,6 +539,13 @@ export class AppRouter {
     path: "/:id",
     schema: {
       params: t.object({ id: t.uuid() }),
+    },
+    head: (props, previous) => {
+      const folio = (props as { folio?: { title?: string } } | undefined)
+        ?.folio;
+      return {
+        title: `${previous?.title ?? ""} › ${folio?.title ?? "Folio"}`,
+      };
     },
     lazy: () => import("./components/folios/FolioView.tsx"),
     loader: async ({ params }) => {
@@ -442,7 +561,13 @@ export class AppRouter {
     schema: {
       params: t.object({ id: t.uuid() }),
     },
-    head: { title: "Edit folio" },
+    head: (props, previous) => {
+      const folio = (props as { folio?: { title?: string } } | undefined)
+        ?.folio;
+      return {
+        title: `${previous?.title ?? ""} › Edit ${folio?.title ?? "folio"}`,
+      };
+    },
     lazy: () => import("./components/folios/FolioEditPage.tsx"),
     loader: async ({ params }) => {
       const folio = await this.folioApi.get({ params: { id: params.id } });
@@ -457,7 +582,7 @@ export class AppRouter {
     schema: {
       params: t.object({ campaignId: t.integer() }),
     },
-    head: { title: "Submit a petition" },
+    head: { title: "Submit a petition › Alepha Lore" },
     ssr: false,
     lazy: () =>
       import("./components/campaign/petitions/CampaignPetitionRequest.tsx"),
@@ -478,7 +603,7 @@ export class AppRouter {
         petitionId: t.integer(),
       }),
     },
-    head: { title: "Petition status" },
+    head: { title: "Petition status › Alepha Lore" },
     ssr: false,
     lazy: () =>
       import("./components/campaign/petitions/CampaignPetitionStatus.tsx"),

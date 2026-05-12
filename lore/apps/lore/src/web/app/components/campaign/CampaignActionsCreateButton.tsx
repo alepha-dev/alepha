@@ -19,7 +19,7 @@ import QuestCreate from "./quest/QuestCreate.tsx";
 export type CampaignActionsCreateButtonProps = {};
 
 const CampaignActionsCreateButton = (
-  props: CampaignActionsCreateButtonProps,
+  _props: CampaignActionsCreateButtonProps,
 ) => {
   const [showDialog, setShowDialog] = useState(false);
   const { tr } = useI18n<I18n, "en">();
@@ -34,43 +34,42 @@ const CampaignActionsCreateButton = (
   }
 
   return (
-    <div className="flex px-2">
+    <>
       <Button
-        size="sm"
+        size="icon"
         disabled={!client.createQuest.can()}
         onClick={() => setShowDialog(true)}
-        className="bg-green-600 text-white hover:bg-green-700"
+        aria-label={String(tr("campaign.menu.create-quest"))}
+        className="bg-green-600 text-white hover:bg-green-700 md:w-auto md:px-4"
       >
         <Plus className="size-4" />
-        <span className="hidden xl:inline">
+        <span className="hidden md:inline">
           {tr("campaign.menu.create-quest")}
         </span>
       </Button>
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent
           side="right"
-          className="flex w-full flex-col gap-0 overflow-auto p-0 sm:max-w-2xl"
+          className="flex w-full flex-col gap-0 p-0 sm:max-w-2xl"
         >
-          <SheetHeader>
+          <SheetHeader className="shrink-0">
             <SheetTitle>{tr("campaign.menu.create-quest")}</SheetTitle>
           </SheetHeader>
-          <div className="flex-1 overflow-auto p-4">
-            <QuestCreate
-              campaign={campaign}
-              onSubmit={() => setShowDialog(false)}
-              onCreated={
-                onKanban
-                  ? () => {
-                      setShowDialog(false);
-                      setReloadKey({ key: (reloadKey?.key ?? 0) + 1 });
-                    }
-                  : undefined
-              }
-            />
-          </div>
+          <QuestCreate
+            campaign={campaign}
+            onSubmit={() => setShowDialog(false)}
+            onCreated={
+              onKanban
+                ? () => {
+                    setShowDialog(false);
+                    setReloadKey({ key: (reloadKey?.key ?? 0) + 1 });
+                  }
+                : undefined
+            }
+          />
         </SheetContent>
       </Sheet>
-    </div>
+    </>
   );
 };
 

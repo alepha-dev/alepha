@@ -13,8 +13,8 @@ const TextEditor = (props: TextEditorProps) => {
       value={props.value ?? ""}
       onChange={(e) => props.onChange?.(e.target.value)}
       placeholder={props.placeholder}
-      rows={props.rows ?? 8}
-      className="font-mono text-sm"
+      rows={props.rows ?? 14}
+      className="min-h-64 font-mono text-sm"
     />
   );
 };

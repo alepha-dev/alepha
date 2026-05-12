@@ -12,7 +12,7 @@ import { PetitionController } from "./controllers/PetitionController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { SessionController } from "./controllers/SessionController.ts";
 import { UserController } from "./controllers/UserController.ts";
-import { WhiteboardController } from "./controllers/WhiteboardController.ts";
+import { ChapterJobs } from "./jobs/ChapterJobs.ts";
 import { InvitationJobs } from "./jobs/InvitationJobs.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { CharacterInfo } from "./services/CharacterInfo.ts";
@@ -26,6 +26,7 @@ export const LoreApi = $module({
     CharacterInfo,
     InvitationService,
     InvitationJobs,
+    ChapterJobs,
     PetitionRateLimiter,
     // Controllers
     QuestController,
@@ -38,7 +39,6 @@ export const LoreApi = $module({
     CampaignStatsController,
     InvitationController,
     AdminInvitationController,
-    WhiteboardController,
     KanbanController,
     FolioController,
     PetitionController,

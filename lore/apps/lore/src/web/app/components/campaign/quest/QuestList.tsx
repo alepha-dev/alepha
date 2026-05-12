@@ -1,4 +1,5 @@
 import { useI18n } from "alepha/react/i18n";
+import { ScrollText } from "lucide-react";
 import { useMemo } from "react";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -6,6 +7,7 @@ import QuestGroup from "./QuestGroup.tsx";
 
 export interface QuestListProps {
   quests: QuestResource[];
+  collapseSignal?: { collapsed: boolean; version: number };
 }
 
 const QuestList = (props: QuestListProps) => {
@@ -27,10 +29,14 @@ const QuestList = (props: QuestListProps) => {
 
   if (zoneList.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center p-3">
-        <span className="text-muted-foreground text-sm">
-          {tr("quest-log.empty")}
-        </span>
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+        <div className="bg-muted text-muted-foreground inline-flex size-12 items-center justify-center rounded-full">
+          <ScrollText className="size-5" />
+        </div>
+        <h3 className="text-sm font-semibold">{tr("quest-log.empty")}</h3>
+        <p className="text-muted-foreground max-w-[13rem] text-xs">
+          {tr("quest-log.empty-description")}
+        </p>
       </div>
     );
   }
@@ -38,7 +44,12 @@ const QuestList = (props: QuestListProps) => {
   return (
     <div className="flex flex-col gap-2">
       {zoneList.map((key) => (
-        <QuestGroup key={key} name={key} quests={groupByZone[key]} />
+        <QuestGroup
+          key={key}
+          name={key}
+          quests={groupByZone[key]}
+          collapseSignal={props.collapseSignal}
+        />
       ))}
     </div>
   );

@@ -4,7 +4,7 @@ import { useI18n } from "alepha/react/i18n";
 import { currentUserAtom } from "alepha/security";
 import {
   Camera,
-  Coins,
+  Circle,
   Flame,
   GitBranch,
   Key,
@@ -169,7 +169,13 @@ const MyProfile = (props: MyProfileProps) => {
           value={`${l(totalXP)} XP`}
         />
         <StatCard
-          icon={<Coins className="size-4 text-yellow-500" />}
+          icon={
+            <Circle
+              className="size-3"
+              fill="var(--color-gold)"
+              color="var(--color-gold)"
+            />
+          }
           label="Treasury"
           value={`${l(totalGold)} gold`}
         />
@@ -220,12 +226,17 @@ const MyProfile = (props: MyProfileProps) => {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        <Coins className="size-3 text-yellow-500" />
-                        <span className="text-xs font-semibold text-yellow-500">
-                          {gold}
-                        </span>
-                      </div>
+                      <span
+                        className="flex items-center gap-1 text-xs font-semibold"
+                        style={{ color: "var(--color-gold)" }}
+                      >
+                        {gold}
+                        <Circle
+                          className="size-3"
+                          fill="var(--color-gold)"
+                          color="var(--color-gold)"
+                        />
+                      </span>
                       <Badge variant="outline" className="text-xs">
                         Lv. {level}
                       </Badge>

@@ -12,6 +12,7 @@ import type { AppRouter } from "../../AppRouter.ts";
 import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
+import HeaderActions from "../shared/header/HeaderActions.tsx";
 import LoreLogo from "../shared/LoreLogo.tsx";
 
 type Campaign = {
@@ -33,42 +34,58 @@ const Home = () => {
     a.updatedAt > b.updatedAt ? -1 : 1,
   );
   const createPath = router.path("campaignCreate");
+  const loginPath = router.path("login", {
+    query: { r: router.path("campaignCreate") },
+  });
 
   return (
-    <div className="bg-background flex flex-col">
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-12">
+    <div className="bg-background relative flex flex-col">
+      <div className="absolute right-3 top-3 z-10">
+        <HeaderActions />
+      </div>
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-12 md:pt-24">
         <Hero
           createPath={createPath}
+          loginPath={auth.user ? undefined : loginPath}
           welcomeTitle={String(tr("home.title"))}
           subtitle={String(tr("home.subtitle"))}
-          createLabel={String(tr("home.create-campaign"))}
+          createLabel={
+            auth.user
+              ? String(tr("home.create-campaign"))
+              : String(tr("home.start-first-campaign"))
+          }
+          alreadyRegistered={String(tr("home.already-registered"))}
           adventurerName={
             auth.user ? displayName(auth.user, "") || undefined : undefined
           }
         />
 
-        <Separator className="my-10" />
+        {auth.user && (
+          <>
+            <Separator className="my-10" />
 
-        <div id="campaigns" className="flex items-center gap-2">
-          <ScrollText className="size-5" />
-          <h2 className="text-lg font-semibold">{tr("home.campaigns")}</h2>
-        </div>
+            <div id="campaigns" className="flex items-center gap-2">
+              <ScrollText className="size-5" />
+              <h2 className="text-lg font-semibold">{tr("home.campaigns")}</h2>
+            </div>
 
-        {sorted.length > 0 ? (
-          <div className="mt-4 flex flex-col divide-y rounded-lg border">
-            {sorted.map((campaign) => (
-              <CampaignCard
-                key={campaign.id}
-                campaign={campaign}
-                href={router.path("campaign", {
-                  params: { campaignId: campaign.id },
-                })}
-                relativeTime={dt.of(campaign.updatedAt).fromNow()}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyState createPath={createPath} />
+            {sorted.length > 0 ? (
+              <div className="mt-4 flex flex-col divide-y rounded-lg border">
+                {sorted.map((campaign) => (
+                  <CampaignCard
+                    key={campaign.id}
+                    campaign={campaign}
+                    href={router.path("campaign", {
+                      params: { campaignId: campaign.id },
+                    })}
+                    relativeTime={dt.of(campaign.updatedAt).fromNow()}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState createPath={createPath} />
+            )}
+          </>
         )}
       </div>
     </div>
@@ -83,9 +100,11 @@ export default Home;
 
 interface HeroProps {
   createPath: string;
+  loginPath?: string;
   welcomeTitle: string;
   subtitle: string;
   createLabel: string;
+  alreadyRegistered: string;
   adventurerName?: string;
 }
 
@@ -95,27 +114,48 @@ const Hero = (props: HeroProps) => {
     : props.welcomeTitle;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <LoreLogo size={28} className="size-7" />
-        <span className="text-muted-foreground text-xs uppercase tracking-widest">
-          Lore
-        </span>
+    <div className="flex flex-col items-start gap-6 md:flex-row md:items-center md:gap-10">
+      <div className="flex shrink-0 items-center justify-center p-4">
+        <img
+          src="/lore-start.png"
+          alt="Lore"
+          className="size-48 object-contain md:size-56 dark:hidden"
+        />
+        <img
+          src="/lore-start-light.png"
+          alt="Lore"
+          className="hidden size-48 object-contain md:size-56 dark:block"
+        />
       </div>
-      <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-        {greeting}
-      </h1>
-      <p className="text-muted-foreground max-w-xl text-base">
-        {props.subtitle} Forge quests, recruit adventurers and chronicle your
-        party's deeds across the realm.
-      </p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        <Button asChild size="lg" className="h-12 px-12 text-base">
-          <Link href={props.createPath}>
-            <Sparkles className="size-5" />
-            {props.createLabel}
-          </Link>
-        </Button>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <LoreLogo size={28} className="size-7" />
+          <span className="text-muted-foreground text-xs uppercase tracking-widest">
+            Alepha Lore
+          </span>
+        </div>
+        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+          {greeting}
+        </h1>
+        <p className="text-muted-foreground max-w-xl text-base">
+          {props.subtitle}
+        </p>
+        <div className="mt-2 flex flex-col items-start gap-2">
+          <Button asChild size="lg" className="h-12 px-12 text-base">
+            <Link href={props.createPath}>
+              <Sparkles className="size-5" />
+              {props.createLabel}
+            </Link>
+          </Button>
+          {props.loginPath && (
+            <Link
+              href={props.loginPath}
+              className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
+            >
+              {props.alreadyRegistered}
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -169,22 +209,27 @@ interface EmptyStateProps {
   createPath: string;
 }
 
-const EmptyState = (props: EmptyStateProps) => (
-  <Card className="mt-4 border-dashed">
-    <CardContent className="flex flex-col items-center justify-center gap-3 p-10 text-center">
-      <div className="bg-muted text-muted-foreground inline-flex size-12 items-center justify-center rounded-full">
-        <ScrollText className="size-5" />
-      </div>
-      <h3 className="text-base font-semibold">Your quest log is empty</h3>
-      <p className="text-muted-foreground max-w-sm text-sm">
-        Raise your banner and forge a campaign — every legend starts somewhere.
-      </p>
-      <Button asChild className="mt-2">
-        <Link href={props.createPath}>
-          <Sparkles className="size-4" />
-          Start your first campaign
-        </Link>
-      </Button>
-    </CardContent>
-  </Card>
-);
+const EmptyState = (props: EmptyStateProps) => {
+  const { tr } = useI18n<I18n, "en">();
+  return (
+    <Card className="mt-4 border-dashed py-10">
+      <CardContent className="flex flex-col items-center justify-center gap-3 px-10 text-center">
+        <div className="bg-muted text-muted-foreground inline-flex size-12 items-center justify-center rounded-full">
+          <ScrollText className="size-5" />
+        </div>
+        <h3 className="text-base font-semibold">
+          {tr("home.empty.title")}
+        </h3>
+        <p className="text-muted-foreground max-w-sm text-sm">
+          {tr("home.empty.subtitle")}
+        </p>
+        <Button asChild className="mt-2">
+          <Link href={props.createPath}>
+            <Sparkles className="size-4" />
+            {tr("home.start-first-campaign")}
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};

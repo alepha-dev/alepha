@@ -200,7 +200,7 @@ const CampaignPetitionRequest = () => {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4">
         <Card className="shadow">
-          <CardContent className="flex flex-col gap-4 p-6">
+          <CardContent className="flex flex-col gap-4">
             <h1 className="text-xl font-semibold">
               {tr("petitions.request.loginRequiredTitle")}
             </h1>
@@ -231,8 +231,8 @@ const CampaignPetitionRequest = () => {
         </p>
       </div>
 
-      <Card className="shadow">
-        <CardContent className="p-4">
+      <Card className="py-4 shadow">
+        <CardContent className="px-4">
           <form {...form.props} className="flex flex-col gap-4">
             <Control
               input={form.input.reportType}

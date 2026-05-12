@@ -1,4 +1,5 @@
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import { cn } from "@alepha/ui/lib/utils";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -9,6 +10,7 @@ import type { I18n } from "../../../services/I18n.ts";
 export interface CampaignPetitionCardProps {
   petition: PetitionResource;
   onClick: () => void;
+  selected?: boolean;
 }
 
 const CampaignPetitionCard = (props: CampaignPetitionCardProps) => {
@@ -38,10 +40,13 @@ const CampaignPetitionCard = (props: CampaignPetitionCardProps) => {
 
   return (
     <Card
-      className="hover:bg-muted/30 cursor-pointer transition-colors"
+      className={cn(
+        "hover:bg-muted/30 cursor-pointer py-3 transition-colors",
+        props.selected && "border-primary bg-muted/40",
+      )}
       onClick={props.onClick}
     >
-      <CardContent className="flex gap-3 p-3">
+      <CardContent className="flex gap-3 px-3">
         <div className="flex flex-col items-center gap-1 pt-1">
           <Icon className={`size-5 shrink-0 ${iconColor}`} />
         </div>

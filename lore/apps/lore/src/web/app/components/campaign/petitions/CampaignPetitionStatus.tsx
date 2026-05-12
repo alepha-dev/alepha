@@ -85,7 +85,7 @@ const CampaignPetitionStatus = () => {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4">
         <Card className="shadow">
-          <CardContent className="flex flex-col gap-3 p-6">
+          <CardContent className="flex flex-col gap-3">
             <h1 className="text-lg font-semibold">
               {tr("petitions.status.unavailableTitle")}
             </h1>
@@ -117,7 +117,7 @@ const CampaignPetitionStatus = () => {
       data-testid="petition-status-page"
     >
       <Card className="shadow">
-        <CardContent className="flex flex-col gap-4 p-6">
+        <CardContent className="flex flex-col gap-4">
           <div className="flex items-start gap-3">
             <Icon className={`size-6 shrink-0 ${iconColor} mt-1`} />
             <div className="flex-1">
