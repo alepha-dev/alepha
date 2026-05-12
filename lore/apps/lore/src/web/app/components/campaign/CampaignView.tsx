@@ -225,16 +225,18 @@ const CampaignView = () => {
       }
     >
       <div className="flex h-full flex-col">
-        <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+        <div
+          className={`flex min-h-0 flex-1 flex-col ${showQuestLog ? "overflow-hidden" : "overflow-auto"}`}
+        >
           {showQuestLog ? (
-            <div className="flex flex-1 gap-2 p-2">
+            <div className="flex min-h-0 flex-1 gap-2 p-2">
               <div
-                className="hidden shrink-0 lg:flex"
+                className="hidden min-h-0 shrink-0 lg:flex"
                 style={{ width: "25%", minWidth: 240, maxWidth: 420 }}
               >
                 <QuestLog />
               </div>
-              <div className="flex flex-1 flex-col">
+              <div className="flex min-h-0 flex-1 flex-col overflow-auto">
                 <NestedView />
               </div>
             </div>

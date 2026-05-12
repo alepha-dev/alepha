@@ -8,6 +8,8 @@ import {
 } from "@alepha/ui/components/ui/dialog";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
+import { AlephaError } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { GitBranch, Key, Lock, Shield, User } from "lucide-react";
@@ -34,6 +36,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
   const [submitting, setSubmitting] = useState(false);
   const identityApi = useClient<IdentityController>();
   const toaster = useInject(Toaster);
+  const dt = useInject(DateTimeProvider);
   const { l } = useI18n();
 
   const hasPasswordIdentity = localIdentities.some(
@@ -58,16 +61,17 @@ const MyIdentities = (props: MyIdentitiesProps) => {
         body: { password },
       });
       if (!success) {
-        throw new Error("Server rejected the password change");
+        throw new AlephaError("Server rejected the password change");
       }
+      const nowIso = dt.nowISOString();
       setLocalIdentities((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           provider: "usernamePassword",
           providerUserId: "",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: nowIso,
+          updatedAt: nowIso,
         },
       ]);
       toaster.show("Password has been set successfully", "success");

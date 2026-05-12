@@ -1,3 +1,4 @@
+import { AlephaError } from "alepha";
 import type { Quest } from "../entities/quests.ts";
 
 export class CharacterInfo {
@@ -61,7 +62,7 @@ export class CharacterInfo {
   getMaxXpForLevel(level: number): number {
     const index = level - 1;
     if (index < 0 || index >= this.levels.length) {
-      throw new Error(`Invalid level: ${level}`);
+      throw new AlephaError(`Invalid level: ${level}`);
     }
     return this.levels[index];
   }
@@ -69,7 +70,7 @@ export class CharacterInfo {
   getGlobalMaxXpForLevel(level: number): number {
     const index = level - 1;
     if (index < 0 || index >= this.levels.length) {
-      throw new Error(`Invalid level: ${level}`);
+      throw new AlephaError(`Invalid level: ${level}`);
     }
     let acc = 0;
     for (let i = 0; i <= index; i++) {

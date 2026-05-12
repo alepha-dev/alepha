@@ -1,4 +1,5 @@
 import { $inject, t } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
@@ -16,6 +17,7 @@ export class CampaignStatsController {
   database = $inject(DatabaseProvider);
   security = $inject(AppSecurityProvider);
   fs = $inject(FileSystemProvider);
+  dt = $inject(DateTimeProvider);
 
   getCampaignStats = $action({
     use: [
@@ -221,7 +223,7 @@ export class CampaignStatsController {
       const completionsByDate = new Map(
         timelineQuery.map((r) => [r.date, Number(r.quests_completed)]),
       );
-      const today = new Date();
+      const today = new Date(this.dt.nowMillis());
       const activityTimeline = Array.from({ length: 365 }, (_, i) => {
         const d = new Date(today);
         d.setDate(d.getDate() - (364 - i));
@@ -335,7 +337,7 @@ export class CampaignStatsController {
 
       return this.fs.createFile({
         text: csvContent,
-        name: `quests-export-${campaign.title}-${new Date().toISOString().split("T")[0]}.csv`,
+        name: `quests-export-${campaign.title}-${this.dt.nowISOString().split("T")[0]}.csv`,
         type: "text/csv",
       });
     },

@@ -298,7 +298,7 @@ export class I18n {
         "kanban.empty": "No quests",
         "kanban.showMore": "Show more",
         "kanban.readOnly": "Read only",
-        "kanban.filter.all": "All",
+        "kanban.filter.zones": "Zones",
         "kanban.error.completedCannotMove": "Completed quests cannot be moved",
         "kanban.error.acceptFirst":
           "You must accept the quest before completing it",

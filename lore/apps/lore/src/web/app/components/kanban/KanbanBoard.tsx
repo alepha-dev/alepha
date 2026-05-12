@@ -1,3 +1,4 @@
+import { ControlSelect } from "@alepha/ui/components/control-select/control-select";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Sheet, SheetContent } from "@alepha/ui/components/ui/sheet";
 import {
@@ -7,10 +8,12 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { t } from "alepha";
 import { useClient, useInject, useStore } from "alepha/react";
+import { useFieldValue, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Campaign } from "@/api/entities/campaigns.ts";
@@ -46,8 +49,20 @@ export interface KanbanBoardProps {
 const KanbanBoard = (props: KanbanBoardProps) => {
   const { campaign, quests: initialQuests, readOnly } = props;
   const [quests, setQuests] = useState<QuestResource[]>(initialQuests);
-  const [zoneFilter, setZoneFilter] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const zoneOptions = useMemo(
+    () => (campaign.zones ?? []).map((z) => ({ value: z, label: z })),
+    [campaign.zones],
+  );
+  const filterForm = useForm({
+    schema: t.object({
+      zones: t.array(t.text()),
+    }),
+    initialValues: { zones: [] as string[] },
+    handler: async () => {},
+  });
+  const [zoneFilterValue] = useFieldValue(filterForm.input.zones);
+  const zoneFilter = (zoneFilterValue as string[] | undefined) ?? [];
   const [selectedQuest, setSelectedQuest] = useState<QuestResource | null>(
     null,
   );
@@ -73,12 +88,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       activationConstraint: { distance: 8 },
     }),
   );
-
-  const toggleZone = useCallback((zone: string) => {
-    setZoneFilter((prev) =>
-      prev.includes(zone) ? prev.filter((z) => z !== zone) : [...prev, zone],
-    );
-  }, []);
 
   const filteredQuests = useMemo(() => {
     if (zoneFilter.length > 0) {
@@ -231,25 +240,17 @@ const KanbanBoard = (props: KanbanBoardProps) => {
         {loading && (
           <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
         )}
-        <div className="flex flex-1 flex-wrap items-center gap-1.5">
-          {campaign.zones.map((zone) => {
-            const active = zoneFilter.includes(zone);
-            return (
-              <button
-                key={zone}
-                type="button"
-                onClick={() => toggleZone(zone)}
-                className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
-                  active
-                    ? "border-border bg-muted text-foreground"
-                    : "border-border bg-card text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {zone}
-              </button>
-            );
-          })}
-        </div>
+        <form {...filterForm.props} className="flex flex-1 items-center">
+          {zoneOptions.length > 0 && (
+            <div className="w-64 max-w-full">
+              <ControlSelect
+                input={filterForm.input.zones}
+                label={String(tr("kanban.filter.zones"))}
+                items={zoneOptions}
+              />
+            </div>
+          )}
+        </form>
       </div>
 
       {/* Columns */}

@@ -52,8 +52,6 @@ export class CampaignController {
       response: campaigns.schema,
     },
     handler: async ({ body, user }) => {
-      // TODO: load user + check if they have a free campaign slot
-
       const count = await this.campaigns.count({
         createdBy: { eq: user.id },
       });
