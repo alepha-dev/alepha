@@ -10994,6 +10994,42 @@ __metadata:
   languageName: node
   linkType: hard
 
+"lore@workspace:apps/lore":
+  version: 0.0.0-use.local
+  resolution: "lore@workspace:apps/lore"
+  dependencies:
+    "@alepha/ui": "workspace:^"
+    "@dnd-kit/core": "npm:^6.3.1"
+    "@dnd-kit/utilities": "npm:^3.2.2"
+    "@playwright/test": "npm:^1.59.1"
+    "@tailwindcss/vite": "npm:^4.3.0"
+    "@types/node": "npm:^25.6.2"
+    "@types/react": "npm:^19.2.14"
+    "@types/react-dom": "npm:^19.2.3"
+    alepha: "npm:^0.20.6"
+    better-sqlite3: "npm:^12.9.0"
+    drizzle-kit: "npm:^0.31.10"
+    framer-motion: "npm:^12.38.0"
+    lucide-react: "npm:^1.14.0"
+    react: "npm:^19.2.6"
+    react-dom: "npm:^19.2.6"
+    react-is: "npm:^19.2.6"
+    react-markdown: "npm:^10.1.0"
+    recharts: "npm:^3.8.1"
+    remark-gfm: "npm:^4.0.1"
+    sonner: "npm:^2.0.7"
+    tailwindcss: "npm:^4.3.0"
+    typescript: "npm:^6.0.3"
+    vercel: "npm:^53.3.1"
+    vite: "npm:^8.0.11"
+    vitest: "npm:^4.1.5"
+    wrangler: "npm:^4.90.0"
+  dependenciesMeta:
+    better-sqlite3:
+      built: true
+  languageName: unknown
+  linkType: soft
+
 "lru-cache@npm:^11.0.0, lru-cache@npm:^11.1.0, lru-cache@npm:^11.2.1":
   version: 11.2.7
   resolution: "lru-cache@npm:11.2.7"
@@ -13775,42 +13811,6 @@ __metadata:
   checksum: 10c0/4614e4292356cafade0b6031527eea9bc90f2372a22c012313be1dcc69a3b90c7338158b414539be863fa95bfcb2ddcd0587be696841af4e6679d85e62c060c7
   languageName: node
   linkType: hard
-
-"roadmap@workspace:apps/roadmap":
-  version: 0.0.0-use.local
-  resolution: "roadmap@workspace:apps/roadmap"
-  dependencies:
-    "@alepha/ui": "workspace:^"
-    "@dnd-kit/core": "npm:^6.3.1"
-    "@dnd-kit/utilities": "npm:^3.2.2"
-    "@playwright/test": "npm:^1.59.1"
-    "@tailwindcss/vite": "npm:^4.3.0"
-    "@types/node": "npm:^25.6.2"
-    "@types/react": "npm:^19.2.14"
-    "@types/react-dom": "npm:^19.2.3"
-    alepha: "npm:^0.20.6"
-    better-sqlite3: "npm:^12.9.0"
-    drizzle-kit: "npm:^0.31.10"
-    framer-motion: "npm:^12.38.0"
-    lucide-react: "npm:^1.14.0"
-    react: "npm:^19.2.6"
-    react-dom: "npm:^19.2.6"
-    react-is: "npm:^19.2.6"
-    react-markdown: "npm:^10.1.0"
-    recharts: "npm:^3.8.1"
-    remark-gfm: "npm:^4.0.1"
-    sonner: "npm:^2.0.7"
-    tailwindcss: "npm:^4.3.0"
-    typescript: "npm:^6.0.3"
-    vercel: "npm:^53.3.1"
-    vite: "npm:^8.0.11"
-    vitest: "npm:^4.1.5"
-    wrangler: "npm:^4.90.0"
-  dependenciesMeta:
-    better-sqlite3:
-      built: true
-  languageName: unknown
-  linkType: soft
 
 "rolldown-plugin-dts@npm:^0.25.0":
   version: 0.25.0

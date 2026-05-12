@@ -65,7 +65,7 @@ export class McpServerProvider {
 
   /**
    * Server identity returned during `initialize`. Consumers may override
-   * fields directly (e.g. `mcpServer.serverInfo = { name: "roadmap-mcp",
+   * fields directly (e.g. `mcpServer.serverInfo = { name: "lore-mcp",
    * version: "0.20.3", description: "..." }`) — the `description` field
    * is supported per spec 2025-11-25 (minor change #2).
    */
