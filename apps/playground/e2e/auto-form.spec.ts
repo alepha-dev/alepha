@@ -72,9 +72,12 @@ test.describe("Upload control", () => {
     await page
       .locator('input[type="file"]')
       .first()
-      .setInputFiles("./e2e/fixtures/sample.txt");
+      .setInputFiles("./e2e/fixtures/sample.png");
 
-    await expect(page.getByText("sample.txt")).toBeVisible({ timeout: 15_000 });
+    // Image uploads render as a thumbnail with the filename in its `alt`.
+    await expect(page.getByRole("img", { name: "sample.png" })).toBeVisible({
+      timeout: 15_000,
+    });
 
     // wait until Save is enabled (form not in flight)
     const save = page.getByRole("button", { name: "Save" });
@@ -94,10 +97,13 @@ test.describe("Upload control", () => {
     await page
       .locator('input[type="file"]')
       .first()
-      .setInputFiles("./e2e/fixtures/sample.txt");
+      .setInputFiles("./e2e/fixtures/sample.png");
 
-    await expect(page.getByText("sample.txt")).toBeVisible({ timeout: 15_000 });
-    await page.getByRole("button", { name: "Remove" }).first().click();
-    await expect(page.getByText("sample.txt")).toHaveCount(0);
+    const thumb = page.getByRole("img", { name: "sample.png" });
+    await expect(thumb).toBeVisible({ timeout: 15_000 });
+    // Two buttons have "Remove" in their accessible name (the outer thumbnail
+    // button and the inner × button). Match the inner one exactly.
+    await page.getByRole("button", { name: "Remove", exact: true }).click();
+    await expect(thumb).toHaveCount(0);
   });
 });
