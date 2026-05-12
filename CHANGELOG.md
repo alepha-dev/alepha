@@ -1,3 +1,27 @@
+## [0.20.7] - 2026-05-12
+
+### Features
+
+- **ui**: enhance button components with variant support and improve layout consistency (`96187a54`)
+- **cloudflare**: implement bulk patching for worker bindings to optimize secret updates (`2b17e694`)
+- **payments-stripe**: subscription helpers (Checkout, cancel, portal, webhook) (`8e98b6e7`)
+- **cache**: add in-process L1 memory tier with stale-while-revalidate support (`75e93842`)
+- **cloudflare**: support wildcard domains with required zone configuration (`dbc82a54`)
+- **payments**: optional applicationFeeAmount on createSession (`641f6063`)
+- **payments-stripe**: add Connect onboarding helpers (`7b4c9232`)
+- **payments-stripe**: optional stripeAccount on Stripe API helpers (`eecb6d83`)
+- **orm**: db.organization({ nullable: false }) for non-null tenant scoping (`e08a597d`)
+- **server/auth**: validateRedirectUri accepts cross-subdomain URLs under trusted parent (`d5544915`)
+- **api**: add organizationId to apiKeys, audits, and files tables (`1129e0d1`)
+- **payments**: add Mollie payment provider integration (`70ace9af`)
+- **api/payments**: add MemoryPaymentProvider to variants (`418cc391`)
+- **api/payments**: add subcriptions again (`ce40b1ad`)
+- **api/payments**: add mock controller (`c69b804d`)
+
+### Bug Fixes
+
+- **core**: run .register() before imports:[] (`b517dc1e`)
+
 ## [0.20.6] - 2026-05-09
 
 ### Features
