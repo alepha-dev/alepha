@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
-    "alepha": "0.20.6",
+    "alepha": "0.20.7",
     "lucide-react": "^1.14.0",
     "react": "^19.2.6",
     "react-day-picker": "^10.0.0",
