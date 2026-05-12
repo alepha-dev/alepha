@@ -1,6 +1,6 @@
 {
   "name": "@alepha/ui",
-  "private": false,
+  "private": true,
   "description": "Shared shadcn-based UI for Alepha apps in this monorepo. Sourced from @alepha/ui-registry; consumed by apps as a workspace package.",
   "author": "Feunard",
   "version": "0.1.0",
