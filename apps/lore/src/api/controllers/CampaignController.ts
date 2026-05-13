@@ -346,6 +346,60 @@ export class CampaignController {
     },
   });
 
+  leaveCampaign = $action({
+    use: [$secure({ permissions: ["campaign:read"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params, user }) => {
+      const campaign = await this.campaigns.getOne({
+        where: { id: { eq: params.id } },
+      });
+
+      // Owner cannot leave their own campaign — they must delete it or
+      // transfer ownership (transfer not implemented yet).
+      if (campaign.createdBy === user.id) {
+        throw new ForbiddenError(
+          "The owner cannot leave their own campaign. Delete it instead.",
+        );
+      }
+
+      const character = await this.characters.findOne({
+        where: {
+          userId: { eq: user.id },
+          campaignId: { eq: params.id },
+        },
+      });
+
+      if (!character) {
+        // Idempotent: leaving a campaign you're not a member of is a no-op.
+        return { ok: true };
+      }
+
+      // Release any in-flight quests the user accepted but did not complete,
+      // so other members can pick them up. Completed quests stay attributed.
+      await this.quests.updateMany(
+        {
+          campaignId: { eq: params.id },
+          acceptedBy: { eq: user.id },
+          completedAt: { isNull: true },
+        },
+        {
+          acceptedAt: null,
+          acceptedBy: null,
+        },
+      );
+
+      // Drops the user's XP, balance and character state in this campaign.
+      await this.characters.deleteById(character.id);
+
+      return { ok: true };
+    },
+  });
+
   getZones = $action({
     use: [$secure({ permissions: ["campaign:read"] })],
     schema: {
