@@ -179,6 +179,14 @@ export class I18n {
         "campaign.settings.actions.delete": "Delete this campaign",
         "campaign.settings.actions.delete.helper":
           "Sometimes retreat is the only option. All quests and progress will be lost forever.",
+        "campaign.settings.actions.leave": "Leave this campaign",
+        "campaign.settings.actions.leave.helper":
+          "You will lose your character, XP and balance for this campaign. Any unfinished quests you accepted will be released.",
+        "campaign.settings.leave.modal.title": "Leave campaign",
+        "campaign.settings.leave.modal.description":
+          "Are you sure you want to leave $1? This will remove your character, XP and balance for this campaign. Quests you have not completed will be released to other adventurers.",
+        "campaign.settings.leave.modal.cancel": "Cancel",
+        "campaign.settings.leave.modal.submit": "Leave campaign",
 
         "campaign.settings.general.title": "Campaign",
         "campaign.settings.nav.banner": "General",
@@ -652,6 +660,14 @@ export class I18n {
         "campaign.settings.actions.delete": "Détruire cette campagne",
         "campaign.settings.actions.delete.helper":
           "Parfois, il faut abandonner le combat… mais sachez que toutes les quêtes et les progrès seront perdus.",
+        "campaign.settings.actions.leave": "Quitter cette campagne",
+        "campaign.settings.actions.leave.helper":
+          "Vous perdrez votre personnage, votre XP et votre bourse pour cette campagne. Les quêtes que vous aviez acceptées sans les terminer seront libérées.",
+        "campaign.settings.leave.modal.title": "Quitter la campagne",
+        "campaign.settings.leave.modal.description":
+          "Voulez-vous vraiment quitter $1 ? Votre personnage, votre XP et votre bourse pour cette campagne seront supprimés. Les quêtes non terminées seront libérées.",
+        "campaign.settings.leave.modal.cancel": "Annuler",
+        "campaign.settings.leave.modal.submit": "Quitter la campagne",
 
         "campaign.settings.general.title": "Campagne",
         "campaign.settings.nav.banner": "Général",
