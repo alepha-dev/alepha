@@ -2,10 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { expect, type Page } from "@playwright/test";
 
-export const emailDir = path.join(
-  process.cwd(),
-  "node_modules/.alepha/emails",
-);
+export const emailDir = path.join(process.cwd(), "node_modules/.alepha/emails");
 
 /**
  * Poll the dev-mail directory for the most recent message addressed to `email`.
