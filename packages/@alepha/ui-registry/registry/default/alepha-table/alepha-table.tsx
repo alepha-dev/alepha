@@ -119,6 +119,15 @@ export interface AlephaTableProps<T> {
    */
   form?: FormModel<TObject>;
   /**
+   * When true, the table also refetches on every `form:change` event
+   * (debounced by 250ms) — letting consumers drop the explicit "Apply"
+   * button and have filters apply as the user edits them.
+   *
+   * `form:submit:success` is still honored, so manual submits and
+   * `form.submit()` calls still trigger an immediate refresh.
+   */
+  autoApplyFilters?: boolean;
+  /**
    * Extra classes applied to the outer wrapper.
    */
   className?: string;
@@ -179,6 +188,23 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
       setRefreshKey((k) => k + 1);
     });
   }, [alepha, form]);
+
+  useEffect(() => {
+    if (!form || !props.autoApplyFilters) return;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const unsub = alepha.events.on("form:change", (event) => {
+      if (event.id !== form.id) return;
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        setPage(0);
+        setRefreshKey((k) => k + 1);
+      }, 250);
+    });
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      unsub();
+    };
+  }, [alepha, form, props.autoApplyFilters]);
 
   useEffect(() => {
     if (!props.pollMs) return;

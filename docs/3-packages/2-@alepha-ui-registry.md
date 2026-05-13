@@ -653,6 +653,7 @@ yarn shadcn add @alepha/alepha-table
 | `header` | `ReactNode` | No | Header content rendered above the table (e.g., title + filters). |
 | `pollMs` | `number` | No | Auto-refresh interval in ms (only when document is visible). |
 | `form` | `FormModel&lt;TObject&gt;` | No | Filter form |
+| `autoApplyFilters` | `boolean` | No | When true, the table also refetches on every `form:change` event (debounced by 250ms) — letting consumers drop the explicit "Apply" button and have filters apply as the user edits them |
 | `className` | `string` | No | Extra classes applied to the outer wrapper. |
 | `emptyMessage` | `string` | No | Message shown when the page is empty |
 

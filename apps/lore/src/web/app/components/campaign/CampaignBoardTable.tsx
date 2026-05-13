@@ -15,13 +15,7 @@ import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useFieldValue, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import {
-  RotateCcw,
-  Search,
-  Signature,
-  Trash,
-  User as UserIcon,
-} from "lucide-react";
+import { RotateCcw, Signature, Trash, User as UserIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { CampaignController } from "@/api/controllers/CampaignController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -128,18 +122,11 @@ const CampaignBoardTable = () => {
             />
           </div>
         )}
-        <Button type="submit" size="sm" disabled={filters.submitting}>
-          <Search className="size-4" />
-          {tr("board.filter.apply")}
-        </Button>
         <Button
           type="button"
           size="sm"
           variant="ghost"
-          onClick={() => {
-            filters.reset();
-            void filters.submit();
-          }}
+          onClick={() => filters.reset()}
         >
           <RotateCcw className="size-4" />
           {tr("board.filter.reset")}
@@ -152,6 +139,7 @@ const CampaignBoardTable = () => {
         defaultSize={25}
         emptyMessage={String(tr("common.noResults"))}
         form={filters}
+        autoApplyFilters
         fetch={async ({ page, size, sort, filters: f }) =>
           questApi.getQuests({
             params: { campaignId: campaign.id },
