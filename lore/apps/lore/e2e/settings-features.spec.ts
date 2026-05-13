@@ -73,9 +73,6 @@ test.describe("Campaign settings — feature toggles", () => {
     await page
       .getByRole("textbox", { name: "Password", exact: true })
       .fill(password);
-    await page
-      .getByRole("textbox", { name: "Confirm password" })
-      .fill(password);
     await page.getByRole("button", { name: /create account/i }).click();
 
     await expect(
@@ -90,10 +87,14 @@ test.describe("Campaign settings — feature toggles", () => {
     await page.getByRole("button", { name: /complete registration/i }).click();
     await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout: 15_000 });
 
-    // Create campaign
+    // Create campaign (3-step wizard: name → logo → visibility → submit)
     await page.goto("/new-campaign");
     await page.waitForLoadState("networkidle");
     await page.locator('input[type="text"]').first().fill(campaignTitle);
+    await page.getByRole("button", { name: /^next$/i }).click();
+    // Step 2 (logo) — skip
+    await page.getByRole("button", { name: /^skip$/i }).click();
+    // Step 3 (visibility) — submit with default Private
     await page.getByRole("button", { name: /create campaign/i }).click();
     await page.waitForURL(/\/c\/\d+/, { timeout: 15_000 });
     const match = page.url().match(/\/c\/(\d+)/);

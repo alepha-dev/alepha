@@ -108,9 +108,6 @@ test.describe("User Journey", () => {
       await page
         .getByRole("textbox", { name: "Password", exact: true })
         .fill(testPassword);
-      await page
-        .getByRole("textbox", { name: "Confirm password" })
-        .fill(testPassword);
 
       await page.getByRole("button", { name: /create account/i }).click();
       await expect(
@@ -142,7 +139,8 @@ test.describe("User Journey", () => {
       await page.waitForLoadState("networkidle");
 
       await page.locator('input[type="text"]').first().fill(testCampaignTitle);
-
+      await page.getByRole("button", { name: /^next$/i }).click();
+      await page.getByRole("button", { name: /^skip$/i }).click();
       await page.getByRole("button", { name: /create campaign/i }).click();
       await page.waitForURL(/\/c\/\d+/, { timeout: 15_000 });
 
@@ -311,9 +309,6 @@ test.describe("User Journey", () => {
       await page
         .getByRole("textbox", { name: "Password", exact: true })
         .fill(password);
-      await page
-        .getByRole("textbox", { name: "Confirm password" })
-        .fill(password);
       await page.getByRole("button", { name: /create account/i }).click();
       await expect(
         page.getByRole("button", { name: /complete registration/i }),
@@ -335,6 +330,8 @@ test.describe("User Journey", () => {
       await page.goto("/new-campaign");
       await page.waitForLoadState("networkidle");
       await page.locator('input[type="text"]').first().fill(campaignTitle);
+      await page.getByRole("button", { name: /^next$/i }).click();
+      await page.getByRole("button", { name: /^skip$/i }).click();
       await page.getByRole("button", { name: /create campaign/i }).click();
       await page.waitForURL(/\/c\/\d+/, { timeout: 15_000 });
       campaignId = Number(page.url().match(/\/c\/(\d+)/)![1]);
