@@ -38,12 +38,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
     try {
       await invitationApi.acceptInvitation({ params: { id: invitationId } });
       setInvitations(await invitationApi.getMyInvitations());
-      alepha.store.set(
-        userCampaignsAtom,
-        await campaignApi.getMyCampaigns({
-          query: { size: 5, sort: "-updatedAt" },
-        }),
-      );
+      alepha.store.set(userCampaignsAtom, await campaignApi.getHomeOverview());
       toaster.show(
         "You have joined the campaign! A character has been created for you.",
         "success",

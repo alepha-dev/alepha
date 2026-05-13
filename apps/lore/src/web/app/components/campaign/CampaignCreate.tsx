@@ -61,10 +61,7 @@ const CampaignCreate = () => {
         );
       }
 
-      alepha.store.set(userCampaignsAtom, [
-        ...(alepha.store.get(userCampaignsAtom) || []),
-        campaign,
-      ]);
+      alepha.store.set(userCampaignsAtom, await client.getHomeOverview());
 
       await router.push("campaign", {
         params: { campaignId: String(campaign.id) },

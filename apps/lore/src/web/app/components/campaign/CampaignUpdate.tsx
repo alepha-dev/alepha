@@ -46,12 +46,15 @@ const CampaignUpdate = (props: CampaignUpdateProps) => {
       });
 
       alepha.store.set(currentCampaignAtom, campaign);
-      alepha.store.set(userCampaignsAtom, [
-        ...(alepha.store.get(userCampaignsAtom) ?? []).filter(
-          (p) => p.id !== campaign.id,
-        ),
-        campaign,
-      ]);
+      const overview = alepha.store.get(userCampaignsAtom);
+      if (overview) {
+        alepha.store.set(userCampaignsAtom, {
+          ...overview,
+          campaigns: overview.campaigns.map((p) =>
+            p.id === campaign.id ? campaign : p,
+          ),
+        });
+      }
     },
   });
 

@@ -41,12 +41,15 @@ const CampaignSettingsKanbanPage = () => {
   const syncCampaign = (next: string[]) => {
     const updated = { ...campaign, kanbanColumns: next };
     alepha.store.set(currentCampaignAtom, updated);
-    alepha.store.set(userCampaignsAtom, [
-      ...(alepha.store.get(userCampaignsAtom) ?? []).filter(
-        (c) => c.id !== updated.id,
-      ),
-      updated,
-    ]);
+    const overview = alepha.store.get(userCampaignsAtom);
+    if (overview) {
+      alepha.store.set(userCampaignsAtom, {
+        ...overview,
+        campaigns: overview.campaigns.map((c) =>
+          c.id === updated.id ? updated : c,
+        ),
+      });
+    }
   };
 
   const runOp = async (label: string, fn: () => Promise<string[]>) => {

@@ -37,12 +37,15 @@ export const useCampaignFeatureToggle = (key: FeatureKey): FeatureToggle => {
         body: { features: { [key]: value } },
       });
       alepha.store.set(currentCampaignAtom, updated);
-      alepha.store.set(userCampaignsAtom, [
-        ...(alepha.store.get(userCampaignsAtom) ?? []).filter(
-          (p) => p.id !== updated.id,
-        ),
-        updated,
-      ]);
+      const overview = alepha.store.get(userCampaignsAtom);
+      if (overview) {
+        alepha.store.set(userCampaignsAtom, {
+          ...overview,
+          campaigns: overview.campaigns.map((p) =>
+            p.id === updated.id ? updated : p,
+          ),
+        });
+      }
       setPending(undefined);
     } catch (error) {
       setPending(undefined);

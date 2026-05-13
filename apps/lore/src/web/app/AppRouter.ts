@@ -86,9 +86,7 @@ export class AppRouter {
       if (user) {
         this.alepha.store.set(
           userCampaignsAtom,
-          await this.campaignApi.getMyCampaigns({
-            query: { size: 5, sort: "-updatedAt" },
-          }),
+          await this.campaignApi.getHomeOverview(),
         );
       }
     },
