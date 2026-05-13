@@ -39,7 +39,7 @@ const Home = () => {
   });
 
   return (
-    <div className="bg-background relative flex flex-col">
+    <div className="bg-background relative flex h-screen flex-col overflow-y-auto">
       <div className="absolute right-3 top-3 z-10">
         <HeaderActions />
       </div>
