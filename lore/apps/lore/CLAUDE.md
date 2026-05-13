@@ -152,10 +152,33 @@ yarn w lore studio       # Database studio
 yarn w lore e2e          # Playwright e2e tests
 ```
 
+## ⚠️ Migration safety on D1 (production-data bomb, real incident)
+
+`apps/lore` deploys to Cloudflare D1, which **ignores `PRAGMA foreign_keys=OFF`**. Drizzle-kit's auto-generated SQLite migrations use the standard rebuild pattern (`CREATE __new`, `INSERT FROM SELECT`, `DROP old`, `RENAME`). On D1, the `DROP old` step triggers `ON DELETE CASCADE` on every referencing child row.
+
+**This already cost us all of lore-production once** (2026-05-13, migration `0023_special_purifiers.sql` flipping campaign feature defaults — `DROP TABLE campaigns` cascade-wiped `characters`, `quests`, `chapters`, `folios`, `petitions`). Recovered from D1 backup. Tracked upstream as [drizzle-team/drizzle-orm#4938](https://github.com/drizzle-team/drizzle-orm/issues/4938), no fix shipped.
+
+**Hard rule before pushing any commit that adds a new migration under `apps/lore/migrations/sqlite/`:**
+
+1. `grep "^DROP TABLE" apps/lore/migrations/sqlite/<newest>.sql` — no match? Safe to push.
+2. Match found? Identify the table, then `grep -rn "<table>.cols.id" apps/lore/src/api/entities/` to find children.
+3. **If any child has `onDelete: "cascade"` referencing the dropped table, the migration is a bomb on D1. Do not push as-is.**
+
+Mitigations, in order of preference:
+
+- **Avoid the rebuild entirely.** If the only change is a column *default* (the bomb we hit), move the default into the application handler — e.g. `createCampaign` injects `defaultCampaignFeatures` server-side — and drop the `db.default(...)` from the entity schema. Drizzle won't generate a rebuild migration for an app-layer default.
+- **Manually rewrite the migration** to back child rows up into `__bk_*` tables before the `DROP`, then re-insert and drop the backups after `RENAME`. Tedious but correct.
+- **Temporarily switch the CASCADE child(ren) to `onDelete: "set null"`** for the migration window if the children make sense without a parent — only viable when the FK column is nullable.
+
+**Why local testing won't catch this:** `yarn v` uses in-memory SQLite, where `PRAGMA foreign_keys=OFF` actually works. The bomb only goes off on D1. Inspect the migration SQL manually.
+
+**CI auto-deploys lore to prod on every push to `main`** (`.github/workflows/ci.yml` → `yarn w lore alepha platform up --env production`). There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE` — read every line before pushing.
+
 ## Tests
 
 - `test/mcp-security.spec.ts` — MCP auth, API keys, user isolation
 - `test/campaign-stats.spec.ts` — campaign chronicles unit tests
+- `test/campaign-leave.spec.ts` — leaveCampaign action (owner-forbidden, no-op, member removal)
 - `e2e/*.spec.ts` — End-to-end with Playwright (one file per big feature)
 
 ### E2E convention: one file per feature
