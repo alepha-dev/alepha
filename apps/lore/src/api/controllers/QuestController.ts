@@ -3,7 +3,13 @@ import { FileService } from "alepha/api/files";
 import { $bucket } from "alepha/bucket";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, db, pageQuerySchema } from "alepha/orm";
+import {
+  $repository,
+  $sequence,
+  $transactional,
+  db,
+  pageQuerySchema,
+} from "alepha/orm";
 import { $secure } from "alepha/security";
 import {
   $action,
@@ -74,6 +80,13 @@ export class QuestController {
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
 
+  /**
+   * Per-campaign sequence for `quests.shortId`. Advances inside the
+   * `$transactional` block on create, so failed inserts return the id to
+   * the pool instead of burning it.
+   */
+  protected questShortId = $sequence();
+
   attachments = $bucket({
     maxSize: 10 * 1024 * 1024, // 10 MB
     mimeTypes: [
@@ -96,7 +109,7 @@ export class QuestController {
   }
 
   createQuest = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [$secure({ permissions: ["quest:create"] }), $transactional()],
     schema: {
       body: questCreateSchema,
       response: questResourceSchema,
@@ -142,8 +155,11 @@ export class QuestController {
         }
       }
 
+      const shortId = await this.questShortId.next(String(body.campaignId));
+
       const quest = await this.quests.create({
         ...body,
+        shortId,
         attachments: body.attachments ?? [],
         createdBy: user.id,
         history: [],
@@ -485,6 +501,30 @@ export class QuestController {
       const quest = await this.quests.getOne({
         where: {
           id: { eq: params.id },
+        },
+      });
+
+      await this.security.checkOwnership(quest.campaignId, user);
+
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  getQuestByShortId = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    path: "/campaigns/:campaignId/quests/:shortId",
+    schema: {
+      params: t.object({
+        campaignId: t.integer(),
+        shortId: t.integer(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          campaignId: { eq: params.campaignId },
+          shortId: { eq: params.shortId },
         },
       });
 

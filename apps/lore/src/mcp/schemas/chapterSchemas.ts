@@ -51,9 +51,28 @@ export const chapterStartResultSchema = t.object({
 // -----------------------------------------------------------------------------
 
 export const chapterCloseParamsSchema = t.object({
-  id: t.integer({
-    description: "Chapter ID to close",
-  }),
+  id: t.optional(
+    t.integer({
+      description: "Global chapter ID. Mutually exclusive with `number`.",
+    }),
+  ),
+  number: t.optional(
+    t.integer({
+      description:
+        "Per-campaign chapter number ('Chapter 3'). Requires `campaign` or `campaign_name`.",
+    }),
+  ),
+  campaign: t.optional(
+    t.integer({
+      description: "Campaign ID — required when using `number`.",
+    }),
+  ),
+  campaign_name: t.optional(
+    t.string({
+      description:
+        "Campaign name (case-insensitive) — alternative to `campaign`.",
+    }),
+  ),
   title: t.optional(
     t.string({
       description:
@@ -74,9 +93,28 @@ export const chapterCloseResultSchema = t.object({
 // -----------------------------------------------------------------------------
 
 export const chapterChangelogParamsSchema = t.object({
-  id: t.integer({
-    description: "Chapter ID to generate changelog for",
-  }),
+  id: t.optional(
+    t.integer({
+      description: "Global chapter ID. Mutually exclusive with `number`.",
+    }),
+  ),
+  number: t.optional(
+    t.integer({
+      description:
+        "Per-campaign chapter number ('Chapter 3'). Requires `campaign` or `campaign_name`.",
+    }),
+  ),
+  campaign: t.optional(
+    t.integer({
+      description: "Campaign ID — required when using `number`.",
+    }),
+  ),
+  campaign_name: t.optional(
+    t.string({
+      description:
+        "Campaign name (case-insensitive) — alternative to `campaign`.",
+    }),
+  ),
 });
 
 export const chapterChangelogResultSchema = t.object({

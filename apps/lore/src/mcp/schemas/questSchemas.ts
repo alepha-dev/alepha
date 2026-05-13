@@ -1,6 +1,7 @@
 import { t } from "alepha";
 import {
   campaignParamsSchema,
+  entityRefSchema,
   objectiveSchema,
   prioritySchema,
   questStatusSchema,
@@ -53,6 +54,7 @@ export const questListResultSchema = t.object({
   quests: t.array(
     t.object({
       id: t.integer(),
+      shortId: t.integer(),
       title: t.string(),
       description: t.string(),
       zone: t.string(),
@@ -73,14 +75,11 @@ export const questListResultSchema = t.object({
 // quest_get
 // -----------------------------------------------------------------------------
 
-export const questGetParamsSchema = t.object({
-  id: t.integer({
-    description: "Quest ID to fetch",
-  }),
-});
+export const questGetParamsSchema = entityRefSchema;
 
 export const questGetResultSchema = t.object({
   id: t.integer(),
+  shortId: t.integer(),
   title: t.string(),
   description: t.string(),
   zone: t.string(),
@@ -127,6 +126,7 @@ export const questCreateParamsSchema = t.extend(campaignParamsSchema, {
 
 export const questCreateResultSchema = t.object({
   id: t.integer(),
+  shortId: t.integer(),
   title: t.string(),
   createdAt: t.datetime(),
 });
@@ -135,14 +135,11 @@ export const questCreateResultSchema = t.object({
 // quest_accept
 // -----------------------------------------------------------------------------
 
-export const questAcceptParamsSchema = t.object({
-  id: t.integer({
-    description: "Quest ID to accept",
-  }),
-});
+export const questAcceptParamsSchema = entityRefSchema;
 
 export const questAcceptResultSchema = t.object({
   id: t.integer(),
+  shortId: t.integer(),
   title: t.string(),
   acceptedAt: t.datetime(),
 });
@@ -151,14 +148,11 @@ export const questAcceptResultSchema = t.object({
 // quest_complete
 // -----------------------------------------------------------------------------
 
-export const questCompleteParamsSchema = t.object({
-  id: t.integer({
-    description: "Quest ID to complete",
-  }),
-});
+export const questCompleteParamsSchema = entityRefSchema;
 
 export const questCompleteResultSchema = t.object({
   id: t.integer(),
+  shortId: t.integer(),
   title: t.string(),
   completedAt: t.datetime(),
   xpEarned: t.optional(t.integer()),
@@ -169,10 +163,7 @@ export const questCompleteResultSchema = t.object({
 // quest_update
 // -----------------------------------------------------------------------------
 
-export const questUpdateParamsSchema = t.object({
-  id: t.integer({
-    description: "Quest ID to update",
-  }),
+export const questUpdateParamsSchema = t.extend(entityRefSchema, {
   title: t.optional(
     t.string({
       description: "New quest title",
@@ -210,6 +201,7 @@ export const questUpdateParamsSchema = t.object({
 
 export const questUpdateResultSchema = t.object({
   id: t.integer(),
+  shortId: t.integer(),
   title: t.string(),
   updatedAt: t.datetime(),
 });
@@ -218,11 +210,7 @@ export const questUpdateResultSchema = t.object({
 // quest_delete
 // -----------------------------------------------------------------------------
 
-export const questDeleteParamsSchema = t.object({
-  id: t.integer({
-    description: "Quest ID to delete",
-  }),
-});
+export const questDeleteParamsSchema = entityRefSchema;
 
 export const questDeleteResultSchema = t.object({
   ok: t.boolean(),

@@ -9,6 +9,7 @@ import { petitions } from "../entities/petitions.ts";
  */
 export const petitionLinkedQuestSchema = t.object({
   id: t.integer(),
+  shortId: t.integer(),
   title: t.string(),
   status: t.enum(["new", "accepted", "completed"], { mode: "text" }),
   difficulty: t.integer(),

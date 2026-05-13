@@ -1,7 +1,7 @@
 import { $inject, t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
+import { $repository, $sequence, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 import { $etag } from "alepha/server/etag";
@@ -17,6 +17,12 @@ export class ChapterController {
   campaigns = $repository(campaigns);
   dt = $inject(DateTimeProvider);
   security = $inject(AppSecurityProvider);
+
+  /**
+   * Per-campaign sequence for `chapters.number`. Replaces the old MAX+1
+   * lookup with an atomic counter — race-safe even under concurrent starts.
+   */
+  protected chapterNumber = $sequence();
 
   getChapters = $action({
     use: [
@@ -57,7 +63,7 @@ export class ChapterController {
   });
 
   startChapter = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [$secure({ permissions: ["quest:create"] }), $transactional()],
     schema: {
       params: t.object({
         campaignId: t.integer(),
@@ -85,19 +91,14 @@ export class ChapterController {
         );
       }
 
-      const existing = await this.chapters.findMany({
-        where: { campaignId: { eq: params.campaignId } },
-        orderBy: [{ column: "number", direction: "desc" }],
-        limit: 1,
-      });
-      const nextNumber = existing.length > 0 ? existing[0].number + 1 : 1;
+      const number = await this.chapterNumber.next(String(params.campaignId));
 
       const campaign = await this.campaigns.getById(params.campaignId);
       const closesAt = this.computeClosesAt(campaign.chapterDuration);
 
       return await this.chapters.create({
         campaignId: params.campaignId,
-        number: nextNumber,
+        number,
         title: body.title || randomChapterName(),
         description: body.description ?? "",
         tags: body.tags ?? [],

@@ -9,6 +9,7 @@ const petitionReportTypeSchema = t.enum(["bug", "feature"], { mode: "text" });
 
 const petitionRefSchema = t.object({
   id: t.integer(),
+  shortId: t.integer(),
   title: t.string(),
   reportType: petitionReportTypeSchema,
   status: petitionStatusSchema,
@@ -19,12 +20,14 @@ const petitionRefSchema = t.object({
 
 const petitionLinkedQuestRefSchema = t.object({
   id: t.integer(),
+  shortId: t.integer(),
   title: t.string(),
   status: t.enum(["new", "accepted", "completed"], { mode: "text" }),
 });
 
 const petitionFullSchema = t.object({
   id: t.integer(),
+  shortId: t.integer(),
   title: t.string(),
   description: t.string(),
   reportType: petitionReportTypeSchema,
@@ -63,7 +66,17 @@ export const petitionListResultSchema = t.object({
 // -----------------------------------------------------------------------------
 
 export const petitionGetParamsSchema = t.extend(campaignParamsSchema, {
-  id: t.integer({ description: "Petition ID" }),
+  id: t.optional(
+    t.integer({
+      description: "Global petition ID. Mutually exclusive with shortId.",
+    }),
+  ),
+  shortId: t.optional(
+    t.integer({
+      description:
+        "Per-campaign 1-based shortId. Requires `campaign` or `campaign_name`.",
+    }),
+  ),
 });
 
 export const petitionGetResultSchema = petitionFullSchema;
@@ -73,7 +86,17 @@ export const petitionGetResultSchema = petitionFullSchema;
 // -----------------------------------------------------------------------------
 
 export const petitionTriageParamsSchema = t.extend(campaignParamsSchema, {
-  id: t.integer({ description: "Petition ID" }),
+  id: t.optional(
+    t.integer({
+      description: "Global petition ID. Mutually exclusive with shortId.",
+    }),
+  ),
+  shortId: t.optional(
+    t.integer({
+      description:
+        "Per-campaign 1-based shortId. Requires `campaign` or `campaign_name`.",
+    }),
+  ),
 });
 
 export const petitionTriageResultSchema = t.object({

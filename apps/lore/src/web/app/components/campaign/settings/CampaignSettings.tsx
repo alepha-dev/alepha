@@ -42,10 +42,7 @@ type NavLabelKey =
   | "campaign.settings.nav.chapters"
   | "campaign.settings.nav.vault";
 
-type NavGroupLabelKey =
-  | "campaign.settings.nav.group.banner"
-  | "campaign.settings.nav.group.decrees"
-  | "campaign.settings.nav.group.vault";
+type NavGroupLabelKey = "campaign.settings.nav.group.decrees";
 
 interface NavItem {
   route: RouteName;
@@ -60,7 +57,6 @@ interface NavGroup {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    labelKey: "campaign.settings.nav.group.banner",
     items: [
       {
         route: "campaignSettingsBanner",
@@ -105,7 +101,6 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    labelKey: "campaign.settings.nav.group.vault",
     items: [
       {
         route: "campaignSettingsVault",

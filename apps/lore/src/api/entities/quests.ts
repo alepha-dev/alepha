@@ -9,6 +9,13 @@ export const quests = $entity({
   name: "quests",
   schema: t.object({
     id: db.primaryKey(t.integer()),
+    /**
+     * Per-campaign sequential id, 1-based. Stable user-facing reference used
+     * in URLs (`/c/:campaignId/q/:shortId`) and UI display ("#42"). Allocated
+     * by `$sequence(scope=campaignId)` on insert. The global `id` remains the
+     * canonical PK for foreign keys and stable MCP/agent references.
+     */
+    shortId: t.integer({ minimum: 1 }),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     deletedAt: db.deletedAt(),
@@ -86,6 +93,10 @@ export const quests = $entity({
   indexes: [
     {
       columns: ["campaignId", "deletedAt"],
+    },
+    {
+      columns: ["campaignId", "shortId"],
+      unique: true,
     },
     {
       columns: ["acceptedBy"],

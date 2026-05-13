@@ -72,7 +72,7 @@ const FolioView = () => {
         <Button asChild variant="ghost" size="icon">
           <Link
             href={router.path("campaignFoliosFolioEdit", {
-              params: { campaignId, id: folio.id },
+              params: { campaignId, shortId: folio.shortId },
             })}
             aria-label={String(tr("folios.edit"))}
           >

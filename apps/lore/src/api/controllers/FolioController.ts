@@ -1,6 +1,6 @@
 import { t } from "alepha";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
+import { $repository, $sequence, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import {
   $action,
@@ -27,6 +27,12 @@ const tagListQuerySchema = t.object({
 export class FolioController {
   log = $logger();
   folios = $repository(folios);
+
+  /**
+   * Per-campaign sequence for `folios.shortId`. Powers the human-friendly
+   * `/c/:campaignId/folios/:shortId` URL.
+   */
+  protected folioShortId = $sequence();
 
   /**
    * List the user's folios. Optional `q` runs a `LIKE %q%` over `searchText`
@@ -88,6 +94,30 @@ export class FolioController {
     },
   });
 
+  getByShortId = $action({
+    use: [$secure({ permissions: ["folio:read"] })],
+    description: "Get a single folio by its per-campaign shortId.",
+    path: "/campaigns/:campaignId/folios/:shortId",
+    schema: {
+      params: t.object({
+        campaignId: t.integer(),
+        shortId: t.integer(),
+      }),
+      response: folios.schema,
+    },
+    handler: async ({ params, user }) => {
+      const folio = await this.folios.findOne({
+        where: {
+          campaignId: { eq: params.campaignId },
+          shortId: { eq: params.shortId },
+        },
+      });
+      if (!folio) throw new NotFoundError("Folio not found");
+      if (folio.userId !== user.id) throw new ForbiddenError();
+      return folio;
+    },
+  });
+
   get = $action({
     use: [$secure({ permissions: ["folio:read"] })],
     description: "Get a single folio by id.",
@@ -106,7 +136,7 @@ export class FolioController {
   });
 
   create = $action({
-    use: [$secure({ permissions: ["folio:write"] })],
+    use: [$secure({ permissions: ["folio:write"] }), $transactional()],
     description: "Create a new folio.",
     schema: {
       body: t.object({
@@ -119,9 +149,11 @@ export class FolioController {
     },
     handler: async ({ body, user }) => {
       const tags = (body.tags ?? []).map((t) => t.trim()).filter(Boolean);
+      const shortId = await this.folioShortId.next(String(body.campaignId));
       return this.folios.create({
         userId: user.id,
         campaignId: body.campaignId,
+        shortId,
         title: body.title,
         content: body.content ?? "",
         tags,
