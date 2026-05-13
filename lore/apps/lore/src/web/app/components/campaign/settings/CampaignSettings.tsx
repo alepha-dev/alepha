@@ -10,11 +10,12 @@ import {
 import {
   BookMarked,
   BookOpen,
+  Flag,
   Inbox,
   KanbanSquare,
+  Lock,
   type LucideIcon,
   MapPin,
-  Settings as SettingsIcon,
   Users,
 } from "lucide-react";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
@@ -22,22 +23,29 @@ import { currentCampaignAtom } from "@/web/app/atoms/currentCampaignAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 type RouteName =
-  | "campaignSettingsGeneral"
+  | "campaignSettingsBanner"
   | "campaignSettingsAdventurers"
   | "campaignSettingsZones"
   | "campaignSettingsKanban"
   | "campaignSettingsFolios"
   | "campaignSettingsPetitions"
-  | "campaignSettingsChapters";
+  | "campaignSettingsChapters"
+  | "campaignSettingsVault";
 
 type NavLabelKey =
-  | "campaign.settings.nav.general"
+  | "campaign.settings.nav.banner"
   | "campaign.settings.nav.adventurers"
   | "campaign.settings.nav.zones"
   | "campaign.settings.nav.kanban"
   | "campaign.settings.nav.folios"
   | "campaign.settings.nav.petitions"
-  | "campaign.settings.nav.chapters";
+  | "campaign.settings.nav.chapters"
+  | "campaign.settings.nav.vault";
+
+type NavGroupLabelKey =
+  | "campaign.settings.nav.group.banner"
+  | "campaign.settings.nav.group.decrees"
+  | "campaign.settings.nav.group.vault";
 
 interface NavItem {
   route: RouteName;
@@ -46,18 +54,24 @@ interface NavItem {
 }
 
 interface NavGroup {
-  labelKey?: "campaign.settings.nav.group.features";
+  labelKey?: NavGroupLabelKey;
   items: NavItem[];
 }
 
 const NAV_GROUPS: NavGroup[] = [
   {
+    labelKey: "campaign.settings.nav.group.banner",
     items: [
       {
-        route: "campaignSettingsGeneral",
-        labelKey: "campaign.settings.nav.general",
-        icon: SettingsIcon,
+        route: "campaignSettingsBanner",
+        labelKey: "campaign.settings.nav.banner",
+        icon: Flag,
       },
+    ],
+  },
+  {
+    labelKey: "campaign.settings.nav.group.decrees",
+    items: [
       {
         route: "campaignSettingsAdventurers",
         labelKey: "campaign.settings.nav.adventurers",
@@ -68,11 +82,6 @@ const NAV_GROUPS: NavGroup[] = [
         labelKey: "campaign.settings.nav.zones",
         icon: MapPin,
       },
-    ],
-  },
-  {
-    labelKey: "campaign.settings.nav.group.features",
-    items: [
       {
         route: "campaignSettingsKanban",
         labelKey: "campaign.settings.nav.kanban",
@@ -92,6 +101,16 @@ const NAV_GROUPS: NavGroup[] = [
         route: "campaignSettingsChapters",
         labelKey: "campaign.settings.nav.chapters",
         icon: BookMarked,
+      },
+    ],
+  },
+  {
+    labelKey: "campaign.settings.nav.group.vault",
+    items: [
+      {
+        route: "campaignSettingsVault",
+        labelKey: "campaign.settings.nav.vault",
+        icon: Lock,
       },
     ],
   },

@@ -52,7 +52,8 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   campaignFoliosFolioEdit: "campaign.menu.folios",
   campaignPetitions: "campaign.menu.petitions",
   campaignSettings: "campaign.menu.settings",
-  campaignSettingsGeneral: "campaign.menu.settings",
+  campaignSettingsBanner: "campaign.menu.settings",
+  campaignSettingsVault: "campaign.menu.settings",
   campaignSettingsZones: "campaign.menu.settings",
   campaignSettingsKanban: "campaign.menu.settings",
   campaignSettingsFolios: "campaign.menu.settings",
@@ -189,7 +190,7 @@ const CampaignView = () => {
         {
           label: tr("campaign.menu.settings"),
           icon: Cog,
-          href: router.path("campaignSettingsGeneral", {
+          href: router.path("campaignSettingsBanner", {
             params: { campaignId },
           }),
           active: name.startsWith("campaignSettings"),
