@@ -167,7 +167,7 @@ const CampaignBoardTable = () => {
         }
         onRowClick={(quest) =>
           router.push("campaignQuest", {
-            params: { questId: String(quest.id) },
+            params: { shortId: String(quest.shortId) },
           })
         }
         columns={{

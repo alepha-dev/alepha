@@ -82,7 +82,7 @@ const QuestCreate = (props: QuestCreateProps) => {
         await router.push("campaignQuest", {
           params: {
             campaignId: String(props.campaign.id),
-            questId: String(quest.id),
+            shortId: String(quest.shortId),
           },
         });
       }

@@ -122,6 +122,9 @@ const QuestView = (props: QuestViewProps) => {
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-center gap-2">
               <Tag className="size-5" />
+              <span className="font-mono text-xs text-muted-foreground/70">
+                #{quest.shortId}
+              </span>
               <span className="cinzel-400 whitespace-nowrap text-lg font-bold">
                 {quest.title}
               </span>

@@ -64,6 +64,9 @@ const KanbanCard = (props: KanbanCardProps) => {
             {quest.title}
           </span>
           <div className="flex items-center gap-1">
+            <span className="text-[10px] font-mono text-muted-foreground/70">
+              #{quest.shortId}
+            </span>
             <span className="text-xs text-muted-foreground">{quest.zone}</span>
             {quest.metadata.objectivesProgress.total > 0 && (
               <span className="text-[10px] text-muted-foreground">

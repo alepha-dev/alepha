@@ -3,7 +3,11 @@ import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 import { CampaignController } from "../../api/controllers/CampaignController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
-import { folioFullSchema, folioRefSchema } from "../schemas/index.ts";
+import {
+  folioFullSchema,
+  folioRefParamsSchema,
+  folioRefSchema,
+} from "../schemas/index.ts";
 
 /**
  * Pull a ~200-character window around the first match of `query` in `text`.
@@ -68,6 +72,32 @@ export class FolioTools {
     );
   }
 
+  /**
+   * Accept either a global UUID `id` or a per-campaign `shortId` reference
+   * (with `campaign` / `campaign_name`) and return the global folio id.
+   */
+  protected async resolveFolioId(params: {
+    id?: string;
+    shortId?: number;
+    campaign?: number;
+    campaign_name?: string;
+  }): Promise<string> {
+    if (params.id != null) return params.id;
+    if (params.shortId != null) {
+      const campaignId = await this.resolveCampaignId(
+        params.campaign,
+        params.campaign_name,
+      );
+      const folio = await this.folioController.getByShortId({
+        params: { campaignId, shortId: params.shortId },
+      });
+      return folio.id;
+    }
+    throw new BadRequestError(
+      "Folio reference required: pass `id` (global UUID) or `shortId` (per-campaign — also requires `campaign` or `campaign_name`).",
+    );
+  }
+
   folio_list = $tool({
     description:
       "List the user's folios (personal markdown notes), newest first. Use `tag` to narrow by a tag. Returns id, title, tags, updatedAt — call folio_get to read full content.",
@@ -98,6 +128,7 @@ export class FolioTools {
       return {
         folios: folios.map((f) => ({
           id: f.id,
+          shortId: f.shortId,
           title: f.title,
           tags: f.tags,
           updatedAt: f.updatedAt,
@@ -126,6 +157,7 @@ export class FolioTools {
         results: t.array(
           t.object({
             id: t.uuid(),
+            shortId: t.integer(),
             title: t.string(),
             tags: t.array(t.string()),
             snippet: t.string(),
@@ -150,6 +182,7 @@ export class FolioTools {
       return {
         results: folios.map((f) => ({
           id: f.id,
+          shortId: f.shortId,
           title: f.title,
           tags: f.tags,
           snippet: buildSnippet(f.content, params.query),
@@ -188,22 +221,22 @@ export class FolioTools {
 
   folio_get = $tool({
     description:
-      "Get the full content of a folio by id (markdown). Use folio_search or folio_list to find the id first.",
+      "Get the full content of a folio (markdown). Accepts either the global UUID `id` or the per-campaign `shortId` (with `campaign`/`campaign_name`).",
     title: "Get folio",
     annotations: {
       readOnlyHint: true,
       idempotentHint: true,
     },
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: folioRefParamsSchema,
       result: folioFullSchema,
     },
     handler: async ({ params }) => {
-      const folio = await this.folioController.get({
-        params: { id: params.id },
-      });
+      const id = await this.resolveFolioId(params);
+      const folio = await this.folioController.get({ params: { id } });
       return {
         id: folio.id,
+        shortId: folio.shortId,
         title: folio.title,
         tags: folio.tags,
         content: folio.content,
@@ -245,6 +278,7 @@ export class FolioTools {
       });
       return {
         id: folio.id,
+        shortId: folio.shortId,
         title: folio.title,
         tags: folio.tags,
         content: folio.content,
@@ -262,8 +296,7 @@ export class FolioTools {
       idempotentHint: true,
     },
     schema: {
-      params: t.object({
-        id: t.uuid(),
+      params: t.extend(folioRefParamsSchema, {
         title: t.optional(t.string({ minLength: 1, maxLength: 200 })),
         content: t.optional(t.string()),
         tags: t.optional(t.array(t.string())),
@@ -271,8 +304,9 @@ export class FolioTools {
       result: folioFullSchema,
     },
     handler: async ({ params }) => {
+      const id = await this.resolveFolioId(params);
       const folio = await this.folioController.update({
-        params: { id: params.id },
+        params: { id },
         body: {
           title: params.title,
           content: params.content,
@@ -281,6 +315,7 @@ export class FolioTools {
       });
       return {
         id: folio.id,
+        shortId: folio.shortId,
         title: folio.title,
         tags: folio.tags,
         content: folio.content,
@@ -298,11 +333,12 @@ export class FolioTools {
       idempotentHint: true, // deleting an already-deleted folio is a no-op
     },
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: folioRefParamsSchema,
       result: t.object({ ok: t.boolean() }),
     },
     handler: async ({ params }) => {
-      await this.folioController.delete({ params: { id: params.id } });
+      const id = await this.resolveFolioId(params);
+      await this.folioController.delete({ params: { id } });
       return { ok: true };
     },
   });

@@ -87,7 +87,7 @@ const FolioEditor = (props: FolioEditorProps) => {
 
       await router.push(
         router.path("campaignFoliosFolio", {
-          params: { campaignId, id: saved.id },
+          params: { campaignId, shortId: saved.shortId },
         }),
       );
     },

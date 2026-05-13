@@ -3,7 +3,7 @@ import { FileService, files } from "alepha/api/files";
 import { users } from "alepha/api/users";
 import { $bucket } from "alepha/bucket";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
+import { $repository, $sequence, $transactional } from "alepha/orm";
 import { $secure, type UserAccountToken } from "alepha/security";
 import {
   $action,
@@ -56,6 +56,12 @@ export class PetitionController {
   protected fileSystem = $inject(FileSystemProvider);
 
   /**
+   * Per-campaign sequence for `petitions.shortId`. Used in MCP responses and
+   * UI display so reporters can reference "petition #5 in Lore".
+   */
+  protected petitionShortId = $sequence();
+
+  /**
    * Bucket for petition attachments. Size cap mirrors `petitionOptionsAtom`
    * — the bucket-level limit acts as a hard backstop in case the controller
    * check is bypassed. MIME whitelist is enforced at upload time (not here)
@@ -71,7 +77,7 @@ export class PetitionController {
    * accessible to the user (public or member). Per-user daily rate limit.
    */
   submitPetition = $action({
-    use: [$secure()],
+    use: [$secure(), $transactional()],
     method: "POST",
     path: "/campaigns/:campaignId/petitions",
     schema: {
@@ -97,8 +103,13 @@ export class PetitionController {
         await this.assertAttachmentsBelongToUser(attachments, user.id);
       }
 
+      const shortId = await this.petitionShortId.next(
+        String(params.campaignId),
+      );
+
       const created = await this.petitions.create({
         campaignId: params.campaignId,
+        shortId,
         reporterUserId: user.id,
         title: body.title.slice(0, 200),
         description: body.description.slice(0, 10_000),
@@ -446,6 +457,7 @@ export class PetitionController {
       });
       const linked = (questsByPetition.get(p.id) ?? []).map((q) => ({
         id: q.id,
+        shortId: q.shortId,
         title: q.title,
         status: q.completedAt
           ? ("completed" as const)

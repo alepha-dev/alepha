@@ -107,7 +107,7 @@ const FoliosSidebar = () => {
               <Link
                 key={folio.id}
                 href={router.path("campaignFoliosFolio", {
-                  params: { campaignId, id: folio.id },
+                  params: { campaignId, shortId: folio.shortId },
                 })}
                 className={`hover:bg-muted flex flex-col gap-0.5 px-4 py-2 text-sm transition-colors ${
                   isActive ? "bg-muted" : ""

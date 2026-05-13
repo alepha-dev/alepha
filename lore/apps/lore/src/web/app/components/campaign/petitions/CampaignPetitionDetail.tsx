@@ -188,7 +188,7 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
                       href={router.path("campaignQuest", {
                         params: {
                           campaignId: String(campaign.id),
-                          questId: String(q.id),
+                          shortId: String(q.shortId),
                         },
                       })}
                       className="bg-muted/30 hover:bg-muted/60 flex items-center gap-2 rounded border border-border px-3 py-2 text-sm"

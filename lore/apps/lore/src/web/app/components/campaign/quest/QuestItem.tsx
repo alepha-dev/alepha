@@ -39,7 +39,7 @@ const QuestItem = (props: QuestItemProps) => {
   const client = useClient<QuestController>();
   const router = useRouter<AppRouter>();
   const { isActive, anchorProps } = useActive(
-    router.path("campaignQuest", { params: { questId: quest.id } }),
+    router.path("campaignQuest", { params: { shortId: quest.shortId } }),
   );
 
   const clearNote = async (e: React.MouseEvent) => {

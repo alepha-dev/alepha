@@ -72,6 +72,32 @@ export class QuestTools {
   }
 
   /**
+   * Accept either a global `id` or a per-campaign `shortId` reference
+   * (with `campaign` / `campaign_name`) and return the global quest id.
+   */
+  protected async resolveQuestId(params: {
+    id?: number;
+    shortId?: number;
+    campaign?: number;
+    campaign_name?: string;
+  }): Promise<number> {
+    if (params.id != null) return params.id;
+    if (params.shortId != null) {
+      const campaignId = await this.resolveCampaignId(
+        params.campaign,
+        params.campaign_name,
+      );
+      const quest = await this.questController.getQuestByShortId({
+        params: { campaignId, shortId: params.shortId },
+      });
+      return quest.id;
+    }
+    throw new BadRequestError(
+      "Quest reference required: pass `id` (global) or `shortId` (per-campaign — also requires `campaign` or `campaign_name`).",
+    );
+  }
+
+  /**
    * List quests for a campaign.
    */
   quest_list = $tool({
@@ -105,6 +131,7 @@ export class QuestTools {
       return {
         quests: result.content.map((quest) => ({
           id: quest.id,
+          shortId: quest.shortId,
           title: quest.title,
           description: quest.description,
           zone: quest.zone,
@@ -152,6 +179,7 @@ export class QuestTools {
 
       return {
         id: quest.id,
+        shortId: quest.shortId,
         title: quest.title,
         createdAt: quest.createdAt,
       };
@@ -171,12 +199,14 @@ export class QuestTools {
       result: questAcceptResultSchema,
     },
     handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
       const quest = await this.questController.acceptQuest({
-        params: { id: params.id },
+        params: { id },
       });
 
       return {
         id: quest.id,
+        shortId: quest.shortId,
         title: quest.title,
         acceptedAt: quest.acceptedAt!,
       };
@@ -200,8 +230,9 @@ export class QuestTools {
       result: questCompleteResultSchema,
     },
     handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
       const result = await this.questController.completeQuest({
-        params: { id: params.id },
+        params: { id },
       });
 
       // Calculate rewards from character delta
@@ -210,6 +241,7 @@ export class QuestTools {
 
       return {
         id: result.id,
+        shortId: result.shortId,
         title: result.title,
         completedAt: result.completedAt!,
         xpEarned,
@@ -231,12 +263,14 @@ export class QuestTools {
       result: questGetResultSchema,
     },
     handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
       const quest = await this.questController.getQuestById({
-        params: { id: params.id },
+        params: { id },
       });
 
       return {
         id: quest.id,
+        shortId: quest.shortId,
         title: quest.title,
         description: quest.description,
         zone: quest.zone,
@@ -267,8 +301,9 @@ export class QuestTools {
       result: questUpdateResultSchema,
     },
     handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
       const quest = await this.questController.updateQuestById({
-        params: { id: params.id },
+        params: { id },
         body: {
           title: params.title,
           description: params.description,
@@ -281,6 +316,7 @@ export class QuestTools {
 
       return {
         id: quest.id,
+        shortId: quest.shortId,
         title: quest.title,
         updatedAt: quest.updatedAt,
       };
@@ -303,8 +339,9 @@ export class QuestTools {
       result: questDeleteResultSchema,
     },
     handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
       await this.questController.deleteQuest({
-        params: { id: params.id },
+        params: { id },
       });
       return { ok: true };
     },

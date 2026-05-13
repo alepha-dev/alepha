@@ -58,6 +58,33 @@ export class PetitionTools {
     return reporter.name || reporter.username || undefined;
   }
 
+  /**
+   * Resolve either a global `id` or a per-campaign `shortId` (with campaign
+   * context) to the petition's global id.
+   */
+  protected async resolvePetitionId(
+    campaignId: number,
+    params: { id?: number; shortId?: number },
+  ): Promise<number> {
+    if (params.id != null) return params.id;
+    if (params.shortId != null) {
+      const result = await this.petitionController.listPetitions({
+        params: { campaignId },
+        query: { status: "all" },
+      });
+      const found = result.items.find((p) => p.shortId === params.shortId);
+      if (!found) {
+        throw new NotFoundError(
+          `Petition with shortId ${params.shortId} not found in campaign`,
+        );
+      }
+      return found.id;
+    }
+    throw new BadRequestError(
+      "Petition reference required: pass `id` (global) or `shortId` (per-campaign — also requires `campaign` or `campaign_name`).",
+    );
+  }
+
   petition_list = $tool({
     description:
       "List petitions (user-submitted bug/feature requests) for a campaign. Owner-only. Defaults to status 'pending' — the inbox the owner needs to triage. Pass status='all' to see everything.",
@@ -81,6 +108,7 @@ export class PetitionTools {
       return {
         petitions: result.items.map((p) => ({
           id: p.id,
+          shortId: p.shortId,
           title: p.title,
           reportType: p.reportType,
           status: p.status,
@@ -107,12 +135,14 @@ export class PetitionTools {
         params.campaign_name,
       );
 
+      const petitionId = await this.resolvePetitionId(campaignId, params);
       const p = await this.petitionController.getPetition({
-        params: { campaignId, petitionId: params.id },
+        params: { campaignId, petitionId },
       });
 
       return {
         id: p.id,
+        shortId: p.shortId,
         title: p.title,
         description: p.description,
         reportType: p.reportType,
@@ -122,6 +152,7 @@ export class PetitionTools {
         attachmentCount: p.attachmentUrls?.length ?? 0,
         linkedQuests: (p.linkedQuests ?? []).map((q) => ({
           id: q.id,
+          shortId: q.shortId,
           title: q.title,
           status: q.status,
         })),
@@ -145,8 +176,9 @@ export class PetitionTools {
         params.campaign_name,
       );
 
+      const petitionId = await this.resolvePetitionId(campaignId, params);
       const result = await this.petitionController.acceptPetition({
-        params: { campaignId, petitionId: params.id },
+        params: { campaignId, petitionId },
       });
 
       return { ok: result.ok };
@@ -168,8 +200,9 @@ export class PetitionTools {
         params.campaign_name,
       );
 
+      const petitionId = await this.resolvePetitionId(campaignId, params);
       const result = await this.petitionController.rejectPetition({
-        params: { campaignId, petitionId: params.id },
+        params: { campaignId, petitionId },
       });
 
       return { ok: result.ok };

@@ -442,10 +442,10 @@ export class AppRouter {
   });
 
   campaignQuest = $page({
-    path: "/q/:questId",
+    path: "/q/:shortId",
     schema: {
       params: t.object({
-        questId: t.integer(),
+        shortId: t.integer(),
       }),
     },
     head: (props, previous) => {
@@ -480,9 +480,14 @@ export class AppRouter {
     },
     lazy: () => import("./components/campaign/quest/QuestView.tsx"),
     loader: async ({ params }) => {
-      const quest = await this.questApi.getQuestById({
+      const campaign = this.alepha.store.get(currentCampaignAtom);
+      if (!campaign) {
+        throw new NotFoundError("Campaign not found");
+      }
+      const quest = await this.questApi.getQuestByShortId({
         params: {
-          id: params.questId,
+          campaignId: campaign.id,
+          shortId: params.shortId,
         },
       });
       this.alepha.store.set(currentQuestAtom, quest);
@@ -547,9 +552,9 @@ export class AppRouter {
 
   campaignFoliosFolio = $page({
     name: "campaignFoliosFolio",
-    path: "/:id",
+    path: "/:shortId",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: t.object({ shortId: t.integer() }),
     },
     head: (props, previous) => {
       const folio = (props as { folio?: { title?: string } } | undefined)
@@ -560,7 +565,13 @@ export class AppRouter {
     },
     lazy: () => import("./components/folios/FolioView.tsx"),
     loader: async ({ params }) => {
-      const folio = await this.folioApi.get({ params: { id: params.id } });
+      const campaign = this.alepha.store.get(currentCampaignAtom);
+      if (!campaign) {
+        throw new NotFoundError("Campaign not found");
+      }
+      const folio = await this.folioApi.getByShortId({
+        params: { campaignId: campaign.id, shortId: params.shortId },
+      });
       this.alepha.store.set(currentFolioAtom, folio);
       return { folio };
     },
@@ -568,9 +579,9 @@ export class AppRouter {
 
   campaignFoliosFolioEdit = $page({
     name: "campaignFoliosFolioEdit",
-    path: "/:id/edit",
+    path: "/:shortId/edit",
     schema: {
-      params: t.object({ id: t.uuid() }),
+      params: t.object({ shortId: t.integer() }),
     },
     head: (props, previous) => {
       const folio = (props as { folio?: { title?: string } } | undefined)
@@ -581,7 +592,13 @@ export class AppRouter {
     },
     lazy: () => import("./components/folios/FolioEditPage.tsx"),
     loader: async ({ params }) => {
-      const folio = await this.folioApi.get({ params: { id: params.id } });
+      const campaign = this.alepha.store.get(currentCampaignAtom);
+      if (!campaign) {
+        throw new NotFoundError("Campaign not found");
+      }
+      const folio = await this.folioApi.getByShortId({
+        params: { campaignId: campaign.id, shortId: params.shortId },
+      });
       this.alepha.store.set(currentFolioAtom, folio);
       return { folio };
     },

@@ -54,6 +54,38 @@ export class ChapterTools {
   }
 
   /**
+   * Resolve a chapter reference (`id` or `number` + campaign) to the global
+   * chapter id.
+   */
+  protected async resolveChapterId(params: {
+    id?: number;
+    number?: number;
+    campaign?: number;
+    campaign_name?: string;
+  }): Promise<number> {
+    if (params.id != null) return params.id;
+    if (params.number != null) {
+      const campaignId = await this.resolveCampaignId(
+        params.campaign,
+        params.campaign_name,
+      );
+      const result = await this.chapterController.getChapters({
+        params: { campaignId },
+      });
+      const found = result.find((ch) => ch.number === params.number);
+      if (!found) {
+        throw new NotFoundError(
+          `Chapter ${params.number} not found in campaign`,
+        );
+      }
+      return found.id;
+    }
+    throw new BadRequestError(
+      "Chapter reference required: pass `id` (global) or `number` (per-campaign — also requires `campaign` or `campaign_name`).",
+    );
+  }
+
+  /**
    * List all chapters for a campaign.
    */
   chapter_list = $tool({
@@ -139,8 +171,9 @@ export class ChapterTools {
       result: chapterCloseResultSchema,
     },
     handler: async ({ params }) => {
+      const id = await this.resolveChapterId(params);
       const chapter = await this.chapterController.closeChapter({
-        params: { id: params.id },
+        params: { id },
         body: { title: params.title },
       });
 
@@ -166,8 +199,9 @@ export class ChapterTools {
       result: chapterChangelogResultSchema,
     },
     handler: async ({ params }) => {
+      const id = await this.resolveChapterId(params);
       const result = await this.chapterController.getChapterChangelog({
-        params: { id: params.id },
+        params: { id },
       });
 
       return {

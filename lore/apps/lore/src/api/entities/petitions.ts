@@ -16,6 +16,12 @@ export const petitions = $entity({
   name: "petitions",
   schema: t.object({
     id: db.primaryKey(t.integer()),
+    /**
+     * Per-campaign sequential id, 1-based. Stable user-facing reference used
+     * in MCP responses and UI display ("#5"). Allocated by
+     * `$sequence(scope=campaignId)` on insert.
+     */
+    shortId: t.integer({ minimum: 1 }),
     createdAt: db.createdAt(),
     deletedAt: db.deletedAt(),
     campaignId: db.ref(t.integer(), () => campaigns.cols.id, {
@@ -48,6 +54,7 @@ export const petitions = $entity({
   indexes: [
     { columns: ["campaignId", "status", "deletedAt"] },
     { columns: ["campaignId", "createdAt"] },
+    { columns: ["campaignId", "shortId"], unique: true },
     { columns: ["reporterUserId", "createdAt"] },
   ],
 });
