@@ -21,15 +21,15 @@ const HeaderActions = (_props: HeaderActionsProps) => {
   const goProfile = () => router.push("me");
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="bg-background flex items-center gap-1 rounded-md border p-1">
       <ButtonLanguage
-        variant="outline"
+        variant="ghost"
         label={tr("header.actions.language" as never)}
       />
-      <ButtonTheme variant="outline" />
-      <ButtonDark variant="outline" />
+      <ButtonTheme variant="ghost" />
+      <ButtonDark variant="ghost" />
       <ButtonUser
-        variant="outline"
+        variant="ghost"
         onSignIn={goLogin}
         label={tr("header.actions.login")}
       >

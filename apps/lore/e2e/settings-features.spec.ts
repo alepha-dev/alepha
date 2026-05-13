@@ -91,7 +91,7 @@ test.describe("Campaign settings — feature toggles", () => {
     await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout: 15_000 });
 
     // Create campaign
-    await page.goto("/c-new");
+    await page.goto("/new-campaign");
     await page.waitForLoadState("networkidle");
     await page.locator('input[type="text"]').first().fill(campaignTitle);
     await page.getByRole("button", { name: /create campaign/i }).click();

@@ -95,9 +95,7 @@ const DevLayout = () => {
           topbarActions={<ButtonTheme />}
           brand={
             <div className="flex items-center gap-2 px-2 py-2 font-semibold group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-              <span className="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded">
-                α
-              </span>
+              <Settings className="size-5 shrink-0" />
               <span className="truncate group-data-[collapsible=icon]:hidden">
                 Alepha Devtools
               </span>

@@ -1,7 +1,7 @@
-import { AlephaError, t } from "alepha";
+import { AlephaError, TypeBoxError, t } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
 import { useAuth } from "alepha/react/auth";
-import { FormValidationError, useForm } from "alepha/react/form";
+import { FormValidationError, useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { HttpError } from "alepha/server";
@@ -111,6 +111,12 @@ export function AuthLogin(props: AuthLoginProps) {
     },
   });
 
+  const formState = useFormState(form, ["error"]);
+  const formError =
+    formState.error && !(formState.error instanceof TypeBoxError)
+      ? formState.error.message
+      : undefined;
+
   const externalMethods = props.realmConfig.authenticationMethods.filter(
     (m) => m.type !== "CREDENTIALS",
   );
@@ -122,20 +128,18 @@ export function AuthLogin(props: AuthLoginProps) {
   const variant = props.variant ?? "centered";
 
   const formColumn = (
-    <div className="flex w-full max-w-sm flex-col gap-4">
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-6">
-          {(settings.logoUrl ||
-            settings.displayName ||
-            settings.description) && (
+    <div className="flex w-full max-w-sm flex-col items-center gap-4">
+      {settings.logoUrl && (
+        <img
+          src={settings.logoUrl}
+          alt={settings.displayName || props.realmConfig.realmName}
+          className="size-16 rounded-xl border bg-muted object-cover shadow-sm"
+        />
+      )}
+      <Card className="w-full">
+        <CardContent className="flex flex-col gap-4">
+          {(settings.displayName || settings.description) && (
             <div className="flex flex-col items-center gap-1">
-              {settings.logoUrl && (
-                <img
-                  src={settings.logoUrl}
-                  alt={settings.displayName || props.realmConfig.realmName}
-                  className="h-12 w-auto object-contain"
-                />
-              )}
               {settings.displayName && (
                 <h2 className="text-center text-lg font-semibold">
                   {settings.displayName}
@@ -149,10 +153,10 @@ export function AuthLogin(props: AuthLoginProps) {
             </div>
           )}
 
-          {error && (
+          {(error || formError) && (
             <Alert variant="destructive">
               <AlertCircle className="size-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{error || formError}</AlertDescription>
             </Alert>
           )}
 

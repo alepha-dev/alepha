@@ -138,7 +138,7 @@ test.describe("User Journey", () => {
     // ── Create campaign ────────────────────────────────────────────────────
     let campaignId = 0;
     await test.step("create campaign via UI", async () => {
-      await page.goto("/c-new");
+      await page.goto("/new-campaign");
       await page.waitForLoadState("networkidle");
 
       await page.locator('input[type="text"]').first().fill(testCampaignTitle);
@@ -332,7 +332,7 @@ test.describe("User Journey", () => {
 
     let campaignId = 0;
     await test.step("create campaign", async () => {
-      await page.goto("/c-new");
+      await page.goto("/new-campaign");
       await page.waitForLoadState("networkidle");
       await page.locator('input[type="text"]').first().fill(campaignTitle);
       await page.getByRole("button", { name: /create campaign/i }).click();

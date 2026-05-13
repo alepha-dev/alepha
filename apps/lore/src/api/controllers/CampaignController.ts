@@ -95,7 +95,7 @@ export class CampaignController {
       query: pageQuerySchema,
       response: t.array(campaigns.schema),
     },
-    handler: async ({ user }) => {
+    handler: async ({ user, query }) => {
       const userCharacters = await this.characters.findMany({
         where: { userId: { eq: user.id } },
       });
@@ -105,10 +105,15 @@ export class CampaignController {
         return [];
       }
 
-      return await this.campaigns.findMany({
-        where: { id: { inArray: characterCampaignIds } },
-        limit: characterCampaignIds.length,
-      });
+      const result = await this.campaigns.paginate(
+        {
+          size: query.size ?? characterCampaignIds.length,
+          sort: query.sort ?? "-updatedAt",
+          page: query.page ?? 0,
+        },
+        { where: { id: { inArray: characterCampaignIds } } },
+      );
+      return result.content;
     },
   });
 

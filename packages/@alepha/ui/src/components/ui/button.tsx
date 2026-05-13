@@ -8,15 +8,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default:
+          "bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_1px_0_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.12)] hover:bg-primary/90 hover:-translate-y-px hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_1px_0_rgba(0,0,0,0.05),0_4px_8px_-2px_rgba(0,0,0,0.18)] active:translate-y-px active:shadow-[inset_0_1px_2px_rgba(0,0,0,0.18)]",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:hover:bg-destructive/80 dark:focus-visible:ring-destructive/40",
+          "bg-destructive text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_1px_0_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.12)] hover:bg-destructive/90 hover:-translate-y-px hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_1px_0_rgba(0,0,0,0.05),0_4px_8px_-2px_rgba(0,0,0,0.18)] active:translate-y-px active:shadow-[inset_0_1px_2px_rgba(0,0,0,0.18)] focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:hover:bg-destructive/80 dark:focus-visible:ring-destructive/40",
         outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border border-b-2 bg-background shadow-[0_1px_0_rgba(0,0,0,0.02),0_2px_4px_-2px_rgba(0,0,0,0.06)] hover:bg-accent hover:text-accent-foreground hover:-translate-y-px hover:shadow-[0_1px_0_rgba(0,0,0,0.03),0_4px_8px_-2px_rgba(0,0,0,0.1)] active:translate-y-px active:border-b active:shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_1px_0_rgba(0,0,0,0.04),0_2px_4px_-1px_rgba(0,0,0,0.08)] hover:bg-secondary/80 hover:-translate-y-px hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_1px_0_rgba(0,0,0,0.04),0_4px_8px_-2px_rgba(0,0,0,0.12)] active:translate-y-px active:shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+          "hover:bg-accent hover:text-accent-foreground active:translate-y-px dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

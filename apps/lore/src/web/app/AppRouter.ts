@@ -86,7 +86,9 @@ export class AppRouter {
       if (user) {
         this.alepha.store.set(
           userCampaignsAtom,
-          await this.campaignApi.getMyCampaigns(),
+          await this.campaignApi.getMyCampaigns({
+            query: { size: 5, sort: "-updatedAt" },
+          }),
         );
       }
     },
@@ -161,12 +163,22 @@ export class AppRouter {
 
   home = $page({
     path: "/",
+    animation: (state) => {
+      if (state.url.pathname === "/new-campaign") {
+        return {
+          exit: { name: "fadeScaleOut", duration: 700, timing: "ease-in" },
+        };
+      }
+    },
     lazy: () => import("./components/home/Home.tsx"),
   });
 
   campaignCreate = $page({
-    path: "/c-new",
+    path: "/new-campaign",
     head: { title: "New campaign › Alepha Lore" },
+    animation: {
+      enter: { name: "fadeIn", duration: 500, timing: "ease-out" },
+    },
     lazy: () => import("./components/campaign/CampaignCreate.tsx"),
   });
 
@@ -203,6 +215,17 @@ export class AppRouter {
       const campaign = (props as { campaign?: { title?: string } } | undefined)
         ?.campaign;
       return { title: campaign?.title ?? "Campaign" };
+    },
+    animation: ({ meta }) => {
+      if (meta.firstOpen) {
+        return {
+          enter: {
+            name: "campaignOpen",
+            duration: 500,
+            timing: "cubic-bezier(0.16, 1, 0.3, 1)",
+          },
+        };
+      }
     },
     lazy: () => import("./components/campaign/CampaignView.tsx"),
     loader: async ({ params }) => {

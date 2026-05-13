@@ -130,9 +130,16 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
 
   return (
     <div className="flex min-h-svh flex-1 items-center justify-center p-6">
-      <div className="flex w-full max-w-sm flex-col gap-4">
-        <Card>
-          <CardContent className="flex flex-col gap-4 p-6">
+      <div className="flex w-full max-w-sm flex-col items-center gap-4">
+        {settings?.logoUrl && (
+          <img
+            src={settings.logoUrl}
+            alt={settings.displayName || props.realmConfig.realmName}
+            className="size-16 rounded-xl border bg-muted object-cover shadow-sm"
+          />
+        )}
+        <Card className="w-full">
+          <CardContent className="flex flex-col gap-4">
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="size-4" />

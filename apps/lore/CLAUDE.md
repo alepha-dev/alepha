@@ -33,7 +33,7 @@ src/
 | Path | Page | Notes |
 |------|------|-------|
 | `/` | Home | Campaign list |
-| `/c-new` | CampaignCreate | New campaign form |
+| `/new-campaign` | CampaignCreate | New campaign form |
 | `/c/:campaignId` | CampaignView | Campaign detail (has child routes) |
 | `/c/:campaignId/` | CampaignBoard | Quest list grouped by zone |
 | `/c/:campaignId/players` | CampaignAdventurers | Adventurers & invitations |

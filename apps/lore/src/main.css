@@ -1,6 +1,53 @@
 @import "@alepha/ui/styles.css";
 
 /* ────────────────────────────────────────────────────────────────────────
+ * Page transition keyframes — referenced by `$page({ animation })` in
+ * AppRouter. `tw-animate-css` only ships generic enter/exit keyframes
+ * driven by utility classes, so the router needs its own named ones.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeScaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes hammerSwing {
+  0%,
+  100% {
+    transform: rotate(-25deg);
+  }
+  50% {
+    transform: rotate(25deg);
+  }
+}
+
+@keyframes campaignOpen {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
  * Discreet scrollbars — thin, neutral, fade-on-hover.
  * Applied globally so every scroll container picks them up.
  * ──────────────────────────────────────────────────────────────────────── */
@@ -47,6 +94,7 @@
   position: relative;
 }
 
+body::before,
 [data-sidebar="sidebar"]:not([data-mobile])::before,
 [data-slot="sidebar-wrapper"]::before {
   content: "";
@@ -61,6 +109,12 @@
   -webkit-mask-repeat: repeat;
 }
 
+body::before {
+  position: fixed;
+  z-index: -1;
+}
+
+.dark body::before,
 .dark [data-sidebar="sidebar"]:not([data-mobile])::before,
 .dark [data-slot="sidebar-wrapper"]::before {
   opacity: 0.02;
