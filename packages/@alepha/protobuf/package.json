@@ -24,13 +24,13 @@
     }
   },
   "devDependencies": {
-    "alepha": "0.20.7",
+    "alepha": "0.20.8",
     "tsdown": "^0.22.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"
   },
   "peerDependencies": {
-    "alepha": "0.20.7"
+    "alepha": "0.20.8"
   },
   "scripts": {
     "lint": "alepha lint",
