@@ -310,13 +310,14 @@ export class AppRouter {
   campaignSettings = $page({
     path: "/settings",
     children: () => [
-      this.campaignSettingsGeneral,
+      this.campaignSettingsBanner,
       this.campaignSettingsAdventurers,
       this.campaignSettingsZones,
       this.campaignSettingsKanban,
       this.campaignSettingsFolios,
       this.campaignSettingsPetitions,
       this.campaignSettingsChapters,
+      this.campaignSettingsVault,
     ],
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Settings`,
@@ -324,14 +325,14 @@ export class AppRouter {
     lazy: () => import("./components/campaign/settings/CampaignSettings.tsx"),
   });
 
-  campaignSettingsGeneral = $page({
-    name: "campaignSettingsGeneral",
+  campaignSettingsBanner = $page({
+    name: "campaignSettingsBanner",
     path: "/",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › General`,
+      title: `${previous?.title ?? ""} › Banner`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsGeneral.tsx"),
+      import("./components/campaign/settings/CampaignSettingsBanner.tsx"),
   });
 
   campaignSettingsAdventurers = $page({
@@ -428,6 +429,16 @@ export class AppRouter {
     }),
     lazy: () =>
       import("./components/campaign/settings/CampaignSettingsChaptersPage.tsx"),
+  });
+
+  campaignSettingsVault = $page({
+    name: "campaignSettingsVault",
+    path: "/vault",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Vault`,
+    }),
+    lazy: () =>
+      import("./components/campaign/settings/CampaignSettingsVault.tsx"),
   });
 
   campaignQuest = $page({

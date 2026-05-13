@@ -752,6 +752,24 @@ yarn shadcn add @alepha/language-toggle
 
 **Dependencies:** `alepha`, `lucide-react`, `shadcn:button`, `shadcn:dropdown-menu`
 
+#### `@alepha/markdown-view` — Markdown view
+
+Render markdown content with GitHub-flavored extensions and an opinionated, prose-friendly default styling.
+
+**Install**
+
+```bash
+yarn shadcn add @alepha/markdown-view
+```
+
+**Props**
+
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| `content` | `string` | Yes |  |
+
+**Dependencies:** `react-markdown`, `remark-gfm`
+
 #### `@alepha/saas` — Alepha SaaS preset
 
 One-shot init: control + auto-form + alepha-table + use-dialog + use-toast + app-shell + auth pages + admin (users, sessions) + topbar buttons (dark/theme/user/language) + language toggle. Add more admin-* blocks as needed.

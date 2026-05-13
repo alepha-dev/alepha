@@ -9,11 +9,9 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentCampaignAtom } from "@/web/app/atoms/currentCampaignAtom.ts";
 import { userCampaignsAtom } from "@/web/app/atoms/userCampaignsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import CampaignUpdate from "../CampaignUpdate.tsx";
-import CampaignSettingsCharacterSection from "./CampaignSettingsCharacterSection.tsx";
 import CampaignSettingsConfirmationModal from "./CampaignSettingsConfirmationModal.tsx";
 
-const CampaignSettingsGeneral = () => {
+const CampaignSettingsVault = () => {
   const alepha = useAlepha();
   const { tr } = useI18n<I18n, "en">();
   const campaignApi = useClient<CampaignController>();
@@ -39,13 +37,6 @@ const CampaignSettingsGeneral = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <span className="text-sm">{tr("campaign.settings.general.title")}</span>
-        <CampaignUpdate campaign={campaign} />
-      </div>
-
-      <CampaignSettingsCharacterSection />
-
       <div className="flex flex-col gap-2">
         <span className="text-sm">{tr("campaign.settings.danger.title")}</span>
         <Card className="bg-card divide-y rounded-lg border py-0 shadow">
@@ -80,4 +71,4 @@ const CampaignSettingsGeneral = () => {
   );
 };
 
-export default CampaignSettingsGeneral;
+export default CampaignSettingsVault;
