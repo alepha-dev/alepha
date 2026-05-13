@@ -72,7 +72,7 @@ describe("CampaignController feature flags", () => {
     await ctx.alepha.stop();
   });
 
-  it("defaults all features to false on a new campaign", async ({ expect }) => {
+  it("defaults all features to true on a new campaign", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const created = await ctx.campaignController.createCampaign.fetch(
       { body: { title: "Test Campaign" } },
@@ -80,52 +80,19 @@ describe("CampaignController feature flags", () => {
     );
 
     expect(created.data.features).toStrictEqual({
-      kanban: false,
-      folios: false,
-      petitions: false,
-      chapters: false,
-    });
-  });
-
-  it("enables a single feature without dropping the others", async ({
-    expect,
-  }) => {
-    const user = await createTestUser(ctx);
-    const created = await ctx.campaignController.createCampaign.fetch(
-      { body: { title: "Test Campaign" } },
-      { user },
-    );
-
-    const updated = await ctx.campaignController.updateCampaignById.fetch(
-      {
-        params: { id: created.data.id },
-        body: { features: { kanban: true } },
-      },
-      { user },
-    );
-
-    expect(updated.data.features).toStrictEqual({
       kanban: true,
-      folios: false,
-      petitions: false,
-      chapters: false,
+      folios: true,
+      petitions: true,
+      chapters: true,
     });
   });
 
-  it("toggles features back off without affecting the others", async ({
+  it("disables a single feature without dropping the others", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
     const created = await ctx.campaignController.createCampaign.fetch(
       { body: { title: "Test Campaign" } },
-      { user },
-    );
-
-    await ctx.campaignController.updateCampaignById.fetch(
-      {
-        params: { id: created.data.id },
-        body: { features: { kanban: true, folios: true } },
-      },
       { user },
     );
 
@@ -140,8 +107,41 @@ describe("CampaignController feature flags", () => {
     expect(updated.data.features).toStrictEqual({
       kanban: false,
       folios: true,
-      petitions: false,
-      chapters: false,
+      petitions: true,
+      chapters: true,
+    });
+  });
+
+  it("toggles features back on without affecting the others", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const created = await ctx.campaignController.createCampaign.fetch(
+      { body: { title: "Test Campaign" } },
+      { user },
+    );
+
+    await ctx.campaignController.updateCampaignById.fetch(
+      {
+        params: { id: created.data.id },
+        body: { features: { kanban: false, folios: false } },
+      },
+      { user },
+    );
+
+    const updated = await ctx.campaignController.updateCampaignById.fetch(
+      {
+        params: { id: created.data.id },
+        body: { features: { kanban: true } },
+      },
+      { user },
+    );
+
+    expect(updated.data.features).toStrictEqual({
+      kanban: true,
+      folios: false,
+      petitions: true,
+      chapters: true,
     });
   });
 
@@ -155,7 +155,7 @@ describe("CampaignController feature flags", () => {
     await ctx.campaignController.updateCampaignById.fetch(
       {
         params: { id: created.data.id },
-        body: { features: { petitions: true, chapters: true } },
+        body: { features: { petitions: false, chapters: false } },
       },
       { user },
     );
@@ -166,10 +166,10 @@ describe("CampaignController feature flags", () => {
     );
 
     expect(fetched.data.features).toStrictEqual({
-      kanban: false,
-      folios: false,
-      petitions: true,
-      chapters: true,
+      kanban: true,
+      folios: true,
+      petitions: false,
+      chapters: false,
     });
   });
 });

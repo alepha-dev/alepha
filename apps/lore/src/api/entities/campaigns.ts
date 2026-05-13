@@ -11,10 +11,10 @@ export const campaignFeaturesSchema = t.object({
 export type CampaignFeatures = Static<typeof campaignFeaturesSchema>;
 
 export const defaultCampaignFeatures: CampaignFeatures = {
-  kanban: false,
-  folios: false,
-  petitions: false,
-  chapters: false,
+  kanban: true,
+  folios: true,
+  petitions: true,
+  chapters: true,
 };
 
 export const campaigns = $entity({

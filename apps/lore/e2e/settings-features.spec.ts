@@ -105,43 +105,43 @@ test.describe("Campaign settings — feature toggles", () => {
     // from the settings sub-nav link (/c/:id/settings/kanban).
     const sidebarKanban = page.locator(`a[href="/c/${campaignId}/kanban"]`);
 
-    // Kanban is OFF by default → sidebar link not visible
-    await expect(sidebarKanban).toHaveCount(0);
+    // Kanban is ON by default → sidebar link is visible
+    await expect(sidebarKanban).toBeVisible();
 
     // Navigate directly to the Kanban settings sub-page
     await page.goto(`/c/${campaignId}/settings/kanban`);
     await page.waitForLoadState("networkidle");
 
-    // Switch should be unchecked
+    // Switch should be checked
     const kanbanSwitch = page.getByRole("switch", { name: /enable/i });
-    await expect(kanbanSwitch).toHaveAttribute("data-state", "unchecked");
+    await expect(kanbanSwitch).toHaveAttribute("data-state", "checked");
 
-    // Toggle ON
+    // Toggle OFF
     await kanbanSwitch.click();
-    await expect(kanbanSwitch).toHaveAttribute("data-state", "checked", {
+    await expect(kanbanSwitch).toHaveAttribute("data-state", "unchecked", {
       timeout: 5_000,
     });
 
-    // Sidebar should now show the board Kanban link
-    await expect(sidebarKanban).toBeVisible({ timeout: 5_000 });
+    // Sidebar should drop the board Kanban link
+    await expect(sidebarKanban).toHaveCount(0);
 
-    // Reload, verify persistence: Switch still ON and sidebar link still there
+    // Reload, verify persistence: Switch still OFF and sidebar link still absent
     await page.reload();
     await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("switch", { name: /enable/i })).toHaveAttribute(
-      "data-state",
-      "checked",
-      { timeout: 5_000 },
-    );
-    await expect(sidebarKanban).toBeVisible();
-
-    // Toggle back OFF
-    await page.getByRole("switch", { name: /enable/i }).click();
     await expect(page.getByRole("switch", { name: /enable/i })).toHaveAttribute(
       "data-state",
       "unchecked",
       { timeout: 5_000 },
     );
     await expect(sidebarKanban).toHaveCount(0);
+
+    // Toggle back ON
+    await page.getByRole("switch", { name: /enable/i }).click();
+    await expect(page.getByRole("switch", { name: /enable/i })).toHaveAttribute(
+      "data-state",
+      "checked",
+      { timeout: 5_000 },
+    );
+    await expect(sidebarKanban).toBeVisible();
   });
 });
