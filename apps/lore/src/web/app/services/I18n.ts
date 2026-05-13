@@ -84,6 +84,7 @@ export class I18n {
         "campaign.menu.group.castle": "Admin",
 
         "quest.create.submit": "Add Quest to Campaign",
+        "quest.create.submitAndAccept": "Create & Accept",
         "quest.create.update": "Update Quest",
         "quest.create.difficulty": "Difficulty",
         "quest.create.difficulty.helper":
@@ -556,6 +557,7 @@ export class I18n {
         "campaign.menu.group.castle": "Administration",
 
         "quest.create.submit": "Ajouter la quête à la campagne",
+        "quest.create.submitAndAccept": "Créer & accepter",
         "quest.create.update": "Modifier la quête",
         "quest.create.difficulty": "Difficulté",
         "quest.create.difficulty.helper":

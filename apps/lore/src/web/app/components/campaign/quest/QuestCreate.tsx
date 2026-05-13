@@ -1,5 +1,11 @@
 import { Control } from "@alepha/ui/components/control/control";
 import { Button } from "@alepha/ui/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@alepha/ui/components/ui/dropdown-menu";
 import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { Separator } from "@alepha/ui/components/ui/separator";
 import { t } from "alepha";
@@ -7,7 +13,17 @@ import { useAlepha, useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { FileText, ListChecks, Plus, Save, Tag, Tent } from "lucide-react";
+import {
+  ChevronDown,
+  FileText,
+  ListChecks,
+  Plus,
+  Save,
+  Signature,
+  Tag,
+  Tent,
+} from "lucide-react";
+import { useRef } from "react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Campaign } from "@/api/entities/campaigns.ts";
 import { questCreateSchema } from "@/api/schemas/questCreateSchema.ts";
@@ -36,6 +52,7 @@ const QuestCreate = (props: QuestCreateProps) => {
   const [kanbanCampaign] = useStore(kanbanCampaignAtom);
 
   const update = !!props.quest?.id;
+  const acceptAfterCreate = useRef(false);
 
   const form = useForm({
     id: "quest-create",
@@ -61,9 +78,14 @@ const QuestCreate = (props: QuestCreateProps) => {
         return;
       }
 
-      const quest = await questApi.createQuest({
+      let quest = await questApi.createQuest({
         body: { ...data, campaignId: props.campaign.id },
       });
+
+      if (acceptAfterCreate.current) {
+        quest = await questApi.acceptQuest({ params: { id: quest.id } });
+      }
+      acceptAfterCreate.current = false;
 
       if (
         data.zone &&
@@ -166,10 +188,39 @@ const QuestCreate = (props: QuestCreateProps) => {
             {tr("quest.create.update")}
           </Button>
         ) : (
-          <Button type="submit" disabled={form.submitting}>
-            <Plus className="size-4" />
-            {tr("quest.create.submit")}
-          </Button>
+          <div className="flex items-stretch">
+            <Button
+              type="submit"
+              disabled={form.submitting}
+              className="rounded-r-none"
+            >
+              <Plus className="size-4" />
+              {tr("quest.create.submit")}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  disabled={form.submitting}
+                  aria-label={String(tr("quest.create.submitAndAccept"))}
+                  className="border-primary-foreground/20 -ml-px rounded-l-none border-l px-2"
+                >
+                  <ChevronDown className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => {
+                    acceptAfterCreate.current = true;
+                    void form.submit();
+                  }}
+                >
+                  <Signature className="size-4" />
+                  {tr("quest.create.submitAndAccept")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )}
       </div>
     </form>
