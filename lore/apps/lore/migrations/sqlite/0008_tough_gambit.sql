@@ -1,1 +1,0 @@
-ALTER TABLE `sessions` ADD `last_used_at` integer;

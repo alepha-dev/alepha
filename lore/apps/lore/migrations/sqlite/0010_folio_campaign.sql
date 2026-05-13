@@ -1,2 +1,0 @@
-ALTER TABLE `folios` ADD `campaign_id` integer REFERENCES campaigns(id) ON DELETE set null;--> statement-breakpoint
-CREATE INDEX `folios_campaign_id_user_id_updated_at_idx` ON `folios` (`campaign_id`,`user_id`,`updated_at`);
