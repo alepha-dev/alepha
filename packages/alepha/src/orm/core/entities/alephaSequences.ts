@@ -1,0 +1,42 @@
+import { type Static, t } from "alepha";
+import { $entity } from "../primitives/$entity.ts";
+import { db } from "../providers/DatabaseTypeProvider.ts";
+
+/**
+ * Storage table for the {@link SequenceProvider}.
+ *
+ * Each row represents one counter, identified by `(name, scope)`:
+ * - `name` is the sequence primitive name (defaulted from its property key).
+ * - `scope` is an arbitrary string passed by the caller, defaulted to "default"
+ *   for the global, unscoped form. Use this column to namespace per-tenant /
+ *   per-campaign / per-anything counters off the same primitive.
+ * - `value` is the current counter value. Incremented atomically by
+ *   `SequenceProvider.advance()` through an `INSERT ... ON CONFLICT DO UPDATE`
+ *   on `(name, scope)` — works identically on Postgres, SQLite, and D1.
+ */
+export const alephaSequences = $entity({
+  name: "alepha_sequences",
+  schema: t.object({
+    id: db.primaryKey(t.uuid()),
+
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
+
+    name: t.text({
+      description: "Sequence primitive name (from $sequence's property key).",
+    }),
+
+    scope: t.text({
+      description:
+        "Caller-provided sub-scope. Defaults to 'default' for the unscoped form.",
+      default: "default",
+    }),
+
+    value: t.integer({
+      description: "Current counter value, advanced atomically on each call.",
+    }),
+  }),
+  indexes: [{ columns: ["name", "scope"], unique: true }],
+});
+
+export type AlephaSequence = Static<typeof alephaSequences.schema>;

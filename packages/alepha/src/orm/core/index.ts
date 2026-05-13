@@ -10,6 +10,7 @@ import { CloudflareD1Provider } from "./providers/drivers/CloudflareD1Provider.t
 import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
 import { RepositoryProvider } from "./providers/RepositoryProvider.ts";
+import { SequenceProvider } from "./providers/SequenceProvider.ts";
 import { databaseEnvSchema } from "./schemas/databaseEnvSchema.ts";
 import { PgRelationManager } from "./services/PgRelationManager.ts";
 import { QueryManager } from "./services/QueryManager.ts";
@@ -107,6 +108,7 @@ export const AlephaOrm = $module({
     SqliteModelBuilder,
     DrizzleKitProvider,
     RepositoryProvider,
+    SequenceProvider,
     PgRelationManager,
     QueryManager,
     DbMigrationMode,
