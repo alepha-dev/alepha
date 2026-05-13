@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { $inject, Alepha, AlephaError } from "alepha";
 import type { VerificationController } from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
@@ -250,7 +249,7 @@ export class RegistrationService {
     }
 
     // Generate intent ID and expiration
-    const intentId = randomUUID();
+    const intentId = this.cryptoProvider.randomUUID();
     const expiresAt = this.dateTimeProvider
       .now()
       .add(INTENT_TTL_MINUTES, "minutes")

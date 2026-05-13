@@ -7,6 +7,7 @@ import {
   type Static,
   type TSchema,
 } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { LockProvider } from "alepha/lock";
 import type { LogEntry } from "alepha/logger";
@@ -123,6 +124,7 @@ export class JobProvider {
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly cronProvider = $inject(CronProvider);
   protected readonly lockProvider = $inject(LockProvider);
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly config = $state(jobConfig);
 
   /**
@@ -252,7 +254,7 @@ export class JobProvider {
         return;
       }
 
-      const executionId = crypto.randomUUID();
+      const executionId = this.crypto.randomUUID();
       const promise = this.executeInline(registration, executionId, {
         payload: undefined,
         attempt: 1,
@@ -381,7 +383,7 @@ export class JobProvider {
   protected lockHolderIdValue?: string;
   protected get lockHolderId(): string {
     if (!this.lockHolderIdValue) {
-      this.lockHolderIdValue = crypto.randomUUID();
+      this.lockHolderIdValue = this.crypto.randomUUID();
     }
     return this.lockHolderIdValue;
   }

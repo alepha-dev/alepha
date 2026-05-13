@@ -8,6 +8,7 @@ import {
   type FileLike,
   t,
 } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import { $bucket } from "../primitives/$bucket.ts";
@@ -63,6 +64,7 @@ import type { FileStorageProvider } from "./FileStorageProvider.ts";
 export class CloudflareR2Provider implements FileStorageProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly env = $env(
     t.object({
       /**
@@ -245,7 +247,7 @@ export class CloudflareR2Provider implements FileStorageProvider {
 
   protected createId(filename: string): string {
     const ext = filename.includes(".") ? filename.split(".").pop() : "";
-    const id = crypto.randomUUID();
+    const id = this.crypto.randomUUID();
     return ext ? `${id}.${ext}` : id;
   }
 }

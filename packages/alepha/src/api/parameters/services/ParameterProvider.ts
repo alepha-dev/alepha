@@ -705,7 +705,7 @@ export class ParameterProvider {
    */
   protected async migrateWithLock(name: string): Promise<void> {
     const lockKey = `parameter:migrate:${name}`;
-    const lockId = crypto.randomUUID();
+    const lockId = this.crypto.randomUUID();
 
     const value = await this.lockProvider.set(lockKey, lockId, true, 30_000);
 
@@ -730,7 +730,7 @@ export class ParameterProvider {
    */
   protected async waitForLock(lockKey: string): Promise<void> {
     const maxWait = 30_000;
-    const probeId = crypto.randomUUID();
+    const probeId = this.crypto.randomUUID();
     const start = this.dateTimeProvider.nowMillis();
     while (this.dateTimeProvider.nowMillis() - start < maxWait) {
       await this.dateTimeProvider.wait(500);

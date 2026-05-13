@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type * as fs from "node:fs";
 import { createReadStream } from "node:fs";
 import { mkdir, stat, unlink } from "node:fs/promises";
@@ -15,6 +14,7 @@ import {
   type Static,
   t,
 } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import { FileDetector, FileSystemProvider } from "alepha/system";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
@@ -55,6 +55,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   protected readonly log = $logger();
   protected readonly fileDetector = $inject(FileDetector);
   protected readonly fileSystemProvider = $inject(FileSystemProvider);
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly options = $state(localFileStorageOptions);
 
   protected get storagePath(): string {
@@ -177,7 +178,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 
   protected createId(mimeType: string): string {
     const ext = this.fileDetector.getExtensionFromMimeType(mimeType);
-    return `${randomUUID()}.${ext}`;
+    return `${this.crypto.randomUUID()}.${ext}`;
   }
 
   protected path(bucket: string, fileId = ""): string {

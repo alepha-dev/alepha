@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
 import { $hook, $inject, Alepha } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import type { ServerRequest } from "alepha/server";
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
@@ -12,6 +12,7 @@ export class ServerSecurityProvider {
   protected readonly securityProvider = $inject(SecurityProvider);
   protected readonly jwtProvider = $inject(JwtProvider);
   protected readonly alepha = $inject(Alepha);
+  protected readonly crypto = $inject(CryptoProvider);
 
   protected readonly onServerRequest = $hook({
     on: "server:onRequest",
@@ -71,7 +72,7 @@ export class ServerSecurityProvider {
 
   protected createTestUser(): UserAccountToken {
     return {
-      id: randomUUID(),
+      id: this.crypto.randomUUID(),
       name: "Test",
       roles: this.securityProvider.getRoles().map((role) => role.name),
     };

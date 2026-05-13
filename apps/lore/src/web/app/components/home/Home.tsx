@@ -199,4 +199,3 @@ const CampaignCard = (props: CampaignCardProps) => {
     </Link>
   );
 };
-

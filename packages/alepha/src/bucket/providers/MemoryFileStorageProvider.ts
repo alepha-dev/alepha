@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
 import { $inject, type FileLike } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { FileDetector, FileSystemProvider } from "alepha/system";
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import type { FileStorageProvider } from "./FileStorageProvider.ts";
@@ -15,6 +15,7 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
   public readonly files: Record<string, StoredFile> = {};
   protected readonly fileSystem = $inject(FileSystemProvider);
   protected readonly fileDetector = $inject(FileDetector);
+  protected readonly crypto = $inject(CryptoProvider);
 
   public async upload(
     bucketName: string,
@@ -80,6 +81,6 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
   }
 
   protected createId(): string {
-    return randomUUID();
+    return this.crypto.randomUUID();
   }
 }

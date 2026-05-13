@@ -1,3 +1,5 @@
+import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { sql } from "drizzle-orm";
 import { alephaSequences } from "../entities/alephaSequences.ts";
 import { $repository } from "../primitives/$repository.ts";
@@ -23,6 +25,7 @@ import { $repository } from "../primitives/$repository.ts";
  */
 export class SequenceProvider {
   protected readonly repository = $repository(alephaSequences);
+  protected readonly crypto = $inject(CryptoProvider);
 
   /**
    * Atomically advance the counter for `(name, scope)` and return the new value.
@@ -44,6 +47,7 @@ export class SequenceProvider {
 
     const updated = await this.repository.upsert(
       {
+        id: this.crypto.randomUUID(),
         name,
         scope,
         value: start,
@@ -92,7 +96,7 @@ export class SequenceProvider {
     value: number,
   ): Promise<void> {
     await this.repository.upsert(
-      { name, scope, value },
+      { id: this.crypto.randomUUID(), name, scope, value },
       { target: ["name", "scope"], set: { value } },
     );
   }

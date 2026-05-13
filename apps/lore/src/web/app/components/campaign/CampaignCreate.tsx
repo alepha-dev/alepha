@@ -92,7 +92,8 @@ const CampaignCreate = () => {
     }
   }, [auth.user, router]);
 
-  const goNext = () => setStep((s) => Math.min(TOTAL_STEPS, s + 1) as 1 | 2 | 3);
+  const goNext = () =>
+    setStep((s) => Math.min(TOTAL_STEPS, s + 1) as 1 | 2 | 3);
   const goBack = () => setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3);
 
   if (step === 4) {

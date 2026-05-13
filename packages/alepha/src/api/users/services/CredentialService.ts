@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { $inject, Alepha } from "alepha";
 import type { VerificationController } from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
@@ -122,7 +121,7 @@ export class CredentialService {
     this.log.trace("Creating password reset intent", { email, userRealmName });
 
     // Generate intent ID and expiration upfront for consistent response
-    const intentId = randomUUID();
+    const intentId = this.cryptoProvider.randomUUID();
     const expiresAt = this.dateTimeProvider
       .now()
       .add(INTENT_TTL_MINUTES, "minutes")

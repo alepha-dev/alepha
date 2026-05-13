@@ -54,7 +54,6 @@ test.describe("Register", () => {
     await page
       .getByRole("textbox", { name: "Password", exact: true })
       .fill("Ab1!");
-    await page.getByRole("textbox", { name: "Confirm password" }).fill("Ab1!");
     await page.getByRole("button", { name: /create account/i }).click();
 
     await expect(
@@ -76,9 +75,6 @@ test.describe("Register", () => {
     await page.getByRole("textbox", { name: "Email", exact: true }).fill(email);
     await page
       .getByRole("textbox", { name: "Password", exact: true })
-      .fill(password);
-    await page
-      .getByRole("textbox", { name: "Confirm password" })
       .fill(password);
     await page.getByRole("button", { name: /create account/i }).click();
 

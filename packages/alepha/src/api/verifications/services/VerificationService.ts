@@ -1,5 +1,6 @@
-import { createHash, randomInt, randomUUID } from "node:crypto";
+import { createHash, randomInt } from "node:crypto";
 import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
@@ -16,6 +17,7 @@ import type { VerificationTypeEnum } from "../schemas/verificationTypeEnumSchema
 export class VerificationService {
   protected readonly log = $logger();
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly verificationParameters = $inject(VerificationParameters);
   protected readonly verificationRepository = $repository(verifications);
 
@@ -245,7 +247,7 @@ export class VerificationService {
         .toString()
         .padStart(settings.codeLength, "0");
     } else if (type === "link") {
-      return randomUUID();
+      return this.crypto.randomUUID();
     }
 
     throw new BadRequestError(`Invalid verification type: ${type}`);

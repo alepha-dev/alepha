@@ -1,4 +1,5 @@
-import { randomUUID } from "node:crypto";
+import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import type { PaymentIntentEntity } from "../entities/paymentIntents.ts";
 import type {
   CreatePaymentMethodResult,
@@ -21,6 +22,7 @@ interface MemoryRefund {
 }
 
 export class MemoryPaymentProvider implements PaymentProvider {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly charges: Map<string, MemoryCharge> = new Map();
   protected readonly refundRecords: Map<string, MemoryRefund> = new Map();
   protected readonly methods: Map<string, CreatePaymentMethodResult> =
@@ -36,7 +38,7 @@ export class MemoryPaymentProvider implements PaymentProvider {
       applicationFeeAmount?: number;
     },
   ): Promise<CreateSessionResult> {
-    const providerRef = `mem_session_${randomUUID()}`;
+    const providerRef = `mem_session_${this.crypto.randomUUID()}`;
     const status = options.authorize ? "authorized" : "captured";
     this.charges.set(providerRef, {
       providerRef,
@@ -71,7 +73,7 @@ export class MemoryPaymentProvider implements PaymentProvider {
     providerRef: string,
     amount: number,
   ): Promise<RefundResult> {
-    const refundRef = `mem_refund_${randomUUID()}`;
+    const refundRef = `mem_refund_${this.crypto.randomUUID()}`;
     this.refundRecords.set(refundRef, {
       providerRef: refundRef,
       chargeRef: providerRef,
@@ -96,7 +98,7 @@ export class MemoryPaymentProvider implements PaymentProvider {
     _userId: string,
     _token: string,
   ): Promise<CreatePaymentMethodResult> {
-    const providerRef = `mem_pm_${randomUUID()}`;
+    const providerRef = `mem_pm_${this.crypto.randomUUID()}`;
     const result: CreatePaymentMethodResult = {
       providerRef,
       type: "card",

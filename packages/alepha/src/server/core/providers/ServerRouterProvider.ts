@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { Readable as NodeStream } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
 import {
@@ -10,6 +9,7 @@ import {
   PipelineHandler,
   t,
 } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import { RouterProvider } from "alepha/router";
 import type { RouteMethod } from "../constants/routeMethods.ts";
@@ -39,6 +39,7 @@ import { ServerTimingProvider } from "./ServerTimingProvider.ts";
 export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly routes: ServerRoute[] = [];
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
   protected readonly serverRequestParser = $inject(ServerRequestParser);
@@ -182,7 +183,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   protected getContextId(headers: Record<string, string>): string {
     // note: we trust these headers as all our environments are behind a proxy
     return (
-      headers["x-request-id"] || headers["x-correlation-id"] || randomUUID()
+      headers["x-request-id"] ||
+      headers["x-correlation-id"] ||
+      this.crypto.randomUUID()
     );
   }
 

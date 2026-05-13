@@ -1,4 +1,5 @@
 import { $hook, $inject, type Alepha, AlephaError } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { type RetryBackoffOptions, RetryProvider } from "alepha/retry";
@@ -129,6 +130,7 @@ export class BatchProvider {
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly retryProvider = $inject(RetryProvider);
+  protected readonly crypto = $inject(CryptoProvider);
 
   /**
    * All active batch contexts managed by this provider.
@@ -214,7 +216,7 @@ export class BatchProvider {
     item: TItem,
   ): string {
     // 1. Generate unique ID
-    const id = crypto.randomUUID();
+    const id = this.crypto.randomUUID();
 
     // 2. Determine the partition key (with error handling)
     let partitionKey: string;

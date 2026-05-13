@@ -56,31 +56,6 @@ test.describe("/auth/register", () => {
       page.getByRole("textbox", { name: "Password", exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole("textbox", { name: "Confirm password" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Create account" }),
-    ).toBeVisible();
-  });
-
-  test("password mismatch keeps the user on the register page", async ({
-    page,
-  }) => {
-    await page.goto("/auth/register");
-    await page
-      .getByRole("textbox", { name: "Email", exact: true })
-      .fill(`mismatch-${Date.now()}@example.com`);
-    await page
-      .getByRole("textbox", { name: "Password", exact: true })
-      .fill("password123");
-    await page
-      .getByRole("textbox", { name: "Confirm password" })
-      .fill("DIFFERENTpw");
-    await page.getByRole("button", { name: "Create account" }).click();
-    // Mismatch throws AlephaError → form stays mounted, no redirect to "/"
-    await page.waitForTimeout(1_000);
-    await expect(page).toHaveURL(/\/auth\/register/);
-    await expect(
       page.getByRole("button", { name: "Create account" }),
     ).toBeVisible();
   });
@@ -99,9 +74,6 @@ test.describe("/auth/register", () => {
     await emailField.press("Tab");
     await page
       .getByRole("textbox", { name: "Password", exact: true })
-      .fill("password123");
-    await page
-      .getByRole("textbox", { name: "Confirm password" })
       .fill("password123");
     await page.getByRole("button", { name: "Create account" }).click();
 

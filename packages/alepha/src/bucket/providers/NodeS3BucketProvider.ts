@@ -9,6 +9,7 @@ import {
   type Static,
   t,
 } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import { FileDetector, FileSystemProvider } from "alepha/system";
 import { S3mini } from "s3mini";
@@ -64,6 +65,7 @@ export class NodeS3BucketProvider implements FileStorageProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly fileSystem = $inject(FileSystemProvider);
   protected readonly fileDetector = $inject(FileDetector);
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly clients: Map<string, S3mini> = new Map();
 
   /**
@@ -119,7 +121,7 @@ export class NodeS3BucketProvider implements FileStorageProvider {
 
   protected createId(mimeType: string): string {
     const ext = this.fileDetector.getExtensionFromMimeType(mimeType);
-    return `${crypto.randomUUID()}.${ext}`;
+    return `${this.crypto.randomUUID()}.${ext}`;
   }
 
   public async upload(
