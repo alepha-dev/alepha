@@ -156,9 +156,21 @@ yarn w lore e2e          # Playwright e2e tests
 
 - `test/mcp-security.spec.ts` — MCP auth, API keys, user isolation
 - `test/campaign-stats.spec.ts` — campaign chronicles unit tests
-- `e2e/user-journey.spec.ts` — End-to-end with Playwright
+- `e2e/*.spec.ts` — End-to-end with Playwright (one file per big feature)
 
-Petition-flow e2e coverage in `e2e/user-journey.spec.ts` ("petition end-to-end" test).
+### E2E convention: one file per feature
+
+`apps/lore/e2e/` is split by feature, not by user journey. One `<feature>.spec.ts` per major surface, each covering happy path + key edge cases:
+
+- `quest.spec.ts` — quest lifecycle (open → accept → complete)
+- `petition.spec.ts` — petition submit → accept → link quests → status progression
+- `register.spec.ts` — registration form + email verification
+- `settings-features.spec.ts` — campaign feature toggles
+- `theme-flicker.spec.ts` — theme no-flash boot
+
+Shared setup (register/verify, campaign-create wizard, API helpers) lives in `e2e/_helpers.ts`. Re-use those rather than copy-pasting auth setup into each new spec.
+
+**When adding or modifying a feature, the matching `<feature>.spec.ts` must move with it.** No feature ships without its e2e moving in lockstep. If no spec exists yet for the feature, create one — start by composing `registerAndVerify` + `createCampaignViaWizard` from `_helpers.ts`, then drive the feature-specific UI.
 
 ## Manual testing via Playwright (Claude)
 
