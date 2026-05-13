@@ -25,6 +25,7 @@ export class AppSecurityProvider {
       notifications: true,
     },
     settings: {
+      logoUrl: "/logo-512x512.png",
       // Auto-derive a stable handle from the registration email at signup
       // (and from the OAuth profile email on Google/GitHub login). The
       // registration form never shows a username input — the slugger does

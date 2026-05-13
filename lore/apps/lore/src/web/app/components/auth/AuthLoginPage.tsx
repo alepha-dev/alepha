@@ -10,6 +10,7 @@ import { FormValidationError, useForm, useFormState } from "alepha/react/form";
 import { Link, useRouter } from "alepha/react/router";
 import { HttpError } from "alepha/server";
 import { AlertCircle, Mail, User as UserIcon } from "lucide-react";
+import PageHeader from "../shared/header/PageHeader.tsx";
 
 export interface AuthLoginPageProps {
   realmConfig: RealmConfig;
@@ -93,8 +94,16 @@ const AuthLoginPage = (props: AuthLoginPageProps) => {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="flex w-full max-w-sm flex-col gap-4">
-        <Card>
+      <PageHeader />
+      <div className="flex w-full max-w-sm flex-col items-center gap-4">
+        {settings.logoUrl && (
+          <img
+            src={settings.logoUrl}
+            alt={settings.displayName || props.realmConfig.realmName}
+            className="size-16 rounded-xl border bg-muted object-cover shadow-sm"
+          />
+        )}
+        <Card className="w-full">
           <CardContent className="flex flex-col gap-4">
             {settings.displayName && (
               <h2 className="text-center text-lg font-semibold">
