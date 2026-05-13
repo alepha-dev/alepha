@@ -31,6 +31,22 @@ import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
  * );
  * ```
  */
+/**
+ * Shallow / structural equality for form initial-value objects. Form values
+ * are plain data (strings, numbers, arrays, plain objects) so JSON.stringify
+ * is both fast enough and exact. Wrapped in try/catch to fall back to
+ * reference equality if anything exotic sneaks in (e.g. circular refs).
+ */
+const stableEqual = (a: unknown, b: unknown): boolean => {
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+};
+
 export const useForm = <T extends TObject>(
   options: FormCtrlOptions<T>,
   deps: any[] = [],
@@ -47,11 +63,22 @@ export const useForm = <T extends TObject>(
   }, deps);
 
   useEffect(() => {
-    if (initialValuesRef.current !== options.initialValues) {
-      initialValuesRef.current = options.initialValues;
-      if (options.initialValues) {
-        form.setInitialValues(options.initialValues as Record<string, any>);
-      }
+    // Reference inequality alone is unsafe: callers commonly build the
+    // `initialValues` object inline at the top of their render, which yields
+    // a fresh reference every commit. Reinitializing on every render wipes
+    // user-typed values via `setInitialValues` while leaving the DOM stale,
+    // producing the "I filled the form but submit says it's empty" bug.
+    //
+    // Deep-equality (JSON-compare) catches the common case where the inline
+    // literal is rebuilt with the same content. Callers who legitimately
+    // need to swap initial values mid-edit (e.g. editing quest A → quest B)
+    // still see a different JSON shape and trigger the reinit.
+    if (stableEqual(initialValuesRef.current, options.initialValues)) {
+      return;
+    }
+    initialValuesRef.current = options.initialValues;
+    if (options.initialValues) {
+      form.setInitialValues(options.initialValues as Record<string, any>);
     }
   }, [options.initialValues]);
 

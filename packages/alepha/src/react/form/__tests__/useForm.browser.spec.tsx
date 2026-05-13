@@ -449,3 +449,437 @@ describe("useForm", () => {
     expect(input()).toBe("updated");
   });
 });
+
+/**
+ * Regression coverage for the "I filled the form but submit says it's empty"
+ * bug. Symptom: callers build `initialValues` inline at the top of their
+ * render (e.g. `{ priority: props.x?.priority ?? "optional", ... }`). Any
+ * parent re-render produces a fresh object reference with the same content,
+ * which previously triggered `setInitialValues` and silently wiped
+ * user-typed values while leaving the DOM stale.
+ *
+ * Fix: deep-equality guard before reinitializing the form.
+ */
+describe("useForm — initialValues stability", () => {
+  const renderWithAlepha = (alepha: Alepha, element: ReactNode) =>
+    render(
+      <AlephaContext.Provider value={alepha}>{element}</AlephaContext.Provider>,
+    );
+
+  it("preserves user input when parent re-renders with reference-fresh but content-equal initialValues", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    const calls: Array<any> = [];
+
+    /**
+     * Parent owns a counter; bumping it forces a render of `Form` without
+     * changing any input it cares about. `Form` builds its `initialValues`
+     * inline every render — fresh reference, same content. This is the
+     * exact shape of the QuestCreate bug.
+     */
+    const Parent = () => {
+      const [, setTick] = useState(0);
+      return (
+        <>
+          <button
+            type="button"
+            data-testid="rerender"
+            onClick={() => setTick((n) => n + 1)}
+          >
+            Rerender
+          </button>
+          <Form />
+        </>
+      );
+    };
+
+    const Form = () => {
+      const form = useForm({
+        id: "stability-test",
+        schema: t.object({
+          title: t.text(),
+          priority: t.text(),
+        }),
+        // Fresh object reference every render, identical content.
+        initialValues: {
+          priority: "optional",
+        },
+        handler: (values) => {
+          calls.push(values);
+        },
+      });
+
+      return (
+        <form {...form.props} data-testid="stability-form">
+          <TestInput input={form.input.title} testId="stability-title" />
+          <TestInput input={form.input.priority} testId="stability-priority" />
+          <button type="submit">Submit</button>
+        </form>
+      );
+    };
+
+    await alepha.start();
+    const ui = renderWithAlepha(alepha, <Parent />);
+
+    // User types into title — form state should now hold "First quest".
+    fireEvent.change(ui.getByTestId("stability-title"), {
+      target: { value: "First quest" },
+    });
+
+    // Parent re-renders. Pre-fix this wiped form state via setInitialValues.
+    fireEvent.click(ui.getByTestId("rerender"));
+    fireEvent.click(ui.getByTestId("rerender"));
+    fireEvent.click(ui.getByTestId("rerender"));
+
+    // The visible DOM AND the underlying form state must still have the
+    // user's input. Submitting must yield the typed value, not an empty one.
+    fireEvent.submit(ui.getByText("Submit"));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(calls[0]).toEqual({ title: "First quest", priority: "optional" });
+  });
+
+  it("survives many re-renders without drift (stress)", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    const calls: Array<any> = [];
+
+    const Parent = () => {
+      const [tick, setTick] = useState(0);
+      return (
+        <>
+          <span data-testid="tick">{tick}</span>
+          <button
+            type="button"
+            data-testid="rerender"
+            onClick={() => setTick((n) => n + 1)}
+          >
+            Rerender
+          </button>
+          <Form />
+        </>
+      );
+    };
+
+    const Form = () => {
+      const form = useForm({
+        id: "stress-test",
+        schema: t.object({ value: t.text() }),
+        initialValues: { value: "" },
+        handler: (values) => {
+          calls.push(values);
+        },
+      });
+      return (
+        <form {...form.props}>
+          <TestInput input={form.input.value} testId="stress-value" />
+          <button type="submit">Submit</button>
+        </form>
+      );
+    };
+
+    await alepha.start();
+    const ui = renderWithAlepha(alepha, <Parent />);
+
+    fireEvent.change(ui.getByTestId("stress-value"), {
+      target: { value: "typed" },
+    });
+    for (let i = 0; i < 50; i++) {
+      fireEvent.click(ui.getByTestId("rerender"));
+    }
+    fireEvent.submit(ui.getByText("Submit"));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(calls[0]).toEqual({ value: "typed" });
+  });
+
+  it("preserves user input when initialValues contains nested object rebuilt each render", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    const calls: Array<any> = [];
+
+    const Parent = () => {
+      const [, setTick] = useState(0);
+      return (
+        <>
+          <button
+            type="button"
+            data-testid="rerender"
+            onClick={() => setTick((n) => n + 1)}
+          >
+            Rerender
+          </button>
+          <Form />
+        </>
+      );
+    };
+
+    const Form = () => {
+      const form = useForm({
+        id: "nested-test",
+        schema: t.object({
+          title: t.text(),
+          meta: t.object({ priority: t.text(), difficulty: t.integer() }),
+        }),
+        // Both the outer literal AND the nested `meta` are fresh references.
+        initialValues: {
+          meta: { priority: "optional", difficulty: 1 },
+        },
+        handler: (values) => {
+          calls.push(values);
+        },
+      });
+
+      return (
+        <form {...form.props}>
+          <TestInput input={form.input.title} testId="nested-title" />
+          <button type="submit">Submit</button>
+        </form>
+      );
+    };
+
+    await alepha.start();
+    const ui = renderWithAlepha(alepha, <Parent />);
+
+    fireEvent.change(ui.getByTestId("nested-title"), {
+      target: { value: "hello" },
+    });
+    fireEvent.click(ui.getByTestId("rerender"));
+    fireEvent.submit(ui.getByText("Submit"));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(calls[0]).toEqual({
+      title: "hello",
+      meta: { priority: "optional", difficulty: 1 },
+    });
+  });
+
+  it("preserves user input when initialValues contains array rebuilt each render", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    const calls: Array<any> = [];
+
+    const Parent = () => {
+      const [, setTick] = useState(0);
+      return (
+        <>
+          <button
+            type="button"
+            data-testid="rerender"
+            onClick={() => setTick((n) => n + 1)}
+          >
+            Rerender
+          </button>
+          <Form />
+        </>
+      );
+    };
+
+    const Form = () => {
+      const form = useForm({
+        id: "array-init-test",
+        schema: t.object({
+          title: t.text(),
+          tags: t.array(t.text()),
+        }),
+        // Fresh empty array reference every render — the QuestCreate case
+        // for `objectives: []`.
+        initialValues: { tags: [] },
+        handler: (values) => {
+          calls.push(values);
+        },
+      });
+
+      return (
+        <form {...form.props}>
+          <TestInput input={form.input.title} testId="array-init-title" />
+          <button type="submit">Submit</button>
+        </form>
+      );
+    };
+
+    await alepha.start();
+    const ui = renderWithAlepha(alepha, <Parent />);
+
+    fireEvent.change(ui.getByTestId("array-init-title"), {
+      target: { value: "with empty array init" },
+    });
+    fireEvent.click(ui.getByTestId("rerender"));
+    fireEvent.submit(ui.getByText("Submit"));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(calls[0]).toEqual({ title: "with empty array init", tags: [] });
+  });
+
+  it("DOES reinitialize when initialValues content genuinely changes (e.g. switching edit target)", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+
+    // Simulates a "Edit quest A → Edit quest B" flow: parent flips between
+    // two different content snapshots. The form SHOULD reflect the swap.
+    const Parent = () => {
+      const [which, setWhich] = useState<"A" | "B">("A");
+      const target = which === "A" ? { name: "Alice" } : { name: "Bob" };
+      return (
+        <>
+          <button
+            type="button"
+            data-testid="swap"
+            onClick={() => setWhich((w) => (w === "A" ? "B" : "A"))}
+          >
+            Swap
+          </button>
+          <Form target={target} />
+        </>
+      );
+    };
+
+    const Form = ({ target }: { target: { name: string } }) => {
+      const form = useForm({
+        id: "swap-test",
+        schema: t.object({ name: t.text() }),
+        initialValues: target,
+        handler: () => {},
+      });
+      return (
+        <form {...form.props}>
+          <TestInput input={form.input.name} testId="swap-name" />
+        </form>
+      );
+    };
+
+    await alepha.start();
+    const ui = renderWithAlepha(alepha, <Parent />);
+    const value = () => (ui.getByTestId("swap-name") as HTMLInputElement).value;
+
+    // Starts on quest A.
+    expect(value()).toBe("Alice");
+
+    // Genuine content change — form should pick it up.
+    fireEvent.click(ui.getByTestId("swap"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(value()).toBe("Bob");
+
+    // And back.
+    fireEvent.click(ui.getByTestId("swap"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(value()).toBe("Alice");
+  });
+
+  it("handles initialValues toggling between undefined and a value", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+
+    const Parent = () => {
+      const [show, setShow] = useState(false);
+      return (
+        <>
+          <button
+            type="button"
+            data-testid="toggle"
+            onClick={() => setShow((s) => !s)}
+          >
+            Toggle
+          </button>
+          <Form initial={show ? { name: "from-prop" } : undefined} />
+        </>
+      );
+    };
+
+    const Form = ({ initial }: { initial?: { name: string } }) => {
+      const form = useForm({
+        id: "toggle-init-test",
+        schema: t.object({ name: t.text() }),
+        initialValues: initial,
+        handler: () => {},
+      });
+      return (
+        <form {...form.props}>
+          <TestInput input={form.input.name} testId="toggle-name" />
+        </form>
+      );
+    };
+
+    await alepha.start();
+    const ui = renderWithAlepha(alepha, <Parent />);
+    const value = () =>
+      (ui.getByTestId("toggle-name") as HTMLInputElement).value;
+
+    expect(value()).toBe("");
+
+    // undefined → defined: should populate.
+    fireEvent.click(ui.getByTestId("toggle"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(value()).toBe("from-prop");
+  });
+
+  it("does not wipe input when initialValues object literally re-equals previous one across many ticks", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    let renderCount = 0;
+
+    /**
+     * Equivalent of a parent that subscribes to a frequently-firing store
+     * (e.g. an atom that ticks on every mouse move). Should not damage the
+     * form state at all.
+     */
+    const Parent = () => {
+      const [tick, setTick] = useState(0);
+      renderCount = tick;
+      return (
+        <>
+          <button
+            type="button"
+            data-testid="burst"
+            onClick={() => {
+              // 5 rapid state updates in one click — React batches them
+              // but each could trigger a render in dev mode.
+              setTick((n) => n + 1);
+              setTick((n) => n + 1);
+              setTick((n) => n + 1);
+              setTick((n) => n + 1);
+              setTick((n) => n + 1);
+            }}
+          >
+            Burst {tick}
+          </button>
+          <Form />
+        </>
+      );
+    };
+
+    const Form = () => {
+      const form = useForm({
+        id: "burst-test",
+        schema: t.object({ value: t.text() }),
+        initialValues: {},
+        handler: () => {},
+      });
+      return (
+        <form {...form.props}>
+          <TestInput input={form.input.value} testId="burst-value" />
+        </form>
+      );
+    };
+
+    await alepha.start();
+    const ui = renderWithAlepha(alepha, <Parent />);
+
+    fireEvent.change(ui.getByTestId("burst-value"), {
+      target: { value: "stays" },
+    });
+    fireEvent.click(ui.getByTestId("burst"));
+    fireEvent.click(ui.getByTestId("burst"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect((ui.getByTestId("burst-value") as HTMLInputElement).value).toBe(
+      "stays",
+    );
+    expect(renderCount).toBeGreaterThan(0); // sanity: parent did re-render
+  });
+});
