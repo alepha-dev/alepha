@@ -1,11 +1,14 @@
+import { Button } from "@alepha/ui/components/ui/button";
 import { useAuth } from "alepha/react/auth";
-import { NestedView } from "alepha/react/router";
-import { User } from "lucide-react";
+import { Link, NestedView, useRouter } from "alepha/react/router";
+import { Home, User } from "lucide-react";
+import type { AppRouter } from "../../../AppRouter.ts";
 import { displayName } from "../../../services/displayName.ts";
 import MeLayoutMenu from "./MeLayoutMenu.tsx";
 
 const MeLayout = () => {
   const auth = useAuth();
+  const router = useRouter<AppRouter>();
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 overflow-auto p-4">
@@ -30,6 +33,12 @@ const MeLayout = () => {
             {auth.user?.email}
           </span>
         </div>
+        <Button asChild variant="ghost" size="sm" className="ml-auto">
+          <Link href={router.path("home")} aria-label="Home">
+            <Home className="size-4" />
+            <span className="hidden sm:inline">Home</span>
+          </Link>
+        </Button>
       </div>
 
       {/* Content */}
