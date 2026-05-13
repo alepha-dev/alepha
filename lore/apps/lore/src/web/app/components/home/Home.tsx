@@ -24,14 +24,19 @@ type Campaign = {
 
 const Home = () => {
   const { tr } = useI18n<I18n, "en">();
-  const [campaigns = []] = useStore(userCampaignsAtom);
+  const [overview] = useStore(userCampaignsAtom);
   const router = useRouter<AppRouter>();
   const dt = useInject(DateTimeProvider);
   const auth = useAuth();
 
+  const campaigns = overview?.campaigns ?? [];
+  const totalCount = overview?.totalCount ?? 0;
+  const canCreate = overview?.canCreate ?? true;
+  const maxCampaigns = overview?.maxCampaigns;
   const sorted = [...campaigns].sort((a, b) =>
     a.updatedAt > b.updatedAt ? -1 : 1,
   );
+  const moreCount = Math.max(0, totalCount - sorted.length);
   const loginPath = router.path("login", {
     query: { r: router.path("campaignCreate") },
   });
@@ -48,6 +53,7 @@ const Home = () => {
   const createLabel = hasCampaigns
     ? String(tr("home.create-campaign"))
     : String(tr("home.start-first-campaign"));
+  const createDisabled = !!auth.user && !canCreate;
 
   return (
     <div className="relative flex h-screen w-full flex-col items-center justify-center overflow-y-auto">
@@ -61,6 +67,16 @@ const Home = () => {
           createLabel={createLabel}
           alreadyRegistered={String(tr("home.already-registered"))}
           adventurerName={adventurerName}
+          createDisabled={createDisabled}
+          createDisabledLabel={
+            createDisabled && maxCampaigns
+              ? String(
+                  tr("home.create-campaign.max", {
+                    args: [String(maxCampaigns)],
+                  }),
+                )
+              : undefined
+          }
         />
 
         {hasCampaigns && (
@@ -70,6 +86,15 @@ const Home = () => {
             <div id="campaigns" className="flex items-center gap-2">
               <ScrollText className="size-5" />
               <h2 className="text-lg font-semibold">{tr("home.campaigns")}</h2>
+              <span className="text-muted-foreground text-xs">
+                {moreCount > 0
+                  ? tr("home.campaigns.showing-more", {
+                      args: [String(sorted.length), String(totalCount)],
+                    })
+                  : tr("home.campaigns.showing", {
+                      args: [String(totalCount)],
+                    })}
+              </span>
             </div>
 
             <div className="mt-4 flex flex-col divide-y rounded-lg border">
@@ -105,6 +130,8 @@ interface HeroProps {
   createLabel: string;
   alreadyRegistered: string;
   adventurerName?: string;
+  createDisabled?: boolean;
+  createDisabledLabel?: string;
 }
 
 const Hero = (props: HeroProps) => {
@@ -140,12 +167,24 @@ const Hero = (props: HeroProps) => {
           {props.subtitle}
         </p>
         <div className="mt-2 flex flex-col items-start gap-2">
-          <Button asChild size="lg" className="h-12 px-12 text-base">
-            <Link href={props.createPath}>
+          {props.createDisabled ? (
+            <Button size="lg" disabled className="h-12 px-12 text-base">
               <Sparkles className="size-5" />
               {props.createLabel}
-            </Link>
-          </Button>
+            </Button>
+          ) : (
+            <Button asChild size="lg" className="h-12 px-12 text-base">
+              <Link href={props.createPath}>
+                <Sparkles className="size-5" />
+                {props.createLabel}
+              </Link>
+            </Button>
+          )}
+          {props.createDisabled && props.createDisabledLabel && (
+            <span className="text-muted-foreground text-xs">
+              {props.createDisabledLabel}
+            </span>
+          )}
           {props.loginPath && (
             <Link
               href={props.loginPath}

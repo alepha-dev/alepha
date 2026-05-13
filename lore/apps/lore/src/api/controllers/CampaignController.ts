@@ -1,4 +1,4 @@
-import { $inject, t } from "alepha";
+import { $inject, Alepha, t } from "alepha";
 import { files } from "alepha/api/files";
 import { users } from "alepha/api/users";
 import { $bucket } from "alepha/bucket";
@@ -12,6 +12,7 @@ import {
   okSchema,
 } from "alepha/server";
 import { $etag } from "alepha/server/etag";
+import { campaignOptionsAtom } from "../atoms/campaignOptionsAtom.ts";
 import {
   campaignFeaturesSchema,
   campaigns,
@@ -27,6 +28,7 @@ import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 
 export class CampaignController {
   log = $logger();
+  alepha = $inject(Alepha);
   campaigns = $repository(campaigns);
   characters = $repository(characters);
   quests = $repository(quests);
@@ -52,13 +54,15 @@ export class CampaignController {
       response: campaigns.schema,
     },
     handler: async ({ body, user }) => {
+      const { maxCampaignsPerUser } =
+        this.alepha.store.get(campaignOptionsAtom);
       const count = await this.campaigns.count({
         createdBy: { eq: user.id },
       });
 
-      if (count >= 5) {
+      if (count >= maxCampaignsPerUser) {
         throw new ForbiddenError(
-          "You have reached the maximum number of campaigns allowed.",
+          `You have reached the maximum number of campaigns allowed (${maxCampaignsPerUser}).`,
         );
       }
 
@@ -114,6 +118,68 @@ export class CampaignController {
         { where: { id: { inArray: characterCampaignIds } } },
       );
       return result.content;
+    },
+  });
+
+  /**
+   * One-shot Home page bootstrap: recent campaigns (capped by
+   * `campaignOptionsAtom.homeRecentLimit`), total count for the user,
+   * and whether they can create more (campaigns they OWN vs.
+   * `maxCampaignsPerUser`). Computed in a single round-trip so the page
+   * doesn't need multiple atoms to render the CTA state correctly.
+   */
+  getHomeOverview = $action({
+    use: [$secure({ permissions: ["campaign:read"] })],
+    schema: {
+      response: t.object({
+        campaigns: t.array(campaigns.schema),
+        totalCount: t.integer(),
+        ownedCount: t.integer(),
+        maxCampaigns: t.integer(),
+        canCreate: t.boolean(),
+      }),
+    },
+    handler: async ({ user }) => {
+      const { maxCampaignsPerUser, homeRecentLimit } =
+        this.alepha.store.get(campaignOptionsAtom);
+
+      const userCharacters = await this.characters.findMany({
+        where: { userId: { eq: user.id } },
+      });
+      const characterCampaignIds = userCharacters.map((it) => it.campaignId);
+
+      const ownedCount = await this.campaigns.count({
+        createdBy: { eq: user.id },
+      });
+      const canCreate = ownedCount < maxCampaignsPerUser;
+
+      if (characterCampaignIds.length === 0) {
+        return {
+          campaigns: [],
+          totalCount: 0,
+          ownedCount,
+          maxCampaigns: maxCampaignsPerUser,
+          canCreate,
+        };
+      }
+
+      const result = await this.campaigns.paginate(
+        {
+          size: homeRecentLimit,
+          sort: "-updatedAt",
+          page: 0,
+        },
+        { where: { id: { inArray: characterCampaignIds } } },
+        { count: true },
+      );
+
+      return {
+        campaigns: result.content,
+        totalCount: result.page.totalElements ?? characterCampaignIds.length,
+        ownedCount,
+        maxCampaigns: maxCampaignsPerUser,
+        canCreate,
+      };
     },
   });
 

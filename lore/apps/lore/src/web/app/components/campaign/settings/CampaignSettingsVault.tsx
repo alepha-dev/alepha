@@ -40,24 +40,14 @@ const CampaignSettingsVault = () => {
 
   const handleDelete = async () => {
     await campaignApi.deleteCampaignById({ params: { id: campaign.id } });
-    alepha.store.set(
-      userCampaignsAtom,
-      (alepha.store.get(userCampaignsAtom) ?? []).filter(
-        (p) => p.id !== campaign.id,
-      ),
-    );
+    alepha.store.set(userCampaignsAtom, await campaignApi.getHomeOverview());
     setDeleteModalOpen(false);
     router.push("home");
   };
 
   const handleLeave = async () => {
     await campaignApi.leaveCampaign({ params: { id: campaign.id } });
-    alepha.store.set(
-      userCampaignsAtom,
-      (alepha.store.get(userCampaignsAtom) ?? []).filter(
-        (p) => p.id !== campaign.id,
-      ),
-    );
+    alepha.store.set(userCampaignsAtom, await campaignApi.getHomeOverview());
     setLeaveDialogOpen(false);
     router.push("home");
   };

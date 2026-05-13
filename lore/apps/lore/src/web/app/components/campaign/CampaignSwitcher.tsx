@@ -25,12 +25,15 @@ const CampaignSwitcher = (_props: CampaignSwitcherProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const [campaign] = useStore(currentCampaignAtom);
-  const [campaigns = []] = useStore(userCampaignsAtom);
+  const [overview] = useStore(userCampaignsAtom);
 
   if (!campaign) {
     return null;
   }
 
+  const campaigns = overview?.campaigns ?? [];
+  const canCreate = overview?.canCreate ?? true;
+  const maxCampaigns = overview?.maxCampaigns;
   const sorted = [...campaigns].sort((a, b) =>
     a.updatedAt > b.updatedAt ? -1 : 1,
   );
@@ -80,18 +83,45 @@ const CampaignSwitcher = (_props: CampaignSwitcherProps) => {
                     }
                   }}
                 >
+                  <div className="bg-muted text-muted-foreground flex aspect-square size-6 shrink-0 items-center justify-center overflow-hidden rounded-md">
+                    {c.icon ? (
+                      <img
+                        src={`/api/files/${c.icon}`}
+                        alt=""
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <ImageIcon className="size-3.5" />
+                    )}
+                  </div>
                   <span className="flex-1 truncate">{c.title}</span>
                   {isActive && <Check className="size-4" />}
                 </DropdownMenuItem>
               );
             })}
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href={router.path("campaignCreate")}>
+            {canCreate ? (
+              <DropdownMenuItem asChild>
+                <Link href={router.path("campaignCreate")}>
+                  <Plus className="size-4" />
+                  {tr("home.create-campaign")}
+                </Link>
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem disabled>
                 <Plus className="size-4" />
-                {tr("home.create-campaign")}
-              </Link>
-            </DropdownMenuItem>
+                <div className="flex flex-col">
+                  <span>{tr("home.create-campaign")}</span>
+                  {maxCampaigns && (
+                    <span className="text-muted-foreground text-xs">
+                      {tr("home.create-campaign.max", {
+                        args: [String(maxCampaigns)],
+                      })}
+                    </span>
+                  )}
+                </div>
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
