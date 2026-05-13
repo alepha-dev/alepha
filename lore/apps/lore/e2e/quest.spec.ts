@@ -35,7 +35,10 @@ test.describe("Quest", () => {
     await registerAndVerify(page, email, password);
     const campaignId = await createCampaignViaWizard(page, campaignTitle);
 
-    const { id: questId } = await apiPost<{ id: number }>(page, "createQuest", {
+    const { id: questId, shortId } = await apiPost<{
+      id: number;
+      shortId: number;
+    }>(page, "createQuest", {
       campaignId,
       title: questTitle,
       description: "Seeded quest for e2e",
@@ -46,9 +49,10 @@ test.describe("Quest", () => {
       attachments: [],
     });
     expect(questId).toBeGreaterThan(0);
+    expect(shortId).toBeGreaterThan(0);
 
     await test.step("open quest view", async () => {
-      await page.goto(`/c/${campaignId}/q/${questId}`);
+      await page.goto(`/c/${campaignId}/q/${shortId}`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(questTitle).first()).toBeVisible({
         timeout: 10_000,
