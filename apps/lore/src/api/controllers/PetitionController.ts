@@ -27,14 +27,8 @@ import { PetitionRateLimiter } from "../services/PetitionRateLimiter.ts";
 const petitionBodySchema = t.object({
   title: t.string({ minLength: 1, maxLength: 200 }),
   description: t.string({ minLength: 1, maxLength: 10_000 }),
-  reportType: t.enum(["bug", "feature"], { mode: "text" }),
   attachments: t.optional(t.array(t.uuid())),
-  context: t.optional(
-    t.object({
-      url: t.optional(t.string({ maxLength: 2000 })),
-      path: t.optional(t.string({ maxLength: 2000 })),
-    }),
-  ),
+  tags: t.optional(t.array(t.string({ maxLength: 100 }), { maxItems: 20 })),
 });
 
 /**
@@ -113,10 +107,9 @@ export class PetitionController {
         reporterUserId: user.id,
         title: body.title.slice(0, 200),
         description: body.description.slice(0, 10_000),
-        reportType: body.reportType,
         status: "pending",
         attachments,
-        context: body.context ?? {},
+        tags: (body.tags ?? []).slice(0, 20),
       });
 
       return { id: created.id };

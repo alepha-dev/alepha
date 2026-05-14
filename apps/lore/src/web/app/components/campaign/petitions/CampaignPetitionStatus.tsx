@@ -4,7 +4,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-import { Bug, ExternalLink, Paperclip, Sparkles } from "lucide-react";
+import { ExternalLink, Paperclip } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { PetitionController } from "@/api/controllers/PetitionController.ts";
 import type { PetitionResource } from "@/api/schemas/petitionResourceSchema.ts";
@@ -106,10 +106,8 @@ const CampaignPetitionStatus = () => {
     );
   }
 
-  const Icon = petition.reportType === "bug" ? Bug : Sparkles;
-  const iconColor =
-    petition.reportType === "bug" ? "text-red-500" : "text-emerald-500";
   const linked = petition.linkedQuests ?? [];
+  const tags = petition.tags ?? [];
 
   return (
     <div
@@ -119,7 +117,6 @@ const CampaignPetitionStatus = () => {
       <Card className="shadow">
         <CardContent className="flex flex-col gap-4">
           <div className="flex items-start gap-3">
-            <Icon className={`size-6 shrink-0 ${iconColor} mt-1`} />
             <div className="flex-1">
               <h1 className="text-xl font-semibold">{petition.title}</h1>
               <p className="text-muted-foreground text-xs">
@@ -136,6 +133,20 @@ const CampaignPetitionStatus = () => {
               {petition.status}
             </Badge>
           </div>
+
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {tags.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="font-mono text-[11px]"
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
 
           <section>
             <h2 className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">

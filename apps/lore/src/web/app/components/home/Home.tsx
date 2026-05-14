@@ -173,7 +173,7 @@ const Hero = (props: HeroProps) => {
       </div>
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
-          <LoreLogo size={28} className="size-7" />
+          <LoreLogo size={28} className="size-7 animate-floating" />
           <span className="text-muted-foreground text-xs uppercase tracking-widest">
             Alepha Lore
           </span>

@@ -338,7 +338,7 @@ export class AppRouter {
       this.campaignSettingsFolios,
       this.campaignSettingsPetitions,
       this.campaignSettingsChapters,
-      this.campaignSettingsVault,
+      this.campaignSettingsData,
     ],
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Settings`,
@@ -452,14 +452,14 @@ export class AppRouter {
       import("./components/campaign/settings/CampaignSettingsChaptersPage.tsx"),
   });
 
-  campaignSettingsVault = $page({
-    name: "campaignSettingsVault",
-    path: "/vault",
+  campaignSettingsData = $page({
+    name: "campaignSettingsData",
+    path: "/data",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Vault`,
+      title: `${previous?.title ?? ""} › Data`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsVault.tsx"),
+      import("./components/campaign/settings/CampaignSettingsDataPage.tsx"),
   });
 
   campaignQuest = $page({

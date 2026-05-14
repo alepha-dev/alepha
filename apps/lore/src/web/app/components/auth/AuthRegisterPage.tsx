@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import type { I18n } from "../../services/I18n.ts";
 import PageHeader from "../shared/header/PageHeader.tsx";
+import LoreLogo from "../shared/LoreLogo.tsx";
 import { resolveRegisterIntent } from "./registerIntents.ts";
 
 export interface AuthRegisterPageProps {
@@ -37,7 +38,11 @@ const AuthRegisterPage = (props: AuthRegisterPageProps) => {
   return (
     <>
       <PageHeader />
-      <AuthRegister realmConfig={props.realmConfig} message={message} />
+      <AuthRegister
+        realmConfig={props.realmConfig}
+        message={message}
+        logo={<LoreLogo size={64} className="size-16 animate-floating" />}
+      />
     </>
   );
 };

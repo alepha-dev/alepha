@@ -32,7 +32,6 @@ export const petitions = $entity({
     }),
     title: t.string({ minLength: 1, maxLength: 200 }),
     description: t.string({ maxLength: 10_000 }),
-    reportType: t.enum(["bug", "feature"], { mode: "text" }),
     status: t.enum(["pending", "accepted", "rejected"], { mode: "text" }),
     /**
      * Attachment file ids (uploaded via `POST /campaigns/:id/petitions/attachments`).
@@ -40,15 +39,13 @@ export const petitions = $entity({
      */
     attachments: db.default(t.array(t.uuid()), []),
     /**
-     * Free-form metadata captured at submission time (path, url, etc).
-     * Kept as JSON so the schema can evolve without migrations.
+     * Free-form tags. The `key=value` convention is documentation, not law —
+     * common keys: `type=bug|feature`, `host=lore.alepha.dev`, `path=/foo`,
+     * `severity=high`. Used for inbox filtering and reporting context.
      */
-    context: db.default(
-      t.object({
-        url: t.optional(t.string({ maxLength: 2000 })),
-        path: t.optional(t.string({ maxLength: 2000 })),
-      }),
-      {},
+    tags: db.default(
+      t.array(t.string({ maxLength: 100 }), { maxItems: 20 }),
+      [],
     ),
   }),
   indexes: [

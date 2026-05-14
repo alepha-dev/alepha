@@ -209,8 +209,24 @@ export class I18n {
         "campaign.settings.nav.banner": "General",
         "campaign.settings.nav.adventurers": "Adventurers",
         "campaign.settings.nav.zones": "Zones",
-        "campaign.settings.nav.vault": "Danger Zone",
-        "campaign.settings.nav.group.decrees": "Configuration",
+        "campaign.settings.nav.data": "Data",
+        "campaign.settings.data.title": "Import / Export",
+        "campaign.settings.data.export.title": "Export quests",
+        "campaign.settings.data.export.subtitle":
+          "Download all quests in this campaign as a CSV file.",
+        "campaign.settings.data.export.button": "Download CSV",
+        "campaign.settings.data.import.title": "Import quests",
+        "campaign.settings.data.import.subtitle":
+          "Upload a CSV exported from Lore or Trello. Existing quests with the same shortId are updated; others are created.",
+        "campaign.settings.data.import.dropzone":
+          "Drop a CSV here or click to choose",
+        "campaign.settings.data.import.submit": "Import",
+        "campaign.settings.data.import.submitting": "Importing…",
+        "campaign.settings.data.import.result":
+          "Imported $1 quests ($2 updated, $3 skipped)",
+        "campaign.settings.data.import.details": "View details",
+        "campaign.settings.data.import.error.title": "Import failed",
+        "campaign.settings.nav.group.features": "Features",
         "campaign.settings.zones.title": "Zones",
         "campaign.settings.zones.description":
           "Areas of your campaign. Each quest belongs to a zone. Rename a zone to refactor it across every quest.",
@@ -381,7 +397,6 @@ export class I18n {
         "stats.title": "Campaign Chronicles",
         "stats.subtitle":
           "Comprehensive insights into campaign progress and adventurer performance",
-        "stats.export": "Export CSV",
         "stats.totalQuests": "Total Quests",
         "stats.completed": "Completed",
         "stats.activeAdventurers": "Active Adventurers",
@@ -482,16 +497,18 @@ export class I18n {
         "petitions.request.title": "Submit a petition",
         "petitions.request.description":
           "Report a bug or request a feature. The campaign owner will review it.",
-        "petitions.request.type": "Type",
-        "petitions.request.typeBug": "Bug",
-        "petitions.request.typeFeature": "Feature",
         "petitions.request.titleField": "Title",
         "petitions.request.descriptionField": "Description",
         "petitions.request.descriptionHelper":
           "What happened? Steps to reproduce, expected vs actual.",
+        "petitions.request.tags": "Tags",
+        "petitions.request.tagsHelper":
+          "Free-form labels. Convention: key=value (type=bug, host=lore.alepha.dev, path=/foo).",
+        "petitions.request.tagPlaceholder": "Add a tag…",
+        "petitions.request.tooManyTags": "Too many tags (max $1)",
         "petitions.request.attachments": "Attachments",
         "petitions.request.attachmentsHelper":
-          "Screenshots, CSVs, logs (max 5 MB each, up to $1 files).",
+          "Screenshots, CSVs, logs (max 5 MB each, up to $1 files). Paste images with Ctrl+V.",
         "petitions.request.attach": "Attach file",
         "petitions.request.attachmentsCount": "$1 / $2 files",
         "petitions.request.tooManyFiles": "Too many files (max $1)",
@@ -500,6 +517,7 @@ export class I18n {
         "petitions.request.error": "Failed to submit petition",
         "petitions.request.submit": "Submit petition",
         "petitions.request.cancel": "Cancel",
+        "petitions.request.submittingAs": "Submitting as",
         "petitions.request.loginRequiredTitle": "Sign in to submit a petition",
         "petitions.request.loginRequiredBody":
           "Petitions are tied to your account so we can follow up if needed.",
@@ -708,8 +726,24 @@ export class I18n {
         "campaign.settings.nav.banner": "Général",
         "campaign.settings.nav.adventurers": "Aventuriers",
         "campaign.settings.nav.zones": "Zones",
-        "campaign.settings.nav.vault": "Zone de danger",
-        "campaign.settings.nav.group.decrees": "Configuration",
+        "campaign.settings.nav.data": "Données",
+        "campaign.settings.data.title": "Import / Export",
+        "campaign.settings.data.export.title": "Exporter les quêtes",
+        "campaign.settings.data.export.subtitle":
+          "Téléchargez toutes les quêtes de cette campagne en CSV.",
+        "campaign.settings.data.export.button": "Télécharger le CSV",
+        "campaign.settings.data.import.title": "Importer des quêtes",
+        "campaign.settings.data.import.subtitle":
+          "Importez un CSV exporté depuis Lore ou Trello. Les quêtes existantes avec le même shortId sont mises à jour ; les autres sont créées.",
+        "campaign.settings.data.import.dropzone":
+          "Déposez un CSV ici ou cliquez pour choisir",
+        "campaign.settings.data.import.submit": "Importer",
+        "campaign.settings.data.import.submitting": "Import en cours…",
+        "campaign.settings.data.import.result":
+          "$1 quêtes importées ($2 mises à jour, $3 ignorées)",
+        "campaign.settings.data.import.details": "Voir les détails",
+        "campaign.settings.data.import.error.title": "L'import a échoué",
+        "campaign.settings.nav.group.features": "Fonctionnalités",
         "campaign.settings.zones.title": "Zones",
         "campaign.settings.zones.description":
           "Les zones de votre campagne. Chaque quête appartient à une zone. Renommer une zone met à jour toutes ses quêtes.",
@@ -876,7 +910,6 @@ export class I18n {
         "stats.title": "Chroniques de campagne",
         "stats.subtitle":
           "Un aperçu complet de la progression de la campagne et des performances des aventuriers",
-        "stats.export": "Exporter CSV",
         "stats.totalQuests": "Total quêtes",
         "stats.completed": "Terminées",
         "stats.activeAdventurers": "Aventuriers actifs",
@@ -979,16 +1012,18 @@ export class I18n {
         "petitions.request.title": "Soumettre une pétition",
         "petitions.request.description":
           "Signalez un bogue ou demandez une fonctionnalité. Le propriétaire de la campagne examinera votre requête.",
-        "petitions.request.type": "Type",
-        "petitions.request.typeBug": "Bogue",
-        "petitions.request.typeFeature": "Fonctionnalité",
         "petitions.request.titleField": "Titre",
         "petitions.request.descriptionField": "Description",
         "petitions.request.descriptionHelper":
           "Que s'est-il passé ? Étapes de reproduction, attendu vs constaté.",
+        "petitions.request.tags": "Étiquettes",
+        "petitions.request.tagsHelper":
+          "Étiquettes libres. Convention : clé=valeur (type=bug, host=lore.alepha.dev, path=/foo).",
+        "petitions.request.tagPlaceholder": "Ajouter une étiquette…",
+        "petitions.request.tooManyTags": "Trop d'étiquettes (max $1)",
         "petitions.request.attachments": "Pièces jointes",
         "petitions.request.attachmentsHelper":
-          "Captures, CSV, logs (max 5 Mo chacun, jusqu'à $1 fichiers).",
+          "Captures, CSV, logs (max 5 Mo chacun, jusqu'à $1 fichiers). Collez une image avec Ctrl+V.",
         "petitions.request.attach": "Joindre un fichier",
         "petitions.request.attachmentsCount": "$1 / $2 fichiers",
         "petitions.request.tooManyFiles": "Trop de fichiers (max $1)",
@@ -997,6 +1032,7 @@ export class I18n {
         "petitions.request.error": "Échec de l'envoi de la pétition",
         "petitions.request.submit": "Envoyer la pétition",
         "petitions.request.cancel": "Annuler",
+        "petitions.request.submittingAs": "En tant que",
         "petitions.request.loginRequiredTitle":
           "Connectez-vous pour soumettre une pétition",
         "petitions.request.loginRequiredBody":

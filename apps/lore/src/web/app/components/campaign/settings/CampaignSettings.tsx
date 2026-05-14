@@ -10,10 +10,10 @@ import {
 import {
   BookMarked,
   BookOpen,
+  Database,
   Flag,
   Inbox,
   KanbanSquare,
-  Lock,
   type LucideIcon,
   MapPin,
   Users,
@@ -30,7 +30,7 @@ type RouteName =
   | "campaignSettingsFolios"
   | "campaignSettingsPetitions"
   | "campaignSettingsChapters"
-  | "campaignSettingsVault";
+  | "campaignSettingsData";
 
 type NavLabelKey =
   | "campaign.settings.nav.banner"
@@ -40,9 +40,9 @@ type NavLabelKey =
   | "campaign.settings.nav.folios"
   | "campaign.settings.nav.petitions"
   | "campaign.settings.nav.chapters"
-  | "campaign.settings.nav.vault";
+  | "campaign.settings.nav.data";
 
-type NavGroupLabelKey = "campaign.settings.nav.group.decrees";
+type NavGroupLabelKey = "campaign.settings.nav.group.features";
 
 interface NavItem {
   route: RouteName;
@@ -63,21 +63,26 @@ const NAV_GROUPS: NavGroup[] = [
         labelKey: "campaign.settings.nav.banner",
         icon: Flag,
       },
-    ],
-  },
-  {
-    labelKey: "campaign.settings.nav.group.decrees",
-    items: [
+      {
+        route: "campaignSettingsZones",
+        labelKey: "campaign.settings.nav.zones",
+        icon: MapPin,
+      },
       {
         route: "campaignSettingsAdventurers",
         labelKey: "campaign.settings.nav.adventurers",
         icon: Users,
       },
       {
-        route: "campaignSettingsZones",
-        labelKey: "campaign.settings.nav.zones",
-        icon: MapPin,
+        route: "campaignSettingsData",
+        labelKey: "campaign.settings.nav.data",
+        icon: Database,
       },
+    ],
+  },
+  {
+    labelKey: "campaign.settings.nav.group.features",
+    items: [
       {
         route: "campaignSettingsKanban",
         labelKey: "campaign.settings.nav.kanban",
@@ -97,15 +102,6 @@ const NAV_GROUPS: NavGroup[] = [
         route: "campaignSettingsChapters",
         labelKey: "campaign.settings.nav.chapters",
         icon: BookMarked,
-      },
-    ],
-  },
-  {
-    items: [
-      {
-        route: "campaignSettingsVault",
-        labelKey: "campaign.settings.nav.vault",
-        icon: Lock,
       },
     ],
   },

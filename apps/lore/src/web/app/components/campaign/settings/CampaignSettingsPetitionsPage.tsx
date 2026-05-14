@@ -19,7 +19,7 @@ const CampaignSettingsPetitionsPage = () => {
   const linkSnippet = useMemo(() => {
     if (!campaign) return "";
     return `<a
-  href="${origin}/c/${campaign.id}/request?type=bug"
+  href="${origin}/c/${campaign.id}/request?tags=${encodeURIComponent("type=bug")}"
   target="_blank"
   rel="noopener noreferrer"
 >
@@ -34,9 +34,9 @@ const CampaignSettingsPetitionsPage = () => {
   (function () {
     var a = document.getElementById('lore-report');
     var u = new URL('${origin}/c/${campaign.id}/request');
-    u.searchParams.set('type', 'bug');
-    u.searchParams.set('url', location.href);
-    u.searchParams.set('path', location.pathname);
+    u.searchParams.append('tags', 'type=bug');
+    u.searchParams.append('tags', 'host=' + location.host);
+    u.searchParams.append('tags', 'path=' + location.pathname);
     a.href = u.toString();
   })();
 </script>`;

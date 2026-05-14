@@ -110,7 +110,7 @@ export class PetitionTools {
           id: p.id,
           shortId: p.shortId,
           title: p.title,
-          reportType: p.reportType,
+          tags: p.tags ?? [],
           status: p.status,
           reporterName: this.reporterName(p),
           linkedQuestCount: p.linkedQuests?.length ?? 0,
@@ -122,7 +122,7 @@ export class PetitionTools {
 
   petition_get = $tool({
     description:
-      "Get full details of a petition by ID, including description, reporter, context (source url/path if external), attachment count, and linked quests spawned from it.",
+      "Get full details of a petition by ID, including description, reporter, tags (free-form key=value pairs like type=bug, host=lore.alepha.dev, path=/foo), attachment count, and linked quests spawned from it.",
     title: "Get petition",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -145,10 +145,9 @@ export class PetitionTools {
         shortId: p.shortId,
         title: p.title,
         description: p.description,
-        reportType: p.reportType,
+        tags: p.tags ?? [],
         status: p.status,
         reporterName: this.reporterName(p),
-        context: p.context,
         attachmentCount: p.attachmentUrls?.length ?? 0,
         linkedQuests: (p.linkedQuests ?? []).map((q) => ({
           id: q.id,

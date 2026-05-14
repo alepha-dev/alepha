@@ -189,7 +189,18 @@ const CampaignCreate = () => {
                     </Button>
                   )}
                   {step < TOTAL_STEPS ? (
+                    // `key` is critical: React 19 reconciles the ternary by
+                    // reusing the same <button> DOM node and just flipping
+                    // `type` between renders. When `goNext` advances step
+                    // from N-1 to TOTAL_STEPS in the click handler, React's
+                    // synchronous flush mutates `type` from "button" to
+                    // "submit" mid-click — the browser then dispatches a
+                    // real `submit` event on the form (skipping the final
+                    // step). Distinct keys force unmount/remount, so the
+                    // post-click default action sees the original button
+                    // type. See: https://github.com/facebook/react/issues
                     <Button
+                      key="next"
                       type="button"
                       size="lg"
                       onClick={goNext}
@@ -201,6 +212,7 @@ const CampaignCreate = () => {
                     </Button>
                   ) : (
                     <Button
+                      key="submit"
                       type="submit"
                       size="lg"
                       disabled={form.submitting || !canAdvanceFromName}
