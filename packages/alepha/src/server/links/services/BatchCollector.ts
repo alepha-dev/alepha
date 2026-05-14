@@ -44,9 +44,30 @@ export class BatchCollector {
 
     if (batch.length === 0) return;
 
+    // Entries with a binary body (File/Blob) can't survive JSON-stringify, so
+    // they must bypass the batch endpoint and use their direct (multipart)
+    // call instead.
+    const binaryEntries: PendingBatchEntry[] = [];
+    const remaining: PendingBatchEntry[] = [];
+    for (const item of batch) {
+      if (this.hasBinaryBody(item.entry.body)) {
+        binaryEntries.push(item);
+      } else {
+        remaining.push(item);
+      }
+    }
+    for (const item of binaryEntries) {
+      void item.entry
+        .directCall()
+        .then((r) => item.resolve(r))
+        .catch((e) => item.reject(e));
+    }
+
+    if (remaining.length === 0) return;
+
     // Single request — skip batching, call directly via follow
-    if (batch.length === 1) {
-      const item = batch[0];
+    if (remaining.length === 1) {
+      const item = remaining[0];
       try {
         const result = await item.entry.directCall();
         item.resolve(result);
@@ -55,6 +76,10 @@ export class BatchCollector {
       }
       return;
     }
+
+    // Reassign so the rest of the function works on the filtered set.
+    batch.length = 0;
+    batch.push(...remaining);
 
     // Deduplicate: same action + same params → share result
     const { unique, indexMap } = this.dedupe(batch);
@@ -138,6 +163,15 @@ export class BatchCollector {
     }
 
     return { unique, indexMap };
+  }
+
+  protected hasBinaryBody(body: unknown): boolean {
+    if (!body || typeof body !== "object") return false;
+    for (const v of Object.values(body as Record<string, unknown>)) {
+      if (typeof Blob !== "undefined" && v instanceof Blob) return true;
+      if (typeof File !== "undefined" && v instanceof File) return true;
+    }
+    return false;
   }
 
   protected chunk<T>(arr: T[], size: number): T[][] {
