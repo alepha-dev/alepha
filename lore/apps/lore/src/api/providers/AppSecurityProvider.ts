@@ -18,6 +18,10 @@ export class AppSecurityProvider {
       // realm advertises `captchaRequired: false` so the client doesn't try to
       // render a widget it can't satisfy.
       TURNSTILE_SITE_KEY: t.optional(t.text()),
+      // Per-IP registration cap. Defaults to the framework default (10).
+      // E2E test env bumps this to 1000 so a single localhost IP doesn't
+      // burn through the limit while the suite runs.
+      REGISTRATION_IP_MAX_ATTEMPTS: t.optional(t.integer({ minimum: 1 })),
     }),
   );
 
@@ -44,6 +48,9 @@ export class AppSecurityProvider {
       resetPasswordAllowed: true,
       verifyEmailRequired: true,
       captchaRequired: !!this.env.TURNSTILE_SITE_KEY,
+      registrationIpMaxAttempts: this.env.REGISTRATION_IP_MAX_ATTEMPTS
+        ? Number(this.env.REGISTRATION_IP_MAX_ATTEMPTS)
+        : undefined,
       adminEmails: this.env.ADMIN_EMAIL ? [this.env.ADMIN_EMAIL] : [],
     },
     identities: {

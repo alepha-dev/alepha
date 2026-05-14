@@ -46,18 +46,24 @@ test.describe("Quest CSV import / export", () => {
       attachments: [],
     });
 
-    await page.goto(`/c/${campaignId}/settings/data`);
+    // The Data section now lives inside Settings → General (the campaign
+    // settings root). Navigate there to find the export/import controls.
+    await page.goto(`/c/${campaignId}/settings/`);
     await page.waitForLoadState("domcontentloaded");
 
-    // Both cards visible.
-    await expect(
-      page.getByRole("button", { name: /download csv/i }),
-    ).toBeVisible();
-    await expect(page.locator('input[type="file"]')).toBeAttached();
+    // Export button — labelled by `campaign.settings.data.export.button`
+    // ("Export Quests"). Use a generous timeout because the settings page
+    // hydrates after `domcontentloaded`.
+    const exportBtn = page.getByRole("button", { name: /export quests/i });
+    await expect(exportBtn).toBeVisible({ timeout: 10_000 });
+    // `.first()` because the page also has a hidden file input for the
+    // campaign logo upload; the CSV one is the second-to-last and matching
+    // either is fine for an attachment check.
+    await expect(page.locator('input[type="file"]').first()).toBeAttached();
 
     // Trigger export and capture the download.
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: /download csv/i }).click();
+    await exportBtn.click();
     const download = await downloadPromise;
     const csvPath = path.join(testInfo.outputDir, download.suggestedFilename());
     await download.saveAs(csvPath);
