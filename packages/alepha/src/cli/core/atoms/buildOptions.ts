@@ -184,6 +184,51 @@ export const buildOptions = $atom({
             oci: t.optional(t.boolean()),
           }),
         ),
+
+        /**
+         * Compile the server entry to a single static binary using
+         * `bun build --compile`, then package it inside a minimal base image
+         * (distroless by default). Requires `runtime: "bun"`.
+         *
+         * When enabled:
+         * - the binary is produced at `<dist>/app` and the original `dist/server/`,
+         *   `dist/index.js` and `dist/package.json` are removed
+         * - the generated Dockerfile uses a distroless base image and does not
+         *   run `bun install` (everything is embedded in the binary)
+         * - any non-empty `dependencies` in the externals manifest causes the
+         *   task to fail loudly (compile requires fully-bundled output)
+         *
+         * Pass `true` to enable with defaults, or an object to override.
+         */
+        compile: t.optional(
+          t.union([
+            t.boolean(),
+            t.object({
+              /**
+               * Bun target triple, e.g. `bun-linux-x64-musl`,
+               * `bun-linux-arm64-musl`, or `bun-linux-x64-modern-musl`
+               * (AVX2 required).
+               *
+               * @default derived from host arch — always linux-musl.
+               */
+              target: t.optional(t.string()),
+
+              /**
+               * Base image for the generated Dockerfile.
+               *
+               * @default "gcr.io/distroless/static-debian12"
+               */
+              base: t.optional(t.string()),
+
+              /**
+               * Minify the compiled output.
+               *
+               * @default true
+               */
+              minify: t.optional(t.boolean()),
+            }),
+          ]),
+        ),
       }),
     ),
 

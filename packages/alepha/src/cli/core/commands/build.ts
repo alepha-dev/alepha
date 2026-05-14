@@ -117,6 +117,13 @@ export class BuildCommand {
             "Build Docker image. Use -i for latest, -i=<version> for specific version",
         }),
       ),
+      compile: t.optional(
+        t.boolean({
+          aliases: ["c"],
+          description:
+            "Compile server to a single static binary (requires --target=docker --runtime=bun)",
+        }),
+      ),
       sitemap: t.optional(
         t.text({
           description: "Generate sitemap.xml with base URL",
@@ -147,6 +154,12 @@ export class BuildCommand {
           flags.target ?? current.target,
           flags.runtime ?? current.runtime,
         ),
+        ...(flags.compile !== undefined && {
+          docker: {
+            ...current.docker,
+            compile: flags.compile ? (current.docker?.compile ?? true) : false,
+          },
+        }),
         ...(flags.sitemap && {
           sitemap: { hostname: flags.sitemap },
         }),
@@ -165,6 +178,20 @@ export class BuildCommand {
         throw new AlephaError(
           `Flag '--image' requires '--target=docker', got '${target ?? "bare"}'`,
         );
+      }
+
+      // Validate --compile requires --target=docker --runtime=bun
+      if (options.docker?.compile) {
+        if (target !== "docker") {
+          throw new AlephaError(
+            `Compile mode requires '--target=docker', got '${target ?? "bare"}'`,
+          );
+        }
+        if (options.runtime !== "bun") {
+          throw new AlephaError(
+            `Compile mode requires '--runtime=bun', got '${options.runtime}'`,
+          );
+        }
       }
 
       this.log.trace("Build configuration", {
