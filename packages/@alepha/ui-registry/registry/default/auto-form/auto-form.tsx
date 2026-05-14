@@ -364,7 +364,7 @@ function GroupBlock(props: GroupBlockProps) {
             <span className="text-sm font-medium">{group.title}</span>
           </div>
         )}
-        <div className="bg-card divide-y rounded-lg border">
+        <div className="bg-card divide-y rounded-lg border shadow-sm">
           {items.map((it) => (
             <Control
               key={it.name}
