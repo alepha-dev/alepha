@@ -28,12 +28,16 @@ const buildSnippet = (text: string, query: string, radius = 100): string => {
 };
 
 /**
- * MCP tools for Folios — personal markdown notes.
+ * MCP tools for Folios — markdown notes that act as the calling user's
+ * memory for a campaign. Mirrors the per-project `MEMORY.md` pattern but
+ * scoped to a Lore campaign so multiple agents (and humans) can co-curate.
  *
  * Designed for AI-first workflows: `folio_search` returns a snippet so the
  * model can disambiguate without a follow-up read; `folio_create` /
  * `folio_update` accept tags as a flat string array; all writes are scoped
- * to the authenticated user.
+ * to the authenticated user. For situational awareness across a whole
+ * campaign, prefer the orientation tool `campaign_context` — it returns
+ * the folio index alongside active quests in one ~2K-token call.
  */
 export class FolioTools {
   protected readonly folioController = $inject(FolioController);
@@ -100,7 +104,7 @@ export class FolioTools {
 
   folio_list = $tool({
     description:
-      "List the user's folios (personal markdown notes), newest first. Use `tag` to narrow by a tag. Returns id, title, tags, updatedAt — call folio_get to read full content.",
+      "List the user's folios (markdown notes that act as the campaign's memory for this user), newest first. Use `tag` to narrow by a tag. Returns id, title, tags, updatedAt — call `folio_get` to read full content. For initial orientation on a campaign, prefer `campaign_context` — it returns this same index alongside the active quests in one round-trip.",
     title: "List folios",
     annotations: {
       readOnlyHint: true,
@@ -248,7 +252,7 @@ export class FolioTools {
 
   folio_create = $tool({
     description:
-      "Create a new folio scoped to a campaign. Provide `campaign` (id) or `campaign_name`. `content` is markdown. `tags` should reuse existing tags when possible (call folio_tags to list them).",
+      "Create a new folio in a campaign — a markdown note that becomes part of the campaign's memory for AI agents. Provide `campaign` (id) or `campaign_name`. `content` is markdown. Reuse existing `tags` when possible (call `folio_tags` first); good tags make future `folio_list` / `folio_search` calls precise.",
     title: "Create folio",
     annotations: {
       // not idempotent — repeated calls create duplicate folios

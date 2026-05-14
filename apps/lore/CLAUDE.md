@@ -121,6 +121,32 @@ User-submitted bug reports / feature requests that the campaign owner triages.
 - Request UI: `src/web/app/components/campaign/petitions/CampaignPetitionRequest.tsx`
 - Routes: `campaignPetitions` (under `campaign`), `campaignPetitionRequest` (top-level, not under the campaign layout — public landing)
 
+## Folios are this campaign's memory for Claude
+
+Folios are markdown notes scoped to **(user, campaign)** — they mirror the `~/.claude/projects/*/memory/MEMORY.md` pattern but at the campaign level: persistent across sessions, exportable, tagged, fully MCP-readable. Treat them as the canonical place where any agent working on a Lore campaign should look for context and write down what it learns.
+
+**Conventions** (apply when curating folios — yourself or via Claude):
+
+- One topic per folio. Use the title as the topic; use tags (`tech/decision`, `runbook`, `incident`, …) for taxonomy.
+- Keep folios short and self-contained. A folio that needs scrolling is two folios.
+- When an agent creates a folio via MCP, it should always provide useful `tags` so future `folio_list`/`folio_search` calls stay precise. (Phase 3 of quest #49 will add a `summary` field — Claude fills it, web users can ignore it; `campaign_context` then returns it.)
+- Phase 4 of quest #49 will add `[[wiki-link]]` cross-folio references and a backlinks panel — agents can already use `folio_search` to traverse before that lands.
+
+**MCP orientation flow** (every AI client should follow this on a fresh task):
+
+1. `campaign_context` — one-shot orientation: campaign metadata + active quests + folio index (~2K tokens, no folio bodies).
+2. `folio_get` / `quest_get` on the specific entries that look relevant.
+3. `folio_create` / `folio_update` when the agent decides something worth remembering long-term.
+
+The MCP tool descriptions in `src/mcp/tools/CampaignTools.ts` and `src/mcp/tools/FolioTools.ts` are the public-facing version of this convention — every Claude reads them on connect. Keep them sharp.
+
+**Where to look**
+
+- Entity: `src/api/entities/folios.ts` (per-user-per-campaign, `searchText` blob for cheap LIKE search)
+- Controller: `src/api/controllers/FolioController.ts` (list, search, get, create, update, delete)
+- MCP tools: `src/mcp/tools/FolioTools.ts` + `CampaignTools.ts` (`campaign_context`)
+- UI: `src/web/app/components/folios/FolioEditor.tsx`
+
 ## I18n
 
 Two languages: English (`en`) and French (`fr`). All translations in `src/web/app/services/I18n.ts`. Always use `tr()` from `useI18n<I18n, "en">()` — never hardcode strings.

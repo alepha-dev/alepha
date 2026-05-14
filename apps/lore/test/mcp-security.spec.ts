@@ -9,6 +9,8 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
+import { CampaignController } from "../src/api/controllers/CampaignController.ts";
+import { FolioController } from "../src/api/controllers/FolioController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 
@@ -663,6 +665,149 @@ describe("MCP Security Integration", () => {
       );
 
       // Should fail gracefully - returns MCP error
+      expect(result.status).toBe(200);
+      expect(isErrorResponse(result.data)).toBe(true);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Streamable HTTP transport — GET should be rejected (no legacy SSE GET stream)
+  // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // campaign_context — orientation tool (folio index + active quests)
+  // ---------------------------------------------------------------------------
+
+  describe("campaign_context", () => {
+    /**
+     * Parse the JSON-encoded payload returned in MCP tool content. Tools
+     * stringify their result into `content[0].text`; tests want the
+     * structured object back.
+     */
+    const parseToolPayload = <T>(data: McpToolResult): T => {
+      const text = data.result?.content?.[0]?.text;
+      if (!text) throw new Error("Tool returned no content");
+      return JSON.parse(text) as T;
+    };
+
+    interface CampaignContextResult {
+      id: number;
+      title: string;
+      public: boolean;
+      zones: string[];
+      activeQuests: Array<{ shortId: number; title: string }>;
+      folios: {
+        shown: number;
+        capped: boolean;
+        items: Array<{ shortId: number; title: string; tags: string[] }>;
+      };
+    }
+
+    it("returns the calling user's folios and active quests, capped at 30", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const { token } = await createApiKey(ctx, owner);
+      const campaignCtrl = ctx.alepha.inject(CampaignController);
+      const folioCtrl = ctx.alepha.inject(FolioController);
+
+      // Bootstrap: one campaign, a few folios, sorted by updatedAt desc on read.
+      const created = await campaignCtrl.createCampaign.fetch(
+        { body: { title: "Lore Probe" } },
+        { user: owner },
+      );
+      const campaignId = created.data.id;
+      const folioTitles = ["Alpha", "Beta", "Gamma"];
+      for (const title of folioTitles) {
+        await folioCtrl.create.fetch(
+          {
+            body: {
+              campaignId,
+              title,
+              content: "# " + title,
+              tags: ["probe"],
+            },
+          },
+          { user: owner },
+        );
+      }
+
+      const result = await mcpRequest(
+        ctx.baseUrl,
+        "tools/call",
+        { name: "campaign_context", arguments: { campaign: campaignId } },
+        { token },
+      );
+
+      expect(result.status).toBe(200);
+      expect(isErrorResponse(result.data)).toBe(false);
+
+      const payload = parseToolPayload<CampaignContextResult>(result.data);
+      expect(payload.id).toBe(campaignId);
+      expect(payload.title).toBe("Lore Probe");
+      expect(payload.folios.shown).toBe(folioTitles.length);
+      expect(payload.folios.capped).toBe(false);
+      const returnedTitles = payload.folios.items.map((f) => f.title).sort();
+      expect(returnedTitles).toEqual(folioTitles.slice().sort());
+      // Token budget guard — keeps us honest as future fields land.
+      expect(JSON.stringify(payload).length).toBeLessThan(12_000);
+    });
+
+    it("rejects a non-member on a private campaign (404)", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const stranger = await createTestUser(ctx);
+      const { token: strangerToken } = await createApiKey(ctx, stranger);
+      const campaignCtrl = ctx.alepha.inject(CampaignController);
+
+      const created = await campaignCtrl.createCampaign.fetch(
+        { body: { title: "Private Probe" } },
+        { user: owner },
+      );
+
+      const result = await mcpRequest(
+        ctx.baseUrl,
+        "tools/call",
+        {
+          name: "campaign_context",
+          arguments: { campaign: created.data.id },
+        },
+        { token: strangerToken },
+      );
+
+      expect(result.status).toBe(200);
+      expect(isErrorResponse(result.data)).toBe(true);
+    });
+
+    it("rejects a non-member on a public campaign too (campaign scoping is mine-only)", async ({
+      expect,
+    }) => {
+      // `resolveCampaignId` reuses `getMyCampaigns`, which lists owned +
+      // member-of campaigns — not "all public" campaigns. So a stranger
+      // gets a NotFoundError regardless of `public`. This is the actual
+      // security boundary the orientation tool enforces and the per-user
+      // folio scoping never has to come into play here.
+      const owner = await createTestUser(ctx);
+      const stranger = await createTestUser(ctx);
+      const { token: strangerToken } = await createApiKey(ctx, stranger);
+      const campaignCtrl = ctx.alepha.inject(CampaignController);
+
+      const created = await campaignCtrl.createCampaign.fetch(
+        { body: { title: "Public Probe", public: true } },
+        { user: owner },
+      );
+
+      const result = await mcpRequest(
+        ctx.baseUrl,
+        "tools/call",
+        {
+          name: "campaign_context",
+          arguments: { campaign: created.data.id },
+        },
+        { token: strangerToken },
+      );
+
       expect(result.status).toBe(200);
       expect(isErrorResponse(result.data)).toBe(true);
     });
