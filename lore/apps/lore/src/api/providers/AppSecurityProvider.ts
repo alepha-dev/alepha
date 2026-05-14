@@ -13,6 +13,11 @@ export class AppSecurityProvider {
   env = $env(
     t.object({
       ADMIN_EMAIL: t.optional(t.email()),
+      // When set, lore registers `TurnstileCaptchaProvider` in `main.server.ts`
+      // and the register flow gates on a Turnstile token. When absent, the
+      // realm advertises `captchaRequired: false` so the client doesn't try to
+      // render a widget it can't satisfy.
+      TURNSTILE_SITE_KEY: t.optional(t.text()),
     }),
   );
 
@@ -39,7 +44,7 @@ export class AppSecurityProvider {
       usernameBlocklist: ["admin", "root", "me", "api", "support", "system"],
       resetPasswordAllowed: true,
       verifyEmailRequired: true,
-      captchaRequired: true,
+      captchaRequired: !!this.env.TURNSTILE_SITE_KEY,
       adminEmails: this.env.ADMIN_EMAIL ? [this.env.ADMIN_EMAIL] : [],
     },
     identities: {
