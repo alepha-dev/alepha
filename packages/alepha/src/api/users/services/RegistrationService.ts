@@ -109,12 +109,17 @@ export class RegistrationService {
       userRealmName,
     });
 
-    // IP rate limiting
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const realmSettings = await realm.getSettings();
+
+    // IP rate limiting — threshold driven by realm settings so dev/e2e can
+    // bump it (a single localhost IP otherwise burns through the default 10
+    // before the suite finishes).
     const request = this.alepha.store.get("alepha.http.request");
     const ipKey = request?.ip ? `register:ip:${request.ip}` : undefined;
     if (ipKey) {
       const count = (await this.rateLimitCache.get(ipKey)) ?? 0;
-      if (count >= 10) {
+      if (count >= realmSettings.registrationIpMaxAttempts) {
         this.log.warn("Registration rate limit exceeded", { ip: request?.ip });
         throw new BadRequestError(
           "Too many registration attempts, please try again later",
@@ -122,9 +127,6 @@ export class RegistrationService {
       }
       await this.rateLimitCache.set(ipKey, count + 1);
     }
-
-    const realm = this.realmProvider.getRealm(userRealmName);
-    const realmSettings = await realm.getSettings();
 
     // Check if registration is allowed
     if (realmSettings?.registrationAllowed === false) {

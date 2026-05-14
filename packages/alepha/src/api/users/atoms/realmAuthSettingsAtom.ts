@@ -155,6 +155,12 @@ export const realmAuthSettingsAtom = $atom({
         minimum: 1000,
       }),
     }),
+    registrationIpMaxAttempts: t.integer({
+      description:
+        "Max registration attempts per IP before temporary lockout. Default 10 protects against signup abuse; raise it in dev/e2e environments where a single localhost IP spawns many test users.",
+      default: 10,
+      minimum: 1,
+    }),
     refreshToken: t.object({
       expirationIdle: t.optional(
         t.integer({
@@ -199,6 +205,7 @@ export const realmAuthSettingsAtom = $atom({
       accountMaxAttempts: 5,
       windowMs: 15 * 60 * 1000,
     },
+    registrationIpMaxAttempts: 10,
     refreshToken: {
       // expirationIdle: undefined — opt-in
     },

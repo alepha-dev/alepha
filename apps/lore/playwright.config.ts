@@ -26,6 +26,9 @@ export default defineConfig({
       // which doesn't load `.env`, so e2e needs these injected explicitly.
       TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
       TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+      // Lift the per-IP registration cap — the full suite registers dozens
+      // of users from a single localhost IP. Default 10 trips mid-run.
+      REGISTRATION_IP_MAX_ATTEMPTS: "1000",
     },
   },
 });

@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { expect, type Page } from "@playwright/test";
+import { type Browser, expect, type Page } from "@playwright/test";
 
 export const emailDir = path.join(process.cwd(), "node_modules/.alepha/emails");
 
@@ -155,4 +155,30 @@ export const createCampaignViaWizard = async (
   const match = page.url().match(/\/c\/(\d+)/);
   expect(match).not.toBeNull();
   return Number(match![1]);
+};
+
+/**
+ * Open a fresh `BrowserContext` (isolated cookie jar) and register a new
+ * user in it. Returns the context, its page, and the generated email.
+ *
+ * Tests that need two authenticated users at once (e.g. invitation flow:
+ * inviter + invitee) call this once for the second user — the default
+ * `page` fixture handles the first.
+ *
+ * The caller is responsible for `await ctx.close()` once finished.
+ */
+export const newUserContext = async (
+  browser: Browser,
+  baseURL: string,
+  label: string,
+): Promise<{
+  ctx: Awaited<ReturnType<Browser["newContext"]>>;
+  page: Page;
+  email: string;
+}> => {
+  const ctx = await browser.newContext({ baseURL });
+  const page = await ctx.newPage();
+  const email = `${label}-${Date.now()}-${Math.floor(Math.random() * 1000)}@example.com`;
+  await registerAndVerify(page, email, "GoodPassw0rd");
+  return { ctx, page, email };
 };
