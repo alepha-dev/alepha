@@ -40,7 +40,7 @@ const ExperienceBar = () => {
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="pointer-events-auto cursor-help text-[10px] font-medium text-white mix-blend-difference">
+                <span className="pointer-events-auto cursor-help text-[10px] font-medium text-white [text-shadow:0_0_2px_rgba(0,0,0,0.9),0_1px_2px_rgba(0,0,0,0.7)]">
                   XP: {current}/{max}
                 </span>
               </TooltipTrigger>
