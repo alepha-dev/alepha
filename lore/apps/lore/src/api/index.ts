@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 import { AdminInvitationController } from "./controllers/AdminInvitationController.ts";
 import { CampaignController } from "./controllers/CampaignController.ts";
+import { CampaignQuestPortabilityController } from "./controllers/CampaignQuestPortabilityController.ts";
 import { CampaignStatsController } from "./controllers/CampaignStatsController.ts";
 import { ChapterController } from "./controllers/ChapterController.ts";
 import { CharacterController } from "./controllers/CharacterController.ts";
@@ -18,6 +19,11 @@ import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { CharacterInfo } from "./services/CharacterInfo.ts";
 import { InvitationService } from "./services/InvitationService.ts";
 import { PetitionRateLimiter } from "./services/PetitionRateLimiter.ts";
+import { AlephaLoreParser } from "./services/parsers/AlephaLoreParser.ts";
+import { TrelloParser } from "./services/parsers/TrelloParser.ts";
+import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
+import { QuestCsvParser } from "./services/QuestCsvParser.ts";
+import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 
 export const LoreApi = $module({
   name: "lore.api",
@@ -28,6 +34,11 @@ export const LoreApi = $module({
     InvitationJobs,
     ChapterJobs,
     PetitionRateLimiter,
+    QuestCsvParser,
+    QuestCsvFormatter,
+    AlephaLoreParser,
+    TrelloParser,
+    QuestImportFormatProvider,
     // Controllers
     QuestController,
     CampaignController,
@@ -37,6 +48,7 @@ export const LoreApi = $module({
     ChapterController,
     IdentityController,
     CampaignStatsController,
+    CampaignQuestPortabilityController,
     InvitationController,
     AdminInvitationController,
     KanbanController,

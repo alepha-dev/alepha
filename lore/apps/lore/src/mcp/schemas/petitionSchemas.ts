@@ -5,13 +5,11 @@ const petitionStatusSchema = t.enum(["pending", "accepted", "rejected"], {
   mode: "text",
 });
 
-const petitionReportTypeSchema = t.enum(["bug", "feature"], { mode: "text" });
-
 const petitionRefSchema = t.object({
   id: t.integer(),
   shortId: t.integer(),
   title: t.string(),
-  reportType: petitionReportTypeSchema,
+  tags: t.array(t.string()),
   status: petitionStatusSchema,
   reporterName: t.optional(t.string()),
   linkedQuestCount: t.integer(),
@@ -30,15 +28,9 @@ const petitionFullSchema = t.object({
   shortId: t.integer(),
   title: t.string(),
   description: t.string(),
-  reportType: petitionReportTypeSchema,
+  tags: t.array(t.string()),
   status: petitionStatusSchema,
   reporterName: t.optional(t.string()),
-  context: t.optional(
-    t.object({
-      url: t.optional(t.string()),
-      path: t.optional(t.string()),
-    }),
-  ),
   attachmentCount: t.integer(),
   linkedQuests: t.array(petitionLinkedQuestRefSchema),
   createdAt: t.datetime(),

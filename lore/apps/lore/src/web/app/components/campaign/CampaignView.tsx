@@ -53,12 +53,12 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   campaignPetitions: "campaign.menu.petitions",
   campaignSettings: "campaign.menu.settings",
   campaignSettingsBanner: "campaign.menu.settings",
-  campaignSettingsVault: "campaign.menu.settings",
   campaignSettingsZones: "campaign.menu.settings",
   campaignSettingsKanban: "campaign.menu.settings",
   campaignSettingsFolios: "campaign.menu.settings",
   campaignSettingsPetitions: "campaign.menu.settings",
   campaignSettingsChapters: "campaign.menu.settings",
+  campaignSettingsData: "campaign.menu.settings",
 };
 
 const PETITION_POLL_INTERVAL_MS = 30_000;
@@ -227,7 +227,7 @@ const CampaignView = () => {
     >
       <div className="flex h-full flex-col">
         <div
-          className={`flex min-h-0 flex-1 flex-col ${showQuestLog ? "overflow-hidden" : "overflow-auto"}`}
+          className={`flex min-h-0 flex-1 flex-col ${showQuestLog || fullWidth ? "overflow-hidden" : "overflow-auto"}`}
         >
           {showQuestLog ? (
             <div className="flex min-h-0 flex-1 gap-2 p-2">

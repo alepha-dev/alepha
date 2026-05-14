@@ -1,4 +1,3 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,11 +12,10 @@ import {
   SelectValue,
 } from "@alepha/ui/components/ui/select";
 import { DateTimeProvider } from "alepha/datetime";
-import { useAlepha, useClient, useInject } from "alepha/react";
+import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   ChartBar,
-  Download,
   Star,
   Target,
   TrendingUp,
@@ -36,9 +34,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { toast } from "sonner";
-import type { CampaignStatsController } from "@/api/controllers/CampaignStatsController.ts";
-import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 
 export interface CampaignStatsProps {
@@ -79,39 +74,8 @@ export interface CampaignStatsProps {
 const CampaignStats = (props: CampaignStatsProps) => {
   const stats = props.stats;
   const { tr } = useI18n<I18n, "en">();
-  const alepha = useAlepha();
-  const campaignStatsApi = useClient<CampaignStatsController>();
   const dt = useInject(DateTimeProvider);
-  const currentCampaign = alepha.store.get(currentCampaignAtom);
   const [timelineRange, setTimelineRange] = useState<string>("14days");
-
-  const handleExportCsv = async () => {
-    if (!currentCampaign) {
-      toast.error("No campaign selected");
-      return;
-    }
-
-    try {
-      const csvData = await campaignStatsApi.exportQuestsCsv({
-        params: { id: currentCampaign.id },
-      });
-
-      const url = window.URL.createObjectURL(
-        new Blob([await csvData.text()], { type: "text/csv" }),
-      );
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = csvData.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
-      toast.success("Quests exported to CSV successfully");
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to export quests");
-    }
-  };
 
   const priorityData = stats.questsByPriority.map((item) => ({
     priority: item.priority.charAt(0).toUpperCase() + item.priority.slice(1),
@@ -242,15 +206,9 @@ const CampaignStats = (props: CampaignStatsProps) => {
   return (
     <div className="mx-auto w-full max-w-5xl p-4">
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ChartBar className="size-6" />
-            <h2 className="text-xl font-semibold">{tr("stats.title")}</h2>
-          </div>
-          <Button variant="outline" size="sm" onClick={handleExportCsv}>
-            <Download className="size-4" />
-            {tr("stats.export")}
-          </Button>
+        <div className="flex items-center gap-2">
+          <ChartBar className="size-6" />
+          <h2 className="text-xl font-semibold">{tr("stats.title")}</h2>
         </div>
 
         <p className="text-muted-foreground text-sm">{tr("stats.subtitle")}</p>

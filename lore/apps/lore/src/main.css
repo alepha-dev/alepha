@@ -47,6 +47,33 @@
   }
 }
 
+/**
+ * Floating — gentle vertical drift, top↔bottom only.
+ *
+ * Non-symmetric 0 / 35 / 65 / 100 stops with a slow custom easing so the
+ * curve never lingers symmetrically around the rest position — reads as
+ * a buoyant object riding the air rather than a metronome tick.
+ */
+@keyframes floating {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  35% {
+    transform: translate3d(0, -5px, 0);
+  }
+  65% {
+    transform: translate3d(0, -2px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-floating {
+  animation: floating 6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  will-change: transform;
+}
+
 /* ────────────────────────────────────────────────────────────────────────
  * Discreet scrollbars — thin, neutral, fade-on-hover.
  * Applied globally so every scroll container picks them up.

@@ -9,7 +9,7 @@ import {
 import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Bug, ExternalLink, Paperclip, Plus, Sparkles } from "lucide-react";
+import { ExternalLink, Paperclip, Plus } from "lucide-react";
 import { useState } from "react";
 import type { PetitionController } from "@/api/controllers/PetitionController.ts";
 import type { PetitionResource } from "@/api/schemas/petitionResourceSchema.ts";
@@ -37,10 +37,6 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
   const [questCreateOpen, setQuestCreateOpen] = useState(false);
 
   if (!campaign) return null;
-
-  const Icon = petition.reportType === "bug" ? Bug : Sparkles;
-  const iconColor =
-    petition.reportType === "bug" ? "text-red-500" : "text-emerald-500";
 
   const handlePromote = async () => {
     setBusy(true);
@@ -110,6 +106,7 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
   };
 
   const linkedQuests = petition.linkedQuests ?? [];
+  const tags = petition.tags ?? [];
 
   const questStatusColor: Record<string, string> = {
     new: "bg-slate-500/20 text-slate-300",
@@ -130,7 +127,6 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
             {tr("petitions.back")}
           </Button>
         )}
-        <Icon className={`size-5 shrink-0 ${iconColor} mt-0.5`} />
         <h2 className="flex-1 text-base font-semibold">{petition.title}</h2>
         <Badge variant="secondary" className="uppercase">
           {petition.status}
@@ -138,6 +134,20 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
       </div>
 
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {tags.map((tag) => (
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="font-mono text-[11px]"
+              >
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
+
         <section>
           <h3 className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">
             {tr("petitions.description")}
@@ -211,41 +221,23 @@ const CampaignPetitionDetail = (props: CampaignPetitionDetailProps) => {
           </section>
         )}
 
-        <section className="bg-muted/30 rounded border border-border p-3 text-xs">
-          <h3 className="text-muted-foreground mb-2 font-medium uppercase tracking-wide">
-            {tr("petitions.context.title")}
-          </h3>
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1">
-            {petition.reporter && (
-              <>
-                <dt className="text-muted-foreground">
-                  {tr("petitions.context.reporter")}
-                </dt>
-                <dd>
-                  {petition.reporter.name ??
-                    petition.reporter.username ??
-                    petition.reporter.id}
-                </dd>
-              </>
-            )}
-            {petition.context?.url && (
-              <>
-                <dt className="text-muted-foreground">
-                  {tr("petitions.context.url")}
-                </dt>
-                <dd className="break-all">{petition.context.url}</dd>
-              </>
-            )}
-            {petition.context?.path && (
-              <>
-                <dt className="text-muted-foreground">
-                  {tr("petitions.context.path")}
-                </dt>
-                <dd className="break-all">{petition.context.path}</dd>
-              </>
-            )}
-          </dl>
-        </section>
+        {petition.reporter && (
+          <section className="bg-muted/30 rounded border border-border p-3 text-xs">
+            <h3 className="text-muted-foreground mb-2 font-medium uppercase tracking-wide">
+              {tr("petitions.context.title")}
+            </h3>
+            <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1">
+              <dt className="text-muted-foreground">
+                {tr("petitions.context.reporter")}
+              </dt>
+              <dd>
+                {petition.reporter.name ??
+                  petition.reporter.username ??
+                  petition.reporter.id}
+              </dd>
+            </dl>
+          </section>
+        )}
       </div>
 
       {petition.status === "pending" && (

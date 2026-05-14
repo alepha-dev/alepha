@@ -35,7 +35,7 @@ const CampaignSwitcher = (_props: CampaignSwitcherProps) => {
   const canCreate = overview?.canCreate ?? true;
   const maxCampaigns = overview?.maxCampaigns;
   const sorted = [...campaigns].sort((a, b) =>
-    a.updatedAt > b.updatedAt ? -1 : 1,
+    a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
   );
 
   return (

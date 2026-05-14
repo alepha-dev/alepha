@@ -4,7 +4,6 @@ import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
-import { FileSystemProvider } from "alepha/system";
 import { campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
 import { quests } from "../entities/quests.ts";
@@ -16,7 +15,6 @@ export class CampaignStatsController {
   campaigns = $repository(campaigns);
   database = $inject(DatabaseProvider);
   security = $inject(AppSecurityProvider);
-  fs = $inject(FileSystemProvider);
   dt = $inject(DateTimeProvider);
 
   getCampaignStats = $action({
@@ -279,67 +277,6 @@ export class CampaignStatsController {
         activityTimeline,
         completionRate,
       };
-    },
-  });
-
-  exportQuestsCsv = $action({
-    use: [$secure({ permissions: ["stats:export"] })],
-    path: "/campaigns/:id/export",
-    schema: {
-      params: t.object({
-        id: t.integer(),
-      }),
-      response: t.file(),
-    },
-    handler: async ({ params, user }) => {
-      await this.security.checkOwnership(params.id, user);
-
-      const campaign = await this.campaigns.getOne({
-        where: { id: { eq: params.id } },
-      });
-
-      const campaignQuests = await this.quests.findMany({
-        where: { campaignId: { eq: params.id } },
-        orderBy: "createdAt",
-        limit: 1000,
-      });
-
-      const fields = [
-        "id",
-        "title",
-        "zone",
-        "priority",
-        "difficulty",
-        "createdAt",
-        "acceptedAt",
-        "completedAt",
-      ];
-
-      let csvContent = `${fields.join(",")}\n`;
-      for (const quest of campaignQuests) {
-        const row = fields.map((field) => {
-          let value = (quest as any)[field] ?? "";
-          if (value && typeof value === "object" && "toISOString" in value) {
-            value = value.toISOString();
-          } else if (typeof value === "string") {
-            // Escape double quotes in strings
-            value = value.replace(/"/g, '""');
-            // Wrap string values in double quotes
-            value = `"${value}"`;
-          } else if (typeof value === "object") {
-            // For objects/arrays, stringify them
-            value = `"${JSON.stringify(value).replace(/"/g, '""')}"`;
-          }
-          return value;
-        });
-        csvContent += `${row.join(",")}\n`;
-      }
-
-      return this.fs.createFile({
-        text: csvContent,
-        name: `quests-export-${campaign.title}-${this.dt.nowISOString().split("T")[0]}.csv`,
-        type: "text/csv",
-      });
     },
   });
 }
