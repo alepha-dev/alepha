@@ -19,7 +19,10 @@ if (alepha.env.BREVO_API_KEY) {
 // Register the captcha provider BEFORE any module that depends on `alepha/captcha`
 // (e.g. `LoreApi` → `RealmController`). The `AlephaCaptcha` module auto-binds the
 // memory provider on load; substituting after that point trips the DI guard.
-alepha.with({ provide: CaptchaProvider, use: TurnstileCaptchaProvider });
+// Register if and only if TURNSTILE_SITE_KEY is present.
+if (alepha.env.TURNSTILE_SITE_KEY) {
+  alepha.with({ provide: CaptchaProvider, use: TurnstileCaptchaProvider });
+}
 
 alepha.with(LoreApi);
 alepha.with(LoreMcp);
