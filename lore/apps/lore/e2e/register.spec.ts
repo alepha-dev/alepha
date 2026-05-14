@@ -55,7 +55,12 @@ test.describe("Register", () => {
     await page
       .getByRole("textbox", { name: "Password", exact: true })
       .fill("Ab1!");
-    await page.getByRole("button", { name: /create account/i }).click();
+
+    // Test site key auto-passes but the submit stays disabled until the
+    // Turnstile callback fires — same gate every other create-account click uses.
+    const submit = page.getByRole("button", { name: /create account/i });
+    await expect(submit).toBeEnabled({ timeout: 30_000 });
+    await submit.click();
 
     await expect(
       page.getByText(/8 characters|fewer than 8/i).first(),
