@@ -22,6 +22,10 @@ export default defineConfig({
     reuseExistingServer: true,
     env: {
       SERVER_PORT: `${port}`,
+      // Cloudflare Turnstile "always-pass" test keys — `yarn start` runs `node dist`
+      // which doesn't load `.env`, so e2e needs these injected explicitly.
+      TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+      TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
     },
   },
 });

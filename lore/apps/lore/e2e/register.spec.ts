@@ -46,7 +46,8 @@ test.describe("Register", () => {
   test("schema-level minLength error is visible", async ({ page }) => {
     const ts = Date.now();
     await page.goto("/auth/register");
-    await page.waitForLoadState("networkidle");
+    // `networkidle` never settles once Turnstile is loaded — its widget polls.
+    await page.waitForLoadState("domcontentloaded");
 
     await page
       .getByRole("textbox", { name: "Email", exact: true })
@@ -70,13 +71,21 @@ test.describe("Register", () => {
     const password = "GoodPassw0rd";
 
     await page.goto("/auth/register");
-    await page.waitForLoadState("networkidle");
+    // `networkidle` never settles once Turnstile is loaded — its widget polls.
+    await page.waitForLoadState("domcontentloaded");
 
     await page.getByRole("textbox", { name: "Email", exact: true }).fill(email);
     await page
       .getByRole("textbox", { name: "Password", exact: true })
       .fill(password);
-    await page.getByRole("button", { name: /create account/i }).click();
+
+    // Captcha container is rendered iff the realm exposes a site key.
+    await expect(page.getByTestId("captcha")).toBeVisible({ timeout: 5_000 });
+    // Test site key (`1x...AA`) auto-passes, so Turnstile fires its callback
+    // and the gated submit button becomes enabled.
+    const submit = page.getByRole("button", { name: /create account/i });
+    await expect(submit).toBeEnabled({ timeout: 30_000 });
+    await submit.click();
 
     // Verification phase — InputOTP renders 6 slot inputs.
     await expect(
@@ -96,5 +105,48 @@ test.describe("Register", () => {
 
     // Auto-login — lands on "/" (no manual login step).
     await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout: 15_000 });
+  });
+
+  test("?intent=createCampaign shows banner and lands on /new-campaign after signup", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    const ts = Date.now();
+    const email = `intent${ts}@example.com`;
+    const password = "GoodPassw0rd";
+
+    await page.goto("/auth/register?intent=createCampaign");
+    // `networkidle` never settles once Turnstile is loaded — its widget polls.
+    await page.waitForLoadState("domcontentloaded");
+
+    await expect(
+      page.getByText(/before creating a campaign, create an account/i),
+    ).toBeVisible({ timeout: 5_000 });
+
+    await page.getByRole("textbox", { name: "Email", exact: true }).fill(email);
+    await page
+      .getByRole("textbox", { name: "Password", exact: true })
+      .fill(password);
+
+    await expect(page.getByTestId("captcha")).toBeVisible({ timeout: 5_000 });
+    const submit = page.getByRole("button", { name: /create account/i });
+    await expect(submit).toBeEnabled({ timeout: 30_000 });
+    await submit.click();
+
+    await expect(
+      page.getByRole("button", { name: /complete registration/i }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    const emailPath = await findLatestEmail(email, 10_000);
+    expect(emailPath).not.toBeNull();
+    const code = extractCode(fs.readFileSync(emailPath!, "utf-8"));
+    expect(code).not.toBeNull();
+    expect(code).toHaveLength(6);
+
+    await page.locator("#emailCode").fill(code!);
+    await page.getByRole("button", { name: /complete registration/i }).click();
+
+    // Post-register redirect via ?r= → / ?action=createCampaign → Home pushes to campaignCreate.
+    await page.waitForURL(/\/new-campaign(\?|$)/, { timeout: 15_000 });
   });
 });

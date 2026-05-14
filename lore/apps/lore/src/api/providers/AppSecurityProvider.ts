@@ -39,6 +39,7 @@ export class AppSecurityProvider {
       usernameBlocklist: ["admin", "root", "me", "api", "support", "system"],
       resetPasswordAllowed: true,
       verifyEmailRequired: true,
+      captchaRequired: true,
       adminEmails: this.env.ADMIN_EMAIL ? [this.env.ADMIN_EMAIL] : [],
     },
     identities: {

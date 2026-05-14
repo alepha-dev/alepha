@@ -7,6 +7,7 @@ import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { ArrowRight, Globe2, ScrollText, Sparkles } from "lucide-react";
+import { useEffect } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
 import { displayName } from "../../services/displayName.ts";
@@ -40,8 +41,11 @@ const Home = () => {
   const loginPath = router.path("login", {
     query: { r: router.path("campaignCreate") },
   });
+  // No explicit `r=` — `AuthRegisterPage` seeds it from the intent map so the
+  // post-register flow lands on Home with `?action=createCampaign`, which then
+  // pushes through to /new-campaign.
   const registerPath = router.path("register", {
-    query: { r: router.path("campaignCreate") },
+    query: { intent: "createCampaign" },
   });
   const createPath = auth.user ? router.path("campaignCreate") : registerPath;
 
@@ -54,6 +58,20 @@ const Home = () => {
     ? String(tr("home.create-campaign"))
     : String(tr("home.start-first-campaign"));
   const createDisabled = !!auth.user && !canCreate;
+
+  useEffect(() => {
+    const action =
+      typeof router.query.action === "string" ? router.query.action : undefined;
+    if (action !== "createCampaign") return;
+    // Wait for auth to resolve before consuming the param. After register, the
+    // redirect lands here with `?action=createCampaign` but `useAuth()` hasn't
+    // synced yet — bail and let the next render retry with `auth.user` set.
+    if (!auth.user || !canCreate) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("action");
+    window.history.replaceState(null, "", url.toString());
+    router.push("campaignCreate");
+  }, [router, auth.user, canCreate]);
 
   return (
     <div className="relative flex h-screen w-full flex-col items-center justify-center overflow-y-auto">
