@@ -183,6 +183,9 @@ export class CampaignTools {
           title: folio.title,
           tags: folio.tags ?? [],
           updatedAt: folio.updatedAt,
+          // Omit when empty so agents seeing the field always trust it.
+          // The schema field is optional; consumers fall back to title.
+          summary: folio.summary?.trim() ? folio.summary : undefined,
         }),
       );
 

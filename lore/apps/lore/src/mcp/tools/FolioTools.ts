@@ -135,6 +135,7 @@ export class FolioTools {
           shortId: f.shortId,
           title: f.title,
           tags: f.tags,
+          summary: f.summary || undefined,
           updatedAt: f.updatedAt,
         })),
       };
@@ -225,7 +226,7 @@ export class FolioTools {
 
   folio_get = $tool({
     description:
-      "Get the full content of a folio (markdown). Accepts either the global UUID `id` or the per-campaign `shortId` (with `campaign`/`campaign_name`).",
+      "Get the full content of a folio (markdown) plus its wiki-style links — `outbound` (folios this one references via `[[...]]`) and `inbound` (folios that link back here). Use the `inbound` list as a backlink panel: it surfaces folios that may carry related context. Accepts either the global UUID `id` or the per-campaign `shortId` (with `campaign` / `campaign_name`).",
     title: "Get folio",
     annotations: {
       readOnlyHint: true,
@@ -237,22 +238,29 @@ export class FolioTools {
     },
     handler: async ({ params }) => {
       const id = await this.resolveFolioId(params);
-      const folio = await this.folioController.get({ params: { id } });
+      const [folio, links] = await Promise.all([
+        this.folioController.get({ params: { id } }),
+        this.folioController.getLinks({ params: { id } }),
+      ]);
+      // eslint-disable-next-line no-console
+      console.error("DBG handler links:", JSON.stringify(links));
       return {
         id: folio.id,
         shortId: folio.shortId,
         title: folio.title,
         tags: folio.tags,
+        summary: folio.summary || undefined,
         content: folio.content,
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,
+        links,
       };
     },
   });
 
   folio_create = $tool({
     description:
-      "Create a new folio in a campaign — a markdown note that becomes part of the campaign's memory for AI agents. Provide `campaign` (id) or `campaign_name`. `content` is markdown. Reuse existing `tags` when possible (call `folio_tags` first); good tags make future `folio_list` / `folio_search` calls precise.",
+      "Create a new folio in a campaign — a markdown note that becomes part of the campaign's memory for AI agents. Provide `campaign` (id) or `campaign_name`. `content` is markdown. **Always set `summary`** — a 1-2 sentence (~200 chars) description of what the folio is for. It's the field other agents (and future calls of yours) read in `campaign_context` to decide whether to fetch the body. Without a summary, the index falls back to the title and orientation suffers. Reuse existing `tags` when possible (call `folio_tags` first); good tags make `folio_list` / `folio_search` calls precise.",
     title: "Create folio",
     annotations: {
       // not idempotent — repeated calls create duplicate folios
@@ -264,6 +272,13 @@ export class FolioTools {
         title: t.string({ minLength: 1, maxLength: 200 }),
         content: t.optional(t.string()),
         tags: t.optional(t.array(t.string())),
+        summary: t.optional(
+          t.string({
+            maxLength: 500,
+            description:
+              "1-2 sentence description of what the folio is for. Surfaced via `campaign_context`. Strongly recommended — without it, agents must fetch the body to orient.",
+          }),
+        ),
       }),
       result: folioFullSchema,
     },
@@ -278,6 +293,7 @@ export class FolioTools {
           title: params.title,
           content: params.content,
           tags: params.tags,
+          summary: params.summary,
         },
       });
       return {
@@ -285,6 +301,7 @@ export class FolioTools {
         shortId: folio.shortId,
         title: folio.title,
         tags: folio.tags,
+        summary: folio.summary || undefined,
         content: folio.content,
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,
@@ -294,7 +311,7 @@ export class FolioTools {
 
   folio_update = $tool({
     description:
-      "Update a folio. Any omitted field stays unchanged. Pass the full new tag array (it replaces the existing one).",
+      "Update a folio. Any omitted field stays unchanged. Pass the full new tag array (it replaces the existing one). Updating `content` is a good moment to also refresh `summary` so the orientation index in `campaign_context` stays accurate.",
     title: "Update folio",
     annotations: {
       idempotentHint: true,
@@ -304,6 +321,13 @@ export class FolioTools {
         title: t.optional(t.string({ minLength: 1, maxLength: 200 })),
         content: t.optional(t.string()),
         tags: t.optional(t.array(t.string())),
+        summary: t.optional(
+          t.string({
+            maxLength: 500,
+            description:
+              "Updated 1-2 sentence description. Omit to keep the existing one.",
+          }),
+        ),
       }),
       result: folioFullSchema,
     },
@@ -315,6 +339,7 @@ export class FolioTools {
           title: params.title,
           content: params.content,
           tags: params.tags,
+          summary: params.summary,
         },
       });
       return {
@@ -322,6 +347,7 @@ export class FolioTools {
         shortId: folio.shortId,
         title: folio.title,
         tags: folio.tags,
+        summary: folio.summary || undefined,
         content: folio.content,
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,

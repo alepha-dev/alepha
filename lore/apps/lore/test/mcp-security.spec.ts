@@ -814,6 +814,174 @@ describe("MCP Security Integration", () => {
   });
 
   // ---------------------------------------------------------------------------
+  // folio_get — wiki-style backlinks
+  // ---------------------------------------------------------------------------
+
+  describe("folio_get links", () => {
+    const parseToolPayload = <T>(data: McpToolResult): T => {
+      const text = data.result?.content?.[0]?.text;
+      if (!text) throw new Error("Tool returned no content");
+      return JSON.parse(text) as T;
+    };
+
+    interface FolioGetResult {
+      shortId: number;
+      title: string;
+      content: string;
+      links?: {
+        outbound: Array<{ shortId: number; title: string }>;
+        inbound: Array<{ shortId: number; title: string }>;
+      };
+    }
+
+    const fetchFolio = async (
+      campaignId: number,
+      shortId: number,
+      token: string,
+    ): Promise<FolioGetResult> => {
+      const result = await mcpRequest(
+        ctx.baseUrl,
+        "tools/call",
+        {
+          name: "folio_get",
+          arguments: { shortId, campaign: campaignId },
+        },
+        { token },
+      );
+      if (isErrorResponse(result.data)) {
+        throw new Error(
+          "folio_get failed: " + JSON.stringify(getErrorMessage(result.data)),
+        );
+      }
+      return parseToolPayload<FolioGetResult>(result.data);
+    };
+
+    it("resolves [[Title]] and [[#shortId]] to outbound + inbound refs", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const { token } = await createApiKey(ctx, owner);
+      const campaignCtrl = ctx.alepha.inject(CampaignController);
+      const folioCtrl = ctx.alepha.inject(FolioController);
+
+      const campaign = await campaignCtrl.createCampaign.fetch(
+        { body: { title: "Links Probe" } },
+        { user: owner },
+      );
+      const campaignId = campaign.data.id;
+
+      // shortId is allocated in creation order — Alpha=1, Beta=2.
+      const alpha = await folioCtrl.create.fetch(
+        { body: { campaignId, title: "Alpha", content: "" } },
+        { user: owner },
+      );
+      const beta = await folioCtrl.create.fetch(
+        {
+          body: {
+            campaignId,
+            title: "Beta",
+            content: "See [[Alpha]] for context, and [[#1]] again.",
+          },
+        },
+        { user: owner },
+      );
+
+      const betaResult = await fetchFolio(campaignId, beta.data.shortId, token);
+      expect(betaResult.links?.outbound).toEqual([
+        { shortId: alpha.data.shortId, title: "Alpha" },
+      ]);
+      expect(betaResult.links?.inbound).toEqual([]);
+
+      const alphaResult = await fetchFolio(
+        campaignId,
+        alpha.data.shortId,
+        token,
+      );
+      expect(alphaResult.links?.inbound).toEqual([
+        { shortId: beta.data.shortId, title: "Beta" },
+      ]);
+      expect(alphaResult.links?.outbound).toEqual([]);
+    });
+
+    it("re-syncs links when a folio is updated (dropped reference disappears)", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const { token } = await createApiKey(ctx, owner);
+      const campaignCtrl = ctx.alepha.inject(CampaignController);
+      const folioCtrl = ctx.alepha.inject(FolioController);
+
+      const campaign = await campaignCtrl.createCampaign.fetch(
+        { body: { title: "Re-sync Probe" } },
+        { user: owner },
+      );
+      const campaignId = campaign.data.id;
+      const alpha = await folioCtrl.create.fetch(
+        { body: { campaignId, title: "Alpha", content: "" } },
+        { user: owner },
+      );
+      const beta = await folioCtrl.create.fetch(
+        {
+          body: {
+            campaignId,
+            title: "Beta",
+            content: "See [[Alpha]].",
+          },
+        },
+        { user: owner },
+      );
+
+      // Sanity — inbound is set.
+      expect(
+        (await fetchFolio(campaignId, alpha.data.shortId, token)).links
+          ?.inbound,
+      ).toHaveLength(1);
+
+      // Drop the reference.
+      await folioCtrl.update.fetch(
+        {
+          params: { id: beta.data.id },
+          body: { content: "No more references here." },
+        },
+        { user: owner },
+      );
+
+      expect(
+        (await fetchFolio(campaignId, alpha.data.shortId, token)).links
+          ?.inbound,
+      ).toEqual([]);
+    });
+
+    it("drops self-links and unresolved references", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const { token } = await createApiKey(ctx, owner);
+      const campaignCtrl = ctx.alepha.inject(CampaignController);
+      const folioCtrl = ctx.alepha.inject(FolioController);
+
+      const campaign = await campaignCtrl.createCampaign.fetch(
+        { body: { title: "Edge Probe" } },
+        { user: owner },
+      );
+      const campaignId = campaign.data.id;
+      const solo = await folioCtrl.create.fetch(
+        {
+          body: {
+            campaignId,
+            title: "Solo",
+            // Self-link [[Solo]] and a dangling [[Missing]] reference.
+            content: "[[Solo]] [[Missing Note]] hello",
+          },
+        },
+        { user: owner },
+      );
+
+      const result = await fetchFolio(campaignId, solo.data.shortId, token);
+      expect(result.links?.outbound).toEqual([]);
+      expect(result.links?.inbound).toEqual([]);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // Streamable HTTP transport — GET should be rejected (no legacy SSE GET stream)
   // ---------------------------------------------------------------------------
 

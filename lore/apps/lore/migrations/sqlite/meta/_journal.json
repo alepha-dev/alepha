@@ -15,6 +15,20 @@
       "when": 1778791464625,
       "tag": "0001_famous_raza",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1778799685508,
+      "tag": "0002_adorable_randall",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1778801001575,
+      "tag": "0003_confused_plazm",
+      "breakpoints": true
     }
   ]
 }

@@ -66,6 +66,9 @@ export class I18n {
         "folios.confirm-delete-title": "Delete this folio?",
         "folios.confirm-delete-message": "This cannot be undone.",
         "folios.updated": "Updated $1",
+        "folios.backlinks.title": "Connections",
+        "folios.backlinks.inbound": "Linked from",
+        "folios.backlinks.outbound": "Links to",
 
         "board.filter.search": "Search",
         "board.filter.status": "Status",
@@ -595,6 +598,9 @@ export class I18n {
         "folios.confirm-delete-title": "Supprimer ce folio ?",
         "folios.confirm-delete-message": "Cette action est irréversible.",
         "folios.updated": "Mis à jour $1",
+        "folios.backlinks.title": "Connexions",
+        "folios.backlinks.inbound": "Référencé depuis",
+        "folios.backlinks.outbound": "Référence vers",
 
         "dashboard.character": "Héros",
         "dashboard.purse": "Bourse",
