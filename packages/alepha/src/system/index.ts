@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { BunShellProvider } from "./providers/BunShellProvider.ts";
 import { FileSystemProvider } from "./providers/FileSystemProvider.ts";
 import { MemoryFileSystemProvider } from "./providers/MemoryFileSystemProvider.ts";
 import { MemoryShellProvider } from "./providers/MemoryShellProvider.ts";
@@ -11,6 +12,7 @@ import { FileDetector } from "./services/FileDetector.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./errors/FileError.ts";
+export * from "./providers/BunShellProvider.ts";
 export * from "./providers/FileSystemProvider.ts";
 export * from "./providers/MemoryFileSystemProvider.ts";
 export * from "./providers/MemoryShellProvider.ts";
@@ -43,9 +45,15 @@ export const AlephaSystem = $module({
     WorkerdFileSystemProvider,
     MemoryShellProvider,
     NodeShellProvider,
+    BunShellProvider,
   ],
-  register: (alepha) =>
-    alepha
+  register: (alepha) => {
+    const shellImpl = alepha.isTest()
+      ? MemoryShellProvider
+      : alepha.isBun()
+        ? BunShellProvider
+        : NodeShellProvider;
+    return alepha
       .with({
         optional: true,
         provide: FileSystemProvider,
@@ -54,6 +62,7 @@ export const AlephaSystem = $module({
       .with({
         optional: true,
         provide: ShellProvider,
-        use: alepha.isTest() ? MemoryShellProvider : NodeShellProvider,
-      }),
+        use: shellImpl,
+      });
+  },
 });

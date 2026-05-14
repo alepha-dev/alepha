@@ -22,7 +22,6 @@ Foundation of the entire framework with dependency injection and lifecycle manag
 - Module definitions and composition
 - Request-scoped context access via Async Local Storage (ALS)
 - Reactive state management with atoms
-- Cluster mode with automatic worker forking
 - Full TypeScript generics and type inference
 
 ## API Reference

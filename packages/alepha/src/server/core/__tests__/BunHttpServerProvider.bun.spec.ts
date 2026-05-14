@@ -12,7 +12,7 @@ describe("BunHttpServerProvider", () => {
   });
 
   it("should start and stop cleanly", async () => {
-    alepha = Alepha.create({ env: { NODE_ENV: "development" } });
+    alepha = Alepha.create({ env: { NODE_ENV: "test" } });
     alepha.with(AlephaServer);
     await alepha.start();
 
@@ -30,7 +30,7 @@ describe("BunHttpServerProvider", () => {
       });
     }
 
-    alepha = Alepha.create({ env: { NODE_ENV: "development" } });
+    alepha = Alepha.create({ env: { NODE_ENV: "test" } });
     await alepha.with(App).start();
 
     const server = alepha.inject(ServerProvider);
@@ -54,7 +54,7 @@ describe("BunHttpServerProvider", () => {
       });
     }
 
-    alepha = Alepha.create({ env: { NODE_ENV: "development" } });
+    alepha = Alepha.create({ env: { NODE_ENV: "test" } });
     await alepha.with(App).start();
 
     const server = alepha.inject(ServerProvider);
@@ -67,7 +67,7 @@ describe("BunHttpServerProvider", () => {
   });
 
   it("should return 404 for unknown routes", async () => {
-    alepha = Alepha.create({ env: { NODE_ENV: "development" } });
+    alepha = Alepha.create({ env: { NODE_ENV: "test" } });
     alepha.with(AlephaServer);
     await alepha.start();
 
@@ -92,7 +92,7 @@ describe("BunHttpServerProvider", () => {
       });
     }
 
-    alepha = Alepha.create({ env: { NODE_ENV: "development" } });
+    alepha = Alepha.create({ env: { NODE_ENV: "test" } });
     await alepha.with(App).start();
 
     const server = alepha.inject(ServerProvider);
@@ -134,7 +134,7 @@ describe("BunHttpServerProvider", () => {
       });
     }
 
-    alepha = Alepha.create({ env: { NODE_ENV: "development" } });
+    alepha = Alepha.create({ env: { NODE_ENV: "test" } });
     await alepha.with(App).start();
 
     const server = alepha.inject(ServerProvider);

@@ -1,7 +1,5 @@
 /// <reference types="vite/client" />
 import { AsyncLocalStorage } from "node:async_hooks";
-import cluster from "node:cluster";
-import { cpus } from "node:os";
 import { Alepha } from "./Alepha.ts";
 import type { RunOptions } from "./interfaces/Run.ts";
 import type { Service } from "./interfaces/Service.ts";
@@ -33,7 +31,6 @@ export * from "./index.shared.ts";
  * - Module definitions and composition
  * - Request-scoped context access via Async Local Storage (ALS)
  * - Reactive state management with atoms
- * - Cluster mode with automatic worker forking
  * - Full TypeScript generics and type inference
  *
  * @module alepha.core
@@ -104,11 +101,6 @@ export const run = (
     return alepha;
   }
 
-  if (opts?.cluster) {
-    withCluster(entry, opts);
-    return alepha;
-  }
-
   setTimeout(async () => {
     try {
       await opts?.configure?.(alepha);
@@ -160,27 +152,3 @@ export const run = (
 
 // only for node.js environment
 AlsProvider.create = () => new AsyncLocalStorage();
-
-/**
- * Run Alepha in cluster mode, forking workers based on the number of CPU cores.
- */
-const withCluster = (
-  entry: Alepha | Service | Array<Service>,
-  opts?: RunOptions,
-) => {
-  const numCPUs = cpus().length;
-  if (cluster.isPrimary) {
-    for (let i = 0; i < numCPUs; i++) {
-      cluster.fork();
-    }
-  } else {
-    run(entry, {
-      ...opts,
-      env: {
-        ...opts?.env,
-        APP_NAME: `${opts?.env?.APP_NAME || "P"}-${cluster.worker?.id}`,
-      },
-      cluster: false,
-    });
-  }
-};

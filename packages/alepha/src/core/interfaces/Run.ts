@@ -24,9 +24,4 @@ export interface RunOptions {
    * Useful for one-time tasks!
    */
   once?: boolean;
-
-  /**
-   * If true, the application will run in cluster mode.
-   */
-  cluster?: boolean;
 }

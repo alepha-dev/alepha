@@ -42,7 +42,10 @@ export default (alepha: Alepha) => {
         await run(`yarn copy`);
         await run(`yarn w @alepha/ui sync`);
         await run(`yarn lint`);
-        await run([`yarn typecheck`, `yarn test`, `yarn check-dependencies`]);
+        await run(`yarn check-dependencies`);
+        await run(`yarn typecheck`);
+        await run(`yarn test`);
+        await run(`yarn test:bun`);
         await run(`yarn build`);
 
         // HACK: remove vite cache to prevent stale cache issues in e2e tests

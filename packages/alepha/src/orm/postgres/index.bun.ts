@@ -14,13 +14,8 @@ export * from "./types/byte.ts";
 
 export const AlephaOrmPostgres = $module({
   name: "alepha.orm.postgres",
-  primitives: [],
-  services: [
-    PostgresProvider,
-    BunPostgresProvider,
-    PglitePostgresProvider,
-    PostgresModelBuilder,
-  ],
+  services: [PostgresModelBuilder],
+  variants: [PostgresProvider, BunPostgresProvider, PglitePostgresProvider],
   register: (alepha: Alepha) => {
     const env = alepha.parseEnv(databaseEnvSchema);
 
@@ -32,18 +27,16 @@ export const AlephaOrmPostgres = $module({
         provide: DatabaseProvider,
         use: PglitePostgresProvider,
       });
-      return;
-    }
-
-    if (url?.startsWith("postgres:")) {
+    } else if (url?.startsWith("postgres:")) {
       alepha.with({
         optional: true,
         provide: DatabaseProvider,
         use: BunPostgresProvider,
       });
-      return;
     }
 
+    // Chain core ORM module AFTER substitution so its own SQLite default
+    // doesn't preempt our Postgres-specific provider choice.
     alepha.with(AlephaOrm);
   },
 });

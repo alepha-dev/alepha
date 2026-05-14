@@ -22,6 +22,7 @@ System-level abstractions for portable code across runtimes.
 
 ### Providers
 
+- [`BunShellProvider`](/docs/reference-providers-bunshellprovider) — Bun implementation of ShellProvider.
 - [`MemoryFileSystemProvider`](/docs/reference-providers-memoryfilesystemprovider) — In-memory implementation of FileSystemProvider for testing.
 - [`MemoryShellProvider`](/docs/reference-providers-memoryshellprovider) — In-memory implementation of ShellProvider for testing.
 - [`NodeFileSystemProvider`](/docs/reference-providers-nodefilesystemprovider) — Node.js implementation of FileSystem interface.

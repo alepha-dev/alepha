@@ -75,6 +75,9 @@ jobs:
         env:
           VITEST_ARGS: --coverage --reporter=verbose --reporter=junit --outputFile=test-report.junit.xml
 
+      - name: Test Bun Providers
+        run: yarn test:bun
+
       - name: Build Project
         run: yarn build
 

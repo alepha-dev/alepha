@@ -15,12 +15,8 @@ export * from "./providers/RedisSubscriberProvider.ts";
 
 export const AlephaRedis = $module({
   name: "alepha.redis",
-  services: [
-    BunRedisProvider,
-    BunRedisSubscriberProvider,
-    RedisProvider,
-    RedisSubscriberProvider,
-  ],
+  services: [RedisProvider, RedisSubscriberProvider],
+  variants: [BunRedisProvider, BunRedisSubscriberProvider],
   register: (alepha: Alepha) => {
     alepha
       .with({
