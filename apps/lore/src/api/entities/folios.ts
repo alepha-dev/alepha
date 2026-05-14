@@ -24,7 +24,15 @@ export const folios = $entity({
     content: db.default(t.string(), ""),
     tags: db.default(t.array(t.string()), []),
     /**
-     * Lowercased concatenation of `title + " " + tags + " " + content`.
+     * 1-2 sentence agent-readable summary (~200 chars). Filled by MCP tools
+     * (`folio_create` / `folio_update`) so `campaign_context` can return a
+     * meaningful index without forcing agents to `folio_get` every entry.
+     * Web users may leave it empty — `campaign_context` then falls back to
+     * the title.
+     */
+    summary: db.default(t.string({ maxLength: 500 }), ""),
+    /**
+     * Lowercased concatenation of `title + " " + tags + " " + summary + " " + content`.
      * Populated on every create/update for cheap `LIKE` search on D1/SQLite.
      */
     searchText: db.default(t.string(), ""),
@@ -41,13 +49,21 @@ export type Folio = Static<typeof folios.schema>;
 
 /**
  * Build the lowercase search blob from a folio's user-editable fields.
- * Keep title/tags/content all in one column so a single `LIKE %q%` works.
+ * Keep title/tags/summary/content all in one column so a single `LIKE %q%`
+ * works. Existing rows have `summary = ""` (default) so the formula is a
+ * superset of the pre-summary formula — no backfill is required.
  */
 export const buildFolioSearchText = (input: {
   title: string;
   tags?: string[];
+  summary?: string;
   content?: string;
 }): string =>
-  [input.title, (input.tags ?? []).join(" "), input.content ?? ""]
+  [
+    input.title,
+    (input.tags ?? []).join(" "),
+    input.summary ?? "",
+    input.content ?? "",
+  ]
     .join(" ")
     .toLowerCase();

@@ -20,6 +20,7 @@ import { currentFolioAtom } from "../../atoms/currentFolioAtom.ts";
 import { folioTagsAtom } from "../../atoms/folioTagsAtom.ts";
 import { userFoliosAtom } from "../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import FolioBacklinksPanel from "./FolioBacklinksPanel.tsx";
 
 const FolioView = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -117,6 +118,8 @@ const FolioView = () => {
           </p>
         )}
       </div>
+
+      <FolioBacklinksPanel folioId={folio.id} campaignId={campaignId} />
     </article>
   );
 };

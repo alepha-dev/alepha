@@ -129,8 +129,8 @@ Folios are markdown notes scoped to **(user, campaign)** — they mirror the `~/
 
 - One topic per folio. Use the title as the topic; use tags (`tech/decision`, `runbook`, `incident`, …) for taxonomy.
 - Keep folios short and self-contained. A folio that needs scrolling is two folios.
-- When an agent creates a folio via MCP, it should always provide useful `tags` so future `folio_list`/`folio_search` calls stay precise. (Phase 3 of quest #49 will add a `summary` field — Claude fills it, web users can ignore it; `campaign_context` then returns it.)
-- Phase 4 of quest #49 will add `[[wiki-link]]` cross-folio references and a backlinks panel — agents can already use `folio_search` to traverse before that lands.
+- When an agent creates a folio via MCP, it should always provide useful `tags` AND a `summary` (1-2 sentences, ~200 chars) so future `folio_list` / `folio_search` calls stay precise and `campaign_context` returns a self-explanatory index. Web-created folios may leave `summary` empty — the index falls back to the title.
+- Use `[[Folio Title]]` or `[[#shortId]]` syntax inside a folio's markdown to cross-link other folios. Links re-sync on every save; agents see them as `links.outbound` / `links.inbound` on `folio_get` and humans see a Connections panel under the folio view.
 
 **MCP orientation flow** (every AI client should follow this on a fresh task):
 
@@ -142,10 +142,12 @@ The MCP tool descriptions in `src/mcp/tools/CampaignTools.ts` and `src/mcp/tools
 
 **Where to look**
 
-- Entity: `src/api/entities/folios.ts` (per-user-per-campaign, `searchText` blob for cheap LIKE search)
-- Controller: `src/api/controllers/FolioController.ts` (list, search, get, create, update, delete)
+- Entity: `src/api/entities/folios.ts` (per-user-per-campaign, `searchText` blob for cheap LIKE search, `summary` for agent-readable orientation)
+- Link table: `src/api/entities/folioLinks.ts` (derived; re-synced from `[[...]]` references on every folio save)
+- Link sync: `src/api/services/FolioLinkService.ts`
+- Controller: `src/api/controllers/FolioController.ts` (list, search, get, getLinks, create, update, delete)
 - MCP tools: `src/mcp/tools/FolioTools.ts` + `CampaignTools.ts` (`campaign_context`)
-- UI: `src/web/app/components/folios/FolioEditor.tsx`
+- UI: `src/web/app/components/folios/FolioEditor.tsx`, `FolioView.tsx`, `FolioBacklinksPanel.tsx`
 
 ## I18n
 

@@ -1,4 +1,4 @@
-import { t } from "alepha";
+import { $inject, t } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository, $sequence, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -9,6 +9,7 @@ import {
   okSchema,
 } from "alepha/server";
 import { buildFolioSearchText, folios } from "../entities/folios.ts";
+import { FolioLinkService } from "../services/FolioLinkService.ts";
 
 const idParamsSchema = t.object({ id: t.uuid() });
 
@@ -27,6 +28,7 @@ const tagListQuerySchema = t.object({
 export class FolioController {
   log = $logger();
   folios = $repository(folios);
+  protected readonly linkService = $inject(FolioLinkService);
 
   /**
    * Per-campaign sequence for `folios.shortId`. Powers the human-friendly
@@ -135,6 +137,60 @@ export class FolioController {
     },
   });
 
+  /**
+   * Return the resolved outbound + inbound `[[wiki-link]]` refs for a
+   * folio, as `{ shortId, title }` pairs ready for display. Separate from
+   * `get` so the latter's existing `folios.schema` response stays stable;
+   * MCP `folio_get` calls both and merges.
+   */
+  getLinks = $action({
+    use: [$secure({ permissions: ["folio:read"] })],
+    description: "Get wiki-link outbound + inbound refs for a folio.",
+    schema: {
+      params: idParamsSchema,
+      response: t.object({
+        outbound: t.array(
+          t.object({ shortId: t.integer(), title: t.string() }),
+        ),
+        inbound: t.array(t.object({ shortId: t.integer(), title: t.string() })),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      const folio = await this.folios.findOne({
+        where: { id: { eq: params.id } },
+      });
+      if (!folio) throw new NotFoundError("Folio not found");
+      if (folio.userId !== user.id) throw new ForbiddenError();
+
+      const [out, inb] = await Promise.all([
+        this.linkService.findOutbound(folio.id),
+        this.linkService.findInbound(folio.id),
+      ]);
+      const targetIds = [
+        ...new Set([...out.map((l) => l.toId), ...inb.map((l) => l.fromId)]),
+      ];
+      // Resolve link target/source ids → display refs in one query.
+      const refs =
+        targetIds.length > 0
+          ? await this.folios.findMany({
+              where: { id: { inArray: targetIds } },
+              columns: ["id", "shortId", "title"],
+            })
+          : [];
+      const refById = new Map(refs.map((r) => [r.id, r]));
+      return {
+        outbound: out.flatMap((l) => {
+          const ref = refById.get(l.toId);
+          return ref ? [{ shortId: ref.shortId, title: ref.title }] : [];
+        }),
+        inbound: inb.flatMap((l) => {
+          const ref = refById.get(l.fromId);
+          return ref ? [{ shortId: ref.shortId, title: ref.title }] : [];
+        }),
+      };
+    },
+  });
+
   create = $action({
     use: [$secure({ permissions: ["folio:write"] }), $transactional()],
     description: "Create a new folio.",
@@ -143,31 +199,40 @@ export class FolioController {
         title: t.string({ minLength: 1, maxLength: 200 }),
         content: t.optional(t.string()),
         tags: t.optional(t.array(t.string())),
+        summary: t.optional(t.string({ maxLength: 500 })),
         campaignId: t.integer(),
       }),
       response: folios.schema,
     },
     handler: async ({ body, user }) => {
       const tags = (body.tags ?? []).map((t) => t.trim()).filter(Boolean);
+      const summary = (body.summary ?? "").trim();
+      const content = body.content ?? "";
       const shortId = await this.folioShortId.next(String(body.campaignId));
-      return this.folios.create({
+      const folio = await this.folios.create({
         userId: user.id,
         campaignId: body.campaignId,
         shortId,
         title: body.title,
-        content: body.content ?? "",
+        content,
         tags,
+        summary,
         searchText: buildFolioSearchText({
           title: body.title,
           tags,
-          content: body.content ?? "",
+          summary,
+          content,
         }),
       });
+      // Sync outbound `[[...]]` references. Same transactional boundary
+      // as the create — partial sync is impossible.
+      await this.linkService.syncLinks(folio, content);
+      return folio;
     },
   });
 
   update = $action({
-    use: [$secure({ permissions: ["folio:write"] })],
+    use: [$secure({ permissions: ["folio:write"] }), $transactional()],
     description: "Update a folio.",
     schema: {
       params: idParamsSchema,
@@ -175,6 +240,7 @@ export class FolioController {
         title: t.optional(t.string({ minLength: 1, maxLength: 200 })),
         content: t.optional(t.string()),
         tags: t.optional(t.array(t.string())),
+        summary: t.optional(t.string({ maxLength: 500 })),
       }),
       response: folios.schema,
     },
@@ -190,13 +256,23 @@ export class FolioController {
       const tags = body.tags
         ? body.tags.map((t) => t.trim()).filter(Boolean)
         : existing.tags;
+      const summary =
+        body.summary !== undefined ? body.summary.trim() : existing.summary;
 
-      return this.folios.updateById(params.id, {
+      const updated = await this.folios.updateById(params.id, {
         title,
         content,
         tags,
-        searchText: buildFolioSearchText({ title, tags, content }),
+        summary,
+        searchText: buildFolioSearchText({ title, tags, summary, content }),
       });
+      // Re-sync outbound links whenever content changed. We re-sync even
+      // when the content arg was omitted — title changes can render an
+      // existing inbound `[[Old Title]]` from a *different* folio stale,
+      // but those are owned by the other folio's row in folio_links so
+      // they're picked up the next time THAT folio is edited. Cheap.
+      await this.linkService.syncLinks(updated, content);
+      return updated;
     },
   });
 

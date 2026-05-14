@@ -8,7 +8,17 @@ export const folioRefSchema = t.object({
   shortId: t.integer(),
   title: t.string(),
   tags: t.array(t.string()),
+  summary: t.optional(t.string()),
   updatedAt: t.string(),
+});
+
+/**
+ * Wiki-link ref returned alongside a folio. `shortId` is the per-campaign
+ * `#N` identifier — agents follow up via `folio_get` + `shortId`.
+ */
+const folioLinkRefSchema = t.object({
+  shortId: t.integer(),
+  title: t.string(),
 });
 
 /**
@@ -19,9 +29,23 @@ export const folioFullSchema = t.object({
   shortId: t.integer(),
   title: t.string(),
   tags: t.array(t.string()),
+  summary: t.optional(t.string()),
   content: t.string(),
   createdAt: t.string(),
   updatedAt: t.string(),
+  /**
+   * Wiki-style cross-folio references resolved at save time. `outbound`
+   * are folios this one points to via `[[...]]`; `inbound` are folios
+   * that point AT this one. Present on `folio_get` only — `folio_create`
+   * and `folio_update` omit it (the post-write sync runs but we don't
+   * round-trip to resolve display refs in those code paths).
+   */
+  links: t.optional(
+    t.object({
+      outbound: t.array(folioLinkRefSchema),
+      inbound: t.array(folioLinkRefSchema),
+    }),
+  ),
 });
 
 /**

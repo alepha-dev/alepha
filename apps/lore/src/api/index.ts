@@ -17,6 +17,7 @@ import { ChapterJobs } from "./jobs/ChapterJobs.ts";
 import { InvitationJobs } from "./jobs/InvitationJobs.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { CharacterInfo } from "./services/CharacterInfo.ts";
+import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { InvitationService } from "./services/InvitationService.ts";
 import { PetitionRateLimiter } from "./services/PetitionRateLimiter.ts";
 import { AlephaLoreParser } from "./services/parsers/AlephaLoreParser.ts";
@@ -30,6 +31,7 @@ export const LoreApi = $module({
   services: [
     AppSecurityProvider,
     CharacterInfo,
+    FolioLinkService,
     InvitationService,
     InvitationJobs,
     ChapterJobs,
