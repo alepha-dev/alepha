@@ -3,6 +3,7 @@ import { $inject, Alepha, AlephaError } from "alepha";
 import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
+import { S3mini } from "s3mini";
 import { PlatformCacheProvider } from "../providers/PlatformCacheProvider.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
@@ -814,37 +815,31 @@ export class CloudflareAdapter extends PlatformAdapter {
       }
     }
 
-    // 5. Delete R2 bucket
-    // TODO: empty bucket via S3-compatible API before deletion (needs native S3 client)
-    // const needsBucket = ctx.apps.some((a) => a.resources.hasBucket);
-    // if (needsBucket) {
-    //   const name = ctx.naming.r2();
-    //   await run({
-    //     name: `delete r2 ${name}`,
-    //     handler: async () => {
-    //       try {
-    //         await this.api.deleteR2(name);
-    //       } catch (error: any) {
-    //         const msg = String(error.message || "");
-    //         if (
-    //           msg.includes("does not exist") ||
-    //           msg.includes("NoSuchBucket")
-    //         ) {
-    //           // Already gone, nothing to do
-    //         } else if (
-    //           msg.includes("not empty") ||
-    //           msg.includes("BucketNotEmpty")
-    //         ) {
-    //           this.log.warn(
-    //             `Bucket ${name} is not empty -- skipped. Empty it manually.`,
-    //           );
-    //         } else {
-    //           this.log.warn(`Failed to delete r2 ${name}: ${msg}`);
-    //         }
-    //       }
-    //     },
-    //   });
-    // }
+    // 5. Delete R2 bucket (must be emptied first — Cloudflare's REST DELETE
+    // rejects non-empty buckets with `BucketNotEmpty`)
+    const needsBucket = ctx.apps.some((a) => a.resources.hasBucket);
+    if (needsBucket) {
+      const name = ctx.naming.r2();
+      await run({
+        name: `delete r2 ${name}`,
+        handler: async () => {
+          try {
+            await this.wipeR2Bucket(name, ctx);
+            await this.api.deleteR2(name);
+          } catch (error: any) {
+            const msg = String(error.message || "");
+            if (
+              msg.includes("does not exist") ||
+              msg.includes("NoSuchBucket")
+            ) {
+              this.log.debug(`Bucket ${name} not found — skipping.`);
+            } else {
+              this.log.warn(`Failed to delete r2 ${name}: ${msg}`);
+            }
+          }
+        },
+      });
+    }
 
     // 6. Delete D1 or Hyperdrive
     const needsDB = ctx.apps.some((a) => a.resources.hasDatabase);
@@ -930,6 +925,103 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
 
     await this.api.createR2(name);
+  }
+
+  /**
+   * Empty an R2 bucket via the S3-compatible API.
+   *
+   * Cloudflare's REST `DELETE /r2/buckets/:name` rejects non-empty buckets
+   * with `BucketNotEmpty`, and the REST API has no object-level endpoints —
+   * objects must be listed and deleted over the S3 protocol. To avoid
+   * making users pre-create R2 access keys, we mint a short-lived
+   * bucket-scoped API token using the wrangler bearer token, wipe the
+   * bucket with `s3mini`, then revoke the token.
+   *
+   * Also aborts any pending multipart uploads — those count as bucket
+   * contents from R2's perspective and would otherwise block the delete.
+   */
+  protected async wipeR2Bucket(
+    bucketName: string,
+    ctx: PlatformContext,
+  ): Promise<void> {
+    const tokenName = `alepha-teardown-${bucketName}-${Date.now()}`;
+    const token = await this.api.createR2Token(tokenName, bucketName);
+
+    try {
+      const accountId = await this.api.resolveAccountId();
+      const jur = ctx.envConfig.jurisdiction;
+      const host = jur
+        ? `${accountId}.${jur}.r2.cloudflarestorage.com`
+        : `${accountId}.r2.cloudflarestorage.com`;
+
+      const client = new S3mini({
+        accessKeyId: token.accessKeyId,
+        secretAccessKey: token.secretAccessKey,
+        region: "auto",
+        endpoint: `https://${host}/${bucketName}`,
+      });
+
+      // Abort pending multipart uploads. R2 surfaces these as bucket contents
+      // and they block deletion even after all completed objects are gone.
+      try {
+        const mp = await client.listMultipartUploads();
+        if ("listMultipartUploadsResult" in mp) {
+          const uploads = mp.listMultipartUploadsResult.uploads ?? [];
+          for (const upload of uploads) {
+            const u = upload as unknown as {
+              Key?: string;
+              key?: string;
+              UploadId?: string;
+              uploadId?: string;
+            };
+            const key = u.Key ?? u.key;
+            const uploadId = u.UploadId ?? u.uploadId;
+            if (key && uploadId) {
+              await client.abortMultipartUpload(key, uploadId);
+            }
+          }
+        }
+      } catch (error: any) {
+        this.log.debug(
+          `listMultipartUploads on ${bucketName} failed: ${String(error.message || "")}`,
+        );
+      }
+
+      // Page through objects and delete in batches of up to 1000 (S3 cap).
+      let cursor: string | undefined;
+      let total = 0;
+      while (true) {
+        const page = await client.listObjectsPaged(
+          undefined,
+          undefined,
+          1000,
+          cursor,
+        );
+        const objects = page?.objects ?? [];
+        if (objects.length === 0) {
+          break;
+        }
+        await client.deleteObjects(objects.map((o) => o.Key));
+        total += objects.length;
+        cursor = page?.nextContinuationToken;
+        if (!cursor) {
+          break;
+        }
+      }
+
+      if (total > 0) {
+        this.log.info(`Emptied ${total} object(s) from bucket ${bucketName}.`);
+      }
+    } finally {
+      // Always revoke, even if the wipe itself failed mid-way.
+      try {
+        await this.api.deleteR2Token(token.id);
+      } catch (error: any) {
+        this.log.warn(
+          `Failed to revoke ephemeral R2 token ${token.id}: ${String(error.message || "")}`,
+        );
+      }
+    }
   }
 
   protected async ensureKV(name: string): Promise<string> {

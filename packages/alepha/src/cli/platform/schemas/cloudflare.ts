@@ -166,6 +166,30 @@ export const createR2BodySchema = t.object({
   name: t.string(),
 });
 
+// ---------------------------------------------------------------------------
+// R2 API token (used by CLI teardown to wipe a bucket via the S3 protocol;
+// minted from a wrangler bearer token, revoked immediately after use)
+// ---------------------------------------------------------------------------
+
+export const cloudflareR2TokenSchema = t.object({
+  id: t.string(),
+  accessKeyId: t.string(),
+  secretAccessKey: t.string(),
+});
+
+export type CloudflareR2Token = Static<typeof cloudflareR2TokenSchema>;
+
+export const createR2TokenBodySchema = t.object({
+  name: t.string(),
+  policies: t.array(
+    t.object({
+      effect: t.string(),
+      permissions: t.array(t.string()),
+      buckets: t.optional(t.array(t.string())),
+    }),
+  ),
+});
+
 export const createQueueBodySchema = t.object({
   queue_name: t.string(),
 });

@@ -10,6 +10,7 @@ import type {
   CloudflareQueue,
   CloudflareQueueConsumer,
   CloudflareR2,
+  CloudflareR2Token,
   CloudflareSecret,
   CloudflareVersion,
   CloudflareWorker,
@@ -23,6 +24,7 @@ import {
   cloudflareQueueConsumerSchema,
   cloudflareQueueSchema,
   cloudflareR2Schema,
+  cloudflareR2TokenSchema,
   cloudflareSecretSchema,
   cloudflareVersionSchema,
   cloudflareWorkerSchema,
@@ -31,6 +33,7 @@ import {
   createKVBodySchema,
   createQueueBodySchema,
   createR2BodySchema,
+  createR2TokenBodySchema,
   putSecretBodySchema,
 } from "../schemas/cloudflare.ts";
 import { WranglerApi } from "./WranglerApi.ts";
@@ -43,6 +46,7 @@ export type {
   CloudflareQueue,
   CloudflareQueueConsumer,
   CloudflareR2,
+  CloudflareR2Token,
   CloudflareSecret,
   CloudflareVersion,
   CloudflareWorker,
@@ -246,6 +250,46 @@ export class CloudflareApi {
   public async deleteR2(name: string): Promise<void> {
     const accountId = await this.resolveAccountId();
     await this.fetch(`/accounts/${accountId}/r2/buckets/${name}`, {
+      method: "DELETE",
+    });
+  }
+
+  /**
+   * Mint a bucket-scoped R2 API token (S3 access key + secret) using the
+   * current bearer token. Used by teardown to wipe a bucket over the S3
+   * protocol without requiring users to pre-create R2 access keys.
+   *
+   * The returned token should be revoked with `deleteR2Token` as soon as the
+   * wipe is done.
+   */
+  public async createR2Token(
+    name: string,
+    bucket: string,
+  ): Promise<CloudflareR2Token> {
+    const accountId = await this.resolveAccountId();
+    return await this.fetch<CloudflareR2Token>(
+      `/accounts/${accountId}/r2/api-tokens`,
+      {
+        method: "POST",
+        body: {
+          name,
+          policies: [
+            {
+              effect: "allow",
+              permissions: ["admin-read-write"],
+              buckets: [bucket],
+            },
+          ],
+        },
+        bodySchema: createR2TokenBodySchema,
+        schema: cloudflareR2TokenSchema,
+      },
+    );
+  }
+
+  public async deleteR2Token(tokenId: string): Promise<void> {
+    const accountId = await this.resolveAccountId();
+    await this.fetch(`/accounts/${accountId}/r2/api-tokens/${tokenId}`, {
       method: "DELETE",
     });
   }
