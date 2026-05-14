@@ -6,7 +6,7 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
 import { AlertCircle, CheckCircle2, Loader2, MailCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 export type VerifyEmailStep = "verifying" | "success" | "error";
 
@@ -19,16 +19,22 @@ export interface AuthVerifyEmailProps {
    * Render a fixed step (useful for storybook / testing).
    */
   step?: VerifyEmailStep;
+  /**
+   * Custom logo node, rendered above the card.
+   */
+  logo?: ReactNode;
 }
 
 export function AuthVerifyEmail(props: AuthVerifyEmailProps) {
   if (props.step) {
-    return <View step={props.step} loginPath={props.loginPath} />;
+    return (
+      <View step={props.step} loginPath={props.loginPath} logo={props.logo} />
+    );
   }
-  return <Stateful loginPath={props.loginPath} />;
+  return <Stateful loginPath={props.loginPath} logo={props.logo} />;
 }
 
-function Stateful(props: { loginPath?: string }) {
+function Stateful(props: { loginPath?: string; logo?: ReactNode }) {
   const state = useRouterState();
   const { tr } = useI18n();
   const userCtrl = useClient<UserController>();
@@ -67,19 +73,28 @@ function Stateful(props: { loginPath?: string }) {
     void verify();
   }, [email, token, userCtrl, tr]);
 
-  return <View step={step} error={error} loginPath={props.loginPath} />;
+  return (
+    <View
+      step={step}
+      error={error}
+      loginPath={props.loginPath}
+      logo={props.logo}
+    />
+  );
 }
 
 function View(props: {
   step: VerifyEmailStep;
   error?: string | null;
   loginPath?: string;
+  logo?: ReactNode;
 }) {
   const { tr } = useI18n();
   return (
     <div className="flex min-h-svh flex-1 items-center justify-center p-6">
-      <div className="flex w-full max-w-sm flex-col gap-4">
-        <Card>
+      <div className="flex w-full max-w-sm flex-col items-center gap-4">
+        {props.logo}
+        <Card className="w-full">
           <CardContent className="flex flex-col items-center gap-4">
             {props.step === "verifying" && (
               <>

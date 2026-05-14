@@ -41,6 +41,12 @@ export interface AuthLoginProps {
     src?: string;
     overlay?: ReactNode;
   };
+  /**
+   * Custom logo node, rendered above the form. When provided, it replaces
+   * the default `settings.logoUrl` <img>. Use this to inject a branded
+   * component (e.g. with light/dark variants or an animation).
+   */
+  logo?: ReactNode;
 }
 
 /**
@@ -161,13 +167,14 @@ export function AuthLogin(props: AuthLoginProps) {
 
   const formColumn = (
     <div className="flex w-full max-w-sm flex-col items-center gap-4">
-      {settings.logoUrl && (
-        <img
-          src={settings.logoUrl}
-          alt={settings.displayName || props.realmConfig.realmName}
-          className="size-16 rounded-xl border bg-muted object-cover shadow-sm"
-        />
-      )}
+      {props.logo ??
+        (settings.logoUrl ? (
+          <img
+            src={settings.logoUrl}
+            alt={settings.displayName || props.realmConfig.realmName}
+            className="size-16 rounded-xl border bg-muted object-cover shadow-sm"
+          />
+        ) : null)}
       <Card className="w-full">
         <CardContent className="flex flex-col gap-4">
           {(settings.displayName || settings.description) && (

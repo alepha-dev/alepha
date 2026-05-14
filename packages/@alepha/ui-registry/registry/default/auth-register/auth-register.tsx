@@ -93,6 +93,12 @@ export interface AuthRegisterProps {
    */
   realmConfig: RealmConfig;
   /**
+   * Custom logo node, rendered above the form. When provided, it replaces
+   * the default `settings.logoUrl` <img>. Use this to inject a branded
+   * component (e.g. with light/dark variants or an animation).
+   */
+  logo?: ReactNode;
+  /**
    * Route to the login page. When set, a "Sign in" link is shown.
    */
   loginPath?: string;
@@ -118,6 +124,11 @@ export function AuthRegister(props: AuthRegisterProps) {
   const router = useRouter();
   const { tr } = useI18n();
   const redirect = router.query.r || "/";
+  // Surface upstream auth errors (e.g. failed OAuth callback redirects with
+  // `?error=...`) — same pattern as AuthLogin. Without this the user lands on
+  // a fresh-looking registration page with no clue why.
+  const queryError =
+    typeof router.query.error === "string" ? router.query.error : undefined;
 
   const [state, setState] = useState<State>({ phase: "form" });
   const [emailCode, setEmailCode] = useState("");
@@ -334,7 +345,12 @@ export function AuthRegister(props: AuthRegisterProps) {
 
   return (
     <Centered>
-      <RealmLogo settings={settings} realmName={props.realmConfig.realmName} />
+      {props.logo ?? (
+        <RealmLogo
+          settings={settings}
+          realmName={props.realmConfig.realmName}
+        />
+      )}
       <Card className="w-full">
         <CardContent
           className="overflow-hidden p-0 transition-[height] duration-300 ease-out"
@@ -445,7 +461,7 @@ export function AuthRegister(props: AuthRegisterProps) {
                 <FormPhase
                   allowed={allowed}
                   form={form}
-                  formError={formError}
+                  formError={formError ?? queryError}
                   passwordValue={passwordValue}
                   settings={settings}
                   realmName={props.realmConfig.realmName}

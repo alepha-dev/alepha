@@ -61,6 +61,7 @@ yarn shadcn add @alepha/auth-login
 | `resetPasswordPath` | `string` | No | Route to the password-reset flow |
 | `variant` | `"centered" \| "split"` | No | Layout variant |
 | `background` | `Object` | No | Background panel configuration for the `split` variant |
+| `logo` | `ReactNode` | No | Custom logo node, rendered above the form |
 
 **Dependencies:** `alepha`, `lucide-react`, `@alepha/control`, `shadcn:button`, `shadcn:card`, `shadcn:alert`, `shadcn:separator`
 
@@ -79,6 +80,7 @@ yarn shadcn add @alepha/auth-register
 | Prop | Type | Required | Description |
 |------|------|----------|-------------|
 | `realmConfig` | `RealmConfig` | Yes | Realm configuration (drives required fields, verification step, OAuth buttons). |
+| `logo` | `ReactNode` | No | Custom logo node, rendered above the form |
 | `loginPath` | `string` | No | Route to the login page |
 | `message` | `ReactNode` | No | Optional banner rendered above the registration form (form phase only) |
 
@@ -100,6 +102,7 @@ yarn shadcn add @alepha/auth-reset-password
 |------|------|----------|-------------|
 | `realmConfig` | `RealmConfig` | Yes | Realm configuration (controls verification channel and password rules). |
 | `loginPath` | `string` | No | Route to the login page, used after a successful reset. |
+| `logo` | `ReactNode` | No | Custom logo node, rendered above the form |
 
 **Dependencies:** `alepha`, `lucide-react`, `@alepha/control`, `shadcn:button`, `shadcn:input`, `shadcn:label`, `shadcn:card`, `shadcn:alert`
 
@@ -119,6 +122,7 @@ yarn shadcn add @alepha/auth-verify-email
 |------|------|----------|-------------|
 | `loginPath` | `string` | No | Route to the login page, shown as a CTA on success/failure. |
 | `step` | `VerifyEmailStep` | No | Render a fixed step (useful for storybook / testing). |
+| `logo` | `ReactNode` | No | Custom logo node, rendered above the card. |
 
 **Dependencies:** `alepha`, `lucide-react`, `shadcn:button`, `shadcn:card`, `shadcn:alert`
 

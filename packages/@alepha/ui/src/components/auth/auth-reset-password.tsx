@@ -17,7 +17,7 @@ import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 export interface AuthResetPasswordProps {
   /**
@@ -28,6 +28,12 @@ export interface AuthResetPasswordProps {
    * Route to the login page, used after a successful reset.
    */
   loginPath?: string;
+  /**
+   * Custom logo node, rendered above the form. When provided, it replaces
+   * the default `settings.logoUrl` <img>. Use this to inject a branded
+   * component (e.g. with light/dark variants or an animation).
+   */
+  logo?: ReactNode;
 }
 
 type Step = "email" | "code" | "password" | "success";
@@ -131,13 +137,14 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
   return (
     <div className="flex min-h-svh flex-1 items-center justify-center p-6">
       <div className="flex w-full max-w-sm flex-col items-center gap-4">
-        {settings?.logoUrl && (
-          <img
-            src={settings.logoUrl}
-            alt={settings.displayName || props.realmConfig.realmName}
-            className="size-16 rounded-xl border bg-muted object-cover shadow-sm"
-          />
-        )}
+        {props.logo ??
+          (settings?.logoUrl ? (
+            <img
+              src={settings.logoUrl}
+              alt={settings.displayName || props.realmConfig.realmName}
+              className="size-16 rounded-xl border bg-muted object-cover shadow-sm"
+            />
+          ) : null)}
         <Card className="w-full">
           <CardContent className="flex flex-col gap-4">
             {error && (
