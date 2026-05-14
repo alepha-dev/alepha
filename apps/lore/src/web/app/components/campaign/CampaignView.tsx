@@ -58,7 +58,6 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   campaignSettingsFolios: "campaign.menu.settings",
   campaignSettingsPetitions: "campaign.menu.settings",
   campaignSettingsChapters: "campaign.menu.settings",
-  campaignSettingsData: "campaign.menu.settings",
 };
 
 const PETITION_POLL_INTERVAL_MS = 30_000;

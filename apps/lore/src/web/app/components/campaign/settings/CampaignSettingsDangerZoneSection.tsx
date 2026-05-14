@@ -22,7 +22,7 @@ import { userCampaignsAtom } from "@/web/app/atoms/userCampaignsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import CampaignSettingsConfirmationModal from "./CampaignSettingsConfirmationModal.tsx";
 
-const CampaignSettingsVault = () => {
+const CampaignSettingsDangerZoneSection = () => {
   const alepha = useAlepha();
   const auth = useAuth();
   const { tr } = useI18n<I18n, "en">();
@@ -56,7 +56,7 @@ const CampaignSettingsVault = () => {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <span className="text-sm">{tr("campaign.settings.danger.title")}</span>
-        <Card className="bg-card divide-y rounded-lg border py-0 shadow">
+        <Card className="bg-card divide-y rounded-lg border py-0">
           {isOwner ? (
             <CardContent className="flex flex-col gap-3 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
               <div className="flex flex-col gap-0.5">
@@ -138,4 +138,4 @@ const CampaignSettingsVault = () => {
   );
 };
 
-export default CampaignSettingsVault;
+export default CampaignSettingsDangerZoneSection;

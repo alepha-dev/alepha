@@ -10,7 +10,6 @@ import {
 import {
   BookMarked,
   BookOpen,
-  Database,
   Flag,
   Inbox,
   KanbanSquare,
@@ -29,8 +28,7 @@ type RouteName =
   | "campaignSettingsKanban"
   | "campaignSettingsFolios"
   | "campaignSettingsPetitions"
-  | "campaignSettingsChapters"
-  | "campaignSettingsData";
+  | "campaignSettingsChapters";
 
 type NavLabelKey =
   | "campaign.settings.nav.banner"
@@ -39,8 +37,7 @@ type NavLabelKey =
   | "campaign.settings.nav.kanban"
   | "campaign.settings.nav.folios"
   | "campaign.settings.nav.petitions"
-  | "campaign.settings.nav.chapters"
-  | "campaign.settings.nav.data";
+  | "campaign.settings.nav.chapters";
 
 type NavGroupLabelKey = "campaign.settings.nav.group.features";
 
@@ -72,11 +69,6 @@ const NAV_GROUPS: NavGroup[] = [
         route: "campaignSettingsAdventurers",
         labelKey: "campaign.settings.nav.adventurers",
         icon: Users,
-      },
-      {
-        route: "campaignSettingsData",
-        labelKey: "campaign.settings.nav.data",
-        icon: Database,
       },
     ],
   },
