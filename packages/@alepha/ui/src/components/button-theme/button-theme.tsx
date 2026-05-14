@@ -6,6 +6,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@alepha/ui/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { cn } from "@alepha/ui/lib/utils";
 import { useStore } from "alepha/react";
 import { uiThemeListAtom, useTheme } from "alepha/react/ui";
@@ -73,17 +78,23 @@ export function ButtonTheme(props: ButtonThemeProps) {
     return null;
   }
 
+  const label = props.label ?? "Pick theme";
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant={props.variant ?? "ghost"}
-          size="icon"
-          aria-label={props.label ?? "Pick theme"}
-        >
-          <Palette className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={props.variant ?? "ghost"}
+              size="icon"
+              aria-label={label}
+            >
+              <Palette className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>{props.heading ?? "Themes"}</DropdownMenuLabel>
         <DropdownMenuSeparator />

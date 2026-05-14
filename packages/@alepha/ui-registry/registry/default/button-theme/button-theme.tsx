@@ -10,6 +10,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 const FONT_LINK_ID = "alepha-theme-fonts";
@@ -73,17 +78,23 @@ export function ButtonTheme(props: ButtonThemeProps) {
     return null;
   }
 
+  const label = props.label ?? "Pick theme";
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant={props.variant ?? "ghost"}
-          size="icon"
-          aria-label={props.label ?? "Pick theme"}
-        >
-          <Palette className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={props.variant ?? "ghost"}
+              size="icon"
+              aria-label={label}
+            >
+              <Palette className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>{props.heading ?? "Themes"}</DropdownMenuLabel>
         <DropdownMenuSeparator />

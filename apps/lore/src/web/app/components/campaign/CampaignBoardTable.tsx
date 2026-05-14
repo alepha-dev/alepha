@@ -160,7 +160,7 @@ const CampaignBoardTable = () => {
         }
         columns={{
           status: {
-            label: "Status",
+            label: String(tr("board.table.status")),
             cell: (quest) => {
               const colors: Record<string, string> = {
                 new: "bg-blue-500",
@@ -175,7 +175,7 @@ const CampaignBoardTable = () => {
             },
           },
           assignedTo: {
-            label: "Assigned",
+            label: String(tr("board.table.assigned")),
             cell: (quest) =>
               quest.acceptedBy ? (
                 <div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ const CampaignBoardTable = () => {
               ),
           },
           title: {
-            label: "Quest",
+            label: String(tr("board.table.title")),
             sortable: true,
             cell: (quest) => (
               <div className="flex flex-col overflow-hidden whitespace-nowrap">
@@ -210,7 +210,7 @@ const CampaignBoardTable = () => {
             ),
           },
           priority: {
-            label: "Priority",
+            label: String(tr("board.table.priority")),
             sortable: true,
             cell: (quest) => (
               <Badge
@@ -222,17 +222,17 @@ const CampaignBoardTable = () => {
             ),
           },
           difficulty: {
-            label: "Rank",
+            label: String(tr("board.table.rank")),
             sortable: true,
             cell: (quest) => <QuestDifficulty difficulty={quest.difficulty} />,
           },
           zone: {
-            label: "Zone",
+            label: String(tr("board.table.zone")),
             sortable: true,
             cell: (quest) => <span className="text-xs">{quest.zone}</span>,
           },
           createdAt: {
-            label: "Created",
+            label: String(tr("board.table.created")),
             sortable: true,
             cell: (quest) => (
               <span className="text-muted-foreground text-xs">
@@ -241,7 +241,7 @@ const CampaignBoardTable = () => {
             ),
           },
           updatedAt: {
-            label: "Updated",
+            label: String(tr("board.table.updated")),
             sortable: true,
             cell: (quest) => (
               <span className="text-muted-foreground text-xs">
@@ -255,7 +255,7 @@ const CampaignBoardTable = () => {
             ? [
                 {
                   icon: Signature,
-                  label: "Accept Quest",
+                  label: String(tr("board.action.acceptQuest")),
                   onClick: async () => {
                     const updated = await questApi.acceptQuest({
                       params: { id: quest.id },
@@ -273,7 +273,7 @@ const CampaignBoardTable = () => {
             ? [
                 {
                   icon: Trash,
-                  label: "Delete Quest",
+                  label: String(tr("board.action.deleteQuest")),
                   destructive: true,
                   onClick: async () => {
                     await questApi.deleteQuest({ params: { id: quest.id } });

@@ -7,6 +7,11 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export interface ButtonLanguageProps {
   /**
@@ -38,17 +43,23 @@ export function ButtonLanguage(props: ButtonLanguageProps) {
     return null;
   }
 
+  const label = props.label ?? "Switch language";
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant={props.variant ?? "ghost"}
-          size="icon"
-          aria-label={props.label ?? "Switch language"}
-        >
-          <Languages className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={props.variant ?? "ghost"}
+              size="icon"
+              aria-label={label}
+            >
+              <Languages className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end">
         {languages.map((code) => {
           const translated = i18n.tr(`language.${code}` as never);

@@ -1,16 +1,3 @@
-import { Control } from "@alepha/ui/components/control/control";
-import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
-import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSeparator,
-  InputOTPSlot,
-} from "@alepha/ui/components/ui/input-otp";
-import { Label } from "@alepha/ui/components/ui/label";
-import { Separator } from "@alepha/ui/components/ui/separator";
 import { TypeBoxError, t } from "alepha";
 import type {
   RealmConfig,
@@ -22,8 +9,83 @@ import { useAuth } from "alepha/react/auth";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { AlertCircle, Check, X } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AlertCircle, Check, Info, X } from "lucide-react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@alepha/ui/components/ui/input-otp";
+import { Label } from "@alepha/ui/components/ui/label";
+import { Separator } from "@alepha/ui/components/ui/separator";
+import { Control } from "@alepha/ui/components/control/control";
+import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
+
+/**
+ * Cloudflare Turnstile loader — idempotent across remounts.
+ * Resolves once the global `window.turnstile` is ready.
+ */
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (
+        container: HTMLElement,
+        opts: {
+          sitekey: string;
+          callback: (token: string) => void;
+          "error-callback"?: () => void;
+          "expired-callback"?: () => void;
+          theme?: "light" | "dark" | "auto";
+        },
+      ) => string;
+      reset: (widgetId: string) => void;
+      remove: (widgetId: string) => void;
+    };
+  }
+}
+
+let turnstileLoader: Promise<void> | undefined;
+const loadTurnstile = (): Promise<void> => {
+  if (turnstileLoader) return turnstileLoader;
+  turnstileLoader = new Promise<void>((resolve, reject) => {
+    if (typeof window === "undefined") return resolve();
+    if (window.turnstile) return resolve();
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[data-turnstile="1"]',
+    );
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () => {
+        turnstileLoader = undefined;
+        reject(new Error("Turnstile script failed to load"));
+      });
+      return;
+    }
+    const s = document.createElement("script");
+    s.src =
+      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    s.async = true;
+    s.dataset.turnstile = "1";
+    s.onload = () => resolve();
+    s.onerror = () => {
+      turnstileLoader = undefined;
+      reject(new Error("Turnstile script failed to load"));
+    };
+    document.head.appendChild(s);
+  });
+  return turnstileLoader;
+};
 
 export interface AuthRegisterProps {
   /**
@@ -34,6 +96,12 @@ export interface AuthRegisterProps {
    * Route to the login page. When set, a "Sign in" link is shown.
    */
   loginPath?: string;
+  /**
+   * Optional banner rendered above the registration form (form phase only).
+   * Used to contextualize the flow when the user arrives via a CTA, e.g.
+   * "Before creating a campaign, create an account."
+   */
+  message?: ReactNode;
 }
 
 type Phase = "form" | "verification";
@@ -56,6 +124,48 @@ export function AuthRegister(props: AuthRegisterProps) {
   const [phoneCode, setPhoneCode] = useState("");
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const captchaSiteKey = props.realmConfig.captchaSiteKey;
+  const [captchaToken, setCaptchaToken] = useState<string | undefined>();
+  const captchaRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<string | undefined>(undefined);
+  // The `useForm` handler is memoized at form-create time, so it closes over
+  // the *initial* `captchaToken` (undefined). Mirror the latest value into a
+  // ref the handler can read at submission time.
+  const captchaTokenRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    captchaTokenRef.current = captchaToken;
+  }, [captchaToken]);
+
+  useEffect(() => {
+    if (!captchaSiteKey || state.phase !== "form") return;
+    const el = captchaRef.current;
+    if (!el) return;
+    setCaptchaToken(undefined);
+    let disposed = false;
+    loadTurnstile()
+      .then(() => {
+        if (disposed || !window.turnstile || !el) return;
+        widgetIdRef.current = window.turnstile.render(el, {
+          sitekey: captchaSiteKey,
+          theme: "auto",
+          callback: (token) => setCaptchaToken(token),
+          "expired-callback": () => setCaptchaToken(undefined),
+          "error-callback": () => setCaptchaToken(undefined),
+        });
+      })
+      .catch(() => setCaptchaToken(undefined));
+    return () => {
+      disposed = true;
+      const id = widgetIdRef.current;
+      if (id && window.turnstile) {
+        try {
+          window.turnstile.remove(id);
+        } catch {}
+      }
+      widgetIdRef.current = undefined;
+    };
+  }, [captchaSiteKey, state.phase]);
 
   const credentialsProvider = props.realmConfig.authenticationMethods.find(
     (it) => it.type === "CREDENTIALS",
@@ -84,41 +194,52 @@ export function AuthRegister(props: AuthRegisterProps) {
   const form = useForm({
     schema,
     handler: async (data) => {
-      const intent = await userCtrl.createRegistrationIntent({
-        query: { userRealmName: props.realmConfig.realmName },
-        body: {
-          username: data.username,
-          email: data.email,
-          phoneNumber: data.phoneNumber,
-          password: data.password,
-        },
-      });
-      const identifier = data.username ?? data.email ?? data.phoneNumber;
-      if (
-        intent.expectEmailVerification ||
-        intent.expectPhoneVerification ||
-        intent.expectCaptcha
-      ) {
-        setState({
-          phase: "verification",
-          intent,
-          credentials: identifier
-            ? { identifier, password: data.password }
-            : undefined,
+      try {
+        const intent = await userCtrl.createRegistrationIntent({
+          query: { userRealmName: props.realmConfig.realmName },
+          body: {
+            username: data.username,
+            email: data.email,
+            phoneNumber: data.phoneNumber,
+            password: data.password,
+            captchaToken: captchaSiteKey ? captchaTokenRef.current : undefined,
+          },
         });
-        return;
-      }
-      await userCtrl.createUserFromIntent({
-        body: { intentId: intent.intentId },
-      });
-      if (identifier && credentialsProvider) {
-        await auth.login(credentialsProvider.name, {
-          username: identifier,
-          password: data.password,
-          realm: props.realmConfig.realmName,
+        const identifier = data.username ?? data.email ?? data.phoneNumber;
+        if (
+          intent.expectEmailVerification ||
+          intent.expectPhoneVerification ||
+          intent.expectCaptcha
+        ) {
+          setState({
+            phase: "verification",
+            intent,
+            credentials: identifier
+              ? { identifier, password: data.password }
+              : undefined,
+          });
+          return;
+        }
+        await userCtrl.createUserFromIntent({
+          body: { intentId: intent.intentId },
         });
+        if (identifier && credentialsProvider) {
+          await auth.login(credentialsProvider.name, {
+            username: identifier,
+            password: data.password,
+            realm: props.realmConfig.realmName,
+          });
+        }
+        await router.push(redirect);
+      } catch (err) {
+        if (widgetIdRef.current && window.turnstile) {
+          try {
+            window.turnstile.reset(widgetIdRef.current);
+          } catch {}
+        }
+        setCaptchaToken(undefined);
+        throw err;
       }
-      await router.push(redirect);
     },
   });
 
@@ -335,6 +456,10 @@ export function AuthRegister(props: AuthRegisterProps) {
                   loginPath={props.loginPath}
                   realmQuery={realmQuery}
                   auth={auth}
+                  captchaSiteKey={captchaSiteKey}
+                  captchaToken={captchaToken}
+                  captchaRef={captchaRef}
+                  message={props.message}
                 />
               )}
             </div>
@@ -366,8 +491,13 @@ function FormPhase(props: {
   loginPath: string | undefined;
   realmQuery: string;
   auth: ReturnType<typeof useAuth>;
+  captchaSiteKey?: string;
+  captchaToken?: string;
+  captchaRef: React.RefObject<HTMLDivElement | null>;
+  message?: ReactNode;
 }) {
   const { tr } = useI18n();
+  const [passwordFieldFocused, setPasswordFieldFocused] = useState(false);
   const {
     allowed,
     form,
@@ -402,6 +532,12 @@ function FormPhase(props: {
         </>
       ) : (
         <>
+          {props.message && (
+            <Alert>
+              <Info className="size-4" />
+              <AlertDescription>{props.message}</AlertDescription>
+            </Alert>
+          )}
           {formError && (
             <Alert variant="destructive">
               <AlertCircle className="size-4" />
@@ -453,16 +589,40 @@ function FormPhase(props: {
                   icon={iconFor("phone")}
                 />
               )}
-              <Control
-                label={tr("auth.register.password", { default: "Password" })}
-                input={form.input.password}
-                password
-              />
-              <PasswordRules
-                policy={settings.passwordPolicy}
-                value={passwordValue}
-              />
-              <Button type="submit" disabled={form.submitting}>
+              {/* `onFocus`/`onBlur` bubble from the input + toggle inside —
+                  the rules stay visible while the user types or interacts
+                  with the password toggle, and only collapse once the field
+                  is blurred AND empty. */}
+              <div
+                onFocus={() => setPasswordFieldFocused(true)}
+                onBlur={() => setPasswordFieldFocused(false)}
+              >
+                <Control
+                  label={tr("auth.register.password", { default: "Password" })}
+                  input={form.input.password}
+                  password
+                />
+              </div>
+              {(passwordFieldFocused || passwordValue.length > 0) && (
+                <PasswordRules
+                  policy={settings.passwordPolicy}
+                  value={passwordValue}
+                />
+              )}
+              {props.captchaSiteKey && (
+                <div
+                  ref={props.captchaRef}
+                  data-testid="captcha"
+                  className="flex justify-center"
+                />
+              )}
+              <Button
+                type="submit"
+                disabled={
+                  form.submitting ||
+                  (!!props.captchaSiteKey && !props.captchaToken)
+                }
+              >
                 {tr("auth.register.submit", { default: "Create account" })}
               </Button>
             </form>

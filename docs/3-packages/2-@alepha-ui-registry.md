@@ -80,6 +80,7 @@ yarn shadcn add @alepha/auth-register
 |------|------|----------|-------------|
 | `realmConfig` | `RealmConfig` | Yes | Realm configuration (drives required fields, verification step, OAuth buttons). |
 | `loginPath` | `string` | No | Route to the login page |
+| `message` | `ReactNode` | No | Optional banner rendered above the registration form (form phase only) |
 
 **Dependencies:** `alepha`, `lucide-react`, `input-otp`, `@alepha/control`, `shadcn:button`, `shadcn:input-otp`, `shadcn:label`, `shadcn:card`, `shadcn:alert`, `shadcn:separator`
 

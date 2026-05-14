@@ -9,6 +9,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export interface ButtonUserProps {
   /**
@@ -63,30 +68,42 @@ export function ButtonUser(props: ButtonUserProps) {
   const auth = useAuth();
 
   if (!auth.user) {
+    const signInLabel = props.label ?? "Sign in";
     return (
-      <Button
-        variant={props.variant ?? "ghost"}
-        size="icon"
-        aria-label={props.label ?? "Sign in"}
-        disabled={!props.onSignIn}
-        onClick={props.onSignIn}
-      >
-        <LogIn className="size-4" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={props.variant ?? "ghost"}
+            size="icon"
+            aria-label={signInLabel}
+            disabled={!props.onSignIn}
+            onClick={props.onSignIn}
+          >
+            <LogIn className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{signInLabel}</TooltipContent>
+      </Tooltip>
     );
   }
 
+  const menuLabel = props.label ?? "Account menu";
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant={props.variant ?? "ghost"}
-          size="icon"
-          aria-label={props.label ?? "Account menu"}
-        >
-          <User className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={props.variant ?? "ghost"}
+              size="icon"
+              aria-label={menuLabel}
+            >
+              <User className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{menuLabel}</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end" className="w-56">
         {props.children ?? <DefaultMenu onAdminClick={props.onAdminClick} />}
       </DropdownMenuContent>

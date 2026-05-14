@@ -17,6 +17,7 @@ export class I18n {
         "header.actions.login": "Sign In",
         "header.actions.logout": "Logout",
         "header.actions.admin": "Admin Panel",
+        "header.actions.language": "Language",
         "header.actions.profile.level": "Level $1",
 
         "quest-log.quests": "Quests:",
@@ -36,6 +37,8 @@ export class I18n {
         "home.create-campaign.max": "Limit reached ($1)",
         "home.start-first-campaign": "Start your first campaign",
         "home.already-registered": "Already registered? Sign in",
+        "auth.register.intent.createCampaign":
+          "Before creating a campaign, create an account.",
         "home.empty.title": "Your quest log is empty",
         "home.empty.subtitle":
           "Raise your banner and forge a campaign — every legend starts somewhere.",
@@ -69,6 +72,17 @@ export class I18n {
         "board.filter.zone": "Zone",
         "board.filter.apply": "Apply",
         "board.filter.reset": "Reset",
+
+        "board.table.status": "Status",
+        "board.table.assigned": "Assigned",
+        "board.table.title": "Quest",
+        "board.table.priority": "Priority",
+        "board.table.rank": "Rank",
+        "board.table.zone": "Zone",
+        "board.table.created": "Created",
+        "board.table.updated": "Updated",
+        "board.action.acceptQuest": "Accept Quest",
+        "board.action.deleteQuest": "Delete Quest",
 
         "dashboard.character": "Hero",
         "dashboard.purse": "Purse",
@@ -506,6 +520,7 @@ export class I18n {
         "header.actions.login": "Se connecter",
         "header.actions.logout": "Deconnexion",
         "header.actions.admin": "Panneau admin",
+        "header.actions.language": "Langue",
         "header.actions.profile.level": "Niveau $1",
 
         "quest-log.title": "Journal des quêtes",
@@ -527,6 +542,8 @@ export class I18n {
         "home.create-campaign.max": "Limite atteinte ($1)",
         "home.start-first-campaign": "Lancer votre première campagne",
         "home.already-registered": "Déjà inscrit ? Se connecter",
+        "auth.register.intent.createCampaign":
+          "Avant de créer une campagne, créez un compte.",
         "home.empty.title": "Votre carnet de quêtes est vide",
         "home.empty.subtitle":
           "Levez votre bannière et forgez une campagne — toute légende commence quelque part.",
@@ -585,6 +602,17 @@ export class I18n {
           "Décrivez le but, les épreuves et les détails importants.",
         "quest.create.zone": "Zone",
         "quest.create.zone.helper": "Royaume ou lieu où se déroule la quête",
+
+        "board.table.status": "Statut",
+        "board.table.assigned": "Assigné à",
+        "board.table.title": "Quête",
+        "board.table.priority": "Priorité",
+        "board.table.rank": "Rang",
+        "board.table.zone": "Zone",
+        "board.table.created": "Créée",
+        "board.table.updated": "Mise à jour",
+        "board.action.acceptQuest": "Accepter la quête",
+        "board.action.deleteQuest": "Supprimer la quête",
         "quest.create.title": "Nom",
         "quest.create.title.helper": "Un nom court et héroïque",
         "quest.create.objectives": "Objectifs",

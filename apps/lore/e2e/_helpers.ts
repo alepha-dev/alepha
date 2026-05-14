@@ -111,12 +111,17 @@ export const registerAndVerify = async (
   password: string,
 ) => {
   await page.goto("/auth/register");
-  await page.waitForLoadState("networkidle");
+  // `networkidle` never settles once Turnstile is loaded — its widget polls.
+  await page.waitForLoadState("domcontentloaded");
   await page.getByRole("textbox", { name: "Email", exact: true }).fill(email);
   await page
     .getByRole("textbox", { name: "Password", exact: true })
     .fill(password);
-  await page.getByRole("button", { name: /create account/i }).click();
+  // Captcha gate — test site key auto-solves but the submit button stays
+  // disabled until Turnstile fires its callback.
+  const submit = page.getByRole("button", { name: /create account/i });
+  await expect(submit).toBeEnabled({ timeout: 30_000 });
+  await submit.click();
   await expect(
     page.getByRole("button", { name: /complete registration/i }),
   ).toBeVisible({ timeout: 10_000 });

@@ -1,6 +1,11 @@
 import { useColorMode } from "alepha/react/ui";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export interface ButtonDarkProps {
   /**
@@ -47,14 +52,20 @@ export function ButtonDark(props: ButtonDarkProps) {
     }
   };
   const iconKey = props.withSystem ? mode : resolved;
+  const label = props.label ?? "Toggle color mode";
   return (
-    <Button
-      variant={props.variant ?? "ghost"}
-      size="icon"
-      aria-label={props.label ?? "Toggle color mode"}
-      onClick={onClick}
-    >
-      {ICON[iconKey]}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={props.variant ?? "ghost"}
+          size="icon"
+          aria-label={label}
+          onClick={onClick}
+        >
+          {ICON[iconKey]}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }

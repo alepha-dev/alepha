@@ -22,10 +22,7 @@ const HeaderActions = (_props: HeaderActionsProps) => {
 
   return (
     <div className="bg-background flex items-center gap-1 rounded-md border p-1">
-      <ButtonLanguage
-        variant="ghost"
-        label={tr("header.actions.language" as never)}
-      />
+      <ButtonLanguage variant="ghost" label={tr("header.actions.language")} />
       <ButtonTheme variant="ghost" />
       <ButtonDark variant="ghost" />
       <ButtonUser

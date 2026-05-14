@@ -10,8 +10,8 @@ import { FormValidationError, useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { HttpError } from "alepha/server";
-import { AlertCircle } from "lucide-react";
-import { type ReactNode, useMemo } from "react";
+import { AlertCircle, Mail, User } from "lucide-react";
+import { type ReactNode, useEffect, useMemo } from "react";
 
 export interface AuthLoginProps {
   /**
@@ -43,11 +43,24 @@ export interface AuthLoginProps {
   };
 }
 
+/**
+ * Filter the `?r=` query param to a safe in-app destination:
+ * - Only accept same-origin absolute paths (must start with a single `/`).
+ * - Reject `//evil.com` / full URLs (open-redirect surface).
+ * - Reject `/auth/*` to avoid bouncing the user back into the auth flow.
+ */
+const safeRedirect = (raw: string | string[] | undefined): string => {
+  if (typeof raw !== "string" || raw.length === 0) return "/";
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+  if (raw.startsWith("/auth/")) return "/";
+  return raw;
+};
+
 export function AuthLogin(props: AuthLoginProps) {
   const auth = useAuth();
   const router = useRouter();
   const { tr } = useI18n();
-  const redirect = router.query.r || "/";
+  const redirect = safeRedirect(router.query.r);
   const error = router.query.error;
 
   const credentialsProvider = props.realmConfig.authenticationMethods.find(
@@ -57,7 +70,12 @@ export function AuthLogin(props: AuthLoginProps) {
 
   const loginMethods = useMemo(() => {
     const methods: string[] = [];
-    if (settings.username !== "none") methods.push("username");
+    // `username: "email"` means the username is auto-derived from the email
+    // server-side and never typed by the user — it's not a separate login
+    // method from the user's perspective.
+    if (settings.username !== "none" && settings.username !== "email") {
+      methods.push("username");
+    }
     if (settings.email !== "none") methods.push("email");
     if (settings.phoneNumber !== "none") methods.push("phone");
     return methods;
@@ -76,6 +94,10 @@ export function AuthLogin(props: AuthLoginProps) {
     });
   }, [loginMethods, tr]);
 
+  // Mail icon when the identifier is purely an email; otherwise default user icon.
+  const identifierIcon =
+    loginMethods.length === 1 && loginMethods[0] === "email" ? Mail : User;
+
   const form = useForm({
     schema: t.object({
       identifier: t.string({ minLength: 1 }),
@@ -93,7 +115,7 @@ export function AuthLogin(props: AuthLoginProps) {
           password: data.password,
           realm: props.realmConfig.realmName,
         });
-        await router.push(router.query.r || "/");
+        await router.push(safeRedirect(router.query.r));
       } catch (err) {
         if (
           err instanceof HttpError &&
@@ -110,6 +132,16 @@ export function AuthLogin(props: AuthLoginProps) {
       }
     },
   });
+
+  // Autofocus the identifier field on mount — `<Control>` doesn't accept an
+  // `autoFocus` prop, so we grab the id the form assigned and focus it.
+  const identifierId = form.input.identifier.props.id;
+  useEffect(() => {
+    if (!credentialsProvider || !identifierId) return;
+    (
+      document.getElementById(String(identifierId)) as HTMLInputElement | null
+    )?.focus();
+  }, [credentialsProvider, identifierId]);
 
   const formState = useFormState(form, ["error"]);
   const formError =
@@ -162,7 +194,11 @@ export function AuthLogin(props: AuthLoginProps) {
 
           {credentialsProvider && (
             <form {...form.props} className="flex flex-col gap-4">
-              <Control label={identifierLabel} input={form.input.identifier} />
+              <Control
+                label={identifierLabel}
+                input={form.input.identifier}
+                icon={identifierIcon}
+              />
               <Control
                 label={tr("auth.login.password", {
                   default: "Password",
