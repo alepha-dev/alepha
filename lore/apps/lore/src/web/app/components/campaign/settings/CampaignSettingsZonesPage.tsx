@@ -30,7 +30,7 @@ import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuests
 import { currentCampaignAtom } from "@/web/app/atoms/currentCampaignAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-export interface CampaignSettingsZonesProps {
+export interface CampaignSettingsZonesPageProps {
   zones: ZoneRow[];
 }
 
@@ -40,7 +40,7 @@ interface ZoneRow {
   firstQuestAt?: string;
 }
 
-const CampaignSettingsZones = (props: CampaignSettingsZonesProps) => {
+const CampaignSettingsZonesPage = (props: CampaignSettingsZonesPageProps) => {
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
   const alepha = useAlepha();
@@ -214,4 +214,4 @@ const CampaignSettingsZones = (props: CampaignSettingsZonesProps) => {
   );
 };
 
-export default CampaignSettingsZones;
+export default CampaignSettingsZonesPage;

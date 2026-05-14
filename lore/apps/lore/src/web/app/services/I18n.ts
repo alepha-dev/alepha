@@ -210,16 +210,22 @@ export class I18n {
         "campaign.settings.nav.adventurers": "Adventurers",
         "campaign.settings.nav.zones": "Zones",
         "campaign.settings.nav.data": "Data",
-        "campaign.settings.data.title": "Import / Export",
+        "campaign.settings.data.title": "Data",
         "campaign.settings.data.export.title": "Export quests",
         "campaign.settings.data.export.subtitle":
           "Download all quests in this campaign as a CSV file.",
-        "campaign.settings.data.export.button": "Download CSV",
+        "campaign.settings.data.export.button": "Export Quests",
         "campaign.settings.data.import.title": "Import quests",
         "campaign.settings.data.import.subtitle":
           "Upload a CSV exported from Lore or Trello. Existing quests with the same shortId are updated; others are created.",
-        "campaign.settings.data.import.dropzone":
-          "Drop a CSV here or click to choose",
+        "campaign.settings.data.import.choose": "Import Quests",
+        "campaign.settings.data.import.preview.title": "Import preview",
+        "campaign.settings.data.import.preview.body":
+          "$1 row(s) detected in $2. Existing quests with matching shortId will be updated; new rows will be created.",
+        "campaign.settings.data.import.preview.confirm": "Import",
+        "campaign.settings.data.import.preview.cancel": "Cancel",
+        "campaign.settings.data.import.preview.empty":
+          "No data rows detected — the file appears to contain only a header.",
         "campaign.settings.data.import.submit": "Import",
         "campaign.settings.data.import.submitting": "Importing…",
         "campaign.settings.data.import.result":
@@ -727,16 +733,22 @@ export class I18n {
         "campaign.settings.nav.adventurers": "Aventuriers",
         "campaign.settings.nav.zones": "Zones",
         "campaign.settings.nav.data": "Données",
-        "campaign.settings.data.title": "Import / Export",
+        "campaign.settings.data.title": "Data",
         "campaign.settings.data.export.title": "Exporter les quêtes",
         "campaign.settings.data.export.subtitle":
           "Téléchargez toutes les quêtes de cette campagne en CSV.",
-        "campaign.settings.data.export.button": "Télécharger le CSV",
+        "campaign.settings.data.export.button": "Exporter les quêtes",
         "campaign.settings.data.import.title": "Importer des quêtes",
         "campaign.settings.data.import.subtitle":
           "Importez un CSV exporté depuis Lore ou Trello. Les quêtes existantes avec le même shortId sont mises à jour ; les autres sont créées.",
-        "campaign.settings.data.import.dropzone":
-          "Déposez un CSV ici ou cliquez pour choisir",
+        "campaign.settings.data.import.choose": "Importer des quêtes",
+        "campaign.settings.data.import.preview.title": "Aperçu de l'import",
+        "campaign.settings.data.import.preview.body":
+          "$1 ligne(s) détectée(s) dans $2. Les quêtes existantes avec un shortId correspondant seront mises à jour ; les autres seront créées.",
+        "campaign.settings.data.import.preview.confirm": "Importer",
+        "campaign.settings.data.import.preview.cancel": "Annuler",
+        "campaign.settings.data.import.preview.empty":
+          "Aucune ligne de données détectée — le fichier ne contient qu'un en-tête.",
         "campaign.settings.data.import.submit": "Importer",
         "campaign.settings.data.import.submitting": "Import en cours…",
         "campaign.settings.data.import.result":

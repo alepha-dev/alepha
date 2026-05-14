@@ -338,7 +338,6 @@ export class AppRouter {
       this.campaignSettingsFolios,
       this.campaignSettingsPetitions,
       this.campaignSettingsChapters,
-      this.campaignSettingsData,
     ],
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Settings`,
@@ -350,10 +349,10 @@ export class AppRouter {
     name: "campaignSettingsBanner",
     path: "/",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Banner`,
+      title: `${previous?.title ?? ""} › General`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsBanner.tsx"),
+      import("./components/campaign/settings/CampaignSettingsGeneralPage.tsx"),
   });
 
   campaignSettingsAdventurers = $page({
@@ -397,7 +396,7 @@ export class AppRouter {
       title: `${previous?.title ?? ""} › Zones`,
     }),
     lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsZones.tsx"),
+      import("./components/campaign/settings/CampaignSettingsZonesPage.tsx"),
     loader: async () => {
       const campaign = this.alepha.store.get(currentCampaignAtom);
       if (!campaign) {
@@ -450,16 +449,6 @@ export class AppRouter {
     }),
     lazy: () =>
       import("./components/campaign/settings/CampaignSettingsChaptersPage.tsx"),
-  });
-
-  campaignSettingsData = $page({
-    name: "campaignSettingsData",
-    path: "/data",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Data`,
-    }),
-    lazy: () =>
-      import("./components/campaign/settings/CampaignSettingsDataPage.tsx"),
   });
 
   campaignQuest = $page({
