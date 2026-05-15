@@ -122,11 +122,9 @@ export class CampaignController {
   });
 
   /**
-   * One-shot Home page bootstrap: recent campaigns (capped by
-   * `campaignOptionsAtom.homeRecentLimit`), total count for the user,
-   * and whether they can create more (campaigns they OWN vs.
-   * `maxCampaignsPerUser`). Computed in a single round-trip so the page
-   * doesn't need multiple atoms to render the CTA state correctly.
+   * One-shot Home page bootstrap: every campaign the user is a member of
+   * (no cap — the per-user ownership limit keeps the list bounded), plus
+   * the quota state needed to gate the "Create campaign" CTA.
    */
   getHomeOverview = $action({
     use: [$secure({ permissions: ["campaign:read"] })],
@@ -140,7 +138,7 @@ export class CampaignController {
       }),
     },
     handler: async ({ user }) => {
-      const { maxCampaignsPerUser, homeRecentLimit } =
+      const { maxCampaignsPerUser } =
         this.alepha.store.get(campaignOptionsAtom);
 
       const userCharacters = await this.characters.findMany({
@@ -163,19 +161,15 @@ export class CampaignController {
         };
       }
 
-      const result = await this.campaigns.paginate(
-        {
-          size: homeRecentLimit,
-          sort: "-updatedAt",
-          page: 0,
-        },
-        { where: { id: { inArray: characterCampaignIds } } },
-        { count: true },
-      );
+      const result = await this.campaigns.findMany({
+        where: { id: { inArray: characterCampaignIds } },
+        orderBy: [{ column: "updatedAt", direction: "desc" }],
+        limit: characterCampaignIds.length,
+      });
 
       return {
-        campaigns: result.content,
-        totalCount: result.page.totalElements ?? characterCampaignIds.length,
+        campaigns: result,
+        totalCount: result.length,
         ownedCount,
         maxCampaigns: maxCampaignsPerUser,
         canCreate,

@@ -32,7 +32,6 @@ export class I18n {
         "home.no-campaign": "You don't have any campaigns yet.",
         "home.campaigns": "Your recent campaigns",
         "home.campaigns.showing": "$1 total",
-        "home.campaigns.showing-more": "$1 of $2 — see the rest in the sidebar",
         "home.create-campaign": "New Campaign",
         "home.create-campaign.max": "Limit reached ($1)",
         "home.start-first-campaign": "Start your first campaign",
@@ -577,8 +576,6 @@ export class I18n {
         "home.no-campaign": "Vous n’avez encore lancé aucune campagne.",
         "home.campaigns": "Campagnes",
         "home.campaigns.showing": "$1 au total",
-        "home.campaigns.showing-more":
-          "$1 sur $2 — retrouvez les autres dans la barre latérale",
         "home.create-campaign": "Lancer une nouvelle campagne",
         "home.create-campaign.max": "Limite atteinte ($1)",
         "home.start-first-campaign": "Lancer votre première campagne",
