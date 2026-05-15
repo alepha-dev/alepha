@@ -167,4 +167,119 @@ export class BrowserCryptoProvider {
       ["encrypt", "decrypt"],
     );
   }
+
+  /**
+   * Derive an AES-GCM key from a low-entropy user passphrase using
+   * PBKDF2-SHA-256. Use this in place of {@link deriveAesKey} whenever the
+   * key material is a human-chosen string — a single SHA-256 over a
+   * passphrase is brute-forceable by anyone with the ciphertext.
+   *
+   * OWASP 2023 recommends 600k iterations of PBKDF2-SHA-256 for password
+   * storage; we use the same budget for client-side at-rest content keys.
+   * Each protected blob carries its own random salt so the same passphrase
+   * derives a different key per blob.
+   */
+  public async deriveKeyFromPassphrase(
+    passphrase: string,
+    saltHex: string,
+    iterations = 600_000,
+  ): Promise<CryptoKey> {
+    const baseKey = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(passphrase),
+      { name: "PBKDF2" },
+      false,
+      ["deriveKey"],
+    );
+    return crypto.subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt: this.fromHex(saltHex).buffer as ArrayBuffer,
+        iterations,
+        hash: "SHA-256",
+      },
+      baseKey,
+      { name: BrowserCryptoProvider.AES_ALGORITHM, length: 256 },
+      false,
+      ["encrypt", "decrypt"],
+    );
+  }
+
+  /**
+   * Encrypt `plaintext` with a pre-derived passphrase key, returning a
+   * self-contained envelope (versioned for forward compatibility):
+   *
+   *     { v: 1, salt, iv, ciphertext, kdf }
+   *
+   * `salt` + `kdf` are echoed back so {@link decryptWithPassphrase} can
+   * reproduce the exact derivation. Each call generates a fresh IV — pass
+   * a stable salt across saves of the same protected blob so the
+   * passphrase only has to be derived once per session.
+   */
+  public async encryptWithPassphrase(
+    plaintext: string,
+    key: CryptoKey,
+    saltHex: string,
+    iterations = 600_000,
+  ): Promise<string> {
+    const iv = crypto.getRandomValues(
+      new Uint8Array(BrowserCryptoProvider.AES_IV_LENGTH),
+    );
+    const encrypted = await crypto.subtle.encrypt(
+      {
+        name: BrowserCryptoProvider.AES_ALGORITHM,
+        iv: iv.buffer as ArrayBuffer,
+      },
+      key,
+      new TextEncoder().encode(plaintext),
+    );
+    return JSON.stringify({
+      v: 1,
+      salt: saltHex,
+      iv: this.toHex(iv),
+      ciphertext: this.toHex(new Uint8Array(encrypted)),
+      kdf: { name: "PBKDF2", iterations, hash: "SHA-256" },
+    });
+  }
+
+  /**
+   * Reverse of {@link encryptWithPassphrase}. Throws when the passphrase
+   * is wrong or the envelope is corrupt — both surface as the same
+   * `OperationError` from Web Crypto, which the UI presents as a generic
+   * "wrong passphrase" without revealing which.
+   */
+  public async decryptWithPassphrase(
+    envelope: string,
+    passphrase: string,
+  ): Promise<string> {
+    let parsed: {
+      v?: number;
+      salt?: string;
+      iv?: string;
+      ciphertext?: string;
+      kdf?: { iterations?: number };
+    };
+    try {
+      parsed = JSON.parse(envelope);
+    } catch {
+      throw new AlephaError("Invalid protected folio envelope");
+    }
+    if (!parsed.salt || !parsed.iv || !parsed.ciphertext) {
+      throw new AlephaError("Invalid protected folio envelope");
+    }
+    const key = await this.deriveKeyFromPassphrase(
+      passphrase,
+      parsed.salt,
+      parsed.kdf?.iterations ?? 600_000,
+    );
+    const decrypted = await crypto.subtle.decrypt(
+      {
+        name: BrowserCryptoProvider.AES_ALGORITHM,
+        iv: this.fromHex(parsed.iv).buffer as ArrayBuffer,
+      },
+      key,
+      this.fromHex(parsed.ciphertext).buffer as ArrayBuffer,
+    );
+    return new TextDecoder().decode(decrypted);
+  }
 }

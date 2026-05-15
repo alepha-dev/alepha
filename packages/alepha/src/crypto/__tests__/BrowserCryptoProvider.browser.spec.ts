@@ -159,4 +159,62 @@ describe("BrowserCryptoProvider", () => {
     expect(code).toHaveLength(1);
     expect(code).toMatch(/^\d$/);
   });
+
+  describe("passphrase-based encryption (protected folios)", () => {
+    // Iteration count tuned down for tests — production paths use the
+    // 600k default. Using the default here would push the suite well
+    // past Vitest's per-test timeout in CI.
+    const ITER = 1_000;
+
+    it("round-trips plaintext through encrypt → decrypt", async () => {
+      const crypto = new BrowserCryptoProvider();
+      const salt = await crypto.hash("salt-seed");
+      const key = await crypto.deriveKeyFromPassphrase(
+        "correct horse battery staple",
+        salt,
+        ITER,
+      );
+      const envelope = await crypto.encryptWithPassphrase(
+        "the secret is in the duck pond",
+        key,
+        salt,
+        ITER,
+      );
+      const out = await crypto.decryptWithPassphrase(
+        envelope,
+        "correct horse battery staple",
+      );
+      expect(out).toBe("the secret is in the duck pond");
+    });
+
+    it("rejects the wrong passphrase with OperationError-shaped failure", async () => {
+      const crypto = new BrowserCryptoProvider();
+      const salt = await crypto.hash("salt-seed");
+      const key = await crypto.deriveKeyFromPassphrase("right one", salt, ITER);
+      const envelope = await crypto.encryptWithPassphrase(
+        "loot stash coordinates: 42N, 7E",
+        key,
+        salt,
+        ITER,
+      );
+      // Web Crypto throws DOMException("OperationError") on auth-tag
+      // mismatch. We don't pin the exact class — just that it rejects.
+      await expect(
+        crypto.decryptWithPassphrase(envelope, "wrong one"),
+      ).rejects.toThrow();
+    });
+
+    it("emits a fresh IV on every encrypt with the same key", async () => {
+      const crypto = new BrowserCryptoProvider();
+      const salt = await crypto.hash("salt-seed");
+      const key = await crypto.deriveKeyFromPassphrase("pw", salt, ITER);
+      const a = JSON.parse(
+        await crypto.encryptWithPassphrase("same content", key, salt, ITER),
+      ) as { iv: string };
+      const b = JSON.parse(
+        await crypto.encryptWithPassphrase("same content", key, salt, ITER),
+      ) as { iv: string };
+      expect(a.iv).not.toBe(b.iv);
+    });
+  });
 });

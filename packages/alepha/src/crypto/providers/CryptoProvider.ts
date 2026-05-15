@@ -175,4 +175,103 @@ export class CryptoProvider {
       .digest()
       .subarray(0, CryptoProvider.AES_KEY_LENGTH);
   }
+
+  /**
+   * Web Crypto API parity with `BrowserCryptoProvider`. Node 18+ exposes
+   * `globalThis.crypto.subtle`, so the implementations are the same on
+   * both runtimes. Server-side use is unusual — passphrase-derived keys
+   * are a browser-only flow in Alepha — but these stubs exist so the
+   * type surface matches and shared call sites compile.
+   */
+  public async deriveKeyFromPassphrase(
+    passphrase: string,
+    saltHex: string,
+    iterations = 600_000,
+  ): Promise<CryptoKey> {
+    const subtle = (globalThis as { crypto: { subtle: SubtleCrypto } }).crypto
+      .subtle;
+    const baseKey = await subtle.importKey(
+      "raw",
+      new TextEncoder().encode(passphrase),
+      { name: "PBKDF2" },
+      false,
+      ["deriveKey"],
+    );
+    return subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt: hexToBytes(saltHex).buffer as ArrayBuffer,
+        iterations,
+        hash: "SHA-256",
+      },
+      baseKey,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"],
+    );
+  }
+
+  public async encryptWithPassphrase(
+    plaintext: string,
+    key: CryptoKey,
+    saltHex: string,
+    iterations = 600_000,
+  ): Promise<string> {
+    const subtle = (globalThis as { crypto: { subtle: SubtleCrypto } }).crypto
+      .subtle;
+    const iv = randomBytes(CryptoProvider.AES_IV_LENGTH);
+    const encrypted = await subtle.encrypt(
+      { name: "AES-GCM", iv: iv.buffer as ArrayBuffer },
+      key,
+      new TextEncoder().encode(plaintext),
+    );
+    return JSON.stringify({
+      v: 1,
+      salt: saltHex,
+      iv: iv.toString("hex"),
+      ciphertext: Buffer.from(encrypted).toString("hex"),
+      kdf: { name: "PBKDF2", iterations, hash: "SHA-256" },
+    });
+  }
+
+  public async decryptWithPassphrase(
+    envelope: string,
+    passphrase: string,
+  ): Promise<string> {
+    const subtle = (globalThis as { crypto: { subtle: SubtleCrypto } }).crypto
+      .subtle;
+    let parsed: {
+      salt?: string;
+      iv?: string;
+      ciphertext?: string;
+      kdf?: { iterations?: number };
+    };
+    try {
+      parsed = JSON.parse(envelope);
+    } catch {
+      throw new AlephaError("Invalid protected envelope");
+    }
+    if (!parsed.salt || !parsed.iv || !parsed.ciphertext) {
+      throw new AlephaError("Invalid protected envelope");
+    }
+    const key = await this.deriveKeyFromPassphrase(
+      passphrase,
+      parsed.salt,
+      parsed.kdf?.iterations ?? 600_000,
+    );
+    const decrypted = await subtle.decrypt(
+      { name: "AES-GCM", iv: hexToBytes(parsed.iv).buffer as ArrayBuffer },
+      key,
+      hexToBytes(parsed.ciphertext).buffer as ArrayBuffer,
+    );
+    return new TextDecoder().decode(decrypted);
+  }
 }
+
+const hexToBytes = (hex: string): Uint8Array => {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    out[i / 2] = Number.parseInt(hex.substring(i, i + 2), 16);
+  }
+  return out;
+};

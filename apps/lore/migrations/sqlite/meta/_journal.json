@@ -71,6 +71,13 @@
       "when": 1778880468823,
       "tag": "0009_busy_gorilla_man",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1778882180530,
+      "tag": "0010_aspiring_jigsaw",
+      "breakpoints": true
     }
   ]
 }

@@ -21,6 +21,7 @@ import { folioTagsAtom } from "../../atoms/folioTagsAtom.ts";
 import { userFoliosAtom } from "../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import FolioBacklinksPanel from "./FolioBacklinksPanel.tsx";
+import FolioProtectedView from "./FolioProtectedView.tsx";
 
 const FolioView = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -154,7 +155,9 @@ const FolioView = () => {
       </div>
 
       <div className="mt-4">
-        {folio.content ? (
+        {folio.protected ? (
+          <FolioProtectedView folio={folio} />
+        ) : folio.content ? (
           <MarkdownView content={folio.content} />
         ) : (
           <p className="text-muted-foreground text-sm italic">
