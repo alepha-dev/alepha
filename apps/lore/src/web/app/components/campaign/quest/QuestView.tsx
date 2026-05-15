@@ -8,8 +8,10 @@ import {
   Circle,
   FileText,
   History,
+  ListChecks,
   Paperclip,
   PiggyBank,
+  Settings as SettingsIcon,
   Signature,
   Swords,
   Tag,
@@ -29,10 +31,11 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 import AttachmentBadge from "./AttachmentBadge.tsx";
 import QuestDescription from "./QuestDescription.tsx";
 import QuestHistory from "./QuestHistory.tsx";
+import QuestViewCollapsibleBlock from "./QuestViewCollapsibleBlock.tsx";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
 import QuestViewEditButton from "./QuestViewEditButton.tsx";
-import QuestViewNoteButton from "./QuestViewNoteButton.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
+import QuestViewSettings from "./QuestViewSettings.tsx";
 import QuestViewTimer from "./QuestViewTimer.tsx";
 
 export interface QuestViewProps {
@@ -139,13 +142,8 @@ const QuestView = (props: QuestViewProps) => {
                     showDialog={showDialog}
                     setShowDialog={setShowDialog}
                   />
-                  <QuestViewNoteButton
-                    quest={quest}
-                    onUpdate={(it) => {
-                      updateQuest(it);
-                      alepha.store.set(currentQuestAtom, it);
-                    }}
-                  />
+                  {/* Note + Reminder moved into the Settings block at
+                      the bottom of the view (Lore quest #42). */}
                   <QuestViewDuplicateButton quest={quest} />
                 </>
               )}
@@ -209,16 +207,24 @@ const QuestView = (props: QuestViewProps) => {
             />
           </div>
 
-          {/* Objectives */}
-          <QuestViewObjectives
-            quest={quest}
-            onQuestUpdate={(updatedQuest) => {
-              updateQuest(updatedQuest);
-              alepha.store.set(currentQuestAtom, updatedQuest);
-            }}
-          />
+          {/* Objectives (collapsible, default expanded) */}
+          {quest.objectives.length > 0 && (
+            <QuestViewCollapsibleBlock
+              icon={<ListChecks className="size-5" />}
+              label={String(tr("quest.view.objectives"))}
+              defaultOpen
+            >
+              <QuestViewObjectives
+                quest={quest}
+                onQuestUpdate={(updatedQuest) => {
+                  updateQuest(updatedQuest);
+                  alepha.store.set(currentQuestAtom, updatedQuest);
+                }}
+              />
+            </QuestViewCollapsibleBlock>
+          )}
 
-          {/* Attachments */}
+          {/* Attachments — kept non-collapsible; only shown when present */}
           {quest.attachments && quest.attachments.length > 0 && (
             <div className="flex flex-col gap-2">
               <SectionHeader
@@ -233,12 +239,12 @@ const QuestView = (props: QuestViewProps) => {
             </div>
           )}
 
-          {/* Rewards */}
-          <div className="flex flex-col gap-2">
-            <SectionHeader
-              icon={<PiggyBank className="size-5" />}
-              label={String(tr("quest.view.rewards"))}
-            />
+          {/* Rewards (collapsible, default expanded) */}
+          <QuestViewCollapsibleBlock
+            icon={<PiggyBank className="size-5" />}
+            label={String(tr("quest.view.rewards"))}
+            defaultOpen
+          >
             <div className="flex items-center gap-2">
               <span className="text-sm">{tr("quest.view.receive")}</span>
               <div className="flex items-center gap-2">
@@ -266,16 +272,32 @@ const QuestView = (props: QuestViewProps) => {
                 {info.getXpFromQuest(quest)} XP
               </span>
             </div>
-          </div>
+          </QuestViewCollapsibleBlock>
 
-          {/* History */}
-          <div className="flex flex-col gap-2">
-            <SectionHeader
-              icon={<History className="size-5" />}
-              label={String(tr("quest.view.history"))}
-            />
+          {/* History (collapsible, default collapsed) */}
+          <QuestViewCollapsibleBlock
+            icon={<History className="size-5" />}
+            label={String(tr("quest.view.history"))}
+          >
             <QuestHistory quest={quest} />
-          </div>
+          </QuestViewCollapsibleBlock>
+
+          {/* Settings — Note + Reminder live here (Lore #42).
+              Default collapsed; user opts in to configure. */}
+          {!quest.completedAt && (
+            <QuestViewCollapsibleBlock
+              icon={<SettingsIcon className="size-5" />}
+              label={String(tr("quest.view.settings"))}
+            >
+              <QuestViewSettings
+                quest={quest}
+                onUpdate={(it) => {
+                  updateQuest(it);
+                  alepha.store.set(currentQuestAtom, it);
+                }}
+              />
+            </QuestViewCollapsibleBlock>
+          )}
         </div>
 
         {!quest.completedAt && (

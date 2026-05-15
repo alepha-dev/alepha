@@ -241,7 +241,7 @@ const CampaignView = () => {
               </div>
             </div>
           ) : fullWidth ? (
-            <div className="flex w-full flex-1 flex-col">
+            <div className="flex min-h-0 w-full flex-1 flex-col">
               <NestedView />
             </div>
           ) : (

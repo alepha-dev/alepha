@@ -8,7 +8,12 @@
       "type": "registry:ui",
       "title": "Markdown view",
       "description": "Render markdown content with GitHub-flavored extensions and an opinionated, prose-friendly default styling.",
-      "dependencies": ["react-markdown", "remark-gfm"],
+      "dependencies": [
+        "highlight.js",
+        "react-markdown",
+        "rehype-highlight",
+        "remark-gfm"
+      ],
       "registryDependencies": [],
       "files": [
         {

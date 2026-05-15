@@ -379,6 +379,17 @@ export class I18n {
         "quest.view.notes.title": "Quest Notes",
         "quest.view.notes.placeholder": "Add your notes here...",
         "quest.view.notes.save": "Save",
+        "quest.view.settings": "Settings",
+        "quest.view.reminder.title": "Reminder",
+        "quest.view.reminder.off": "Off",
+        "quest.view.reminder.hourly": "Hourly",
+        "quest.view.reminder.daily": "Daily",
+        "quest.view.reminder.weekly": "Weekly",
+        "quest.view.reminder.none":
+          "No reminder configured. You won't receive email nudges.",
+        "quest.view.reminder.next": "Next email $1.",
+        "quest.view.reminder.unavailable":
+          "Accept the quest first — reminders go to the assignee.",
         "quest.view.duplicate": "Duplicate",
         "quest.view.duplicate.title": "Duplicate Quest",
         "quest.view.duplicate.suffix": "(Copy)",
@@ -397,6 +408,7 @@ export class I18n {
         "quest.group.quests.one": "1 quest",
         "quest-log.collapse-all": "Collapse all",
         "quest-log.expand-all": "Expand all",
+        "quest-log.refresh": "Refresh",
 
         "zone.rename.title": "Rename Zone",
         "zone.rename.name": "Zone Name",
@@ -428,6 +440,8 @@ export class I18n {
         "xp.bar.title": "Experience Bar",
         "xp.bar.description":
           "Shows your current experience progress towards the next level.",
+        "xp.levelUp.title": "Level Up!",
+        "xp.levelUp.subtitle": "Level $1",
 
         "common.cancel": "Cancel",
         "common.error": "Error",
@@ -900,6 +914,17 @@ export class I18n {
         "quest.view.notes.title": "Notes de quête",
         "quest.view.notes.placeholder": "Ajoutez vos notes ici...",
         "quest.view.notes.save": "Enregistrer",
+        "quest.view.settings": "Paramètres",
+        "quest.view.reminder.title": "Rappel",
+        "quest.view.reminder.off": "Désactivé",
+        "quest.view.reminder.hourly": "Toutes les heures",
+        "quest.view.reminder.daily": "Quotidien",
+        "quest.view.reminder.weekly": "Hebdomadaire",
+        "quest.view.reminder.none":
+          "Aucun rappel configuré. Aucun e-mail ne vous sera envoyé.",
+        "quest.view.reminder.next": "Prochain e-mail $1.",
+        "quest.view.reminder.unavailable":
+          "Acceptez d'abord la quête — les rappels sont envoyés à la personne assignée.",
         "quest.view.duplicate": "Dupliquer",
         "quest.view.duplicate.title": "Dupliquer la quête",
         "quest.view.duplicate.suffix": "(Copie)",
@@ -919,6 +944,7 @@ export class I18n {
         "quest.group.quests.one": "1 quête",
         "quest-log.collapse-all": "Tout réduire",
         "quest-log.expand-all": "Tout déplier",
+        "quest-log.refresh": "Actualiser",
 
         "zone.rename.title": "Renommer la zone",
         "zone.rename.name": "Nom de la zone",
@@ -950,6 +976,8 @@ export class I18n {
         "xp.bar.title": "Barre d'expérience",
         "xp.bar.description":
           "Affiche votre progression actuelle vers le prochain niveau.",
+        "xp.levelUp.title": "Niveau supérieur !",
+        "xp.levelUp.subtitle": "Niveau $1",
 
         "common.cancel": "Annuler",
         "common.error": "Erreur",

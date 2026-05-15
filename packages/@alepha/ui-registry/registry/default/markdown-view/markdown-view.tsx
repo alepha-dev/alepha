@@ -1,4 +1,6 @@
+import "highlight.js/styles/github-dark.css";
 import ReactMarkdown from "react-markdown";
+import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
 export interface MarkdownViewProps {
@@ -10,6 +12,9 @@ export const MarkdownView = (props: MarkdownViewProps) => {
     <div className="max-w-none text-sm leading-relaxed">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        rehypePlugins={[
+          [rehypeHighlight, { detect: true, ignoreMissing: true }],
+        ]}
         components={{
           h1: ({ children }) => (
             <h1 className="mt-6 mb-3 text-2xl font-semibold tracking-tight">
@@ -52,7 +57,7 @@ export const MarkdownView = (props: MarkdownViewProps) => {
             );
           },
           pre: ({ children }) => (
-            <pre className="bg-muted my-4 overflow-auto rounded-md p-3 text-xs">
+            <pre className="my-4 overflow-auto rounded-md bg-zinc-900 p-3 text-xs text-zinc-100">
               {children}
             </pre>
           ),

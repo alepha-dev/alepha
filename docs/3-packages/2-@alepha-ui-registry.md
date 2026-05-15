@@ -774,7 +774,7 @@ yarn shadcn add @alepha/markdown-view
 |------|------|----------|-------------|
 | `content` | `string` | Yes |  |
 
-**Dependencies:** `react-markdown`, `remark-gfm`
+**Dependencies:** `highlight.js`, `react-markdown`, `rehype-highlight`, `remark-gfm`
 
 #### `@alepha/saas` — Alepha SaaS preset
 

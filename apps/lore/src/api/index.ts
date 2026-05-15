@@ -15,6 +15,8 @@ import { SessionController } from "./controllers/SessionController.ts";
 import { UserController } from "./controllers/UserController.ts";
 import { ChapterJobs } from "./jobs/ChapterJobs.ts";
 import { InvitationJobs } from "./jobs/InvitationJobs.ts";
+import { QuestJobs } from "./jobs/QuestJobs.ts";
+import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { CharacterInfo } from "./services/CharacterInfo.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
@@ -35,6 +37,8 @@ export const LoreApi = $module({
     InvitationService,
     InvitationJobs,
     ChapterJobs,
+    QuestJobs,
+    QuestNotifications,
     PetitionRateLimiter,
     QuestCsvParser,
     QuestCsvFormatter,

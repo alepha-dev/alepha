@@ -18,11 +18,13 @@ const QuestDifficulty = (props: QuestDifficultyProps) => {
           ? "border-border shadow-sm"
           : "border-border";
 
-  const bgClass = difficulty === 1 ? "bg-card" : "bg-muted";
-
+  // `bg-background` is the deepest surface layer in the shadcn token system —
+  // distinct from `bg-card` (used by inactive QuestItem rows), `bg-accent`
+  // (used by hover/active rows), and `bg-muted` (table cells, badges).
+  // Keeps the rank box visually lifted in every container.
   return (
     <div
-      className={`flex size-[25px] items-center justify-center rounded-md border ${ringClass} ${bgClass}`}
+      className={`flex size-[25px] items-center justify-center rounded-md border bg-background ${ringClass}`}
     >
       <span className="text-sm font-bold leading-none">
         {info.getRank(difficulty)}

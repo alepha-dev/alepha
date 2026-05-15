@@ -20,11 +20,11 @@ const QuestViewObjectives = (props: QuestViewObjectivesProps) => {
     currentAssignedQuestsAtom,
   );
 
-  const handleObjectiveToggle = async (index: number) => {
+  const handleObjectiveToggle = async (objectiveId: number) => {
     try {
       const updatedQuest = await questApi.completeObjective({
         params: { id: quest.id },
-        body: { index },
+        body: { objectiveId },
       });
       onQuestUpdate?.(updatedQuest);
       setCurrentAssignedQuests(
@@ -52,12 +52,21 @@ const QuestViewObjectives = (props: QuestViewObjectivesProps) => {
       </div>
 
       <div className="flex flex-col gap-2 px-3 py-2">
-        {quest.objectives.map((objective, index) => (
-          <label key={index} className="flex cursor-pointer items-center gap-2">
+        {quest.objectives.map((objective) => (
+          // `objective.id` is always defined post-mapper (legacy rows are
+          // backfilled with id = index server-side; new objectives get a
+          // real id at create time). Falling back to title only as a
+          // belt-and-braces key.
+          <label
+            key={objective.id ?? objective.title}
+            className="flex cursor-pointer items-center gap-2"
+          >
             <Checkbox
               checked={objective.completed}
-              onCheckedChange={() => handleObjectiveToggle(index)}
-              disabled={disabled}
+              onCheckedChange={() =>
+                objective.id != null && handleObjectiveToggle(objective.id)
+              }
+              disabled={disabled || objective.id == null}
             />
             <span
               className={

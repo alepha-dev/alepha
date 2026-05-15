@@ -6,23 +6,30 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
-import { useStore } from "alepha/react";
+import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   BookOpen,
   ChevronsDownUp,
   ChevronsUpDown,
+  RotateCw,
   Search,
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import type { CampaignController } from "@/api/controllers/CampaignController.ts";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
+import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import QuestList from "./quest/QuestList.tsx";
 
 const QuestLog = () => {
+  const alepha = useAlepha();
+  const campaignApi = useClient<CampaignController>();
+  const [campaign] = useStore(currentCampaignAtom);
   const [quests = []] = useStore(currentAssignedQuestsAtom);
   const { tr } = useI18n<I18n, "en">();
+  const [refreshing, setRefreshing] = useState(false);
   const [searchValue, setSearchValue] = useState<string>("");
   // Global collapse directive — bumped on click. QuestGroup listens to
   // `collapseSignal.version` and snaps its local state to `collapsed`.
@@ -48,6 +55,19 @@ const QuestLog = () => {
     setSearchValue("");
   };
 
+  const handleRefresh = async () => {
+    if (!campaign || refreshing) return;
+    setRefreshing(true);
+    try {
+      const { quests: fresh } = await campaignApi.getCampaignById({
+        params: { id: campaign.id },
+      });
+      alepha.store.set(currentAssignedQuestsAtom, fresh);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const toggleAll = () => {
     setCollapseSignal((s) => ({
       collapsed: !s.collapsed,
@@ -57,18 +77,33 @@ const QuestLog = () => {
 
   return (
     <Card className="relative flex h-full w-full flex-1 flex-col gap-2 rounded-md p-0 shadow">
-      <div className="flex gap-2 p-2">
-        <div className="hidden items-center justify-center px-2 xl:flex">
-          <BookOpen className="size-6" />
-        </div>
-        <Card className="bg-muted flex flex-1 flex-row items-center rounded-md p-0 px-2 shadow">
-          <div className="flex items-center justify-center gap-2 px-1">
-            <span className="text-xs">{tr("quest-log.quests")}</span>
-            <Card className="rounded-md px-1.5 py-0">
-              <span className="text-xs">{filteredQuests.length}/25</span>
-            </Card>
-          </div>
-          <div className="flex-1" />
+      {/* Top bar: full-width, no nested card. Title + count on the left,
+          action buttons clustered tight on the right. */}
+      <div className="flex items-center gap-2 px-3 pt-3">
+        <BookOpen className="text-muted-foreground size-4 shrink-0" />
+        <span className="text-xs font-medium">{tr("quest-log.quests")}</span>
+        <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[11px] font-mono">
+          {filteredQuests.length}/25
+        </span>
+        <div className="ml-auto flex items-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                onClick={handleRefresh}
+                disabled={refreshing || !campaign}
+                aria-label={String(tr("quest-log.refresh" as never))}
+              >
+                <RotateCw
+                  className={`size-3.5 ${refreshing ? "animate-spin" : ""}`}
+                />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{tr("quest-log.refresh" as never)}</TooltipContent>
+          </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -96,7 +131,7 @@ const QuestLog = () => {
                 : tr("quest-log.collapse-all" as never)}
             </TooltipContent>
           </Tooltip>
-        </Card>
+        </div>
       </div>
       <div className="flex px-2">
         <div className="relative flex-1">

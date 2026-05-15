@@ -262,7 +262,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const hasRowActions = Boolean(props.rowActions);
 
   return (
-    <div className={cn("flex flex-col gap-3", props.className)}>
+    <div className={cn("flex flex-col gap-2", props.className)}>
       {props.header && <div>{props.header}</div>}
 
       {hasCheckbox && selection.size > 0 && (
