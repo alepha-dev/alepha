@@ -1,0 +1,36 @@
+import { t } from "alepha";
+import { $notification } from "alepha/api/notifications";
+
+/**
+ * Email templates for the Quest module. Currently just the per-quest
+ * reminder (see Lore quest #42). Frequency and trigger time live on the
+ * quest row itself; this class only defines the rendering.
+ */
+export class QuestNotifications {
+  public readonly questReminder = $notification({
+    category: "tasks",
+    description:
+      "Periodic reminder email sent to the assignee of an accepted quest while it remains open. Configured per-quest by the assignee via the Quest Settings panel.",
+    email: {
+      subject: "Quest reminder",
+      body: (it) => `
+        <h1>${it.campaignTitle} — Quest reminder</h1>
+        <p>Hi ${it.recipientName},</p>
+        <p>You accepted the quest <strong>${it.questTitle}</strong> (#${it.shortId}) and haven't completed it yet. Just a nudge while it's still open.</p>
+        <p>
+          <a href="${it.questUrl}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
+            Open quest
+          </a>
+        </p>
+        <p>You can change the reminder cadence or turn it off from the quest's Settings panel.</p>
+      `,
+    },
+    schema: t.object({
+      recipientName: t.string(),
+      campaignTitle: t.string(),
+      questTitle: t.string(),
+      shortId: t.integer(),
+      questUrl: t.string(),
+    }),
+  });
+}

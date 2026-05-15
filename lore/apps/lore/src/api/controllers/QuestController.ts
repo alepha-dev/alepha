@@ -108,6 +108,39 @@ export class QuestController {
     return this.questMapper.mapQuestToResource(quest);
   }
 
+  /**
+   * Backfill / generate stable `id` for each objective in the array.
+   * - Legacy objectives (`id == null` across the board): assign by current
+   *   index — deterministic, matches what the mapper synthesizes on read so
+   *   history entries keyed by that id stay valid.
+   * - Mixed sets (some have ids, new ones don't): preserve existing ids,
+   *   assign `max(existing) + 1, +2, ...` to the ones missing one.
+   *
+   * Persisted on every write that touches `objectives` so the next read
+   * sees real ids and the synthesis becomes a no-op.
+   */
+  protected ensureObjectiveIds(
+    objectives: Quest["objectives"],
+  ): Quest["objectives"] {
+    const used = new Set<number>();
+    for (const o of objectives) if (o.id != null) used.add(o.id);
+    // For a fully legacy set we want id === index so backfilled history
+    // entries stay coherent with the mapper's synthesis path.
+    const legacy = used.size === 0;
+    let nextFreeId = used.size > 0 ? Math.max(...used) + 1 : 0;
+    return objectives.map((obj, index) => {
+      if (obj.id != null) return obj;
+      if (legacy) {
+        used.add(index);
+        return { ...obj, id: index };
+      }
+      while (used.has(nextFreeId)) nextFreeId++;
+      const id = nextFreeId++;
+      used.add(id);
+      return { ...obj, id };
+    });
+  }
+
   createQuest = $action({
     use: [$secure({ permissions: ["quest:create"] }), $transactional()],
     schema: {
@@ -161,6 +194,7 @@ export class QuestController {
         ...body,
         shortId,
         attachments: body.attachments ?? [],
+        objectives: this.ensureObjectiveIds(body.objectives ?? []),
         createdBy: user.id,
         history: [],
       });
@@ -344,6 +378,10 @@ export class QuestController {
       quest.acceptedAt = undefined;
       quest.acceptedBy = undefined;
       quest.kanbanColumn = undefined;
+      // Reminders are tied to the assignee — clear when the quest is
+      // abandoned so the sweep doesn't keep emailing an absent owner.
+      quest.reminderIntervalMs = undefined;
+      quest.reminderNextAt = undefined;
       quest.history.push({
         at: this.dt.nowISOString(),
         by: user.id,
@@ -428,6 +466,56 @@ export class QuestController {
     },
   });
 
+  /**
+   * Configure (or clear) the periodic reminder for an accepted quest.
+   * Only the assignee can set their own reminder — it's a per-user
+   * nudge, not a campaign-wide notification. `intervalMs: null` clears
+   * any existing reminder; passing a number schedules the next send
+   * at `now + intervalMs` and the `QuestJobs` sweep advances from
+   * there.
+   */
+  setQuestReminder = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      body: t.object({
+        intervalMs: t.nullable(t.integer({ minimum: 60_000 })),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
+      });
+
+      await this.security.checkOwnership(quest.campaignId, user);
+
+      if (quest.acceptedBy !== user.id) {
+        throw new ForbiddenError(
+          "Only the quest's assignee can set its reminder",
+        );
+      }
+
+      if (body.intervalMs == null) {
+        quest.reminderIntervalMs = undefined;
+        quest.reminderNextAt = undefined;
+      } else {
+        quest.reminderIntervalMs = body.intervalMs;
+        quest.reminderNextAt = new Date(
+          this.dt.nowMillis() + body.intervalMs,
+        ).toISOString();
+      }
+      await this.quests.save(quest);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
   completeQuest = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
@@ -476,6 +564,9 @@ export class QuestController {
       quest.completedAt = this.dt.nowISOString();
       quest.completedBy = user.id;
       quest.kanbanColumn = undefined;
+      // Reminders auto-stop when the quest is done (see Lore #42).
+      quest.reminderIntervalMs = undefined;
+      quest.reminderNextAt = undefined;
 
       await Promise.all([
         this.characters.save(character),
@@ -600,7 +691,12 @@ export class QuestController {
         id: t.integer(),
       }),
       body: t.object({
-        index: t.integer(),
+        /**
+         * Per-quest objective id (see `ensureObjectiveIds`). The UI gets
+         * these ids back from `mapQuestToResource` — legacy quests are
+         * lazily normalized so this value is always defined client-side.
+         */
+        objectiveId: t.integer({ minimum: 0 }),
       }),
       response: questResourceSchema,
     },
@@ -615,26 +711,41 @@ export class QuestController {
 
       await this.security.checkOwnership(quest.campaignId, user);
 
-      if (body.index < 0 || body.index >= quest.objectives.length) {
-        throw new BadRequestError("Invalid objective index");
+      // Backfill ids for legacy rows before the lookup — preserves the
+      // controller's invariant that anything we read out of `objectives`
+      // also goes back in with stable ids on the write below.
+      const objectives = this.ensureObjectiveIds(quest.objectives);
+      const target = objectives.find((o) => o.id === body.objectiveId);
+      if (!target) {
+        throw new BadRequestError("Objective not found");
       }
+      target.completed = !target.completed;
 
-      // Mark the specific objective as completed
-      quest.objectives[body.index].completed =
-        !quest.objectives[body.index].completed;
+      // Manage history: tick → append; untick → drop the matching entry
+      // (this is the fix for quest #23 "History Spam"). For untick we
+      // remove all matching rows, not just the most recent one, in case a
+      // legacy state somehow accumulated duplicates.
+      const history = target.completed
+        ? [
+            ...quest.history,
+            {
+              at: this.dt.nowISOString(),
+              by: user.id,
+              action: "objective_completed" as const,
+              objectiveId: target.id,
+            },
+          ]
+        : quest.history.filter(
+            (h) =>
+              !(
+                h.action === "objective_completed" &&
+                h.objectiveId === target.id
+              ),
+          );
 
       const updated = await this.quests.updateById(params.id, {
-        objectives: quest.objectives,
-        history: quest.objectives[body.index].completed
-          ? [
-              ...quest.history,
-              {
-                at: this.dt.nowISOString(),
-                by: user.id,
-                action: "objective_completed",
-              },
-            ]
-          : quest.history,
+        objectives,
+        history,
       });
 
       return this.mapQuestToResource(updated);
@@ -677,7 +788,7 @@ export class QuestController {
       }
 
       const updated = await this.quests.updateById(params.id, {
-        objectives: body.objectives,
+        objectives: this.ensureObjectiveIds(body.objectives),
         history: [
           ...quest.history,
           {

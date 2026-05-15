@@ -6,9 +6,16 @@ import type { QuestResource } from "../schemas/questResourceSchema.ts";
  */
 export class QuestResourceMapper {
   mapQuestToResource(quest: Quest): QuestResource {
-    const completedObjectives = quest.objectives.filter(
-      (o) => o.completed,
-    ).length;
+    // Synthesize objective IDs for legacy rows so clients always see one.
+    // Backfill uses the current array position — deterministic for legacy
+    // data (pre-dates ID writes), so consecutive reads return stable IDs.
+    // The next write persists these IDs, after which the synthesis is a
+    // no-op.
+    const objectives = quest.objectives.map((obj, index) =>
+      obj.id != null ? obj : { ...obj, id: index },
+    );
+
+    const completedObjectives = objectives.filter((o) => o.completed).length;
 
     let totalTimeSpent = 0;
     for (const session of quest.timerSessions) {
@@ -23,6 +30,7 @@ export class QuestResourceMapper {
 
     return {
       ...quest,
+      objectives,
       metadata: {
         status: quest.completedAt
           ? "completed"
@@ -31,7 +39,7 @@ export class QuestResourceMapper {
             : "new",
         objectivesProgress: {
           completed: completedObjectives,
-          total: quest.objectives.length,
+          total: objectives.length,
         },
         totalTimeSpent,
       },

@@ -36,6 +36,13 @@ export const quests = $entity({
     objectives: db.default(
       t.array(
         t.object({
+          /**
+           * Per-quest integer identifier, stable across reorders / edits.
+           * Optional because legacy rows pre-date this field — the controller
+           * lazily backfills (id = index) on first write that touches the
+           * objectives array. New objectives get `max(existing) + 1`.
+           */
+          id: t.optional(t.integer({ minimum: 0 })),
           title: t.string(),
           completed: t.boolean(),
         }),
@@ -74,11 +81,36 @@ export const quests = $entity({
           "assigned",
           "unassigned",
           "objective_completed",
+          "reminder_sent",
         ]),
+        /**
+         * For `objective_completed` entries — the id of the toggled
+         * objective. Optional for legacy history rows that pre-date
+         * this field. When set, unchecking the matching objective
+         * removes this exact row instead of appending a noisy "still
+         * unchecked" event (see quest #23 — "History Spam").
+         */
+        objectiveId: t.optional(t.integer({ minimum: 0 })),
       }),
       { default: [] },
     ),
     note: db.default(t.string({ size: "rich" }), ""),
+    /**
+     * Opt-in periodic reminder for the quest's assignee
+     * (`acceptedBy`). Interval is milliseconds between sends — the UI
+     * surfaces presets (daily / weekly / custom). `undefined` means no
+     * reminders are configured. Cleared on quest completion or
+     * abandonment.
+     */
+    reminderIntervalMs: t.optional(t.integer({ minimum: 60_000 })),
+    /**
+     * Timestamp at which the next reminder email should fire. Maintained
+     * by `setQuestReminder` (set to now + interval on enable) and the
+     * `QuestJobs` reminder sweep (advanced by interval after each send).
+     * `undefined` when no reminder is configured or when the quest is
+     * completed/abandoned.
+     */
+    reminderNextAt: t.optional(t.datetime()),
     timerSessions: db.default(
       t.array(
         t.object({

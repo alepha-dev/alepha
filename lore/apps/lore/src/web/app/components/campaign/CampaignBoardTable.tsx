@@ -96,7 +96,7 @@ const CampaignBoardTable = () => {
   }));
 
   return (
-    <div className="flex flex-1 flex-col gap-3 overflow-auto">
+    <div className="flex flex-1 flex-col gap-2 overflow-auto">
       <form
         {...filters.props}
         className="flex flex-wrap items-end gap-2 rounded-md border bg-card p-2"

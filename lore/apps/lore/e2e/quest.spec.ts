@@ -79,4 +79,85 @@ test.describe("Quest", () => {
       expect(page.url()).toContain(`/c/${campaignId}`);
     });
   });
+
+  /**
+   * Reminder configuration UI (Lore quest #42). Drives the Quest Settings
+   * accordion block: enable a preset cadence, verify the active state +
+   * "next email" status, then disable. The reminder send itself runs on a
+   * 5-minute cron — that's covered by unit tests in `quest-reminder.spec.ts`;
+   * this test focuses on the UI contract.
+   */
+  test("configure + disable a reminder from Quest Settings", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `reminder${t}@example.com`;
+    const password = "ReminderTest123!";
+    const campaignTitle = `RC${t}`.slice(0, 20);
+    const questTitle = `Reminder${t}`;
+
+    await registerAndVerify(page, email, password);
+    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+
+    const { shortId } = await apiPost<{
+      id: number;
+      shortId: number;
+    }>(page, "createQuest", {
+      campaignId,
+      title: questTitle,
+      description: "Seeded quest for reminder e2e",
+      zone: "Main",
+      priority: "low",
+      difficulty: 2,
+      objectives: [],
+      attachments: [],
+    });
+
+    await page.goto(`/c/${campaignId}/q/${shortId}`);
+    await page.waitForLoadState("networkidle");
+
+    await test.step("accept quest (reminder is gated on accepted state)", async () => {
+      const accept = page.getByRole("button", {
+        name: /sign and accept|accept.*quest/i,
+      });
+      await expect(accept).toBeVisible({ timeout: 10_000 });
+      await accept.click();
+      await expect(
+        page.getByRole("button", { name: /complete.*quest/i }),
+      ).toBeVisible({ timeout: 10_000 });
+    });
+
+    await test.step("expand the Settings block", async () => {
+      // Settings is the only collapsible block that defaults to closed.
+      // Target via data-testid — the sidebar also has a "Settings" link
+      // and accessible-name matching is ambiguous.
+      await page.getByTestId("quest-collapsible-settings").click();
+      await expect(page.getByRole("button", { name: /^hourly$/i })).toBeVisible(
+        { timeout: 5_000 },
+      );
+    });
+
+    await test.step("enable Hourly cadence", async () => {
+      await page.getByRole("button", { name: /^hourly$/i }).click();
+      // After the round-trip, the "Next email" status replaces the "no
+      // reminder configured" line. We don't pin the exact phrasing — i18n
+      // formats the relative time via dayjs — just confirm we left the
+      // "no reminder" state.
+      await expect(page.getByText(/no reminder configured/i)).toHaveCount(0, {
+        timeout: 10_000,
+      });
+      await expect(page.getByText(/next email/i)).toBeVisible({
+        timeout: 5_000,
+      });
+    });
+
+    await test.step("disable via Off preset clears the status", async () => {
+      await page.getByRole("button", { name: /^off$/i }).click();
+      await expect(page.getByText(/no reminder configured/i)).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+  });
 });
