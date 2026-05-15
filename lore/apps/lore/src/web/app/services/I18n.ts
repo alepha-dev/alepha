@@ -103,6 +103,8 @@ export class I18n {
           "The encrypted content looks corrupt or was written by an older version.",
         "folios.protected.unlocked-badge": "Unlocked",
         "folios.protected.lock-now": "Lock now",
+        "folios.protected.lost-passphrase-hint": "Lost the passphrase?",
+        "folios.protected.delete-unrecoverable": "Delete folio",
 
         "board.filter.search": "Search",
         "board.filter.status": "Status",
@@ -720,6 +722,8 @@ export class I18n {
           "Le contenu chiffré semble corrompu ou a été écrit par une ancienne version.",
         "folios.protected.unlocked-badge": "Déverrouillé",
         "folios.protected.lock-now": "Verrouiller",
+        "folios.protected.lost-passphrase-hint": "Phrase secrète perdue ?",
+        "folios.protected.delete-unrecoverable": "Supprimer le folio",
 
         "dashboard.character": "Héros",
         "dashboard.purse": "Bourse",

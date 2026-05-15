@@ -156,7 +156,10 @@ const FolioView = () => {
 
       <div className="mt-4">
         {folio.protected ? (
-          <FolioProtectedView folio={folio} />
+          <FolioProtectedView
+            folio={folio}
+            onDeleteUnrecoverable={handleDelete}
+          />
         ) : folio.content ? (
           <MarkdownView content={folio.content} />
         ) : (

@@ -5,11 +5,12 @@ import { Label } from "@alepha/ui/components/ui/label";
 import { CryptoProvider } from "alepha/crypto";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Lock, ShieldCheck, Unlock } from "lucide-react";
+import { Lock, ShieldCheck, Trash2, Unlock } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { I18n } from "../../services/I18n.ts";
 import {
+  ensureProtectedKeysAutoLock,
   forgetProtectedKey,
   getProtectedKey,
   rememberProtectedKey,
@@ -17,6 +18,13 @@ import {
 
 export interface FolioProtectedViewProps {
   folio: Folio;
+  /**
+   * Optional escape hatch the unlock card surfaces under the
+   * "Lost the passphrase?" hint. When provided, a destructive
+   * "Delete folio (unrecoverable)" link calls this — the parent is
+   * expected to confirm + invoke the standard delete action.
+   */
+  onDeleteUnrecoverable?: () => void;
 }
 
 /**
@@ -83,6 +91,9 @@ const FolioProtectedView = (props: FolioProtectedViewProps) => {
       // Only cache after a successful decrypt — a bad passphrase derives
       // a key that won't decrypt the envelope; we must not cache it.
       rememberProtectedKey(props.folio.id, key);
+      // Arm the inactivity watcher the moment we have any key in memory.
+      // Idempotent — repeated unlocks don't double-install listeners.
+      ensureProtectedKeysAutoLock();
       setPlaintext(out);
       setPassphrase("");
     } catch {
@@ -161,7 +172,18 @@ const FolioProtectedView = (props: FolioProtectedViewProps) => {
           {error}
         </p>
       )}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-muted-foreground text-[11px] italic">
+          {tr("folios.protected.lost-passphrase-hint")}{" "}
+          <button
+            type="button"
+            onClick={() => props.onDeleteUnrecoverable?.()}
+            className="text-destructive hover:underline"
+          >
+            <Trash2 className="mr-0.5 inline size-3" />
+            {tr("folios.protected.delete-unrecoverable")}
+          </button>
+        </p>
         <Button
           type="submit"
           size="sm"
