@@ -1,6 +1,28 @@
 import { $repository } from "alepha/orm";
 import { type FolioLink, folioLinks } from "../entities/folioLinks.ts";
 import { type Folio, folios } from "../entities/folios.ts";
+import { quests } from "../entities/quests.ts";
+
+/**
+ * Structured token parsed out of a `[[...]]` wiki-link. The optional
+ * `type` prefix dispatches to a different target table; the optional
+ * `anchor` is a heading slug (folio-only for v1) preserved through to
+ * the renderer.
+ */
+export interface ParsedToken {
+  /** Target table — `folio` (default) or `quest`. */
+  type: "folio" | "quest";
+  /**
+   * The reference body. `#N` means lookup by shortId; anything else
+   * means lookup by title (case-insensitive). The leading `#` is
+   * preserved so resolvers can pattern-match without splitting again.
+   */
+  ref: string;
+  /** Heading slug for anchor links — `undefined` when the token has no `#suffix`. */
+  anchor?: string;
+  /** Original token (between the `[[` and `]]`) for debugging / rendering. */
+  raw: string;
+}
 
 /**
  * Maximum number of outbound `[[...]]` references parsed from a single
@@ -25,23 +47,30 @@ const MAX_LINKS_PER_FOLIO = 200;
 export class FolioLinkService {
   protected readonly folios = $repository(folios);
   protected readonly links = $repository(folioLinks);
+  protected readonly quests = $repository(quests);
 
   /**
-   * Extract `[[...]]` tokens from markdown content. Stops at `MAX_LINKS_PER_FOLIO`
-   * matches so a runaway note can't cost unbounded resolution work.
+   * Extract `[[...]]` tokens from markdown content into structured
+   * {@link ParsedToken}s. Stops at `MAX_LINKS_PER_FOLIO` matches so a
+   * runaway note can't cost unbounded resolution work. Dedupes by
+   * normalized (type, ref, anchor) so the same token written twice
+   * produces one link.
    */
-  public parseTokens(content: string): string[] {
-    const out: string[] = [];
+  public parseTokens(content: string): ParsedToken[] {
+    const out: ParsedToken[] = [];
     if (!content) return out;
     const seen = new Set<string>();
     const re = /\[\[([^\]\n]+)\]\]/g;
     let match: RegExpExecArray | null = re.exec(content);
     while (match !== null) {
-      const token = match[1].trim();
-      if (token && !seen.has(token)) {
-        seen.add(token);
-        out.push(token);
-        if (out.length >= MAX_LINKS_PER_FOLIO) break;
+      const parsed = this.parseToken(match[1]);
+      if (parsed) {
+        const dedupKey = `${parsed.type}:${parsed.ref}#${parsed.anchor ?? ""}`;
+        if (!seen.has(dedupKey)) {
+          seen.add(dedupKey);
+          out.push(parsed);
+          if (out.length >= MAX_LINKS_PER_FOLIO) break;
+        }
       }
       match = re.exec(content);
     }
@@ -49,69 +78,166 @@ export class FolioLinkService {
   }
 
   /**
-   * Resolve a list of `[[...]]` tokens to folio ids in the same
-   * (userId, campaignId) scope as the source folio. Returns the set of
-   * unique target ids (excluding self-links).
+   * Parse a single raw token body (between `[[` and `]]`) into a
+   * structured target. Returns `undefined` on empty input.
+   *
+   * Syntax precedence:
+   * 1. Optional `type:` prefix (`quest:`). Bare ref keeps the folio
+   *    default for backwards compatibility.
+   * 2. Optional `#anchor` suffix on folio refs only (anchors on
+   *    typed entities are deferred per the spec).
    */
-  public async resolveTokenIds(
-    tokens: string[],
-    userId: string,
-    campaignId: number,
-    sourceFolioId: string,
-  ): Promise<string[]> {
-    if (tokens.length === 0) return [];
+  public parseToken(raw: string): ParsedToken | undefined {
+    const trimmed = raw.trim();
+    if (!trimmed) return undefined;
 
-    // Fetch the user's folios in the campaign in one pass; resolution is
-    // in-memory after that. Bounded by per-user-per-campaign folio count.
-    const candidates = await this.folios.findMany({
-      where: {
-        userId: { eq: userId },
-        campaignId: { eq: campaignId },
-      },
-      columns: ["id", "shortId", "title"],
-    });
-
-    // Title → folio id map. Drop ambiguous titles (multiple folios with the
-    // same case-folded title) — the author probably meant one of them but we
-    // can't guess which.
-    const titleMap = new Map<string, { id: string; count: number }>();
-    for (const c of candidates) {
-      const key = c.title.toLowerCase().trim();
-      const existing = titleMap.get(key);
-      if (existing) {
-        existing.count++;
-      } else {
-        titleMap.set(key, { id: c.id, count: 1 });
+    let type: "folio" | "quest" = "folio";
+    let body = trimmed;
+    const colonIdx = body.indexOf(":");
+    // A leading `#N` is a folio shortId — the `#` is NOT a type
+    // separator. Only treat `something:rest` as typed if `something`
+    // is a known prefix.
+    if (colonIdx > 0) {
+      const prefix = body.slice(0, colonIdx).trim().toLowerCase();
+      if (prefix === "quest" || prefix === "folio") {
+        type = prefix;
+        body = body.slice(colonIdx + 1).trim();
       }
     }
 
-    const shortIdMap = new Map<number, string>();
-    for (const c of candidates) shortIdMap.set(c.shortId, c.id);
-
-    const resolved = new Set<string>();
-    for (const token of tokens) {
-      const targetId = this.resolveToken(token, titleMap, shortIdMap);
-      if (targetId && targetId !== sourceFolioId) resolved.add(targetId);
+    // Anchors are folio-only for v1. On a quest token, an embedded `#`
+    // is the shortId separator (e.g. `quest#32`), NOT an anchor.
+    let anchor: string | undefined;
+    if (type === "folio") {
+      // For `[[#42#zones]]` (shortId + anchor) the FIRST `#` is part of
+      // the ref; the second `#` starts the anchor. For `[[Title#anchor]]`
+      // there's only one `#`. Detect the form by leading-`#`.
+      if (body.startsWith("#")) {
+        const second = body.indexOf("#", 1);
+        if (second !== -1) {
+          anchor = body.slice(second + 1).trim() || undefined;
+          body = body.slice(0, second);
+        }
+      } else {
+        const hashIdx = body.indexOf("#");
+        if (hashIdx !== -1) {
+          anchor = body.slice(hashIdx + 1).trim() || undefined;
+          body = body.slice(0, hashIdx).trim();
+        }
+      }
     }
-    return [...resolved];
+
+    return { type, ref: body, anchor, raw: trimmed };
   }
 
   /**
-   * Resolve a single token. Split out so callers (or tests) can exercise
-   * the matching rules without going through the DB roundtrip.
+   * Resolve a list of structured tokens into target rows scoped to the
+   * source folio's (userId, campaignId). Returns the deduped set of
+   * `{ targetType, toId }` pairs. Self-links are filtered out.
+   *
+   * Quests are campaign-scoped only (any campaign member sees the same
+   * quest set); the userId filter is folio-specific.
    */
-  protected resolveToken(
-    token: string,
-    titleMap: Map<string, { id: string; count: number }>,
-    shortIdMap: Map<number, string>,
-  ): string | undefined {
-    if (token.startsWith("#")) {
-      const n = Number.parseInt(token.slice(1), 10);
-      if (!Number.isFinite(n)) return undefined;
-      return shortIdMap.get(n);
+  public async resolveTokenIds(
+    tokens: ParsedToken[],
+    userId: string,
+    campaignId: number,
+    sourceFolioId: string,
+  ): Promise<Array<{ targetType: "folio" | "quest"; toId: string }>> {
+    if (tokens.length === 0) return [];
+
+    const needsFolios = tokens.some((t) => t.type === "folio");
+    const needsQuests = tokens.some((t) => t.type === "quest");
+
+    // In-memory maps after at most two DB roundtrips. Bounded by the
+    // per-(user, campaign) folio count and per-campaign quest count.
+    const folioById = new Map<number, string>();
+    const folioByTitle = new Map<string, { id: string; count: number }>();
+    if (needsFolios) {
+      const candidates = await this.folios.findMany({
+        where: {
+          userId: { eq: userId },
+          campaignId: { eq: campaignId },
+        },
+        columns: ["id", "shortId", "title"],
+      });
+      for (const c of candidates) {
+        folioById.set(c.shortId, c.id);
+        const key = c.title.toLowerCase().trim();
+        const existing = folioByTitle.get(key);
+        if (existing) existing.count++;
+        else folioByTitle.set(key, { id: c.id, count: 1 });
+      }
     }
-    const hit = titleMap.get(token.toLowerCase().trim());
-    if (!hit || hit.count > 1) return undefined; // unknown or ambiguous
+
+    const questById = new Map<number, number>();
+    const questByTitle = new Map<string, { id: number; count: number }>();
+    if (needsQuests) {
+      const candidates = await this.quests.findMany({
+        where: { campaignId: { eq: campaignId } },
+        columns: ["id", "shortId", "title"],
+      });
+      for (const c of candidates) {
+        questById.set(c.shortId, c.id);
+        const key = c.title.toLowerCase().trim();
+        const existing = questByTitle.get(key);
+        if (existing) existing.count++;
+        else questByTitle.set(key, { id: c.id, count: 1 });
+      }
+    }
+
+    const seen = new Set<string>();
+    const resolved: Array<{ targetType: "folio" | "quest"; toId: string }> = [];
+    for (const token of tokens) {
+      const targetId = this.resolveParsedToken(
+        token,
+        folioById,
+        folioByTitle,
+        questById,
+        questByTitle,
+      );
+      if (!targetId) continue;
+      if (token.type === "folio" && targetId === sourceFolioId) continue;
+      const dedupKey = `${token.type}:${targetId}`;
+      if (seen.has(dedupKey)) continue;
+      seen.add(dedupKey);
+      resolved.push({ targetType: token.type, toId: targetId });
+    }
+    return resolved;
+  }
+
+  /**
+   * Resolve a single structured token against the precomputed lookup
+   * maps. Split out so callers (or tests) can exercise the matching
+   * rules without going through the DB roundtrip.
+   */
+  protected resolveParsedToken(
+    token: ParsedToken,
+    folioById: Map<number, string>,
+    folioByTitle: Map<string, { id: string; count: number }>,
+    questById: Map<number, number>,
+    questByTitle: Map<string, { id: number; count: number }>,
+  ): string | undefined {
+    if (token.type === "quest") {
+      // `quest#32` → shortId 32. `quest:Title` → title lookup.
+      if (token.ref.startsWith("#")) {
+        const n = Number.parseInt(token.ref.slice(1), 10);
+        if (!Number.isFinite(n)) return undefined;
+        const id = questById.get(n);
+        return id != null ? String(id) : undefined;
+      }
+      const hit = questByTitle.get(token.ref.toLowerCase().trim());
+      if (!hit || hit.count > 1) return undefined;
+      return String(hit.id);
+    }
+    // Folio (default).
+    if (token.ref.startsWith("#")) {
+      const n = Number.parseInt(token.ref.slice(1), 10);
+      if (!Number.isFinite(n)) return undefined;
+      return folioById.get(n);
+    }
+    const hit = folioByTitle.get(token.ref.toLowerCase().trim());
+    if (!hit || hit.count > 1) return undefined;
     return hit.id;
   }
 
@@ -125,7 +251,7 @@ export class FolioLinkService {
    */
   public async syncLinks(fromFolio: Folio, content: string): Promise<void> {
     const tokens = this.parseTokens(content);
-    const targetIds = await this.resolveTokenIds(
+    const targets = await this.resolveTokenIds(
       tokens,
       fromFolio.userId,
       fromFolio.campaignId,
@@ -134,12 +260,16 @@ export class FolioLinkService {
 
     await this.links.deleteMany({ fromId: { eq: fromFolio.id } });
 
-    if (targetIds.length === 0) return;
+    if (targets.length === 0) return;
 
     // One insert per target. Repository doesn't expose bulk insert in
     // a single call, and per-folio caps keep this loop small.
-    for (const toId of targetIds) {
-      await this.links.create({ fromId: fromFolio.id, toId });
+    for (const target of targets) {
+      await this.links.create({
+        fromId: fromFolio.id,
+        toId: target.toId,
+        targetType: target.targetType,
+      });
     }
   }
 
@@ -153,12 +283,29 @@ export class FolioLinkService {
   }
 
   /**
-   * Inbound links: folios that point TO this one (their content contains
-   * a `[[...]]` that resolved here).
+   * Inbound links: folios that point TO this folio (their content
+   * contains a `[[...]]` that resolved here). Inbound resolution is
+   * folio-only — quests don't have a `content` field that we scan.
    */
   public async findInbound(toId: string): Promise<FolioLink[]> {
     return this.links.findMany({
-      where: { toId: { eq: toId } },
+      where: { toId: { eq: toId }, targetType: { eq: "folio" } },
+    });
+  }
+
+  /**
+   * Resolve quest target ids (integers) to display refs. Helper for
+   * `FolioController.getLinks` — kept on the service so the controller
+   * doesn't grow a direct dependency on the quests repository for
+   * link-resolution concerns.
+   */
+  public async findQuestRefs(
+    ids: number[],
+  ): Promise<Array<{ id: number; shortId: number; title: string }>> {
+    if (ids.length === 0) return [];
+    return this.quests.findMany({
+      where: { id: { inArray: ids } },
+      columns: ["id", "shortId", "title"],
     });
   }
 }

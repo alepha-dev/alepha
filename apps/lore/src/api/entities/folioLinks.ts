@@ -27,9 +27,23 @@ export const folioLinks = $entity({
     fromId: db.ref(t.uuid(), () => folios.cols.id, {
       onDelete: "cascade",
     }),
-    toId: db.ref(t.uuid(), () => folios.cols.id, {
-      onDelete: "cascade",
-    }),
+    /**
+     * Resolved target id. For `folio` targets this is a `folios.id` UUID;
+     * for `quest` targets it's a stringified `quests.id` integer (we don't
+     * FK at the row level — quests live in another table with an integer
+     * key and we want a single column shape across types). Caller resolves
+     * via the appropriate repository keyed on `targetType`.
+     */
+    toId: t.string(),
+    /**
+     * Discriminator for the target table. Defaults to `folio` so pre-Lore
+     * #57 rows stay valid without a backfill. Add new types by extending
+     * the enum here + teaching `FolioLinkService` to resolve them.
+     */
+    targetType: db.default(
+      t.enum(["folio", "quest"], { mode: "text" }),
+      "folio",
+    ),
   }),
   indexes: [
     /** Look up outbound links from a folio. Also enforces no-duplicates. */

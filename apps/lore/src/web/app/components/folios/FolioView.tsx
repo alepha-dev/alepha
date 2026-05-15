@@ -13,7 +13,9 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
+import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import { currentFolioAtom } from "../../atoms/currentFolioAtom.ts";
@@ -22,6 +24,7 @@ import { userFoliosAtom } from "../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import FolioBacklinksPanel from "./FolioBacklinksPanel.tsx";
 import FolioProtectedView from "./FolioProtectedView.tsx";
+import { rewriteFolioWikiLinks } from "./rewriteFolioWikiLinks.ts";
 
 const FolioView = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -29,12 +32,48 @@ const FolioView = () => {
   const dt = useInject(DateTimeProvider);
   const dialog = useDialog();
   const folioApi = useClient<FolioController>();
+  const questApi = useClient<QuestController>();
   const alepha = useAlepha();
+  // Quest reference index for inline `[[quest#N]]` / `[[quest:Title]]`
+  // resolution. Cheap one-shot fetch per folio view; gated on campaign.
+  const [questRefs, setQuestRefs] = useState<
+    Array<{ shortId: number; title: string }>
+  >([]);
   const [folio] = useStore(currentFolioAtom);
   const [folios, setFolios] = useStore(userFoliosAtom);
   const [, setTags] = useStore(folioTagsAtom);
   const [campaign] = useStore(currentCampaignAtom);
   const campaignId = campaign ? String(campaign.id) : "";
+
+  useEffect(() => {
+    if (!campaign?.id) return;
+    let alive = true;
+    questApi
+      .getQuests({
+        params: { campaignId: campaign.id },
+        query: { size: 200, sort: "-updatedAt" } as never,
+      })
+      .then((result) => {
+        if (!alive) return;
+        setQuestRefs(
+          result.content.map((q) => ({ shortId: q.shortId, title: q.title })),
+        );
+      })
+      .catch(() => null);
+    return () => {
+      alive = false;
+    };
+  }, [campaign?.id]);
+
+  const rewrittenContent = useMemo(() => {
+    if (!folio || !campaign?.id) return folio?.content ?? "";
+    return rewriteFolioWikiLinks(
+      folio.content ?? "",
+      campaign.id,
+      folios,
+      questRefs,
+    );
+  }, [folio, campaign?.id, folios, questRefs]);
 
   const deleteAction = useAction(
     {
@@ -161,7 +200,7 @@ const FolioView = () => {
             onDeleteUnrecoverable={handleDelete}
           />
         ) : folio.content ? (
-          <MarkdownView content={folio.content} />
+          <MarkdownView content={rewrittenContent} />
         ) : (
           <p className="text-muted-foreground text-sm italic">
             {tr("folios.empty-folio")}
