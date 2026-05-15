@@ -18,6 +18,12 @@ export const questCreateSchema = t.object({
   ),
   attachments: t.optional(t.array(t.uuid(), { default: [] })),
   /**
+   * Free-form labels for the nature of the quest (`bug`, `feat`, `chore`,
+   * …). Normalized server-side (trim, lowercase, dedupe). Orthogonal to
+   * `zone` which labels the module / scope.
+   */
+  tags: t.optional(t.array(t.string(), { default: [] })),
+  /**
    * Optional petition this quest was spawned from. When set, the quest is
    * linked back to the petition so its reporter can follow progression.
    * Validated at handler time: the petition must belong to the same campaign,

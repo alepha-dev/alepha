@@ -72,6 +72,7 @@ export class I18n {
         "board.filter.search": "Search",
         "board.filter.status": "Status",
         "board.filter.zone": "Zone",
+        "board.filter.tag": "Tag",
         "board.filter.apply": "Apply",
         "board.filter.reset": "Reset",
 
@@ -125,6 +126,11 @@ export class I18n {
         "quest.create.objectives.helper": "List of objectives for this quest",
         "quest.create.attachments": "Attachments",
         "quest.create.attachments.helper": "Attach files to this quest",
+        "quest.create.tags": "Tags",
+        "quest.create.tags.helper":
+          "Labels for the nature of the quest (bug, feat, chore…). Zone says where, tag says what kind.",
+        "quest.tags.placeholder": "Add a tag and press Enter",
+        "quest.tags.suggestions": "Reuse:",
 
         "priority.high": "High",
         "priority.medium": "Normal",
@@ -672,6 +678,11 @@ export class I18n {
           "Liste des objectifs pour cette quête",
         "quest.create.attachments": "Pièces jointes",
         "quest.create.attachments.helper": "Joindre des fichiers à cette quête",
+        "quest.create.tags": "Étiquettes",
+        "quest.create.tags.helper":
+          "Étiquettes décrivant la nature de la quête (bug, feat, chore…). La zone dit où, l'étiquette dit quoi.",
+        "quest.tags.placeholder": "Ajouter une étiquette puis Entrée",
+        "quest.tags.suggestions": "Réutiliser :",
 
         "priority.high": "Urgente",
         "priority.medium": "Normal",

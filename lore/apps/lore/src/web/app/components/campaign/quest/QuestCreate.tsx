@@ -21,6 +21,7 @@ import {
   Save,
   Signature,
   Tag,
+  Tags as TagsIcon,
   Tent,
 } from "lucide-react";
 import { useRef } from "react";
@@ -35,6 +36,7 @@ import { kanbanCampaignAtom } from "@/web/app/atoms/kanbanCampaignAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import TextEditor from "../../shared/TextEditor.tsx";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
+import QuestTagInput from "./QuestTagInput.tsx";
 
 export interface QuestCreateProps {
   onSubmit: (quest: QuestResource) => void;
@@ -171,6 +173,22 @@ const QuestCreate = (props: QuestCreateProps) => {
             )}
           />
         </div>
+
+        <Control
+          label={tr("quest.create.tags")}
+          description={tr("quest.create.tags.helper")}
+          input={form.input.tags}
+          icon={TagsIcon}
+          custom={
+            ((p: { value?: string[]; onChange?: (v: string[]) => void }) => (
+              <QuestTagInput
+                value={p.value}
+                onChange={p.onChange}
+                campaignId={props.campaign.id}
+              />
+            )) as never
+          }
+        />
 
         <Control
           label={tr("quest.create.objectives")}

@@ -50,6 +50,13 @@
       "when": 1778875153302,
       "tag": "0006_great_black_crow",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1778876246381,
+      "tag": "0007_next_salo",
+      "breakpoints": true
     }
   ]
 }
