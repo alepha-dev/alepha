@@ -13,14 +13,9 @@ export const campaignOptionsAtom = $atom({
      * other users are not counted against this limit.
      */
     maxCampaignsPerUser: t.integer({ minimum: 1, default: 10 }),
-    /**
-     * Number of most-recent campaigns surfaced on the Home page.
-     */
-    homeRecentLimit: t.integer({ minimum: 1, maximum: 50, default: 5 }),
   }),
   default: {
     maxCampaignsPerUser: 10,
-    homeRecentLimit: 5,
   },
 });
 

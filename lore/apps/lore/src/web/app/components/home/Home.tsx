@@ -37,7 +37,6 @@ const Home = () => {
   const sorted = [...campaigns].sort((a, b) =>
     a.updatedAt > b.updatedAt ? -1 : 1,
   );
-  const moreCount = Math.max(0, totalCount - sorted.length);
   const loginPath = router.path("login", {
     query: { r: router.path("campaignCreate") },
   });
@@ -105,13 +104,9 @@ const Home = () => {
               <ScrollText className="size-5" />
               <h2 className="text-lg font-semibold">{tr("home.campaigns")}</h2>
               <span className="text-muted-foreground text-xs">
-                {moreCount > 0
-                  ? tr("home.campaigns.showing-more", {
-                      args: [String(sorted.length), String(totalCount)],
-                    })
-                  : tr("home.campaigns.showing", {
-                      args: [String(totalCount)],
-                    })}
+                {tr("home.campaigns.showing", {
+                  args: [String(totalCount)],
+                })}
               </span>
             </div>
 
