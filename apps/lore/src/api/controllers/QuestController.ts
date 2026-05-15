@@ -20,7 +20,7 @@ import {
 import { campaigns } from "../entities/campaigns.ts";
 import { characters } from "../entities/characters.ts";
 import { petitions } from "../entities/petitions.ts";
-import { type Quest, quests } from "../entities/quests.ts";
+import { normalizeQuestTags, type Quest, quests } from "../entities/quests.ts";
 import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { questCreateSchema } from "../schemas/questCreateSchema.ts";
 import {
@@ -194,6 +194,7 @@ export class QuestController {
         ...body,
         shortId,
         attachments: body.attachments ?? [],
+        tags: normalizeQuestTags(body.tags ?? []),
         objectives: this.ensureObjectiveIds(body.objectives ?? []),
         createdBy: user.id,
         history: [],
@@ -307,6 +308,7 @@ export class QuestController {
         search: t.optional(t.string()),
         chapterId: t.optional(t.integer()),
         zone: t.optional(t.string()),
+        tag: t.optional(t.string()),
       }),
       response: db.page(questResourceSchema),
     },
@@ -326,6 +328,12 @@ export class QuestController {
 
       if (query.zone) {
         where.zone = { eq: query.zone };
+      }
+
+      if (query.tag) {
+        // tags are stored as a JSON array; LIKE the serialized form
+        // matches an exact (normalized) value. Mirrors folio tag search.
+        where.tags = { like: `%"${query.tag.toLowerCase()}"%` };
       }
 
       if (query.status === "new") {
@@ -353,6 +361,33 @@ export class QuestController {
         ...result,
         content: result.content.map((quest) => this.mapQuestToResource(quest)),
       };
+    },
+  });
+
+  /**
+   * Return the distinct set of tags used by any quest in a campaign —
+   * fuel for chip autocomplete in the editor and the filter dropdown.
+   * Mirrors `FolioController.listTags` but scope is campaign-level (tags
+   * are a property of the campaign's quest taxonomy, not the user's).
+   */
+  listQuestTags = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    description: "Return the distinct set of tags used in a campaign.",
+    schema: {
+      query: t.object({ campaignId: t.integer() }),
+      response: t.array(t.string()),
+    },
+    handler: async ({ query, user }) => {
+      await this.security.assertMember(query.campaignId, user);
+      const rows = await this.quests.findMany({
+        where: { campaignId: { eq: query.campaignId } },
+        columns: ["tags"],
+      });
+      const tags = new Set<string>();
+      for (const row of rows) {
+        for (const tag of row.tags ?? []) tags.add(tag);
+      }
+      return [...tags].sort();
     },
   });
 
@@ -655,6 +690,7 @@ export class QuestController {
           "objectives",
           "attachments",
           "completionMessage",
+          "tags",
         ]),
       ),
       response: questResourceSchema,
@@ -696,6 +732,9 @@ export class QuestController {
       }
 
       const patch: Record<string, unknown> = { ...body };
+      if (body.tags !== undefined) {
+        patch.tags = normalizeQuestTags(body.tags);
+      }
       if (
         body.completionMessage !== undefined &&
         body.completionMessage !== quest.completionMessage

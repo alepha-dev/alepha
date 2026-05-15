@@ -35,6 +35,12 @@ export const questListParamsSchema = t.extend(campaignParamsSchema, {
       description: "Search quests by title",
     }),
   ),
+  tag: t.optional(
+    t.string({
+      description:
+        "Filter by a single tag (exact match against normalized — trimmed/lowercased — values). Call `quest_tags` first to discover what tags exist in the campaign.",
+    }),
+  ),
   limit: t.optional(
     t.integer({
       description: "Maximum number of quests to return (default: 20)",
@@ -62,6 +68,7 @@ export const questListResultSchema = t.object({
       difficulty: t.integer(),
       status: questStatusSchema,
       objectives: t.array(objectiveSchema),
+      tags: t.array(t.string()),
       createdAt: t.datetime(),
       acceptedAt: t.optional(t.datetime()),
       completedAt: t.optional(t.datetime()),
@@ -95,6 +102,7 @@ export const questGetResultSchema = t.object({
   completedAt: t.optional(t.datetime()),
   completionMessage: t.optional(t.string()),
   completionMessageUpdatedAt: t.optional(t.datetime()),
+  tags: t.array(t.string()),
 });
 
 // -----------------------------------------------------------------------------
@@ -122,6 +130,12 @@ export const questCreateParamsSchema = t.extend(campaignParamsSchema, {
   objectives: t.optional(
     t.array(objectiveSchema, {
       description: "List of objectives/subquests",
+    }),
+  ),
+  tags: t.optional(
+    t.array(t.string(), {
+      description:
+        "Free-form labels for the **nature** of the quest (`bug`, `feat`, `chore`, `regression`, `quick-win`, …). Orthogonal to `zone` which labels the **module / scope**. Normalized server-side (trim, lowercase, dedupe). Reuse existing tags when possible — call `quest_tags` first.",
     }),
   ),
 });
@@ -212,6 +226,12 @@ export const questUpdateParamsSchema = t.extend(entityRefSchema, {
         "Rewrite the post-completion summary. Allowed on already-completed quests (the only field that is — other edits stay frozen). Pass an empty string to clear. Markdown supported.",
     }),
   ),
+  tags: t.optional(
+    t.array(t.string(), {
+      description:
+        "Replace the quest's tags. Normalized server-side (trim, lowercase, dedupe). Pass an empty array to clear. Call `quest_tags` to discover existing tags.",
+    }),
+  ),
 });
 
 export const questUpdateResultSchema = t.object({
@@ -219,6 +239,16 @@ export const questUpdateResultSchema = t.object({
   shortId: t.integer(),
   title: t.string(),
   updatedAt: t.datetime(),
+});
+
+// -----------------------------------------------------------------------------
+// quest_tags
+// -----------------------------------------------------------------------------
+
+export const questTagsParamsSchema = campaignParamsSchema;
+
+export const questTagsResultSchema = t.object({
+  tags: t.array(t.string()),
 });
 
 // -----------------------------------------------------------------------------

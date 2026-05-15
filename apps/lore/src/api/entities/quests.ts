@@ -135,6 +135,14 @@ export const quests = $entity({
       [],
     ),
     attachments: db.default(t.array(t.uuid()), []),
+    /**
+     * Free-form labels for the **nature** of the quest (`bug`, `feat`,
+     * `chore`, `regression`, …) — orthogonal to `zone`, which labels the
+     * **module/scope**. Stored as a JSON array of normalized strings
+     * (trimmed, lowercased, deduped). Filter via `like '%"value"%'` on
+     * the serialized blob — mirrors the folio tag pattern.
+     */
+    tags: db.default(t.array(t.string()), []),
   }),
   indexes: [
     {
@@ -159,3 +167,20 @@ export const quests = $entity({
 export type Quest = Static<typeof quests.schema>;
 export type QuestUpdate = Static<typeof quests.updateSchema>;
 export type QuestInsert = Static<typeof quests.insertSchema>;
+
+/**
+ * Normalize a tag list: trim, lowercase, dedupe (preserve first occurrence
+ * order), drop empties. Single source of truth so the API, MCP, and any
+ * future seed paths agree on what gets persisted.
+ */
+export const normalizeQuestTags = (raw: readonly string[]): string[] => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw_ of raw) {
+    const v = raw_.trim().toLowerCase();
+    if (!v || seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+  return out;
+};

@@ -208,6 +208,24 @@ const QuestView = (props: QuestViewProps) => {
             </span>
           </div>
 
+          {/* Tags — read-only chips. Edit lives in the quest edit dialog. */}
+          {quest.tags && quest.tags.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              {quest.tags.map((tag) => (
+                <Link
+                  key={tag}
+                  href={router.path("campaignBoard", {
+                    params: { campaignId: String(quest.campaignId) },
+                    query: { tag },
+                  })}
+                  className="bg-muted hover:bg-muted/70 rounded-sm border px-1.5 py-0.5 font-mono text-xs"
+                >
+                  {tag}
+                </Link>
+              ))}
+            </div>
+          )}
+
           {/* Description */}
           <div className="flex flex-col gap-2">
             <SectionHeader

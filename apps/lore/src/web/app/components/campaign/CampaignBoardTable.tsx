@@ -47,6 +47,7 @@ type BoardFilterValues = {
   search?: string;
   status?: "new" | "accepted" | "completed";
   zone?: string;
+  tag?: string;
 };
 
 const filterStorageKey = (campaignId: number) =>
@@ -96,6 +97,7 @@ const CampaignBoardTable = () => {
       search: t.optional(t.string()),
       status: t.optional(t.enum(["new", "accepted", "completed"])),
       zone: t.optional(t.string()),
+      tag: t.optional(t.string()),
     }),
     handler: async () => {
       // No-op: AlephaTable subscribes to `form:submit:success` and refetches.
@@ -114,6 +116,7 @@ const CampaignBoardTable = () => {
     if (filterValues.search) clean.search = filterValues.search;
     if (filterValues.status) clean.status = filterValues.status;
     if (filterValues.zone) clean.zone = filterValues.zone;
+    if (filterValues.tag) clean.tag = filterValues.tag;
     try {
       if (Object.keys(clean).length === 0) {
         window.localStorage.removeItem(filterStorageKey(campaign.id));
@@ -131,7 +134,26 @@ const CampaignBoardTable = () => {
     filterValues?.search,
     filterValues?.status,
     filterValues?.zone,
+    filterValues?.tag,
   ]);
+
+  // Honor a `?tag=foo` query param on first navigation (e.g. clicking a
+  // tag chip on the quest view jumps to a pre-filtered board).
+  useEffect(() => {
+    const tagParam =
+      typeof router.query.tag === "string" ? router.query.tag : undefined;
+    if (!tagParam) return;
+    filters.input.tag.set(tagParam);
+  }, [router.query.tag]);
+
+  const [knownTags, setKnownTags] = useState<string[]>([]);
+  useEffect(() => {
+    if (!campaign?.id) return;
+    questApi
+      .listQuestTags({ query: { campaignId: campaign.id } })
+      .then(setKnownTags)
+      .catch(() => null);
+  }, [campaign?.id]);
 
   // Reset = clear all. `filters.reset()` would restore the hydrated initial
   // values (which include `status: "new"`); we want the button to wipe every
@@ -207,6 +229,15 @@ const CampaignBoardTable = () => {
             />
           </div>
         )}
+        {knownTags.length > 0 && (
+          <div className="w-44">
+            <ZoneFilter
+              input={filters.input.tag}
+              zones={knownTags.map((tag) => ({ label: tag, value: tag }))}
+              label={String(tr("board.filter.tag"))}
+            />
+          </div>
+        )}
         <Button
           type="button"
           size="sm"
@@ -235,6 +266,7 @@ const CampaignBoardTable = () => {
               search: f?.search || undefined,
               status: f?.status || undefined,
               zone: f?.zone || undefined,
+              tag: f?.tag || undefined,
             } as any,
           })
         }
@@ -281,11 +313,21 @@ const CampaignBoardTable = () => {
             sortable: true,
             cell: (quest) => (
               <div className="flex flex-col overflow-hidden whitespace-nowrap">
-                <span
-                  className={`text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}
-                >
-                  {quest.title}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}
+                  >
+                    {quest.title}
+                  </span>
+                  {quest.tags?.map((tag) => (
+                    <span
+                      key={tag}
+                      className="bg-muted rounded-sm border px-1 py-0.5 font-mono text-[10px]"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
                 {quest.description && (
                   <span className="text-muted-foreground truncate text-xs">
                     {removeHtmlTags(quest.description.slice(0, 60))}

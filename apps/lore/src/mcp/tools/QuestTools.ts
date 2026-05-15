@@ -16,6 +16,8 @@ import {
   questGetResultSchema,
   questListParamsSchema,
   questListResultSchema,
+  questTagsParamsSchema,
+  questTagsResultSchema,
   questUpdateParamsSchema,
   questUpdateResultSchema,
 } from "../schemas/index.ts";
@@ -102,7 +104,7 @@ export class QuestTools {
    */
   quest_list = $tool({
     description:
-      "List quests for the campaign. Can filter by status (new, accepted, completed) and search by title.",
+      "List quests for the campaign. Can filter by status (new, accepted, completed), search by title, or filter by a single tag (use `quest_tags` to discover existing tag values).",
     title: "List quests",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -123,6 +125,7 @@ export class QuestTools {
         query: {
           status: params.status,
           search: params.search,
+          tag: params.tag,
           size,
           page,
         },
@@ -139,6 +142,7 @@ export class QuestTools {
           difficulty: quest.difficulty,
           status: this.getQuestStatus(quest),
           objectives: quest.objectives,
+          tags: quest.tags,
           createdAt: quest.createdAt,
           acceptedAt: quest.acceptedAt,
           completedAt: quest.completedAt,
@@ -174,6 +178,7 @@ export class QuestTools {
           priority: params.priority,
           difficulty: params.difficulty,
           objectives: params.objectives,
+          tags: params.tags,
         },
       });
 
@@ -287,7 +292,36 @@ export class QuestTools {
         completedAt: quest.completedAt,
         completionMessage: quest.completionMessage,
         completionMessageUpdatedAt: quest.completionMessageUpdatedAt,
+        tags: quest.tags,
       };
+    },
+  });
+
+  /**
+   * List the distinct set of tags used by any quest in a campaign — fuel
+   * for autocomplete and dedup. Mirrors `folio_tags`.
+   */
+  quest_tags = $tool({
+    description:
+      "List every tag used by any quest in the campaign. Call before `quest_create` / `quest_update` so you reuse existing tags (`bug`, `feat`, `chore`, …) instead of inventing slight variants like `Bug` / `bugs`.",
+    title: "List quest tags",
+    annotations: {
+      readOnlyHint: true,
+      idempotentHint: true,
+    },
+    schema: {
+      params: questTagsParamsSchema,
+      result: questTagsResultSchema,
+    },
+    handler: async ({ params }) => {
+      const campaignId = await this.resolveCampaignId(
+        params.campaign,
+        params.campaign_name,
+      );
+      const tags = await this.questController.listQuestTags({
+        query: { campaignId },
+      });
+      return { tags };
     },
   });
 
@@ -315,6 +349,7 @@ export class QuestTools {
           difficulty: params.difficulty,
           objectives: params.objectives,
           completionMessage: params.completionMessage,
+          tags: params.tags,
         },
       });
 
