@@ -20,8 +20,12 @@ export class CampaignStatsController {
   getCampaignStats = $action({
     use: [
       $secure({ permissions: ["stats:read"] }),
+      // ETag-only (no server-side response cache). Server cache used to short-
+      // circuit before `assertVisible` ran — and the cache key didn't include
+      // the user, so a non-member's request would return the cached body of a
+      // legitimate member. Conditional GETs still get 304s; the handler runs
+      // every request so the membership check always fires.
       $etag({
-        store: true,
         control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
       }),
     ],
