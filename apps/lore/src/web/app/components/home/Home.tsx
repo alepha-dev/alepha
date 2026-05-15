@@ -38,7 +38,7 @@ const Home = () => {
     a.updatedAt > b.updatedAt ? -1 : 1,
   );
   const loginPath = router.path("login", {
-    query: { r: router.path("campaignCreate") },
+    query: { r: router.path("home") },
   });
   // No explicit `r=` — `AuthRegisterPage` seeds it from the intent map so the
   // post-register flow lands on Home with `?action=createCampaign`, which then
