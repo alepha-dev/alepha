@@ -164,6 +164,13 @@ export class I18n {
         "quest.view.complete.submit": "Complete with summary",
         "quest.view.complete.skip": "Complete without summary",
         "quest.view.completionSummary": "Completion Summary",
+        "quest.view.completionSummary.edited": "Edited $1",
+        "quest.view.completionSummary.empty":
+          "No summary yet — click to add one.",
+        "quest.view.editSummary.title": "Edit completion summary",
+        "quest.view.editSummary.description":
+          "Curate the summary post-completion — what the quest actually shipped, lessons learned, links to follow-ups. Markdown supported.",
+        "quest.view.editSummary.save": "Save",
         "quest.view.noObjectives": "No objectives for this quest.",
         "quest.view.objectives": "Objectives",
         "quest.view.attachments": "Attachments",
@@ -703,6 +710,13 @@ export class I18n {
         "quest.view.complete.submit": "Terminer avec résumé",
         "quest.view.complete.skip": "Terminer sans résumé",
         "quest.view.completionSummary": "Résumé d'achèvement",
+        "quest.view.completionSummary.edited": "Modifié $1",
+        "quest.view.completionSummary.empty":
+          "Aucun résumé pour l'instant — cliquez pour en ajouter un.",
+        "quest.view.editSummary.title": "Modifier le résumé d'achèvement",
+        "quest.view.editSummary.description":
+          "Affinez le résumé après-coup — ce qui a réellement été livré, les leçons, les liens vers les suites. Markdown supporté.",
+        "quest.view.editSummary.save": "Enregistrer",
         "quest.view.noObjectives": "Aucun objectif défini.",
         "quest.view.objectives": "Objectifs",
         "quest.view.attachments": "Pièces jointes",

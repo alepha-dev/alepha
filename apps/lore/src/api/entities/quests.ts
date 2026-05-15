@@ -27,14 +27,19 @@ export const quests = $entity({
     acceptedAt: t.optional(t.datetime()),
     completedAt: t.optional(t.datetime()),
     /**
-     * Free-form summary written at completion time — what was actually done
-     * to close the quest. Optional. Write-once: only persisted on the
-     * `accepted → completed` transition; mutating after completion is not
-     * supported here. Surfaced to humans in the quest view + history
-     * timeline preview, and returned by MCP `quest_get` /
+     * Free-form summary set when the quest closes — what was actually
+     * done. Editable post-completion via `updateQuest` (campaign memory
+     * is meant to be curated). Surfaced to humans in the quest view +
+     * history timeline preview, and returned by MCP `quest_get` /
      * `campaign_context` so future agents can read prior summaries.
      */
     completionMessage: t.optional(t.string({ size: "rich" })),
+    /**
+     * Set whenever `completionMessage` is written or edited. Lets the UI
+     * show an "edited <time> ago" hint so amendments are visible rather
+     * than silently rewriting history.
+     */
+    completionMessageUpdatedAt: t.optional(t.datetime()),
     /**
      * Kanban sub-column the quest sits in while `status === "accepted"`.
      * Only used when the campaign's `kanban` feature is on. Free-form text

@@ -94,6 +94,7 @@ export const questGetResultSchema = t.object({
   acceptedAt: t.optional(t.datetime()),
   completedAt: t.optional(t.datetime()),
   completionMessage: t.optional(t.string()),
+  completionMessageUpdatedAt: t.optional(t.datetime()),
 });
 
 // -----------------------------------------------------------------------------
@@ -203,6 +204,12 @@ export const questUpdateParamsSchema = t.extend(entityRefSchema, {
     t.array(objectiveSchema, {
       description:
         "Updated list of objectives. Pass the full new array (it REPLACES the existing one — omitted objectives will be deleted). Omit this field entirely to leave objectives unchanged.",
+    }),
+  ),
+  completionMessage: t.optional(
+    t.string({
+      description:
+        "Rewrite the post-completion summary. Allowed on already-completed quests (the only field that is — other edits stay frozen). Pass an empty string to clear. Markdown supported.",
     }),
   ),
 });
