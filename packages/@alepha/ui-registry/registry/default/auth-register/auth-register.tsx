@@ -159,7 +159,9 @@ export function AuthRegister(props: AuthRegisterProps) {
         if (disposed || !window.turnstile || !el) return;
         widgetIdRef.current = window.turnstile.render(el, {
           sitekey: captchaSiteKey,
-          theme: "auto",
+          theme: document.documentElement.classList.contains("dark")
+            ? "dark"
+            : "light",
           callback: (token) => setCaptchaToken(token),
           "expired-callback": () => setCaptchaToken(undefined),
           "error-callback": () => setCaptchaToken(undefined),
@@ -571,6 +573,7 @@ function FormPhase(props: {
                     })}
                     input={form.input.username}
                     icon={iconFor("user")}
+                    autoComplete="username"
                   />
                 )}
               {settings.email !== "none" && form.input.email && (
@@ -617,6 +620,7 @@ function FormPhase(props: {
                   label={tr("auth.register.password", { default: "Password" })}
                   input={form.input.password}
                   password
+                  autoComplete="new-password"
                 />
               </div>
               {(passwordFieldFocused || passwordValue.length > 0) && (

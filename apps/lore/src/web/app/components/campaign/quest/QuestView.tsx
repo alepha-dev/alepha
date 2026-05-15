@@ -13,6 +13,7 @@ import {
   PiggyBank,
   Settings as SettingsIcon,
   Signature,
+  StickyNote,
   Swords,
   Tag,
   Trash2,
@@ -34,6 +35,7 @@ import QuestHistory from "./QuestHistory.tsx";
 import QuestViewCollapsibleBlock from "./QuestViewCollapsibleBlock.tsx";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
 import QuestViewEditButton from "./QuestViewEditButton.tsx";
+import QuestViewNotes from "./QuestViewNotes.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
 import QuestViewSettings from "./QuestViewSettings.tsx";
 import QuestViewTimer from "./QuestViewTimer.tsx";
@@ -237,6 +239,23 @@ const QuestView = (props: QuestViewProps) => {
                 ))}
               </div>
             </div>
+          )}
+
+          {/* Notes — first-class quest field (was buried under Settings). */}
+          {!quest.completedAt && questApi.updateQuestNote.can() && (
+            <QuestViewCollapsibleBlock
+              icon={<StickyNote className="size-5" />}
+              label={String(tr("quest.view.notes"))}
+              defaultOpen={!!quest.note}
+            >
+              <QuestViewNotes
+                quest={quest}
+                onUpdate={(it) => {
+                  updateQuest(it);
+                  alepha.store.set(currentQuestAtom, it);
+                }}
+              />
+            </QuestViewCollapsibleBlock>
           )}
 
           {/* Rewards (collapsible, default expanded) */}

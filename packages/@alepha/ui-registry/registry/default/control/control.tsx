@@ -454,6 +454,19 @@ export function Control(props: ControlProps) {
           ? "tel"
           : "text";
 
+  // Derive a sensible HTML `autocomplete` hint from the schema format so
+  // password managers and browser autofill behave correctly out of the box.
+  // Explicit `autoComplete` prop always wins.
+  const autoCompleteFromFormat =
+    meta.format === "email"
+      ? "email"
+      : meta.format === "tel" || meta.format === "phone"
+        ? "tel"
+        : meta.format === "url" || meta.format === "uri"
+          ? "url"
+          : undefined;
+  const autoComplete = merged.autoComplete ?? autoCompleteFromFormat;
+
   // ── Right-side affordance: tick (when dirty) or clear (when nullable) ─
   // Tick only renders inside an `<AutoForm autoSave>` tree (or any caller
   // that explicitly wraps with `<FormFieldAutoSaveProvider value>`).
@@ -483,7 +496,7 @@ export function Control(props: ControlProps) {
           name={props.input.props.name}
           type={htmlType}
           disabled={merged.disabled}
-          autoComplete={merged.autoComplete}
+          autoComplete={autoComplete}
           placeholder={merged.placeholder}
           value={String(value ?? "")}
           minLength={meta.constraints.minLength}
