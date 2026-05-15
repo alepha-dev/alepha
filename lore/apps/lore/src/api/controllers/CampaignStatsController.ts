@@ -71,7 +71,7 @@ export class CampaignStatsController {
       }),
     },
     handler: async ({ params, user }) => {
-      await this.security.checkOwnership(params.id, user);
+      await this.security.assertVisible(params.id, user);
 
       // Get overview stats
       const overviewQuery = await this.database.run(

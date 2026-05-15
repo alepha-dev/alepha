@@ -81,7 +81,7 @@ export class PetitionController {
     },
     handler: async ({ params, body, user }) => {
       // Visibility gate: throws if the user cannot see the campaign.
-      await this.security.checkOwnership(params.campaignId, user);
+      await this.security.assertVisible(params.campaignId, user);
 
       await this.rateLimiter.assertPetitionAllowed(user.id);
 
@@ -139,7 +139,7 @@ export class PetitionController {
       }),
     },
     handler: async ({ params, body, user }) => {
-      await this.security.checkOwnership(params.campaignId, user);
+      await this.security.assertVisible(params.campaignId, user);
       await this.rateLimiter.assertAttachmentAllowed(user.id);
 
       const limits = this.rateLimiter.options();
@@ -369,11 +369,11 @@ export class PetitionController {
 
   /**
    * Owner guard. Mirrors `QuestController.deleteQuest` — resolves via
-   * `AppSecurityProvider.checkOwnership` and rejects when the user is not
+   * `AppSecurityProvider.assertVisible` and rejects when the user is not
    * the campaign creator.
    */
   protected async ensureOwner(campaignId: number, user: UserAccountToken) {
-    const guard = await this.security.checkOwnership(campaignId, user);
+    const guard = await this.security.assertVisible(campaignId, user);
     if (guard.campaign.createdBy !== user.id) {
       throw new ForbiddenError("Only the campaign owner can manage petitions");
     }

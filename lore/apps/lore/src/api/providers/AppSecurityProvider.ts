@@ -34,16 +34,7 @@ export class AppSecurityProvider {
       notifications: true,
     },
     settings: {
-      // Auto-derive a stable handle from the registration email at signup
-      // (and from the OAuth profile email on Google/GitHub login). The
-      // registration form never shows a username input — the slugger does
-      // its work server-side and the DB unique index settles ties via the
-      // `-<random>` retry path. Same handle gets shown in the UI, used in
-      // mentions, and embedded in profile URLs.
       username: "email",
-      // Reserved handles that no user — credentials or OAuth — should be
-      // able to claim. Default empty in the framework; we opt in here for a
-      // few obvious ones.
       usernameBlocklist: ["admin", "root", "me", "api", "support", "system"],
       resetPasswordAllowed: true,
       verifyEmailRequired: true,
@@ -60,27 +51,96 @@ export class AppSecurityProvider {
     },
   });
 
-  async checkOwnership(
+  /**
+   * Read-side gate. Allows the campaign owner, any character (member), and
+   * any authenticated user if the campaign is `public`. Use for endpoints
+   * that only read campaign data — never for mutations.
+   *
+   * `user.ownership === false` is a privileged identity (admin without
+   * narrow ownership scope) and bypasses the membership check.
+   */
+  async assertVisible(
     campaignId: number,
     user: UserAccountToken,
   ): Promise<CampaignGuard> {
     const campaign = await this.campaigns.getOne({
+      where: { id: { eq: campaignId } },
+    });
+
+    if (campaign.createdBy === user.id || !user.ownership) {
+      return { campaign };
+    }
+
+    const character = await this.characters.findOne({
       where: {
-        id: { eq: campaignId },
+        campaignId: { eq: campaignId },
+        userId: { eq: user.id },
       },
     });
 
-    if (campaign.createdBy !== user.id && !campaign.public && user.ownership) {
-      const character = await this.characters.findOne({
-        where: {
-          campaignId: { eq: campaignId },
-          userId: { eq: user.id },
-        },
-      });
-      if (!character) {
-        throw new ForbiddenError("Not a member of this campaign");
-      }
+    if (character) {
       return { campaign, character };
+    }
+
+    if (campaign.public) {
+      return { campaign };
+    }
+
+    throw new ForbiddenError("Not a member of this campaign");
+  }
+
+  /**
+   * Write-side gate. Requires the caller to be the campaign owner or a
+   * member (character row exists). The `campaign.public` flag is IGNORED —
+   * being a public campaign does not grant write access.
+   *
+   * Use for any endpoint that mutates campaign-scoped data members can
+   * legitimately act on (their quests, kanban moves, etc.).
+   */
+  async assertMember(
+    campaignId: number,
+    user: UserAccountToken,
+  ): Promise<CampaignGuard> {
+    const campaign = await this.campaigns.getOne({
+      where: { id: { eq: campaignId } },
+    });
+
+    if (campaign.createdBy === user.id || !user.ownership) {
+      return { campaign };
+    }
+
+    const character = await this.characters.findOne({
+      where: {
+        campaignId: { eq: campaignId },
+        userId: { eq: user.id },
+      },
+    });
+
+    if (!character) {
+      throw new ForbiddenError("Not a member of this campaign");
+    }
+    return { campaign, character };
+  }
+
+  /**
+   * Owner-only gate. Requires the caller to be the campaign creator (or a
+   * privileged identity with `user.ownership === false`). Use for
+   * destructive or campaign-configuration endpoints: delete campaign,
+   * toggle `public`, change features, manage kanban columns, manage
+   * chapters, import quests, send invitations.
+   */
+  async assertOwner(
+    campaignId: number,
+    user: UserAccountToken,
+  ): Promise<CampaignGuard> {
+    const campaign = await this.campaigns.getOne({
+      where: { id: { eq: campaignId } },
+    });
+
+    if (campaign.createdBy !== user.id && user.ownership) {
+      throw new ForbiddenError(
+        "Only the campaign owner can perform this action",
+      );
     }
 
     return { campaign };

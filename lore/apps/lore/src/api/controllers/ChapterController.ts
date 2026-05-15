@@ -42,7 +42,7 @@ export class ChapterController {
       ),
     },
     handler: async ({ params, user }) => {
-      await this.security.checkOwnership(params.campaignId, user);
+      await this.security.assertVisible(params.campaignId, user);
 
       const allChapters = await this.chapters.findMany({
         where: {
@@ -76,7 +76,7 @@ export class ChapterController {
       response: chapters.schema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.checkOwnership(params.campaignId, user);
+      await this.security.assertOwner(params.campaignId, user);
 
       const active = await this.chapters.findMany({
         where: {
@@ -121,7 +121,7 @@ export class ChapterController {
     },
     handler: async ({ params, body, user }) => {
       const chapter = await this.chapters.getById(params.id);
-      await this.security.checkOwnership(chapter.campaignId, user);
+      await this.security.assertOwner(chapter.campaignId, user);
 
       if (chapter.closedAt) {
         throw new BadRequestError("Chapter is already closed.");
@@ -149,7 +149,7 @@ export class ChapterController {
     },
     handler: async ({ params, body, user }) => {
       const chapter = await this.chapters.getById(params.id);
-      await this.security.checkOwnership(chapter.campaignId, user);
+      await this.security.assertOwner(chapter.campaignId, user);
 
       return await this.chapters.updateById(params.id, {
         ...(body.title !== undefined ? { title: body.title } : {}),
@@ -171,7 +171,7 @@ export class ChapterController {
     },
     handler: async ({ params, user }) => {
       const chapter = await this.chapters.getById(params.id);
-      await this.security.checkOwnership(chapter.campaignId, user);
+      await this.security.assertOwner(chapter.campaignId, user);
 
       const count = await this.countCompletedInWindow(chapter);
       if (count > 0) {
@@ -208,7 +208,7 @@ export class ChapterController {
     },
     handler: async ({ params, user }) => {
       const chapter = await this.chapters.getById(params.id);
-      await this.security.checkOwnership(chapter.campaignId, user);
+      await this.security.assertVisible(chapter.campaignId, user);
 
       // Closed chapters return the frozen snapshot when available.
       if (chapter.closedAt && chapter.changelog) {

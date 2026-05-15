@@ -47,7 +47,14 @@ export const extractCode = (json: string): string | null => {
 export const clearEmails = () => {
   if (!fs.existsSync(emailDir)) return;
   for (const f of fs.readdirSync(emailDir)) {
-    if (f.endsWith(".eml.json")) fs.unlinkSync(path.join(emailDir, f));
+    if (!f.endsWith(".eml.json")) continue;
+    try {
+      fs.unlinkSync(path.join(emailDir, f));
+    } catch (e: unknown) {
+      // Concurrent workers may unlink the same file in parallel; ignore
+      // ENOENT so a lost race doesn't fail an unrelated setup hook.
+      if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+    }
   }
 };
 
