@@ -218,7 +218,7 @@ export class QuestTools {
    */
   quest_complete = $tool({
     description:
-      "Mark a quest as complete. All objectives must be completed first.",
+      "Mark a quest as complete. All objectives must be completed first. Pass `message` with a short summary of what was actually done — the summary is persisted on the quest, shown in the UI, and returned by `quest_get` / `campaign_context` so future agents working on this campaign can read it. Leaving it blank is allowed but wastes a free way to hand context to the next session.",
     title: "Complete quest",
     annotations: {
       // destructive: state-altering, awards XP and gold; cannot be undone
@@ -233,6 +233,7 @@ export class QuestTools {
       const id = await this.resolveQuestId(params);
       const result = await this.questController.completeQuest({
         params: { id },
+        body: { message: params.message },
       });
 
       // Calculate rewards from character delta
@@ -284,6 +285,7 @@ export class QuestTools {
         updatedAt: quest.updatedAt,
         acceptedAt: quest.acceptedAt,
         completedAt: quest.completedAt,
+        completionMessage: quest.completionMessage,
       };
     },
   });

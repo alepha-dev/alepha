@@ -153,6 +153,14 @@ export class I18n {
         "quest.view.created": "created",
         "quest.view.actions.complete": "Complete Quest",
         "quest.view.actions.abandon": "Abandon Quest",
+        "quest.view.complete.title": "Complete this quest",
+        "quest.view.complete.description":
+          "Leave a short summary of what was done — what changed, decisions made, what a future reader (human or AI) would need to know.",
+        "quest.view.complete.placeholder":
+          "What was accomplished? (markdown supported)",
+        "quest.view.complete.submit": "Complete with summary",
+        "quest.view.complete.skip": "Complete without summary",
+        "quest.view.completionSummary": "Completion Summary",
         "quest.view.noObjectives": "No objectives for this quest.",
         "quest.view.objectives": "Objectives",
         "quest.view.attachments": "Attachments",
@@ -681,6 +689,14 @@ export class I18n {
         "quest.view.created": "forgée",
         "quest.view.actions.complete": "Marquer comme accomplie",
         "quest.view.actions.abandon": "Abandonner la quête",
+        "quest.view.complete.title": "Terminer cette quête",
+        "quest.view.complete.description":
+          "Laissez un bref résumé de ce qui a été fait — changements, décisions prises, ce qu'un lecteur futur (humain ou IA) doit savoir.",
+        "quest.view.complete.placeholder":
+          "Qu'avez-vous accompli ? (markdown supporté)",
+        "quest.view.complete.submit": "Terminer avec résumé",
+        "quest.view.complete.skip": "Terminer sans résumé",
+        "quest.view.completionSummary": "Résumé d'achèvement",
         "quest.view.noObjectives": "Aucun objectif défini.",
         "quest.view.objectives": "Objectifs",
         "quest.view.attachments": "Pièces jointes",

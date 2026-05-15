@@ -27,6 +27,15 @@ export const quests = $entity({
     acceptedAt: t.optional(t.datetime()),
     completedAt: t.optional(t.datetime()),
     /**
+     * Free-form summary written at completion time — what was actually done
+     * to close the quest. Optional. Write-once: only persisted on the
+     * `accepted → completed` transition; mutating after completion is not
+     * supported here. Surfaced to humans in the quest view + history
+     * timeline preview, and returned by MCP `quest_get` /
+     * `campaign_context` so future agents can read prior summaries.
+     */
+    completionMessage: t.optional(t.string({ size: "rich" })),
+    /**
      * Kanban sub-column the quest sits in while `status === "accepted"`.
      * Only used when the campaign's `kanban` feature is on. Free-form text
      * that must match one of the campaign's configured `kanbanColumns`.

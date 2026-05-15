@@ -72,7 +72,16 @@ test.describe("Quest", () => {
     });
 
     await test.step("complete quest", async () => {
-      await page.getByRole("button", { name: /complete.*quest/i }).click();
+      // Toolbar's "Complete Quest" now opens a summary dialog; the dialog has
+      // its own "Complete without summary" / "Complete with summary" buttons.
+      // Pick the no-summary path for the golden flow.
+      await page
+        .getByRole("button", { name: /^complete quest$/i })
+        .first()
+        .click();
+      await page
+        .getByRole("button", { name: /complete without summary/i })
+        .click();
       // Either stays on the quest view with a completed indicator or animates
       // back to the board — both leave us inside the campaign URL space.
       await page.waitForLoadState("networkidle");

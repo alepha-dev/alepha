@@ -93,6 +93,7 @@ export const questGetResultSchema = t.object({
   updatedAt: t.datetime(),
   acceptedAt: t.optional(t.datetime()),
   completedAt: t.optional(t.datetime()),
+  completionMessage: t.optional(t.string()),
 });
 
 // -----------------------------------------------------------------------------
@@ -148,7 +149,14 @@ export const questAcceptResultSchema = t.object({
 // quest_complete
 // -----------------------------------------------------------------------------
 
-export const questCompleteParamsSchema = entityRefSchema;
+export const questCompleteParamsSchema = t.extend(entityRefSchema, {
+  message: t.optional(
+    t.string({
+      description:
+        "Optional summary of what was accomplished — files touched, decisions made, anything a future reader (human or AI) would need to understand why this quest is closed. Markdown supported. Strongly encouraged: leave a trail so the next session has context.",
+    }),
+  ),
+});
 
 export const questCompleteResultSchema = t.object({
   id: t.integer(),
