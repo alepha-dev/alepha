@@ -104,6 +104,19 @@ export function AuthLogin(props: AuthLoginProps) {
   const identifierIcon =
     loginMethods.length === 1 && loginMethods[0] === "email" ? Mail : User;
 
+  // Pick the most-precise HTML autocomplete hint so password managers and
+  // browser autofill (especially iOS Keychain) pair the identifier with the
+  // saved password reliably. Mixed configs fall back to `username` — the
+  // WHATWG-canonical hint for "the account identifier".
+  const identifierAutoComplete =
+    loginMethods.length === 1
+      ? loginMethods[0] === "email"
+        ? "email"
+        : loginMethods[0] === "phone"
+          ? "tel"
+          : "username"
+      : "username";
+
   const form = useForm({
     schema: t.object({
       identifier: t.string({ minLength: 1 }),
@@ -205,6 +218,7 @@ export function AuthLogin(props: AuthLoginProps) {
                 label={identifierLabel}
                 input={form.input.identifier}
                 icon={identifierIcon}
+                autoComplete={identifierAutoComplete}
               />
               <Control
                 label={tr("auth.login.password", {

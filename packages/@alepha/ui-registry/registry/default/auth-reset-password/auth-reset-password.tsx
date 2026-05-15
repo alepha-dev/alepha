@@ -237,6 +237,19 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
               </div>
             ) : state.step === "password" ? (
               <form {...passwordForm.props} className="flex flex-col gap-4">
+                {/* Hidden identifier so password managers know which saved
+                    credential the new password belongs to. Without it,
+                    Safari/Chrome won't offer to update the existing entry. */}
+                {state.email && (
+                  <input
+                    type="text"
+                    name="username"
+                    autoComplete="username"
+                    value={state.email}
+                    readOnly
+                    hidden
+                  />
+                )}
                 <h2 className="text-center text-lg font-semibold">
                   {tr("auth.reset.title", { default: "Reset password" })}
                 </h2>
@@ -251,6 +264,7 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                   })}
                   input={passwordForm.input.password}
                   password
+                  autoComplete="new-password"
                 />
                 <Control
                   label={tr("auth.reset.confirmPassword", {
@@ -258,6 +272,7 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                   })}
                   input={passwordForm.input.confirmPassword}
                   password
+                  autoComplete="new-password"
                 />
                 <Button type="submit" disabled={passwordForm.submitting}>
                   {tr("auth.reset.setPassword", {
