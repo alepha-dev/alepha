@@ -92,6 +92,9 @@ export class I18n {
         "dashboard.chapter.none": "No open chapter",
 
         "campaign.menu.create-quest": "Create Quest",
+        "campaign.menu.create-folio": "New Folio",
+        "campaign.menu.create-petition": "New Petition",
+        "campaign.menu.create-more": "More create actions",
         "campaign.menu.board": "Board",
         "campaign.menu.kanban": "Kanban",
         "campaign.menu.adventurers": "Adventurers",
@@ -617,6 +620,9 @@ export class I18n {
         "dashboard.chapter.none": "Aucun chapitre ouvert",
 
         "campaign.menu.create-quest": "Créer quête",
+        "campaign.menu.create-folio": "Nouveau folio",
+        "campaign.menu.create-petition": "Nouvelle pétition",
+        "campaign.menu.create-more": "Autres actions de création",
         "campaign.menu.board": "Tableau",
         "campaign.menu.kanban": "Kanban",
         "campaign.menu.adventurers": "Aventuriers",

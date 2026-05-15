@@ -1,5 +1,11 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@alepha/ui/components/ui/dropdown-menu";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -7,10 +13,11 @@ import {
 } from "@alepha/ui/components/ui/sheet";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouterState } from "alepha/react/router";
-import { Plus } from "lucide-react";
+import { useRouter, useRouterState } from "alepha/react/router";
+import { BookOpen, ChevronDown, MessageSquarePlus, Plus } from "lucide-react";
 import { useState } from "react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
+import type { AppRouter } from "../../AppRouter.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanCampaignAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -24,6 +31,7 @@ const CampaignActionsCreateButton = (
   const [showDialog, setShowDialog] = useState(false);
   const { tr } = useI18n<I18n, "en">();
   const client = useClient<QuestController>();
+  const router = useRouter<AppRouter>();
   const [campaign] = useStore(currentCampaignAtom);
   const [reloadKey, setReloadKey] = useStore(kanbanReloadAtom);
   const routerState = useRouterState();
@@ -33,27 +41,82 @@ const CampaignActionsCreateButton = (
     return null;
   }
 
+  const canCreateQuest = client.createQuest.can();
+  const features = campaign.features;
+  const folioEnabled = features.folios;
+  const petitionEnabled = features.petitions;
+  const hasSecondaryAction = folioEnabled || petitionEnabled;
+
+  const mainLabel = String(tr("campaign.menu.create-quest"));
+
+  // Green base for both halves; the caret half drops a touch of opacity so
+  // the eye reads them as one button with a divider.
+  const baseClass = "bg-green-600 text-white hover:bg-green-700";
+  const mainClass = hasSecondaryAction
+    ? `${baseClass} rounded-r-none`
+    : baseClass;
+
   return (
     <>
-      <Button
-        size="icon"
-        disabled={!client.createQuest.can()}
-        onClick={() => setShowDialog(true)}
-        aria-label={String(tr("campaign.menu.create-quest"))}
-        className="bg-green-600 text-white hover:bg-green-700 md:w-auto md:px-4"
-      >
-        <Plus className="size-4" />
-        <span className="hidden md:inline">
-          {tr("campaign.menu.create-quest")}
-        </span>
-      </Button>
+      <div className="flex items-stretch">
+        <Button
+          size="icon"
+          disabled={!canCreateQuest}
+          onClick={() => setShowDialog(true)}
+          aria-label={mainLabel}
+          className={`${mainClass} md:w-auto md:px-4`}
+        >
+          <Plus className="size-4" />
+          <span className="hidden md:inline">{mainLabel}</span>
+        </Button>
+        {hasSecondaryAction && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                disabled={!canCreateQuest}
+                aria-label={String(tr("campaign.menu.create-more"))}
+                className={`${baseClass} rounded-l-none border-l border-white/20 px-2`}
+              >
+                <ChevronDown className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-44">
+              {folioEnabled && (
+                <DropdownMenuItem
+                  onClick={() =>
+                    router.push("campaignFoliosNew", {
+                      params: { campaignId: String(campaign.id) },
+                    })
+                  }
+                >
+                  <BookOpen className="size-4" />
+                  {tr("campaign.menu.create-folio")}
+                </DropdownMenuItem>
+              )}
+              {petitionEnabled && (
+                <DropdownMenuItem
+                  onClick={() =>
+                    router.push("campaignPetitionRequest", {
+                      params: { campaignId: String(campaign.id) },
+                    })
+                  }
+                >
+                  <MessageSquarePlus className="size-4" />
+                  {tr("campaign.menu.create-petition")}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent
           side="right"
           className="flex w-full flex-col gap-0 p-0 sm:max-w-2xl"
         >
           <SheetHeader className="shrink-0">
-            <SheetTitle>{tr("campaign.menu.create-quest")}</SheetTitle>
+            <SheetTitle>{mainLabel}</SheetTitle>
           </SheetHeader>
           <QuestCreate
             campaign={campaign}
