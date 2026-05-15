@@ -1,4 +1,4 @@
-import "highlight.js/styles/github-dark.css";
+import "./markdown-view.css";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
@@ -46,7 +46,8 @@ export const MarkdownView = (props: MarkdownViewProps) => {
             </a>
           ),
           code: ({ children, className }) => {
-            const isBlock = className?.startsWith("language-");
+            const isBlock =
+              className?.includes("language-") || className?.includes("hljs");
             if (isBlock) {
               return <code className={`${className} text-xs`}>{children}</code>;
             }
@@ -57,7 +58,7 @@ export const MarkdownView = (props: MarkdownViewProps) => {
             );
           },
           pre: ({ children }) => (
-            <pre className="my-4 overflow-auto rounded-md bg-zinc-900 p-3 text-xs text-zinc-100">
+            <pre className="border-border my-4 overflow-auto rounded-md border bg-transparent p-3 text-xs">
               {children}
             </pre>
           ),

@@ -20,6 +20,11 @@
           "path": "registry/default/markdown-view/markdown-view.tsx",
           "type": "registry:ui",
           "target": "components/markdown-view/markdown-view.tsx"
+        },
+        {
+          "path": "registry/default/markdown-view/markdown-view.css",
+          "type": "registry:ui",
+          "target": "components/markdown-view/markdown-view.css"
         }
       ]
     },

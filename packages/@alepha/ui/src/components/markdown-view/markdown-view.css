@@ -1,0 +1,114 @@
+/**
+ * Theme-aware syntax highlighting for highlight.js.
+ * Light palette is GitHub Light; dark palette (under `.dark` ancestor) is GitHub Dark.
+ * Backgrounds are intentionally transparent so the code block inherits its container bg.
+ */
+
+.hljs {
+  display: block;
+  overflow-x: auto;
+  background: transparent;
+  color: var(--hljs-fg);
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--hljs-comment);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+  color: var(--hljs-keyword);
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag .hljs-attr {
+  color: var(--hljs-number);
+}
+
+.hljs-string,
+.hljs-doctag,
+.hljs-regexp,
+.hljs-link {
+  color: var(--hljs-string);
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-selector-id,
+.hljs-type,
+.hljs-class .hljs-title {
+  color: var(--hljs-title);
+}
+
+.hljs-tag,
+.hljs-name,
+.hljs-attribute {
+  color: var(--hljs-tag);
+}
+
+.hljs-symbol,
+.hljs-bullet {
+  color: var(--hljs-symbol);
+}
+
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-params {
+  color: var(--hljs-builtin);
+}
+
+.hljs-meta {
+  color: var(--hljs-meta);
+}
+
+.hljs-deletion {
+  background: var(--hljs-deletion);
+}
+
+.hljs-addition {
+  background: var(--hljs-addition);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+:root {
+  --hljs-fg: #24292e;
+  --hljs-comment: #6a737d;
+  --hljs-keyword: #d73a49;
+  --hljs-number: #005cc5;
+  --hljs-string: #032f62;
+  --hljs-title: #6f42c1;
+  --hljs-tag: #22863a;
+  --hljs-symbol: #e36209;
+  --hljs-builtin: #005cc5;
+  --hljs-meta: #6a737d;
+  --hljs-deletion: #ffeef0;
+  --hljs-addition: #f0fff4;
+}
+
+.dark {
+  --hljs-fg: #c9d1d9;
+  --hljs-comment: #8b949e;
+  --hljs-keyword: #ff7b72;
+  --hljs-number: #79c0ff;
+  --hljs-string: #a5d6ff;
+  --hljs-title: #d2a8ff;
+  --hljs-tag: #7ee787;
+  --hljs-symbol: #ffa657;
+  --hljs-builtin: #79c0ff;
+  --hljs-meta: #8b949e;
+  --hljs-deletion: #67060c;
+  --hljs-addition: #033a16;
+}
