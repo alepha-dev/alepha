@@ -77,6 +77,7 @@ export class ApiKeyController {
         roles: apiKey.roles,
         createdAt: apiKey.createdAt,
         lastUsedAt: apiKey.lastUsedAt,
+        lastUsedIp: apiKey.lastUsedIp,
         expiresAt: apiKey.expiresAt,
         usageCount: apiKey.usageCount,
       }));

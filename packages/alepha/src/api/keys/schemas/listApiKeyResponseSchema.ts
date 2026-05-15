@@ -8,6 +8,7 @@ export const listApiKeyItemSchema = t.object({
   roles: t.array(t.string()),
   createdAt: t.datetime(),
   lastUsedAt: t.optional(t.datetime()),
+  lastUsedIp: t.optional(t.string()),
   expiresAt: t.optional(t.datetime()),
   usageCount: t.integer(),
 });

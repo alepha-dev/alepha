@@ -20,6 +20,20 @@ export class I18n {
         "header.actions.language": "Language",
         "header.actions.profile.level": "Level $1",
 
+        "header.apiKeys.title": "MCP API keys",
+        "header.apiKeys.state.live": "Connected — used in the last 24h",
+        "header.apiKeys.state.stale": "Keys exist but unused recently",
+        "header.apiKeys.state.empty": "No API keys yet",
+        "header.apiKeys.new": "New",
+        "header.apiKeys.manage": "Manage keys",
+        "header.apiKeys.empty.body":
+          "Create an API key to let Claude or another MCP client access your campaigns.",
+        "header.apiKeys.empty.cta": "Set up MCP access",
+        "header.apiKeys.row.usedAt": "Last used $1",
+        "header.apiKeys.row.never": "Never used",
+        "header.apiKeys.row.usage": "$1 calls",
+        "header.apiKeys.row.ip": "from $1",
+
         "quest-log.quests": "Quests:",
         "quest-log.search": "Find by name, zone...",
         "quest-log.empty": "No quests yet",
@@ -592,6 +606,21 @@ export class I18n {
         "header.actions.admin": "Panneau admin",
         "header.actions.language": "Langue",
         "header.actions.profile.level": "Niveau $1",
+
+        "header.apiKeys.title": "Clés API MCP",
+        "header.apiKeys.state.live": "Connecté — utilisée dans les 24h",
+        "header.apiKeys.state.stale":
+          "Clés existantes mais inutilisées récemment",
+        "header.apiKeys.state.empty": "Aucune clé API",
+        "header.apiKeys.new": "Nouvelle",
+        "header.apiKeys.manage": "Gérer les clés",
+        "header.apiKeys.empty.body":
+          "Créez une clé API pour que Claude ou un autre client MCP accède à vos campagnes.",
+        "header.apiKeys.empty.cta": "Configurer l'accès MCP",
+        "header.apiKeys.row.usedAt": "Dernière utilisation $1",
+        "header.apiKeys.row.never": "Jamais utilisée",
+        "header.apiKeys.row.usage": "$1 appels",
+        "header.apiKeys.row.ip": "depuis $1",
 
         "quest-log.title": "Journal des quêtes",
         "quest-log.quests": "Quêtes :",
