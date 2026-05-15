@@ -12,11 +12,11 @@ import {
 import { t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
-import { useFieldValue, useForm } from "alepha/react/form";
+import { useFieldValue, useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { RotateCcw, Signature, Trash, User as UserIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CampaignController } from "@/api/controllers/CampaignController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { User } from "@/api/entities/users.ts";
@@ -43,6 +43,34 @@ const getPriorityColor = (priority: string) => {
 
 const removeHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
 
+type BoardFilterValues = {
+  search?: string;
+  status?: "new" | "accepted" | "completed";
+  zone?: string;
+};
+
+const filterStorageKey = (campaignId: number) =>
+  `lor.board.filters.${campaignId}`;
+
+const readStoredFilters = (
+  campaignId: number,
+  knownZones: string[],
+): BoardFilterValues | undefined => {
+  try {
+    const raw = window.localStorage.getItem(filterStorageKey(campaignId));
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as BoardFilterValues;
+    // Drop a persisted zone that no longer exists on the campaign so we don't
+    // filter against a phantom value (would silently hide every quest).
+    if (parsed.zone && !knownZones.includes(parsed.zone)) {
+      parsed.zone = undefined;
+    }
+    return parsed;
+  } catch {
+    return undefined;
+  }
+};
+
 const CampaignBoardTable = () => {
   const alepha = useAlepha();
   const [campaign] = useStore(currentCampaignAtom);
@@ -53,7 +81,17 @@ const CampaignBoardTable = () => {
   const { tr } = useI18n<I18n, "en">();
   const [users, setUsers] = useState<Array<User>>([]);
 
+  // Hydrate the form once per campaign: prior persisted filters if any, else
+  // default to `status: "new"` so the board opens on the actionable lane.
+  const initialFilterValues = useMemo<BoardFilterValues>(() => {
+    if (!campaign?.id) return { status: "new" };
+    return (
+      readStoredFilters(campaign.id, campaign.zones ?? []) ?? { status: "new" }
+    );
+  }, [campaign?.id]);
+
   const filters = useForm({
+    initialValues: initialFilterValues,
     schema: t.object({
       search: t.optional(t.string()),
       status: t.optional(t.enum(["new", "accepted", "completed"])),
@@ -63,6 +101,53 @@ const CampaignBoardTable = () => {
       // No-op: AlephaTable subscribes to `form:submit:success` and refetches.
     },
   });
+
+  // Persist filter state to localStorage on every change so the same campaign
+  // re-opens with the same lens later. Strips empty fields to keep the blob
+  // small and round-trip clean.
+  const filterValues = useFormState(filters, ["values"]).values as
+    | BoardFilterValues
+    | undefined;
+  useEffect(() => {
+    if (!campaign?.id || !filterValues) return;
+    const clean: BoardFilterValues = {};
+    if (filterValues.search) clean.search = filterValues.search;
+    if (filterValues.status) clean.status = filterValues.status;
+    if (filterValues.zone) clean.zone = filterValues.zone;
+    try {
+      if (Object.keys(clean).length === 0) {
+        window.localStorage.removeItem(filterStorageKey(campaign.id));
+      } else {
+        window.localStorage.setItem(
+          filterStorageKey(campaign.id),
+          JSON.stringify(clean),
+        );
+      }
+    } catch {
+      // localStorage may be unavailable (private mode, quota); silently skip.
+    }
+  }, [
+    campaign?.id,
+    filterValues?.search,
+    filterValues?.status,
+    filterValues?.zone,
+  ]);
+
+  // Reset = clear all. `filters.reset()` would restore the hydrated initial
+  // values (which include `status: "new"`); we want the button to wipe every
+  // active filter, including status. Swap initial values for an empty object
+  // first — the change is mirrored to live values + emits form:change so
+  // AlephaTable refetches.
+  const handleResetFilters = () => {
+    filters.setInitialValues({});
+    if (campaign?.id) {
+      try {
+        window.localStorage.removeItem(filterStorageKey(campaign.id));
+      } catch {
+        // ignore
+      }
+    }
+  };
 
   useEffect(() => {
     if (!campaign?.id) return;
@@ -126,7 +211,7 @@ const CampaignBoardTable = () => {
           type="button"
           size="sm"
           variant="ghost"
-          onClick={() => filters.reset()}
+          onClick={handleResetFilters}
         >
           <RotateCcw className="size-4" />
           {tr("board.filter.reset")}
