@@ -151,9 +151,20 @@ export class FolioController {
       params: idParamsSchema,
       response: t.object({
         outbound: t.array(
-          t.object({ shortId: t.integer(), title: t.string() }),
+          t.object({
+            kind: t.enum(["folio", "quest"]),
+            shortId: t.integer(),
+            title: t.string(),
+          }),
         ),
-        inbound: t.array(t.object({ shortId: t.integer(), title: t.string() })),
+        // Inbound is always folio→folio (only folios contain `[[...]]`).
+        inbound: t.array(
+          t.object({
+            kind: t.enum(["folio"]),
+            shortId: t.integer(),
+            title: t.string(),
+          }),
+        ),
       }),
     },
     handler: async ({ params, user }) => {
@@ -167,26 +178,79 @@ export class FolioController {
         this.linkService.findOutbound(folio.id),
         this.linkService.findInbound(folio.id),
       ]);
-      const targetIds = [
-        ...new Set([...out.map((l) => l.toId), ...inb.map((l) => l.fromId)]),
-      ];
-      // Resolve link target/source ids → display refs in one query.
-      const refs =
-        targetIds.length > 0
-          ? await this.folios.findMany({
-              where: { id: { inArray: targetIds } },
+
+      // Outbound: split by targetType. Folio targets resolve through
+      // folios; quest targets through quests. Old rows have no
+      // targetType (defaults to "folio"), so the partition stays
+      // backwards-compatible.
+      const outFolioIds = out
+        .filter((l) => l.targetType === "folio")
+        .map((l) => l.toId);
+      const outQuestIds = out
+        .filter((l) => l.targetType === "quest")
+        .map((l) => Number.parseInt(l.toId, 10))
+        .filter((n) => Number.isFinite(n));
+
+      const [folioRefs, questRefs, inboundRefs] = await Promise.all([
+        outFolioIds.length > 0
+          ? this.folios.findMany({
+              where: { id: { inArray: outFolioIds } },
               columns: ["id", "shortId", "title"],
             })
-          : [];
-      const refById = new Map(refs.map((r) => [r.id, r]));
+          : Promise.resolve([]),
+        outQuestIds.length > 0
+          ? this.linkService.findQuestRefs(outQuestIds)
+          : Promise.resolve([]),
+        inb.length > 0
+          ? this.folios.findMany({
+              where: { id: { inArray: inb.map((l) => l.fromId) } },
+              columns: ["id", "shortId", "title"],
+            })
+          : Promise.resolve([]),
+      ]);
+
+      const folioById = new Map(folioRefs.map((r) => [r.id, r]));
+      const questById = new Map(questRefs.map((r) => [r.id, r]));
+      const inboundById = new Map(inboundRefs.map((r) => [r.id, r]));
+
+      type OutRef = {
+        kind: "folio" | "quest";
+        shortId: number;
+        title: string;
+      };
+      const outbound: OutRef[] = [];
+      for (const l of out) {
+        if (l.targetType === "quest") {
+          const ref = questById.get(Number.parseInt(l.toId, 10));
+          if (ref)
+            outbound.push({
+              kind: "quest",
+              shortId: ref.shortId,
+              title: ref.title,
+            });
+        } else {
+          const ref = folioById.get(l.toId);
+          if (ref)
+            outbound.push({
+              kind: "folio",
+              shortId: ref.shortId,
+              title: ref.title,
+            });
+        }
+      }
       return {
-        outbound: out.flatMap((l) => {
-          const ref = refById.get(l.toId);
-          return ref ? [{ shortId: ref.shortId, title: ref.title }] : [];
-        }),
+        outbound,
         inbound: inb.flatMap((l) => {
-          const ref = refById.get(l.fromId);
-          return ref ? [{ shortId: ref.shortId, title: ref.title }] : [];
+          const ref = inboundById.get(l.fromId);
+          return ref
+            ? [
+                {
+                  kind: "folio" as const,
+                  shortId: ref.shortId,
+                  title: ref.title,
+                },
+              ]
+            : [];
         }),
       };
     },

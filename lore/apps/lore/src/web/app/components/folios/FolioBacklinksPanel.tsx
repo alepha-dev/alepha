@@ -13,14 +13,21 @@ export interface FolioBacklinksPanelProps {
   campaignId: string;
 }
 
-interface LinkRef {
+interface OutboundRef {
+  kind: "folio" | "quest";
+  shortId: number;
+  title: string;
+}
+
+interface InboundRef {
+  kind: "folio";
   shortId: number;
   title: string;
 }
 
 interface LinksPayload {
-  outbound: LinkRef[];
-  inbound: LinkRef[];
+  outbound: OutboundRef[];
+  inbound: InboundRef[];
 }
 
 const FolioBacklinksPanel = (props: FolioBacklinksPanelProps) => {
@@ -56,28 +63,34 @@ const FolioBacklinksPanel = (props: FolioBacklinksPanelProps) => {
     return null;
   }
 
-  const renderRefs = (refs: LinkRef[]) => (
+  const renderRefs = (refs: Array<OutboundRef | InboundRef>) => (
     <ul className="flex flex-col gap-1">
-      {refs.map((ref) => (
-        <li key={ref.shortId}>
-          <Button asChild variant="ghost" size="sm" className="h-7 px-2">
-            <Link
-              href={router.path("campaignFoliosFolio", {
-                params: {
-                  campaignId: props.campaignId,
-                  shortId: String(ref.shortId),
-                },
-              })}
-            >
-              <ArrowUpRight className="size-3.5" />
-              <span className="truncate">{ref.title}</span>
-              <span className="text-muted-foreground text-[10px]">
-                #{ref.shortId}
-              </span>
-            </Link>
-          </Button>
-        </li>
-      ))}
+      {refs.map((ref) => {
+        const route =
+          ref.kind === "quest" ? "campaignQuest" : "campaignFoliosFolio";
+        return (
+          <li key={`${ref.kind}-${ref.shortId}`}>
+            <Button asChild variant="ghost" size="sm" className="h-7 px-2">
+              <Link
+                href={router.path(route, {
+                  params: {
+                    campaignId: props.campaignId,
+                    shortId: String(ref.shortId),
+                  },
+                })}
+              >
+                <ArrowUpRight className="size-3.5" />
+                <span className="truncate">{ref.title}</span>
+                <span className="text-muted-foreground text-[10px]">
+                  {ref.kind === "quest"
+                    ? `Q#${ref.shortId}`
+                    : `#${ref.shortId}`}
+                </span>
+              </Link>
+            </Button>
+          </li>
+        );
+      })}
     </ul>
   );
 
