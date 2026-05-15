@@ -80,6 +80,20 @@ test.describe("Petition", () => {
     await registerAndVerify(page, email, password);
     const campaignId = await createCampaignViaWizard(page, campaignTitle);
 
+    // Wizard defaults petitions OFF — flip it on for this campaign so the
+    // request form is reachable. updateCampaignById has no body schema for
+    // GET, so it's POST with { features: { petitions: true } }.
+    await page.evaluate(async (id) => {
+      const res = await fetch(`/api/updateCampaignById/${id}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ features: { petitions: true } }),
+      });
+      if (!res.ok)
+        throw new Error(`enable petitions: ${res.status} ${await res.text()}`);
+    }, campaignId);
+
     await test.step("seed a zone via createQuest", async () => {
       await apiPost(page, "createQuest", {
         campaignId,

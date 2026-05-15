@@ -145,9 +145,9 @@ export const registerAndVerify = async (
 };
 
 /**
- * Drive the 2-step campaign-create wizard: name → submit (logo step is the
- * final step, icon is optional so we just submit without uploading). Returns
- * the new campaign id parsed from the URL.
+ * Drive the 3-step campaign-create wizard: name → logo (skip) → modules →
+ * submit. Keeps the module defaults (folios + kanban + chapters on,
+ * petitions off). Returns the new campaign id parsed from the URL.
  */
 export const createCampaignViaWizard = async (
   page: Page,
@@ -156,7 +156,11 @@ export const createCampaignViaWizard = async (
   await page.goto("/new-campaign");
   await page.waitForLoadState("networkidle");
   await page.locator('input[type="text"]').first().fill(title);
+  // Step 1 → Step 2 (logo)
   await page.getByRole("button", { name: /^next$/i }).click();
+  // Step 2 → Step 3 (modules) — icon is optional, skip via Next
+  await page.getByRole("button", { name: /^next$/i }).click();
+  // Step 3 → submit
   await page.getByRole("button", { name: /create campaign/i }).click();
   await page.waitForURL(/\/c\/\d+/, { timeout: 15_000 });
   const match = page.url().match(/\/c\/(\d+)/);
