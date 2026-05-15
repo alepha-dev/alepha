@@ -20,7 +20,10 @@ const CampaignUpdate = (props: CampaignUpdateProps) => {
   const { tr } = useI18n<I18n, "en">();
 
   const form = useForm({
-    initialValues: props.campaign,
+    initialValues: {
+      ...props.campaign,
+      public: props.campaign.public ?? false,
+    },
     schema: t.object({
       icon: t.optional(t.nullable(t.uuid())),
       title: t.string({
