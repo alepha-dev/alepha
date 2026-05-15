@@ -169,4 +169,193 @@ test.describe("Quest", () => {
       });
     });
   });
+
+  /**
+   * Questline (Lore quest #32): `acceptQuest` is gated on the predecessor's
+   * `completedAt` being set. While the predecessor is in flight, hitting
+   * the gate fails with a 400 carrying "blocked by #N". Completing the
+   * predecessor flips the dependent into an acceptable state.
+   */
+  test("questline gates accept on predecessor completion", async ({ page }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `questline${t}@example.com`;
+    const password = "QuestlineTest123!";
+    const campaignTitle = `QL${t}`.slice(0, 20);
+
+    await registerAndVerify(page, email, password);
+    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+
+    const predecessor = await apiPost<{ id: number; shortId: number }>(
+      page,
+      "createQuest",
+      {
+        campaignId,
+        title: `Setup${t}`,
+        description: "Predecessor",
+        zone: "Main",
+        priority: "medium",
+        difficulty: 2,
+        objectives: [],
+        attachments: [],
+      },
+    );
+    const follower = await apiPost<{ id: number; shortId: number }>(
+      page,
+      "createQuest",
+      {
+        campaignId,
+        title: `Follower${t}`,
+        description: "Depends on the setup",
+        zone: "Main",
+        priority: "medium",
+        difficulty: 2,
+        objectives: [],
+        attachments: [],
+        dependsOn: predecessor.id,
+      },
+    );
+
+    await test.step("accepting the follower fails while predecessor is open", async () => {
+      // `acceptQuest` is GET (no body schema) so the action path is the
+      // canonical /api/acceptQuest/:id.
+      const result = (await page.evaluate(async (id) => {
+        const r = await fetch(`/api/acceptQuest/${id}`, {
+          method: "GET",
+          credentials: "include",
+        });
+        return { status: r.status, body: await r.text() };
+      }, follower.id)) as { status: number; body: string };
+      expect(result.status).toBe(400);
+      expect(result.body.toLowerCase()).toContain("blocked by");
+      expect(result.body).toContain(`#${predecessor.shortId}`);
+    });
+
+    await test.step("complete the predecessor, then accept the follower", async () => {
+      await page.evaluate(async (id) => {
+        const accept = await fetch(`/api/acceptQuest/${id}`, {
+          method: "GET",
+          credentials: "include",
+        });
+        if (!accept.ok) {
+          throw new Error(`accept: ${accept.status} ${await accept.text()}`);
+        }
+        const complete = await fetch(`/api/completeQuest/${id}`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        if (!complete.ok) {
+          throw new Error(
+            `complete: ${complete.status} ${await complete.text()}`,
+          );
+        }
+      }, predecessor.id);
+
+      const acceptFollower = (await page.evaluate(async (id) => {
+        const r = await fetch(`/api/acceptQuest/${id}`, {
+          method: "GET",
+          credentials: "include",
+        });
+        return { status: r.status, body: await r.text() };
+      }, follower.id)) as { status: number; body: string };
+      expect(acceptFollower.status).toBe(200);
+    });
+
+    await test.step("follower view surfaces the Unblocked chip", async () => {
+      await page.goto(`/c/${campaignId}/q/${follower.shortId}`);
+      await page.waitForLoadState("networkidle");
+      await expect(
+        page.getByText(new RegExp(`unblocked.*#${predecessor.shortId}`, "i")),
+      ).toBeVisible({ timeout: 10_000 });
+    });
+  });
+
+  /**
+   * Completion summary (Lore quest #56): the "Complete with summary" path
+   * persists `completionMessage` on the quest, which then surfaces as a
+   * "Completion Summary" section on the quest view + a single-line
+   * preview under the "At Long Last" history entry.
+   */
+  test("complete-with-summary persists and renders", async ({ page }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `summary${t}@example.com`;
+    const password = "SummaryTest123!";
+    const campaignTitle = `SM${t}`.slice(0, 20);
+    const summaryText = `Shipped the thing on ${t}. Files touched: a.ts, b.ts.`;
+
+    await registerAndVerify(page, email, password);
+    const campaignId = await createCampaignViaWizard(page, campaignTitle);
+
+    const { shortId } = await apiPost<{ id: number; shortId: number }>(
+      page,
+      "createQuest",
+      {
+        campaignId,
+        title: `Summary${t}`,
+        description: "Quest under summary test",
+        zone: "Main",
+        priority: "medium",
+        difficulty: 2,
+        objectives: [],
+        attachments: [],
+      },
+    );
+
+    await page.goto(`/c/${campaignId}/q/${shortId}`);
+    await page.waitForLoadState("networkidle");
+
+    // Accept first — Complete is only enabled on accepted quests.
+    await page
+      .getByRole("button", { name: /sign and accept|accept.*quest/i })
+      .click();
+    await expect(
+      page.getByRole("button", { name: /complete.*quest/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
+
+    await test.step("open the completion dialog and submit with summary", async () => {
+      // Toolbar Complete button + dialog "Complete with summary" both
+      // match /complete.*quest|complete with summary/. Disambiguate by
+      // role and position — toolbar button comes first in DOM order.
+      await page
+        .getByRole("button", { name: /complete.*quest/i })
+        .first()
+        .click();
+      // Dialog presents a textarea — fill the first textarea on screen.
+      // The QuestDescription block lives behind a collapsible that's
+      // closed by default, so the only visible textarea is the summary.
+      const editor = page.locator("textarea").first();
+      await expect(editor).toBeVisible({ timeout: 10_000 });
+      await editor.fill(summaryText);
+      await page
+        .getByRole("button", { name: /complete with summary/i })
+        .click();
+      await page.waitForLoadState("networkidle");
+    });
+
+    await test.step("summary section + history preview render the message", async () => {
+      // Completion handler navigates back to the board. Re-open the quest
+      // view by clicking its row instead of `page.goto` so we exercise
+      // the SPA router (goto would force a hard reload + Turnstile
+      // polling delays).
+      await page.waitForURL(new RegExp(`/c/${campaignId}/?$`), {
+        timeout: 15_000,
+      });
+      await page.goto(`/c/${campaignId}/q/${shortId}`);
+      await page.waitForLoadState("domcontentloaded");
+      // First make sure the quest view actually loaded — the title is
+      // always rendered for a valid shortId.
+      await expect(page.getByText(`Summary${t}`).first()).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.getByText(/completion summary/i)).toBeVisible({
+        timeout: 10_000,
+      });
+      await expect(page.getByText(summaryText).first()).toBeVisible();
+    });
+  });
 });
