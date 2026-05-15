@@ -55,12 +55,23 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const filterForm = useForm({
     schema: t.object({
       zones: t.array(t.text()),
+      tags: t.array(t.text()),
     }),
-    initialValues: { zones: [] as string[] },
+    initialValues: { zones: [] as string[], tags: [] as string[] },
     handler: async () => {},
   });
   const [zoneFilterValue] = useFieldValue(filterForm.input.zones);
   const zoneFilter = (zoneFilterValue as string[] | undefined) ?? [];
+  const [tagFilterValue] = useFieldValue(filterForm.input.tags);
+  const tagFilter = (tagFilterValue as string[] | undefined) ?? [];
+  const [knownTags, setKnownTags] = useState<string[]>([]);
+  useEffect(() => {
+    if (!campaign?.id) return;
+    questApi
+      .listQuestTags({ query: { campaignId: campaign.id } })
+      .then(setKnownTags)
+      .catch(() => null);
+  }, [campaign?.id]);
   const [selectedQuest, setSelectedQuest] = useState<QuestResource | null>(
     null,
   );
@@ -88,11 +99,17 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   );
 
   const filteredQuests = useMemo(() => {
+    let out = quests;
     if (zoneFilter.length > 0) {
-      return quests.filter((quest) => zoneFilter.includes(quest.zone));
+      out = out.filter((quest) => zoneFilter.includes(quest.zone));
     }
-    return quests;
-  }, [quests, zoneFilter]);
+    if (tagFilter.length > 0) {
+      out = out.filter((quest) =>
+        (quest.tags ?? []).some((tag) => tagFilter.includes(tag)),
+      );
+    }
+    return out;
+  }, [quests, zoneFilter, tagFilter]);
 
   const subColumns = campaign.kanbanColumns ?? ["In Progress"];
 
@@ -233,13 +250,22 @@ const KanbanBoard = (props: KanbanBoardProps) => {
         {loading && (
           <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
         )}
-        <form {...filterForm.props} className="flex flex-1 items-center">
+        <form {...filterForm.props} className="flex flex-1 items-center gap-2">
           {zoneOptions.length > 0 && (
             <div className="w-64 max-w-full">
               <ControlSelect
                 input={filterForm.input.zones}
                 label={String(tr("kanban.filter.zones"))}
                 items={zoneOptions}
+              />
+            </div>
+          )}
+          {knownTags.length > 0 && (
+            <div className="w-64 max-w-full">
+              <ControlSelect
+                input={filterForm.input.tags}
+                label={String(tr("kanban.filter.tags"))}
+                items={knownTags.map((t) => ({ value: t, label: t }))}
               />
             </div>
           )}
