@@ -6,6 +6,7 @@ import { AlephaServerEtag } from "alepha/server/etag";
 import { AdminFileStatsController } from "./controllers/AdminFileStatsController.ts";
 import { FileController } from "./controllers/FileController.ts";
 import { FileJobs } from "./jobs/FileJobs.ts";
+import { FileAccessProvider } from "./providers/FileAccessProvider.ts";
 import { FileService } from "./services/FileService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -14,6 +15,7 @@ export * from "./controllers/AdminFileStatsController.ts";
 export * from "./controllers/FileController.ts";
 export * from "./entities/files.ts";
 export * from "./jobs/FileJobs.ts";
+export * from "./providers/FileAccessProvider.ts";
 export * from "./schemas/storageStatsSchema.ts";
 export * from "./services/FileService.ts";
 
@@ -60,6 +62,12 @@ declare module "alepha/bucket" {
  */
 export const AlephaApiFiles = $module({
   name: "alepha.api.files",
-  services: [FileController, AdminFileStatsController, FileJobs, FileService],
+  services: [
+    FileController,
+    AdminFileStatsController,
+    FileJobs,
+    FileService,
+    FileAccessProvider,
+  ],
   imports: [AlephaBucket, AlephaServerEtag],
 });

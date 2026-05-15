@@ -18,3 +18,8 @@ File management endpoints.
 - TTL-based expiration
 - Storage statistics
 
+## API Reference
+
+### Providers
+
+- [`FileAccessProvider`](/docs/reference-providers-fileaccessprovider) — Authorization policy for file reads served through `FileController.streamFile`.

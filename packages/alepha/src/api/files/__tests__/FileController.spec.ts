@@ -11,6 +11,10 @@ const adminUser: UserAccountToken = {
   id: "00000000-0000-0000-0000-000000000001",
   name: "Test Admin",
   roles: ["admin"],
+  // Admin identity bypasses `FileAccessProvider.assertReadable`'s
+  // creator-only default; without this every streamFile test would
+  // require the admin to also be the uploader.
+  ownership: false,
 };
 
 const asAdmin = { user: adminUser };

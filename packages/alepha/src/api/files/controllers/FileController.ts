@@ -2,6 +2,7 @@ import { $inject, t } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { $etag } from "alepha/server/etag";
+import { FileAccessProvider } from "../providers/FileAccessProvider.ts";
 import { fileQuerySchema } from "../schemas/fileQuerySchema.ts";
 import { fileResourceSchema } from "../schemas/fileResourceSchema.ts";
 import { FileService } from "../services/FileService.ts";
@@ -14,6 +15,7 @@ export class FileController {
   protected readonly url = "/files";
   protected readonly group = "files";
   protected readonly fileService = $inject(FileService);
+  protected readonly fileAccess = $inject(FileAccessProvider);
 
   /**
    * GET /files - Lists files with optional filtering and pagination.
@@ -128,7 +130,13 @@ export class FileController {
   /**
    * GET /files/:id - Streams/downloads a file by its ID.
    * Returns the file content with appropriate Content-Type header.
-   * Cached with ETag support for 1 year (immutable).
+   *
+   * Authorization is delegated to `FileAccessProvider.assertReadable`. The
+   * default policy is creator-only — override the provider via DI to widen
+   * access (e.g. avatars, shared attachments). See `FileAccessProvider`.
+   *
+   * Cache-Control is `private` because the per-user authorization decision
+   * cannot be cached by shared proxies/CDNs. Client-side ETag still works.
    */
   public readonly streamFile = $action({
     path: `${this.url}/:id`,
@@ -138,7 +146,7 @@ export class FileController {
       $secure({ permissions: ["file:read"] }),
       $etag({
         control: {
-          public: true,
+          private: true,
           maxAge: [1, "year"],
           immutable: true,
         },
@@ -150,8 +158,10 @@ export class FileController {
       }),
       response: t.file(),
     },
-    handler: async ({ params }) => {
-      return await this.fileService.streamFile(params.id);
+    handler: async ({ params, user }) => {
+      const file = await this.fileService.getFileById(params.id);
+      await this.fileAccess.assertReadable(file, user);
+      return await this.fileService.streamFile(file.id);
     },
   });
 }
