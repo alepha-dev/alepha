@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { AlephaCrypto } from "alepha/crypto";
 import { AlephaReactUi } from "alepha/react/ui";
 import { CharacterInfo } from "../../api/services/CharacterInfo.ts";
 import { AppRouter } from "./AppRouter.ts";
@@ -19,7 +20,7 @@ import { Toaster } from "./services/Toaster.ts";
 
 export const LoreWebApp = $module({
   name: "lore.web.app",
-  imports: [AlephaReactUi],
+  imports: [AlephaReactUi, AlephaCrypto],
   services: [Toaster, I18n, ThemesProvider, AppRouter, MeRouter],
   atoms: [
     currentAssignedQuestsAtom,

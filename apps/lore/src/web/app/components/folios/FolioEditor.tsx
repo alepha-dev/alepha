@@ -11,7 +11,7 @@ import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { ArrowLeft, Lock, Save, ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { AppRouter } from "../../AppRouter.ts";
@@ -80,6 +80,24 @@ const FolioEditor = (props: FolioEditorProps) => {
   const [passphrase, setPassphrase] = useState("");
   const [passphraseConfirm, setPassphraseConfirm] = useState("");
   const [protectError, setProtectError] = useState<string | null>(null);
+
+  // The `useForm` handler is memoized at form-creation time, so its
+  // closure captures the *initial* protectedMode / passphrase values
+  // (both falsy). Mirror the live state into refs so the submit path
+  // sees the user's actual choice. Same pattern as the Turnstile token
+  // in `auth-register.tsx`.
+  const protectedModeRef = useRef(protectedMode);
+  const passphraseRef = useRef(passphrase);
+  const passphraseConfirmRef = useRef(passphraseConfirm);
+  useEffect(() => {
+    protectedModeRef.current = protectedMode;
+  }, [protectedMode]);
+  useEffect(() => {
+    passphraseRef.current = passphrase;
+  }, [passphrase]);
+  useEffect(() => {
+    passphraseConfirmRef.current = passphraseConfirm;
+  }, [passphraseConfirm]);
 
   // Pre-fill the editor with the *decrypted* content when editing a
   // protected folio (assumes the user already unlocked it via the view).
@@ -152,14 +170,17 @@ const FolioEditor = (props: FolioEditorProps) => {
 
       // Protected-mode encryption happens client-side before the request
       // leaves the tab. The server only ever sees ciphertext.
+      const liveProtectedMode = protectedModeRef.current;
+      const livePassphrase = passphraseRef.current;
+      const livePassphraseConfirm = passphraseConfirmRef.current;
       let contentToSend = data.content;
-      if (protectedMode) {
+      if (liveProtectedMode) {
         if (!isEdit) {
-          if (!passphrase || passphrase !== passphraseConfirm) {
+          if (!livePassphrase || livePassphrase !== livePassphraseConfirm) {
             setProtectError(String(tr("folios.protected.passphrase-mismatch")));
             return;
           }
-          if (passphrase.length < 8) {
+          if (livePassphrase.length < 8) {
             setProtectError(String(tr("folios.protected.passphrase-weak")));
             return;
           }
@@ -177,7 +198,7 @@ const FolioEditor = (props: FolioEditorProps) => {
           // 128-bit salt: UUID v4 yields 32 hex chars after stripping
           // dashes. Sync, sufficient entropy for PBKDF2.
           saltHex = crypto.randomUUID().replace(/-/g, "");
-          key = await crypto.deriveKeyFromPassphrase(passphrase, saltHex);
+          key = await crypto.deriveKeyFromPassphrase(livePassphrase, saltHex);
         } else if (cachedKey) {
           const existingEnv = JSON.parse(props.folio?.content ?? "{}") as {
             salt?: string;
@@ -189,7 +210,7 @@ const FolioEditor = (props: FolioEditorProps) => {
           }
           key = cachedKey;
         } else {
-          if (!passphrase) {
+          if (!livePassphrase) {
             setProtectError(
               String(tr("folios.protected.passphrase-required-for-save")),
             );
@@ -203,7 +224,7 @@ const FolioEditor = (props: FolioEditorProps) => {
             setProtectError(String(tr("folios.protected.invalid-envelope")));
             return;
           }
-          key = await crypto.deriveKeyFromPassphrase(passphrase, saltHex);
+          key = await crypto.deriveKeyFromPassphrase(livePassphrase, saltHex);
         }
         contentToSend = await crypto.encryptWithPassphrase(
           data.content,
@@ -220,7 +241,7 @@ const FolioEditor = (props: FolioEditorProps) => {
               body: {
                 ...data,
                 content: contentToSend,
-                protected: protectedMode,
+                protected: liveProtectedMode,
                 parentId,
               },
             })
@@ -228,7 +249,7 @@ const FolioEditor = (props: FolioEditorProps) => {
               body: {
                 ...data,
                 content: contentToSend,
-                protected: protectedMode,
+                protected: liveProtectedMode,
                 parentId,
                 campaignId: campaign?.id,
               },
