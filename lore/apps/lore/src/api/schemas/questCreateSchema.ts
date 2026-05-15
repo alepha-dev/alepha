@@ -30,4 +30,11 @@ export const questCreateSchema = t.object({
    * be in `accepted` state, and the caller must be the campaign owner.
    */
   petitionId: t.optional(t.integer()),
+  /**
+   * Optional predecessor quest. Validated server-side: must belong to the
+   * same campaign and cannot point at the quest itself. While the
+   * predecessor's `completedAt` is null, `acceptQuest` refuses to start
+   * this quest.
+   */
+  dependsOn: t.optional(t.nullable(t.integer())),
 });

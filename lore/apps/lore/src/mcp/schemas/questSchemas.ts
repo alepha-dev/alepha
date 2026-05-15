@@ -103,6 +103,7 @@ export const questGetResultSchema = t.object({
   completionMessage: t.optional(t.string()),
   completionMessageUpdatedAt: t.optional(t.datetime()),
   tags: t.array(t.string()),
+  dependsOn_shortId: t.optional(t.integer()),
 });
 
 // -----------------------------------------------------------------------------
@@ -136,6 +137,12 @@ export const questCreateParamsSchema = t.extend(campaignParamsSchema, {
     t.array(t.string(), {
       description:
         "Free-form labels for the **nature** of the quest (`bug`, `feat`, `chore`, `regression`, `quick-win`, …). Orthogonal to `zone` which labels the **module / scope**. Normalized server-side (trim, lowercase, dedupe). Reuse existing tags when possible — call `quest_tags` first.",
+    }),
+  ),
+  dependsOn_shortId: t.optional(
+    t.integer({
+      description:
+        "Per-campaign shortId of a predecessor quest. While the predecessor is incomplete, `quest_accept` refuses to start this quest. Use to express 'this can't start until that one is done' (typical setup quest gating a follow-up).",
     }),
   ),
 });
@@ -230,6 +237,12 @@ export const questUpdateParamsSchema = t.extend(entityRefSchema, {
     t.array(t.string(), {
       description:
         "Replace the quest's tags. Normalized server-side (trim, lowercase, dedupe). Pass an empty array to clear. Call `quest_tags` to discover existing tags.",
+    }),
+  ),
+  dependsOn_shortId: t.optional(
+    t.integer({
+      description:
+        "Reparent the quest's predecessor to the quest with this per-campaign shortId (Questline). Pass 0 to clear the dependency. While a non-null predecessor is incomplete, `quest_accept` is blocked.",
     }),
   ),
 });

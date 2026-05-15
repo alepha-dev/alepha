@@ -143,6 +143,17 @@ export const quests = $entity({
      * the serialized blob — mirrors the folio tag pattern.
      */
     tags: db.default(t.array(t.string()), []),
+    /**
+     * Optional predecessor quest in the same campaign. While the
+     * predecessor's `completedAt` is null, `acceptQuest` refuses to
+     * assign this quest — the UI surfaces a "Blocked by #N" badge that
+     * flips to "Unblocked" once the predecessor closes. ON DELETE
+     * SET NULL so deleting the predecessor doesn't cascade-wipe its
+     * dependents (those keep going as standalone quests).
+     */
+    dependsOn: db.ref(t.optional(t.integer()), () => quests.cols.id, {
+      onDelete: "set null",
+    }),
   }),
   indexes: [
     {

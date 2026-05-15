@@ -10,6 +10,7 @@ import {
   Circle,
   FileText,
   History,
+  Link2,
   ListChecks,
   Paperclip,
   Pencil,
@@ -17,6 +18,7 @@ import {
   ScrollText,
   Settings as SettingsIcon,
   Signature,
+  SquareCheck,
   StickyNote,
   Swords,
   Tag,
@@ -79,10 +81,39 @@ const QuestView = (props: QuestViewProps) => {
   const [showEditSummary, setShowEditSummary] = useState(false);
   const [savingSummary, setSavingSummary] = useState(false);
   const [quest, setQuest] = useState<QuestResource>(props.quest);
+  const [questline, setQuestline] = useState<{
+    predecessor?: {
+      id: number;
+      shortId: number;
+      title: string;
+      completedAt?: string;
+    };
+    dependents: Array<{
+      id: number;
+      shortId: number;
+      title: string;
+      completedAt?: string;
+    }>;
+  }>({ dependents: [] });
 
   useEffect(() => {
     setQuest(props.quest);
   }, [props.quest]);
+
+  // Pull predecessor + dependents whenever the quest identity flips
+  // (route change or duplicate spawn). Cheap — at most a few rows.
+  useEffect(() => {
+    let alive = true;
+    questApi
+      .getQuestLine({ params: { id: quest.id } })
+      .then((data) => {
+        if (alive) setQuestline(data);
+      })
+      .catch(() => null);
+    return () => {
+      alive = false;
+    };
+  }, [quest.id]);
 
   const [campaign] = useStore(currentCampaignAtom);
 
@@ -221,6 +252,63 @@ const QuestView = (props: QuestViewProps) => {
                   className="bg-muted hover:bg-muted/70 rounded-sm border px-1.5 py-0.5 font-mono text-xs"
                 >
                   {tag}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* Questline (Lore #32) — predecessor + dependents.
+              Blocked-by flips to Unblocked once the predecessor closes;
+              dependents are surfaced as a backlink list. */}
+          {(questline.predecessor || questline.dependents.length > 0) && (
+            <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs">
+              {questline.predecessor && (
+                <Link
+                  href={router.path("campaignQuest", {
+                    params: {
+                      campaignId: String(quest.campaignId),
+                      shortId: String(questline.predecessor.shortId),
+                    },
+                  })}
+                  className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 ${
+                    questline.predecessor.completedAt
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
+                      : "border-amber-500/40 bg-amber-500/10 text-amber-600"
+                  }`}
+                >
+                  {questline.predecessor.completedAt ? (
+                    <SquareCheck className="size-3" />
+                  ) : (
+                    <Link2 className="size-3" />
+                  )}
+                  {questline.predecessor.completedAt
+                    ? tr("quest.view.questline.unblocked", {
+                        args: [String(questline.predecessor.shortId)],
+                      })
+                    : tr("quest.view.questline.blockedBy", {
+                        args: [String(questline.predecessor.shortId)],
+                      })}
+                  <span className="text-muted-foreground">
+                    {questline.predecessor.title}
+                  </span>
+                </Link>
+              )}
+              {questline.dependents.map((dep) => (
+                <Link
+                  key={dep.id}
+                  href={router.path("campaignQuest", {
+                    params: {
+                      campaignId: String(quest.campaignId),
+                      shortId: String(dep.shortId),
+                    },
+                  })}
+                  className="bg-muted hover:bg-muted/70 inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5"
+                >
+                  <Link2 className="size-3 rotate-90" />
+                  {tr("quest.view.questline.unlocks", {
+                    args: [String(dep.shortId)],
+                  })}
+                  <span className="text-muted-foreground">{dep.title}</span>
                 </Link>
               ))}
             </div>
