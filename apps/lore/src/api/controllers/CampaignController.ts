@@ -188,7 +188,7 @@ export class CampaignController {
       response: t.array(users.schema),
     },
     handler: async ({ params, user }) => {
-      await this.security.checkOwnership(params.id, user);
+      await this.security.assertVisible(params.id, user);
 
       const campaignCharacters = await this.characters.findMany({
         where: { campaignId: { eq: params.id } },
@@ -224,7 +224,7 @@ export class CampaignController {
       response: campaigns.schema,
     },
     handler: async ({ params, body, user }) => {
-      const { campaign } = await this.security.checkOwnership(params.id, user);
+      const { campaign } = await this.security.assertOwner(params.id, user);
 
       if (body.title) {
         campaign.title = body.title.trim();
@@ -288,7 +288,7 @@ export class CampaignController {
       }),
     },
     handler: async ({ params, user }) => {
-      const { campaign } = await this.security.checkOwnership(params.id, user);
+      const { campaign } = await this.security.assertVisible(params.id, user);
 
       const character = await this.characters.findOne({
         where: {
@@ -337,7 +337,7 @@ export class CampaignController {
       ),
     },
     handler: async ({ params, user }) => {
-      await this.security.checkOwnership(params.id, user);
+      await this.security.assertVisible(params.id, user);
 
       const campaignCharacters = await this.characters.findMany({
         where: { campaignId: { eq: params.id } },
@@ -392,7 +392,7 @@ export class CampaignController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.checkOwnership(params.id, user);
+      await this.security.assertOwner(params.id, user);
 
       await this.campaigns.deleteById(params.id);
       await this.characters.deleteMany({
@@ -475,7 +475,7 @@ export class CampaignController {
       ),
     },
     handler: async ({ params, user }) => {
-      const { campaign } = await this.security.checkOwnership(params.id, user);
+      const { campaign } = await this.security.assertVisible(params.id, user);
 
       const campaignQuests = await this.quests.findMany({
         where: { campaignId: { eq: params.id } },
@@ -528,7 +528,7 @@ export class CampaignController {
       response: okSchema,
     },
     handler: async ({ params, body, user }) => {
-      const { campaign } = await this.security.checkOwnership(params.id, user);
+      const { campaign } = await this.security.assertOwner(params.id, user);
 
       // Update all quests with the old zone name to the new one
       const questsToUpdate = await this.quests.findMany({
@@ -570,7 +570,7 @@ export class CampaignController {
       response: t.array(t.string()),
     },
     handler: async ({ params, body, user }) => {
-      const { campaign } = await this.security.checkOwnership(params.id, user);
+      const { campaign } = await this.security.assertOwner(params.id, user);
       const current = campaign.kanbanColumns ?? [];
       const name = body.name.trim();
       if (!name) {
@@ -601,7 +601,7 @@ export class CampaignController {
       response: t.array(t.string()),
     },
     handler: async ({ params, body, user }) => {
-      const { campaign } = await this.security.checkOwnership(params.id, user);
+      const { campaign } = await this.security.assertOwner(params.id, user);
       const current = campaign.kanbanColumns ?? [];
       const newName = body.newName.trim();
       if (!current.includes(body.oldName)) {
@@ -637,7 +637,7 @@ export class CampaignController {
       response: t.array(t.string()),
     },
     handler: async ({ params, body, user }) => {
-      const { campaign } = await this.security.checkOwnership(params.id, user);
+      const { campaign } = await this.security.assertOwner(params.id, user);
       const current = campaign.kanbanColumns ?? [];
       if (!current.includes(body.name)) {
         throw new BadRequestError("Column not found.");
@@ -673,7 +673,7 @@ export class CampaignController {
       response: t.array(t.string()),
     },
     handler: async ({ params, body, user }) => {
-      const { campaign } = await this.security.checkOwnership(params.id, user);
+      const { campaign } = await this.security.assertOwner(params.id, user);
       const current = campaign.kanbanColumns ?? [];
       // Must reorder the exact same set — additions/removals go through the
       // dedicated endpoints so concurrent edits can't drop a column silently.

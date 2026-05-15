@@ -148,7 +148,7 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ body, user }) => {
-      const { campaign } = await this.security.checkOwnership(
+      const { campaign } = await this.security.assertMember(
         body.campaignId,
         user,
       );
@@ -246,7 +246,7 @@ export class QuestController {
         },
       });
 
-      await this.security.checkOwnership(quest.campaignId, user);
+      await this.security.assertMember(quest.campaignId, user);
 
       if (quest.attachments.includes(body.fileId)) {
         return this.mapQuestToResource(quest);
@@ -277,7 +277,7 @@ export class QuestController {
         },
       });
 
-      await this.security.checkOwnership(quest.campaignId, user);
+      await this.security.assertMember(quest.campaignId, user);
 
       const updatedAttachments = quest.attachments.filter(
         (id) => id !== params.fileId,
@@ -311,7 +311,7 @@ export class QuestController {
       response: db.page(questResourceSchema),
     },
     handler: async ({ params, query, user }) => {
-      await this.security.checkOwnership(params.campaignId, user);
+      await this.security.assertVisible(params.campaignId, user);
 
       const where = this.quests.createQueryWhere();
       where.campaignId = { eq: params.campaignId };
@@ -373,7 +373,7 @@ export class QuestController {
         },
       });
 
-      await this.security.checkOwnership(quest.campaignId, user);
+      await this.security.assertMember(quest.campaignId, user);
 
       quest.acceptedAt = undefined;
       quest.acceptedBy = undefined;
@@ -410,7 +410,7 @@ export class QuestController {
         },
       });
 
-      const { campaign } = await this.security.checkOwnership(
+      const { campaign } = await this.security.assertMember(
         quest.campaignId,
         user,
       );
@@ -452,7 +452,7 @@ export class QuestController {
           completedAt: { isNull: true },
         },
       });
-      const { campaign } = await this.security.checkOwnership(
+      const { campaign } = await this.security.assertMember(
         quest.campaignId,
         user,
       );
@@ -494,7 +494,7 @@ export class QuestController {
         },
       });
 
-      await this.security.checkOwnership(quest.campaignId, user);
+      await this.security.assertMember(quest.campaignId, user);
 
       if (quest.acceptedBy !== user.id) {
         throw new ForbiddenError(
@@ -535,7 +535,7 @@ export class QuestController {
         },
       });
 
-      await this.security.checkOwnership(quest.campaignId, user);
+      await this.security.assertMember(quest.campaignId, user);
 
       // Check if all objectives are completed
       if (quest.objectives.length > 0) {
@@ -595,7 +595,7 @@ export class QuestController {
         },
       });
 
-      await this.security.checkOwnership(quest.campaignId, user);
+      await this.security.assertVisible(quest.campaignId, user);
 
       return this.mapQuestToResource(quest);
     },
@@ -619,7 +619,7 @@ export class QuestController {
         },
       });
 
-      await this.security.checkOwnership(quest.campaignId, user);
+      await this.security.assertVisible(quest.campaignId, user);
 
       return this.mapQuestToResource(quest);
     },
@@ -652,7 +652,7 @@ export class QuestController {
         },
       });
 
-      const { campaign } = await this.security.checkOwnership(
+      const { campaign } = await this.security.assertMember(
         quest.campaignId,
         user,
       );
@@ -709,7 +709,7 @@ export class QuestController {
         },
       });
 
-      await this.security.checkOwnership(quest.campaignId, user);
+      await this.security.assertMember(quest.campaignId, user);
 
       // Backfill ids for legacy rows before the lookup — preserves the
       // controller's invariant that anything we read out of `objectives`
@@ -776,7 +776,7 @@ export class QuestController {
         },
       });
 
-      const { campaign } = await this.security.checkOwnership(
+      const { campaign } = await this.security.assertMember(
         quest.campaignId,
         user,
       );
@@ -818,7 +818,7 @@ export class QuestController {
         },
       });
 
-      const { campaign } = await this.security.checkOwnership(
+      const { campaign } = await this.security.assertMember(
         quest.campaignId,
         user,
       );
@@ -853,7 +853,7 @@ export class QuestController {
         },
       });
 
-      await this.security.checkOwnership(quest.campaignId, user);
+      await this.security.assertMember(quest.campaignId, user);
 
       // Update the quest's zone (zone)
       const updatedQuest = await this.quests.updateById(params.id, {
@@ -898,7 +898,7 @@ export class QuestController {
         },
       });
 
-      await this.security.checkOwnership(quest.campaignId, user);
+      await this.security.assertMember(quest.campaignId, user);
 
       // sanitize HTML content
       const sanitizedNote = sanitizeHtml(body.note);
@@ -928,7 +928,7 @@ export class QuestController {
         },
       });
 
-      await this.security.checkOwnership(quest.campaignId, user);
+      await this.security.assertMember(quest.campaignId, user);
 
       // Check if timer is already running (last session has no stoppedAt)
       const sessions = quest.timerSessions || [];
@@ -967,7 +967,7 @@ export class QuestController {
         },
       });
 
-      await this.security.checkOwnership(quest.campaignId, user);
+      await this.security.assertMember(quest.campaignId, user);
 
       // Find the running timer session
       const sessions = quest.timerSessions || [];

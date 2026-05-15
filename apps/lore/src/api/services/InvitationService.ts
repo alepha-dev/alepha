@@ -63,7 +63,7 @@ export class InvitationService {
       throw new BadRequestError("Cannot invite yourself");
     }
 
-    await this.security.checkOwnership(Number(data.resourceId), inviter as any);
+    await this.security.assertOwner(Number(data.resourceId), inviter as any);
 
     const existingUser = await this.users.findOne({
       where: { email: { eq: data.email } },

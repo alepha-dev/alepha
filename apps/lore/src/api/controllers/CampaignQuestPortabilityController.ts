@@ -39,7 +39,7 @@ export class CampaignQuestPortabilityController {
       response: t.file(),
     },
     handler: async ({ params, user }) => {
-      await this.security.checkOwnership(params.id, user);
+      await this.security.assertVisible(params.id, user);
 
       const campaign = await this.campaigns.getOne({
         where: { id: { eq: params.id } },
@@ -140,7 +140,7 @@ export class CampaignQuestPortabilityController {
       response: importResultSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.checkOwnership(params.id, user);
+      await this.security.assertOwner(params.id, user);
 
       const text = await body.file.text();
       const rows = this.parser.parse(text);
