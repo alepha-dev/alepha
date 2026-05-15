@@ -7,7 +7,6 @@ import QuestDifficulty from "../campaign/quest/QuestDifficulty.tsx";
 
 export interface KanbanCardProps {
   quest: QuestResource;
-  readOnly: boolean;
   onSelect: (quest: QuestResource) => void;
 }
 
@@ -27,12 +26,11 @@ const priorityVariant = (
 };
 
 const KanbanCard = (props: KanbanCardProps) => {
-  const { quest, readOnly, onSelect } = props;
+  const { quest, onSelect } = props;
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `quest-${quest.id}`,
       data: { type: "quest", quest },
-      disabled: readOnly,
     });
 
   const style = {
@@ -40,18 +38,15 @@ const KanbanCard = (props: KanbanCardProps) => {
     opacity: isDragging ? 0.5 : undefined,
   };
 
-  const cursorClass = readOnly
-    ? "cursor-pointer"
-    : isDragging
-      ? "cursor-grabbing"
-      : "cursor-grab";
+  const cursorClass = isDragging ? "cursor-grabbing" : "cursor-grab";
 
   return (
     <div ref={setNodeRef} style={style} className="p-1">
       <button
         type="button"
         onClick={() => onSelect(quest)}
-        {...(readOnly ? {} : { ...attributes, ...listeners })}
+        {...attributes}
+        {...listeners}
         className={`group flex w-full items-center gap-2 overflow-hidden rounded-md border border-border bg-card px-2 py-1.5 text-left shadow-sm transition-colors hover:bg-muted ${cursorClass}`}
       >
         <QuestDifficulty difficulty={quest.difficulty} />

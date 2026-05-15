@@ -25,13 +25,12 @@ export interface ColumnDescriptor {
 export interface KanbanColumnProps {
   descriptor: ColumnDescriptor;
   quests: QuestResource[];
-  readOnly: boolean;
   last?: boolean;
   onSelect: (quest: QuestResource) => void;
 }
 
 const KanbanColumn = (props: KanbanColumnProps) => {
-  const { descriptor, quests, readOnly, last, onSelect } = props;
+  const { descriptor, quests, last, onSelect } = props;
   const { tr } = useI18n<I18n, "en">();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const { setNodeRef, isOver } = useDroppable({
@@ -82,12 +81,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
             </div>
           )}
           {visibleQuests.map((quest) => (
-            <KanbanCard
-              key={quest.id}
-              quest={quest}
-              readOnly={readOnly}
-              onSelect={onSelect}
-            />
+            <KanbanCard key={quest.id} quest={quest} onSelect={onSelect} />
           ))}
           {hasMore && (
             <div className="flex justify-center py-2">

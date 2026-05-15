@@ -7,11 +7,16 @@ import {
 } from "./_helpers.ts";
 
 /**
- * Regression coverage for the public-campaign authorization bug:
- * `AppSecurityProvider.checkOwnership` used to short-circuit on
- * `campaign.public === true`, so every mutating endpoint was open to
- * any authenticated user. Public campaigns must stay read-visible to
- * outsiders but write-locked to non-members.
+ * Regression coverage for the campaign-membership gate.
+ *
+ * After the public-campaign purge there is no non-member visibility
+ * path — every campaign endpoint is `assertMember`-gated. A separate
+ * logged-in account who hasn't been invited must hit 403 on reads AND
+ * writes against another user's campaign.
+ *
+ * (The kanban public-share use case is gone; the only externally
+ * reachable surface left is the petition module, covered by
+ * `petition.spec.ts`.)
  */
 
 const patchApiLinks = async (page: Page, targetId: number) => {
@@ -67,43 +72,43 @@ const callAction = async (
   );
 };
 
-test.describe("Public campaign authorization", () => {
-  test("non-member cannot mutate a public campaign", async ({
+test.describe("Campaign membership gate", () => {
+  test("non-member is denied on every campaign endpoint (read and write)", async ({
     page,
     browser,
     baseURL,
   }) => {
     test.setTimeout(120_000);
 
-    // ── User A: owner, makes their campaign public ───────────────────
+    // ── User A: owner ────────────────────────────────────────────────
     const ownerEmail = `owner-${Date.now()}@example.com`;
     await registerAndVerify(page, ownerEmail, "GoodPassw0rd");
     const campaignTitle = `Sec${Date.now()}`.slice(0, 20);
     const campaignId = await createCampaignViaWizard(page, campaignTitle);
 
-    // Flip the campaign to public via the same endpoint a real user would.
-    await page.waitForLoadState("domcontentloaded");
-    await patchApiLinks(page, campaignId);
-    const flipResp = await callAction(page, "updateCampaignById", {
-      public: true,
-    });
-    // Owner's own write must succeed.
-    expect(flipResp.status, flipResp.text).toBeLessThan(400);
-
     // ── User B: separate account, never invited ──────────────────────
-    const b = await newUserContext(browser, baseURL!, "attacker");
+    const b = await newUserContext(browser, baseURL!, "stranger");
     try {
-      // Land on a page so `__ssr` is hydrated with apiLinks.
       await b.page.goto("/");
       await b.page.waitForLoadState("domcontentloaded");
-
-      // The SSR-baked apiLinks paths use route placeholders (`:id`,
-      // `:campaignId`) until materialized by the active route — since B
-      // is on "/", patch them to point at the owner's campaign.
       await patchApiLinks(b.page, campaignId);
 
-      // Every one of these endpoints used to succeed for a logged-in
-      // non-member when the campaign was public. They must all 403 now.
+      // Reads — every one of these used to leak under the old `public`
+      // flag; now they all require membership.
+      const reads = [
+        "getCampaignById",
+        "getZones",
+        "getCampaignAdventurers",
+        "getCampaignUsers",
+        "getCampaignStats",
+        "getBoard",
+      ] as const;
+      for (const action of reads) {
+        const res = await callAction(b.page, action);
+        expect(res.status, `${action} should be denied`).toBe(403);
+      }
+
+      // Writes
       const updateResp = await callAction(b.page, "updateCampaignById", {
         title: "pwned",
       });
@@ -122,11 +127,6 @@ test.describe("Public campaign authorization", () => {
 
       const deleteResp = await callAction(b.page, "deleteCampaignById");
       expect(deleteResp.status).toBe(403);
-
-      // Reads on a public campaign should still work for any logged-in
-      // user — that's the whole point of the `public` flag.
-      const readResp = await callAction(b.page, "getCampaignById");
-      expect(readResp.status).toBeLessThan(400);
     } finally {
       await b.ctx.close();
     }

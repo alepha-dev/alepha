@@ -780,21 +780,20 @@ describe("MCP Security Integration", () => {
       expect(isErrorResponse(result.data)).toBe(true);
     });
 
-    it("rejects a non-member on a public campaign too (campaign scoping is mine-only)", async ({
+    it("rejects a non-member from another user's campaign (campaign scoping is mine-only)", async ({
       expect,
     }) => {
       // `resolveCampaignId` reuses `getMyCampaigns`, which lists owned +
-      // member-of campaigns — not "all public" campaigns. So a stranger
-      // gets a NotFoundError regardless of `public`. This is the actual
-      // security boundary the orientation tool enforces and the per-user
-      // folio scoping never has to come into play here.
+      // member-of campaigns. A stranger calling `campaign_context` with a
+      // foreign campaign id gets a NotFoundError — the actual security
+      // boundary the orientation tool enforces.
       const owner = await createTestUser(ctx);
       const stranger = await createTestUser(ctx);
       const { token: strangerToken } = await createApiKey(ctx, stranger);
       const campaignCtrl = ctx.alepha.inject(CampaignController);
 
       const created = await campaignCtrl.createCampaign.fetch(
-        { body: { title: "Public Probe", public: true } },
+        { body: { title: "Private Probe" } },
         { user: owner },
       );
 

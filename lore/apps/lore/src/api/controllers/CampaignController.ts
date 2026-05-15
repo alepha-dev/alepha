@@ -50,7 +50,7 @@ export class CampaignController {
   createCampaign = $action({
     use: [$secure({ permissions: ["campaign:create"] })],
     schema: {
-      body: t.pick(campaigns.insertSchema, ["title", "public", "icon"]),
+      body: t.pick(campaigns.insertSchema, ["title", "icon"]),
       response: campaigns.schema,
     },
     handler: async ({ body, user }) => {
@@ -188,7 +188,7 @@ export class CampaignController {
       response: t.array(users.schema),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertVisible(params.id, user);
+      await this.security.assertMember(params.id, user);
 
       const campaignCharacters = await this.characters.findMany({
         where: { campaignId: { eq: params.id } },
@@ -216,7 +216,6 @@ export class CampaignController {
             maxLength: 24,
           }),
         ),
-        public: t.optional(t.boolean()),
         icon: t.optional(t.nullable(t.uuid())),
         features: t.optional(t.partial(campaignFeaturesSchema)),
         chapterDuration: t.optional(t.nullable(t.string())),
@@ -228,10 +227,6 @@ export class CampaignController {
 
       if (body.title) {
         campaign.title = body.title.trim();
-      }
-
-      if (body.public != null) {
-        campaign.public = body.public;
       }
 
       if ("icon" in body) {
@@ -288,7 +283,7 @@ export class CampaignController {
       }),
     },
     handler: async ({ params, user }) => {
-      const { campaign } = await this.security.assertVisible(params.id, user);
+      const { campaign } = await this.security.assertMember(params.id, user);
 
       const character = await this.characters.findOne({
         where: {
@@ -296,10 +291,6 @@ export class CampaignController {
           userId: { eq: user.id },
         },
       });
-
-      if (!character && !campaign.public) {
-        throw new ForbiddenError("Not a member of this campaign");
-      }
 
       const campaignQuests = await this.quests.findMany({
         where: {
@@ -337,7 +328,7 @@ export class CampaignController {
       ),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertVisible(params.id, user);
+      await this.security.assertMember(params.id, user);
 
       const campaignCharacters = await this.characters.findMany({
         where: { campaignId: { eq: params.id } },
@@ -475,7 +466,7 @@ export class CampaignController {
       ),
     },
     handler: async ({ params, user }) => {
-      const { campaign } = await this.security.assertVisible(params.id, user);
+      const { campaign } = await this.security.assertMember(params.id, user);
 
       const campaignQuests = await this.quests.findMany({
         where: { campaignId: { eq: params.id } },

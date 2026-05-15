@@ -1,4 +1,3 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Separator } from "@alepha/ui/components/ui/separator";
 import { DateTimeProvider } from "alepha/datetime";
@@ -6,13 +5,7 @@ import { useInject, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import {
-  ArrowRight,
-  Globe2,
-  ImageIcon,
-  ScrollText,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, ImageIcon, ScrollText, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
@@ -259,12 +252,6 @@ const CampaignCard = (props: CampaignCardProps) => {
           </>
         )}
       </span>
-      {props.campaign.public && (
-        <Badge variant="outline" className="gap-1 text-[10px]">
-          <Globe2 className="size-3" />
-          Public
-        </Badge>
-      )}
       <ArrowRight className="text-muted-foreground size-4 transition-transform group-hover:translate-x-0.5" />
     </Link>
   );

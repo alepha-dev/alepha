@@ -42,7 +42,7 @@ export class ChapterController {
       ),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertVisible(params.campaignId, user);
+      await this.security.assertMember(params.campaignId, user);
 
       const allChapters = await this.chapters.findMany({
         where: {
@@ -208,7 +208,7 @@ export class ChapterController {
     },
     handler: async ({ params, user }) => {
       const chapter = await this.chapters.getById(params.id);
-      await this.security.assertVisible(chapter.campaignId, user);
+      await this.security.assertMember(chapter.campaignId, user);
 
       // Closed chapters return the frozen snapshot when available.
       if (chapter.closedAt && chapter.changelog) {
