@@ -378,6 +378,7 @@ export class I18n {
         "kanban.showMore": "Show more",
         "kanban.readOnly": "Read only",
         "kanban.filter.zones": "Zones",
+        "kanban.filter.tags": "Tags",
         "kanban.error.completedCannotMove": "Completed quests cannot be moved",
         "kanban.error.acceptFirst":
           "You must accept the quest before completing it",
@@ -923,6 +924,7 @@ export class I18n {
         "kanban.showMore": "Afficher plus",
         "kanban.readOnly": "Lecture seule",
         "kanban.filter.zones": "Zones",
+        "kanban.filter.tags": "Tags",
         "kanban.error.completedCannotMove":
           "Les quêtes terminées ne peuvent pas être déplacées",
         "kanban.error.acceptFirst":
