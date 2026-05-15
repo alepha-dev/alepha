@@ -24,6 +24,16 @@ export const folios = $entity({
     content: db.default(t.string(), ""),
     tags: db.default(t.array(t.string()), []),
     /**
+     * Adjacency-list pointer to another folio (same user, same campaign)
+     * that acts as this folio's parent in the sidebar tree. `undefined`
+     * means root level. Cycles are rejected at update time. On parent
+     * deletion the FK is set to NULL — orphans float back up to the root
+     * rather than getting destroyed.
+     */
+    parentId: db.ref(t.optional(t.uuid()), () => folios.cols.id, {
+      onDelete: "set null",
+    }),
+    /**
      * 1-2 sentence agent-readable summary (~200 chars). Filled by MCP tools
      * (`folio_create` / `folio_update`) so `campaign_context` can return a
      * meaningful index without forcing agents to `folio_get` every entry.

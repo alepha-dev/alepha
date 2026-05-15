@@ -4,6 +4,7 @@ import { $repository, $sequence, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import {
   $action,
+  BadRequestError,
   ForbiddenError,
   NotFoundError,
   okSchema,
@@ -191,6 +192,71 @@ export class FolioController {
     },
   });
 
+  /**
+   * Hard cap on hierarchy depth — keeps the sidebar tree readable and
+   * avoids galaxy-brain "/area/sub/sub/sub/sub/sub" nesting. A user who
+   * really needs more can lift items to a sibling layer.
+   */
+  protected readonly MAX_FOLIO_DEPTH = 5;
+
+  /**
+   * Compute the chain from a folio up to its root, returning the path
+   * array (excluding the input id). Throws if a cycle is detected (a
+   * defensive guard — cycles should never persist, since {@link assertNoCycle}
+   * runs at every parent change).
+   */
+  protected async resolveAncestors(
+    startId: string,
+    userId: string,
+  ): Promise<string[]> {
+    const chain: string[] = [];
+    const seen = new Set<string>();
+    let cursor: string | undefined = startId;
+    while (cursor) {
+      if (seen.has(cursor)) {
+        throw new BadRequestError("Folio hierarchy has a cycle");
+      }
+      seen.add(cursor);
+      const node = (await this.folios.findOne({
+        where: { id: { eq: cursor }, userId: { eq: userId } },
+      })) as { parentId?: string } | undefined;
+      const nextParent: string | undefined = node?.parentId;
+      if (!nextParent) break;
+      chain.push(nextParent);
+      cursor = nextParent;
+    }
+    return chain;
+  }
+
+  /**
+   * Throw when setting `parentId` on `folioId` would either point the
+   * folio at one of its own descendants (cycle) or push the subtree
+   * beyond {@link MAX_FOLIO_DEPTH}. Caller is responsible for the
+   * "parent exists in same campaign / same user" check via repository
+   * filters; we only handle the structural rules here.
+   */
+  protected async assertNoCycle(
+    folioId: string,
+    parentId: string,
+    userId: string,
+  ): Promise<void> {
+    if (folioId === parentId) {
+      throw new BadRequestError("A folio cannot be its own parent");
+    }
+    const ancestors = await this.resolveAncestors(parentId, userId);
+    if (ancestors.includes(folioId)) {
+      throw new BadRequestError(
+        "Cannot move a folio under one of its own descendants",
+      );
+    }
+    // depth = ancestors of parent + parent itself + this folio
+    if (ancestors.length + 2 > this.MAX_FOLIO_DEPTH) {
+      throw new BadRequestError(
+        `Folio nesting exceeds the limit (${this.MAX_FOLIO_DEPTH} levels)`,
+      );
+    }
+  }
+
   create = $action({
     use: [$secure({ permissions: ["folio:write"] }), $transactional()],
     description: "Create a new folio.",
@@ -201,6 +267,7 @@ export class FolioController {
         tags: t.optional(t.array(t.string())),
         summary: t.optional(t.string({ maxLength: 500 })),
         campaignId: t.integer(),
+        parentId: t.optional(t.nullable(t.uuid())),
       }),
       response: folios.schema,
     },
@@ -208,6 +275,29 @@ export class FolioController {
       const tags = (body.tags ?? []).map((t) => t.trim()).filter(Boolean);
       const summary = (body.summary ?? "").trim();
       const content = body.content ?? "";
+      // Parent must exist, belong to the same user + campaign. Depth
+      // check piggybacks on resolveAncestors so we don't allow creating
+      // a leaf that breaches MAX_FOLIO_DEPTH.
+      let parentId: string | undefined;
+      if (body.parentId) {
+        const parent = await this.folios.findOne({
+          where: {
+            id: { eq: body.parentId },
+            userId: { eq: user.id },
+            campaignId: { eq: body.campaignId },
+          },
+        });
+        if (!parent) {
+          throw new BadRequestError("Parent folio not found in this campaign");
+        }
+        const ancestors = await this.resolveAncestors(body.parentId, user.id);
+        if (ancestors.length + 2 > this.MAX_FOLIO_DEPTH) {
+          throw new BadRequestError(
+            `Folio nesting exceeds the limit (${this.MAX_FOLIO_DEPTH} levels)`,
+          );
+        }
+        parentId = body.parentId;
+      }
       const shortId = await this.folioShortId.next(String(body.campaignId));
       const folio = await this.folios.create({
         userId: user.id,
@@ -217,6 +307,7 @@ export class FolioController {
         content,
         tags,
         summary,
+        parentId,
         searchText: buildFolioSearchText({
           title: body.title,
           tags,
@@ -241,6 +332,12 @@ export class FolioController {
         content: t.optional(t.string()),
         tags: t.optional(t.array(t.string())),
         summary: t.optional(t.string({ maxLength: 500 })),
+        /**
+         * Reparent the folio. `null` moves it to the root; `undefined`
+         * leaves the parent untouched. Validated for cycles and against
+         * MAX_FOLIO_DEPTH.
+         */
+        parentId: t.optional(t.nullable(t.uuid())),
       }),
       response: folios.schema,
     },
@@ -259,11 +356,34 @@ export class FolioController {
       const summary =
         body.summary !== undefined ? body.summary.trim() : existing.summary;
 
+      let parentId: string | undefined = existing.parentId;
+      if ("parentId" in body) {
+        if (body.parentId === null || body.parentId === undefined) {
+          parentId = undefined;
+        } else {
+          const parent = await this.folios.findOne({
+            where: {
+              id: { eq: body.parentId },
+              userId: { eq: user.id },
+              campaignId: { eq: existing.campaignId },
+            },
+          });
+          if (!parent) {
+            throw new BadRequestError(
+              "Parent folio not found in this campaign",
+            );
+          }
+          await this.assertNoCycle(params.id, body.parentId, user.id);
+          parentId = body.parentId;
+        }
+      }
+
       const updated = await this.folios.updateById(params.id, {
         title,
         content,
         tags,
         summary,
+        parentId,
         searchText: buildFolioSearchText({ title, tags, summary, content }),
       });
       // Re-sync outbound links whenever content changed. We re-sync even
@@ -289,6 +409,17 @@ export class FolioController {
       });
       if (!existing) throw new NotFoundError("Folio not found");
       if (existing.userId !== user.id) throw new ForbiddenError();
+      // Orphan direct children to root before deletion so D1 doesn't
+      // refuse the delete (no ON DELETE SET NULL on the ALTER-TABLE
+      // generated FK). Single-level — grandchildren stay attached to
+      // their parents which themselves move up one notch.
+      const children = await this.folios.findMany({
+        where: { parentId: { eq: params.id } },
+        columns: ["id"],
+      });
+      for (const child of children) {
+        await this.folios.updateById(child.id, { parentId: undefined });
+      }
       await this.folios.deleteById(params.id);
       return { ok: true };
     },

@@ -34,6 +34,13 @@ const folioFormSchema = t.object({
     description:
       "Press Enter or comma to add a tag. Reuse existing ones when you can.",
   }),
+  parentId: t.optional(
+    t.string({
+      title: "Parent folio",
+      description:
+        "Nest this folio under another one. Leave empty to keep it at the root of the sidebar.",
+    }),
+  ),
   content: t.string({
     title: "Content",
     description: "Markdown is rendered when viewing.",
@@ -59,17 +66,22 @@ const FolioEditor = (props: FolioEditorProps) => {
     initialValues: {
       title: props.folio?.title ?? "",
       tags: props.folio?.tags ?? [],
+      parentId: props.folio?.parentId,
       content: props.folio?.content ?? "",
     },
     handler: async (data) => {
+      // Empty string from the picker means "no parent" — translate before
+      // sending so the controller treats it as a root move, not a missing
+      // FK lookup.
+      const parentId = data.parentId === "" ? null : data.parentId;
       const saved =
         isEdit && props.folio
           ? await folioApi.update({
               params: { id: props.folio.id },
-              body: data,
+              body: { ...data, parentId },
             })
           : await folioApi.create({
-              body: { ...data, campaignId: campaign?.id },
+              body: { ...data, parentId, campaignId: campaign?.id },
             });
 
       // Update sidebar list
@@ -137,6 +149,13 @@ const FolioEditor = (props: FolioEditorProps) => {
           combobox
           createNewEntry
           items={tags.map((tag) => ({ value: tag, label: tag }))}
+        />
+        <ControlSelect
+          input={form.input.parentId}
+          combobox
+          items={folios
+            .filter((f) => f.id !== props.folio?.id)
+            .map((f) => ({ value: f.id, label: f.title }))}
         />
         <Control
           input={form.input.content}

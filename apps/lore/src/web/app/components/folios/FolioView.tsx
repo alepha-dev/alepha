@@ -12,7 +12,7 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Pencil, Trash2 } from "lucide-react";
+import { ChevronRight, Pencil, Trash2 } from "lucide-react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
@@ -56,6 +56,25 @@ const FolioView = () => {
 
   if (!folio) return null;
 
+  // Walk the parent chain off the in-memory folio list (already loaded by
+  // the campaignFolios route). Cheap enough at the scale we expect (low
+  // hundreds of folios per campaign).
+  const buildBreadcrumb = () => {
+    const trail: typeof folios = [];
+    const byId = new Map(folios.map((f) => [f.id, f]));
+    let cursor = folio.parentId;
+    const seen = new Set<string>();
+    while (cursor && !seen.has(cursor)) {
+      seen.add(cursor);
+      const parent = byId.get(cursor);
+      if (!parent) break;
+      trail.unshift(parent);
+      cursor = parent.parentId;
+    }
+    return trail;
+  };
+  const breadcrumb = buildBreadcrumb();
+
   const handleDelete = async () => {
     const confirmed = await dialog.confirm({
       title: String(tr("folios.confirm-delete-title")),
@@ -66,6 +85,31 @@ const FolioView = () => {
 
   return (
     <article className="mx-auto flex max-w-3xl flex-col gap-4 p-8">
+      {breadcrumb.length > 0 && (
+        <nav
+          aria-label="Folio breadcrumb"
+          className="text-muted-foreground flex flex-wrap items-center gap-1 text-xs"
+        >
+          {breadcrumb.map((ancestor, i) => (
+            <span key={ancestor.id} className="flex items-center gap-1">
+              {i > 0 && <ChevronRight className="size-3 opacity-60" />}
+              <Link
+                href={router.path("campaignFoliosFolio", {
+                  params: {
+                    campaignId,
+                    shortId: ancestor.shortId,
+                  },
+                })}
+                className="hover:text-foreground hover:underline"
+              >
+                {ancestor.title}
+              </Link>
+            </span>
+          ))}
+          <ChevronRight className="size-3 opacity-60" />
+          <span className="text-foreground/80">{folio.title}</span>
+        </nav>
+      )}
       <div className="flex items-start gap-2">
         <h1 className="flex-1 text-3xl font-bold tracking-tight">
           {folio.title}

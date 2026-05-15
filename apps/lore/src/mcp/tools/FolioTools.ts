@@ -102,6 +102,83 @@ export class FolioTools {
     );
   }
 
+  /**
+   * Resolve a parent folio reference passed by an agent into a global
+   * folio UUID. Supports `parent_shortId` (preferred, since `shortId` is
+   * stable in conversation) or a raw `parentId`. Returns `undefined`
+   * when neither is set and `null` to clear the parent.
+   */
+  protected async resolveParentRef(params: {
+    parent_shortId?: number;
+    parentId?: string | null;
+    campaign?: number;
+    campaign_name?: string;
+  }): Promise<string | null | undefined> {
+    if (params.parent_shortId !== undefined) {
+      const campaignId = await this.resolveCampaignId(
+        params.campaign,
+        params.campaign_name,
+      );
+      const parent = await this.folioController.getByShortId({
+        params: { campaignId, shortId: params.parent_shortId },
+      });
+      return parent.id;
+    }
+    if ("parentId" in params) return params.parentId ?? null;
+    return undefined;
+  }
+
+  /**
+   * Return the ancestor chain (root → … → direct parent) for a folio,
+   * each segment carrying the per-campaign `shortId` + `title`. Empty
+   * when the folio is at root. Defensive against unexpected cycles
+   * (bounded by MAX_FOLIO_DEPTH).
+   */
+  protected async buildFolioPath(
+    folioId: string,
+  ): Promise<{ shortId: number; title: string }[]> {
+    const reversed: { shortId: number; title: string }[] = [];
+    let cursorId: string | undefined = folioId;
+    const seen = new Set<string>();
+    while (cursorId && !seen.has(cursorId)) {
+      seen.add(cursorId);
+      const folio = (await this.folioController.get({
+        params: { id: cursorId },
+      })) as {
+        id: string;
+        parentId?: string;
+        shortId: number;
+        title: string;
+      };
+      const nextParentId = folio.parentId;
+      if (!nextParentId) break;
+      const parent = (await this.folioController.get({
+        params: { id: nextParentId },
+      })) as { id: string; shortId: number; title: string };
+      reversed.push({ shortId: parent.shortId, title: parent.title });
+      cursorId = parent.id;
+      if (reversed.length >= 10) break;
+    }
+    return reversed.reverse();
+  }
+
+  /**
+   * Look up the per-campaign shortId of the direct parent, if any.
+   * Useful for surfacing in `folio_get` alongside `path`.
+   */
+  protected async resolveParentShortId(
+    folioId: string,
+  ): Promise<number | undefined> {
+    const folio = (await this.folioController.get({
+      params: { id: folioId },
+    })) as { parentId?: string };
+    if (!folio.parentId) return undefined;
+    const parent = (await this.folioController.get({
+      params: { id: folio.parentId },
+    })) as { shortId: number };
+    return parent.shortId;
+  }
+
   folio_list = $tool({
     description:
       "List the user's folios (markdown notes that act as the campaign's memory for this user), newest first. Use `tag` to narrow by a tag. Returns id, title, tags, updatedAt — call `folio_get` to read full content. For initial orientation on a campaign, prefer `campaign_context` — it returns this same index alongside the active quests in one round-trip.",
@@ -238,9 +315,11 @@ export class FolioTools {
     },
     handler: async ({ params }) => {
       const id = await this.resolveFolioId(params);
-      const [folio, links] = await Promise.all([
+      const [folio, links, path, parentShortId] = await Promise.all([
         this.folioController.get({ params: { id } }),
         this.folioController.getLinks({ params: { id } }),
+        this.buildFolioPath(id),
+        this.resolveParentShortId(id),
       ]);
       return {
         id: folio.id,
@@ -251,6 +330,8 @@ export class FolioTools {
         content: folio.content,
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,
+        parentShortId,
+        path,
         links,
       };
     },
@@ -277,6 +358,12 @@ export class FolioTools {
               "1-2 sentence description of what the folio is for. Surfaced via `campaign_context`. Strongly recommended — without it, agents must fetch the body to orient.",
           }),
         ),
+        parent_shortId: t.optional(
+          t.integer({
+            description:
+              "Nest under another folio in the same campaign by its per-campaign shortId. Omit (or pass nothing) to create at the root. Folio nesting is capped at 5 levels.",
+          }),
+        ),
       }),
       result: folioFullSchema,
     },
@@ -285,6 +372,13 @@ export class FolioTools {
         params.campaign,
         params.campaign_name,
       );
+      const parentId =
+        params.parent_shortId !== undefined
+          ? await this.resolveParentRef({
+              parent_shortId: params.parent_shortId,
+              campaign: campaignId,
+            })
+          : undefined;
       const folio = await this.folioController.create({
         body: {
           campaignId,
@@ -292,6 +386,7 @@ export class FolioTools {
           content: params.content,
           tags: params.tags,
           summary: params.summary,
+          parentId: parentId ?? undefined,
         },
       });
       return {
@@ -326,11 +421,29 @@ export class FolioTools {
               "Updated 1-2 sentence description. Omit to keep the existing one.",
           }),
         ),
+        parent_shortId: t.optional(
+          t.integer({
+            description:
+              "Reparent the folio to the folio with this per-campaign shortId. Omit to leave the parent untouched. Pass 0 to lift the folio to the root.",
+          }),
+        ),
       }),
       result: folioFullSchema,
     },
     handler: async ({ params }) => {
       const id = await this.resolveFolioId(params);
+      // 0 is the sentinel for "move to root" since shortId is 1-based and
+      // JSON-Schema can't easily express null on optional integers.
+      let parentId: string | null | undefined;
+      if (params.parent_shortId === 0) {
+        parentId = null;
+      } else if (params.parent_shortId !== undefined) {
+        parentId = await this.resolveParentRef({
+          parent_shortId: params.parent_shortId,
+          campaign: params.campaign,
+          campaign_name: params.campaign_name,
+        });
+      }
       const folio = await this.folioController.update({
         params: { id },
         body: {
@@ -338,6 +451,7 @@ export class FolioTools {
           content: params.content,
           tags: params.tags,
           summary: params.summary,
+          parentId,
         },
       });
       return {

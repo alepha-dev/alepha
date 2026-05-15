@@ -22,6 +22,15 @@ const folioLinkRefSchema = t.object({
 });
 
 /**
+ * Wiki-link ref shape duplicated for the path payload (same display shape:
+ * each path segment carries the shortId + title of an ancestor folio).
+ */
+const folioPathSegmentSchema = t.object({
+  shortId: t.integer(),
+  title: t.string(),
+});
+
+/**
  * Full folio payload returned by get/create/update tools.
  */
 export const folioFullSchema = t.object({
@@ -33,6 +42,17 @@ export const folioFullSchema = t.object({
   content: t.string(),
   createdAt: t.string(),
   updatedAt: t.string(),
+  /**
+   * Parent folio shortId (per-campaign) — `undefined` when this folio is at
+   * the root of the tree. Pair with `path` below if you need names too.
+   */
+  parentShortId: t.optional(t.integer()),
+  /**
+   * Ordered ancestor chain from the root down to this folio's parent.
+   * Empty array for roots. Lets an agent display a breadcrumb without
+   * walking the parent chain via repeated `folio_get` calls.
+   */
+  path: t.optional(t.array(folioPathSegmentSchema)),
   /**
    * Wiki-style cross-folio references resolved at save time. `outbound`
    * are folios this one points to via `[[...]]`; `inbound` are folios
