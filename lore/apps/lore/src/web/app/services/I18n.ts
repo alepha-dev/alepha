@@ -381,9 +381,9 @@ export class I18n {
         "quest.view.settings": "Settings",
         "quest.view.reminder.title": "Reminder",
         "quest.view.reminder.off": "Off",
-        "quest.view.reminder.hourly": "Hourly",
         "quest.view.reminder.daily": "Daily",
         "quest.view.reminder.weekly": "Weekly",
+        "quest.view.reminder.monthly": "Monthly",
         "quest.view.reminder.none":
           "No reminder configured. You won't receive email nudges.",
         "quest.view.reminder.next": "Next email $1.",
@@ -914,9 +914,9 @@ export class I18n {
         "quest.view.settings": "Paramètres",
         "quest.view.reminder.title": "Rappel",
         "quest.view.reminder.off": "Désactivé",
-        "quest.view.reminder.hourly": "Toutes les heures",
         "quest.view.reminder.daily": "Quotidien",
         "quest.view.reminder.weekly": "Hebdomadaire",
+        "quest.view.reminder.monthly": "Mensuel",
         "quest.view.reminder.none":
           "Aucun rappel configuré. Aucun e-mail ne vous sera envoyé.",
         "quest.view.reminder.next": "Prochain e-mail $1.",
