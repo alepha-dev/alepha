@@ -46,15 +46,35 @@ const QuestHistoryTimeline = (props: QuestHistoryTimelineProps) => {
 
   const entries: TimelineEntry[] = [];
 
+  // Strip markdown/HTML and collapse whitespace so the timeline preview stays
+  // single-line even if the completer dropped a full multi-paragraph summary.
+  const previewCompletion = (raw: string) =>
+    raw
+      .replace(/<[^>]*>/g, "")
+      .replace(/[#*_`~>-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 140);
+
   if (quest.completedAt) {
+    const summaryPreview = quest.completionMessage
+      ? previewCompletion(quest.completionMessage)
+      : undefined;
     entries.push({
       action: "completed",
       icon: <Swords className="size-3" />,
       when: quest.completedAt,
       description: (
-        <span className="text-muted-foreground text-xs">
-          Quest has been completed by <span className="font-bold">You</span>.
-        </span>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-muted-foreground text-xs">
+            Quest has been completed by <span className="font-bold">You</span>.
+          </span>
+          {summaryPreview && (
+            <span className="text-muted-foreground text-xs italic truncate">
+              “{summaryPreview}”
+            </span>
+          )}
+        </div>
       ),
     });
   }

@@ -1,3 +1,4 @@
+import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card } from "@alepha/ui/components/ui/card";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
@@ -11,6 +12,7 @@ import {
   ListChecks,
   Paperclip,
   PiggyBank,
+  ScrollText,
   Settings as SettingsIcon,
   Signature,
   StickyNote,
@@ -30,6 +32,7 @@ import { currentCampaignCharacterAtom } from "@/web/app/atoms/currentCampaignCha
 import { currentQuestAtom } from "@/web/app/atoms/currentQuestAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import AttachmentBadge from "./AttachmentBadge.tsx";
+import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
 import QuestDescription from "./QuestDescription.tsx";
 import QuestHistory from "./QuestHistory.tsx";
 import QuestViewCollapsibleBlock from "./QuestViewCollapsibleBlock.tsx";
@@ -67,6 +70,8 @@ const QuestView = (props: QuestViewProps) => {
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const [showDialog, setShowDialog] = useState(false);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [quest, setQuest] = useState<QuestResource>(props.quest);
 
   useEffect(() => {
@@ -208,6 +213,20 @@ const QuestView = (props: QuestViewProps) => {
               onEdit={() => setShowDialog(true)}
             />
           </div>
+
+          {/* Completion summary — only when the quest is closed and the
+              completer (human or LLM) left a message. */}
+          {quest.completedAt && quest.completionMessage && (
+            <div className="flex flex-col gap-2">
+              <SectionHeader
+                icon={<ScrollText className="size-5" />}
+                label={String(tr("quest.view.completionSummary"))}
+              />
+              <div className="bg-muted border-border rounded-md border p-3 px-4">
+                <MarkdownView content={quest.completionMessage} />
+              </div>
+            </div>
+          )}
 
           {/* Objectives (collapsible, default expanded) */}
           {quest.objectives.length > 0 && (
@@ -367,21 +386,7 @@ const QuestView = (props: QuestViewProps) => {
                       !questApi.completeQuest.can() ||
                       quest.objectives.some((o) => !o.completed)
                     }
-                    onClick={async () => {
-                      const { character, ...updatedQuest } =
-                        await questApi.completeQuest({
-                          params: { id: quest.id },
-                        });
-                      updateQuest(updatedQuest);
-                      alepha.store.set(currentCampaignCharacterAtom, character);
-                      alepha.store.set(
-                        currentAssignedQuestsAtom,
-                        (
-                          alepha.store.get(currentAssignedQuestsAtom) ?? []
-                        ).filter((t) => t.id !== quest.id),
-                      );
-                      handleClose();
-                    }}
+                    onClick={() => setShowCompleteDialog(true)}
                   >
                     <Swords className="size-4" />
                     {tr("quest.view.actions.complete")}
@@ -392,6 +397,36 @@ const QuestView = (props: QuestViewProps) => {
           </div>
         )}
       </div>
+      <QuestCompletionDialog
+        open={showCompleteDialog}
+        onOpenChange={(open) => {
+          if (!completing) setShowCompleteDialog(open);
+        }}
+        submitting={completing}
+        onConfirm={async (message) => {
+          setCompleting(true);
+          try {
+            const { character, ...updatedQuest } = await questApi.completeQuest(
+              {
+                params: { id: quest.id },
+                body: { message },
+              },
+            );
+            updateQuest(updatedQuest);
+            alepha.store.set(currentCampaignCharacterAtom, character);
+            alepha.store.set(
+              currentAssignedQuestsAtom,
+              (alepha.store.get(currentAssignedQuestsAtom) ?? []).filter(
+                (t) => t.id !== quest.id,
+              ),
+            );
+            setShowCompleteDialog(false);
+            handleClose();
+          } finally {
+            setCompleting(false);
+          }
+        }}
+      />
     </Card>
   );
 };

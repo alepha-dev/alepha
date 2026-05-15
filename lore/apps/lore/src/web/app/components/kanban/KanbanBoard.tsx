@@ -215,7 +215,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           body: { kanbanColumn: toSubColumn },
         });
       } else if (fromStatus === "accepted" && toKind === "completed") {
-        await questApi.completeQuest({ params: { id: quest.id } });
+        await questApi.completeQuest({ params: { id: quest.id }, body: {} });
       }
       await reload();
     } catch (error: any) {

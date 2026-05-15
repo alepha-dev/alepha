@@ -158,8 +158,8 @@ test.describe("Petition", () => {
 
     await test.step("accept then complete the first quest", async () => {
       const [firstQuestId] = linkedQuestIds;
-      // QuestController.acceptQuest / completeQuest have no body schema, so
-      // $action infers GET. Default path is `/<actionName>/:id`.
+      // QuestController.acceptQuest has no body schema, so $action infers GET.
+      // completeQuest now takes an optional `message` body, so it's POST.
       await page.evaluate(async (id) => {
         const accept = await fetch(`/api/acceptQuest/${id}`, {
           method: "GET",
@@ -169,8 +169,10 @@ test.describe("Petition", () => {
           throw new Error(`accept: ${accept.status} ${await accept.text()}`);
         }
         const complete = await fetch(`/api/completeQuest/${id}`, {
-          method: "GET",
+          method: "POST",
           credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
         });
         if (!complete.ok) {
           throw new Error(

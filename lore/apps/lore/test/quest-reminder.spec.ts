@@ -163,7 +163,7 @@ describe("QuestController setQuestReminder", () => {
     );
 
     const completed = await ctx.quests.completeQuest.fetch(
-      { params: { id } },
+      { params: { id }, body: {} },
       { user },
     );
     expect(completed.data.reminderIntervalMs).toBeUndefined();

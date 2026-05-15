@@ -253,7 +253,7 @@ describe("CampaignStatsController", () => {
         { user },
       );
       await ctx.questController.completeQuest.fetch(
-        { params: { id: quest.id } },
+        { params: { id: quest.id }, body: {} },
         { user },
       );
 

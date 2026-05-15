@@ -36,6 +36,13 @@
       "when": 1778804354080,
       "tag": "0004_stiff_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1778873184991,
+      "tag": "0005_naive_selene",
+      "breakpoints": true
     }
   ]
 }

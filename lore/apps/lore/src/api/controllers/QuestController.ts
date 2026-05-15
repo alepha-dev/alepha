@@ -522,11 +522,20 @@ export class QuestController {
       params: t.object({
         id: t.integer(),
       }),
+      body: t.object({
+        /**
+         * Optional summary of what was actually done to close the quest.
+         * Stored on the quest row, surfaced in the UI completed-state and
+         * exposed to LLM agents via MCP. Write-once: only persisted on the
+         * accepted → completed transition.
+         */
+        message: t.optional(t.string({ size: "rich" })),
+      }),
       response: t.extend(questResourceSchema, {
         character: characters.schema,
       }),
     },
-    handler: async ({ params, user }) => {
+    handler: async ({ params, body, user }) => {
       const quest = await this.quests.getOne({
         where: {
           id: { eq: params.id },
@@ -567,6 +576,10 @@ export class QuestController {
       // Reminders auto-stop when the quest is done (see Lore #42).
       quest.reminderIntervalMs = undefined;
       quest.reminderNextAt = undefined;
+      const message = body?.message?.trim();
+      if (message) {
+        quest.completionMessage = message;
+      }
 
       await Promise.all([
         this.characters.save(character),
