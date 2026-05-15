@@ -149,6 +149,21 @@ export class I18n {
         "campaign.create.step.logo": "Add a logo",
         "campaign.create.step.logo.helper":
           "Pick an icon to represent your campaign. You can change it later.",
+        "campaign.create.step.modules": "Choose modules",
+        "campaign.create.step.modules.helper":
+          "Turn on the surfaces you'll use. Each one can be toggled later from settings.",
+        "campaign.create.module.folios": "Folios — Knowledge base",
+        "campaign.create.module.folios.helper":
+          "Markdown notes scoped to this campaign, searchable by you and your AI agents (Claude, ChatGPT) via MCP.",
+        "campaign.create.module.kanban": "Kanban — Visual board",
+        "campaign.create.module.kanban.helper":
+          "Drag-and-drop columns for tracking work in progress alongside the table view.",
+        "campaign.create.module.chapters": "Chapters — Sprints",
+        "campaign.create.module.chapters.helper":
+          "Time-boxed cycles that group completed quests into milestones with a recap.",
+        "campaign.create.module.petitions": "Petitions — Feedback inbox",
+        "campaign.create.module.petitions.helper":
+          "Accept bug reports and feature requests from your users. Triage and promote them to quests.",
         "campaign.create.next": "Next",
         "campaign.create.back": "Back",
         "campaign.create.building": "Forging your campaign…",
@@ -701,6 +716,21 @@ export class I18n {
         "campaign.create.step.logo": "Ajouter un logo",
         "campaign.create.step.logo.helper":
           "Choisissez une icône pour votre campagne. Vous pourrez la changer plus tard.",
+        "campaign.create.step.modules": "Choisir les modules",
+        "campaign.create.step.modules.helper":
+          "Activez les surfaces que vous utiliserez. Chaque module peut être (dés)activé plus tard depuis les paramètres.",
+        "campaign.create.module.folios": "Folios — Base de connaissances",
+        "campaign.create.module.folios.helper":
+          "Notes markdown propres à cette campagne, accessibles à vos agents IA (Claude, ChatGPT) via MCP.",
+        "campaign.create.module.kanban": "Kanban — Tableau visuel",
+        "campaign.create.module.kanban.helper":
+          "Colonnes drag-and-drop pour suivre l'avancement, à côté de la vue tableau.",
+        "campaign.create.module.chapters": "Chapitres — Cycles",
+        "campaign.create.module.chapters.helper":
+          "Cycles datés qui regroupent les quêtes terminées en jalons avec un récapitulatif.",
+        "campaign.create.module.petitions": "Pétitions — Boîte de feedback",
+        "campaign.create.module.petitions.helper":
+          "Recevez les bugs et demandes de vos utilisateurs. Triez et promouvez-les en quêtes.",
         "campaign.create.next": "Suivant",
         "campaign.create.back": "Retour",
         "campaign.create.building": "Forge en cours…",

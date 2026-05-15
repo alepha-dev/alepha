@@ -50,7 +50,15 @@ export class CampaignController {
   createCampaign = $action({
     use: [$secure({ permissions: ["campaign:create"] })],
     schema: {
-      body: t.pick(campaigns.insertSchema, ["title", "icon"]),
+      body: t.extend(t.pick(campaigns.insertSchema, ["title", "icon"]), {
+        /**
+         * Subset of module toggles to override at creation time. Anything
+         * omitted falls back to `defaultCampaignFeatures`. Lets the wizard
+         * surface a "select modules" step without forcing the client to
+         * resend the full feature payload.
+         */
+        features: t.optional(t.partial(campaignFeaturesSchema)),
+      }),
       response: campaigns.schema,
     },
     handler: async ({ body, user }) => {
@@ -72,6 +80,7 @@ export class CampaignController {
 
       const campaign = await this.campaigns.create({
         ...body,
+        features: { ...defaultCampaignFeatures, ...(body.features ?? {}) },
         createdBy: user.id,
       });
 

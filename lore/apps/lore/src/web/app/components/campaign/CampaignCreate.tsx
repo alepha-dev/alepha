@@ -9,7 +9,16 @@ import { useAuth } from "alepha/react/auth";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { ArrowLeft, ArrowRight, Hammer, Tag } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  Hammer,
+  LayoutGrid,
+  MessageSquarePlus,
+  Milestone,
+  Tag,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { CampaignController } from "@/api/controllers/CampaignController.ts";
@@ -18,8 +27,24 @@ import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import PageHeader from "../shared/header/PageHeader.tsx";
 
-const TOTAL_STEPS = 2;
+const TOTAL_STEPS = 3;
 const MIN_BUILD_DURATION_MS = 1500;
+
+type FeaturesDraft = {
+  kanban: boolean;
+  folios: boolean;
+  petitions: boolean;
+  chapters: boolean;
+};
+
+const DEFAULT_FEATURES: FeaturesDraft = {
+  // Same defaults as the spec — Folios + Kanban + Chapters opt-in by
+  // default; Petitions stays opt-in only (no accidental feedback inbox).
+  folios: true,
+  kanban: true,
+  chapters: true,
+  petitions: false,
+};
 
 const CampaignCreate = () => {
   const client = useClient<CampaignController>();
@@ -28,7 +53,8 @@ const CampaignCreate = () => {
   const alepha = useAlepha();
   const dateTime = useInject(DateTimeProvider);
   const { tr } = useI18n<I18n, "en">();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [features, setFeatures] = useState<FeaturesDraft>(DEFAULT_FEATURES);
 
   const initialValues = useMemo(() => {
     try {
@@ -50,9 +76,11 @@ const CampaignCreate = () => {
       toast.error(error.message);
     },
     handler: async (body) => {
-      setStep(3);
+      setStep(4);
       const startedAt = dateTime.nowMillis();
-      const campaign = await client.createCampaign({ body });
+      const campaign = await client.createCampaign({
+        body: { ...body, features },
+      });
       const elapsed = dateTime.nowMillis() - startedAt;
       if (elapsed < MIN_BUILD_DURATION_MS) {
         await new Promise((r) =>
@@ -88,10 +116,11 @@ const CampaignCreate = () => {
     }
   }, [auth.user, router]);
 
-  const goNext = () => setStep((s) => Math.min(TOTAL_STEPS, s + 1) as 1 | 2);
-  const goBack = () => setStep((s) => Math.max(1, s - 1) as 1 | 2);
+  const goNext = () =>
+    setStep((s) => Math.min(TOTAL_STEPS, s + 1) as 1 | 2 | 3);
+  const goBack = () => setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3);
 
-  if (step === 3) {
+  if (step === 4) {
     return (
       <div className="bg-background flex h-screen w-full flex-col items-center justify-center">
         <PageHeader showHome={false} />
@@ -140,6 +169,32 @@ const CampaignCreate = () => {
                     helper={String(tr("campaign.create.step.logo.helper"))}
                     input={form.input.icon}
                     disabled={form.submitting}
+                  />
+                )}
+                {step === 3 && (
+                  <StepModules
+                    title={String(tr("campaign.create.step.modules"))}
+                    helper={String(tr("campaign.create.step.modules.helper"))}
+                    value={features}
+                    onChange={setFeatures}
+                    labels={{
+                      folios: String(tr("campaign.create.module.folios")),
+                      foliosHelper: String(
+                        tr("campaign.create.module.folios.helper"),
+                      ),
+                      kanban: String(tr("campaign.create.module.kanban")),
+                      kanbanHelper: String(
+                        tr("campaign.create.module.kanban.helper"),
+                      ),
+                      chapters: String(tr("campaign.create.module.chapters")),
+                      chaptersHelper: String(
+                        tr("campaign.create.module.chapters.helper"),
+                      ),
+                      petitions: String(tr("campaign.create.module.petitions")),
+                      petitionsHelper: String(
+                        tr("campaign.create.module.petitions.helper"),
+                      ),
+                    }}
                   />
                 )}
               </div>
@@ -270,6 +325,116 @@ const StepLogo = (props: StepLogoProps) => {
         disabled={props.disabled}
       />
     </div>
+  );
+};
+
+interface StepModulesProps {
+  title: string;
+  helper: string;
+  value: FeaturesDraft;
+  onChange: (next: FeaturesDraft) => void;
+  labels: {
+    folios: string;
+    foliosHelper: string;
+    kanban: string;
+    kanbanHelper: string;
+    chapters: string;
+    chaptersHelper: string;
+    petitions: string;
+    petitionsHelper: string;
+  };
+}
+
+const StepModules = (props: StepModulesProps) => {
+  const toggle = (key: keyof FeaturesDraft) =>
+    props.onChange({ ...props.value, [key]: !props.value[key] });
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-bold tracking-tight">{props.title}</h1>
+        <p className="text-muted-foreground text-sm">{props.helper}</p>
+      </div>
+      <div className="flex flex-col gap-2">
+        <ModuleToggle
+          icon={BookOpen}
+          label={props.labels.folios}
+          helper={props.labels.foliosHelper}
+          checked={props.value.folios}
+          onChange={() => toggle("folios")}
+        />
+        <ModuleToggle
+          icon={LayoutGrid}
+          label={props.labels.kanban}
+          helper={props.labels.kanbanHelper}
+          checked={props.value.kanban}
+          onChange={() => toggle("kanban")}
+        />
+        <ModuleToggle
+          icon={Milestone}
+          label={props.labels.chapters}
+          helper={props.labels.chaptersHelper}
+          checked={props.value.chapters}
+          onChange={() => toggle("chapters")}
+        />
+        <ModuleToggle
+          icon={MessageSquarePlus}
+          label={props.labels.petitions}
+          helper={props.labels.petitionsHelper}
+          checked={props.value.petitions}
+          onChange={() => toggle("petitions")}
+        />
+      </div>
+    </div>
+  );
+};
+
+interface ModuleToggleProps {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  helper: string;
+  checked: boolean;
+  onChange: () => void;
+}
+
+const ModuleToggle = (props: ModuleToggleProps) => {
+  const Icon = props.icon;
+  return (
+    <button
+      type="button"
+      onClick={props.onChange}
+      className={`flex items-start gap-3 rounded-lg border p-4 text-left transition-all ${
+        props.checked
+          ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+          : "border-border hover:border-muted-foreground/40 hover:bg-muted/30"
+      }`}
+    >
+      <div
+        className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md ${
+          props.checked
+            ? "bg-primary/10 text-primary"
+            : "bg-muted text-muted-foreground"
+        }`}
+      >
+        <Icon className="size-4" />
+      </div>
+      <div className="flex flex-1 flex-col gap-0.5">
+        <span className="text-sm font-semibold">{props.label}</span>
+        <span className="text-muted-foreground text-xs">{props.helper}</span>
+      </div>
+      <div
+        className={`mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full px-0.5 transition-colors ${
+          props.checked ? "bg-primary" : "bg-muted"
+        }`}
+        aria-pressed={props.checked}
+      >
+        <span
+          className={`block size-4 rounded-full bg-background transition-transform ${
+            props.checked ? "translate-x-4" : "translate-x-0"
+          }`}
+        />
+      </div>
+    </button>
   );
 };
 
