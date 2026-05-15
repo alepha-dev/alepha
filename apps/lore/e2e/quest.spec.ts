@@ -134,13 +134,13 @@ test.describe("Quest", () => {
       // Target via data-testid — the sidebar also has a "Settings" link
       // and accessible-name matching is ambiguous.
       await page.getByTestId("quest-collapsible-settings").click();
-      await expect(page.getByRole("button", { name: /^hourly$/i })).toBeVisible(
-        { timeout: 5_000 },
-      );
+      await expect(page.getByRole("radio", { name: /^daily$/i })).toBeVisible({
+        timeout: 5_000,
+      });
     });
 
-    await test.step("enable Hourly cadence", async () => {
-      await page.getByRole("button", { name: /^hourly$/i }).click();
+    await test.step("enable Daily cadence", async () => {
+      await page.getByRole("radio", { name: /^daily$/i }).click();
       // After the round-trip, the "Next email" status replaces the "no
       // reminder configured" line. We don't pin the exact phrasing — i18n
       // formats the relative time via dayjs — just confirm we left the
@@ -154,7 +154,7 @@ test.describe("Quest", () => {
     });
 
     await test.step("disable via Off preset clears the status", async () => {
-      await page.getByRole("button", { name: /^off$/i }).click();
+      await page.getByRole("radio", { name: /^off$/i }).click();
       await expect(page.getByText(/no reminder configured/i)).toBeVisible({
         timeout: 10_000,
       });

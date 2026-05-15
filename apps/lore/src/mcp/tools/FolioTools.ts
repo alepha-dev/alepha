@@ -242,8 +242,6 @@ export class FolioTools {
         this.folioController.get({ params: { id } }),
         this.folioController.getLinks({ params: { id } }),
       ]);
-      // eslint-disable-next-line no-console
-      console.error("DBG handler links:", JSON.stringify(links));
       return {
         id: folio.id,
         shortId: folio.shortId,

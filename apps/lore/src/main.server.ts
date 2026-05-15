@@ -1,8 +1,10 @@
 import { Alepha, run } from "alepha";
+import { FileAccessProvider } from "alepha/api/files";
 import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
 import { AlephaEmailBrevo } from "alepha/email/brevo";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
 import { LoreApi } from "./api/index.ts";
+import { LoreFileAccessProvider } from "./api/providers/LoreFileAccessProvider.ts";
 import { LoreMcp } from "./mcp/index.ts";
 import { LoreWebApp } from "./web/app/index.ts";
 
@@ -23,6 +25,12 @@ if (alepha.env.BREVO_API_KEY) {
 if (alepha.env.TURNSTILE_SITE_KEY) {
   alepha.with({ provide: CaptchaProvider, use: TurnstileCaptchaProvider });
 }
+
+// Widen the framework's creator-only `/api/files/:id` policy with
+// lore-aware rules (avatars are public-authed, campaign icons follow
+// campaign visibility, quest attachments require campaign membership,
+// petition attachments require campaign ownership).
+alepha.with({ provide: FileAccessProvider, use: LoreFileAccessProvider });
 
 alepha.with(LoreApi);
 alepha.with(LoreMcp);
