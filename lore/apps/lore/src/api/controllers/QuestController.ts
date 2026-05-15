@@ -579,6 +579,7 @@ export class QuestController {
       const message = body?.message?.trim();
       if (message) {
         quest.completionMessage = message;
+        quest.completionMessageUpdatedAt = quest.completedAt;
       }
 
       await Promise.all([
@@ -653,16 +654,14 @@ export class QuestController {
           "priority",
           "objectives",
           "attachments",
+          "completionMessage",
         ]),
       ),
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
       const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-          completedAt: { isNull: true },
-        },
+        where: { id: { eq: params.id } },
       });
 
       const { campaign } = await this.security.assertMember(
@@ -676,22 +675,47 @@ export class QuestController {
         );
       }
 
+      // On completed quests the only field that can be revised is the
+      // completion summary — campaign memory is curatable, but the quest
+      // body (title/description/objectives/…) stays frozen as an audit
+      // record of what was closed.
+      if (quest.completedAt) {
+        const otherEdits = Object.entries(body).filter(
+          ([key, value]) => key !== "completionMessage" && value !== undefined,
+        );
+        if (otherEdits.length > 0) {
+          throw new BadRequestError(
+            "Only completionMessage can be edited on a completed quest",
+          );
+        }
+      }
+
       if (body.description) {
         // sanitize HTML content
         body.description = sanitizeHtml(body.description);
       }
 
-      const updated = await this.quests.updateById(params.id, {
-        ...body,
-        history: [
+      const patch: Record<string, unknown> = { ...body };
+      if (
+        body.completionMessage !== undefined &&
+        body.completionMessage !== quest.completionMessage
+      ) {
+        patch.completionMessageUpdatedAt = this.dt.nowISOString();
+      }
+      // Don't append a "updated" history entry on a completed quest — we
+      // only allow the summary edit, the rest of the quest is frozen.
+      if (!quest.completedAt) {
+        patch.history = [
           ...quest.history,
           {
             at: this.dt.nowISOString(),
             by: user.id,
             action: "updated",
           },
-        ],
-      });
+        ];
+      }
+
+      const updated = await this.quests.updateById(params.id, patch);
 
       return this.mapQuestToResource(updated);
     },

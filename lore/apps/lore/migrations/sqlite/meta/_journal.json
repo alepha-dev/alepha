@@ -43,6 +43,13 @@
       "when": 1778873184991,
       "tag": "0005_naive_selene",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1778875153302,
+      "tag": "0006_great_black_crow",
+      "breakpoints": true
     }
   ]
 }

@@ -286,6 +286,7 @@ export class QuestTools {
         acceptedAt: quest.acceptedAt,
         completedAt: quest.completedAt,
         completionMessage: quest.completionMessage,
+        completionMessageUpdatedAt: quest.completionMessageUpdatedAt,
       };
     },
   });
@@ -295,7 +296,7 @@ export class QuestTools {
    */
   quest_update = $tool({
     description:
-      "Update a quest's properties. Only non-completed quests can be updated. Omitted fields stay unchanged. Note: passing `objectives` REPLACES the entire objectives array — fetch the current quest first (quest_get or quest_list) and pass back the full list with your edits.",
+      "Update a quest's properties. Non-completed quests accept any field; completed quests only accept `completionMessage` (campaign memory stays curatable, but the quest body is frozen as an audit record). Omitted fields stay unchanged. Note: passing `objectives` REPLACES the entire objectives array — fetch the current quest first (quest_get or quest_list) and pass back the full list with your edits.",
     title: "Update quest",
     annotations: { idempotentHint: true },
     schema: {
@@ -313,6 +314,7 @@ export class QuestTools {
           priority: params.priority,
           difficulty: params.difficulty,
           objectives: params.objectives,
+          completionMessage: params.completionMessage,
         },
       });
 

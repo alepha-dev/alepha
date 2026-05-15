@@ -2,6 +2,7 @@ import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view"
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card } from "@alepha/ui/components/ui/card";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
@@ -11,6 +12,7 @@ import {
   History,
   ListChecks,
   Paperclip,
+  Pencil,
   PiggyBank,
   ScrollText,
   Settings as SettingsIcon,
@@ -35,6 +37,7 @@ import AttachmentBadge from "./AttachmentBadge.tsx";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
 import QuestDescription from "./QuestDescription.tsx";
 import QuestHistory from "./QuestHistory.tsx";
+import QuestSummaryEditDialog from "./QuestSummaryEditDialog.tsx";
 import QuestViewCollapsibleBlock from "./QuestViewCollapsibleBlock.tsx";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
 import QuestViewEditButton from "./QuestViewEditButton.tsx";
@@ -69,9 +72,12 @@ const QuestView = (props: QuestViewProps) => {
   const info = useInject(CharacterInfo);
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
+  const dt = useInject(DateTimeProvider);
   const [showDialog, setShowDialog] = useState(false);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [showEditSummary, setShowEditSummary] = useState(false);
+  const [savingSummary, setSavingSummary] = useState(false);
   const [quest, setQuest] = useState<QuestResource>(props.quest);
 
   useEffect(() => {
@@ -214,17 +220,53 @@ const QuestView = (props: QuestViewProps) => {
             />
           </div>
 
-          {/* Completion summary — only when the quest is closed and the
-              completer (human or LLM) left a message. */}
-          {quest.completedAt && quest.completionMessage && (
+          {/* Completion summary — visible on completed quests. Owners /
+              creators (the only allowed editors server-side) can amend
+              the message; the data model carries an `editedAt` stamp so
+              the UI can surface "edited X ago" honestly. */}
+          {quest.completedAt && (
             <div className="flex flex-col gap-2">
-              <SectionHeader
-                icon={<ScrollText className="size-5" />}
-                label={String(tr("quest.view.completionSummary"))}
-              />
-              <div className="bg-muted border-border rounded-md border p-3 px-4">
-                <MarkdownView content={quest.completionMessage} />
+              <div className="flex items-center justify-between gap-2">
+                <SectionHeader
+                  icon={<ScrollText className="size-5" />}
+                  label={String(tr("quest.view.completionSummary"))}
+                />
+                {questApi.updateQuestById.can() && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    aria-label={String(tr("quest.view.editSummary.title"))}
+                    onClick={() => setShowEditSummary(true)}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                )}
               </div>
+              {quest.completionMessage ? (
+                <div className="bg-muted border-border flex flex-col gap-2 rounded-md border p-3 px-4">
+                  <MarkdownView content={quest.completionMessage} />
+                  {quest.completionMessageUpdatedAt &&
+                    quest.completedAt &&
+                    quest.completionMessageUpdatedAt !== quest.completedAt && (
+                      <span className="text-muted-foreground text-xs italic">
+                        {tr("quest.view.completionSummary.edited", {
+                          args: [
+                            dt.of(quest.completionMessageUpdatedAt).fromNow(),
+                          ],
+                        })}
+                      </span>
+                    )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowEditSummary(true)}
+                  className="bg-muted border-border text-muted-foreground rounded-md border p-3 px-4 text-left text-sm italic hover:underline"
+                >
+                  {tr("quest.view.completionSummary.empty")}
+                </button>
+              )}
             </div>
           )}
 
@@ -397,6 +439,28 @@ const QuestView = (props: QuestViewProps) => {
           </div>
         )}
       </div>
+      <QuestSummaryEditDialog
+        open={showEditSummary}
+        onOpenChange={(open) => {
+          if (!savingSummary) setShowEditSummary(open);
+        }}
+        initialValue={quest.completionMessage}
+        submitting={savingSummary}
+        onSave={async (message) => {
+          setSavingSummary(true);
+          try {
+            const updated = await questApi.updateQuestById({
+              params: { id: quest.id },
+              body: { completionMessage: message },
+            });
+            updateQuest(updated);
+            alepha.store.set(currentQuestAtom, updated);
+            setShowEditSummary(false);
+          } finally {
+            setSavingSummary(false);
+          }
+        }}
+      />
       <QuestCompletionDialog
         open={showCompleteDialog}
         onOpenChange={(open) => {
