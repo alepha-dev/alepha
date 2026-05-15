@@ -5,14 +5,59 @@ import { Separator } from "@alepha/ui/components/ui/separator";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { BookOpen, Plus, Search, Tag } from "lucide-react";
-import { useDeferredValue, useMemo, useState } from "react";
+import {
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  Plus,
+  Search,
+  Tag,
+} from "lucide-react";
+import {
+  type ReactElement,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import type { Folio } from "@/api/entities/folios.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
 import { currentFolioAtom } from "../../atoms/currentFolioAtom.ts";
 import { folioTagsAtom } from "../../atoms/folioTagsAtom.ts";
 import { userFoliosAtom } from "../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+
+const expandStorageKey = (campaignId: number) =>
+  `lor.folios.expand.${campaignId}`;
+
+const readExpandState = (campaignId: number): Set<string> => {
+  try {
+    const raw = window.localStorage.getItem(expandStorageKey(campaignId));
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as string[];
+    return new Set(parsed);
+  } catch {
+    return new Set();
+  }
+};
+
+const writeExpandState = (campaignId: number, expanded: Set<string>) => {
+  try {
+    if (expanded.size === 0) {
+      window.localStorage.removeItem(expandStorageKey(campaignId));
+    } else {
+      window.localStorage.setItem(
+        expandStorageKey(campaignId),
+        JSON.stringify([...expanded]),
+      );
+    }
+  } catch {
+    // ignore (private mode, quota)
+  }
+};
 
 const FoliosSidebar = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -26,6 +71,29 @@ const FoliosSidebar = () => {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
 
+  // Hydrate expand state once per campaign, mirror writes back.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (!campaign?.id) {
+      setExpanded(new Set());
+      return;
+    }
+    setExpanded(readExpandState(campaign.id));
+  }, [campaign?.id]);
+  useEffect(() => {
+    if (!campaign?.id) return;
+    writeExpandState(campaign.id, expanded);
+  }, [campaign?.id, expanded]);
+
+  const toggleExpand = useCallback((id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
   const filtered = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
     return folios.filter((f) => {
@@ -37,6 +105,12 @@ const FoliosSidebar = () => {
       );
     });
   }, [folios, deferredQuery, activeTag]);
+
+  // When a filter is active (search or tag) the tree collapses to a flat
+  // list of matches — hierarchy is only useful when browsing the full set.
+  const isFiltering = deferredQuery.trim().length > 0 || activeTag != null;
+
+  const tree = useMemo(() => buildFolioTree(filtered), [filtered]);
 
   return (
     <aside className="flex w-72 shrink-0 flex-col overflow-hidden border-r">
@@ -100,30 +174,31 @@ const FoliosSidebar = () => {
           <p className="text-muted-foreground p-4 text-xs">
             {tr("folios.empty-list")}
           </p>
+        ) : isFiltering ? (
+          filtered.map((folio) => (
+            <FolioRow
+              key={folio.id}
+              folio={folio}
+              isActive={current?.id === folio.id}
+              campaignId={campaignId}
+              router={router}
+              indent={0}
+              hasChildren={false}
+              isExpanded={false}
+              onToggle={toggleExpand}
+            />
+          ))
         ) : (
-          filtered.map((folio) => {
-            const isActive = current?.id === folio.id;
-            return (
-              <Link
-                key={folio.id}
-                href={router.path("campaignFoliosFolio", {
-                  params: { campaignId, shortId: folio.shortId },
-                })}
-                className={`hover:bg-muted flex flex-col gap-0.5 px-4 py-2 text-sm transition-colors ${
-                  isActive ? "bg-muted" : ""
-                }`}
-              >
-                <span className="line-clamp-1 truncate font-medium">
-                  {folio.title}
-                </span>
-                {folio.tags.length > 0 && (
-                  <span className="text-muted-foreground line-clamp-1 truncate text-[11px]">
-                    {folio.tags.map((t) => `#${t}`).join(" ")}
-                  </span>
-                )}
-              </Link>
-            );
-          })
+          tree.roots.map((node) =>
+            renderTreeNode(node, {
+              campaignId,
+              router,
+              expanded,
+              toggleExpand,
+              activeId: current?.id,
+              depth: 0,
+            }),
+          )
         )}
       </div>
     </aside>
@@ -131,3 +206,123 @@ const FoliosSidebar = () => {
 };
 
 export default FoliosSidebar;
+
+type TreeNode = { folio: Folio; children: TreeNode[] };
+type TreeIndex = { roots: TreeNode[] };
+
+const buildFolioTree = (flat: Folio[]): TreeIndex => {
+  const byId = new Map<string, TreeNode>();
+  for (const folio of flat) byId.set(folio.id, { folio, children: [] });
+  const roots: TreeNode[] = [];
+  // Sort alphabetically so each level is predictable.
+  const sorted = [...flat].sort((a, b) =>
+    a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
+  );
+  for (const folio of sorted) {
+    const node = byId.get(folio.id);
+    if (!node) continue;
+    if (folio.parentId && byId.has(folio.parentId)) {
+      byId.get(folio.parentId)!.children.push(node);
+    } else {
+      // Either no parent set, or the parent was filtered out of the
+      // current view — promote to root so the folio doesn't disappear.
+      roots.push(node);
+    }
+  }
+  return { roots };
+};
+
+interface FolioRowProps {
+  folio: Folio;
+  isActive: boolean;
+  campaignId: string;
+  router: ReturnType<typeof useRouter<AppRouter>>;
+  indent: number;
+  hasChildren: boolean;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+}
+
+const FolioRow = (props: FolioRowProps) => {
+  const indentPx = 12 + props.indent * 14;
+  return (
+    <div className="flex items-center" style={{ paddingLeft: indentPx }}>
+      {props.hasChildren ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            props.onToggle(props.folio.id);
+          }}
+          className="text-muted-foreground hover:text-foreground -ml-1 mr-0.5 inline-flex size-5 items-center justify-center"
+          aria-label={props.isExpanded ? "Collapse" : "Expand"}
+        >
+          {props.isExpanded ? (
+            <ChevronDown className="size-3.5" />
+          ) : (
+            <ChevronRight className="size-3.5" />
+          )}
+        </button>
+      ) : (
+        <span className="text-muted-foreground/40 -ml-1 mr-0.5 inline-flex size-5 items-center justify-center">
+          <FileText className="size-3" />
+        </span>
+      )}
+      <Link
+        href={props.router.path("campaignFoliosFolio", {
+          params: {
+            campaignId: props.campaignId,
+            shortId: props.folio.shortId,
+          },
+        })}
+        className={`hover:bg-muted flex flex-1 flex-col gap-0.5 px-1.5 py-1.5 text-sm transition-colors ${
+          props.isActive ? "bg-muted" : ""
+        }`}
+      >
+        <span className="line-clamp-1 truncate font-medium">
+          {props.folio.title}
+        </span>
+        {props.folio.tags.length > 0 && (
+          <span className="text-muted-foreground line-clamp-1 truncate text-[11px]">
+            {props.folio.tags.map((t) => `#${t}`).join(" ")}
+          </span>
+        )}
+      </Link>
+    </div>
+  );
+};
+
+interface RenderContext {
+  campaignId: string;
+  router: ReturnType<typeof useRouter<AppRouter>>;
+  expanded: Set<string>;
+  toggleExpand: (id: string) => void;
+  activeId: string | undefined;
+  depth: number;
+}
+
+const renderTreeNode = (node: TreeNode, ctx: RenderContext): ReactElement => {
+  const hasChildren = node.children.length > 0;
+  const isExpanded = ctx.expanded.has(node.folio.id);
+  return (
+    <div key={node.folio.id}>
+      <FolioRow
+        folio={node.folio}
+        isActive={ctx.activeId === node.folio.id}
+        campaignId={ctx.campaignId}
+        router={ctx.router}
+        indent={ctx.depth}
+        hasChildren={hasChildren}
+        isExpanded={isExpanded}
+        onToggle={ctx.toggleExpand}
+      />
+      {hasChildren && isExpanded && (
+        <div>
+          {node.children.map((child) =>
+            renderTreeNode(child, { ...ctx, depth: ctx.depth + 1 }),
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
