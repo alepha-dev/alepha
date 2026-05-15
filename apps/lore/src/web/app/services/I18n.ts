@@ -145,6 +145,12 @@ export class I18n {
           "Labels for the nature of the quest (bug, feat, chore…). Zone says where, tag says what kind.",
         "quest.tags.placeholder": "Add a tag and press Enter",
         "quest.tags.suggestions": "Reuse:",
+        "quest.create.dependsOn": "Depends on",
+        "quest.create.dependsOn.helper":
+          "Optional: pick a quest that must be completed before this one can be accepted.",
+        "quest.view.questline.blockedBy": "Blocked by #$1",
+        "quest.view.questline.unblocked": "Unblocked — #$1 done",
+        "quest.view.questline.unlocks": "Unlocks #$1",
 
         "priority.high": "High",
         "priority.medium": "Normal",
@@ -728,6 +734,12 @@ export class I18n {
           "Étiquettes décrivant la nature de la quête (bug, feat, chore…). La zone dit où, l'étiquette dit quoi.",
         "quest.tags.placeholder": "Ajouter une étiquette puis Entrée",
         "quest.tags.suggestions": "Réutiliser :",
+        "quest.create.dependsOn": "Dépend de",
+        "quest.create.dependsOn.helper":
+          "Optionnel : sélectionnez une quête qui doit être terminée avant que celle-ci puisse être acceptée.",
+        "quest.view.questline.blockedBy": "Bloquée par #$1",
+        "quest.view.questline.unblocked": "Débloquée — #$1 faite",
+        "quest.view.questline.unlocks": "Débloque #$1",
 
         "priority.high": "Urgente",
         "priority.medium": "Normal",

@@ -169,6 +169,14 @@ export class QuestTools {
         params.campaign_name,
       );
 
+      // Resolve `dependsOn_shortId` → global quest id (same campaign).
+      let dependsOn: number | undefined;
+      if (params.dependsOn_shortId != null) {
+        const pred = await this.questController.getQuestByShortId({
+          params: { campaignId, shortId: params.dependsOn_shortId },
+        });
+        dependsOn = pred.id;
+      }
       const quest = await this.questController.createQuest({
         body: {
           campaignId,
@@ -179,6 +187,7 @@ export class QuestTools {
           difficulty: params.difficulty,
           objectives: params.objectives,
           tags: params.tags,
+          dependsOn,
         },
       });
 
@@ -274,6 +283,14 @@ export class QuestTools {
         params: { id },
       });
 
+      let dependsOn_shortId: number | undefined;
+      if (quest.dependsOn != null) {
+        const pred = await this.questController.getQuestById({
+          params: { id: quest.dependsOn },
+        });
+        dependsOn_shortId = pred.shortId;
+      }
+
       return {
         id: quest.id,
         shortId: quest.shortId,
@@ -293,6 +310,7 @@ export class QuestTools {
         completionMessage: quest.completionMessage,
         completionMessageUpdatedAt: quest.completionMessageUpdatedAt,
         tags: quest.tags,
+        dependsOn_shortId,
       };
     },
   });
@@ -339,6 +357,23 @@ export class QuestTools {
     },
     handler: async ({ params }) => {
       const id = await this.resolveQuestId(params);
+      // Translate `dependsOn_shortId` for update: 0 = clear, integer =
+      // resolve to global id within the same campaign as the quest.
+      let dependsOn: number | null | undefined;
+      if (params.dependsOn_shortId === 0) {
+        dependsOn = null;
+      } else if (params.dependsOn_shortId != null) {
+        const current = await this.questController.getQuestById({
+          params: { id },
+        });
+        const pred = await this.questController.getQuestByShortId({
+          params: {
+            campaignId: current.campaignId,
+            shortId: params.dependsOn_shortId,
+          },
+        });
+        dependsOn = pred.id;
+      }
       const quest = await this.questController.updateQuestById({
         params: { id },
         body: {
@@ -350,6 +385,7 @@ export class QuestTools {
           objectives: params.objectives,
           completionMessage: params.completionMessage,
           tags: params.tags,
+          dependsOn,
         },
       });
 

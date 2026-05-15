@@ -188,6 +188,24 @@ export class QuestController {
         }
       }
 
+      // Validate optional `dependsOn` — must be in the same campaign and
+      // cannot point at the quest itself (we don't have the shortId yet,
+      // so the self-check fires on update). NULL-by-default schema means
+      // `dependsOn: null` from the client clears the link.
+      if (body.dependsOn != null) {
+        const predecessor = await this.quests.findOne({
+          where: {
+            id: { eq: body.dependsOn },
+            campaignId: { eq: body.campaignId },
+          },
+        });
+        if (!predecessor) {
+          throw new BadRequestError(
+            "dependsOn quest not found in this campaign",
+          );
+        }
+      }
+
       const shortId = await this.questShortId.next(String(body.campaignId));
 
       const quest = await this.quests.create({
@@ -196,6 +214,7 @@ export class QuestController {
         attachments: body.attachments ?? [],
         tags: normalizeQuestTags(body.tags ?? []),
         objectives: this.ensureObjectiveIds(body.objectives ?? []),
+        dependsOn: body.dependsOn ?? undefined,
         createdBy: user.id,
         history: [],
       });
@@ -365,6 +384,72 @@ export class QuestController {
   });
 
   /**
+   * Questline data for a single quest — the predecessor it depends on
+   * (if any) and the quests that depend on it. Surfaces a "Blocked by"
+   * badge and an "Unlocks" backlink in the UI; agents can read it via
+   * `quest_get` (predecessor is `dependsOn_shortId`; dependents are
+   * exposed there only in aggregate via separate calls).
+   */
+  getQuestLine = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    schema: {
+      params: t.object({ id: t.integer() }),
+      response: t.object({
+        predecessor: t.optional(
+          t.object({
+            id: t.integer(),
+            shortId: t.integer(),
+            title: t.string(),
+            completedAt: t.optional(t.datetime()),
+          }),
+        ),
+        dependents: t.array(
+          t.object({
+            id: t.integer(),
+            shortId: t.integer(),
+            title: t.string(),
+            completedAt: t.optional(t.datetime()),
+          }),
+        ),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: { id: { eq: params.id } },
+      });
+      await this.security.assertMember(quest.campaignId, user);
+
+      const [predecessor, dependents] = await Promise.all([
+        quest.dependsOn != null
+          ? this.quests.findOne({
+              where: { id: { eq: quest.dependsOn } },
+            })
+          : Promise.resolve(undefined),
+        this.quests.findMany({
+          where: { dependsOn: { eq: params.id } },
+        }),
+      ]);
+
+      return {
+        predecessor: predecessor
+          ? {
+              id: predecessor.id,
+              shortId: predecessor.shortId,
+              title: predecessor.title,
+              completedAt: predecessor.completedAt,
+            }
+          : undefined,
+        dependents: dependents.map((d) => ({
+          id: d.id,
+          shortId: d.shortId,
+          title: d.title,
+          completedAt: d.completedAt,
+        })),
+      };
+    },
+  });
+
+  /**
    * Return the distinct set of tags used by any quest in a campaign —
    * fuel for chip autocomplete in the editor and the filter dropdown.
    * Mirrors `FolioController.listTags` but scope is campaign-level (tags
@@ -449,6 +534,21 @@ export class QuestController {
         quest.campaignId,
         user,
       );
+
+      // Questline gate (Lore #32): refuse to accept while a non-null
+      // predecessor is still in flight. The dependent quest stays
+      // visible in the "new" lane — the UI flips its badge to
+      // "Unblocked" once the predecessor completes.
+      if (quest.dependsOn != null) {
+        const predecessor = await this.quests.findOne({
+          where: { id: { eq: quest.dependsOn } },
+        });
+        if (predecessor && !predecessor.completedAt) {
+          throw new BadRequestError(
+            `Cannot accept quest: blocked by #${predecessor.shortId}`,
+          );
+        }
+      }
 
       quest.acceptedAt = this.dt.nowISOString();
       quest.acceptedBy = user.id;
@@ -680,18 +780,26 @@ export class QuestController {
       params: t.object({
         id: t.integer(),
       }),
-      body: t.partial(
-        t.pick(quests.schema, [
-          "title",
-          "description",
-          "zone",
-          "difficulty",
-          "priority",
-          "objectives",
-          "attachments",
-          "completionMessage",
-          "tags",
-        ]),
+      body: t.extend(
+        t.partial(
+          t.pick(quests.schema, [
+            "title",
+            "description",
+            "zone",
+            "difficulty",
+            "priority",
+            "objectives",
+            "attachments",
+            "completionMessage",
+            "tags",
+          ]),
+        ),
+        {
+          // `dependsOn` is special-cased: `null` clears the link, integer
+          // sets it. Picking from the entity schema would emit
+          // `optional<integer>` only, dropping the explicit-clear path.
+          dependsOn: t.optional(t.nullable(t.integer())),
+        },
       ),
       response: questResourceSchema,
     },
@@ -734,6 +842,27 @@ export class QuestController {
       const patch: Record<string, unknown> = { ...body };
       if (body.tags !== undefined) {
         patch.tags = normalizeQuestTags(body.tags);
+      }
+      if (body.dependsOn !== undefined) {
+        if (body.dependsOn === null) {
+          patch.dependsOn = undefined;
+        } else {
+          if (body.dependsOn === quest.id) {
+            throw new BadRequestError("A quest cannot depend on itself");
+          }
+          const predecessor = await this.quests.findOne({
+            where: {
+              id: { eq: body.dependsOn },
+              campaignId: { eq: quest.campaignId },
+            },
+          });
+          if (!predecessor) {
+            throw new BadRequestError(
+              "dependsOn quest not found in this campaign",
+            );
+          }
+          patch.dependsOn = body.dependsOn;
+        }
       }
       if (
         body.completionMessage !== undefined &&
@@ -903,6 +1032,19 @@ export class QuestController {
         throw new ForbiddenError(
           "Only the quest creator or campaign owner can delete this quest",
         );
+      }
+
+      // Clear dependents' `dependsOn` before the row is removed — the FK
+      // emitted by Drizzle's `ALTER TABLE ADD COLUMN REFERENCES` lacks
+      // an explicit `ON DELETE SET NULL` clause (SQLite ALTER quirk),
+      // so D1 would refuse the delete if any dependent still pointed at
+      // this id. Mirror the folio-parent pattern.
+      const dependents = await this.quests.findMany({
+        where: { dependsOn: { eq: params.id } },
+        columns: ["id"],
+      });
+      for (const dep of dependents) {
+        await this.quests.updateById(dep.id, { dependsOn: undefined });
       }
 
       await this.quests.deleteById(params.id);
