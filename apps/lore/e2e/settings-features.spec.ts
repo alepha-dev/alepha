@@ -33,14 +33,12 @@ test.describe("Campaign settings — feature toggles", () => {
 
     await registerAndVerify(page, email, password);
 
-    // Create campaign (3-step wizard: name → logo → visibility → submit)
+    // Create campaign (2-step wizard: name → logo → submit; logo is optional)
     await page.goto("/new-campaign");
     await page.waitForLoadState("networkidle");
     await page.locator('input[type="text"]').first().fill(campaignTitle);
     await page.getByRole("button", { name: /^next$/i }).click();
-    // Step 2 (logo) — skip
-    await page.getByRole("button", { name: /^skip$/i }).click();
-    // Step 3 (visibility) — submit with default Private
+    // Step 2 (logo) — submit without uploading
     await page.getByRole("button", { name: /create campaign/i }).click();
     await page.waitForURL(/\/c\/\d+/, { timeout: 15_000 });
     const match = page.url().match(/\/c\/(\d+)/);

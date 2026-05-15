@@ -135,23 +135,13 @@ export class I18n {
         "campaign.create.name": "Name",
         "campaign.create.name.helper":
           "Set a short name for identifying your campaign.",
-        "campaign.create.public": "Public",
-        "campaign.create.public.helper":
-          "If enabled, your campaign will be visible across the realm, not just to you and your adventurers.",
         "campaign.create.submit": "Create Campaign",
         "campaign.create.step.name": "Name your campaign",
         "campaign.create.step.logo": "Add a logo",
         "campaign.create.step.logo.helper":
           "Pick an icon to represent your campaign. You can change it later.",
-        "campaign.create.step.visibility": "Choose visibility",
-        "campaign.create.visibility.private": "Private",
-        "campaign.create.visibility.private.helper":
-          "Only you and adventurers you invite can see this campaign.",
-        "campaign.create.visibility.public.helper":
-          "Anyone in the realm can find and view this campaign.",
         "campaign.create.next": "Next",
         "campaign.create.back": "Back",
-        "campaign.create.skip": "Skip",
         "campaign.create.building": "Forging your campaign…",
 
         "quest.view.summary":
@@ -673,23 +663,13 @@ export class I18n {
 
         "campaign.create.name": "Nom",
         "campaign.create.name.helper": "Un nom marquant pour votre épopée.",
-        "campaign.create.public": "Publique",
-        "campaign.create.public.helper":
-          "Si activé, votre campagne sera visible dans tout le royaume, pas seulement par vos compagnons.",
         "campaign.create.submit": "Lancer la campagne",
         "campaign.create.step.name": "Nommez votre campagne",
         "campaign.create.step.logo": "Ajouter un logo",
         "campaign.create.step.logo.helper":
           "Choisissez une icône pour votre campagne. Vous pourrez la changer plus tard.",
-        "campaign.create.step.visibility": "Choisir la visibilité",
-        "campaign.create.visibility.private": "Privée",
-        "campaign.create.visibility.private.helper":
-          "Seuls vous et vos compagnons invités pourrez voir cette campagne.",
-        "campaign.create.visibility.public.helper":
-          "Tout le royaume pourra trouver et consulter cette campagne.",
         "campaign.create.next": "Suivant",
         "campaign.create.back": "Retour",
-        "campaign.create.skip": "Passer",
         "campaign.create.building": "Forge en cours…",
 
         "quest.view.summary":

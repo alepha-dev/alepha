@@ -9,7 +9,7 @@ import { useAuth } from "alepha/react/auth";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { ArrowLeft, ArrowRight, Globe2, Hammer, Lock, Tag } from "lucide-react";
+import { ArrowLeft, ArrowRight, Hammer, Tag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { CampaignController } from "@/api/controllers/CampaignController.ts";
@@ -18,7 +18,7 @@ import { userCampaignsAtom } from "../../atoms/userCampaignsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import PageHeader from "../shared/header/PageHeader.tsx";
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 2;
 const MIN_BUILD_DURATION_MS = 1500;
 
 const CampaignCreate = () => {
@@ -28,7 +28,7 @@ const CampaignCreate = () => {
   const alepha = useAlepha();
   const dateTime = useInject(DateTimeProvider);
   const { tr } = useI18n<I18n, "en">();
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const initialValues = useMemo(() => {
     try {
@@ -44,14 +44,13 @@ const CampaignCreate = () => {
     initialValues,
     schema: t.object({
       title: t.string({ minLength: 3, maxLength: 24 }),
-      public: t.optional(t.boolean()),
       icon: t.optional(t.uuid()),
     }),
     onError: (error) => {
       toast.error(error.message);
     },
     handler: async (body) => {
-      setStep(4);
+      setStep(3);
       const startedAt = dateTime.nowMillis();
       const campaign = await client.createCampaign({ body });
       const elapsed = dateTime.nowMillis() - startedAt;
@@ -89,11 +88,10 @@ const CampaignCreate = () => {
     }
   }, [auth.user, router]);
 
-  const goNext = () =>
-    setStep((s) => Math.min(TOTAL_STEPS, s + 1) as 1 | 2 | 3);
-  const goBack = () => setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3);
+  const goNext = () => setStep((s) => Math.min(TOTAL_STEPS, s + 1) as 1 | 2);
+  const goBack = () => setStep((s) => Math.max(1, s - 1) as 1 | 2);
 
-  if (step === 4) {
+  if (step === 3) {
     return (
       <div className="bg-background flex h-screen w-full flex-col items-center justify-center">
         <PageHeader showHome={false} />
@@ -144,25 +142,6 @@ const CampaignCreate = () => {
                     disabled={form.submitting}
                   />
                 )}
-                {step === 3 && (
-                  <StepVisibility
-                    title={String(tr("campaign.create.step.visibility"))}
-                    privateLabel={String(
-                      tr("campaign.create.visibility.private"),
-                    )}
-                    privateHelper={String(
-                      tr("campaign.create.visibility.private.helper"),
-                    )}
-                    publicLabel={String(tr("campaign.create.public"))}
-                    publicHelper={String(
-                      tr("campaign.create.visibility.public.helper"),
-                    )}
-                    value={
-                      (formState.values?.public as boolean | undefined) ?? false
-                    }
-                    onChange={(v) => form.input.public.set(v)}
-                  />
-                )}
               </div>
 
               <div className="flex items-center justify-between gap-3">
@@ -178,16 +157,6 @@ const CampaignCreate = () => {
                 </Button>
 
                 <div className="flex items-center gap-2">
-                  {step === 2 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={goNext}
-                    >
-                      {tr("campaign.create.skip")}
-                    </Button>
-                  )}
                   {step < TOTAL_STEPS ? (
                     // `key` is critical: React 19 reconciles the ternary by
                     // reusing the same <button> DOM node and just flipping
@@ -301,77 +270,6 @@ const StepLogo = (props: StepLogoProps) => {
         disabled={props.disabled}
       />
     </div>
-  );
-};
-
-interface StepVisibilityProps {
-  title: string;
-  privateLabel: string;
-  privateHelper: string;
-  publicLabel: string;
-  publicHelper: string;
-  value: boolean;
-  onChange: (value: boolean) => void;
-}
-
-const StepVisibility = (props: StepVisibilityProps) => {
-  return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold tracking-tight">{props.title}</h1>
-      <div className="flex flex-col gap-2">
-        <VisibilityOption
-          icon={Lock}
-          label={props.privateLabel}
-          helper={props.privateHelper}
-          selected={!props.value}
-          onSelect={() => props.onChange(false)}
-        />
-        <VisibilityOption
-          icon={Globe2}
-          label={props.publicLabel}
-          helper={props.publicHelper}
-          selected={props.value}
-          onSelect={() => props.onChange(true)}
-        />
-      </div>
-    </div>
-  );
-};
-
-interface VisibilityOptionProps {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  helper: string;
-  selected: boolean;
-  onSelect: () => void;
-}
-
-const VisibilityOption = (props: VisibilityOptionProps) => {
-  const Icon = props.icon;
-  return (
-    <button
-      type="button"
-      onClick={props.onSelect}
-      className={`flex items-start gap-3 rounded-lg border p-4 text-left transition-all ${
-        props.selected
-          ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-          : "border-border hover:border-muted-foreground/40 hover:bg-muted/30"
-      }`}
-    >
-      <div
-        className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md ${
-          props.selected
-            ? "bg-primary/10 text-primary"
-            : "bg-muted text-muted-foreground"
-        }`}
-      >
-        <Icon className="size-4" />
-      </div>
-      <div className="flex flex-col gap-0.5">
-        <span className="text-sm font-semibold">{props.label}</span>
-        <span className="text-muted-foreground text-xs">{props.helper}</span>
-      </div>
-    </button>
   );
 };
 
