@@ -145,8 +145,9 @@ export const registerAndVerify = async (
 };
 
 /**
- * Drive the 3-step campaign-create wizard: name → skip logo → submit with
- * default visibility. Returns the new campaign id parsed from the URL.
+ * Drive the 2-step campaign-create wizard: name → submit (logo step is the
+ * final step, icon is optional so we just submit without uploading). Returns
+ * the new campaign id parsed from the URL.
  */
 export const createCampaignViaWizard = async (
   page: Page,
@@ -156,7 +157,6 @@ export const createCampaignViaWizard = async (
   await page.waitForLoadState("networkidle");
   await page.locator('input[type="text"]').first().fill(title);
   await page.getByRole("button", { name: /^next$/i }).click();
-  await page.getByRole("button", { name: /^skip$/i }).click();
   await page.getByRole("button", { name: /create campaign/i }).click();
   await page.waitForURL(/\/c\/\d+/, { timeout: 15_000 });
   const match = page.url().match(/\/c\/(\d+)/);
