@@ -3,7 +3,7 @@ import { t } from "alepha";
 import { useAlepha, useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { Globe2, Lock, Tag } from "lucide-react";
+import { Tag } from "lucide-react";
 import type { CampaignController } from "@/api/controllers/CampaignController.ts";
 import type { Campaign } from "@/api/entities/campaigns.ts";
 import { currentCampaignAtom } from "../../atoms/currentCampaignAtom.ts";
@@ -21,8 +21,8 @@ const CampaignUpdate = (props: CampaignUpdateProps) => {
 
   const form = useForm({
     initialValues: {
-      ...props.campaign,
-      public: props.campaign.public ?? false,
+      icon: props.campaign.icon,
+      title: props.campaign.title,
     },
     schema: t.object({
       icon: t.optional(t.nullable(t.uuid())),
@@ -31,12 +31,6 @@ const CampaignUpdate = (props: CampaignUpdateProps) => {
         minLength: 3,
         maxLength: 24,
       }),
-      public: t.optional(
-        t.boolean({
-          title: "Visibility",
-          description: "Public campaign will be visible by the outside world.",
-        }),
-      ),
     }),
     handler: async (values) => {
       const campaign = await campaignApi.updateCampaignById({
@@ -66,7 +60,7 @@ const CampaignUpdate = (props: CampaignUpdateProps) => {
       form={form}
       layout="row"
       autoSave
-      groups={[{ fields: ["icon", "title", "public"] }]}
+      groups={[{ fields: ["icon", "title"] }]}
       fields={{
         icon: {
           label: "Icon",
@@ -78,21 +72,6 @@ const CampaignUpdate = (props: CampaignUpdateProps) => {
         },
         title: {
           icon: Tag,
-        },
-        public: {
-          select: true,
-          items: [
-            {
-              value: "true",
-              label: "Public",
-              icon: <Globe2 className="size-4" />,
-            },
-            {
-              value: "false",
-              label: "Private",
-              icon: <Lock className="size-4" />,
-            },
-          ],
         },
       }}
     />

@@ -74,7 +74,6 @@ export class AppRouter {
       this.resetPassword,
       this.campaign,
       this.campaignCreate,
-      this.kanbanRedirect,
       this.campaignPetitionRequest,
       this.campaignPetitionStatus,
       this.meRouter.me,
@@ -178,18 +177,6 @@ export class AppRouter {
       enter: { name: "fadeIn", duration: 500, timing: "ease-out" },
     },
     lazy: () => import("./components/campaign/CampaignCreate.tsx"),
-  });
-
-  /**
-   * Legacy redirect — old shared `/k/:campaignId` links now go to the
-   * integrated `campaignKanban` tab under the campaign layout.
-   */
-  kanbanRedirect = $page({
-    name: "kanbanRedirect",
-    path: "/k/:campaignId",
-    loader: async ({ params }): Promise<unknown> => {
-      throw new Redirection(`/c/${params.campaignId}/kanban`);
-    },
   });
 
   campaign = $page({

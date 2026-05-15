@@ -29,6 +29,13 @@ export const campaigns = $entity({
       maxLength: 24,
     }),
     createdBy: t.uuid(),
+    /**
+     * @deprecated — the public-campaign feature was removed. Column is kept
+     * in the schema to avoid a Drizzle/D1 rebuild migration (which would
+     * cascade-wipe child rows on D1 — see CLAUDE.md). No code reads or
+     * writes this field. Future PR can drop it with a hand-written safe
+     * `ALTER TABLE ... DROP COLUMN`.
+     */
     public: t.optional(t.boolean()),
     icon: t.optional(t.uuid()),
     zones: db.default(t.array(t.string()), []),

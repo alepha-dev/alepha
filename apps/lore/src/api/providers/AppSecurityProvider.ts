@@ -52,50 +52,13 @@ export class AppSecurityProvider {
   });
 
   /**
-   * Read-side gate. Allows the campaign owner, any character (member), and
-   * any authenticated user if the campaign is `public`. Use for endpoints
-   * that only read campaign data — never for mutations.
+   * Membership gate. Requires the caller to be the campaign owner or a
+   * member (character row exists). Used for every campaign-scoped read
+   * AND write — Lore campaigns are always private; there is no
+   * non-member visibility path.
    *
    * `user.ownership === false` is a privileged identity (admin without
    * narrow ownership scope) and bypasses the membership check.
-   */
-  async assertVisible(
-    campaignId: number,
-    user: UserAccountToken,
-  ): Promise<CampaignGuard> {
-    const campaign = await this.campaigns.getOne({
-      where: { id: { eq: campaignId } },
-    });
-
-    if (campaign.createdBy === user.id || !user.ownership) {
-      return { campaign };
-    }
-
-    const character = await this.characters.findOne({
-      where: {
-        campaignId: { eq: campaignId },
-        userId: { eq: user.id },
-      },
-    });
-
-    if (character) {
-      return { campaign, character };
-    }
-
-    if (campaign.public) {
-      return { campaign };
-    }
-
-    throw new ForbiddenError("Not a member of this campaign");
-  }
-
-  /**
-   * Write-side gate. Requires the caller to be the campaign owner or a
-   * member (character row exists). The `campaign.public` flag is IGNORED —
-   * being a public campaign does not grant write access.
-   *
-   * Use for any endpoint that mutates campaign-scoped data members can
-   * legitimately act on (their quests, kanban moves, etc.).
    */
   async assertMember(
     campaignId: number,

@@ -39,7 +39,7 @@ export class CampaignQuestPortabilityController {
       response: t.file(),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertVisible(params.id, user);
+      await this.security.assertMember(params.id, user);
 
       const campaign = await this.campaigns.getOne({
         where: { id: { eq: params.id } },

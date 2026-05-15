@@ -40,9 +40,9 @@ src/
 | `/c/:campaignId/chronicles` | CampaignStats | Chronicles / stats |
 | `/c/:campaignId/settings` | CampaignSettings | Campaign settings |
 | `/c/:campaignId/q/:questId` | QuestView | Quest detail (animated transitions) |
+| `/c/:campaignId/kanban` | KanbanBoard | Kanban view (drag & drop columns) |
 | `/c/:campaignId/petitions` | CampaignPetitions | Owner inbox: triage user-submitted bug/feature requests |
 | `/c/:campaignId/request` | CampaignPetitionRequest | First-party petition form (login required) |
-| `/k/:campaignId` | KanbanBoard | Kanban view (drag & drop columns) |
 
 HTTP API routes follow the same vocabulary: `/campaigns/:id/export`, `/quests/attachments`, `/kanban/:campaignId`. MCP tools are `campaign_*`, `quest_*`, `chapter_*`, `folio_*`.
 
@@ -50,15 +50,14 @@ HTTP API routes follow the same vocabulary: `/campaigns/:id/export`, `/quests/at
 
 ### State Atoms
 - `currentCampaignAtom` — set by campaign route loader, cleared on leave
-- `kanbanCampaignAtom` — set by KanbanBoard on mount, read by Header for create button
+- `kanbanCampaignAtom` — set by KanbanBoard on mount; read by the Header so the "Create Quest" button can target the right campaign
 - `kanbanReloadAtom` — bumped by Header's create button to trigger board reload
-- The kanban page does NOT set `currentCampaignAtom` — it uses its own atom
 
 ### Kanban ↔ Header Communication
-The kanban board sets `kanbanCampaignAtom` with `{ campaign, readOnly }`. The Header reads it to:
+The kanban board sets `kanbanCampaignAtom` with `{ campaign }`. The Header reads it to:
 1. Show the campaign name in `HeaderCampaign` (falls back from `currentCampaignAtom`)
 2. Show the Board/Kanban toggle button
-3. Show the "Create Quest" button (via `KanbanCreateButton`) when `!readOnly`
+3. Show the "Create Quest" button
 
 After creating a quest from the header, it bumps `kanbanReloadAtom` which KanbanBoard watches to trigger a reload.
 
@@ -72,13 +71,18 @@ When `onClose` is provided, it's used instead of router navigation. When `onQues
 ### QuestCreate Navigation
 `QuestCreate` accepts an optional `onCreated` callback. When provided, it's called instead of the default `router.push("campaignQuest", ...)` after creating a quest. Used by the kanban header to stay on the kanban page.
 
-### User Resolution Without `$secure`
-`KanbanController.getBoard` doesn't use `$secure` (to support public campaigns). It mirrors `$secure`'s resolution pattern manually:
-1. Check `currentUserAtom` from store
-2. Fall back to `alepha.store.get("alepha.http.request")`
-3. Check `httpRequest.user`
-4. Call `resolveUserFromServerRequest(httpRequest)`
-5. Catch all — unauthenticated is fine for public campaigns
+### Campaign access model
+Lore campaigns are private. Every campaign-scoped endpoint goes through
+`AppSecurityProvider.assertMember` (member-or-owner) or `assertOwner`
+(creator-only). There is no anonymous or "any-logged-in-user can browse"
+path — the old `campaign.public` flag was removed (the column is kept in
+the schema only because dropping it on D1 triggers a cascade-wipe).
+
+The single exception is the petition module: `submitPetition` and
+`uploadPetitionAttachment` are gated on `campaign.features.petitions`
+being on instead of membership, so any logged-in Lore user can submit
+feedback to a campaign that opts in. The petition module toggle is the
+owner's opt-in/out lever.
 
 ### Drag & Drop
 Uses `@dnd-kit/core`. Cards are `useDraggable`, columns are `useDroppable`. Status transitions: `new → accepted → completed`. Completed quests cannot be moved back. New quests must be accepted before completing.
@@ -108,9 +112,8 @@ User-submitted bug reports / feature requests that the campaign owner triages.
 - All counts are DB-derived (no in-memory windows) so they survive restarts and are correct across workers.
 
 **Visibility / access**
-- Submit: any logged-in user who can see the campaign (`AppSecurityProvider.checkOwnership` — owner OR public OR member).
-- List/detail/accept/reject/remove: campaign owner only.
-- The schema carries no per-campaign petition settings — every campaign accepts petitions.
+- Submit: any logged-in Lore user (no membership required), provided the campaign has `features.petitions === true`. The petition module toggle in campaign settings is the owner's opt-in/out lever.
+- List/detail/accept/reject/remove: campaign owner only (`AppSecurityProvider.assertOwner`).
 
 **Where to look**
 - Entity: `src/api/entities/petitions.ts`

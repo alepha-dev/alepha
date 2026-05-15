@@ -311,7 +311,7 @@ export class QuestController {
       response: db.page(questResourceSchema),
     },
     handler: async ({ params, query, user }) => {
-      await this.security.assertVisible(params.campaignId, user);
+      await this.security.assertMember(params.campaignId, user);
 
       const where = this.quests.createQueryWhere();
       where.campaignId = { eq: params.campaignId };
@@ -595,7 +595,7 @@ export class QuestController {
         },
       });
 
-      await this.security.assertVisible(quest.campaignId, user);
+      await this.security.assertMember(quest.campaignId, user);
 
       return this.mapQuestToResource(quest);
     },
@@ -619,7 +619,7 @@ export class QuestController {
         },
       });
 
-      await this.security.assertVisible(quest.campaignId, user);
+      await this.security.assertMember(quest.campaignId, user);
 
       return this.mapQuestToResource(quest);
     },

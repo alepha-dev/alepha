@@ -21,6 +21,17 @@ export default defineConfig({
   //   VITE_BUILD_DATE: new Date().toISOString(),
   //   VITE_VERSION: pkg.version,
   // },
+  //
+  // // Deploy to Cloudflare in ~10s: \`alepha platform up --env production\`
+  // // Requires \`wrangler login\` once. D1, R2, KV, Queues and cron triggers
+  // // are auto-provisioned from your $repository / $bucket / $cache / $queue
+  // // / $scheduler primitives — no wrangler.toml to maintain.
+  // platform: {
+  //   environments: {
+  //     production: { adapter: "cloudflare", domain: "myapp.com" },
+  //     preview:    { adapter: "cloudflare" }, // workers.dev subdomain
+  //   },
+  // },
 });
 `;
 };

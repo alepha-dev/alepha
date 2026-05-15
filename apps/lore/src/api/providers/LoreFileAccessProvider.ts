@@ -68,7 +68,7 @@ export class LoreFileAccessProvider extends FileAccessProvider {
         where: { icon: { eq: file.id } },
       });
       if (campaign) {
-        await this.security.assertVisible(campaign.id, user);
+        await this.security.assertMember(campaign.id, user);
         return;
       }
       // Orphan icon (uploaded but never assigned) stays creator-only.

@@ -1,5 +1,4 @@
 import { ControlSelect } from "@alepha/ui/components/control-select/control-select";
-import { Badge } from "@alepha/ui/components/ui/badge";
 import { Sheet, SheetContent } from "@alepha/ui/components/ui/sheet";
 import {
   DndContext,
@@ -43,11 +42,10 @@ const SUB_COLUMN_DOTS = [
 export interface KanbanBoardProps {
   campaign: Campaign;
   quests: QuestResource[];
-  readOnly: boolean;
 }
 
 const KanbanBoard = (props: KanbanBoardProps) => {
-  const { campaign, quests: initialQuests, readOnly } = props;
+  const { campaign, quests: initialQuests } = props;
   const [quests, setQuests] = useState<QuestResource[]>(initialQuests);
   const [loading, setLoading] = useState(false);
   const zoneOptions = useMemo(
@@ -75,9 +73,9 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const dndId = useId();
 
   useEffect(() => {
-    setKanbanCampaign({ campaign, readOnly });
+    setKanbanCampaign({ campaign });
     return () => setKanbanCampaign(undefined as any);
-  }, [campaign, readOnly]);
+  }, [campaign]);
 
   useEffect(() => {
     if (reloadKey?.key) reload();
@@ -232,11 +230,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Filter nav */}
       <div className="flex items-center gap-2 border-border border-b bg-card px-3 py-1.5">
-        {readOnly && (
-          <Badge variant="secondary" className="text-xs">
-            {tr("kanban.readOnly")}
-          </Badge>
-        )}
         {loading && (
           <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
         )}
@@ -261,7 +254,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
               key={descriptor.key}
               descriptor={descriptor}
               quests={grouped[descriptor.key] ?? []}
-              readOnly={readOnly}
               onSelect={setSelectedQuest}
               last={idx === columns.length - 1}
             />

@@ -6,7 +6,6 @@ export const kanbanCampaignAtom = $atom({
   schema: t.optional(
     t.object({
       campaign: campaigns.schema,
-      readOnly: t.boolean(),
     }),
   ),
 });

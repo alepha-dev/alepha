@@ -67,8 +67,11 @@ export class PetitionController {
   });
 
   /**
-   * Submit a petition for a campaign. Logged-in users only. Campaign must be
-   * accessible to the user (public or member). Per-user daily rate limit.
+   * Submit a petition for a campaign. Any logged-in Lore user can submit so
+   * long as the target campaign has the petition module enabled
+   * (`features.petitions === true`). Membership is NOT required — petitions
+   * are explicitly the "outside-the-team feedback channel". The petition
+   * module toggle is the campaign owner's only opt-in/out lever.
    */
   submitPetition = $action({
     use: [$secure(), $transactional()],
@@ -80,8 +83,7 @@ export class PetitionController {
       response: t.object({ id: t.integer() }),
     },
     handler: async ({ params, body, user }) => {
-      // Visibility gate: throws if the user cannot see the campaign.
-      await this.security.assertVisible(params.campaignId, user);
+      await this.assertPetitionsOpen(params.campaignId);
 
       await this.rateLimiter.assertPetitionAllowed(user.id);
 
@@ -139,7 +141,7 @@ export class PetitionController {
       }),
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertVisible(params.campaignId, user);
+      await this.assertPetitionsOpen(params.campaignId);
       await this.rateLimiter.assertAttachmentAllowed(user.id);
 
       const limits = this.rateLimiter.options();
@@ -368,16 +370,29 @@ export class PetitionController {
   });
 
   /**
-   * Owner guard. Mirrors `QuestController.deleteQuest` — resolves via
-   * `AppSecurityProvider.assertVisible` and rejects when the user is not
-   * the campaign creator.
+   * Owner guard. Delegates to `AppSecurityProvider.assertOwner` and returns
+   * the resolved campaign for handlers that need it.
    */
   protected async ensureOwner(campaignId: number, user: UserAccountToken) {
-    const guard = await this.security.assertVisible(campaignId, user);
-    if (guard.campaign.createdBy !== user.id) {
-      throw new ForbiddenError("Only the campaign owner can manage petitions");
+    return await this.security.assertOwner(campaignId, user);
+  }
+
+  /**
+   * Load the target campaign and reject when the petition module is off.
+   * Used by submit + attachment-upload — the only two endpoints
+   * non-members can reach, so they need their own opt-in gate.
+   */
+  protected async assertPetitionsOpen(campaignId: number) {
+    const campaign = await this.campaigns.findOne({
+      where: { id: { eq: campaignId } },
+    });
+    if (!campaign) {
+      throw new NotFoundError("Campaign not found");
     }
-    return guard;
+    if (!campaign.features?.petitions) {
+      throw new ForbiddenError("This campaign is not accepting petitions");
+    }
+    return campaign;
   }
 
   /**
