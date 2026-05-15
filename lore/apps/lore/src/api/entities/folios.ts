@@ -21,6 +21,15 @@ export const folios = $entity({
       onDelete: "cascade",
     }),
     title: t.string({ minLength: 1, maxLength: 200 }),
+    /**
+     * When `true` the folio's `content` field is a passphrase-encrypted
+     * JSON envelope produced client-side by `BrowserCryptoProvider`. The
+     * server stores the ciphertext as opaque text — it never sees the
+     * passphrase or the plaintext. `searchText` stays empty in that
+     * mode (ciphertext is not indexable) and the editor takes a
+     * different path to render / save.
+     */
+    protected: db.default(t.boolean(), false),
     content: db.default(t.string(), ""),
     tags: db.default(t.array(t.string()), []),
     /**

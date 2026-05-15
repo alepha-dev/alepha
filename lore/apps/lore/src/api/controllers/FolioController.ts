@@ -268,6 +268,13 @@ export class FolioController {
         summary: t.optional(t.string({ maxLength: 500 })),
         campaignId: t.integer(),
         parentId: t.optional(t.nullable(t.uuid())),
+        /**
+         * When true the body's `content` is a `BrowserCryptoProvider`
+         * envelope. The server doesn't try to inspect it; we just skip
+         * the `searchText` indexing so we don't leak a hash of the
+         * plaintext through LIKE matches.
+         */
+        protected: t.optional(t.boolean()),
       }),
       response: folios.schema,
     },
@@ -275,6 +282,7 @@ export class FolioController {
       const tags = (body.tags ?? []).map((t) => t.trim()).filter(Boolean);
       const summary = (body.summary ?? "").trim();
       const content = body.content ?? "";
+      const isProtected = body.protected === true;
       // Parent must exist, belong to the same user + campaign. Depth
       // check piggybacks on resolveAncestors so we don't allow creating
       // a leaf that breaches MAX_FOLIO_DEPTH.
@@ -308,16 +316,27 @@ export class FolioController {
         tags,
         summary,
         parentId,
-        searchText: buildFolioSearchText({
-          title: body.title,
-          tags,
-          summary,
-          content,
-        }),
+        protected: isProtected,
+        searchText: isProtected
+          ? // Search index intentionally blank for protected folios —
+            // we can't index ciphertext, and we don't even leak the
+            // summary into the search blob (the user may want it
+            // sensitive too). Title still surfaces via the dedicated
+            // title-LIKE path in the sidebar filter.
+            ""
+          : buildFolioSearchText({
+              title: body.title,
+              tags,
+              summary,
+              content,
+            }),
       });
-      // Sync outbound `[[...]]` references. Same transactional boundary
-      // as the create — partial sync is impossible.
-      await this.linkService.syncLinks(folio, content);
+      // Sync outbound `[[...]]` references. Skipped for protected folios
+      // since `content` is ciphertext — scanning it for `[[...]]` would
+      // generate noisy junk links from base64 chars.
+      if (!isProtected) {
+        await this.linkService.syncLinks(folio, content);
+      }
       return folio;
     },
   });
@@ -338,6 +357,12 @@ export class FolioController {
          * MAX_FOLIO_DEPTH.
          */
         parentId: t.optional(t.nullable(t.uuid())),
+        /**
+         * Toggle protected state. Caller is responsible for sending the
+         * new `content` shape that matches (plaintext markdown when
+         * false, crypto envelope when true).
+         */
+        protected: t.optional(t.boolean()),
       }),
       response: folios.schema,
     },
@@ -378,20 +403,28 @@ export class FolioController {
         }
       }
 
+      const isProtected =
+        body.protected !== undefined ? body.protected : existing.protected;
+
       const updated = await this.folios.updateById(params.id, {
         title,
         content,
         tags,
         summary,
         parentId,
-        searchText: buildFolioSearchText({ title, tags, summary, content }),
+        protected: isProtected,
+        searchText: isProtected
+          ? ""
+          : buildFolioSearchText({ title, tags, summary, content }),
       });
       // Re-sync outbound links whenever content changed. We re-sync even
       // when the content arg was omitted — title changes can render an
       // existing inbound `[[Old Title]]` from a *different* folio stale,
       // but those are owned by the other folio's row in folio_links so
       // they're picked up the next time THAT folio is edited. Cheap.
-      await this.linkService.syncLinks(updated, content);
+      if (!isProtected) {
+        await this.linkService.syncLinks(updated, content);
+      }
       return updated;
     },
   });

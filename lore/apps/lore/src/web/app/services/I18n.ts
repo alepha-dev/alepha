@@ -82,6 +82,27 @@ export class I18n {
         "folios.backlinks.title": "Connections",
         "folios.backlinks.inbound": "Linked from",
         "folios.backlinks.outbound": "Links to",
+        "folios.protected.toggle-label": "Protect this folio",
+        "folios.protected.toggle-helper":
+          "Encrypt the content with a passphrase. The server stores only ciphertext — losing the passphrase means losing the folio.",
+        "folios.protected.passphrase": "Passphrase",
+        "folios.protected.passphrase-confirm": "Confirm passphrase",
+        "folios.protected.passphrase-mismatch": "Passphrases don't match.",
+        "folios.protected.passphrase-weak":
+          "Pick a passphrase of at least 8 characters.",
+        "folios.protected.passphrase-required-for-save":
+          "Type the passphrase again to save your changes.",
+        "folios.protected.create-warning":
+          "There is no recovery. Save this passphrase somewhere safe.",
+        "folios.protected.locked-title": "Protected folio",
+        "folios.protected.locked-body":
+          "This folio is end-to-end encrypted. Enter the passphrase to unlock.",
+        "folios.protected.unlock": "Unlock",
+        "folios.protected.unlock-failed": "Wrong passphrase.",
+        "folios.protected.invalid-envelope":
+          "The encrypted content looks corrupt or was written by an older version.",
+        "folios.protected.unlocked-badge": "Unlocked",
+        "folios.protected.lock-now": "Lock now",
 
         "board.filter.search": "Search",
         "board.filter.status": "Status",
@@ -677,6 +698,28 @@ export class I18n {
         "folios.backlinks.title": "Connexions",
         "folios.backlinks.inbound": "Référencé depuis",
         "folios.backlinks.outbound": "Référence vers",
+        "folios.protected.toggle-label": "Protéger ce folio",
+        "folios.protected.toggle-helper":
+          "Chiffrer le contenu avec une phrase secrète. Le serveur ne stocke que le texte chiffré — perdre la phrase secrète signifie perdre le folio.",
+        "folios.protected.passphrase": "Phrase secrète",
+        "folios.protected.passphrase-confirm": "Confirmer la phrase secrète",
+        "folios.protected.passphrase-mismatch":
+          "Les phrases secrètes ne correspondent pas.",
+        "folios.protected.passphrase-weak":
+          "Choisissez une phrase secrète d'au moins 8 caractères.",
+        "folios.protected.passphrase-required-for-save":
+          "Retapez la phrase secrète pour enregistrer vos modifications.",
+        "folios.protected.create-warning":
+          "Aucune récupération possible. Conservez cette phrase secrète en lieu sûr.",
+        "folios.protected.locked-title": "Folio protégé",
+        "folios.protected.locked-body":
+          "Ce folio est chiffré de bout en bout. Saisissez la phrase secrète pour déverrouiller.",
+        "folios.protected.unlock": "Déverrouiller",
+        "folios.protected.unlock-failed": "Phrase secrète incorrecte.",
+        "folios.protected.invalid-envelope":
+          "Le contenu chiffré semble corrompu ou a été écrit par une ancienne version.",
+        "folios.protected.unlocked-badge": "Déverrouillé",
+        "folios.protected.lock-now": "Verrouiller",
 
         "dashboard.character": "Héros",
         "dashboard.purse": "Bourse",
