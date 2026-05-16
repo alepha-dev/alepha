@@ -1,1 +1,0 @@
-ALTER TABLE `quests` ADD `completion_message_updated_at` integer;
