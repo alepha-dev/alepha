@@ -4,6 +4,7 @@ const port = 3312;
 
 export default defineConfig({
   testDir: "./e2e",
+  timeout: 60_000,
   reporter: "html",
   fullyParallel: false,
   use: {

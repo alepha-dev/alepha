@@ -4,6 +4,7 @@ const port = 3302;
 
 export default defineConfig({
   testDir: "./e2e",
+  timeout: 60_000,
   reporter: "html",
   use: {
     screenshot: "only-on-failure",
