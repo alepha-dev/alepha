@@ -27,10 +27,11 @@ export const vendorOptions = $atom({
 
       /**
        * Parent directory holding the vendored packages in the local project.
-       * Relative to the project root. The remote is always expected to lay
-       * its packages out under `packages/`.
+       * Relative to the project root. Also where the `vendor.json` lock file
+       * is written. The remote is always expected to lay its packages out
+       * under `packages/`.
        *
-       * @default "packages"
+       * @default ".vendor"
        */
       dir: t.optional(t.text()),
 

@@ -77,9 +77,19 @@ export interface VendorDiffResult {
 }
 
 /**
- * Shape of the <root>/.alepha/vendor.json lock file.
+ * Shape of the `<dir>/vendor.json` lock file (where `<dir>` is the
+ * configured vendor directory, defaulting to `.vendor`).
  */
 export interface VendorLock {
+  /**
+   * Git remote URL the vendored sources were synced from. Recorded so any
+   * downstream tool (AI agent, CI script) can re-fetch without needing the
+   * project's `alepha.config.ts`.
+   */
+  remote: string;
+  /**
+   * Commit hash of the synced sources.
+   */
   commit: string;
 }
 
@@ -95,7 +105,7 @@ export class VendorService {
    * Sync vendored packages from a remote repository.
    *
    * Without `force`: checks for local modifications by comparing the local
-   * copy against the last-synced commit (stored in .alepha/vendor.json).
+   * copy against the last-synced commit (stored in `<dir>/vendor.json`).
    * If modifications are found, aborts without touching local files.
    *
    * With `force` (or first sync): replaces local copies unconditionally.
@@ -105,7 +115,7 @@ export class VendorService {
     const errors: string[] = [];
 
     if (!options.force) {
-      const lock = await this.readLock(options.root);
+      const lock = await this.readLock(options.root, options.dir);
 
       if (lock) {
         let baselineDir: string | undefined;
@@ -154,7 +164,10 @@ export class VendorService {
       }
 
       const commit = await this.getCommitHash(tmpDir);
-      await this.writeLock(options.root, { commit });
+      await this.writeLock(options.root, options.dir, {
+        remote: options.remote,
+        commit,
+      });
     } finally {
       if (tmpDir) {
         await this.fs.rm(tmpDir, { recursive: true, force: true });
@@ -167,11 +180,11 @@ export class VendorService {
   /**
    * Diff vendored packages against the last-synced commit.
    *
-   * Reads the commit hash from .alepha/vendor.json, clones at that commit,
+   * Reads the commit hash from `<dir>/vendor.json`, clones at that commit,
    * and compares local files to detect modifications since last sync.
    */
   async diff(options: VendorDiffOptions): Promise<VendorDiffResult> {
-    const lock = await this.readLock(options.root);
+    const lock = await this.readLock(options.root, options.dir);
     if (!lock) {
       return { packages: [], totalChanges: 0 };
     }
@@ -360,10 +373,13 @@ export class VendorService {
   }
 
   /**
-   * Read the vendor lock file.
+   * Read the vendor lock file at `<root>/<dir>/vendor.json`.
    */
-  protected async readLock(root: string): Promise<VendorLock | undefined> {
-    const lockPath = this.fs.join(root, ".alepha", "vendor.json");
+  protected async readLock(
+    root: string,
+    dir: string,
+  ): Promise<VendorLock | undefined> {
+    const lockPath = this.fs.join(root, dir, "vendor.json");
     const exists = await this.fs.exists(lockPath);
     if (!exists) {
       return undefined;
@@ -373,13 +389,17 @@ export class VendorService {
   }
 
   /**
-   * Write the vendor lock file.
+   * Write the vendor lock file to `<root>/<dir>/vendor.json`.
    */
-  protected async writeLock(root: string, lock: VendorLock): Promise<void> {
-    const dir = this.fs.join(root, ".alepha");
-    await this.fs.mkdir(dir, { recursive: true });
+  protected async writeLock(
+    root: string,
+    dir: string,
+    lock: VendorLock,
+  ): Promise<void> {
+    const vendorDir = this.fs.join(root, dir);
+    await this.fs.mkdir(vendorDir, { recursive: true });
     await this.fs.writeFile(
-      this.fs.join(dir, "vendor.json"),
+      this.fs.join(vendorDir, "vendor.json"),
       JSON.stringify(lock, null, 2),
     );
   }

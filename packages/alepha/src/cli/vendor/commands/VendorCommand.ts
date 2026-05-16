@@ -11,9 +11,11 @@ import type {
 import { VendorService } from "../services/VendorService.ts";
 
 /**
- * Default remote when none is configured.
+ * Default remote when none is configured. The HTTPS URL is used so anyone
+ * (CI runners, AI agents, contributors without SSH keys) can clone without
+ * extra setup.
  */
-const DEFAULT_REMOTE = "git@github.com:feunard/alepha.git";
+const DEFAULT_REMOTE = "https://github.com/feunard/alepha";
 
 export class VendorCommand {
   protected readonly log = $logger();
@@ -34,7 +36,7 @@ export class VendorCommand {
     return {
       remote: this.options.remote ?? DEFAULT_REMOTE,
       branch: this.options.branch ?? "main",
-      dir: this.options.dir ?? "packages",
+      dir: this.options.dir ?? ".vendor",
       packages: this.options.packages,
     };
   }

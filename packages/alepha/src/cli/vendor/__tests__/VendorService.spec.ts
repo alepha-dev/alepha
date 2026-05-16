@@ -224,10 +224,11 @@ describe("VendorService", () => {
         packages: ["my-pkg"],
       });
 
-      expect(fs.wasWritten("/project/.alepha/vendor.json")).toBe(true);
-      const content = await fs.readFile("/project/.alepha/vendor.json");
+      expect(fs.wasWritten("/project/packages/vendor.json")).toBe(true);
+      const content = await fs.readFile("/project/packages/vendor.json");
       const lock = JSON.parse(content.toString());
       expect(lock.commit).toBe("abc123");
+      expect(lock.remote).toBe("remote");
     });
 
     it("should skip modification check on first sync (no vendor.json)", async ({
@@ -279,10 +280,10 @@ describe("VendorService", () => {
       await fs.writeFile("/tmp/test-clone/packages/my-pkg/index.ts", "latest");
 
       // Vendor lock exists from a previous sync
-      await fs.mkdir("/project/.alepha", { recursive: true });
+      await fs.mkdir("/project/packages", { recursive: true });
       await fs.writeFile(
-        "/project/.alepha/vendor.json",
-        JSON.stringify({ commit: "old-hash" }),
+        "/project/packages/vendor.json",
+        JSON.stringify({ remote: "remote", commit: "old-hash" }),
       );
 
       const result = await service.sync({
@@ -315,10 +316,10 @@ describe("VendorService", () => {
       await fs.mkdir("/tmp/test-clone/packages/my-pkg", { recursive: true });
       await fs.writeFile("/tmp/test-clone/packages/my-pkg/index.ts", "updated");
 
-      await fs.mkdir("/project/.alepha", { recursive: true });
+      await fs.mkdir("/project/packages", { recursive: true });
       await fs.writeFile(
-        "/project/.alepha/vendor.json",
-        JSON.stringify({ commit: "old-hash" }),
+        "/project/packages/vendor.json",
+        JSON.stringify({ remote: "remote", commit: "old-hash" }),
       );
 
       const result = await service.sync({
@@ -350,10 +351,10 @@ describe("VendorService", () => {
       await fs.mkdir("/tmp/test-clone/packages/my-pkg", { recursive: true });
       await fs.writeFile("/tmp/test-clone/packages/my-pkg/index.ts", "latest");
 
-      await fs.mkdir("/project/.alepha", { recursive: true });
+      await fs.mkdir("/project/packages", { recursive: true });
       await fs.writeFile(
-        "/project/.alepha/vendor.json",
-        JSON.stringify({ commit: "old-hash" }),
+        "/project/packages/vendor.json",
+        JSON.stringify({ remote: "remote", commit: "old-hash" }),
       );
 
       const result = await service.sync({
@@ -389,10 +390,10 @@ describe("VendorService", () => {
     };
 
     const writeVendorLock = async (fs: MemoryFileSystemProvider) => {
-      await fs.mkdir("/project/.alepha", { recursive: true });
+      await fs.mkdir("/project/packages", { recursive: true });
       await fs.writeFile(
-        "/project/.alepha/vendor.json",
-        JSON.stringify({ commit: "abc123" }),
+        "/project/packages/vendor.json",
+        JSON.stringify({ remote: "remote", commit: "abc123" }),
       );
     };
 
