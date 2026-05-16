@@ -34,7 +34,8 @@ export class SecretsCommand {
   protected readonly list = $command({
     name: "list",
     aliases: ["ls"],
-    description: "List secrets in the remote store",
+    description:
+      "List secret names stored in the remote store for an environment (values are never returned). Use --format=gha to emit a ready-to-paste GitHub Actions env: block.",
     flags: t.object({
       env: t.optional(
         t.text({
@@ -117,7 +118,8 @@ export class SecretsCommand {
 
   protected readonly diff = $command({
     name: "diff",
-    description: "Compare local .env keys with remote store",
+    description:
+      "Compare keys in local .env.<env> against the remote store. Shows + (only local, would be pushed), - (only remote, orphaned), = (in sync). Compares names only — values are not read from remote.",
     flags: this.envFlags,
     handler: async ({ flags, root, run }) => {
       const config = await this.inspector.resolveConfig(root);
@@ -176,7 +178,8 @@ export class SecretsCommand {
 
   protected readonly apply = $command({
     name: "apply",
-    description: "Push local .env secrets to the remote store",
+    description:
+      "Push secrets from local .env.<env> to the remote store (one upsert per key). Use --dry-run to preview. Existing remote keys not present locally are left untouched — this command never deletes.",
     flags: t.object({
       env: t.optional(
         t.text({
@@ -249,7 +252,8 @@ export class SecretsCommand {
   public readonly secrets = $command({
     name: "secrets",
     aliases: ["sec"],
-    description: "Manage secrets in external stores",
+    description:
+      "Sync secrets from .env.<env> to an external CI store (currently GitHub Actions environments via the `gh` CLI). Resolves the target environment name from `secrets.environmentPattern` (default `{project}-{env}`) and filters keys via SecretFilterService. Runtime secrets for Cloudflare Workers / Vercel are pushed separately during `alepha platform up`.",
     children: [this.list, this.diff, this.apply],
     handler: async ({ help }) => {
       help();
