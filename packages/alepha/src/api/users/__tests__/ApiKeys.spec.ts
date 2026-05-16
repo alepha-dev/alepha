@@ -169,6 +169,36 @@ describe("alepha/api/users - API Keys Integration", () => {
     expect(userInfo).toBeNull();
   });
 
+  it("should update lastUsedAt and usageCount on validate", async ({
+    expect,
+  }) => {
+    const { sessionService, apiKeyService } = await setup();
+
+    const user = await sessionService.users().create({
+      username: "testuser",
+      email: "test@example.com",
+      roles: ["user"],
+    });
+
+    const { apiKey, token } = await apiKeyService.create({
+      userId: user.id,
+      name: "My API Key",
+      roles: ["user"],
+    });
+    expect(apiKey.usageCount).toBe(0);
+    expect(apiKey.lastUsedAt).toBeUndefined();
+
+    const info = await apiKeyService.validate(token);
+    expect(info).not.toBeNull();
+
+    // updateUsage is fire-and-forget — wait for the next microtask flush
+    await new Promise((r) => setTimeout(r, 50));
+
+    const after = await (apiKeyService as any).repo.getById(apiKey.id);
+    expect(after.lastUsedAt).toBeDefined();
+    expect(after.usageCount).toBe(1);
+  });
+
   it("should reject revoked API key", async ({ expect }) => {
     const { sessionService, apiKeyService } = await setup();
 

@@ -22,6 +22,7 @@ import {
   eq as drizzleEq,
   gt,
   gte,
+  isSQLWrapper,
   lt,
   lte,
   max,
@@ -1545,7 +1546,27 @@ export abstract class Repository<T extends TObject> {
       ? this.entity.insertSchema // insert
       : (t.partial(this.entity.updateSchema) as TObject); // update
 
-    return this.alepha.codec.encode(schema, data) as PgInsertValue<
+    // Extract raw SQL expressions before codec validation — TypeBox would
+    // reject them since they aren't plain values of the declared type
+    // (e.g. `sql\`count + 1\`` for an integer column). They're re-attached
+    // after encoding so Drizzle still receives them as live SQL.
+    const sqlValues: Record<string, unknown> = {};
+    const scalarData: Record<string, unknown> = {};
+    for (const key of Object.keys(data)) {
+      const value = data[key];
+      if (value != null && isSQLWrapper(value)) {
+        sqlValues[key] = value;
+      } else {
+        scalarData[key] = value;
+      }
+    }
+
+    const encoded = this.alepha.codec.encode(schema, scalarData) as Record<
+      string,
+      unknown
+    >;
+
+    return { ...encoded, ...sqlValues } as PgInsertValue<
       PgTableWithColumns<SchemaToTableConfig<T>>
     >;
   }
