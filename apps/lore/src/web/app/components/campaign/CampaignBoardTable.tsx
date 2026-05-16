@@ -9,6 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@alepha/ui/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
@@ -208,15 +213,20 @@ const CampaignBoardTable = () => {
         {...filters.props}
         className="flex flex-wrap items-end gap-2 rounded-md border bg-card p-2"
       >
-        <div className="min-w-48 flex-1">
+        <div className="w-44">
           <Control
             input={filters.input.search}
             label={String(tr("board.filter.search"))}
           />
         </div>
-        <div className="w-40">
-          <Control
+        <div className="w-44">
+          <ZoneFilter
             input={filters.input.status}
+            zones={[
+              { label: "New", value: "new" },
+              { label: "Accepted", value: "accepted" },
+              { label: "Completed", value: "completed" },
+            ]}
             label={String(tr("board.filter.status"))}
           />
         </div>
@@ -293,20 +303,31 @@ const CampaignBoardTable = () => {
           },
           assignedTo: {
             label: String(tr("board.table.assigned")),
-            cell: (quest) =>
-              quest.acceptedBy ? (
-                <div className="flex items-center gap-2">
-                  {renderAvatar(quest.acceptedBy)}
-                  <span className="text-sm">
-                    {displayName(
-                      users.find((u) => u.id === quest.acceptedBy),
-                      "",
+            cell: (quest) => {
+              if (!quest.acceptedBy) {
+                return <span className="text-muted-foreground">-</span>;
+              }
+              const user = users.find((u) => u.id === quest.acceptedBy);
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      {renderAvatar(quest.acceptedBy)}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium">
+                      {displayName(user, quest.acceptedBy)}
+                    </span>
+                    {quest.acceptedAt && (
+                      <span className="text-muted-foreground text-xs">
+                        {`${String(tr("board.table.assigned"))} ${dateFormatter.of(quest.acceptedAt).fromNow()}`}
+                      </span>
                     )}
-                  </span>
-                </div>
-              ) : (
-                <span className="text-muted-foreground">-</span>
-              ),
+                  </TooltipContent>
+                </Tooltip>
+              );
+            },
           },
           title: {
             label: String(tr("board.table.title")),
@@ -430,7 +451,7 @@ const ZoneFilter = (props: ZoneFilterProps) => {
         value={value ?? "__all__"}
         onValueChange={(v) => setValue(v === "__all__" ? undefined : v)}
       >
-        <SelectTrigger className="h-9">
+        <SelectTrigger className="h-9 w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
