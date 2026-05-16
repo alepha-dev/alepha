@@ -52,6 +52,12 @@ export class VendorCommand {
         description: "Skip local modification check",
       }),
     ),
+    remote: t.optional(
+      t.text({
+        description:
+          "Override the configured remote for this invocation. Accepts any git-clone URL, including local paths (`file:///abs/path/to/alepha`). Useful for CI canaries that need to sync against a local checkout instead of the published repo.",
+      }),
+    ),
   });
 
   protected readonly sync = $command({
@@ -60,6 +66,7 @@ export class VendorCommand {
     flags: this.syncFlags,
     handler: async ({ flags, root, run }) => {
       const opts = this.resolveOptions();
+      const remote = flags.remote ?? opts.remote;
       const c = this.color;
 
       let result: VendorSyncResult = { synced: [], errors: [] };
@@ -69,7 +76,7 @@ export class VendorCommand {
         handler: async () => {
           result = await this.vendorService.sync({
             root,
-            remote: opts.remote,
+            remote,
             branch: opts.branch,
             dir: opts.dir,
             packages: opts.packages,

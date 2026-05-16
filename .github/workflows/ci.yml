@@ -142,6 +142,59 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
 
+  lore-smoke:
+    # Cross-repo canary: clone Lore (a downstream consumer that vendors this
+    # framework), swap its `.vendor/` with the current alepha checkout, and
+    # run its full verify. Catches framework changes that silently break a
+    # real-world consumer — exactly the signal we lost when `apps/lore` was
+    # extracted to its own repo.
+    needs: verify-linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Git Checkout (alepha)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clone Lore
+        run: git clone --depth 1 https://github.com/feunard/lore.git /tmp/lore
+
+      - name: Install Lore dependencies
+        working-directory: /tmp/lore
+        run: yarn
+
+      - name: Swap vendored Alepha with current checkout
+        # We bypass `alepha vendor sync` here on purpose: lore's vendored
+        # alepha is whatever version was last committed, which doesn't
+        # necessarily understand the framework being tested in this PR.
+        # Once lore has re-synced to an alepha that knows `--remote`, this
+        # block can be replaced with:
+        #   cd /tmp/lore && yarn alepha vendor sync --force \
+        #     --remote "file://$GITHUB_WORKSPACE"
+        # The rsync excludes mirror VendorService.removeIgnoredFiles.
+        run: |
+          rsync_args="-a --delete \
+            --exclude=__tests__ --exclude=assets/swagger-ui \
+            --exclude=node_modules --exclude=dist \
+            --exclude=*.spec.ts --exclude=*.spec.tsx \
+            --exclude=LICENSE --exclude=tsdown.config.ts"
+          rm -rf /tmp/lore/.vendor/alepha
+          rsync $rsync_args "$GITHUB_WORKSPACE/packages/alepha/" /tmp/lore/.vendor/alepha/
+          rm -rf "/tmp/lore/.vendor/@alepha/ui"
+          rsync $rsync_args "$GITHUB_WORKSPACE/packages/@alepha/ui/" "/tmp/lore/.vendor/@alepha/ui/"
+          cd /tmp/lore && yarn
+
+      - name: Install Playwright
+        working-directory: /tmp/lore
+        run: yarn playwright install chromium --with-deps
+
+      - name: Verify Lore against framework HEAD
+        working-directory: /tmp/lore
+        run: yarn v
+
   verify-windows:
     # Smoke-test the build/lint/typecheck/CLI flow on Windows.
     # `yarn test` is intentionally omitted: GitHub `services:` (Postgres, Redis,
