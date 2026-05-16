@@ -136,6 +136,15 @@ export class BrowserHeadProvider {
           if (it.crossorigin != null) {
             link.setAttribute("crossorigin", "");
           }
+          if (it.media) {
+            link.setAttribute("media", it.media);
+          }
+          if (it.sizes) {
+            link.setAttribute("sizes", it.sizes);
+          }
+          if (it.hreflang) {
+            link.setAttribute("hreflang", it.hreflang);
+          }
           document.head.appendChild(link);
         }
       }

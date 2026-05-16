@@ -127,6 +127,10 @@ export class ReactServerTemplateProvider {
         if (link.type) content += ` type="${this.escapeHtml(link.type)}"`;
         if (link.as) content += ` as="${this.escapeHtml(link.as)}"`;
         if (link.crossorigin != null) content += ' crossorigin=""';
+        if (link.media) content += ` media="${this.escapeHtml(link.media)}"`;
+        if (link.sizes) content += ` sizes="${this.escapeHtml(link.sizes)}"`;
+        if (link.hreflang)
+          content += ` hreflang="${this.escapeHtml(link.hreflang)}"`;
         content += ">\n";
       }
     }
