@@ -45,6 +45,20 @@ export default (alepha: Alepha) => {
         // -> tsdown has different behavior when run in CI
         process.env.CI = "true";
 
+        if (flags.fast) {
+          // Inner-loop sanity check: skip clean/copy/build/e2e and run
+          // all read-only checks in parallel after lint (which --fixes).
+          await run(`yarn w @alepha/ui sync`);
+          await run(`yarn lint`);
+          await run([
+            `yarn check-dependencies`,
+            `yarn typecheck`,
+            `yarn test`,
+            `yarn test:bun`,
+          ]);
+          return;
+        }
+
         await run(`yarn clean`);
         await run(`yarn copy`);
         await run(`yarn w @alepha/ui sync`);
@@ -53,15 +67,12 @@ export default (alepha: Alepha) => {
         await run(`yarn typecheck`);
         await run(`yarn test`);
         await run(`yarn test:bun`);
+        await run(`yarn build`);
 
-        if (!flags.fast) {
-          await run(`yarn build`);
-
-          // HACK: remove vite cache to prevent stale cache issues in e2e tests
-          await run.rm([`apps/*/node_modules`]);
-          await run(`yarn e2e`);
-          await run(`yarn e2e-cli`);
-        }
+        // HACK: remove vite cache to prevent stale cache issues in e2e tests
+        await run.rm([`apps/*/node_modules`]);
+        await run(`yarn e2e`);
+        await run(`yarn e2e-cli`);
 
         await run(`cd apps/docs && yarn alepha gen:llms`);
         await run(`yarn clean`);
