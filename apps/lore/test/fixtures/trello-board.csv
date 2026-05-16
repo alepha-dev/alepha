@@ -1,4 +1,0 @@
-Card ID,Card Name,Card URL,Card Description,List,Members,Labels,Due Date,Position
-abc1,Refactor login,https://trello.com/c/abc1,Step one then step two,Doing,alice,Bug,,1
-abc2,Design dashboard,https://trello.com/c/abc2,Sketch first,Backlog,"alice,bob",Design,,2
-abc3,Write docs,https://trello.com/c/abc3,,Done,,Docs,,3

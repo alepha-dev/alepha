@@ -1,1 +1,0 @@
-ALTER TABLE `folios` ADD `parent_id` text REFERENCES folios(id);

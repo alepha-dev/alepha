@@ -25,3 +25,5 @@ apps/ride/*
 !apps/ride/package.json
 BUGS.md
 .superpowers
+
+.fleet
