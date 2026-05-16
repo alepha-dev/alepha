@@ -166,26 +166,16 @@ jobs:
         working-directory: /tmp/lore
         run: yarn
 
-      - name: Swap vendored Alepha with current checkout
-        # We bypass `alepha vendor sync` here on purpose: lore's vendored
-        # alepha is whatever version was last committed, which doesn't
-        # necessarily understand the framework being tested in this PR.
-        # Once lore has re-synced to an alepha that knows `--remote`, this
-        # block can be replaced with:
-        #   cd /tmp/lore && yarn alepha vendor sync --force \
-        #     --remote "file://$GITHUB_WORKSPACE"
-        # The rsync excludes mirror VendorService.removeIgnoredFiles.
-        run: |
-          rsync_args="-a --delete \
-            --exclude=__tests__ --exclude=assets/swagger-ui \
-            --exclude=node_modules --exclude=dist \
-            --exclude=*.spec.ts --exclude=*.spec.tsx \
-            --exclude=LICENSE --exclude=tsdown.config.ts"
-          rm -rf /tmp/lore/.vendor/alepha
-          rsync $rsync_args "$GITHUB_WORKSPACE/packages/alepha/" /tmp/lore/.vendor/alepha/
-          rm -rf "/tmp/lore/.vendor/@alepha/ui"
-          rsync $rsync_args "$GITHUB_WORKSPACE/packages/@alepha/ui/" "/tmp/lore/.vendor/@alepha/ui/"
-          cd /tmp/lore && yarn
+      - name: Sync vendored Alepha from current checkout
+        # `--remote file://...` points vendor sync at this PR's HEAD
+        # instead of the published GitHub remote, so the canary actually
+        # exercises the change under review.
+        working-directory: /tmp/lore
+        run: yarn alepha vendor sync --force --remote "file://$GITHUB_WORKSPACE"
+
+      - name: Reinstall after vendor sync
+        working-directory: /tmp/lore
+        run: yarn
 
       - name: Install Playwright
         working-directory: /tmp/lore
