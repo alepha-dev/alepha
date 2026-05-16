@@ -5344,9 +5344,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"benchmark@workspace:apps/others/benchmark":
+"benchmark@workspace:apps/benchmark":
   version: 0.0.0-use.local
-  resolution: "benchmark@workspace:apps/others/benchmark"
+  resolution: "benchmark@workspace:apps/benchmark"
   dependencies:
     "@types/autocannon": "npm:^7.12.7"
     alepha: "npm:0.20.8"
@@ -5984,9 +5984,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"crash-test@workspace:apps/others/crash-test":
+"crash-test@workspace:apps/crash-test":
   version: 0.0.0-use.local
-  resolution: "crash-test@workspace:apps/others/crash-test"
+  resolution: "crash-test@workspace:apps/crash-test"
   dependencies:
     "@types/react": "npm:^19.2.14"
     "@vitejs/plugin-react": "npm:^6.0.1"
@@ -6607,9 +6607,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"e2e-cli@workspace:apps/others/e2e-cli":
+"e2e-cli@workspace:apps/e2e-cli":
   version: 0.0.0-use.local
-  resolution: "e2e-cli@workspace:apps/others/e2e-cli"
+  resolution: "e2e-cli@workspace:apps/e2e-cli"
   dependencies:
     vitest: "npm:^4.1.5"
   languageName: unknown
@@ -7268,9 +7268,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"example-api@workspace:apps/others/example-api":
+"example-api@workspace:apps/example-api":
   version: 0.0.0-use.local
-  resolution: "example-api@workspace:apps/others/example-api"
+  resolution: "example-api@workspace:apps/example-api"
   dependencies:
     alepha: "npm:^0.20.8"
     vite: "npm:^8.0.11"
@@ -7278,9 +7278,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"example-ssr@workspace:apps/others/example-ssr":
+"example-ssr@workspace:apps/example-ssr":
   version: 0.0.0-use.local
-  resolution: "example-ssr@workspace:apps/others/example-ssr"
+  resolution: "example-ssr@workspace:apps/example-ssr"
   dependencies:
     "@playwright/test": "npm:^1.59.1"
     alepha: "npm:^0.20.8"
@@ -8335,9 +8335,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"integration@workspace:apps/others/integration":
+"integration@workspace:apps/integration":
   version: 0.0.0-use.local
-  resolution: "integration@workspace:apps/others/integration"
+  resolution: "integration@workspace:apps/integration"
   dependencies:
     "@biomejs/biome": "npm:^2.4.15"
     alepha: "npm:^0.20.8"
