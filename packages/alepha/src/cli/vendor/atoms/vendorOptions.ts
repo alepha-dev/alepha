@@ -26,8 +26,9 @@ export const vendorOptions = $atom({
       branch: t.optional(t.text()),
 
       /**
-       * Parent directory holding the packages, on both the remote and the
-       * local project. Relative to the repo / project root.
+       * Parent directory holding the vendored packages in the local project.
+       * Relative to the project root. The remote is always expected to lay
+       * its packages out under `packages/`.
        *
        * @default "packages"
        */

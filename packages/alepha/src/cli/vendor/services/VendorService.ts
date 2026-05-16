@@ -3,6 +3,13 @@ import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 /**
+ * Parent directory of vendored packages on the remote. Hardcoded because the
+ * Alepha monorepo lays its packages out under `packages/` and the vendor
+ * tool only targets that layout.
+ */
+const REMOTE_DIR = "packages";
+
+/**
  * Options for syncing vendored packages from a remote repository.
  */
 export interface VendorSyncOptions {
@@ -128,7 +135,7 @@ export class VendorService {
       tmpDir = await this.cloneRemote(options.remote, options.branch);
 
       for (const pkg of options.packages) {
-        const remotePkgDir = this.fs.join(tmpDir, options.dir, pkg);
+        const remotePkgDir = this.fs.join(tmpDir, REMOTE_DIR, pkg);
         const localPkgDir = this.fs.join(options.root, options.dir, pkg);
 
         const remoteExists = await this.fs.exists(remotePkgDir);
@@ -199,7 +206,7 @@ export class VendorService {
     let totalChanges = 0;
 
     for (const pkg of packages) {
-      const remotePkgDir = this.fs.join(tmpDir, dir, pkg);
+      const remotePkgDir = this.fs.join(tmpDir, REMOTE_DIR, pkg);
       const localPkgDir = this.fs.join(root, dir, pkg);
 
       const remoteExists = await this.fs.exists(remotePkgDir);
