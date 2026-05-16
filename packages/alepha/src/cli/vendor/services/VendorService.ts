@@ -9,6 +9,7 @@ export interface VendorSyncOptions {
   root: string;
   remote: string;
   branch: string;
+  dir: string;
   packages: string[];
   force?: boolean;
 }
@@ -29,6 +30,7 @@ export interface VendorDiffOptions {
   root: string;
   remote: string;
   branch: string;
+  dir: string;
   packages: string[];
 }
 
@@ -105,6 +107,7 @@ export class VendorService {
           const diffResult = await this.diffFromClone(
             options.root,
             baselineDir,
+            options.dir,
             options.packages,
           );
 
@@ -125,8 +128,8 @@ export class VendorService {
       tmpDir = await this.cloneRemote(options.remote, options.branch);
 
       for (const pkg of options.packages) {
-        const remotePkgDir = this.fs.join(tmpDir, "packages", pkg);
-        const localPkgDir = this.fs.join(options.root, "packages", pkg);
+        const remotePkgDir = this.fs.join(tmpDir, options.dir, pkg);
+        const localPkgDir = this.fs.join(options.root, options.dir, pkg);
 
         const remoteExists = await this.fs.exists(remotePkgDir);
         if (!remoteExists) {
@@ -170,7 +173,12 @@ export class VendorService {
 
     try {
       tmpDir = await this.cloneAtCommit(options.remote, lock.commit);
-      return await this.diffFromClone(options.root, tmpDir, options.packages);
+      return await this.diffFromClone(
+        options.root,
+        tmpDir,
+        options.dir,
+        options.packages,
+      );
     } finally {
       if (tmpDir) {
         await this.fs.rm(tmpDir, { recursive: true, force: true });
@@ -184,14 +192,15 @@ export class VendorService {
   protected async diffFromClone(
     root: string,
     tmpDir: string,
+    dir: string,
     packages: string[],
   ): Promise<VendorDiffResult> {
     const results: VendorPackageDiff[] = [];
     let totalChanges = 0;
 
     for (const pkg of packages) {
-      const remotePkgDir = this.fs.join(tmpDir, "packages", pkg);
-      const localPkgDir = this.fs.join(root, "packages", pkg);
+      const remotePkgDir = this.fs.join(tmpDir, dir, pkg);
+      const localPkgDir = this.fs.join(root, dir, pkg);
 
       const remoteExists = await this.fs.exists(remotePkgDir);
       const localExists = await this.fs.exists(localPkgDir);

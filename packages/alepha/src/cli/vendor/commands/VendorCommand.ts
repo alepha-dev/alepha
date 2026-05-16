@@ -34,6 +34,7 @@ export class VendorCommand {
     return {
       remote: this.options.remote ?? DEFAULT_REMOTE,
       branch: this.options.branch ?? "main",
+      dir: this.options.dir ?? "packages",
       packages: this.options.packages,
     };
   }
@@ -68,6 +69,7 @@ export class VendorCommand {
             root,
             remote: opts.remote,
             branch: opts.branch,
+            dir: opts.dir,
             packages: opts.packages,
             force: flags.force,
           });
@@ -134,6 +136,7 @@ export class VendorCommand {
             root,
             remote: opts.remote,
             branch: opts.branch,
+            dir: opts.dir,
             packages: opts.packages,
           });
         },

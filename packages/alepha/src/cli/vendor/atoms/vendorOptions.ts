@@ -26,7 +26,15 @@ export const vendorOptions = $atom({
       branch: t.optional(t.text()),
 
       /**
-       * Package directory names under `packages/` to sync.
+       * Parent directory holding the packages, on both the remote and the
+       * local project. Relative to the repo / project root.
+       *
+       * @default "packages"
+       */
+      dir: t.optional(t.text()),
+
+      /**
+       * Package directory names under `dir` to sync.
        *
        * @example ["alepha", "@alepha/payments-stripe"]
        */

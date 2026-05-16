@@ -69,6 +69,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "git@github.com:user/repo.git",
         branch: "main",
+        dir: "packages",
         packages: ["my-pkg"],
       });
 
@@ -100,6 +101,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["my-pkg"],
         force: true,
       });
@@ -124,6 +126,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["missing-pkg"],
       });
 
@@ -149,6 +152,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["pkg-a", "pkg-b"],
         force: true,
       });
@@ -191,6 +195,7 @@ describe("VendorService", () => {
           root: "/project",
           remote: "remote",
           branch: "main",
+          dir: "packages",
           packages: ["pkg-a"],
           force: true,
         }),
@@ -215,6 +220,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["my-pkg"],
       });
 
@@ -240,6 +246,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["my-pkg"],
       });
 
@@ -282,6 +289,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["my-pkg"],
       });
 
@@ -317,6 +325,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["my-pkg"],
       });
 
@@ -351,6 +360,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["my-pkg"],
         force: true,
       });
@@ -395,6 +405,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["pkg"],
       });
 
@@ -419,6 +430,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["pkg"],
       });
 
@@ -440,6 +452,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["pkg"],
       });
 
@@ -469,6 +482,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["pkg"],
       });
 
@@ -492,6 +506,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["pkg"],
       });
 
@@ -520,6 +535,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: ["pkg"],
       });
 
@@ -542,6 +558,7 @@ describe("VendorService", () => {
         root: "/project",
         remote: "remote",
         branch: "main",
+        dir: "packages",
         packages: [],
       });
 
