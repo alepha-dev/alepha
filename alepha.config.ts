@@ -1,4 +1,4 @@
-import type { Alepha } from "alepha";
+import { type Alepha, t } from "alepha";
 import { changelogOptions } from "alepha/cli";
 import { $command } from "alepha/command";
 
@@ -33,7 +33,14 @@ export default (alepha: Alepha) => {
     verify: $command({
       aliases: ["v"],
       description: "Run linter, checker and tests.",
-      handler: async ({ run }) => {
+      flags: t.object({
+        fast: t.optional(
+          t.boolean({
+            description: "Skip build + e2e (faster local sanity check).",
+          }),
+        ),
+      }),
+      handler: async ({ run, flags }) => {
         // We need to force CI environment
         // -> tsdown has different behavior when run in CI
         process.env.CI = "true";
@@ -46,11 +53,15 @@ export default (alepha: Alepha) => {
         await run(`yarn typecheck`);
         await run(`yarn test`);
         await run(`yarn test:bun`);
-        await run(`yarn build`);
 
-        // HACK: remove vite cache to prevent stale cache issues in e2e tests
-        await run.rm([`apps/*/node_modules`]);
-        await run([`yarn e2e`, `yarn e2e-cli`]);
+        if (!flags.fast) {
+          await run(`yarn build`);
+
+          // HACK: remove vite cache to prevent stale cache issues in e2e tests
+          await run.rm([`apps/*/node_modules`]);
+          await run(`yarn e2e`);
+          await run(`yarn e2e-cli`);
+        }
 
         await run(`cd apps/docs && yarn alepha gen:llms`);
         await run(`yarn clean`);
