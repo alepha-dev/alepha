@@ -7,6 +7,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@alepha/ui/components/ui/dropdown-menu";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationFirst,
+  PaginationItem,
+  PaginationLast,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@alepha/ui/components/ui/pagination";
 import { Skeleton } from "@alepha/ui/components/ui/skeleton";
 import {
   Table,
@@ -20,12 +31,7 @@ import { cn } from "@alepha/ui/lib/utils";
 import type { Page, TObject } from "alepha";
 import { useAlepha } from "alepha/react";
 import type { FormModel } from "alepha/react/form";
-import {
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal,
-  RefreshCw,
-} from "lucide-react";
+import { MoreHorizontal, RefreshCw } from "lucide-react";
 import {
   type ComponentType,
   type ReactNode,
@@ -263,7 +269,20 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
 
   return (
     <div className={cn("flex flex-col gap-2", props.className)}>
-      {props.header && <div>{props.header}</div>}
+      <div className="flex items-center gap-2">
+        {props.header && <div className="flex-1 min-w-0">{props.header}</div>}
+        {!props.header && <div className="flex-1" />}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={refresh}
+          disabled={loading}
+          aria-label="Refresh"
+          title="Refresh"
+        >
+          <RefreshCw className={cn("size-4", loading && "animate-spin")} />
+        </Button>
+      </div>
 
       {hasCheckbox && selection.size > 0 && (
         <div className="bg-muted/50 flex items-center gap-2 rounded-md border p-2">
@@ -408,41 +427,115 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
         </Table>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-muted-foreground text-xs">
           {meta
             ? `Page ${meta.number + 1}${meta.totalPages ? ` of ${meta.totalPages}` : ""} · ${meta.numberOfElements} of ${meta.totalElements ?? "?"}`
             : "—"}
         </p>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={refresh}
-            disabled={loading}
-          >
-            <RefreshCw className={cn("size-4", loading && "animate-spin")} />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!meta || meta.isFirst}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!meta || meta.isLast}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
+        {meta && meta.totalPages && meta.totalPages > 1 ? (
+          <Pagination className="mx-0 w-auto justify-end">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationFirst
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!meta.isFirst) setPage(0);
+                  }}
+                  aria-disabled={meta.isFirst}
+                  className={cn(
+                    meta.isFirst && "pointer-events-none opacity-50",
+                  )}
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!meta.isFirst) setPage((p) => Math.max(0, p - 1));
+                  }}
+                  aria-disabled={meta.isFirst}
+                  className={cn(
+                    meta.isFirst && "pointer-events-none opacity-50",
+                  )}
+                />
+              </PaginationItem>
+              {computePageItems(meta.number + 1, meta.totalPages).map(
+                (item, idx) =>
+                  item === "ellipsis" ? (
+                    <PaginationItem key={`e-${idx}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={item}>
+                      <PaginationLink
+                        href="#"
+                        isActive={item === meta.number + 1}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPage(item - 1);
+                        }}
+                      >
+                        {item}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ),
+              )}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!meta.isLast) setPage((p) => p + 1);
+                  }}
+                  aria-disabled={meta.isLast}
+                  className={cn(
+                    meta.isLast && "pointer-events-none opacity-50",
+                  )}
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLast
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!meta.isLast && meta.totalPages)
+                      setPage(meta.totalPages - 1);
+                  }}
+                  aria-disabled={meta.isLast}
+                  className={cn(
+                    meta.isLast && "pointer-events-none opacity-50",
+                  )}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        ) : null}
       </div>
     </div>
   );
+}
+
+/**
+ * Build the visible page-number sequence with ellipses. Always shows
+ * first + last, ±1 around current. Gaps collapse into a single ellipsis.
+ * `current` and `total` are 1-indexed.
+ */
+function computePageItems(
+  current: number,
+  total: number,
+): Array<number | "ellipsis"> {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const items: Array<number | "ellipsis"> = [1];
+  if (current > 3) items.push("ellipsis");
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) items.push(i);
+  if (current < total - 2) items.push("ellipsis");
+  items.push(total);
+  return items;
 }
 
 function SkeletonRows(props: { rows: number; cols: number }) {
