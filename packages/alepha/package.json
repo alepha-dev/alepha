@@ -231,6 +231,11 @@
       "import": "./src/cli/vendor/index.ts",
       "default": "./src/cli/vendor/index.ts"
     },
+    "./cli/i18n": {
+      "types": "./src/cli/i18n/index.ts",
+      "import": "./src/cli/i18n/index.ts",
+      "default": "./src/cli/i18n/index.ts"
+    },
     "./command": {
       "types": "./src/command/index.ts",
       "import": "./src/command/index.ts",
@@ -633,6 +638,11 @@
         "types": "./dist/cli/vendor/index.d.ts",
         "import": "./dist/cli/vendor/index.js",
         "default": "./dist/cli/vendor/index.js"
+      },
+      "./cli/i18n": {
+        "types": "./dist/cli/i18n/index.d.ts",
+        "import": "./dist/cli/i18n/index.js",
+        "default": "./dist/cli/i18n/index.js"
       },
       "./command": {
         "types": "./dist/command/index.d.ts",
