@@ -25,15 +25,15 @@
     "@tailwindcss/vite": "^4.3.0",
     "@xyflow/react": "^12.10.2",
     "alepha": "0.20.8",
-    "lucide-react": "^1.14.0",
+    "lucide-react": "^1.16.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "sonner": "^2.0.7",
     "tailwindcss": "^4.3.0",
     "tsdown": "^0.22.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.11",
-    "vitest": "^4.1.5"
+    "vite": "^8.0.13",
+    "vitest": "^4.1.6"
   },
   "peerDependencies": {
     "alepha": "0.20.8"

@@ -14,7 +14,7 @@
   "dependencies": {
     "@alepha/ui": "workspace:^",
     "alepha": "workspace:^",
-    "lucide-react": "^1.14.0",
+    "lucide-react": "^1.16.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "sonner": "^2.0.7"
@@ -22,7 +22,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",
     "tailwindcss": "^4.3.0",
-    "vite": "^8.0.11",
-    "wrangler": "^4.90.0"
+    "vite": "^8.0.13",
+    "wrangler": "^4.92.0"
   }
 }

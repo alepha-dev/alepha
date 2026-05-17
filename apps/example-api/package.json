@@ -14,7 +14,7 @@
     "alepha": "^0.20.8"
   },
   "devDependencies": {
-    "vite": "^8.0.11",
-    "wrangler": "^4.90.0"
+    "vite": "^8.0.13",
+    "wrangler": "^4.92.0"
   }
 }

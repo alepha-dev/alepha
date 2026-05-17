@@ -13,15 +13,15 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
-    "@playwright/test": "^1.59.1",
-    "@types/bun": "^1.3.13",
-    "@types/node": "^25.6.2",
-    "@vitest/coverage-v8": "^4.1.5",
-    "@vitest/ui": "^4.1.5",
+    "@playwright/test": "^1.60.0",
+    "@types/bun": "^1.3.14",
+    "@types/node": "^25.8.0",
+    "@vitest/coverage-v8": "^4.1.6",
+    "@vitest/ui": "^4.1.6",
     "alepha": "^0.20.8",
     "depcheck": "^1.4.7",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.6"
   },
   "dependenciesMeta": {
     "esbuild": {

@@ -662,7 +662,7 @@ yarn shadcn add @alepha/alepha-table
 | `className` | `string` | No | Extra classes applied to the outer wrapper. |
 | `emptyMessage` | `string` | No | Message shown when the page is empty |
 
-**Dependencies:** `alepha`, `lucide-react`, `shadcn:button`, `shadcn:checkbox`, `shadcn:dropdown-menu`, `shadcn:skeleton`, `shadcn:table`
+**Dependencies:** `alepha`, `lucide-react`, `shadcn:button`, `shadcn:checkbox`, `shadcn:dropdown-menu`, `shadcn:pagination`, `shadcn:skeleton`, `shadcn:table`
 
 #### `@alepha/app-shell` — AppShell
 
