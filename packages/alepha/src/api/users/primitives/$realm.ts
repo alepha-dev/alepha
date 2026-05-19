@@ -1,5 +1,10 @@
-import { $context } from "alepha";
+import { $context, AlephaError } from "alepha";
 import { AlephaApiKeys, ApiKeyService } from "alepha/api/keys";
+import {
+  AlephaOAuth,
+  OAuthClientService,
+  oauthOptions,
+} from "alepha/api/oauth";
 import { $parameter, AlephaApiParameters } from "alepha/api/parameters";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import type { Repository } from "alepha/orm";
@@ -70,6 +75,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     jobs: false,
     notifications: false,
     apiKeys: false,
+    oauth: false,
     parameters: false,
     avatars: false,
     audits: false,
@@ -171,6 +177,50 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   $permission({
     name: "admin:access",
   });
+
+  // -------------------------------------------------------------------------------------------------------------------
+
+  // Enable the OAuth 2.1 authorization server.
+  // The OAuth module is realm-agnostic: it mints access tokens through an
+  // issuer handed to it via `registerIssuer`. Here we register the realm's own
+  // issuer plus a loader that maps a `users` row to a `UserAccount`.
+  if (features.oauth) {
+    alepha.with(AlephaOAuth);
+    const oauthService = alepha.inject(OAuthClientService);
+
+    // Point the OAuth controller at this realm so its endpoints mint tokens
+    // through the issuer we register below. Merge with the current value so a
+    // caller-configured `resource` path is preserved.
+    const currentOAuthOptions =
+      alepha.get(oauthOptions) ?? oauthOptions.options.default;
+    alepha.set(oauthOptions, { ...currentOAuthOptions, realm: name });
+
+    const loadUser = async (userId: string) => {
+      const user = await sessionService.users(name).findOne({
+        where: { id: { eq: userId }, realm: name },
+      });
+      if (!user) {
+        throw new AlephaError(`User '${userId}' not found in realm '${name}'`);
+      }
+      const composedName =
+        [user.firstName, user.lastName]
+          .filter((s): s is string => !!s?.trim())
+          .join(" ")
+          .trim() || undefined;
+      return {
+        id: user.id,
+        roles: user.roles,
+        name: composedName,
+        email: user.email,
+        username: user.username,
+        picture: user.picture,
+        organization: user.organizationId ?? undefined,
+        realm: name,
+      };
+    };
+
+    oauthService.registerIssuer(name, realm, loadUser);
+  }
 
   realm.link = (name: string) => {
     return (ctx: LinkAccountOptions) =>
@@ -286,6 +336,18 @@ export interface RealmFeatures {
    * @default false
    */
   apiKeys?: boolean;
+
+  /**
+   * Enable the OAuth 2.1 authorization server.
+   *
+   * Exposes RFC 9728 / RFC 8414 metadata, RFC 7591 dynamic client
+   * registration, and PKCE authorize/token endpoints so MCP clients
+   * (e.g. Claude) can connect to a protected `/mcp` endpoint without an
+   * API key in the query string.
+   *
+   * @default false
+   */
+  oauth?: boolean;
 
   /**
    * Enable runtime configuration management.

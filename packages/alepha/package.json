@@ -131,6 +131,11 @@
       "import": "./src/api/notifications/index.ts",
       "default": "./src/api/notifications/index.ts"
     },
+    "./api/oauth": {
+      "types": "./src/api/oauth/index.ts",
+      "import": "./src/api/oauth/index.ts",
+      "default": "./src/api/oauth/index.ts"
+    },
     "./api/organizations": {
       "types": "./src/api/organizations/index.ts",
       "react-native": "./src/api/organizations/index.browser.ts",
@@ -221,6 +226,11 @@
       "import": "./src/cli/devtools/index.ts",
       "default": "./src/cli/devtools/index.ts"
     },
+    "./cli/i18n": {
+      "types": "./src/cli/i18n/index.ts",
+      "import": "./src/cli/i18n/index.ts",
+      "default": "./src/cli/i18n/index.ts"
+    },
     "./cli/platform": {
       "types": "./src/cli/platform/index.ts",
       "import": "./src/cli/platform/index.ts",
@@ -230,11 +240,6 @@
       "types": "./src/cli/vendor/index.ts",
       "import": "./src/cli/vendor/index.ts",
       "default": "./src/cli/vendor/index.ts"
-    },
-    "./cli/i18n": {
-      "types": "./src/cli/i18n/index.ts",
-      "import": "./src/cli/i18n/index.ts",
-      "default": "./src/cli/i18n/index.ts"
     },
     "./command": {
       "types": "./src/command/index.ts",
@@ -539,6 +544,11 @@
         "import": "./dist/api/notifications/index.js",
         "default": "./dist/api/notifications/index.js"
       },
+      "./api/oauth": {
+        "types": "./dist/api/oauth/index.d.ts",
+        "import": "./dist/api/oauth/index.js",
+        "default": "./dist/api/oauth/index.js"
+      },
       "./api/organizations": {
         "types": "./dist/api/organizations/index.d.ts",
         "react-native": "./dist/api/organizations/index.browser.js",
@@ -629,6 +639,11 @@
         "import": "./dist/cli/devtools/index.js",
         "default": "./dist/cli/devtools/index.js"
       },
+      "./cli/i18n": {
+        "types": "./dist/cli/i18n/index.d.ts",
+        "import": "./dist/cli/i18n/index.js",
+        "default": "./dist/cli/i18n/index.js"
+      },
       "./cli/platform": {
         "types": "./dist/cli/platform/index.d.ts",
         "import": "./dist/cli/platform/index.js",
@@ -638,11 +653,6 @@
         "types": "./dist/cli/vendor/index.d.ts",
         "import": "./dist/cli/vendor/index.js",
         "default": "./dist/cli/vendor/index.js"
-      },
-      "./cli/i18n": {
-        "types": "./dist/cli/i18n/index.d.ts",
-        "import": "./dist/cli/i18n/index.js",
-        "default": "./dist/cli/i18n/index.js"
       },
       "./command": {
         "types": "./dist/command/index.d.ts",

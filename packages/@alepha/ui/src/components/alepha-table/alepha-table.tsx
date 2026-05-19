@@ -31,7 +31,7 @@ import { cn } from "@alepha/ui/lib/utils";
 import type { Page, TObject } from "alepha";
 import { useAlepha } from "alepha/react";
 import type { FormModel } from "alepha/react/form";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, RefreshCw } from "lucide-react";
 import {
   type ComponentType,
   type ReactNode,
@@ -220,6 +220,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     return () => clearInterval(id);
   }, [props.pollMs]);
 
+  const refresh = () => setRefreshKey((k) => k + 1);
   const clearSelection = () => setSelection(new Set());
 
   const selectedItems = useMemo(
@@ -268,11 +269,20 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
 
   return (
     <div className={cn("flex flex-col gap-2", props.className)}>
-      {props.header && (
-        <div className="flex items-center gap-2">
-          <div className="flex-1 min-w-0">{props.header}</div>
-        </div>
-      )}
+      <div className="flex items-center gap-2">
+        {props.header && <div className="flex-1 min-w-0">{props.header}</div>}
+        {!props.header && <div className="flex-1" />}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={refresh}
+          disabled={loading}
+          aria-label="Refresh"
+          title="Refresh"
+        >
+          <RefreshCw className={cn("size-4", loading && "animate-spin")} />
+        </Button>
+      </div>
 
       {hasCheckbox && selection.size > 0 && (
         <div className="bg-muted/50 flex items-center gap-2 rounded-md border p-2">
