@@ -11,6 +11,14 @@ export const sessions = $entity({
     updatedAt: db.updatedAt(),
     refreshToken: t.uuid(),
     userId: db.ref(t.uuid(), () => users.cols.id),
+    /**
+     * OAuth client this session was minted for, when it was created via the
+     * OAuth 2.1 authorization flow — the `client_id` of an `oauth_clients`
+     * row. Null for first-party logins. Deliberately NOT a DB-level foreign
+     * key: `sessions` is a core entity and must not depend on the optional
+     * OAuth module's table; the join to `oauth_clients` is done at query time.
+     */
+    clientId: t.optional(t.text({ maxLength: 64 })),
     expiresAt: t.datetime(),
     /**
      * Last time the session was used to refresh an access token.

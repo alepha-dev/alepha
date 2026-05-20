@@ -163,7 +163,12 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
         expiration: [30, "days"],
       },
       onCreateSession: async (user, config) => {
-        return sessionService.createSession(user, config.expiresIn);
+        return sessionService.createSession(
+          user,
+          config.expiresIn,
+          undefined,
+          config.clientId,
+        );
       },
       onRefreshSession: async (refreshToken) => {
         return sessionService.refreshSession(refreshToken);

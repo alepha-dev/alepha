@@ -466,6 +466,7 @@ export class SessionService {
     user: UserAccount,
     expiresIn: number,
     userRealmName?: string,
+    clientId?: string,
   ) {
     this.log.trace("Creating session", { userId: user.id, expiresIn });
 
@@ -484,6 +485,7 @@ export class SessionService {
       ip: request?.ip,
       userAgent: request?.userAgent,
       refreshToken,
+      clientId,
     });
 
     this.log.info("Session created", {

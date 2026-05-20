@@ -237,10 +237,10 @@ export class OAuthController {
           code,
           { clientId, redirectUri, codeVerifier },
         );
-        const tokens = await this.clients.issueAccessToken(
-          this.options.realm,
-          grant,
-        );
+        const tokens = await this.clients.issueAccessToken(this.options.realm, {
+          ...grant,
+          clientId,
+        });
         reply.headers["content-type"] = "application/json";
         reply.body = JSON.stringify({
           access_token: tokens.access_token,

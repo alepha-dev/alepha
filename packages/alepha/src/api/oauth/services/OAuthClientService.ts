@@ -80,7 +80,12 @@ export class OAuthClientService {
    */
   public async issueAccessToken(
     realm: string,
-    grant: { userId: string; scopes: string[]; resource?: string },
+    grant: {
+      userId: string;
+      scopes: string[];
+      resource?: string;
+      clientId?: string;
+    },
   ): Promise<{
     access_token: string;
     expires_in?: number;
@@ -91,7 +96,11 @@ export class OAuthClientService {
       throw new AlephaError(`No issuer registered for realm '${realm}'`);
     }
     const user = await entry.loadUser(grant.userId);
-    const tokens = await entry.issuer.createToken(user);
+    // Tag the session the issuer creates with the OAuth client, so it can
+    // later be surfaced as a "connected app" and revoked individually.
+    const tokens = await entry.issuer.createToken(user, undefined, {
+      clientId: grant.clientId,
+    });
     return {
       access_token: tokens.access_token,
       expires_in: tokens.expires_in,

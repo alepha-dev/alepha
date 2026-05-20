@@ -95,6 +95,12 @@ export interface IssuerSettings {
     user: UserAccount,
     config: {
       expiresIn: number;
+      /**
+       * OAuth client id, when the session is being created for an OAuth
+       * 2.1 authorization-code grant. Lets the session store record which
+       * MCP client / app the session belongs to.
+       */
+      clientId?: string;
     },
   ) => Promise<{
     refreshToken: string;
@@ -259,6 +265,13 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
       refresh_token?: string;
       refresh_token_expires_in?: number;
     },
+    context?: {
+      /**
+       * OAuth client id to tag a freshly created session with. Only used
+       * on the `onCreateSession` path (no `refreshToken` passed).
+       */
+      clientId?: string;
+    },
   ): Promise<AccessTokenResponse> {
     let sid: string | undefined = refreshToken?.sid;
     let refresh_token: string | undefined = refreshToken?.refresh_token;
@@ -276,6 +289,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         const expiresIn = this.refreshTokenExpiration.asSeconds();
         const { refreshToken, sessionId } = await create(user, {
           expiresIn,
+          clientId: context?.clientId,
         });
 
         refresh_token = refreshToken;
