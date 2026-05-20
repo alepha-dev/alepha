@@ -32,10 +32,33 @@ export const mcpStreamableHttpOptions = $atom({
      * Spec 2025-11-25, PR #1439.
      */
     allowedOrigins: t.array(t.text(), { default: [] }),
+    /**
+     * When true, an unauthenticated POST to the MCP endpoint is rejected
+     * with `401 Unauthorized` and an RFC 9728 `WWW-Authenticate` challenge
+     * instead of being dispatched. MCP clients (Claude, etc.) rely on that
+     * challenge to discover the OAuth authorization server.
+     *
+     * The transport stays OAuth-agnostic: it only knows "auth is required".
+     * `$realm({ features: { oauth: true } })` flips this on automatically.
+     *
+     * @default false
+     */
+    requireAuth: t.boolean({ default: false }),
+    /**
+     * Path of the RFC 9728 protected-resource metadata document, advertised
+     * (as an absolute URL, resolved against the request origin) in the
+     * `WWW-Authenticate` challenge emitted when {@link requireAuth} rejects
+     * a request.
+     */
+    resourceMetadataPath: t.text({
+      default: "/.well-known/oauth-protected-resource",
+    }),
   }),
   default: {
     path: "/mcp",
     allowedOrigins: [],
+    requireAuth: false,
+    resourceMetadataPath: "/.well-known/oauth-protected-resource",
   },
 });
 
@@ -139,6 +162,31 @@ export class StreamableHttpMcpTransport {
           request.reply.headers["content-type"] = "application/json";
           request.reply.body = JSON.stringify({
             error: "Forbidden: Origin not allowed",
+          });
+          return;
+        }
+
+        // RFC 9728 / MCP auth (spec 2025-06-18+): when the endpoint is
+        // OAuth-protected, an unauthenticated request is rejected with 401
+        // and a `WWW-Authenticate` challenge pointing at the protected-
+        // resource metadata. MCP clients (Claude, etc.) follow that
+        // `resource_metadata` URL to discover the authorization server —
+        // without it, discovery never starts. The URL MUST be absolute.
+        if (this.options.requireAuth && !request.user) {
+          const url =
+            typeof request.url === "string"
+              ? new URL(request.url)
+              : request.url;
+          const resourceMetadataUrl = `${url.protocol}//${url.host}${this.options.resourceMetadataPath}`;
+          this.log.debug("Rejecting unauthenticated MCP request", {
+            resourceMetadataUrl,
+          });
+          request.reply.status = 401;
+          request.reply.headers["www-authenticate"] =
+            `Bearer resource_metadata="${resourceMetadataUrl}"`;
+          request.reply.headers["content-type"] = "application/json";
+          request.reply.body = JSON.stringify({
+            error: "Unauthorized",
           });
           return;
         }

@@ -7,6 +7,7 @@ import {
 } from "alepha/api/oauth";
 import { $parameter, AlephaApiParameters } from "alepha/api/parameters";
 import { AlephaApiVerification } from "alepha/api/verifications";
+import { mcpStreamableHttpOptions } from "alepha/mcp";
 import type { Repository } from "alepha/orm";
 import {
   $issuer,
@@ -220,6 +221,19 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     };
 
     oauthService.registerIssuer(name, realm, loadUser);
+
+    // Tell the MCP Streamable HTTP transport to challenge unauthenticated
+    // requests with an RFC 9728 401 (`WWW-Authenticate`), so MCP clients
+    // can discover this OAuth server. Decoupled: the transport never
+    // imports the OAuth module — it just reads its own options atom.
+    // Harmless when no MCP transport is mounted; the atom is simply set.
+    const currentMcpOptions =
+      alepha.get(mcpStreamableHttpOptions) ??
+      mcpStreamableHttpOptions.options.default;
+    alepha.set(mcpStreamableHttpOptions, {
+      ...currentMcpOptions,
+      requireAuth: true,
+    });
   }
 
   realm.link = (name: string) => {
