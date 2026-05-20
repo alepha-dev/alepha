@@ -1,7 +1,12 @@
 import { useEvents } from "alepha/react";
 import { Link, NestedView } from "alepha/react/router";
 import { useSidebarState } from "alepha/react/ui";
-import { ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import {
+  ChevronRight,
+  Lock,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import { Fragment, useRef, useState } from "react";
 import {
@@ -13,6 +18,11 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
@@ -34,6 +44,11 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { DialogProvider } from "@/registry/default/use-dialog/use-dialog";
 
 export interface NavigationProgressOptions {
@@ -145,6 +160,18 @@ export interface NavItem {
    * Optional trailing badge (e.g. unread count). Hidden when the sidebar is collapsed to icons.
    */
   badge?: ReactNode;
+  /**
+   * When true the item is rendered muted, navigation is blocked, and the
+   * `tooltip` (if any) explains why. Use for paywalled / unavailable entries.
+   */
+  disabled?: boolean;
+  /**
+   * Hover tooltip shown on the row regardless of sidebar state. When the
+   * item is `disabled`, this is the explanation surface (HoverCard, with
+   * room to breathe). When the item is enabled, it surfaces as a regular
+   * Tooltip on the trigger.
+   */
+  tooltip?: ReactNode;
 }
 
 function hasActiveDescendant(item: NavItem): boolean {
@@ -162,14 +189,64 @@ function SidebarNavItem(props: { item: NavItem }) {
   );
 
   if (!isGroup) {
+    // Disabled rows render with a muted, dashed-border treatment plus a
+    // Lock affordance on the trailing edge. Clicks are swallowed. When a
+    // `tooltip` is provided, the row opens a HoverCard dropdown on hover
+    // so the explanation has space to breathe regardless of sidebar
+    // state.
+    if (item.disabled) {
+      // Bypass SidebarMenuButton — it self-wraps in a Tooltip when given
+      // a `tooltip` prop, which would swallow the HoverCard pointer
+      // events. A plain styled <div> keeps cursor-not-allowed and lets
+      // the row act as the HoverCard trigger.
+      const row = (
+        <div
+          aria-disabled="true"
+          className="flex h-8 w-full items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 bg-muted/40 px-2 text-sm text-muted-foreground"
+          style={{ cursor: "not-allowed" }}
+        >
+          {Icon && <Icon className="size-4 shrink-0" />}
+          <span className="flex-1 truncate text-left">{item.label}</span>
+          <Lock className="size-3.5 shrink-0 opacity-70" />
+        </div>
+      );
+      return (
+        <SidebarMenuItem>
+          {item.tooltip ? (
+            <HoverCard openDelay={120} closeDelay={120}>
+              <HoverCardTrigger asChild>{row}</HoverCardTrigger>
+              <HoverCardContent side="right" align="start" className="text-sm">
+                {item.tooltip}
+              </HoverCardContent>
+            </HoverCard>
+          ) : (
+            row
+          )}
+        </SidebarMenuItem>
+      );
+    }
+
+    const link = (
+      <SidebarMenuButton asChild isActive={item.active} tooltip={item.label}>
+        <Link href={item.href ?? "#"}>
+          {Icon && <Icon className="size-4" />}
+          <span>{item.label}</span>
+        </Link>
+      </SidebarMenuButton>
+    );
+
+    const row = item.tooltip ? (
+      <Tooltip>
+        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        <TooltipContent side="right">{item.tooltip}</TooltipContent>
+      </Tooltip>
+    ) : (
+      link
+    );
+
     return (
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={item.active} tooltip={item.label}>
-          <Link href={item.href ?? "#"}>
-            {Icon && <Icon className="size-4" />}
-            <span>{item.label}</span>
-          </Link>
-        </SidebarMenuButton>
+        {row}
         {item.badge != null && item.badge !== false && (
           <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>
         )}

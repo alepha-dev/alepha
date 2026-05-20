@@ -378,6 +378,8 @@
         "sidebar",
         "breadcrumb",
         "separator",
+        "tooltip",
+        "hover-card",
         "@alepha/use-dialog",
         "@alepha/sonner"
       ],
