@@ -34,7 +34,13 @@ import {
 } from "alepha/react/form";
 import { resolveSchemaControl, type SchemaControl } from "alepha/react/ui";
 import { Check, Eye, EyeOff, X } from "lucide-react";
-import { type ComponentType, type ReactNode, useEffect, useState } from "react";
+import {
+  type ComponentType,
+  type HTMLAttributes,
+  type ReactNode,
+  useEffect,
+  useState,
+} from "react";
 
 export interface ControlProps {
   /**
@@ -147,6 +153,24 @@ export interface ControlProps {
    * HTML `placeholder` passed to the underlying input.
    */
   placeholder?: string;
+  /**
+   * Autofocus the control on mount. Forwarded to the text input,
+   * textarea, or password input the control renders.
+   */
+  autoFocus?: boolean;
+  /**
+   * Visible row count for the textarea variant. Overrides the value
+   * auto-derived from the schema's `maxLength`. Ignored by other variants.
+   */
+  rows?: number;
+  /**
+   * Escape hatch — extra native attributes (event handlers, `className`,
+   * `aria-*`, `style`, …) forwarded to whichever element the control
+   * actually renders (text input / textarea / password input). The form
+   * bindings (`value`, `onChange`, `id`, `name`) always win and cannot be
+   * overridden here.
+   */
+  inputProps?: HTMLAttributes<HTMLElement>;
   /**
    * Allow user to create new entries in select / multi-select.
    */
@@ -394,7 +418,8 @@ export function Control(props: ControlProps) {
   // ── Auto-textarea: explicit `area` or maxLength > 256 ────────────
   const maxLength = meta.constraints.maxLength ?? 0;
   if (merged.area || maxLength > 256) {
-    const rows = maxLength > 1024 ? 6 : maxLength > 512 ? 4 : 2;
+    const rows =
+      merged.rows ?? (maxLength > 1024 ? 6 : maxLength > 512 ? 4 : 2);
     return wrapWithSlots(
       merged,
       <FormField
@@ -405,12 +430,14 @@ export function Control(props: ControlProps) {
         required={meta.required}
       >
         <Textarea
+          {...merged.inputProps}
           id={meta.id}
           name={props.input.props.name}
           rows={rows}
           disabled={merged.disabled}
           maxLength={maxLength || undefined}
           autoComplete={merged.autoComplete}
+          autoFocus={merged.autoFocus}
           placeholder={merged.placeholder}
           value={String(value ?? "")}
           onChange={(e) => setValue(e.target.value)}
@@ -436,6 +463,8 @@ export function Control(props: ControlProps) {
         required={meta.required}
         disabled={merged.disabled}
         autoComplete={merged.autoComplete}
+        autoFocus={merged.autoFocus}
+        inputProps={merged.inputProps}
         icon={resolveIcon(merged.icon, "password")}
         value={String(value ?? "")}
         onChange={(v) => setValue(v)}
@@ -492,17 +521,24 @@ export function Control(props: ControlProps) {
           <Icon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2 pointer-events-none" />
         )}
         <Input
+          {...merged.inputProps}
           id={meta.id}
           name={props.input.props.name}
           type={htmlType}
           disabled={merged.disabled}
           autoComplete={autoComplete}
+          autoFocus={merged.autoFocus}
           placeholder={merged.placeholder}
           value={String(value ?? "")}
           minLength={meta.constraints.minLength}
           maxLength={meta.constraints.maxLength}
           pattern={meta.constraints.pattern}
-          className={(Icon ? "pl-9" : "") + (reserveGutter ? " pr-9" : "")}
+          className={[
+            merged.inputProps?.className,
+            (Icon ? "pl-9" : "") + (reserveGutter ? " pr-9" : ""),
+          ]
+            .filter(Boolean)
+            .join(" ")}
           onChange={(e) => setValue(e.target.value)}
         />
         {showSave && (
@@ -580,6 +616,8 @@ interface PasswordControlProps {
   required?: boolean;
   disabled?: boolean;
   autoComplete?: string;
+  autoFocus?: boolean;
+  inputProps?: HTMLAttributes<HTMLElement>;
   icon?: IconComponent;
   value: string;
   onChange: (v: string) => void;
@@ -601,14 +639,18 @@ function PasswordControl(props: PasswordControlProps) {
           <Icon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2 pointer-events-none" />
         )}
         <Input
+          {...props.inputProps}
           id={props.id}
           name={props.name}
           type={reveal ? "text" : "password"}
           autoComplete={props.autoComplete ?? "current-password"}
+          autoFocus={props.autoFocus}
           disabled={props.disabled}
           value={props.value}
           onChange={(e) => props.onChange(e.target.value)}
-          className={Icon ? "pr-9 pl-9" : "pr-9"}
+          className={[props.inputProps?.className, Icon ? "pr-9 pl-9" : "pr-9"]
+            .filter(Boolean)
+            .join(" ")}
         />
         <Button
           type="button"
