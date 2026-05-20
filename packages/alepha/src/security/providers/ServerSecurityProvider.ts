@@ -18,24 +18,24 @@ export class ServerSecurityProvider {
     on: "server:onRequest",
     priority: "last",
     handler: async ({ request }) => {
-      // Resolve user from authorization header (authentication).
-      // This makes currentUserAtom available on ALL routes, not just $secure ones.
-      // $secure() then acts purely as an authorization gate.
-      if (request.headers.authorization) {
-        try {
-          const user =
-            await this.securityProvider.resolveUserFromServerRequest(request);
-          if (user) {
-            this.securityProvider.storeUserInContext(user);
-            request.user = user;
-          }
-        } catch (error) {
-          this.log.debug(
-            "Failed to resolve user from request authorization header",
-            error,
-          );
-          // Invalid/expired token — request continues as unauthenticated
+      // Resolve the user from any supported credential channel — not just the
+      // `Authorization` header, but also resolver-specific ones such as an
+      // `api_key` query parameter. This makes `currentUserAtom` available on
+      // ALL routes (not just `$secure` ones); `$secure()` is then purely an
+      // authorization gate. Gating this on the `Authorization` header missed
+      // query-param auth, leaving `request.user` undefined for an otherwise
+      // authenticated request. Resolvers no-op cheaply when no credential is
+      // present, so running them unconditionally is safe.
+      try {
+        const user =
+          await this.securityProvider.resolveUserFromServerRequest(request);
+        if (user) {
+          this.securityProvider.storeUserInContext(user);
+          request.user = user;
         }
+      } catch (error) {
+        this.log.debug("Failed to resolve user from request", error);
+        // Invalid/expired credential — request continues as unauthenticated
       }
     },
   });
