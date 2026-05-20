@@ -109,6 +109,33 @@ export class OAuthClientService {
   }
 
   /**
+   * Exchange a refresh token for a fresh access token (OAuth 2.1
+   * `refresh_token` grant), using the issuer registered for `realm`. Lets an
+   * MCP client stay connected for the refresh token's full lifetime without
+   * re-running the authorization flow. Throws if the realm has no issuer or
+   * the refresh token is invalid/expired.
+   */
+  public async refreshAccessToken(
+    realm: string,
+    refreshToken: string,
+  ): Promise<{
+    access_token: string;
+    expires_in?: number;
+    refresh_token?: string;
+  }> {
+    const entry = this.issuers.get(realm);
+    if (!entry) {
+      throw new AlephaError(`No issuer registered for realm '${realm}'`);
+    }
+    const { tokens } = await entry.issuer.refreshToken(refreshToken);
+    return {
+      access_token: tokens.access_token,
+      expires_in: tokens.expires_in,
+      refresh_token: tokens.refresh_token,
+    };
+  }
+
+  /**
    * Register a new OAuth client. Used by the RFC 7591 DCR endpoint and,
    * later, by user/admin UIs (via the `source` field).
    */

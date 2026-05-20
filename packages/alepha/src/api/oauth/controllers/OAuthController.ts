@@ -212,8 +212,10 @@ export class OAuthController {
   });
 
   /**
-   * POST /oauth/token — authorization_code grant. Verifies PKCE, then mints
-   * an access token via the realm issuer.
+   * POST /oauth/token — supports the `authorization_code` grant (verifies
+   * PKCE, mints an access token via the realm issuer) and the
+   * `refresh_token` grant (exchanges a refresh token for a fresh access
+   * token, so a client stays connected without re-running the flow).
    */
   token = $route({
     method: "POST",
@@ -221,38 +223,51 @@ export class OAuthController {
     schema: { body: tokenRequestBodySchema },
     use: [],
     handler: async ({ body, reply }) => {
-      if (body.grant_type !== "authorization_code") {
-        reply.status = 400;
-        reply.headers["content-type"] = "application/json";
-        reply.body = JSON.stringify({ error: "unsupported_grant_type" });
-        return;
-      }
-      const code = body.code ?? "";
-      const clientId = body.client_id ?? "";
-      const redirectUri = body.redirect_uri ?? "";
-      const codeVerifier = body.code_verifier ?? "";
+      reply.headers["content-type"] = "application/json";
       try {
-        const grant = await this.clients.consumeAuthorizationCode(
-          this.options.realm,
-          code,
-          { clientId, redirectUri, codeVerifier },
-        );
-        const tokens = await this.clients.issueAccessToken(this.options.realm, {
-          ...grant,
-          clientId,
-        });
-        reply.headers["content-type"] = "application/json";
-        reply.body = JSON.stringify({
-          access_token: tokens.access_token,
-          token_type: "Bearer",
-          expires_in: tokens.expires_in,
-          refresh_token: tokens.refresh_token,
-          scope: grant.scopes.join(" "),
-        });
+        if (body.grant_type === "authorization_code") {
+          const grant = await this.clients.consumeAuthorizationCode(
+            this.options.realm,
+            body.code ?? "",
+            {
+              clientId: body.client_id ?? "",
+              redirectUri: body.redirect_uri ?? "",
+              codeVerifier: body.code_verifier ?? "",
+            },
+          );
+          const tokens = await this.clients.issueAccessToken(
+            this.options.realm,
+            { ...grant, clientId: body.client_id ?? "" },
+          );
+          reply.body = JSON.stringify({
+            access_token: tokens.access_token,
+            token_type: "Bearer",
+            expires_in: tokens.expires_in,
+            refresh_token: tokens.refresh_token,
+            scope: grant.scopes.join(" "),
+          });
+          return;
+        }
+
+        if (body.grant_type === "refresh_token") {
+          const tokens = await this.clients.refreshAccessToken(
+            this.options.realm,
+            body.refresh_token ?? "",
+          );
+          reply.body = JSON.stringify({
+            access_token: tokens.access_token,
+            token_type: "Bearer",
+            expires_in: tokens.expires_in,
+            refresh_token: tokens.refresh_token,
+          });
+          return;
+        }
+
+        reply.status = 400;
+        reply.body = JSON.stringify({ error: "unsupported_grant_type" });
       } catch (e) {
         this.log.warn("OAuth token exchange failed", e);
         reply.status = 400;
-        reply.headers["content-type"] = "application/json";
         reply.body = JSON.stringify({ error: "invalid_grant" });
       }
     },
