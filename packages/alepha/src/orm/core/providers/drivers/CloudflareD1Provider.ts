@@ -84,8 +84,13 @@ export class CloudflareD1Provider extends DatabaseProvider {
   public override async execute(
     query: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
-    const { rows } = await (this.db as any).run(query);
-    return rows;
+    // Use `.all()` — it returns the row array directly, exactly like
+    // NodeSqliteProvider / BunSqliteProvider's `execute`. `.run()` returns
+    // drizzle's D1 result envelope (`{ results, success, meta }`), which
+    // has no `.rows` property: the previous `const { rows } = …run(query)`
+    // destructured `undefined`, so EVERY raw-SQL SELECT on D1
+    // (`Repository.query`, `DatabaseProvider.run`) silently returned `[]`.
+    return (this.db as any).all(query);
   }
 
   /**
