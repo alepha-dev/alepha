@@ -289,6 +289,9 @@ yarn shadcn add @alepha/control
 | `throttle` | `number` | No | Throttle text input onChange in ms |
 | `autoComplete` | `string` | No | HTML `autocomplete` hint passed to the underlying input. |
 | `placeholder` | `string` | No | HTML `placeholder` passed to the underlying input. |
+| `autoFocus` | `boolean` | No | Autofocus the control on mount |
+| `rows` | `number` | No | Visible row count for the textarea variant |
+| `inputProps` | `HTMLAttributes&lt;HTMLElement&gt;` | No | Escape hatch — extra native attributes (event handlers, `className`, `aria-*`, `style`, …) forwarded to whichever element the control actually renders (text input / textarea / password input) |
 | `createNewEntry` | `boolean \| ((query: string) =&gt; unknown)` | No | Allow user to create new entries in select / multi-select. |
 
 **Dependencies:** `alepha`, `lucide-react`, `@alepha/control-base`, `@alepha/control-array`, `@alepha/control-object`, `@alepha/control-number`, `@alepha/control-date`, `@alepha/control-select`, `@alepha/control-upload`, `shadcn:input`, `shadcn:switch`, `shadcn:textarea`
@@ -691,7 +694,7 @@ yarn shadcn add @alepha/app-shell
 | `embedded` | `boolean` | No | When `true`, the shell assumes it is mounted inside an outer provider tree and skips its own `&lt;DialogProvider&gt;` and `&lt;Toaster /&gt;` wrappers |
 | `fill` | `boolean` | No | When `true`, the shell fills its parent container instead of the viewport (`min-h-svh`) |
 
-**Dependencies:** `alepha`, `lucide-react`, `shadcn:sidebar`, `shadcn:breadcrumb`, `shadcn:separator`, `@alepha/use-dialog`, `@alepha/sonner`
+**Dependencies:** `alepha`, `lucide-react`, `shadcn:sidebar`, `shadcn:breadcrumb`, `shadcn:separator`, `shadcn:tooltip`, `shadcn:hover-card`, `@alepha/use-dialog`, `@alepha/sonner`
 
 #### `@alepha/auto-form` — AutoForm
 

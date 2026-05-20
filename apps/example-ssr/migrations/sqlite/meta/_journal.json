@@ -15,6 +15,13 @@
       "when": 1771117474999,
       "tag": "0001_puzzling_maximus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1779316921638,
+      "tag": "0002_fancy_darwin",
+      "breakpoints": true
     }
   ]
 }
