@@ -1,5 +1,5 @@
 import { waitFor } from "@testing-library/dom";
-import { Alepha, t } from "alepha";
+import { Alepha, createMiddleware, type Middleware, t } from "alepha";
 import { AlephaReact } from "alepha/react";
 import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -1037,6 +1037,81 @@ describe("$page browser tests", () => {
 
       // The stale /page-a transition must not have rewritten the URL bar.
       expect(window.location.pathname).toBe("/page-b");
+    });
+  });
+
+  describe("page guard middleware (use)", () => {
+    it("does not render a $page whose use middleware denies access", async () => {
+      // A guard that denies by returning undefined without calling next —
+      // exactly how $secure short-circuits in the browser for an
+      // unauthenticated user.
+      const $deny = (): Middleware =>
+        createMiddleware({
+          name: "$deny",
+          handler: () => async () => undefined,
+        });
+
+      class App {
+        home = $page({
+          path: "/",
+          component: () => <div data-testid="home">Home</div>,
+        });
+
+        admin = $page({
+          path: "/admin",
+          use: [$deny()],
+          component: () => <div data-testid="admin">Secret Admin</div>,
+        });
+      }
+
+      alepha = Alepha.create().with(AlephaReact).with(App);
+      await alepha.start();
+
+      const router = alepha.inject(ReactRouter);
+
+      await act(async () => {
+        await router.push("/admin");
+      });
+
+      // Regression: client-side navigation must honour the page's `use`
+      // middleware, not just SSR. The guarded component must NOT render.
+      await waitFor(() => {
+        expect(document.querySelector('[data-testid="admin"]')).toBeNull();
+      });
+    });
+
+    it("renders a $page whose use middleware passes through", async () => {
+      const $allow = (): Middleware =>
+        createMiddleware({
+          name: "$allow",
+          handler: ({ next }) => next,
+        });
+
+      class App {
+        ok = $page({
+          path: "/ok",
+          use: [$allow()],
+          loader: () => ({ value: "data" }),
+          component: ({ value }: { value: string }) => (
+            <div data-testid="ok">Allowed: {value}</div>
+          ),
+        });
+      }
+
+      alepha = Alepha.create().with(AlephaReact).with(App);
+      await alepha.start();
+
+      const router = alepha.inject(ReactRouter);
+
+      await act(async () => {
+        await router.push("/ok");
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-testid="ok"]')?.textContent).toBe(
+          "Allowed: data",
+        );
+      });
     });
   });
 });

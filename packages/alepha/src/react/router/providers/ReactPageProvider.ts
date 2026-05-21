@@ -5,6 +5,8 @@ import {
   $state,
   Alepha,
   AlephaError,
+  OPTIONS,
+  PipelineHandler,
   type TSchema,
   t,
 } from "alepha";
@@ -333,15 +335,46 @@ export class ReactPageProvider {
         return { redirect: route.redirect };
       }
 
-      // no loader, render a basic view by default
-      if (!route.loader) {
+      // Run this layer's `use` middleware (e.g. $secure) around its loader.
+      // Without this, client-side navigation would skip page guards entirely
+      // and render protected pages for anyone.
+      //
+      // Browser-only: on the server, ReactServerProvider already wraps the
+      // page handler with the collected middleware chain — running it here
+      // too would double-execute it. `$cache` is excluded: like on the
+      // server it is handled separately, not as a loader-wrapping middleware.
+      const middleware = this.alepha.isBrowser()
+        ? (route.use ?? []).filter((m) => m[OPTIONS]?.name !== "$cache")
+        : [];
+
+      // Nothing to run for this layer — render a basic view by default.
+      if (!route.loader && middleware.length === 0) {
         continue;
       }
 
       try {
         const args = Object.create(state);
         Object.assign(args, config, context);
-        const props = (await route.loader?.(args)) ?? {};
+
+        // Terminal handler = the loader (or a no-op when the page has none).
+        // `reached` stays false if a guard middleware short-circuits without
+        // calling `next` — that is how $secure denies access in the browser.
+        let reached = false;
+        const terminal = async (a: any) => {
+          reached = true;
+          return (await route.loader?.(a)) ?? {};
+        };
+
+        const props = middleware.length
+          ? ((await new PipelineHandler(terminal, middleware).run(args)) ?? {})
+          : await terminal(args);
+
+        if (!reached) {
+          // A page guard (e.g. $secure) denied access. Surface it as an
+          // error so the page renders its error state instead of the
+          // protected component; `errorHandler` can turn it into a redirect.
+          throw new AlephaError("Access denied");
+        }
 
         // save props
         it.props = {
