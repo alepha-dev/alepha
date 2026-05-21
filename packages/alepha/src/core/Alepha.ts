@@ -177,6 +177,21 @@ export class Alepha {
       });
     }
 
+    // Browser/Vite builds have no `process`, so both blocks above are
+    // stripped as dead code — leaving `NODE_ENV` unset and `isProduction()`
+    // always false in the browser bundle. Fall back to Vite's build-time
+    // `import.meta.env.PROD` flag, baked at build time. It is `undefined`
+    // outside Vite (server bundles, workerd) so this is a no-op there.
+    if (state.env?.NODE_ENV == null) {
+      const viteEnv = (import.meta as { env?: { PROD?: boolean } }).env;
+      if (viteEnv?.PROD) {
+        state.env ??= {};
+        Object.assign(state.env, {
+          NODE_ENV: "production",
+        });
+      }
+    }
+
     const alepha = new Alepha(state);
 
     if (alepha.isTest()) {
