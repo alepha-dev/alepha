@@ -37,6 +37,41 @@ function isStringSchema(schema: unknown): boolean {
   return false;
 }
 
+/**
+ * Detect an enum schema (incl. optional/nullable wrappers). Enum fields
+ * render as a `<Select>`, so they must auto-commit on change like any
+ * other select — never get lumped in with free-text string fields.
+ */
+function isEnumSchema(schema: unknown): boolean {
+  if (!schema || typeof schema !== "object") return false;
+  const s = schema as { enum?: unknown[]; anyOf?: unknown[] };
+  if (Array.isArray(s.enum)) return true;
+  if (Array.isArray(s.anyOf)) return s.anyOf.some(isEnumSchema);
+  return false;
+}
+
+/**
+ * Resolve the effective `<Control>` config for a field, merging the
+ * `fields` map with any per-field override carried on a `groups` entry —
+ * the same precedence `GroupBlock` applies when rendering.
+ */
+function resolveControlConfig(
+  name: string,
+  fields: Record<string, unknown> | undefined,
+  groups: AutoFormGroup[] | undefined,
+): Record<string, unknown> {
+  const fromMap = (fields?.[name] as Record<string, unknown>) ?? {};
+  let fromGroup: Record<string, unknown> = {};
+  for (const group of groups ?? []) {
+    for (const field of group.fields) {
+      if (typeof field === "object" && field.name === name) {
+        fromGroup = field as Record<string, unknown>;
+      }
+    }
+  }
+  return { ...fromMap, ...fromGroup };
+}
+
 export interface AutoFormGroup {
   /**
    * Group title shown in the header.
@@ -220,14 +255,28 @@ export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
       // top-level key is the first segment after the leading slash.
       const top = ev.path.replace(/^\//, "").split("/")[0];
       const fieldSchema = (schema.properties as Record<string, unknown>)?.[top];
-      const fieldConfig = (props.fields as Record<string, any> | undefined)?.[
-        top
-      ];
+      const fieldConfig = resolveControlConfig(
+        top,
+        props.fields as Record<string, unknown> | undefined,
+        props.groups,
+      );
       // Text fields (incl. optional/nullable wrappers) should NOT auto-commit
       // on keystroke; they commit via Enter or the inline tick button.
-      // Uploads commit a uuid string when the upload finishes — those MUST
-      // auto-save even though the field schema is a string.
-      if (!fieldConfig?.upload && isStringSchema(fieldSchema)) return;
+      // Uploads commit a uuid string when the upload finishes, and selects /
+      // comboboxes / segmented controls commit a discrete value on change —
+      // all of those MUST auto-save even though the field schema is a string.
+      const rendersAsSelect =
+        !!fieldConfig.select ||
+        !!fieldConfig.combobox ||
+        !!fieldConfig.segmented ||
+        fieldConfig.items != null ||
+        isEnumSchema(fieldSchema);
+      if (
+        !fieldConfig.upload &&
+        !rendersAsSelect &&
+        isStringSchema(fieldSchema)
+      )
+        return;
       if (handle) clearTimeout(handle);
       handle = setTimeout(() => props.form.submit(), autoSaveDelay);
     });
@@ -235,7 +284,15 @@ export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
       off();
       if (handle) clearTimeout(handle);
     };
-  }, [alepha, autoSaveEnabled, autoSaveDelay, props.form, schema]);
+  }, [
+    alepha,
+    autoSaveEnabled,
+    autoSaveDelay,
+    props.form,
+    props.fields,
+    props.groups,
+    schema,
+  ]);
   const skipBottomBar = props.skipBottomBar ?? autoSaveEnabled;
 
   const resolvedGroups: AutoFormGroup[] = useMemo(() => {
