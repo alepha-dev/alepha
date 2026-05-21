@@ -41,9 +41,9 @@ const HeroSection = () => {
               lineHeight: 1.15,
             }}
           >
-            TypeScript Framework
+            One Stack.
             <br />
-            <span style={{ color: "var(--color-accent)" }}>Made Easy</span>
+            <span style={{ color: "var(--color-accent)" }}>No Glue.</span>
           </h1>
 
           <p
@@ -55,10 +55,11 @@ const HeroSection = () => {
               margin: 0,
             }}
           >
-            Stop gluing libraries together. Alepha gives you APIs, databases,
-            queues, React SSR, and more.{" "}
+            A clean rewrite of the full stack — API, database, queues, React SSR
+            — for Node, Bun, and Cloudflare. No library glue.{" "}
             <span style={{ color: "var(--color-text)" }}>
-              All type-safe. All works out of the box.
+              One small, consistent surface AI agents generate predictable code
+              against.
             </span>
           </p>
 

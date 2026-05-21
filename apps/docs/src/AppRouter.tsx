@@ -16,12 +16,12 @@ declare module "alepha/react/router" {
 
 export class AppRouter {
   head = $head(() => {
-    const ogTitle = "Alepha Framework - TypeScript Made Easy";
+    const ogTitle = "Alepha — One full-stack TypeScript framework. No glue.";
     const head: Head = {
       title: "Alepha",
       titleSeparator: " | ",
       description:
-        "Alepha is a TypeScript-first framework with React SSR, schema validation, and modern backend tools. Build production-ready apps in days, not months.",
+        "Alepha is a full-stack TypeScript framework built for the agentic era — a clean rewrite of server, ORM, auth, queues, and React SSR for Node, Bun, and Cloudflare. No library glue.",
       image: "https://alepha.dev/og-image.png",
       siteName: "Alepha",
       locale: "en_US",
@@ -86,7 +86,7 @@ export class AppRouter {
     label: "Home",
     static: true,
     head: () => ({
-      title: "TypeScript Framework Made Easy",
+      title: "One full-stack TypeScript framework. No glue.",
     }),
   });
 
