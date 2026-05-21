@@ -427,7 +427,13 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       reply.body = JSON.stringify({
         status,
         error: errorNameByStatus[status],
-        message: error.message,
+        // 4xx messages are intentional and client-facing; 5xx messages can
+        // leak internals (DB errors, stack-y hints) — sanitize them in
+        // production, exactly like the unknown-error fallback below.
+        message:
+          status >= 500 && this.alepha.isProduction()
+            ? "Internal Server Error"
+            : error.message,
         requestId,
       });
       return;

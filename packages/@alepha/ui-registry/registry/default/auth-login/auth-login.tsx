@@ -147,7 +147,19 @@ export function AuthLogin(props: AuthLoginProps) {
             path: "/password",
           });
         }
-        throw err;
+        // Other 4xx are intentional, user-facing API errors — surface as-is.
+        if (err instanceof HttpError && err.status < 500) {
+          throw err;
+        }
+        // 5xx / unexpected: never show internals to the user. Log the real
+        // cause and surface a generic message.
+        console.error("Login failed:", err);
+        throw new FormValidationError({
+          message: tr("auth.login.error", {
+            default: "Something went wrong. Please try again.",
+          }),
+          path: "/password",
+        });
       }
     },
   });
