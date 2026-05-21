@@ -424,8 +424,11 @@ export class DbCommand {
       });
 
       const flags = options.commandFlags ? ` ${options.commandFlags}` : "";
+      // drizzle-kit ships embedded in `alepha` — resolve and run it from
+      // alepha's own install, so the project never declares it.
+      const drizzleKit = this.utils.resolveBin("drizzle-kit");
       await this.utils.exec(
-        `drizzle-kit ${options.command} --config=${drizzleConfigJsPath}${flags}`,
+        `node "${drizzleKit}" ${options.command} --config=${drizzleConfigJsPath}${flags}`,
         {
           env: {
             ALEPHA_CLI_IMPORT: "true",

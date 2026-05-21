@@ -1,4 +1,7 @@
-import { $inject, Alepha } from "alepha";
+import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { join } from "node:path";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { EnvUtils } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
@@ -48,6 +51,59 @@ export class AlephaCliUtils {
       resolve: !options.global,
       capture: options.capture,
     });
+  }
+
+  /**
+   * Resolve the absolute path to a toolchain binary that ships embedded in
+   * `alepha`'s own `dependencies` (typescript, vite, vitest, @biomejs/biome,
+   * drizzle-kit).
+   *
+   * The CLI runs the result via `node <path>` so the toolchain works under
+   * every package manager — including pnpm with a strict node-linker, where
+   * a transitive dependency's bin is NOT hoisted into the project's
+   * `node_modules/.bin`. Resolution starts from `alepha`'s own location, so
+   * the version is whatever `alepha` shipped — the project never pins it.
+   *
+   * @param pkg - npm package name (e.g. `"typescript"`)
+   * @param binName - which `bin` entry to use (e.g. `"tsc"`); defaults to the
+   *   package's only/first bin
+   */
+  public resolveBin(pkg: string, binName?: string): string {
+    const require = createRequire(import.meta.url);
+
+    // Locate the package root by scanning the `node_modules` directories
+    // Node would search, then reading `package.json` from disk directly.
+    // We deliberately avoid `require.resolve("<pkg>/package.json")` — a
+    // strict `exports` map (e.g. drizzle-kit) blocks that subpath.
+    let pkgDir: string | undefined;
+    for (const nm of require.resolve.paths(pkg) ?? []) {
+      const candidate = join(nm, pkg);
+      if (existsSync(join(candidate, "package.json"))) {
+        pkgDir = candidate;
+        break;
+      }
+    }
+    if (!pkgDir) {
+      throw new AlephaError(
+        `Cannot locate package '${pkg}' — is it installed alongside alepha?`,
+      );
+    }
+
+    const meta = JSON.parse(
+      readFileSync(join(pkgDir, "package.json"), "utf8"),
+    ) as { bin?: string | Record<string, string> };
+    const bin = meta.bin;
+    if (!bin) {
+      throw new AlephaError(`Package '${pkg}' declares no 'bin' entry`);
+    }
+    const rel =
+      typeof bin === "string"
+        ? bin
+        : (bin[binName ?? pkg] ?? Object.values(bin)[0]);
+    if (!rel) {
+      throw new AlephaError(`Package '${pkg}' has no bin named '${binName}'`);
+    }
+    return join(pkgDir, rel);
   }
 
   /**

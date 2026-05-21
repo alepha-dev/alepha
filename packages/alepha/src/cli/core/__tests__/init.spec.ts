@@ -379,15 +379,15 @@ describe("alepha init", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Test Setup (--test flag)
+  // Test Setup (always scaffolded — Vitest ships embedded in alepha)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  describe("--test flag", () => {
-    it("should create test directory with dummy.spec.ts", async () => {
+  describe("test setup", () => {
+    it("should always create test directory with dummy.spec.ts", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { argv: "--test", root: "/project" });
+      await cli.run(cmd.init, { root: "/project" });
 
       expect(fs.wasWritten("/project/test/dummy.spec.ts")).toBe(true);
       expect(
@@ -398,28 +398,32 @@ describe("alepha init", () => {
       ).toBe(true);
     });
 
-    it("should add vitest to package.json devDependencies", async () => {
+    it("should NOT pin vitest in package.json (embedded in alepha)", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { argv: "--test", root: "/project" });
+      await cli.run(cmd.init, { root: "/project" });
 
       const pkg = await fs.readJsonFile<{
+        dependencies?: Record<string, string>;
         devDependencies?: Record<string, string>;
       }>("/project/package.json");
-      expect(pkg.devDependencies?.vitest).toBeDefined();
+      // The toolchain (vitest, vite, biome, tsc, drizzle-kit) ships embedded
+      // as dependencies of `alepha` — the project never declares it.
+      expect(pkg.devDependencies?.vitest).toBeUndefined();
+      expect(pkg.dependencies?.vitest).toBeUndefined();
     });
 
     it("should add test script to package.json", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
-      await cli.run(cmd.init, { argv: "--test", root: "/project" });
+      await cli.run(cmd.init, { root: "/project" });
 
       const pkg = await fs.readJsonFile<{ scripts?: Record<string, string> }>(
         "/project/package.json",
       );
-      expect(pkg.scripts?.test).toBe("vitest run");
+      expect(pkg.scripts?.test).toBe("alepha test");
     });
   });
 

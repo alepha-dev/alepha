@@ -1,12 +1,10 @@
 import { $inject } from "alepha";
 import { $command } from "alepha/command";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
-import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
 export class LintCommand {
   protected readonly utils = $inject(AlephaCliUtils);
-  protected readonly pm = $inject(PackageManagerUtils);
   protected readonly scaffolder = $inject(ProjectScaffolder);
 
   public readonly lint = $command({
@@ -18,12 +16,10 @@ export class LintCommand {
         checkWorkspace: true,
       });
 
-      await this.pm.ensureDependency(root, "@biomejs/biome", {
-        checkWorkspace: true,
-        exec: (cmd, opts) => this.utils.exec(cmd, opts),
-      });
-
-      await run("biome check --fix");
+      // Biome ships embedded in `alepha` — resolve and run it from alepha's
+      // own install, so the project never declares it.
+      const biome = this.utils.resolveBin("@biomejs/biome", "biome");
+      await run(`node "${biome}" check --fix`);
     },
   });
 }

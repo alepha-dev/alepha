@@ -33,6 +33,7 @@ import { saasRealmProviderTs } from "../templates/saasRealmProviderTs.ts";
 import { tsconfigJson } from "../templates/tsconfigJson.ts";
 import { viteConfigTs } from "../templates/viteConfigTs.ts";
 import { vitestConfigTs } from "../templates/vitestConfigTs.ts";
+import { vscodeSettingsJson } from "../templates/vscodeSettingsJson.ts";
 import { webAppRouterTs } from "../templates/webAppRouterTs.ts";
 import { webHomeComponentTsx } from "../templates/webHomeComponentTsx.ts";
 import { webIndexTs } from "../templates/webIndexTs.ts";
@@ -95,6 +96,11 @@ export class ProjectScaffolder {
       biomeJson?: boolean;
       editorconfig?: boolean;
       agentMd?: boolean;
+      /**
+       * Write `.vscode/settings.json` pointing the editor's TypeScript
+       * server at the `typescript` copy embedded in `alepha`.
+       */
+      vscodeSettings?: boolean;
     },
   ): Promise<void> {
     const tasks: Promise<void>[] = [];
@@ -127,6 +133,9 @@ export class ProjectScaffolder {
     }
     if (opts.agentMd) {
       tasks.push(this.ensureAgentMd(root, { force }));
+    }
+    if (opts.vscodeSettings) {
+      tasks.push(this.ensureVscodeSettings(root, { force, checkWorkspace }));
     }
 
     await Promise.all(tasks);
@@ -181,6 +190,31 @@ export class ProjectScaffolder {
       return;
     }
     await this.ensureFile(root, ".editorconfig", editorconfig(), opts.force);
+  }
+
+  /**
+   * Ensure `.vscode/settings.json` exists, pointing the editor's TypeScript
+   * language server at the `typescript` copy embedded in `alepha`. Keeps the
+   * IDE on the same compiler version as `alepha typecheck` — see
+   * `vscodeSettingsJson`.
+   */
+  public async ensureVscodeSettings(
+    root: string,
+    opts: { force?: boolean; checkWorkspace?: boolean } = {},
+  ): Promise<void> {
+    if (
+      !opts.force &&
+      opts.checkWorkspace &&
+      (await this.existsInParents(root, ".vscode"))
+    ) {
+      return;
+    }
+    const target = this.fs.join(root, ".vscode", "settings.json");
+    if (!opts.force && (await this.fs.exists(target))) {
+      return;
+    }
+    await this.fs.mkdir(this.fs.join(root, ".vscode"), { recursive: true });
+    await this.fs.writeFile(target, vscodeSettingsJson());
   }
 
   /**
@@ -550,7 +584,6 @@ export class ProjectScaffolder {
       shadcn?: boolean | string;
       /** boolean toggle, or a string preset id (default `b0` when bare). */
       saas?: boolean | string;
-      test?: boolean;
       force?: boolean;
     };
     args?: string;
@@ -631,6 +664,9 @@ export class ProjectScaffolder {
           biomeJson: true,
           editorconfig: !workspace.config.editorconfig,
           agentMd: writeAgentMd,
+          // Editor TS-server pointer at a project root only; monorepo
+          // sub-packages inherit the workspace-root `.vscode/`.
+          vscodeSettings: writeAgentMd,
         });
 
         // Create alepha.config.ts with documented options
@@ -684,10 +720,10 @@ export class ProjectScaffolder {
       root: installRoot,
     });
 
-    // Create test directory if --test flag is set (vitest is in package.json)
-    if (flags.test) {
-      await this.ensureTestDir(root);
-    }
+    // Always scaffold the test setup — Vitest ships embedded in `alepha`, so
+    // `alepha test` works in every project. The dummy spec doubles as a
+    // worked example for both humans and AI agents.
+    await this.ensureTestDir(root);
 
     // shadcn/ui: run `<pm> shadcn init` against the components.json we wrote
     // earlier. shadcn detects the existing config, respects our aliases,

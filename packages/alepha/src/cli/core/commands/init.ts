@@ -54,9 +54,6 @@ export class InitCommand {
             "Scaffold a SaaS starter: auth (login/register/reset/verify) + admin panel (/admin AppShell with users/sessions/api-keys/parameters/audits). Pass an optional preset id (default: b0). Implies --shadcn and --api",
         }),
       ),
-      test: t.optional(
-        t.boolean({ description: "Include Vitest and create test directory" }),
-      ),
       force: t.optional(
         t.boolean({
           aliases: ["f"],

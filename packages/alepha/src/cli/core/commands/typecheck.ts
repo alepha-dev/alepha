@@ -1,14 +1,10 @@
 import { $inject } from "alepha";
 import { $command } from "alepha/command";
-import { $logger } from "alepha/logger";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
-import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
 export class TypecheckCommand {
   protected readonly utils = $inject(AlephaCliUtils);
-  protected readonly pm = $inject(PackageManagerUtils);
-  protected readonly log = $logger();
   protected readonly scaffolder = $inject(ProjectScaffolder);
 
   /**
@@ -24,12 +20,10 @@ export class TypecheckCommand {
         checkWorkspace: true,
       });
 
-      await this.pm.ensureDependency(root, "typescript", {
-        checkWorkspace: true,
-        exec: (cmd, opts) => this.utils.exec(cmd, opts),
-      });
-
-      await run("tsc --noEmit");
+      // TypeScript ships embedded in `alepha` — resolve and run its `tsc`
+      // from alepha's own install, so the project never declares it.
+      const tsc = this.utils.resolveBin("typescript", "tsc");
+      await run(`node "${tsc}" --noEmit`);
     },
   });
 }

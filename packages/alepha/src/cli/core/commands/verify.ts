@@ -14,7 +14,7 @@ export class VerifyCommand {
    * - Clean the project
    * - Format the code
    * - Lint the code
-   * - Run tests (if Vitest is a dev dependency)
+   * - Run tests (if a `test/` directory exists)
    * - Check database migrations (if a migrations directory exists)
    * - Type check the code
    * - Build the project
@@ -29,8 +29,9 @@ export class VerifyCommand {
 
       await run("alepha typecheck");
 
-      const pkg = await this.pm.readPackageJson(root);
-      if (pkg.devDependencies?.vitest) {
+      // Vitest ships embedded in `alepha`, so it's no longer a project
+      // dependency — gate on the presence of a `test/` directory instead.
+      if (await this.utils.exists(root, "test")) {
         await run("alepha test");
       }
 

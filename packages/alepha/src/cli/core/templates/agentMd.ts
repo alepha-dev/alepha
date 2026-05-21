@@ -22,6 +22,13 @@ alepha platform up       # Provision + deploy to a configured environment
 alepha platform status   # Inspect deployed resources
 \`\`\`
 
+## Testing
+
+- Specs live in \`test/\`, named \`*.spec.ts\`.
+- Run with \`alepha test\` (Vitest, embedded in alepha — nothing to install).
+- \`test/dummy.spec.ts\` is the starting example; \`Alepha.create()\` is the
+  entry point and \`.inject(...)\` resolves providers.
+
 ## Cloud deployment (Cloudflare Workers)
 
 Add the \`platform\` plugin to \`alepha.config.ts\` to manage cloud

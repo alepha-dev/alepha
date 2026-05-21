@@ -397,36 +397,21 @@ export class PackageManagerUtils {
       alepha: `^${version}`,
     };
 
-    const devDependencies: Record<string, string> = {
-      vite: alephaDeps.vite,
-    };
-
-    // Only include drizzle-kit when the project uses a database.
-    // - React-only projects skip it (no ORM in scope).
-    // - SaaS pulls AlephaApiUsers which DOES need a DB → keep drizzle-kit.
-    if (!modes.react || modes.saas) {
-      devDependencies["drizzle-kit"] = alephaDeps["drizzle-kit"];
-    }
-
-    // Add biome/vitest only if not a workspace package (workspace root has them)
-    if (!modes.isPackage) {
-      devDependencies["@biomejs/biome"] = alephaDeps["@biomejs/biome"];
-      if (modes.test) {
-        devDependencies.vitest = alephaDeps.vitest;
-      }
-    }
+    // The toolchain (typescript, vite, vitest, biome, drizzle-kit) is NOT
+    // pinned here — it ships embedded as `dependencies` of `alepha`, so the
+    // `alepha` CLI resolves and runs it from its own install. The project
+    // never declares those versions; upgrading `alepha` moves the whole
+    // toolchain atomically. See `AlephaCliUtils.resolveBin`.
+    const devDependencies: Record<string, string> = {};
 
     const scripts: Record<string, string> = {
       dev: "alepha dev",
       build: "alepha build",
+      test: "alepha test",
       lint: "alepha lint",
       typecheck: "alepha typecheck",
       verify: "alepha verify",
     };
-
-    if (modes.test) {
-      scripts.test = "vitest run";
-    }
 
     if (modes.tailwind) {
       devDependencies.tailwindcss = alephaDeps.tailwindcss;
@@ -480,9 +465,8 @@ export interface DependencyModes {
    * components on top via `shadcn add @alepha/...`.
    */
   saas?: boolean;
-  test?: boolean;
   /**
-   * Skip biome/vitest when inside a workspace package (they're at root).
+   * Whether the project is a workspace package inside a monorepo.
    */
   isPackage?: boolean;
 }

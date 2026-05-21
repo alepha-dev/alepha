@@ -1,12 +1,10 @@
 import { $inject, t } from "alepha";
 import { $command } from "alepha/command";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
-import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
 export class TestCommand {
   protected readonly utils = $inject(AlephaCliUtils);
-  protected readonly pm = $inject(PackageManagerUtils);
   protected readonly scaffolder = $inject(ProjectScaffolder);
 
   public readonly test = $command({
@@ -34,14 +32,12 @@ export class TestCommand {
         tsconfigJson: true,
       });
 
-      // Ensure vitest is installed before running
-      await this.pm.ensureDependency(root, "vitest", {
-        exec: (cmd, opts) => this.utils.exec(cmd, opts),
-      });
-
       const config = flags.config ? `--config=${flags.config}` : "";
 
-      await run(`vitest run ${config} ${env.VITEST_ARGS}`);
+      // Vitest ships embedded in `alepha` (paired with vite) — resolve and
+      // run it from alepha's own install, so the project never declares it.
+      const vitest = this.utils.resolveBin("vitest", "vitest");
+      await run(`node "${vitest}" run ${config} ${env.VITEST_ARGS}`);
     },
   });
 }
