@@ -10,7 +10,8 @@
   },
   "license": "MIT",
   "scripts": {
-    "build": "shadcn build --output ../../../apps/docs/public/r"
+    "build": "shadcn build --output ../../../apps/docs/public/r",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
