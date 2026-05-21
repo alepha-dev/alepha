@@ -3,6 +3,7 @@
  */
 export const alephaConfigTs = () => {
   return `import { defineConfig } from "alepha/cli/config";
+// import { platform } from "alepha/cli/platform";
 
 export default defineConfig({
   //
@@ -26,12 +27,14 @@ export default defineConfig({
   // // Requires \`wrangler login\` once. D1, R2, KV, Queues and cron triggers
   // // are auto-provisioned from your $repository / $bucket / $cache / $queue
   // // / $scheduler primitives — no wrangler.toml to maintain.
-  // platform: {
-  //   environments: {
-  //     production: { adapter: "cloudflare", domain: "myapp.com" },
-  //     preview:    { adapter: "cloudflare" }, // workers.dev subdomain
-  //   },
-  // },
+  // plugins: [
+  //   platform({
+  //     environments: {
+  //       production: { adapter: "cloudflare", domain: "myapp.com" },
+  //       preview:    { adapter: "cloudflare" }, // workers.dev subdomain
+  //     },
+  //   }),
+  // ],
 });
 `;
 };
