@@ -1,3 +1,36 @@
+## [0.21.0] - 2026-05-21
+
+### Features
+
+- **cli**: alepha test accepts a filename filter argument (`96e4de2a`)
+- **ui**: update HeroSection, AppRouter, and README for branding consistency (`f897db44`)
+- **cli**: embed the toolchain in alepha, drop it from project package.json (`7451f952`)
+- **ui**: add the shadcn chart component (`39180428`)
+- **ui/control**: autoFocus, rows, and an inputProps escape hatch (`5cce1d69`)
+- **oauth**: support the refresh_token grant at /oauth/token (`d2a39dc6`)
+- **security**: tag sessions with the OAuth client they were minted for (`aebd9f7d`)
+- **mcp**: RFC 9728 401 challenge for OAuth-protected MCP endpoints (`c7432ad5`)
+- **api/oauth**: add OAuth 2.1 authorization server module with dynamic client registration and PKCE support (`5c6f5eea`)
+- **cli**: add i18n plugin for unused-key detection (`30dc35c6`)
+- **ui**: numbered pagination + top-toolbar refresh on AlephaTable (`1c359adb`)
+- **ui**: allow to customize logo during login/register (`a26470c7`)
+- **cli**: platform - allow to down R2 (`d5791797`)
+- **ui**: add autoApplyFilters to AlephaTable, drop Apply button in lore board (`69c29b10`)
+- **ui**: improve register form (`ed6240ba`)
+- **orm**: implement SequenceProvider and alephaSequences for portable numeric sequences (`fed23fb8`)
+
+### Bug Fixes
+
+- **ui-registry**: ship @alepha/pagination with First/Last page controls (`37a2af56`)
+- **cli**: drop --test from e2e-cli spec and docs after flag removal (`a34c1381`)
+- **cli**: generated alepha.config.ts puts platform under plugins[] (`4583ec47`)
+- **ui/auto-form**: auto-save select fields on change (`a9e3a697`)
+- **security**: resolve request.user from non-header credentials too (`650f4f75`)
+- **orm/d1**: CloudflareD1Provider.execute returned undefined for SELECTs (`9787b304`)
+- **devtools**: fix build dir (`60e7d512`)
+- **server/links**: split batch when action is multipart (`09be4f42`)
+- **react/form**: fix flaky state reset on render (`1d7c063f`)
+
 ## [0.20.8] - 2026-05-13
 
 No public changes in range 0.20.7..HEAD
