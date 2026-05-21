@@ -135,6 +135,21 @@
       ]
     },
     {
+      "name": "pagination",
+      "type": "registry:ui",
+      "title": "Pagination (Alepha)",
+      "description": "shadcn Pagination with added First/Last page controls. Required by AlephaTable, which uses the first/last buttons.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": ["button"],
+      "files": [
+        {
+          "path": "registry/default/pagination/pagination.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/pagination.tsx"
+        }
+      ]
+    },
+    {
       "name": "segmented",
       "type": "registry:ui",
       "title": "Segmented",
@@ -356,7 +371,7 @@
         "button",
         "checkbox",
         "dropdown-menu",
-        "pagination",
+        "@alepha/pagination",
         "skeleton",
         "table"
       ],
