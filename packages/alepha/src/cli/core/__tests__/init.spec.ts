@@ -91,6 +91,21 @@ describe("alepha init", () => {
         true,
       );
     });
+
+    it("should create .vscode/settings.json pointing at the embedded tsdk", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/.vscode/settings.json")).toBe(true);
+      expect(
+        fs.wasWrittenMatching(
+          "/project/.vscode/settings.json",
+          /node_modules\/typescript\/lib/,
+        ),
+      ).toBe(true);
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
