@@ -190,11 +190,8 @@ describe("Alepha CLI E2E", () => {
     }
   });
 
-  test("alepha init --api --react --test creates project", async () => {
-    const result = await run(
-      "yarn alepha init apps/tmp --api --react --test",
-      ROOT,
-    );
+  test("alepha init --api --react creates project", async () => {
+    const result = await run("yarn alepha init apps/tmp --api --react", ROOT);
 
     if (result.exitCode !== 0) {
       console.log("INIT FAILED:");
@@ -207,6 +204,8 @@ describe("Alepha CLI E2E", () => {
     expect(existsSync(join(PROJECT_DIR, "src/main.server.ts"))).toBe(true);
     expect(existsSync(join(PROJECT_DIR, "src/api/index.ts"))).toBe(true);
     expect(existsSync(join(PROJECT_DIR, "src/web/index.ts"))).toBe(true);
+    // Test scaffolding is now always-on (vitest ships embedded in alepha).
+    expect(existsSync(join(PROJECT_DIR, "test/dummy.spec.ts"))).toBe(true);
   });
 
   test("alepha dev starts server and responds to requests", async () => {

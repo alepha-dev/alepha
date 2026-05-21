@@ -24,7 +24,7 @@ That's it. You now have a working Alepha project. Run `alepha dev` to start buil
 
 The `init` command is your project bootstrap. It handles the tedious setup work that every project needs:
 
-1. **Creates configuration files** — `tsconfig.json`, `biome.json`, `alepha.config.ts`, `.editorconfig`
+1. **Creates configuration files** — `tsconfig.json`, `biome.json`, `alepha.config.ts`, `.editorconfig`, `.vscode/settings.json`
 2. **Sets up package.json** — Adds Alepha dependencies and standard scripts
 3. **Configures your package manager** — Works with Yarn, pnpm, npm, or Bun
 4. **Installs dependencies** — Gets everything ready to run
@@ -40,7 +40,6 @@ The `init` command is your project bootstrap. It handles the tedious setup work 
 | `--react`, `-r` | Include React dependencies and web module (`src/web/`) |
 | `--tailwind` | Include Tailwind CSS with the Vite plugin (implies `--react`) |
 | `--shadcn` | Set up shadcn/ui — `components.json`, `cn()` helper, theme tokens, the `@alepha` registry (implies `--tailwind`, so also `--react`) |
-| `--test` | Set up Vitest and create a `test/` directory |
 | `--pm <manager>` | Package manager to use: `yarn`, `npm`, `pnpm`, or `bun` |
 | `--force`, `-f` | Override existing files |
 
@@ -90,8 +89,8 @@ A minimal server-side project. Perfect for APIs, CLI tools, or background worker
 
 **You get:**
 - `src/main.server.ts` — Server entry point
-- `tsconfig.json`, `biome.json`, `.editorconfig`, `alepha.config.ts`
-- `package.json` with `alepha`, `vite`, `drizzle-kit` (handy if you add a database later)
+- `tsconfig.json`, `biome.json`, `.editorconfig`, `alepha.config.ts`, `.vscode/settings.json`
+- `package.json` with just `alepha` — the toolchain (TypeScript, Vite, Vitest, Biome, drizzle-kit) ships embedded in `alepha`, so it never appears in your `package.json`
 
 ### With API Module
 
@@ -160,27 +159,17 @@ After this you can immediately install Alepha registry blocks:
 yarn shadcn add @alepha/auth-login
 ```
 
-### With Testing
+### Testing
 
-```bash
-alepha init --test
-```
+Every `alepha init` scaffolds a test setup — no flag needed. Vitest ships
+embedded in `alepha`, so `alepha test` works out of the box.
 
-Sets up Vitest for testing your code. Combine with any other flag.
-
-**Additional files:**
+**Always created:**
 - `vitest.config.ts` — Pins `test.root` so a parent monorepo's vitest config doesn't take over
-- `test/dummy.spec.ts` — A starter test file
+- `test/dummy.spec.ts` — A starter test, also a worked example
+- a `"test": "alepha test"` script
 
-**Additional dependencies:**
-- `vitest`
-
-You can combine flags freely:
-
-```bash
-alepha init --react --test
-alepha init --shadcn --test
-```
+Nothing to install — Vitest is part of `alepha`.
 
 ## Generated Files
 
@@ -244,6 +233,7 @@ Your package.json gets these scripts:
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build",
+    "test": "alepha test",
     "lint": "alepha lint",
     "typecheck": "alepha typecheck",
     "verify": "alepha verify"
@@ -251,16 +241,15 @@ Your package.json gets these scripts:
 }
 ```
 
-With `--test`, a `"test": "vitest run"` script is added.
+Every script delegates to the `alepha` CLI — there are no raw `tsc` / `vite` / `vitest` / `biome` invocations, because the toolchain is embedded in `alepha`.
 
 ## Workspace Awareness
 
 If you run `alepha init` inside a monorepo workspace package (i.e. there's a workspace root above with its own `package.json`), the command adapts:
 
-- Skips workspace-level configs (`tsconfig.json`, `.editorconfig`) if they already exist higher up
+- Skips workspace-level configs (`tsconfig.json`, `.editorconfig`, `.vscode/settings.json`) if they already exist higher up
 - Skips package-manager bootstrapping (the workspace already owns it)
 - Skips git init and `CLAUDE.md`/`AGENTS.md` (those belong at the workspace root)
-- Skips local `biome`/`vitest` devDeps (assumed to live at the workspace root)
 - Runs install from the workspace root, not the package
 
 ## Expo Detection
@@ -301,7 +290,7 @@ alepha verify
 
 **Start small.** Begin with `alepha init` (no flags) and add features later. You can always run `init --react` or `init --shadcn --force` on top of an existing project.
 
-**Use `--test` from the start.** Tests are easier to write when you start early. The `--test` flag gives you a working Vitest setup immediately.
+**Tests are ready from the start.** Every project is scaffolded with a working Vitest setup — just write specs in `test/` and run `alepha test`.
 
 **Pick a package manager and stick with it.** Mixing package managers causes headaches. If you're unsure, Yarn or pnpm are solid choices.
 

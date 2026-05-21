@@ -150,7 +150,7 @@ const result = cli.testParseFlags(["--verbose"], flagDefs);
 ```typescript
 const cli = alepha.inject(CliProvider);
 const cmd = alepha.inject(InitCommand);
-await cli.run(cmd.init, { argv: "--react --test", root: "/project" });
+await cli.run(cmd.init, { argv: "--react", root: "/project" });
 ```
 
 #### Common Test Patterns
