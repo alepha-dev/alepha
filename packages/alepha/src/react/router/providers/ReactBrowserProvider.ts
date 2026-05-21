@@ -256,8 +256,15 @@ export class ReactBrowserProvider {
       if (redirect.startsWith("http")) {
         window.location.href = redirect;
       } else {
-        // if redirect is a relative URL, use render() (single page app)
-        return await this.render({ url: redirect });
+        // if redirect is a relative URL, use render() (single page app).
+        // Inherit the current transitionId: a redirect is a continuation of
+        // the same navigation, not a new one. Allocating a fresh id would
+        // mark the caller's `push()` stale, so it would skip `pushState()`
+        // and the URL bar would never sync to the redirect target.
+        return await this.render({
+          url: redirect,
+          transitionId: myTransitionId,
+        });
       }
     }
 

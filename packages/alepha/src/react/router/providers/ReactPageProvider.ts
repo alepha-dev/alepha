@@ -14,6 +14,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { AlephaContext, ClientOnly } from "alepha/react";
 import type { Head } from "alepha/react/head";
+import { currentUserAtom } from "alepha/security";
 import { createElement, type ReactNode, StrictMode } from "react";
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
@@ -168,6 +169,28 @@ export class ReactPageProvider {
     }
 
     throw new AlephaError(`Page '${name}' not found`);
+  }
+
+  /**
+   * Find a route by name anywhere in the tree (including nested children).
+   * Returns undefined if no page with that name exists.
+   */
+  protected findRoute(
+    name: string,
+    routes: PageRouteEntry[] = this.pages,
+  ): PageRoute | undefined {
+    for (const route of routes as PageRoute[]) {
+      if (route.name === name) {
+        return route;
+      }
+      if (route.children?.length) {
+        const found = this.findRoute(name, route.children);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return undefined;
   }
 
   public pathname(
@@ -370,10 +393,32 @@ export class ReactPageProvider {
           : await terminal(args);
 
         if (!reached) {
-          // A page guard (e.g. $secure) denied access. Surface it as an
-          // error so the page renders its error state instead of the
-          // protected component; `errorHandler` can turn it into a redirect.
-          throw new AlephaError("Access denied");
+          // A page guard (e.g. $secure) denied access. Distinguish the two
+          // cases so the flow is right:
+          //  - not authenticated (401) → redirect to the login page,
+          //    resolved by the conventional `name: "login"`, carrying the
+          //    blocked URL as `?redirect=` so login can return the user.
+          //  - authenticated but not allowed (403) → a forbidden error;
+          //    redirecting a logged-in user to login would just loop.
+          const user = this.alepha.store.get(currentUserAtom);
+
+          if (!user) {
+            const login = this.findRoute("login");
+            if (login?.match && !/[:*]/.test(login.match)) {
+              const back = encodeURIComponent(
+                state.url.pathname + state.url.search,
+              );
+              return { redirect: `${login.match}?redirect=${back}` };
+            }
+          }
+
+          const denied = new AlephaError(
+            user
+              ? "You do not have permission to access this page."
+              : "Authentication required.",
+          );
+          (denied as { status?: number }).status = user ? 403 : 401;
+          throw denied;
         }
 
         // save props

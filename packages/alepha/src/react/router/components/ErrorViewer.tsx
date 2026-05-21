@@ -107,6 +107,7 @@ interface ProdErrorPageProps {
 
 const ProdErrorPage = (props: ProdErrorPageProps) => {
   const requestId = (props.error as any).requestId;
+  const status = getHttpStatus(props.error);
 
   const handleReload = () => {
     if (typeof window !== "undefined") {
@@ -114,18 +115,39 @@ const ProdErrorPage = (props: ProdErrorPageProps) => {
     }
   };
 
+  // An auth failure is not a malfunction — give it its own message instead
+  // of the generic "something went wrong" (which implies a 500).
+  const { heading, subtitle } =
+    status === 401
+      ? {
+          heading: "Sign in required",
+          subtitle: "Please sign in to view this page.",
+        }
+      : status === 403
+        ? {
+            heading: "Access denied",
+            subtitle: "You do not have permission to view this page.",
+          }
+        : {
+            heading: "Something went wrong",
+            subtitle: "We're having trouble processing your request.",
+          };
+
+  // Reloading does not fix an auth failure — only offer it for real errors.
+  const canReload = status !== 401 && status !== 403;
+
   return (
     <div style={prod.page}>
       <div style={prod.card}>
-        <div style={prod.heading}>Something went wrong</div>
-        <div style={prod.subtitle}>
-          We're having trouble processing your request.
-        </div>
+        <div style={prod.heading}>{heading}</div>
+        <div style={prod.subtitle}>{subtitle}</div>
         {requestId && <div style={prod.refText}>Reference: {requestId}</div>}
         <div style={prod.actions}>
-          <button type="button" style={prod.reloadBtn} onClick={handleReload}>
-            Reload page
-          </button>
+          {canReload && (
+            <button type="button" style={prod.reloadBtn} onClick={handleReload}>
+              Reload page
+            </button>
+          )}
           <a href="/" style={prod.homeLink}>
             Go home
           </a>

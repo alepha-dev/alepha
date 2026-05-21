@@ -1113,5 +1113,52 @@ describe("$page browser tests", () => {
         );
       });
     });
+
+    it("redirects to the login page when a guard denies an unauthenticated user", async () => {
+      // No user in the store → the guard denies → the router should send the
+      // user to the page named "login", carrying the blocked path.
+      const $deny = (): Middleware =>
+        createMiddleware({
+          name: "$deny",
+          handler: () => async () => undefined,
+        });
+
+      class App {
+        home = $page({
+          path: "/",
+          component: () => <div data-testid="home">Home</div>,
+        });
+
+        login = $page({
+          path: "/login",
+          name: "login",
+          component: () => <div data-testid="login">Login</div>,
+        });
+
+        admin = $page({
+          path: "/admin",
+          use: [$deny()],
+          component: () => <div data-testid="admin">Secret Admin</div>,
+        });
+      }
+
+      alepha = Alepha.create().with(AlephaReact).with(App);
+      await alepha.start();
+
+      const router = alepha.inject(ReactRouter);
+
+      await act(async () => {
+        await router.push("/admin");
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-testid="login"]')).not.toBeNull();
+      });
+      expect(document.querySelector('[data-testid="admin"]')).toBeNull();
+
+      // URL synced to the login route, with the blocked path as ?redirect=.
+      expect(window.location.pathname).toBe("/login");
+      expect(window.location.search).toContain("redirect=");
+    });
   });
 });
