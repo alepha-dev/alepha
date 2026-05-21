@@ -426,10 +426,14 @@ export class DbCommand {
       const flags = options.commandFlags ? ` ${options.commandFlags}` : "";
       // drizzle-kit ships embedded in `alepha` — resolve and run it from
       // alepha's own install, so the project never declares it.
+      // `global: true` because the command starts with `node` (a system
+      // binary) — without it, exec tries to resolve `node` as a
+      // node_modules bin and fails.
       const drizzleKit = this.utils.resolveBin("drizzle-kit");
       await this.utils.exec(
         `node "${drizzleKit}" ${options.command} --config=${drizzleConfigJsPath}${flags}`,
         {
+          global: true,
           env: {
             ALEPHA_CLI_IMPORT: "true",
             NODE_OPTIONS: [process.env.NODE_OPTIONS, "--import tsx"]
