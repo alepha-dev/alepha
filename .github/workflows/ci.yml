@@ -174,8 +174,11 @@ jobs:
         run: yarn alepha vendor sync --force --remote "file://$GITHUB_WORKSPACE"
 
       - name: Reinstall after vendor sync
+        # vendor sync can change Alepha's dependency set, so the lockfile must
+        # be allowed to update here. Yarn auto-enables --immutable in CI; opt
+        # out for this one install.
         working-directory: /tmp/lore
-        run: yarn
+        run: yarn install --no-immutable
 
       - name: Install Playwright
         working-directory: /tmp/lore
