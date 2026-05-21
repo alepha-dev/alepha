@@ -298,6 +298,29 @@ describe("Alepha CLI E2E", () => {
     expect(result.exitCode).toBe(0);
   });
 
+  test("alepha test forwards a positional arg as a filename filter", async () => {
+    const otherSpec = join(PROJECT_DIR, "test/other.spec.ts");
+    // A deliberately failing spec — its exit code is the filter probe.
+    await writeFile(
+      otherSpec,
+      'import { expect, test } from "vitest";\n\ntest("fails on purpose", () => {\n  expect(true).toBe(false);\n});\n',
+    );
+
+    try {
+      // Filter to the failing spec → it runs → non-zero exit.
+      const onFailing = await run("yarn alepha test other", PROJECT_DIR);
+      expect(onFailing.exitCode).not.toBe(0);
+
+      // Filter to the passing spec → the failing one is excluded → exit 0.
+      // If positional args were ignored, the whole suite (including the
+      // failing spec) would run and this would be non-zero.
+      const onPassing = await run("yarn alepha test dummy", PROJECT_DIR);
+      expect(onPassing.exitCode).toBe(0);
+    } finally {
+      await rm(otherSpec, { force: true });
+    }
+  });
+
   test("alepha build runs successfully", async () => {
     const result = await run("yarn alepha build", PROJECT_DIR);
 

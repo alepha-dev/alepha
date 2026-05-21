@@ -1,26 +1,23 @@
 # Unit Tests
 
-Alepha uses Vitest as the test runner. The `alepha init --test` flag scaffolds a Vitest configuration and a sample test file. All tests run with `globals: true`, so you do not need to import `test`, `expect`, or `describe`.
+Alepha uses Vitest as the test runner. Every `alepha init` scaffolds a Vitest config and a sample test file — Vitest ships embedded in `alepha`, so there is nothing to install. All tests run with `globals: true`, so you do not need to import `test`, `expect`, or `describe`.
 
 ## Setup
 
-Scaffold a project with test support:
+Every Alepha project is scaffolded with test support — no flag needed:
 
 ```bash
-alepha init my-app --test
+alepha init my-app
 ```
 
-This installs Vitest and creates a `vitest.config.ts` with two test projects:
+`init` writes a `vitest.config.ts` (it pins `test.root` so a parent monorepo config can't take over) and a starter `test/dummy.spec.ts`. Specs live in `test/`, named `*.spec.ts`.
 
-- **Node tests** -- all `*.spec.ts` files (default environment)
-- **Browser tests** -- all `*.browser.spec.ts` / `*.browser.spec.tsx` files (jsdom environment)
-
-Run tests:
+Run tests with `alepha test`. Positional arguments are forwarded to Vitest as filename/test filters:
 
 ```bash
-yarn test                           # All tests
-yarn w alepha test                  # Single package
-yarn w alepha vitest run init.spec  # Filtered by pattern
+alepha test                    # All tests
+alepha test auth               # Only specs matching "auth"
+alepha test test/user.spec.ts  # A single file
 ```
 
 ## Lifecycle Management

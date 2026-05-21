@@ -9,7 +9,14 @@ export class TestCommand {
 
   public readonly test = $command({
     name: "test",
-    description: "Run tests using Vitest",
+    description:
+      "Run tests using Vitest. Pass a filter to run only matching specs, e.g. `alepha test user` or `alepha test test/auth.spec.ts`",
+    args: t.optional(
+      t.text({
+        title: "filter",
+        description: "Only run spec files whose path matches this string",
+      }),
+    ),
     flags: t.object({
       config: t.optional(
         t.string({
@@ -27,17 +34,25 @@ export class TestCommand {
         }),
       ),
     }),
-    handler: async ({ run, root, flags, env }) => {
+    handler: async ({ run, root, flags, env, args }) => {
       await this.scaffolder.ensureConfig(root, {
         tsconfigJson: true,
       });
 
       const config = flags.config ? `--config=${flags.config}` : "";
 
+      // The positional arg is forwarded to Vitest as a filename filter —
+      // `alepha test user` runs only specs whose path matches "user".
+      const filter = args ? JSON.stringify(args) : "";
+
       // Vitest ships embedded in `alepha` (paired with vite) — resolve and
       // run it from alepha's own install, so the project never declares it.
       const vitest = this.utils.resolveBin("vitest", "vitest");
-      await run(`node "${vitest}" run ${config} ${env.VITEST_ARGS}`);
+      await run(
+        `node "${vitest}" run ${config} ${filter} ${env.VITEST_ARGS}`
+          .replace(/\s+/g, " ")
+          .trim(),
+      );
     },
   });
 }
