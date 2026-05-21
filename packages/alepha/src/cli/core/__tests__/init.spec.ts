@@ -580,6 +580,17 @@ describe("alepha init", () => {
           /\$permission\(\s*\{[\s\S]*group:\s*"admin"[\s\S]*name:\s*"ui"/,
         ),
       ).toBe(true);
+      // Admin emails come from env, never hard-coded into source.
+      expect(
+        fs.wasWrittenMatching(
+          "/project/src/api/providers/RealmProvider.ts",
+          /\$env\([\s\S]*ADMIN_EMAILS/,
+        ),
+      ).toBe(true);
+      expect(fs.wasWritten("/project/.env")).toBe(true);
+      expect(fs.wasWrittenMatching("/project/.env", /ADMIN_EMAILS=/)).toBe(
+        true,
+      );
     });
 
     it("should register RealmProvider in the API module", async () => {

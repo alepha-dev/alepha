@@ -348,21 +348,29 @@ export class ProjectScaffolder {
       await this.fs.mkdir(this.fs.join(root, "src/api/providers"), {
         recursive: true,
       });
-      const adminEmail = await this.detectGitEmail();
       await this.ensureFile(
         root,
         "src/api/providers/RealmProvider.ts",
-        saasRealmProviderTs({ adminEmail }),
+        saasRealmProviderTs(),
+        opts.force,
+      );
+      // Seed the admin email into .env (gitignored) — never into source.
+      // Detected from `git config user.email`; neutral fallback otherwise.
+      const adminEmail = (await this.detectGitEmail()) ?? "admin@alepha.dev";
+      await this.ensureFile(
+        root,
+        ".env",
+        `ADMIN_EMAILS=${adminEmail}\n`,
         opts.force,
       );
     }
   }
 
   /**
-   * Best-effort lookup for the developer's git email (used as the seeded
-   * `adminEmails` entry in the SaaS realm). Returns undefined if git isn't
-   * available or if `user.email` isn't configured — the template falls back
-   * to `admin@example.com` in that case.
+   * Best-effort lookup for the developer's git email — seeded as
+   * `ADMIN_EMAILS` in the SaaS project's `.env`. Returns undefined if git
+   * isn't available or `user.email` isn't configured; the caller then falls
+   * back to the neutral `admin@alepha.dev`.
    */
   protected async detectGitEmail(): Promise<string | undefined> {
     try {

@@ -1,25 +1,19 @@
-export interface SaasRealmProviderOptions {
-  /**
-   * Email seeded as the default admin. Detected from `git config user.email`
-   * at init time; falls through to `admin@example.com` if git isn't configured.
-   */
-  adminEmail?: string;
-}
-
 /**
  * Realm provider scaffolded by `alepha init --saas`.
  *
- * Minimal hello-world setup: credentials login with email, one admin seeded
- * with the developer's git email at scaffold time, and an `admin:ui`
- * permission used by the AppRouter to gate `/admin/*`. The default `admin`
- * role grants `*` (so it inherits `admin:ui`); the default `user` role
- * excludes `admin:*` (so non-admins get a 403 before the shell renders).
+ * Minimal hello-world setup: credentials login with email, admins seeded
+ * from the `ADMIN_EMAILS` env var, and an `admin:ui` permission used by the
+ * AppRouter to gate `/admin/*`. The default `admin` role grants `*` (so it
+ * inherits `admin:ui`); the default `user` role excludes `admin:*` (so
+ * non-admins get a 403 before the shell renders).
  *
- * Add `$env`, more permissions, or stricter settings as the project grows.
+ * Admin emails are read from the environment, never hard-coded — they are
+ * deployment config (different per environment, and personal data) and
+ * belong in `.env`, not in committed source.
  */
-export const saasRealmProviderTs = (options: SaasRealmProviderOptions = {}) => {
-  const adminEmail = options.adminEmail ?? "admin@example.com";
-  return `import { $realm } from "alepha/api/users";
+export const saasRealmProviderTs = () => {
+  return `import { $env, t } from "alepha";
+import { $realm } from "alepha/api/users";
 import { $permission } from "alepha/security";
 
 export class RealmProvider {
@@ -33,9 +27,21 @@ export class RealmProvider {
     description: "Access to the admin UI shell",
   });
 
+  /**
+   * Admin emails — set \`ADMIN_EMAILS\` in \`.env\` (comma-separated for
+   * several). Keep emails out of source: they are config, not code.
+   */
+  protected readonly env = $env(
+    t.object({
+      ADMIN_EMAILS: t.text({ default: "" }),
+    }),
+  );
+
   realm = $realm({
     settings: {
-      adminEmails: [${JSON.stringify(adminEmail)}],
+      adminEmails: this.env.ADMIN_EMAILS.split(",")
+        .map((email) => email.trim())
+        .filter(Boolean),
     },
     identities: {
       credentials: true,
