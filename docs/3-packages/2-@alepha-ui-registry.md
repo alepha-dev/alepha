@@ -665,7 +665,7 @@ yarn shadcn add @alepha/alepha-table
 | `className` | `string` | No | Extra classes applied to the outer wrapper. |
 | `emptyMessage` | `string` | No | Message shown when the page is empty |
 
-**Dependencies:** `alepha`, `lucide-react`, `shadcn:button`, `shadcn:checkbox`, `shadcn:dropdown-menu`, `shadcn:pagination`, `shadcn:skeleton`, `shadcn:table`
+**Dependencies:** `alepha`, `lucide-react`, `shadcn:button`, `shadcn:checkbox`, `shadcn:dropdown-menu`, `@alepha/pagination`, `shadcn:skeleton`, `shadcn:table`
 
 #### `@alepha/app-shell` — AppShell
 
@@ -778,6 +778,18 @@ yarn shadcn add @alepha/markdown-view
 | `content` | `string` | Yes |  |
 
 **Dependencies:** `highlight.js`, `react-markdown`, `rehype-highlight`, `remark-gfm`
+
+#### `@alepha/pagination` — Pagination (Alepha)
+
+shadcn Pagination with added First/Last page controls. Required by AlephaTable, which uses the first/last buttons.
+
+**Install**
+
+```bash
+yarn shadcn add @alepha/pagination
+```
+
+**Dependencies:** `lucide-react`, `shadcn:button`
 
 #### `@alepha/saas` — Alepha SaaS preset
 
