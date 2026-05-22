@@ -1,3 +1,19 @@
+## [0.21.1] - 2026-05-22
+
+### Features
+
+- **react/router**: redirect to login on a denied page guard (`5cc742ce`)
+
+### Bug Fixes
+
+- **ui-registry**: remove the AlephaTable toolbar refresh button (`04107657`)
+- **cli**: auth layout no longer double-wraps the full-page auth blocks (`d7fbfb29`)
+- **server**: never leak 5xx error internals to the client in production (`dc1e00cb`)
+- **cli**: scaffold admin emails into .env, not hard-coded source (`2c72dd5e`)
+- **core**: detect production in the browser via import.meta.env.PROD (`b902a586`)
+- **react/router**: enforce $page use middleware on client navigation (`45745e40`)
+- **cli**: run embedded drizzle-kit with global exec (regression) (`b074ea24`)
+
 ## [0.21.0] - 2026-05-21
 
 ### Features

@@ -19,7 +19,7 @@
     "@types/react": "^19.2.15",
     "@vitest/coverage-v8": "^4.1.7",
     "@vitest/ui": "^4.1.7",
-    "alepha": "^0.21.0",
+    "alepha": "^0.21.1",
     "depcheck": "^1.4.7",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"

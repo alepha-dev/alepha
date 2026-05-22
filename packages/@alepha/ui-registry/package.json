@@ -16,7 +16,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
     "@types/react": "^19.2.15",
-    "alepha": "0.21.0",
+    "alepha": "0.21.1",
     "highlight.js": "^11.11.1",
     "lucide-react": "^1.16.0",
     "react": "^19.2.6",

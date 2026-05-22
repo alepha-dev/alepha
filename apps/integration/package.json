@@ -8,7 +8,7 @@
     "typecheck": "alepha typecheck"
   },
   "dependencies": {
-    "alepha": "^0.21.0"
+    "alepha": "^0.21.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
