@@ -24,7 +24,7 @@ LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build
 ## Development Commands
 
 ### Core Commands
-- `yarn v` or `yarn alepha verify` - Full verification pipeline: clean, lint, typecheck, test, check-dependencies, build, clean
+- `yarn v` or `yarn alepha verify` - Full verification pipeline: clean, lint, typecheck, test, check-dependencies, build, e2e, clean. **Must complete within 5 minutes** — always run it with a 5-minute timeout. If it exceeds 5 minutes, treat that as a failure (a hung step, usually e2e) and investigate, do not just wait longer.
 - `yarn clean` or `yarn alepha clean` - Remove all generated files and node_modules
 - `yarn build` - Build all workspace packages using `tsdown`
 - `yarn test` - Run all tests using Vitest
