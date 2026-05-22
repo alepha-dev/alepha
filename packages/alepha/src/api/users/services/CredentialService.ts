@@ -1,12 +1,11 @@
 import { $inject, Alepha } from "alepha";
-import type { VerificationController } from "alepha/api/verifications";
+import { VerificationService } from "alepha/api/verifications";
 import { $cache } from "alepha/cache";
 import { DatabaseCacheProvider } from "alepha/cache/database";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { CryptoProvider } from "alepha/security";
 import { BadRequestError, HttpError } from "alepha/server";
-import { $client } from "alepha/server/links";
 import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
 import { UserAudits } from "../audits/UserAudits.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
@@ -27,12 +26,20 @@ interface PasswordResetIntent {
 
 const INTENT_TTL_MINUTES = 10;
 
+/**
+ * Verification purpose bucket for password-reset codes. Keeping this distinct
+ * from the default bucket means a reset request is not rate-limited by an
+ * unrelated email-verification code on the same address (e.g. a user who just
+ * registered and immediately asks to reset their password).
+ */
+const PASSWORD_RESET_PURPOSE = "password-reset";
+
 export class CredentialService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly cryptoProvider = $inject(CryptoProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
-  protected readonly verificationController = $client<VerificationController>();
+  protected readonly verificationService = $inject(VerificationService);
   protected readonly realmProvider = $inject(RealmProvider);
 
   protected userAudits(realmName?: string) {
@@ -167,11 +174,11 @@ export class CredentialService {
     // Create verification using verification controller
     // This handles: token generation, expiration, rate limiting, cooldown
     try {
-      const verification =
-        await this.verificationController.requestVerificationCode({
-          params: { type: "code" },
-          body: { target: email },
-        });
+      const verification = await this.verificationService.createVerification({
+        type: "code",
+        target: email,
+        purpose: PASSWORD_RESET_PURPOSE,
+      });
 
       // Send password reset notification with the code
       await this.userNotifications(userRealmName)?.passwordReset.push({
@@ -237,12 +244,16 @@ export class CredentialService {
     const realmSettings = await realm.getSettings();
     this.validatePasswordPolicy(body.newPassword, realmSettings.passwordPolicy);
 
-    // Verify code using verification controller
-    const result = await this.verificationController
-      .validateVerificationCode({
-        params: { type: "code" },
-        body: { target: intent.email, token: body.code },
-      })
+    // Verify code using verification service
+    const result = await this.verificationService
+      .verifyCode(
+        {
+          type: "code",
+          target: intent.email,
+          purpose: PASSWORD_RESET_PURPOSE,
+        },
+        body.code,
+      )
       .catch(() => {
         this.log.warn("Invalid verification code for password reset", {
           intentId: body.intentId,
@@ -332,12 +343,12 @@ export class CredentialService {
     token: string,
     _userRealmName?: string,
   ): Promise<string> {
-    // Verify using verification controller
-    const isValid = await this.verificationController
-      .validateVerificationCode({
-        params: { type: "code" },
-        body: { target: email, token },
-      })
+    // Verify using verification service
+    const isValid = await this.verificationService
+      .verifyCode(
+        { type: "code", target: email, purpose: PASSWORD_RESET_PURPOSE },
+        token,
+      )
       .catch(() => undefined);
 
     if (!isValid?.ok) {
@@ -356,12 +367,12 @@ export class CredentialService {
     newPassword: string,
     userRealmName?: string,
   ): Promise<void> {
-    // Verify token using verification controller
-    const result = await this.verificationController
-      .validateVerificationCode({
-        params: { type: "code" },
-        body: { target: email, token },
-      })
+    // Verify token using verification service
+    const result = await this.verificationService
+      .verifyCode(
+        { type: "code", target: email, purpose: PASSWORD_RESET_PURPOSE },
+        token,
+      )
       .catch(() => {
         throw new BadRequestError("Invalid or expired reset token");
       });

@@ -38,6 +38,7 @@ export class VerificationService {
       where: {
         type: { eq: entry.type },
         target: { eq: entry.target },
+        purpose: { eq: entry.purpose ?? "default" },
       },
     });
 
@@ -72,6 +73,7 @@ export class VerificationService {
       where: {
         type: { eq: entry.type },
         target: { eq: entry.target },
+        purpose: { eq: entry.purpose ?? "default" },
         createdAt: {
           gte: this.dateTimeProvider.now().startOf("day").toISOString(),
         },
@@ -135,6 +137,7 @@ export class VerificationService {
     const verification = await this.verificationRepository.create({
       type: entry.type,
       target: entry.target,
+      purpose: entry.purpose ?? "default",
       code: this.hashCode(token),
       createdAt: this.dateTimeProvider.nowISOString(),
     });
@@ -257,4 +260,15 @@ export class VerificationService {
 export interface VerificationEntry {
   type: VerificationTypeEnum;
   target: string;
+
+  /**
+   * Logical purpose bucket. Cooldown and daily-limit checks are scoped to
+   * `(type, target, purpose)`, so flows that share a `(type, target)` pair
+   * — e.g. email verification and password reset, both `type: "code"` on the
+   * same email — get independent rate-limit windows instead of colliding.
+   *
+   * Defaults to `"default"` when omitted (back-compatible with callers and
+   * rows that predate this field).
+   */
+  purpose?: string;
 }

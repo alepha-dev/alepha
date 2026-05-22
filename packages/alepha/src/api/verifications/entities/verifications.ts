@@ -20,6 +20,14 @@ export const verifications = $entity({
       description: "Can be a phone (E.164 format) or email address",
     }),
 
+    purpose: db.default(
+      t.text({
+        description:
+          "Logical purpose bucket (e.g. 'default', 'password-reset'). Scopes the cooldown and daily-limit checks so unrelated flows that share the same (type, target) — most notably email verification and password reset — don't collide.",
+      }),
+      "default",
+    ),
+
     code: t.text({
       description: "Hashed verification token (n-digit code or UUID)",
     }),
