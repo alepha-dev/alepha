@@ -331,9 +331,18 @@ export class ReactBrowserProvider {
       });
 
       window.addEventListener("popstate", () => {
-        // when you update silently queryParams or hash, skip rendering
-        // if you want to force a rendering, use #go()
-        if (this.base + this.state.url.pathname === this.location.pathname) {
+        // Skip rendering only if the entire URL (path + search) is
+        // unchanged from current state. Comparing pathname alone misses
+        // back/forward between two URLs that share a path but differ
+        // in query params (e.g. an in-page filter `?dir=5` → root) —
+        // those legitimately need a re-render. If you want to update
+        // query params silently without triggering a render, use
+        // history.replaceState directly; popstate by definition means
+        // the user navigated.
+        if (
+          this.base + this.state.url.pathname === this.location.pathname &&
+          (this.state.url.search ?? "") === (this.location.search ?? "")
+        ) {
           return;
         }
 
