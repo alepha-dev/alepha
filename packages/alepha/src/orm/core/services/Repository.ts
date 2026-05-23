@@ -1706,12 +1706,21 @@ export abstract class Repository<T extends TObject> {
   protected getPrimaryKey(schema: TObject) {
     const primaryKeys = getAttrFields(schema, PG_PRIMARY_KEY);
     if (primaryKeys.length === 0) {
-      throw new AlephaError("Primary key not found in schema");
+      // Surface the table name and tell the dev exactly what to add.
+      // Without this hint the same throw bubbles up as a generic
+      // "Delete query has failed" via handleError, because deleteMany
+      // resolves the PK column id at runtime via `.returning({ id })`.
+      // Caught us once on `archive_names`: insert path uses
+      // `.returning(this.table)` (no PK touched) so creates worked
+      // silently, then every delete blew up.
+      throw new AlephaError(
+        `Primary key not found on table '${this.tableName}' — mark a column with db.primaryKey(). Required for deleteMany / deleteById / save / getWhereId.`,
+      );
     }
 
     if (primaryKeys.length > 1) {
       throw new AlephaError(
-        `Multiple primary keys (${primaryKeys.length}) are not supported`,
+        `Multiple primary keys (${primaryKeys.length}) are not supported on table '${this.tableName}'`,
       );
     }
 
