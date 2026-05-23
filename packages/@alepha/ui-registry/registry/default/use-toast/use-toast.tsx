@@ -5,12 +5,7 @@ import { toast as sonner } from "sonner";
  * variants. Keep the vocabulary stable — call sites name *meaning*,
  * not visual style.
  */
-export type ToastIntent =
-  | "primary"
-  | "success"
-  | "info"
-  | "warning"
-  | "danger";
+export type ToastIntent = "primary" | "success" | "info" | "warning" | "danger";
 
 /**
  * Cross-intent options. Intentionally a small, framework-defined shape

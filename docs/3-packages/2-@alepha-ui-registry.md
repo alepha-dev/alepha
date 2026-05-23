@@ -612,20 +612,7 @@ yarn shadcn add @alepha/use-dialog
 
 #### `@alepha/use-toast` — useToast
 
-Imperative toast API — thin facade over sonner. Returns the same `toast`
-function exposed by `sonner`, so all variants are available:
-
-- `toast(message)` — neutral
-- `toast.success(message)` / `toast.error(message)` / `toast.info(message)`
-- `toast.warning(message)` / `toast.loading(message)`
-- `toast.promise(promise, { loading, success, error })`
-- `toast.dismiss(id?)`
-
-Requires a `<Toaster />` mounted somewhere in the tree (sonner).
-
-Wrapped as a hook for API consistency with {@link useDialog} and to leave
-room for an Alepha-side `ToastService` (e.g. an atom-driven default
-duration / position) without changing call sites.
+Imperative toast hook — thin facade over sonner. Requires a <Toaster /> mounted in the tree.
 
 **Install**
 
@@ -821,9 +808,10 @@ yarn shadcn add @alepha/segmented
 | `value` | `string` | No | Controlled value |
 | `defaultValue` | `string` | No | Initial value when uncontrolled. |
 | `onChange` | `Object` | No | Called when the active segment changes. |
-| `size` | `"sm" \| "md" \| "lg"` | No | Visual size — `sm`, `md` (default), or `lg`. |
+| `size` | `"xs" \| "sm" \| "md" \| "lg" \| "xl"` | No | Visual size — `xs`, `sm`, `md` (default), `lg`, or `xl`. |
 | `fullWidth` | `boolean` | No | Stretch segments to fill the available width. |
 | `disabled` | `boolean` | No | Disable all segments. |
+| `dividers` | `boolean` | No | Render 1px separators between inactive segments |
 | `name` | `string` | No | Optional form name (used when rendered inside a form). |
 
 #### `@alepha/sonner` — Sonner (Alepha)

@@ -40,7 +40,7 @@ export const MarkdownView = (props: MarkdownViewProps) => {
           a: ({ href, children }) => (
             <a
               href={href}
-              className="text-primary underline-offset-4 hover:underline"
+              className="text-primary underline decoration-primary/50 underline-offset-4 hover:decoration-primary"
             >
               {children}
             </a>
