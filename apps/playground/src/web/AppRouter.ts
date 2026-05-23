@@ -22,6 +22,7 @@ export class AppRouter {
       this.playgroundJobs,
       this.playgroundNotifications,
       this.playgroundAudits,
+      this.demoSegmented,
       this.demoToasts,
       this.demoDialogs,
       this.demoAutoForm,
@@ -177,6 +178,12 @@ export class AppRouter {
     path: "/playgrounds/audits",
     head: { title: "Audits playground" },
     lazy: () => import("./pages/playgrounds/Audits.tsx"),
+  });
+
+  demoSegmented = $page({
+    path: "/demo/segmented",
+    head: { title: "Segmented demo" },
+    lazy: () => import("./pages/demo/Segmented.tsx"),
   });
 
   demoToasts = $page({

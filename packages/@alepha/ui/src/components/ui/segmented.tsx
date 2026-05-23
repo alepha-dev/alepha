@@ -28,9 +28,9 @@ export interface SegmentedProps
    */
   onChange?: (value: string) => void;
   /**
-   * Visual size — `sm`, `md` (default), or `lg`.
+   * Visual size — `xs`, `sm`, `md` (default), `lg`, or `xl`.
    */
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   /**
    * Stretch segments to fill the available width.
    */
@@ -40,20 +40,28 @@ export interface SegmentedProps
    */
   disabled?: boolean;
   /**
+   * Render 1px separators between inactive segments. Defaults to `true`.
+   */
+  dividers?: boolean;
+  /**
    * Optional form name (used when rendered inside a form).
    */
   name?: string;
 }
 
 const sizeClass: Record<NonNullable<SegmentedProps["size"]>, string> = {
+  xs: "h-7 text-xs px-2",
   sm: "h-8 text-xs px-2.5",
   md: "h-9 text-sm px-3",
   lg: "h-10 text-sm px-4",
+  xl: "h-11 text-base px-5",
 };
 
 interface ThumbRect {
   left: number;
+  top: number;
   width: number;
+  height: number;
 }
 
 export function Segmented(props: SegmentedProps) {
@@ -65,6 +73,7 @@ export function Segmented(props: SegmentedProps) {
     size = "md",
     fullWidth,
     disabled,
+    dividers = true,
     name,
     className,
     ...rest
@@ -82,7 +91,7 @@ export function Segmented(props: SegmentedProps) {
 
   const activeIndex = options.findIndex((opt) => opt.value === value);
 
-  React.useLayoutEffect(() => {
+  const measureThumb = React.useCallback(() => {
     if (activeIndex < 0) {
       setThumb(null);
       return;
@@ -94,27 +103,22 @@ export function Segmented(props: SegmentedProps) {
     const parentRect = container.getBoundingClientRect();
     setThumb({
       left: elRect.left - parentRect.left,
+      top: elRect.top - parentRect.top,
       width: elRect.width,
+      height: elRect.height,
     });
-  }, [activeIndex, options.length, size, fullWidth]);
+  }, [activeIndex]);
+
+  React.useLayoutEffect(() => {
+    measureThumb();
+  }, [measureThumb, options.length, size, fullWidth]);
 
   React.useEffect(() => {
     if (!containerRef.current) return;
-    const observer = new ResizeObserver(() => {
-      if (activeIndex < 0) return;
-      const el = itemRefs.current[activeIndex];
-      const container = containerRef.current;
-      if (!el || !container) return;
-      const elRect = el.getBoundingClientRect();
-      const parentRect = container.getBoundingClientRect();
-      setThumb({
-        left: elRect.left - parentRect.left,
-        width: elRect.width,
-      });
-    });
+    const observer = new ResizeObserver(() => measureThumb());
     observer.observe(containerRef.current);
     return () => observer.disconnect();
-  }, [activeIndex]);
+  }, [measureThumb]);
 
   // Enable animation only after the first measurement so the thumb doesn't
   // slide from (0,0) on initial paint.
@@ -137,7 +141,7 @@ export function Segmented(props: SegmentedProps) {
       aria-disabled={disabled || undefined}
       data-slot="segmented"
       className={cn(
-        "border-input bg-muted/40 relative inline-flex items-center rounded-md border p-0.5",
+        "border-input bg-muted/40 relative inline-flex items-center rounded-md border p-1",
         fullWidth && "flex w-full",
         disabled && "opacity-50",
         className,
@@ -149,12 +153,15 @@ export function Segmented(props: SegmentedProps) {
           aria-hidden
           data-slot="segmented-thumb"
           className={cn(
-            "bg-primary pointer-events-none absolute top-0.5 bottom-0.5 rounded-[calc(var(--radius)-2px)] shadow-sm",
-            animate && "transition-[transform,width] duration-200 ease-out",
+            "bg-primary pointer-events-none absolute rounded-[calc(var(--radius)-2px)] shadow-sm",
+            animate &&
+              "transition-[transform,width,height] duration-200 ease-out",
           )}
           style={{
-            transform: `translateX(${thumb.left}px)`,
+            transform: `translate(${thumb.left}px, ${thumb.top}px)`,
             width: thumb.width,
+            height: thumb.height,
+            top: 0,
             left: 0,
           }}
         />
@@ -162,6 +169,8 @@ export function Segmented(props: SegmentedProps) {
       {options.map((opt, index) => {
         const active = opt.value === value;
         const itemDisabled = disabled || opt.disabled;
+        const showDivider =
+          dividers && index > 0 && !active && index - 1 !== activeIndex;
 
         return (
           <button
@@ -189,6 +198,8 @@ export function Segmented(props: SegmentedProps) {
                 : "text-muted-foreground hover:text-foreground",
               itemDisabled && "cursor-not-allowed opacity-50",
               fullWidth && "flex-1",
+              showDivider &&
+                "before:bg-border before:absolute before:inset-y-1.5 before:left-0 before:w-px before:content-['']",
             )}
           >
             {opt.label}
