@@ -1,5 +1,5 @@
 import type { UserAccountToken } from "alepha/security";
-import { ForbiddenError } from "alepha/server";
+import { ForbiddenError, NotFoundError } from "alepha/server";
 import type { FileEntity } from "../entities/files.ts";
 
 /**
@@ -48,5 +48,27 @@ export class FileAccessProvider {
       return;
     }
     throw new ForbiddenError("File access denied");
+  }
+
+  /**
+   * Throws when `file` may not be served through the anonymous
+   * `/public/files/:id` route. The default is deny-all: nothing is public
+   * unless this method is overridden. Throws `NotFoundError` (not 403) so the
+   * endpoint doesn't leak the existence of private file ids.
+   *
+   * Typical override matches on bucket name:
+   *
+   * ```ts
+   * class MyAccess extends FileAccessProvider {
+   *   async assertPublic(file) {
+   *     if (file.bucket === "avatars") return;
+   *     if (file.bucket === "campaign-icons") return;
+   *     return super.assertPublic(file);
+   *   }
+   * }
+   * ```
+   */
+  async assertPublic(file: FileEntity): Promise<void> {
+    throw new NotFoundError(`File '${file.id}' not found`);
   }
 }

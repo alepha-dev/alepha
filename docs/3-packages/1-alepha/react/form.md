@@ -24,4 +24,5 @@ Type-safe forms with validation.
 ### React Hooks
 
 - [`useFieldValue`](/docs/reference-react-hooks-usefieldvalue) — Hook to subscribe to a single form field's value.
+- [`useFormQuerySync`](/docs/reference-react-hooks-useformquerysync) — Two-way bind a `useForm` instance to the URL query params, keyed
 - [`useFormValues`](/docs/reference-react-hooks-useformvalues) — Hook to subscribe to all form values.

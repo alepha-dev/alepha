@@ -235,14 +235,16 @@ export class FileService {
   }
 
   /**
-   * Streams a file from storage by its database ID.
+   * Streams a file from storage by its database ID, or directly from an
+   * already-loaded `FileEntity` to avoid a duplicate DB roundtrip when the
+   * caller has already fetched the row (e.g. after an access check).
    *
-   * @param id - The database ID (UUID) of the file to stream
+   * @param id - The database ID (UUID) of the file, or the entity itself
    * @returns The file object ready for streaming/downloading
    * @throws {NotFoundError} If the file doesn't exist in the database
    * @throws {FileNotFoundError} If the file exists in database but not in storage
    */
-  public async streamFile(id: string): Promise<FileLike> {
+  public async streamFile(id: string | FileEntity): Promise<FileLike> {
     const entity = await this.getFileById(id);
     const bucket = this.bucket(entity.bucket);
 

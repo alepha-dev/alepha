@@ -161,7 +161,47 @@ export class FileController {
     handler: async ({ params, user }) => {
       const file = await this.fileService.getFileById(params.id);
       await this.fileAccess.assertReadable(file, user);
-      return await this.fileService.streamFile(file.id);
+      return await this.fileService.streamFile(file);
+    },
+  });
+
+  /**
+   * GET /public/files/:id - Anonymous, edge-cacheable download.
+   *
+   * Authorization is delegated to `FileAccessProvider.assertPublic`. The
+   * default policy is deny-all (throws `NotFoundError`), so consuming apps
+   * must override the provider to opt files in — typically by bucket name
+   * (avatars, campaign icons, etc.).
+   *
+   * Cache-Control is `public, immutable, max-age=1y` so Cloudflare's edge
+   * cache and any intermediary proxy can serve subsequent hits without
+   * touching the Worker. The split URL prefix (vs `/files/:id`) is what
+   * makes this safe: edge cache is URL-keyed, so public and private files
+   * live in separate cache lanes.
+   */
+  public readonly streamPublicFile = $action({
+    path: "/public/files/:id",
+    group: this.group,
+    description: "Download a public file (anonymous, edge-cacheable)",
+    use: [
+      $etag({
+        control: {
+          public: true,
+          maxAge: [1, "year"],
+          immutable: true,
+        },
+      }),
+    ],
+    schema: {
+      params: t.object({
+        id: t.uuid(),
+      }),
+      response: t.file(),
+    },
+    handler: async ({ params }) => {
+      const file = await this.fileService.getFileById(params.id);
+      await this.fileAccess.assertPublic(file);
+      return await this.fileService.streamFile(file);
     },
   });
 }
