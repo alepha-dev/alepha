@@ -124,6 +124,12 @@ export class FormModel<T extends TObject> {
       values,
     ) as Record<string, any>;
 
+    // Snapshot the OLD keys before we wipe — without this, fields that
+    // had a value but are absent from the new initialValues never emit
+    // form:change and useFieldValue subscribers keep showing the stale
+    // value. Mirrors the union-of-keys pattern in reset() below.
+    const oldKeys = new Set(Object.keys(this.values));
+
     for (const key in this.initialValues) {
       delete (this.initialValues as Record<string, any>)[key];
     }
@@ -134,11 +140,12 @@ export class FormModel<T extends TObject> {
     }
     Object.assign(this.values, { ...this.initialValues });
 
-    for (const [key, value] of Object.entries(this.values)) {
+    const keys = new Set<string>([...oldKeys, ...Object.keys(this.values)]);
+    for (const key of keys) {
       const path = `/${key.replaceAll(".", "/")}`;
       this.alepha.events.emit(
         "form:change",
-        { id: this.id, path, value, initial: true },
+        { id: this.id, path, value: this.values[key], initial: true },
         { catch: true },
       );
     }
