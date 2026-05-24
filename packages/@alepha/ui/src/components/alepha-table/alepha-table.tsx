@@ -141,6 +141,18 @@ export interface AlephaTableProps<T> {
    * Message shown when the page is empty. Defaults to "No results".
    */
   emptyMessage?: string;
+  /**
+   * Initial sort state. Useful for restoring a persisted sort on mount.
+   */
+  defaultSort?: { field: string; direction: "asc" | "desc" } | null;
+  /**
+   * Called whenever the user toggles a column header — receives the new
+   * sort state (`null` when sort is cleared). Pair with `defaultSort` to
+   * persist sort to localStorage / URL.
+   */
+  onSortChange?: (
+    sort: { field: string; direction: "asc" | "desc" } | null,
+  ) => void;
 }
 
 interface SortState {
@@ -155,7 +167,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const rowKey = props.rowKey ?? defaultRowKey;
   const size = props.defaultSize ?? 20;
   const [page, setPage] = useState(0);
-  const [sort, setSort] = useState<SortState | null>(null);
+  const [sort, setSort] = useState<SortState | null>(props.defaultSort ?? null);
   const [data, setData] = useState<T[]>([]);
   const [meta, setMeta] = useState<Page<T>["page"] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -256,9 +268,14 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     if (!def.sortable) return;
     const field = def.sortKey ?? col;
     setSort((s) => {
-      if (!s || s.field !== field) return { field, direction: "asc" };
-      if (s.direction === "asc") return { field, direction: "desc" };
-      return null;
+      const next: SortState | null =
+        !s || s.field !== field
+          ? { field, direction: "asc" }
+          : s.direction === "asc"
+            ? { field, direction: "desc" }
+            : null;
+      props.onSortChange?.(next);
+      return next;
     });
   };
 
