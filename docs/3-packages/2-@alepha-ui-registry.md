@@ -585,7 +585,8 @@ yarn shadcn add @alepha/button-user
 | `children` | `ReactNode` | No | Custom menu items rendered between the email header and the logout footer |
 | `onSignIn` | `Object` | No | Called when the user clicks the sign-in icon (logged-out state) |
 | `onAdminClick` | `Object` | No | Called when the user clicks the default "Admin Panel" menu item |
-| `label` | `string` | No | Optional aria-label override for the trigger. |
+| `signInLabel` | `string` | No | Aria-label and tooltip text for the logged-out (sign-in) state |
+| `menuLabel` | `string` | No | Aria-label and tooltip text for the logged-in (account menu) state |
 | `variant` | `"ghost" \| "outline"` | No | Visual variant |
 
 **Dependencies:** `alepha`, `lucide-react`, `shadcn:button`, `shadcn:dropdown-menu`

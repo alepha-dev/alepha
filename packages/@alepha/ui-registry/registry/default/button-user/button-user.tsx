@@ -36,9 +36,15 @@ export interface ButtonUserProps {
    */
   onAdminClick?: () => void;
   /**
-   * Optional aria-label override for the trigger.
+   * Aria-label and tooltip text for the logged-out (sign-in) state.
+   * Defaults to `"Sign in"`.
    */
-  label?: string;
+  signInLabel?: string;
+  /**
+   * Aria-label and tooltip text for the logged-in (account menu) state.
+   * Defaults to `"Account menu"`.
+   */
+  menuLabel?: string;
   /**
    * Visual variant. Defaults to `"ghost"` (minimal). Pass `"outline"` for a
    * bordered toolbar look.
@@ -68,7 +74,7 @@ export function ButtonUser(props: ButtonUserProps) {
   const auth = useAuth();
 
   if (!auth.user) {
-    const signInLabel = props.label ?? "Sign in";
+    const signInLabel = props.signInLabel ?? "Sign in";
     return (
       <Tooltip>
         <TooltipTrigger asChild>
@@ -87,7 +93,7 @@ export function ButtonUser(props: ButtonUserProps) {
     );
   }
 
-  const menuLabel = props.label ?? "Account menu";
+  const menuLabel = props.menuLabel ?? "Account menu";
   return (
     <DropdownMenu>
       <Tooltip>
