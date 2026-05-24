@@ -470,6 +470,15 @@ export class FormModel<T extends TObject> {
    * Handles raw DOM values (strings, booleans from checkboxes, Files, etc.)
    */
   protected getValueFromInput(input: any, schema: TSchema): any {
+    // Treat null/undefined as "unset" for every schema. Without this the
+    // string branch below stringifies them to "null"/"undefined" (and
+    // the date branches throw on `new Date(undefined)`), which then
+    // round-trips into controlled inputs as literal text — most
+    // visible after the Clear (X) affordance in Control sets
+    // value=undefined and the input promptly displays "undefined".
+    if (input === null || input === undefined) {
+      return undefined;
+    }
     if (input instanceof File) {
       // for file inputs, return the File object directly
       if (t.schema.isString(schema) && schema.format === "binary") {
