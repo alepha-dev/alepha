@@ -1,6 +1,11 @@
 import { basename } from "node:path";
 import { $inject } from "alepha";
 import { KV_DEFAULT_BINDING } from "alepha/cache";
+import { EmailProvider } from "alepha/email";
+import {
+  CloudflareEmailProvider,
+  SEND_EMAIL_DEFAULT_BINDING,
+} from "alepha/email/cloudflare";
 import { QUEUE_DEFAULT_BINDING } from "alepha/queue";
 import type { CronProvider, WorkerdCronProvider } from "alepha/scheduler";
 import { FileSystemProvider } from "alepha/system";
@@ -84,6 +89,7 @@ export class BuildCloudflareTask extends BuildTask {
     this.enhanceR2(wrangler);
     this.enhanceKV(wrangler);
     this.enhanceQueue(wrangler);
+    this.enhanceEmail(ctx, wrangler);
 
     await this.fs.writeFile(
       this.fs.join(root, distDir, "wrangler.jsonc"),
@@ -242,6 +248,39 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler.queues.consumers.push({
       queue: queueName,
     });
+  }
+
+  protected enhanceEmail(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    let provider: EmailProvider | undefined;
+    try {
+      provider = ctx.alepha.inject(EmailProvider);
+    } catch {
+      return;
+    }
+
+    if (!(provider instanceof CloudflareEmailProvider)) {
+      return;
+    }
+
+    wrangler.send_email = wrangler.send_email || [];
+    if (
+      wrangler.send_email.some(
+        (b: { name: string }) => b.name === SEND_EMAIL_DEFAULT_BINDING,
+      )
+    ) {
+      return;
+    }
+
+    const entry: Record<string, unknown> = { name: SEND_EMAIL_DEFAULT_BINDING };
+    const destination = process.env.EMAIL_FROM;
+    if (destination) {
+      entry.destination_address = destination;
+    }
+
+    wrangler.send_email.push(entry);
   }
 
   protected async writeWorkerEntryPoint(

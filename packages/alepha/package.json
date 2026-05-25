@@ -271,6 +271,11 @@
       "import": "./src/email/brevo/index.ts",
       "default": "./src/email/brevo/index.ts"
     },
+    "./email/cloudflare": {
+      "types": "./src/email/cloudflare/index.ts",
+      "import": "./src/email/cloudflare/index.ts",
+      "default": "./src/email/cloudflare/index.ts"
+    },
     "./email": {
       "types": "./src/email/core/index.ts",
       "workerd": "./src/email/core/index.workerd.ts",
@@ -683,6 +688,11 @@
         "types": "./dist/email/brevo/index.d.ts",
         "import": "./dist/email/brevo/index.js",
         "default": "./dist/email/brevo/index.js"
+      },
+      "./email/cloudflare": {
+        "types": "./dist/email/cloudflare/index.d.ts",
+        "import": "./dist/email/cloudflare/index.js",
+        "default": "./dist/email/cloudflare/index.js"
       },
       "./email": {
         "types": "./dist/email/core/index.d.ts",
