@@ -78,6 +78,19 @@ export const AlephaCliPlatformPlugin = $module({
 });
 
 export const platform = (options: PlatformOptions) => {
+  // When a `production` environment with a `domain` is configured, default
+  // `process.env.PUBLIC_URL` to `https://<domain>` if the host hasn't set
+  // it already. Lets app code render absolute links (emails, OAuth
+  // callbacks, etc.) without restating the production hostname in two
+  // places. Honors an explicit env override and any non-production-only
+  // setup (we don't override prod-set values).
+  if (!process.env.PUBLIC_URL) {
+    const productionDomain = options.environments?.production?.domain;
+    if (productionDomain) {
+      process.env.PUBLIC_URL = `https://${productionDomain}`;
+    }
+  }
+
   return () => {
     const { alepha } = $context();
     alepha.with(AlephaCliPlatformPlugin).set(platformOptions, options);
