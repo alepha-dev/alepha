@@ -332,11 +332,6 @@
       "import": "./src/orm/postgres/index.ts",
       "default": "./src/orm/postgres/index.ts"
     },
-    "./platform": {
-      "types": "./src/platform/index.ts",
-      "import": "./src/platform/index.ts",
-      "default": "./src/platform/index.ts"
-    },
     "./queue": {
       "types": "./src/queue/core/index.ts",
       "workerd": "./src/queue/core/index.workerd.ts",
@@ -760,11 +755,6 @@
         "bun": "./dist/orm/postgres/index.bun.js",
         "import": "./dist/orm/postgres/index.js",
         "default": "./dist/orm/postgres/index.js"
-      },
-      "./platform": {
-        "types": "./dist/platform/index.d.ts",
-        "import": "./dist/platform/index.js",
-        "default": "./dist/platform/index.js"
       },
       "./queue": {
         "types": "./dist/queue/core/index.d.ts",

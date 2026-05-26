@@ -1,14 +1,12 @@
 import { $inject, $state, AlephaError, t } from "alepha";
 import { $command, EnvUtils } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
-import {
-  GitHubSecretStore,
-  NamingService,
-  PlatformInspector,
-  platformOptions,
-  SecretFilterService,
-  type SecretStoreProvider,
-} from "alepha/platform";
+import { platformOptions } from "../atoms/platformOptions.ts";
+import { GitHubSecretStore } from "../providers/GitHubSecretStore.ts";
+import type { SecretStoreProvider } from "../providers/SecretStoreProvider.ts";
+import { NamingService } from "../services/NamingService.ts";
+import { PlatformInspector } from "../services/PlatformInspector.ts";
+import { SecretFilterService } from "../services/SecretFilterService.ts";
 
 export class SecretsCommand {
   protected readonly log = $logger();

@@ -1,13 +1,11 @@
 import { Alepha } from "alepha";
 import { CliProvider } from "alepha/command";
-import {
-  MemorySecretStore,
-  platformOptions,
-  type SecretStoreProvider,
-} from "alepha/platform";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, test } from "vitest";
+import { platformOptions } from "../atoms/platformOptions.ts";
 import { SecretsCommand } from "../commands/SecretsCommand.ts";
+import { MemorySecretStore } from "../providers/MemorySecretStore.ts";
+import type { SecretStoreProvider } from "../providers/SecretStoreProvider.ts";
 
 class TestSecretsCommand extends SecretsCommand {
   public readonly testList = this.list;
