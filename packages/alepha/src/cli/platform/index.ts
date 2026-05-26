@@ -1,24 +1,9 @@
 import { $context, $module } from "alepha";
 import { AlephaCli } from "alepha/cli";
-import { CloudflareAdapter } from "./adapters/CloudflareAdapter.ts";
-import { VercelAdapter } from "./adapters/VercelAdapter.ts";
-import {
-  type PlatformOptions,
-  platformOptions,
-} from "./atoms/platformOptions.ts";
+import type { PlatformOptions } from "alepha/platform";
+import { AlephaPlatformPlugin, platformOptions } from "alepha/platform";
 import { PlatformCommand } from "./commands/platform.ts";
 import { SecretsCommand } from "./commands/SecretsCommand.ts";
-import { GitHubSecretStore } from "./providers/GitHubSecretStore.ts";
-import { MemorySecretStore } from "./providers/MemorySecretStore.ts";
-import { PlatformCacheProvider } from "./providers/PlatformCacheProvider.ts";
-import { CloudflareApi } from "./services/CloudflareApi.ts";
-import { NamingService } from "./services/NamingService.ts";
-import { PlatformInspector } from "./services/PlatformInspector.ts";
-import { PlatformOrchestrator } from "./services/PlatformOrchestrator.ts";
-import { SecretFilterService } from "./services/SecretFilterService.ts";
-import { VercelApi } from "./services/VercelApi.ts";
-import { VercelCli } from "./services/VercelCli.ts";
-import { WranglerApi } from "./services/WranglerApi.ts";
 
 // ---------------------------------------------------------------------------
 
@@ -54,27 +39,15 @@ import { WranglerApi } from "./services/WranglerApi.ts";
  *   ],
  * });
  * ```
+ *
+ * For programmatic / non-CLI usage (e.g. embedding deploy ops in a service),
+ * use `AlephaPlatformPlugin` from `alepha/platform` directly — same services
+ * without the CLI command layer.
  */
 export const AlephaCliPlatformPlugin = $module({
   name: "alepha.cli.plugins.platform",
-  services: [
-    AlephaCli,
-    PlatformCommand,
-    SecretsCommand,
-    CloudflareAdapter,
-    CloudflareApi,
-    VercelAdapter,
-    VercelApi,
-    VercelCli,
-    WranglerApi,
-    PlatformCacheProvider,
-    GitHubSecretStore,
-    MemorySecretStore,
-    NamingService,
-    SecretFilterService,
-    PlatformInspector,
-    PlatformOrchestrator,
-  ],
+  imports: [AlephaPlatformPlugin],
+  services: [AlephaCli, PlatformCommand, SecretsCommand],
 });
 
 export const platform = (options: PlatformOptions) => {
@@ -98,26 +71,8 @@ export const platform = (options: PlatformOptions) => {
 };
 
 // ---------------------------------------------------------------------------
+// Backward-compat re-exports.
 
-export * from "./adapters/CloudflareAdapter.ts";
-export * from "./adapters/PlatformAdapter.ts";
-export * from "./adapters/VercelAdapter.ts";
-export * from "./atoms/platformOptions.ts";
+export * from "alepha/platform";
 export * from "./commands/platform.ts";
 export * from "./commands/SecretsCommand.ts";
-export * from "./hooks/PlatformHook.ts";
-export * from "./providers/GitHubSecretStore.ts";
-export * from "./providers/MemorySecretStore.ts";
-export * from "./providers/PlatformCacheProvider.ts";
-export * from "./providers/SecretStoreProvider.ts";
-export * from "./schemas/cloudflare.ts";
-export * from "./schemas/platform.ts";
-export * from "./schemas/vercel.ts";
-export * from "./services/CloudflareApi.ts";
-export * from "./services/NamingService.ts";
-export * from "./services/PlatformInspector.ts";
-export * from "./services/PlatformOrchestrator.ts";
-export * from "./services/SecretFilterService.ts";
-export * from "./services/VercelApi.ts";
-export * from "./services/VercelCli.ts";
-export * from "./services/WranglerApi.ts";

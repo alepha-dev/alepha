@@ -59,8 +59,16 @@ export class PlatformOrchestrator {
     app?: string;
     apps: AppDefinition[];
     run: RunnerMethod;
+    /**
+     * Skip the build step — the artifact is already built.
+     *
+     * Use this when the orchestrator runs against a pre-built `dist/`
+     * (typically inside Alepha Rocket or another deploy-only service).
+     * Still runs auth → provision → migrate → deploy → secrets in order.
+     */
+    prebuilt?: boolean;
   }): Promise<void> {
-    const { root, env, app: appFilter, apps, run } = options;
+    const { root, env, app: appFilter, apps, run, prebuilt } = options;
     const envConfig = await this.inspector.resolveEnvironment(root, env);
     const config = await this.inspector.resolveConfig(root);
     const adapter = this.resolveAdapter(envConfig.adapter);
@@ -92,9 +100,11 @@ export class PlatformOrchestrator {
     // 3. Provision (before build so resource IDs are available for wrangler config)
     await adapter.provision(ctx, run);
 
-    // 4. Build
-    for (const a of targetApps) {
-      await adapter.build({ ...ctx, app: a }, run);
+    // 4. Build (skipped when caller supplies a pre-built artifact)
+    if (!prebuilt) {
+      for (const a of targetApps) {
+        await adapter.build({ ...ctx, app: a }, run);
+      }
     }
 
     // 5. Migrate
