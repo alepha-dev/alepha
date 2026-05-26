@@ -34,19 +34,13 @@ export class PlatformCommand {
   protected readonly secretsCommand = $inject(SecretsCommand);
 
   /**
-   * Common flags for env/app targeting.
+   * Common flags for env targeting.
    */
   protected readonly envFlags = t.object({
     env: t.optional(
       t.text({
         aliases: ["e"],
         description: "Target environment",
-      }),
-    ),
-    app: t.optional(
-      t.text({
-        aliases: ["a"],
-        description: "Target specific app (monorepo)",
       }),
     ),
     verbose: t.optional(
@@ -92,16 +86,7 @@ export class PlatformCommand {
       const resources: Array<{ label: string; value: string }> = [];
 
       const deployLabel = adapterName === "vercel" ? "Project" : "Worker";
-      if (config.isMonorepo) {
-        for (const app of apps) {
-          resources.push({
-            label: deployLabel,
-            value: namingCtx.worker(app.name),
-          });
-        }
-      } else {
-        resources.push({ label: deployLabel, value: namingCtx.worker() });
-      }
+      resources.push({ label: deployLabel, value: namingCtx.worker() });
 
       if (adapterName === "cloudflare") {
         if (hasDB) {
@@ -122,16 +107,10 @@ export class PlatformCommand {
 
         for (const app of apps) {
           if (app.resources.hasKV) {
-            resources.push({
-              label: "KV",
-              value: namingCtx.kv(config.isMonorepo ? app.name : undefined),
-            });
+            resources.push({ label: "KV", value: namingCtx.kv() });
           }
           if (app.resources.hasQueue) {
-            resources.push({
-              label: "Queue",
-              value: namingCtx.queue(config.isMonorepo ? app.name : undefined),
-            });
+            resources.push({ label: "Queue", value: namingCtx.queue() });
           }
         }
       }
@@ -162,7 +141,7 @@ export class PlatformCommand {
         const output: PlatformPlanOutput = {
           project: config.project,
           env,
-          mode: config.isMonorepo ? "monorepo" : "standalone",
+          mode: "standalone",
           apps: apps.map((a) => ({
             name: a.name,
             path: a.path,
@@ -185,23 +164,7 @@ export class PlatformCommand {
         `\n\u{1F4E6} ${c.set("WHITE_BOLD", config.project)} ${c.set("GREY_DARK", "\u2014")} ${c.set("CYAN", env)}\n\n`,
       );
 
-      if (config.isMonorepo) {
-        process.stdout.write(
-          `   ${c.set("GREY_LIGHT", "Mode:")} monorepo (${config.appPaths.length} apps)\n`,
-        );
-        for (const [i, appPath] of config.appPaths.entries()) {
-          const appName = config.appNames.get(appPath) ?? appPath;
-          const prefix =
-            i === config.appPaths.length - 1
-              ? "\u2514\u2500\u2500"
-              : "\u251C\u2500\u2500";
-          process.stdout.write(
-            `   ${c.set("GREY_DARK", prefix)} ${c.set("CYAN", appName.padEnd(10))} ${c.set("GREY_DARK", appPath)}\n`,
-          );
-        }
-      } else {
-        process.stdout.write(`   ${c.set("GREY_LIGHT", "Mode:")} standalone\n`);
-      }
+      process.stdout.write(`   ${c.set("GREY_LIGHT", "Mode:")} standalone\n`);
 
       process.stdout.write(`\n   ${c.set("GREY_LIGHT", "Environments:")}\n`);
       const envKeys = Object.keys(config.environments);
@@ -273,7 +236,6 @@ export class PlatformCommand {
       await this.orchestrator.up({
         root,
         env,
-        app: flags.app,
         apps,
         run,
         prebuilt: flags.prebuilt,
@@ -307,7 +269,6 @@ export class PlatformCommand {
       await this.orchestrator.down({
         root,
         env: flags.env,
-        app: flags.app,
         apps,
         run,
         confirm: async (prompt) => {
@@ -527,11 +488,7 @@ export class PlatformCommand {
         naming: namingCtx,
       };
 
-      const targets = flags.app
-        ? apps.filter((a) => a.name === flags.app)
-        : apps;
-
-      for (const app of targets) {
+      for (const app of apps) {
         await adapter.build({ ...ctx, app }, run);
       }
     },
@@ -564,11 +521,7 @@ export class PlatformCommand {
 
       await adapter.authenticate(ctx, run);
 
-      const targets = flags.app
-        ? apps.filter((a) => a.name === flags.app)
-        : apps;
-
-      for (const app of targets) {
+      for (const app of apps) {
         await adapter.deploy({ ...ctx, app }, run);
       }
     },
@@ -647,41 +600,22 @@ export class PlatformCommand {
     config: ResolvedPlatformConfig,
     isServerless: boolean,
   ): Promise<AppDefinition[]> {
-    if (!config.isMonorepo) {
-      const entry = await this.boot.getAppEntry(root);
-      if (isServerless) {
-        process.env.ALEPHA_SERVERLESS = "true";
-      }
-      const appAlepha = await this.viteBuild.init({ entry });
-      delete process.env.ALEPHA_SERVERLESS;
-      const resources = this.detectResources(appAlepha);
-
-      return [
-        {
-          name: config.project,
-          path: "",
-          entry,
-          resources,
-        },
-      ];
+    const entry = await this.boot.getAppEntry(root);
+    if (isServerless) {
+      process.env.ALEPHA_SERVERLESS = "true";
     }
+    const appAlepha = await this.viteBuild.init({ entry });
+    delete process.env.ALEPHA_SERVERLESS;
+    const resources = this.detectResources(appAlepha);
 
-    const apps: AppDefinition[] = [];
-    for (const appPath of config.appPaths) {
-      const appRoot = `${root}/${appPath}`;
-      const entry = await this.boot.getAppEntry(appRoot);
-      if (isServerless) {
-        process.env.ALEPHA_SERVERLESS = "true";
-      }
-      const appAlepha = await this.viteBuild.init({ entry });
-      delete process.env.ALEPHA_SERVERLESS;
-      const name = config.appNames.get(appPath) ?? appPath;
-      const resources = this.detectResources(appAlepha);
-
-      apps.push({ name, path: appPath, entry, resources });
-    }
-
-    return apps;
+    return [
+      {
+        name: config.project,
+        path: "",
+        entry,
+        resources,
+      },
+    ];
   }
 
   protected isServerless(adapter: string): boolean {

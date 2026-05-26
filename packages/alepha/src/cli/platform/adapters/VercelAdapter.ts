@@ -121,9 +121,7 @@ export class VercelAdapter extends PlatformAdapter {
       ? this.fs.join(ctx.root, ctx.app.path, "dist")
       : this.fs.join(ctx.root, "dist");
 
-    const projectName = ctx.naming.worker(
-      ctx.apps.length > 1 ? ctx.app.name : undefined,
-    );
+    const projectName = ctx.naming.worker();
 
     let url: string | undefined;
 
@@ -202,9 +200,7 @@ export class VercelAdapter extends PlatformAdapter {
     }
 
     for (const app of ctx.apps) {
-      const projectName = ctx.naming.worker(
-        ctx.apps.length > 1 ? app.name : undefined,
-      );
+      const projectName = ctx.naming.worker();
 
       await run({
         name: `push env vars to ${projectName}`,
@@ -236,9 +232,7 @@ export class VercelAdapter extends PlatformAdapter {
 
     // Projects/deployments (mapped to "workers" in PlatformState)
     for (const app of ctx.apps) {
-      const projectName = ctx.naming.worker(
-        ctx.apps.length > 1 ? app.name : undefined,
-      );
+      const projectName = ctx.naming.worker();
 
       tasks.push({
         name: `inspect project (${projectName})`,
@@ -276,9 +270,7 @@ export class VercelAdapter extends PlatformAdapter {
     );
 
     if (expectedVars.length > 0) {
-      const projectName = ctx.naming.worker(
-        ctx.apps.length > 1 ? ctx.apps[0].name : undefined,
-      );
+      const projectName = ctx.naming.worker();
 
       tasks.push({
         name: "inspect env vars",
@@ -312,9 +304,7 @@ export class VercelAdapter extends PlatformAdapter {
 
   async teardown(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
     for (const app of ctx.apps) {
-      const projectName = ctx.naming.worker(
-        ctx.apps.length > 1 ? app.name : undefined,
-      );
+      const projectName = ctx.naming.worker();
 
       await run({
         name: `delete project ${projectName}`,

@@ -102,48 +102,6 @@ describe("NamingService", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // monorepo (with app)
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  describe("monorepo (with app)", () => {
-    it("should generate worker name with app suffix", () => {
-      const ctx = createNaming("acme-portal", "production");
-
-      expect(ctx.worker("api")).toBe("acme-portal-production-api");
-    });
-
-    it("should generate kv name with app suffix", () => {
-      const ctx = createNaming("acme-portal", "production");
-
-      expect(ctx.kv("api")).toBe("acme-portal-production-api");
-    });
-
-    it("should generate queue name with app suffix", () => {
-      const ctx = createNaming("acme-portal", "production");
-
-      expect(ctx.queue("api")).toBe("acme-portal-production-api");
-    });
-
-    it("should keep d1 as shared resource without app suffix", () => {
-      const ctx = createNaming("acme-portal", "production");
-
-      expect(ctx.d1()).toBe("acme-portal-production");
-    });
-
-    it("should keep r2 as shared resource without app suffix", () => {
-      const ctx = createNaming("acme-portal", "production");
-
-      expect(ctx.r2()).toBe("acme-portal-production");
-    });
-
-    it("should slugify the app name", () => {
-      const ctx = createNaming("acme-portal", "production");
-
-      expect(ctx.worker("My App")).toBe("acme-portal-production-my-app");
-    });
-  });
-
-  // ─────────────────────────────────────────────────────────────────────────────
   // env slugification
   // ─────────────────────────────────────────────────────────────────────────────
 

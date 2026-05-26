@@ -153,9 +153,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
 
     if (ctx.app.resources.hasKV) {
-      const kvName = ctx.naming.kv(
-        ctx.apps.length > 1 ? ctx.app.name : undefined,
-      );
+      const kvName = ctx.naming.kv();
       env.CLOUDFLARE_KV_NAME = kvName;
       const kvId = this.provisionedKVIds.get(kvName);
       if (kvId) {
@@ -164,9 +162,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
 
     if (ctx.app.resources.hasQueue) {
-      env.CLOUDFLARE_QUEUE_NAME = ctx.naming.queue(
-        ctx.apps.length > 1 ? ctx.app.name : undefined,
-      );
+      env.CLOUDFLARE_QUEUE_NAME = ctx.naming.queue();
     }
 
     if (ctx.envConfig.domain) {
@@ -209,9 +205,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     run: RunnerMethod,
   ): Promise<string | undefined> {
     this.configureApi(ctx);
-    const workerName = ctx.naming.worker(
-      ctx.apps.length > 1 ? ctx.app.name : undefined,
-    );
+    const workerName = ctx.naming.worker();
     const distDir = ctx.app.path
       ? this.fs.join(ctx.root, ctx.app.path, "dist")
       : this.fs.join(ctx.root, "dist");
@@ -297,10 +291,8 @@ export class CloudflareAdapter extends PlatformAdapter {
     //   5. PATCH the merged binding list in one call.
     const hash = computeSecretsHash(secrets);
 
-    for (const app of ctx.apps) {
-      const workerName = ctx.naming.worker(
-        ctx.apps.length > 1 ? app.name : undefined,
-      );
+    for (const _app of ctx.apps) {
+      const workerName = ctx.naming.worker();
 
       await run({
         name: `push secrets to ${workerName} (bulk)`,
@@ -417,9 +409,7 @@ export class CloudflareAdapter extends PlatformAdapter {
 
     for (const app of ctx.apps) {
       if (app.resources.hasKV) {
-        const kvName = ctx.naming.kv(
-          ctx.apps.length > 1 ? app.name : undefined,
-        );
+        const kvName = ctx.naming.kv();
         tasks.push({
           name: `provision kv (${kvName})`,
           handler: async () => {
@@ -429,9 +419,7 @@ export class CloudflareAdapter extends PlatformAdapter {
       }
 
       if (app.resources.hasQueue) {
-        const queueName = ctx.naming.queue(
-          ctx.apps.length > 1 ? app.name : undefined,
-        );
+        const queueName = ctx.naming.queue();
         tasks.push({
           name: `provision queue (${queueName})`,
           handler: async () => {
@@ -552,10 +540,8 @@ export class CloudflareAdapter extends PlatformAdapter {
     const tasks: Array<{ name: string; handler: () => Promise<void> }> = [];
 
     // Workers
-    for (const app of ctx.apps) {
-      const name = ctx.naming.worker(
-        ctx.apps.length > 1 ? app.name : undefined,
-      );
+    for (const _app of ctx.apps) {
+      const name = ctx.naming.worker();
 
       tasks.push({
         name: `inspect worker (${name})`,
@@ -636,9 +622,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     // KV
     for (const app of ctx.apps) {
       if (app.resources.hasKV) {
-        const kvName = ctx.naming.kv(
-          ctx.apps.length > 1 ? app.name : undefined,
-        );
+        const kvName = ctx.naming.kv();
         tasks.push({
           name: `inspect kv (${kvName})`,
           handler: async () => {
@@ -657,9 +641,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     // Queues
     for (const app of ctx.apps) {
       if (app.resources.hasQueue) {
-        const queueName = ctx.naming.queue(
-          ctx.apps.length > 1 ? app.name : undefined,
-        );
+        const queueName = ctx.naming.queue();
         tasks.push({
           name: `inspect queue (${queueName})`,
           handler: async () => {
@@ -685,9 +667,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     );
 
     if (expectedSecrets.length > 0) {
-      const workerName = ctx.naming.worker(
-        ctx.apps.length > 1 ? ctx.apps[0].name : undefined,
-      );
+      const workerName = ctx.naming.worker();
       tasks.push({
         name: "inspect secrets",
         handler: async () => {
@@ -723,12 +703,8 @@ export class CloudflareAdapter extends PlatformAdapter {
     // 1. Remove queue consumers (must happen before worker or queue deletion)
     for (const app of ctx.apps) {
       if (app.resources.hasQueue) {
-        const workerName = ctx.naming.worker(
-          ctx.apps.length > 1 ? app.name : undefined,
-        );
-        const queueName = ctx.naming.queue(
-          ctx.apps.length > 1 ? app.name : undefined,
-        );
+        const workerName = ctx.naming.worker();
+        const queueName = ctx.naming.queue();
         await run({
           name: `unbind queue consumer ${queueName}`,
           handler: async () => {
@@ -749,10 +725,8 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
 
     // 2. Delete workers
-    for (const app of ctx.apps) {
-      const name = ctx.naming.worker(
-        ctx.apps.length > 1 ? app.name : undefined,
-      );
+    for (const _app of ctx.apps) {
+      const name = ctx.naming.worker();
       await run({
         name: `delete worker ${name}`,
         handler: async () => {
@@ -770,9 +744,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     // 3. Delete queues (after worker is gone)
     for (const app of ctx.apps) {
       if (app.resources.hasQueue) {
-        const name = ctx.naming.queue(
-          ctx.apps.length > 1 ? app.name : undefined,
-        );
+        const name = ctx.naming.queue();
         await run({
           name: `delete queue ${name}`,
           handler: async () => {
@@ -797,7 +769,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     // 4. Delete KV namespaces
     for (const app of ctx.apps) {
       if (app.resources.hasKV) {
-        const name = ctx.naming.kv(ctx.apps.length > 1 ? app.name : undefined);
+        const name = ctx.naming.kv();
         await run({
           name: `delete kv ${name}`,
           handler: async () => {

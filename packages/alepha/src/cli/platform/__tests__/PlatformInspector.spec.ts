@@ -126,53 +126,10 @@ describe("PlatformInspector", () => {
     ).rejects.toThrowError(/Unknown environment "nope"/);
   });
 
-  test("detects standalone mode when apps is empty", async ({ expect }) => {
-    const { inspector, fs } = createTestEnv({
-      environments: {
-        production: { adapter: "cloudflare" },
-      },
-    });
-
-    await fs.writeFile(
-      "/project/package.json",
-      JSON.stringify({ name: "my-app" }),
-    );
-
-    const config = await inspector.resolveConfig("/project");
-    expect(config.isMonorepo).toBe(false);
-  });
-
-  test("detects monorepo mode when apps is set", async ({ expect }) => {
-    const { inspector, fs } = createTestEnv({
-      apps: ["apps/web", "apps/api"],
-      environments: {
-        production: { adapter: "cloudflare" },
-      },
-    });
-
-    await fs.writeFile(
-      "/project/package.json",
-      JSON.stringify({ name: "my-app" }),
-    );
-    await fs.writeFile(
-      "/project/apps/web/package.json",
-      JSON.stringify({ name: "web" }),
-    );
-    await fs.writeFile(
-      "/project/apps/api/package.json",
-      JSON.stringify({ name: "api" }),
-    );
-
-    const config = await inspector.resolveConfig("/project");
-    expect(config.isMonorepo).toBe(true);
-    expect(config.appPaths).toEqual(["apps/web", "apps/api"]);
-  });
-
-  test("throws when monorepo app has no package.json name", async ({
+  test("resolves project + environments from alepha.config.ts", async ({
     expect,
   }) => {
     const { inspector, fs } = createTestEnv({
-      apps: ["apps/web"],
       environments: {
         production: { adapter: "cloudflare" },
       },
@@ -182,10 +139,9 @@ describe("PlatformInspector", () => {
       "/project/package.json",
       JSON.stringify({ name: "my-app" }),
     );
-    await fs.writeFile("/project/apps/web/package.json", JSON.stringify({}));
 
-    await expect(inspector.resolveConfig("/project")).rejects.toThrowError(
-      /Missing "name".*apps\/web/,
-    );
+    const config = await inspector.resolveConfig("/project");
+    expect(config.project).toBe("my-app");
+    expect(config.environments.production.adapter).toBe("cloudflare");
   });
 });

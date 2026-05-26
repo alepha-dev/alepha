@@ -52,7 +52,6 @@ export class PlatformOrchestrator {
   public async up(options: {
     root: string;
     env: string;
-    app?: string;
     apps: AppDefinition[];
     run: RunnerMethod;
     /**
@@ -68,7 +67,7 @@ export class PlatformOrchestrator {
      */
     prebuilt?: boolean;
   }): Promise<void> {
-    const { root, env, app: appFilter, apps, run, prebuilt } = options;
+    const { root, env, apps, run, prebuilt } = options;
     const envConfig = await this.inspector.resolveEnvironment(root, env);
     const config = await this.inspector.resolveConfig(root);
     const adapter = this.resolveAdapter(envConfig.adapter);
@@ -87,40 +86,29 @@ export class PlatformOrchestrator {
     // 1. Auth
     await adapter.authenticate(ctx, run);
 
-    // 2. Filter apps
-    const targetApps = appFilter
-      ? apps.filter((a) => a.name === appFilter)
-      : apps;
-
-    if (targetApps.length === 0 && appFilter) {
-      throw new AlephaError(
-        `App "${appFilter}" not found. Available: ${apps.map((a) => a.name).join(", ")}`,
-      );
-    }
-
-    // 3. Provision (before build so resource IDs are available for wrangler config)
+    // 2. Provision (before build so resource IDs are available for wrangler config)
     await adapter.provision(ctx, run);
 
-    // 4. Build
+    // 3. Build
     //    Always runs — the adapter checks `ctx.prebuilt` to decide whether
     //    to do a full bundle build or just regenerate deploy config.
-    for (const a of targetApps) {
+    for (const a of apps) {
       await adapter.build({ ...ctx, app: a }, run);
     }
 
-    // 5. Migrate
+    // 4. Migrate
     await adapter.migrate(ctx, run);
 
-    // 6. Deploy
+    // 5. Deploy
     const urls: string[] = [];
-    for (const a of targetApps) {
+    for (const a of apps) {
       const url = await adapter.deploy({ ...ctx, app: a }, run);
       if (url) {
         urls.push(url);
       }
     }
 
-    // 7. Secrets (push .env.{env} secrets to deployed workers)
+    // 6. Secrets (push .env.{env} secrets to deployed workers)
     await adapter.secrets(ctx, run);
 
     run.end();
@@ -150,12 +138,11 @@ export class PlatformOrchestrator {
   public async down(options: {
     root: string;
     env: string;
-    app?: string;
     apps: AppDefinition[];
     run: RunnerMethod;
     confirm: (prompt: string) => Promise<string>;
   }): Promise<boolean> {
-    const { root, env, app: appFilter, apps, run, confirm } = options;
+    const { root, env, apps, run, confirm } = options;
     const envConfig = await this.inspector.resolveEnvironment(root, env);
     const config = await this.inspector.resolveConfig(root);
     const adapter = this.resolveAdapter(envConfig.adapter);
@@ -165,7 +152,7 @@ export class PlatformOrchestrator {
       project: config.project,
       env,
       envConfig,
-      apps: appFilter ? apps.filter((a) => a.name === appFilter) : apps,
+      apps,
       root,
       naming: namingCtx,
     };

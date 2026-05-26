@@ -1,14 +1,15 @@
 /**
  * Generates deterministic resource names for cloud deployments.
  *
- * Pattern: <project>-<env>[-<app>]
+ * Pattern: `<project>-<env>`.
  *
- * All segments are slugified (lowercase, alphanumeric + dashes, max 63 chars).
+ * All segments are slugified (lowercase, alphanumeric + dashes, max 63
+ * chars). One app per workspace — see `alepha platform`.
  */
 export class NamingService {
   public forContext(project: string, env: string): NamingContext {
     const prefix = `${this.slugify(project)}-${this.slugify(env)}`;
-    return new NamingContext(prefix, this);
+    return new NamingContext(prefix);
   }
 
   public slugify(name: string): string {
@@ -22,15 +23,13 @@ export class NamingService {
 
 export class NamingContext {
   protected readonly prefix: string;
-  protected readonly naming: NamingService;
 
-  constructor(prefix: string, naming: NamingService) {
+  constructor(prefix: string) {
     this.prefix = prefix;
-    this.naming = naming;
   }
 
-  public worker(app?: string): string {
-    return app ? `${this.prefix}-${this.naming.slugify(app)}` : this.prefix;
+  public worker(): string {
+    return this.prefix;
   }
 
   public d1(): string {
@@ -45,11 +44,11 @@ export class NamingContext {
     return this.prefix;
   }
 
-  public kv(app?: string): string {
-    return app ? `${this.prefix}-${this.naming.slugify(app)}` : this.prefix;
+  public kv(): string {
+    return this.prefix;
   }
 
-  public queue(app?: string): string {
-    return app ? `${this.prefix}-${this.naming.slugify(app)}` : this.prefix;
+  public queue(): string {
+    return this.prefix;
   }
 }

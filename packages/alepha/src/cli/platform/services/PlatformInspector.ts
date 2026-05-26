@@ -12,17 +12,18 @@ export interface ResolvedPlatformConfig {
   project: string;
   defaultEnv: string;
   environments: Record<string, EnvironmentConfig>;
-  isMonorepo: boolean;
-  appPaths: string[];
-  appNames: Map<string, string>;
 }
 
 /**
  * Reads platform config and resolves project topology.
  *
- * Validates project names, app paths, and environment configuration.
- * Does NOT introspect app code for resources — that happens at deploy time
- * via ViteBuildProvider.
+ * Validates project name and environment configuration. Does NOT
+ * introspect app code for resources — that happens at deploy time via
+ * ViteBuildProvider.
+ *
+ * Each app self-declares its platform topology via its own
+ * `alepha.config.ts`. Run `alepha platform <op>` from the app's
+ * directory; no monorepo-root orchestration here.
  */
 export class PlatformInspector {
   protected readonly log = $logger();
@@ -52,30 +53,13 @@ export default defineConfig({
       throw new AlephaError("Missing platform configuration.");
     }
 
-    // Re-read after potential wizard
     const opts = this.options;
-    const platform = opts;
-
-    // Resolve project name
     const project = await this.resolveProjectName(root, opts.name);
-
-    // Resolve apps
-    const appPaths = opts.apps ?? [];
-    const isMonorepo = appPaths.length > 0;
-    const appNames = new Map<string, string>();
-
-    for (const appPath of appPaths) {
-      const name = await this.resolveAppName(root, appPath);
-      appNames.set(appPath, name);
-    }
 
     return {
       project: this.naming.slugify(project),
-      defaultEnv: platform.default ?? "production",
-      environments: platform.environments as Record<string, EnvironmentConfig>,
-      isMonorepo,
-      appPaths,
-      appNames,
+      defaultEnv: opts.default ?? "production",
+      environments: opts.environments as Record<string, EnvironmentConfig>,
     };
   }
 
@@ -117,24 +101,6 @@ export default defineConfig({
 
     throw new AlephaError(
       'Missing project name. Set "name" in alepha.config.ts or add a "name" field to package.json.',
-    );
-  }
-
-  protected async resolveAppName(
-    root: string,
-    appPath: string,
-  ): Promise<string> {
-    const pkgPath = this.fs.join(root, appPath, "package.json");
-
-    try {
-      const pkg = await this.fs.readJsonFile<{ name?: string }>(pkgPath);
-      if (pkg.name) {
-        return this.naming.slugify(pkg.name);
-      }
-    } catch {}
-
-    throw new AlephaError(
-      `Missing "name" field in package.json for app at ${appPath}.`,
     );
   }
 }

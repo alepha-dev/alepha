@@ -17,11 +17,6 @@ export const platformOptions = $atom({
       name: t.optional(t.text()),
 
       /**
-       * Monorepo app paths relative to root. Omit for standalone apps.
-       */
-      apps: t.optional(t.array(t.text())),
-
-      /**
        * Default environment when --env is omitted.
        *
        * @default "production"
