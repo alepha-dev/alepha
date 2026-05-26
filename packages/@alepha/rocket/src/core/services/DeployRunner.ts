@@ -47,7 +47,7 @@ export class DeployRunner {
       this.registry.append(
         id,
         `> cd ${workspace}\n` +
-          `> npx alepha platform ${body.op} --prebuilt --env ${body.env}\n\n`,
+          `> npx alepha platform ${body.op} --prebuilt --json --env ${body.env}\n\n`,
       );
       const deployedUrl = await this.runPlatform(id, body, workspace);
       this.registry.succeed(id, deployedUrl);
@@ -111,6 +111,7 @@ export class DeployRunner {
         "platform",
         body.op,
         "--prebuilt",
+        "--json",
         "--env",
         body.env,
       ];
@@ -152,12 +153,49 @@ export class DeployRunner {
   }
 
   /**
-   * Pick the last `https://…` URL out of the CLI output — `alepha platform
-   * up` prints a `→ https://example.com` line at the end. Returns undefined
-   * if no URL is present (e.g. `migrate` or `secrets` ops).
+   * Pick the last `{...}` JSON object out of the CLI output and pull
+   * out `urls[0]` or `domain` if present. The `--json` flag on
+   * `alepha platform up` emits a single object on its own line; we
+   * scan from the end to skip any stdout noise from earlier steps.
+   * Falls back to URL-regex if no JSON object is found.
    */
   protected parseDeployedUrl(output: string): string | undefined {
+    const lines = output.trim().split("\n");
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i].trim();
+      if (!line.startsWith("{")) continue;
+      // The CLI emits pretty JSON (multi-line). Walk backwards collecting
+      // lines until braces balance — quick + good enough.
+      let chunk = line;
+      let depth = countDepth(chunk);
+      let j = i - 1;
+      while (depth > 0 && j >= 0) {
+        chunk = `${lines[j]}\n${chunk}`;
+        depth = countDepth(chunk);
+        j--;
+      }
+      try {
+        const parsed = JSON.parse(chunk) as {
+          urls?: string[];
+          domain?: string;
+        };
+        if (parsed?.urls?.[0]) return parsed.urls[0];
+        if (parsed?.domain) return `https://${parsed.domain}`;
+      } catch {
+        // ignore, fall through to regex
+      }
+      break;
+    }
     const matches = output.match(/https:\/\/[\w.-]+(?:\/[\w./?#=&-]*)?/g);
     return matches?.[matches.length - 1];
   }
+}
+
+function countDepth(s: string): number {
+  let depth = 0;
+  for (const c of s) {
+    if (c === "{") depth++;
+    else if (c === "}") depth--;
+  }
+  return depth;
 }
