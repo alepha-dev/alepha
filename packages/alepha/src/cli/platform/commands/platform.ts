@@ -233,13 +233,31 @@ export class PlatformCommand {
         this.isServerless(adapter),
       );
 
-      await this.orchestrator.up({
+      const result = await this.orchestrator.up({
         root,
         env,
         apps,
         run,
         prebuilt: flags.prebuilt,
       });
+
+      if (flags.json) {
+        process.stdout.write(
+          `${JSON.stringify(
+            {
+              status: "succeeded",
+              project: config.project,
+              env,
+              urls: result.urls,
+              domain: result.domain,
+            },
+            null,
+            2,
+          )}\n`,
+        );
+      } else {
+        this.orchestrator.printUpSummary(result);
+      }
     },
   });
 
@@ -266,7 +284,7 @@ export class PlatformCommand {
         this.isServerless(adapter),
       );
 
-      await this.orchestrator.down({
+      const completed = await this.orchestrator.down({
         root,
         env: flags.env,
         apps,
@@ -278,6 +296,20 @@ export class PlatformCommand {
           return value;
         },
       });
+
+      if (flags.json) {
+        process.stdout.write(
+          `${JSON.stringify(
+            {
+              status: completed ? "succeeded" : "aborted",
+              project: config.project,
+              env: flags.env,
+            },
+            null,
+            2,
+          )}\n`,
+        );
+      }
     },
   });
 
@@ -554,6 +586,16 @@ export class PlatformCommand {
 
       await adapter.authenticate(ctx, run);
       await adapter.migrate(ctx, run);
+
+      if (flags.json) {
+        process.stdout.write(
+          `${JSON.stringify(
+            { status: "succeeded", project: config.project, env },
+            null,
+            2,
+          )}\n`,
+        );
+      }
     },
   });
 

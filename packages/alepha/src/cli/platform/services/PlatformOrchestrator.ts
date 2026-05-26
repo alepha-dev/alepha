@@ -66,7 +66,7 @@ export class PlatformOrchestrator {
      * per-tenant overrides on every deploy.
      */
     prebuilt?: boolean;
-  }): Promise<void> {
+  }): Promise<{ urls: string[]; domain?: string }> {
     const { root, env, apps, run, prebuilt } = options;
     const envConfig = await this.inspector.resolveEnvironment(root, env);
     const config = await this.inspector.resolveConfig(root);
@@ -113,17 +113,25 @@ export class PlatformOrchestrator {
 
     run.end();
 
-    const c = this.color;
+    return { urls, domain: envConfig.domain };
+  }
 
-    if (envConfig.domain) {
+  /**
+   * Pretty-print the `up()` result to stdout. Matches the formatting the
+   * orchestrator used to emit inline; split out so callers that want
+   * JSON output can skip this branch.
+   */
+  public printUpSummary(result: { urls: string[]; domain?: string }): void {
+    const c = this.color;
+    if (result.domain) {
       this.log.info("");
-      const display = envConfig.domain.includes("*")
-        ? `https://${envConfig.domain} (wildcard route)`
-        : `https://${envConfig.domain}`;
+      const display = result.domain.includes("*")
+        ? `https://${result.domain} (wildcard route)`
+        : `https://${result.domain}`;
       this.log.info(`  ${c.set("GREEN", "\u2192")} ${c.set("CYAN", display)}`);
       this.log.info("");
     } else {
-      for (const url of urls) {
+      for (const url of result.urls) {
         this.log.info("");
         this.log.info(`  ${c.set("GREEN", "\u2192")} ${c.set("CYAN", url)}`);
         this.log.info("");
