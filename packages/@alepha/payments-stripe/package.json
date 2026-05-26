@@ -48,11 +48,6 @@
       "types": "./src/core/index.ts",
       "import": "./src/core/index.ts",
       "default": "./src/core/index.ts"
-    },
-    "./platform": {
-      "types": "./src/platform/index.ts",
-      "import": "./src/platform/index.ts",
-      "default": "./src/platform/index.ts"
     }
   },
   "publishConfig": {
@@ -63,11 +58,6 @@
         "types": "./dist/core/index.d.ts",
         "import": "./dist/core/index.js",
         "default": "./dist/core/index.js"
-      },
-      "./platform": {
-        "types": "./dist/platform/index.d.ts",
-        "import": "./dist/platform/index.js",
-        "default": "./dist/platform/index.js"
       }
     }
   }
