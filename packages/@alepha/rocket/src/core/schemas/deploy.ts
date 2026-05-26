@@ -72,15 +72,18 @@ export const deploySchema = t.object({
   status: deployStatusSchema,
   /**
    * Append-only log buffer. Trimmed to a bounded size to avoid
-   * unbounded memory growth on long-running deploys.
+   * unbounded memory growth on long-running deploys (see
+   * `DeployRegistry.LOG_MAX_BYTES`). Default `t.text()` caps at 255
+   * chars which is way too small — explicit maxLength matches the
+   * registry's buffer cap.
    */
-  log: t.text(),
+  log: t.string({ maxLength: 256 * 1024 }),
   /**
    * Final URL of the deployed worker, parsed from the platform
    * orchestrator output. Populated on `succeeded`.
    */
   deployedUrl: t.optional(t.text()),
-  error: t.optional(t.text()),
+  error: t.optional(t.string({ maxLength: 64 * 1024 })),
   startedAt: t.datetime(),
   finishedAt: t.optional(t.datetime()),
 });

@@ -35,16 +35,42 @@ BUCKET=alepha-rocket-e2e
 ARTIFACT=example-ssr-0.0.1.tar.gz
 WORK=/tmp/rocket-e2e
 APP_DIR=../example-ssr
+# The published alepha on npm may pre-date the --prebuilt flag and other
+# recent CLI changes. For local e2e, overlay the workspace's source onto
+# the published image so we're testing the actual current code.
+ROCKET_IMAGE=alepha/rocket:e2e
+
+# Cap any single curl + the polling loops so a stuck container can't
+# hang the whole script past the host's command timeout.
+POLL_TIMEOUT_S=${POLL_TIMEOUT_S:-180}
+WAIT_TIMEOUT_S=${WAIT_TIMEOUT_S:-30}
 
 red()    { printf "\033[31m%s\033[0m\n" "$*" >&2; }
 green()  { printf "\033[32m%s\033[0m\n" "$*"; }
 note()   { printf "\033[36m▶ %s\033[0m\n" "$*"; }
 
+dump_logs() {
+  printf "\n--- docker logs %s ---\n" "$ROCKET" >&2
+  docker logs "$ROCKET" 2>&1 | tail -60 >&2 || true
+  printf "\n--- docker logs %s ---\n" "$MINIO" >&2
+  docker logs "$MINIO" 2>&1 | tail -20 >&2 || true
+}
+
 cleanup() {
-  note "cleanup"
-  docker rm -f "$ROCKET" "$MINIO" >/dev/null 2>&1 || true
-  docker network rm "$NET" >/dev/null 2>&1 || true
-  rm -rf "$WORK"
+  local rc=$?
+  # Surface container logs on any non-zero exit so the failure isn't
+  # invisible. ROCKET_DEBUG_RETAIN=1 to skip the rm step entirely.
+  if [ "$rc" -ne 0 ]; then
+    dump_logs
+  fi
+  if [ -z "${ROCKET_DEBUG_RETAIN:-}" ]; then
+    note "cleanup"
+    docker rm -f "$ROCKET" "$MINIO" >/dev/null 2>&1 || true
+    docker network rm "$NET" >/dev/null 2>&1 || true
+    rm -rf "$WORK"
+  else
+    note "ROCKET_DEBUG_RETAIN set — containers + $WORK kept"
+  fi
 }
 trap cleanup EXIT
 
@@ -89,7 +115,23 @@ tar -czf "$WORK/$ARTIFACT" -C "$APP_DIR" "${TAR_INCLUDE[@]}"
 green "  $(ls -lh "$WORK/$ARTIFACT" | awk '{print $5}')"
 
 # -----------------------------------------------------------------------------
-# 3. Docker network + MinIO
+# 3. Build the overlay image (swap in local alepha)
+# -----------------------------------------------------------------------------
+
+note "build + pack local alepha → $ROCKET_IMAGE overlay"
+# `npm pack` uses publishConfig which points bin/main at dist/. dist/
+# must exist (yarn v clean removes it), so build first.
+( cd ../../packages/alepha && \
+  [ -d dist/bin ] || yarn build >/dev/null )
+( cd ../../packages/alepha && \
+  npm pack --pack-destination "$(pwd)/../../apps/rocket/test" >/dev/null )
+mv test/alepha-*.tgz test/alepha.tgz
+docker build -t "$ROCKET_IMAGE" -f test/Dockerfile.e2e test >/dev/null
+rm -f test/alepha.tgz
+green "  $ROCKET_IMAGE built"
+
+# -----------------------------------------------------------------------------
+# 4. Docker network + MinIO
 # -----------------------------------------------------------------------------
 
 note "start docker network + minio"
@@ -100,20 +142,22 @@ docker run -d --rm --name "$MINIO" --network "$NET" \
   -e MINIO_ROOT_PASSWORD=testsecret \
   minio/minio server /data >/dev/null
 
-# Wait for MinIO ready
-for _ in $(seq 1 20); do
-  curl -sf http://localhost:9000/minio/health/ready >/dev/null && break
+# Wait for MinIO ready (cap at WAIT_TIMEOUT_S)
+MINIO_DEADLINE=$(( $(date +%s) + WAIT_TIMEOUT_S ))
+until curl -sf --max-time 2 http://localhost:9000/minio/health/ready >/dev/null; do
+  [ "$(date +%s)" -ge "$MINIO_DEADLINE" ] && { red "minio not ready"; exit 1; }
   sleep 0.5
 done
 
-# Create bucket via mc (bundled in the minio image)
+# Create bucket + upload artifact via `mc` (bundled in the minio image).
+# `docker cp` into /data/ doesn't work — MinIO requires uploads to go
+# through the S3 API so its internal metadata gets written.
+docker cp "$WORK/$ARTIFACT" "$MINIO:/tmp/$ARTIFACT"
 docker exec "$MINIO" sh -c "
   mc alias set local http://localhost:9000 testaccess testsecret >/dev/null &&
   mc mb local/$BUCKET 2>/dev/null || true
+  mc cp /tmp/$ARTIFACT local/$BUCKET/$ARTIFACT >/dev/null
 " >/dev/null
-
-# Upload artifact: copy file into MinIO's data dir under the bucket
-docker cp "$WORK/$ARTIFACT" "$MINIO:/data/$BUCKET/"
 green "  uploaded s3://$BUCKET/$ARTIFACT"
 
 # -----------------------------------------------------------------------------
@@ -131,14 +175,19 @@ ROCKET_RUN_ARGS=(
   -e S3_SECRET_ACCESS_KEY=testsecret
 )
 [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] && ROCKET_RUN_ARGS+=(-e CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID")
-docker run "${ROCKET_RUN_ARGS[@]}" alepha/rocket:latest >/dev/null
+docker run "${ROCKET_RUN_ARGS[@]}" "$ROCKET_IMAGE" >/dev/null
 
-# Wait for Rocket ready
-for _ in $(seq 1 30); do
-  curl -sf http://localhost:3000/health >/dev/null && break
+# Wait for Rocket ready (cap at WAIT_TIMEOUT_S)
+ROCKET_DEADLINE=$(( $(date +%s) + WAIT_TIMEOUT_S ))
+until curl -sf --max-time 2 http://localhost:3000/api/health >/dev/null; do
+  [ "$(date +%s)" -ge "$ROCKET_DEADLINE" ] && {
+    red "rocket not ready — logs:"
+    docker logs "$ROCKET" 2>&1 | tail -30 >&2 || true
+    exit 1
+  }
   sleep 0.5
 done
-curl -sf http://localhost:3000/health | jq .
+curl -sf --max-time 5 http://localhost:3000/api/health | jq .
 green "  rocket up"
 
 # -----------------------------------------------------------------------------
@@ -147,7 +196,7 @@ green "  rocket up"
 
 post_deploy() {
   local op=$1
-  curl -sf -X POST http://localhost:3000/deploys \
+  curl -sf --max-time 10 -X POST http://localhost:3000/api/deploys \
     -H 'content-type: application/json' \
     -d "{
       \"op\": \"$op\",
@@ -160,20 +209,28 @@ post_deploy() {
 poll_until_done() {
   local id=$1
   local state status
-  while :; do
-    state=$(curl -sf "http://localhost:3000/deploys/$id")
+  local deadline=$(( $(date +%s) + POLL_TIMEOUT_S ))
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    state=$(curl -sf --max-time 10 "http://localhost:3000/api/deploys/$id") \
+      || { red "curl /api/deploys/$id failed"; return 1; }
     status=$(echo "$state" | jq -r .status)
-    printf "  [poll] %s\n" "$status"
+    printf "  [poll] %s\n" "$status" >&2
     case "$status" in
       succeeded) echo "$state"; return 0 ;;
       failed)
         red "deploy failed:"
-        echo "$state" | jq '{ status, error, log }'
+        printf "%s\n" "$state" | jq '{ status, error }' >&2 \
+          || printf "%s\n" "$state" >&2
+        printf "\n--- log ---\n%s\n" \
+          "$(printf "%s\n" "$state" | jq -r .log)" >&2
         return 1
         ;;
     esac
     sleep 3
   done
+  red "poll timeout (${POLL_TIMEOUT_S}s) — last state:"
+  printf "%s\n" "$state" >&2
+  return 1
 }
 
 note "POST /deploys op=up"
@@ -187,7 +244,7 @@ green "  deployed: $URL"
 
 if [ -n "$URL" ] && [ "$URL" != "null" ]; then
   note "curl deployed worker"
-  curl -sf "$URL" -o /dev/null && green "  ✓ worker responds"
+  curl -sf --max-time 10 "$URL" -o /dev/null && green "  ✓ worker responds"
 fi
 
 # -----------------------------------------------------------------------------
