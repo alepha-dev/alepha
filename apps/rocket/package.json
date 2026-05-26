@@ -7,7 +7,7 @@
     "dev": "alepha dev",
     "build": "alepha build",
     "start": "node dist",
-    "push": "alepha rocket:push"
+    "push": "alepha push"
   },
   "dependencies": {
     "@alepha/rocket": "workspace:*",
