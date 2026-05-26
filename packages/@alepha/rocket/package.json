@@ -1,5 +1,6 @@
 {
   "name": "@alepha/rocket",
+  "private": true,
   "description": "Remote `alepha platform` runner — controller + types for the Rocket container image.",
   "keywords": [
     "alepha",
