@@ -1,0 +1,20 @@
+{
+  "private": true,
+  "type": "module",
+  "name": "rocket",
+  "description": "Alepha Rocket runner — Docker image that hosts the @alepha/rocket controller.",
+  "scripts": {
+    "dev": "alepha dev",
+    "build": "alepha build",
+    "start": "node dist",
+    "docker:build": "yarn build && docker build -t alepha/rocket:dev ."
+  },
+  "dependencies": {
+    "@alepha/rocket": "workspace:*",
+    "alepha": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^8.0.13",
+    "wrangler": "^4.93.0"
+  }
+}

@@ -74,7 +74,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/rocket@workspace:packages/@alepha/rocket":
+"@alepha/rocket@workspace:*, @alepha/rocket@workspace:packages/@alepha/rocket":
   version: 0.0.0-use.local
   resolution: "@alepha/rocket@workspace:packages/@alepha/rocket"
   dependencies:
@@ -5291,7 +5291,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"alepha@npm:0.21.1, alepha@npm:^0.21.1, alepha@workspace:^, alepha@workspace:packages/alepha":
+"alepha@npm:0.21.1, alepha@npm:^0.21.1, alepha@workspace:*, alepha@workspace:^, alepha@workspace:packages/alepha":
   version: 0.0.0-use.local
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
@@ -12133,6 +12133,17 @@ __metadata:
   checksum: 10c0/4614e4292356cafade0b6031527eea9bc90f2372a22c012313be1dcc69a3b90c7338158b414539be863fa95bfcb2ddcd0587be696841af4e6679d85e62c060c7
   languageName: node
   linkType: hard
+
+"rocket@workspace:apps/rocket":
+  version: 0.0.0-use.local
+  resolution: "rocket@workspace:apps/rocket"
+  dependencies:
+    "@alepha/rocket": "workspace:*"
+    alepha: "workspace:*"
+    vite: "npm:^8.0.13"
+    wrangler: "npm:^4.93.0"
+  languageName: unknown
+  linkType: soft
 
 "rolldown-plugin-dts@npm:^0.25.0":
   version: 0.25.0
