@@ -102,7 +102,7 @@ describe("BuildDockerTask", () => {
       ).toBe(true);
     });
 
-    it("emits a global install line when build.docker.install is set", async () => {
+    it("emits a local install line when build.docker.install is set", async () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.js", "// bundle");
       await fs.writeFile(
@@ -121,7 +121,7 @@ describe("BuildDockerTask", () => {
       expect(
         fs.wasWrittenMatching(
           "/project/dist/Dockerfile",
-          /RUN npm install --global --no-fund --no-audit wrangler tsx/,
+          /RUN npm install --no-save --no-fund --no-audit wrangler tsx/,
         ),
       ).toBe(true);
     });

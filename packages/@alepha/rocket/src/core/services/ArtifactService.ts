@@ -1,8 +1,7 @@
 import { spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { $env, AlephaError, type Static, t } from "alepha";
@@ -43,6 +42,19 @@ export class ArtifactService {
   protected readonly env = $env(envSchema);
   protected readonly clients = new Map<string, S3mini>();
 
+  /**
+   * Where to extract artifacts. Defaults to `<cwd>/workspace` so the
+   * extracted dirs sit alongside Rocket's own `dist/` and Node walks
+   * up into `dist/node_modules/` for `alepha` / `wrangler` resolution.
+   * Override with `ROCKET_WORKSPACE_ROOT` (tests, alternative layouts).
+   */
+  protected resolveWorkspaceRoot(): string {
+    if (process.env.ROCKET_WORKSPACE_ROOT) {
+      return resolve(process.env.ROCKET_WORKSPACE_ROOT);
+    }
+    return resolve(process.cwd(), "workspace");
+  }
+
   protected getClient(bucket: string): S3mini {
     this.assertConfigured();
     const name = bucket.replaceAll("/", "-").replaceAll("_", "-").toLowerCase();
@@ -74,9 +86,19 @@ export class ArtifactService {
   }
 
   /**
-   * Fetch the artifact at `bucket/key`, extract it under a temp
-   * directory, and return the workspace path. Caller is responsible
-   * for calling `cleanup()` once the deploy is done.
+   * Fetch the artifact at `bucket/key`, extract it into the workspace
+   * directory under the running container's dist (so node module
+   * resolution walks up into `dist/node_modules/` where `alepha` +
+   * `wrangler` are installed), and return the workspace path. Caller
+   * is responsible for calling `cleanup()` once the deploy is done.
+   *
+   * Layout produced:
+   *
+   *   <workspaceRoot>/<deployId>.tar.gz   (downloaded archive)
+   *   <workspaceRoot>/<deployId>/         (extracted workspace, returned)
+   *
+   * `workspaceRoot` defaults to `<container-dist>/workspace`. Override
+   * via `ROCKET_WORKSPACE_ROOT` env var (handy for tests).
    */
   public async fetch(options: {
     deployId: string;
@@ -84,7 +106,9 @@ export class ArtifactService {
     key: string;
   }): Promise<{ workspace: string; cleanup: () => Promise<void> }> {
     const { deployId, bucket, key } = options;
-    const workdir = join(tmpdir(), `alepha-rocket-${deployId}`);
+    const workspaceRoot = this.resolveWorkspaceRoot();
+    await mkdir(workspaceRoot, { recursive: true });
+    const workdir = join(workspaceRoot, deployId);
     const archive = `${workdir}.tar.gz`;
 
     await mkdir(workdir, { recursive: true });

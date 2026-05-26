@@ -5,14 +5,17 @@ import { $command } from "alepha/command";
 export default (alepha: Alepha) => {
   alepha.set(buildOptions, {
     docker: {
-      // Both binaries are needed inside the image:
+      // Both binaries land in `/app/node_modules/` (local install, no
+      // --global) so they're resolvable both from Rocket's own bundle
+      // and from the extracted workspace at `/app/workspace/<deploy-id>/`
+      // via Node's parent-dir walk.
+      //   - `alepha`: the `DeployRunner` spawns `npx alepha platform
+      //     <op> --prebuilt` against the workspace. Pre-installing
+      //     avoids the npx cold-fetch on every deploy.
       //   - `wrangler`: invoked by `CloudflareAdapter` for `wrangler
       //     deploy` + `wrangler d1 migrations apply --remote`. The
       //     REST-only port is a v2 follow-up; until then wrangler is
       //     non-optional.
-      //   - `alepha`: the `DeployRunner` shells out to `alepha platform
-      //     <op>` against the extracted workspace. Pre-installing avoids
-      //     the `npx alepha` cold-fetch on every deploy.
       install: ["alepha", "wrangler"],
       image: {
         // `--image` alone → `alepha/rocket:latest`,

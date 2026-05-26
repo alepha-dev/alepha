@@ -244,16 +244,21 @@ ENTRYPOINT ["/app/app"]
 `;
     } else {
       const { image, command } = opts.standard;
+      // Install requested packages locally (no --global). They land in
+      // `/app/node_modules/`, alongside the app's own deps. Use
+      // `--no-save` so we don't mutate the bundled package.json. Node
+      // module resolution walks up into `/app/node_modules/` when the
+      // workspace lives under `/app/workspace/<deploy-id>/`.
       const installLine = opts.install.length
-        ? `RUN npm install --global --no-fund --no-audit ${opts.install.join(" ")}\n\n`
+        ? `RUN npm install --no-save --no-fund --no-audit ${opts.install.join(" ")}\n`
         : "";
       dockerfile = `${header}FROM ${image}
 WORKDIR /app
 
-${installLine}COPY . .
+COPY . .
 
 RUN ${command === "bun" ? "bun" : "npm"} install
-
+${installLine}
 ENV SERVER_HOST=0.0.0.0
 
 CMD ["${command}", "index.js"]
