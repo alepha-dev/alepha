@@ -74,6 +74,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/rocket@workspace:packages/@alepha/rocket":
+  version: 0.0.0-use.local
+  resolution: "@alepha/rocket@workspace:packages/@alepha/rocket"
+  dependencies:
+    "@biomejs/biome": "npm:^2.4.15"
+    alepha: "npm:0.21.1"
+    typescript: "npm:^6.0.3"
+    vitest: "npm:^4.1.7"
+  peerDependencies:
+    alepha: 0.21.1
+  languageName: unknown
+  linkType: soft
+
 "@alepha/ui-registry@workspace:packages/@alepha/ui-registry":
   version: 0.0.0-use.local
   resolution: "@alepha/ui-registry@workspace:packages/@alepha/ui-registry"
