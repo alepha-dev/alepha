@@ -35,15 +35,12 @@ BUCKET=alepha-rocket-e2e
 ARTIFACT=example-ssr-0.0.1.tar.gz
 WORK=/tmp/rocket-e2e
 APP_DIR=../example-ssr
-# The published alepha on npm may pre-date the --prebuilt flag and other
-# recent CLI changes. For local e2e, overlay the workspace's source onto
-# the published image so we're testing the actual current code.
-ROCKET_IMAGE=alepha/rocket:e2e
+ROCKET_IMAGE=alepha/rocket:latest
 
 # Cap any single curl + the polling loops so a stuck container can't
 # hang the whole script past the host's command timeout.
-POLL_TIMEOUT_S=${POLL_TIMEOUT_S:-180}
-WAIT_TIMEOUT_S=${WAIT_TIMEOUT_S:-30}
+POLL_TIMEOUT_S=${POLL_TIMEOUT_S:-240}
+WAIT_TIMEOUT_S=${WAIT_TIMEOUT_S:-60}
 
 red()    { printf "\033[31m%s\033[0m\n" "$*" >&2; }
 green()  { printf "\033[32m%s\033[0m\n" "$*"; }
@@ -87,8 +84,8 @@ source .env.secrets
 
 [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || { red "CLOUDFLARE_API_TOKEN not set"; exit 1; }
 
-docker image inspect alepha/rocket:latest >/dev/null 2>&1 || {
-  red "alepha/rocket:latest not found — run 'yarn workspace rocket push --dry-run' first."
+docker image inspect "$ROCKET_IMAGE" >/dev/null 2>&1 || {
+  red "$ROCKET_IMAGE not found — run 'yarn workspace rocket push --dry-run' first."
   exit 1
 }
 
@@ -108,30 +105,44 @@ note "build example-ssr (target=cloudflare)"
 # -----------------------------------------------------------------------------
 
 note "tar workspace → $WORK/$ARTIFACT"
-mkdir -p "$WORK"
+mkdir -p "$WORK/stage"
+# example-ssr's tsconfig.json extends `../../tsconfig.json` (monorepo
+# root). That chain isn't in the artifact, so write a self-contained
+# tsconfig into the staged copy. Real apps deployed via Rocket should
+# already have self-contained tsconfigs.
+rsync -a --delete \
+  --exclude node_modules \
+  --exclude '._*' \
+  --exclude '.DS_Store' \
+  "$APP_DIR/" "$WORK/stage/"
+cat > "$WORK/stage/tsconfig.json" <<'JSON'
+{
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "esnext",
+    "strict": true,
+    "jsx": "react-jsx",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
+JSON
 TAR_INCLUDE=(src dist alepha.config.ts package.json tsconfig.json)
-[ -d "$APP_DIR/migrations" ] && TAR_INCLUDE+=(migrations)
-tar -czf "$WORK/$ARTIFACT" -C "$APP_DIR" "${TAR_INCLUDE[@]}"
+[ -d "$WORK/stage/migrations" ] && TAR_INCLUDE+=(migrations)
+COPYFILE_DISABLE=1 tar -czf "$WORK/$ARTIFACT" -C "$WORK/stage" "${TAR_INCLUDE[@]}"
 green "  $(ls -lh "$WORK/$ARTIFACT" | awk '{print $5}')"
 
 # -----------------------------------------------------------------------------
-# 3. Build the overlay image (swap in local alepha)
-# -----------------------------------------------------------------------------
-
-note "build + pack local alepha → $ROCKET_IMAGE overlay"
-# `npm pack` uses publishConfig which points bin/main at dist/. dist/
-# must exist (yarn v clean removes it), so build first.
-( cd ../../packages/alepha && \
-  [ -d dist/bin ] || yarn build >/dev/null )
-( cd ../../packages/alepha && \
-  npm pack --pack-destination "$(pwd)/../../apps/rocket/test" >/dev/null )
-mv test/alepha-*.tgz test/alepha.tgz
-docker build -t "$ROCKET_IMAGE" -f test/Dockerfile.e2e test >/dev/null
-rm -f test/alepha.tgz
-green "  $ROCKET_IMAGE built"
-
-# -----------------------------------------------------------------------------
-# 4. Docker network + MinIO
+# 3. Docker network + MinIO
 # -----------------------------------------------------------------------------
 
 note "start docker network + minio"

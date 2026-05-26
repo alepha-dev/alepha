@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "alepha": "^0.21.2",
-    "react": "^19.2.6"
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
