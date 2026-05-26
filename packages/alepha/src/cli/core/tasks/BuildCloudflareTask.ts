@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 import { $inject } from "alepha";
 import { KV_DEFAULT_BINDING } from "alepha/cache";
+import { $container, type ContainerPrimitive } from "alepha/containers";
 import { EmailProvider } from "alepha/email";
 import {
   CloudflareEmailProvider,
@@ -90,13 +91,14 @@ export class BuildCloudflareTask extends BuildTask {
     this.enhanceKV(wrangler);
     this.enhanceQueue(wrangler);
     this.enhanceEmail(ctx, wrangler);
+    const containers = this.enhanceContainers(ctx, wrangler);
 
     await this.fs.writeFile(
       this.fs.join(root, distDir, "wrangler.jsonc"),
       JSON.stringify(wrangler, null, 2),
     );
 
-    await this.writeWorkerEntryPoint(root, distDir);
+    await this.writeWorkerEntryPoint(root, distDir, containers);
   }
 
   protected enhanceDomain(wrangler: WranglerConfig): void {
@@ -283,10 +285,92 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler.send_email.push(entry);
   }
 
+  /**
+   * Discover `$container` primitives and emit the matching Cloudflare
+   * Containers bindings, Durable Object bindings, and migrations into
+   * `wrangler.jsonc`. The DO class declarations are added later, when
+   * the worker entry point is written.
+   *
+   * Returns the list of container descriptors so
+   * `writeWorkerEntryPoint` can emit `export class <NAME> extends
+   * Container` declarations referencing them.
+   */
+  protected enhanceContainers(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): ContainerDescriptor[] {
+    const primitives = ctx.alepha.primitives(
+      $container,
+    ) as ContainerPrimitive[];
+    if (primitives.length === 0) {
+      return [];
+    }
+
+    const descriptors: ContainerDescriptor[] = primitives.map((p) => ({
+      name: p.name.toUpperCase(),
+      className: p.name
+        .split(/[^a-zA-Z0-9]/)
+        .filter(Boolean)
+        .map((s) => s[0]!.toUpperCase() + s.slice(1))
+        .join(""),
+      image: p.options.image,
+      port: p.options.port ?? 3000,
+      sleepAfter:
+        typeof p.options.sleepAfter === "string" ? p.options.sleepAfter : "15m",
+      instanceType: p.options.instanceType ?? "dev",
+      maxInstances: p.options.maxInstances ?? 5,
+      envVars: p.options.envVars,
+    }));
+
+    wrangler.containers = wrangler.containers || [];
+    wrangler.durable_objects = wrangler.durable_objects || {};
+    wrangler.durable_objects.bindings = wrangler.durable_objects.bindings || [];
+    wrangler.migrations = wrangler.migrations || [];
+
+    const newSqliteClasses: string[] = [];
+    for (const d of descriptors) {
+      wrangler.containers.push({
+        class_name: d.className,
+        image: d.image,
+        instance_type: d.instanceType,
+        max_instances: d.maxInstances,
+      });
+      wrangler.durable_objects.bindings.push({
+        name: d.name,
+        class_name: d.className,
+      });
+      newSqliteClasses.push(d.className);
+    }
+
+    if (newSqliteClasses.length > 0) {
+      wrangler.migrations.push({
+        tag: "containers-v1",
+        new_sqlite_classes: newSqliteClasses,
+      });
+    }
+
+    return descriptors;
+  }
+
   protected async writeWorkerEntryPoint(
     root: string,
     distDir: string,
+    containers: ContainerDescriptor[] = [],
   ): Promise<void> {
+    const containerDeclarations = containers
+      .map((c) => {
+        const envVars = c.envVars
+          ? `  envVars = ${JSON.stringify(c.envVars)};\n`
+          : "";
+        return `export class ${c.className} extends Container {\n  defaultPort = ${c.port};\n  sleepAfter = "${c.sleepAfter}";\n${envVars}}`;
+      })
+      .join("\n\n");
+
+    const containerImport =
+      containers.length > 0
+        ? `import { Container } from "@cloudflare/containers";\n\n${containerDeclarations}\n\n`
+        : "";
+
     const workerCode = `
 import "./index.js";
 
@@ -362,7 +446,18 @@ export default {
 
     await this.fs.writeFile(
       this.fs.join(root, distDir, "main.cloudflare.js"),
-      `${this.warningComment}\n${workerCode}`.trim(),
+      `${this.warningComment}\n${containerImport}${workerCode}`.trim(),
     );
   }
+}
+
+interface ContainerDescriptor {
+  name: string;
+  className: string;
+  image: string;
+  port: number;
+  sleepAfter: string;
+  instanceType: "dev" | "basic" | "standard";
+  maxInstances: number;
+  envVars?: Record<string, string>;
 }
