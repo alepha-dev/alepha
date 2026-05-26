@@ -56,11 +56,15 @@ export class PlatformOrchestrator {
     apps: AppDefinition[];
     run: RunnerMethod;
     /**
-     * Skip the build step — the artifact is already built.
+     * Pre-built mode — the artifact's `dist/` is already produced.
      *
-     * Use this when the orchestrator runs against a pre-built `dist/`
-     * (typically inside Alepha Rocket or another deploy-only service).
-     * Still runs auth → provision → migrate → deploy → secrets in order.
+     * Still runs auth → provision → build → migrate → deploy → secrets,
+     * but the `build` step shells out to `alepha build --prebuilt` which
+     * only regenerates the target-specific deploy config (e.g.
+     * `wrangler.jsonc`) and skips the Vite client + server builds.
+     * Used by external orchestrators (Rocket) that ship a pre-built
+     * `dist/` and just need the wrangler config refreshed for
+     * per-tenant overrides on every deploy.
      */
     prebuilt?: boolean;
   }): Promise<void> {
@@ -77,6 +81,7 @@ export class PlatformOrchestrator {
       apps,
       root,
       naming: namingCtx,
+      prebuilt,
     };
 
     // 1. Auth
@@ -96,11 +101,11 @@ export class PlatformOrchestrator {
     // 3. Provision (before build so resource IDs are available for wrangler config)
     await adapter.provision(ctx, run);
 
-    // 4. Build (skipped when caller supplies a pre-built artifact)
-    if (!prebuilt) {
-      for (const a of targetApps) {
-        await adapter.build({ ...ctx, app: a }, run);
-      }
+    // 4. Build
+    //    Always runs — the adapter checks `ctx.prebuilt` to decide whether
+    //    to do a full bundle build or just regenerate deploy config.
+    for (const a of targetApps) {
+      await adapter.build({ ...ctx, app: a }, run);
     }
 
     // 5. Migrate

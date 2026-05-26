@@ -19,6 +19,9 @@ export class BuildClientTask extends BuildTask {
   protected readonly viteUtils = $inject(ViteUtils);
 
   async run(ctx: BuildTaskContext): Promise<void> {
+    if (ctx.flags?.prebuilt) {
+      return;
+    }
     if (!ctx.hasClient) {
       return;
     }

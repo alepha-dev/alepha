@@ -15,6 +15,9 @@ export class BuildAssetsTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
 
   async run(ctx: BuildTaskContext): Promise<void> {
+    if (ctx.flags?.prebuilt) {
+      return;
+    }
     const assets = ctx.alepha.store.get("alepha.build.assets");
 
     if (!assets || assets.length === 0) {

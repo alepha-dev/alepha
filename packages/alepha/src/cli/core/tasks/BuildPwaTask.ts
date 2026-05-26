@@ -12,6 +12,9 @@ export class BuildPwaTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
 
   async run(ctx: BuildTaskContext): Promise<void> {
+    if (ctx.flags?.prebuilt) {
+      return;
+    }
     const pwa = ctx.options.pwa;
     if (!pwa || !ctx.hasClient) {
       return;

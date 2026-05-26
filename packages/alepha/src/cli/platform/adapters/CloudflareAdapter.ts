@@ -185,10 +185,14 @@ export class CloudflareAdapter extends PlatformAdapter {
       env.CLOUDFLARE_JURISDICTION = ctx.envConfig.jurisdiction;
     }
 
+    const cmd = ctx.prebuilt
+      ? "alepha build -t cloudflare --prebuilt"
+      : "alepha build -t cloudflare";
+
     await run({
-      name: "alepha build -t cloudflare",
+      name: cmd,
       handler: async () => {
-        await this.runShell("alepha build -t cloudflare", {
+        await this.runShell(cmd, {
           root: appDir,
           env,
         });

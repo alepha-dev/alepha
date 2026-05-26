@@ -22,6 +22,9 @@ export class BuildServerTask extends BuildTask {
   protected readonly viteUtils = $inject(ViteUtils);
 
   async run(ctx: BuildTaskContext): Promise<void> {
+    if (ctx.flags?.prebuilt) {
+      return;
+    }
     const distDir = ctx.options.output?.dist ?? "dist";
     const publicDir = ctx.options.output?.public ?? "public";
     const stats = ctx.options.stats ?? false;

@@ -124,6 +124,12 @@ export class BuildCommand {
             "Compile server to a single static binary (requires --target=docker --runtime=bun)",
         }),
       ),
+      prebuilt: t.optional(
+        t.boolean({
+          description:
+            "Skip the bundle steps (Vite client/server + asset compression). Only regenerates target-specific deploy config (e.g. wrangler.jsonc). Use when `dist/` is already built and you just need the config refreshed.",
+        }),
+      ),
       sitemap: t.optional(
         t.text({
           description: "Generate sitemap.xml with base URL",
@@ -169,7 +175,13 @@ export class BuildCommand {
 
       const distDir = options.output?.dist ?? "dist";
 
-      await run.rm(distDir, { alias: "clean dist" });
+      // Prebuilt mode: skip clean + Vite builds + asset compression; only
+      // regenerate target-specific deploy config (e.g. wrangler.jsonc).
+      // Used by external orchestrators (Rocket) that ship a pre-built
+      // dist/ and just need the config refreshed for per-tenant overrides.
+      if (!flags.prebuilt) {
+        await run.rm(distDir, { alias: "clean dist" });
+      }
 
       const { target } = options;
 
@@ -221,7 +233,7 @@ export class BuildCommand {
         run,
         entry,
         hasClient,
-        flags: { image: flags.image },
+        flags: { image: flags.image, prebuilt: flags.prebuilt },
       };
 
       for (const task of this.pipeline) {

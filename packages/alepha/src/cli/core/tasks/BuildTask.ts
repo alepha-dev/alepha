@@ -45,6 +45,14 @@ export interface BuildTaskContext {
    */
   flags?: {
     image?: boolean | string;
+    /**
+     * Skip the slow build steps (Vite client + Vite server + asset
+     * compression). Only runs the deploy-config generation
+     * (wrangler.jsonc, etc.) — useful when the caller already has a
+     * built `dist/` and just needs the wrangler config refreshed for
+     * per-tenant overrides.
+     */
+    prebuilt?: boolean;
   };
 }
 

@@ -249,7 +249,15 @@ export class PlatformCommand {
     name: "up",
     mode: "production",
     description: "Build, migrate, and deploy",
-    flags: this.envFlags,
+    flags: t.object({
+      ...this.envFlags.properties,
+      prebuilt: t.optional(
+        t.boolean({
+          description:
+            "Pre-built mode. Skips the Vite bundle steps; only regenerates the target deploy config (wrangler.jsonc) so it reflects current bindings and per-tenant overrides. Use when `dist/` is already produced upstream (e.g. inside Alepha Rocket).",
+        }),
+      ),
+    }),
     handler: async ({ flags, root, run }) => {
       process.env.NODE_ENV = "production";
 
@@ -268,6 +276,7 @@ export class PlatformCommand {
         app: flags.app,
         apps,
         run,
+        prebuilt: flags.prebuilt,
       });
     },
   });

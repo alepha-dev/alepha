@@ -47,6 +47,9 @@ export class BuildCompressTask extends BuildTask {
   protected readonly defaultFilter = /\.(js|mjs|cjs|css|wasm|svg|html|xml)$/;
 
   async run(ctx: BuildTaskContext): Promise<void> {
+    if (ctx.flags?.prebuilt) {
+      return;
+    }
     if (!ctx.hasClient) {
       return;
     }

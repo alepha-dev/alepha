@@ -68,6 +68,14 @@ export interface PlatformContext {
    * Resource name generator bound to this project+env.
    */
   naming: NamingContext;
+
+  /**
+   * Pre-built mode. When true, the adapter's `build()` should skip the
+   * Vite bundle steps and only regenerate the deploy config
+   * (wrangler.jsonc, Dockerfile, etc.) so it reflects current bindings +
+   * per-tenant overrides.
+   */
+  prebuilt?: boolean;
 }
 
 export interface AppContext extends PlatformContext {

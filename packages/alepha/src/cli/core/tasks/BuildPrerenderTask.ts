@@ -14,6 +14,9 @@ export class BuildPrerenderTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
 
   async run(ctx: BuildTaskContext): Promise<void> {
+    if (ctx.flags?.prebuilt) {
+      return;
+    }
     if (!ctx.hasClient) {
       return;
     }
