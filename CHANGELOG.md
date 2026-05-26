@@ -1,3 +1,38 @@
+## [0.21.2] - 2026-05-26
+
+### Features
+
+- **rocket**: support `down` op + add end-to-end smoke test (`a17e67d9`)
+- **rocket**: parse `alepha platform --json` output instead of regex (`2ab87f77`)
+- **platform**: emit JSON on --json for up/down/migrate (`fb3abc61`)
+- **rocket**: DeployRunner spawns `alepha platform --prebuilt` (`4618cdc1`)
+- **build,platform**: --prebuilt skips bundle, keeps deploy-config gen (`f2e3584c`)
+- **rocket**: wire S3 artifact fetch + Docker target with global tools (`be087dff`)
+- **containers**: add $container primitive for typed RPC to ephemeral containers (`f8f6756d`)
+- **apps/rocket**: Docker image scaffold for the Rocket runner (`c6b5c1df`)
+- **@alepha/rocket**: scaffold remote alepha platform runner lib (`7e6999a8`)
+- **platform**: graduate alepha/platform out of alepha/cli/platform (`7a5e62cb`)
+- **cli/platform**: default PUBLIC_URL to https://<production.domain> when unset (`c9509399`)
+- **email/cloudflare**: add CloudflareEmailProvider using Workers binding (`1becab6a`)
+- **ui/alepha-table**: add defaultSort + onSortChange for sort persistence (`46b671d1`)
+- **api/files**: add /public/files/:id route and avoid duplicate DB lookup on stream (`2a23568b`)
+- **react/form**: add useFormQuerySync — two-way bind useForm to URL query params (`eadacddc`)
+- **ui**: add ContextMenu component (Radix wrapper, matches DropdownMenu shape) (`8bac85bf`)
+- **ui**: useToast returns a lib-agnostic Toast interface (`96e84222`)
+- **ui**: polish Segmented styling and add playground demo (`baac276b`)
+
+### Bug Fixes
+
+- **rocket**: unblock e2e — schema log/error caps + better failure output (`5a9b0b50`)
+- **react/form**: setInitialValues emits form:change for cleared keys (`310c98a0`)
+- **react/form**: useFormQuerySync preserves initial form values on first mount (`f853e5a3`)
+- **react/form**: useFormQuerySync preserves initial form values when URL is empty (`2be05b8a`)
+- **react/form**: treat null/undefined input as unset in FormModel.getValueFromInput (`5a3a49c4`)
+- **react/router**: popstate re-renders on query-only URL changes (`e236d824`)
+- **ui**: make markdown links visibly distinct from body text (`006cc5d5`)
+- **orm**: include table name in Repository PK-not-found error (`0a4497aa`)
+- **verifications**: scope verification cooldown to a purpose bucket (`12afd379`)
+
 ## [0.21.1] - 2026-05-22
 
 ### Features
