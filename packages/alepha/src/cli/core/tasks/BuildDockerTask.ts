@@ -77,6 +77,7 @@ export class BuildDockerTask extends BuildTask {
           compile,
           standard: { image: dockerFrom, command: dockerCommand },
           hasMigrations: migrationsCopied,
+          install: ctx.options.docker?.install ?? [],
         });
       },
     });
@@ -217,6 +218,7 @@ export class BuildDockerTask extends BuildTask {
       compile: ResolvedCompile | null;
       standard: { image: string; command: string };
       hasMigrations: boolean;
+      install: string[];
     },
   ): Promise<void> {
     const header =
@@ -230,6 +232,7 @@ export class BuildDockerTask extends BuildTask {
     let dockerfile: string;
 
     if (opts.compile) {
+      // `install` is ignored in compile mode — distroless has no npm.
       dockerfile = `${header}FROM ${opts.compile.base}
 WORKDIR /app
 
@@ -241,10 +244,13 @@ ENTRYPOINT ["/app/app"]
 `;
     } else {
       const { image, command } = opts.standard;
+      const installLine = opts.install.length
+        ? `RUN npm install --global --no-fund --no-audit ${opts.install.join(" ")}\n\n`
+        : "";
       dockerfile = `${header}FROM ${image}
 WORKDIR /app
 
-COPY . .
+${installLine}COPY . .
 
 RUN ${command === "bun" ? "bun" : "npm"} install
 

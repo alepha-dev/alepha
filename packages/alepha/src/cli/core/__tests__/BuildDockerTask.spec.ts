@@ -102,6 +102,30 @@ describe("BuildDockerTask", () => {
       ).toBe(true);
     });
 
+    it("emits a global install line when build.docker.install is set", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile(
+        "/project/dist/package.json",
+        JSON.stringify({ dependencies: {} }),
+      );
+
+      await task.run(
+        createCtx(fs, shell, {
+          target: "docker",
+          runtime: "node",
+          docker: { install: ["wrangler", "tsx"] },
+        }),
+      );
+
+      expect(
+        fs.wasWrittenMatching(
+          "/project/dist/Dockerfile",
+          /RUN npm install --global --no-fund --no-audit wrangler tsx/,
+        ),
+      ).toBe(true);
+    });
+
     it("writes a bun Dockerfile when runtime=bun", async () => {
       const { fs, shell, task } = createTestEnv();
       await task.run(

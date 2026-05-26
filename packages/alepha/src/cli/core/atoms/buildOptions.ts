@@ -149,6 +149,21 @@ export const buildOptions = $atom({
         command: t.optional(t.string()),
 
         /**
+         * Extra packages to install globally in the generated image.
+         *
+         * Each entry becomes a `RUN npm install --global --no-fund
+         * --no-audit <pkg> …` line inserted after `FROM` and before the
+         * app `COPY`. Use it for CLI tools the running app shells out to
+         * — typical example is `wrangler` for a service that deploys to
+         * Cloudflare on someone else's behalf.
+         *
+         * Ignored in `compile` mode (the distroless base has no `npm`).
+         *
+         * @example install: ["wrangler"]
+         */
+        install: t.optional(t.array(t.string())),
+
+        /**
          * Docker build options (used when --image flag is passed).
          */
         image: t.optional(

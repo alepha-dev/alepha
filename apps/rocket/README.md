@@ -61,18 +61,35 @@ No `ROCKET_TOKEN` in v1 — Rocket is meant to live behind a Cloudflare
 Containers binding (or another internal-network boundary). Adding auth
 is a v2 hardening item.
 
-## Build + run locally
+## Build + publish
+
+The Docker image is built and tagged by `alepha build --target=docker`.
+A `rocket:push` command (defined in `alepha.config.ts`) wraps that with
+an optional `docker push`:
 
 ```bash
-yarn workspace rocket build
-yarn workspace rocket docker:build         # → alepha/rocket:dev
+# Build locally and push as alepha/rocket:latest
+yarn workspace rocket push
 
+# Build locally and push as alepha/rocket:0.21.1
+yarn workspace rocket push --tag 0.21.1
+
+# Build only (skip push)
+yarn workspace rocket push --dry-run
+```
+
+Credentials come from your host's `docker login` session — there's
+no CI publish workflow today; the image is pushed from the framework
+maintainer's machine.
+
+## Run locally
+
+```bash
 docker run --rm -p 3000:3000 \
   -e CF_API_TOKEN=... \
   -e S3_ENDPOINT=... -e S3_REGION=auto \
   -e S3_ACCESS_KEY_ID=... -e S3_SECRET_ACCESS_KEY=... \
-  -e S3_BUCKET=alepha-club-builds \
-  alepha/rocket:dev
+  alepha/rocket:latest
 ```
 
 ## Status

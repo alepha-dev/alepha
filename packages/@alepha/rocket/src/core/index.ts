@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 import { RocketController } from "./controllers/RocketController.ts";
 import { DeployRegistry } from "./providers/DeployRegistry.ts";
+import { ArtifactService } from "./services/ArtifactService.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
 
 /**
@@ -12,10 +13,11 @@ import { DeployRunner } from "./services/DeployRunner.ts";
  */
 export const AlephaRocket = $module({
   name: "alepha.rocket",
-  services: [RocketController, DeployRegistry, DeployRunner],
+  services: [RocketController, DeployRegistry, DeployRunner, ArtifactService],
 });
 
 export * from "./controllers/RocketController.ts";
 export * from "./providers/DeployRegistry.ts";
 export * from "./schemas/deploy.ts";
+export * from "./services/ArtifactService.ts";
 export * from "./services/DeployRunner.ts";
