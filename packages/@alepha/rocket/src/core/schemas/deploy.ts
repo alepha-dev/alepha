@@ -7,11 +7,12 @@ import { type Static, t } from "alepha";
 export const createDeploySchema = t.object({
   /**
    * Operation. `up` runs the full provision → migrate → deploy → secrets
-   * pipeline against the supplied pre-built artifact. `migrate` runs only
-   * the migration step. `secrets` syncs the env's secrets to the deployed
-   * worker without redeploying code.
+   * pipeline against the supplied pre-built artifact. `down` tears the
+   * environment back down (deletes worker + bindings). `migrate` runs
+   * only the migration step. `secrets` syncs the env's secrets to the
+   * deployed worker without redeploying code.
    */
-  op: t.enum(["up", "migrate", "secrets"]),
+  op: t.enum(["up", "down", "migrate", "secrets"]),
 
   /**
    * Project identifier. Free-form — Rocket itself doesn't interpret it,
@@ -65,7 +66,7 @@ export type DeployStatus = Static<typeof deployStatusSchema>;
  */
 export const deploySchema = t.object({
   id: t.uuid(),
-  op: t.enum(["up", "migrate", "secrets"]),
+  op: t.enum(["up", "down", "migrate", "secrets"]),
   project: t.text(),
   env: t.text(),
   status: deployStatusSchema,

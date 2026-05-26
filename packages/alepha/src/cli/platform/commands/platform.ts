@@ -268,7 +268,16 @@ export class PlatformCommand {
   protected readonly down = $command({
     name: "down",
     description: "Tear down an environment",
-    flags: this.envFlags,
+    flags: t.object({
+      ...this.envFlags.properties,
+      yes: t.optional(
+        t.boolean({
+          aliases: ["y"],
+          description:
+            "Skip the interactive confirmation. Required for non-interactive callers (CI, Alepha Rocket). The caller is responsible for not invoking this accidentally — there's no second chance.",
+        }),
+      ),
+    }),
     handler: async ({ flags, root, run, ask }) => {
       if (!flags.env) {
         throw new AlephaError(
@@ -290,6 +299,9 @@ export class PlatformCommand {
         apps,
         run,
         confirm: async (prompt) => {
+          if (flags.yes) {
+            return flags.env as string;
+          }
           ask.intro("Confirm teardown");
           const value = await ask(prompt);
           ask.outro("");

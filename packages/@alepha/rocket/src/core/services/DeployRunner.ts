@@ -106,15 +106,19 @@ export class DeployRunner {
     workspace: string,
   ): Promise<string | undefined> {
     return new Promise((resolve, reject) => {
-      const args = [
-        "alepha",
-        "platform",
-        body.op,
-        "--prebuilt",
-        "--json",
-        "--env",
-        body.env,
-      ];
+      // `down` doesn't need a build, doesn't read a dist/. The rest
+      // (up / migrate / secrets) does — and `--prebuilt` keeps the
+      // wrangler.jsonc regen fast.
+      const args = ["alepha", "platform", body.op];
+      if (body.op !== "down") {
+        args.push("--prebuilt");
+      }
+      args.push("--json", "--env", body.env);
+      if (body.op === "down") {
+        // Non-interactive — Rocket can't answer prompts. The caller
+        // committed to the destructive op by hitting POST /deploys.
+        args.push("--yes");
+      }
 
       const proc = spawn("npx", args, {
         cwd: workspace,
