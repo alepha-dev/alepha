@@ -16,11 +16,19 @@ export const SEND_EMAIL_DEFAULT_BINDING = "SEND_EMAIL";
 
 /**
  * Environment variables for Cloudflare email configuration.
+ *
+ * `EMAIL_FROM` is `optional` at the schema level so the provider can be
+ * registered (and constructed) in non-Workers contexts — Node `yarn
+ * start`, build-time introspection, etc. — without forcing every dev to
+ * set it. `send()` re-checks at call time and throws a clear error if
+ * it's missing then.
  */
 const envSchema = t.object({
-  EMAIL_FROM: t.text({
-    description: "Default sender email address (must be a verified sender)",
-  }),
+  EMAIL_FROM: t.optional(
+    t.text({
+      description: "Default sender email address (must be a verified sender)",
+    }),
+  ),
 });
 
 /**
@@ -119,6 +127,11 @@ export class CloudflareEmailProvider implements EmailProvider {
 
   public async send(options: EmailSendOptions): Promise<void> {
     const { to, subject, body } = options;
+    if (!this.env.EMAIL_FROM) {
+      throw new EmailError(
+        "Cannot send email via Cloudflare: EMAIL_FROM env var is not set.",
+      );
+    }
     this.log.info("Sending email via Cloudflare", { to, subject });
 
     const message: CloudflareEmailSendMessage = {
