@@ -2,16 +2,19 @@ import { basename } from "node:path";
 import { $inject } from "alepha";
 import { KV_DEFAULT_BINDING } from "alepha/cache";
 import type { ContainerPrimitive } from "alepha/container";
-import { EmailProvider } from "alepha/email";
-import {
-  CloudflareEmailProvider,
-  SEND_EMAIL_DEFAULT_BINDING,
-} from "alepha/email/cloudflare";
+import { SEND_EMAIL_DEFAULT_BINDING } from "alepha/email/cloudflare";
 import { QUEUE_DEFAULT_BINDING } from "alepha/queue";
 import type { CronProvider, WorkerdCronProvider } from "alepha/scheduler";
 import { FileSystemProvider } from "alepha/system";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
+
+// Looked up by class name string (not by class identity) because
+// BuildCloudflareTask runs in the CLI's Alepha context while ctx.alepha
+// is the workspace's separate context. Two module graphs = two distinct
+// `CloudflareEmailProvider` class objects, so the imported reference
+// here wouldn't match the one the workspace registered.
+const CLOUDFLARE_EMAIL_PROVIDER_NAME = "CloudflareEmailProvider";
 
 interface WranglerConfig {
   [key: string]: any;
@@ -451,14 +454,9 @@ export class BuildCloudflareTask extends BuildTask {
     if (ctx.manifest || !ctx.alepha) {
       return;
     }
-    let provider: EmailProvider | undefined;
     try {
-      provider = ctx.alepha.inject(EmailProvider);
+      ctx.alepha.inject(CLOUDFLARE_EMAIL_PROVIDER_NAME);
     } catch {
-      return;
-    }
-
-    if (!(provider instanceof CloudflareEmailProvider)) {
       return;
     }
 
