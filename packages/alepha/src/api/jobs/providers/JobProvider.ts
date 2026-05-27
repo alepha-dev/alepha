@@ -152,6 +152,38 @@ export class JobProvider {
   protected readonly perExecutionLogs = new Map<string, LogEntry[]>();
   protected stopping = false;
 
+  constructor() {
+    // Register the sweep + trim crons eagerly so the wrangler build
+    // step (which reads `CronProvider.getCronJobs()` without running
+    // any lifecycle hooks) sees them and emits the matching cron
+    // triggers into wrangler.jsonc. CronProvider's `start` hook will
+    // boot whatever is in `cronJobs` at runtime — registering here
+    // (constructor, runs at inject time) is equivalent to registering
+    // in `onStart` from CronProvider's POV but visible to build-time
+    // introspection.
+    this.cronProvider.createCronJob(
+      "api:jobs:sweep",
+      this.config.sweepCron,
+      async () => {
+        await this.sweep();
+      },
+      true,
+    );
+    this.cronProvider.createCronJob(
+      "api:jobs:trim",
+      this.config.trimCron,
+      async () => {
+        if (this.stopping) return;
+        try {
+          await this.trimRingBuffers();
+        } catch (e) {
+          this.log.error("Trim failed", { error: e });
+        }
+      },
+      true,
+    );
+  }
+
   // --- Registration -----------------------------------------------------------------------------------------------
 
   public registerJob(name: string, options: JobPrimitiveOptions): void {
@@ -1246,28 +1278,10 @@ export class JobProvider {
         await this.sweep();
       }
 
-      this.cronProvider.createCronJob(
-        "api:jobs:sweep",
-        this.config.sweepCron,
-        async () => {
-          await this.sweep();
-        },
-        true,
-      );
-
-      this.cronProvider.createCronJob(
-        "api:jobs:trim",
-        this.config.trimCron,
-        async () => {
-          if (this.stopping) return;
-          try {
-            await this.trimRingBuffers();
-          } catch (e) {
-            this.log.error("Trim failed", { error: e });
-          }
-        },
-        true,
-      );
+      // Sweep + trim cron registrations live in the constructor — see
+      // the note there. CronProvider's `start` hook (which runs before
+      // ours via DI order) has already booted them by the time we get
+      // here.
     },
   });
 
