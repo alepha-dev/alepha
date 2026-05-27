@@ -95,9 +95,7 @@ export class VercelAdapter extends PlatformAdapter {
   // -------------------------------------------------------------------------
 
   async build(ctx: AppContext, run: RunnerMethod): Promise<void> {
-    const appDir = ctx.app.path
-      ? this.fs.join(ctx.root, ctx.app.path)
-      : ctx.root;
+    const appDir = ctx.root;
 
     await run({
       name: "alepha build -t vercel",
@@ -117,16 +115,14 @@ export class VercelAdapter extends PlatformAdapter {
     ctx: AppContext,
     run: RunnerMethod,
   ): Promise<string | undefined> {
-    const distDir = ctx.app.path
-      ? this.fs.join(ctx.root, ctx.app.path, "dist")
-      : this.fs.join(ctx.root, "dist");
+    const distDir = this.fs.join(ctx.root, "dist");
 
     const projectName = ctx.naming.worker();
 
     let url: string | undefined;
 
     await run({
-      name: `deploy ${ctx.app.name}`,
+      name: `deploy ${ctx.project}`,
       handler: async () => {
         // Ensure project exists and has framework: null for prebuilt deploys
         let project = await this.api.getProject(projectName);
@@ -199,7 +195,7 @@ export class VercelAdapter extends PlatformAdapter {
       return;
     }
 
-    for (const app of ctx.apps) {
+    {
       const projectName = ctx.naming.worker();
 
       await run({
@@ -231,7 +227,7 @@ export class VercelAdapter extends PlatformAdapter {
     const tasks: Array<{ name: string; handler: () => Promise<void> }> = [];
 
     // Projects/deployments (mapped to "workers" in PlatformState)
-    for (const app of ctx.apps) {
+    {
       const projectName = ctx.naming.worker();
 
       tasks.push({
@@ -303,7 +299,7 @@ export class VercelAdapter extends PlatformAdapter {
   // -------------------------------------------------------------------------
 
   async teardown(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
-    for (const app of ctx.apps) {
+    {
       const projectName = ctx.naming.worker();
 
       await run({

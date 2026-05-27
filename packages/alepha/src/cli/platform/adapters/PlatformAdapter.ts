@@ -15,32 +15,14 @@ export interface DetectedResources {
   hasCron: boolean;
 }
 
-export interface AppDefinition {
-  /**
-   * Slugified app name (from package.json).
-   */
-  name: string;
-
-  /**
-   * Relative path from root (e.g., "apps/api").
-   * Empty string for standalone apps.
-   */
-  path: string;
-
-  /**
-   * Resolved entry points for this app.
-   */
-  entry: AppEntry;
-
-  /**
-   * Cloud resources detected by introspecting the app.
-   */
-  resources: DetectedResources;
-}
-
+/**
+ * One workspace = one app. Used to be a per-app definition in a
+ * monorepo-aware orchestrator; flattened into `PlatformContext` after
+ * the `apps:` field was removed from platform options.
+ */
 export interface PlatformContext {
   /**
-   * Slugified project name (from root package.json or config).
+   * Slugified project name (from package.json or platform config).
    */
   project: string;
 
@@ -55,14 +37,21 @@ export interface PlatformContext {
   envConfig: EnvironmentConfig;
 
   /**
-   * All apps in the project.
-   */
-  apps: AppDefinition[];
-
-  /**
-   * Monorepo/project root path.
+   * Workspace root path.
    */
   root: string;
+
+  /**
+   * Resolved entry points for the workspace. Stub (`{ root, server: "" }`)
+   * in pre-built / manifest mode since no source booting happens.
+   */
+  entry: AppEntry;
+
+  /**
+   * Cloud resources the workspace uses — discovered at build time, read
+   * from `dist/manifest.json` at deploy time.
+   */
+  resources: DetectedResources;
 
   /**
    * Resource name generator bound to this project+env.
@@ -78,12 +67,11 @@ export interface PlatformContext {
   prebuilt?: boolean;
 }
 
-export interface AppContext extends PlatformContext {
-  /**
-   * The specific app being operated on.
-   */
-  app: AppDefinition;
-}
+/**
+ * @deprecated Same as `PlatformContext` since the `apps:` collapse —
+ * kept as a type alias so existing adapter signatures still compile.
+ */
+export type AppContext = PlatformContext;
 
 // ---------------------------------------------------------------------------
 // State types (returned by inspect)

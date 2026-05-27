@@ -126,13 +126,11 @@ export class CloudflareAdapter extends PlatformAdapter {
 
   async build(ctx: AppContext, run: RunnerMethod): Promise<void> {
     this.configureApi(ctx);
-    const appDir = ctx.app.path
-      ? this.fs.join(ctx.root, ctx.app.path)
-      : ctx.root;
+    const appDir = ctx.root;
 
     const env: Record<string, string> = {};
 
-    if (ctx.app.resources.hasDatabase) {
+    if (ctx.resources.hasDatabase) {
       if (this.provisionedHyperdriveId) {
         env.HYPERDRIVE_ID = this.provisionedHyperdriveId;
         const envVars = await this.envUtils.parseEnv(ctx.root, [
@@ -148,11 +146,11 @@ export class CloudflareAdapter extends PlatformAdapter {
       }
     }
 
-    if (ctx.app.resources.hasBucket) {
+    if (ctx.resources.hasBucket) {
       env.R2_BUCKET_NAME = ctx.naming.r2();
     }
 
-    if (ctx.app.resources.hasKV) {
+    if (ctx.resources.hasKV) {
       const kvName = ctx.naming.kv();
       env.CLOUDFLARE_KV_NAME = kvName;
       const kvId = this.provisionedKVIds.get(kvName);
@@ -161,7 +159,7 @@ export class CloudflareAdapter extends PlatformAdapter {
       }
     }
 
-    if (ctx.app.resources.hasQueue) {
+    if (ctx.resources.hasQueue) {
       env.CLOUDFLARE_QUEUE_NAME = ctx.naming.queue();
     }
 
@@ -206,14 +204,12 @@ export class CloudflareAdapter extends PlatformAdapter {
   ): Promise<string | undefined> {
     this.configureApi(ctx);
     const workerName = ctx.naming.worker();
-    const distDir = ctx.app.path
-      ? this.fs.join(ctx.root, ctx.app.path, "dist")
-      : this.fs.join(ctx.root, "dist");
+    const distDir = this.fs.join(ctx.root, "dist");
 
     let url: string | undefined;
 
     await run({
-      name: `deploy worker ${ctx.app.name}`,
+      name: `deploy worker ${ctx.project}`,
       handler: async () => {
         url = await this.wrangler.deploy(
           workerName,
@@ -291,7 +287,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     //   5. PATCH the merged binding list in one call.
     const hash = computeSecretsHash(secrets);
 
-    for (const _app of ctx.apps) {
+    {
       const workerName = ctx.naming.worker();
 
       await run({
@@ -364,8 +360,8 @@ export class CloudflareAdapter extends PlatformAdapter {
     run: RunnerMethod,
   ): Promise<void> {
     this.configureApi(ctx);
-    const needsDB = ctx.apps.some((a) => a.resources.hasDatabase);
-    const needsBucket = ctx.apps.some((a) => a.resources.hasBucket);
+    const needsDB = ctx.resources.hasDatabase;
+    const needsBucket = ctx.resources.hasBucket;
     const postgres = needsDB && (await this.isPostgres(ctx));
 
     const tasks: Array<{ name: string; handler: () => Promise<void> }> = [];
@@ -406,27 +402,24 @@ export class CloudflareAdapter extends PlatformAdapter {
         },
       });
     }
+    if (ctx.resources.hasKV) {
+      const kvName = ctx.naming.kv();
+      tasks.push({
+        name: `provision kv (${kvName})`,
+        handler: async () => {
+          this.provisionedKVIds.set(kvName, await this.ensureKV(kvName));
+        },
+      });
+    }
 
-    for (const app of ctx.apps) {
-      if (app.resources.hasKV) {
-        const kvName = ctx.naming.kv();
-        tasks.push({
-          name: `provision kv (${kvName})`,
-          handler: async () => {
-            this.provisionedKVIds.set(kvName, await this.ensureKV(kvName));
-          },
-        });
-      }
-
-      if (app.resources.hasQueue) {
-        const queueName = ctx.naming.queue();
-        tasks.push({
-          name: `provision queue (${queueName})`,
-          handler: async () => {
-            await this.ensureQueue(queueName);
-          },
-        });
-      }
+    if (ctx.resources.hasQueue) {
+      const queueName = ctx.naming.queue();
+      tasks.push({
+        name: `provision queue (${queueName})`,
+        handler: async () => {
+          await this.ensureQueue(queueName);
+        },
+      });
     }
 
     await run(tasks);
@@ -441,7 +434,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     run: RunnerMethod,
   ): Promise<void> {
     this.configureApi(ctx);
-    const needsDB = ctx.apps.some((a) => a.resources.hasDatabase);
+    const needsDB = ctx.resources.hasDatabase;
     if (!needsDB) {
       return;
     }
@@ -540,7 +533,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     const tasks: Array<{ name: string; handler: () => Promise<void> }> = [];
 
     // Workers
-    for (const _app of ctx.apps) {
+    {
       const name = ctx.naming.worker();
 
       tasks.push({
@@ -567,7 +560,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
 
     // Database
-    const needsDB = ctx.apps.some((a) => a.resources.hasDatabase);
+    const needsDB = ctx.resources.hasDatabase;
     if (needsDB) {
       if (await this.isPostgres(ctx)) {
         const hdName = ctx.naming.hyperdrive();
@@ -602,7 +595,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
 
     // R2
-    const needsBucket = ctx.apps.some((a) => a.resources.hasBucket);
+    const needsBucket = ctx.resources.hasBucket;
     if (needsBucket) {
       const bucketName = ctx.naming.r2();
       tasks.push({
@@ -618,43 +611,35 @@ export class CloudflareAdapter extends PlatformAdapter {
         },
       });
     }
-
-    // KV
-    for (const app of ctx.apps) {
-      if (app.resources.hasKV) {
-        const kvName = ctx.naming.kv();
-        tasks.push({
-          name: `inspect kv (${kvName})`,
-          handler: async () => {
-            const namespaces = await this.api.listKV();
-            const existing = namespaces.find((ns) => ns.title === kvName);
-            state.kvNamespaces.push({
-              name: kvName,
-              exists: !!existing,
-              id: existing?.id,
-            });
-          },
-        });
-      }
+    if (ctx.resources.hasKV) {
+      const kvName = ctx.naming.kv();
+      tasks.push({
+        name: `inspect kv (${kvName})`,
+        handler: async () => {
+          const namespaces = await this.api.listKV();
+          const existing = namespaces.find((ns) => ns.title === kvName);
+          state.kvNamespaces.push({
+            name: kvName,
+            exists: !!existing,
+            id: existing?.id,
+          });
+        },
+      });
     }
-
-    // Queues
-    for (const app of ctx.apps) {
-      if (app.resources.hasQueue) {
-        const queueName = ctx.naming.queue();
-        tasks.push({
-          name: `inspect queue (${queueName})`,
-          handler: async () => {
-            const queues = await this.api.listQueues();
-            const existing = queues.find((q) => q.queue_name === queueName);
-            state.queues.push({
-              name: queueName,
-              exists: !!existing,
-              id: existing?.queue_id,
-            });
-          },
-        });
-      }
+    if (ctx.resources.hasQueue) {
+      const queueName = ctx.naming.queue();
+      tasks.push({
+        name: `inspect queue (${queueName})`,
+        handler: async () => {
+          const queues = await this.api.listQueues();
+          const existing = queues.find((q) => q.queue_name === queueName);
+          state.queues.push({
+            name: queueName,
+            exists: !!existing,
+            id: existing?.queue_id,
+          });
+        },
+      });
     }
 
     // Secrets
@@ -700,32 +685,29 @@ export class CloudflareAdapter extends PlatformAdapter {
 
   async teardown(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
     this.configureApi(ctx);
-    // 1. Remove queue consumers (must happen before worker or queue deletion)
-    for (const app of ctx.apps) {
-      if (app.resources.hasQueue) {
-        const workerName = ctx.naming.worker();
-        const queueName = ctx.naming.queue();
-        await run({
-          name: `unbind queue consumer ${queueName}`,
-          handler: async () => {
-            try {
-              const queues = await this.api.listQueues();
-              const queue = queues.find((q) => q.queue_name === queueName);
-              if (queue) {
-                await this.api.deleteQueueConsumer(queue.queue_id, workerName);
-              }
-            } catch (error: any) {
-              this.log.warn(
-                `Failed to unbind queue consumer: ${String(error.message || "")}`,
-              );
+    if (ctx.resources.hasQueue) {
+      const workerName = ctx.naming.worker();
+      const queueName = ctx.naming.queue();
+      await run({
+        name: `unbind queue consumer ${queueName}`,
+        handler: async () => {
+          try {
+            const queues = await this.api.listQueues();
+            const queue = queues.find((q) => q.queue_name === queueName);
+            if (queue) {
+              await this.api.deleteQueueConsumer(queue.queue_id, workerName);
             }
-          },
-        });
-      }
+          } catch (error: any) {
+            this.log.warn(
+              `Failed to unbind queue consumer: ${String(error.message || "")}`,
+            );
+          }
+        },
+      });
     }
 
     // 2. Delete workers
-    for (const _app of ctx.apps) {
+    {
       const name = ctx.naming.worker();
       await run({
         name: `delete worker ${name}`,
@@ -740,60 +722,52 @@ export class CloudflareAdapter extends PlatformAdapter {
         },
       });
     }
-
-    // 3. Delete queues (after worker is gone)
-    for (const app of ctx.apps) {
-      if (app.resources.hasQueue) {
-        const name = ctx.naming.queue();
-        await run({
-          name: `delete queue ${name}`,
-          handler: async () => {
-            try {
-              const queues = await this.api.listQueues();
-              const queue = queues.find((q) => q.queue_name === name);
-              if (!queue) {
-                this.log.debug(`Queue ${name} not found — skipping.`);
-                return;
-              }
-              await this.api.deleteQueue(queue.queue_id);
-            } catch (error: any) {
-              this.log.warn(
-                `Failed to delete queue ${name}: ${String(error.message || "")}`,
-              );
+    if (ctx.resources.hasQueue) {
+      const name = ctx.naming.queue();
+      await run({
+        name: `delete queue ${name}`,
+        handler: async () => {
+          try {
+            const queues = await this.api.listQueues();
+            const queue = queues.find((q) => q.queue_name === name);
+            if (!queue) {
+              this.log.debug(`Queue ${name} not found — skipping.`);
+              return;
             }
-          },
-        });
-      }
+            await this.api.deleteQueue(queue.queue_id);
+          } catch (error: any) {
+            this.log.warn(
+              `Failed to delete queue ${name}: ${String(error.message || "")}`,
+            );
+          }
+        },
+      });
     }
-
-    // 4. Delete KV namespaces
-    for (const app of ctx.apps) {
-      if (app.resources.hasKV) {
-        const name = ctx.naming.kv();
-        await run({
-          name: `delete kv ${name}`,
-          handler: async () => {
-            try {
-              const namespaces = await this.api.listKV();
-              const existing = namespaces.find((ns) => ns.title === name);
-              if (!existing) {
-                this.log.debug(`KV namespace ${name} not found — skipping.`);
-                return;
-              }
-              await this.api.deleteKV(existing.id);
-            } catch (error: any) {
-              this.log.warn(
-                `Failed to delete kv ${name}: ${String(error.message || "")}`,
-              );
+    if (ctx.resources.hasKV) {
+      const name = ctx.naming.kv();
+      await run({
+        name: `delete kv ${name}`,
+        handler: async () => {
+          try {
+            const namespaces = await this.api.listKV();
+            const existing = namespaces.find((ns) => ns.title === name);
+            if (!existing) {
+              this.log.debug(`KV namespace ${name} not found — skipping.`);
+              return;
             }
-          },
-        });
-      }
+            await this.api.deleteKV(existing.id);
+          } catch (error: any) {
+            this.log.warn(
+              `Failed to delete kv ${name}: ${String(error.message || "")}`,
+            );
+          }
+        },
+      });
     }
 
     // 5. Delete R2 bucket (must be emptied first — Cloudflare's REST DELETE
     // rejects non-empty buckets with `BucketNotEmpty`)
-    const needsBucket = ctx.apps.some((a) => a.resources.hasBucket);
+    const needsBucket = ctx.resources.hasBucket;
     if (needsBucket) {
       const name = ctx.naming.r2();
       await run({
@@ -818,7 +792,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
 
     // 6. Delete D1 or Hyperdrive
-    const needsDB = ctx.apps.some((a) => a.resources.hasDatabase);
+    const needsDB = ctx.resources.hasDatabase;
     if (needsDB) {
       if (await this.isPostgres(ctx)) {
         const name = ctx.naming.hyperdrive();

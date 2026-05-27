@@ -1,12 +1,9 @@
 import { $inject, $state, AlephaError, t } from "alepha";
-import { AppEntryProvider, ViteBuildProvider } from "alepha/cli";
+import { type AppEntry, AppEntryProvider, ViteBuildProvider } from "alepha/cli";
 import { $command, EnvUtils } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
-import type {
-  AppDefinition,
-  DetectedResources,
-} from "../adapters/PlatformAdapter.ts";
+import type { DetectedResources } from "../adapters/PlatformAdapter.ts";
 import { VercelAdapter } from "../adapters/VercelAdapter.ts";
 import { platformOptions } from "../atoms/platformOptions.ts";
 import type {
@@ -237,7 +234,9 @@ export class PlatformCommand {
       const result = await this.orchestrator.up({
         root,
         env,
-        apps,
+        entry: apps[0].entry,
+        resources: apps[0].resources,
+
         run,
         prebuilt: flags.prebuilt,
       });
@@ -297,7 +296,9 @@ export class PlatformCommand {
       const completed = await this.orchestrator.down({
         root,
         env: flags.env,
-        apps,
+        entry: apps[0].entry,
+        resources: apps[0].resources,
+
         run,
         confirm: async (prompt) => {
           if (flags.yes) {
@@ -348,7 +349,9 @@ export class PlatformCommand {
       const { state } = await this.orchestrator.status({
         root,
         env,
-        apps,
+        entry: apps[0].entry,
+        resources: apps[0].resources,
+
         run,
       });
 
@@ -528,14 +531,14 @@ export class PlatformCommand {
         project: config.project,
         env,
         envConfig,
-        apps,
+        entry: apps[0].entry,
+        resources: apps[0].resources,
+
         root,
         naming: namingCtx,
       };
 
-      for (const app of apps) {
-        await adapter.build({ ...ctx, app }, run);
-      }
+      await adapter.build(ctx, run);
     },
   });
 
@@ -559,16 +562,15 @@ export class PlatformCommand {
         project: config.project,
         env,
         envConfig,
-        apps,
+        entry: apps[0].entry,
+        resources: apps[0].resources,
+
         root,
         naming: namingCtx,
       };
 
       await adapter.authenticate(ctx, run);
-
-      for (const app of apps) {
-        await adapter.deploy({ ...ctx, app }, run);
-      }
+      await adapter.deploy(ctx, run);
     },
   });
 
@@ -592,7 +594,9 @@ export class PlatformCommand {
         project: config.project,
         env,
         envConfig,
-        apps,
+        entry: apps[0].entry,
+        resources: apps[0].resources,
+
         root,
         naming: namingCtx,
       };
@@ -650,12 +654,12 @@ export class PlatformCommand {
    * ViteBuildProvider.init() per app. This is expensive -- only done
    * for up/down/status, not for plan.
    */
-  protected async resolveApps(
+  protected async resolveApp(
     root: string,
-    config: ResolvedPlatformConfig,
+    _config: ResolvedPlatformConfig,
     isServerless: boolean,
     options: { prebuilt?: boolean } = {},
-  ): Promise<AppDefinition[]> {
+  ): Promise<{ entry: AppEntry; resources: DetectedResources }> {
     // Prebuilt + manifest fast-path: read `dist/manifest.json` produced
     // by the original `alepha build` instead of re-booting the workspace
     // via Vite. Lets external orchestrators (Alepha Rocket) avoid the
@@ -664,14 +668,10 @@ export class PlatformCommand {
     if (options.prebuilt) {
       const manifest = await this.readManifest(root);
       if (manifest) {
-        return [
-          {
-            name: manifest.project,
-            path: "",
-            entry: { root, server: "" },
-            resources: manifest.resources,
-          },
-        ];
+        return {
+          entry: { root, server: "" },
+          resources: manifest.resources,
+        };
       }
       // No manifest — fall through to introspection. Useful for older
       // artifacts that pre-date the manifest emission.
@@ -685,14 +685,33 @@ export class PlatformCommand {
     delete process.env.ALEPHA_SERVERLESS;
     const resources = this.detectResources(appAlepha);
 
-    return [
-      {
-        name: config.project,
-        path: "",
-        entry,
-        resources,
-      },
-    ];
+    return { entry, resources };
+  }
+
+  /**
+   * @deprecated single-app projects; use `resolveApp` directly.
+   * Kept temporarily so existing commands can be migrated one at a time.
+   */
+  protected async resolveApps(
+    root: string,
+    config: ResolvedPlatformConfig,
+    isServerless: boolean,
+    options: { prebuilt?: boolean } = {},
+  ): Promise<
+    Array<{
+      name: string;
+      path: string;
+      entry: AppEntry;
+      resources: DetectedResources;
+    }>
+  > {
+    const { entry, resources } = await this.resolveApp(
+      root,
+      config,
+      isServerless,
+      options,
+    );
+    return [{ name: config.project, path: "", entry, resources }];
   }
 
   protected isServerless(adapter: string): boolean {

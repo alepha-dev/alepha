@@ -1,9 +1,10 @@
 import { $inject, Alepha, AlephaError } from "alepha";
+import type { AppEntry } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
 import type {
-  AppDefinition,
+  DetectedResources,
   PlatformAdapter,
   PlatformContext,
   PlatformState,
@@ -52,7 +53,8 @@ export class PlatformOrchestrator {
   public async up(options: {
     root: string;
     env: string;
-    apps: AppDefinition[];
+    entry: AppEntry;
+    resources: DetectedResources;
     run: RunnerMethod;
     /**
      * Pre-built mode — the artifact's `dist/` is already produced.
@@ -67,7 +69,7 @@ export class PlatformOrchestrator {
      */
     prebuilt?: boolean;
   }): Promise<{ urls: string[]; domain?: string }> {
-    const { root, env, apps, run, prebuilt } = options;
+    const { root, env, entry, resources, run, prebuilt } = options;
     const envConfig = await this.inspector.resolveEnvironment(root, env);
     const config = await this.inspector.resolveConfig(root);
     const adapter = this.resolveAdapter(envConfig.adapter);
@@ -77,43 +79,25 @@ export class PlatformOrchestrator {
       project: config.project,
       env,
       envConfig,
-      apps,
       root,
+      entry,
+      resources,
       naming: namingCtx,
       prebuilt,
     };
 
-    // 1. Auth
     await adapter.authenticate(ctx, run);
-
-    // 2. Provision (before build so resource IDs are available for wrangler config)
     await adapter.provision(ctx, run);
-
-    // 3. Build
-    //    Always runs — the adapter checks `ctx.prebuilt` to decide whether
-    //    to do a full bundle build or just regenerate deploy config.
-    for (const a of apps) {
-      await adapter.build({ ...ctx, app: a }, run);
-    }
-
-    // 4. Migrate
+    // `build` always runs — adapter checks `ctx.prebuilt` to decide
+    // whether to do a full bundle build or only regenerate deploy config.
+    await adapter.build(ctx, run);
     await adapter.migrate(ctx, run);
-
-    // 5. Deploy
-    const urls: string[] = [];
-    for (const a of apps) {
-      const url = await adapter.deploy({ ...ctx, app: a }, run);
-      if (url) {
-        urls.push(url);
-      }
-    }
-
-    // 6. Secrets (push .env.{env} secrets to deployed workers)
+    const url = await adapter.deploy(ctx, run);
     await adapter.secrets(ctx, run);
 
     run.end();
 
-    return { urls, domain: envConfig.domain };
+    return { urls: url ? [url] : [], domain: envConfig.domain };
   }
 
   /**
@@ -146,11 +130,12 @@ export class PlatformOrchestrator {
   public async down(options: {
     root: string;
     env: string;
-    apps: AppDefinition[];
+    entry: AppEntry;
+    resources: DetectedResources;
     run: RunnerMethod;
     confirm: (prompt: string) => Promise<string>;
   }): Promise<boolean> {
-    const { root, env, apps, run, confirm } = options;
+    const { root, env, entry, resources, run, confirm } = options;
     const envConfig = await this.inspector.resolveEnvironment(root, env);
     const config = await this.inspector.resolveConfig(root);
     const adapter = this.resolveAdapter(envConfig.adapter);
@@ -160,8 +145,9 @@ export class PlatformOrchestrator {
       project: config.project,
       env,
       envConfig,
-      apps,
       root,
+      entry,
+      resources,
       naming: namingCtx,
     };
 
@@ -192,16 +178,16 @@ export class PlatformOrchestrator {
   public async plan(options: {
     root: string;
     env: string;
-    apps: AppDefinition[];
+    resources: DetectedResources;
   }): Promise<{
     config: ResolvedPlatformConfig;
     naming: NamingContext;
-    apps: AppDefinition[];
+    resources: DetectedResources;
   }> {
-    const { root, env, apps } = options;
+    const { root, env, resources } = options;
     const config = await this.inspector.resolveConfig(root);
     const namingCtx = this.naming.forContext(config.project, env);
-    return { config, naming: namingCtx, apps };
+    return { config, naming: namingCtx, resources };
   }
 
   // -------------------------------------------------------------------------
@@ -211,10 +197,11 @@ export class PlatformOrchestrator {
   public async status(options: {
     root: string;
     env: string;
-    apps: AppDefinition[];
+    entry: AppEntry;
+    resources: DetectedResources;
     run: RunnerMethod;
   }): Promise<{ config: ResolvedPlatformConfig; state: PlatformState }> {
-    const { root, env, apps, run } = options;
+    const { root, env, entry, resources, run } = options;
     const envConfig = await this.inspector.resolveEnvironment(root, env);
     const config = await this.inspector.resolveConfig(root);
     const adapter = this.resolveAdapter(envConfig.adapter);
@@ -224,8 +211,9 @@ export class PlatformOrchestrator {
       project: config.project,
       env,
       envConfig,
-      apps,
       root,
+      entry,
+      resources,
       naming: namingCtx,
     };
 

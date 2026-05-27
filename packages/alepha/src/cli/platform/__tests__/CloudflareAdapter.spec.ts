@@ -203,7 +203,14 @@ describe("CloudflareAdapter", () => {
     project: "acme-portal",
     env: "production",
     envConfig: { adapter: "cloudflare" },
-    apps: [],
+    entry: { root: "/project", server: "src/main.ts" },
+    resources: {
+      hasDatabase: false,
+      hasBucket: false,
+      hasKV: false,
+      hasQueue: false,
+      hasCron: false,
+    },
     root: "/project",
     naming: naming.forContext("acme-portal", "production"),
     ...overrides,
@@ -270,20 +277,14 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: true,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: true,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       const run = createMockRun();
@@ -298,20 +299,14 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: true,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: true,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       // Pre-seed existing database
@@ -333,20 +328,14 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: true,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: true,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       const run = createMockRun();
@@ -361,20 +350,14 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: false,
-              hasKV: true,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: true,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       const run = createMockRun();
@@ -389,20 +372,14 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: true,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: true,
+          hasCron: false,
+        },
       });
 
       const run = createMockRun();
@@ -419,20 +396,14 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, fs, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       await fs.writeFile(
@@ -460,20 +431,14 @@ describe("CloudflareAdapter", () => {
     test("skips when no env file exists", async ({ expect }) => {
       const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       const run = createMockRun();
@@ -485,20 +450,14 @@ describe("CloudflareAdapter", () => {
     test("skips comments and empty lines", async ({ expect }) => {
       const { adapter, fs, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       await fs.writeFile(
@@ -518,20 +477,14 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, fs, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       await fs.writeFile(
@@ -570,20 +523,14 @@ describe("CloudflareAdapter", () => {
     test("PATCHes when secrets changed (hash mismatch)", async ({ expect }) => {
       const { adapter, fs, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       await fs.writeFile("/project/.env.production", "APP_SECRET=v1");
@@ -614,20 +561,14 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: true,
-              hasBucket: true,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: true,
+          hasBucket: true,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       // Pre-seed existing resources
@@ -664,20 +605,14 @@ describe("CloudflareAdapter", () => {
     test("deletes resources via REST API", async ({ expect }) => {
       const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: true,
-              hasBucket: true,
-              hasKV: true,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: true,
+          hasBucket: true,
+          hasKV: true,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       // Pre-seed existing resources

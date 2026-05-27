@@ -175,7 +175,14 @@ describe("VercelAdapter", () => {
     project: "acme-portal",
     env: "production",
     envConfig: { adapter: "vercel" },
-    apps: [],
+    entry: { root: "/project", server: "src/main.ts" },
+    resources: {
+      hasDatabase: false,
+      hasBucket: false,
+      hasKV: false,
+      hasQueue: false,
+      hasCron: false,
+    },
     root: "/project",
     naming: naming.forContext("acme-portal", "production"),
     ...overrides,
@@ -229,20 +236,14 @@ describe("VercelAdapter", () => {
     }) => {
       const { adapter, fs, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       // Pre-seed the project so upsertEnvVars has a target
@@ -282,20 +283,14 @@ describe("VercelAdapter", () => {
     test("filters out VITE_* and NODE_ENV", async ({ expect }) => {
       const { adapter, fs, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       api.projects.push({
@@ -327,20 +322,14 @@ describe("VercelAdapter", () => {
     test("skips when no env file exists", async ({ expect }) => {
       const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       let upsertCalled = false;
@@ -363,20 +352,14 @@ describe("VercelAdapter", () => {
     test("returns project state with deployment info", async ({ expect }) => {
       const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       // Pre-seed project and deployments
@@ -407,20 +390,14 @@ describe("VercelAdapter", () => {
     test("returns env var deployment status", async ({ expect }) => {
       const { adapter, fs, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       api.projects.push({
@@ -461,20 +438,14 @@ describe("VercelAdapter", () => {
     test("deletes projects via VercelApi.deleteProject", async ({ expect }) => {
       const { adapter, naming, api } = createTestEnv();
       const ctx = makeCtx(naming, {
-        apps: [
-          {
-            name: "api",
-            path: "apps/api",
-            entry: { root: "/project/apps/api", server: "src/main.ts" },
-            resources: {
-              hasDatabase: false,
-              hasBucket: false,
-              hasKV: false,
-              hasQueue: false,
-              hasCron: false,
-            },
-          },
-        ],
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
       });
 
       // Pre-seed project
