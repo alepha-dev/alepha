@@ -1,21 +1,19 @@
 import { $inject, $state, AlephaError, t } from "alepha";
 import { type AppEntry, AppEntryProvider, ViteBuildProvider } from "alepha/cli";
+import {
+  CloudflareAdapter,
+  type DetectedResources,
+  NamingService,
+  PlatformInspector,
+  PlatformOrchestrator,
+  type PlatformPlanOutput,
+  type PlatformStatusOutput,
+  platformOptions,
+  type ResolvedPlatformConfig,
+  VercelAdapter,
+} from "alepha/cli/platform-lib";
 import { $command, EnvUtils } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
-import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
-import type { DetectedResources } from "../adapters/PlatformAdapter.ts";
-import { VercelAdapter } from "../adapters/VercelAdapter.ts";
-import { platformOptions } from "../atoms/platformOptions.ts";
-import type {
-  PlatformPlanOutput,
-  PlatformStatusOutput,
-} from "../schemas/platform.ts";
-import { NamingService } from "../services/NamingService.ts";
-import {
-  PlatformInspector,
-  type ResolvedPlatformConfig,
-} from "../services/PlatformInspector.ts";
-import { PlatformOrchestrator } from "../services/PlatformOrchestrator.ts";
 import { SecretsCommand } from "./SecretsCommand.ts";
 
 export class PlatformCommand {

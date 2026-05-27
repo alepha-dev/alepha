@@ -1,7 +1,9 @@
-import { spawn } from "node:child_process";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { $inject } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
+import type { DetectedResources } from "alepha/cli/platform-lib";
+import { PlatformOrchestrator } from "alepha/cli/platform-lib";
+import { Runner } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { DeployRegistry } from "../providers/DeployRegistry.ts";
 import type { CreateDeploy } from "../schemas/deploy.ts";
@@ -13,17 +15,21 @@ import { ArtifactService } from "./ArtifactService.ts";
  * For each `createDeploy` request:
  *
  *   1. Download `{bucket}/{key}` from S3 → workspace dir, extract tar.gz.
- *      tar.gz must contain `dist/`, `migrations/`, `alepha.config.ts`
- *      (and typically `src/` + `package.json` — needed because
- *      `BuildCloudflareTask` boots Alepha to regenerate `wrangler.jsonc`).
+ *      tar.gz must contain `dist/` (with `manifest.json`) and
+ *      `migrations/`. No `alepha.config.ts` or `src/` is needed —
+ *      `PlatformInspector` and the resource detector both read from
+ *      `dist/manifest.json` in prebuilt mode.
  *   2. Write `.env.<env>.local` from the request's `config.vars` and
  *      `config.secrets`. The CLI picks these up on load; the alepha.config.ts
  *      can read `process.env.TENANT_SLUG` to parametrise per tenant.
- *   3. Spawn `npx alepha platform up --prebuilt --env <env>` in the
- *      workspace. Stdout + stderr are piped into the registry log buffer.
- *   4. On exit 0, parse the deployed URL from the output and mark
- *      `succeeded`. On non-zero, capture the tail of the log and mark
- *      `failed`.
+ *   3. Call `PlatformOrchestrator.up()` in-process. Stdout + stderr are
+ *      intercepted for the duration of the call and forwarded to the
+ *      registry log buffer. No `npx alepha …` spawn, no workspace
+ *      `npm install` — `alepha` itself is already bundled into Rocket's
+ *      dist; the only external binary called is `wrangler` (by the
+ *      Cloudflare adapter's build/deploy steps).
+ *   4. On success, return the deployed URL and mark `succeeded`.
+ *      On failure, capture the error and mark `failed`.
  *   5. Always clean up the workspace + tar.gz (`ROCKET_DEBUG_RETAIN=1` to
  *      keep them for post-mortems).
  */
@@ -31,6 +37,9 @@ export class DeployRunner {
   protected readonly log = $logger();
   protected readonly registry = $inject(DeployRegistry);
   protected readonly artifacts = $inject(ArtifactService);
+  protected readonly orchestrator = $inject(PlatformOrchestrator);
+  protected readonly runner = $inject(Runner);
+  protected readonly alepha = $inject(Alepha);
 
   public async run(id: string, body: CreateDeploy): Promise<void> {
     this.registry.start(id);
@@ -44,17 +53,12 @@ export class DeployRunner {
 
     try {
       await this.writeEnvOverrides(id, workspace, body);
-      // No `npm install` step. The CLI in --prebuilt mode reads
-      // dist/manifest.json (emitted by `alepha build --target=cloudflare`)
-      // and never boots the workspace's source — so the app's runtime
-      // deps (react, react-dom, etc.) don't need to be present. alepha
-      // itself + wrangler ship in the image's /app/node_modules/ and
-      // resolve from the workspace via Node's parent-dir walk.
+
       this.registry.append(
         id,
-        `> cd ${workspace}\n` +
-          `> npx alepha platform ${body.op} --prebuilt --json --env ${body.env}\n\n`,
+        `> orchestrator.${body.op} { root: ${workspace}, env: ${body.env}, prebuilt: true }\n\n`,
       );
+
       const deployedUrl = await this.runPlatform(id, body, workspace);
       this.registry.succeed(id, deployedUrl);
     } finally {
@@ -88,8 +92,6 @@ export class DeployRunner {
       .replace(/^.*\//, "") // drop bucket prefix if key includes slashes
       .replace(/\.tar\.gz$/i, "")
       .replace(/\.tgz$/i, "");
-    // Drop everything from the last `-` onwards — that's the version
-    // suffix. If no `-` is present, keep the whole stem.
     const dash = stem.lastIndexOf("-");
     const name = dash > 0 ? stem.slice(0, dash) : stem;
     return name
@@ -127,106 +129,124 @@ export class DeployRunner {
     );
   }
 
-  protected runPlatform(
+  /**
+   * Drive the orchestrator op (up / down / status) in-process. Streams
+   * stdout/stderr — captured by interception — into the registry buffer
+   * for the duration of the call.
+   *
+   * The orchestrator needs `entry` and `resources` per call; in prebuilt
+   * mode they're read straight from `dist/manifest.json` (no Vite, no
+   * AppEntryProvider).
+   */
+  protected async runPlatform(
     id: string,
     body: CreateDeploy,
     workspace: string,
   ): Promise<string | undefined> {
-    return new Promise((resolve, reject) => {
-      // `down` doesn't need a build, doesn't read a dist/. The rest
-      // (up / migrate / secrets) does — and `--prebuilt` keeps the
-      // wrangler.jsonc regen fast.
-      const args = ["alepha", "platform", body.op];
-      if (body.op !== "down") {
-        args.push("--prebuilt");
-      }
-      args.push("--json", "--env", body.env);
-      if (body.op === "down") {
-        // Non-interactive — Rocket can't answer prompts. The caller
-        // committed to the destructive op by hitting POST /deploys.
-        args.push("--yes");
-      }
+    const { entry, resources } = await this.readManifest(workspace);
 
-      const proc = spawn("npx", args, {
-        cwd: workspace,
-        env: {
-          ...process.env,
-          // CI=true → Runner uses plain-log mode (no spinner draws).
-          CI: "true",
-          // No NODE_ENV override — let the workspace's CLI pick its own
-          // mode resolution (defaults to production for the `up` command).
-        },
-        stdio: ["ignore", "pipe", "pipe"],
-      });
+    const restore = this.interceptStdio(id);
+    try {
+      this.runner.startCommand("alepha", `platform ${body.op}`);
 
-      let combined = "";
-      const onChunk = (chunk: Buffer) => {
-        const s = chunk.toString();
-        combined += s;
-        this.registry.append(id, s);
-      };
-      proc.stdout.on("data", onChunk);
-      proc.stderr.on("data", onChunk);
-
-      proc.on("error", (err) => reject(err));
-      proc.on("exit", (code) => {
-        if (code === 0) {
-          resolve(this.parseDeployedUrl(combined));
-        } else {
-          reject(
-            new Error(
-              `alepha platform ${body.op} exited with code ${code ?? "?"}`,
-            ),
-          );
+      switch (body.op) {
+        case "up": {
+          const result = await this.orchestrator.up({
+            root: workspace,
+            env: body.env,
+            entry,
+            resources,
+            run: this.runner.run,
+            prebuilt: true,
+          });
+          this.orchestrator.printUpSummary(result);
+          return result.domain ? `https://${result.domain}` : result.urls[0];
         }
-      });
-    });
+        case "down": {
+          // Auto-confirm — the POST /deploys is itself the confirmation.
+          await this.orchestrator.down({
+            root: workspace,
+            env: body.env,
+            entry,
+            resources,
+            run: this.runner.run,
+            confirm: async () => body.env,
+          });
+          return undefined;
+        }
+        default:
+          // `migrate` / `secrets` were spawn-only sub-steps (`alepha
+          // platform migrate`, `alepha platform secrets`). The library
+          // API only exposes them as part of `up`. If a client needs
+          // either standalone, run a full `up` — the adapter is
+          // idempotent on already-migrated/synced state.
+          throw new AlephaError(
+            `Op "${body.op}" is not supported in library-embed mode. Use "up" or "down".`,
+          );
+      }
+    } finally {
+      restore();
+    }
   }
 
   /**
-   * Pick the last `{...}` JSON object out of the CLI output and pull
-   * out `urls[0]` or `domain` if present. The `--json` flag on
-   * `alepha platform up` emits a single object on its own line; we
-   * scan from the end to skip any stdout noise from earlier steps.
-   * Falls back to URL-regex if no JSON object is found.
+   * Read `dist/manifest.json` produced by `alepha build`. Returns the
+   * synthetic `AppEntry` + the `DetectedResources` captured at build
+   * time so the orchestrator can skip Vite introspection (it'd need
+   * the workspace's runtime deps, which the prebuilt tarball doesn't
+   * ship).
    */
-  protected parseDeployedUrl(output: string): string | undefined {
-    const lines = output.trim().split("\n");
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i].trim();
-      if (!line.startsWith("{")) continue;
-      // The CLI emits pretty JSON (multi-line). Walk backwards collecting
-      // lines until braces balance — quick + good enough.
-      let chunk = line;
-      let depth = countDepth(chunk);
-      let j = i - 1;
-      while (depth > 0 && j >= 0) {
-        chunk = `${lines[j]}\n${chunk}`;
-        depth = countDepth(chunk);
-        j--;
+  protected async readManifest(workspace: string): Promise<{
+    entry: { root: string; server: string };
+    resources: DetectedResources;
+  }> {
+    const path = join(workspace, "dist", "manifest.json");
+    try {
+      const raw = await readFile(path, "utf-8");
+      const manifest = JSON.parse(raw) as { resources?: DetectedResources };
+      if (!manifest.resources) {
+        throw new AlephaError(`manifest.json missing "resources" at ${path}`);
       }
-      try {
-        const parsed = JSON.parse(chunk) as {
-          urls?: string[];
-          domain?: string;
-        };
-        if (parsed?.urls?.[0]) return parsed.urls[0];
-        if (parsed?.domain) return `https://${parsed.domain}`;
-      } catch {
-        // ignore, fall through to regex
-      }
-      break;
+      return {
+        entry: { root: workspace, server: "" },
+        resources: manifest.resources,
+      };
+    } catch (err) {
+      throw new AlephaError(
+        `Failed to read ${path}: ${(err as Error).message}`,
+      );
     }
-    const matches = output.match(/https:\/\/[\w.-]+(?:\/[\w./?#=&-]*)?/g);
-    return matches?.[matches.length - 1];
   }
-}
 
-function countDepth(s: string): number {
-  let depth = 0;
-  for (const c of s) {
-    if (c === "{") depth++;
-    else if (c === "}") depth--;
+  /**
+   * Capture process.stdout / process.stderr writes into the registry's
+   * log buffer for the active deploy. Returns a `restore` function the
+   * caller MUST invoke (in a finally block) to put the original writers
+   * back. Concurrent deploys share `process.stdout`, so callers must
+   * serialize — DeployRegistry processes one deploy at a time.
+   */
+  protected interceptStdio(id: string): () => void {
+    const out = process.stdout.write.bind(process.stdout);
+    const err = process.stderr.write.bind(process.stderr);
+
+    const sink = (chunk: any) => {
+      const s = typeof chunk === "string" ? chunk : (chunk?.toString?.() ?? "");
+      if (s) this.registry.append(id, s);
+    };
+
+    process.stdout.write = ((chunk: any, ...rest: any[]) => {
+      sink(chunk);
+      return out(chunk, ...(rest as []));
+    }) as typeof process.stdout.write;
+
+    process.stderr.write = ((chunk: any, ...rest: any[]) => {
+      sink(chunk);
+      return err(chunk, ...(rest as []));
+    }) as typeof process.stderr.write;
+
+    return () => {
+      process.stdout.write = out;
+      process.stderr.write = err;
+    };
   }
-  return depth;
 }

@@ -5,29 +5,18 @@ import { $command } from "alepha/command";
 export default defineConfig({
   build: {
     docker: {
-      // Both binaries land in `/app/node_modules/` (local install, no
-      // --global) so they're resolvable both from Rocket's own bundle
-      // and from the extracted workspace at `/app/workspace/<deploy-id>/`
-      // via Node's parent-dir walk.
-      //   - `alepha`: the `DeployRunner` spawns `npx alepha platform
-      //     <op> --prebuilt` against the workspace. Pre-installing
-      //     avoids the npx cold-fetch on every deploy.
-      //   - `wrangler`: invoked by `CloudflareAdapter` for `wrangler
-      //     deploy` + `wrangler d1 migrations apply --remote`. The
-      //     REST-only port is a v2 follow-up; until then wrangler is
-      //     non-optional.
-      // TEMPORARY: `react` + `react-dom` are here to work around an
-      // alepha-framework packaging issue — importing `alepha/cli/*`
-      // transitively pulls in `alepha/dist/react/core/index.js`, which
-      // does `import "react"` at module top level. So even purely
-      // server-side workloads can't run `alepha platform up` without
-      // react available in node_modules.
+      // `wrangler` is the only runtime binary the image needs.
+      // `CloudflareAdapter` shells out to it for `wrangler deploy` and
+      // `wrangler d1 migrations apply --remote`. The REST-only port is
+      // a v2 follow-up; until then wrangler is non-optional.
       //
-      // The right fix is in the framework (audit `cli/*` imports to
-      // remove the React side-effect, OR make `react`/`react-dom`
-      // optional peer deps with dynamic `import("react")` guards).
-      // Until that lands, we ship them in the image.
-      install: ["alepha", "wrangler", "react", "react-dom"],
+      // `alepha` is NOT installed — Rocket library-embeds the
+      // `PlatformOrchestrator` from `alepha/cli/platform-lib` (bundled
+      // into the image's own dist/) and calls `orchestrator.up()`
+      // in-process, so there's no `npx alepha …` spawn from the
+      // workspace and therefore no need for `alepha` to be resolvable
+      // at workspace cwd.
+      install: ["wrangler"],
       image: {
         // `--image` alone → `alepha/rocket:latest`,
         // `--image=0.21.1` → `alepha/rocket:0.21.1`,

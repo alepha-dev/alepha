@@ -236,6 +236,11 @@
       "import": "./src/cli/platform/index.ts",
       "default": "./src/cli/platform/index.ts"
     },
+    "./cli/platform-lib": {
+      "types": "./src/cli/platform-lib/index.ts",
+      "import": "./src/cli/platform-lib/index.ts",
+      "default": "./src/cli/platform-lib/index.ts"
+    },
     "./cli/vendor": {
       "types": "./src/cli/vendor/index.ts",
       "import": "./src/cli/vendor/index.ts",
@@ -659,6 +664,11 @@
         "types": "./dist/cli/platform/index.d.ts",
         "import": "./dist/cli/platform/index.js",
         "default": "./dist/cli/platform/index.js"
+      },
+      "./cli/platform-lib": {
+        "types": "./dist/cli/platform-lib/index.d.ts",
+        "import": "./dist/cli/platform-lib/index.js",
+        "default": "./dist/cli/platform-lib/index.js"
       },
       "./cli/vendor": {
         "types": "./dist/cli/vendor/index.d.ts",

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { Alepha, run } from "alepha";
 import { AlephaCli, version } from "alepha/cli";
-import { AlephaCliPlatformPlugin } from "alepha/cli/platform";
 
 const alepha = Alepha.create({
   env: {
@@ -14,10 +13,5 @@ const alepha = Alepha.create({
 });
 
 alepha.with(AlephaCli);
-// Always register the platform plugin so `alepha platform <op>` works
-// even when no alepha.config.ts is present (e.g. prebuilt artifacts
-// shipped by Alepha Rocket that only ship dist/ + migrations/ — the
-// platform config comes from dist/manifest.json instead).
-alepha.with(AlephaCliPlatformPlugin);
 
 run(alepha);

@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { AlephaPlatformLibPlugin } from "alepha/cli/platform-lib";
 import { RocketController } from "./controllers/RocketController.ts";
 import { DeployRegistry } from "./providers/DeployRegistry.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
@@ -13,7 +14,13 @@ import { DeployRunner } from "./services/DeployRunner.ts";
  */
 export const AlephaRocket = $module({
   name: "alepha.rocket",
-  services: [RocketController, DeployRegistry, DeployRunner, ArtifactService],
+  services: [
+    AlephaPlatformLibPlugin,
+    RocketController,
+    DeployRegistry,
+    DeployRunner,
+    ArtifactService,
+  ],
 });
 
 export * from "./controllers/RocketController.ts";
