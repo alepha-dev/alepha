@@ -54,11 +54,25 @@ export abstract class ContainerProvider {
       }
     }
 
+    // Match the route Alepha generates server-side when no explicit
+    // `path:` is set on `$action`: `/${name}` with one `/:<key>`
+    // segment appended per param. Params that match a `:key`
+    // placeholder are substituted in place; any remaining params are
+    // appended in declaration order so `params: {id:"abc"}` against a
+    // proxy action `getDeploy` yields `/api/getDeploy/abc`.
     let path = `/api/${action}`;
     if (config.params) {
+      const tail: string[] = [];
       for (const [k, v] of Object.entries(config.params)) {
-        path = path.replace(`:${k}`, encodeURIComponent(String(v)));
+        const placeholder = `:${k}`;
+        const encoded = encodeURIComponent(String(v));
+        if (path.includes(placeholder)) {
+          path = path.replace(placeholder, encoded);
+        } else {
+          tail.push(encoded);
+        }
       }
+      if (tail.length) path += `/${tail.join("/")}`;
     }
 
     const search = params.toString();

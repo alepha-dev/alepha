@@ -111,6 +111,12 @@ export class ArtifactService {
     const workdir = join(workspaceRoot, deployId);
     const archive = `${workdir}.tar.gz`;
 
+    // Wipe any leftover from a prior deploy that crashed before its
+    // cleanup ran (container restart mid-run, hard fault, etc.). tar
+    // refuses to overwrite Brotli-precompressed `.br` siblings with
+    // "File exists", so a fresh dir is mandatory.
+    await rm(workdir, { recursive: true, force: true });
+    await rm(archive, { force: true });
     await mkdir(workdir, { recursive: true });
 
     this.log.info(`Fetching s3://${bucket}/${key} → ${archive}`);

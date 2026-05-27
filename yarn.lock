@@ -705,6 +705,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@cloudflare/containers@npm:^0.3.5":
+  version: 0.3.5
+  resolution: "@cloudflare/containers@npm:0.3.5"
+  checksum: 10c0/ab72a9bf1eb006b44832ed824deee277270e15dca11dd4809d7dce754db9c567799e73c25922ba45720489794efa1f97ce304feedc686e21345eb9ed6ded20d0
+  languageName: node
+  linkType: hard
+
 "@cloudflare/kv-asset-handler@npm:0.5.0":
   version: 0.5.0
   resolution: "@cloudflare/kv-asset-handler@npm:0.5.0"
@@ -5297,6 +5304,7 @@ __metadata:
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
     "@biomejs/biome": "npm:^2.4.15"
+    "@cloudflare/containers": "npm:^0.3.5"
     "@cloudflare/workers-types": "npm:^4.20260520.1"
     "@electric-sql/pglite": "npm:^0.4.5"
     "@faker-js/faker": "npm:^10.4.0"

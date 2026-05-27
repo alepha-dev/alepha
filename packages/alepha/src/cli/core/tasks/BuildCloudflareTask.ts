@@ -513,10 +513,55 @@ export class BuildCloudflareTask extends BuildTask {
       port: p.options.port ?? 3000,
       sleepAfter:
         typeof p.options.sleepAfter === "string" ? p.options.sleepAfter : "15m",
-      instanceType: p.options.instanceType ?? "dev",
+      // `lite` is the post-GA name for what `$container` historically
+      // called `dev`. Default to `lite` here and rewrite any
+      // explicit `dev` to it on the way out — wrangler warns
+      // otherwise.
+      instanceType:
+        p.options.instanceType === "dev"
+          ? "lite"
+          : (p.options.instanceType ?? "lite"),
       maxInstances: p.options.maxInstances ?? 5,
       envVars: p.options.envVars,
     }));
+  }
+
+  /**
+   * Expand a short image ref (e.g. `alepha-rocket:0.1.0`) into the
+   * fully-qualified `registry.cloudflare.com/<account>/<image>:<tag>`
+   * URL that wrangler validates at deploy time.
+   *
+   * Cloudflare Containers only pulls from `registry.cloudflare.com`;
+   * wrangler accepts either a Dockerfile path or a fully-qualified
+   * registry URL in the `image` field — not a bare DockerHub-style
+   * name. We let `$container({ image })` callers write the short
+   * form (it matches what `wrangler containers push <local>` accepts
+   * + matches the local docker tag) and rewrite to the CF registry
+   * URL here.
+   *
+   * Pass-through cases:
+   *   - already a full URL: starts with `registry.cloudflare.com/`
+   *     or contains a scheme/`://`
+   *   - looks like a Dockerfile path: starts with `./` or `/`
+   */
+  protected resolveContainerImage(image: string): string {
+    if (
+      image.startsWith("./") ||
+      image.startsWith("/") ||
+      image.startsWith("registry.cloudflare.com/") ||
+      image.includes("://")
+    ) {
+      return image;
+    }
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+    if (!accountId) {
+      // No account id — leave the short form and let wrangler error
+      // out with a clearer message. This branch fires only in dry
+      // builds where the env isn't wired (e.g. `alepha build` without
+      // `alepha platform up` around it).
+      return image;
+    }
+    return `registry.cloudflare.com/${accountId}/${image}`;
   }
 
   protected enhanceContainers(
@@ -539,7 +584,7 @@ export class BuildCloudflareTask extends BuildTask {
     for (const d of descriptors) {
       wrangler.containers.push({
         class_name: d.className,
-        image: d.image,
+        image: this.resolveContainerImage(d.image),
         instance_type: d.instanceType,
         max_instances: d.maxInstances,
       });
@@ -565,19 +610,23 @@ export class BuildCloudflareTask extends BuildTask {
     distDir: string,
     containers: ContainerDescriptor[] = [],
   ): Promise<void> {
+    // Extend `globalThis.__alepha_CloudflareContainer` instead of
+    // importing `@cloudflare/containers` directly. The entry is
+    // written AFTER Vite, so any bare specifier in here survives to
+    // workerd (which has `no_bundle: true`) and 10021's out. The
+    // global is set by a side-effect in `alepha/container`'s
+    // workerd entry, which Vite has already inlined into
+    // `./index.js`. ESM evaluates top-level imports before the
+    // module body, so by the time the `extends` expression below is
+    // evaluated, the global is set.
     const containerDeclarations = containers
       .map((c) => {
         const envVars = c.envVars
           ? `  envVars = ${JSON.stringify(c.envVars)};\n`
           : "";
-        return `export class ${c.className} extends Container {\n  defaultPort = ${c.port};\n  sleepAfter = "${c.sleepAfter}";\n${envVars}}`;
+        return `export class ${c.className} extends globalThis.__alepha_CloudflareContainer {\n  defaultPort = ${c.port};\n  sleepAfter = "${c.sleepAfter}";\n${envVars}}`;
       })
       .join("\n\n");
-
-    const containerImport =
-      containers.length > 0
-        ? `import { Container } from "@cloudflare/containers";\n\n${containerDeclarations}\n\n`
-        : "";
 
     const workerCode = `
 import "./index.js";
@@ -652,9 +701,12 @@ export default {
 };
 `.trim();
 
+    const containerBlock =
+      containers.length > 0 ? `${containerDeclarations}\n\n` : "";
+
     await this.fs.writeFile(
       this.fs.join(root, distDir, "main.cloudflare.js"),
-      `${this.warningComment}\n${containerImport}${workerCode}`.trim(),
+      `${this.warningComment}\n${containerBlock}${workerCode}`.trim(),
     );
   }
 }
@@ -665,7 +717,16 @@ interface ContainerDescriptor {
   image: string;
   port: number;
   sleepAfter: string;
-  instanceType: "dev" | "basic" | "standard";
+  /**
+   * Cloudflare Containers instance class.
+   *
+   * `dev` is the wrangler-pre-GA name; the platform accepts it but
+   * emits a deprecation warning telling you to use `lite`. We
+   * silently translate at write time (see `discoverContainers`
+   * default + `enhanceContainers` write) so older
+   * `$container({ instanceType: "dev" })` declarations keep working.
+   */
+  instanceType: "dev" | "lite" | "basic" | "standard";
   maxInstances: number;
   envVars?: Record<string, string>;
 }

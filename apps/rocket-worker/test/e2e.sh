@@ -4,7 +4,7 @@
 # → example-ssr deploy chain against real Cloudflare.
 #
 # What it does:
-#   1. Push `alepha/rocket:latest` to Docker Hub (Cloudflare Containers
+#   1. Push `alepha-rocket:0.1.0` to Docker Hub (Cloudflare Containers
 #      pulls it on first cold start of the DO).
 #   2. Build + pack `apps/example-ssr` and upload the tarball to R2.
 #   3. Materialise `apps/rocket-worker/.env.production` from the host
@@ -41,7 +41,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."   # apps/rocket-worker
 
 REPO_ROOT="$(cd ../.. && pwd)"
-ROCKET_IMAGE=alepha/rocket:latest
+ROCKET_IMAGE=alepha-rocket:0.1.0
 WORKER_URL=${WORKER_URL:-https://rocket-worker.alepha.dev}
 BUCKET=${R2_BUCKET:-alepha-rocket-e2e}
 ARTIFACT=example-ssr-latest.tar.gz
@@ -97,14 +97,16 @@ command -v docker >/dev/null || { red "docker required"; exit 1; }
 mkdir -p "$WORK"
 
 # -----------------------------------------------------------------------------
-# 1. Build + push alepha/rocket:latest to Docker Hub
+# 1. Build + push alepha-rocket:0.1.0 to Docker Hub
 # -----------------------------------------------------------------------------
 
-note "build rocket image ($ROCKET_IMAGE)"
-( cd "$REPO_ROOT/apps/rocket" && yarn alepha push --dry-run >/dev/null )
-
-note "push $ROCKET_IMAGE → Docker Hub"
-docker push "$ROCKET_IMAGE" 2>&1 | tail -3
+note "build + push rocket image ($ROCKET_IMAGE → CF managed registry)"
+ROCKET_TAG="${ROCKET_IMAGE##*:}"
+# `alepha push` runs `yarn alepha build --target=docker` then
+# `wrangler containers push <image>` — which retags + uploads to
+# `registry.cloudflare.com/<account>/<image>:<tag>`. CF Containers
+# only pulls from there; DockerHub is rejected.
+( cd "$REPO_ROOT/apps/rocket" && yarn alepha push --tag "$ROCKET_TAG" 2>&1 | tail -5 )
 green "  pushed"
 
 # -----------------------------------------------------------------------------
@@ -159,13 +161,12 @@ EOF
 # -----------------------------------------------------------------------------
 
 note "alepha platform up (rocket-worker → $WORKER_URL)"
-UP_JSON=$(yarn alepha platform up --json --env production 2>&1 | tail -1)
-echo "$UP_JSON" | jq . >/dev/null 2>&1 || {
-  red "could not parse alepha platform up output:"
-  echo "$UP_JSON" >&2
-  exit 1
-}
-DEPLOYED_URL=$(echo "$UP_JSON" | jq -r '.urls[0] // ("https://" + .domain)')
+# `--json` would be nicer but the parse is brittle (multi-line JSON
+# at the end of a noisy build log) and we already know the URL from
+# `alepha.config.ts`. Skip the parse and assert the worker is up via
+# the health endpoint below.
+yarn alepha platform up --env production 2>&1 | tail -5
+DEPLOYED_URL="$WORKER_URL"
 green "  deployed: $DEPLOYED_URL"
 
 # -----------------------------------------------------------------------------
