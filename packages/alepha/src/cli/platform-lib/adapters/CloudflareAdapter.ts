@@ -1,5 +1,17 @@
 import { createHash } from "node:crypto";
-import { $inject, Alepha, AlephaError } from "alepha";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import {
+  $inject,
+  Alepha,
+  AlephaError,
+  type Alepha as AlephaInstance,
+} from "alepha";
+import {
+  BuildCloudflareTask,
+  type BuildManifest,
+  type BuildTaskContext,
+} from "alepha/cli";
 import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
@@ -31,6 +43,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   protected readonly api = $inject(CloudflareApi);
   protected readonly wrangler = $inject(WranglerApi);
   protected readonly runner = $inject(Runner);
+  protected readonly buildTask = $inject(BuildCloudflareTask);
 
   protected provisionedD1Id?: string;
   protected provisionedHyperdriveId?: string;
@@ -179,10 +192,27 @@ export class CloudflareAdapter extends PlatformAdapter {
       env.CLOUDFLARE_JURISDICTION = ctx.envConfig.jurisdiction;
     }
 
-    const cmd = ctx.prebuilt
-      ? "alepha build -t cloudflare --prebuilt"
-      : "alepha build -t cloudflare";
+    // Two paths:
+    //  - `--prebuilt`: in-process call to BuildCloudflareTask. Reads
+    //    `dist/manifest.json` for resources/crons/containers, reads
+    //    per-tenant values from process.env (set below), and writes a
+    //    fresh `dist/wrangler.jsonc` + `dist/main.cloudflare.js`. No
+    //    Vite, no spawn, no `alepha` binary needed at the workspace
+    //    cwd — required for Rocket, which deploys a bare prebuilt
+    //    tarball with no `node_modules`.
+    //  - non-prebuilt: spawn the full `alepha build` for the CLI flow,
+    //    which still needs Vite analyze + bundle.
+    if (ctx.prebuilt) {
+      await run({
+        name: "alepha build -t cloudflare --prebuilt (in-process)",
+        handler: async () => {
+          await this.runBuildInProcess(appDir, env);
+        },
+      });
+      return;
+    }
 
+    const cmd = "alepha build -t cloudflare";
     await run({
       name: cmd,
       handler: async () => {
@@ -192,6 +222,66 @@ export class CloudflareAdapter extends PlatformAdapter {
         });
       },
     });
+  }
+
+  /**
+   * Library-embed of `alepha build -t cloudflare --prebuilt`. Loads the
+   * pre-built `dist/manifest.json`, sets the per-tenant env vars on
+   * `process.env` for the duration of the call (the task's enhance*
+   * methods read them directly), then runs `BuildCloudflareTask`
+   * against a synthetic context.
+   *
+   * `ctx.alepha` is intentionally null — in manifest mode the task
+   * reads resources/crons/containers from `ctx.manifest` and never
+   * dereferences `ctx.alepha`. Same for `entry` and `hasClient`:
+   * prebuilt mode skips the bundle tasks; only the wrangler.jsonc /
+   * worker-entrypoint emission runs.
+   */
+  protected async runBuildInProcess(
+    root: string,
+    env: Record<string, string>,
+  ): Promise<void> {
+    const manifestPath = join(root, "dist", "manifest.json");
+    let manifest: BuildManifest;
+    try {
+      manifest = JSON.parse(await readFile(manifestPath, "utf-8"));
+    } catch (err) {
+      throw new AlephaError(
+        `Cannot read ${manifestPath}: ${(err as Error).message}. ` +
+          `Prebuilt deploys require dist/manifest.json (emitted by \`alepha build -t cloudflare\`).`,
+      );
+    }
+
+    const ctx: BuildTaskContext = {
+      // null at runtime — task takes the manifest path and never
+      // dereferences alepha. Cast keeps the type signature happy.
+      alepha: null as unknown as AlephaInstance,
+      options: {
+        target: "cloudflare",
+        output: { dist: "dist", public: "public" },
+      },
+      run: this.runner.run,
+      root,
+      entry: { root, server: "" },
+      hasClient: false,
+      manifest,
+      platformOptions: null,
+      flags: { prebuilt: true },
+    };
+
+    const previous: Record<string, string | undefined> = {};
+    for (const [k, v] of Object.entries(env)) {
+      previous[k] = process.env[k];
+      process.env[k] = v;
+    }
+    try {
+      await this.buildTask.run(ctx);
+    } finally {
+      for (const [k, prev] of Object.entries(previous)) {
+        if (prev === undefined) delete process.env[k];
+        else process.env[k] = prev;
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -214,6 +304,7 @@ export class CloudflareAdapter extends PlatformAdapter {
         url = await this.wrangler.deploy(
           workerName,
           `${distDir}/wrangler.jsonc`,
+          ctx.root,
         );
       },
     });
@@ -461,23 +552,37 @@ export class CloudflareAdapter extends PlatformAdapter {
           : `d1://${dbName}`;
         const env = { DATABASE_URL: dbUrl };
 
-        if (await this.fs.exists(migrationsDir)) {
-          await this.runShell(`alepha db migrations check --mode ${ctx.env}`, {
-            resolve: true,
-            env,
-          });
-        } else {
-          await this.runShell(`alepha db migrations create --mode ${ctx.env}`, {
-            resolve: true,
-            env,
-          });
+        // In prebuilt mode (Rocket) the tarball ships `migrations/`
+        // straight from the build artifact — already checked + frozen
+        // at pack time. Skip the live check/create cycle, which would
+        // need to boot the user's app to introspect schema definitions
+        // (impossible without the workspace's node_modules). For
+        // non-prebuilt CLI deploys, still run the check (or create the
+        // SQL when missing) so the deploy fails fast on a drifted
+        // schema.
+        if (!ctx.prebuilt) {
+          if (await this.fs.exists(migrationsDir)) {
+            await this.runShell(
+              `alepha db migrations check --mode ${ctx.env}`,
+              { resolve: true, env },
+            );
+          } else {
+            await this.runShell(
+              `alepha db migrations create --mode ${ctx.env}`,
+              { resolve: true, env },
+            );
+          }
         }
 
         // Copy migrations to dist for wrangler, apply, then clean up
         const distMigrations = this.fs.join(ctx.root, "dist", "migrations");
         await this.fs.cp(migrationsDir, distMigrations);
 
-        await this.wrangler.d1MigrationsApply(dbName, "dist/wrangler.jsonc");
+        await this.wrangler.d1MigrationsApply(
+          dbName,
+          "dist/wrangler.jsonc",
+          ctx.root,
+        );
 
         await this.fs.rm(distMigrations, { recursive: true });
       },
@@ -488,6 +593,16 @@ export class CloudflareAdapter extends PlatformAdapter {
     ctx: PlatformContext,
     run: RunnerMethod,
   ): Promise<void> {
+    if (ctx.prebuilt) {
+      // Postgres + Hyperdrive prebuilt deploys need a separate
+      // migration story (an alepha-CLI-free `apply` against the
+      // packed `migrations/postgres/` dir) — not implemented yet.
+      // Rocket's v1 path is D1, which uses `wrangler d1 migrations
+      // apply` and works fine in prebuilt mode.
+      throw new AlephaError(
+        "Postgres migrations are not yet supported in prebuilt mode. Use the `alepha platform up` CLI for now.",
+      );
+    }
     await run({
       name: "migrate postgres",
       handler: async () => {

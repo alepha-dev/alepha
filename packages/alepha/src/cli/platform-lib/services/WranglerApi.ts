@@ -98,10 +98,11 @@ export class WranglerApi {
   public async deploy(
     workerName: string,
     configPath: string,
+    root?: string,
   ): Promise<string | undefined> {
     const output = await this.runShell(
       `wrangler deploy --name=${workerName} --no-bundle --config=${configPath}`,
-      { resolve: true, capture: true },
+      { resolve: true, capture: true, root },
     );
 
     const match = output.match(/https:\/\/[^\s]*\.workers\.dev/);
@@ -118,10 +119,11 @@ export class WranglerApi {
   public async d1MigrationsApply(
     dbName: string,
     configPath: string,
+    root?: string,
   ): Promise<void> {
     await this.runShell(
       `wrangler d1 migrations apply ${dbName} --remote --config=${configPath}`,
-      { resolve: true, env: { CI: "1" } },
+      { resolve: true, env: { CI: "1" }, root },
     );
   }
 }
