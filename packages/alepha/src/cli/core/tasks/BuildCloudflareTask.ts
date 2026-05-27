@@ -52,7 +52,15 @@ export class BuildCloudflareTask extends BuildTask {
     distDir: string,
   ): Promise<void> {
     const root = ctx.root;
-    const name = basename(root);
+    // Slugify the dir basename — wrangler rejects names that aren't
+    // `^[a-z0-9-]+$` (no uppercase, dots, underscores, spaces, etc.).
+    // Without this, running `alepha build -t cloudflare` in a dir like
+    // `My App` or `club-0.0.2` produces an unusable `wrangler.jsonc`.
+    const name = basename(root)
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 63);
     const hasAssets = await this.fs.exists(
       this.fs.join(root, distDir, "public"),
     );

@@ -62,21 +62,32 @@ export class DeployRunner {
   }
 
   /**
-   * Workspace dir name. Derive from the artifact key so concurrent
-   * deploys of *different* artifacts don't collide, and a redeploy of
-   * the same artifact reuses the slot.
+   * Workspace dir name. Artifacts produced by `alepha pack` are named
+   * `<project>-<version>.tar.gz` (default `<project>-latest.tar.gz`).
+   * Strip the version suffix so different versions of the same project
+   * deploy into the same `/app/workspace/<project>/` dir — keeps the
+   * worker name (derived by BuildCloudflareTask from basename(root))
+   * deterministic across redeploys.
    *
-   * Slugified strictly — lowercase, alphanumeric + dashes only — because
-   * `BuildCloudflareTask` currently derives the worker name from
-   * `basename(root)` (no slugify), and wrangler rejects names with dots
-   * or uppercase. Stripping characters here avoids that downstream
-   * failure even for artifact keys like `club-0.0.2.tar.gz`.
+   * Slugified strictly — lowercase, alphanumeric + dashes only —
+   * because wrangler rejects names with dots/uppercase/underscores.
+   *
+   * Examples:
+   *   "club-0.0.2.tar.gz"      → "club"
+   *   "lore-latest.tar.gz"     → "lore"
+   *   "My.App-v3.tar.gz"       → "my-app"
+   *   "no-version.tar.gz"      → "no-version"  (no `-` to split on)
    */
   protected workspaceNameFor(body: CreateDeploy): string {
     const stem = body.artifact.key
+      .replace(/^.*\//, "") // drop bucket prefix if key includes slashes
       .replace(/\.tar\.gz$/i, "")
       .replace(/\.tgz$/i, "");
-    return stem
+    // Drop everything from the last `-` onwards — that's the version
+    // suffix. If no `-` is present, keep the whole stem.
+    const dash = stem.lastIndexOf("-");
+    const name = dash > 0 ? stem.slice(0, dash) : stem;
+    return name
       .toLowerCase()
       .replace(/[^a-z0-9-]+/g, "-")
       .replace(/^-+|-+$/g, "")

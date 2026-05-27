@@ -14,6 +14,7 @@ import {
 import { GenCommand } from "./commands/gen.ts";
 import { InitCommand } from "./commands/init.ts";
 import { LintCommand } from "./commands/lint.ts";
+import { PackCommand } from "./commands/pack.ts";
 import { RootCommand } from "./commands/root.ts";
 import { TestCommand } from "./commands/test.ts";
 import { TypecheckCommand } from "./commands/typecheck.ts";
@@ -52,6 +53,7 @@ export * from "./commands/gen/changelog.ts";
 export * from "./commands/gen/openapi.ts";
 export * from "./commands/init.ts";
 export * from "./commands/lint.ts";
+export * from "./commands/pack.ts";
 export * from "./commands/root.ts";
 export * from "./commands/test.ts";
 export * from "./commands/typecheck.ts";
@@ -116,6 +118,7 @@ export const AlephaCli = $module({
     DevCommand,
     InitCommand,
     LintCommand,
+    PackCommand,
     RootCommand,
     TestCommand,
     TypecheckCommand,

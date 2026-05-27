@@ -32,7 +32,7 @@ NET=rocket-e2e-net
 MINIO=rocket-e2e-minio
 ROCKET=rocket-e2e-rocket
 BUCKET=alepha-rocket-e2e
-ARTIFACT=example-ssr-0.0.1.tar.gz
+ARTIFACT=example-ssr-latest.tar.gz
 WORK=/tmp/rocket-e2e
 APP_DIR=../example-ssr
 ROCKET_IMAGE=alepha/rocket:latest
@@ -97,48 +97,11 @@ cleanup   # in case a previous run left containers behind
 # 1. Build example-ssr
 # -----------------------------------------------------------------------------
 
-note "build example-ssr (target=cloudflare)"
-( cd "$APP_DIR" && yarn alepha build -t cloudflare )
-
-# -----------------------------------------------------------------------------
-# 2. Tar workspace
-# -----------------------------------------------------------------------------
-
-note "tar workspace → $WORK/$ARTIFACT"
-mkdir -p "$WORK/stage"
-# example-ssr's tsconfig.json extends `../../tsconfig.json` (monorepo
-# root). That chain isn't in the artifact, so write a self-contained
-# tsconfig into the staged copy. Real apps deployed via Rocket should
-# already have self-contained tsconfigs.
-rsync -a --delete \
-  --exclude node_modules \
-  --exclude '._*' \
-  --exclude '.DS_Store' \
-  "$APP_DIR/" "$WORK/stage/"
-cat > "$WORK/stage/tsconfig.json" <<'JSON'
-{
-  "compilerOptions": {
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "target": "esnext",
-    "strict": true,
-    "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "moduleDetection": "force",
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "noEmit": true,
-    "allowImportingTsExtensions": true,
-    "types": ["node"]
-  },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
-}
-JSON
-TAR_INCLUDE=(src dist alepha.config.ts package.json tsconfig.json)
-[ -d "$WORK/stage/migrations" ] && TAR_INCLUDE+=(migrations)
-COPYFILE_DISABLE=1 tar -czf "$WORK/$ARTIFACT" -C "$WORK/stage" "${TAR_INCLUDE[@]}"
+note "build + pack example-ssr → $WORK/$ARTIFACT"
+mkdir -p "$WORK"
+( cd "$APP_DIR" \
+  && yarn alepha build -t cloudflare \
+  && yarn alepha pack --output "$WORK" )
 green "  $(ls -lh "$WORK/$ARTIFACT" | awk '{print $5}')"
 
 # -----------------------------------------------------------------------------
