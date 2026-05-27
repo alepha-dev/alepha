@@ -86,22 +86,30 @@ export class CloudflareEmailProvider implements EmailProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: () => {
+      // Tolerate boot off-Workers. The provider has to be registered
+      // unconditionally so the CF build task can see it and emit the
+      // `send_email` binding into wrangler.jsonc — but actually starting
+      // on Node (yarn start / yarn dev) would crash because no binding
+      // is wired. Treat that as "inert provider": warn, don't throw.
+      // `send()` later will surface the real error if it's ever called.
       const cloudflareEnv = this.alepha.get("cloudflare.env") as
         | Record<string, unknown>
         | undefined;
       if (!cloudflareEnv) {
-        throw new AlephaError(
-          "Cloudflare Workers environment not found in Alepha store under 'cloudflare.env'.",
+        this.log.warn(
+          "Cloudflare Email Sending inert: 'cloudflare.env' not set (not running on Workers).",
         );
+        return;
       }
 
       const binding = cloudflareEnv[SEND_EMAIL_DEFAULT_BINDING] as
         | CloudflareEmailBinding
         | undefined;
       if (!binding) {
-        throw new AlephaError(
-          `Cloudflare Email binding '${SEND_EMAIL_DEFAULT_BINDING}' not found in Workers environment.`,
+        this.log.warn(
+          `Cloudflare Email Sending inert: binding '${SEND_EMAIL_DEFAULT_BINDING}' not found in Workers environment.`,
         );
+        return;
       }
 
       this.binding = binding;

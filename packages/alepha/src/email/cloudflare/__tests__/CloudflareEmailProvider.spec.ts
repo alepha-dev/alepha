@@ -126,25 +126,21 @@ describe("CloudflareEmailProvider", () => {
   });
 
   describe("start", () => {
-    it("should throw when no Cloudflare env is available", async () => {
+    it("should boot inert when no Cloudflare env is available (Node)", async () => {
       const alepha = Alepha.create({ env: { EMAIL_FROM } });
       alepha.inject(CloudflareEmailProvider);
 
-      const err = await alepha.start().catch((e) => e);
-      expect(String(err.cause ?? err)).toMatch(
-        /Cloudflare Workers environment not found/,
-      );
+      // Must not throw — the provider has to be registerable off-Workers
+      // so the CF build task can see it and emit the wrangler binding.
+      await expect(alepha.start()).resolves.toBeDefined();
     });
 
-    it("should throw when the SEND_EMAIL binding is missing", async () => {
+    it("should boot inert when the SEND_EMAIL binding is missing", async () => {
       const alepha = Alepha.create({ env: { EMAIL_FROM } });
       alepha.set("cloudflare.env", {});
       alepha.inject(CloudflareEmailProvider);
 
-      const err = await alepha.start().catch((e) => e);
-      expect(String(err.cause ?? err)).toMatch(
-        /Cloudflare Email binding 'SEND_EMAIL' not found/,
-      );
+      await expect(alepha.start()).resolves.toBeDefined();
     });
   });
 });
