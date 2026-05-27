@@ -130,7 +130,7 @@ export class DeployRunner {
   }
 
   /**
-   * Drive the orchestrator op (up / down / status) in-process. Streams
+   * Drive the orchestrator op (up or down) in-process. Streams
    * stdout/stderr — captured by interception — into the registry buffer
    * for the duration of the call.
    *
@@ -149,41 +149,29 @@ export class DeployRunner {
     try {
       this.runner.startCommand("alepha", `platform ${body.op}`);
 
-      switch (body.op) {
-        case "up": {
-          const result = await this.orchestrator.up({
-            root: workspace,
-            env: body.env,
-            entry,
-            resources,
-            run: this.runner.run,
-            prebuilt: true,
-          });
-          this.orchestrator.printUpSummary(result);
-          return result.domain ? `https://${result.domain}` : result.urls[0];
-        }
-        case "down": {
-          // Auto-confirm — the POST /deploys is itself the confirmation.
-          await this.orchestrator.down({
-            root: workspace,
-            env: body.env,
-            entry,
-            resources,
-            run: this.runner.run,
-            confirm: async () => body.env,
-          });
-          return undefined;
-        }
-        default:
-          // `migrate` / `secrets` were spawn-only sub-steps (`alepha
-          // platform migrate`, `alepha platform secrets`). The library
-          // API only exposes them as part of `up`. If a client needs
-          // either standalone, run a full `up` — the adapter is
-          // idempotent on already-migrated/synced state.
-          throw new AlephaError(
-            `Op "${body.op}" is not supported in library-embed mode. Use "up" or "down".`,
-          );
+      if (body.op === "up") {
+        const result = await this.orchestrator.up({
+          root: workspace,
+          env: body.env,
+          entry,
+          resources,
+          run: this.runner.run,
+          prebuilt: true,
+        });
+        this.orchestrator.printUpSummary(result);
+        return result.domain ? `https://${result.domain}` : result.urls[0];
       }
+
+      // down — auto-confirm; the POST /deploys is itself the confirmation.
+      await this.orchestrator.down({
+        root: workspace,
+        env: body.env,
+        entry,
+        resources,
+        run: this.runner.run,
+        confirm: async () => body.env,
+      });
+      return undefined;
     } finally {
       restore();
     }
