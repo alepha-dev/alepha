@@ -35,7 +35,7 @@ test.describe("Admin Files: upload + list + delete", () => {
     const firstRow = page.locator("tbody tr").first();
     await expect(firstRow).toContainText("sample.txt", { timeout: 15_000 });
 
-    await firstRow.locator("button[aria-haspopup]").click();
+    await firstRow.locator("button[aria-label='Open row actions']").click();
     await page.getByRole("menuitem", { name: "Delete" }).click();
     await expect(
       page.getByText('Permanently delete "sample.txt"?'),
@@ -82,7 +82,7 @@ test.describe("Admin Users: enable / disable toggle", () => {
     await expect(row).toBeVisible({ timeout: 10_000 });
 
     // Open the row actions menu and disable.
-    await row.locator("button[aria-haspopup]").click();
+    await row.locator("button[aria-label='Open row actions']").click();
     await page.getByRole("menuitem", { name: /Disable user/ }).click();
     await page.getByRole("button", { name: "Confirm" }).click();
     await expect(row).toContainText(/Disabled/i, { timeout: 10_000 });
@@ -95,7 +95,7 @@ test.describe("Admin Users: enable / disable toggle", () => {
     expect(blockedLogin.status()).not.toBe(200);
 
     // Re-enable via the same row.
-    await row.locator("button[aria-haspopup]").click();
+    await row.locator("button[aria-label='Open row actions']").click();
     await page.getByRole("menuitem", { name: /Enable user/ }).click();
     await page.getByRole("button", { name: "Confirm" }).click();
     await expect(row).toContainText(/Active/i, { timeout: 10_000 });
