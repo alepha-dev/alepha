@@ -1,25 +1,32 @@
 #!/usr/bin/env bash
 #
-# End-to-end smoke test for Alepha Rocket.
+# End-to-end smoke test for Alepha Rocket against real Cloudflare R2.
 #
 # What it does:
-#   1. Builds apps/example-ssr (the test workload).
-#   2. Tars the workspace (src + dist + alepha.config.ts + package.json).
-#   3. Starts a local MinIO container (S3-compatible bucket on :9000).
-#   4. Starts the alepha/rocket:latest image on :3000.
-#   5. Uploads the tar.gz to the MinIO bucket.
-#   6. POST /deploys with `op: "up"`, polls until succeeded, curls the
-#      deployed worker URL.
-#   7. POST /deploys with `op: "down"`, polls until succeeded.
+#   1. Builds + packs apps/example-ssr (`alepha build && alepha pack`).
+#   2. Uploads the tar.gz to a real R2 bucket (`aws s3 cp` with the
+#      bucket's S3 endpoint).
+#   3. Starts the alepha/rocket:latest container, env-wired at R2.
+#   4. POST /deploys op=up, polls until succeeded, curls the deployed
+#      worker URL.
+#   5. POST /deploys op=down, polls until succeeded.
 #
 # Requirements on the host:
 #   - docker daemon running
+#   - aws CLI installed (`brew install awscli`)
+#   - jq installed
 #   - alepha/rocket:latest built locally (`yarn workspace rocket push --dry-run`)
 #   - apps/rocket/.env.secrets present (gitignored) — see below
 #
 # apps/rocket/.env.secrets format:
 #   CLOUDFLARE_API_TOKEN=...      # Workers Scripts: Edit + Workers Routes: Edit
-#   CLOUDFLARE_ACCOUNT_ID=...     # 32-char hex (optional — auto-resolved if omitted)
+#   CLOUDFLARE_ACCOUNT_ID=...     # 32-char hex
+#   S3_ENDPOINT=https://<acct>.r2.cloudflarestorage.com
+#   S3_ACCESS_KEY_ID=...          # R2 API token (Object Read & Write)
+#   S3_SECRET_ACCESS_KEY=...
+#
+# R2 bucket name is the BUCKET var below — create it once in the CF
+# dashboard before running this script.
 #
 # Idempotency: rerun the script and it'll re-deploy the same worker
 # (example-ssr-production). Cleanup runs on exit even if the script fails.
@@ -28,10 +35,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."   # apps/rocket
 
-NET=rocket-e2e-net
-MINIO=rocket-e2e-minio
 ROCKET=rocket-e2e-rocket
-BUCKET=alepha-rocket-e2e
+BUCKET=${R2_BUCKET:-alepha-rocket-e2e}
 ARTIFACT=example-ssr-latest.tar.gz
 WORK=/tmp/rocket-e2e
 APP_DIR=../example-ssr
@@ -49,8 +54,6 @@ note()   { printf "\033[36m▶ %s\033[0m\n" "$*"; }
 dump_logs() {
   printf "\n--- docker logs %s ---\n" "$ROCKET" >&2
   docker logs "$ROCKET" 2>&1 | tail -60 >&2 || true
-  printf "\n--- docker logs %s ---\n" "$MINIO" >&2
-  docker logs "$MINIO" 2>&1 | tail -20 >&2 || true
 }
 
 cleanup() {
@@ -62,11 +65,10 @@ cleanup() {
   fi
   if [ -z "${ROCKET_DEBUG_RETAIN:-}" ]; then
     note "cleanup"
-    docker rm -f "$ROCKET" "$MINIO" >/dev/null 2>&1 || true
-    docker network rm "$NET" >/dev/null 2>&1 || true
+    docker rm -f "$ROCKET" >/dev/null 2>&1 || true
     rm -rf "$WORK"
   else
-    note "ROCKET_DEBUG_RETAIN set — containers + $WORK kept"
+    note "ROCKET_DEBUG_RETAIN set — container + $WORK kept"
   fi
 }
 trap cleanup EXIT
@@ -82,7 +84,12 @@ trap cleanup EXIT
 # shellcheck disable=SC1091
 source .env.secrets
 
-[ -n "${CLOUDFLARE_API_TOKEN:-}" ] || { red "CLOUDFLARE_API_TOKEN not set"; exit 1; }
+for v in CLOUDFLARE_API_TOKEN S3_ENDPOINT S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY; do
+  if [ -z "${!v:-}" ]; then
+    red "$v not set in apps/rocket/.env.secrets"
+    exit 1
+  fi
+done
 
 docker image inspect "$ROCKET_IMAGE" >/dev/null 2>&1 || {
   red "$ROCKET_IMAGE not found — run 'yarn workspace rocket push --dry-run' first."
@@ -90,6 +97,7 @@ docker image inspect "$ROCKET_IMAGE" >/dev/null 2>&1 || {
 }
 
 command -v jq >/dev/null || { red "jq required"; exit 1; }
+command -v aws >/dev/null || { red "aws CLI required (brew install awscli)"; exit 1; }
 
 cleanup   # in case a previous run left containers behind
 
@@ -105,34 +113,27 @@ mkdir -p "$WORK"
 green "  $(ls -lh "$WORK/$ARTIFACT" | awk '{print $5}')"
 
 # -----------------------------------------------------------------------------
-# 3. Docker network + MinIO
+# 2. Upload artifact to R2 via `aws s3 cp`
 # -----------------------------------------------------------------------------
 
-note "start docker network + minio"
-docker network create "$NET" >/dev/null
-docker run -d --rm --name "$MINIO" --network "$NET" \
-  -p 9000:9000 \
-  -e MINIO_ROOT_USER=testaccess \
-  -e MINIO_ROOT_PASSWORD=testsecret \
-  minio/minio server /data >/dev/null
+# Shared aws CLI env — R2 auth via the S3-compat keys from .env.secrets.
+export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID"
+export AWS_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY"
+export AWS_DEFAULT_REGION=auto
 
-# Wait for MinIO ready (cap at WAIT_TIMEOUT_S)
-MINIO_DEADLINE=$(( $(date +%s) + WAIT_TIMEOUT_S ))
-until curl -sf --max-time 2 http://localhost:9000/minio/health/ready >/dev/null; do
-  [ "$(date +%s)" -ge "$MINIO_DEADLINE" ] && { red "minio not ready"; exit 1; }
-  sleep 0.5
-done
+# Create the bucket if it doesn't exist (R2 supports `s3 mb` via the
+# S3-compat API). Idempotent — fine to re-run.
+if ! aws s3api head-bucket --bucket "$BUCKET" \
+     --endpoint-url "$S3_ENDPOINT" >/dev/null 2>&1; then
+  note "create R2 bucket $BUCKET"
+  aws s3 mb "s3://$BUCKET" --endpoint-url "$S3_ENDPOINT" >/dev/null
+fi
 
-# Create bucket + upload artifact via `mc` (bundled in the minio image).
-# `docker cp` into /data/ doesn't work — MinIO requires uploads to go
-# through the S3 API so its internal metadata gets written.
-docker cp "$WORK/$ARTIFACT" "$MINIO:/tmp/$ARTIFACT"
-docker exec "$MINIO" sh -c "
-  mc alias set local http://localhost:9000 testaccess testsecret >/dev/null &&
-  mc mb local/$BUCKET 2>/dev/null || true
-  mc cp /tmp/$ARTIFACT local/$BUCKET/$ARTIFACT >/dev/null
-" >/dev/null
-green "  uploaded s3://$BUCKET/$ARTIFACT"
+note "upload → s3://$BUCKET/$ARTIFACT (R2)"
+aws s3 cp "$WORK/$ARTIFACT" "s3://$BUCKET/$ARTIFACT" \
+  --endpoint-url "$S3_ENDPOINT" \
+  --no-progress
+green "  uploaded"
 
 # -----------------------------------------------------------------------------
 # 4. Start Rocket
@@ -140,13 +141,13 @@ green "  uploaded s3://$BUCKET/$ARTIFACT"
 
 note "start rocket"
 ROCKET_RUN_ARGS=(
-  -d --rm --name "$ROCKET" --network "$NET"
+  -d --rm --name "$ROCKET"
   -p 3000:3000
   -e CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN"
-  -e S3_ENDPOINT="http://$MINIO:9000"
+  -e S3_ENDPOINT="$S3_ENDPOINT"
   -e S3_REGION=auto
-  -e S3_ACCESS_KEY_ID=testaccess
-  -e S3_SECRET_ACCESS_KEY=testsecret
+  -e S3_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID"
+  -e S3_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY"
 )
 [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] && ROCKET_RUN_ARGS+=(-e CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID")
 docker run "${ROCKET_RUN_ARGS[@]}" "$ROCKET_IMAGE" >/dev/null
