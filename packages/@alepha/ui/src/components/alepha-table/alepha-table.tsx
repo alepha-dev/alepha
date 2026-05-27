@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -39,6 +40,7 @@ import {
   MoreVertical,
   RefreshCw,
   Settings,
+  X,
 } from "lucide-react";
 import {
   type ComponentType,
@@ -607,7 +609,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
         // because the colors are hard-coded (theme-relative `bg-foreground`
         // inverts awkwardly against a white container in dark mode).
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
-          <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-zinc-100 shadow-lg ring-1 ring-white/10">
+          <div className="pointer-events-auto flex animate-in fade-in-0 slide-in-from-bottom-2 items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-zinc-100 shadow-lg ring-1 ring-white/10 duration-150">
             <span className="text-sm pl-2">{selection.size} selected</span>
             <span className="mx-1 h-4 w-px bg-white/20" />
             {props.bulkActions?.map((action) => {
@@ -615,12 +617,11 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
               return (
                 <Button
                   key={action.label}
-                  variant={action.destructive ? "destructive" : "ghost"}
                   size="sm"
                   className={
                     action.destructive
-                      ? "h-8"
-                      : "h-8 text-zinc-100 hover:bg-white/10 hover:text-zinc-100"
+                      ? "h-8 bg-red-600 text-white hover:bg-red-500"
+                      : "h-8 bg-transparent text-zinc-100 hover:bg-white/10 hover:text-zinc-100"
                   }
                   onClick={() => action.onClick(selectedItems, bulkCtx)}
                 >
@@ -631,12 +632,12 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
             })}
             <span className="mx-1 h-4 w-px bg-white/20" />
             <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-zinc-300 hover:bg-white/10 hover:text-zinc-100"
+              size="icon"
+              className="size-8 bg-transparent text-zinc-300 hover:bg-white/10 hover:text-zinc-100"
               onClick={clearSelection}
+              aria-label="Clear selection"
             >
-              Clear
+              <X className="size-4" />
             </Button>
           </div>
         </div>
@@ -868,20 +869,22 @@ function ColumnPicker<T>(props: {
         <Columns3 className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Columns</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {entries.map(([key, def]) => (
-          <DropdownMenuCheckboxItem
-            key={key}
-            checked={props.visible.has(key)}
-            onSelect={(e) => {
-              e.preventDefault();
-              props.onToggle(key);
-            }}
-          >
-            {def.label}
-          </DropdownMenuCheckboxItem>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Columns</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {entries.map(([key, def]) => (
+            <DropdownMenuCheckboxItem
+              key={key}
+              checked={props.visible.has(key)}
+              onSelect={(e) => {
+                e.preventDefault();
+                props.onToggle(key);
+              }}
+            >
+              {def.label}
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

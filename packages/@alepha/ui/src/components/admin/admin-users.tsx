@@ -206,17 +206,6 @@ export function AdminUsers(props: AdminUsersProps) {
 
   return (
     <div className="flex flex-1 flex-col gap-3 p-6">
-      <div>
-        <h1 className="text-lg font-semibold">
-          {tr("admin.users.title", { default: "Users" })}
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          {tr("admin.users.subtitle", {
-            default:
-              "Manage accounts: search, inspect, enable/disable, or delete.",
-          })}
-        </p>
-      </div>
       <AlephaTable<UserEntity>
         className="min-h-0 flex-1"
         persistenceKey="admin.users"
