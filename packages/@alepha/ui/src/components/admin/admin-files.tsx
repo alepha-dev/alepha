@@ -63,7 +63,7 @@ export function AdminFiles() {
     [client, refreshKey],
   );
 
-  const handleDelete = async (file: any) => {
+  const handleDelete = async (file: any, refresh: () => void) => {
     const ok = await dialog.confirm({
       title: tr("admin.files.deleteTitle", { default: "Delete file" }),
       description: tr("admin.files.deleteConfirm", {
@@ -75,10 +75,13 @@ export function AdminFiles() {
     if (!ok) return;
     await client.deleteFile({ params: { id: file.id } });
     toast.success(tr("admin.files.deleted", { default: "File deleted" }));
-    setRefreshKey((k) => k + 1);
+    refresh();
   };
 
-  const handleBulkDelete = async (items: any[], clear: () => void) => {
+  const handleBulkDelete = async (
+    items: any[],
+    { clearSelection, refresh }: { clearSelection: () => void; refresh: () => void },
+  ) => {
     if (items.length === 0) return;
     const ok = await dialog.confirm({
       title: tr("admin.files.bulkDeleteTitle", { default: "Delete files" }),
@@ -98,8 +101,8 @@ export function AdminFiles() {
         args: [String(res.deleted.length)],
       }),
     );
-    clear();
-    setRefreshKey((k) => k + 1);
+    clearSelection();
+    refresh();
   };
 
   return (
@@ -196,7 +199,7 @@ export function AdminFiles() {
             label: tr("admin.files.delete", { default: "Delete" }),
             icon: Trash2,
             destructive: true,
-            onClick: () => handleDelete(f),
+            onClick: (_f, { refresh }) => handleDelete(f, refresh),
           },
         ]}
       />

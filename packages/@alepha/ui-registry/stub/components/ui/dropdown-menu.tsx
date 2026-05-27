@@ -28,6 +28,11 @@ export const DropdownMenuShortcut: (props: { children?: ReactNode }) => any =
 export const DropdownMenuCheckboxItem: (props: {
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
+  /**
+   * Radix passes a selection event here. Consumers commonly call
+   * `e.preventDefault()` to keep the dropdown open after toggling.
+   */
+  onSelect?: (event: Event) => void;
   disabled?: boolean;
   className?: string;
   children?: ReactNode;

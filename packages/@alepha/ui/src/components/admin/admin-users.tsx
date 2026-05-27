@@ -1,15 +1,16 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import { Control } from "@alepha/ui/components/control/control";
 import { Avatar, AvatarFallback } from "@alepha/ui/components/ui/avatar";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import type { Page } from "alepha";
+import { type Page, type Static, t } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useClient } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Eye, Trash2, UserCheck, UserX } from "lucide-react";
-import { useCallback, useState } from "react";
+import { Eye, Search, Trash2, UserCheck, UserX } from "lucide-react";
+import { useCallback } from "react";
 import { toast } from "sonner";
 
 export interface AdminUsersProps {
@@ -19,25 +20,41 @@ export interface AdminUsersProps {
   userRealmName?: string;
 }
 
+// Filter schema. Lives at module scope so its identity stays stable
+// across renders — AlephaTable's internal `useForm` only captures it
+// once and a fresh reference per render would harmlessly re-anchor the
+// form initialization but is wasteful.
+const filtersSchema = t.object({
+  search: t.optional(t.string()),
+});
+type AdminUserFilters = Static<typeof filtersSchema>;
+
 export function AdminUsers(props: AdminUsersProps) {
   const client = useClient<AdminUserController>();
   const { user: currentUser } = useAuth();
   const router = useRouter();
   const { l, tr } = useI18n();
   const dialog = useDialog();
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const fetcher = useCallback(
-    async (params: { page: number; size: number; sort?: string }) => {
+    async (params: {
+      page: number;
+      size: number;
+      sort?: string;
+      filters?: AdminUserFilters;
+    }) => {
       const res = await client.findUsers({
         query: {
-          ...params,
+          page: params.page,
+          size: params.size,
+          sort: params.sort,
+          search: params.filters?.search || undefined,
           userRealmName: props.userRealmName,
         } as never,
       });
       return res as Page<UserEntity>;
     },
-    [client, props.userRealmName, refreshKey],
+    [client, props.userRealmName],
   );
 
   const isSelf = (user: UserEntity) => currentUser?.id === user.id;
@@ -47,7 +64,10 @@ export function AdminUsers(props: AdminUsersProps) {
     u.username ||
     tr("admin.users.thisUser", { default: "this user" });
 
-  const handleToggleEnabled = async (user: UserEntity) => {
+  const handleToggleEnabled = async (
+    user: UserEntity,
+    refresh: () => void,
+  ) => {
     if (isSelf(user)) {
       toast.error(
         tr("admin.users.cantDisableSelf", {
@@ -84,10 +104,10 @@ export function AdminUsers(props: AdminUsersProps) {
         ? tr("admin.users.enabled", { default: "User enabled" })
         : tr("admin.users.disabled", { default: "User disabled" }),
     );
-    setRefreshKey((k) => k + 1);
+    refresh();
   };
 
-  const handleDelete = async (user: UserEntity) => {
+  const handleDelete = async (user: UserEntity, refresh: () => void) => {
     const label = userLabel(user);
     const ok = await dialog.confirm({
       title: tr("admin.users.deleteTitle", { default: "Delete user" }),
@@ -103,10 +123,16 @@ export function AdminUsers(props: AdminUsersProps) {
       query: { userRealmName: props.userRealmName },
     });
     toast.success(tr("admin.users.deleted", { default: "User deleted" }));
-    setRefreshKey((k) => k + 1);
+    refresh();
   };
 
-  const handleBulkDelete = async (items: UserEntity[], clear: () => void) => {
+  const handleBulkDelete = async (
+    items: UserEntity[],
+    {
+      clearSelection,
+      refresh,
+    }: { clearSelection: () => void; refresh: () => void },
+  ) => {
     const targets = items.filter((u) => !isSelf(u));
     if (targets.length === 0) {
       toast.error(
@@ -135,11 +161,17 @@ export function AdminUsers(props: AdminUsersProps) {
         args: [String(res.deleted.length)],
       }),
     );
-    clear();
-    setRefreshKey((k) => k + 1);
+    clearSelection();
+    refresh();
   };
 
-  const handleBulkDisable = async (items: UserEntity[], clear: () => void) => {
+  const handleBulkDisable = async (
+    items: UserEntity[],
+    {
+      clearSelection,
+      refresh,
+    }: { clearSelection: () => void; refresh: () => void },
+  ) => {
     const enabled = items.filter((u) => u.enabled && !isSelf(u));
     if (enabled.length === 0) {
       toast.error(
@@ -171,14 +203,49 @@ export function AdminUsers(props: AdminUsersProps) {
         args: [String(enabled.length)],
       }),
     );
-    clear();
-    setRefreshKey((k) => k + 1);
+    clearSelection();
+    refresh();
   };
 
   return (
-    <div className="p-6">
+    <div className="flex flex-1 flex-col gap-3 p-6">
+      <div>
+        <h1 className="text-lg font-semibold">
+          {tr("admin.users.title", { default: "Users" })}
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          {tr("admin.users.subtitle", {
+            default:
+              "Manage accounts: search, inspect, enable/disable, or delete.",
+          })}
+        </p>
+      </div>
       <AlephaTable<UserEntity>
+        className="min-h-0 flex-1"
+        persistenceKey="admin.users"
         fetch={fetcher}
+        filters={{
+          schema: filtersSchema,
+          render: (form) => (
+            <div className="w-72">
+              <Control
+                input={form.input.search}
+                label=""
+                icon={Search}
+                placeholder={String(
+                  tr("admin.users.searchPlaceholder", {
+                    default: "Search…",
+                  }),
+                )}
+                inputProps={{
+                  "aria-label": String(
+                    tr("admin.users.search", { default: "Search users" }),
+                  ),
+                }}
+              />
+            </div>
+          ),
+        }}
         bulkActions={[
           {
             label: tr("admin.users.bulkDisable", {
@@ -262,6 +329,10 @@ export function AdminUsers(props: AdminUsersProps) {
           createdAt: {
             label: tr("admin.users.colJoined", { default: "Joined" }),
             sortable: true,
+            // Defaulting joined-date hidden keeps the table compact on
+            // first view; opt back in via the column picker. The
+            // sortable header still works once enabled.
+            defaultHidden: false,
             cell: (u) => (
               <span className="text-muted-foreground text-xs">
                 {String(l(u.createdAt, { date: "fromNow" }))}
@@ -279,10 +350,15 @@ export function AdminUsers(props: AdminUsersProps) {
             ? [
                 {
                   label: u.enabled
-                    ? tr("admin.users.disableUser", { default: "Disable user" })
+                    ? tr("admin.users.disableUser", {
+                        default: "Disable user",
+                      })
                     : tr("admin.users.enableUser", { default: "Enable user" }),
                   icon: u.enabled ? UserX : UserCheck,
-                  onClick: () => handleToggleEnabled(u),
+                  onClick: (
+                    _u: UserEntity,
+                    { refresh }: { refresh: () => void },
+                  ) => handleToggleEnabled(u, refresh),
                 },
                 {
                   label: tr("admin.users.deleteUser", {
@@ -290,7 +366,10 @@ export function AdminUsers(props: AdminUsersProps) {
                   }),
                   icon: Trash2,
                   destructive: true,
-                  onClick: () => handleDelete(u),
+                  onClick: (
+                    _u: UserEntity,
+                    { refresh }: { refresh: () => void },
+                  ) => handleDelete(u, refresh),
                 },
               ]
             : []),

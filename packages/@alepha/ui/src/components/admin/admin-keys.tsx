@@ -6,24 +6,23 @@ import type { AdminApiKeyController } from "alepha/api/keys";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { toast } from "sonner";
 
 export function AdminKeys() {
   const client = useClient<AdminApiKeyController>();
   const dialog = useDialog();
   const { l, tr } = useI18n();
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
       const res = await client.findApiKeys({ query: params as never });
       return res as Page<any>;
     },
-    [client, refreshKey],
+    [client],
   );
 
-  const handleRevoke = async (k: any) => {
+  const handleRevoke = async (k: any, refresh: () => void) => {
     const ok = await dialog.confirm({
       title: tr("admin.keys.revokeTitle", { default: "Revoke API key" }),
       description: tr("admin.keys.revokeConfirm", {
@@ -35,10 +34,13 @@ export function AdminKeys() {
     if (!ok) return;
     await client.revokeApiKey({ params: { id: k.id } });
     toast.success(tr("admin.keys.revoked", { default: "API key revoked" }));
-    setRefreshKey((rk) => rk + 1);
+    refresh();
   };
 
-  const handleBulkRevoke = async (items: any[], clear: () => void) => {
+  const handleBulkRevoke = async (
+    items: any[],
+    { clearSelection, refresh }: { clearSelection: () => void; refresh: () => void },
+  ) => {
     const targets = items.filter((k) => !k.revokedAt);
     if (targets.length === 0) {
       toast.error(
@@ -68,8 +70,8 @@ export function AdminKeys() {
         args: [String(res.revoked.length)],
       }),
     );
-    clear();
-    setRefreshKey((rk) => rk + 1);
+    clearSelection();
+    refresh();
   };
 
   return (
@@ -141,7 +143,7 @@ export function AdminKeys() {
             label: tr("admin.keys.revoke", { default: "Revoke" }),
             icon: Trash2,
             destructive: true,
-            onClick: () => handleRevoke(k),
+            onClick: (_k, { refresh }) => handleRevoke(k, refresh),
           },
         ]}
       />

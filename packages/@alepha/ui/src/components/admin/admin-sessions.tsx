@@ -6,24 +6,23 @@ import type { AdminSessionController, SessionEntity } from "alepha/api/users";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { LogOut } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { toast } from "sonner";
 
 export function AdminSessions() {
   const client = useClient<AdminSessionController>();
   const dialog = useDialog();
   const { l, tr } = useI18n();
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
       const res = await client.findSessions({ query: params as never });
       return res as Page<SessionEntity>;
     },
-    [client, refreshKey],
+    [client],
   );
 
-  const handleRevoke = async (s: SessionEntity) => {
+  const handleRevoke = async (s: SessionEntity, refresh: () => void) => {
     const ok = await dialog.confirm({
       title: tr("admin.sessions.revokeTitle", { default: "Revoke session" }),
       description: tr("admin.sessions.revokeConfirm", {
@@ -34,12 +33,12 @@ export function AdminSessions() {
     if (!ok) return;
     await client.deleteSession({ params: { id: s.id } });
     toast.success(tr("admin.sessions.revoked", { default: "Session revoked" }));
-    setRefreshKey((k) => k + 1);
+    refresh();
   };
 
   const handleBulkRevoke = async (
     items: SessionEntity[],
-    clear: () => void,
+    { clearSelection, refresh }: { clearSelection: () => void; refresh: () => void },
   ) => {
     const targets = items.filter((s) => !(s as any).revokedAt);
     if (targets.length === 0) {
@@ -70,8 +69,8 @@ export function AdminSessions() {
         args: [String(res.deleted.length)],
       }),
     );
-    clear();
-    setRefreshKey((k) => k + 1);
+    clearSelection();
+    refresh();
   };
 
   return (
@@ -151,7 +150,7 @@ export function AdminSessions() {
                   label: tr("admin.sessions.revoke", { default: "Revoke" }),
                   icon: LogOut,
                   destructive: true,
-                  onClick: () => handleRevoke(s),
+                  onClick: (_s, { refresh }) => handleRevoke(s, refresh),
                 },
               ]
         }

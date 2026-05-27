@@ -2,8 +2,10 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { Checkbox } from "@alepha/ui/components/ui/checkbox";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@alepha/ui/components/ui/dropdown-menu";
@@ -28,10 +30,16 @@ import {
   TableRow,
 } from "@alepha/ui/components/ui/table";
 import { cn } from "@alepha/ui/lib/utils";
-import type { Page, TObject } from "alepha";
+import { type Page, type TObject, t } from "alepha";
 import { useAlepha } from "alepha/react";
-import type { FormModel } from "alepha/react/form";
-import { MoreHorizontal } from "lucide-react";
+import { type FormModel, useForm } from "alepha/react/form";
+import {
+  Columns3,
+  FunnelX,
+  MoreHorizontal,
+  MoreVertical,
+  RefreshCw,
+} from "lucide-react";
 import {
   type ComponentType,
   type ReactNode,
@@ -53,31 +61,75 @@ export interface ColumnDef<T> {
    */
   sortKey?: string;
   /**
-   * When `true`, column is hidden by default (toggleable later).
+   * When true, the column starts hidden. The user can still toggle it
+   * on via the built-in column picker. Pass `hideColumnPicker` on the
+   * table to forbid toggling entirely.
    */
   defaultHidden?: boolean;
   className?: string;
   align?: "left" | "right" | "center";
 }
 
+/**
+ * Context passed to every row-action `onClick`. `refresh()` re-fires the
+ * current fetch with the current filters/sort — call it after a mutation
+ * so the table reflects the new state without a manual reload.
+ */
+export interface RowActionContext {
+  refresh: () => void;
+}
+
 export interface RowAction<T> {
   label: string;
   icon?: IconType;
-  onClick: (item: T) => void | Promise<void>;
+  onClick: (item: T, ctx: RowActionContext) => void | Promise<void>;
   destructive?: boolean;
   disabled?: (item: T) => boolean;
+}
+
+/**
+ * Context passed to every bulk-action `onClick`. `clearSelection()`
+ * empties the checkbox set; `refresh()` re-fires the current fetch.
+ */
+export interface BulkActionContext {
+  refresh: () => void;
+  clearSelection: () => void;
 }
 
 export interface BulkAction<T> {
   label: string;
   icon?: IconType;
-  onClick: (selected: T[], clearSelection: () => void) => void | Promise<void>;
+  onClick: (
+    selected: T[],
+    ctx: BulkActionContext,
+  ) => void | Promise<void>;
   destructive?: boolean;
+}
+
+/**
+ * High-level filter slot. AlephaTable creates the `useForm` internally,
+ * wraps `render`'s output in a `<form>` element, persists values under
+ * `persistenceKey` when set, and refetches on submit (and on every
+ * change, debounced, by default).
+ *
+ * The render function receives the typed form so callers wire inputs
+ * with `form.input.<field>` exactly like a hand-rolled `useForm`.
+ */
+export interface AlephaTableFilters {
+  schema: TObject;
+  initialValues?: Record<string, any>;
+  render: (form: FormModel<TObject>) => ReactNode;
+}
+
+interface SortState {
+  field: string;
+  direction: "asc" | "desc";
 }
 
 export interface AlephaTableProps<T> {
   /**
-   * Fetcher invoked with paging + sort. Should return an Alepha `Page<T>`.
+   * Fetcher invoked with paging + sort + filters. Should return an
+   * Alepha `Page<T>`.
    */
   fetch: (params: {
     page: number;
@@ -90,11 +142,13 @@ export interface AlephaTableProps<T> {
    */
   columns: Record<string, ColumnDef<T>>;
   /**
-   * Per-row action menu builder. Return an array of `RowAction` per item.
+   * Per-row action menu builder. Return an array of `RowAction` per
+   * item. Each `onClick` receives `(item, { refresh })`.
    */
   rowActions?: (item: T) => RowAction<T>[];
   /**
-   * Actions applied to selected rows (enables checkbox column).
+   * Actions applied to selected rows (enables checkbox column). Each
+   * `onClick` receives `(items, { refresh, clearSelection })`.
    */
   bulkActions?: BulkAction<T>[];
   /**
@@ -106,33 +160,43 @@ export interface AlephaTableProps<T> {
    */
   rowKey?: (item: T) => string;
   /**
-   * Click handler invoked when a row is clicked (excluding action buttons).
+   * Click handler invoked when a row is clicked (excluding action
+   * buttons).
    */
   onRowClick?: (item: T) => void;
-  /**
-   * Header content rendered above the table (e.g., title + filters).
-   */
-  header?: ReactNode;
   /**
    * Auto-refresh interval in ms (only when document is visible).
    */
   pollMs?: number;
   /**
-   * Filter form. The table refetches whenever the form emits
-   * `form:submit:success`, passing `form.currentValues` as `filters` to
-   * `fetch`. Row actions can call `form.submit()` after a mutation to
-   * refresh the table.
-   */
-  form?: FormModel<TObject>;
-  /**
-   * When true, the table also refetches on every `form:change` event
-   * (debounced by 250ms) — letting consumers drop the explicit "Apply"
-   * button and have filters apply as the user edits them.
+   * High-level filter form. AlephaTable owns the `useForm`, renders the
+   * inputs inside a `<form>` in the toolbar, and refetches on
+   * submit/change.
    *
-   * `form:submit:success` is still honored, so manual submits and
-   * `form.submit()` calls still trigger an immediate refresh.
+   * Mutually exclusive with `form` (legacy: caller-owned form). When
+   * both are passed, `filters` wins.
    */
-  autoApplyFilters?: boolean;
+  filters?: AlephaTableFilters;
+  /**
+   * When set, filter values, column visibility, and sort state are
+   * persisted to `localStorage` under this key. Pick a key that's
+   * unique per page and per scope (e.g. `"admin.users"`,
+   * `\`lor.board.${campaignId}\``).
+   */
+  persistenceKey?: string;
+  /**
+   * Hide the built-in column visibility dropdown in the toolbar.
+   */
+  hideColumnPicker?: boolean;
+  /**
+   * Hide the built-in actions menu (Refresh, Reset filters).
+   */
+  hideActionsMenu?: boolean;
+  /**
+   * Extra slot rendered to the right of the filter inputs in the
+   * toolbar — typically a "New" / "Create" button.
+   */
+  toolbar?: ReactNode;
   /**
    * Extra classes applied to the outer wrapper.
    */
@@ -142,41 +206,140 @@ export interface AlephaTableProps<T> {
    */
   emptyMessage?: string;
   /**
-   * Initial sort state. Useful for restoring a persisted sort on mount.
+   * Free-form content rendered above the toolbar (e.g. a page title).
    */
-  defaultSort?: { field: string; direction: "asc" | "desc" } | null;
+  header?: ReactNode;
   /**
-   * Called whenever the user toggles a column header — receives the new
-   * sort state (`null` when sort is cleared). Pair with `defaultSort` to
-   * persist sort to localStorage / URL.
+   * Initial sort state. When `persistenceKey` is set, a persisted sort
+   * takes precedence over this.
    */
-  onSortChange?: (
-    sort: { field: string; direction: "asc" | "desc" } | null,
-  ) => void;
-}
-
-interface SortState {
-  field: string;
-  direction: "asc" | "desc";
+  defaultSort?: SortState | null;
+  /**
+   * Called whenever the user toggles a column header. Receives the new
+   * sort state (`null` when sort is cleared). Use this if you need a
+   * persistence layer beyond `persistenceKey` (e.g. URL state).
+   */
+  onSortChange?: (sort: SortState | null) => void;
+  /**
+   * Legacy: caller-owned filter form. Prefer `filters` (which has
+   * AlephaTable own the form). When `filters` is set, this prop is
+   * ignored.
+   */
+  form?: FormModel<TObject>;
+  /**
+   * When true (default when `filters` is set), the table refetches on
+   * every `form:change` event, debounced by 250ms. Set to `false` to
+   * require an explicit submit.
+   */
+  autoApplyFilters?: boolean;
 }
 
 const defaultRowKey = (item: unknown): string =>
   String((item as { id?: unknown })?.id ?? Math.random());
 
+const EMPTY_FILTERS_SCHEMA = t.object({}) as TObject;
+
+/** Synchronous localStorage read. Returns undefined on miss or error. */
+const readPersisted = <V,>(key: string, suffix: string): V | undefined => {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(`${key}.${suffix}`);
+    return raw == null ? undefined : (JSON.parse(raw) as V);
+  } catch {
+    return undefined;
+  }
+};
+
+/** Synchronous localStorage write. Empty objects/null delete the key. */
+const writePersisted = (
+  key: string,
+  suffix: string,
+  value: unknown,
+): void => {
+  if (typeof window === "undefined") return;
+  const fullKey = `${key}.${suffix}`;
+  try {
+    const isEmptyObject =
+      value !== null &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      Object.keys(value as object).length === 0;
+    const isEmptyArray = Array.isArray(value) && value.length === 0;
+    if (value === undefined || value === null || isEmptyObject || isEmptyArray) {
+      window.localStorage.removeItem(fullKey);
+      return;
+    }
+    window.localStorage.setItem(fullKey, JSON.stringify(value));
+  } catch {
+    // localStorage may be unavailable (private mode, quota). Skip.
+  }
+};
+
 export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const rowKey = props.rowKey ?? defaultRowKey;
   const size = props.defaultSize ?? 20;
+  const alepha = useAlepha();
+
+  // -- Filter form (internal when `filters` is set, else legacy `form`) -----
+
+  // Read persisted filter values synchronously so they reach useForm's
+  // first invocation. Reading inside an effect would be too late —
+  // useForm captures `initialValues` only once via useMemo.
+  const persistedFilterValues = useMemo(() => {
+    if (!props.persistenceKey || !props.filters) return undefined;
+    return readPersisted<Record<string, any>>(props.persistenceKey, "filters");
+  }, [props.persistenceKey, props.filters]);
+
+  const mergedFilterInitialValues = useMemo<Record<string, any>>(
+    () => ({
+      ...(props.filters?.initialValues ?? {}),
+      ...(persistedFilterValues ?? {}),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  // Always call useForm to keep hook order stable. When the caller
+  // doesn't pass `filters`, the internal form has an empty schema and
+  // is simply unused.
+  const internalForm = useForm({
+    schema: props.filters?.schema ?? EMPTY_FILTERS_SCHEMA,
+    initialValues: mergedFilterInitialValues,
+    handler: async () => {
+      // No-op — the table subscribes to `form:submit:success` to refetch.
+    },
+  });
+
+  const form = props.filters ? internalForm : props.form;
+
+  // -- Paging / sort / data --------------------------------------------------
+
   const [page, setPage] = useState(0);
-  const [sort, setSort] = useState<SortState | null>(props.defaultSort ?? null);
+  const [sort, setSort] = useState<SortState | null>(() => {
+    if (props.persistenceKey) {
+      const persisted = readPersisted<SortState>(
+        props.persistenceKey,
+        "sort",
+      );
+      if (persisted) return persisted;
+    }
+    return props.defaultSort ?? null;
+  });
   const [data, setData] = useState<T[]>([]);
   const [meta, setMeta] = useState<Page<T>["page"] | null>(null);
   const [loading, setLoading] = useState(false);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [refreshKey, setRefreshKey] = useState(0);
-  const alepha = useAlepha();
-  const form = props.form;
 
-  const sortParam = sort ? `${sort.field},${sort.direction}` : undefined;
+  // Alepha's pagination parser reads "field" as asc and "-field" as desc.
+  // Multiple comma-separated entries are multi-column sort, so we must
+  // NOT use `field,direction` syntax — that would treat "asc"/"desc" as
+  // a second column name and 500 on the backend.
+  const sortParam = sort
+    ? sort.direction === "desc"
+      ? `-${sort.field}`
+      : sort.field
+    : undefined;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -198,6 +361,37 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     void load();
   }, [load]);
 
+  // Persist sort to localStorage on every change.
+  useEffect(() => {
+    if (!props.persistenceKey) return;
+    writePersisted(props.persistenceKey, "sort", sort);
+  }, [props.persistenceKey, sort]);
+
+  // -- Refresh + reset wiring -----------------------------------------------
+
+  const refresh = useCallback(() => {
+    setPage(0);
+    setRefreshKey((k) => k + 1);
+  }, []);
+
+  const resetFilters = useCallback(() => {
+    if (!form || !props.filters) return;
+    // Per-field `.set(undefined)` is necessary: `setInitialValues({})`
+    // doesn't emit `form:change` for deleted keys, so inputs stay
+    // visually populated and subscribers don't refetch. Explicit set
+    // keeps everyone in sync.
+    const keys = Object.keys(props.filters.schema.properties ?? {});
+    for (const key of keys) {
+      const input = (form.input as Record<string, { set?: (v: any) => void }>)[
+        key
+      ];
+      input?.set?.(undefined);
+    }
+  }, [form, props.filters]);
+
+  // -- Form event subscriptions ---------------------------------------------
+
+  // Refetch on explicit submit (manual Apply, programmatic submit, etc.).
   useEffect(() => {
     if (!form) return;
     return alepha.events.on("form:submit:success", (event) => {
@@ -207,8 +401,12 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     });
   }, [alepha, form]);
 
+  // Refetch on change (debounced) when autoApplyFilters is on. Default
+  // is on whenever AlephaTable owns the form (`filters` prop).
+  const autoApply =
+    props.autoApplyFilters ?? Boolean(props.filters);
   useEffect(() => {
-    if (!form || !props.autoApplyFilters) return;
+    if (!form || !autoApply) return;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const unsub = alepha.events.on("form:change", (event) => {
       if (event.id !== form.id) return;
@@ -222,17 +420,50 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
       if (timeout) clearTimeout(timeout);
       unsub();
     };
-  }, [alepha, form, props.autoApplyFilters]);
+  }, [alepha, form, autoApply]);
+
+  // Persist filter values to localStorage on change.
+  useEffect(() => {
+    if (!props.persistenceKey || !form || !props.filters) return;
+    const persist = () => {
+      const clean: Record<string, any> = {};
+      const values = form.currentValues ?? {};
+      for (const [k, v] of Object.entries(values)) {
+        if (v === undefined || v === null || v === "") continue;
+        if (Array.isArray(v) && v.length === 0) continue;
+        clean[k] = v;
+      }
+      writePersisted(props.persistenceKey!, "filters", clean);
+    };
+    const unsubs = [
+      alepha.events.on("form:change", (event) => {
+        if (event.id !== form.id) return;
+        persist();
+      }),
+      alepha.events.on("form:submit:success", (event) => {
+        if (event.id !== form.id) return;
+        persist();
+      }),
+    ];
+    return () => {
+      for (const u of unsubs) u();
+    };
+  }, [alepha, form, props.filters, props.persistenceKey]);
+
+  // -- Polling ---------------------------------------------------------------
 
   useEffect(() => {
     if (!props.pollMs) return;
     const id = setInterval(() => {
-      if (document.visibilityState === "visible") setRefreshKey((k) => k + 1);
+      if (document.visibilityState === "visible")
+        setRefreshKey((k) => k + 1);
     }, props.pollMs);
     return () => clearInterval(id);
   }, [props.pollMs]);
 
-  const clearSelection = () => setSelection(new Set());
+  // -- Selection -------------------------------------------------------------
+
+  const clearSelection = useCallback(() => setSelection(new Set()), []);
 
   const selectedItems = useMemo(
     () => data.filter((it) => selection.has(rowKey(it))),
@@ -264,6 +495,8 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     setSelection(next);
   };
 
+  // -- Sort ------------------------------------------------------------------
+
   const toggleSort = (col: string, def: ColumnDef<T>) => {
     if (!def.sortable) return;
     const field = def.sortKey ?? col;
@@ -279,15 +512,104 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     });
   };
 
+  // -- Column visibility -----------------------------------------------------
+
+  const allColumnKeys = useMemo(
+    () => Object.keys(props.columns),
+    [props.columns],
+  );
+
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() => {
+    if (props.persistenceKey) {
+      const persisted = readPersisted<string[]>(
+        props.persistenceKey,
+        "columns",
+      );
+      if (persisted) {
+        return new Set(persisted.filter((k) => k in props.columns));
+      }
+    }
+    return new Set(
+      allColumnKeys.filter((k) => !props.columns[k].defaultHidden),
+    );
+  });
+
+  useEffect(() => {
+    if (!props.persistenceKey) return;
+    writePersisted(
+      props.persistenceKey,
+      "columns",
+      [...visibleColumns],
+    );
+  }, [props.persistenceKey, visibleColumns]);
+
+  const toggleColumn = (id: string) => {
+    setVisibleColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // -- Render ---------------------------------------------------------------
+
   const cols = Object.entries(props.columns) as Array<[string, ColumnDef<T>]>;
+  const visibleCols = cols.filter(([key]) => visibleColumns.has(key));
   const hasCheckbox = Boolean(props.bulkActions?.length);
   const hasRowActions = Boolean(props.rowActions);
+
+  const rowCtx: RowActionContext = useMemo(() => ({ refresh }), [refresh]);
+  const bulkCtx: BulkActionContext = useMemo(
+    () => ({ refresh, clearSelection }),
+    [refresh, clearSelection],
+  );
+
+  const showToolbar =
+    Boolean(props.filters) ||
+    Boolean(props.toolbar) ||
+    !props.hideColumnPicker ||
+    !props.hideActionsMenu;
+  const showColumnPicker =
+    !props.hideColumnPicker && allColumnKeys.length > 0;
+  const showActionsMenu = !props.hideActionsMenu;
 
   return (
     <div className={cn("flex flex-col gap-2", props.className)}>
       {props.header && (
         <div className="flex items-center gap-2">
-          <div className="flex-1 min-w-0">{props.header}</div>
+          <div className="min-w-0 flex-1">{props.header}</div>
+        </div>
+      )}
+
+      {showToolbar && (
+        <div className="bg-card flex flex-wrap items-end gap-2 rounded-md border p-2">
+          {props.filters && form ? (
+            <form
+              {...form.props}
+              className="flex flex-1 flex-wrap items-end gap-2"
+            >
+              {props.filters.render(form)}
+            </form>
+          ) : (
+            <div className="flex flex-1" />
+          )}
+          {props.toolbar}
+          <div className="flex items-end gap-1">
+            {showColumnPicker && (
+              <ColumnPicker<T>
+                columns={props.columns}
+                visible={visibleColumns}
+                onToggle={toggleColumn}
+              />
+            )}
+            {showActionsMenu && (
+              <ActionsMenu
+                onRefresh={refresh}
+                onReset={props.filters ? resetFilters : undefined}
+              />
+            )}
+          </div>
         </div>
       )}
 
@@ -302,7 +624,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                 key={action.label}
                 variant={action.destructive ? "destructive" : "outline"}
                 size="sm"
-                onClick={() => action.onClick(selectedItems, clearSelection)}
+                onClick={() => action.onClick(selectedItems, bulkCtx)}
               >
                 {ActionIcon && <ActionIcon className="mr-2 size-4" />}
                 {action.label}
@@ -315,7 +637,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col overflow-auto rounded-md border min-h-0">
+      <div className="flex min-h-0 flex-1 flex-col overflow-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -334,27 +656,25 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                   />
                 </TableHead>
               )}
-              {cols.map(([key, def]) =>
-                def.defaultHidden ? null : (
-                  <TableHead
-                    key={key}
-                    className={cn(
-                      def.className,
-                      def.align === "right" && "text-right",
-                      def.align === "center" && "text-center",
-                      def.sortable && "cursor-pointer select-none",
-                    )}
-                    onClick={() => toggleSort(key, def)}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      {def.label}
-                      {def.sortable &&
-                        sort?.field === (def.sortKey ?? key) &&
-                        (sort.direction === "asc" ? "↑" : "↓")}
-                    </span>
-                  </TableHead>
-                ),
-              )}
+              {visibleCols.map(([key, def]) => (
+                <TableHead
+                  key={key}
+                  className={cn(
+                    def.className,
+                    def.align === "right" && "text-right",
+                    def.align === "center" && "text-center",
+                    def.sortable && "cursor-pointer select-none",
+                  )}
+                  onClick={() => toggleSort(key, def)}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    {def.label}
+                    {def.sortable &&
+                      sort?.field === (def.sortKey ?? key) &&
+                      (sort.direction === "asc" ? "↑" : "↓")}
+                  </span>
+                </TableHead>
+              ))}
               {hasRowActions && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
@@ -363,14 +683,16 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
               <SkeletonRows
                 rows={5}
                 cols={
-                  cols.length + (hasCheckbox ? 1 : 0) + (hasRowActions ? 1 : 0)
+                  visibleCols.length +
+                  (hasCheckbox ? 1 : 0) +
+                  (hasRowActions ? 1 : 0)
                 }
               />
             ) : data.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={
-                    cols.length +
+                    visibleCols.length +
                     (hasCheckbox ? 1 : 0) +
                     (hasRowActions ? 1 : 0)
                   }
@@ -401,20 +723,18 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                         />
                       </TableCell>
                     )}
-                    {cols.map(([key, def]) =>
-                      def.defaultHidden ? null : (
-                        <TableCell
-                          key={key}
-                          className={cn(
-                            def.className,
-                            def.align === "right" && "text-right",
-                            def.align === "center" && "text-center",
-                          )}
-                        >
-                          {def.cell(item)}
-                        </TableCell>
-                      ),
-                    )}
+                    {visibleCols.map(([key, def]) => (
+                      <TableCell
+                        key={key}
+                        className={cn(
+                          def.className,
+                          def.align === "right" && "text-right",
+                          def.align === "center" && "text-center",
+                        )}
+                      >
+                        {def.cell(item)}
+                      </TableCell>
+                    ))}
                     {hasRowActions && (
                       <TableCell
                         className="text-right"
@@ -423,6 +743,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                         <RowActionsMenu
                           actions={props.rowActions!(item)}
                           item={item}
+                          ctx={rowCtx}
                         />
                       </TableCell>
                     )}
@@ -525,6 +846,78 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   );
 }
 
+function ColumnPicker<T>(props: {
+  columns: Record<string, ColumnDef<T>>;
+  visible: Set<string>;
+  onToggle: (key: string) => void;
+}) {
+  const entries = Object.entries(props.columns);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-9 w-9 p-0"
+          aria-label="Toggle columns"
+        >
+          <Columns3 className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Columns</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {entries.map(([key, def]) => (
+          <DropdownMenuCheckboxItem
+            key={key}
+            checked={props.visible.has(key)}
+            onSelect={(e) => {
+              e.preventDefault();
+              props.onToggle(key);
+            }}
+          >
+            {def.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function ActionsMenu(props: {
+  onRefresh: () => void;
+  onReset?: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-9 w-9 p-0"
+          aria-label="Table actions"
+        >
+          <MoreVertical className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={props.onRefresh}>
+          <RefreshCw className="mr-2 size-4" />
+          Refresh
+        </DropdownMenuItem>
+        {props.onReset && (
+          <DropdownMenuItem onClick={props.onReset}>
+            <FunnelX className="mr-2 size-4" />
+            Reset filters
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 /**
  * Build the visible page-number sequence with ellipses. Always shows
  * first + last, ±1 around current. Gaps collapse into a single ellipsis.
@@ -561,7 +954,11 @@ function SkeletonRows(props: { rows: number; cols: number }) {
   );
 }
 
-function RowActionsMenu<T>(props: { actions: RowAction<T>[]; item: T }) {
+function RowActionsMenu<T>(props: {
+  actions: RowAction<T>[];
+  item: T;
+  ctx: RowActionContext;
+}) {
   if (props.actions.length === 0) return null;
   return (
     <DropdownMenu>
@@ -583,7 +980,7 @@ function RowActionsMenu<T>(props: { actions: RowAction<T>[]; item: T }) {
               {sep && <DropdownMenuSeparator />}
               <DropdownMenuItem
                 disabled={disabled}
-                onClick={() => action.onClick(props.item)}
+                onClick={() => action.onClick(props.item, props.ctx)}
                 className={action.destructive ? "text-destructive" : undefined}
               >
                 {Icon && <Icon className="mr-2 size-4" />}

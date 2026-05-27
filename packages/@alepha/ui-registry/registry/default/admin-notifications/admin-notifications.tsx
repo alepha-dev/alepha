@@ -1,29 +1,31 @@
+import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
+import { Badge } from "@/components/ui/badge";
+import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 import type { Page } from "alepha";
 import type { AdminNotificationController } from "alepha/api/notifications";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
-import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 
 export function AdminNotifications() {
   const client = useClient<AdminNotificationController>();
   const dialog = useDialog();
   const { l, tr } = useI18n();
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
       const res = await client.findNotifications({ query: params as never });
       return res as Page<any>;
     },
-    [client, refreshKey],
+    [client],
   );
 
-  const handleBulkDelete = async (items: any[], clear: () => void) => {
+  const handleBulkDelete = async (
+    items: any[],
+    { clearSelection, refresh }: { clearSelection: () => void; refresh: () => void },
+  ) => {
     if (items.length === 0) return;
     const ok = await dialog.confirm({
       title: tr("admin.notifications.bulkDeleteTitle", {
@@ -45,8 +47,8 @@ export function AdminNotifications() {
         args: [String(res.deleted.length)],
       }),
     );
-    clear();
-    setRefreshKey((k) => k + 1);
+    clearSelection();
+    refresh();
   };
 
   return (

@@ -6,24 +6,26 @@ import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { toast } from "sonner";
 
 export function AdminAudits() {
   const client = useClient<AdminAuditController>();
   const dialog = useDialog();
   const { l, tr } = useI18n();
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
       const res = await client.findAudits({ query: params as never });
       return res as Page<AuditEntity>;
     },
-    [client, refreshKey],
+    [client],
   );
 
-  const handleBulkDelete = async (items: AuditEntity[], clear: () => void) => {
+  const handleBulkDelete = async (
+    items: AuditEntity[],
+    { clearSelection, refresh }: { clearSelection: () => void; refresh: () => void },
+  ) => {
     if (items.length === 0) return;
     const ok = await dialog.confirm({
       title: tr("admin.audits.bulkDeleteTitle", {
@@ -45,8 +47,8 @@ export function AdminAudits() {
         args: [String(res.deleted.length)],
       }),
     );
-    clear();
-    setRefreshKey((k) => k + 1);
+    clearSelection();
+    refresh();
   };
 
   return (

@@ -6,7 +6,7 @@ import type { AdminParameterController } from "alepha/api/parameters";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { toast } from "sonner";
 
 /**
@@ -18,7 +18,6 @@ export function AdminParameters() {
   const client = useClient<AdminParameterController>();
   const dialog = useDialog();
   const { l, tr } = useI18n();
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const fetcher = useCallback(
     async (_params: { page: number; size: number; sort?: string }) => {
@@ -45,10 +44,10 @@ export function AdminParameters() {
         },
       } as Page<any>;
     },
-    [client, refreshKey],
+    [client],
   );
 
-  const handleDelete = async (p: any) => {
+  const handleDelete = async (p: any, refresh: () => void) => {
     const ok = await dialog.confirm({
       title: tr("admin.parameters.deleteTitle", {
         default: "Delete parameter",
@@ -64,10 +63,13 @@ export function AdminParameters() {
     toast.success(
       tr("admin.parameters.deleted", { default: "Parameter deleted" }),
     );
-    setRefreshKey((k) => k + 1);
+    refresh();
   };
 
-  const handleBulkDelete = async (items: any[], clear: () => void) => {
+  const handleBulkDelete = async (
+    items: any[],
+    { clearSelection, refresh }: { clearSelection: () => void; refresh: () => void },
+  ) => {
     if (items.length === 0) return;
     const ok = await dialog.confirm({
       title: tr("admin.parameters.bulkDeleteTitle", {
@@ -89,8 +91,8 @@ export function AdminParameters() {
         args: [String(res.deleted.length)],
       }),
     );
-    clear();
-    setRefreshKey((k) => k + 1);
+    clearSelection();
+    refresh();
   };
 
   return (
@@ -156,7 +158,7 @@ export function AdminParameters() {
             label: tr("admin.parameters.delete", { default: "Delete" }),
             icon: Trash2,
             destructive: true,
-            onClick: () => handleDelete(p),
+            onClick: (_p, { refresh }) => handleDelete(p, refresh),
           },
         ]}
       />

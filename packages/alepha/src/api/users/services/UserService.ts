@@ -213,6 +213,16 @@ export class UserService {
 
     const where = this.users(userRealmName).createQueryWhere();
 
+    if (q.search) {
+      const pattern = `%${q.search}%`;
+      where.or = [
+        { email: { ilike: pattern } },
+        { username: { ilike: pattern } },
+        { firstName: { ilike: pattern } },
+        { lastName: { ilike: pattern } },
+      ];
+    }
+
     if (q.email) {
       where.email = { like: q.email };
     }
