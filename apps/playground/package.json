@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build --stats",
+    "build:docker": "alepha build --target=docker",
     "start": "yarn build && LOG_LEVEL=info LOG_FORMAT=pretty node dist",
     "wrangler": "alepha build --target=cloudflare && cd dist && wrangler",
     "wrangler:dev": "alepha build --target=cloudflare && cd dist && wrangler dev",

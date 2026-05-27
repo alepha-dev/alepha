@@ -7754,6 +7754,7 @@ __metadata:
     alepha: "npm:^0.21.2"
     better-sqlite3: "npm:^12.10.0"
     react: "npm:^19.2.6"
+    react-dom: "npm:^19.2.6"
     vite: "npm:^8.0.13"
     wrangler: "npm:^4.93.0"
   dependenciesMeta:

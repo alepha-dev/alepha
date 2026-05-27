@@ -91,14 +91,32 @@ describe("BuildDockerTask", () => {
           /FROM node:24-alpine/,
         ),
       ).toBe(true);
+      // Empty deps → no install line (Vite bundled everything).
       expect(
         fs.wasWrittenMatching("/project/dist/Dockerfile", /RUN npm install/),
-      ).toBe(true);
+      ).toBe(false);
       expect(
         fs.wasWrittenMatching(
           "/project/dist/Dockerfile",
           /CMD \["node", "index\.js"\]/,
         ),
+      ).toBe(true);
+    });
+
+    it("includes `RUN npm install` when dist/package.json has runtime deps", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await fs.writeFile(
+        "/project/dist/package.json",
+        JSON.stringify({ dependencies: { lodash: "^4.0.0" } }),
+      );
+
+      await task.run(
+        createCtx(fs, shell, { target: "docker", runtime: "node" }),
+      );
+
+      expect(
+        fs.wasWrittenMatching("/project/dist/Dockerfile", /RUN npm install/),
       ).toBe(true);
     });
 
@@ -128,6 +146,10 @@ describe("BuildDockerTask", () => {
 
     it("writes a bun Dockerfile when runtime=bun", async () => {
       const { fs, shell, task } = createTestEnv();
+      await fs.writeFile(
+        "/project/dist/package.json",
+        JSON.stringify({ dependencies: { lodash: "^4.0.0" } }),
+      );
       await task.run(
         createCtx(fs, shell, { target: "docker", runtime: "bun" }),
       );

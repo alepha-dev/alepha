@@ -73,10 +73,12 @@ export class BuildDockerTask extends BuildTask {
       name: "generate deploy config (docker)",
       handler: async () => {
         const migrationsCopied = await this.copyMigrations(ctx.root, distDir);
+        const hasDeps = await this.hasRuntimeDeps(ctx.root, distDir);
         await this.writeDockerfile(ctx.root, distDir, {
           compile,
           standard: { image: dockerFrom, command: dockerCommand },
           hasMigrations: migrationsCopied,
+          hasDeps,
           install: ctx.options.docker?.install ?? [],
         });
       },
@@ -211,6 +213,28 @@ export class BuildDockerTask extends BuildTask {
     return false;
   }
 
+  /**
+   * Whether the produced `dist/package.json` declares any runtime
+   * dependencies. Alepha apps normally bundle everything into the
+   * server entry via Vite, leaving `dependencies: {}` — in which case
+   * the generated Dockerfile's `RUN npm install` is wasted work
+   * (and emits deprecation noise). Skip the line when empty.
+   */
+  protected async hasRuntimeDeps(
+    root: string,
+    distDir: string,
+  ): Promise<boolean> {
+    try {
+      const pkg = await this.fs.readJsonFile<{
+        dependencies?: Record<string, string>;
+      }>(this.fs.join(root, distDir, "package.json"));
+      return Object.keys(pkg.dependencies ?? {}).length > 0;
+    } catch {
+      // No package.json in dist/ → nothing to install.
+      return false;
+    }
+  }
+
   protected async writeDockerfile(
     root: string,
     distDir: string,
@@ -218,6 +242,7 @@ export class BuildDockerTask extends BuildTask {
       compile: ResolvedCompile | null;
       standard: { image: string; command: string };
       hasMigrations: boolean;
+      hasDeps: boolean;
       install: string[];
     },
   ): Promise<void> {
@@ -244,12 +269,18 @@ ENTRYPOINT ["/app/app"]
 `;
     } else {
       const { image, command } = opts.standard;
+      // Skip `RUN <pm> install` when `dist/package.json` declares no
+      // runtime deps — Alepha apps normally bundle everything via Vite,
+      // making the install a no-op that just emits deprecation noise.
+      const baseInstallLine = opts.hasDeps
+        ? `RUN ${command === "bun" ? "bun" : "npm"} install\n`
+        : "";
       // Install requested packages locally (no --global). They land in
       // `/app/node_modules/`, alongside the app's own deps. Use
       // `--no-save` so we don't mutate the bundled package.json. Node
       // module resolution walks up into `/app/node_modules/` when the
       // workspace lives under `/app/workspace/<deploy-id>/`.
-      const installLine = opts.install.length
+      const extraInstallLine = opts.install.length
         ? `RUN npm install --no-save --no-fund --no-audit ${opts.install.join(" ")}\n`
         : "";
       dockerfile = `${header}FROM ${image}
@@ -257,8 +288,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN ${command === "bun" ? "bun" : "npm"} install
-${installLine}
+${baseInstallLine}${extraInstallLine}
 ENV SERVER_HOST=0.0.0.0
 
 CMD ["${command}", "index.js"]
