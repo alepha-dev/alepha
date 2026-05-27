@@ -1,8 +1,3 @@
-import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
-import { Control } from "@/registry/default/control/control";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 import { type Page, type Static, t } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useClient } from "alepha/react";
@@ -12,6 +7,11 @@ import { useRouter } from "alepha/react/router";
 import { Eye, Search, Trash2, UserCheck, UserX } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
+import { Control } from "@/registry/default/control/control";
+import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 
 export interface AdminUsersProps {
   /**
@@ -64,10 +64,7 @@ export function AdminUsers(props: AdminUsersProps) {
     u.username ||
     tr("admin.users.thisUser", { default: "this user" });
 
-  const handleToggleEnabled = async (
-    user: UserEntity,
-    refresh: () => void,
-  ) => {
+  const handleToggleEnabled = async (user: UserEntity, refresh: () => void) => {
     if (isSelf(user)) {
       toast.error(
         tr("admin.users.cantDisableSelf", {

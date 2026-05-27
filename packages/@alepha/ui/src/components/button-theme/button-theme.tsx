@@ -82,16 +82,20 @@ export function ButtonTheme(props: ButtonThemeProps) {
   return (
     <DropdownMenu>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant={props.variant ?? "ghost"}
-              size="icon"
-              aria-label={label}
-            >
-              <Palette className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
+        <TooltipTrigger
+          render={
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant={props.variant ?? "ghost"}
+                  size="icon"
+                  aria-label={label}
+                />
+              }
+            />
+          }
+        >
+          <Palette className="size-4" />
         </TooltipTrigger>
         <TooltipContent>{label}</TooltipContent>
       </Tooltip>

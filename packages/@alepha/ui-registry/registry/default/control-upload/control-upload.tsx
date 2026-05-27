@@ -323,35 +323,37 @@ export function ControlUpload(props: ControlUploadProps) {
 
   const dropZone = (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={props.disabled || uploading}
-          onClick={() => fileInputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          className={dragOver ? "border-primary bg-primary/5" : ""}
-        >
-          {uploading ? (
-            <>
-              <Loader2 className="size-4 mr-1 animate-spin" />
-              {tr("controlUpload.uploading", { default: "Uploading…" })}
-            </>
-          ) : (
-            <>
-              <Upload className="size-4 mr-1" />
-              {props.multi
-                ? tr("controlUpload.chooseFiles", { default: "Choose files" })
-                : tr("controlUpload.chooseFile", { default: "Choose a file" })}
-            </>
-          )}
-        </Button>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={props.disabled || uploading}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            className={dragOver ? "border-primary bg-primary/5" : ""}
+          />
+        }
+      >
+        {uploading ? (
+          <>
+            <Loader2 className="size-4 mr-1 animate-spin" />
+            {tr("controlUpload.uploading", { default: "Uploading…" })}
+          </>
+        ) : (
+          <>
+            <Upload className="size-4 mr-1" />
+            {props.multi
+              ? tr("controlUpload.chooseFiles", { default: "Choose files" })
+              : tr("controlUpload.chooseFile", { default: "Choose a file" })}
+          </>
+        )}
       </TooltipTrigger>
       <TooltipContent>{dragDropHint}</TooltipContent>
     </Tooltip>

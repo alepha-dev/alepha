@@ -28,6 +28,9 @@
         "noExplicitAny": "off",
         "noArrayIndexKey": "off"
       },
+      "security": {
+        "noDangerouslySetInnerHtml": "off"
+      },
       "correctness": {
         "noUnusedImports": {
           "options": {},

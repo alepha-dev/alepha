@@ -2,7 +2,7 @@
  * Type-only stub of stock shadcn `<Button>` for typecheck during block authoring.
  * The real component is installed by `shadcn add` into the consumer's repo.
  */
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactElement } from "react";
 
 export type ButtonProps = ComponentProps<"button"> & {
   variant?:
@@ -14,6 +14,7 @@ export type ButtonProps = ComponentProps<"button"> & {
     | "link";
   size?: "default" | "sm" | "lg" | "icon";
   asChild?: boolean;
+  render?: ReactElement;
 };
 
 export const Button: (props: ButtonProps) => any = () => null;

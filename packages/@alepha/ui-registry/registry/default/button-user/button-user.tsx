@@ -77,16 +77,18 @@ export function ButtonUser(props: ButtonUserProps) {
     const signInLabel = props.signInLabel ?? "Sign in";
     return (
       <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant={props.variant ?? "ghost"}
-            size="icon"
-            aria-label={signInLabel}
-            disabled={!props.onSignIn}
-            onClick={props.onSignIn}
-          >
-            <LogIn className="size-4" />
-          </Button>
+        <TooltipTrigger
+          render={
+            <Button
+              variant={props.variant ?? "ghost"}
+              size="icon"
+              aria-label={signInLabel}
+              disabled={!props.onSignIn}
+              onClick={props.onSignIn}
+            />
+          }
+        >
+          <LogIn className="size-4" />
         </TooltipTrigger>
         <TooltipContent>{signInLabel}</TooltipContent>
       </Tooltip>
@@ -97,16 +99,20 @@ export function ButtonUser(props: ButtonUserProps) {
   return (
     <DropdownMenu>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant={props.variant ?? "ghost"}
-              size="icon"
-              aria-label={menuLabel}
-            >
-              <User className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
+        <TooltipTrigger
+          render={
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant={props.variant ?? "ghost"}
+                  size="icon"
+                  aria-label={menuLabel}
+                />
+              }
+            />
+          }
+        >
+          <User className="size-4" />
         </TooltipTrigger>
         <TooltipContent>{menuLabel}</TooltipContent>
       </Tooltip>

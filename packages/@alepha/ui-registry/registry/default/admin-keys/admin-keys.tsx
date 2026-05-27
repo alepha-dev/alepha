@@ -1,6 +1,3 @@
-import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
-import { Badge } from "@/components/ui/badge";
-import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 import type { Page } from "alepha";
 import type { AdminApiKeyController } from "alepha/api/keys";
 import { useClient } from "alepha/react";
@@ -8,6 +5,9 @@ import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
+import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 
 export function AdminKeys() {
   const client = useClient<AdminApiKeyController>();
@@ -39,7 +39,10 @@ export function AdminKeys() {
 
   const handleBulkRevoke = async (
     items: any[],
-    { clearSelection, refresh }: { clearSelection: () => void; refresh: () => void },
+    {
+      clearSelection,
+      refresh,
+    }: { clearSelection: () => void; refresh: () => void },
   ) => {
     const targets = items.filter((k) => !k.revokedAt);
     if (targets.length === 0) {

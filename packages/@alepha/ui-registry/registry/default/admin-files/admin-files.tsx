@@ -1,7 +1,3 @@
-import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 import type { Page } from "alepha";
 import type { FileController } from "alepha/api/files";
 import { useClient } from "alepha/react";
@@ -9,6 +5,10 @@ import { useI18n } from "alepha/react/i18n";
 import { Download, Trash2, Upload } from "lucide-react";
 import { type ChangeEvent, useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
+import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 
 const formatBytes = (n: number) => {
   if (!n) return "0 B";
@@ -80,7 +80,10 @@ export function AdminFiles() {
 
   const handleBulkDelete = async (
     items: any[],
-    { clearSelection, refresh }: { clearSelection: () => void; refresh: () => void },
+    {
+      clearSelection,
+      refresh,
+    }: { clearSelection: () => void; refresh: () => void },
   ) => {
     if (items.length === 0) return;
     const ok = await dialog.confirm({

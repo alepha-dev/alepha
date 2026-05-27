@@ -38,7 +38,10 @@ export function AdminSessions() {
 
   const handleBulkRevoke = async (
     items: SessionEntity[],
-    { clearSelection, refresh }: { clearSelection: () => void; refresh: () => void },
+    {
+      clearSelection,
+      refresh,
+    }: { clearSelection: () => void; refresh: () => void },
   ) => {
     const targets = items.filter((s) => !(s as any).revokedAt);
     if (targets.length === 0) {

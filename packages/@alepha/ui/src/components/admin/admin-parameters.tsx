@@ -68,7 +68,10 @@ export function AdminParameters() {
 
   const handleBulkDelete = async (
     items: any[],
-    { clearSelection, refresh }: { clearSelection: () => void; refresh: () => void },
+    {
+      clearSelection,
+      refresh,
+    }: { clearSelection: () => void; refresh: () => void },
   ) => {
     if (items.length === 0) return;
     const ok = await dialog.confirm({

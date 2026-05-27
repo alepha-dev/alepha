@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 export const HoverCard: (props: {
   openDelay?: number;
@@ -7,6 +7,7 @@ export const HoverCard: (props: {
 }) => any = () => null;
 export const HoverCardTrigger: (props: {
   asChild?: boolean;
+  render?: ReactElement;
   children?: ReactNode;
 }) => any = () => null;
 export const HoverCardContent: (props: {

@@ -567,16 +567,18 @@ function FormErrorPopover(props: FormErrorPopoverProps) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={tr("autoForm.errors", { default: "Form errors" })}
-          className="text-destructive"
-        >
-          <AlertCircle className="size-4" />
-        </Button>
+      <PopoverTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={tr("autoForm.errors", { default: "Form errors" })}
+            className="text-destructive"
+          />
+        }
+      >
+        <AlertCircle className="size-4" />
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-2">
         <p className="text-destructive text-sm font-medium px-2 py-1">

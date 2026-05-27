@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 export const Popover: (props: {
   open?: boolean;
@@ -7,6 +7,7 @@ export const Popover: (props: {
 }) => any = () => null;
 export const PopoverTrigger: (props: {
   asChild?: boolean;
+  render?: ReactElement;
   children?: ReactNode;
 }) => any = () => null;
 export const PopoverContent: (props: {

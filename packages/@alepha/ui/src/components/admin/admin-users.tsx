@@ -64,10 +64,7 @@ export function AdminUsers(props: AdminUsersProps) {
     u.username ||
     tr("admin.users.thisUser", { default: "this user" });
 
-  const handleToggleEnabled = async (
-    user: UserEntity,
-    refresh: () => void,
-  ) => {
+  const handleToggleEnabled = async (user: UserEntity, refresh: () => void) => {
     if (isSelf(user)) {
       toast.error(
         tr("admin.users.cantDisableSelf", {

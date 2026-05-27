@@ -639,19 +639,26 @@ yarn shadcn add @alepha/alepha-table
 
 | Prop | Type | Required | Description |
 |------|------|----------|-------------|
-| `fetch` | `Object` | Yes | Fetcher invoked with paging + sort |
+| `fetch` | `Object` | Yes | Fetcher invoked with paging + sort + filters |
 | `columns` | `Record&lt;string, ColumnDef&lt;T&gt;&gt;` | Yes | Column definitions, keyed by the property name they read from. |
 | `rowActions` | `Object` | No | Per-row action menu builder |
-| `bulkActions` | `BulkAction&lt;T&gt;[]` | No | Actions applied to selected rows (enables checkbox column). |
+| `bulkActions` | `BulkAction&lt;T&gt;[]` | No | Actions applied to selected rows (enables checkbox column) |
 | `defaultSize` | `number` | No | Default page size. |
 | `rowKey` | `Object` | No | Stable row identifier |
 | `onRowClick` | `Object` | No | Click handler invoked when a row is clicked (excluding action buttons). |
-| `header` | `ReactNode` | No | Header content rendered above the table (e.g., title + filters). |
 | `pollMs` | `number` | No | Auto-refresh interval in ms (only when document is visible). |
-| `form` | `FormModel&lt;TObject&gt;` | No | Filter form |
-| `autoApplyFilters` | `boolean` | No | When true, the table also refetches on every `form:change` event (debounced by 250ms) — letting consumers drop the explicit "Apply" button and have filters apply as the user edits them |
+| `filters` | `AlephaTableFilters` | No | High-level filter form |
+| `persistenceKey` | `string` | No | When set, filter values, column visibility, and sort state are persisted to `localStorage` under this key |
+| `hideColumnPicker` | `boolean` | No | Hide the built-in column visibility dropdown in the toolbar. |
+| `hideActionsMenu` | `boolean` | No | Hide the built-in actions menu (Refresh, Reset filters). |
+| `toolbar` | `ReactNode` | No | Extra slot rendered to the right of the filter inputs in the toolbar — typically a "New" / "Create" button. |
 | `className` | `string` | No | Extra classes applied to the outer wrapper. |
 | `emptyMessage` | `string` | No | Message shown when the page is empty |
+| `header` | `ReactNode` | No | Free-form content rendered above the toolbar (e.g |
+| `defaultSort` | `SortState \| null` | No | Initial sort state |
+| `onSortChange` | `Object` | No | Called whenever the user toggles a column header |
+| `form` | `FormModel&lt;TObject&gt;` | No | Legacy: caller-owned filter form |
+| `autoApplyFilters` | `boolean` | No | When true (default when `filters` is set), the table refetches on every `form:change` event, debounced by 250ms |
 
 **Dependencies:** `alepha`, `lucide-react`, `shadcn:button`, `shadcn:checkbox`, `shadcn:dropdown-menu`, `@alepha/pagination`, `shadcn:skeleton`, `shadcn:table`
 

@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, ReactElement, ReactNode } from "react";
 
 export const SidebarProvider: (props: {
   children?: ReactNode;
@@ -30,6 +30,7 @@ export const SidebarMenuItem: (props: { children?: ReactNode }) => any = () =>
   null;
 export const SidebarMenuButton: (props: {
   asChild?: boolean;
+  render?: ReactElement;
   isActive?: boolean;
   tooltip?: string;
   onClick?: (e: any) => void;
@@ -42,6 +43,7 @@ export const SidebarMenuSubItem: (props: { children?: ReactNode }) => any =
   () => null;
 export const SidebarMenuSubButton: (props: {
   asChild?: boolean;
+  render?: ReactElement;
   isActive?: boolean;
   size?: "sm" | "md";
   children?: ReactNode;

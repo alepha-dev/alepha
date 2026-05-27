@@ -1,3 +1,22 @@
+import { type Page, type TObject, t } from "alepha";
+import { useAlepha } from "alepha/react";
+import { type FormModel, useForm } from "alepha/react/form";
+import {
+  Columns3,
+  FunnelX,
+  MoreHorizontal,
+  MoreVertical,
+  RefreshCw,
+} from "lucide-react";
+import {
+  type ComponentType,
+  type ReactNode,
+  type SVGProps,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -30,25 +49,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { type Page, type TObject, t } from "alepha";
-import { useAlepha } from "alepha/react";
-import { type FormModel, useForm } from "alepha/react/form";
-import {
-  Columns3,
-  FunnelX,
-  MoreHorizontal,
-  MoreVertical,
-  RefreshCw,
-} from "lucide-react";
-import {
-  type ComponentType,
-  type ReactNode,
-  type SVGProps,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -99,10 +99,7 @@ export interface BulkActionContext {
 export interface BulkAction<T> {
   label: string;
   icon?: IconType;
-  onClick: (
-    selected: T[],
-    ctx: BulkActionContext,
-  ) => void | Promise<void>;
+  onClick: (selected: T[], ctx: BulkActionContext) => void | Promise<void>;
   destructive?: boolean;
 }
 
@@ -251,11 +248,7 @@ const readPersisted = <V,>(key: string, suffix: string): V | undefined => {
 };
 
 /** Synchronous localStorage write. Empty objects/null delete the key. */
-const writePersisted = (
-  key: string,
-  suffix: string,
-  value: unknown,
-): void => {
+const writePersisted = (key: string, suffix: string, value: unknown): void => {
   if (typeof window === "undefined") return;
   const fullKey = `${key}.${suffix}`;
   try {
@@ -265,7 +258,12 @@ const writePersisted = (
       !Array.isArray(value) &&
       Object.keys(value as object).length === 0;
     const isEmptyArray = Array.isArray(value) && value.length === 0;
-    if (value === undefined || value === null || isEmptyObject || isEmptyArray) {
+    if (
+      value === undefined ||
+      value === null ||
+      isEmptyObject ||
+      isEmptyArray
+    ) {
       window.localStorage.removeItem(fullKey);
       return;
     }
@@ -317,10 +315,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const [page, setPage] = useState(0);
   const [sort, setSort] = useState<SortState | null>(() => {
     if (props.persistenceKey) {
-      const persisted = readPersisted<SortState>(
-        props.persistenceKey,
-        "sort",
-      );
+      const persisted = readPersisted<SortState>(props.persistenceKey, "sort");
       if (persisted) return persisted;
     }
     return props.defaultSort ?? null;
@@ -403,8 +398,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
 
   // Refetch on change (debounced) when autoApplyFilters is on. Default
   // is on whenever AlephaTable owns the form (`filters` prop).
-  const autoApply =
-    props.autoApplyFilters ?? Boolean(props.filters);
+  const autoApply = props.autoApplyFilters ?? Boolean(props.filters);
   useEffect(() => {
     if (!form || !autoApply) return;
     let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -455,8 +449,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   useEffect(() => {
     if (!props.pollMs) return;
     const id = setInterval(() => {
-      if (document.visibilityState === "visible")
-        setRefreshKey((k) => k + 1);
+      if (document.visibilityState === "visible") setRefreshKey((k) => k + 1);
     }, props.pollMs);
     return () => clearInterval(id);
   }, [props.pollMs]);
@@ -536,11 +529,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
 
   useEffect(() => {
     if (!props.persistenceKey) return;
-    writePersisted(
-      props.persistenceKey,
-      "columns",
-      [...visibleColumns],
-    );
+    writePersisted(props.persistenceKey, "columns", [...visibleColumns]);
   }, [props.persistenceKey, visibleColumns]);
 
   const toggleColumn = (id: string) => {
@@ -570,8 +559,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     Boolean(props.toolbar) ||
     !props.hideColumnPicker ||
     !props.hideActionsMenu;
-  const showColumnPicker =
-    !props.hideColumnPicker && allColumnKeys.length > 0;
+  const showColumnPicker = !props.hideColumnPicker && allColumnKeys.length > 0;
   const showActionsMenu = !props.hideActionsMenu;
 
   return (
@@ -854,16 +842,18 @@ function ColumnPicker<T>(props: {
   const entries = Object.entries(props.columns);
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="h-9 w-9 p-0"
-          aria-label="Toggle columns"
-        >
-          <Columns3 className="size-4" />
-        </Button>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-9 w-9 p-0"
+            aria-label="Toggle columns"
+          />
+        }
+      >
+        <Columns3 className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Columns</DropdownMenuLabel>
@@ -885,22 +875,21 @@ function ColumnPicker<T>(props: {
   );
 }
 
-function ActionsMenu(props: {
-  onRefresh: () => void;
-  onReset?: () => void;
-}) {
+function ActionsMenu(props: { onRefresh: () => void; onReset?: () => void }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="h-9 w-9 p-0"
-          aria-label="Table actions"
-        >
-          <MoreVertical className="size-4" />
-        </Button>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-9 w-9 p-0"
+            aria-label="Table actions"
+          />
+        }
+      >
+        <MoreVertical className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={props.onRefresh}>
@@ -962,10 +951,12 @@ function RowActionsMenu<T>(props: {
   if (props.actions.length === 0) return null;
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Open row actions">
-          <MoreHorizontal className="size-4" />
-        </Button>
+      <DropdownMenuTrigger
+        render={
+          <Button variant="ghost" size="icon" aria-label="Open row actions" />
+        }
+      >
+        <MoreHorizontal className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {props.actions.map((action, idx) => {

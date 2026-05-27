@@ -78,7 +78,7 @@ export function ControlNumber(props: ControlNumberProps) {
             step={props.step ?? 1}
             disabled={props.disabled}
             value={[Number(value ?? lo)]}
-            onValueChange={(v) => setValue(v[0])}
+            onValueChange={(v) => setValue(Array.isArray(v) ? v[0] : v)}
             className="flex-1"
           />
           <span className="text-muted-foreground w-10 text-right text-sm tabular-nums">

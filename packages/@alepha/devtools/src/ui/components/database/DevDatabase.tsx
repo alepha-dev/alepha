@@ -18,11 +18,10 @@ export const DevDatabase = () => {
     <div className="flex flex-1 flex-col">
       <div className="border-border flex border-b px-4 py-2">
         <ToggleGroup
-          type="single"
           variant="outline"
           size="sm"
-          value={tab}
-          onValueChange={handleTabChange}
+          value={[tab]}
+          onValueChange={(v) => handleTabChange(v[0] ?? "")}
         >
           <ToggleGroupItem value="erd">ERD</ToggleGroupItem>
           <ToggleGroupItem value="editor">Editor</ToggleGroupItem>

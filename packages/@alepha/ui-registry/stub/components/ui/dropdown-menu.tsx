@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 export const DropdownMenu: (props: { children?: ReactNode }) => any = () =>
   null;
 export const DropdownMenuTrigger: (props: {
   asChild?: boolean;
+  render?: ReactElement;
   children?: ReactNode;
 }) => any = () => null;
 export const DropdownMenuContent: (props: {

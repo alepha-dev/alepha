@@ -306,8 +306,8 @@ export function AuthLogin(props: AuthLoginProps) {
           )}
         </CardContent>
       </Card>
-      <Button variant="ghost" asChild>
-        <a href="/">{tr("auth.login.cancel", { default: "Cancel" })}</a>
+      <Button variant="ghost" render={<a href="/" />}>
+        {tr("auth.login.cancel", { default: "Cancel" })}
       </Button>
     </div>
   );

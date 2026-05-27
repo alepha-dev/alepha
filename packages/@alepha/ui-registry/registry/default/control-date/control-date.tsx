@@ -153,19 +153,21 @@ function DatePopover(props: DatePopoverProps) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          id={props.id}
-          variant="outline"
-          disabled={props.disabled}
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground",
-          )}
-        >
-          <CalendarIcon className="mr-2 size-4" />
-          {formatted || "Pick a date"}
-        </Button>
+      <PopoverTrigger
+        render={
+          <Button
+            id={props.id}
+            variant="outline"
+            disabled={props.disabled}
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !date && "text-muted-foreground",
+            )}
+          />
+        }
+      >
+        <CalendarIcon className="mr-2 size-4" />
+        {formatted || "Pick a date"}
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar mode="single" selected={date} onSelect={handleDate} />

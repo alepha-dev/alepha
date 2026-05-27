@@ -24,7 +24,10 @@ export function AdminAudits() {
 
   const handleBulkDelete = async (
     items: AuditEntity[],
-    { clearSelection, refresh }: { clearSelection: () => void; refresh: () => void },
+    {
+      clearSelection,
+      refresh,
+    }: { clearSelection: () => void; refresh: () => void },
   ) => {
     if (items.length === 0) return;
     const ok = await dialog.confirm({

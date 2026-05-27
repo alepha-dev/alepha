@@ -164,12 +164,16 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                     })}
                   </AlertDescription>
                 </Alert>
-                <Button asChild>
-                  <a href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}>
-                    {tr("auth.reset.backToSignIn", {
-                      default: "Back to sign in",
-                    })}
-                  </a>
+                <Button
+                  render={
+                    <a
+                      href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}
+                    />
+                  }
+                >
+                  {tr("auth.reset.backToSignIn", {
+                    default: "Back to sign in",
+                  })}
                 </Button>
               </>
             ) : state.step === "email" ? (
@@ -290,21 +294,23 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                     })}
                   </AlertDescription>
                 </Alert>
-                <Button asChild>
-                  <a href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}>
-                    {tr("auth.reset.backToSignIn", {
-                      default: "Back to sign in",
-                    })}
-                  </a>
+                <Button
+                  render={
+                    <a
+                      href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}
+                    />
+                  }
+                >
+                  {tr("auth.reset.backToSignIn", {
+                    default: "Back to sign in",
+                  })}
                 </Button>
               </>
             )}
           </CardContent>
         </Card>
-        <Button variant="ghost" asChild>
-          <a href={redirect}>
-            {tr("auth.reset.cancel", { default: "Cancel" })}
-          </a>
+        <Button variant="ghost" render={<a href={redirect} />}>
+          {tr("auth.reset.cancel", { default: "Cancel" })}
         </Button>
       </div>
     </div>

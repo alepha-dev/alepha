@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 export const Dialog: (props: {
   open?: boolean;
@@ -7,6 +7,7 @@ export const Dialog: (props: {
 }) => any = () => null;
 export const DialogTrigger: (props: {
   asChild?: boolean;
+  render?: ReactElement;
   children?: ReactNode;
 }) => any = () => null;
 export const DialogContent: (props: {

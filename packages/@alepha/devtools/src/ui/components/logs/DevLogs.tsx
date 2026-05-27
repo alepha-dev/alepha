@@ -200,11 +200,13 @@ export const DevLogs = () => {
       <div className="border-border flex shrink-0 items-center gap-3 border-b px-4 py-2">
         <div className="flex flex-wrap items-center gap-3">
           <ToggleGroup
-            type="single"
             variant="outline"
             size="sm"
-            value={level}
-            onValueChange={(v) => v && setLevel(v)}
+            value={[level]}
+            onValueChange={(v) => {
+              const next = v[0];
+              if (next) setLevel(next);
+            }}
           >
             <ToggleGroupItem value="TRACE">TRACE</ToggleGroupItem>
             <ToggleGroupItem value="DEBUG">DEBUG</ToggleGroupItem>
@@ -214,7 +216,7 @@ export const DevLogs = () => {
           </ToggleGroup>
           <Select
             value={typeFilter || "all"}
-            onValueChange={(v) => setTypeFilter(v === "all" ? "" : v)}
+            onValueChange={(v) => setTypeFilter(!v || v === "all" ? "" : v)}
           >
             <SelectTrigger className="h-8 w-[120px] text-xs">
               <SelectValue placeholder="Type" />
@@ -227,7 +229,7 @@ export const DevLogs = () => {
           </Select>
           <Select
             value={moduleFilter || "all"}
-            onValueChange={(v) => setModuleFilter(v === "all" ? "" : v)}
+            onValueChange={(v) => setModuleFilter(!v || v === "all" ? "" : v)}
           >
             <SelectTrigger className="h-8 w-[150px] text-xs">
               <SelectValue placeholder="Module" />
@@ -241,7 +243,7 @@ export const DevLogs = () => {
               ))}
             </SelectContent>
           </Select>
-          <Select value={timeRange} onValueChange={(v) => setTimeRange(v)}>
+          <Select value={timeRange} onValueChange={(v) => v && setTimeRange(v)}>
             <SelectTrigger className="h-8 w-[120px] text-xs">
               <SelectValue />
             </SelectTrigger>

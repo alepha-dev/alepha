@@ -127,12 +127,13 @@ function View(props: {
                     })}
                   </AlertDescription>
                 </Alert>
-                <Button asChild className="w-full">
-                  <a href={props.loginPath ?? "/auth/login"}>
-                    {tr("auth.verify.signIn", {
-                      default: "Sign in to your account",
-                    })}
-                  </a>
+                <Button
+                  render={<a href={props.loginPath ?? "/auth/login"} />}
+                  className="w-full"
+                >
+                  {tr("auth.verify.signIn", {
+                    default: "Sign in to your account",
+                  })}
                 </Button>
               </>
             )}
@@ -154,12 +155,13 @@ function View(props: {
                       })}
                   </AlertDescription>
                 </Alert>
-                <Button asChild className="w-full">
-                  <a href={props.loginPath ?? "/auth/login"}>
-                    {tr("auth.verify.backToSignIn", {
-                      default: "Back to sign in",
-                    })}
-                  </a>
+                <Button
+                  render={<a href={props.loginPath ?? "/auth/login"} />}
+                  className="w-full"
+                >
+                  {tr("auth.verify.backToSignIn", {
+                    default: "Back to sign in",
+                  })}
                 </Button>
               </>
             )}

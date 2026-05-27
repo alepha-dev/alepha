@@ -47,16 +47,20 @@ export function ButtonLanguage(props: ButtonLanguageProps) {
   return (
     <DropdownMenu>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant={props.variant ?? "ghost"}
-              size="icon"
-              aria-label={label}
-            >
-              <Languages className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
+        <TooltipTrigger
+          render={
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant={props.variant ?? "ghost"}
+                  size="icon"
+                  aria-label={label}
+                />
+              }
+            />
+          }
+        >
+          <Languages className="size-4" />
         </TooltipTrigger>
         <TooltipContent>{label}</TooltipContent>
       </Tooltip>

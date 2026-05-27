@@ -98,7 +98,7 @@ const MiddlewareEntry = (props: MiddlewareEntryProps) => {
     <div className="flex flex-wrap items-center gap-2">
       {opts && !hasSecureDetails && !summary && mw.name !== "$secure" ? (
         <Tooltip>
-          <TooltipTrigger asChild>{nameBadge}</TooltipTrigger>
+          <TooltipTrigger render={nameBadge} />
           <TooltipContent className="max-w-md font-mono text-xs">
             <pre>{JSON.stringify(opts, null, 2)}</pre>
           </TooltipContent>
@@ -294,11 +294,13 @@ export const DevPanelAction = (props: DevPanelActionProps) => {
       )}
 
       <ToggleGroup
-        type="single"
         variant="outline"
         size="sm"
-        value={tab}
-        onValueChange={(v) => v && setTab(v)}
+        value={[tab]}
+        onValueChange={(v) => {
+          const next = v[0];
+          if (next) setTab(next);
+        }}
       >
         <ToggleGroupItem value="schema">
           <Braces className="size-3.5" /> Schema

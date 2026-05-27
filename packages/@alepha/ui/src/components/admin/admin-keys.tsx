@@ -39,7 +39,10 @@ export function AdminKeys() {
 
   const handleBulkRevoke = async (
     items: any[],
-    { clearSelection, refresh }: { clearSelection: () => void; refresh: () => void },
+    {
+      clearSelection,
+      refresh,
+    }: { clearSelection: () => void; refresh: () => void },
   ) => {
     const targets = items.filter((k) => !k.revokedAt);
     if (targets.length === 0) {

@@ -485,10 +485,8 @@ export function AuthRegister(props: AuthRegisterProps) {
         </CardContent>
       </Card>
       {!isVerifying && (
-        <Button variant="ghost" asChild>
-          <a href={redirect}>
-            {tr("auth.register.cancel", { default: "Cancel" })}
-          </a>
+        <Button variant="ghost" render={<a href={redirect} />}>
+          {tr("auth.register.cancel", { default: "Cancel" })}
         </Button>
       )}
     </Centered>
@@ -542,10 +540,12 @@ function FormPhase(props: {
               })}
             </AlertDescription>
           </Alert>
-          <Button asChild>
-            <a href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}>
-              {tr("auth.register.backToSignIn", { default: "Back to sign in" })}
-            </a>
+          <Button
+            render={
+              <a href={`${props.loginPath ?? "/auth/login"}${realmQuery}`} />
+            }
+          >
+            {tr("auth.register.backToSignIn", { default: "Back to sign in" })}
           </Button>
         </>
       ) : (

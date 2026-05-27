@@ -55,15 +55,17 @@ export function ButtonDark(props: ButtonDarkProps) {
   const label = props.label ?? "Toggle color mode";
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant={props.variant ?? "ghost"}
-          size="icon"
-          aria-label={label}
-          onClick={onClick}
-        >
-          {ICON[iconKey]}
-        </Button>
+      <TooltipTrigger
+        render={
+          <Button
+            variant={props.variant ?? "ghost"}
+            size="icon"
+            aria-label={label}
+            onClick={onClick}
+          />
+        }
+      >
+        {ICON[iconKey]}
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>

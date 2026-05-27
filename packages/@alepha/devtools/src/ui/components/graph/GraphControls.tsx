@@ -46,28 +46,27 @@ export const GraphControls = (props: GraphControlsProps) => {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <ToggleGroup
-        type="single"
         variant="outline"
         size="sm"
-        value={props.filters.viewMode}
-        onValueChange={(v) =>
-          v &&
-          props.onFiltersChange({ ...props.filters, viewMode: v as ViewMode })
-        }
+        value={[props.filters.viewMode]}
+        onValueChange={(v) => {
+          const next = v[0];
+          if (next)
+            props.onFiltersChange({
+              ...props.filters,
+              viewMode: next as ViewMode,
+            });
+        }}
       >
         <ToggleGroupItem value="modules">
           <Tooltip>
-            <TooltipTrigger asChild>
-              <Boxes className="size-4" />
-            </TooltipTrigger>
+            <TooltipTrigger render={<Boxes className="size-4" />} />
             <TooltipContent>Modules</TooltipContent>
           </Tooltip>
         </ToggleGroupItem>
         <ToggleGroupItem value="providers">
           <Tooltip>
-            <TooltipTrigger asChild>
-              <Box className="size-4" />
-            </TooltipTrigger>
+            <TooltipTrigger render={<Box className="size-4" />} />
             <TooltipContent>Services</TooltipContent>
           </Tooltip>
         </ToggleGroupItem>
@@ -125,33 +124,29 @@ export const GraphControls = (props: GraphControlsProps) => {
       </label>
 
       <ToggleGroup
-        type="single"
         variant="outline"
         size="sm"
-        value={props.layout}
-        onValueChange={(v) => v && props.onLayoutChange(v as LayoutType)}
+        value={[props.layout]}
+        onValueChange={(v) => {
+          const next = v[0];
+          if (next) props.onLayoutChange(next as LayoutType);
+        }}
       >
         <ToggleGroupItem value="dagre">
           <Tooltip>
-            <TooltipTrigger asChild>
-              <LayoutGrid className="size-3.5" />
-            </TooltipTrigger>
+            <TooltipTrigger render={<LayoutGrid className="size-3.5" />} />
             <TooltipContent>Hierarchical</TooltipContent>
           </Tooltip>
         </ToggleGroupItem>
         <ToggleGroupItem value="circular">
           <Tooltip>
-            <TooltipTrigger asChild>
-              <GitGraph className="size-3.5" />
-            </TooltipTrigger>
+            <TooltipTrigger render={<GitGraph className="size-3.5" />} />
             <TooltipContent>Circular</TooltipContent>
           </Tooltip>
         </ToggleGroupItem>
         <ToggleGroupItem value="force">
           <Tooltip>
-            <TooltipTrigger asChild>
-              <Network className="size-3.5" />
-            </TooltipTrigger>
+            <TooltipTrigger render={<Network className="size-3.5" />} />
             <TooltipContent>Force</TooltipContent>
           </Tooltip>
         </ToggleGroupItem>

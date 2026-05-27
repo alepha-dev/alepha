@@ -28,7 +28,7 @@ const registryDir = resolve(repoRoot, "packages/@alepha/ui-registry");
 const registryOutDir = resolve(repoRoot, "apps/docs/public/r");
 const srcDir = join(uiDir, "src");
 
-const SHADCN_BASE = "https://ui.shadcn.com/r/styles/new-york-v4";
+const SHADCN_BASE = "https://ui.shadcn.com/r/styles/base-nova";
 
 const log = (msg) => console.log(`[36m→[0m ${msg}`);
 

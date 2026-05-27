@@ -213,8 +213,8 @@ function SidebarNavItem(props: { item: NavItem }) {
       return (
         <SidebarMenuItem>
           {item.tooltip ? (
-            <HoverCard openDelay={120} closeDelay={120}>
-              <HoverCardTrigger asChild>{row}</HoverCardTrigger>
+            <HoverCard>
+              <HoverCardTrigger render={row} />
               <HoverCardContent side="right" align="start" className="text-sm">
                 {item.tooltip}
               </HoverCardContent>
@@ -227,17 +227,19 @@ function SidebarNavItem(props: { item: NavItem }) {
     }
 
     const link = (
-      <SidebarMenuButton asChild isActive={item.active} tooltip={item.label}>
-        <Link href={item.href ?? "#"}>
-          {Icon && <Icon className="size-4" />}
-          <span>{item.label}</span>
-        </Link>
+      <SidebarMenuButton
+        isActive={item.active}
+        tooltip={item.label}
+        render={<Link href={item.href ?? "#"} />}
+      >
+        {Icon && <Icon className="size-4" />}
+        <span>{item.label}</span>
       </SidebarMenuButton>
     );
 
     const row = item.tooltip ? (
       <Tooltip>
-        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        <TooltipTrigger render={link} />
         <TooltipContent side="right">{item.tooltip}</TooltipContent>
       </Tooltip>
     ) : (
@@ -274,11 +276,12 @@ function SidebarNavItem(props: { item: NavItem }) {
               {child.children && child.children.length > 0 ? (
                 <SidebarNavItem item={child} />
               ) : (
-                <SidebarMenuSubButton asChild isActive={child.active}>
-                  <Link href={child.href ?? "#"}>
-                    {child.icon && <child.icon className="size-4" />}
-                    <span>{child.label}</span>
-                  </Link>
+                <SidebarMenuSubButton
+                  isActive={child.active}
+                  render={<Link href={child.href ?? "#"} />}
+                >
+                  {child.icon && <child.icon className="size-4" />}
+                  <span>{child.label}</span>
                 </SidebarMenuSubButton>
               )}
             </SidebarMenuSubItem>
@@ -384,8 +387,8 @@ export function AppShell(props: AppShellProps) {
                     {last || !crumb.href ? (
                       <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
                     ) : (
-                      <BreadcrumbLink asChild>
-                        <Link href={crumb.href}>{crumb.label}</Link>
+                      <BreadcrumbLink render={<Link href={crumb.href} />}>
+                        {crumb.label}
                       </BreadcrumbLink>
                     )}
                   </BreadcrumbItem>

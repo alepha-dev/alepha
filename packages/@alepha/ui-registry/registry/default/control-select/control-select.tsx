@@ -266,7 +266,7 @@ export function ControlSelect(props: ControlSelectProps) {
     >
       <Select
         value={value != null ? String(value) : undefined}
-        onValueChange={(v) => setValue(coerce(v))}
+        onValueChange={(v) => setValue(coerce(v ?? ""))}
         disabled={props.disabled}
       >
         <SelectTrigger id={meta.id} className="w-full">
@@ -348,19 +348,21 @@ function Combobox(props: ComboboxProps) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          id={props.id}
-          variant="outline"
-          disabled={props.disabled}
-          className={cn(
-            "w-full justify-between font-normal",
-            selected.length === 0 && "text-muted-foreground",
-          )}
-        >
-          {triggerLabel}
-          <ChevronsUpDown className="ml-2 size-4 opacity-50" />
-        </Button>
+      <PopoverTrigger
+        render={
+          <Button
+            id={props.id}
+            variant="outline"
+            disabled={props.disabled}
+            className={cn(
+              "w-full justify-between font-normal",
+              selected.length === 0 && "text-muted-foreground",
+            )}
+          />
+        }
+      >
+        {triggerLabel}
+        <ChevronsUpDown className="ml-2 size-4 opacity-50" />
       </PopoverTrigger>
       <PopoverContent
         className="w-[--radix-popover-trigger-width] p-0"

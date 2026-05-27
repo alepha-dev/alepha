@@ -80,14 +80,16 @@ const CopyIcon = (props: CopyIconProps) => {
   };
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={onClick}
-          className={`shrink-0 ml-1.5 ${copied ? "text-teal-500" : "text-muted-foreground"}`}
-        >
-          {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
-        </button>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            onClick={onClick}
+            className={`shrink-0 ml-1.5 ${copied ? "text-teal-500" : "text-muted-foreground"}`}
+          />
+        }
+      >
+        {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
       </TooltipTrigger>
       <TooltipContent>{copied ? "Copied!" : "Copy"}</TooltipContent>
     </Tooltip>

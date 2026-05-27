@@ -1,6 +1,3 @@
-import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
-import { Badge } from "@/components/ui/badge";
-import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 import type { Page } from "alepha";
 import type { AdminNotificationController } from "alepha/api/notifications";
 import { useClient } from "alepha/react";
@@ -8,6 +5,9 @@ import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { AlephaTable } from "@/registry/default/alepha-table/alepha-table";
+import { useDialog } from "@/registry/default/use-dialog/use-dialog";
 
 export function AdminNotifications() {
   const client = useClient<AdminNotificationController>();
@@ -24,7 +24,10 @@ export function AdminNotifications() {
 
   const handleBulkDelete = async (
     items: any[],
-    { clearSelection, refresh }: { clearSelection: () => void; refresh: () => void },
+    {
+      clearSelection,
+      refresh,
+    }: { clearSelection: () => void; refresh: () => void },
   ) => {
     if (items.length === 0) return;
     const ok = await dialog.confirm({
