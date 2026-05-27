@@ -146,6 +146,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
       },
       {
         name: "user",
+        default: true,
         permissions: [
           {
             name: "*",

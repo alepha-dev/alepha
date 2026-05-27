@@ -405,7 +405,22 @@ export function AppShell(props: AppShellProps) {
   );
 
   const mainNode = (
-    <main className="flex-1 overflow-auto">
+    // Layout contract for `fill: true` pages:
+    //   parent (`h-svh`) → SidebarProvider (`h-full`) → SidebarInset → main
+    //   - main is `flex flex-col min-h-0 flex-1` so its children can
+    //     claim the leftover height via `flex-1 min-h-0`.
+    //   - main itself is `overflow-hidden` (not `overflow-auto`) so the
+    //     table's inner `overflow-auto` is the actual scroll surface —
+    //     header stays sticky, body scrolls, no page-level scrollbar.
+    //   - For non-fill pages there's no height bound, so this collapses
+    //     to "scroll whatever overflows" without further config.
+    <main
+      className={
+        props.fill
+          ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+          : "flex-1 overflow-auto"
+      }
+    >
       {props.children ?? <NestedView />}
     </main>
   );

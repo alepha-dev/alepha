@@ -1,5 +1,5 @@
 import { $inject, t } from "alepha";
-import { $secure } from "alepha/security";
+import { $secure, SecurityProvider } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { createUserSchema } from "../schemas/createUserSchema.ts";
 import { updateUserSchema } from "../schemas/updateUserSchema.ts";
@@ -11,6 +11,38 @@ export class AdminUserController {
   protected readonly url = "/users";
   protected readonly group = "admin:users";
   protected readonly userService = $inject(UserService);
+  protected readonly securityProvider = $inject(SecurityProvider);
+
+  /**
+   * List roles available in a realm. Used by the admin UI to render the
+   * role picker and grey out defaults (which cannot be removed).
+   */
+  public readonly findRoles = $action({
+    path: "/metadata/roles",
+    group: this.group,
+    use: [$secure({ permissions: ["admin:user:read"] })],
+    description: "List roles available in a realm",
+    schema: {
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
+      response: t.array(
+        t.object({
+          name: t.string(),
+          default: t.optional(t.boolean()),
+          description: t.optional(t.string()),
+        }),
+      ),
+    },
+    handler: ({ query }) => {
+      const roles = this.securityProvider.getRoles(query.userRealmName);
+      return roles.map((r) => ({
+        name: r.name,
+        default: r.default,
+        description: r.description,
+      }));
+    },
+  });
 
   /**
    * Find users with pagination and filtering.

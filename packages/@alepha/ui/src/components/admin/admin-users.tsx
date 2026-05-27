@@ -2,16 +2,37 @@ import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Avatar, AvatarFallback } from "@alepha/ui/components/ui/avatar";
 import { Badge } from "@alepha/ui/components/ui/badge";
+import { Checkbox } from "@alepha/ui/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@alepha/ui/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@alepha/ui/components/ui/select";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { type Page, type Static, t } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useClient } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
+import { useFieldValue } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Eye, Search, Trash2, UserCheck, UserX } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+
+interface RoleMeta {
+  name: string;
+  default?: boolean;
+  description?: string;
+}
 
 export interface AdminUsersProps {
   /**
@@ -26,8 +47,24 @@ export interface AdminUsersProps {
 // form initialization but is wasteful.
 const filtersSchema = t.object({
   search: t.optional(t.string()),
+  // "" = All status, "verified" = Active + emailVerified, "active" =
+  // enabled, "disabled" = !enabled. Stored as a free-form string (not
+  // enum) so unknown values from old persisted state simply fall back
+  // to "All status" instead of throwing on schema validation.
+  status: t.optional(t.string()),
 });
 type AdminUserFilters = Static<typeof filtersSchema>;
+
+type StatusPreset = {
+  enabled?: boolean;
+  emailVerified?: boolean;
+};
+
+const STATUS_PRESETS: Record<string, StatusPreset> = {
+  verified: { enabled: true, emailVerified: true },
+  active: { enabled: true },
+  disabled: { enabled: false },
+};
 
 export function AdminUsers(props: AdminUsersProps) {
   const client = useClient<AdminUserController>();
@@ -36,6 +73,27 @@ export function AdminUsers(props: AdminUsersProps) {
   const { l, tr } = useI18n();
   const dialog = useDialog();
 
+  const [availableRoles, setAvailableRoles] = useState<RoleMeta[]>([]);
+  // Bumped after every per-row mutation (e.g. role toggle) to force the
+  // AlephaTable's fetcher identity to change so the data reloads.
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const roles = (await client.findRoles({
+        query: { userRealmName: props.userRealmName },
+      } as never)) as RoleMeta[];
+      if (!cancelled) setAvailableRoles(roles);
+    })().catch(() => {
+      // The picker simply degrades to read-only text if the metadata
+      // fetch fails; not a blocking error.
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [client, props.userRealmName]);
+
   const fetcher = useCallback(
     async (params: {
       page: number;
@@ -43,21 +101,50 @@ export function AdminUsers(props: AdminUsersProps) {
       sort?: string;
       filters?: AdminUserFilters;
     }) => {
+      const preset = params.filters?.status
+        ? STATUS_PRESETS[params.filters.status]
+        : undefined;
       const res = await client.findUsers({
         query: {
           page: params.page,
           size: params.size,
           sort: params.sort,
           search: params.filters?.search || undefined,
+          enabled: preset?.enabled,
+          emailVerified: preset?.emailVerified,
           userRealmName: props.userRealmName,
         } as never,
       });
       return res as Page<UserEntity>;
     },
-    [client, props.userRealmName],
+    [client, props.userRealmName, reloadKey],
   );
 
   const isSelf = (user: UserEntity) => currentUser?.id === user.id;
+
+  const handleToggleRole = useCallback(
+    async (user: UserEntity, role: string, checked: boolean) => {
+      const next = checked
+        ? Array.from(new Set([...(user.roles ?? []), role]))
+        : (user.roles ?? []).filter((r) => r !== role);
+      try {
+        await client.updateUser({
+          params: { id: user.id },
+          query: { userRealmName: props.userRealmName },
+          body: { roles: next },
+        } as never);
+        setReloadKey((k) => k + 1);
+      } catch (err) {
+        toast.error(
+          tr("admin.users.roleUpdateFailed", {
+            default: "Failed to update roles",
+          }),
+        );
+        throw err;
+      }
+    },
+    [client, props.userRealmName, tr],
+  );
 
   const userLabel = (u: UserEntity) =>
     u.email ||
@@ -205,7 +292,7 @@ export function AdminUsers(props: AdminUsersProps) {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-3 p-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
       <AlephaTable<UserEntity>
         className="min-h-0 flex-1"
         persistenceKey="admin.users"
@@ -213,22 +300,25 @@ export function AdminUsers(props: AdminUsersProps) {
         filters={{
           schema: filtersSchema,
           render: (form) => (
-            <div className="w-72">
-              <Control
-                input={form.input.search}
-                label=""
-                icon={Search}
-                placeholder={String(
-                  tr("admin.users.searchPlaceholder", {
-                    default: "Search…",
-                  }),
-                )}
-                inputProps={{
-                  "aria-label": String(
-                    tr("admin.users.search", { default: "Search users" }),
-                  ),
-                }}
-              />
+            <div className="flex items-center gap-2">
+              <div className="w-72">
+                <Control
+                  input={form.input.search}
+                  label=""
+                  icon={Search}
+                  placeholder={String(
+                    tr("admin.users.searchPlaceholder", {
+                      default: "Search…",
+                    }),
+                  )}
+                  inputProps={{
+                    "aria-label": String(
+                      tr("admin.users.search", { default: "Search users" }),
+                    ),
+                  }}
+                />
+              </div>
+              <StatusFilter input={form.input.status} tr={tr} />
             </div>
           ),
         }}
@@ -277,20 +367,16 @@ export function AdminUsers(props: AdminUsersProps) {
           },
           roles: {
             label: tr("admin.users.colRoles", { default: "Roles" }),
-            cell: (u) =>
-              u.roles.length > 0 ? (
-                <div className="flex gap-1">
-                  {u.roles.map((r: string) => (
-                    <Badge key={r} variant="secondary">
-                      {r}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <span className="text-muted-foreground text-xs">
-                  {tr("admin.users.noRoles", { default: "No roles" })}
-                </span>
-              ),
+            cell: (u) => (
+              <RolesPicker
+                user={u}
+                availableRoles={availableRoles}
+                onToggle={(role, checked) => handleToggleRole(u, role, checked)}
+                noRolesLabel={String(
+                  tr("admin.users.noRoles", { default: "No roles" }),
+                )}
+              />
+            ),
           },
           enabled: {
             label: tr("admin.users.colStatus", { default: "Status" }),
@@ -362,5 +448,139 @@ export function AdminUsers(props: AdminUsersProps) {
         ]}
       />
     </div>
+  );
+}
+
+function RolesPicker({
+  user,
+  availableRoles,
+  onToggle,
+  noRolesLabel,
+}: {
+  user: UserEntity;
+  availableRoles: RoleMeta[];
+  onToggle: (role: string, checked: boolean) => Promise<void>;
+  noRolesLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+
+  const userRoles = user.roles ?? [];
+  const label =
+    userRoles.length > 0 ? (
+      userRoles.join(", ")
+    ) : (
+      <span className="text-muted-foreground">{noRolesLabel}</span>
+    );
+
+  // If the metadata fetch hasn't landed yet, union the user's roles
+  // with a sane fallback so the popover still renders rows for everything
+  // the user currently has. Default state isn't known until metadata
+  // arrives — only the disable rule degrades.
+  const rows: RoleMeta[] =
+    availableRoles.length > 0
+      ? availableRoles
+      : userRoles.map((name) => ({ name }));
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            className="text-left text-sm hover:underline focus:outline-none focus-visible:underline"
+          />
+        }
+      >
+        {label}
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-56 p-1">
+        <div className="px-2 py-1.5 text-xs text-muted-foreground">Roles</div>
+        <div className="flex flex-col">
+          {rows.map((role) => {
+            const checked = userRoles.includes(role.name);
+            const disabled = role.default === true || pending === role.name;
+            return (
+              <label
+                key={role.name}
+                className={
+                  disabled
+                    ? "flex cursor-not-allowed items-center gap-2 rounded-sm px-2 py-1.5 text-sm opacity-60"
+                    : "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                }
+              >
+                <Checkbox
+                  checked={checked}
+                  disabled={disabled}
+                  onCheckedChange={async (next) => {
+                    if (disabled) return;
+                    setPending(role.name);
+                    try {
+                      await onToggle(role.name, Boolean(next));
+                    } finally {
+                      setPending(null);
+                    }
+                  }}
+                />
+                <span className="flex-1">{role.name}</span>
+                {role.default && (
+                  <span className="text-[10px] uppercase text-muted-foreground">
+                    default
+                  </span>
+                )}
+              </label>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+type StatusInput = Parameters<typeof useFieldValue>[0];
+
+function StatusFilter({
+  input,
+  tr,
+}: {
+  input: StatusInput;
+  tr: ReturnType<typeof useI18n>["tr"];
+}) {
+  const [value, setValue] = useFieldValue(input);
+  // Base UI's SelectValue displays the raw underlying string when items
+  // are rendered with arbitrary children — so a `value: "verified"`
+  // shows up as the lower-case slug in the trigger even though the
+  // SelectItem renders "Verified". Resolve the localized label
+  // ourselves and pass it as SelectValue's children to override that.
+  const labels: Record<string, string> = {
+    "": String(tr("admin.users.statusAll", { default: "All status" })),
+    verified: String(tr("admin.users.statusVerified", { default: "Verified" })),
+    active: String(tr("admin.users.statusActive", { default: "Active" })),
+    disabled: String(tr("admin.users.statusDisabled", { default: "Disabled" })),
+  };
+  const selected = value ?? "";
+  return (
+    <Select
+      value={selected}
+      onValueChange={(v) => setValue(v === "" ? undefined : v)}
+    >
+      <SelectTrigger
+        className="w-40"
+        aria-label={String(
+          tr("admin.users.statusFilter", {
+            default: "Filter by status",
+          }),
+        )}
+      >
+        <SelectValue placeholder={labels[""]}>{labels[selected]}</SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="">{labels[""]}</SelectItem>
+        <SelectSeparator />
+        <SelectItem value="verified">{labels.verified}</SelectItem>
+        <SelectItem value="active">{labels.active}</SelectItem>
+        <SelectItem value="disabled">{labels.disabled}</SelectItem>
+      </SelectContent>
+    </Select>
   );
 }
