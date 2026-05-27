@@ -7,21 +7,21 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
  * Pack the workspace into a deployable `tar.gz`.
  *
  * The tar contains everything a remote runner (Alepha Rocket, or any
- * `alepha platform <op>` consumer of pre-built artifacts) needs to
- * deploy the app:
+ * `alepha platform <op> --prebuilt` consumer) needs to deploy the app:
  *
- *   src/                  source — needed for `analyze app` (introspection)
- *   dist/                 pre-built output (skip with --no-build to reuse)
+ *   dist/                 pre-built output (incl. manifest.json)
  *   migrations/           SQL files (if present)
- *   alepha.config.ts      workspace config
- *   package.json
- *   tsconfig.json         (if present)
  *
- * Excludes: `node_modules`, `.DS_Store`, macOS AppleDouble (`._*`),
- * `.alepha` build cache, `e2e`, `playwright-report`, `coverage`.
+ * No source, no `alepha.config.ts`, no `package.json` — the deploy
+ * side reads everything from `dist/manifest.json` and never touches
+ * source. Excludes: `node_modules`, `.DS_Store`, macOS AppleDouble
+ * (`._*`), `.alepha` build cache, `e2e`, `playwright-report`,
+ * `coverage`.
  *
- * Output name: `<project-name>-<version>.tar.gz` (default version
- * "latest"). Project name comes from `package.json.name`.
+ * Output name: `<project-name>-<tag>.tar.gz` (default tag
+ * "latest"). Project name comes from `package.json.name`. Naming
+ * mirrors Docker tags — same artifact, different tag = different
+ * file.
  */
 export class PackCommand {
   protected readonly log = $logger();
@@ -33,11 +33,11 @@ export class PackCommand {
     description:
       "Pack the workspace into a deployable tar.gz (for `alepha platform --prebuilt` consumers like Alepha Rocket).",
     flags: t.object({
-      version: t.optional(
+      tag: t.optional(
         t.text({
-          aliases: ["v"],
+          aliases: ["t"],
           description:
-            "Version suffix for the artifact name. Defaults to `latest` → `<project>-latest.tar.gz`. Pass a real version like `0.0.2` for a pinned artifact.",
+            "Tag suffix for the artifact name (Docker-style). Defaults to `latest` → `<project>-latest.tar.gz`. Pass a real version like `0.0.2` for a pinned artifact.",
         }),
       ),
       output: t.optional(
@@ -47,25 +47,8 @@ export class PackCommand {
             "Output directory for the tar.gz (default: current dir).",
         }),
       ),
-      build: t.optional(
-        t.boolean({
-          description:
-            "Run `alepha build --target=cloudflare` first to refresh `dist/`. Default: assume `dist/` is up to date. Pass `--build` to rebuild.",
-        }),
-      ),
-      withSource: t.optional(
-        t.boolean({
-          aliases: ["with-source"],
-          description:
-            "Include `src/`, `alepha.config.ts`, `tsconfig.json`, and `package.json` in the tarball. Default: skip (the deploy side reads `dist/manifest.json` and never touches source). Useful for debugging inside the runner.",
-        }),
-      ),
     }),
     handler: async ({ flags, root, run }) => {
-      if (flags.build) {
-        await run("alepha build --target=cloudflare");
-      }
-
       const pkgPath = this.fs.join(root, "package.json");
       let project: string;
       try {
@@ -83,25 +66,17 @@ export class PackCommand {
         );
       }
 
-      const version = flags.version ?? "latest";
+      const tag = flags.tag ?? "latest";
       const outputDir = flags.output ?? root;
-      const filename = `${project}-${version}.tar.gz`;
+      const filename = `${project}-${tag}.tar.gz`;
       const outputPath = this.fs.join(outputDir, filename);
 
-      // Default include list: just `dist/` + `migrations/`. Everything
-      // else (src, alepha.config.ts, tsconfig.json, package.json) is
-      // dev-time scaffolding — the deploy side reads `dist/manifest.json`
-      // for project/env/resources and never touches source. Pass
-      // `--with-source` to include them for debug runs.
+      // Include list: just `dist/` + `migrations/`. Everything else
+      // (src, alepha.config.ts, tsconfig.json, package.json) is
+      // dev-time scaffolding — the deploy side reads
+      // `dist/manifest.json` for project/env/resources and never
+      // touches source.
       const candidates = ["dist", "migrations"];
-      if (flags.withSource) {
-        candidates.push(
-          "src",
-          "alepha.config.ts",
-          "package.json",
-          "tsconfig.json",
-        );
-      }
       const includes: string[] = [];
       for (const candidate of candidates) {
         if (await this.fs.exists(this.fs.join(root, candidate))) {
@@ -111,7 +86,7 @@ export class PackCommand {
 
       if (!includes.includes("dist")) {
         throw new AlephaError(
-          "dist/ missing — run `alepha build --target=cloudflare` (or pass `--build`) before `alepha pack`.",
+          "dist/ missing — run `alepha build --target=cloudflare` before `alepha pack`.",
         );
       }
       const manifestPath = this.fs.join(root, "dist", "manifest.json");
