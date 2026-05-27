@@ -15,12 +15,21 @@ export * from "./providers/CloudflareEmailProvider.ts";
 export const AlephaEmailCloudflare = $module({
   name: "alepha.email.cloudflare",
   services: [CloudflareEmailProvider],
-  register: (alepha: Alepha) =>
-    alepha
-      .with({
+  // Gate the substitution on `isServerless()` so apps can register this
+  // module unconditionally — the build path needs to see the service to
+  // emit the wrangler `send_email` binding, but the runtime substitution
+  // must only kick in on Workers. Off-Workers we fall through to
+  // AlephaEmail's defaults (LocalEmailProvider for dev, MemoryEmailProvider
+  // for tests), so `yarn start` / `yarn dev` / e2e keep working without
+  // a real binding.
+  register: (alepha: Alepha) => {
+    if (alepha.isServerless()) {
+      alepha.with({
         optional: true,
         provide: EmailProvider,
         use: CloudflareEmailProvider,
-      })
-      .with(AlephaEmail),
+      });
+    }
+    return alepha.with(AlephaEmail);
+  },
 });
