@@ -632,13 +632,8 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
               {hasCheckbox && (
                 <TableHead className="w-10">
                   <Checkbox
-                    checked={
-                      allSelected
-                        ? true
-                        : someSelected
-                          ? "indeterminate"
-                          : false
-                    }
+                    checked={allSelected}
+                    indeterminate={!allSelected && someSelected}
                     onCheckedChange={() => toggleAll()}
                     aria-label="Select all rows"
                   />
