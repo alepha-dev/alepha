@@ -53,6 +53,29 @@ export interface BuildTaskContext {
    */
   manifest: BuildManifest | null;
 
+  /**
+   * Resolved `platform({ default, environments, ... })` options from
+   * the workspace's `alepha.config.ts`. Populated by `BuildCommand`
+   * from the CLI's Alepha instance (where alepha.config.ts ran) —
+   * BuildCloudflareTask uses these to write the corresponding fields
+   * into `dist/manifest.json` so the deploy side doesn't need to
+   * re-load `alepha.config.ts`. `null` when no platform options were
+   * declared.
+   */
+  platformOptions: {
+    default?: string;
+    environments?: Record<
+      string,
+      {
+        adapter: "cloudflare" | "vercel";
+        domain?: string;
+        zone?: string;
+        jurisdiction?: "eu" | "fedramp";
+        accountId?: string;
+      }
+    >;
+  } | null;
+
   flags?: {
     image?: boolean | string;
     /**

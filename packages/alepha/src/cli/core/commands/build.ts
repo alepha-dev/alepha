@@ -238,6 +238,17 @@ export class BuildCommand {
         }
       }
 
+      // Read platformOptions from the CLI's Alepha instance — this is
+      // where alepha.config.ts wrote them during the configure hook.
+      // The workspace's appAlepha (from Vite) is a separate instance
+      // and doesn't have these. Captured here so BuildCloudflareTask
+      // can serialize them into dist/manifest.json without needing to
+      // re-load alepha.config.ts at deploy time.
+      const platformOptions =
+        (this.alepha.store.get("alepha.cli.platform.options") as
+          | BuildTaskContext["platformOptions"]
+          | undefined) ?? null;
+
       const ctx: BuildTaskContext = {
         // Cast: when manifest mode is active, BuildCloudflareTask reads
         // from ctx.manifest and never dereferences ctx.alepha. Bundle
@@ -250,6 +261,7 @@ export class BuildCommand {
         entry,
         hasClient,
         manifest,
+        platformOptions,
         flags: { image: flags.image, prebuilt: flags.prebuilt },
       };
 

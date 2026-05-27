@@ -68,6 +68,7 @@ describe("BuildDockerTask", () => {
     entry: { server: "/project/src/server.ts" } as AppEntry,
     hasClient: false,
     manifest: null,
+    platformOptions: null,
     flags: {},
     ...overrides,
   });

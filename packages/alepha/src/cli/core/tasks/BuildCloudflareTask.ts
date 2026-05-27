@@ -31,6 +31,28 @@ interface WranglerConfig {
 export interface BuildManifest {
   version: 1;
   project: string;
+  /**
+   * Default environment when `--env` is omitted at deploy time.
+   * Captured from `platformOptions.default` (defaults to `"production"`).
+   */
+  defaultEnv: string;
+  /**
+   * Resolved `platform({ environments: ... })` map. Captured at build
+   * time from the workspace's `alepha.config.ts` so the deploy side
+   * doesn't need to re-evaluate the config. Each value is the same
+   * `EnvironmentConfig` shape consumed by the orchestrator (adapter,
+   * domain, zone, jurisdiction, accountId).
+   */
+  environments: Record<
+    string,
+    {
+      adapter: "cloudflare" | "vercel";
+      domain?: string;
+      zone?: string;
+      jurisdiction?: "eu" | "fedramp";
+      accountId?: string;
+    }
+  >;
   resources: {
     hasDatabase: boolean;
     hasBucket: boolean;
@@ -222,9 +244,20 @@ export class BuildCloudflareTask extends BuildTask {
       ];
     } catch {}
 
+    // platformOptions come from the CLI's Alepha instance (where
+    // alepha.config.ts ran during the configure hook). BuildCommand
+    // reads them up there and threads them via ctx — ctx.alepha here
+    // is the WORKSPACE's Vite-booted Alepha, which never saw the
+    // platform options.
+    const defaultEnv = ctx.platformOptions?.default ?? "production";
+    const environments = (ctx.platformOptions?.environments ??
+      {}) as BuildManifest["environments"];
+
     const manifest: BuildManifest = {
       version: 1,
       project: name,
+      defaultEnv,
+      environments,
       resources: {
         hasDatabase,
         hasBucket,

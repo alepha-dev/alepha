@@ -53,6 +53,13 @@ export class PackCommand {
             "Run `alepha build --target=cloudflare` first to refresh `dist/`. Default: assume `dist/` is up to date. Pass `--build` to rebuild.",
         }),
       ),
+      withSource: t.optional(
+        t.boolean({
+          aliases: ["with-source"],
+          description:
+            "Include `src/`, `alepha.config.ts`, `tsconfig.json`, and `package.json` in the tarball. Default: skip (the deploy side reads `dist/manifest.json` and never touches source). Useful for debugging inside the runner.",
+        }),
+      ),
     }),
     handler: async ({ flags, root, run }) => {
       if (flags.build) {
@@ -81,16 +88,20 @@ export class PackCommand {
       const filename = `${project}-${version}.tar.gz`;
       const outputPath = this.fs.join(outputDir, filename);
 
-      // Build the include list dynamically — only include dirs/files
-      // that actually exist so tar doesn't error.
-      const candidates = [
-        "src",
-        "dist",
-        "migrations",
-        "alepha.config.ts",
-        "package.json",
-        "tsconfig.json",
-      ];
+      // Default include list: just `dist/` + `migrations/`. Everything
+      // else (src, alepha.config.ts, tsconfig.json, package.json) is
+      // dev-time scaffolding — the deploy side reads `dist/manifest.json`
+      // for project/env/resources and never touches source. Pass
+      // `--with-source` to include them for debug runs.
+      const candidates = ["dist", "migrations"];
+      if (flags.withSource) {
+        candidates.push(
+          "src",
+          "alepha.config.ts",
+          "package.json",
+          "tsconfig.json",
+        );
+      }
       const includes: string[] = [];
       for (const candidate of candidates) {
         if (await this.fs.exists(this.fs.join(root, candidate))) {
@@ -98,11 +109,16 @@ export class PackCommand {
         }
       }
 
-      if (!includes.includes("package.json")) {
-        throw new AlephaError("package.json missing in workspace root.");
+      if (!includes.includes("dist")) {
+        throw new AlephaError(
+          "dist/ missing — run `alepha build --target=cloudflare` (or pass `--build`) before `alepha pack`.",
+        );
       }
-      if (!includes.includes("alepha.config.ts")) {
-        throw new AlephaError("alepha.config.ts missing in workspace root.");
+      const manifestPath = this.fs.join(root, "dist", "manifest.json");
+      if (!(await this.fs.exists(manifestPath))) {
+        throw new AlephaError(
+          `dist/manifest.json missing — required for prebuilt deploys. Rebuild with the current alepha version (\`alepha build --target=cloudflare\`).`,
+        );
       }
 
       // macOS sets COPYFILE_DISABLE=0 by default; tar will then include

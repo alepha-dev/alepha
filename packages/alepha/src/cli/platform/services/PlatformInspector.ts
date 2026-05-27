@@ -35,10 +35,40 @@ export class PlatformInspector {
 
   /**
    * Resolve and validate the full platform configuration.
+   *
+   * Source priority:
+   *   1. `platformOptions` atom (set by `alepha.config.ts` during the
+   *      configure hook) — local dev / from-source deploys.
+   *   2. `dist/manifest.json` (written by `alepha build`) — pre-built
+   *      deploys via Alepha Rocket or any `--prebuilt` consumer that
+   *      ships only the build artifact without `alepha.config.ts`.
    */
   public async resolveConfig(root: string): Promise<ResolvedPlatformConfig> {
-    if (!this.options) {
-      this.log.warn(` alepha.config.ts not found or missing platform config.
+    if (this.options) {
+      const opts = this.options;
+      const project = await this.resolveProjectName(root, opts.name);
+      return {
+        project: this.naming.slugify(project),
+        defaultEnv: opts.default ?? "production",
+        environments: opts.environments as Record<string, EnvironmentConfig>,
+      };
+    }
+
+    // Fallback: read dist/manifest.json. Lets prebuilt artifacts deploy
+    // without shipping alepha.config.ts in the tarball.
+    const manifest = await this.readManifest(root);
+    if (manifest) {
+      return {
+        project: this.naming.slugify(manifest.project),
+        defaultEnv: manifest.defaultEnv ?? "production",
+        environments: manifest.environments as Record<
+          string,
+          EnvironmentConfig
+        >,
+      };
+    }
+
+    this.log.warn(` alepha.config.ts not found or missing platform config.
 
 Please add a "platform" section to alepha.config.ts:
 
@@ -50,17 +80,29 @@ export default defineConfig({
   },
 });
         `);
-      throw new AlephaError("Missing platform configuration.");
+    throw new AlephaError("Missing platform configuration.");
+  }
+
+  /**
+   * Read `dist/manifest.json` if present. Returns null on any error so
+   * callers fall back to the strict alepha.config.ts path.
+   */
+  protected async readManifest(root: string): Promise<{
+    project: string;
+    defaultEnv?: string;
+    environments?: Record<string, unknown>;
+  } | null> {
+    try {
+      const fs = await import("node:fs/promises");
+      const path = await import("node:path");
+      const raw = await fs.readFile(
+        path.join(root, "dist", "manifest.json"),
+        "utf-8",
+      );
+      return JSON.parse(raw);
+    } catch {
+      return null;
     }
-
-    const opts = this.options;
-    const project = await this.resolveProjectName(root, opts.name);
-
-    return {
-      project: this.naming.slugify(project),
-      defaultEnv: opts.default ?? "production",
-      environments: opts.environments as Record<string, EnvironmentConfig>,
-    };
   }
 
   /**
