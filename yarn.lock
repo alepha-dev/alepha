@@ -12136,6 +12136,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"rocket-worker@workspace:apps/rocket-worker":
+  version: 0.0.0-use.local
+  resolution: "rocket-worker@workspace:apps/rocket-worker"
+  dependencies:
+    "@alepha/rocket": "workspace:*"
+    alepha: "workspace:*"
+    vite: "npm:^8.0.13"
+    wrangler: "npm:^4.93.0"
+  languageName: unknown
+  linkType: soft
+
 "rocket@workspace:apps/rocket":
   version: 0.0.0-use.local
   resolution: "rocket@workspace:apps/rocket"

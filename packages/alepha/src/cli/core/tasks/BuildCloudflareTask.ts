@@ -1,7 +1,7 @@
 import { basename } from "node:path";
 import { $inject } from "alepha";
 import { KV_DEFAULT_BINDING } from "alepha/cache";
-import { $container, type ContainerPrimitive } from "alepha/container";
+import type { ContainerPrimitive } from "alepha/container";
 import { EmailProvider } from "alepha/email";
 import {
   CloudflareEmailProvider,
@@ -491,8 +491,16 @@ export class BuildCloudflareTask extends BuildTask {
    * Container` declarations referencing them.
    */
   protected discoverContainers(ctx: BuildTaskContext): ContainerDescriptor[] {
+    // String key, not the `$container` factory. The build task runs in
+    // the CLI's Node realm, while the workspace's entry module is
+    // loaded by Vite — two separate module copies of
+    // `alepha/container`. Looking up by `$container[KIND]` (a class
+    // reference) would dereference the CLI's ContainerPrimitive class,
+    // which never matches the workspace's. The string form iterates
+    // the registry by class name and survives the dual-realm — same
+    // pattern used for `$bucket`, `$queue`, `scheduler` below.
     const primitives = ctx.alepha.primitives(
-      $container,
+      "container",
     ) as ContainerPrimitive[];
     return primitives.map((p) => ({
       name: p.name.toUpperCase(),

@@ -9,8 +9,12 @@ import { DeployRunner } from "../services/DeployRunner.ts";
  * `$container<RocketController>()` from `alepha/container` — the
  * resulting proxy mirrors the same `$action` methods, type-safe.
  *
- * All routes are unauthenticated in v1. Rocket is meant to live behind
- * a Cloudflare Containers binding (or another internal-network
+ * Routes are propertyKey-based and all-POST so the proxy's wire
+ * format (`POST /api/<methodName>`) can reach every action — the
+ * `$container` proxy only emits POSTs.
+ *
+ * All routes are unauthenticated in v1. Rocket is meant to live
+ * behind a Cloudflare Containers binding (or another internal-network
  * boundary). Adding auth is a v2 hardening item.
  */
 export class RocketController {
@@ -20,10 +24,11 @@ export class RocketController {
   /**
    * Start a deploy run. Returns the registered deploy immediately;
    * the actual work runs in the background. Poll `getDeploy` for status.
+   *
+   * Wire: `POST /api/createDeploy`.
    */
   public readonly createDeploy = $action({
     method: "POST",
-    path: "/deploys",
     schema: {
       body: createDeploySchema,
       response: deploySchema,
@@ -42,10 +47,11 @@ export class RocketController {
   /**
    * Poll a deploy by id. Returns the current state including the log
    * tail (capped at `DeployRegistry.LOG_MAX_BYTES`).
+   *
+   * Wire: `POST /api/getDeploy/:id`.
    */
   public readonly getDeploy = $action({
-    method: "GET",
-    path: "/deploys/:id",
+    method: "POST",
     schema: {
       params: t.object({ id: t.uuid() }),
       response: deploySchema,
@@ -55,10 +61,11 @@ export class RocketController {
 
   /**
    * Recent deploys, newest first.
+   *
+   * Wire: `POST /api/listDeploys`.
    */
   public readonly listDeploys = $action({
-    method: "GET",
-    path: "/deploys",
+    method: "POST",
     schema: {
       response: t.array(deploySchema),
     },
@@ -67,10 +74,11 @@ export class RocketController {
 
   /**
    * Liveness probe.
+   *
+   * Wire: `POST /api/health`.
    */
   public readonly health = $action({
-    method: "GET",
-    path: "/health",
+    method: "POST",
     schema: {
       response: t.object({
         ok: t.boolean(),
