@@ -36,9 +36,9 @@ import { type FormModel, useForm } from "alepha/react/form";
 import {
   Columns3,
   FunnelX,
-  MoreHorizontal,
   MoreVertical,
   RefreshCw,
+  Settings,
 } from "lucide-react";
 import {
   type ComponentType,
@@ -602,32 +602,49 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
       )}
 
       {hasCheckbox && selection.size > 0 && (
-        <div className="bg-muted/50 flex items-center gap-2 rounded-md border p-2">
-          <span className="text-sm">{selection.size} selected</span>
-          <div className="flex-1" />
-          {props.bulkActions?.map((action) => {
-            const ActionIcon = action.icon;
-            return (
-              <Button
-                key={action.label}
-                variant={action.destructive ? "destructive" : "outline"}
-                size="sm"
-                onClick={() => action.onClick(selectedItems, bulkCtx)}
-              >
-                {ActionIcon && <ActionIcon className="mr-2 size-4" />}
-                {action.label}
-              </Button>
-            );
-          })}
-          <Button variant="ghost" size="sm" onClick={clearSelection}>
-            Clear
-          </Button>
+        // Linear-style floating action pill: fixed at the bottom-center of
+        // the viewport, dark surface that stays readable in both themes
+        // because the colors are hard-coded (theme-relative `bg-foreground`
+        // inverts awkwardly against a white container in dark mode).
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-zinc-100 shadow-lg ring-1 ring-white/10">
+            <span className="text-sm pl-2">{selection.size} selected</span>
+            <span className="mx-1 h-4 w-px bg-white/20" />
+            {props.bulkActions?.map((action) => {
+              const ActionIcon = action.icon;
+              return (
+                <Button
+                  key={action.label}
+                  variant={action.destructive ? "destructive" : "ghost"}
+                  size="sm"
+                  className={
+                    action.destructive
+                      ? "h-8"
+                      : "h-8 text-zinc-100 hover:bg-white/10 hover:text-zinc-100"
+                  }
+                  onClick={() => action.onClick(selectedItems, bulkCtx)}
+                >
+                  {ActionIcon && <ActionIcon className="size-4" />}
+                  {action.label}
+                </Button>
+              );
+            })}
+            <span className="mx-1 h-4 w-px bg-white/20" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-zinc-300 hover:bg-white/10 hover:text-zinc-100"
+              onClick={clearSelection}
+            >
+              Clear
+            </Button>
+          </div>
         </div>
       )}
 
       <div className="flex min-h-0 flex-1 flex-col overflow-auto rounded-md border">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-background sticky top-0 z-10 shadow-[inset_0_-1px_0_0_var(--border)]">
             <TableRow>
               {hasCheckbox && (
                 <TableHead className="w-10">
@@ -884,7 +901,7 @@ function ActionsMenu(props: { onRefresh: () => void; onReset?: () => void }) {
           />
         }
       >
-        <MoreVertical className="size-4" />
+        <Settings className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={props.onRefresh}>
@@ -951,7 +968,7 @@ function RowActionsMenu<T>(props: {
           <Button variant="ghost" size="icon" aria-label="Open row actions" />
         }
       >
-        <MoreHorizontal className="size-4" />
+        <MoreVertical className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {props.actions.map((action, idx) => {
