@@ -44,7 +44,12 @@ export class DeployRunner {
 
     try {
       await this.writeEnvOverrides(id, workspace, body);
-      await this.installDeps(id, workspace);
+      // No `npm install` step. The CLI in --prebuilt mode reads
+      // dist/manifest.json (emitted by `alepha build --target=cloudflare`)
+      // and never boots the workspace's source — so the app's runtime
+      // deps (react, react-dom, etc.) don't need to be present. alepha
+      // itself + wrangler ship in the image's /app/node_modules/ and
+      // resolve from the workspace via Node's parent-dir walk.
       this.registry.append(
         id,
         `> cd ${workspace}\n` +
@@ -120,47 +125,6 @@ export class DeployRunner {
       id,
       `Wrote ${lines.length} override(s) to .env.${body.env}.local\n`,
     );
-  }
-
-  /**
-   * Install the workspace's npm deps before invoking `alepha platform`.
-   *
-   * The CLI's `analyze app` step (which runs even in `--prebuilt` mode
-   * to regenerate `wrangler.jsonc` from the actual primitives) boots
-   * the workspace's source, which transitively imports its deps (e.g.
-   * `react` from `alepha/react/core`). The image's `/app/node_modules/`
-   * only has `alepha` + `wrangler` baked in; the workspace's own deps
-   * are not, so we install them on first deploy.
-   *
-   * `--omit=dev` skips devDeps (vite, playwright, etc.) — only runtime
-   * deps are needed.
-   */
-  protected installDeps(id: string, workspace: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.registry.append(id, "> npm install --omit=dev\n");
-      const proc = spawn(
-        "npm",
-        ["install", "--omit=dev", "--no-fund", "--no-audit"],
-        {
-          cwd: workspace,
-          stdio: ["ignore", "pipe", "pipe"],
-        },
-      );
-      const onChunk = (chunk: Buffer) => {
-        this.registry.append(id, chunk.toString());
-      };
-      proc.stdout.on("data", onChunk);
-      proc.stderr.on("data", onChunk);
-      proc.on("error", reject);
-      proc.on("exit", (code) => {
-        if (code === 0) {
-          this.registry.append(id, "\n");
-          resolve();
-        } else {
-          reject(new Error(`npm install exited with code ${code ?? "?"}`));
-        }
-      });
-    });
   }
 
   protected runPlatform(

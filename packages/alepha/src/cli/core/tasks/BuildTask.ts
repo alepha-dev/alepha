@@ -2,6 +2,7 @@ import type { Alepha } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import type { BuildOptions } from "../atoms/buildOptions.ts";
 import type { AppEntry } from "../providers/AppEntryProvider.ts";
+import type { BuildManifest } from "./BuildCloudflareTask.ts";
 
 export interface BuildTaskContext {
   /**
@@ -43,6 +44,15 @@ export interface BuildTaskContext {
    * Raw CLI flags passed through from the command.
    * Tasks can read flags relevant to their domain.
    */
+  /**
+   * Build-time snapshot of primitive data, read from
+   * `dist/manifest.json`. Populated only in `--prebuilt` mode when a
+   * previous build's manifest is present — lets BuildCloudflareTask
+   * regenerate `wrangler.jsonc` without re-booting the workspace.
+   * `null` when introspection (`ctx.alepha`) is the source of truth.
+   */
+  manifest: BuildManifest | null;
+
   flags?: {
     image?: boolean | string;
     /**

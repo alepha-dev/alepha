@@ -231,6 +231,7 @@ export class PlatformCommand {
         root,
         config,
         this.isServerless(adapter),
+        { prebuilt: flags.prebuilt },
       );
 
       const result = await this.orchestrator.up({
@@ -653,7 +654,29 @@ export class PlatformCommand {
     root: string,
     config: ResolvedPlatformConfig,
     isServerless: boolean,
+    options: { prebuilt?: boolean } = {},
   ): Promise<AppDefinition[]> {
+    // Prebuilt + manifest fast-path: read `dist/manifest.json` produced
+    // by the original `alepha build` instead of re-booting the workspace
+    // via Vite. Lets external orchestrators (Alepha Rocket) avoid the
+    // workspace's runtime `npm install` — the app source is never
+    // imported here, so missing deps (react-dom, etc.) don't matter.
+    if (options.prebuilt) {
+      const manifest = await this.readManifest(root);
+      if (manifest) {
+        return [
+          {
+            name: manifest.project,
+            path: "",
+            entry: { root, server: "" },
+            resources: manifest.resources,
+          },
+        ];
+      }
+      // No manifest — fall through to introspection. Useful for older
+      // artifacts that pre-date the manifest emission.
+    }
+
     const entry = await this.boot.getAppEntry(root);
     if (isServerless) {
       process.env.ALEPHA_SERVERLESS = "true";
@@ -674,6 +697,29 @@ export class PlatformCommand {
 
   protected isServerless(adapter: string): boolean {
     return adapter === "vercel" || adapter === "cloudflare";
+  }
+
+  /**
+   * Read `dist/manifest.json` if present. Returns `null` when the file
+   * doesn't exist or isn't parseable — caller falls back to the
+   * Vite-introspection path.
+   */
+  protected async readManifest(root: string): Promise<{
+    version: number;
+    project: string;
+    resources: DetectedResources;
+  } | null> {
+    try {
+      const fs = await import("node:fs/promises");
+      const path = await import("node:path");
+      const raw = await fs.readFile(
+        path.join(root, "dist", "manifest.json"),
+        "utf-8",
+      );
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   }
 
   protected detectResources(alepha: any): DetectedResources {

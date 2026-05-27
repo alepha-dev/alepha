@@ -18,6 +18,49 @@ interface WranglerConfig {
 }
 
 /**
+ * Build-time snapshot describing what the workspace needs at deploy
+ * time. Written to `dist/manifest.json` alongside `wrangler.jsonc`.
+ *
+ * Lets `alepha platform up --prebuilt` skip the Vite-based
+ * introspection step on the deploy side — and lets Alepha Rocket skip
+ * the workspace's runtime `npm install` because no app source is
+ * booted at deploy time. The manifest captures the bits of primitive
+ * data that the deploy steps (provision, secrets, hooks) need to
+ * know.
+ */
+export interface BuildManifest {
+  version: 1;
+  project: string;
+  resources: {
+    hasDatabase: boolean;
+    hasBucket: boolean;
+    hasKV: boolean;
+    hasQueue: boolean;
+    hasCron: boolean;
+  };
+  /**
+   * All distinct cron expressions registered by `$scheduler`
+   * primitives. Empty when `hasCron` is false.
+   */
+  crons: string[];
+  /**
+   * `$container()` descriptors — image, port, lifecycle settings.
+   * Used both to populate Cloudflare Containers bindings in
+   * wrangler.jsonc and (in future) to know which images Rocket should
+   * pull on the deploy side.
+   */
+  containers: Array<{
+    name: string;
+    className: string;
+    image: string;
+    port: number;
+    sleepAfter: string;
+    instanceType: string;
+    maxInstances: number;
+  }>;
+}
+
+/**
  * Generate Cloudflare Workers deployment configuration.
  *
  * Creates:
@@ -106,7 +149,105 @@ export class BuildCloudflareTask extends BuildTask {
       JSON.stringify(wrangler, null, 2),
     );
 
+    // Only write a fresh manifest when we discovered it from a booted
+    // Alepha instance. In manifest mode (ctx.manifest != null) we're
+    // re-emitting the same data we just read — skip to avoid a redundant
+    // write and to keep the original manifest as the canonical record.
+    if (!ctx.manifest) {
+      await this.writeManifest(ctx, root, distDir, name, containers);
+    }
     await this.writeWorkerEntryPoint(root, distDir, containers);
+  }
+
+  /**
+   * Write `dist/manifest.json` — a build-time snapshot of everything
+   * downstream tooling needs to know about the app without re-booting
+   * it. Used by `alepha platform up --prebuilt` (and Alepha Rocket) so
+   * the deploy path can skip the Vite-based introspection step and the
+   * workspace's runtime npm install.
+   */
+  protected async writeManifest(
+    ctx: BuildTaskContext,
+    root: string,
+    distDir: string,
+    name: string,
+    containers: ContainerDescriptor[],
+  ): Promise<void> {
+    // Discover the same primitive shapes the enhance* methods read.
+    // Errors are silently swallowed — an absent primitive class just
+    // means the app doesn't use that resource.
+    let hasDatabase = false;
+    let hasBucket = false;
+    let hasKV = false;
+    let hasQueue = false;
+    let crons: string[] = [];
+
+    try {
+      const repo = ctx.alepha.inject("RepositoryProvider") as {
+        getRepositories?: () => unknown[];
+      };
+      hasDatabase = (repo.getRepositories?.() ?? []).length > 0;
+    } catch {}
+
+    try {
+      hasBucket = ctx.alepha.primitives("$bucket").length > 0;
+    } catch {}
+
+    try {
+      // Only count $cache primitives without an explicit `provider`
+      // option — those fall back to KV on workerd. Explicit memory /
+      // Redis / Postgres providers opt out of KV provisioning.
+      hasKV =
+        ctx.alepha
+          .primitives("cache")
+          .filter(
+            (p) =>
+              (p as { options?: { provider?: unknown } }).options?.provider ==
+              null,
+          ).length > 0;
+    } catch {}
+
+    try {
+      hasQueue = ctx.alepha.primitives("$queue").length > 0;
+    } catch {}
+
+    try {
+      const cronProvider = ctx.alepha.inject("CronProvider") as {
+        getCronJobs?: () => Array<{ expression: string }>;
+      };
+      crons = [
+        ...new Set(
+          (cronProvider.getCronJobs?.() ?? []).map((c) => c.expression),
+        ),
+      ];
+    } catch {}
+
+    const manifest: BuildManifest = {
+      version: 1,
+      project: name,
+      resources: {
+        hasDatabase,
+        hasBucket,
+        hasKV,
+        hasQueue,
+        hasCron: crons.length > 0,
+      },
+      crons,
+      containers: containers.map((c) => ({
+        name: c.name,
+        className: c.className,
+        image: c.image,
+        port: c.port,
+        sleepAfter: c.sleepAfter,
+        instanceType: c.instanceType,
+        maxInstances: c.maxInstances,
+      })),
+    };
+
+    await this.fs.writeFile(
+      this.fs.join(root, distDir, "manifest.json"),
+      JSON.stringify(manifest, null, 2),
+    );
   }
 
   protected enhanceDomain(wrangler: WranglerConfig): void {
@@ -140,23 +281,29 @@ export class BuildCloudflareTask extends BuildTask {
   }
 
   protected enhanceCron(ctx: BuildTaskContext, wrangler: WranglerConfig): void {
-    if (ctx.alepha.primitives("scheduler").length === 0) {
+    const cronExpressions = ctx.manifest
+      ? ctx.manifest.crons
+      : this.discoverCrons(ctx);
+    if (cronExpressions.length === 0) {
       return;
     }
+    wrangler.triggers ??= {};
+    wrangler.triggers.crons = cronExpressions;
+  }
 
+  protected discoverCrons(ctx: BuildTaskContext): string[] {
+    if (ctx.alepha.primitives("scheduler").length === 0) {
+      return [];
+    }
     let cronProvider: CronProvider | undefined;
     try {
       cronProvider = ctx.alepha.inject("CronProvider") as WorkerdCronProvider;
     } catch {}
-
     const crons = cronProvider?.getCronJobs();
     if (!crons || crons.length === 0) {
-      return;
+      return [];
     }
-
-    const cronExpressions = [...new Set(crons.map((c) => c.expression))];
-    wrangler.triggers ??= {};
-    wrangler.triggers.crons = cronExpressions;
+    return [...new Set(crons.map((c) => c.expression))];
   }
 
   protected enhanceDatabase(wrangler: WranglerConfig): void {
@@ -264,6 +411,13 @@ export class BuildCloudflareTask extends BuildTask {
     ctx: BuildTaskContext,
     wrangler: WranglerConfig,
   ): void {
+    // Manifest mode doesn't capture email provider details yet. Apps
+    // using CloudflareEmailProvider would need a manifest field added.
+    // For now, skip — non-email apps and apps using non-CF providers
+    // are unaffected. TODO: add `emailProvider` to BuildManifest.
+    if (ctx.manifest || !ctx.alepha) {
+      return;
+    }
     let provider: EmailProvider | undefined;
     try {
       provider = ctx.alepha.inject(EmailProvider);
@@ -303,18 +457,11 @@ export class BuildCloudflareTask extends BuildTask {
    * `writeWorkerEntryPoint` can emit `export class <NAME> extends
    * Container` declarations referencing them.
    */
-  protected enhanceContainers(
-    ctx: BuildTaskContext,
-    wrangler: WranglerConfig,
-  ): ContainerDescriptor[] {
+  protected discoverContainers(ctx: BuildTaskContext): ContainerDescriptor[] {
     const primitives = ctx.alepha.primitives(
       $container,
     ) as ContainerPrimitive[];
-    if (primitives.length === 0) {
-      return [];
-    }
-
-    const descriptors: ContainerDescriptor[] = primitives.map((p) => ({
+    return primitives.map((p) => ({
       name: p.name.toUpperCase(),
       className: p.name
         .split(/[^a-zA-Z0-9]/)
@@ -329,6 +476,18 @@ export class BuildCloudflareTask extends BuildTask {
       maxInstances: p.options.maxInstances ?? 5,
       envVars: p.options.envVars,
     }));
+  }
+
+  protected enhanceContainers(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): ContainerDescriptor[] {
+    const descriptors: ContainerDescriptor[] = ctx.manifest
+      ? (ctx.manifest.containers as ContainerDescriptor[])
+      : this.discoverContainers(ctx);
+    if (descriptors.length === 0) {
+      return [];
+    }
 
     wrangler.containers = wrangler.containers || [];
     wrangler.durable_objects = wrangler.durable_objects || {};

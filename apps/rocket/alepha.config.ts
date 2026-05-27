@@ -16,7 +16,18 @@ export default defineConfig({
       //     deploy` + `wrangler d1 migrations apply --remote`. The
       //     REST-only port is a v2 follow-up; until then wrangler is
       //     non-optional.
-      install: ["alepha", "wrangler"],
+      // TEMPORARY: `react` + `react-dom` are here to work around an
+      // alepha-framework packaging issue — importing `alepha/cli/*`
+      // transitively pulls in `alepha/dist/react/core/index.js`, which
+      // does `import "react"` at module top level. So even purely
+      // server-side workloads can't run `alepha platform up` without
+      // react available in node_modules.
+      //
+      // The right fix is in the framework (audit `cli/*` imports to
+      // remove the React side-effect, OR make `react`/`react-dom`
+      // optional peer deps with dynamic `import("react")` guards).
+      // Until that lands, we ship them in the image.
+      install: ["alepha", "wrangler", "react", "react-dom"],
       image: {
         // `--image` alone → `alepha/rocket:latest`,
         // `--image=0.21.1` → `alepha/rocket:0.21.1`,

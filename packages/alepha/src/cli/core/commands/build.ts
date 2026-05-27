@@ -211,28 +211,45 @@ export class BuildCommand {
         runtime: options.runtime,
       });
 
+      // Prebuilt + manifest fast-path: skip `analyze app` (which boots
+      // the workspace via Vite and requires its full node_modules tree).
+      // BuildCloudflareTask reads from `ctx.manifest` instead of from
+      // `ctx.alepha` in this mode. Falls back to the introspection path
+      // when no manifest is present (older artifacts).
+      let manifest: Awaited<ReturnType<typeof this.loadManifest>> = null;
+      if (flags.prebuilt) {
+        manifest = await this.loadManifest(root);
+      }
+
       let appAlepha: Alepha | undefined;
       let hasClient = false;
 
-      await run({
-        name: "analyze app",
-        handler: async () => {
-          appAlepha = await this.viteBuildProvider.init({ entry });
-          hasClient = this.viteBuildProvider.hasClient();
-        },
-      });
+      if (!manifest) {
+        await run({
+          name: "analyze app",
+          handler: async () => {
+            appAlepha = await this.viteBuildProvider.init({ entry });
+            hasClient = this.viteBuildProvider.hasClient();
+          },
+        });
 
-      if (!appAlepha) {
-        throw new AlephaError("Alepha instance not found");
+        if (!appAlepha) {
+          throw new AlephaError("Alepha instance not found");
+        }
       }
 
       const ctx: BuildTaskContext = {
-        alepha: appAlepha,
+        // Cast: when manifest mode is active, BuildCloudflareTask reads
+        // from ctx.manifest and never dereferences ctx.alepha. Bundle
+        // tasks (BuildClient/Server/etc.) self-guard on ctx.flags.prebuilt
+        // and return early, so they don't touch alepha either.
+        alepha: (appAlepha ?? null) as unknown as Alepha,
         options,
         root,
         run,
         entry,
         hasClient,
+        manifest,
         flags: { image: flags.image, prebuilt: flags.prebuilt },
       };
 
@@ -241,4 +258,25 @@ export class BuildCommand {
       }
     },
   });
+
+  /**
+   * Read `dist/manifest.json` produced by a previous `alepha build`.
+   * Returns null when absent or unparseable — caller falls back to the
+   * Vite-introspection path.
+   */
+  protected async loadManifest(root: string) {
+    try {
+      const fs = await import("node:fs/promises");
+      const path = await import("node:path");
+      const raw = await fs.readFile(
+        path.join(root, "dist", "manifest.json"),
+        "utf-8",
+      );
+      return JSON.parse(
+        raw,
+      ) as import("../tasks/BuildCloudflareTask.ts").BuildManifest;
+    } catch {
+      return null;
+    }
+  }
 }
