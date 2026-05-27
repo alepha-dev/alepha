@@ -1,8 +1,8 @@
-# Alepha - Containers
+# Alepha - Container
 
 ## Installation
 
-Part of the `alepha` package. Import from `alepha/containers`.
+Part of the `alepha` package. Import from `alepha/container`.
 
 ```bash
 npm install alepha
@@ -19,7 +19,7 @@ Type-safe RPC clients for ephemeral containerized Alepha apps.
 - Pluggable transport: Node (plain `fetch` against a configured URL),
   Mock (in-process call via `LinkProvider.follow` for tests),
   Cloudflare workerd (`getContainer().fetch()` through the Containers
-  binding — see `alepha/containers` workerd entry).
+  binding — see `alepha/container` workerd entry).
 - Build-time integration: `BuildCloudflareTask.enhanceContainers`
   emits the matching wrangler bindings and Durable Object class
   declarations.

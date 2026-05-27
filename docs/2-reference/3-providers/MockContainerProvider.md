@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { MockContainerProvider } from "alepha/containers";
+import { MockContainerProvider } from "alepha/container";
 ```
 
 ## Overview

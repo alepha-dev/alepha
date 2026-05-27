@@ -251,11 +251,11 @@
       "import": "./src/command/index.ts",
       "default": "./src/command/index.ts"
     },
-    "./containers": {
-      "types": "./src/containers/core/index.ts",
-      "workerd": "./src/containers/core/index.workerd.ts",
-      "import": "./src/containers/core/index.ts",
-      "default": "./src/containers/core/index.ts"
+    "./container": {
+      "types": "./src/container/core/index.ts",
+      "workerd": "./src/container/core/index.workerd.ts",
+      "import": "./src/container/core/index.ts",
+      "default": "./src/container/core/index.ts"
     },
     ".": {
       "types": "./src/core/index.ts",
@@ -680,11 +680,11 @@
         "import": "./dist/command/index.js",
         "default": "./dist/command/index.js"
       },
-      "./containers": {
-        "types": "./dist/containers/core/index.d.ts",
-        "workerd": "./dist/containers/core/index.workerd.js",
-        "import": "./dist/containers/core/index.js",
-        "default": "./dist/containers/core/index.js"
+      "./container": {
+        "types": "./dist/container/core/index.d.ts",
+        "workerd": "./dist/container/core/index.workerd.js",
+        "import": "./dist/container/core/index.js",
+        "default": "./dist/container/core/index.js"
       },
       ".": {
         "types": "./dist/core/index.d.ts",

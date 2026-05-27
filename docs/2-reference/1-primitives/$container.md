@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { $container } from "alepha/containers";
+import { $container } from "alepha/container";
 ```
 
 ## Overview
@@ -29,7 +29,7 @@ entries and Durable Object class declarations into
 ## Examples
 
 ```ts
-import { $container } from "alepha/containers";
+import { $container } from "alepha/container";
 import type { RocketController } from "@alepha/rocket";
 
 class DeployService {

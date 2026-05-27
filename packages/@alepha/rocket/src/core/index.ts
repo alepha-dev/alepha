@@ -10,7 +10,7 @@ import { DeployRunner } from "./services/DeployRunner.ts";
  *
  * Register on the Alepha app running inside the Rocket container image
  * (see `apps/rocket`). Consumers reach the container via
- * `$container<RocketController>()` from `alepha/containers`.
+ * `$container<RocketController>()` from `alepha/container`.
  */
 export const AlephaRocket = $module({
   name: "alepha.rocket",

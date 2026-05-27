@@ -17,7 +17,7 @@ import {
  * @example
  * ```ts
  * const alepha = Alepha.create()
- *   .with(AlephaContainers)
+ *   .with(AlephaContainer)
  *   .with(RocketController)
  *   .with(MyApp)
  *   .with({ provide: ContainerProvider, use: MockContainerProvider });

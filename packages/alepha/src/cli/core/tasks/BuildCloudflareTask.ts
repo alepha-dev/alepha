@@ -1,7 +1,7 @@
 import { basename } from "node:path";
 import { $inject } from "alepha";
 import { KV_DEFAULT_BINDING } from "alepha/cache";
-import { $container, type ContainerPrimitive } from "alepha/containers";
+import { $container, type ContainerPrimitive } from "alepha/container";
 import { EmailProvider } from "alepha/email";
 import {
   CloudflareEmailProvider,

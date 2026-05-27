@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { NodeContainerProvider } from "alepha/containers";
+import { NodeContainerProvider } from "alepha/container";
 ```
 
 ## Overview

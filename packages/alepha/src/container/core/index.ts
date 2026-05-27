@@ -24,7 +24,7 @@ export * from "./providers/NodeContainerProvider.ts";
  * - Pluggable transport: Node (plain `fetch` against a configured URL),
  *   Mock (in-process call via `LinkProvider.follow` for tests),
  *   Cloudflare workerd (`getContainer().fetch()` through the Containers
- *   binding — see `alepha/containers` workerd entry).
+ *   binding — see `alepha/container` workerd entry).
  * - Build-time integration: `BuildCloudflareTask.enhanceContainers`
  *   emits the matching wrangler bindings and Durable Object class
  *   declarations.
@@ -33,10 +33,10 @@ export * from "./providers/NodeContainerProvider.ts";
  * the spec — apps need to provide an explicit `url` per primitive
  * until a `target=docker` adapter ships.
  *
- * @module alepha.containers
+ * @module alepha.container
  */
-export const AlephaContainers = $module({
-  name: "alepha.containers",
+export const AlephaContainer = $module({
+  name: "alepha.container",
   primitives: [$container],
   services: [ContainerProvider],
   variants: [MockContainerProvider, NodeContainerProvider],

@@ -21,10 +21,10 @@ export * from "./providers/ContainerProvider.ts";
  * `BuildCloudflareTask.enhanceContainers` (in `alepha/cli/core`) which
  * emits the wrangler.jsonc bindings and DO class declarations.
  *
- * @module alepha.containers
+ * @module alepha.container
  */
-export const AlephaContainers = $module({
-  name: "alepha.containers",
+export const AlephaContainer = $module({
+  name: "alepha.container",
   primitives: [$container],
   services: [ContainerProvider, CloudflareContainerProvider],
   register: (alepha) => {

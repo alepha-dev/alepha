@@ -33,7 +33,7 @@ export abstract class ContainerProvider {
     void config;
     throw new AlephaError(
       `No ContainerProvider configured for container '${container.name}' (action '${action}'). ` +
-        `Set up alepha/containers via AlephaContainers and either supply 'url' (Node) or build for target=cloudflare.`,
+        `Set up alepha/container via AlephaContainer and either supply 'url' (Node) or build for target=cloudflare.`,
     );
   }
 

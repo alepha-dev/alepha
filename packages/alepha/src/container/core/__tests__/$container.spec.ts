@@ -2,7 +2,7 @@ import { Alepha, t } from "alepha";
 import { $action, AlephaServer } from "alepha/server";
 import { AlephaServerLinks } from "alepha/server/links";
 import { describe, it } from "vitest";
-import { AlephaContainers } from "../index.ts";
+import { AlephaContainer } from "../index.ts";
 import { $container } from "../primitives/$container.ts";
 import { ContainerProvider } from "../providers/ContainerProvider.ts";
 import { NodeContainerProvider } from "../providers/NodeContainerProvider.ts";
@@ -28,13 +28,13 @@ describe("$container", () => {
       });
     }
 
-    // In test mode AlephaContainers binds the Mock provider by default,
+    // In test mode AlephaContainer binds the Mock provider by default,
     // which routes the proxy's `.createJob(...)` call back through
     // LinkProvider — so RocketController must live on the same Alepha.
     const alepha = Alepha.create({ env: { LOG_LEVEL: "warn" } })
       .with(AlephaServer)
       .with(AlephaServerLinks)
-      .with(AlephaContainers)
+      .with(AlephaContainer)
       .with(RocketController)
       .with(DeployService);
 
@@ -55,7 +55,7 @@ describe("$container", () => {
       });
     }
 
-    const alepha = Alepha.create({ env: {} }).with(AlephaContainers).with(App);
+    const alepha = Alepha.create({ env: {} }).with(AlephaContainer).with(App);
 
     // Force App instantiation so the primitive registers.
     const app = alepha.inject(App);
@@ -71,7 +71,7 @@ describe("$container", () => {
 
     const alepha = Alepha.create({ env: {} })
       .with({ provide: ContainerProvider, use: NodeContainerProvider })
-      .with(AlephaContainers)
+      .with(AlephaContainer)
       .with(App);
     await alepha.start();
 

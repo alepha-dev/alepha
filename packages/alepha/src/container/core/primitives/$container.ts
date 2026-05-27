@@ -23,7 +23,7 @@ import { ContainerProvider } from "../providers/ContainerProvider.ts";
  *
  * @example
  * ```ts
- * import { $container } from "alepha/containers";
+ * import { $container } from "alepha/container";
  * import type { RocketController } from "@alepha/rocket";
  *
  * class DeployService {

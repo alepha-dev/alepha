@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { CloudflareContainerProvider } from "alepha/containers";
+import { CloudflareContainerProvider } from "alepha/container";
 ```
 
 ## Overview

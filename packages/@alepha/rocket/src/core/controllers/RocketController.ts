@@ -6,7 +6,7 @@ import { DeployRunner } from "../services/DeployRunner.ts";
 
 /**
  * The HTTP surface Rocket exposes. Consumed remotely via
- * `$container<RocketController>()` from `alepha/containers` — the
+ * `$container<RocketController>()` from `alepha/container` — the
  * resulting proxy mirrors the same `$action` methods, type-safe.
  *
  * All routes are unauthenticated in v1. Rocket is meant to live behind
