@@ -24,7 +24,8 @@ export class UserAudits {
       | "delete"
       | "role_change"
       | "enable"
-      | "disable",
+      | "disable"
+      | "password_change",
     context: AuditContext,
   ) {
     return this.auditService.recordUser(action, context);

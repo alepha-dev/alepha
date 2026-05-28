@@ -2,7 +2,8 @@ import { $inject, Alepha } from "alepha";
 import type { VerificationController } from "alepha/api/verifications";
 import { $logger } from "alepha/logger";
 import type { Page } from "alepha/orm";
-import { BadRequestError } from "alepha/server";
+import { CryptoProvider } from "alepha/security";
+import { BadRequestError, ConflictError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { UserAudits } from "../audits/UserAudits.ts";
 import type { UserEntity } from "../entities/users.ts";
@@ -17,6 +18,7 @@ export class UserService {
   protected readonly log = $logger();
   protected readonly verificationController = $client<VerificationController>();
   protected readonly realmProvider = $inject(RealmProvider);
+  protected readonly cryptoProvider = $inject(CryptoProvider);
 
   protected userAudits(realmName?: string) {
     const realm = this.realmProvider.getRealm(realmName);
@@ -352,11 +354,41 @@ export class UserService {
   ): Promise<UserEntity> {
     this.log.trace("Updating user", { id, userRealmName });
     const before = await this.getUserById(id, userRealmName);
-
-    const user = await this.users(userRealmName).updateById(id, data);
-    this.log.debug("User updated", { userId: id });
-
     const realm = this.realmProvider.getRealm(userRealmName);
+    const users = this.users(userRealmName);
+
+    // Conflict checks — surface a friendly 409 instead of letting the
+    // unique constraint blow up the SQL driver with a generic error.
+    if (
+      data.username !== undefined &&
+      data.username !== null &&
+      data.username !== before.username
+    ) {
+      const existing = await users.findOne({
+        where: { realm: realm.name, username: { ilike: data.username } },
+      });
+      if (existing && existing.id !== id) {
+        throw new ConflictError("User with this username already exists");
+      }
+    }
+    if (
+      data.email !== undefined &&
+      data.email !== null &&
+      data.email !== before.email
+    ) {
+      const existing = await users.findOne({
+        where: { realm: realm.name, email: { eq: data.email } },
+      });
+      if (existing && existing.id !== id) {
+        throw new ConflictError("User with this email already exists");
+      }
+      // Changing the email invalidates the verified flag — never trust
+      // the client-passed value when email changes.
+      data.emailVerified = false;
+    }
+
+    const user = await users.updateById(id, data);
+    this.log.debug("User updated", { userId: id });
 
     // Build changes object showing what was updated
     const changes: Record<string, { from: unknown; to: unknown }> = {};
@@ -384,6 +416,57 @@ export class UserService {
     );
 
     return user;
+  }
+
+  /**
+   * Set (or reset) a user's password. Upserts a "credentials" identity
+   * with the new hash. Used by admin password-set flows; does NOT
+   * verify any old password or token — the caller is responsible for
+   * authorization.
+   */
+  public async setPassword(
+    id: string,
+    newPassword: string,
+    userRealmName?: string,
+  ): Promise<void> {
+    this.log.trace("Setting password", { id, userRealmName });
+    const user = await this.getUserById(id, userRealmName);
+
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const settings = await realm.getSettings();
+    if (settings.passwordPolicy) {
+      const policy = settings.passwordPolicy;
+      if (policy.minLength && newPassword.length < policy.minLength) {
+        throw new BadRequestError(
+          `Password must be at least ${policy.minLength} characters`,
+        );
+      }
+    }
+
+    const hash = await this.cryptoProvider.hashPassword(newPassword);
+    const identities = this.realmProvider.identityRepository(userRealmName);
+    const existing = await identities.findOne({
+      where: { userId: { eq: id }, provider: { eq: "credentials" } },
+    });
+
+    if (existing) {
+      await identities.updateById(existing.id, { password: hash });
+    } else {
+      await identities.create({
+        userId: id,
+        provider: "credentials",
+        password: hash,
+      });
+    }
+
+    await this.userAudits(userRealmName)?.recordUser("password_change", {
+      userId: id,
+      userEmail: user.email ?? undefined,
+      userRealm: realm.name,
+      resourceId: id,
+      severity: "warning",
+      description: "Password set by admin",
+    });
   }
 
   /**

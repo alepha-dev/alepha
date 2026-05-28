@@ -129,6 +129,39 @@ export class AdminUserController {
   });
 
   /**
+   * Set (or reset) a user's password. Admin-only flow — does NOT
+   * require knowing the previous password. Hash is stored as a
+   * "credentials" identity for the user (upsert).
+   */
+  public readonly setUserPassword = $action({
+    method: "POST",
+    path: `${this.url}/:id/password`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:user:update"] })],
+    description: "Set a user's password",
+    schema: {
+      params: t.object({
+        id: t.uuid(),
+      }),
+      query: t.object({
+        userRealmName: t.optional(t.string()),
+      }),
+      body: t.object({
+        password: t.string({ minLength: 1 }),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params, body, query }) => {
+      await this.userService.setPassword(
+        params.id,
+        body.password,
+        query.userRealmName,
+      );
+      return { ok: true, id: params.id };
+    },
+  });
+
+  /**
    * Delete a user.
    */
   public readonly deleteUser = $action({

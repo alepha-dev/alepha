@@ -166,7 +166,8 @@ export class AuditService {
       | "delete"
       | "enable"
       | "disable"
-      | "role_change",
+      | "role_change"
+      | "password_change",
     options: Omit<CreateAudit, "type" | "action"> = {},
   ): Promise<AuditEntity> {
     return this.create({
