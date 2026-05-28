@@ -20,10 +20,10 @@
     "src"
   ],
   "dependencies": {
-    "stripe": "^22.1.1"
+    "stripe": "^22.2.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.15",
+    "@biomejs/biome": "^2.4.16",
     "alepha": "0.21.2",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"

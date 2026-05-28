@@ -24,11 +24,6 @@ export default (alepha: Alepha) => {
           `packages/*/node_modules`,
           `packages/*/coverage`,
         ]);
-
-        // When CI=true, yarn might create an immutable install, which is cool, but we don't need that here
-        process.env.YARN_ENABLE_IMMUTABLE_INSTALLS = "false";
-
-        await run("yarn");
       },
     }),
     verify: $command({
@@ -46,29 +41,26 @@ export default (alepha: Alepha) => {
         // -> tsdown has different behavior when run in CI
         process.env.CI = "true";
 
+        // When CI=true, yarn might create an immutable install, which is cool, but we don't need that here
+        process.env.YARN_ENABLE_IMMUTABLE_INSTALLS = "false";
+        process.env.YARN_ENABLE_HARDENED_MODE = "false";
+
+        await run("yarn");
+        await run(`yarn clean`);
+        await run(`yarn lint`);
+
         if (flags.fast) {
-          // Inner-loop sanity check: skip clean/copy/build/e2e and run
-          // all read-only checks in parallel after lint (which --fixes).
-          // `check:*` scripts fan out via `yarn workspaces foreach run …`,
-          // so every workspace that opts in (apps/lore, future apps) is
-          // verified without extending this pipeline.
-          await run(`yarn w @alepha/ui sync`);
-          await run(`yarn lint`);
           await run([
-            `yarn check:deps`,
             `yarn typecheck`,
-            `yarn test`,
-            `yarn test:bun`,
+            `yarn check:deps`,
             `yarn check:i18n`,
             `yarn check:migrations`,
           ]);
+          await run([`yarn test`, `yarn test:bun`]);
           return;
         }
 
-        await run(`yarn clean`);
         await run(`yarn copy`);
-        await run(`yarn w @alepha/ui sync`);
-        await run(`yarn lint`);
         await run(`yarn check:deps`);
         await run(`yarn typecheck`);
         await run(`yarn test`);
@@ -84,6 +76,7 @@ export default (alepha: Alepha) => {
 
         await run(`cd apps/docs && yarn alepha gen:llms`);
         await run(`yarn clean`);
+        await run("yarn");
       },
     }),
   };

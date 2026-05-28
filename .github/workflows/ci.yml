@@ -41,13 +41,6 @@ jobs:
         ports:
           - 19090:9090
 
-      emqx:
-        image: emqx/emqx
-        ports:
-          - 11883:1883
-        env:
-          EMQX_ALLOW_ANONYMOUS: "true"
-
     steps:
       - name: Git Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
