@@ -32,6 +32,9 @@ export default defineConfig({
       // Lift the per-IP registration cap — the full suite registers dozens
       // of users from a single localhost IP. Default 10 trips mid-run.
       REGISTRATION_IP_MAX_ATTEMPTS: "1000",
+      // Fixed admin email so the admin-user-detail spec can register an
+      // account and have it auto-promoted to `admin` on first login.
+      ADMIN_EMAIL: "admin@example.com",
     },
   },
 });
