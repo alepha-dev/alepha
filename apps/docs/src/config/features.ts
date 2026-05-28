@@ -1,5 +1,6 @@
 import {
   IconApi,
+  IconBell,
   IconBox,
   IconBrandReact,
   IconBucket,
@@ -10,7 +11,7 @@ import {
   IconDeviceDesktop,
   IconFileText,
   IconHeartRateMonitor,
-  IconLayoutDashboard,
+  IconKey,
   IconLink,
   IconLock,
   IconMail,
@@ -23,8 +24,8 @@ import {
   IconSeo,
   IconServer,
   IconShieldCheck,
+  IconShieldLock,
   IconTool,
-  IconUserCheck,
   IconUsers,
 } from "@tabler/icons-react";
 
@@ -66,7 +67,7 @@ export const coreFeatures = [
     title: "ORM",
     module: "alepha/orm",
     description: "Type-safe database queries with Drizzle.",
-    slug: "packages-alepha-orm",
+    slug: "guides-persistence-repository",
   },
   {
     icon: IconBox,
@@ -121,7 +122,7 @@ export const coreFeatures = [
     title: "Email",
     module: "alepha/email",
     description: "Send emails with templates.",
-    slug: "packages-alepha-email",
+    slug: "packages-alepha-email-core",
   },
   {
     icon: IconPhone,
@@ -193,8 +194,8 @@ export const coreFeatures = [
     icon: IconCloud,
     title: "Deploy",
     module: null,
-    description: "Docker, Cloudflare, and more.",
-    slug: "guides-production-overview",
+    description: "Bare, Cloudflare, Vercel, and more.",
+    slug: "guides-deployment-bare",
   },
 ];
 
@@ -207,11 +208,11 @@ export const apiFeatures = [
     slug: "packages-alepha-api-users",
   },
   {
-    icon: IconUserCheck,
-    title: "Auth UI",
-    module: "@alepha/ui/components/auth/auth-login",
-    description: "Ready-to-use authentication components.",
-    slug: "packages-alepha-ui-auth",
+    icon: IconShieldLock,
+    title: "OAuth",
+    module: "alepha/api/oauth",
+    description: "OAuth 2.1 authorization server.",
+    slug: "packages-alepha-api-oauth",
   },
   {
     icon: IconFileText,
@@ -228,10 +229,17 @@ export const apiFeatures = [
     slug: "packages-alepha-api-jobs",
   },
   {
-    icon: IconLayoutDashboard,
-    title: "Admin UI",
-    module: "@alepha/ui/components/admin/admin-users",
-    description: "Auto-generated admin panel.",
-    slug: "packages-alepha-ui-admin",
+    icon: IconBell,
+    title: "Notifications",
+    module: "alepha/api/notifications",
+    description: "In-app + email notification pipeline.",
+    slug: "packages-alepha-api-notifications",
+  },
+  {
+    icon: IconKey,
+    title: "API Keys",
+    module: "alepha/api/keys",
+    description: "Issue and revoke API keys.",
+    slug: "packages-alepha-api-keys",
   },
 ];
