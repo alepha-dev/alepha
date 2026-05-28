@@ -428,3 +428,30 @@ export const testJoinWithOffset = async (alepha: Alepha) => {
   expect(results[0].name).toBe("Messi");
   expect(results[1].name).toBe("Modrić");
 };
+
+// ============================================================================
+// 14. getById / findById accept a `with` map for relation eager-loading
+// ============================================================================
+
+export const testGetByIdWithRelations = async (alepha: Alepha) => {
+  const app = alepha.inject(App);
+  await alepha.start();
+  const { players: p } = await seed(app);
+
+  // `as const` on the tuple should compile without an explicit cast.
+  const withTeam = {
+    team: { join: teams, on: ["teamId", teams.cols.id] as const },
+  } as const;
+
+  const found = await app.players.getById(p.messi.id, { with: withTeam });
+  expect(found.name).toBe("Messi");
+  expect(found.team?.name).toBe("FC Barcelona");
+
+  // findById returns undefined on miss
+  const missing = await app.players.findById(999_999, { with: withTeam });
+  expect(missing).toBeUndefined();
+
+  // Without `with`, the result is the plain row (no `.team` widening).
+  const plain = await app.players.getById(p.messi.id);
+  expect(plain.name).toBe("Messi");
+};

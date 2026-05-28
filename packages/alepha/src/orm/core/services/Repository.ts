@@ -597,27 +597,43 @@ export abstract class Repository<T extends TObject> {
 
   /**
    * Find an entity by ID. Returns `undefined` if not found.
+   *
+   * Pass `with` to eager-load relations on the result — same `with` map
+   * shape as `findOne` / `paginate`. Without `with`, returns the plain
+   * row.
+   *
+   * @example
+   * ```ts
+   * const session = await sessions.findById(id, {
+   *   with: { user: { join: users, on: ["userId", users.cols.id] as const } },
+   * });
+   * session?.user?.email;
+   * ```
    */
-  public async findById(
+  public async findById<R extends PgRelationMap<T>>(
     id: string | number,
-    opts: StatementOptions = {},
-  ): Promise<Static<T> | undefined> {
-    return await this.findOne(
+    opts: StatementOptions & { with?: R } = {},
+  ): Promise<PgStatic<T, R> | undefined> {
+    const { with: withRelations, ...rest } = opts;
+    return (await this.findOne<R>(
       {
         where: this.getWhereId(id),
-      },
-      opts,
-    );
+        ...(withRelations ? { with: withRelations } : {}),
+      } as Pick<PgQueryRelations<T, R>, "with" | "where">,
+      rest,
+    )) as PgStatic<T, R> | undefined;
   }
 
   /**
    * Find an entity by ID. Throws `DbEntityNotFoundError` if not found.
+   *
+   * Pass `with` to eager-load relations — see {@link findById}.
    */
-  public async getById(
+  public async getById<R extends PgRelationMap<T>>(
     id: string | number,
-    opts: StatementOptions = {},
-  ): Promise<Static<T>> {
-    const entity = await this.findById(id, opts);
+    opts: StatementOptions & { with?: R } = {},
+  ): Promise<PgStatic<T, R>> {
+    const entity = await this.findById<R>(id, opts);
 
     if (!entity) {
       throw new DbEntityNotFoundError(this.tableName);

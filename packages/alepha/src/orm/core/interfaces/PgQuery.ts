@@ -67,9 +67,12 @@ export type PgRelation<Base extends TObject> = {
     schema: TObject;
     name: string;
   };
+  // `readonly` so a literal tuple written with `as const` (the natural
+  // shape for `["userId", users.cols.id]`) satisfies the type without an
+  // explicit cast. The relation manager only reads the indices.
   on:
     | SQLWrapper
-    | [
+    | readonly [
         keyof Static<Base>,
         {
           name: string;
