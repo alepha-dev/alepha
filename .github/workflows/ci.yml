@@ -17,7 +17,92 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify-linux:
+  # ──────────────────────────────────────────────────────────────────────
+  # Fast checks — lint, typecheck, dep / i18n / migration audits.
+  # No services needed. Runs in parallel with `test` and `e2e`.
+  # ──────────────────────────────────────────────────────────────────────
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      - name: Prepare
+        run: yarn copy
+
+      - name: Lint Project
+        run: yarn lint
+
+      - name: TypeScript Check
+        run: yarn typecheck
+
+      - name: Dependencies Check
+        run: yarn check:deps
+
+      - name: i18n Catalog Check
+        run: yarn check:i18n
+
+      - name: DB Migrations Check
+        run: yarn check:migrations
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Unit + integration tests (Vitest, Bun providers).
+  # Needs services for the integration tests that hit real backends.
+  # ──────────────────────────────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+
+      redis:
+        image: redis
+        ports:
+          - 16379:6379
+
+      postgres:
+        image: postgres
+        ports:
+          - 15432:5432
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+      s3mock:
+        image: adobe/s3mock
+        ports:
+          - 19090:9090
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      - name: Prepare
+        run: yarn copy
+
+      - name: Test Project
+        run: yarn test
+
+      - name: Test Bun Providers
+        run: yarn test:bun
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Build + E2E. The long pole.
+  # ──────────────────────────────────────────────────────────────────────
+  e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -54,27 +139,6 @@ jobs:
       - name: Prepare
         run: yarn copy
 
-      - name: Lint Project
-        run: yarn lint
-
-      - name: TypeScript Check
-        run: yarn typecheck
-
-      - name: Dependencies Check
-        run: yarn check:deps
-
-      - name: i18n Catalog Check
-        run: yarn check:i18n
-
-      - name: DB Migrations Check
-        run: yarn check:migrations
-
-      - name: Test Project
-        run: yarn test
-
-      - name: Test Bun Providers
-        run: yarn test:bun
-
       - name: Build Project
         run: yarn build
 
@@ -88,7 +152,9 @@ jobs:
         run: yarn e2e-cli
 
   deploy-docs:
-    needs: verify-linux
+    # Docs deploy doesn't require the e2e job — only that the codebase
+    # is lint/typecheck-clean and tests pass.
+    needs: [checks, test]
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -127,7 +193,7 @@ jobs:
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
 
   deploy-lore-production:
-    needs: verify-linux
+    needs: [checks, test, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
