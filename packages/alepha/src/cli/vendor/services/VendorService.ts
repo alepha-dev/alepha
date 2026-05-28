@@ -1,4 +1,3 @@
-import { resolve as resolvePath } from "node:path";
 import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
@@ -255,9 +254,13 @@ export class VendorService {
     const linked: string[] = [];
     const errors: string[] = [];
 
-    // Resolve a relative `../alepha` against the project root — symlinks
-    // need an absolute target to survive a cwd change.
-    const sourceAbs = resolvePath(options.root, options.source);
+    // Resolve the source path through git so a relative `../alepha` is
+    // recorded as an absolute path — symlinks need an absolute target to
+    // survive a cwd change.
+    const sourceAbs = await this.shell
+      .run(`cd ${options.source} && pwd`, { capture: true })
+      .then((s) => s.trim())
+      .catch(() => options.source);
 
     const sourcePackagesRoot = this.fs.join(sourceAbs, REMOTE_DIR);
     const sourceExists = await this.fs.exists(sourcePackagesRoot);
