@@ -1009,6 +1009,18 @@ export class CloudflareAdapter extends PlatformAdapter {
     bucketName: string,
     ctx: PlatformContext,
   ): Promise<void> {
+    // `createR2Token` calls `POST /accounts/:id/tokens`, which requires
+    // `User → API Tokens → Edit` — only granted on user-level tokens.
+    // A standard account-scoped `CLOUDFLARE_API_TOKEN` 401s on that path,
+    // and the wrangler OAuth bearer doesn't carry the scope either. Without
+    // either, we can't mint the bucket-scoped S3 creds the wipe needs, so
+    // skip and leave the bucket for manual deletion in the dashboard.
+    if (!process.env.CLOUDFLARE_API_TOKEN) {
+      this.log.warn(
+        `Skipping R2 wipe for ${bucketName}: CLOUDFLARE_API_TOKEN not set. Delete the bucket manually in the Cloudflare dashboard.`,
+      );
+      return;
+    }
     const tokenName = `alepha-teardown-${bucketName}-${Date.now()}`;
     const token = await this.api.createR2Token(tokenName, bucketName);
 
