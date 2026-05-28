@@ -12,7 +12,6 @@ import {
   okSchema,
 } from "alepha/server";
 import { $etag } from "alepha/server/etag";
-import { campaignOptionsAtom } from "../atoms/campaignOptionsAtom.ts";
 import {
   campaignFeaturesSchema,
   campaigns,
@@ -25,6 +24,7 @@ import type { User } from "../entities/users.ts";
 import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { AchievementEngine } from "../services/AchievementEngine.ts";
+import { CampaignLimits } from "../services/CampaignLimits.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 
 export class CampaignController {
@@ -39,6 +39,7 @@ export class CampaignController {
   security = $inject(AppSecurityProvider);
   questMapper = $inject(QuestResourceMapper);
   achievements = $inject(AchievementEngine);
+  limits = $inject(CampaignLimits);
 
   /**
    * Bucket for campaign icons (avatars). Image-only, 2 MB cap.
@@ -64,8 +65,7 @@ export class CampaignController {
       response: campaigns.schema,
     },
     handler: async ({ body, user }) => {
-      const { maxCampaignsPerUser } =
-        this.alepha.store.get(campaignOptionsAtom);
+      const maxCampaignsPerUser = await this.limits.maxCampaignsPerUser();
       const count = await this.campaigns.count({
         createdBy: { eq: user.id },
       });
@@ -166,8 +166,7 @@ export class CampaignController {
       }),
     },
     handler: async ({ user }) => {
-      const { maxCampaignsPerUser } =
-        this.alepha.store.get(campaignOptionsAtom);
+      const maxCampaignsPerUser = await this.limits.maxCampaignsPerUser();
 
       const userCharacters = await this.characters.findMany({
         where: { userId: { eq: user.id } },

@@ -563,6 +563,12 @@ export class ParameterProvider {
 
   /**
    * Get parameter info including current value with default fallback.
+   *
+   * When no version exists in the DB yet but a primitive is registered, this
+   * lazily materializes v1 from the primitive's `default`. After this call,
+   * the parameter has a concrete current row admins can edit / roll back /
+   * compare against, instead of running on phantom defaults-from-code state.
+   * Idempotent: subsequent calls return the same row without re-creating.
    */
   public async getCurrentWithDefault(name: string): Promise<{
     current: ParameterWithStatus | null;
@@ -571,10 +577,34 @@ export class ParameterProvider {
     currentValue: unknown | null;
     schema: TObject | null;
   }> {
-    const { current, next } = await this.loadCurrentAndNext(name);
+    let { current, next } = await this.loadCurrentAndNext(name);
 
     // Get default and current from registered primitive
     const param = this.primitives.get(name);
+
+    // No version in DB yet but the primitive is registered: seed v1 from
+    // the compiled defaults. Always-on parameters are then a tangible row
+    // the admin UI can edit (and that history can grow from). Unregistered
+    // names (orphans from a removed `$parameter`) are not seeded.
+    if (!current && param) {
+      try {
+        current = await this.save(
+          name,
+          param.options.default as Static<TObject>,
+          this.schemaHashes.get(name) ?? "",
+          { changeDescription: "Auto-seeded from compiled defaults" },
+        );
+      } catch (err) {
+        // A concurrent caller may have raced us to insert v1; fall back to
+        // re-reading instead of bubbling up a unique-constraint error.
+        this.log.warn("Auto-seed of parameter failed, retrying read", {
+          name,
+          error: (err as Error).message,
+        });
+        ({ current, next } = await this.loadCurrentAndNext(name));
+      }
+    }
+
     const defaultValue = param?.options.default ?? null;
     const currentValue = this.getCachedCurrentContent(name) ?? null;
     const schema = param?.schema ?? null;

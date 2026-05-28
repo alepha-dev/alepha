@@ -8,6 +8,7 @@ import {
   Calendar,
   Clock,
   Cog,
+  Download,
   File,
   Hash,
   Key,
@@ -15,9 +16,12 @@ import {
   List,
   Lock,
   Phone,
+  RotateCcw,
   ToggleLeft,
   Type,
+  Upload,
   User,
+  Wrench,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
@@ -42,6 +46,10 @@ const namedIcons: Record<string, IconComponent> = {
   ...map,
   key: Key,
   cog: Cog,
+  download: Download,
+  upload: Upload,
+  wrench: Wrench,
+  "rotate-ccw": RotateCcw,
 };
 
 /**

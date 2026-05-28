@@ -36,6 +36,7 @@ import { ArchiveDirectoryService } from "./services/ArchiveDirectoryService.ts";
 import { ArchiveNameService } from "./services/ArchiveNameService.ts";
 import { BeaconIngestService } from "./services/BeaconIngestService.ts";
 import { BlightIngestService } from "./services/BlightIngestService.ts";
+import { CampaignLimits } from "./services/CampaignLimits.ts";
 import { CharacterInfo } from "./services/CharacterInfo.ts";
 import { FeaturePaywallService } from "./services/FeaturePaywallService.ts";
 import { FeatureRegistry } from "./services/FeatureRegistry.ts";
@@ -86,6 +87,7 @@ export const LoreApi = $module({
     TrelloParser,
     QuestImportFormatProvider,
     QuestService,
+    CampaignLimits,
     SigilService,
     SigilIngestSupport,
     BlightIngestService,
