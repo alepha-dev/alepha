@@ -6,6 +6,7 @@ import {
   testEmptyResultWithJoins,
   testFilterOnJoinedTable,
   testFindOneWithJoinReturnsUndefined,
+  testGetByIdWithRelations,
   testGetOneWithJoinThrowsWhenNotFound,
   testInnerJoinExcludesNulls,
   testJoinWithOffset,
@@ -162,6 +163,17 @@ describe("orm showcase: entities + joins", () => {
     });
     it("should handle offset with inner join (postgres)", async () => {
       await testJoinWithOffset(Alepha.create().with(AlephaOrmPostgres));
+    });
+  });
+
+  describe("getById / findById with relations", () => {
+    it("should eager-load relations on PK lookup (sqlite)", async () => {
+      await testGetByIdWithRelations(
+        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+      );
+    });
+    it("should eager-load relations on PK lookup (postgres)", async () => {
+      await testGetByIdWithRelations(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 });

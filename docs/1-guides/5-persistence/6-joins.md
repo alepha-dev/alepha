@@ -60,6 +60,43 @@ class PlayerService {
 
 The `on` tuple maps `[localColumn, foreignEntity.cols.foreignColumn]`.
 
+### By primary key — `findById` / `getById`
+
+For detail views, `findById(id, { with })` and `getById(id, { with })` are
+the shortest path: they take an optional `with` map and skip the
+`where: { id: { eq: id } }` boilerplate.
+
+```typescript
+async getPlayerWithTeam(playerId: number) {
+  return await this.players.getById(playerId, {
+    with: {
+      team: { join: teams, on: ["teamId", teams.cols.id] },
+    },
+  });
+}
+```
+
+`findById` returns `undefined` on miss; `getById` throws
+`DbEntityNotFoundError`. The return type widens with `team` on it just
+like `getOne`.
+
+### Reusing a relation map
+
+When the same join lands on several queries, extract it as a `const` and
+reuse:
+
+```typescript
+const withTeam = {
+  team: { join: teams, on: ["teamId", teams.cols.id] as const },
+} as const;
+
+const player = await this.players.getById(id, { with: withTeam });
+const page = await this.players.paginate({ page: 0 }, { with: withTeam });
+```
+
+`as const` is fine on the `on` tuple — the relation map type accepts
+readonly tuples.
+
 ## Join Types
 
 Three join types are supported. The default is `"left"`.
