@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   ShieldAlert,
   ShieldCheck,
+  SlidersHorizontal,
   Timer,
   UsersIcon,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const PAGE_META: Record<string, { label: string }> = {
   notifications: { label: "Notifications" },
   audits: { label: "Audit log" },
   files: { label: "Files" },
+  parameters: { label: "Parameters" },
 };
 
 const NAV_GROUPS = [
@@ -47,6 +49,11 @@ const NAV_GROUPS = [
       { href: "/admin/notifications", label: "Notifications", icon: Bell },
       { href: "/admin/audits", label: "Audit log", icon: ShieldAlert },
       { href: "/admin/files", label: "Files", icon: Files },
+      {
+        href: "/admin/parameters",
+        label: "Parameters",
+        icon: SlidersHorizontal,
+      },
     ],
   },
 ];
@@ -65,10 +72,17 @@ export function AppAdminLayout() {
     const crumbs: { label: string; href?: string }[] = [
       { label: "Admin", href: "/admin/users" },
     ];
-    const segment = path.replace(/^\/admin\/?/, "").split("/")[0];
+    const rest = path.replace(/^\/admin\/?/, "").split("/");
+    const segment = rest[0];
     const meta = segment ? PAGE_META[segment] : undefined;
     if (meta) {
-      crumbs.push({ label: meta.label });
+      const hasSub = rest.length > 1 && rest[1] !== "";
+      if (hasSub) {
+        crumbs.push({ label: meta.label, href: `/admin/${segment}` });
+        crumbs.push({ label: "Details" });
+      } else {
+        crumbs.push({ label: meta.label });
+      }
     }
     return crumbs;
   }, [path]);

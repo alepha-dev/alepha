@@ -3,8 +3,11 @@ import { AdminFiles } from "@alepha/ui/components/admin/admin-files";
 import { AdminJobs } from "@alepha/ui/components/admin/admin-jobs";
 import { AdminKeys } from "@alepha/ui/components/admin/admin-keys";
 import { AdminNotifications } from "@alepha/ui/components/admin/admin-notifications";
+import { AdminParameters } from "@alepha/ui/components/admin/admin-parameters";
 import { AdminSessions } from "@alepha/ui/components/admin/admin-sessions";
+import { AdminUserDetail } from "@alepha/ui/components/admin/admin-user-detail";
 import { AdminUsers } from "@alepha/ui/components/admin/admin-users";
+import { t } from "alepha";
 import { $page, Redirection } from "alepha/react/router";
 import { $secure } from "alepha/security";
 import { AppAdminLayout } from "./AppAdminLayout.tsx";
@@ -34,6 +37,18 @@ export class AppAdminRouter {
     props: () => ({
       defaultHiddenColumns: ["firstName", "lastName"] as const,
     }),
+    parent: this.adminLayout,
+  });
+
+  adminUserDetail = $page({
+    path: "/users/:id",
+    head: { title: "User" },
+    schema: {
+      params: t.object({
+        id: t.uuid(),
+      }),
+    },
+    component: AdminUserDetail,
     parent: this.adminLayout,
   });
 
@@ -76,6 +91,13 @@ export class AppAdminRouter {
     path: "/files",
     head: { title: "Files" },
     component: AdminFiles,
+    parent: this.adminLayout,
+  });
+
+  adminParameters = $page({
+    path: "/parameters",
+    head: { title: "Parameters" },
+    component: AdminParameters,
     parent: this.adminLayout,
   });
 }
