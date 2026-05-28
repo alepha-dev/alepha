@@ -91,50 +91,6 @@ export interface VendorLock {
    * Commit hash of the synced sources.
    */
   commit: string;
-  /**
-   * When present, the vendored packages are symlinked to a local Alepha
-   * checkout for live dev. `remote`/`commit` are preserved from the
-   * pre-link state so `vendor sync --force` can restore the synced copy
-   * exactly. The presence of this field is the source of truth for
-   * "is this workspace currently linked?"
-   */
-  linked?: VendorLinkState;
-}
-
-/**
- * Marker stored in `vendor.json` when packages are symlinked to a local
- * checkout. Set by `vendor link`, cleared by `vendor sync --force`.
- */
-export interface VendorLinkState {
-  /**
-   * Absolute path to the Alepha monorepo root. The link command resolves
-   * each vendored package to `<source>/packages/<pkg>`.
-   */
-  source: string;
-  /**
-   * ISO timestamp of when the link was created. Surfaced in `vendor diff`
-   * output so a stale link is visible without digging through the file.
-   */
-  at: string;
-}
-
-/**
- * Options for the `vendor link` command.
- */
-export interface VendorLinkOptions {
-  root: string;
-  source: string;
-  dir: string;
-  packages: string[];
-}
-
-/**
- * Result of a `vendor link` operation.
- */
-export interface VendorLinkResult {
-  linked: string[];
-  errors: string[];
-  source: string;
 }
 
 /**
@@ -160,19 +116,6 @@ export class VendorService {
 
     if (!options.force) {
       const lock = await this.readLock(options.root, options.dir);
-
-      // A linked workspace means the user is actively iterating against a
-      // local checkout. Refuse to silently replace those symlinks — the
-      // wipe-and-clone in the rest of `sync` would destroy the link
-      // without warning. `--force` is the documented escape hatch.
-      if (lock?.linked) {
-        return {
-          synced: [],
-          errors: [
-            `Linked to ${lock.linked.source} (since ${lock.linked.at}). Use --force to overwrite, or run \`vendor link --reset\` to detach first.`,
-          ],
-        };
-      }
 
       if (lock) {
         let baselineDir: string | undefined;
@@ -232,83 +175,6 @@ export class VendorService {
     }
 
     return { synced, errors };
-  }
-
-  /**
-   * Symlink every vendored package to its counterpart in a local Alepha
-   * checkout. Editing the monorepo then flows to the consumer (Lore, Club)
-   * with no `vendor sync` round-trip — Vite watches the symlink target.
-   *
-   * Trade-off: the linked directory exposes the full package (including
-   * test folders, spec files, node_modules, dist) that `vendor sync`
-   * would normally strip. Add the equivalent globs to the consumer's
-   * `tsconfig.exclude` to keep them out of the typecheck.
-   *
-   * `vendor sync --force` is the documented "unlink" path: it rms the
-   * symlink (not its target — `fs.rm` operates on the link itself) and
-   * restores a real directory from the configured remote. The previous
-   * `remote`/`commit` are preserved across the link, so the restore
-   * lands on the exact pre-link state.
-   */
-  async link(options: VendorLinkOptions): Promise<VendorLinkResult> {
-    const linked: string[] = [];
-    const errors: string[] = [];
-
-    // Resolve the source path through git so a relative `../alepha` is
-    // recorded as an absolute path — symlinks need an absolute target to
-    // survive a cwd change.
-    const sourceAbs = await this.shell
-      .run(`cd ${options.source} && pwd`, { capture: true })
-      .then((s) => s.trim())
-      .catch(() => options.source);
-
-    const sourcePackagesRoot = this.fs.join(sourceAbs, REMOTE_DIR);
-    const sourceExists = await this.fs.exists(sourcePackagesRoot);
-    if (!sourceExists) {
-      return {
-        linked: [],
-        errors: [
-          `Source path "${sourceAbs}" is not an Alepha checkout (no ${REMOTE_DIR}/ directory).`,
-        ],
-        source: sourceAbs,
-      };
-    }
-
-    for (const pkg of options.packages) {
-      const sourcePkgDir = this.fs.join(sourcePackagesRoot, pkg);
-      const localPkgDir = this.fs.join(options.root, options.dir, pkg);
-
-      const sourcePkgExists = await this.fs.exists(sourcePkgDir);
-      if (!sourcePkgExists) {
-        errors.push(`Package "${pkg}" not found at ${sourcePkgDir}`);
-        continue;
-      }
-
-      // Wipe-and-replace: matches the existing sync behaviour. `fs.rm`
-      // with `force: true` is a no-op on a missing path, removes a real
-      // directory recursively, and removes a symlink itself (not the
-      // target) — so re-linking is idempotent regardless of prior state.
-      await this.fs.rm(localPkgDir, { recursive: true, force: true });
-      await this.shell.run(`ln -s ${sourcePkgDir} ${localPkgDir}`, {
-        capture: true,
-      });
-
-      linked.push(pkg);
-    }
-
-    // Preserve the pre-link `remote`/`commit` so `sync --force` can land
-    // back on the exact synced state when the user unlinks.
-    const prev = await this.readLock(options.root, options.dir);
-    await this.writeLock(options.root, options.dir, {
-      remote: prev?.remote ?? "",
-      commit: prev?.commit ?? "",
-      linked: {
-        source: sourceAbs,
-        at: new Date().toISOString(),
-      },
-    });
-
-    return { linked, errors, source: sourceAbs };
   }
 
   /**
