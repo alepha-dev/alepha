@@ -1,3 +1,7 @@
+import * as React from "react";
+
+void React;
+
 import { Label } from "@alepha/ui/components/ui/label";
 import { cn } from "@alepha/ui/lib/utils";
 import { createContext, type ReactNode, useContext } from "react";

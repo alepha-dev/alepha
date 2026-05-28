@@ -1,3 +1,7 @@
+import * as React from "react";
+
+void React;
+
 import {
   Control,
   type ControlProps,

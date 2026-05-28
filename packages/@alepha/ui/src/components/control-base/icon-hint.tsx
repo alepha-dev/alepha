@@ -1,3 +1,7 @@
+import * as React from "react";
+
+void React;
+
 import type { IconHint } from "alepha/react/form";
 import {
   AtSign,

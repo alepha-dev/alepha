@@ -1,3 +1,7 @@
+import * as React from "react";
+
+void React;
+
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import {

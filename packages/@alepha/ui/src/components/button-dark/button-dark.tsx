@@ -1,3 +1,7 @@
+import * as React from "react";
+
+void React;
+
 import { Button } from "@alepha/ui/components/ui/button";
 import {
   Tooltip,
@@ -6,6 +10,7 @@ import {
 } from "@alepha/ui/components/ui/tooltip";
 import { useColorMode } from "alepha/react/ui";
 import { Monitor, Moon, Sun } from "lucide-react";
+import type { ReactNode } from "react";
 
 export interface ButtonDarkProps {
   /**
@@ -25,7 +30,7 @@ export interface ButtonDarkProps {
   variant?: "ghost" | "outline";
 }
 
-const ICON: Record<"light" | "dark" | "system", React.ReactNode> = {
+const ICON: Record<"light" | "dark" | "system", ReactNode> = {
   light: <Sun className="size-4" />,
   dark: <Moon className="size-4" />,
   system: <Monitor className="size-4" />,

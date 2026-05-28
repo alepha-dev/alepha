@@ -1,3 +1,7 @@
+import * as React from "react";
+
+void React;
+
 import { Button } from "@alepha/ui/components/ui/button";
 import {
   DropdownMenu,

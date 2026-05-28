@@ -1,3 +1,7 @@
+import * as React from "react";
+
+void React;
+
 import { FormField } from "@alepha/ui/components/control-base/form-field";
 import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
 import { Input } from "@alepha/ui/components/ui/input";

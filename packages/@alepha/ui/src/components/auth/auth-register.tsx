@@ -1,3 +1,7 @@
+import * as React from "react";
+
+void React;
+
 import { Control } from "@alepha/ui/components/control/control";
 import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
 import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
