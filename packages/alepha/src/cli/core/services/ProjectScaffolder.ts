@@ -439,6 +439,18 @@ export class ProjectScaffolder {
     };
     args?: string;
   }) {
+    if (!args) {
+      // If the current directory doesn't look like an existing project
+      // (no package.json), default to creating a `my-app/` subdirectory
+      // rather than scaffolding into a random cwd.
+      const hasPackageJson = await this.fs.exists(
+        this.fs.join(root, "package.json"),
+      );
+      if (!hasPackageJson) {
+        args = "my-app";
+      }
+    }
+
     if (args) {
       root = this.fs.join(root, args);
       await this.fs.mkdir(root, { force: true });
