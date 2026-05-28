@@ -111,9 +111,6 @@ jobs:
       - name: Prepare
         run: yarn copy
 
-      - name: Build Registry
-        run: yarn workspace @alepha/ui-registry build
-
       - name: Build Documentation
         run: cd apps/docs && yarn build && yarn alepha gen:llms
 
