@@ -24,7 +24,7 @@ import { useAuth } from "alepha/react/auth";
 import { useFieldValue } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Eye, Search, Trash2, UserCheck, UserX } from "lucide-react";
+import { Check, Eye, Search, Trash2, UserCheck, UserX } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -341,29 +341,57 @@ export function AdminUsers(props: AdminUsersProps) {
           },
         ]}
         columns={{
-          user: {
-            label: tr("admin.users.colUser", { default: "User" }),
+          name: {
+            label: tr("admin.users.colName", { default: "Name" }),
             cell: (u) => {
-              const name =
-                `${u.firstName || ""} ${u.lastName || ""}`.trim() ||
-                u.username ||
-                tr("admin.users.anonymous", { default: "Anonymous" });
+              const fullName =
+                `${u.firstName || ""} ${u.lastName || ""}`.trim() || null;
+              const username = u.username || null;
+              const fallback =
+                fullName ??
+                username ??
+                String(tr("admin.users.anonymous", { default: "Anonymous" }));
               return (
                 <div className="flex items-center gap-3">
                   <Avatar>
                     <AvatarFallback>
-                      {name.charAt(0).toUpperCase()}
+                      {fallback.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{name}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {u.email || "—"}
-                    </span>
+                  <div className="flex min-w-0 flex-col">
+                    {fullName && username ? (
+                      <>
+                        <span className="truncate font-medium">{fullName}</span>
+                        <span className="text-muted-foreground truncate text-xs">
+                          @{username}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="truncate font-medium">{fallback}</span>
+                    )}
                   </div>
                 </div>
               );
             },
+          },
+          email: {
+            label: tr("admin.users.colEmail", { default: "Email" }),
+            cell: (u) =>
+              u.email ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate">{u.email}</span>
+                  {u.emailVerified && (
+                    <Check
+                      className="size-3.5 shrink-0 text-emerald-500"
+                      aria-label={String(
+                        tr("admin.users.verified", { default: "Verified" }),
+                      )}
+                    />
+                  )}
+                </div>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              ),
           },
           roles: {
             label: tr("admin.users.colRoles", { default: "Roles" }),
@@ -385,16 +413,6 @@ export function AdminUsers(props: AdminUsersProps) {
                 {u.enabled
                   ? tr("admin.users.active", { default: "Active" })
                   : tr("admin.users.statusDisabled", { default: "Disabled" })}
-              </Badge>
-            ),
-          },
-          emailVerified: {
-            label: tr("admin.users.colEmail", { default: "Email" }),
-            cell: (u) => (
-              <Badge variant={u.emailVerified ? "default" : "outline"}>
-                {u.emailVerified
-                  ? tr("admin.users.verified", { default: "Verified" })
-                  : tr("admin.users.unverified", { default: "Unverified" })}
               </Badge>
             ),
           },

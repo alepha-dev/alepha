@@ -4,9 +4,11 @@ import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
 import { useRouter, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import {
+  ArrowLeft,
   Bell,
   Files,
   KeyRound,
+  LayoutDashboard,
   ShieldAlert,
   ShieldCheck,
   Timer,
@@ -99,6 +101,22 @@ export function AppAdminLayout() {
       <ColorScheme />
       <AppShell
         fill
+        brand={
+          <div className="flex items-center gap-2 px-2 py-1.5">
+            <button
+              type="button"
+              onClick={() => router.push("home")}
+              aria-label="Back to home"
+              className="text-muted-foreground hover:bg-accent hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
+            >
+              <ArrowLeft className="size-4" />
+            </button>
+            <LayoutDashboard className="size-4 shrink-0" />
+            <span className="text-sm font-semibold tracking-tight">
+              Admin Panel
+            </span>
+          </div>
+        }
         nav={nav}
         breadcrumbs={breadcrumbs}
         topbarActions={
