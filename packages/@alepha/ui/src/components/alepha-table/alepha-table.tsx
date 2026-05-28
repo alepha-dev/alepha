@@ -1,3 +1,7 @@
+import * as React from "react";
+
+void React;
+
 import { Button } from "@alepha/ui/components/ui/button";
 import { Checkbox } from "@alepha/ui/components/ui/checkbox";
 import {
@@ -30,18 +34,17 @@ import {
   TableHeader,
   TableRow,
 } from "@alepha/ui/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { cn } from "@alepha/ui/lib/utils";
 import { type Page, type TObject, t } from "alepha";
-import { useAlepha } from "alepha/react";
+import { ClientOnly, useAlepha } from "alepha/react";
 import { type FormModel, useForm } from "alepha/react/form";
-import {
-  Columns3,
-  FunnelX,
-  MoreVertical,
-  RefreshCw,
-  Settings,
-  X,
-} from "lucide-react";
+import { Columns3, FunnelX, MoreVertical, RefreshCw, X } from "lucide-react";
 import {
   type ComponentType,
   type ReactNode,
@@ -327,6 +330,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const [loading, setLoading] = useState(false);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Alepha's pagination parser reads "field" as asc and "-field" as desc.
   // Multiple comma-separated entries are multi-column sort, so we must
@@ -370,6 +374,12 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     setPage(0);
     setRefreshKey((k) => k + 1);
   }, []);
+
+  const handleRefreshClick = useCallback(() => {
+    setIsRefreshing(true);
+    refresh();
+    setTimeout(() => setIsRefreshing(false), 1000);
+  }, [refresh]);
 
   const resetFilters = useCallback(() => {
     if (!form || !props.filters) return;
@@ -556,6 +566,17 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     [refresh, clearSelection],
   );
 
+  const hasActiveFilters = useMemo(() => {
+    if (!props.filters || !form) return false;
+    const values = form.currentValues ?? {};
+    for (const v of Object.values(values)) {
+      if (v === undefined || v === null || v === "") continue;
+      if (Array.isArray(v) && v.length === 0) continue;
+      return true;
+    }
+    return false;
+  }, [props.filters, form, refreshKey]);
+
   const showToolbar =
     Boolean(props.filters) ||
     Boolean(props.toolbar) ||
@@ -565,285 +586,325 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const showActionsMenu = !props.hideActionsMenu;
 
   return (
-    <div className={cn("flex flex-col gap-2", props.className)}>
-      {props.header && (
-        <div className="flex items-center gap-2">
-          <div className="min-w-0 flex-1">{props.header}</div>
-        </div>
-      )}
-
-      {showToolbar && (
-        <div className="bg-card flex flex-wrap items-end gap-2 rounded-md border p-2">
-          {props.filters && form ? (
-            <form
-              {...form.props}
-              className="flex flex-1 flex-wrap items-end gap-2"
-            >
-              {props.filters.render(form)}
-            </form>
-          ) : (
-            <div className="flex flex-1" />
-          )}
-          {props.toolbar}
-          <div className="flex items-end gap-1">
-            {showColumnPicker && (
-              <ColumnPicker<T>
-                columns={props.columns}
-                visible={visibleColumns}
-                onToggle={toggleColumn}
-              />
-            )}
-            {showActionsMenu && (
-              <ActionsMenu
-                onRefresh={refresh}
-                onReset={props.filters ? resetFilters : undefined}
-              />
-            )}
+    <ClientOnly>
+      <div className={cn("flex flex-col gap-2", props.className)}>
+        {props.header && (
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">{props.header}</div>
           </div>
-        </div>
-      )}
+        )}
 
-      {hasCheckbox && selection.size > 0 && (
-        // Linear-style floating action pill: fixed at the bottom-center of
-        // the viewport, dark surface that stays readable in both themes
-        // because the colors are hard-coded (theme-relative `bg-foreground`
-        // inverts awkwardly against a white container in dark mode).
-        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
-          <div className="pointer-events-auto flex animate-in fade-in-0 slide-in-from-bottom-2 items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-zinc-100 shadow-lg ring-1 ring-white/10 duration-150">
-            <span className="text-sm pl-2">{selection.size} selected</span>
-            <span className="mx-1 h-4 w-px bg-white/20" />
-            {props.bulkActions?.map((action) => {
-              const ActionIcon = action.icon;
-              return (
-                <Button
-                  key={action.label}
-                  size="sm"
-                  className={
-                    action.destructive
-                      ? "h-8 bg-red-600 text-white hover:bg-red-500"
-                      : "h-8 bg-transparent text-zinc-100 hover:bg-white/10 hover:text-zinc-100"
-                  }
-                  onClick={() => action.onClick(selectedItems, bulkCtx)}
-                >
-                  {ActionIcon && <ActionIcon className="size-4" />}
-                  {action.label}
-                </Button>
-              );
-            })}
-            <span className="mx-1 h-4 w-px bg-white/20" />
-            <Button
-              size="icon"
-              className="size-8 bg-transparent text-zinc-300 hover:bg-white/10 hover:text-zinc-100"
-              onClick={clearSelection}
-              aria-label="Clear selection"
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
-        </div>
-      )}
-
-      <div className="flex min-h-0 flex-1 flex-col overflow-auto rounded-md border">
-        <Table>
-          <TableHeader className="bg-background sticky top-0 z-10 shadow-[inset_0_-1px_0_0_var(--border)]">
-            <TableRow>
-              {hasCheckbox && (
-                <TableHead className="w-10">
-                  <Checkbox
-                    checked={allSelected}
-                    indeterminate={!allSelected && someSelected}
-                    onCheckedChange={() => toggleAll()}
-                    aria-label="Select all rows"
+        {showToolbar && (
+          <div className="bg-card flex flex-wrap items-end gap-2 rounded-md border p-2">
+            {props.filters && form ? (
+              <form
+                {...form.props}
+                className="flex flex-1 flex-wrap items-end gap-2"
+              >
+                {props.filters.render(form)}
+              </form>
+            ) : (
+              <div className="flex flex-1" />
+            )}
+            {props.toolbar}
+            <TooltipProvider>
+              <div className="flex items-end gap-1">
+                {showColumnPicker && (
+                  <ColumnPicker<T>
+                    columns={props.columns}
+                    visible={visibleColumns}
+                    onToggle={toggleColumn}
                   />
-                </TableHead>
-              )}
-              {visibleCols.map(([key, def]) => (
-                <TableHead
-                  key={key}
-                  className={cn(
-                    def.className,
-                    def.align === "right" && "text-right",
-                    def.align === "center" && "text-center",
-                    def.sortable && "cursor-pointer select-none",
-                  )}
-                  onClick={() => toggleSort(key, def)}
-                >
-                  <span className="inline-flex items-center gap-1">
-                    {def.label}
-                    {def.sortable &&
-                      sort?.field === (def.sortKey ?? key) &&
-                      (sort.direction === "asc" ? "↑" : "↓")}
-                  </span>
-                </TableHead>
-              ))}
-              {hasRowActions && <TableHead className="w-10" />}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading && data.length === 0 ? (
-              <SkeletonRows
-                rows={5}
-                cols={
-                  visibleCols.length +
-                  (hasCheckbox ? 1 : 0) +
-                  (hasRowActions ? 1 : 0)
-                }
-              />
-            ) : data.length === 0 ? (
+                )}
+                {showActionsMenu && props.filters && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-9 w-9 p-0"
+                          aria-label="Reset filters"
+                          disabled={!hasActiveFilters}
+                          onClick={resetFilters}
+                        />
+                      }
+                    >
+                      <FunnelX className="size-4" />
+                    </TooltipTrigger>
+                    <TooltipContent>Reset filters</TooltipContent>
+                  </Tooltip>
+                )}
+                {showActionsMenu && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-9 w-9 p-0"
+                          aria-label="Refresh"
+                          disabled={isRefreshing}
+                          onClick={handleRefreshClick}
+                        />
+                      }
+                    >
+                      <RefreshCw
+                        className={cn("size-4", isRefreshing && "animate-spin")}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>Refresh</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </TooltipProvider>
+          </div>
+        )}
+
+        {hasCheckbox && selection.size > 0 && (
+          // Linear-style floating action pill: fixed at the bottom-center of
+          // the viewport, dark surface that stays readable in both themes
+          // because the colors are hard-coded (theme-relative `bg-foreground`
+          // inverts awkwardly against a white container in dark mode).
+          <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
+            <div className="pointer-events-auto flex animate-in fade-in-0 slide-in-from-bottom-2 items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-zinc-100 shadow-lg ring-1 ring-white/10 duration-150">
+              <span className="text-sm pl-2">{selection.size} selected</span>
+              <span className="mx-1 h-4 w-px bg-white/20" />
+              {props.bulkActions?.map((action) => {
+                const ActionIcon = action.icon;
+                return (
+                  <Button
+                    key={action.label}
+                    size="sm"
+                    className={
+                      action.destructive
+                        ? "h-8 bg-red-600 text-white hover:bg-red-500"
+                        : "h-8 bg-transparent text-zinc-100 hover:bg-white/10 hover:text-zinc-100"
+                    }
+                    onClick={() => action.onClick(selectedItems, bulkCtx)}
+                  >
+                    {ActionIcon && <ActionIcon className="size-4" />}
+                    {action.label}
+                  </Button>
+                );
+              })}
+              <span className="mx-1 h-4 w-px bg-white/20" />
+              <Button
+                size="icon"
+                className="size-8 bg-transparent text-zinc-300 hover:bg-white/10 hover:text-zinc-100"
+                onClick={clearSelection}
+                aria-label="Clear selection"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-auto rounded-md border">
+          <Table>
+            <TableHeader className="bg-background sticky top-0 z-10 shadow-[inset_0_-1px_0_0_var(--border)]">
               <TableRow>
-                <TableCell
-                  colSpan={
+                {hasCheckbox && (
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={allSelected}
+                      indeterminate={!allSelected && someSelected}
+                      onCheckedChange={() => toggleAll()}
+                      aria-label="Select all rows"
+                    />
+                  </TableHead>
+                )}
+                {visibleCols.map(([key, def]) => (
+                  <TableHead
+                    key={key}
+                    className={cn(
+                      def.className,
+                      def.align === "right" && "text-right",
+                      def.align === "center" && "text-center",
+                      def.sortable && "cursor-pointer select-none",
+                    )}
+                    onClick={() => toggleSort(key, def)}
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      {def.label}
+                      {def.sortable &&
+                        sort?.field === (def.sortKey ?? key) &&
+                        (sort.direction === "asc" ? "↑" : "↓")}
+                    </span>
+                  </TableHead>
+                ))}
+                {hasRowActions && <TableHead className="w-10" />}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading && data.length === 0 ? (
+                <SkeletonRows
+                  rows={5}
+                  cols={
                     visibleCols.length +
                     (hasCheckbox ? 1 : 0) +
                     (hasRowActions ? 1 : 0)
                   }
-                  className="text-muted-foreground py-8 text-center"
-                >
-                  {props.emptyMessage ?? "No results."}
-                </TableCell>
-              </TableRow>
-            ) : (
-              data.map((item) => {
-                const key = rowKey(item);
-                const isSelected = selection.has(key);
-                return (
-                  <TableRow
-                    key={key}
-                    onClick={() => props.onRowClick?.(item)}
-                    className={cn(
-                      props.onRowClick && "cursor-pointer",
-                      isSelected && "bg-muted/30",
-                    )}
+                />
+              ) : data.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={
+                      visibleCols.length +
+                      (hasCheckbox ? 1 : 0) +
+                      (hasRowActions ? 1 : 0)
+                    }
+                    className="text-muted-foreground py-8 text-center"
                   >
-                    {hasCheckbox && (
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => toggleRow(item)}
-                          aria-label="Select row"
-                        />
-                      </TableCell>
-                    )}
-                    {visibleCols.map(([key, def]) => (
-                      <TableCell
-                        key={key}
-                        className={cn(
-                          def.className,
-                          def.align === "right" && "text-right",
-                          def.align === "center" && "text-center",
-                        )}
-                      >
-                        {def.cell(item)}
-                      </TableCell>
-                    ))}
-                    {hasRowActions && (
-                      <TableCell
-                        className="text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <RowActionsMenu
-                          actions={props.rowActions!(item)}
-                          item={item}
-                          ctx={rowCtx}
-                        />
-                      </TableCell>
-                    )}
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-muted-foreground text-xs">
-          {meta
-            ? `Page ${meta.number + 1}${meta.totalPages ? ` of ${meta.totalPages}` : ""} · ${meta.numberOfElements} of ${meta.totalElements ?? "?"}`
-            : "—"}
-        </p>
-        {meta && meta.totalPages && meta.totalPages > 1 ? (
-          <Pagination className="mx-0 w-auto justify-end">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationFirst
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (!meta.isFirst) setPage(0);
-                  }}
-                  aria-disabled={meta.isFirst}
-                  className={cn(
-                    meta.isFirst && "pointer-events-none opacity-50",
-                  )}
-                />
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (!meta.isFirst) setPage((p) => Math.max(0, p - 1));
-                  }}
-                  aria-disabled={meta.isFirst}
-                  className={cn(
-                    meta.isFirst && "pointer-events-none opacity-50",
-                  )}
-                />
-              </PaginationItem>
-              {computePageItems(meta.number + 1, meta.totalPages).map(
-                (item, idx) =>
-                  item === "ellipsis" ? (
-                    <PaginationItem key={`e-${idx}`}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={item}>
-                      <PaginationLink
-                        href="#"
-                        isActive={item === meta.number + 1}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setPage(item - 1);
-                        }}
-                      >
-                        {item}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ),
+                    {props.emptyMessage ?? "No results."}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                data.map((item) => {
+                  const key = rowKey(item);
+                  const isSelected = selection.has(key);
+                  return (
+                    <TableRow
+                      key={key}
+                      onClick={() => props.onRowClick?.(item)}
+                      className={cn(
+                        props.onRowClick && "cursor-pointer",
+                        isSelected && "bg-muted/30",
+                      )}
+                    >
+                      {hasCheckbox && (
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleRow(item)}
+                            aria-label="Select row"
+                          />
+                        </TableCell>
+                      )}
+                      {visibleCols.map(([key, def]) => (
+                        <TableCell
+                          key={key}
+                          className={cn(
+                            def.className,
+                            def.align === "right" && "text-right",
+                            def.align === "center" && "text-center",
+                          )}
+                        >
+                          {def.cell(item)}
+                        </TableCell>
+                      ))}
+                      {hasRowActions && (
+                        <TableCell
+                          className="text-right"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <RowActionsMenu
+                            actions={props.rowActions!(item)}
+                            item={item}
+                            ctx={rowCtx}
+                          />
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })
               )}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (!meta.isLast) setPage((p) => p + 1);
-                  }}
-                  aria-disabled={meta.isLast}
-                  className={cn(
-                    meta.isLast && "pointer-events-none opacity-50",
-                  )}
-                />
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationLast
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (!meta.isLast && meta.totalPages)
-                      setPage(meta.totalPages - 1);
-                  }}
-                  aria-disabled={meta.isLast}
-                  className={cn(
-                    meta.isLast && "pointer-events-none opacity-50",
-                  )}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        ) : null}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-muted-foreground text-xs">
+            {meta
+              ? `Page ${meta.number + 1}${meta.totalPages ? ` of ${meta.totalPages}` : ""} · ${meta.numberOfElements} of ${meta.totalElements ?? "?"}`
+              : "—"}
+          </p>
+          {meta && meta.totalPages && meta.totalPages > 1 ? (
+            <Pagination className="mx-0 w-auto justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationFirst
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (!meta.isFirst) setPage(0);
+                    }}
+                    aria-disabled={meta.isFirst}
+                    className={cn(
+                      meta.isFirst && "pointer-events-none opacity-50",
+                    )}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (!meta.isFirst) setPage((p) => Math.max(0, p - 1));
+                    }}
+                    aria-disabled={meta.isFirst}
+                    className={cn(
+                      meta.isFirst && "pointer-events-none opacity-50",
+                    )}
+                  />
+                </PaginationItem>
+                {computePageItems(meta.number + 1, meta.totalPages).map(
+                  (item, idx) =>
+                    item === "ellipsis" ? (
+                      <PaginationItem key={`e-${idx}`}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    ) : (
+                      <PaginationItem key={item}>
+                        <PaginationLink
+                          href="#"
+                          isActive={item === meta.number + 1}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPage(item - 1);
+                          }}
+                        >
+                          {item}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ),
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (!meta.isLast) setPage((p) => p + 1);
+                    }}
+                    aria-disabled={meta.isLast}
+                    className={cn(
+                      meta.isLast && "pointer-events-none opacity-50",
+                    )}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLast
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (!meta.isLast && meta.totalPages)
+                        setPage(meta.totalPages - 1);
+                    }}
+                    aria-disabled={meta.isLast}
+                    className={cn(
+                      meta.isLast && "pointer-events-none opacity-50",
+                    )}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          ) : null}
+        </div>
       </div>
-    </div>
+    </ClientOnly>
   );
 }
 
@@ -876,47 +937,13 @@ function ColumnPicker<T>(props: {
             <DropdownMenuCheckboxItem
               key={key}
               checked={props.visible.has(key)}
-              onSelect={(e) => {
-                e.preventDefault();
-                props.onToggle(key);
-              }}
+              closeOnClick={false}
+              onCheckedChange={() => props.onToggle(key)}
             >
               {def.label}
             </DropdownMenuCheckboxItem>
           ))}
         </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function ActionsMenu(props: { onRefresh: () => void; onReset?: () => void }) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-9 w-9 p-0"
-            aria-label="Table actions"
-          />
-        }
-      >
-        <Settings className="size-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={props.onRefresh}>
-          <RefreshCw className="mr-2 size-4" />
-          Refresh
-        </DropdownMenuItem>
-        {props.onReset && (
-          <DropdownMenuItem onClick={props.onReset}>
-            <FunnelX className="mr-2 size-4" />
-            Reset filters
-          </DropdownMenuItem>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
