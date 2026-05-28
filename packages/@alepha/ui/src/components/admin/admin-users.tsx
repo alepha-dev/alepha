@@ -1,3 +1,7 @@
+import * as React from "react";
+
+void React;
+
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Avatar, AvatarFallback } from "@alepha/ui/components/ui/avatar";
@@ -39,6 +43,21 @@ export interface AdminUsersProps {
    * Realm name to query users from. Defaults to the configured user realm.
    */
   userRealmName?: string;
+  /**
+   * Column keys to hide by default. Users can still toggle them on via
+   * the column picker. Useful when the host app doesn't populate certain
+   * fields (e.g. apps without `firstName`/`lastName`).
+   */
+  defaultHiddenColumns?: ReadonlyArray<
+    | "username"
+    | "firstName"
+    | "lastName"
+    | "email"
+    | "roles"
+    | "enabled"
+    | "createdAt"
+    | "lastLoginAt"
+  >;
 }
 
 // Filter schema. Lives at module scope so its identity stays stable
@@ -65,6 +84,18 @@ const STATUS_PRESETS: Record<string, StatusPreset> = {
   active: { enabled: true },
   disabled: { enabled: false },
 };
+
+function applyDefaultHidden<C extends Record<string, unknown>>(
+  hiddenKeys: readonly string[] | undefined,
+  columns: C,
+): C {
+  if (!hiddenKeys?.length) return columns;
+  const next = { ...columns } as Record<string, any>;
+  for (const key of hiddenKeys) {
+    if (next[key]) next[key] = { ...next[key], defaultHidden: true };
+  }
+  return next as C;
+}
 
 export function AdminUsers(props: AdminUsersProps) {
   const client = useClient<AdminUserController>();
@@ -340,39 +371,51 @@ export function AdminUsers(props: AdminUsersProps) {
             onClick: handleBulkDelete,
           },
         ]}
-        columns={{
-          name: {
-            label: tr("admin.users.colName", { default: "Name" }),
+        columns={applyDefaultHidden(props.defaultHiddenColumns, {
+          username: {
+            label: tr("admin.users.colUsername", { default: "Username" }),
             cell: (u) => {
-              const fullName =
-                `${u.firstName || ""} ${u.lastName || ""}`.trim() || null;
               const username = u.username || null;
-              const fallback =
-                fullName ??
-                username ??
-                String(tr("admin.users.anonymous", { default: "Anonymous" }));
+              const initial = (
+                username ||
+                u.firstName ||
+                u.lastName ||
+                u.email ||
+                "?"
+              )
+                .charAt(0)
+                .toUpperCase();
               return (
                 <div className="flex items-center gap-3">
                   <Avatar>
-                    <AvatarFallback>
-                      {fallback.charAt(0).toUpperCase()}
-                    </AvatarFallback>
+                    <AvatarFallback>{initial}</AvatarFallback>
                   </Avatar>
-                  <div className="flex min-w-0 flex-col">
-                    {fullName && username ? (
-                      <>
-                        <span className="truncate font-medium">{fullName}</span>
-                        <span className="text-muted-foreground truncate text-xs">
-                          @{username}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="truncate font-medium">{fallback}</span>
-                    )}
-                  </div>
+                  {username ? (
+                    <span className="truncate font-medium">@{username}</span>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </div>
               );
             },
+          },
+          firstName: {
+            label: tr("admin.users.colFirstName", { default: "First name" }),
+            cell: (u) =>
+              u.firstName ? (
+                <span className="truncate">{u.firstName}</span>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              ),
+          },
+          lastName: {
+            label: tr("admin.users.colLastName", { default: "Last name" }),
+            cell: (u) =>
+              u.lastName ? (
+                <span className="truncate">{u.lastName}</span>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              ),
           },
           email: {
             label: tr("admin.users.colEmail", { default: "Email" }),
@@ -429,7 +472,18 @@ export function AdminUsers(props: AdminUsersProps) {
               </span>
             ),
           },
-        }}
+          lastLoginAt: {
+            label: tr("admin.users.colLastLogin", { default: "Last login" }),
+            sortable: true,
+            cell: (u) => (
+              <span className="text-muted-foreground text-xs">
+                {u.lastLoginAt
+                  ? String(l(u.lastLoginAt, { date: "fromNow" }))
+                  : "—"}
+              </span>
+            ),
+          },
+        })}
         rowActions={(u) => [
           {
             label: tr("admin.users.viewProfile", { default: "View profile" }),

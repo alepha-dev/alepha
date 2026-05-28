@@ -33,6 +33,8 @@ export const users = $entity({
 
     emailVerified: db.default(t.boolean(), false),
 
+    lastLoginAt: t.optional(t.datetime()),
+
     organizationId: db.organization(),
   }),
   indexes: [

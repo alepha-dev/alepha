@@ -478,14 +478,20 @@ export class SessionService {
       .add(expiresIn, "seconds")
       .toISOString();
 
+    const nowIso = this.dateTimeProvider.nowISOString();
+
     const session = await this.sessions(userRealmName).create({
       userId: user.id,
       expiresAt,
-      lastUsedAt: this.dateTimeProvider.nowISOString(),
+      lastUsedAt: nowIso,
       ip: request?.ip,
       userAgent: request?.userAgent,
       refreshToken,
       clientId,
+    });
+
+    await this.users(userRealmName).updateById(user.id, {
+      lastLoginAt: nowIso,
     });
 
     this.log.info("Session created", {
