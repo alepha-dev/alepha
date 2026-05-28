@@ -1,8 +1,12 @@
+import * as React from "react";
+
+void React;
+
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import type { Page } from "alepha";
-import type { AdminSessionController, SessionEntity } from "alepha/api/users";
+import type { AdminSessionController, SessionResource } from "alepha/api/users";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { LogOut } from "lucide-react";
@@ -17,12 +21,12 @@ export function AdminSessions() {
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
       const res = await client.findSessions({ query: params as never });
-      return res as Page<SessionEntity>;
+      return res as Page<SessionResource>;
     },
     [client],
   );
 
-  const handleRevoke = async (s: SessionEntity, refresh: () => void) => {
+  const handleRevoke = async (s: SessionResource, refresh: () => void) => {
     const ok = await dialog.confirm({
       title: tr("admin.sessions.revokeTitle", { default: "Revoke session" }),
       description: tr("admin.sessions.revokeConfirm", {
@@ -37,7 +41,7 @@ export function AdminSessions() {
   };
 
   const handleBulkRevoke = async (
-    items: SessionEntity[],
+    items: SessionResource[],
     {
       clearSelection,
       refresh,
@@ -77,8 +81,10 @@ export function AdminSessions() {
   };
 
   return (
-    <div className="p-6">
-      <AlephaTable<SessionEntity>
+    <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
+      <AlephaTable<SessionResource>
+        className="min-h-0 flex-1"
+        persistenceKey="admin.sessions"
         fetch={fetcher}
         bulkActions={[
           {
@@ -90,22 +96,25 @@ export function AdminSessions() {
             onClick: handleBulkRevoke,
           },
         ]}
-        header={
-          <div>
-            <h1 className="text-lg font-semibold">
-              {tr("admin.sessions.title", { default: "Sessions" })}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {tr("admin.sessions.subtitle", {
-                default: "Active user sessions.",
-              })}
-            </p>
-          </div>
-        }
         columns={{
           user: {
             label: tr("admin.sessions.colUser", { default: "User" }),
-            cell: (s) => <span className="font-medium">{s.userId ?? "—"}</span>,
+            cell: (s) => {
+              const label =
+                s.user?.email ||
+                s.user?.username ||
+                [s.user?.firstName, s.user?.lastName]
+                  .filter(Boolean)
+                  .join(" ") ||
+                null;
+              return label ? (
+                <span className="font-medium">{label}</span>
+              ) : (
+                <span className="text-muted-foreground font-mono text-xs">
+                  {s.userId?.slice(0, 8) ?? "—"}
+                </span>
+              );
+            },
           },
           ip: {
             label: tr("admin.sessions.colIp", { default: "IP" }),

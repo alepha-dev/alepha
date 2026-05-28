@@ -2,8 +2,22 @@ import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
 import type { Page } from "alepha/orm";
 import type { SessionEntity } from "../entities/sessions.ts";
+import { users } from "../entities/users.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { SessionQuery } from "../schemas/sessionQuerySchema.ts";
+
+/**
+ * Relation map embedding a slim user summary on every session row, so the
+ * admin UI can render `user.email`/`user.username` instead of a bare UUID.
+ * Left-join (default) so sessions whose owner was deleted still come back
+ * with `user: undefined`.
+ */
+const withUser = {
+  user: {
+    join: users,
+    on: ["userId", users.cols.id] as ["userId", { name: string }],
+  },
+};
 
 export class SessionCrudService {
   protected readonly log = $logger();
@@ -31,7 +45,7 @@ export class SessionCrudService {
 
     const result = await this.sessions(userRealmName).paginate(
       q,
-      { where },
+      { where, with: withUser },
       { count: true },
     );
 
@@ -51,7 +65,10 @@ export class SessionCrudService {
     userRealmName?: string,
   ): Promise<SessionEntity> {
     this.log.trace("Getting session by ID", { id, userRealmName });
-    const session = await this.sessions(userRealmName).getById(id);
+    const session = await this.sessions(userRealmName).getOne({
+      where: { id: { eq: id } },
+      with: withUser,
+    });
     this.log.debug("Session retrieved", { id, userId: session.userId });
     return session;
   }

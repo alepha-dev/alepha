@@ -75,6 +75,43 @@ describe("alepha/api/users - AdminSessionController", () => {
     expect(result.userAgent?.browser).toBe("Chrome");
   });
 
+  it("should embed the slim user summary on findSessions + getSession", async ({
+    expect,
+  }) => {
+    const { sessionService, userService, controller, dateTimeProvider } =
+      await setup();
+
+    const user = await userService.users().create({
+      username: "withuser",
+      email: "withuser@example.com",
+      firstName: "With",
+      lastName: "User",
+      roles: ["user"],
+    });
+
+    const session = await sessionService.sessions().create({
+      userId: user.id,
+      refreshToken: crypto.randomUUID(),
+      expiresAt: dateTimeProvider.now().add(7, "days").toISOString(),
+    });
+
+    const listed = await controller.findSessions(
+      { query: { userId: user.id } },
+      { user: adminUser },
+    );
+    const found = listed.content.find((s) => s.id === session.id);
+    expect(found?.user?.id).toBe(user.id);
+    expect(found?.user?.email).toBe("withuser@example.com");
+    expect(found?.user?.username).toBe("withuser");
+    expect(found?.user?.firstName).toBe("With");
+
+    const fetched = await controller.getSession(
+      { params: { id: session.id } },
+      { user: adminUser },
+    );
+    expect(fetched.user?.email).toBe("withuser@example.com");
+  });
+
   it("should throw error for non-existent session", async ({ expect }) => {
     const { controller } = await setup();
 
