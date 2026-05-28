@@ -4,6 +4,7 @@ import { defineConfig } from "alepha/cli/config";
 import { devtools } from "alepha/cli/devtools";
 import { i18n } from "alepha/cli/i18n";
 import { platform } from "alepha/cli/platform";
+import { $command } from "alepha/command";
 
 const pkg = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf-8"),
@@ -55,6 +56,13 @@ export default defineConfig({
         // tr(`folios.activity.action.${action}`) — create/edit/rename/tag-change/revert.
         "folios.activity.action.",
       ],
+    }),
+    () => ({
+      "export:db": $command({
+        handler: async ({ run }) => {
+          await run("echo 'TODO'");
+        },
+      }),
     }),
   ],
 });
