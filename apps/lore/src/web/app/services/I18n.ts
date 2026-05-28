@@ -49,8 +49,7 @@ export class I18n {
         "home.title": "Welcome",
         "home.subtitle":
           "Your journey begins here. Forge quests, recruit your party and chronicle their deeds across the realm.",
-        "home.campaigns": "Your recent campaigns",
-        "home.campaigns.showing": "$1 total",
+        "home.campaigns": "Your campaigns",
         "home.create-campaign": "New Campaign",
         "home.create-campaign.max": "Limit reached ($1)",
         "home.start-first-campaign": "Start your first campaign",
@@ -890,8 +889,7 @@ export class I18n {
         "home.title": "Bienvenue dans l’aventure Lore",
         "home.subtitle":
           "Votre périple commence ici. Forgez des quêtes, ralliez votre équipée et chroniquez ses exploits à travers le royaume.",
-        "home.campaigns": "Campagnes",
-        "home.campaigns.showing": "$1 au total",
+        "home.campaigns": "Vos campagnes",
         "home.create-campaign": "Lancer une nouvelle campagne",
         "home.create-campaign.max": "Limite atteinte ($1)",
         "home.start-first-campaign": "Lancer votre première campagne",
