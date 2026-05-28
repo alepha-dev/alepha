@@ -1,6 +1,6 @@
 import type { Async } from "alepha";
 import type { DurationLike } from "alepha/datetime";
-import { type DependencyList, useCallback, useState } from "react";
+import { type DependencyList, useCallback, useRef, useState } from "react";
 import type { ActionContext } from "./useAction.ts";
 import { useAction } from "./useAction.ts";
 
@@ -47,17 +47,23 @@ export function useQuery<Result>(
   options: UseQueryOptions<Result>,
   deps: DependencyList,
 ): UseQueryReturn<Result> {
+  const enabled = options.enabled !== false;
   const [data, setData] = useState<Result | undefined>(options.initialData);
+  // Tracks whether the auto-run has completed at least once, so we can keep
+  // `loading` true on the very first render — before `runOnInit`'s effect
+  // fires — instead of briefly reporting `loading: false` with no data.
+  const settledRef = useRef(false);
 
   const action = useAction<[], Result>(
     {
       id: options.id,
       handler: options.handler,
-      runOnInit: options.enabled !== false,
+      runOnInit: enabled,
       runEvery: options.runEvery,
       debounce: options.debounce,
       onError: options.onError,
       onSuccess: async (result) => {
+        settledRef.current = true;
         setData(result);
         if (options.onSuccess) {
           await options.onSuccess(result);
@@ -69,9 +75,21 @@ export function useQuery<Result>(
 
   const refetch = useCallback(() => action.run(), [action.run]);
 
+  // `loading` is true while a fetch is in flight, AND during the initial gap
+  // between first render and the auto-run effect — so consumers can render a
+  // skeleton immediately instead of flashing an empty/not-found state. Only
+  // applies to enabled queries with no `initialData` seed; an error settles
+  // it (the error path keeps the caller's `onError` re-throw semantics).
+  const loading =
+    action.loading ||
+    (enabled &&
+      options.initialData === undefined &&
+      !settledRef.current &&
+      action.error === undefined);
+
   return {
     data,
-    loading: action.loading,
+    loading,
     error: action.error,
     refetch,
     cancel: action.cancel,
@@ -132,7 +150,9 @@ export interface UseQueryReturn<Result> {
   data: Result | undefined;
 
   /**
-   * Loading state — `true` while a fetch is in flight.
+   * Loading state — `true` while a fetch is in flight, and also from the
+   * first render until the initial auto-run settles (for enabled queries
+   * with no `initialData`), so a skeleton can render without a flash.
    */
   loading: boolean;
 

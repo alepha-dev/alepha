@@ -41,6 +41,31 @@ describe("useQuery", () => {
     expect(handler).toHaveBeenCalledTimes(2);
   });
 
+  test("reports loading on the first render, before the fetch settles", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime);
+    await alepha.start();
+
+    const handler = vi.fn(async () => "value");
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const { result } = renderHook(() => useQuery({ handler }, []), { wrapper });
+
+    // No data yet, but loading must already be true so callers can render a
+    // skeleton instead of an empty/not-found flash.
+    expect(result.current.data).toBe(undefined);
+    expect(result.current.loading).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.data).toBe("value");
+    });
+    expect(result.current.loading).toBe(false);
+  });
+
   test("does not run when enabled is false", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();

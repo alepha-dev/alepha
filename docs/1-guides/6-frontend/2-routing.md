@@ -375,11 +375,15 @@ function SearchPage() {
 
 Options:
 
-| Option   | Type     | Default    | Description                           |
-|----------|----------|------------|---------------------------------------|
-| `key`    | `string` | `"q"`      | Query parameter key in the URL.       |
-| `format` | `string` | `"base64"` | Encoding format.                      |
-| `push`   | `boolean`| `false`    | Push to history instead of replace.   |
+| Option   | Type                        | Default    | Description                                                                 |
+|----------|-----------------------------|------------|-----------------------------------------------------------------------------|
+| `key`    | `string`                    | `"q"`      | Param name for `base64` format. Ignored by `querystring`.                   |
+| `format` | `"base64"` \| `"querystring"` | `"base64"` | `base64` packs the whole object into one opaque param (`?q=…`); `querystring` spreads each field as its own readable param (`?search=…&page=…`). |
+| `push`   | `boolean`                   | `false`    | `true` adds a history entry (`pushState`) so back returns to the previous value; `false` replaces the current entry (`replaceState`). |
+
+With `format: "querystring"`, each schema field maps to its own URL param,
+and values are coerced back to their declared types on read (e.g. an
+`t.integer()` field reads `?page=2` as the number `2`).
 
 ## Links and Anchor Interception
 
