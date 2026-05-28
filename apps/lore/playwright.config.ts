@@ -5,6 +5,7 @@ const port = 3303;
 export default defineConfig({
   testDir: "./e2e",
   timeout: 60_000,
+  globalTimeout: 600_000,
   outputDir: ".playwright/results",
   reporter: [["html", { outputFolder: ".playwright/report", open: "never" }]],
   use: {

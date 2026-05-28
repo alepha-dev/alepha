@@ -5,6 +5,7 @@ const port = 3312;
 export default defineConfig({
   testDir: "./e2e",
   timeout: 60_000,
+  globalTimeout: 600_000,
   reporter: "html",
   fullyParallel: false,
   use: {
@@ -22,6 +23,7 @@ export default defineConfig({
       reuseExistingServer: true,
       command: "yarn start:e2e",
       url: `http://localhost:${port}`,
+      timeout: 180_000,
       env: { SERVER_PORT: `${port}` },
       stdout: "pipe",
       stderr: "pipe",

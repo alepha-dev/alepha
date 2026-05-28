@@ -10,6 +10,7 @@ export default defineConfig({
   workers: 1,
   retries: process.env.CI ? 2 : 0,
   timeout: 60_000,
+  globalTimeout: 600_000,
   expect: { timeout: process.env.CI ? 15_000 : 5_000 },
   use: {
     baseURL: `http://localhost:${port}`,

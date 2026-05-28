@@ -5,6 +5,7 @@ const port = 3302;
 export default defineConfig({
   testDir: "./e2e",
   timeout: 60_000,
+  globalTimeout: 600_000,
   reporter: "html",
   use: {
     screenshot: "only-on-failure",
@@ -19,6 +20,7 @@ export default defineConfig({
   webServer: {
     command: "yarn start",
     url: `http://localhost:${port}`,
+    timeout: 120_000,
     env: {
       SERVER_PORT: `${port}`,
     },
