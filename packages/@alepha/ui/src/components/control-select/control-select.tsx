@@ -3,6 +3,7 @@ import * as React from "react";
 void React;
 
 import { FormField } from "@alepha/ui/components/control-base/form-field";
+import type { IconComponent } from "@alepha/ui/components/control-base/icon-hint";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
   Command,
@@ -149,6 +150,13 @@ export interface ControlSelectProps {
    * an extra div.
    */
   triggerClassName?: string;
+  /**
+   * Leading icon rendered on the left of the trigger, matching the
+   * text-input controls. Resolved by the parent `Control` from its `icon`
+   * prop — unlike text inputs there is no schema-hint fallback, so a select
+   * only shows an icon when one is explicitly set.
+   */
+  icon?: IconComponent;
 }
 
 /**
@@ -298,6 +306,7 @@ export function ControlSelect(props: ControlSelectProps) {
           coerce={coerce}
           onSearch={mode === "long" ? search.run : undefined}
           createNewEntry={props.createNewEntry}
+          icon={props.icon}
         />
       </FormField>
     );
@@ -334,6 +343,9 @@ export function ControlSelect(props: ControlSelectProps) {
           id={meta.id}
           className={cn("w-full", props.triggerClassName)}
         >
+          {props.icon && (
+            <props.icon className="text-muted-foreground size-4 shrink-0" />
+          )}
           <SelectValue placeholder={props.clearable ? clearLabel : "Select…"}>
             {selectedValue === CLEAR_VALUE
               ? clearLabel
@@ -381,6 +393,7 @@ interface ComboboxProps {
   coerce: (v: string) => unknown;
   onSearch?: (q: string) => void;
   createNewEntry?: ControlSelectProps["createNewEntry"];
+  icon?: IconComponent;
 }
 
 function Combobox(props: ComboboxProps) {
@@ -452,8 +465,13 @@ function Combobox(props: ComboboxProps) {
           />
         }
       >
-        {triggerLabel}
-        <ChevronsUpDown className="ml-2 size-4 opacity-50" />
+        <span className="flex min-w-0 items-center gap-2">
+          {props.icon && (
+            <props.icon className="text-muted-foreground size-4 shrink-0" />
+          )}
+          <span className="truncate">{triggerLabel}</span>
+        </span>
+        <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
       </PopoverTrigger>
       <PopoverContent
         className="w-[--radix-popover-trigger-width] p-0"

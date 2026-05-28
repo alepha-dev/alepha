@@ -358,6 +358,7 @@ export function Control(props: ControlProps) {
         segmented={merged.segmented}
         combobox={merged.combobox}
         items={items as never}
+        icon={resolveIcon(merged.icon)}
         disabled={merged.disabled}
         createNewEntry={
           merged.createNewEntry as boolean | ((q: string) => never) | undefined
