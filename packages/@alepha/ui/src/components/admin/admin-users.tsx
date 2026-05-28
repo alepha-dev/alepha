@@ -12,20 +12,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@alepha/ui/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@alepha/ui/components/ui/select";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { type Page, type Static, t } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useClient } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
-import { useFieldValue } from "alepha/react/form";
+import type { useFieldValue } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Check, Eye, Search, Trash2, UserCheck, UserX } from "lucide-react";
@@ -372,15 +364,14 @@ export function AdminUsers(props: AdminUsersProps) {
           },
         ]}
         columns={applyDefaultHidden(props.defaultHiddenColumns, {
-          username: {
-            label: tr("admin.users.colUsername", { default: "Username" }),
+          email: {
+            label: tr("admin.users.colEmail", { default: "Email" }),
             cell: (u) => {
-              const username = u.username || null;
               const initial = (
-                username ||
+                u.email ||
+                u.username ||
                 u.firstName ||
                 u.lastName ||
-                u.email ||
                 "?"
               )
                 .charAt(0)
@@ -390,14 +381,33 @@ export function AdminUsers(props: AdminUsersProps) {
                   <Avatar>
                     <AvatarFallback>{initial}</AvatarFallback>
                   </Avatar>
-                  {username ? (
-                    <span className="truncate font-medium">@{username}</span>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/admin/users/${u.id}` as never)}
+                    className="hover:text-primary inline-flex items-center gap-1.5 truncate text-left font-medium underline-offset-2 hover:underline"
+                  >
+                    <span className="truncate">{u.email ?? "—"}</span>
+                    {u.emailVerified && u.email && (
+                      <Check
+                        className="size-3.5 shrink-0 text-emerald-500"
+                        aria-label={String(
+                          tr("admin.users.verified", { default: "Verified" }),
+                        )}
+                      />
+                    )}
+                  </button>
                 </div>
               );
             },
+          },
+          username: {
+            label: tr("admin.users.colUsername", { default: "Username" }),
+            cell: (u) =>
+              u.username ? (
+                <span className="truncate">@{u.username}</span>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              ),
           },
           firstName: {
             label: tr("admin.users.colFirstName", { default: "First name" }),
@@ -413,25 +423,6 @@ export function AdminUsers(props: AdminUsersProps) {
             cell: (u) =>
               u.lastName ? (
                 <span className="truncate">{u.lastName}</span>
-              ) : (
-                <span className="text-muted-foreground">—</span>
-              ),
-          },
-          email: {
-            label: tr("admin.users.colEmail", { default: "Email" }),
-            cell: (u) =>
-              u.email ? (
-                <div className="flex items-center gap-1.5">
-                  <span className="truncate">{u.email}</span>
-                  {u.emailVerified && (
-                    <Check
-                      className="size-3.5 shrink-0 text-emerald-500"
-                      aria-label={String(
-                        tr("admin.users.verified", { default: "Verified" }),
-                      )}
-                    />
-                  )}
-                </div>
               ) : (
                 <span className="text-muted-foreground">—</span>
               ),
@@ -618,41 +609,33 @@ function StatusFilter({
   input: StatusInput;
   tr: ReturnType<typeof useI18n>["tr"];
 }) {
-  const [value, setValue] = useFieldValue(input);
-  // Base UI's SelectValue displays the raw underlying string when items
-  // are rendered with arbitrary children — so a `value: "verified"`
-  // shows up as the lower-case slug in the trigger even though the
-  // SelectItem renders "Verified". Resolve the localized label
-  // ourselves and pass it as SelectValue's children to override that.
-  const labels: Record<string, string> = {
-    "": String(tr("admin.users.statusAll", { default: "All status" })),
-    verified: String(tr("admin.users.statusVerified", { default: "Verified" })),
-    active: String(tr("admin.users.statusActive", { default: "Active" })),
-    disabled: String(tr("admin.users.statusDisabled", { default: "Disabled" })),
-  };
-  const selected = value ?? "";
   return (
-    <Select
-      value={selected}
-      onValueChange={(v) => setValue(v === "" ? undefined : v)}
-    >
-      <SelectTrigger
-        className="w-40"
-        aria-label={String(
-          tr("admin.users.statusFilter", {
-            default: "Filter by status",
-          }),
-        )}
-      >
-        <SelectValue placeholder={labels[""]}>{labels[selected]}</SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="">{labels[""]}</SelectItem>
-        <SelectSeparator />
-        <SelectItem value="verified">{labels.verified}</SelectItem>
-        <SelectItem value="active">{labels.active}</SelectItem>
-        <SelectItem value="disabled">{labels.disabled}</SelectItem>
-      </SelectContent>
-    </Select>
+    <Control
+      input={input}
+      label=""
+      clearable
+      clearLabel={String(
+        tr("admin.users.statusAll", { default: "All status" }),
+      )}
+      triggerClassName="w-40"
+      items={[
+        {
+          value: "verified",
+          label: String(
+            tr("admin.users.statusVerified", { default: "Verified" }),
+          ),
+        },
+        {
+          value: "active",
+          label: String(tr("admin.users.statusActive", { default: "Active" })),
+        },
+        {
+          value: "disabled",
+          label: String(
+            tr("admin.users.statusDisabled", { default: "Disabled" }),
+          ),
+        },
+      ]}
+    />
   );
 }

@@ -1321,7 +1321,7 @@ describe("getCurrentWithDefault", () => {
     expect(result.schema).toBeNull();
   });
 
-  it("should return default when primitive registered but no DB value", async () => {
+  it("should lazy-seed v1 from defaults when primitive registered but no DB value", async () => {
     class AppConfig {
       features = $parameter({
         name: "gwd.default.only",
@@ -1338,7 +1338,19 @@ describe("getCurrentWithDefault", () => {
     const provider = alepha.inject(ParameterProvider);
     const result = await provider.getCurrentWithDefault("gwd.default.only");
 
-    expect(result.current).toBeNull();
+    // Auto-seed: getCurrentWithDefault materializes v1 from the compiled
+    // defaults when nothing is in the DB yet, so the admin UI always has a
+    // concrete current row to edit / roll back / compare against.
+    expect(result.current).not.toBeNull();
+    expect(result.current!.version).toBe(1);
+    expect(result.current!.status).toBe("current");
+    expect(result.current!.content).toEqual({
+      enableBeta: false,
+      maxUploadSize: 10485760,
+    });
+    expect(result.current!.changeDescription).toBe(
+      "Auto-seeded from compiled defaults",
+    );
     expect(result.next).toBeNull();
     expect(result.defaultValue).toEqual({
       enableBeta: false,
@@ -1349,6 +1361,11 @@ describe("getCurrentWithDefault", () => {
       maxUploadSize: 10485760,
     });
     expect(result.schema).not.toBeNull();
+
+    // Idempotent: a second call returns the same row without re-creating.
+    const second = await provider.getCurrentWithDefault("gwd.default.only");
+    expect(second.current!.id).toBe(result.current!.id);
+    expect(second.current!.version).toBe(1);
   });
 
   it("should return current, next, and defaults when all exist", async () => {
