@@ -162,15 +162,15 @@ export class AdminParameterController {
       body: createParameterVersionBodySchema,
       response: parameterResponseSchema,
     },
-    handler: async ({ params, body }) => {
+    handler: async ({ params, body, user }) => {
       return this.provider.save(params.name, body.content, body.schemaHash, {
         activationDate: body.activationDate
           ? new Date(body.activationDate)
           : undefined,
         changeDescription: body.changeDescription,
         tags: body.tags,
-        creatorId: body.creatorId,
-        creatorName: body.creatorName,
+        creatorId: user?.id,
+        creatorName: this.creatorNameOf(user),
       });
     },
   });
@@ -190,11 +190,11 @@ export class AdminParameterController {
       body: rollbackParameterBodySchema,
       response: parameterResponseSchema,
     },
-    handler: async ({ params, body }) => {
+    handler: async ({ params, body, user }) => {
       return this.provider.rollback(params.name, body.targetVersion, {
         changeDescription: body.changeDescription,
-        creatorId: body.creatorId,
-        creatorName: body.creatorName,
+        creatorId: user?.id,
+        creatorName: this.creatorNameOf(user),
       });
     },
   });
@@ -214,7 +214,7 @@ export class AdminParameterController {
       body: activateParameterBodySchema,
       response: parameterResponseSchema,
     },
-    handler: async ({ params, body }) => {
+    handler: async ({ params, body, user }) => {
       const allVersions = await this.provider.getHistory(params.name);
       const withStatuses = this.provider.calculateStatuses(allVersions);
       const target = withStatuses.find((v) => v.version === body.version);
@@ -242,8 +242,8 @@ export class AdminParameterController {
         target.schemaHash,
         {
           changeDescription: `Early activation of version ${body.version}`,
-          creatorId: body.creatorId,
-          creatorName: body.creatorName,
+          creatorId: user?.id,
+          creatorName: this.creatorNameOf(user),
         },
       );
     },
@@ -293,4 +293,22 @@ export class AdminParameterController {
       return { deleted };
     },
   });
+
+  /**
+   * Derive a human-readable creator name from the authenticated session token.
+   *
+   * The name is snapshotted onto the version at write time rather than joined
+   * from the users table on read: this keeps the parameters module free of any
+   * dependency on the users module (no import, no circular-import risk). The
+   * trade-off is that the stored name does not follow later user renames.
+   *
+   * Precedence: `name` → `username` → `email`.
+   */
+  protected creatorNameOf(user?: {
+    name?: string;
+    username?: string;
+    email?: string;
+  }): string | undefined {
+    return user?.name ?? user?.username ?? user?.email;
+  }
 }

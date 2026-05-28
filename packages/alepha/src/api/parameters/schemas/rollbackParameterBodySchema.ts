@@ -3,10 +3,12 @@ import { parameters } from "../entities/parameters.ts";
 
 /**
  * Rollback parameter body schema.
- * Uses t.pick for creator fields, adds targetVersion.
+ *
+ * Creator fields are omitted; the controller captures the authenticated user
+ * server-side.
  */
 export const rollbackParameterBodySchema = t.extend(
-  t.pick(parameters.schema, ["changeDescription", "creatorId", "creatorName"]),
+  t.pick(parameters.schema, ["changeDescription"]),
   {
     targetVersion: t.integer({
       description: "Version number to rollback to",

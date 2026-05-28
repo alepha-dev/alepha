@@ -3,12 +3,12 @@ import { parameters } from "../entities/parameters.ts";
 
 /**
  * Activate parameter body schema.
- * Uses t.pick for version and creator fields.
+ *
+ * Creator fields are omitted; the controller captures the authenticated user
+ * server-side.
  */
 export const activateParameterBodySchema = t.pick(parameters.schema, [
   "version",
-  "creatorId",
-  "creatorName",
 ]);
 
 export type ActivateParameterBody = Static<typeof activateParameterBodySchema>;

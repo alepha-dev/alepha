@@ -14,16 +14,16 @@ import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import {
   ChevronRight,
-  Clock,
   Download,
   FileCog,
   History as HistoryIcon,
-  RotateCcw,
   Settings2,
   Upload,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { ParameterHistoryItem } from "./parameter-history-item.tsx";
+import { ParameterSaveDialog } from "./parameter-save-dialog.tsx";
 
 /**
  * Three-pane admin parameters editor:
@@ -34,15 +34,16 @@ import { toast } from "sonner";
  *           (`lore.campaign.limits`) becomes a folder hierarchy. Leaves are
  *           clickable; clicking sets the active parameter.
  * - Center: AutoForm bound to the parameter's runtime schema and pre-filled
- *           with the current effective value. Save creates a new immediate
- *           version through `createVersion`.
- * - Right:  reverse-chronological history. Each row can preview by loading
- *           its content into the form, or roll back the parameter to that
- *           version. The current version is badged.
+ *           with the current effective value. "Save new version" opens a dialog
+ *           to attach tags, then creates an immediate version via
+ *           `createVersion`.
+ * - Right:  reverse-chronological history. Each version is a collapsible card
+ *           (see `ParameterHistoryItem`) with a `…` menu to view its JSON, diff
+ *           it against the previous version, or roll back to it.
  */
 export function AdminParameters() {
   const client = useClient<AdminParameterController>();
-  const { l, tr } = useI18n();
+  const { tr } = useI18n();
   const dialog = useDialog();
   const [selected, setSelected] = useState<string | undefined>();
   const [reloadKey, setReloadKey] = useState(0);
@@ -424,12 +425,14 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
       initial={initial}
       schemaHash={data.current?.schemaHash}
       currentVersion={data.current?.version}
-      onSubmit={async (content) => {
+      initialTags={data.current?.tags ?? undefined}
+      onSubmit={async (content, tags) => {
         await client.createVersion({
           params: { name: props.name! },
           body: {
             content: content as Record<string, any>,
             schemaHash,
+            tags: tags.length > 0 ? tags : undefined,
           },
         });
         props.onSaved();
@@ -466,19 +469,24 @@ interface ParameterEditorFormProps {
   initial: Record<string, unknown>;
   schemaHash?: string;
   currentVersion?: number;
-  onSubmit: (content: unknown) => Promise<void>;
+  initialTags?: string[];
+  onSubmit: (content: unknown, tags: string[]) => Promise<void>;
   onFactoryReset: () => Promise<void>;
   onExport: () => void;
 }
 
 const ParameterEditorForm = (props: ParameterEditorFormProps) => {
   const { tr } = useI18n();
+  // Saving is a two-step flow: the AutoForm submit captures the edited content
+  // and opens the save dialog, which collects tags before the version is
+  // actually persisted via onSubmit.
+  const [pending, setPending] = useState<Record<string, unknown> | null>(null);
   const form = useForm(
     {
       schema: props.schema,
       initialValues: props.initial as Record<string, any>,
       handler: async (values) => {
-        await props.onSubmit(values);
+        setPending(values);
       },
     },
     [props.name, props.schemaHash],
@@ -491,47 +499,52 @@ const ParameterEditorForm = (props: ParameterEditorFormProps) => {
   }, [props.name]);
 
   return (
-    <div className="bg-card flex min-h-0 flex-col overflow-hidden border-y">
-      <div className="flex items-start justify-between border-b p-4">
-        <div className="flex flex-col gap-0.5">
-          {breadcrumb && (
-            <span className="text-muted-foreground text-xs">{breadcrumb}</span>
-          )}
-          <h2 className="text-base font-semibold">{title}</h2>
-        </div>
-        {props.currentVersion != null && (
-          <Badge variant="secondary">v{props.currentVersion}</Badge>
-        )}
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="p-4">
-          <AutoForm
-            form={form}
-            autoGroup
-            disabledIfPristine
-            skipReset
-            submitLabel={tr("admin.parameters.save", {
-              default: "Save new version",
-            })}
-            actions={[
-              {
-                label: tr("admin.parameters.factoryReset", {
-                  default: "Factory reset",
-                }),
-                icon: "wrench",
-                variant: "outline",
-                onClick: props.onFactoryReset,
-              },
-              {
-                label: tr("admin.parameters.export", { default: "Export" }),
-                icon: "download",
-                variant: "outline",
-                onClick: props.onExport,
-              },
-            ]}
-          />
-        </div>
-      </div>
+    <div className="min-h-0 overflow-y-auto px-4">
+      <AutoForm
+        form={form}
+        card
+        icon="cog"
+        title={title}
+        description={breadcrumb || undefined}
+        headerAction={
+          props.currentVersion != null ? (
+            <Badge variant="secondary">v{props.currentVersion}</Badge>
+          ) : undefined
+        }
+        autoGroup
+        disabledIfPristine
+        skipReset
+        submitLabel={tr("admin.parameters.save", {
+          default: "Save new version",
+        })}
+        actions={[
+          {
+            label: tr("admin.parameters.factoryReset", {
+              default: "Factory reset",
+            }),
+            icon: "wrench",
+            variant: "outline",
+            onClick: props.onFactoryReset,
+          },
+          {
+            label: tr("admin.parameters.export", { default: "Export" }),
+            icon: "download",
+            variant: "outline",
+            onClick: props.onExport,
+          },
+        ]}
+      />
+      <ParameterSaveDialog
+        open={pending !== null}
+        onOpenChange={(open) => {
+          if (!open) setPending(null);
+        }}
+        initialTags={props.initialTags}
+        onConfirm={async (tags) => {
+          if (pending) await props.onSubmit(pending, tags);
+          setPending(null);
+        }}
+      />
     </div>
   );
 };
@@ -546,7 +559,7 @@ interface ParameterHistoryPaneProps {
 
 const ParameterHistoryPane = (props: ParameterHistoryPaneProps) => {
   const client = useClient<AdminParameterController>();
-  const { l, tr } = useI18n();
+  const { tr } = useI18n();
 
   const [history, setHistory] = useState<
     Awaited<ReturnType<AdminParameterController["getHistory"]>> | undefined
@@ -591,61 +604,15 @@ const ParameterHistoryPane = (props: ParameterHistoryPaneProps) => {
           })}
         </span>
       ) : (
-        <ul className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto pr-2">
+        <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto pr-2">
           {history.versions.map((v) => (
-            <li
+            <ParameterHistoryItem
               key={v.id}
-              className={cn(
-                "rounded-md border p-2 text-xs",
-                v.status === "current" && "border-primary/40 bg-primary/5",
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono font-medium">v{v.version}</span>
-                  <Badge
-                    variant={
-                      v.status === "current"
-                        ? "default"
-                        : v.status === "next" || v.status === "future"
-                          ? "secondary"
-                          : "outline"
-                    }
-                    className="text-[10px] uppercase"
-                  >
-                    {v.status}
-                  </Badge>
-                </div>
-                {v.status !== "current" && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={() => props.onRollback(v.version)}
-                  >
-                    <RotateCcw className="size-3" />
-                    {tr("admin.parameters.rollback", { default: "Rollback" })}
-                  </Button>
-                )}
-              </div>
-              <div className="text-muted-foreground mt-1 flex items-center gap-1">
-                <Clock className="size-3" />
-                <span>{String(l(v.activationDate, { date: "fromNow" }))}</span>
-              </div>
-              {v.changeDescription && (
-                <p className="text-muted-foreground mt-1 line-clamp-2 leading-snug">
-                  {v.changeDescription}
-                </p>
-              )}
-              {v.creatorName && (
-                <p className="text-muted-foreground mt-1 truncate text-[11px]">
-                  {v.creatorName}
-                </p>
-              )}
-            </li>
+              version={v}
+              onRollback={props.onRollback}
+            />
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

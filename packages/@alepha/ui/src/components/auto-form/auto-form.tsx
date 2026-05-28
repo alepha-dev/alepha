@@ -14,6 +14,15 @@ import { spanClass, widthFor } from "@alepha/ui/components/control-base/grid";
 import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@alepha/ui/components/ui/card";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -131,6 +140,12 @@ export interface AutoFormProps<T extends TObject> {
    * Header description / subtitle.
    */
   description?: string;
+  /**
+   * Extra content rendered on the right of the header (e.g. a status badge).
+   * In `card` mode it renders as the `CardAction`; otherwise it is pushed to
+   * the right edge of the header box.
+   */
+  headerAction?: ReactNode;
 
   /**
    * Manual layout: list of groups, each with its own fields.
@@ -201,6 +216,19 @@ export interface AutoFormProps<T extends TObject> {
    * Extra classes applied to the form wrapper.
    */
   className?: string;
+
+  /**
+   * Wrap the form in a `<Card>`:
+   * - the header (icon + title/description) renders as the `CardHeader`,
+   * - the field groups render as the `CardContent`,
+   * - the action bar (cancel / reset / actions / submit) renders as the
+   *   `CardFooter`.
+   *
+   * When omitted, the form uses its default chrome (a muted header box and a
+   * standalone bottom bar). The footer is hidden in `autoSave` mode just like
+   * the default bottom bar.
+   */
+  card?: boolean;
 
   /**
    * Visual layout for every nested Control.
@@ -313,11 +341,87 @@ export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
   }, [props.groups, props.autoGroup, schema]);
 
   const HeaderIcon = props.icon ? iconFor(props.icon) : undefined;
+  const hasHeader = !!(
+    props.title ||
+    props.description ||
+    HeaderIcon ||
+    props.headerAction
+  );
+
+  const fieldGroups = (
+    <FormFieldLayoutProvider value={props.layout ?? "stack"}>
+      <FormFieldAutoSaveProvider value={autoSaveEnabled}>
+        {resolvedGroups.map((group, gi) => (
+          <GroupBlock
+            key={gi}
+            group={group}
+            inputs={inputs}
+            disabled={props.disabled}
+            throttle={props.throttle}
+            fields={props.fields}
+            multiGroup={resolvedGroups.length > 1}
+            layout={props.layout ?? "stack"}
+          />
+        ))}
+      </FormFieldAutoSaveProvider>
+    </FormFieldLayoutProvider>
+  );
+
+  const bottomBarProps = {
+    form: props.form,
+    dirty,
+    loading,
+    disabled: props.disabled,
+    disabledIfPristine: props.disabledIfPristine,
+    submitLabel: props.submitLabel,
+    noSubmit: props.noSubmit,
+    onCancel: props.onCancel,
+    skipReset: props.skipReset,
+    actions: props.actions,
+  };
+
+  if (props.card) {
+    return (
+      <form {...props.form.props} className={props.className}>
+        <Card>
+          {hasHeader && (
+            <CardHeader className="border-b">
+              <div className="flex items-start gap-3">
+                {HeaderIcon && (
+                  <div className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-full">
+                    <HeaderIcon className="size-5" />
+                  </div>
+                )}
+                <div className="flex flex-col gap-1">
+                  {props.title && <CardTitle>{props.title}</CardTitle>}
+                  {props.description && (
+                    <CardDescription>{props.description}</CardDescription>
+                  )}
+                </div>
+              </div>
+              {props.headerAction && (
+                <CardAction>{props.headerAction}</CardAction>
+              )}
+            </CardHeader>
+          )}
+          <CardContent className="flex flex-col gap-4">
+            {fieldGroups}
+            {props.footer}
+          </CardContent>
+          {!skipBottomBar && (
+            <CardFooter>
+              <BottomBar {...bottomBarProps} bare />
+            </CardFooter>
+          )}
+        </Card>
+      </form>
+    );
+  }
 
   return (
     <form {...props.form.props} className={props.className}>
       <div className="flex flex-col gap-4">
-        {(props.title || props.description || HeaderIcon) && (
+        {hasHeader && (
           <div className="bg-muted/40 border rounded-md p-4 flex items-start gap-3">
             {HeaderIcon && (
               <div className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-full">
@@ -334,42 +438,17 @@ export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
                 </p>
               )}
             </div>
+            {props.headerAction && (
+              <div className="ml-auto">{props.headerAction}</div>
+            )}
           </div>
         )}
 
-        <FormFieldLayoutProvider value={props.layout ?? "stack"}>
-          <FormFieldAutoSaveProvider value={autoSaveEnabled}>
-            {resolvedGroups.map((group, gi) => (
-              <GroupBlock
-                key={gi}
-                group={group}
-                inputs={inputs}
-                disabled={props.disabled}
-                throttle={props.throttle}
-                fields={props.fields}
-                multiGroup={resolvedGroups.length > 1}
-                layout={props.layout ?? "stack"}
-              />
-            ))}
-          </FormFieldAutoSaveProvider>
-        </FormFieldLayoutProvider>
+        {fieldGroups}
 
         {props.footer}
 
-        {!skipBottomBar && (
-          <BottomBar
-            form={props.form}
-            dirty={dirty}
-            loading={loading}
-            disabled={props.disabled}
-            disabledIfPristine={props.disabledIfPristine}
-            submitLabel={props.submitLabel}
-            noSubmit={props.noSubmit}
-            onCancel={props.onCancel}
-            skipReset={props.skipReset}
-            actions={props.actions}
-          />
-        )}
+        {!skipBottomBar && <BottomBar {...bottomBarProps} />}
       </div>
     </form>
   );
@@ -490,12 +569,23 @@ interface BottomBarProps {
   onCancel?: () => void;
   skipReset?: boolean;
   actions?: AutoFormAction[];
+  /**
+   * Drop the standalone chrome (border / rounded / background / padding) so
+   * the bar slots into a `CardFooter`, which provides that chrome itself.
+   */
+  bare?: boolean;
 }
 
 function BottomBar(props: BottomBarProps) {
   const { tr } = useI18n();
   return (
-    <div className="bg-card flex items-center gap-2 border rounded-md p-2">
+    <div
+      className={
+        props.bare
+          ? "flex w-full items-center gap-2"
+          : "bg-card flex items-center gap-2 border rounded-md p-2"
+      }
+    >
       {props.onCancel && (
         <Button
           type="button"
