@@ -1,4 +1,5 @@
 import { Button } from "@alepha/ui/components/ui/button";
+import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Separator } from "@alepha/ui/components/ui/separator";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
@@ -31,7 +32,6 @@ const Home = () => {
   const auth = useAuth();
 
   const campaigns = overview?.campaigns ?? [];
-  const totalCount = overview?.totalCount ?? 0;
   const canCreate = overview?.canCreate ?? true;
   const maxCampaigns = overview?.maxCampaigns;
   const sorted = [...campaigns].sort((a, b) =>
@@ -103,25 +103,22 @@ const Home = () => {
             <div id="campaigns" className="flex items-center gap-2">
               <ScrollText className="size-5" />
               <h2 className="text-lg font-semibold">{tr("home.campaigns")}</h2>
-              <span className="text-muted-foreground text-xs">
-                {tr("home.campaigns.showing", {
-                  args: [String(totalCount)],
-                })}
-              </span>
             </div>
 
-            <div className="mt-4 flex flex-col divide-y rounded-lg border">
-              {sorted.map((campaign) => (
-                <CampaignCard
-                  key={campaign.id}
-                  campaign={campaign}
-                  href={router.path("campaign", {
-                    params: { campaignId: campaign.id },
-                  })}
-                  relativeTime={dt.of(campaign.updatedAt).fromNow()}
-                />
-              ))}
-            </div>
+            <Card className="mt-4 p-0">
+              <CardContent className="flex flex-col divide-y p-0">
+                {sorted.map((campaign) => (
+                  <CampaignCard
+                    key={campaign.id}
+                    campaign={campaign}
+                    href={router.path("campaign", {
+                      params: { campaignId: campaign.id },
+                    })}
+                    relativeTime={dt.of(campaign.updatedAt).fromNow()}
+                  />
+                ))}
+              </CardContent>
+            </Card>
           </>
         )}
       </div>
