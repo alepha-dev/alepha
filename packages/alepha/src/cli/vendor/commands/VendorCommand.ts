@@ -5,6 +5,7 @@ import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { vendorOptions } from "../atoms/vendorOptions.ts";
 import type {
   VendorDiffResult,
+  VendorLinkResult,
   VendorPackageDiff,
   VendorSyncResult,
 } from "../services/VendorService.ts";
@@ -167,6 +168,105 @@ export class VendorCommand {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
+  // alepha vendor link
+  // ─────────────────────────────────────────────────────────────────────────
+
+  protected readonly linkFlags = t.object({
+    reset: t.optional(
+      t.boolean({
+        description:
+          "Detach the link and restore the synced copy from the remote (equivalent to `vendor sync --force`).",
+      }),
+    ),
+  });
+
+  protected readonly link = $command({
+    name: "link",
+    description:
+      "Symlink vendored packages to a local Alepha checkout for live dev. Pass the path to the Alepha monorepo as a positional argument.",
+    flags: this.linkFlags,
+    args: t.optional(t.text()),
+    handler: async ({ args, flags, root, run }) => {
+      const opts = this.resolveOptions();
+      const c = this.color;
+
+      if (flags.reset) {
+        // Detach by running the normal sync path with --force. The lock's
+        // `linked` field is dropped because writeLock writes a plain
+        // synced-state object on success.
+        let result: VendorSyncResult = { synced: [], errors: [] };
+        await run({
+          name: "Detaching link, restoring from remote",
+          handler: async () => {
+            result = await this.vendorService.sync({
+              root,
+              remote: opts.remote,
+              branch: opts.branch,
+              dir: opts.dir,
+              packages: opts.packages,
+              force: true,
+            });
+          },
+        });
+        run.end();
+        for (const err of result.errors) {
+          process.stdout.write(`${c.set("RED", "  error")} ${err}\n`);
+        }
+        if (result.synced.length > 0) {
+          process.stdout.write(
+            `\nDetached and restored ${c.set("CYAN", String(result.synced.length))} ${result.synced.length === 1 ? "package" : "packages"} from ${c.set("CYAN", opts.branch)}\n`,
+          );
+          for (const pkg of result.synced) {
+            process.stdout.write(`  ${c.set("GREEN", "✓")} ${pkg}\n`);
+          }
+        }
+        process.stdout.write("\n");
+        return;
+      }
+
+      const source = args;
+      if (!source) {
+        process.stdout.write(
+          `\n${c.set("RED", "error")} Pass the path to the Alepha monorepo as the first argument.\n` +
+            `  Example: ${c.set("CYAN", "alepha vendor link ../alepha")}\n\n`,
+        );
+        return;
+      }
+
+      let result: VendorLinkResult = { linked: [], errors: [], source };
+      await run({
+        name: `Linking to ${source}`,
+        handler: async () => {
+          result = await this.vendorService.link({
+            root,
+            source,
+            dir: opts.dir,
+            packages: opts.packages,
+          });
+        },
+      });
+
+      run.end();
+
+      for (const err of result.errors) {
+        process.stdout.write(`${c.set("RED", "  error")} ${err}\n`);
+      }
+
+      if (result.linked.length > 0) {
+        process.stdout.write(
+          `\nLinked ${c.set("CYAN", String(result.linked.length))} ${result.linked.length === 1 ? "package" : "packages"} to ${c.set("CYAN", result.source)}\n`,
+        );
+        for (const pkg of result.linked) {
+          process.stdout.write(`  ${c.set("GREEN", "✓")} ${pkg}\n`);
+        }
+        process.stdout.write(
+          `\n${c.set("DIM", "Edit the monorepo directly. When done, run:")} ${c.set("CYAN", "alepha vendor link --reset")} ${c.set("DIM", "or")} ${c.set("CYAN", "alepha vendor sync --force")}\n\n`,
+        );
+      }
+    },
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Helpers
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -211,7 +311,7 @@ export class VendorCommand {
   public readonly vendor = $command({
     name: "vendor",
     description: "Vendor Alepha packages into the project",
-    children: [this.sync, this.diff],
+    children: [this.sync, this.diff, this.link],
     handler: async ({ help }) => {
       help();
     },
