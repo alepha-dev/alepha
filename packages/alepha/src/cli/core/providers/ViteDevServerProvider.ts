@@ -324,13 +324,22 @@ export class ViteDevServerProvider {
         // Skip when waiting for startup retry
         if (this.waitingForRetry) return [];
 
-        const firstModule = ctx.modules[0] as
-          | { _ssrModule?: unknown; _clientModule?: unknown }
-          | undefined;
-        const isBrowserOnly = firstModule && !firstModule._ssrModule;
+        // React component (.tsx/.jsx) edits always need the SSR module
+        // graph invalidated — the `_ssrModule` shortcut below misses files
+        // that are workspace-linked source-only (e.g. `@alepha/ui/...`).
+        // Those don't carry an `_ssrModule` ref on `ctx.modules[0]` on
+        // first edit and get classified as browser-only, leaving stale
+        // SSR HTML and triggering hydration mismatches on next request.
+        const isTsx = /\.(tsx|jsx)$/.test(ctx.file);
+        if (!isTsx) {
+          const firstModule = ctx.modules[0] as
+            | { _ssrModule?: unknown; _clientModule?: unknown }
+            | undefined;
+          const isBrowserOnly = firstModule && !firstModule._ssrModule;
 
-        // Browser-only: let Vite HMR handle it (React Fast Refresh)
-        if (isBrowserOnly) return;
+          // Browser-only: let Vite HMR handle it (React Fast Refresh)
+          if (isBrowserOnly) return;
+        }
 
         // Queue Alepha reload for server-side invalidation
         this.changedFiles.add(ctx.file);
@@ -626,7 +635,17 @@ if (import.meta.hot) {
   }
 
   /**
-   * Invalidate modules and all their importers.
+   * Invalidate modules and all their importers, across both client and
+   * SSR module graphs.
+   *
+   * Vite registers a file under multiple module ids (one per query
+   * variant — e.g. `?v=…`, `?import` and the bare path), and `getModuleById`
+   * only matches one. For workspace-linked source files (`@alepha/ui/...`)
+   * the SSR-graph entry is keyed by the absolute path while the client
+   * may use the package-qualified id. `getModulesByFile` returns every
+   * variant Vite knows about for a given absolute path — invalidating
+   * each catches both halves of the dual graph and prevents stale SSR
+   * compiled exports from surviving across edits.
    */
   protected invalidateModulesWithImporters(changedFiles: Set<string>): void {
     const graph = this.server.moduleGraph;
@@ -636,16 +655,21 @@ if (import.meta.hot) {
     while (queue.length > 0) {
       const file = queue.pop()!;
       if (invalidated.has(file)) continue;
-
-      const mod = this.server.moduleGraph.getModuleById(file);
-      if (!mod) continue;
-
-      graph.invalidateModule(mod);
       invalidated.add(file);
 
-      for (const importer of mod.importers) {
-        if (importer.id && !invalidated.has(importer.id)) {
-          queue.push(importer.id);
+      const mods = new Set([
+        ...(graph.getModulesByFile(file) ?? []),
+        ...(graph.getModuleById(file) ? [graph.getModuleById(file)!] : []),
+      ]);
+      if (mods.size === 0) continue;
+
+      for (const mod of mods) {
+        graph.invalidateModule(mod);
+        for (const importer of mod.importers) {
+          const key = importer.file ?? importer.id;
+          if (key && !invalidated.has(key)) {
+            queue.push(key);
+          }
         }
       }
     }

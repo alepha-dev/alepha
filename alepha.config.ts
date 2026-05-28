@@ -18,7 +18,6 @@ export default (alepha: Alepha) => {
           `apps/*/test-results`,
           `apps/*/.playwright`,
           `apps/*/dist`,
-          `apps/*/node_modules`,
           `apps/*/coverage`,
           `packages/*/dist`,
           `packages/*/node_modules`,
@@ -70,7 +69,7 @@ export default (alepha: Alepha) => {
         await run(`yarn build`);
 
         // HACK: remove vite cache to prevent stale cache issues in e2e tests
-        await run.rm([`apps/*/node_modules`]);
+        await run.rm([`apps/*/node_modules/.vite`]);
         await run(`yarn e2e`);
         await run(`yarn e2e-cli`);
 
