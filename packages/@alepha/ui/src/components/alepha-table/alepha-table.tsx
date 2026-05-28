@@ -595,7 +595,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
         )}
 
         {showToolbar && (
-          <div className="bg-card flex flex-wrap items-end gap-2 rounded-md border p-2">
+          <div className="bg-card flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2">
             {props.filters && form ? (
               <form
                 {...form.props}
@@ -703,7 +703,12 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
           </div>
         )}
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-auto rounded-md border">
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
+            showToolbar && "-mt-2 rounded-t-none border-t-0",
+          )}
+        >
           <Table>
             <TableHeader className="bg-background sticky top-0 z-10 shadow-[inset_0_-1px_0_0_var(--border)]">
               <TableRow>
