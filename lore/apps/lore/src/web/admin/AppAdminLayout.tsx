@@ -1,5 +1,6 @@
 import { AppShell } from "@alepha/ui/components/app-shell/app-shell";
 import { ButtonDark } from "@alepha/ui/components/button-dark/button-dark";
+import { ButtonLanguage } from "@alepha/ui/components/button-language/button-language";
 import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
 import { useRouter, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
@@ -121,6 +122,7 @@ export function AppAdminLayout() {
         breadcrumbs={breadcrumbs}
         topbarActions={
           <div className="flex items-center gap-1">
+            <ButtonLanguage />
             <ButtonDark />
             <ButtonUser
               onSignIn={() => router.push("login")}

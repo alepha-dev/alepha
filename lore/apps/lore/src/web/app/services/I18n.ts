@@ -840,6 +840,42 @@ export class I18n {
         "petitions.request.loginRequiredBody":
           "Petitions are tied to your account so we can follow up if needed.",
         "petitions.request.signIn": "Sign in",
+
+        // Admin → Users (table head + filters)
+        "admin.users.colUsername": "Username",
+        "admin.users.colFirstName": "First name",
+        "admin.users.colLastName": "Last name",
+        "admin.users.colEmail": "Email",
+        "admin.users.colRoles": "Roles",
+        "admin.users.colStatus": "Status",
+        "admin.users.colJoined": "Joined",
+        "admin.users.search": "Search users",
+        "admin.users.searchPlaceholder": "Search…",
+        "admin.users.statusFilter": "Filter by status",
+        "admin.users.statusAll": "All status",
+        "admin.users.statusVerified": "Verified",
+        "admin.users.statusActive": "Active",
+        "admin.users.statusDisabled": "Disabled",
+        "admin.users.active": "Active",
+        "admin.users.verified": "Verified",
+        "admin.users.noRoles": "No roles",
+
+        // Admin → Sessions
+        "admin.sessions.colUser": "User",
+        "admin.sessions.colIp": "IP",
+        "admin.sessions.colDevice": "Device",
+        "admin.sessions.colStarted": "Started",
+        "admin.sessions.colStatus": "Status",
+        "admin.sessions.active": "Active",
+        "admin.sessions.revokedBadge": "Revoked",
+        "admin.sessions.revoke": "Revoke",
+        "admin.sessions.bulkRevoke": "Revoke selected",
+        "admin.sessions.revokeTitle": "Revoke session",
+        "admin.sessions.revokeConfirm":
+          "The user will be signed out from this session.",
+        "admin.sessions.revoked": "Session revoked",
+        "admin.sessions.bulkRevokeTitle": "Revoke sessions",
+        "admin.sessions.noneSelected": "No active sessions in selection",
       },
     }),
   });
@@ -1678,6 +1714,43 @@ export class I18n {
         "petitions.request.loginRequiredBody":
           "Les pétitions sont liées à votre compte pour permettre un suivi.",
         "petitions.request.signIn": "Se connecter",
+
+        // Admin → Utilisateurs (en-tête de table + filtres)
+        "admin.users.colUsername": "Identifiant",
+        "admin.users.colFirstName": "Prénom",
+        "admin.users.colLastName": "Nom",
+        "admin.users.colEmail": "Email",
+        "admin.users.colRoles": "Rôles",
+        "admin.users.colStatus": "Statut",
+        "admin.users.colJoined": "Inscrit",
+        "admin.users.search": "Rechercher des utilisateurs",
+        "admin.users.searchPlaceholder": "Rechercher…",
+        "admin.users.statusFilter": "Filtrer par statut",
+        "admin.users.statusAll": "Tous les statuts",
+        "admin.users.statusVerified": "Vérifié",
+        "admin.users.statusActive": "Actif",
+        "admin.users.statusDisabled": "Désactivé",
+        "admin.users.active": "Actif",
+        "admin.users.verified": "Vérifié",
+        "admin.users.noRoles": "Aucun rôle",
+
+        // Admin → Sessions
+        "admin.sessions.colUser": "Utilisateur",
+        "admin.sessions.colIp": "IP",
+        "admin.sessions.colDevice": "Appareil",
+        "admin.sessions.colStarted": "Démarrée",
+        "admin.sessions.colStatus": "Statut",
+        "admin.sessions.active": "Active",
+        "admin.sessions.revokedBadge": "Révoquée",
+        "admin.sessions.revoke": "Révoquer",
+        "admin.sessions.bulkRevoke": "Révoquer la sélection",
+        "admin.sessions.revokeTitle": "Révoquer la session",
+        "admin.sessions.revokeConfirm":
+          "L'utilisateur sera déconnecté de cette session.",
+        "admin.sessions.revoked": "Session révoquée",
+        "admin.sessions.bulkRevokeTitle": "Révoquer les sessions",
+        "admin.sessions.noneSelected":
+          "Aucune session active dans la sélection",
       },
     }),
   });
