@@ -31,6 +31,9 @@ export class AppAdminRouter {
     path: "/users",
     head: { title: "Users" },
     component: AdminUsers,
+    props: () => ({
+      defaultHiddenColumns: ["firstName", "lastName"] as const,
+    }),
     parent: this.adminLayout,
   });
 
