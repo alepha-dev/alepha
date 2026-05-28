@@ -22,6 +22,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@alepha/ui/components/ui/select";
@@ -55,6 +56,12 @@ export type SelectOption =
        * dropdown row and (for single-select) the trigger when selected.
        */
       icon?: ReactNode;
+      /**
+       * When true, the row is non-interactive — can't be selected if
+       * not selected, can't be deselected if selected. Useful for
+       * default/mandatory entries (e.g. the base "user" role).
+       */
+      disabled?: boolean;
     };
 
 type LoaderMode = "static" | "short" | "long";
@@ -114,13 +121,50 @@ export interface ControlSelectProps {
    *   suggesting existing options.
    */
   createNewEntry?: boolean | ((query: string) => Exclude<SelectOption, string>);
+  /**
+   * When true, the dropdown gets a synthetic "none" row at the top that
+   * resets the field to `undefined`. Useful for optional filter chips
+   * (e.g. an admin-table status filter) where the user needs an explicit
+   * "no filter" option — Base UI's `Select` reserves empty-string values
+   * as its internal no-selection sentinel, so a regular `<SelectItem
+   * value="">` can't be picked. With `clearable`, ControlSelect uses an
+   * internal sentinel and translates it to `undefined` in `onChange`.
+   *
+   * Currently honored by the static-short `Select` and the searchable
+   * Combobox render paths. Ignored by `segmented` (use a real segment
+   * for "all" there).
+   */
+  clearable?: boolean;
+  /**
+   * Label rendered for the "clear" row injected by `clearable`. Also
+   * used as the trigger placeholder when the field is empty. Defaults to
+   * `"None"`. Localize at the call site (e.g. `"All types"`,
+   * `"All status"`).
+   */
+  clearLabel?: string;
+  /**
+   * Extra className applied to the visible trigger (the `<SelectTrigger>`
+   * or combobox `<Button>`). Useful for sizing filter chips
+   * (`"w-40"`, `"w-72"`, etc.) without wrapping the whole `FormField` in
+   * an extra div.
+   */
+  triggerClassName?: string;
 }
+
+/**
+ * Internal sentinel for the `clearable` row. Picked to be unlikely to
+ * collide with a real option value; we translate it to `undefined` at
+ * the boundary so callers never see it.
+ */
+const CLEAR_VALUE = "__alepha_clear__";
 
 const optValue = (o: SelectOption) => (typeof o === "string" ? o : o.value);
 const optLabel = (o: SelectOption) => (typeof o === "string" ? o : o.label);
 const optDesc = (o: SelectOption) =>
   typeof o === "string" ? undefined : o.description;
 const optTag = (o: SelectOption) => (typeof o === "string" ? undefined : o.tag);
+const optDisabled = (o: SelectOption) =>
+  typeof o === "string" ? false : Boolean(o.disabled);
 const optIcon = (o: SelectOption): ReactNode =>
   typeof o === "string" ? undefined : o.icon;
 
@@ -260,6 +304,13 @@ export function ControlSelect(props: ControlSelectProps) {
   }
 
   // Static / short — native Select
+  const clearLabel = props.clearLabel ?? "None";
+  const labelFor = (raw: string) => {
+    const found = data.find((o) => optValue(o) === raw);
+    return found ? optLabel(found) : raw;
+  };
+  const selectedValue =
+    value != null ? String(value) : props.clearable ? CLEAR_VALUE : undefined;
   return (
     <FormField
       id={meta.id}
@@ -269,14 +320,35 @@ export function ControlSelect(props: ControlSelectProps) {
       required={meta.required}
     >
       <Select
-        value={value != null ? String(value) : undefined}
-        onValueChange={(v) => setValue(coerce(v ?? ""))}
+        value={selectedValue}
+        onValueChange={(v) => {
+          if (v === CLEAR_VALUE) {
+            setValue(undefined);
+            return;
+          }
+          setValue(coerce(v ?? ""));
+        }}
         disabled={props.disabled}
       >
-        <SelectTrigger id={meta.id} className="w-full">
-          <SelectValue placeholder="Select…" />
+        <SelectTrigger
+          id={meta.id}
+          className={cn("w-full", props.triggerClassName)}
+        >
+          <SelectValue placeholder={props.clearable ? clearLabel : "Select…"}>
+            {selectedValue === CLEAR_VALUE
+              ? clearLabel
+              : selectedValue != null
+                ? labelFor(selectedValue)
+                : undefined}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
+          {props.clearable && (
+            <>
+              <SelectItem value={CLEAR_VALUE}>{clearLabel}</SelectItem>
+              <SelectSeparator />
+            </>
+          )}
           {data.map((o) => {
             const icon = optIcon(o);
             return (
@@ -315,6 +387,13 @@ function Combobox(props: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
+  // Show the search input only when it's actually useful. For a tiny
+  // static list (e.g. a 2-role multi-select) a search bar is noise.
+  const showSearch =
+    Boolean(props.onSearch) ||
+    Boolean(props.createNewEntry) ||
+    props.data.length > 8;
+
   const selected: string[] = props.multi
     ? Array.isArray(props.value)
       ? (props.value as unknown[]).map(String)
@@ -339,6 +418,8 @@ function Combobox(props: ComboboxProps) {
       : "Select…";
 
   const handleSelect = (raw: string) => {
+    const opt = props.data.find((o) => optValue(o) === raw);
+    if (opt && optDisabled(opt)) return;
     if (props.multi) {
       const next = selected.includes(raw)
         ? selected.filter((v) => v !== raw)
@@ -351,7 +432,13 @@ function Combobox(props: ComboboxProps) {
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setQuery("");
+      }}
+    >
       <PopoverTrigger
         render={
           <Button
@@ -373,14 +460,16 @@ function Combobox(props: ComboboxProps) {
         align="start"
       >
         <Command>
-          <CommandInput
-            placeholder="Search…"
-            value={query}
-            onValueChange={(v) => {
-              setQuery(v);
-              props.onSearch?.(v);
-            }}
-          />
+          {showSearch && (
+            <CommandInput
+              placeholder="Search…"
+              value={query}
+              onValueChange={(v) => {
+                setQuery(v);
+                props.onSearch?.(v);
+              }}
+            />
+          )}
           <CommandList>
             {props.loading ? (
               <div className="text-muted-foreground flex items-center justify-center gap-2 p-4 text-sm">
@@ -398,10 +487,12 @@ function Combobox(props: ComboboxProps) {
                     const desc = optDesc(o);
                     const tag = optTag(o);
                     const icon = optIcon(o);
+                    const disabled = optDisabled(o);
                     return (
                       <CommandItem
                         key={v}
                         value={v}
+                        disabled={disabled}
                         onSelect={() => handleSelect(v)}
                       >
                         <Check
