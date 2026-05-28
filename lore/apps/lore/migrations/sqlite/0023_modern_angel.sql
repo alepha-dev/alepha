@@ -1,0 +1,1 @@
+ALTER TABLE `campaigns` ADD `retention_days` integer;

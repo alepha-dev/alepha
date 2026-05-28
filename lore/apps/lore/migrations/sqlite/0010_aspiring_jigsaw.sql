@@ -1,0 +1,1 @@
+ALTER TABLE `folios` ADD `protected` integer DEFAULT false NOT NULL;
