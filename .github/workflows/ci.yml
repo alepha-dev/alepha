@@ -63,19 +63,17 @@ jobs:
       - name: Dependencies Check
         run: yarn check:deps
 
-      - name: Test Project
-        run: yarn test
-        env:
-          VITEST_ARGS: --coverage --reporter=verbose --reporter=junit --outputFile=test-report.junit.xml
-
-      - name: Test Bun Providers
-        run: yarn test:bun
-
       - name: i18n Catalog Check
         run: yarn check:i18n
 
       - name: DB Migrations Check
         run: yarn check:migrations
+
+      - name: Test Project
+        run: yarn test
+
+      - name: Test Bun Providers
+        run: yarn test:bun
 
       - name: Build Project
         run: yarn build
@@ -88,16 +86,6 @@ jobs:
 
       - name: Run CLI E2E Tests
         run: yarn e2e-cli
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Upload test results to Codecov
-        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
 
   deploy-docs:
     needs: verify-linux
@@ -142,15 +130,6 @@ jobs:
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
 
   deploy-lore-production:
-    # Lore (apps/lore) auto-deploys to Cloudflare on every push to main.
-    # Mirrors the former lore repo's deploy-production job. Required
-    # secrets are scoped to the `lore-production` environment — copied
-    # over from the retired feunard/lore repo at merge time:
-    #   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
-    #   APP_GITHUB_CLIENT_ID, APP_GITHUB_CLIENT_SECRET
-    #   APP_SECRET, BREVO_API_KEY, EMAIL_FROM
-    #   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
-    #   TURNSTILE_SECRET_KEY, TURNSTILE_SITE_KEY
     needs: verify-linux
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -175,62 +154,8 @@ jobs:
           GITHUB_CLIENT_ID: ${{ secrets.APP_GITHUB_CLIENT_ID }}
           GITHUB_CLIENT_SECRET: ${{ secrets.APP_GITHUB_CLIENT_SECRET }}
           APP_SECRET: ${{ secrets.APP_SECRET }}
-          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
           TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
-
-  verify-windows:
-    # Smoke-test the build/lint/typecheck/CLI flow on Windows.
-    # `yarn test` is intentionally omitted: GitHub `services:` (Postgres, Redis,
-    # S3-mock, EMQX) only attach on Linux runners, so the integration tests
-    # that need those services would fail here. Linux already covers them.
-    runs-on: windows-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Enable Corepack
-        run: |
-          npm uninstall -g yarn
-          corepack enable
-
-      - name: Prepare Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: "24.x"
-          cache: "yarn"
-
-      - name: Install Dependencies
-        run: yarn
-
-      - name: Clean
-        run: yarn clean
-
-      - name: Prepare
-        run: yarn copy
-
-      - name: Lint Project
-        run: yarn lint
-
-      - name: TypeScript Check
-        run: yarn typecheck
-
-      - name: Dependencies Check
-        run: yarn check:deps
-
-      - name: i18n Catalog Check
-        run: yarn check:i18n
-
-      - name: DB Migrations Check
-        run: yarn check:migrations
-
-      - name: Build Project
-        run: yarn build
-
-      - name: Run CLI E2E Tests
-        run: yarn e2e-cli

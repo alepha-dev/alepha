@@ -79,6 +79,14 @@ The only public Alepha application — a gamified campaign management app at `lo
 
 CI auto-deploys Lore to Cloudflare on every push to `main` via the `deploy-lore-production` job in `.github/workflows/ci.yml`. There is no human gate. Lore migrations (`apps/lore/migrations/sqlite/`) target Cloudflare D1, which has a known cascade-on-DROP-TABLE quirk — see `apps/lore/CLAUDE.md` ("Migration safety on D1") before pushing anything that touches `migrations/sqlite/`.
 
+### Lore MCP — framework planning memory
+
+The Lore MCP (`mcp__claude_ai_Lore__*`) is the long-term planning memory for framework work in this repo. Framework decisions, deferred plans, and bug reports live in the **Alepha campaign — id `1`** (separate from campaign `2` which is for the Lore app itself).
+
+- Before non-trivial framework changes, orient via `campaign_context` (campaign `1`) — returns campaign metadata, active quests, and the folio index in one shot.
+- Read `folio_get` on relevant folios. Folios are how past sessions hand context to future sessions (current examples: #4 Drizzle v1 plan, #5 Stripe-deferred, #6 ui-registry removal).
+- **Prefer folios over quests for framework work.** Folios capture decisions, plans, and gotchas — write one (`folio_create` with a good `summary` + reusable `tags`) whenever a session produces a non-obvious decision or design note. Only create quests when the user explicitly asks.
+
 ### Testing
 
 #### Test Configuration
