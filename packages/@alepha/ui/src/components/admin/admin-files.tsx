@@ -3,15 +3,30 @@ import * as React from "react";
 void React;
 
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@alepha/ui/components/ui/hover-card";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import type { Page } from "alepha";
-import type { FileController } from "alepha/api/files";
+import { type Page, type Static, t } from "alepha";
+import type {
+  AdminFileStatsController,
+  FileController,
+  FileResource,
+} from "alepha/api/files";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Download, Trash2, Upload } from "lucide-react";
-import { type ChangeEvent, useCallback, useRef, useState } from "react";
+import { Download, Search, Trash2, Upload } from "lucide-react";
+import {
+  type ChangeEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
 const formatBytes = (n: number) => {
@@ -24,13 +39,52 @@ const formatBytes = (n: number) => {
   return `${(n / 1024 ** i).toFixed(1)} ${units[i]}`;
 };
 
+// Filter schema at module scope so its identity stays stable across renders
+// — AlephaTable's internal `useForm` captures it once.
+const filtersSchema = t.object({
+  name: t.optional(t.string()),
+  bucket: t.optional(t.string()),
+});
+type AdminFileFilters = Static<typeof filtersSchema>;
+
+const isImage = (mimeType?: string) => Boolean(mimeType?.startsWith("image/"));
+
 export function AdminFiles() {
   const client = useClient<FileController>();
+  const statsClient = useClient<AdminFileStatsController>();
   const dialog = useDialog();
   const { l, tr } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [bucketItems, setBucketItems] = useState<
+    { value: string; label: string }[]
+  >([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Populate the bucket filter from storage stats. Re-runs after uploads so
+  // counts (and any newly-created bucket) stay current.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const stats = await statsClient.getFileStats({} as never);
+      if (cancelled) return;
+      setBucketItems(
+        (stats.byBucket ?? []).map((b) => ({
+          value: b.bucket,
+          label: `${b.bucket} (${b.fileCount})`,
+        })),
+      );
+    })().catch(() => {
+      // The bucket filter degrades to empty if stats can't be fetched.
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [statsClient, refreshKey]);
+
+  const downloadFile = useCallback((f: FileResource) => {
+    window.open(`/api/files/${f.id}`, "_blank");
+  }, []);
 
   const handleUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,14 +114,27 @@ export function AdminFiles() {
   };
 
   const fetcher = useCallback(
-    async (params: { page: number; size: number; sort?: string }) => {
-      const res = await client.findFiles({ query: params as never });
-      return res as Page<any>;
+    async (params: {
+      page: number;
+      size: number;
+      sort?: string;
+      filters?: AdminFileFilters;
+    }) => {
+      const res = await client.findFiles({
+        query: {
+          page: params.page,
+          size: params.size,
+          sort: params.sort,
+          name: params.filters?.name || undefined,
+          bucket: params.filters?.bucket || undefined,
+        } as never,
+      });
+      return res as Page<FileResource>;
     },
     [client, refreshKey],
   );
 
-  const handleDelete = async (file: any, refresh: () => void) => {
+  const handleDelete = async (file: FileResource, refresh: () => void) => {
     const ok = await dialog.confirm({
       title: tr("admin.files.deleteTitle", { default: "Delete file" }),
       description: tr("admin.files.deleteConfirm", {
@@ -83,7 +150,7 @@ export function AdminFiles() {
   };
 
   const handleBulkDelete = async (
-    items: any[],
+    items: FileResource[],
     {
       clearSelection,
       refresh,
@@ -120,9 +187,52 @@ export function AdminFiles() {
         className="hidden"
         onChange={handleUpload}
       />
-      <AlephaTable
+      <AlephaTable<FileResource>
         className="min-h-0 flex-1"
+        persistenceKey="admin.files"
         fetch={fetcher}
+        actions={[
+          {
+            icon: Upload,
+            label: uploading
+              ? tr("admin.files.uploading", { default: "Uploading…" })
+              : tr("admin.files.upload", { default: "Upload" }),
+            disabled: uploading,
+            onClick: () => fileInputRef.current?.click(),
+          },
+        ]}
+        filters={{
+          schema: filtersSchema,
+          render: (form) => (
+            <div className="flex items-center gap-2">
+              <div className="w-64">
+                <Control
+                  input={form.input.name}
+                  label=""
+                  icon={Search}
+                  placeholder={String(
+                    tr("admin.files.searchPlaceholder", {
+                      default: "Search by name…",
+                    }),
+                  )}
+                />
+              </div>
+              <Control
+                input={form.input.bucket}
+                label=""
+                clearable
+                clearLabel={String(
+                  tr("admin.files.allBuckets", { default: "All buckets" }),
+                )}
+                triggerClassName="w-48"
+                placeholder={String(
+                  tr("admin.files.bucketPlaceholder", { default: "Bucket" }),
+                )}
+                items={bucketItems}
+              />
+            </div>
+          ),
+        }}
         bulkActions={[
           {
             label: tr("admin.files.bulkDelete", {
@@ -133,35 +243,54 @@ export function AdminFiles() {
             onClick: handleBulkDelete,
           },
         ]}
-        header={
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-lg font-semibold">
-                {tr("admin.files.title", { default: "Files" })}
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                {tr("admin.files.subtitle", {
-                  default: "Stored files across configured buckets.",
-                })}
-              </p>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="size-4 mr-1" />
-              {uploading
-                ? tr("admin.files.uploading", { default: "Uploading…" })
-                : tr("admin.files.upload", { default: "Upload" })}
-            </Button>
-          </div>
-        }
         columns={{
           name: {
             label: tr("admin.files.colName", { default: "Name" }),
-            cell: (f) => <span className="font-medium">{f.name}</span>,
+            cell: (f) => {
+              const trigger = (
+                <button
+                  type="button"
+                  onClick={() => downloadFile(f)}
+                  className="hover:text-primary truncate text-left font-medium underline-offset-2 hover:underline"
+                >
+                  {f.name}
+                </button>
+              );
+              if (!isImage(f.mimeType)) return trigger;
+              return (
+                <HoverCard>
+                  <HoverCardTrigger render={trigger} />
+                  <HoverCardContent className="w-auto p-1">
+                    <img
+                      src={`/api/files/${f.id}`}
+                      alt={f.name}
+                      loading="lazy"
+                      className="max-h-48 max-w-64 rounded object-contain"
+                    />
+                  </HoverCardContent>
+                </HoverCard>
+              );
+            },
+          },
+          user: {
+            label: tr("admin.files.colUser", { default: "Uploaded by" }),
+            cell: (f) => {
+              const label =
+                f.user?.email ||
+                f.user?.username ||
+                [f.user?.firstName, f.user?.lastName]
+                  .filter(Boolean)
+                  .join(" ") ||
+                f.creatorName ||
+                null;
+              return label ? (
+                <span className="truncate">{label}</span>
+              ) : (
+                <span className="text-muted-foreground font-mono text-xs">
+                  {f.creator?.slice(0, 8) ?? "—"}
+                </span>
+              );
+            },
           },
           size: {
             label: tr("admin.files.colSize", { default: "Size" }),
@@ -189,7 +318,10 @@ export function AdminFiles() {
             label: tr("admin.files.colUploaded", { default: "Uploaded" }),
             sortable: true,
             cell: (f) => (
-              <span className="text-muted-foreground text-xs">
+              <span
+                className="text-muted-foreground text-xs"
+                title={String(l(f.createdAt, { date: "lll" }))}
+              >
                 {String(l(f.createdAt, { date: "fromNow" }))}
               </span>
             ),
@@ -199,9 +331,7 @@ export function AdminFiles() {
           {
             label: tr("admin.files.download", { default: "Download" }),
             icon: Download,
-            onClick: () => {
-              window.open(`/api/files/${f.id}`, "_blank");
-            },
+            onClick: () => downloadFile(f),
           },
           {
             label: tr("admin.files.delete", { default: "Delete" }),

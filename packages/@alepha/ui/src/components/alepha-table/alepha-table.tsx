@@ -109,6 +109,20 @@ export interface BulkAction<T> {
 }
 
 /**
+ * A standalone toolbar icon-button, rendered in the right-hand icon group
+ * next to the column picker and separated from the filter area by a divider.
+ * Use for table-scoped actions (e.g. "Upload", "New") that aren't tied to a
+ * row or a selection. The table renders the ghost icon button + tooltip so it
+ * matches the built-in column-picker / refresh controls.
+ */
+export interface TableAction {
+  icon: IconType;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}
+
+/**
  * High-level filter slot. AlephaTable creates the `useForm` internally,
  * wraps `render`'s output in a `<form>` element, persists values under
  * `persistenceKey` when set, and refetches on submit (and on every
@@ -199,6 +213,13 @@ export interface AlephaTableProps<T> {
    * toolbar — typically a "New" / "Create" button.
    */
   toolbar?: ReactNode;
+  /**
+   * Standalone icon-button actions rendered in the toolbar's right-hand
+   * icon group, before the column picker and separated from the filter
+   * area by a divider. The table renders the ghost icon button + tooltip
+   * itself, so callers only supply the icon/label/handler.
+   */
+  actions?: TableAction[];
   /**
    * Extra classes applied to the outer wrapper.
    */
@@ -580,6 +601,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const showToolbar =
     Boolean(props.filters) ||
     Boolean(props.toolbar) ||
+    Boolean(props.actions?.length) ||
     !props.hideColumnPicker ||
     !props.hideActionsMenu;
   const showColumnPicker = !props.hideColumnPicker && allColumnKeys.length > 0;
@@ -609,6 +631,39 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
             {props.toolbar}
             <TooltipProvider>
               <div className="flex items-end gap-1">
+                {props.actions?.length ? (
+                  <>
+                    {props.actions.map((action) => {
+                      const ActionIcon = action.icon;
+                      return (
+                        <Tooltip key={action.label}>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-9 w-9 p-0"
+                                aria-label={action.label}
+                                disabled={action.disabled}
+                                onClick={action.onClick}
+                              />
+                            }
+                          >
+                            <ActionIcon className="size-4" />
+                          </TooltipTrigger>
+                          <TooltipContent>{action.label}</TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                    {(showColumnPicker || showActionsMenu) && (
+                      <span
+                        aria-hidden
+                        className="bg-border mx-1 h-5 w-px self-center"
+                      />
+                    )}
+                  </>
+                ) : null}
                 {showColumnPicker && (
                   <ColumnPicker<T>
                     columns={props.columns}

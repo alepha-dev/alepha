@@ -11,10 +11,11 @@ import {
   type DurationLike,
 } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, type Page } from "alepha/orm";
+import { $repository, type Page, RepositoryProvider } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import type { Ok } from "alepha/server";
 import { NotFoundError } from "alepha/server";
+import { users } from "../../users/entities/users.ts";
 import { type FileEntity, files } from "../entities/files.ts";
 import type { FileQuery } from "../schemas/fileQuerySchema.ts";
 import type { FileResource } from "../schemas/fileResourceSchema.ts";
@@ -24,8 +25,25 @@ export class FileService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly repositoryProvider = $inject(RepositoryProvider);
   protected readonly defaultBucket = $bucket({ name: "default" });
   public readonly fileRepository = $repository(files);
+
+  /**
+   * Best-effort left join embedding the uploader on every file row, so the
+   * admin UI can render `user.email` instead of the bare `creator` UUID.
+   * Joins `files.creator` → `users.id`. Only applied when the `users` entity
+   * is actually registered in the app (see `findFiles`) — the files module
+   * stays usable standalone, without `alepha/api/users`. Targets the default
+   * `users` table, so creators in non-default realms come back unmatched
+   * (`user` undefined), which the UI handles by falling back to `creatorName`.
+   */
+  protected readonly withCreator = {
+    user: {
+      join: users,
+      on: ["creator", users.cols.id] as ["creator", { name: string }],
+    },
+  };
 
   protected onUploadFile = $hook({
     on: "bucket:file:uploaded",
@@ -141,8 +159,19 @@ export class FileService {
       where.createdAt = { lte: q.createdBefore };
     }
 
+    // The creator join requires the `users` table. Only opt in when a users
+    // repository is registered (i.e. `alepha/api/users` is loaded) so the
+    // files module — and its standalone tests — keep working without it.
+    const includeCreator = this.repositoryProvider
+      .getRepositories()
+      .some((repo) => repo.entity.name === users.name);
+
     return await this.fileRepository
-      .paginate(q, { where }, { count: true })
+      .paginate(
+        q,
+        { where, ...(includeCreator ? { with: this.withCreator } : {}) },
+        { count: true },
+      )
       .then((page) => {
         return {
           ...page,

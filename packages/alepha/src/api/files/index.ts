@@ -16,6 +16,9 @@ export * from "./controllers/FileController.ts";
 export * from "./entities/files.ts";
 export * from "./jobs/FileJobs.ts";
 export * from "./providers/FileAccessProvider.ts";
+export * from "./schemas/fileCreatorSummarySchema.ts";
+export * from "./schemas/fileQuerySchema.ts";
+export * from "./schemas/fileResourceSchema.ts";
 export * from "./schemas/storageStatsSchema.ts";
 export * from "./services/FileService.ts";
 

@@ -6,10 +6,12 @@ import {
   LocalFileStorageProvider,
   MemoryFileStorageProvider,
 } from "alepha/bucket";
+import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import type { UserAccountToken } from "alepha/security";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
+import { users } from "../../users/entities/users.ts";
 import { AlephaApiFiles, FileController } from "../index.ts";
 
 const adminUser: UserAccountToken = {
@@ -127,5 +129,51 @@ describe("FileService", () => {
 
   it("should handle basic file operations with local storage", async () => {
     await testFileServiceOperations(LocalFileStorageProvider);
+  });
+
+  it("embeds the uploader summary when a users repository is registered", async () => {
+    // Registering a users repository is what flips the best-effort join on
+    // (and creates the `users` table). Without it, the prior tests confirm
+    // findFiles still works and simply leaves `user` undefined.
+    class TestUsers {
+      repo = $repository(users);
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with({ provide: FileStorageProvider, use: MemoryFileStorageProvider })
+      .with(AlephaApiFiles);
+
+    const testUsers = alepha.inject(TestUsers);
+    const ctrl = alepha.inject(FileController);
+    const fs = alepha.inject(FileSystemProvider);
+
+    await alepha.start();
+
+    await testUsers.repo.create({
+      id: adminUser.id,
+      email: "uploader@example.com",
+      username: "uploader",
+    });
+
+    await ctrl.uploadFile.run(
+      {
+        body: {
+          file: fs.createFile({
+            text: "joined",
+            name: "joined.txt",
+            type: "text/plain",
+          }),
+        },
+      },
+      asAdmin,
+    );
+
+    const files = await ctrl.findFiles.run({}, asAdmin);
+
+    expect(files.content).toHaveLength(1);
+    expect(files.content[0].creator).toBe(adminUser.id);
+    expect(files.content[0].user?.email).toBe("uploader@example.com");
+    expect(files.content[0].user?.username).toBe("uploader");
   });
 });
