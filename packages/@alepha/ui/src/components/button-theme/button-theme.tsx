@@ -2,6 +2,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -100,23 +101,25 @@ export function ButtonTheme(props: ButtonThemeProps) {
         <TooltipContent>{label}</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>{props.heading ?? "Themes"}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {themes.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTheme(t.id)}
-            className={cn(
-              "hover:bg-accent flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm",
-              theme === t.id && "bg-accent",
-            )}
-          >
-            {t.swatch && <ThemeSwatch colors={t.swatch} />}
-            <span className="flex-1 text-left">{t.label}</span>
-            {theme === t.id && <Check className="size-3.5" />}
-          </button>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{props.heading ?? "Themes"}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {themes.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTheme(t.id)}
+              className={cn(
+                "hover:bg-accent flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm",
+                theme === t.id && "bg-accent",
+              )}
+            >
+              {t.swatch && <ThemeSwatch colors={t.swatch} />}
+              <span className="flex-1 text-left">{t.label}</span>
+              {theme === t.id && <Check className="size-3.5" />}
+            </button>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

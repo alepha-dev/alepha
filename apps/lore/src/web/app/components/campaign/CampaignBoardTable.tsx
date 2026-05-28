@@ -6,6 +6,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -127,6 +128,20 @@ const COLUMN_IDS = [
   "updatedAt",
 ] as const;
 type ColumnId = (typeof COLUMN_IDS)[number];
+
+/** Translation key per column. Used by the Columns toggle menu. */
+const COLUMN_LABEL_KEYS: Record<ColumnId, string> = {
+  status: "board.table.status",
+  assignedTo: "board.table.assigned",
+  title: "board.table.title",
+  tags: "board.table.tags",
+  linked: "board.table.linked",
+  priority: "board.table.priority",
+  difficulty: "board.table.rank",
+  zone: "board.table.zone",
+  createdAt: "board.table.created",
+  updatedAt: "board.table.updated",
+};
 
 /** Columns that start hidden — user opts in via the Columns menu. */
 const DEFAULT_HIDDEN_COLUMNS: ReadonlySet<ColumnId> = new Set(["linked"]);
@@ -404,38 +419,24 @@ const CampaignBoardTable = () => {
               <Columns3 className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{tr("board.columns.title")}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {COLUMN_IDS.map((id) => (
-                <DropdownMenuCheckboxItem
-                  key={id}
-                  checked={visibleColumns.has(id)}
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    toggleColumn(id);
-                  }}
-                >
-                  {id === "status"
-                    ? tr("board.table.status")
-                    : id === "assignedTo"
-                      ? tr("board.table.assigned")
-                      : id === "title"
-                        ? tr("board.table.title")
-                        : id === "tags"
-                          ? tr("board.table.tags")
-                          : id === "linked"
-                            ? tr("board.table.linked")
-                            : id === "priority"
-                              ? tr("board.table.priority")
-                              : id === "difficulty"
-                                ? tr("board.table.rank")
-                                : id === "zone"
-                                  ? tr("board.table.zone")
-                                  : id === "createdAt"
-                                    ? tr("board.table.created")
-                                    : tr("board.table.updated")}
-                </DropdownMenuCheckboxItem>
-              ))}
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>
+                  {tr("board.columns.title")}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {COLUMN_IDS.map((id) => (
+                  <DropdownMenuCheckboxItem
+                    key={id}
+                    checked={visibleColumns.has(id)}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      toggleColumn(id);
+                    }}
+                  >
+                    {tr(COLUMN_LABEL_KEYS[id] as string)}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
