@@ -5,13 +5,23 @@ void React;
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@alepha/ui/components/ui/empty";
+import { Skeleton } from "@alepha/ui/components/ui/skeleton";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { cn } from "@alepha/ui/lib/utils";
-import { jsonSchemaToTypeBox, type TObject } from "alepha";
+import { jsonSchemaToTypeBox, type TObject, t } from "alepha";
 import type { AdminParameterController } from "alepha/api/parameters";
-import { useClient } from "alepha/react";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import { useQueryParams } from "alepha/react/router";
 import {
   ChevronRight,
   Download,
@@ -20,8 +30,7 @@ import {
   Settings2,
   Upload,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useMemo, useRef, useState } from "react";
 import { ParameterHistoryItem } from "./parameter-history-item.tsx";
 import { ParameterSaveDialog } from "./parameter-save-dialog.tsx";
 
@@ -41,117 +50,172 @@ import { ParameterSaveDialog } from "./parameter-save-dialog.tsx";
  *           (see `ParameterHistoryItem`) with a `…` menu to view its JSON, diff
  *           it against the previous version, or roll back to it.
  */
+const parameterQuerySchema = t.object({ param: t.optional(t.string()) });
+
 export function AdminParameters() {
   const client = useClient<AdminParameterController>();
   const { tr } = useI18n();
+  const toast = useToast();
   const dialog = useDialog();
-  const [selected, setSelected] = useState<string | undefined>();
+  // Selected parameter is bound to the URL (`?param=<name>`) via useQueryParams
+  // in querystring mode (replaceState — picking a parameter does not add a
+  // browser-history entry), mirroring the admin user-detail tab pattern.
+  const [query, setQuery] = useQueryParams(parameterQuerySchema, {
+    format: "querystring",
+  });
+  const selected = query.param || undefined;
+  const setSelected = (name: string) => setQuery({ param: name });
   const [reloadKey, setReloadKey] = useState(0);
 
-  const [treeNodes, setTreeNodes] = useState<ParamNode[] | undefined>();
-  useEffect(() => {
-    let cancelled = false;
-    client.getParameterTree().then((nodes) => {
-      if (!cancelled) setTreeNodes(nodes as ParamNode[]);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, reloadKey]);
+  const { data: treeNodes } = useQuery(
+    { handler: () => client.getParameterTree() as Promise<ParamNode[]> },
+    [client, reloadKey],
+  );
 
   const leafNames = useMemo(
     () => collectLeafNames(treeNodes ?? []),
     [treeNodes],
   );
 
-  const onExportAll = async () => {
-    if (leafNames.length === 0) return;
-    const payload: Array<{ name: string; content: unknown }> = [];
-    for (const name of leafNames) {
-      const res = await client.getCurrent({ params: { name } });
-      payload.push({
-        name,
-        content: res.current?.content ?? res.currentValue ?? res.defaultValue,
-      });
-    }
-    downloadJson(payload, "parameters.json");
-  };
+  const exportAll = useAction(
+    {
+      handler: async () => {
+        if (leafNames.length === 0) return;
+        const payload: Array<{ name: string; content: unknown }> = [];
+        for (const name of leafNames) {
+          const res = await client.getCurrent({ params: { name } });
+          payload.push({
+            name,
+            content:
+              res.current?.content ?? res.currentValue ?? res.defaultValue,
+          });
+        }
+        downloadJson(payload, "parameters.json");
+      },
+    },
+    [client, leafNames],
+  );
 
-  const onImport = async (file: File) => {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(await file.text());
-    } catch {
-      toast.error(
-        tr("admin.parameters.importInvalidJson", {
-          default: "Invalid JSON file",
-        }),
-      );
-      return;
-    }
-    const items = Array.isArray(parsed) ? parsed : [parsed];
-    const valid = items.filter(
-      (it): it is { name: string; content: unknown } =>
-        !!it &&
-        typeof (it as any).name === "string" &&
-        "content" in (it as any),
-    );
-    if (valid.length === 0) {
-      toast.error(
-        tr("admin.parameters.importNoItems", {
-          default: "No parameters found in file",
-        }),
-      );
-      return;
-    }
-    const known = new Set(leafNames);
-    const recognized = valid.filter((it) => known.has(it.name));
-    const skipped = valid.length - recognized.length;
-    if (recognized.length === 0) {
-      toast.error(
-        tr("admin.parameters.importNoneMatch", {
-          default: "No registered parameters match the imported names",
-        }),
-      );
-      return;
-    }
-    const ok = await dialog.confirm({
-      title: tr("admin.parameters.importTitle", {
-        default: "Import parameters",
-      }),
-      description: tr("admin.parameters.importConfirm", {
-        default: `Import ${recognized.length} parameter(s)? ${skipped > 0 ? `${skipped} unknown entrie(s) will be skipped.` : ""}`,
-        args: [String(recognized.length), String(skipped)],
-      }),
-    });
-    if (!ok) return;
-    for (const it of recognized) {
-      await client.createVersion({
-        params: { name: it.name },
-        body: {
-          content: it.content as Record<string, any>,
-          schemaHash: "",
-          changeDescription: "Imported",
-        },
-      });
-    }
-    toast.success(
-      tr("admin.parameters.imported", {
-        default: `Imported ${recognized.length} parameter(s)`,
-        args: [String(recognized.length)],
-      }),
-    );
-    setReloadKey((k) => k + 1);
-  };
+  const importParams = useAction<[File], void>(
+    {
+      handler: async (file) => {
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(await file.text());
+        } catch {
+          toast.error(
+            tr("admin.parameters.importInvalidJson", {
+              default: "Invalid JSON file",
+            }),
+          );
+          return;
+        }
+        const items = Array.isArray(parsed) ? parsed : [parsed];
+        const valid = items.filter(
+          (it): it is { name: string; content: unknown } =>
+            !!it &&
+            typeof (it as any).name === "string" &&
+            "content" in (it as any),
+        );
+        if (valid.length === 0) {
+          toast.error(
+            tr("admin.parameters.importNoItems", {
+              default: "No parameters found in file",
+            }),
+          );
+          return;
+        }
+        const known = new Set(leafNames);
+        const recognized = valid.filter((it) => known.has(it.name));
+        const skipped = valid.length - recognized.length;
+        if (recognized.length === 0) {
+          toast.error(
+            tr("admin.parameters.importNoneMatch", {
+              default: "No registered parameters match the imported names",
+            }),
+          );
+          return;
+        }
+        const ok = await dialog.confirm({
+          title: tr("admin.parameters.importTitle", {
+            default: "Import parameters",
+          }),
+          description: tr("admin.parameters.importConfirm", {
+            default: `Import ${recognized.length} parameter(s)? ${skipped > 0 ? `${skipped} unknown entrie(s) will be skipped.` : ""}`,
+            args: [String(recognized.length), String(skipped)],
+          }),
+        });
+        if (!ok) return;
+        for (const it of recognized) {
+          await client.createVersion({
+            params: { name: it.name },
+            body: {
+              content: it.content as Record<string, any>,
+              schemaHash: "",
+              changeDescription: "Imported",
+            },
+          });
+        }
+        toast.success(
+          tr("admin.parameters.imported", {
+            default: `Imported ${recognized.length} parameter(s)`,
+            args: [String(recognized.length)],
+          }),
+        );
+        setReloadKey((k) => k + 1);
+      },
+    },
+    [client, leafNames, dialog, toast, tr],
+  );
+
+  const rollback = useAction<[number], void>(
+    {
+      handler: async (version) => {
+        if (!selected) return;
+        const ok = await dialog.confirm({
+          title: tr("admin.parameters.rollbackTitle", {
+            default: "Roll back parameter",
+          }),
+          description: tr("admin.parameters.rollbackConfirm", {
+            default: `Roll back to version ${version}? This creates a new version copying that content.`,
+            args: [String(version)],
+          }),
+        });
+        if (!ok) return;
+        await client.rollback({
+          params: { name: selected },
+          body: { targetVersion: version },
+        });
+        toast.success(
+          tr("admin.parameters.rolledBack", {
+            default: "Parameter rolled back",
+          }),
+        );
+        setReloadKey((k) => k + 1);
+      },
+    },
+    [client, selected, dialog, toast, tr],
+  );
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)_340px] p-6">
+    <div
+      className={cn(
+        "grid min-h-0 flex-1 p-6",
+        // The history pane only appears once a parameter is selected, so the
+        // grid drops to two columns until then.
+        selected
+          ? "grid-cols-[280px_minmax(0,1fr)_300px]"
+          : "grid-cols-[280px_minmax(0,1fr)]",
+      )}
+    >
       <ParameterTreePane
         nodes={treeNodes}
         selected={selected}
         onSelect={setSelected}
-        onExportAll={onExportAll}
-        onImport={onImport}
+        onExportAll={exportAll.run}
+        onImport={importParams.run}
+        exporting={exportAll.loading}
+        importing={importParams.loading}
       />
       <ParameterEditorPane
         key={selected ?? "none"}
@@ -166,33 +230,14 @@ export function AdminParameters() {
           );
         }}
       />
-      <ParameterHistoryPane
-        name={selected}
-        reloadKey={reloadKey}
-        onRollback={async (version) => {
-          if (!selected) return;
-          const ok = await dialog.confirm({
-            title: tr("admin.parameters.rollbackTitle", {
-              default: "Roll back parameter",
-            }),
-            description: tr("admin.parameters.rollbackConfirm", {
-              default: `Roll back to version ${version}? This creates a new version copying that content.`,
-              args: [String(version)],
-            }),
-          });
-          if (!ok) return;
-          await client.rollback({
-            params: { name: selected },
-            body: { targetVersion: version },
-          });
-          toast.success(
-            tr("admin.parameters.rolledBack", {
-              default: "Parameter rolled back",
-            }),
-          );
-          setReloadKey((k) => k + 1);
-        }}
-      />
+      {selected && (
+        <ParameterHistoryPane
+          key={`history-${selected}`}
+          name={selected}
+          reloadKey={reloadKey}
+          onRollback={rollback.run}
+        />
+      )}
     </div>
   );
 }
@@ -205,6 +250,8 @@ interface ParameterTreePaneProps {
   onSelect: (name: string) => void;
   onExportAll: () => void | Promise<void>;
   onImport: (file: File) => void | Promise<void>;
+  exporting?: boolean;
+  importing?: boolean;
 }
 
 interface ParamNode {
@@ -223,7 +270,18 @@ const ParameterTreePane = (props: ParameterTreePaneProps) => {
         {tr("admin.parameters.treeTitle", { default: "Parameters" })}
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pr-2">
-        {props.nodes?.length ? (
+        {!props.nodes ? (
+          // Loading — distinct from an empty (loaded) tree.
+          ["t1", "t2", "t3", "t4", "t5"].map((k, i) => (
+            <div key={k} className="flex items-center gap-1.5 px-2 py-1.5">
+              <Skeleton className="size-3.5 shrink-0 rounded" />
+              <Skeleton
+                className="h-3.5"
+                style={{ width: `${[70, 55, 80, 50, 65][i]}%` }}
+              />
+            </div>
+          ))
+        ) : props.nodes.length ? (
           props.nodes.map((node) => (
             <TreeNodeView
               key={node.path}
@@ -244,6 +302,8 @@ const ParameterTreePane = (props: ParameterTreePaneProps) => {
       <TreeFooterActions
         onExportAll={props.onExportAll}
         onImport={props.onImport}
+        exporting={props.exporting}
+        importing={props.importing}
         disabled={!props.nodes?.length}
       />
     </div>
@@ -254,6 +314,8 @@ interface TreeFooterActionsProps {
   onExportAll: () => void | Promise<void>;
   onImport: (file: File) => void | Promise<void>;
   disabled?: boolean;
+  exporting?: boolean;
+  importing?: boolean;
 }
 
 const TreeFooterActions = (props: TreeFooterActionsProps) => {
@@ -277,7 +339,7 @@ const TreeFooterActions = (props: TreeFooterActionsProps) => {
         type="button"
         variant="ghost"
         size="sm"
-        disabled={props.disabled}
+        disabled={props.disabled || props.exporting}
         onClick={() => props.onExportAll()}
       >
         <Download className="size-3.5" />
@@ -288,6 +350,7 @@ const TreeFooterActions = (props: TreeFooterActionsProps) => {
         type="button"
         variant="ghost"
         size="sm"
+        disabled={props.importing}
         onClick={() => fileInput.current?.click()}
       >
         <Upload className="size-3.5" />
@@ -364,38 +427,85 @@ interface ParameterEditorPaneProps {
 const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
   const client = useClient<AdminParameterController>();
   const { tr } = useI18n();
+  const toast = useToast();
 
-  const [current, setCurrent] = useState<
-    Awaited<ReturnType<AdminParameterController["getCurrent"]>> | undefined
-  >();
-  useEffect(() => {
-    if (!props.name) {
-      setCurrent(undefined);
-      return;
-    }
-    let cancelled = false;
-    setCurrent(undefined);
-    client.getCurrent({ params: { name: props.name } }).then((res) => {
-      if (!cancelled) setCurrent(res);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, props.name, props.reloadKey]);
+  const { data: current } = useQuery(
+    {
+      handler: () => client.getCurrent({ params: { name: props.name! } }),
+      enabled: !!props.name,
+    },
+    [client, props.name, props.reloadKey],
+  );
+
+  // Factory reset is a write mutation — runs through useAction so the action
+  // button can disable while it's in flight. Reads `current` at call time
+  // (the hook must sit above the early returns below).
+  const factoryReset = useAction(
+    {
+      handler: async () => {
+        if (!props.name || !current) return;
+        await client.createVersion({
+          params: { name: props.name },
+          body: {
+            content: (current.defaultValue ?? {}) as Record<string, any>,
+            schemaHash: current.current?.schemaHash ?? "",
+            changeDescription: "Factory reset to compiled defaults",
+          },
+        });
+        toast.success(
+          tr("admin.parameters.factoryReset", {
+            default: "Parameter reset to defaults",
+          }),
+        );
+        props.onSaved();
+      },
+    },
+    [client, props.name, current],
+  );
 
   if (!props.name) {
+    // No selection → history pane is hidden, so the editor is the rightmost
+    // pane and closes the card on its right edge.
     return (
-      <div className="bg-card text-muted-foreground flex flex-1 items-center justify-center border-y text-sm">
-        {tr("admin.parameters.emptySelection", {
-          default: "Pick a parameter on the left to edit it.",
-        })}
+      <div className="bg-card flex flex-1 items-center justify-center rounded-r-lg border-y border-r p-6">
+        <Empty className="border-0">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Settings2 className="size-4" />
+            </EmptyMedia>
+            <EmptyTitle>
+              {tr("admin.parameters.emptyTitle", {
+                default: "No parameter selected",
+              })}
+            </EmptyTitle>
+            <EmptyDescription>
+              {tr("admin.parameters.emptySelection", {
+                default: "Pick a parameter on the left to edit it.",
+              })}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       </div>
     );
   }
   if (!current) {
     return (
-      <div className="bg-card text-muted-foreground flex flex-1 items-center justify-center border-y text-sm">
-        {tr("admin.parameters.loading", { default: "Loading…" })}
+      <div className="bg-card flex min-h-0 flex-1 flex-col border-y">
+        <div className="flex items-center gap-3 border-b px-4 pb-3 pt-3">
+          <Skeleton className="size-10 rounded-full" />
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-2 xl:grid-cols-3">
+          {["f1", "f2", "f3", "f4"].map((k) => (
+            <div key={k} className="flex flex-col gap-2">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -414,7 +524,6 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
     {};
 
   const schemaHash = data.current?.schemaHash ?? "";
-  const defaultValue = (data.defaultValue ?? {}) as Record<string, any>;
   const exportContent =
     data.current?.content ?? data.currentValue ?? data.defaultValue ?? {};
 
@@ -426,33 +535,20 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
       schemaHash={data.current?.schemaHash}
       currentVersion={data.current?.version}
       initialTags={data.current?.tags ?? undefined}
-      onSubmit={async (content, tags) => {
+      onSubmit={async (content, meta) => {
         await client.createVersion({
           params: { name: props.name! },
           body: {
             content: content as Record<string, any>,
             schemaHash,
-            tags: tags.length > 0 ? tags : undefined,
+            tags: meta.tags.length > 0 ? meta.tags : undefined,
+            activationDate: meta.activationDate,
           },
         });
         props.onSaved();
       }}
-      onFactoryReset={async () => {
-        await client.createVersion({
-          params: { name: props.name! },
-          body: {
-            content: defaultValue,
-            schemaHash,
-            changeDescription: "Factory reset to compiled defaults",
-          },
-        });
-        toast.success(
-          tr("admin.parameters.factoryReset", {
-            default: "Parameter reset to defaults",
-          }),
-        );
-        props.onSaved();
-      }}
+      onFactoryReset={factoryReset.run}
+      factoryResetLoading={factoryReset.loading}
       onExport={() => {
         downloadJson(
           [{ name: props.name!, content: exportContent }],
@@ -470,8 +566,12 @@ interface ParameterEditorFormProps {
   schemaHash?: string;
   currentVersion?: number;
   initialTags?: string[];
-  onSubmit: (content: unknown, tags: string[]) => Promise<void>;
-  onFactoryReset: () => Promise<void>;
+  onSubmit: (
+    content: unknown,
+    meta: { tags: string[]; activationDate?: string },
+  ) => Promise<void>;
+  onFactoryReset: () => void | Promise<void>;
+  factoryResetLoading?: boolean;
   onExport: () => void;
 }
 
@@ -499,10 +599,12 @@ const ParameterEditorForm = (props: ParameterEditorFormProps) => {
   }, [props.name]);
 
   return (
-    <div className="min-h-0 overflow-y-auto px-4">
+    <div className="flex min-h-0 flex-col">
       <AutoForm
         form={form}
-        card
+        fill
+        card="rounded-none ring-0 border-y"
+        gridClassName="grid-cols-1 lg:grid-cols-2 xl:grid-cols-3"
         icon="cog"
         title={title}
         description={breadcrumb || undefined}
@@ -525,6 +627,7 @@ const ParameterEditorForm = (props: ParameterEditorFormProps) => {
             icon: "wrench",
             variant: "outline",
             onClick: props.onFactoryReset,
+            disabled: props.factoryResetLoading,
           },
           {
             label: tr("admin.parameters.export", { default: "Export" }),
@@ -540,8 +643,8 @@ const ParameterEditorForm = (props: ParameterEditorFormProps) => {
           if (!open) setPending(null);
         }}
         initialTags={props.initialTags}
-        onConfirm={async (tags) => {
-          if (pending) await props.onSubmit(pending, tags);
+        onConfirm={async (meta) => {
+          if (pending) await props.onSubmit(pending, meta);
           setPending(null);
         }}
       />
@@ -561,57 +664,67 @@ const ParameterHistoryPane = (props: ParameterHistoryPaneProps) => {
   const client = useClient<AdminParameterController>();
   const { tr } = useI18n();
 
-  const [history, setHistory] = useState<
-    Awaited<ReturnType<AdminParameterController["getHistory"]>> | undefined
-  >();
-  useEffect(() => {
-    if (!props.name) {
-      setHistory(undefined);
-      return;
-    }
-    let cancelled = false;
-    setHistory(undefined);
-    client
-      .getHistory({ params: { name: props.name }, query: { limit: 50 } })
-      .then((res) => {
-        if (!cancelled) setHistory(res);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, props.name, props.reloadKey]);
+  const { data: history } = useQuery(
+    {
+      handler: () =>
+        client.getHistory({
+          params: { name: props.name! },
+          query: { limit: 50 },
+        }),
+      enabled: !!props.name,
+    },
+    [client, props.name, props.reloadKey],
+  );
 
   return (
-    <div className="bg-card flex min-h-0 flex-col gap-2 rounded-r-lg border p-2">
-      <div className="text-muted-foreground flex items-center gap-1.5 px-2 py-1 text-xs font-medium uppercase tracking-wide">
+    <div className="bg-card flex min-h-0 flex-col overflow-hidden rounded-r-lg border">
+      <div className="text-muted-foreground flex items-center gap-1.5 px-3 py-2 text-xs font-medium uppercase tracking-wide">
         <HistoryIcon className="size-3.5" />
         {tr("admin.parameters.historyTitle", { default: "History" })}
       </div>
       {!props.name ? (
-        <span className="text-muted-foreground px-2 py-1 text-xs">
+        <span className="text-muted-foreground px-3 py-2 text-xs">
           {tr("admin.parameters.historyHint", {
             default: "Select a parameter to see its versions.",
           })}
         </span>
       ) : !history ? (
-        <span className="text-muted-foreground px-2 py-1 text-xs">
-          {tr("admin.parameters.loading", { default: "Loading…" })}
-        </span>
+        <div className="flex flex-col border-t">
+          {["s1", "s2", "s3"].map((k) => (
+            <div
+              key={k}
+              className="flex items-center gap-3 border-b px-3 py-2.5"
+            >
+              <Skeleton className="size-4 rounded-full" />
+              <div className="flex flex-1 flex-col gap-1.5">
+                <Skeleton className="h-3.5 w-20" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : !history.versions.length ? (
-        <span className="text-muted-foreground px-2 py-1 text-xs">
+        <span className="text-muted-foreground px-3 py-2 text-xs">
           {tr("admin.parameters.historyEmpty", {
             default: "No saved versions yet",
           })}
         </span>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto pr-2">
-          {history.versions.map((v) => (
-            <ParameterHistoryItem
-              key={v.id}
-              version={v}
-              onRollback={props.onRollback}
-            />
-          ))}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto border-t">
+          {[...history.versions]
+            // Most recent activation on top.
+            .sort(
+              (a, b) =>
+                b.activationDate.localeCompare(a.activationDate) ||
+                b.version - a.version,
+            )
+            .map((v) => (
+              <ParameterHistoryItem
+                key={v.id}
+                version={v}
+                onRollback={props.onRollback}
+              />
+            ))}
         </div>
       )}
     </div>

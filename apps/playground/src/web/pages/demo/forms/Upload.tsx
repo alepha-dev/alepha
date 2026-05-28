@@ -1,7 +1,7 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { t } from "alepha";
 import { useForm } from "alepha/react/form";
-import { toast } from "sonner";
 
 const schema = t.object({
   avatar: t.optional(
@@ -32,6 +32,7 @@ const schema = t.object({
 });
 
 const UploadDemo = () => {
+  const toast = useToast();
   const form = useForm({
     schema,
     handler: (values) => {

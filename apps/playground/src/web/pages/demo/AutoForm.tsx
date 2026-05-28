@@ -1,7 +1,7 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { t } from "alepha";
 import { useForm } from "alepha/react/form";
-import { toast } from "sonner";
 
 const profileSchema = t.object({
   username: t.string({
@@ -90,6 +90,7 @@ const profileSchema = t.object({
 });
 
 const AutoFormDemo = () => {
+  const toast = useToast();
   const form = useForm({
     schema: profileSchema,
     initialValues: {

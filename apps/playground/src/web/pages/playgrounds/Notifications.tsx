@@ -5,9 +5,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@alepha/ui/components/ui/card";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient } from "alepha/react";
 import { useCallback, useState } from "react";
-import { toast } from "sonner";
 import type { PlaygroundController } from "../../../api/PlaygroundController.ts";
 
 interface LogLine {
@@ -17,6 +17,7 @@ interface LogLine {
 }
 
 const Notifications = () => {
+  const toast = useToast();
   const client = useClient<PlaygroundController>();
   const [lines, setLines] = useState<LogLine[]>([]);
 

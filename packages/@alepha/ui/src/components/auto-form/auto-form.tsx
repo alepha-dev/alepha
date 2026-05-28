@@ -15,11 +15,9 @@ import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardFooter,
-  CardHeader,
   CardTitle,
 } from "@alepha/ui/components/ui/card";
 import {
@@ -27,6 +25,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@alepha/ui/components/ui/popover";
+import { cn } from "@alepha/ui/lib/utils";
 import type { TObject } from "alepha";
 import { useAlepha } from "alepha/react";
 import {
@@ -218,6 +217,18 @@ export interface AutoFormProps<T extends TObject> {
   className?: string;
 
   /**
+   * Override the column classes of each field group's grid. By default fields
+   * lay out on a fixed 12-column grid and each field's span is derived from
+   * width heuristics (`$control.width`, type, …).
+   *
+   * Pass responsive column classes — e.g.
+   * `"grid-cols-1 md:grid-cols-2 xl:grid-cols-3"` — to get N equal columns per
+   * breakpoint instead; when set, every field occupies a single cell and the
+   * per-field width heuristics are ignored.
+   */
+  gridClassName?: string;
+
+  /**
    * Wrap the form in a `<Card>`:
    * - the header (icon + title/description) renders as the `CardHeader`,
    * - the field groups render as the `CardContent`,
@@ -227,8 +238,18 @@ export interface AutoFormProps<T extends TObject> {
    * When omitted, the form uses its default chrome (a muted header box and a
    * standalone bottom bar). The footer is hidden in `autoSave` mode just like
    * the default bottom bar.
+   *
+   * Pass a string to override the `<Card>` className (e.g. `"rounded-none"` to
+   * make the card sit flush against neighbouring panes).
    */
-  card?: boolean;
+  card?: boolean | string;
+
+  /**
+   * Fill the available height: the card stretches to `100%` of its container
+   * and the body (field groups) scrolls while the header and footer stay
+   * pinned. Only meaningful in `card` mode.
+   */
+  fill?: boolean;
 
   /**
    * Visual layout for every nested Control.
@@ -361,6 +382,7 @@ export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
             fields={props.fields}
             multiGroup={resolvedGroups.length > 1}
             layout={props.layout ?? "stack"}
+            gridClassName={props.gridClassName}
           />
         ))}
       </FormFieldAutoSaveProvider>
@@ -381,18 +403,41 @@ export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
   };
 
   if (props.card) {
+    const cardClassName =
+      typeof props.card === "string" ? props.card : undefined;
     return (
-      <form {...props.form.props} className={props.className}>
-        <Card>
+      <form
+        {...props.form.props}
+        className={cn(
+          props.fill && "flex h-full min-h-0 flex-col",
+          props.className,
+        )}
+      >
+        <Card
+          className={cn(
+            props.fill && "min-h-0 flex-1",
+            // Header owns its bottom padding (pb-3); trim the card's top
+            // padding to match so header top/bottom are an even 12px.
+            hasHeader && "pt-3",
+            cardClassName,
+          )}
+        >
           {hasHeader && (
-            <CardHeader className="border-b">
-              <div className="flex items-start gap-3">
+            // Explicit flex header (not shadcn CardHeader): CardHeader's grid
+            // adds a phantom second row + row-gap below the title whenever a
+            // CardDescription is nested, making the bottom padding larger than
+            // the top. A plain flex row keeps top/bottom padding symmetric.
+            <div
+              data-slot="card-header"
+              className="flex items-start justify-between gap-3 border-b px-4 pb-3"
+            >
+              <div className="flex items-center gap-3">
                 {HeaderIcon && (
                   <div className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-full">
                     <HeaderIcon className="size-5" />
                   </div>
                 )}
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-0">
                   {props.title && <CardTitle>{props.title}</CardTitle>}
                   {props.description && (
                     <CardDescription>{props.description}</CardDescription>
@@ -400,11 +445,16 @@ export function AutoForm<T extends TObject>(props: AutoFormProps<T>) {
                 </div>
               </div>
               {props.headerAction && (
-                <CardAction>{props.headerAction}</CardAction>
+                <div className="shrink-0">{props.headerAction}</div>
               )}
-            </CardHeader>
+            </div>
           )}
-          <CardContent className="flex flex-col gap-4">
+          <CardContent
+            className={cn(
+              "flex flex-col gap-4",
+              props.fill && "min-h-0 flex-1 overflow-y-auto",
+            )}
+          >
             {fieldGroups}
             {props.footer}
           </CardContent>
@@ -464,6 +514,7 @@ interface GroupBlockProps {
   throttle?: number;
   multiGroup?: boolean;
   layout: "stack" | "row";
+  gridClassName?: string;
 }
 
 function GroupBlock(props: GroupBlockProps) {
@@ -535,13 +586,25 @@ function GroupBlock(props: GroupBlockProps) {
           )}
         </div>
       )}
-      <div className={`grid gap-3 grid-cols-12 ${isNaked ? "" : "p-3"}`}>
+      <div
+        className={cn(
+          "grid gap-3",
+          props.gridClassName ?? "grid-cols-12",
+          !isNaked && "p-3",
+        )}
+      >
         {items.map((it) => (
           <div
             key={it.name}
-            className={spanClass(
-              widthFor(it.input, it.props.width as number | undefined),
-            )}
+            className={
+              // Responsive grid: each field is one cell. Default: 12-col span
+              // from width heuristics.
+              props.gridClassName
+                ? undefined
+                : spanClass(
+                    widthFor(it.input, it.props.width as number | undefined),
+                  )
+            }
           >
             <Control
               input={it.input}

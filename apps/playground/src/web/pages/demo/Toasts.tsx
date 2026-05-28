@@ -5,9 +5,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@alepha/ui/components/ui/card";
-import { toast } from "sonner";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 
 const Toasts = () => {
+  const toast = useToast();
   return (
     <div className="flex flex-col gap-4 p-6">
       <header>

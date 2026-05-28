@@ -4,14 +4,20 @@ void React;
 
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
+import { BrandIcon } from "@alepha/ui/components/brand-icon/brand-icon";
 import { Control } from "@alepha/ui/components/control/control";
-import { Avatar, AvatarFallback } from "@alepha/ui/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@alepha/ui/components/ui/avatar";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@alepha/ui/components/ui/card";
@@ -24,10 +30,10 @@ import {
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
 import { Segmented } from "@alepha/ui/components/ui/segmented";
-import { Separator } from "@alepha/ui/components/ui/separator";
 import { Skeleton } from "@alepha/ui/components/ui/skeleton";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { type Page, type Static, t } from "alepha";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { type Static, t } from "alepha";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import type {
   AdminIdentityController,
@@ -35,17 +41,19 @@ import type {
   AdminUserController,
   IdentityResource,
   SessionResource,
-  UserResource,
+  UpdateUser,
 } from "alepha/api/users";
-import { useClient } from "alepha/react";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { FormValidationError, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter, useRouterState } from "alepha/react/router";
+import { useQueryParams, useRouter, useRouterState } from "alepha/react/router";
 import { HttpError } from "alepha/server";
 import {
   ArrowLeft,
   Ban,
+  Check,
+  Copy,
   History,
   KeyRound,
   LogOut,
@@ -57,7 +65,6 @@ import {
   UserX,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
 
 export interface AdminUserDetailProps {
   /**
@@ -70,12 +77,6 @@ export interface AdminUserDetailProps {
    * `/admin/users`.
    */
   backPath?: string;
-}
-
-interface RoleMeta {
-  name: string;
-  default?: boolean;
-  description?: string;
 }
 
 const profileSchema = t.object({
@@ -91,6 +92,9 @@ type ProfileForm = Static<typeof profileSchema>;
 const passwordSchema = t.object({
   password: t.string({ minLength: 6 }),
 });
+
+type TabKey = "overview" | "security" | "sessions" | "audits";
+const tabSchema = t.object({ tab: t.optional(t.string()) });
 
 const PROVIDER_LABELS: Record<string, string> = {
   credentials: "Password",
@@ -110,83 +114,78 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
   const identityClient = useClient<AdminIdentityController>();
   const auditClient = useClient<AdminAuditController>();
   const { tr, l } = useI18n();
+  const toast = useToast();
   const { user: currentUser } = useAuth();
   const dialog = useDialog();
 
-  const [user, setUser] = useState<UserResource | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [availableRoles, setAvailableRoles] = useState<RoleMeta[]>([]);
-  const [identities, setIdentities] = useState<IdentityResource[]>([]);
-  const [reloadKey, setReloadKey] = useState(0);
   const [passwordOpen, setPasswordOpen] = useState(false);
-  const [tab, setTab] = useState<
-    "overview" | "security" | "sessions" | "audits"
-  >("overview");
+  const [copiedId, setCopiedId] = useState(false);
+  // Tab selection is bound to the URL (`?tab=<key>`) via useQueryParams in
+  // querystring mode, which uses replaceState — switching tabs does not add
+  // a browser-history entry.
+  const [tabQuery, setTabQuery] = useQueryParams(tabSchema, {
+    format: "querystring",
+  });
+  const tab = (tabQuery.tab as TabKey) ?? "overview";
+  const setTab = (next: TabKey) => setTabQuery({ tab: next });
 
   const isSelf = currentUser?.id === userId;
   const backPath = props.backPath ?? "/admin/users";
 
   // -- Load user, roles, identities -----------------------------------------
+  // All three are read-only fetches via useQuery: each runs on mount, re-runs
+  // when realm/id change, aborts on unmount via the passed signal, and exposes
+  // refetch() — so the mutations below just call the relevant refetch()
+  // instead of bumping a manual reload key.
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    (async () => {
-      const u = (await userClient.getUser({
-        params: { id: userId },
-        query: { userRealmName: props.userRealmName },
-      } as never)) as UserResource;
-      if (cancelled) return;
-      setUser(u);
-      setLoading(false);
-    })().catch((err) => {
-      if (cancelled) return;
-      setLoading(false);
-      toast.error(
-        tr("admin.userDetail.loadError", {
-          default: "Failed to load user",
-        }),
-      );
-      console.error(err);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [userClient, userId, props.userRealmName, reloadKey, tr]);
+  const userQuery = useQuery(
+    {
+      handler: ({ signal }) =>
+        userClient.getUser(
+          {
+            params: { id: userId },
+            query: { userRealmName: props.userRealmName },
+          },
+          { request: { signal } },
+        ),
+      onError: (err) => {
+        toast.error(
+          tr("admin.userDetail.loadError", { default: "Failed to load user" }),
+        );
+        console.error(err);
+      },
+    },
+    [userClient, userId, props.userRealmName],
+  );
+  const user = userQuery.data;
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const roles = (await userClient.findRoles({
-        query: { userRealmName: props.userRealmName },
-      } as never)) as RoleMeta[];
-      if (!cancelled) setAvailableRoles(roles);
-    })().catch(() => {
-      // role metadata fetch failure isn't blocking
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [userClient, props.userRealmName]);
+  const rolesQuery = useQuery(
+    {
+      handler: ({ signal }) =>
+        userClient.findRoles(
+          { query: { userRealmName: props.userRealmName } },
+          { request: { signal } },
+        ),
+      // Role metadata is non-blocking — swallow errors so the page still loads.
+      onError: () => {},
+    },
+    [userClient, props.userRealmName],
+  );
+  const availableRoles = rolesQuery.data ?? [];
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const res = (await identityClient.findIdentities({
-        query: {
-          userId,
-          size: 100,
-          userRealmName: props.userRealmName,
-        } as never,
-      })) as Page<IdentityResource>;
-      if (!cancelled) setIdentities(res.content);
-    })().catch(() => {
-      // identities fetch may fail if the controller isn't mounted; ignore
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [identityClient, userId, props.userRealmName, reloadKey]);
+  const identitiesQuery = useQuery(
+    {
+      handler: ({ signal }) =>
+        identityClient.findIdentities(
+          { query: { userId, size: 100, userRealmName: props.userRealmName } },
+          { request: { signal } },
+        ),
+      // Identities may fail if the controller isn't mounted — non-blocking.
+      onError: () => {},
+    },
+    [identityClient, userId, props.userRealmName],
+  );
+  const identities = identitiesQuery.data?.content ?? [];
 
   // -- Profile form ---------------------------------------------------------
 
@@ -222,30 +221,29 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
         });
       }
 
-      const body: Record<string, unknown> = {
+      // Changing the email invalidates the verified flag — server-side
+      // enforcement is also recommended, but mirror it client-side so
+      // the UI is immediately consistent.
+      const emailChanged = user && email !== (user.email ?? "");
+      const body: UpdateUser = {
         username,
         email,
         firstName: (values.firstName ?? "").trim(),
         lastName: (values.lastName ?? "").trim(),
         roles: values.roles ?? [],
+        emailVerified: emailChanged ? false : Boolean(values.emailVerified),
       };
-
-      // Changing the email invalidates the verified flag — server-side
-      // enforcement is also recommended, but mirror it client-side so
-      // the UI is immediately consistent.
-      const emailChanged = user && email !== (user.email ?? "");
-      body.emailVerified = emailChanged ? false : Boolean(values.emailVerified);
 
       try {
         await userClient.updateUser({
           params: { id: userId },
           query: { userRealmName: props.userRealmName },
-          body: body as never,
-        } as never);
+          body,
+        });
         toast.success(
           tr("admin.userDetail.saved", { default: "Profile saved" }),
         );
-        setReloadKey((k) => k + 1);
+        await userQuery.refetch();
       } catch (err) {
         const message =
           err instanceof HttpError
@@ -274,14 +272,14 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
       roles: user.roles ?? [],
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, reloadKey]);
+  }, [userQuery.data]);
 
   // -- Set password ---------------------------------------------------------
 
   const passwordForm = useForm({
     schema: passwordSchema,
     handler: async ({ password }) => {
-      await (userClient as any).setUserPassword({
+      await userClient.setUserPassword({
         params: { id: userId },
         query: { userRealmName: props.userRealmName },
         body: { password },
@@ -298,174 +296,189 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
 
   // -- Enable/disable -------------------------------------------------------
 
-  const handleToggleEnabled = async () => {
-    if (!user || isSelf) return;
-    const enable = !user.enabled;
-    const label =
-      user.email ||
-      user.username ||
-      tr("admin.userDetail.thisUser", {
-        default: "this user",
-      });
-    const ok = await dialog.confirm({
-      title: enable
-        ? tr("admin.userDetail.enableTitle", { default: "Enable user" })
-        : tr("admin.userDetail.disableTitle", { default: "Disable user" }),
-      description: enable
-        ? tr("admin.userDetail.enableConfirm", {
-            default: `Enable ${label}?`,
-            args: [String(label)],
-          })
-        : tr("admin.userDetail.disableConfirm", {
-            default: `Disable ${label}? They will no longer be able to sign in.`,
-            args: [String(label)],
-          }),
-      destructive: !enable,
-    });
-    if (!ok) return;
-    await userClient.updateUser({
-      params: { id: userId },
-      query: { userRealmName: props.userRealmName },
-      body: { enabled: enable } as never,
-    } as never);
-    setReloadKey((k) => k + 1);
-    toast.success(
-      enable
-        ? tr("admin.userDetail.enabled", { default: "User enabled" })
-        : tr("admin.userDetail.disabled", { default: "User disabled" }),
-    );
-  };
+  const toggleEnabled = useAction(
+    {
+      handler: async () => {
+        if (!user || isSelf) return;
+        const enable = !user.enabled;
+        const label =
+          user.email ||
+          user.username ||
+          tr("admin.userDetail.thisUser", {
+            default: "this user",
+          });
+        const ok = await dialog.confirm({
+          title: enable
+            ? tr("admin.userDetail.enableTitle", { default: "Enable user" })
+            : tr("admin.userDetail.disableTitle", { default: "Disable user" }),
+          description: enable
+            ? tr("admin.userDetail.enableConfirm", {
+                default: `Enable ${label}?`,
+                args: [String(label)],
+              })
+            : tr("admin.userDetail.disableConfirm", {
+                default: `Disable ${label}? They will no longer be able to sign in.`,
+                args: [String(label)],
+              }),
+          destructive: !enable,
+        });
+        if (!ok) return;
+        await userClient.updateUser({
+          params: { id: userId },
+          query: { userRealmName: props.userRealmName },
+          body: { enabled: enable },
+        });
+        await userQuery.refetch();
+        toast.success(
+          enable
+            ? tr("admin.userDetail.enabled", { default: "User enabled" })
+            : tr("admin.userDetail.disabled", { default: "User disabled" }),
+        );
+      },
+    },
+    [user, isSelf],
+  );
 
   // -- Delete ---------------------------------------------------------------
 
-  const handleDelete = async () => {
-    if (!user || isSelf) return;
-    const label =
-      user.email ||
-      user.username ||
-      tr("admin.userDetail.thisUser", {
-        default: "this user",
-      });
-    const ok = await dialog.confirm({
-      title: tr("admin.userDetail.deleteTitle", { default: "Delete user" }),
-      description: tr("admin.userDetail.deleteConfirm", {
-        default: `Permanently delete ${label}? This action cannot be undone.`,
-        args: [String(label)],
-      }),
-      destructive: true,
-      confirmLabel: String(
-        tr("admin.userDetail.deleteCta", { default: "Delete" }),
-      ),
-    });
-    if (!ok) return;
-    await userClient.deleteUser({
-      params: { id: userId },
-      query: { userRealmName: props.userRealmName },
-    } as never);
-    toast.success(tr("admin.userDetail.deleted", { default: "User deleted" }));
-    await router.push(backPath as never);
-  };
+  const deleteUser = useAction(
+    {
+      handler: async () => {
+        if (!user || isSelf) return;
+        const label =
+          user.email ||
+          user.username ||
+          tr("admin.userDetail.thisUser", {
+            default: "this user",
+          });
+        const ok = await dialog.confirm({
+          title: tr("admin.userDetail.deleteTitle", { default: "Delete user" }),
+          description: tr("admin.userDetail.deleteConfirm", {
+            default: `Permanently delete ${label}? This action cannot be undone.`,
+            args: [String(label)],
+          }),
+          destructive: true,
+          confirmLabel: String(
+            tr("admin.userDetail.deleteCta", { default: "Delete" }),
+          ),
+        });
+        if (!ok) return;
+        await userClient.deleteUser({
+          params: { id: userId },
+          query: { userRealmName: props.userRealmName },
+        });
+        toast.success(
+          tr("admin.userDetail.deleted", { default: "User deleted" }),
+        );
+        await router.push(backPath);
+      },
+    },
+    [user, isSelf],
+  );
 
   // -- Remove social auth ---------------------------------------------------
 
-  const handleRemoveIdentity = async (identity: IdentityResource) => {
-    const provider = PROVIDER_LABELS[identity.provider] ?? identity.provider;
-    const ok = await dialog.confirm({
-      title: tr("admin.userDetail.removeIdentityTitle", {
-        default: "Remove connection",
-      }),
-      description: tr("admin.userDetail.removeIdentityConfirm", {
-        default: `Remove the ${provider} connection? The user will no longer be able to sign in with it.`,
-        args: [provider],
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    await identityClient.deleteIdentity({
-      params: { id: identity.id },
-      query: { userRealmName: props.userRealmName },
-    } as never);
-    toast.success(
-      tr("admin.userDetail.identityRemoved", {
-        default: "Connection removed",
-      }),
-    );
-    setReloadKey((k) => k + 1);
-  };
+  const removeIdentity = useAction<[IdentityResource]>(
+    {
+      handler: async (identity) => {
+        const provider =
+          PROVIDER_LABELS[identity.provider] ?? identity.provider;
+        const ok = await dialog.confirm({
+          title: tr("admin.userDetail.removeIdentityTitle", {
+            default: "Remove connection",
+          }),
+          description: tr("admin.userDetail.removeIdentityConfirm", {
+            default: `Remove the ${provider} connection? The user will no longer be able to sign in with it.`,
+            args: [provider],
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        await identityClient.deleteIdentity({
+          params: { id: identity.id },
+          query: { userRealmName: props.userRealmName },
+        });
+        toast.success(
+          tr("admin.userDetail.identityRemoved", {
+            default: "Connection removed",
+          }),
+        );
+        await identitiesQuery.refetch();
+      },
+    },
+    [props.userRealmName],
+  );
 
   // -- Sessions / audits fetchers -------------------------------------------
 
   const sessionsFetcher = useCallback(
-    async (params: { page: number; size: number; sort?: string }) => {
-      const res = await sessionClient.findSessions({
-        query: {
-          ...params,
-          userId,
-          userRealmName: props.userRealmName,
-        } as never,
-      });
-      return res as Page<SessionResource>;
-    },
-    [sessionClient, userId, props.userRealmName, reloadKey],
+    (params: { page: number; size: number; sort?: string }) =>
+      sessionClient.findSessions({
+        query: { ...params, userId, userRealmName: props.userRealmName },
+      }),
+    [sessionClient, userId, props.userRealmName],
   );
 
   const auditsFetcher = useCallback(
-    async (params: { page: number; size: number; sort?: string }) => {
-      const res = await auditClient.findByUser({
-        params: { userId },
-        query: params as never,
-      });
-      return res as Page<AuditEntity>;
-    },
-    [auditClient, userId, reloadKey],
+    (params: { page: number; size: number; sort?: string }) =>
+      auditClient.findByUser({ params: { userId }, query: params }),
+    [auditClient, userId],
   );
 
-  const handleRevokeSession = async (
-    s: SessionResource,
-    refresh: () => void,
-  ) => {
-    const ok = await dialog.confirm({
-      title: tr("admin.userDetail.revokeTitle", { default: "Revoke session" }),
-      description: tr("admin.userDetail.revokeConfirm", {
-        default:
-          "Revoke this session? The user will be signed out on the matching device.",
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    await sessionClient.deleteSession({
-      params: { id: s.id },
-      query: { userRealmName: props.userRealmName },
-    } as never);
-    refresh();
-  };
+  const revokeSession = useAction<[SessionResource, () => void]>(
+    {
+      handler: async (s, refresh) => {
+        const ok = await dialog.confirm({
+          title: tr("admin.userDetail.revokeTitle", {
+            default: "Revoke session",
+          }),
+          description: tr("admin.userDetail.revokeConfirm", {
+            default:
+              "Revoke this session? The user will be signed out on the matching device.",
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        await sessionClient.deleteSession({
+          params: { id: s.id },
+          query: { userRealmName: props.userRealmName },
+        });
+        refresh();
+      },
+    },
+    [props.userRealmName],
+  );
 
-  const handleBulkRevokeSessions = async (
-    items: SessionResource[],
-    ctx: { refresh: () => void; clearSelection: () => void },
-  ) => {
-    const ok = await dialog.confirm({
-      title: tr("admin.userDetail.bulkRevokeTitle", {
-        default: "Revoke sessions",
-      }),
-      description: tr("admin.userDetail.bulkRevokeConfirm", {
-        default: `Revoke ${items.length} sessions?`,
-        args: [String(items.length)],
-      }),
-      destructive: true,
-    });
-    if (!ok) return;
-    await sessionClient.deleteSessions({
-      query: { userRealmName: props.userRealmName },
-      body: { ids: items.map((s) => s.id) },
-    } as never);
-    ctx.clearSelection();
-    ctx.refresh();
-  };
+  const bulkRevokeSessions = useAction<
+    [SessionResource[], { refresh: () => void; clearSelection: () => void }]
+  >(
+    {
+      handler: async (items, ctx) => {
+        const ok = await dialog.confirm({
+          title: tr("admin.userDetail.bulkRevokeTitle", {
+            default: "Revoke sessions",
+          }),
+          description: tr("admin.userDetail.bulkRevokeConfirm", {
+            default: `Revoke ${items.length} sessions?`,
+            args: [String(items.length)],
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        await sessionClient.deleteSessions({
+          query: { userRealmName: props.userRealmName },
+          body: { ids: items.map((s) => s.id) },
+        });
+        ctx.clearSelection();
+        ctx.refresh();
+      },
+    },
+    [props.userRealmName],
+  );
 
   // -- Render ---------------------------------------------------------------
 
-  if (loading && !user) {
+  if (userQuery.loading && !user) {
     return (
       <div className="flex flex-col gap-4 p-6">
         <Skeleton className="h-10 w-72" />
@@ -481,10 +494,7 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
         <p className="text-muted-foreground text-sm">
           {tr("admin.userDetail.notFound", { default: "User not found." })}
         </p>
-        <Button
-          variant="outline"
-          onClick={() => router.push(backPath as never)}
-        >
+        <Button variant="outline" onClick={() => router.push(backPath)}>
           <ArrowLeft className="size-4" />
           {tr("admin.userDetail.back", { default: "Back to users" })}
         </Button>
@@ -500,6 +510,13 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
     [user.firstName, user.lastName].filter(Boolean).join(" ") ||
     user.username ||
     user.id.slice(0, 8);
+
+  // A `credentials` identity means a password is set. Password sign-in lives
+  // in its own card; the social providers are everything else.
+  const hasPassword = identities.some((id) => id.provider === "credentials");
+  const socialIdentities = identities.filter(
+    (id) => id.provider !== "credentials",
+  );
 
   const tabOptions = [
     {
@@ -540,48 +557,172 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
     },
   ];
 
-  const identityHero = (
-    <div className="flex flex-col items-center gap-3 text-center">
-      <Avatar className="size-20 text-xl">
-        <AvatarFallback>{initial}</AvatarFallback>
-      </Avatar>
-      <div className="flex w-full flex-col items-center gap-1">
-        <h1
-          className="w-full truncate text-base font-semibold tracking-tight"
-          title={String(displayName)}
+  const copyId = async () => {
+    try {
+      await navigator.clipboard.writeText(user.id);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 1_500);
+    } catch {
+      // clipboard may be unavailable (insecure context); ignore
+    }
+  };
+
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
+
+  // Admin-style identity sheet: a dense label/value list rather than a
+  // marketing hero. Only fields with a value are listed; ID and Status
+  // always show.
+  // Admin identity sheet, in display order:
+  // ID → username → email → (phone) → status → name → roles → dates.
+  const rows: Array<{ label: string; value: React.ReactNode }> = [];
+
+  rows.push({
+    label: String(tr("admin.userDetail.id", { default: "ID" })),
+    value: (
+      <div className="flex items-center gap-1">
+        <code
+          className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-xs"
+          title={user.id}
         >
-          {displayName}
-        </h1>
-        {user.username && (
-          <span
-            className="text-muted-foreground w-full truncate font-mono text-xs"
-            title={`@${user.username}`}
-          >
-            @{user.username}
-          </span>
-        )}
+          {user.id}
+        </code>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          onClick={copyId}
+          aria-label={String(
+            tr("admin.userDetail.copyId", { default: "Copy ID" }),
+          )}
+          className="text-muted-foreground hover:text-foreground shrink-0"
+        >
+          {copiedId ? (
+            <Check className="size-3.5" />
+          ) : (
+            <Copy className="size-3.5" />
+          )}
+        </Button>
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-1.5">
+    ),
+  });
+  if (user.username) {
+    rows.push({
+      label: String(tr("admin.userDetail.username", { default: "Username" })),
+      value: (
+        <span className="block truncate" title={user.username}>
+          @{user.username}
+        </span>
+      ),
+    });
+  }
+  if (user.email) {
+    rows.push({
+      label: String(tr("admin.userDetail.email", { default: "Email" })),
+      value: (
+        <a
+          href={`mailto:${user.email}`}
+          className="text-primary block truncate hover:underline"
+          title={user.email}
+        >
+          {user.email}
+        </a>
+      ),
+    });
+  }
+  if (user.phoneNumber) {
+    rows.push({
+      label: String(tr("admin.userDetail.phone", { default: "Phone" })),
+      value: (
+        <a
+          href={`tel:${user.phoneNumber}`}
+          className="text-primary block truncate font-mono hover:underline"
+        >
+          {user.phoneNumber}
+        </a>
+      ),
+    });
+  }
+  rows.push({
+    label: String(tr("admin.userDetail.fieldStatus", { default: "Status" })),
+    value: (
+      <div className="flex flex-wrap items-center gap-1">
         <Badge variant={user.enabled ? "default" : "destructive"}>
           {user.enabled
             ? tr("admin.userDetail.active", { default: "Active" })
-            : tr("admin.userDetail.disabledBadge", {
-                default: "Disabled",
-              })}
+            : tr("admin.userDetail.disabledBadge", { default: "Disabled" })}
         </Badge>
         {user.emailVerified && (
           <Badge variant="outline" className="gap-1">
-            <ShieldCheck className="size-3.5" />
+            <ShieldCheck className="size-3" />
             {tr("admin.userDetail.verified", { default: "Verified" })}
           </Badge>
         )}
       </div>
-      <span
-        className="text-muted-foreground font-mono text-[11px]"
-        title={user.id}
-      >
-        {user.id.slice(0, 8)}…
+    ),
+  });
+  rows.push({
+    label: String(tr("admin.userDetail.name", { default: "Name" })),
+    value: (
+      <span className="block truncate">
+        {fullName || <span className="text-muted-foreground">—</span>}
       </span>
+    ),
+  });
+  if (user.roles?.length) {
+    rows.push({
+      label: String(tr("admin.userDetail.roles", { default: "Roles" })),
+      value: <span className="block">{user.roles.join(", ")}</span>,
+    });
+  }
+  rows.push({
+    label: String(tr("admin.userDetail.lastLogin", { default: "Last login" })),
+    value: (
+      <span className="block">
+        {user.lastLoginAt
+          ? String(l(user.lastLoginAt, { date: "lll" }))
+          : tr("admin.userDetail.never", { default: "Never" })}
+      </span>
+    ),
+  });
+  rows.push({
+    label: String(tr("admin.userDetail.created", { default: "Created" })),
+    value: (
+      <span className="block">
+        {String(l(user.createdAt, { date: "lll" }))}
+      </span>
+    ),
+  });
+
+  const identityHero = (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-3">
+        <Avatar className="size-10 rounded-md after:rounded-md">
+          {user.picture && (
+            <AvatarImage
+              src={user.picture}
+              alt={String(displayName)}
+              className="rounded-md"
+            />
+          )}
+          <AvatarFallback className="rounded-md">{initial}</AvatarFallback>
+        </Avatar>
+        <span
+          className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight"
+          title={String(displayName)}
+        >
+          {displayName}
+        </span>
+      </div>
+      <dl className="flex flex-col gap-3 border-t pt-4 text-sm">
+        {rows.map((row) => (
+          <div key={row.label} className="flex flex-col gap-0.5">
+            <dt className="text-muted-foreground text-[11px] font-medium uppercase tracking-wide">
+              {row.label}
+            </dt>
+            <dd className="min-w-0">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 
@@ -589,14 +730,6 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
     <div className="flex h-full min-h-0 flex-1 overflow-hidden">
       {/* Aside (full height) ------------------------------------------- */}
       <aside className="border-border bg-background hidden w-72 shrink-0 flex-col gap-4 overflow-auto border-r p-6 md:flex">
-        <button
-          type="button"
-          onClick={() => router.push(backPath as never)}
-          className="text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1.5 text-sm"
-        >
-          <ArrowLeft className="size-4" />
-          {tr("admin.userDetail.back", { default: "Back to users" })}
-        </button>
         {identityHero}
       </aside>
 
@@ -609,13 +742,43 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
             value={tab}
             onChange={(v) => setTab(v as typeof tab)}
           />
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isSelf || toggleEnabled.loading}
+              onClick={() => toggleEnabled.run()}
+            >
+              {user.enabled ? (
+                <>
+                  <UserX className="size-4" />
+                  {tr("admin.userDetail.disable", { default: "Disable" })}
+                </>
+              ) : (
+                <>
+                  <UserCheck className="size-4" />
+                  {tr("admin.userDetail.enable", { default: "Enable" })}
+                </>
+              )}
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={isSelf || deleteUser.loading}
+              onClick={() => deleteUser.run()}
+            >
+              <Trash2 className="size-4" />
+              {tr("admin.userDetail.delete", { default: "Delete user" })}
+            </Button>
+          </div>
         </div>
         {tab === "overview" && (
           <div className="min-h-0 flex-1 overflow-auto">
-            <div className="flex max-w-4xl flex-col gap-6 p-6">
+            <div className="flex max-w-6xl flex-col gap-6 p-6">
               {/* Profile -------------------------------------------------- */}
               <AutoForm
                 form={form}
+                card
                 icon="user"
                 title={tr("admin.userDetail.profile", { default: "Profile" })}
                 description={tr("admin.userDetail.profileSub", {
@@ -661,6 +824,7 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
                     label: String(
                       tr("admin.userDetail.roles", { default: "Roles" }),
                     ),
+                    icon: ShieldCheck,
                     items: availableRoles.map((r) => ({
                       value: r.name,
                       label: r.name,
@@ -675,7 +839,51 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
 
         {tab === "security" && (
           <div className="min-h-0 flex-1 overflow-auto">
-            <div className="flex max-w-4xl flex-col gap-6 p-6">
+            <div className="flex max-w-6xl flex-col gap-6 p-6">
+              {/* Credentials --------------------------------------------------- */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {tr("admin.userDetail.credentials", {
+                      default: "Credentials",
+                    })}
+                  </CardTitle>
+                  <CardDescription>
+                    {tr("admin.userDetail.credentialsSub", {
+                      default: "Password sign-in for this account.",
+                    })}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground text-sm">
+                    {hasPassword
+                      ? tr("admin.userDetail.credentialsHasPassword", {
+                          default:
+                            "A password is set. You can't remove it, but you can set a new one.",
+                        })
+                      : tr("admin.userDetail.credentialsNoPassword", {
+                          default:
+                            "No password is set yet. Set one so the user can sign in with a password.",
+                        })}
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setPasswordOpen(true)}
+                  >
+                    <KeyRound className="size-4" />
+                    {hasPassword
+                      ? tr("admin.userDetail.changePassword", {
+                          default: "Change password",
+                        })
+                      : tr("admin.userDetail.setPassword", {
+                          default: "Set password",
+                        })}
+                  </Button>
+                </CardFooter>
+              </Card>
+
               {/* Connected accounts -------------------------------------------- */}
               <Card>
                 <CardHeader>
@@ -686,12 +894,12 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
                   </CardTitle>
                   <CardDescription>
                     {tr("admin.userDetail.identitiesSub", {
-                      default: "Linked credentials and OAuth providers.",
+                      default: "Linked OAuth providers.",
                     })}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {identities.length === 0 ? (
+                  {socialIdentities.length === 0 ? (
                     <p className="text-muted-foreground text-sm">
                       {tr("admin.userDetail.noIdentities", {
                         default: "No connected accounts.",
@@ -699,7 +907,7 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
                     </p>
                   ) : (
                     <ul className="flex flex-col gap-2">
-                      {identities.map((id) => {
+                      {socialIdentities.map((id) => {
                         const label =
                           PROVIDER_LABELS[id.provider] ?? id.provider;
                         return (
@@ -707,21 +915,27 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
                             key={id.id}
                             className="flex items-center justify-between rounded-md border px-3 py-2"
                           >
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium">
-                                {label}
-                              </span>
-                              {id.providerUserId && (
-                                <span className="text-muted-foreground font-mono text-xs">
-                                  {id.providerUserId}
+                            <div className="flex items-center gap-3">
+                              <BrandIcon
+                                provider={id.provider}
+                                className="size-5"
+                              />
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">
+                                  {label}
                                 </span>
-                              )}
+                                {id.providerUserId && (
+                                  <span className="text-muted-foreground font-mono text-xs">
+                                    {id.providerUserId}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <Button
-                              variant="ghost"
+                              variant="destructive"
                               size="sm"
-                              onClick={() => handleRemoveIdentity(id)}
-                              className="text-destructive hover:text-destructive"
+                              disabled={removeIdentity.loading}
+                              onClick={() => removeIdentity.run(id)}
                             >
                               <Trash2 className="size-4" />
                               {tr("admin.userDetail.remove", {
@@ -735,232 +949,125 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
                   )}
                 </CardContent>
               </Card>
-
-              {/* Actions -------------------------------------------------------- */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    {tr("admin.userDetail.actions", { default: "Actions" })}
-                  </CardTitle>
-                  <CardDescription>
-                    {tr("admin.userDetail.actionsSub", {
-                      default: "Administrative operations on this account.",
-                    })}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setPasswordOpen(true)}
-                  >
-                    <KeyRound className="size-4" />
-                    {tr("admin.userDetail.setPassword", {
-                      default: "Set password",
-                    })}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={isSelf}
-                    onClick={handleToggleEnabled}
-                  >
-                    {user.enabled ? (
-                      <>
-                        <UserX className="size-4" />
-                        {tr("admin.userDetail.disable", { default: "Disable" })}
-                      </>
-                    ) : (
-                      <>
-                        <UserCheck className="size-4" />
-                        {tr("admin.userDetail.enable", { default: "Enable" })}
-                      </>
-                    )}
-                  </Button>
-                  <Separator orientation="vertical" className="h-9" />
-                  <Button
-                    variant="destructive"
-                    disabled={isSelf}
-                    onClick={handleDelete}
-                  >
-                    <Trash2 className="size-4" />
-                    {tr("admin.userDetail.delete", { default: "Delete user" })}
-                  </Button>
-                </CardContent>
-              </Card>
             </div>
           </div>
         )}
 
         {tab === "sessions" && (
-          <div className="min-h-0 flex-1 overflow-hidden p-6">
-            {/* Sessions ------------------------------------------------------ */}
-            <Card className="flex h-full flex-col">
-              <CardHeader>
-                <CardTitle>
-                  {tr("admin.userDetail.sessions", { default: "Sessions" })}
-                </CardTitle>
-                <CardDescription>
-                  {tr("admin.userDetail.sessionsSub", {
-                    default: "Active and revoked sessions for this user.",
-                  })}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AlephaTable<SessionResource>
-                  persistenceKey={`admin.userDetail.${userId}.sessions`}
-                  fetch={sessionsFetcher}
-                  bulkActions={[
-                    {
-                      label: tr("admin.userDetail.revokeSelected", {
-                        default: "Revoke selected",
-                      }),
-                      icon: LogOut,
-                      destructive: true,
-                      onClick: handleBulkRevokeSessions,
-                    },
-                  ]}
-                  columns={{
-                    ip: {
-                      label: tr("admin.userDetail.colIp", { default: "IP" }),
-                      cell: (s) => (
-                        <code className="text-xs">{s.ip ?? "—"}</code>
-                      ),
-                    },
-                    userAgent: {
-                      label: tr("admin.userDetail.colDevice", {
-                        default: "Device",
-                      }),
-                      cell: (s) => {
-                        const ua = s.userAgent;
-                        const text = ua
-                          ? [ua.browser, ua.os].filter(Boolean).join(" • ") ||
-                            "—"
-                          : "—";
-                        return (
-                          <span className="text-muted-foreground line-clamp-1 text-xs">
-                            {text}
-                          </span>
-                        );
-                      },
-                    },
-                    createdAt: {
-                      label: tr("admin.userDetail.colStarted", {
-                        default: "Started",
-                      }),
-                      sortable: true,
-                      cell: (s) => (
-                        <span className="text-muted-foreground text-xs">
-                          {String(l(s.createdAt, { date: "fromNow" }))}
-                        </span>
-                      ),
-                    },
-                    status: {
-                      label: tr("admin.userDetail.colStatus", {
-                        default: "Status",
-                      }),
-                      cell: (s) => (
-                        <Badge
-                          variant={(s as any).revokedAt ? "outline" : "default"}
-                        >
-                          {(s as any).revokedAt
-                            ? tr("admin.userDetail.revoked", {
-                                default: "Revoked",
-                              })
-                            : tr("admin.userDetail.activeBadge", {
-                                default: "Active",
-                              })}
-                        </Badge>
-                      ),
-                    },
-                  }}
-                  rowActions={(s) =>
-                    (s as any).revokedAt
-                      ? []
-                      : [
-                          {
-                            label: tr("admin.userDetail.revoke", {
-                              default: "Revoke",
-                            }),
-                            icon: LogOut,
-                            destructive: true,
-                            onClick: (_s, ctx) =>
-                              handleRevokeSession(s, ctx.refresh),
-                          },
-                        ]
-                  }
-                />
-              </CardContent>
-            </Card>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
+            <AlephaTable<SessionResource>
+              className="min-h-0 flex-1"
+              persistenceKey={`admin.userDetail.${userId}.sessions`}
+              fetch={sessionsFetcher}
+              bulkActions={[
+                {
+                  label: tr("admin.userDetail.revokeSelected", {
+                    default: "Revoke selected",
+                  }),
+                  icon: LogOut,
+                  destructive: true,
+                  onClick: (items, ctx) => bulkRevokeSessions.run(items, ctx),
+                },
+              ]}
+              columns={{
+                ip: {
+                  label: tr("admin.userDetail.colIp", { default: "IP" }),
+                  cell: (s) => <code className="text-xs">{s.ip ?? "—"}</code>,
+                },
+                userAgent: {
+                  label: tr("admin.userDetail.colDevice", {
+                    default: "Device",
+                  }),
+                  cell: (s) => {
+                    const ua = s.userAgent;
+                    const text = ua
+                      ? [ua.browser, ua.os].filter(Boolean).join(" • ") || "—"
+                      : "—";
+                    return (
+                      <span className="text-muted-foreground line-clamp-1 text-xs">
+                        {text}
+                      </span>
+                    );
+                  },
+                },
+                createdAt: {
+                  label: tr("admin.userDetail.colStarted", {
+                    default: "Started",
+                  }),
+                  sortable: true,
+                  cell: (s) => (
+                    <span className="text-muted-foreground text-xs">
+                      {String(l(s.createdAt, { date: "fromNow" }))}
+                    </span>
+                  ),
+                },
+              }}
+              rowActions={(s) => [
+                {
+                  label: tr("admin.userDetail.revoke", { default: "Revoke" }),
+                  icon: LogOut,
+                  destructive: true,
+                  onClick: (_s, ctx) => revokeSession.run(s, ctx.refresh),
+                },
+              ]}
+            />
           </div>
         )}
 
         {tab === "audits" && (
-          <div className="min-h-0 flex-1 overflow-hidden p-6">
-            {/* Audit log ----------------------------------------------------- */}
-            <Card className="flex h-full flex-col">
-              <CardHeader>
-                <CardTitle>
-                  {tr("admin.userDetail.audits", { default: "Audit log" })}
-                </CardTitle>
-                <CardDescription>
-                  {tr("admin.userDetail.auditsSub", {
-                    default: "Recent API actions touching this user.",
-                  })}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AlephaTable<AuditEntity>
-                  persistenceKey={`admin.userDetail.${userId}.audits`}
-                  fetch={auditsFetcher}
-                  columns={{
-                    createdAt: {
-                      label: tr("admin.userDetail.colWhen", {
-                        default: "When",
-                      }),
-                      sortable: true,
-                      cell: (a) => (
-                        <span className="text-muted-foreground text-xs">
-                          {String(l(a.createdAt, { date: "fromNow" }))}
-                        </span>
-                      ),
-                    },
-                    action: {
-                      label: tr("admin.userDetail.colAction", {
-                        default: "Action",
-                      }),
-                      cell: (a) => (
-                        <code className="text-xs font-medium">{a.action}</code>
-                      ),
-                    },
-                    resource: {
-                      label: tr("admin.userDetail.colResource", {
-                        default: "Resource",
-                      }),
-                      cell: (a) => (
-                        <span className="font-mono text-xs">
-                          {a.resourceType
-                            ? `${a.resourceType}:${a.resourceId ?? "—"}`
-                            : "—"}
-                        </span>
-                      ),
-                    },
-                    status: {
-                      label: tr("admin.userDetail.colAuditStatus", {
-                        default: "Status",
-                      }),
-                      cell: (a) => (
-                        <Badge variant={a.success ? "default" : "destructive"}>
-                          {a.success
-                            ? tr("admin.userDetail.ok", { default: "OK" })
-                            : tr("admin.userDetail.failed", {
-                                default: "Failed",
-                              })}
-                        </Badge>
-                      ),
-                    },
-                  }}
-                />
-              </CardContent>
-            </Card>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
+            <AlephaTable<AuditEntity>
+              className="min-h-0 flex-1"
+              persistenceKey={`admin.userDetail.${userId}.audits`}
+              fetch={auditsFetcher}
+              columns={{
+                createdAt: {
+                  label: tr("admin.userDetail.colWhen", {
+                    default: "When",
+                  }),
+                  sortable: true,
+                  cell: (a) => (
+                    <span className="text-muted-foreground text-xs">
+                      {String(l(a.createdAt, { date: "fromNow" }))}
+                    </span>
+                  ),
+                },
+                action: {
+                  label: tr("admin.userDetail.colAction", {
+                    default: "Action",
+                  }),
+                  cell: (a) => (
+                    <code className="text-xs font-medium">{a.action}</code>
+                  ),
+                },
+                resource: {
+                  label: tr("admin.userDetail.colResource", {
+                    default: "Resource",
+                  }),
+                  cell: (a) => (
+                    <span className="font-mono text-xs">
+                      {a.resourceType
+                        ? `${a.resourceType}:${a.resourceId ?? "—"}`
+                        : "—"}
+                    </span>
+                  ),
+                },
+                status: {
+                  label: tr("admin.userDetail.colAuditStatus", {
+                    default: "Status",
+                  }),
+                  cell: (a) => (
+                    <Badge variant={a.success ? "default" : "destructive"}>
+                      {a.success
+                        ? tr("admin.userDetail.ok", { default: "OK" })
+                        : tr("admin.userDetail.failed", {
+                            default: "Failed",
+                          })}
+                    </Badge>
+                  ),
+                },
+              }}
+            />
           </div>
         )}
       </div>

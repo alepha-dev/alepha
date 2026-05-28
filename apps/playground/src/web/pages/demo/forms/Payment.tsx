@@ -1,7 +1,7 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { t } from "alepha";
 import { useForm } from "alepha/react/form";
-import { toast } from "sonner";
 
 const schema = t.object({
   cardholder: t.string({
@@ -38,6 +38,7 @@ const schema = t.object({
 });
 
 const PaymentForm = () => {
+  const toast = useToast();
   const form = useForm({
     schema,
     handler: (values) => toast.success(JSON.stringify(values, null, 2)),

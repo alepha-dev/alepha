@@ -13,6 +13,7 @@ import {
   SheetTitle,
 } from "@alepha/ui/components/ui/sheet";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Page, type Static, t } from "alepha";
 import type {
   AdminJobController,
@@ -23,7 +24,6 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Ban, Play, RotateCcw, Search, Timer } from "lucide-react";
 import { useCallback, useState } from "react";
-import { toast } from "sonner";
 
 const POLL_MS = 30_000;
 const EXEC_POLL_MS = 10_000;
@@ -96,6 +96,7 @@ function applyJobFilters(
 export function AdminJobs() {
   const client = useClient<AdminJobController>();
   const { l, tr } = useI18n();
+  const toast = useToast();
   const dialog = useDialog();
   const [openJob, setOpenJob] = useState<JobRegistration | null>(null);
 
@@ -320,6 +321,7 @@ interface ExecutionsPanelProps {
 
 function ExecutionsPanel(props: ExecutionsPanelProps) {
   const { jobName, client, l, tr, dialog } = props;
+  const toast = useToast();
 
   const fetcher = useCallback(
     async (params: { filters?: ExecFilters }) => {

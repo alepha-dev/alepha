@@ -13,6 +13,7 @@ import {
   PopoverTrigger,
 } from "@alepha/ui/components/ui/popover";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Page, type Static, t } from "alepha";
 import type { AdminUserController, UserEntity } from "alepha/api/users";
 import { useClient } from "alepha/react";
@@ -22,7 +23,6 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Check, Eye, Search, Trash2, UserCheck, UserX } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
 
 interface RoleMeta {
   name: string;
@@ -91,6 +91,7 @@ function applyDefaultHidden<C extends Record<string, unknown>>(
 
 export function AdminUsers(props: AdminUsersProps) {
   const client = useClient<AdminUserController>();
+  const toast = useToast();
   const { user: currentUser } = useAuth();
   const router = useRouter();
   const { l, tr } = useI18n();

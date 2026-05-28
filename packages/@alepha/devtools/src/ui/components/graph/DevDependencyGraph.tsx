@@ -14,6 +14,7 @@ import {
 } from "@xyflow/react";
 import { useAction, useInject } from "alepha/react";
 import "@xyflow/react/dist/style.css";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { HttpClient } from "alepha/server";
 import {
   AlertTriangle,
@@ -24,7 +25,6 @@ import {
   Plus,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { getModuleColor } from "./constants.ts";
 import { GraphControls } from "./GraphControls.tsx";
 import {
@@ -48,6 +48,7 @@ const nodeTypes = {
 };
 
 export const DevDependencyGraph = () => {
+  const toast = useToast();
   const http = useInject(HttpClient);
   const [nodes, setNodes, onNodesChange] = useNodesState<ProviderNodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ProviderEdge>([]);

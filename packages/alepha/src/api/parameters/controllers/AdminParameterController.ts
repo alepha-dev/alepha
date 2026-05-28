@@ -1,4 +1,5 @@
-import { $inject, AlephaError, t } from "alepha";
+import { $inject, Alepha, AlephaError, t } from "alepha";
+import { AuditService } from "alepha/api/audits";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 import { activateParameterBodySchema } from "../schemas/activateParameterBodySchema.ts";
@@ -29,6 +30,7 @@ export class AdminParameterController {
   protected readonly url = "/parameters";
   protected readonly group = "admin:parameters";
   protected readonly provider = $inject(ParameterProvider);
+  protected readonly alepha = $inject(Alepha);
 
   /**
    * Get tree structure of all parameter names.
@@ -163,15 +165,25 @@ export class AdminParameterController {
       response: parameterResponseSchema,
     },
     handler: async ({ params, body, user }) => {
-      return this.provider.save(params.name, body.content, body.schemaHash, {
-        activationDate: body.activationDate
-          ? new Date(body.activationDate)
-          : undefined,
-        changeDescription: body.changeDescription,
-        tags: body.tags,
-        creatorId: user?.id,
-        creatorName: this.creatorNameOf(user),
+      const result = await this.provider.save(
+        params.name,
+        body.content,
+        body.schemaHash,
+        {
+          activationDate: body.activationDate
+            ? new Date(body.activationDate)
+            : undefined,
+          changeDescription: body.changeDescription,
+          tags: body.tags,
+          creatorId: user?.id,
+          creatorName: this.creatorNameOf(user),
+        },
+      );
+      await this.audit("create", params.name, {
+        version: result.version,
+        scheduled: result.status !== "current",
       });
+      return result;
     },
   });
 
@@ -191,11 +203,20 @@ export class AdminParameterController {
       response: parameterResponseSchema,
     },
     handler: async ({ params, body, user }) => {
-      return this.provider.rollback(params.name, body.targetVersion, {
-        changeDescription: body.changeDescription,
-        creatorId: user?.id,
-        creatorName: this.creatorNameOf(user),
+      const result = await this.provider.rollback(
+        params.name,
+        body.targetVersion,
+        {
+          changeDescription: body.changeDescription,
+          creatorId: user?.id,
+          creatorName: this.creatorNameOf(user),
+        },
+      );
+      await this.audit("rollback", params.name, {
+        version: result.version,
+        targetVersion: body.targetVersion,
       });
+      return result;
     },
   });
 
@@ -236,7 +257,7 @@ export class AdminParameterController {
       }
 
       // Create new version with same content but immediate activation
-      return this.provider.save(
+      const result = await this.provider.save(
         params.name,
         target.content,
         target.schemaHash,
@@ -246,6 +267,11 @@ export class AdminParameterController {
           creatorName: this.creatorNameOf(user),
         },
       );
+      await this.audit("activate", params.name, {
+        version: result.version,
+        activatedFrom: body.version,
+      });
+      return result;
     },
   });
 
@@ -264,6 +290,7 @@ export class AdminParameterController {
     },
     handler: async ({ params }) => {
       await this.provider.delete(params.name);
+      await this.audit("delete", params.name);
       return { ok: true };
     },
   });
@@ -290,6 +317,9 @@ export class AdminParameterController {
     },
     handler: async ({ body }) => {
       const deleted = await this.provider.deleteMany(body.names);
+      for (const name of deleted) {
+        await this.audit("delete", name);
+      }
       return { deleted };
     },
   });
@@ -302,13 +332,42 @@ export class AdminParameterController {
    * dependency on the users module (no import, no circular-import risk). The
    * trade-off is that the stored name does not follow later user renames.
    *
-   * Precedence: `name` → `username` → `email`.
+   * Precedence: `username` → `email`. The token's `name` is intentionally
+   * skipped: the security layer fills it with a placeholder ("Anonymous User")
+   * when the issuer supplies no name, which would otherwise be snapshotted.
    */
   protected creatorNameOf(user?: {
-    name?: string;
     username?: string;
     email?: string;
   }): string | undefined {
-    return user?.name ?? user?.username ?? user?.email;
+    return user?.username ?? user?.email;
+  }
+
+  /**
+   * Record a parameter mutation in the central audit log — best-effort.
+   *
+   * `AuditService` is resolved lazily from the container so the parameters
+   * module stays decoupled from the audits module: when `alepha/api/audits`
+   * is not registered, auditing is silently skipped. Actor (userId / email /
+   * realm), IP, and request id are auto-filled by `AuditService` from the
+   * request context. Failures never break the underlying operation.
+   */
+  protected async audit(
+    action: "create" | "rollback" | "activate" | "delete",
+    name: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.alepha.has(AuditService)) {
+      return;
+    }
+    try {
+      await this.alepha.inject(AuditService).record("parameter", action, {
+        resourceType: "parameter",
+        resourceId: name,
+        metadata,
+      });
+    } catch {
+      // Auditing is best-effort; never fail the operation because of it.
+    }
   }
 }

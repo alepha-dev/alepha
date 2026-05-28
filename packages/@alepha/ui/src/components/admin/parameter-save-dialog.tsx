@@ -13,9 +13,9 @@ import {
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
 import { t } from "alepha";
+import { useAction } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { useState } from "react";
 
 export interface ParameterSaveDialogProps {
   open: boolean;
@@ -25,37 +25,48 @@ export interface ParameterSaveDialogProps {
    */
   initialTags?: string[];
   /**
-   * Persist the new version with the chosen tags. Should resolve once the save
-   * completes; the dialog stays open (with a busy button) until it does.
+   * Persist the new version with the chosen tags and optional activation date.
+   * Should resolve once the save completes; the dialog stays open (with a busy
+   * button) until it does.
    */
-  onConfirm: (tags: string[]) => void | Promise<void>;
+  onConfirm: (meta: {
+    tags: string[];
+    activationDate?: string;
+  }) => void | Promise<void>;
 }
 
 /**
  * Confirmation dialog shown when saving a new parameter version. Collects the
- * free-form tags to attach to the version, then triggers the save.
+ * free-form tags and an optional activation date (leave empty to apply
+ * immediately, set a future date to schedule a `next`/`future` version), then
+ * triggers the save.
  */
 export const ParameterSaveDialog = (props: ParameterSaveDialogProps) => {
   const { tr } = useI18n();
-  const [saving, setSaving] = useState(false);
   const form = useForm(
     {
-      schema: t.object({ tags: t.optional(t.array(t.string())) }),
+      schema: t.object({
+        tags: t.optional(t.array(t.string())),
+        activationDate: t.optional(t.string({ format: "date-time" })),
+      }),
       initialValues: { tags: props.initialTags ?? [] },
       handler: async () => {},
     },
     [props.open],
   );
 
-  const onSave = async () => {
-    setSaving(true);
-    try {
-      await props.onConfirm(form.currentValues.tags ?? []);
-      props.onOpenChange(false);
-    } finally {
-      setSaving(false);
-    }
-  };
+  const save = useAction(
+    {
+      handler: async () => {
+        await props.onConfirm({
+          tags: form.currentValues.tags ?? [],
+          activationDate: form.currentValues.activationDate || undefined,
+        });
+        props.onOpenChange(false);
+      },
+    },
+    [props.onConfirm, props.onOpenChange, form],
+  );
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -68,7 +79,8 @@ export const ParameterSaveDialog = (props: ParameterSaveDialogProps) => {
           </DialogTitle>
           <DialogDescription>
             {tr("admin.parameters.saveDialogDescription", {
-              default: "Optionally tag this version before saving it.",
+              default:
+                "Optionally tag and schedule this version before saving.",
             })}
           </DialogDescription>
         </DialogHeader>
@@ -81,16 +93,30 @@ export const ParameterSaveDialog = (props: ParameterSaveDialogProps) => {
             default: "Add tags…",
           })}
         />
+        <Control
+          input={form.input.activationDate}
+          datetime
+          label={tr("admin.parameters.fieldActivationDate", {
+            default: "Activate at",
+          })}
+          description={tr("admin.parameters.activationDateHint", {
+            default: "Leave empty to apply immediately.",
+          })}
+        />
         <DialogFooter>
           <Button
             type="button"
             variant="outline"
-            disabled={saving}
+            disabled={save.loading}
             onClick={() => props.onOpenChange(false)}
           >
             {tr("admin.parameters.cancel", { default: "Cancel" })}
           </Button>
-          <Button type="button" disabled={saving} onClick={onSave}>
+          <Button
+            type="button"
+            disabled={save.loading}
+            onClick={() => save.run()}
+          >
             {tr("admin.parameters.save", { default: "Save new version" })}
           </Button>
         </DialogFooter>

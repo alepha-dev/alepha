@@ -12,7 +12,7 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider } from "alepha/lock";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
+import { $repository, RepositoryProvider } from "alepha/orm";
 import { $topic } from "alepha/topic";
 import { type Parameter, parameters } from "../entities/parameters.ts";
 import type { ParameterPrimitive } from "../primitives/$parameter.ts";
@@ -50,6 +50,7 @@ export class ParameterProvider {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly lockProvider = $inject(LockProvider);
   protected readonly schemaValidator = $inject(SchemaValidator);
+  protected readonly repositoryProvider = $inject(RepositoryProvider);
   protected readonly repo = $repository(parameters);
 
   /**
@@ -326,10 +327,10 @@ export class ParameterProvider {
    * - Other future versions are "future"
    * - Other past versions are "expired"
    */
-  public calculateStatuses(
-    versions: Parameter[],
+  public calculateStatuses<T extends Parameter>(
+    versions: T[],
     now?: Date,
-  ): ParameterWithStatus[] {
+  ): Array<T & { status: ParameterStatus }> {
     const effectiveNow = now ?? this.dateTimeProvider.now().toDate();
 
     // Sort by activationDate ascending, then version ascending for ties
@@ -458,17 +459,49 @@ export class ParameterProvider {
   }
 
   /**
-   * Get all versions of a parameter.
+   * Best-effort left join embedding the creating user on each version, so the
+   * admin UI can render a human-readable identifier (live, not snapshotted)
+   * instead of the bare `creatorId`. Joins `parameters.creatorId` → `users.id`.
+   *
+   * The `users` entity is resolved from the repository registry at runtime
+   * rather than imported: that keeps the parameters module free of any
+   * dependency on the users module (no import, no circular-import risk). When
+   * the users module is not registered the join is skipped and `creator` comes
+   * back undefined.
+   */
+  protected resolveCreatorJoin() {
+    const usersEntity = this.repositoryProvider
+      .getRepositories()
+      .find((repo) => repo.entity.name === "users")?.entity;
+    if (!usersEntity) {
+      return undefined;
+    }
+    return {
+      creator: {
+        join: usersEntity,
+        on: ["creatorId", usersEntity.cols.id] as [
+          "creatorId",
+          { name: string },
+        ],
+      },
+    };
+  }
+
+  /**
+   * Get all versions of a parameter, each with the creating user embedded
+   * (best-effort, see {@link resolveCreatorJoin}).
    */
   public async getHistory(
     name: string,
     options?: { limit?: number; offset?: number },
   ): Promise<Parameter[]> {
+    const withCreator = this.resolveCreatorJoin();
     return this.repo.findMany({
       where: { name },
       orderBy: { column: "version", direction: "desc" },
       limit: options?.limit,
       offset: options?.offset,
+      ...(withCreator ? { with: withCreator } : {}),
     });
   }
 

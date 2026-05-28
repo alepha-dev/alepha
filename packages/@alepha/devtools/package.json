@@ -29,7 +29,6 @@
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "sonner": "^2.0.7",
     "tailwindcss": "^4.3.0",
     "tsdown": "^0.22.0",
     "typescript": "^6.0.3",

@@ -1,7 +1,7 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { t } from "alepha";
 import { useForm } from "alepha/react/form";
-import { toast } from "sonner";
 
 const COLORS_RICH = [
   { value: "red", label: "Red", description: "Warm, energetic", tag: "warm" },
@@ -95,6 +95,7 @@ const schema = t.object({
 });
 
 const SelectsForm = () => {
+  const toast = useToast();
   const form = useForm({
     schema,
     initialValues: {

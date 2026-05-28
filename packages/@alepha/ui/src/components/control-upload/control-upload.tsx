@@ -16,6 +16,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { FileController } from "alepha/api/files";
 import { useClient } from "alepha/react";
 import {
@@ -34,7 +35,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { toast } from "sonner";
 
 export interface ControlUploadProps {
   /**
@@ -97,6 +97,7 @@ export function ControlUpload(props: ControlUploadProps) {
   const [value, setValue] = useFieldValue(props.input);
   const client = useClient<FileController>();
   const { tr } = useI18n();
+  const toast = useToast();
   const inputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);

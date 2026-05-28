@@ -11,6 +11,7 @@ import {
   HoverCardTrigger,
 } from "@alepha/ui/components/ui/hover-card";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Page, type Static, t } from "alepha";
 import type {
   AdminFileStatsController,
@@ -27,7 +28,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { toast } from "sonner";
 
 const formatBytes = (n: number) => {
   if (!n) return "0 B";
@@ -54,6 +54,7 @@ export function AdminFiles() {
   const statsClient = useClient<AdminFileStatsController>();
   const dialog = useDialog();
   const { l, tr } = useI18n();
+  const toast = useToast();
   const [refreshKey, setRefreshKey] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [bucketItems, setBucketItems] = useState<

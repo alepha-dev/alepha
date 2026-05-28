@@ -5,16 +5,17 @@ void React;
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { Page } from "alepha";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
 import { useCallback } from "react";
-import { toast } from "sonner";
 
 export function AdminAudits() {
   const client = useClient<AdminAuditController>();
+  const toast = useToast();
   const dialog = useDialog();
   const { l, tr } = useI18n();
 

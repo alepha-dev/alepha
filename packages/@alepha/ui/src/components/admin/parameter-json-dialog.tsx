@@ -10,10 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useI18n } from "alepha/react/i18n";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 export interface ParameterJsonDialogProps {
   open: boolean;
@@ -28,6 +28,7 @@ export interface ParameterJsonDialogProps {
  */
 export const ParameterJsonDialog = (props: ParameterJsonDialogProps) => {
   const { tr } = useI18n();
+  const toast = useToast();
   const [copied, setCopied] = useState(false);
   const json = JSON.stringify(props.content ?? {}, null, 2);
 
