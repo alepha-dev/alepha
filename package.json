@@ -28,12 +28,6 @@
     "esbuild": {
       "built": true
     },
-    "msw": {
-      "built": true
-    },
-    "sharp": {
-      "built": true
-    },
     "workerd": {
       "built": true
     }
@@ -48,7 +42,9 @@
     "lint": "yarn alepha lint",
     "typecheck": "yarn workspaces foreach -Apt run typecheck",
     "test": "yarn vitest run",
-    "check-dependencies": "yarn workspaces foreach -Apt exec depcheck .",
+    "check:deps": "yarn workspaces foreach -Apt exec depcheck .",
+    "check:i18n": "yarn workspaces foreach -Apt run check:i18n",
+    "check:migrations": "yarn workspaces foreach -Apt run check:migrations",
     "build": "yarn workspaces foreach -Apt run build",
     "test:bun": "bun test ./**/*.bun.spec.ts",
     "e2e": "yarn workspaces foreach -Apt run e2e",

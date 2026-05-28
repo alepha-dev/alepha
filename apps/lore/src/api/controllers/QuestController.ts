@@ -1,0 +1,1267 @@
+import { $inject, t } from "alepha";
+import { FileService } from "alepha/api/files";
+import { $bucket } from "alepha/bucket";
+import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
+import { $repository, $transactional, db, pageQuerySchema } from "alepha/orm";
+import { $secure } from "alepha/security";
+import {
+  $action,
+  BadRequestError,
+  ForbiddenError,
+  okSchema,
+} from "alepha/server";
+import { campaigns } from "../entities/campaigns.ts";
+import { characters } from "../entities/characters.ts";
+import { petitions } from "../entities/petitions.ts";
+import {
+  normalizeQuestTags,
+  type Quest,
+  quests,
+  REMINDER_INTERVAL_MS,
+  REMINDER_INTERVAL_VALUES,
+} from "../entities/quests.ts";
+import { AppSecurityProvider } from "../providers/AppSecurityProvider.ts";
+import { questCreateSchema } from "../schemas/questCreateSchema.ts";
+import {
+  type QuestResource,
+  questResourceSchema,
+} from "../schemas/questResourceSchema.ts";
+import { AchievementEngine } from "../services/AchievementEngine.ts";
+import { CharacterInfo } from "../services/CharacterInfo.ts";
+import { FeaturePaywallService } from "../services/FeaturePaywallService.ts";
+import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
+import { QuestService, sanitizeHtml } from "../services/QuestService.ts";
+
+export class QuestController {
+  log = $logger();
+  quests = $repository(quests);
+  campaigns = $repository(campaigns);
+  characters = $repository(characters);
+  petitions = $repository(petitions);
+  characterInfo = $inject(CharacterInfo);
+  dt = $inject(DateTimeProvider);
+  security = $inject(AppSecurityProvider);
+  fileService = $inject(FileService);
+  questMapper = $inject(QuestResourceMapper);
+  achievements = $inject(AchievementEngine);
+  paywall = $inject(FeaturePaywallService);
+  questService = $inject(QuestService);
+
+  attachments = $bucket({
+    maxSize: 10 * 1024 * 1024, // 10 MB
+    mimeTypes: [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "application/pdf",
+      "text/plain",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ],
+  });
+
+  /**
+   * Enrich a quest entity with computed metadata.
+   */
+  mapQuestToResource(quest: Quest): QuestResource {
+    return this.questMapper.mapQuestToResource(quest);
+  }
+
+  /**
+   * Backfill / generate stable `id` for each objective in the array.
+   * - Legacy objectives (`id == null` across the board): assign by current
+   *   index — deterministic, matches what the mapper synthesizes on read so
+   *   history entries keyed by that id stay valid.
+   * - Mixed sets (some have ids, new ones don't): preserve existing ids,
+   *   assign `max(existing) + 1, +2, ...` to the ones missing one.
+   *
+   * Persisted on every write that touches `objectives` so the next read
+   * sees real ids and the synthesis becomes a no-op.
+   */
+  protected ensureObjectiveIds(
+    objectives: Quest["objectives"],
+  ): Quest["objectives"] {
+    return this.questService.ensureObjectiveIds(objectives);
+  }
+
+  createQuest = $action({
+    use: [$secure({ permissions: ["quest:create"] }), $transactional()],
+    schema: {
+      body: questCreateSchema,
+      response: questResourceSchema,
+    },
+    handler: async ({ body, user }) => {
+      const { campaign } = await this.security.assertMember(
+        body.campaignId,
+        user,
+      );
+
+      // Validate petition link: must exist in this campaign, must be accepted.
+      // Anyone with quest:create can pass any id otherwise, so we check here
+      // and not via FK alone.
+      if (body.petitionId != null) {
+        if (campaign.createdBy !== user.id) {
+          throw new ForbiddenError(
+            "Only the campaign owner can link a quest to a petition",
+          );
+        }
+        const petition = await this.petitions.findOne({
+          where: {
+            id: { eq: body.petitionId },
+            campaignId: { eq: body.campaignId },
+          },
+        });
+        if (!petition) {
+          throw new BadRequestError("Petition not found in this campaign");
+        }
+        if (petition.status !== "accepted") {
+          throw new BadRequestError(
+            "Petition must be accepted before quests can be linked",
+          );
+        }
+      }
+
+      // Validate optional `dependsOn` — must be in the same campaign and
+      // cannot point at the quest itself (we don't have the shortId yet,
+      // so the self-check fires on update). NULL-by-default schema means
+      // `dependsOn: null` from the client clears the link.
+      if (body.dependsOn != null) {
+        const predecessor = await this.quests.findOne({
+          where: {
+            id: { eq: body.dependsOn },
+            campaignId: { eq: body.campaignId },
+          },
+        });
+        if (!predecessor) {
+          throw new BadRequestError(
+            "dependsOn quest not found in this campaign",
+          );
+        }
+      }
+
+      // Quest-creation mechanics (shortId sequence, zone-ensure, HTML
+      // sanitization, defaults) live in QuestService — the single path
+      // shared with BlightController.forwardBlightToQuest.
+      const quest = await this.questService.createQuest(campaign, {
+        campaignId: body.campaignId,
+        title: body.title,
+        description: body.description,
+        zone: body.zone,
+        priority: body.priority,
+        difficulty: body.difficulty,
+        objectives: body.objectives,
+        attachments: body.attachments,
+        tags: body.tags,
+        dependsOn: body.dependsOn,
+        petitionId: body.petitionId,
+        createdBy: user.id,
+      });
+
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  uploadAttachment = $action({
+    use: [$secure({ permissions: ["quest:create"] })],
+    path: "/quests/attachments",
+    schema: {
+      body: t.object({
+        file: t.file(),
+      }),
+      response: t.object({
+        fileId: t.uuid(),
+        url: t.string(),
+      }),
+    },
+    handler: async ({ body, user }) => {
+      const file = await this.fileService.uploadFile(body.file, {
+        user,
+        bucket: this.attachments.name,
+      });
+      return {
+        fileId: file.id,
+        url: `/api/files/${file.id}`,
+      };
+    },
+  });
+
+  addAttachment = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      body: t.object({
+        fileId: t.uuid(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          completedAt: { isNull: true },
+        },
+      });
+
+      await this.security.assertMember(quest.campaignId, user);
+
+      if (quest.attachments.includes(body.fileId)) {
+        return this.mapQuestToResource(quest);
+      }
+
+      const updated = await this.quests.updateById(params.id, {
+        attachments: [...quest.attachments, body.fileId],
+      });
+
+      return this.mapQuestToResource(updated);
+    },
+  });
+
+  removeAttachment = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+        fileId: t.uuid(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          completedAt: { isNull: true },
+        },
+      });
+
+      await this.security.assertMember(quest.campaignId, user);
+
+      const updatedAttachments = quest.attachments.filter(
+        (id) => id !== params.fileId,
+      );
+
+      // Delete the file from storage
+      await this.fileService.deleteFile(params.fileId).catch(() => {
+        // File may not exist or already deleted
+      });
+
+      const updated = await this.quests.updateById(params.id, {
+        attachments: updatedAttachments,
+      });
+
+      return this.mapQuestToResource(updated);
+    },
+  });
+
+  getQuests = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    schema: {
+      params: t.object({
+        campaignId: t.integer(),
+      }),
+      query: t.extend(pageQuerySchema, {
+        status: t.optional(t.enum(["new", "accepted", "completed"])),
+        search: t.optional(t.string()),
+        chapterId: t.optional(t.integer()),
+        zone: t.optional(t.string()),
+        tag: t.optional(t.string()),
+      }),
+      response: db.page(questResourceSchema),
+    },
+    handler: async ({ params, query, user }) => {
+      await this.security.assertMember(params.campaignId, user);
+
+      const where = this.quests.createQueryWhere();
+      where.campaignId = { eq: params.campaignId };
+
+      if (query.search) {
+        // ID-by-search: a bare integer or `#N` form means "find this
+        // specific quest by its per-campaign shortId" (Lore #94 — UX
+        // shortcut for typing #42 into the same search box). Anything
+        // else stays title `ilike`.
+        const idMatch = query.search.trim().match(/^#?(\d+)$/);
+        if (idMatch) {
+          where.shortId = { eq: Number.parseInt(idMatch[1], 10) };
+        } else {
+          where.title = { ilike: `%${query.search}%` };
+        }
+      }
+
+      if (query.chapterId) {
+        where.chapterId = { eq: query.chapterId };
+      }
+
+      if (query.zone) {
+        where.zone = { eq: query.zone };
+      }
+
+      if (query.tag) {
+        // tags are stored as a JSON array; LIKE the serialized form
+        // matches an exact (normalized) value. Mirrors folio tag search.
+        where.tags = { like: `%"${query.tag.toLowerCase()}"%` };
+      }
+
+      if (query.status === "new") {
+        where.acceptedAt = { isNull: true };
+        where.completedAt = { isNull: true };
+      } else if (query.status === "accepted") {
+        where.acceptedAt = { isNotNull: true };
+        where.completedAt = { isNull: true };
+      } else if (query.status === "completed") {
+        where.completedAt = { isNotNull: true };
+        query.sort ??= "-completedAt";
+      }
+
+      query.sort ??= "-updatedAt";
+
+      const result = await this.quests.paginate(
+        query,
+        {
+          where,
+        },
+        { count: true },
+      );
+
+      return {
+        ...result,
+        content: result.content.map((quest) => this.mapQuestToResource(quest)),
+      };
+    },
+  });
+
+  /**
+   * Questline data for a single quest — the predecessor it depends on
+   * (if any) and the quests that depend on it. Surfaces a "Blocked by"
+   * badge and an "Unlocks" backlink in the UI; agents can read it via
+   * `quest_get` (predecessor is `dependsOn_shortId`; dependents are
+   * exposed there only in aggregate via separate calls).
+   */
+  /**
+   * Lightweight per-campaign edge list for the dependency-graph page
+   * (Lore #98). Returns just `{ id, shortId, title, status, dependsOn }`
+   * for every quest in the campaign — small enough to keep in the
+   * client and BFS-walk to compute an epic component without burning
+   * the full QuestResource pagination.
+   */
+  getDependencyGraph = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    path: "/campaigns/:campaignId/quests/graph",
+    schema: {
+      params: t.object({ campaignId: t.integer() }),
+      response: t.array(
+        t.object({
+          id: t.integer(),
+          shortId: t.integer(),
+          title: t.string(),
+          status: t.enum(["new", "accepted", "completed"]),
+          dependsOn: t.optional(t.integer()),
+        }),
+      ),
+    },
+    handler: async ({ params, user }) => {
+      await this.security.assertMember(params.campaignId, user);
+      const rows = await this.quests.findMany({
+        where: { campaignId: { eq: params.campaignId } },
+        columns: [
+          "id",
+          "shortId",
+          "title",
+          "acceptedAt",
+          "completedAt",
+          "dependsOn",
+        ],
+      });
+      return rows.map((q) => ({
+        id: q.id,
+        shortId: q.shortId,
+        title: q.title,
+        status: (q.completedAt
+          ? "completed"
+          : q.acceptedAt
+            ? "accepted"
+            : "new") as "new" | "accepted" | "completed",
+        dependsOn: q.dependsOn ?? undefined,
+      }));
+    },
+  });
+
+  getQuestLine = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    schema: {
+      params: t.object({ id: t.integer() }),
+      response: t.object({
+        predecessor: t.optional(
+          t.object({
+            id: t.integer(),
+            shortId: t.integer(),
+            title: t.string(),
+            completedAt: t.optional(t.datetime()),
+          }),
+        ),
+        dependents: t.array(
+          t.object({
+            id: t.integer(),
+            shortId: t.integer(),
+            title: t.string(),
+            completedAt: t.optional(t.datetime()),
+          }),
+        ),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: { id: { eq: params.id } },
+      });
+      await this.security.assertMember(quest.campaignId, user);
+
+      const [predecessor, dependents] = await Promise.all([
+        quest.dependsOn != null
+          ? this.quests.findOne({
+              where: { id: { eq: quest.dependsOn } },
+            })
+          : Promise.resolve(undefined),
+        this.quests.findMany({
+          where: { dependsOn: { eq: params.id } },
+        }),
+      ]);
+
+      return {
+        predecessor: predecessor
+          ? {
+              id: predecessor.id,
+              shortId: predecessor.shortId,
+              title: predecessor.title,
+              completedAt: predecessor.completedAt,
+            }
+          : undefined,
+        dependents: dependents.map((d) => ({
+          id: d.id,
+          shortId: d.shortId,
+          title: d.title,
+          completedAt: d.completedAt,
+        })),
+      };
+    },
+  });
+
+  /**
+   * Return the distinct set of tags used by any quest in a campaign —
+   * fuel for chip autocomplete in the editor and the filter dropdown.
+   * Mirrors `FolioController.listTags` but scope is campaign-level (tags
+   * are a property of the campaign's quest taxonomy, not the user's).
+   */
+  listQuestTags = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    description: "Return the distinct set of tags used in a campaign.",
+    schema: {
+      query: t.object({ campaignId: t.integer() }),
+      response: t.array(t.string()),
+    },
+    handler: async ({ query, user }) => {
+      await this.security.assertMember(query.campaignId, user);
+      const rows = await this.quests.findMany({
+        where: { campaignId: { eq: query.campaignId } },
+        columns: ["tags"],
+      });
+      const tags = new Set<string>();
+      for (const row of rows) {
+        for (const tag of row.tags ?? []) tags.add(tag);
+      }
+      return [...tags].sort();
+    },
+  });
+
+  abandonQuest = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
+      });
+
+      await this.security.assertMember(quest.campaignId, user);
+
+      quest.acceptedAt = undefined;
+      quest.acceptedBy = undefined;
+      quest.kanbanColumn = undefined;
+      // Reminders are tied to the assignee — clear when the quest is
+      // abandoned so the sweep doesn't keep emailing an absent owner.
+      quest.reminderInterval = undefined;
+      quest.reminderNextAt = undefined;
+      quest.history.push({
+        at: this.dt.nowISOString(),
+        by: user.id,
+        action: "unassigned",
+      });
+
+      await this.quests.save(quest);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  acceptQuest = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          acceptedAt: { isNull: true },
+          completedAt: { isNull: true },
+        },
+      });
+
+      const { campaign } = await this.security.assertMember(
+        quest.campaignId,
+        user,
+      );
+
+      // Questline gate (Lore #32): refuse to accept while a non-null
+      // predecessor is still in flight. The dependent quest stays
+      // visible in the "new" lane — the UI flips its badge to
+      // "Unblocked" once the predecessor completes.
+      if (quest.dependsOn != null) {
+        const predecessor = await this.quests.findOne({
+          where: { id: { eq: quest.dependsOn } },
+        });
+        if (predecessor && !predecessor.completedAt) {
+          throw new BadRequestError(
+            `Cannot accept quest: blocked by #${predecessor.shortId}`,
+          );
+        }
+      }
+
+      // Quest Gating (#74 + #77): when the campaign has sponsored
+      // `quest_gating`, requiredLevel is hard-enforced server-side. The
+      // schema fields are always present (added in #69) but only
+      // load-bearing when the unlock is purchased — pre-existing quests
+      // stay accept-able if no gating is set.
+      if (
+        quest.requiredLevel != null &&
+        this.paywall.isUnlocked(campaign.unlockedFeatures, "quest_gating")
+      ) {
+        const character = await this.characters.findOne({
+          where: {
+            campaignId: { eq: quest.campaignId },
+            userId: { eq: user.id },
+          },
+        });
+        const level = character
+          ? this.characterInfo.getLevelByXp(character.xp)
+          : 0;
+        if (level < quest.requiredLevel) {
+          throw new BadRequestError(
+            `Cannot accept quest: requires Lv.${quest.requiredLevel} (you are Lv.${level}).`,
+          );
+        }
+      }
+
+      quest.acceptedAt = this.dt.nowISOString();
+      quest.acceptedBy = user.id;
+      // When kanban is on, drop the freshly-accepted quest into the first
+      // configured sub-column so it has a place to live on the board.
+      if (campaign.features?.kanban) {
+        quest.kanbanColumn = campaign.kanbanColumns?.[0];
+      }
+      quest.history.push({
+        at: this.dt.nowISOString(),
+        by: user.id,
+        action: "assigned",
+      });
+
+      await this.quests.save(quest);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  setQuestKanbanColumn = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      body: t.object({
+        kanbanColumn: t.string(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
+      });
+      const { campaign } = await this.security.assertMember(
+        quest.campaignId,
+        user,
+      );
+      const columns = campaign.kanbanColumns ?? [];
+      if (!columns.includes(body.kanbanColumn)) {
+        throw new BadRequestError("Unknown kanban column for this campaign.");
+      }
+      quest.kanbanColumn = body.kanbanColumn;
+      await this.quests.save(quest);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  /**
+   * Configure (or clear) the periodic reminder for an accepted quest.
+   * Only the assignee can set their own reminder — it's a per-user
+   * nudge, not a campaign-wide notification. `interval: null` clears
+   * any existing reminder; passing a preset schedules the next send
+   * at `now + REMINDER_INTERVAL_MS[interval]` and the `QuestJobs`
+   * nightly sweep advances from there.
+   */
+  setQuestReminder = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      body: t.object({
+        interval: t.nullable(
+          t.enum([...REMINDER_INTERVAL_VALUES], { mode: "text" }),
+        ),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
+      });
+
+      const { campaign } = await this.security.assertMember(
+        quest.campaignId,
+        user,
+      );
+
+      if (quest.acceptedBy !== user.id) {
+        throw new ForbiddenError(
+          "Only the quest's assignee can set its reminder",
+        );
+      }
+
+      // Paywall: Quest Reminder is bought from the Shop. Disabling
+      // (interval=null) is always allowed so a locked campaign can
+      // still clear pre-existing reminders.
+      if (
+        body.interval != null &&
+        !this.paywall.isUnlocked(campaign.unlockedFeatures, "quest_reminder")
+      ) {
+        throw new ForbiddenError(
+          "Quest Reminder is locked — buy it from the Shop.",
+        );
+      }
+
+      if (body.interval == null) {
+        quest.reminderInterval = undefined;
+        quest.reminderNextAt = undefined;
+      } else {
+        quest.reminderInterval = body.interval;
+        quest.reminderNextAt = new Date(
+          this.dt.nowMillis() + REMINDER_INTERVAL_MS[body.interval],
+        ).toISOString();
+      }
+      await this.quests.save(quest);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  completeQuest = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      body: t.object({
+        /**
+         * Optional summary of what was actually done to close the quest.
+         * Stored on the quest row, surfaced in the UI completed-state and
+         * exposed to LLM agents via MCP. Write-once: only persisted on the
+         * accepted → completed transition.
+         */
+        message: t.optional(t.string({ size: "rich" })),
+      }),
+      response: t.extend(questResourceSchema, {
+        character: characters.schema,
+      }),
+    },
+    handler: async ({ params, body, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          completedAt: { isNull: true },
+          acceptedAt: { isNotNull: true },
+        },
+      });
+
+      await this.security.assertMember(quest.campaignId, user);
+
+      // Check if all objectives are completed
+      if (quest.objectives.length > 0) {
+        const incompleteObjectives = quest.objectives.filter(
+          (obj) => !obj.completed,
+        );
+        if (incompleteObjectives.length > 0) {
+          throw new BadRequestError(
+            `Cannot complete quest: ${incompleteObjectives.length} objective(s) remain incomplete`,
+          );
+        }
+      }
+
+      const character = await this.characters.getOne({
+        where: {
+          campaignId: { eq: quest.campaignId },
+          userId: { eq: user.id },
+        },
+      });
+
+      const xp = this.characterInfo.getXpFromQuest(quest);
+      const money = this.characterInfo.getMoneyFromQuest(quest);
+
+      character.xp += xp;
+      character.balance += money;
+      quest.completedAt = this.dt.nowISOString();
+      quest.completedBy = user.id;
+      quest.kanbanColumn = undefined;
+      // Reminders auto-stop when the quest is done (see Lore #42).
+      quest.reminderInterval = undefined;
+      quest.reminderNextAt = undefined;
+      const message = body?.message?.trim();
+      if (message) {
+        quest.completionMessage = message;
+        quest.completionMessageUpdatedAt = quest.completedAt;
+      }
+
+      // Persist the quest first so the achievement predicates (which COUNT
+      // completed quests) see the row we just transitioned. Character is
+      // saved after, with any newly-granted achievements folded in.
+      await this.quests.save(quest);
+
+      const campaign = await this.campaigns.getOne({
+        where: { id: { eq: quest.campaignId } },
+      });
+      const newAchievements = await this.achievements.evaluate(
+        { type: "quest.completed" },
+        {
+          character,
+          campaignZones: campaign.zones ?? [],
+          campaignCharacterCount: 0, // not used by quest.completed predicates
+        },
+      );
+      if (newAchievements.length > 0) {
+        character.achievements = this.achievements.grant(
+          character,
+          newAchievements,
+        );
+      }
+
+      await this.characters.save(character);
+
+      return {
+        ...this.mapQuestToResource(quest),
+        character,
+      };
+    },
+  });
+
+  getQuestById = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+        },
+      });
+
+      await this.security.assertMember(quest.campaignId, user);
+
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  getQuestByShortId = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    path: "/campaigns/:campaignId/quests/:shortId",
+    schema: {
+      params: t.object({
+        campaignId: t.integer(),
+        shortId: t.integer(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          campaignId: { eq: params.campaignId },
+          shortId: { eq: params.shortId },
+        },
+      });
+
+      await this.security.assertMember(quest.campaignId, user);
+
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  updateQuestById = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      body: t.extend(
+        t.partial(
+          t.pick(quests.schema, [
+            "title",
+            "description",
+            "zone",
+            "difficulty",
+            "priority",
+            "objectives",
+            "attachments",
+            "completionMessage",
+            "tags",
+          ]),
+        ),
+        {
+          // `dependsOn` is special-cased: `null` clears the link, integer
+          // sets it. Picking from the entity schema would emit
+          // `optional<integer>` only, dropping the explicit-clear path.
+          dependsOn: t.optional(t.nullable(t.integer())),
+        },
+      ),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const quest = await this.quests.getOne({
+        where: { id: { eq: params.id } },
+      });
+
+      const { campaign } = await this.security.assertMember(
+        quest.campaignId,
+        user,
+      );
+
+      if (quest.createdBy !== user.id && campaign.createdBy !== user.id) {
+        throw new ForbiddenError(
+          "Only the quest creator or campaign owner can edit this quest",
+        );
+      }
+
+      // On completed quests the only field that can be revised is the
+      // completion summary — campaign memory is curatable, but the quest
+      // body (title/description/objectives/…) stays frozen as an audit
+      // record of what was closed.
+      if (quest.completedAt) {
+        const otherEdits = Object.entries(body).filter(
+          ([key, value]) => key !== "completionMessage" && value !== undefined,
+        );
+        if (otherEdits.length > 0) {
+          throw new BadRequestError(
+            "Only completionMessage can be edited on a completed quest",
+          );
+        }
+      }
+
+      if (body.description) {
+        // sanitize HTML content
+        body.description = sanitizeHtml(body.description);
+      }
+
+      const patch: Record<string, unknown> = { ...body };
+      if (body.tags !== undefined) {
+        patch.tags = normalizeQuestTags(body.tags);
+      }
+      if (body.dependsOn !== undefined) {
+        if (body.dependsOn === null) {
+          patch.dependsOn = undefined;
+        } else {
+          if (body.dependsOn === quest.id) {
+            throw new BadRequestError("A quest cannot depend on itself");
+          }
+          const predecessor = await this.quests.findOne({
+            where: {
+              id: { eq: body.dependsOn },
+              campaignId: { eq: quest.campaignId },
+            },
+          });
+          if (!predecessor) {
+            throw new BadRequestError(
+              "dependsOn quest not found in this campaign",
+            );
+          }
+          patch.dependsOn = body.dependsOn;
+        }
+      }
+      if (
+        body.completionMessage !== undefined &&
+        body.completionMessage !== quest.completionMessage
+      ) {
+        patch.completionMessageUpdatedAt = this.dt.nowISOString();
+      }
+      // Don't append a "updated" history entry on a completed quest — we
+      // only allow the summary edit, the rest of the quest is frozen.
+      if (!quest.completedAt) {
+        patch.history = [
+          ...quest.history,
+          {
+            at: this.dt.nowISOString(),
+            by: user.id,
+            action: "updated",
+          },
+        ];
+      }
+
+      const updated = await this.quests.updateById(params.id, patch);
+
+      return this.mapQuestToResource(updated);
+    },
+  });
+
+  completeObjective = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      body: t.object({
+        /**
+         * Per-quest objective id (see `ensureObjectiveIds`). The UI gets
+         * these ids back from `mapQuestToResource` — legacy quests are
+         * lazily normalized so this value is always defined client-side.
+         */
+        objectiveId: t.integer({ minimum: 0 }),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, user, body }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          completedAt: { isNull: true },
+          acceptedAt: { isNotNull: true },
+        },
+      });
+
+      await this.security.assertMember(quest.campaignId, user);
+
+      // Backfill ids for legacy rows before the lookup — preserves the
+      // controller's invariant that anything we read out of `objectives`
+      // also goes back in with stable ids on the write below.
+      const objectives = this.ensureObjectiveIds(quest.objectives);
+      const target = objectives.find((o) => o.id === body.objectiveId);
+      if (!target) {
+        throw new BadRequestError("Objective not found");
+      }
+      target.completed = !target.completed;
+
+      // Manage history: tick → append; untick → drop the matching entry
+      // (this is the fix for quest #23 "History Spam"). For untick we
+      // remove all matching rows, not just the most recent one, in case a
+      // legacy state somehow accumulated duplicates.
+      const history = target.completed
+        ? [
+            ...quest.history,
+            {
+              at: this.dt.nowISOString(),
+              by: user.id,
+              action: "objective_completed" as const,
+              objectiveId: target.id,
+            },
+          ]
+        : quest.history.filter(
+            (h) =>
+              !(
+                h.action === "objective_completed" &&
+                h.objectiveId === target.id
+              ),
+          );
+
+      const updated = await this.quests.updateById(params.id, {
+        objectives,
+        history,
+      });
+
+      return this.mapQuestToResource(updated);
+    },
+  });
+
+  updateQuestObjectives = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      body: t.object({
+        objectives: t.array(
+          t.object({
+            title: t.string(),
+            completed: t.boolean(),
+          }),
+        ),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          completedAt: { isNull: true },
+        },
+      });
+
+      const { campaign } = await this.security.assertMember(
+        quest.campaignId,
+        user,
+      );
+
+      if (quest.createdBy !== user.id && campaign.createdBy !== user.id) {
+        throw new ForbiddenError(
+          "Only the quest creator or campaign owner can edit objectives",
+        );
+      }
+
+      const updated = await this.quests.updateById(params.id, {
+        objectives: this.ensureObjectiveIds(body.objectives),
+        history: [
+          ...quest.history,
+          {
+            at: this.dt.nowISOString(),
+            by: user.id,
+            action: "updated",
+          },
+        ],
+      });
+
+      return this.mapQuestToResource(updated);
+    },
+  });
+
+  deleteQuest = $action({
+    use: [$secure({ permissions: ["quest:delete"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+        },
+      });
+
+      const { campaign } = await this.security.assertMember(
+        quest.campaignId,
+        user,
+      );
+
+      if (quest.createdBy !== user.id && campaign.createdBy !== user.id) {
+        throw new ForbiddenError(
+          "Only the quest creator or campaign owner can delete this quest",
+        );
+      }
+
+      // Clear dependents' `dependsOn` before the row is removed — the FK
+      // emitted by Drizzle's `ALTER TABLE ADD COLUMN REFERENCES` lacks
+      // an explicit `ON DELETE SET NULL` clause (SQLite ALTER quirk),
+      // so D1 would refuse the delete if any dependent still pointed at
+      // this id. Mirror the folio-parent pattern.
+      const dependents = await this.quests.findMany({
+        where: { dependsOn: { eq: params.id } },
+        columns: ["id"],
+      });
+      for (const dep of dependents) {
+        await this.quests.updateById(dep.id, { dependsOn: undefined });
+      }
+
+      await this.quests.deleteById(params.id);
+
+      return { ok: true };
+    },
+  });
+
+  moveQuestToZone = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      body: t.object({
+        newZone: t.string(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+        },
+      });
+
+      await this.security.assertMember(quest.campaignId, user);
+
+      // Update the quest's zone (zone)
+      const updatedQuest = await this.quests.updateById(params.id, {
+        zone: body.newZone,
+        history: [
+          ...quest.history,
+          {
+            at: this.dt.nowISOString(),
+            by: user.id,
+            action: "updated",
+          },
+        ],
+      });
+
+      // Ensure the new zone exists in the campaign's zones list
+      const campaign = await this.campaigns.getById(quest.campaignId);
+      if (!campaign.zones.includes(body.newZone)) {
+        await this.campaigns.updateById(campaign.id, {
+          zones: [...campaign.zones, body.newZone],
+        });
+      }
+
+      return this.mapQuestToResource(updatedQuest);
+    },
+  });
+
+  updateQuestNote = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      body: t.object({
+        note: t.string({ size: "rich" }),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+        },
+      });
+
+      await this.security.assertMember(quest.campaignId, user);
+
+      // sanitize HTML content
+      const sanitizedNote = sanitizeHtml(body.note);
+
+      const updated = await this.quests.updateById(params.id, {
+        note: sanitizedNote,
+      });
+
+      return this.mapQuestToResource(updated);
+    },
+  });
+
+  startTimer = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
+      });
+
+      await this.security.assertMember(quest.campaignId, user);
+
+      // Check if timer is already running (last session has no stoppedAt)
+      const sessions = quest.timerSessions || [];
+      const lastSession = sessions[sessions.length - 1];
+      if (lastSession && !lastSession.stoppedAt) {
+        throw new BadRequestError("Timer is already running");
+      }
+
+      // Add new timer session
+      sessions.push({
+        startedAt: this.dt.nowISOString(),
+      });
+
+      const updated = await this.quests.updateById(params.id, {
+        timerSessions: sessions,
+      });
+
+      return this.mapQuestToResource(updated);
+    },
+  });
+
+  stopTimer = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: t.object({
+        id: t.integer(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: {
+          id: { eq: params.id },
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
+      });
+
+      await this.security.assertMember(quest.campaignId, user);
+
+      // Find the running timer session
+      const sessions = quest.timerSessions || [];
+      const lastSession = sessions[sessions.length - 1];
+      if (!lastSession || lastSession.stoppedAt) {
+        throw new BadRequestError("No timer is running");
+      }
+
+      // Stop the timer
+      lastSession.stoppedAt = this.dt.nowISOString();
+
+      const updated = await this.quests.updateById(params.id, {
+        timerSessions: sessions,
+      });
+
+      return this.mapQuestToResource(updated);
+    },
+  });
+}

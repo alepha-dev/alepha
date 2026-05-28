@@ -24,13 +24,23 @@ LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build
 ## Development Commands
 
 ### Core Commands
-- `yarn v` or `yarn alepha verify` - Full verification pipeline: clean, lint, typecheck, test, check-dependencies, build, e2e, clean. **Must complete within 5 minutes** — always run it with a 5-minute timeout. If it exceeds 5 minutes, treat that as a failure (a hung step, usually e2e) and investigate, do not just wait longer.
+- `yarn v` or `yarn alepha verify` - Full verification pipeline: clean, lint, typecheck, test, check:deps, check:i18n, check:migrations, build, e2e, clean. **Must complete within 5 minutes** — always run it with a 5-minute timeout. If it exceeds 5 minutes, treat that as a failure (a hung step, usually e2e) and investigate, do not just wait longer.
+- `yarn v --fast` - Inner-loop sanity check: lint + (typecheck, test, test:bun, check:deps, check:i18n, check:migrations) in parallel. Skips clean/copy/build/e2e. Use for tight iteration.
 - `yarn clean` or `yarn alepha clean` - Remove all generated files and node_modules
 - `yarn build` - Build all workspace packages using `tsdown`
 - `yarn test` - Run all tests using Vitest
 - `yarn lint` - Format and lint using Biome (with `--fix` flag)
 - `yarn typecheck` - TypeScript type checking (`tsc --noEmit`)
-- `yarn check-dependencies` - Check for unused dependencies using depcheck
+
+### Workspace-aggregated Checks
+
+These fan out via `yarn workspaces foreach -Apt run …`, so every workspace that exposes the matching script participates. Workspaces without the script are silently skipped — opt in by adding the named script to your `package.json`.
+
+- `yarn check:deps` - depcheck across every workspace (unused/missing deps)
+- `yarn check:i18n` - i18n catalog audit (each app's `alepha i18n check`)
+- `yarn check:migrations` - DB migration drift check (each app's `alepha db migrations check`)
+
+The convention is `check:<thing>` at the app level → `yarn check:<thing>` at the root that fans out. To add a new check that spans apps, follow the same shape (workspace script + root aggregator + add it to the `verify` pipeline in `alepha.config.ts`).
 
 ### Workspace Commands
 - `yarn w <workspace> <command>` - Run commands in specific workspace
@@ -76,6 +86,12 @@ Alepha uses a hybrid monorepo structure:
 - `@alepha/devtools` - Development tools and inspection UI
 - `@alepha/payments-stripe` - Stripe payments backend
 - `@alepha/protobuf` - Protocol Buffers support
+
+### Lore (`apps/lore`)
+
+The only public Alepha application — a gamified campaign management app at `lore.alepha.dev`. Lore lives in this monorepo specifically to **dogfood the framework**: framework improvements and bug fixes that surface while building Lore are part of the same commit/PR, not a downstream issue. When working on `apps/lore`, treat `packages/alepha` and `packages/@alepha/ui` as fair game — edit them in place, run `yarn v` from the root, ship both sides in one commit.
+
+CI auto-deploys Lore to Cloudflare on every push to `main` via the `deploy-lore-production` job in `.github/workflows/ci.yml`. There is no human gate. Lore migrations (`apps/lore/migrations/sqlite/`) target Cloudflare D1, which has a known cascade-on-DROP-TABLE quirk — see `apps/lore/CLAUDE.md` ("Migration safety on D1") before pushing anything that touches `migrations/sqlite/`.
 
 ### Testing
 

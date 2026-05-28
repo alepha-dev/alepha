@@ -16,6 +16,7 @@ export default (alepha: Alepha) => {
           `coverage`,
           `apps/*/playwright-report`,
           `apps/*/test-results`,
+          `apps/*/.playwright`,
           `apps/*/dist`,
           `apps/*/node_modules`,
           `apps/*/coverage`,
@@ -48,13 +49,18 @@ export default (alepha: Alepha) => {
         if (flags.fast) {
           // Inner-loop sanity check: skip clean/copy/build/e2e and run
           // all read-only checks in parallel after lint (which --fixes).
+          // `check:*` scripts fan out via `yarn workspaces foreach run …`,
+          // so every workspace that opts in (apps/lore, future apps) is
+          // verified without extending this pipeline.
           await run(`yarn w @alepha/ui sync`);
           await run(`yarn lint`);
           await run([
-            `yarn check-dependencies`,
+            `yarn check:deps`,
             `yarn typecheck`,
             `yarn test`,
             `yarn test:bun`,
+            `yarn check:i18n`,
+            `yarn check:migrations`,
           ]);
           return;
         }
@@ -63,10 +69,12 @@ export default (alepha: Alepha) => {
         await run(`yarn copy`);
         await run(`yarn w @alepha/ui sync`);
         await run(`yarn lint`);
-        await run(`yarn check-dependencies`);
+        await run(`yarn check:deps`);
         await run(`yarn typecheck`);
         await run(`yarn test`);
         await run(`yarn test:bun`);
+        await run(`yarn check:i18n`);
+        await run(`yarn check:migrations`);
         await run(`yarn build`);
 
         // HACK: remove vite cache to prevent stale cache issues in e2e tests
@@ -76,8 +84,6 @@ export default (alepha: Alepha) => {
 
         await run(`cd apps/docs && yarn alepha gen:llms`);
         await run(`yarn clean`);
-        await run(`yarn copy`);
-        await run(`yarn`);
       },
     }),
   };

@@ -1,0 +1,1 @@
+ALTER TABLE `petitions` ADD `source` text;

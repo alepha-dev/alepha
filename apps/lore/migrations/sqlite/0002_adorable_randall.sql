@@ -1,0 +1,1 @@
+ALTER TABLE `folios` ADD `summary` text DEFAULT '' NOT NULL;

@@ -1,0 +1,116 @@
+import { AppShell } from "@alepha/ui/components/app-shell/app-shell";
+import { ButtonDark } from "@alepha/ui/components/button-dark/button-dark";
+import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
+import { useRouter, useRouterState } from "alepha/react/router";
+import { ColorScheme } from "alepha/react/ui";
+import {
+  Bell,
+  Files,
+  KeyRound,
+  ShieldAlert,
+  ShieldCheck,
+  Timer,
+  UsersIcon,
+} from "lucide-react";
+import { useMemo } from "react";
+
+/**
+ * Per-page metadata used to compute the breadcrumb trail. Keyed by the
+ * URL path segment under `/admin/`.
+ */
+const PAGE_META: Record<string, { label: string }> = {
+  users: { label: "Users" },
+  sessions: { label: "Sessions" },
+  keys: { label: "API keys" },
+  jobs: { label: "Jobs" },
+  notifications: { label: "Notifications" },
+  audits: { label: "Audit log" },
+  files: { label: "Files" },
+};
+
+const NAV_GROUPS = [
+  {
+    label: "Identity",
+    items: [
+      { href: "/admin/users", label: "Users", icon: UsersIcon },
+      { href: "/admin/sessions", label: "Sessions", icon: ShieldCheck },
+      { href: "/admin/keys", label: "API keys", icon: KeyRound },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { href: "/admin/jobs", label: "Jobs", icon: Timer },
+      { href: "/admin/notifications", label: "Notifications", icon: Bell },
+      { href: "/admin/audits", label: "Audit log", icon: ShieldAlert },
+      { href: "/admin/files", label: "Files", icon: Files },
+    ],
+  },
+];
+
+/**
+ * Lore admin shell. Sidebar nav grouped Identity / Operations,
+ * breadcrumbs derived from the active sub-route, dark-mode toggle and
+ * account menu on the right.
+ */
+export function AppAdminLayout() {
+  const router = useRouter<any>();
+  const state = useRouterState();
+  const path = state.url?.pathname ?? "/admin";
+
+  const breadcrumbs = useMemo(() => {
+    const crumbs: { label: string; href?: string }[] = [
+      { label: "Admin", href: "/admin/users" },
+    ];
+    const segment = path.replace(/^\/admin\/?/, "").split("/")[0];
+    const meta = segment ? PAGE_META[segment] : undefined;
+    if (meta) {
+      crumbs.push({ label: meta.label });
+    }
+    return crumbs;
+  }, [path]);
+
+  // Decorate the static groups with per-item `active` so the AppShell
+  // sidebar can highlight the row matching the current pathname.
+  const nav = useMemo(
+    () =>
+      NAV_GROUPS.map((group) => ({
+        ...group,
+        items: group.items.map((item) => ({
+          ...item,
+          active: path === item.href || path.startsWith(`${item.href}/`),
+        })),
+      })),
+    [path],
+  );
+
+  return (
+    // `h-svh` bounds the shell at the viewport. Combined with `fill` on
+    // AppShell (switches SidebarProvider from `min-h-svh` to `h-full`),
+    // this lets the table body scroll inside the main area instead of
+    // pushing the whole page taller. Without this, `min-h-svh` grows
+    // to fit content and the breadcrumb / toolbar / pager scroll away.
+    <div className="flex h-svh flex-col">
+      {/* `/admin` is not a child of the global Layout (AppRouter.layout.children),
+        so we mount ColorScheme here ourselves. Without this, the dark/light
+        toggle changes the atom but no React subscriber applies the class
+        to <html>, so the page only repaints on a full reload (when the
+        inline boot script in UiPersistence.ts runs). */}
+      <ColorScheme />
+      <AppShell
+        fill
+        nav={nav}
+        breadcrumbs={breadcrumbs}
+        topbarActions={
+          <div className="flex items-center gap-1">
+            <ButtonDark />
+            <ButtonUser
+              onSignIn={() => router.push("login")}
+              onAdminClick={() => router.push("home")}
+            />
+          </div>
+        }
+      />
+    </div>
+  );
+}

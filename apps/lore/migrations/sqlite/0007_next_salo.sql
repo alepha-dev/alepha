@@ -1,0 +1,1 @@
+ALTER TABLE `quests` ADD `tags` text DEFAULT '[]' NOT NULL;

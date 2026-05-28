@@ -14,8 +14,10 @@ playwright-report
 .run
 .gen
 .playwright-mcp
+.playwright
 
 **/.env.*
+!**/.env.example
 
 deno.lock
 apps/tmp

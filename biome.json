@@ -1,7 +1,14 @@
 {
   "$schema": "https://biomejs.dev/schemas/latest/schema.json",
   "files": {
-    "ignoreUnknown": true
+    "ignoreUnknown": true,
+    "includes": [
+      "**",
+      "!**/.playwright",
+      "!**/playwright-report",
+      "!**/test-results",
+      "!apps/lore/public/sigils-vendor"
+    ]
   },
   "formatter": {
     "enabled": true,

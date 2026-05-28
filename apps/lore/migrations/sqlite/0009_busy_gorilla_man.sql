@@ -1,0 +1,1 @@
+ALTER TABLE `quests` ADD `depends_on` integer REFERENCES quests(id);

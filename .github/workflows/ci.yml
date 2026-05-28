@@ -68,7 +68,7 @@ jobs:
         run: yarn typecheck
 
       - name: Dependencies Check
-        run: yarn check-dependencies
+        run: yarn check:deps
 
       - name: Test Project
         run: yarn test
@@ -77,6 +77,12 @@ jobs:
 
       - name: Test Bun Providers
         run: yarn test:bun
+
+      - name: i18n Catalog Check
+        run: yarn check:i18n
+
+      - name: DB Migrations Check
+        run: yarn check:migrations
 
       - name: Build Project
         run: yarn build
@@ -142,52 +148,46 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
 
-  # TEMPORARILY DISABLED — re-enable when ready.
-  # lore-smoke:
-  #   # Cross-repo canary: clone Lore (a downstream consumer that vendors this
-  #   # framework), swap its `.vendor/` with the current alepha checkout, and
-  #   # run its full verify. Catches framework changes that silently break a
-  #   # real-world consumer — exactly the signal we lost when `apps/lore` was
-  #   # extracted to its own repo.
-  #   needs: verify-linux
-  #   runs-on: ubuntu-latest
-  #   timeout-minutes: 20
-  #
-  #   steps:
-  #     - name: Git Checkout (alepha)
-  #       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-  #
-  #     - name: Setup
-  #       uses: ./.github/actions/setup
-  #
-  #     - name: Clone Lore
-  #       run: git clone --depth 1 https://github.com/feunard/lore.git /tmp/lore
-  #
-  #     - name: Install Lore dependencies
-  #       working-directory: /tmp/lore
-  #       run: yarn
-  #
-  #     - name: Sync vendored Alepha from current checkout
-  #       # `--remote file://...` points vendor sync at this PR's HEAD
-  #       # instead of the published GitHub remote, so the canary actually
-  #       # exercises the change under review.
-  #       working-directory: /tmp/lore
-  #       run: yarn alepha vendor sync --force --remote "file://$GITHUB_WORKSPACE"
-  #
-  #     - name: Reinstall after vendor sync
-  #       # vendor sync can change Alepha's dependency set, so the lockfile must
-  #       # be allowed to update here. Yarn auto-enables --immutable in CI; opt
-  #       # out for this one install.
-  #       working-directory: /tmp/lore
-  #       run: yarn install --no-immutable
-  #
-  #     - name: Install Playwright
-  #       working-directory: /tmp/lore
-  #       run: yarn playwright install chromium --with-deps
-  #
-  #     - name: Verify Lore against framework HEAD
-  #       working-directory: /tmp/lore
-  #       run: yarn v
+  deploy-lore-production:
+    # Lore (apps/lore) auto-deploys to Cloudflare on every push to main.
+    # Mirrors the former lore repo's deploy-production job. Required
+    # secrets are scoped to the `lore-production` environment — copied
+    # over from the retired feunard/lore repo at merge time:
+    #   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+    #   APP_GITHUB_CLIENT_ID, APP_GITHUB_CLIENT_SECRET
+    #   APP_SECRET, BREVO_API_KEY, EMAIL_FROM
+    #   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+    #   TURNSTILE_SECRET_KEY, TURNSTILE_SITE_KEY
+    needs: verify-linux
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: lore-production
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Deploy
+        working-directory: apps/lore
+        run: yarn alepha platform up --env production
+        env:
+          GITHUB_CLIENT_ID: ${{ secrets.APP_GITHUB_CLIENT_ID }}
+          GITHUB_CLIENT_SECRET: ${{ secrets.APP_GITHUB_CLIENT_SECRET }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
+          TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
 
   verify-windows:
     # Smoke-test the build/lint/typecheck/CLI flow on Windows.
@@ -228,7 +228,13 @@ jobs:
         run: yarn typecheck
 
       - name: Dependencies Check
-        run: yarn check-dependencies
+        run: yarn check:deps
+
+      - name: i18n Catalog Check
+        run: yarn check:i18n
+
+      - name: DB Migrations Check
+        run: yarn check:migrations
 
       - name: Build Project
         run: yarn build
