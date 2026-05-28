@@ -108,7 +108,6 @@ Requirements: [Node.js](https://nodejs.org/) 22+ or [Bun](https://bun.sh/) 1.3+
 ```bash
 npx alepha init my-api  --api     # REST API
 npx alepha init my-app  --react   # React app (SSR)
-npx alepha init my-saas --saas    # API + React + auth + admin panel
 ```
 
 ## Learn More

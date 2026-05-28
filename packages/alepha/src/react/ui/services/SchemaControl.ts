@@ -1,9 +1,8 @@
 import type { FormModel } from "alepha/react/form";
 
 /**
- * Schema-bound metadata read by `<Control>` (in `@alepha/ui-registry`) to
- * configure how a field renders. Place under `$control` on any TypeBox
- * schema option.
+ * Schema-bound metadata read by `<Control>` (in `@alepha/ui`) to configure
+ * how a field renders. Place under `$control` on any TypeBox schema option.
  *
  * Two forms:
  *
@@ -201,7 +200,7 @@ export const resolveSchemaControl = (
 declare module "typebox" {
   interface TSchemaOptions {
     /**
-     * UI metadata read by `<Control>` from `@alepha/ui-registry`. See
+     * UI metadata read by `<Control>` from `@alepha/ui`. See
      * {@link SchemaControl}.
      */
     $control?: SchemaControlOption;

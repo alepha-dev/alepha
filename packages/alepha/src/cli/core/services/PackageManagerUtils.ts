@@ -418,16 +418,6 @@ export class PackageManagerUtils {
       devDependencies["@tailwindcss/vite"] = alephaDeps["@tailwindcss/vite"];
     }
 
-    if (modes.shadcn) {
-      // Add `shadcn` CLI as a project devDep — `alepha init --shadcn` runs
-      // `yarn shadcn init` after install to scaffold components.json,
-      // theme tokens, cn() helper, and runtime deps (clsx, tailwind-merge,
-      // class-variance-authority, lucide-react, tw-animate-css). Keeping
-      // the CLI in the project lets users re-run `yarn shadcn add ...`
-      // without `npx`.
-      devDependencies.shadcn = alephaDeps.shadcn;
-    }
-
     if (modes.react) {
       dependencies.react = alephaDeps.react;
       dependencies["react-dom"] = alephaDeps["react-dom"];
@@ -459,12 +449,6 @@ export interface DependencyModes {
   react?: boolean;
   expo?: boolean;
   tailwind?: boolean;
-  shadcn?: boolean;
-  /**
-   * SaaS starter: implies `shadcn` + adds the alepha auth + admin registry
-   * components on top via `shadcn add @alepha/...`.
-   */
-  saas?: boolean;
   /**
    * Whether the project is a workspace package inside a monorepo.
    */

@@ -11,7 +11,6 @@ export const mainCss = (opts: { tailwind?: boolean } = {}) => {
  *
  * Options:
  * - Tailwind CSS: Use \`alepha init --tailwind\` to add Tailwind CSS
- * - shadcn/ui: Use \`alepha init --shadcn\` to add shadcn/ui setup
  * - Raw CSS: Write your own styles below
  */
 

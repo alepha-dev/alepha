@@ -2,14 +2,13 @@ import { basename, dirname } from "node:path";
 import { $inject, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
-import { FileSystemProvider, ShellProvider } from "alepha/system";
+import { FileSystemProvider } from "alepha/system";
 import { agentMd } from "../templates/agentMd.ts";
 import { alephaConfigTs } from "../templates/alephaConfigTs.ts";
 import { apiHelloControllerTs } from "../templates/apiHelloControllerTs.ts";
 import { apiHelloResponseSchemaTs } from "../templates/apiHelloResponseSchemaTs.ts";
 import { apiIndexTs } from "../templates/apiIndexTs.ts";
 import { biomeJson } from "../templates/biomeJson.ts";
-import { componentsJsonTs } from "../templates/componentsJsonTs.ts";
 import { dummySpecTs } from "../templates/dummySpecTs.ts";
 import { editorconfig } from "../templates/editorconfig.ts";
 import { gitignore } from "../templates/gitignore.ts";
@@ -17,19 +16,6 @@ import { logoSvg } from "../templates/logoSvg.ts";
 import { mainBrowserTs } from "../templates/mainBrowserTs.ts";
 import { mainCss } from "../templates/mainCss.ts";
 import { mainServerTs } from "../templates/mainServerTs.ts";
-import { saasAdminLayoutTsx } from "../templates/saasAdminLayoutTsx.ts";
-import {
-  saasAdminSessionsTsx,
-  saasAdminUsersTsx,
-} from "../templates/saasAdminPagesTsx.ts";
-import { saasAuthLayoutTsx } from "../templates/saasAuthLayoutTsx.ts";
-import {
-  saasAuthLoginTsx,
-  saasAuthRegisterTsx,
-  saasAuthResetPasswordTsx,
-  saasAuthVerifyEmailTsx,
-} from "../templates/saasAuthPagesTsx.ts";
-import { saasRealmProviderTs } from "../templates/saasRealmProviderTs.ts";
 import { tsconfigJson } from "../templates/tsconfigJson.ts";
 import { viteConfigTs } from "../templates/viteConfigTs.ts";
 import { vitestConfigTs } from "../templates/vitestConfigTs.ts";
@@ -56,7 +42,6 @@ export class ProjectScaffolder {
   protected readonly log = $logger();
   protected readonly colors = $inject(ConsoleColorProvider);
   protected readonly fs = $inject(FileSystemProvider);
-  protected readonly shell = $inject(ShellProvider);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly utils = $inject(AlephaCliUtils);
 
@@ -86,13 +71,7 @@ export class ProjectScaffolder {
        */
       checkWorkspace?: boolean;
       packageJson?: boolean | DependencyModes;
-      /**
-       * `true` writes a tsconfig.json if one doesn't already exist (parent
-       * dirs included). `"local"` writes one when none exists *in this
-       * directory* — used by shadcn since the CLI reads the local
-       * tsconfig directly for import-alias detection.
-       */
-      tsconfigJson?: boolean | "local";
+      tsconfigJson?: boolean;
       biomeJson?: boolean;
       editorconfig?: boolean;
       agentMd?: boolean;
@@ -118,12 +97,7 @@ export class ProjectScaffolder {
       );
     }
     if (opts.tsconfigJson) {
-      tasks.push(
-        this.ensureTsConfig(root, {
-          force,
-          localOnly: opts.tsconfigJson === "local",
-        }),
-      );
+      tasks.push(this.ensureTsConfig(root, { force }));
     }
     if (opts.biomeJson) {
       tasks.push(this.ensureBiomeConfig(root, { force, checkWorkspace }));
@@ -147,14 +121,9 @@ export class ProjectScaffolder {
 
   public async ensureTsConfig(
     root: string,
-    opts: { force?: boolean; localOnly?: boolean } = {},
+    opts: { force?: boolean } = {},
   ): Promise<void> {
-    // Check if tsconfig.json exists in current or parent directories.
-    // `localOnly: true` skips the parent walk — needed when a tool reads the
-    // local tsconfig directly (shadcn does this for import-alias detection).
-    const exists = opts.localOnly
-      ? await this.fs.exists(this.fs.join(root, "tsconfig.json"))
-      : await this.existsInParents(root, "tsconfig.json");
+    const exists = await this.existsInParents(root, "tsconfig.json");
     if (!opts.force && exists) {
       return;
     }
@@ -312,7 +281,7 @@ export class ProjectScaffolder {
    */
   public async ensureApiProject(
     root: string,
-    opts: { saas?: boolean; force?: boolean } = {},
+    opts: { force?: boolean } = {},
   ): Promise<void> {
     const appName = this.getAppName(root);
 
@@ -328,7 +297,7 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/api/index.ts",
-      apiIndexTs({ appName, saas: opts.saas }),
+      apiIndexTs({ appName }),
       opts.force,
     );
     await this.ensureFile(
@@ -343,46 +312,6 @@ export class ProjectScaffolder {
       apiHelloResponseSchemaTs(),
       opts.force,
     );
-
-    if (opts.saas) {
-      await this.fs.mkdir(this.fs.join(root, "src/api/providers"), {
-        recursive: true,
-      });
-      await this.ensureFile(
-        root,
-        "src/api/providers/RealmProvider.ts",
-        saasRealmProviderTs(),
-        opts.force,
-      );
-      // Seed the admin email into .env (gitignored) — never into source.
-      // Detected from `git config user.email`; neutral fallback otherwise.
-      const adminEmail = (await this.detectGitEmail()) ?? "admin@alepha.dev";
-      await this.ensureFile(
-        root,
-        ".env",
-        `ADMIN_EMAILS=${adminEmail}\n`,
-        opts.force,
-      );
-    }
-  }
-
-  /**
-   * Best-effort lookup for the developer's git email — seeded as
-   * `ADMIN_EMAILS` in the SaaS project's `.env`. Returns undefined if git
-   * isn't available or `user.email` isn't configured; the caller then falls
-   * back to the neutral `admin@alepha.dev`.
-   */
-  protected async detectGitEmail(): Promise<string | undefined> {
-    try {
-      const stdout = (await this.shell.run("git config --get user.email", {
-        capture: true,
-      })) as unknown as string;
-      const email = (stdout ?? "").trim();
-      if (!email || !email.includes("@")) return undefined;
-      return email;
-    } catch {
-      return undefined;
-    }
   }
 
   // ===========================================
@@ -402,8 +331,6 @@ export class ProjectScaffolder {
     opts: {
       api?: boolean;
       tailwind?: boolean;
-      shadcn?: boolean;
-      saas?: boolean;
       force?: boolean;
     } = {},
   ): Promise<void> {
@@ -413,15 +340,6 @@ export class ProjectScaffolder {
     await this.fs.mkdir(this.fs.join(root, "src/web/components"), {
       recursive: true,
     });
-
-    if (opts.saas) {
-      await this.fs.mkdir(this.fs.join(root, "src/web/components/auth"), {
-        recursive: true,
-      });
-      await this.fs.mkdir(this.fs.join(root, "src/web/components/admin"), {
-        recursive: true,
-      });
-    }
 
     // public/favicon.svg
     await this.fs.mkdir(this.fs.join(root, "public"), { recursive: true });
@@ -440,32 +358,17 @@ export class ProjectScaffolder {
       await this.ensureFile(root, "vite.config.ts", viteConfigTs(), opts.force);
     }
 
-    // shadcn/ui: write components.json before running `shadcn init` — the
-    // CLI respects an existing config and skips its interactive prompts,
-    // which lets us pin our aliases (`@/web/*`) and the `@alepha` registry.
-    // The CLI itself writes the cn() helper, theme tokens, and installs
-    // runtime deps (clsx, tailwind-merge, class-variance-authority,
-    // lucide-react, tw-animate-css) — see runShadcnInit below.
-    if (opts.shadcn) {
-      await this.ensureFile(
-        root,
-        "components.json",
-        componentsJsonTs(),
-        opts.force,
-      );
-    }
-
     // Web structure
     await this.ensureFile(
       root,
       "src/web/index.ts",
-      webIndexTs({ appName, saas: opts.saas }),
+      webIndexTs({ appName }),
       opts.force,
     );
     await this.ensureFile(
       root,
       "src/web/AppRouter.ts",
-      webAppRouterTs({ api: opts.api, saas: opts.saas }),
+      webAppRouterTs({ api: opts.api }),
       opts.force,
     );
     await this.ensureFile(
@@ -480,62 +383,6 @@ export class ProjectScaffolder {
       mainBrowserTs(),
       opts.force,
     );
-
-    if (opts.saas) {
-      // Auth — layout + 4 pages, each a thin wrapper around the registry
-      // component that `shadcn add @alepha/auth-*` drops at
-      // src/web/components/auth-*.tsx.
-      await this.ensureFile(
-        root,
-        "src/web/components/auth/AuthLayout.tsx",
-        saasAuthLayoutTsx(),
-        opts.force,
-      );
-      await this.ensureFile(
-        root,
-        "src/web/components/auth/Login.tsx",
-        saasAuthLoginTsx(),
-        opts.force,
-      );
-      await this.ensureFile(
-        root,
-        "src/web/components/auth/Register.tsx",
-        saasAuthRegisterTsx(),
-        opts.force,
-      );
-      await this.ensureFile(
-        root,
-        "src/web/components/auth/ResetPassword.tsx",
-        saasAuthResetPasswordTsx(),
-        opts.force,
-      );
-      await this.ensureFile(
-        root,
-        "src/web/components/auth/VerifyEmail.tsx",
-        saasAuthVerifyEmailTsx(),
-        opts.force,
-      );
-
-      // Admin — AppShell layout + 5 admin-* pages
-      await this.ensureFile(
-        root,
-        "src/web/components/admin/AdminLayout.tsx",
-        saasAdminLayoutTsx(),
-        opts.force,
-      );
-      await this.ensureFile(
-        root,
-        "src/web/components/admin/Users.tsx",
-        saasAdminUsersTsx(),
-        opts.force,
-      );
-      await this.ensureFile(
-        root,
-        "src/web/components/admin/Sessions.tsx",
-        saasAdminSessionsTsx(),
-        opts.force,
-      );
-    }
   }
 
   // ===========================================
@@ -588,10 +435,6 @@ export class ProjectScaffolder {
       api?: boolean;
       react?: boolean;
       tailwind?: boolean;
-      /** boolean toggle, or a string preset id (default `b0` when bare). */
-      shadcn?: boolean | string;
-      /** boolean toggle, or a string preset id (default `b0` when bare). */
-      saas?: boolean | string;
       force?: boolean;
     };
     args?: string;
@@ -601,41 +444,15 @@ export class ProjectScaffolder {
       await this.fs.mkdir(root, { force: true });
     }
 
-    // `--shadcn` / `--saas` are union flags: bare → true, string → preset.
-    // Capture the preset string (default `b0`), then normalize both flags
-    // to plain booleans so the rest of the pipeline keeps its boolean
-    // contract with PackageManagerUtils + ensureWebProject etc.
-    const shadcnPreset =
-      (typeof flags.saas === "string" && flags.saas) ||
-      (typeof flags.shadcn === "string" && flags.shadcn) ||
-      "b0";
-
-    // Cast to a narrower view so downstream sees pure booleans.
-    const f = flags as Omit<typeof flags, "shadcn" | "saas"> & {
-      shadcn?: boolean;
-      saas?: boolean;
-    };
-    f.shadcn = !!flags.shadcn;
-    f.saas = !!flags.saas;
-
-    // Flag cascading:
-    //   --saas    → --shadcn + --api
-    //   --shadcn  → --tailwind
-    //   --tailwind→ --react
-    if (f.saas) {
-      f.shadcn = true;
-      f.api = true;
-    }
-    if (f.shadcn) {
-      f.tailwind = true;
-    }
+    // Flag cascading: --tailwind → --react
     if (flags.tailwind) {
       flags.react = true;
     }
 
+    const f = flags;
+
     // When codegen flags are set, target directory must be empty (unless --force)
-    const hasCodegenFlags =
-      flags.api || flags.react || flags.tailwind || flags.shadcn || flags.saas;
+    const hasCodegenFlags = flags.api || flags.react || flags.tailwind;
     if (hasCodegenFlags && !flags.force) {
       const files = await this.fs.ls(root);
       // Allow a directory that only has package.json (common for monorepo packages)
@@ -664,11 +481,7 @@ export class ProjectScaffolder {
         await this.ensureConfig(root, {
           force,
           packageJson: { ...f, isPackage: workspace.isPackage },
-          // Skip workspace-level configs if they exist at workspace root —
-          // unless --shadcn is set: the shadcn CLI reads the local
-          // tsconfig.json directly to detect import aliases (it doesn't
-          // follow `extends`), so we must ensure one exists in the package.
-          tsconfigJson: f.shadcn ? "local" : !workspace.config.tsconfigJson,
+          tsconfigJson: !workspace.config.tsconfigJson,
           biomeJson: true,
           editorconfig: !workspace.config.editorconfig,
           agentMd: writeAgentMd,
@@ -687,14 +500,12 @@ export class ProjectScaffolder {
           force,
         });
         if (flags.api) {
-          await this.ensureApiProject(root, { saas: !!flags.saas, force });
+          await this.ensureApiProject(root, { force });
         }
         if (flags.react && !isExpo) {
           await this.ensureWebProject(root, {
             api: !!flags.api,
             tailwind: !!flags.tailwind,
-            shadcn: !!flags.shadcn,
-            saas: !!flags.saas,
             force,
           });
         }
@@ -733,63 +544,8 @@ export class ProjectScaffolder {
     // worked example for both humans and AI agents.
     await this.ensureTestDir(root);
 
-    // shadcn/ui: run `<pm> shadcn init` against the components.json we wrote
-    // earlier. shadcn detects the existing config, respects our aliases,
-    // injects theme tokens into src/main.css, writes src/web/lib/utils.ts,
-    // and installs runtime deps (clsx, tailwind-merge, etc.).
-    //
-    // Flags chosen to keep this fully non-interactive:
-    //   --yes           skip confirmation prompts (default in shadcn v4 but
-    //                   passed explicitly so older versions also behave)
-    //   --no-monorepo   skip the monorepo prompt — we ship a single-app
-    //                   layout; users opt into monorepo via `--monorepo`
-    //                   on the alepha side later
-    //
-    // We deliberately do NOT pass `--defaults` (would force Next.js +
-    // base-nova preset) or `--template` (only applies to scratch projects;
-    // ours already has main.server.ts / main.browser.ts).
-    // Each PM has a different way to exec a project-local binary.
-    const exec = pmExecPrefix(pmName);
-
-    if (flags.shadcn) {
-      // Fully non-interactive shadcn init. The `--preset` arg is what makes
-      // this work — without it shadcn falls back to interactive prompts even
-      // with --yes/--force. Defaults: vite template + radix base + reinstall
-      // (so the components.json we pre-wrote stays canonical).
-      await run(
-        `${exec} shadcn init --no-monorepo --base radix -t vite --yes --force --reinstall --preset ${escapeShellArg(shadcnPreset)}`,
-        { alias: `running shadcn init (preset ${shadcnPreset})`, root },
-      );
-      // Re-pin our aliases + alepha registry — `shadcn init --force`
-      // overwrites components.json with the template defaults.
-      await this.fs.writeFile(
-        this.fs.join(root, "components.json"),
-        componentsJsonTs(),
-      );
-    }
-
-    // SaaS preset: pull in the auth + admin registry components from the
-    // public alepha registry (already wired via components.json's
-    // `registries: { "@alepha": "https://alepha.dev/r/{name}.json" }`).
-    // Each `shadcn add` writes the component into src/web/components/* and
-    // pulls its peer primitives + dependencies (sonner, etc.).
-    if (flags.saas) {
-      // Pull the public SaaS bundle in one shot — it aggregates control,
-      // auto-form, alepha-table, use-dialog, app-shell, every auth-*, and
-      // every admin-* block. Definition lives at
-      // https://alepha.dev/r/saas.json (see @alepha/ui-registry).
-      // `--yes --overwrite` is the only combo that works non-interactively
-      // when registry items would replace files we pre-wrote (auth-login etc.
-      // overlap with shadcn primitives like button/input).
-      await run(`${exec} shadcn add @alepha/saas --yes --overwrite`, {
-        alias: "adding alepha saas registry bundle",
-        root,
-      });
-    }
-
-    // Best-effort lint: shadcn-imported registry components occasionally
-    // trip biome rules (e.g. noArrayIndexKey on a Fragment loop). The user
-    // can fix or silence these later — don't block the whole init.
+    // Best-effort lint pass — don't block init if it fails. The user can
+    // fix or silence issues later.
     try {
       await run(`${pmName} run lint`, {
         alias: "running linter",
@@ -881,33 +637,3 @@ export class ProjectScaffolder {
     }
   }
 }
-
-/**
- * Map a package manager name to the command that runs a project-local binary.
- *
- * - npm:  `npx`
- * - yarn: `yarn` (yarn auto-resolves binary names; `yarn shadcn ...` works)
- * - pnpm: `pnpm exec`
- * - bun:  `bunx`
- *
- * Used to invoke `shadcn init` / `shadcn add` regardless of the user's PM —
- * `npm shadcn ...` is invalid (it tries to run a script named `shadcn`).
- */
-/** Quote a value so it survives shell parsing. */
-const escapeShellArg = (value: string): string => {
-  if (/^[A-Za-z0-9_./@:-]+$/.test(value)) return value;
-  return `'${value.replace(/'/g, "'\\''")}'`;
-};
-
-const pmExecPrefix = (pmName: string): string => {
-  switch (pmName) {
-    case "npm":
-      return "npx";
-    case "pnpm":
-      return "pnpm exec";
-    case "bun":
-      return "bunx";
-    default:
-      return "yarn";
-  }
-};

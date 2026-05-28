@@ -88,27 +88,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/ui-registry@workspace:packages/@alepha/ui-registry":
-  version: 0.0.0-use.local
-  resolution: "@alepha/ui-registry@workspace:packages/@alepha/ui-registry"
-  dependencies:
-    "@biomejs/biome": "npm:^2.4.16"
-    "@types/react": "npm:^19.2.15"
-    alepha: "npm:0.21.2"
-    highlight.js: "npm:^11.11.1"
-    lucide-react: "npm:^1.17.0"
-    react: "npm:^19.2.6"
-    react-day-picker: "npm:^10.0.1"
-    react-dom: "npm:^19.2.6"
-    react-markdown: "npm:^10.1.0"
-    rehype-highlight: "npm:^7.0.2"
-    remark-gfm: "npm:^4.0.1"
-    shadcn: "npm:^4.8.2"
-    sonner: "npm:^2.0.7"
-    typescript: "npm:^6.0.3"
-  languageName: unknown
-  linkType: soft
-
 "@alepha/ui@workspace:*, @alepha/ui@workspace:^, @alepha/ui@workspace:packages/@alepha/ui":
   version: 0.0.0-use.local
   resolution: "@alepha/ui@workspace:packages/@alepha/ui"
@@ -12601,17 +12580,6 @@ __metadata:
   checksum: 10c0/8bd6d2ef27e27560ffca1784067f6ee45ce2eebb0c094126681ed8d42c728904418855dd165c8272039af46a9a8e832990e564c17f5dbff041c5306d50d4cf40
   languageName: node
   linkType: hard
-
-"tmp@workspace:apps/tmp":
-  version: 0.0.0-use.local
-  resolution: "tmp@workspace:apps/tmp"
-  dependencies:
-    "@types/react": "npm:^19.2.15"
-    alepha: "npm:^0.21.2"
-    react: "npm:^19.2.6"
-    react-dom: "npm:^19.2.6"
-  languageName: unknown
-  linkType: soft
 
 "to-regex-range@npm:^5.0.1":
   version: 5.0.1

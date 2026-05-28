@@ -36,19 +36,6 @@ interface ModuleData {
   envVars: EnvVarInfo[];
 }
 
-interface RegistryBlockDoc {
-  name: string;
-  type: string;
-  title: string;
-  description: string;
-  files: string[];
-  componentName: string | null;
-  componentDescription: string;
-  props: OptionField[];
-  dependencies: string[];
-  registryDependencies: string[];
-}
-
 /**
  * Generates per-reference documentation pages (docs/2-reference/)
  * and per-package documentation pages + READMEs (docs/3-packages/).
@@ -335,95 +322,6 @@ export class DocsCommand {
     }
   }
 
-  /**
-   * Convert a kebab-case block name to its expected exported symbol.
-   * `auth-login` → `AuthLogin`, `use-dialog` → `useDialog`.
-   */
-  blockNameToSymbol(name: string): string {
-    const parts = name.split("-");
-    if (parts[0] === "use") {
-      return (
-        "use" +
-        parts
-          .slice(1)
-          .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-          .join("")
-      );
-    }
-    return parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join("");
-  }
-
-  async extractRegistryBlock(
-    item: any,
-    registryRoot: string,
-  ): Promise<RegistryBlockDoc | null> {
-    try {
-      const files: string[] = (item.files ?? []).map((f: any) => f.path);
-      // Pick the file whose stem matches the block name; fall back to first.
-      const main =
-        files.find((f) => {
-          const stem = f
-            .split("/")
-            .pop()
-            ?.replace(/\.tsx?$/, "");
-          return stem === item.name;
-        }) ?? files[0];
-
-      const block: RegistryBlockDoc = {
-        name: item.name,
-        type: item.type ?? "",
-        title: item.title ?? item.name,
-        description: item.description ?? "",
-        files,
-        componentName: null,
-        componentDescription: "",
-        props: [],
-        dependencies: item.dependencies ?? [],
-        registryDependencies: item.registryDependencies ?? [],
-      };
-
-      if (!main) return block;
-      const content = await fs.readFile(join(registryRoot, main), "utf-8");
-      const expected = this.blockNameToSymbol(item.name);
-
-      // Try to find leading JSDoc on the expected exported symbol;
-      // fall back to the first JSDoc-documented top-level export.
-      const exportRe =
-        /\/\*\*\s*\n((?:(?!\/\*\*)[\s\S])*?)\s*\*\/\s*\nexport (?:function|const|class) (\w+)/g;
-      let chosen: { jsdoc: string; name: string } | null = null;
-      for (const m of content.matchAll(exportRe)) {
-        if (m[2] === expected) {
-          chosen = { jsdoc: m[1], name: m[2] };
-          break;
-        }
-        if (!chosen) chosen = { jsdoc: m[1], name: m[2] };
-      }
-      if (chosen) {
-        block.componentName = chosen.name;
-        block.componentDescription = this.parseJsDoc(chosen.jsdoc).description;
-      }
-
-      // Props interface: prefer `<ComponentName>Props`, else first `*Props`.
-      const propsName =
-        (block.componentName &&
-          (this.findInterfaceBody(content, `${block.componentName}Props`)
-            ? `${block.componentName}Props`
-            : null)) ??
-        content.match(/export (?:interface|type) (\w+Props)\b/)?.[1] ??
-        null;
-
-      if (propsName) {
-        const body = this.findInterfaceBody(content, propsName);
-        if (body) block.props = this.parseInterfaceFields(body);
-      }
-
-      return block;
-    } catch (error) {
-      this.log.error(`Error extracting registry block ${item.name}:`, error);
-      return null;
-    }
-  }
-
   async extractEnvInfo(filePath: string): Promise<EnvVarInfo[]> {
     try {
       const content = await fs.readFile(filePath, "utf-8");
@@ -613,8 +511,7 @@ export class DocsCommand {
     const safeName = pkgName.replace(/\//g, "-");
     const order: Record<string, number> = {
       alepha: 1,
-      "@alepha/ui-registry": 2,
-      "@alepha/ui": 3,
+      "@alepha/ui": 2,
     };
     if (order[pkgName]) return `${order[pkgName]}-${safeName}`;
     const reservedCount = Object.keys(order).length;
@@ -755,79 +652,6 @@ export class DocsCommand {
     return md;
   }
 
-  generateRegistryCatalog(pkgJson: any, blocks: RegistryBlockDoc[]): string {
-    let md = `# Alepha UI Registry\n\n`;
-    if (pkgJson.description) md += `${pkgJson.description}\n\n`;
-    md += `## How it works\n\n`;
-    md += `\`@alepha/ui-registry\` is a [shadcn registry](https://ui.shadcn.com/docs/registry) of pre-built blocks for Alepha apps — auth pages, admin views, form controls, an app shell, and more. Components are **copied into your project** via the shadcn CLI; you own the code and can edit freely.\n\n`;
-    md += `## Setup\n\n`;
-    md += `### New project (recommended)\n\n`;
-    md += `Run [\`alepha init --shadcn\`](/docs/cli-commands-init) — it scaffolds \`components.json\` with the \`@alepha\` registry pre-wired:\n\n`;
-    md += "```bash\nalepha init --shadcn\n```\n\n";
-    md += `### Existing shadcn project\n\n`;
-    md += `Add the \`@alepha\` namespace under \`registries\` in your \`components.json\`:\n\n`;
-    md +=
-      '```json\n{\n  "registries": {\n    "@alepha": "https://alepha.dev/r/{name}.json"\n  }\n}\n```\n\n';
-    md += `That's it — every block listed below is now resolvable by name:\n\n`;
-    md +=
-      "```bash\nyarn shadcn add @alepha/auth-login\n# or pull the full SaaS bundle (auth + admin + controls + app-shell)\nyarn shadcn add @alepha/saas\n```\n\n";
-    md += `Components are copied into \`src/components/\` (or wherever your \`components.json\` aliases point) — you own the code and can edit freely.\n\n`;
-    md += `## Blocks\n\n`;
-
-    // Group by category for readability.
-    const groups = new Map<string, RegistryBlockDoc[]>();
-    const keyFor = (n: string) => {
-      if (n.startsWith("auth-")) return "Auth";
-      if (n.startsWith("admin-")) return "Admin";
-      if (n.startsWith("control")) return "Form controls";
-      if (n.startsWith("button-")) return "Buttons";
-      if (n.startsWith("use-")) return "Hooks";
-      return "Other";
-    };
-    for (const b of blocks) {
-      const k = keyFor(b.name);
-      if (!groups.has(k)) groups.set(k, []);
-      groups.get(k)!.push(b);
-    }
-    const order = [
-      "Auth",
-      "Admin",
-      "Form controls",
-      "Buttons",
-      "Hooks",
-      "Other",
-    ];
-
-    for (const group of order) {
-      const list = groups.get(group);
-      if (!list || list.length === 0) continue;
-      md += `### ${group}\n\n`;
-      for (const b of list.sort((a, b) => a.name.localeCompare(b.name))) {
-        md += `#### \`@alepha/${b.name}\` — ${b.title}\n\n`;
-        const summary = (b.componentDescription || b.description || "").trim();
-        if (summary) md += `${summary}\n\n`;
-        md += `**Install**\n\n\`\`\`bash\nyarn shadcn add @alepha/${b.name}\n\`\`\`\n\n`;
-        if (b.props.length > 0) {
-          md += `**Props**\n\n| Prop | Type | Required | Description |\n|------|------|----------|-------------|\n`;
-          for (const p of b.props) {
-            md += `| \`${p.name}\` | \`${this.escapeTableCell(p.type)}\` | ${p.required ? "Yes" : "No"} | ${this.escapeTableCell(p.description)} |\n`;
-          }
-          md += `\n`;
-        }
-        const deps = [
-          ...b.dependencies,
-          ...b.registryDependencies.map((d) =>
-            d.startsWith("@alepha/") ? d : `shadcn:${d}`,
-          ),
-        ];
-        if (deps.length > 0) {
-          md += `**Dependencies:** ${deps.map((d) => `\`${d}\``).join(", ")}\n\n`;
-        }
-      }
-    }
-    return md;
-  }
-
   generatePackageReadme(
     pkgJson: any,
     packageName: string,
@@ -913,7 +737,7 @@ export class DocsCommand {
           const pkg = JSON.parse(
             await fs.readFile(join(entry.path, "package.json"), "utf-8"),
           );
-          if (pkg.private && pkg.name !== "@alepha/ui-registry") continue;
+          if (pkg.private) continue;
           allPackageNames.push(pkg.name);
           if (pkg.name === "alepha") {
             const mods = this.extractModules(pkg, entry.path);
@@ -957,33 +781,8 @@ export class DocsCommand {
             return;
           }
           const realPkgName: string = pkgJson.name;
-          if (pkgJson.private && realPkgName !== "@alepha/ui-registry") return;
+          if (pkgJson.private) return;
 
-          if (realPkgName === "@alepha/ui-registry") {
-            try {
-              const registry = JSON.parse(
-                await fs.readFile(join(packagePath, "registry.json"), "utf-8"),
-              );
-              const blocks: RegistryBlockDoc[] = [];
-              for (const item of registry.items ?? []) {
-                const b = await this.extractRegistryBlock(item, packagePath);
-                if (b) blocks.push(b);
-              }
-              const dirName = this.getPackageDirName(
-                realPkgName,
-                allPackageNames,
-              );
-              await fs.writeFile(
-                join(packagesDocsDir, `${dirName}.md`),
-                this.generateRegistryCatalog(pkgJson, blocks),
-                "utf-8",
-              );
-              stats.packages++;
-            } catch (err) {
-              this.log.error(`Error generating registry catalog:`, err);
-            }
-            return;
-          }
           const importMap = this.buildImportPathMap(pkgJson);
           const srcDir = join(packagePath, "src");
           const dirName = this.getPackageDirName(realPkgName, allPackageNames);

@@ -42,18 +42,6 @@ export class InitCommand {
           description: "Include Tailwind CSS with Vite plugin. Implies --react",
         }),
       ),
-      shadcn: t.optional(
-        t.union([t.boolean(), t.text()], {
-          description:
-            "Set up shadcn/ui (components.json, cn helper, theme tokens, alepha registry). Pass an optional preset id (default: b0). Implies --react and --tailwind",
-        }),
-      ),
-      saas: t.optional(
-        t.union([t.boolean(), t.text()], {
-          description:
-            "Scaffold a SaaS starter: auth (login/register/reset/verify) + admin panel (/admin AppShell with users/sessions/api-keys/parameters/audits). Pass an optional preset id (default: b0). Implies --shadcn and --api",
-        }),
-      ),
       force: t.optional(
         t.boolean({
           aliases: ["f"],

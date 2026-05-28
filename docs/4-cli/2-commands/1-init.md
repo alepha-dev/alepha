@@ -13,9 +13,6 @@ alepha init --react
 
 # With Tailwind CSS
 alepha init --tailwind
-
-# With shadcn/ui pre-wired
-alepha init --shadcn
 ```
 
 That's it. You now have a working Alepha project. Run `alepha dev` to start building.
@@ -39,7 +36,6 @@ The `init` command is your project bootstrap. It handles the tedious setup work 
 | `--api` | Include API module structure (`src/api/`) |
 | `--react`, `-r` | Include React dependencies and web module (`src/web/`) |
 | `--tailwind` | Include Tailwind CSS with the Vite plugin (implies `--react`) |
-| `--shadcn` | Set up shadcn/ui — `components.json`, `cn()` helper, theme tokens, the `@alepha` registry (implies `--tailwind`, so also `--react`) |
 | `--pm <manager>` | Package manager to use: `yarn`, `npm`, `pnpm`, or `bun` |
 | `--force`, `-f` | Override existing files |
 
@@ -55,14 +51,13 @@ This creates `./my-app/` and scaffolds into it.
 
 Flags imply each other so you don't have to repeat yourself:
 
-- `--shadcn` → `--tailwind` → `--react`
 - `--tailwind` → `--react`
 
-So `alepha init --shadcn` is the same as `alepha init --react --tailwind --shadcn`.
+So `alepha init --tailwind` is the same as `alepha init --react --tailwind`.
 
 ## Empty Directory Check
 
-When any code-generation flag is set (`--api`, `--react`, `--tailwind`, `--shadcn`), the target directory must be empty (a lone `package.json` is allowed, since that's normal for a workspace package). Use `--force` to overwrite existing files.
+When any code-generation flag is set (`--api`, `--react`, `--tailwind`), the target directory must be empty (a lone `package.json` is allowed, since that's normal for a workspace package). Use `--force` to overwrite existing files.
 
 `alepha init` with no flags is always safe to run — it only fills in missing config files, never overwrites.
 
@@ -137,28 +132,6 @@ Everything from `--react`, plus Tailwind v4 wired up via the official Vite plugi
 **Additional dependencies:**
 - `tailwindcss`, `@tailwindcss/vite`
 
-### With shadcn/ui
-
-```bash
-alepha init --shadcn
-```
-
-Everything from `--tailwind`, plus shadcn/ui pre-configured. Alepha writes a tuned `components.json` with `@/web/*` aliases and the `@alepha` registry pre-wired, then runs `<pm> shadcn init --yes --no-monorepo --silent`. shadcn injects theme tokens into `src/main.css`, writes the `cn()` helper at `src/web/lib/utils.ts`, and installs runtime deps.
-
-**Additional files:**
-- `components.json` — shadcn project config
-- `src/web/lib/utils.ts` — `cn()` helper (written by shadcn)
-
-**Additional dependencies:**
-- `shadcn` (CLI, kept as devDep so you can run `yarn shadcn add ...` later without `npx`)
-- `clsx`, `tailwind-merge`, `class-variance-authority`, `lucide-react`, `tw-animate-css` (installed by `shadcn init`)
-
-After this you can immediately install Alepha registry blocks:
-
-```bash
-yarn shadcn add @alepha/auth-login
-```
-
 ### Testing
 
 Every `alepha init` scaffolds a test setup — no flag needed. Vitest ships
@@ -183,7 +156,7 @@ A TypeScript configuration tuned for modern development:
 
 ### vite.config.ts
 
-Only created when `--tailwind` (or `--shadcn`) is set:
+Only created when `--tailwind` is set:
 
 ```typescript
 import tailwindcss from "@tailwindcss/vite";
@@ -204,25 +177,6 @@ Linting and formatting rules that make sense:
 - Import organization
 - TypeScript-aware rules
 - Fast — Biome is written in Rust
-
-### components.json
-
-Only created with `--shadcn`. Aliases are pre-set to match Alepha's `src/web/` convention:
-
-```json
-{
-  "aliases": {
-    "components": "@/web/components",
-    "utils": "@/web/lib/utils",
-    "ui": "@/web/components/ui",
-    "lib": "@/web/lib",
-    "hooks": "@/web/hooks"
-  },
-  "registries": {
-    "@alepha": "https://alepha.dev/r/{name}.json"
-  }
-}
-```
 
 ### package.json Scripts
 
@@ -288,7 +242,7 @@ alepha verify
 
 ## Tips
 
-**Start small.** Begin with `alepha init` (no flags) and add features later. You can always run `init --react` or `init --shadcn --force` on top of an existing project.
+**Start small.** Begin with `alepha init` (no flags) and add features later. You can always run `init --react` or `init --tailwind --force` on top of an existing project.
 
 **Tests are ready from the start.** Every project is scaffolded with a working Vitest setup — just write specs in `test/` and run `alepha test`.
 

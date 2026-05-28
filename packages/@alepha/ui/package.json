@@ -1,7 +1,7 @@
 {
   "name": "@alepha/ui",
   "private": true,
-  "description": "Shared shadcn-based UI for Alepha apps in this monorepo. Sourced from @alepha/ui-registry; consumed by apps as a workspace package.",
+  "description": "Shared shadcn Base UI Nova components for Alepha apps. Edited directly; bugfixes propagate via normal dep updates.",
   "author": "Feunard",
   "version": "0.1.1",
   "type": "module",
