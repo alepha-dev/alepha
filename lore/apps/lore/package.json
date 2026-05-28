@@ -16,6 +16,7 @@
     "build:docker": "alepha build --docker && cd dist && docker build -t alepha/lore .",
     "deploy": "alepha platform up -e production",
     "studio": "alepha db studio",
+    "fonts": "node scripts/fetch-fonts.ts",
     "start": "yarn build && LOG_LEVEL=trace LOG_FORMAT=pretty DATABASE_URL=:memory: node dist",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
