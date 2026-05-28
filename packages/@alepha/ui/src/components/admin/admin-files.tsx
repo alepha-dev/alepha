@@ -113,7 +113,7 @@ export function AdminFiles() {
   };
 
   return (
-    <div className="p-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 p-6">
       <input
         ref={fileInputRef}
         type="file"
@@ -121,6 +121,7 @@ export function AdminFiles() {
         onChange={handleUpload}
       />
       <AlephaTable
+        className="min-h-0 flex-1"
         fetch={fetcher}
         bulkActions={[
           {

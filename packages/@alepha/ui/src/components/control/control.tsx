@@ -187,6 +187,21 @@ export interface ControlProps {
     | SelectOption[]
     | ((query: string) => SelectOption[] | Promise<SelectOption[]>);
   /**
+   * Forwarded to `ControlSelect` — adds a synthetic "none" row that
+   * resets the field to `undefined`. Use for optional filter chips.
+   */
+  clearable?: boolean;
+  /**
+   * Forwarded to `ControlSelect` — label of the `clearable` row, also
+   * used as the empty-state trigger placeholder. Defaults to "None".
+   */
+  clearLabel?: string;
+  /**
+   * Forwarded to `ControlSelect` — extra className on the trigger.
+   * Useful for sizing filter chips inline.
+   */
+  triggerClassName?: string;
+  /**
    * Render a managed upload control (image preview, multi, drag-drop)
    * that calls `FileController.uploadFile` and stores the file ID(s) in
    * the form value. Pass `true` for defaults or an options object.
@@ -347,6 +362,9 @@ export function Control(props: ControlProps) {
         createNewEntry={
           merged.createNewEntry as boolean | ((q: string) => never) | undefined
         }
+        clearable={merged.clearable}
+        clearLabel={merged.clearLabel}
+        triggerClassName={merged.triggerClassName}
       />,
     );
   }
