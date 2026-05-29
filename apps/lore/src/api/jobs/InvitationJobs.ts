@@ -21,10 +21,11 @@ export class InvitationJobs {
   });
 
   /**
-   * Purge old resolved invitations.
+   * Purge old resolved invitations. Runs hourly (shares the `0 * * * *` slot
+   * to keep the Cloudflare cron-trigger count down).
    */
   public readonly purgeInvitations = $job({
-    cron: "0 3 * * *",
+    cron: "0 * * * *",
     handler: async () => {
       const count = await this.invitationService.purgeResolved();
       if (count > 0) {
