@@ -66,7 +66,7 @@ describe("CloudflareEmailProvider", () => {
       });
     });
 
-    it("should split an `EMAIL_FROM` display name into { address, name }", async () => {
+    it("should split an `EMAIL_FROM` display name into { email, name }", async () => {
       const binding = new FakeBinding();
       const alepha = Alepha.create({
         env: { EMAIL_FROM: "Lore <noreply@lore.alepha.dev>" },
@@ -84,7 +84,7 @@ describe("CloudflareEmailProvider", () => {
       });
 
       expect(binding.calls[0].from).toEqual({
-        address: "noreply@lore.alepha.dev",
+        email: "noreply@lore.alepha.dev",
         name: "Lore",
       });
     });

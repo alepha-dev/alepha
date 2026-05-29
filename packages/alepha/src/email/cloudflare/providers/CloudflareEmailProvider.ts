@@ -43,7 +43,7 @@ export interface CloudflareEmailBinding {
 
 export interface CloudflareEmailSendMessage {
   to: string | string[];
-  from: string | { address: string; name?: string };
+  from: string | { email: string; name?: string };
   subject: string;
   html?: string;
   text?: string;
@@ -174,20 +174,24 @@ export class CloudflareEmailProvider implements EmailProvider {
   /**
    * Map the configured `EMAIL_FROM` to Cloudflare's `from` shape. An RFC 5322
    * display-name form — `Name <addr@host>` (the name may be quoted) — is split
-   * into `{ address, name }` so Cloudflare renders the sender's display name
+   * into `{ email, name }` so Cloudflare renders the sender's display name
    * (e.g. `Lore <noreply@lore.alepha.dev>` → "Lore"). A bare address is passed
    * through unchanged.
+   *
+   * The object key is `email` (not `address`) — that is the field the
+   * Cloudflare Email Service Workers API expects. Sending `{ address, name }`
+   * makes the API reject the message with an opaque "internal error".
    */
   protected resolveFrom(
     value: string,
-  ): string | { address: string; name?: string } {
+  ): string | { email: string; name?: string } {
     const match = value.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
     if (!match) {
       return value.trim();
     }
     const name = match[1].replace(/^"|"$/g, "").trim();
-    const address = match[2].trim();
-    return name ? { address, name } : { address };
+    const email = match[2].trim();
+    return name ? { email, name } : { email };
   }
 
   protected getBinding(): CloudflareEmailBinding {
