@@ -13,7 +13,7 @@ import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Trash2 } from "lucide-react";
+import { SlidersHorizontal, Trash2, User } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 const auditFiltersSchema = t.object({
@@ -97,6 +97,19 @@ export function AdminAudits() {
     [client, toast, tr],
   );
 
+  // A resource rendered as an icon + label that links to its admin page.
+  const resourceLink = (href: string, icon: React.ReactNode, label: string) => (
+    <button
+      type="button"
+      title={label}
+      onClick={() => router.push(href as never)}
+      className="hover:text-primary inline-flex items-center gap-1.5 truncate text-left text-xs underline-offset-2 hover:underline"
+    >
+      {icon}
+      <span className="truncate">{label}</span>
+    </button>
+  );
+
   return (
     <AdminPage>
       <AlephaTable<AuditEntity>
@@ -174,13 +187,29 @@ export function AdminAudits() {
           },
           resource: {
             label: tr("admin.audits.colResource", { default: "Resource" }),
-            cell: (a) => (
-              <span className="font-mono text-xs">
-                {a.resourceType
-                  ? `${a.resourceType}:${a.resourceId ?? "—"}`
-                  : "—"}
-              </span>
-            ),
+            cell: (a) => {
+              if (a.resourceType === "parameter" && a.resourceId) {
+                return resourceLink(
+                  `/admin/parameters?param=${encodeURIComponent(a.resourceId)}`,
+                  <SlidersHorizontal className="size-3.5 shrink-0" />,
+                  a.resourceId,
+                );
+              }
+              if (a.resourceType === "user" && a.resourceId) {
+                return resourceLink(
+                  `/admin/users/${a.resourceId}`,
+                  <User className="size-3.5 shrink-0" />,
+                  a.resourceId,
+                );
+              }
+              return (
+                <span className="font-mono text-xs">
+                  {a.resourceType
+                    ? `${a.resourceType}:${a.resourceId ?? "—"}`
+                    : "—"}
+                </span>
+              );
+            },
           },
           actor: {
             label: tr("admin.audits.colActor", { default: "Actor" }),
