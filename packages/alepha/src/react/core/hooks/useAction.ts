@@ -158,6 +158,15 @@ export function useAction<Args extends any[], Result = void>(
         abortControllerRef.current.abort();
         abortControllerRef.current = undefined;
       }
+
+      // Release the concurrency guard: we've just abandoned the in-flight run
+      // (its result is discarded by the aborted-signal check), so the *next*
+      // lifecycle must be free to start. Without this, a remount that reuses
+      // the same refs — React StrictMode's double-invoke, or a Suspense/router
+      // remount on client-side navigation — would hit `if (isExecutingRef
+      // .current) return` and never re-run, leaving a `useQuery` stuck on its
+      // loading skeleton forever (the original request 200s but is dropped).
+      isExecutingRef.current = false;
     };
   }, []);
 
