@@ -36,7 +36,7 @@ import {
   useFieldValue,
   useFormState,
 } from "alepha/react/form";
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 export type SelectOption =
@@ -307,6 +307,9 @@ export function ControlSelect(props: ControlSelectProps) {
           onSearch={mode === "long" ? search.run : undefined}
           createNewEntry={props.createNewEntry}
           icon={props.icon}
+          placeholder={
+            props.clearable ? (props.clearLabel ?? "None") : undefined
+          }
         />
       </FormField>
     );
@@ -394,6 +397,12 @@ interface ComboboxProps {
   onSearch?: (q: string) => void;
   createNewEntry?: ControlSelectProps["createNewEntry"];
   icon?: IconComponent;
+  /**
+   * Trigger text when nothing is selected. Mirrors the native-Select path,
+   * where a `clearable` field shows its `clearLabel` (e.g. "All zones") as the
+   * empty placeholder. Defaults to "Select…".
+   */
+  placeholder?: string;
 }
 
 function Combobox(props: ComboboxProps) {
@@ -420,15 +429,16 @@ function Combobox(props: ComboboxProps) {
     return found ? optLabel(found) : val;
   };
 
+  const emptyLabel = props.placeholder ?? "Select…";
   const triggerLabel = props.multi
     ? selected.length === 0
-      ? "Select…"
+      ? emptyLabel
       : selected.length <= 2
         ? selected.map(labelFor).join(", ")
         : `${selected.length} selected`
     : selected[0]
       ? labelFor(selected[0])
-      : "Select…";
+      : emptyLabel;
 
   const handleSelect = (raw: string) => {
     const opt = props.data.find((o) => optValue(o) === raw);
@@ -459,7 +469,9 @@ function Combobox(props: ComboboxProps) {
             variant="outline"
             disabled={props.disabled}
             className={cn(
-              "w-full justify-between font-normal",
+              // Match the native <SelectTrigger> shape so single- and
+              // multi-select look identical.
+              "h-8 w-full justify-between rounded-lg font-normal",
               selected.length === 0 && "text-muted-foreground",
             )}
           />
@@ -471,7 +483,7 @@ function Combobox(props: ComboboxProps) {
           )}
           <span className="truncate">{triggerLabel}</span>
         </span>
-        <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+        <ChevronDown className="text-muted-foreground ml-2 size-4 shrink-0" />
       </PopoverTrigger>
       <PopoverContent
         className="w-[--radix-popover-trigger-width] p-0"
@@ -513,12 +525,6 @@ function Combobox(props: ComboboxProps) {
                         disabled={disabled}
                         onSelect={() => handleSelect(v)}
                       >
-                        <Check
-                          className={cn(
-                            "mr-2 size-4 shrink-0",
-                            isSelected ? "opacity-100" : "opacity-0",
-                          )}
-                        />
                         {icon && (
                           <span className="mr-2 flex shrink-0 items-center">
                             {icon}
@@ -539,6 +545,13 @@ function Combobox(props: ComboboxProps) {
                             </span>
                           )}
                         </div>
+                        {/* Right-aligned tick, matching shadcn <SelectItem>. */}
+                        <Check
+                          className={cn(
+                            "ml-2 size-4 shrink-0",
+                            isSelected ? "opacity-100" : "opacity-0",
+                          )}
+                        />
                       </CommandItem>
                     );
                   })}

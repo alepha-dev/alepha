@@ -1,4 +1,4 @@
-import { ControlSelect } from "@alepha/ui/components/control-select/control-select";
+import { Control } from "@alepha/ui/components/control/control";
 import { Sheet, SheetContent } from "@alepha/ui/components/ui/sheet";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import {
@@ -253,18 +253,22 @@ const KanbanBoard = (props: KanbanBoardProps) => {
         <form {...filterForm.props} className="flex flex-1 items-center gap-2">
           {zoneOptions.length > 0 && (
             <div className="w-64 max-w-full">
-              <ControlSelect
+              <Control
                 input={filterForm.input.zones}
-                label={String(tr("kanban.filter.zones"))}
+                label=""
+                clearable
+                clearLabel={String(tr("kanban.filter.allZones"))}
                 items={zoneOptions}
               />
             </div>
           )}
           {knownTags.length > 0 && (
             <div className="w-64 max-w-full">
-              <ControlSelect
+              <Control
                 input={filterForm.input.tags}
-                label={String(tr("kanban.filter.tags"))}
+                label=""
+                clearable
+                clearLabel={String(tr("kanban.filter.allTags"))}
                 items={knownTags.map((t) => ({ value: t, label: t }))}
               />
             </div>
