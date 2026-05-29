@@ -16,13 +16,9 @@ in the same process. The DB outbox row is the durability guarantee:
 if the process dies before the handler finishes, the next sweep tick
 picks the row up and re-dispatches.
 
-**Cloudflare Workers** — when an `executionCtx.waitUntil` is available
-in the alepha store at `cloudflare.waitUntil`, the dispatch wraps the
-background promise with `waitUntil` so the runtime keeps the isolate
-alive past the HTTP response. Without this, the handler would be
-terminated when the response is returned and only the next sweep
-(every 5 min by default) would re-dispatch.
-
-**Vercel / single-Node** — on long-running runtimes the event loop
-keeps the promise alive naturally; no special wiring is required.
+Keeping the isolate alive past the HTTP response (Cloudflare Workers) vs.
+relying on the event loop (Node/Vercel) is delegated to
+{@link BackgroundTaskProvider.defer} — this dispatcher stays
+platform-agnostic. The DB outbox row remains the durability guarantee: if
+the process dies mid-handler, the next sweep re-dispatches.
 

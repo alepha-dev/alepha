@@ -175,6 +175,12 @@
       "import": "./src/api/verifications/index.ts",
       "default": "./src/api/verifications/index.ts"
     },
+    "./background": {
+      "types": "./src/background/index.ts",
+      "workerd": "./src/background/index.workerd.ts",
+      "import": "./src/background/index.ts",
+      "default": "./src/background/index.ts"
+    },
     "./batch": {
       "types": "./src/batch/index.ts",
       "import": "./src/batch/index.ts",
@@ -603,6 +609,12 @@
         "browser": "./dist/api/verifications/index.browser.js",
         "import": "./dist/api/verifications/index.js",
         "default": "./dist/api/verifications/index.js"
+      },
+      "./background": {
+        "types": "./dist/background/index.d.ts",
+        "workerd": "./dist/background/index.workerd.js",
+        "import": "./dist/background/index.js",
+        "default": "./dist/background/index.js"
       },
       "./batch": {
         "types": "./dist/batch/index.d.ts",

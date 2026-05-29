@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { AlephaBackground } from "alepha/background";
 import type { DateTime } from "alepha/datetime";
 import { AlephaLock } from "alepha/lock";
 import { AlephaQueue } from "alepha/queue";
@@ -86,7 +87,7 @@ declare module "alepha" {
 export const AlephaApiJobs = $module({
   name: "alepha.api.jobs",
   primitives: [$job],
-  imports: [AlephaScheduler, AlephaLock],
+  imports: [AlephaScheduler, AlephaLock, AlephaBackground],
   services: [JobProvider, JobService, AdminJobController, DirectJobDispatcher],
 });
 

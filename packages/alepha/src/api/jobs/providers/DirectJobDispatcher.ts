@@ -1,4 +1,5 @@
 import { $inject, Alepha } from "alepha";
+import { BackgroundTaskProvider } from "alepha/background";
 import { $logger } from "alepha/logger";
 import { JobDispatcher } from "./JobDispatcher.ts";
 import { JobProvider } from "./JobProvider.ts";
@@ -12,20 +13,17 @@ import { JobProvider } from "./JobProvider.ts";
  * if the process dies before the handler finishes, the next sweep tick
  * picks the row up and re-dispatches.
  *
- * **Cloudflare Workers** — when an `executionCtx.waitUntil` is available
- * in the alepha store at `cloudflare.waitUntil`, the dispatch wraps the
- * background promise with `waitUntil` so the runtime keeps the isolate
- * alive past the HTTP response. Without this, the handler would be
- * terminated when the response is returned and only the next sweep
- * (every 5 min by default) would re-dispatch.
- *
- * **Vercel / single-Node** — on long-running runtimes the event loop
- * keeps the promise alive naturally; no special wiring is required.
+ * Keeping the isolate alive past the HTTP response (Cloudflare Workers) vs.
+ * relying on the event loop (Node/Vercel) is delegated to
+ * {@link BackgroundTaskProvider.defer} — this dispatcher stays
+ * platform-agnostic. The DB outbox row remains the durability guarantee: if
+ * the process dies mid-handler, the next sweep re-dispatches.
  */
 export class DirectJobDispatcher extends JobDispatcher {
   public readonly kind = "direct" as const;
 
   protected readonly alepha = $inject(Alepha);
+  protected readonly background = $inject(BackgroundTaskProvider);
   protected readonly log = $logger();
 
   // Lazy: resolved on first dispatch to break the JobProvider ↔ Dispatcher
@@ -40,32 +38,15 @@ export class DirectJobDispatcher extends JobDispatcher {
   }
 
   public async dispatch(jobName: string, executionId: string): Promise<void> {
-    const promise = this.getJobProvider()
-      .processExecution(jobName, executionId)
-      .catch((err) => {
-        this.log.warn(
-          `Direct execution failed for '${jobName}' (sweep will retry)`,
-          err,
-        );
-      });
-
-    // Cloudflare Workers: keep the isolate alive past the HTTP response so
-    // the handler actually finishes. Outside CF this read returns undefined
-    // and we fall through to plain fire-and-track.
-    const waitUntil = this.alepha.store.get("cloudflare.waitUntil") as
-      | ((p: Promise<unknown>) => void)
-      | undefined;
-    if (typeof waitUntil === "function") {
-      try {
-        waitUntil(promise);
-      } catch (e) {
-        // The runtime may reject waitUntil if called outside a request scope.
-        // Promise still runs; just log.
-        this.log.debug(
-          "waitUntil rejected — falling back to fire-and-track",
-          e,
-        );
-      }
-    }
+    this.background.defer(() =>
+      this.getJobProvider()
+        .processExecution(jobName, executionId)
+        .catch((err) => {
+          this.log.warn(
+            `Direct execution failed for '${jobName}' (sweep will retry)`,
+            err,
+          );
+        }),
+    );
   }
 }
