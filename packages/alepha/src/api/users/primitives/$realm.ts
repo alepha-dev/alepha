@@ -35,6 +35,7 @@ import {
   type RealmAuthSettings,
   realmAuthSettingsAtom,
 } from "../atoms/realmAuthSettingsAtom.ts";
+import { SessionAudits } from "../audits/SessionAudits.ts";
 import { UserAudits } from "../audits/UserAudits.ts";
 import { UserBuckets } from "../buckets/UserBuckets.ts";
 import type { identities } from "../entities/identities.ts";
@@ -104,6 +105,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
   if (features.audits) {
     alepha.with(UserAudits);
+    alepha.with(SessionAudits);
   }
 
   if (features.jobs) {
