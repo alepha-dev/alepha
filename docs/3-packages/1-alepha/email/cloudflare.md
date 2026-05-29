@@ -25,4 +25,4 @@ Environment variables used to configure this module. These can be set in your `.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `EMAIL_FROM` | text | - | Default sender email address (must be a verified sender) |
+| `EMAIL_FROM` | text | - | Default sender (a verified sender address). Accepts a bare address or an RFC 5322 display-name form, e.g. `Lore <noreply@lore.alepha.dev>`. |
