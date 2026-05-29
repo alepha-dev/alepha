@@ -15,11 +15,12 @@ export class ChapterJobs {
 
   /**
    * Auto-close any active chapter whose `closesAt` is in the past.
-   * Runs every 10 minutes — chapters span days/weeks so finer
-   * granularity isn't needed.
+   * Runs hourly — chapters span days/weeks so finer granularity isn't needed
+   * (and sharing the `0 * * * *` slot keeps the Cloudflare cron-trigger count
+   * down).
    */
   public readonly autoCloseExpiredChapters = $job({
-    cron: "*/10 * * * *",
+    cron: "0 * * * *",
     handler: async () => {
       const now = this.dt.nowISOString();
       const expired = await this.chapterController.findExpiredChapters(now);

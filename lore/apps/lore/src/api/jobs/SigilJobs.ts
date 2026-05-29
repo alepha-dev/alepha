@@ -16,7 +16,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /**
  * Background jobs for the Sigils / Blights surface.
  *
- * Currently a single daily purge: deletes stale `open` blights so the inbox
+ * Currently a single hourly purge: deletes stale `open` blights so the inbox
  * does not grow without bound. Follows the `ChapterJobs` pattern — a `$job`
  * with a `cron` schedule and a `DateTimeProvider`-driven "now".
  */
@@ -28,7 +28,7 @@ export class SigilJobs {
   protected readonly dt = $inject(DateTimeProvider);
 
   /**
-   * Daily purge of stale blights.
+   * Hourly purge of stale blights.
    *
    * For each campaign, deletes `sigil_blights` rows whose `lastSeenAt` is
    * older than `campaign.retentionDays ?? 30` days — but ONLY rows with
@@ -36,11 +36,12 @@ export class SigilJobs {
    * quest-forwarded blights (`status` starts with `quest:`) are kept
    * indefinitely as an audit trail (see folio #10 §Blights "Auto-purge").
    *
-   * Runs once a day — retention is measured in days/weeks so a coarse
-   * cadence is fine; the cron is `5 4 * * *` (04:05 UTC, off-peak).
+   * Retention is measured in days/weeks so the exact cadence isn't
+   * significant; runs on the shared `0 * * * *` slot to keep the Cloudflare
+   * cron-trigger count down.
    */
   public readonly purgeStaleBlights = $job({
-    cron: "5 4 * * *",
+    cron: "0 * * * *",
     handler: async () => {
       const nowMs = this.dt.nowMillis();
       const allCampaigns = await this.campaigns.findMany({});
