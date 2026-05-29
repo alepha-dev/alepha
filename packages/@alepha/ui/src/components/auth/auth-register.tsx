@@ -2,6 +2,7 @@ import * as React from "react";
 
 void React;
 
+import { BrandIcon } from "@alepha/ui/components/brand-icon/brand-icon";
 import { Control } from "@alepha/ui/components/control/control";
 import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
 import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
@@ -674,6 +675,7 @@ function FormPhase(props: {
                   })
                 }
               >
+                <BrandIcon provider={method.name} />
                 {tr("auth.register.continueWith", {
                   default: `Continue with ${provider}`,
                   args: [provider],

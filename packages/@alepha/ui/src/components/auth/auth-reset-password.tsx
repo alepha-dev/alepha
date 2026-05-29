@@ -7,7 +7,11 @@ import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
 import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import { Input } from "@alepha/ui/components/ui/input";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@alepha/ui/components/ui/input-otp";
 import { Label } from "@alepha/ui/components/ui/label";
 import { AlephaError, t } from "alepha";
 import type {
@@ -214,23 +218,28 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                     })}
                   </AlertDescription>
                 </Alert>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col items-center gap-2">
                   <Label htmlFor="code">
                     {tr("auth.reset.codeLabel", {
                       default: "Enter the 6-digit code",
                     })}
                   </Label>
-                  <Input
+                  <InputOTP
                     id="code"
-                    inputMode="numeric"
                     maxLength={6}
-                    autoComplete="one-time-code"
                     autoFocus
                     value={code}
-                    onChange={(e) =>
-                      setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                    }
-                  />
+                    onChange={(value) => setCode(value.replace(/\D/g, ""))}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
                 </div>
                 <Button onClick={handleCodeSubmit} disabled={code.length !== 6}>
                   {tr("auth.reset.continue", { default: "Continue" })}

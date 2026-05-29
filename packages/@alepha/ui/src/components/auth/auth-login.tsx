@@ -2,6 +2,7 @@ import * as React from "react";
 
 void React;
 
+import { BrandIcon } from "@alepha/ui/components/brand-icon/brand-icon";
 import { Control } from "@alepha/ui/components/control/control";
 import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
 import { Button } from "@alepha/ui/components/ui/button";
@@ -168,25 +169,30 @@ export function AuthLogin(props: AuthLoginProps) {
     },
   });
 
-  // Autofocus the identifier field on mount — `<Control>` doesn't accept an
-  // `autoFocus` prop, so we grab the id the form assigned and focus it.
+  const externalMethods = props.realmConfig.authenticationMethods.filter(
+    (m) => m.type !== "CREDENTIALS",
+  );
+
+  // Autofocus the identifier field on mount — but only when credentials is the
+  // *sole* login method. With OAuth/external buttons present we don't steal
+  // focus (and trigger the browser's autofill popup) from a user who came to
+  // click "Continue with …". `<Control>` has no `autoFocus` prop, so we grab
+  // the id the form assigned and focus it.
   const identifierId = form.input.identifier.props.id;
   useEffect(() => {
-    if (!credentialsProvider || !identifierId) return;
+    if (!credentialsProvider || externalMethods.length > 0 || !identifierId) {
+      return;
+    }
     (
       document.getElementById(String(identifierId)) as HTMLInputElement | null
     )?.focus();
-  }, [credentialsProvider, identifierId]);
+  }, [credentialsProvider, externalMethods.length, identifierId]);
 
   const formState = useFormState(form, ["error"]);
   const formError =
     formState.error && !(formState.error instanceof TypeBoxError)
       ? formState.error.message
       : undefined;
-
-  const externalMethods = props.realmConfig.authenticationMethods.filter(
-    (m) => m.type !== "CREDENTIALS",
-  );
   const showDivider = credentialsProvider && externalMethods.length > 0;
   const realmQuery = props.realmConfig.realmName
     ? `?realm=${encodeURIComponent(props.realmConfig.realmName)}`
@@ -285,6 +291,7 @@ export function AuthLogin(props: AuthLoginProps) {
                       })
                     }
                   >
+                    <BrandIcon provider={method.name} />
                     {tr("auth.login.continueWith", {
                       default: `Continue with ${provider}`,
                       args: [provider],
