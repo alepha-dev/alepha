@@ -129,6 +129,7 @@ export function AdminJobs() {
         pollMs={POLL_MS}
         rowKey={(j) => j.name}
         fetch={fetcher}
+        onRowClick={(j) => setOpenJob(j)}
         filters={{
           schema: jobFiltersSchema,
           render: (form) => (
@@ -219,7 +220,7 @@ export function AdminJobs() {
               <span className="text-muted-foreground text-xs">
                 {j.recent.lastRun
                   ? String(l(j.recent.lastRun, { date: "fromNow" }))
-                  : tr("admin.jobs.never", { default: "never" })}
+                  : tr("admin.jobs.unknown", { default: "unknown" })}
               </span>
             ),
           },
@@ -267,7 +268,7 @@ export function AdminJobs() {
       >
         <SheetContent
           side="right"
-          className="flex w-full flex-col gap-0 sm:max-w-2xl"
+          className="flex w-full flex-col gap-0 data-[side=right]:sm:max-w-[50vw]"
         >
           {openJob && (
             <>

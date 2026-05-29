@@ -12,7 +12,10 @@ import { jobExecutionEntity } from "../entities/jobExecutionEntity.ts";
  * - `can` derives the available admin actions from the row's status.
  */
 export const jobExecutionResourceSchema = t.extend(
-  jobExecutionEntity.schema,
+  // `t.extend` composes (interface-extends), it does not override: the base
+  // `priority` (integer) would still be enforced alongside the enum below and
+  // reject the int→string transform. Drop it from the base first.
+  t.omit(jobExecutionEntity.schema, ["priority"]),
   {
     priority: t.enum(["critical", "high", "normal", "low"]),
     can: t.object({
