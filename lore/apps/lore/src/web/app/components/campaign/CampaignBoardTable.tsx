@@ -13,14 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@alepha/ui/components/ui/dropdown-menu";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@alepha/ui/components/ui/select";
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -29,7 +21,7 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { t } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
-import { useFieldValue, useForm, useFormState } from "alepha/react/form";
+import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
@@ -372,34 +364,43 @@ const CampaignBoardTable = () => {
           />
         </div>
         <div className="w-44">
-          <ZoneFilter
+          <Control
             input={filters.input.status}
-            zones={[
+            label=""
+            clearable
+            clearLabel={String(tr("board.filter.allStatuses"))}
+            triggerClassName="w-full"
+            items={[
               { label: "New", value: "new" },
               { label: "Accepted", value: "accepted" },
               { label: "Completed", value: "completed" },
             ]}
-            ariaLabel={String(tr("board.filter.status"))}
-            allLabel={String(tr("board.filter.allStatuses"))}
+            inputProps={{ "aria-label": String(tr("board.filter.status")) }}
           />
         </div>
         {zoneOptions.length > 0 && (
           <div className="w-44">
-            <ZoneFilter
+            <Control
               input={filters.input.zone}
-              zones={zoneOptions}
-              ariaLabel={String(tr("board.filter.zone"))}
-              allLabel={String(tr("board.filter.allZones"))}
+              label=""
+              clearable
+              clearLabel={String(tr("board.filter.allZones"))}
+              triggerClassName="w-full"
+              items={zoneOptions}
+              inputProps={{ "aria-label": String(tr("board.filter.zone")) }}
             />
           </div>
         )}
         {knownTags.length > 0 && (
           <div className="w-44">
-            <ZoneFilter
+            <Control
               input={filters.input.tag}
-              zones={knownTags.map((tag) => ({ label: tag, value: tag }))}
-              ariaLabel={String(tr("board.filter.tag"))}
-              allLabel={String(tr("board.filter.allTags"))}
+              label=""
+              clearable
+              clearLabel={String(tr("board.filter.allTags"))}
+              triggerClassName="w-full"
+              items={knownTags.map((tag) => ({ label: tag, value: tag }))}
+              inputProps={{ "aria-label": String(tr("board.filter.tag")) }}
             />
           </div>
         )}
@@ -687,38 +688,6 @@ const CampaignBoardTable = () => {
         ]}
       />
     </div>
-  );
-};
-
-interface ZoneFilterProps {
-  input: any;
-  zones: { label: string; value: string }[];
-  /** Visible "clear" entry, e.g. "All statuses" / "All zones". */
-  allLabel: string;
-  /** Screen-reader name for the select. */
-  ariaLabel: string;
-}
-
-const ZoneFilter = (props: ZoneFilterProps) => {
-  const [value, setValue] = useFieldValue(props.input);
-  return (
-    <Select
-      value={value ?? "__all__"}
-      onValueChange={(v) => setValue(v === "__all__" ? undefined : v)}
-    >
-      <SelectTrigger className="h-9 w-full" aria-label={props.ariaLabel}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="__all__">{props.allLabel}</SelectItem>
-        <SelectSeparator />
-        {props.zones.map((p) => (
-          <SelectItem key={p.value} value={p.value}>
-            {p.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 };
 

@@ -546,8 +546,8 @@ export class I18n {
         "kanban.column.completed": "Completed",
         "kanban.empty": "No quests",
         "kanban.showMore": "Show more",
-        "kanban.filter.zones": "Zones",
-        "kanban.filter.tags": "Tags",
+        "kanban.filter.allZones": "All zones",
+        "kanban.filter.allTags": "All tags",
         "kanban.error.completedCannotMove": "Completed quests cannot be moved",
         "kanban.error.acceptFirst":
           "You must accept the quest before completing it",
@@ -1407,8 +1407,8 @@ export class I18n {
         "kanban.column.completed": "Terminées",
         "kanban.empty": "Aucune quête",
         "kanban.showMore": "Afficher plus",
-        "kanban.filter.zones": "Zones",
-        "kanban.filter.tags": "Tags",
+        "kanban.filter.allZones": "Toutes les zones",
+        "kanban.filter.allTags": "Tous les tags",
         "kanban.error.completedCannotMove":
           "Les quêtes terminées ne peuvent pas être déplacées",
         "kanban.error.acceptFirst":
