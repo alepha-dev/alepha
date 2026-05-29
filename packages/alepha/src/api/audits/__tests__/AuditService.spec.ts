@@ -134,14 +134,16 @@ describe("alepha/api/audits - AuditService", () => {
     }) => {
       const { auditService } = await setup();
 
-      const entry = await auditService.recordAuth("login_failed", {
+      const entry = await auditService.recordAuth("login", {
         userEmail: "attacker@example.com",
         ipAddress: "10.0.0.1",
+        success: false,
         errorMessage: "Invalid password",
       });
 
       expect(entry.type).toBe("auth");
-      expect(entry.action).toBe("login_failed");
+      expect(entry.action).toBe("login");
+      expect(entry.success).toBe(false);
       expect(entry.severity).toBe("warning");
     });
 

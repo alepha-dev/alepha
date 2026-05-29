@@ -176,6 +176,20 @@ export class AdminAuditController {
   });
 
   /**
+   * List distinct action names present in the audit log (for filters).
+   */
+  public readonly getAuditActions = $action({
+    path: `${this.url}/actions`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:audit:read"] })],
+    description: "List distinct action names present in the audit log",
+    schema: {
+      response: t.array(t.text()),
+    },
+    handler: () => this.auditService.getDistinctActions(),
+  });
+
+  /**
    * Get registered audit types.
    */
   public readonly getTypes = $action({

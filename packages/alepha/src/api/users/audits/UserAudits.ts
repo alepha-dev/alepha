@@ -35,7 +35,7 @@ export class UserAudits {
    * Record an authentication-related audit event.
    */
   public recordAuth(
-    action: "login" | "logout" | "login_failed" | "token_refresh",
+    action: "login" | "logout" | "token_refresh",
     context: AuditContext,
   ) {
     return this.auditService.recordAuth(action, context);

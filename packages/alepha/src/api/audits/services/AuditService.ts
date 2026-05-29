@@ -1,6 +1,6 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, t } from "alepha";
 import { $logger } from "alepha/logger";
-import { $repository, type Page } from "alepha/orm";
+import { $repository, type Page, sql } from "alepha/orm";
 import type { ServerRequest } from "alepha/server";
 import {
   type AuditEntity,
@@ -54,6 +54,24 @@ export class AuditService {
    */
   public getRegisteredTypes(): AuditTypeDefinition[] {
     return Array.from(this.auditTypes.values());
+  }
+
+  /**
+   * Distinct action names actually present in the audit log, sorted.
+   *
+   * Sourced from the stored rows — not the `$audit` type registry, which only
+   * covers registered `$audit` primitives. Framework audits are written via
+   * `recordAuth`/`recordUser`/`record` (no registry entry), so this is the
+   * only reliable source of the real action list (e.g. "login",
+   * "parameters:rollback") for the admin filter.
+   */
+  public async getDistinctActions(): Promise<string[]> {
+    const rows = await this.repo.query(
+      (e) =>
+        sql`SELECT DISTINCT ${e.action} AS action FROM ${e} ORDER BY ${e.action} ASC`,
+      t.object({ action: t.string() }),
+    );
+    return rows.map((r) => r.action);
   }
 
   /**
@@ -139,19 +157,16 @@ export class AuditService {
    * Record an authentication event.
    */
   public async recordAuth(
-    action:
-      | "login"
-      | "logout"
-      | "login_failed"
-      | "token_refresh"
-      | "mfa_setup"
-      | "mfa_verify",
+    action: "login" | "logout" | "token_refresh" | "mfa_setup" | "mfa_verify",
     options: Omit<CreateAudit, "type" | "action"> = {},
   ): Promise<AuditEntity> {
     return this.create({
       type: "auth",
       action,
-      severity: action === "login_failed" ? "warning" : "info",
+      // Outcome lives in `success` (rendered OK/Failed in the audit log), not
+      // in a separate `*_failed` action — a failed login is `action: "login"`
+      // with `success: false`. A failed auth attempt is a warning.
+      severity: options.success === false ? "warning" : "info",
       ...options,
     });
   }

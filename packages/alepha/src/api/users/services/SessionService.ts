@@ -247,8 +247,9 @@ export class SessionService {
               realm: name,
             });
 
-            await this.userAudits(userRealmName)?.recordAuth("login_failed", {
+            await this.userAudits(userRealmName)?.recordAuth("login", {
               userRealm: name,
+              success: false,
               description: "Username does not match required format",
               metadata: { provider, username },
             });
@@ -268,8 +269,9 @@ export class SessionService {
           realm: name,
         });
 
-        await this.userAudits(userRealmName)?.recordAuth("login_failed", {
+        await this.userAudits(userRealmName)?.recordAuth("login", {
           userRealm: name,
+          success: false,
           description: "Invalid login identifier format",
           metadata: { provider, username },
         });
@@ -285,8 +287,9 @@ export class SessionService {
           realm: name,
         });
 
-        await this.userAudits(userRealmName)?.recordAuth("login_failed", {
+        await this.userAudits(userRealmName)?.recordAuth("login", {
           userRealm: name,
+          success: false,
           description: "User not found",
           metadata: { provider, username },
         });
@@ -323,8 +326,9 @@ export class SessionService {
           realm: name,
         });
 
-        await this.userAudits(userRealmName)?.recordAuth("login_failed", {
+        await this.userAudits(userRealmName)?.recordAuth("login", {
           userRealm: name,
+          success: false,
           resourceId: user.id,
           description: "Login attempt for disabled account",
           metadata: { provider, username },
@@ -377,8 +381,9 @@ export class SessionService {
           realm: name,
         });
 
-        await this.userAudits(userRealmName)?.recordAuth("login_failed", {
+        await this.userAudits(userRealmName)?.recordAuth("login", {
           userRealm: name,
+          success: false,
           resourceId: user.id,
           description: "Invalid password",
           metadata: { provider, username },
