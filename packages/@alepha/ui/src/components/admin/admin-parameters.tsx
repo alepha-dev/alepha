@@ -201,11 +201,13 @@ export function AdminParameters() {
     <div
       className={cn(
         "grid min-h-0 flex-1 p-6",
-        // The history pane only appears once a parameter is selected, so the
-        // grid drops to two columns until then.
+        // Desktop-first 3-pane (tree | editor | history). Columns narrow on
+        // laptops (lg) and reach full width at xl; below lg the panes stack
+        // into a single scrollable column. The history pane only appears once
+        // a parameter is selected, so the grid drops a column until then.
         selected
-          ? "grid-cols-[280px_minmax(0,1fr)_300px]"
-          : "grid-cols-[280px_minmax(0,1fr)]",
+          ? "grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)_260px] xl:grid-cols-[280px_minmax(0,1fr)_300px]"
+          : "grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]",
       )}
     >
       <ParameterTreePane

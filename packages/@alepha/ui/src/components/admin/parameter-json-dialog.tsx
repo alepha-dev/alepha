@@ -13,7 +13,7 @@ import {
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useI18n } from "alepha/react/i18n";
 import { Check, Copy } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface ParameterJsonDialogProps {
   open: boolean;
@@ -30,13 +30,26 @@ export const ParameterJsonDialog = (props: ParameterJsonDialogProps) => {
   const { tr } = useI18n();
   const toast = useToast();
   const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   const json = JSON.stringify(props.content ?? {}, null, 2);
+
+  // Clear the "copied" reset timer on unmount so it can't fire setState on an
+  // unmounted component.
+  useEffect(
+    () => () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    },
+    [],
+  );
 
   const onCopy = async () => {
     try {
       await navigator.clipboard.writeText(json);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1_500);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 1_500);
     } catch {
       toast.error(
         tr("admin.parameters.copyFailed", { default: "Could not copy" }),

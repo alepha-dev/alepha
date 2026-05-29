@@ -64,7 +64,7 @@ import {
   UserCheck,
   UserX,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface AdminUserDetailProps {
   /**
@@ -120,6 +120,16 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
 
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  // Clear the copy-feedback reset timer on unmount.
+  useEffect(
+    () => () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    },
+    [],
+  );
   // Tab selection is bound to the URL (`?tab=<key>`) via useQueryParams in
   // querystring mode, which uses replaceState — switching tabs does not add
   // a browser-history entry.
@@ -561,7 +571,8 @@ export function AdminUserDetail(props: AdminUserDetailProps) {
     try {
       await navigator.clipboard.writeText(user.id);
       setCopiedId(true);
-      setTimeout(() => setCopiedId(false), 1_500);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopiedId(false), 1_500);
     } catch {
       // clipboard may be unavailable (insecure context); ignore
     }

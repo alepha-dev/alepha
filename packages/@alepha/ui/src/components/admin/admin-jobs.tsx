@@ -2,6 +2,7 @@ import * as React from "react";
 
 void React;
 
+import { JobExecutionsPanel } from "@alepha/ui/components/admin/admin-jobs-executions-panel";
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
 import { PageHeader } from "@alepha/ui/components/admin/page-header";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
@@ -14,21 +15,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@alepha/ui/components/ui/sheet";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Page, type Static, t } from "alepha";
-import type {
-  AdminJobController,
-  JobExecutionResource,
-  JobRegistration,
-} from "alepha/api/jobs";
+import type { AdminJobController, JobRegistration } from "alepha/api/jobs";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Ban, Play, RotateCcw, Search, Timer } from "lucide-react";
+import { Play, Search, Timer } from "lucide-react";
 import { useCallback, useState } from "react";
 
 const POLL_MS = 30_000;
-const EXEC_POLL_MS = 10_000;
 
 const jobFiltersSchema = t.object({
   search: t.optional(t.string()),
@@ -36,11 +31,6 @@ const jobFiltersSchema = t.object({
   priority: t.optional(t.string()),
 });
 type JobFilters = Static<typeof jobFiltersSchema>;
-
-const execFiltersSchema = t.object({
-  status: t.optional(t.string()),
-});
-type ExecFilters = Static<typeof execFiltersSchema>;
 
 /**
  * Wrap an in-memory array as a `Page<T>` so it can feed `AlephaTable`'s
@@ -99,7 +89,6 @@ export function AdminJobs() {
   const client = useClient<AdminJobController>();
   const { l, tr } = useI18n();
   const toast = useToast();
-  const dialog = useDialog();
   const [openJob, setOpenJob] = useState<JobRegistration | null>(null);
 
   const fetcher = useCallback(
@@ -300,260 +289,12 @@ export function AdminJobs() {
                 </SheetDescription>
               </SheetHeader>
               <div className="flex min-h-0 flex-1 flex-col p-4">
-                <ExecutionsPanel
-                  jobName={openJob.name}
-                  client={client}
-                  l={l}
-                  tr={tr}
-                  dialog={dialog}
-                />
+                <JobExecutionsPanel jobName={openJob.name} />
               </div>
             </>
           )}
         </SheetContent>
       </Sheet>
     </AdminPage>
-  );
-}
-
-/* ────────────────────────────────────────────────────────────────────────
- * Executions panel — inner AlephaTable of JobExecutionResource
- * ──────────────────────────────────────────────────────────────────────── */
-
-interface ExecutionsPanelProps {
-  jobName: string;
-  client: ReturnType<typeof useClient<AdminJobController>>;
-  l: ReturnType<typeof useI18n>["l"];
-  tr: ReturnType<typeof useI18n>["tr"];
-  dialog: ReturnType<typeof useDialog>;
-}
-
-function ExecutionsPanel(props: ExecutionsPanelProps) {
-  const { jobName, client, l, tr, dialog } = props;
-  const toast = useToast();
-
-  const fetcher = useCallback(
-    async (params: { filters?: ExecFilters }) => {
-      const status = params.filters?.status as
-        | "pending"
-        | "running"
-        | "scheduled"
-        | "ok"
-        | "error"
-        | "cancelled"
-        | undefined;
-      const rows = await client.listExecutions({
-        params: { name: jobName },
-        query: status ? { status, limit: 100 } : { limit: 100 },
-      });
-      return asPage(rows as JobExecutionResource[]);
-    },
-    [client, jobName],
-  );
-
-  const retryAction = useAction<[JobExecutionResource], void>(
-    {
-      handler: async (e) => {
-        await client.retryExecution({ params: { id: e.id } });
-        toast.success(
-          tr("admin.jobs.retried", { default: "Execution re-queued" }),
-        );
-      },
-    },
-    [client, toast, tr],
-  );
-
-  const retry = useCallback(
-    async (e: JobExecutionResource, refresh: () => void) => {
-      const ok = await dialog.confirm({
-        title: tr("admin.jobs.retryTitle", { default: "Retry execution" }),
-        description: tr("admin.jobs.retryConfirm", {
-          default: "Re-queue this execution for another attempt?",
-        }),
-      });
-      if (!ok) return;
-      await retryAction.run(e);
-      refresh();
-    },
-    [dialog, tr, retryAction.run],
-  );
-
-  const cancelAction = useAction<[JobExecutionResource], void>(
-    {
-      handler: async (e) => {
-        await client.cancelExecution({ params: { id: e.id } });
-        toast.success(
-          tr("admin.jobs.cancelled", { default: "Execution cancelled" }),
-        );
-      },
-    },
-    [client, toast, tr],
-  );
-
-  const cancel = useCallback(
-    async (e: JobExecutionResource, refresh: () => void) => {
-      const ok = await dialog.confirm({
-        title: tr("admin.jobs.cancelTitle", { default: "Cancel execution" }),
-        description: tr("admin.jobs.cancelConfirm", {
-          default: "Cancel this pending execution? It will not run.",
-        }),
-        destructive: true,
-      });
-      if (!ok) return;
-      await cancelAction.run(e);
-      refresh();
-    },
-    [dialog, tr, cancelAction.run],
-  );
-
-  return (
-    <AlephaTable<JobExecutionResource>
-      className="min-h-0 flex-1"
-      persistenceKey={`admin.jobs.executions.${jobName}`}
-      pollMs={EXEC_POLL_MS}
-      rowKey={(e) => e.id}
-      fetch={fetcher}
-      filters={{
-        schema: execFiltersSchema,
-        render: (form) => (
-          <Control
-            input={form.input.status}
-            label=""
-            clearable
-            clearLabel={String(
-              tr("admin.jobs.statusAll", { default: "All statuses" }),
-            )}
-            triggerClassName="w-40"
-            items={[
-              { value: "pending", label: "pending" },
-              { value: "running", label: "running" },
-              { value: "scheduled", label: "scheduled" },
-              { value: "ok", label: "ok" },
-              { value: "error", label: "error" },
-              { value: "cancelled", label: "cancelled" },
-            ]}
-          />
-        ),
-      }}
-      columns={{
-        status: {
-          label: tr("admin.jobs.colStatus", { default: "Status" }),
-          cell: (e) => <StatusBadge status={e.status} tr={tr} />,
-        },
-        startedAt: {
-          label: tr("admin.jobs.colStarted", { default: "Started" }),
-          cell: (e) => (
-            <span className="text-muted-foreground text-xs">
-              {e.startedAt
-                ? String(l(e.startedAt, { date: "fromNow" }))
-                : tr("admin.jobs.notStarted", { default: "—" })}
-            </span>
-          ),
-        },
-        duration: {
-          label: tr("admin.jobs.colDuration", { default: "Duration" }),
-          align: "right",
-          cell: (e) => {
-            if (!e.startedAt || !e.completedAt) {
-              return <span className="text-muted-foreground">—</span>;
-            }
-            const ms =
-              new Date(e.completedAt).getTime() -
-              new Date(e.startedAt).getTime();
-            return (
-              <span className="text-xs">
-                {ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`}
-              </span>
-            );
-          },
-        },
-        attempt: {
-          label: tr("admin.jobs.colAttempt", { default: "Attempt" }),
-          align: "right",
-          cell: (e) => (
-            <span className="text-xs">
-              {e.attempt}/{e.maxAttempts}
-            </span>
-          ),
-        },
-        triggeredBy: {
-          label: tr("admin.jobs.colTriggeredBy", { default: "Triggered by" }),
-          cell: (e) => (
-            <span className="text-muted-foreground text-xs">
-              {e.triggeredByName ?? e.triggeredBy ?? "—"}
-            </span>
-          ),
-        },
-        error: {
-          label: tr("admin.jobs.colError", { default: "Error" }),
-          cell: (e) =>
-            e.error ? (
-              <span
-                className="text-destructive line-clamp-2 text-xs"
-                title={e.error}
-              >
-                {e.error}
-              </span>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            ),
-        },
-      }}
-      rowActions={(e) => {
-        const actions = [] as Array<{
-          label: string;
-          icon: typeof RotateCcw;
-          onClick: (
-            _e: JobExecutionResource,
-            ctx: { refresh: () => void },
-          ) => void;
-          destructive?: boolean;
-        }>;
-        if (e.can.retry) {
-          actions.push({
-            label: tr("admin.jobs.retry", { default: "Retry" }),
-            icon: RotateCcw,
-            onClick: (_e, { refresh }) => retry(e, refresh),
-          });
-        }
-        if (e.can.cancel) {
-          actions.push({
-            label: tr("admin.jobs.cancel", { default: "Cancel" }),
-            icon: Ban,
-            destructive: true,
-            onClick: (_e, { refresh }) => cancel(e, refresh),
-          });
-        }
-        return actions;
-      }}
-      emptyMessage={String(
-        tr("admin.jobs.noExecs", { default: "No executions yet." }),
-      )}
-    />
-  );
-}
-
-function StatusBadge({
-  status,
-  tr,
-}: {
-  status: JobExecutionResource["status"];
-  tr: ReturnType<typeof useI18n>["tr"];
-}) {
-  const map: Record<
-    JobExecutionResource["status"],
-    "default" | "secondary" | "outline" | "destructive"
-  > = {
-    pending: "secondary",
-    scheduled: "secondary",
-    running: "default",
-    ok: "outline",
-    error: "destructive",
-    cancelled: "outline",
-  };
-  return (
-    <Badge variant={map[status]}>
-      {tr(`admin.jobs.status.${status}` as any, { default: status })}
-    </Badge>
   );
 }

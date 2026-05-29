@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from "@alepha/ui/components/ui/alert-dialog";
 import { Input } from "@alepha/ui/components/ui/input";
+import { AlephaError } from "alepha";
 import {
   type ChangeEvent,
   createContext,
@@ -233,6 +234,6 @@ export function DialogProvider(props: { children: ReactNode }) {
  */
 export function useDialog(): DialogApi {
   const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useDialog requires <DialogProvider>");
+  if (!ctx) throw new AlephaError("useDialog requires <DialogProvider>");
   return ctx;
 }
