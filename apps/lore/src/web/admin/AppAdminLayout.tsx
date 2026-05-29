@@ -33,7 +33,7 @@ export function AppAdminLayout() {
         root="admin"
         fill
         brand={
-          <div className="flex items-center gap-2 px-2 py-1.5">
+          <div className="flex items-center gap-2 px-2 py-1.5 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
             <button
               type="button"
               onClick={() => router.push("home")}
@@ -42,8 +42,8 @@ export function AppAdminLayout() {
             >
               <ArrowLeft className="size-4" />
             </button>
-            <LayoutDashboard className="size-4 shrink-0" />
-            <span className="text-sm font-semibold tracking-tight">
+            <LayoutDashboard className="size-4 shrink-0 group-data-[collapsible=icon]:hidden" />
+            <span className="text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
               Admin Panel
             </span>
           </div>
