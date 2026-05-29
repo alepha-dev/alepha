@@ -1,55 +1,32 @@
-import type {
-  NavGroup,
-  NavItem,
-} from "@alepha/ui/components/app-shell/app-shell";
-import { AppShell } from "@alepha/ui/components/app-shell/app-shell";
+import type { NavGroup } from "@alepha/ui/components/app-shell/app-shell";
 import { ButtonLanguage } from "@alepha/ui/components/button-language/button-language";
 import { ButtonTheme } from "@alepha/ui/components/button-theme/button-theme";
 import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
-import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
-import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
-import { NestedView, useRouterState } from "alepha/react/router";
+import { NavShell } from "@alepha/ui/components/nav-shell/nav-shell";
+import { Spotlight } from "@alepha/ui/components/nav-shell/spotlight";
 import {
-  Bell,
   Boxes,
   Building2,
   CreditCard,
   Files,
   Folder,
   Globe,
-  KeyRound,
   Layers,
   Package,
-  Settings2,
-  ShieldAlert,
-  ShieldCheck,
+  Search,
   Sparkles,
   Tag,
   Tags,
-  Timer,
-  Users,
 } from "lucide-react";
+import { useState } from "react";
 
-const NAV: NavGroup[] = [
-  {
-    label: "Identity",
-    items: [
-      { href: "/admin/users", label: "Users", icon: Users },
-      { href: "/admin/sessions", label: "Sessions", icon: ShieldCheck },
-      { href: "/admin/keys", label: "API keys", icon: KeyRound },
-    ],
-  },
-  {
-    label: "Operations",
-    items: [
-      { href: "/admin/jobs", label: "Jobs", icon: Timer },
-      { href: "/admin/notifications", label: "Notifications", icon: Bell },
-      { href: "/admin/audits", label: "Audit log", icon: ShieldAlert },
-      { href: "/admin/files", label: "Files", icon: Files },
-      { href: "/admin/parameters", label: "Parameters", icon: Settings2 },
-    ],
-  },
-  // Fake catalog group to demonstrate nested NavItem children.
+/**
+ * Static demo group appended after the route-derived nav. The `/admin/demo/*`
+ * routes don't exist — this group exists to showcase `AppShell`'s nested
+ * `NavItem.children`, and demonstrates `NavShell`'s `extraNav` escape hatch
+ * for nav entries that aren't backed by routes.
+ */
+const CATALOG_DEMO: NavGroup[] = [
   {
     label: "Catalog (demo)",
     items: [
@@ -114,81 +91,58 @@ const NAV: NavGroup[] = [
   },
 ];
 
-const findInItems = (
-  items: NavItem[],
-  pathname: string,
-  trail: string[],
-): { trail: string[]; match: NavItem } | null => {
-  for (const it of items) {
-    const next = [...trail, it.label];
-    if (it.href === pathname) return { trail: next, match: it };
-    if (it.children) {
-      const found = findInItems(it.children, pathname, next);
-      if (found) return found;
-    }
-  }
-  return null;
-};
-
-const findCrumbs = (pathname: string): { label: string; href?: string }[] => {
-  for (const group of NAV) {
-    const found = findInItems(group.items, pathname, []);
-    if (found) {
-      return [
-        { label: "Admin", href: "/admin" },
-        { label: group.label ?? "" },
-        ...found.trail.map((l) => ({ label: l })),
-      ];
-    }
-  }
-  return [{ label: "Admin", href: "/admin" }];
-};
-
-const markActive = (items: NavItem[], pathname: string): NavItem[] =>
-  items.map((it) => ({
-    ...it,
-    active: it.href === pathname,
-    children: it.children ? markActive(it.children, pathname) : undefined,
-  }));
-
+/**
+ * Admin shell. The Identity / Operations nav and breadcrumbs are derived from
+ * the route tree (each `$page`'s `nav` metadata) by `<NavShell>`; the nested
+ * "Catalog (demo)" group is appended statically via `extraNav`. ⌘K opens the
+ * <Spotlight> palette over the same source.
+ */
 export const AdminLayout = () => {
-  const state = useRouterState();
-  const crumbs = findCrumbs(state.url.pathname);
+  const [spotlightOpen, setSpotlightOpen] = useState(false);
 
   return (
-    <TooltipProvider>
-      <DialogProvider>
-        <AppShell
-          variant="floating"
-          topbarActions={
-            <>
-              <ButtonLanguage />
-              <ButtonTheme />
-              <ButtonUser />
-            </>
-          }
-          brand={
-            <a
-              href="/"
-              className="flex items-center gap-2 px-2 py-2 font-semibold group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+    <>
+      <NavShell
+        root="admin"
+        variant="floating"
+        extraNav={CATALOG_DEMO}
+        topbarActions={
+          <>
+            <button
+              type="button"
+              onClick={() => setSpotlightOpen(true)}
+              className="text-muted-foreground hover:bg-accent hover:text-foreground hidden h-8 items-center gap-2 rounded-md border px-2 text-sm transition-colors sm:flex"
             >
-              <span className="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded">
-                α
-              </span>
-              <span className="truncate group-data-[collapsible=icon]:hidden">
-                Alepha Admin
-              </span>
-            </a>
-          }
-          nav={NAV.map((group) => ({
-            label: group.label,
-            items: markActive(group.items, state.url.pathname),
-          }))}
-          breadcrumbs={crumbs}
-        >
-          <NestedView />
-        </AppShell>
-      </DialogProvider>
-    </TooltipProvider>
+              <Search className="size-4 shrink-0" />
+              <span>Search…</span>
+              <kbd className="bg-muted text-muted-foreground pointer-events-none ml-2 hidden rounded px-1.5 font-mono text-[10px] md:inline">
+                ⌘K
+              </kbd>
+            </button>
+            <ButtonLanguage />
+            <ButtonTheme />
+            <ButtonUser />
+          </>
+        }
+        brand={
+          <a
+            href="/"
+            className="flex items-center gap-2 px-2 py-2 font-semibold group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+          >
+            <span className="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded">
+              α
+            </span>
+            <span className="truncate group-data-[collapsible=icon]:hidden">
+              Alepha Admin
+            </span>
+          </a>
+        }
+      />
+      <Spotlight
+        root="admin"
+        open={spotlightOpen}
+        onOpenChange={setSpotlightOpen}
+      />
+    </>
   );
 };
