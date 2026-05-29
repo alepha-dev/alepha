@@ -15,11 +15,14 @@ const alepha = Alepha.create({
   },
 });
 
-// Cloudflare Email Sending. Registered unconditionally so the CF build
-// task (which runs on Node) can introspect it and emit the `send_email`
-// binding into `wrangler.jsonc`. Off-Workers the provider boots inert
-// and only fails if `send()` is actually called.
-alepha.with(AlephaEmailCloudflare);
+// Cloudflare Email Sending. Registered only in production — both the real
+// Workers runtime and the CF build (Vite bakes `NODE_ENV=production`, so
+// `isProduction()` is true there and the build can still introspect the module
+// to emit the `send_email` binding into `wrangler.jsonc`). Skipped in `alepha
+// dev` to avoid the provider's "not running on Workers" inert-boot warning.
+if (alepha.isProduction()) {
+  alepha.with(AlephaEmailCloudflare);
+}
 
 // Register the captcha provider BEFORE any module that depends on `alepha/captcha`
 // (e.g. `LoreApi` → `RealmController`). The `AlephaCaptcha` module auto-binds the
