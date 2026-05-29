@@ -33,10 +33,10 @@ export function AdminAudits() {
   useEffect(() => {
     let alive = true;
     client
-      .getTypes()
+      .getAuditActions()
       .then((rows) => {
         if (!alive) return;
-        setActions([...new Set(rows.flatMap((r) => r.actions))].sort());
+        setActions(rows);
       })
       .catch(() => {});
     return () => {
