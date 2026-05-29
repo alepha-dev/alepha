@@ -26,7 +26,8 @@ export const SEND_EMAIL_DEFAULT_BINDING = "SEND_EMAIL";
 const envSchema = t.object({
   EMAIL_FROM: t.optional(
     t.text({
-      description: "Default sender email address (must be a verified sender)",
+      description:
+        "Default sender (a verified sender address). Accepts a bare address or an RFC 5322 display-name form, e.g. `Lore <noreply@lore.alepha.dev>`.",
     }),
   ),
 });
@@ -136,7 +137,7 @@ export class CloudflareEmailProvider implements EmailProvider {
 
     const message: CloudflareEmailSendMessage = {
       to: Array.isArray(to) ? to : [to],
-      from: this.env.EMAIL_FROM,
+      from: this.resolveFrom(this.env.EMAIL_FROM),
       subject,
       html: body,
     };
@@ -168,6 +169,25 @@ export class CloudflareEmailProvider implements EmailProvider {
       this.log.error(message, { to, subject });
       throw new EmailError(message, error instanceof Error ? error : undefined);
     }
+  }
+
+  /**
+   * Map the configured `EMAIL_FROM` to Cloudflare's `from` shape. An RFC 5322
+   * display-name form — `Name <addr@host>` (the name may be quoted) — is split
+   * into `{ address, name }` so Cloudflare renders the sender's display name
+   * (e.g. `Lore <noreply@lore.alepha.dev>` → "Lore"). A bare address is passed
+   * through unchanged.
+   */
+  protected resolveFrom(
+    value: string,
+  ): string | { address: string; name?: string } {
+    const match = value.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+    if (!match) {
+      return value.trim();
+    }
+    const name = match[1].replace(/^"|"$/g, "").trim();
+    const address = match[2].trim();
+    return name ? { address, name } : { address };
   }
 
   protected getBinding(): CloudflareEmailBinding {

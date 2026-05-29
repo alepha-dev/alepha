@@ -66,6 +66,42 @@ describe("CloudflareEmailProvider", () => {
       });
     });
 
+    it("should split an `EMAIL_FROM` display name into { address, name }", async () => {
+      const binding = new FakeBinding();
+      const alepha = Alepha.create({
+        env: { EMAIL_FROM: "Lore <noreply@lore.alepha.dev>" },
+      });
+      alepha.set("cloudflare.env", {
+        [SEND_EMAIL_DEFAULT_BINDING]: binding,
+      });
+      const provider = alepha.inject(CloudflareEmailProvider);
+      await alepha.start();
+
+      await provider.send({
+        to: "user@example.com",
+        subject: "x",
+        body: "<p>x</p>",
+      });
+
+      expect(binding.calls[0].from).toEqual({
+        address: "noreply@lore.alepha.dev",
+        name: "Lore",
+      });
+    });
+
+    it("should pass a bare `EMAIL_FROM` address through as a string", async () => {
+      const binding = new FakeBinding();
+      const { provider } = await setup(binding);
+
+      await provider.send({
+        to: "user@example.com",
+        subject: "x",
+        body: "<p>x</p>",
+      });
+
+      expect(binding.calls[0].from).toBe(EMAIL_FROM);
+    });
+
     it("should pass through multiple recipients", async () => {
       const binding = new FakeBinding();
       const { provider } = await setup(binding);
