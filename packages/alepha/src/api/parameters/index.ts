@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { ParameterAudits } from "./audits/ParameterAudits.ts";
 import { AdminParameterController } from "./controllers/AdminParameterController.ts";
 import { $parameter } from "./primitives/$parameter.ts";
 import { ParameterProvider } from "./services/ParameterProvider.ts";
@@ -6,6 +7,7 @@ import { ParameterProvider } from "./services/ParameterProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 // Controller exports
+export * from "./audits/ParameterAudits.ts";
 export * from "./controllers/AdminParameterController.ts";
 // Entity exports
 export * from "./entities/parameters.ts";
@@ -45,4 +47,5 @@ export const AlephaApiParameters = $module({
   name: "alepha.api.parameters",
   primitives: [$parameter],
   services: [ParameterProvider, AdminParameterController],
+  variants: [ParameterAudits],
 });

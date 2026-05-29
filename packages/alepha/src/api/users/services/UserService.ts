@@ -177,7 +177,8 @@ export class UserService {
 
     const realm = this.realmProvider.getRealm(userRealmName);
 
-    await this.userAudits(userRealmName)?.recordUser("update", {
+    await this.userAudits(userRealmName)?.user.log("update", {
+      resourceType: "user",
       userId: user.id,
       userEmail: email,
       userRealm: realm.name,
@@ -330,7 +331,8 @@ export class UserService {
       email: user.email,
     });
 
-    await this.userAudits(userRealmName)?.recordUser("create", {
+    await this.userAudits(userRealmName)?.user.log("create", {
+      resourceType: "user",
       userRealm: realm.name,
       resourceId: user.id,
       description: "User created",
@@ -403,9 +405,10 @@ export class UserService {
       data.roles !== undefined &&
       JSON.stringify(before.roles) !== JSON.stringify(data.roles);
 
-    await this.userAudits(userRealmName)?.recordUser(
+    await this.userAudits(userRealmName)?.user.log(
       isRoleChange ? "role_change" : "update",
       {
+        resourceType: "user",
         userRealm: realm.name,
         resourceId: user.id,
         description: isRoleChange
@@ -459,7 +462,8 @@ export class UserService {
       });
     }
 
-    await this.userAudits(userRealmName)?.recordUser("password_change", {
+    await this.userAudits(userRealmName)?.user.log("password_change", {
+      resourceType: "user",
       userId: id,
       userEmail: user.email ?? undefined,
       userRealm: realm.name,
@@ -489,7 +493,8 @@ export class UserService {
 
     const realm = this.realmProvider.getRealm(userRealmName);
 
-    await this.userAudits(userRealmName)?.recordUser("delete", {
+    await this.userAudits(userRealmName)?.user.log("delete", {
+      resourceType: "user",
       userRealm: realm.name,
       resourceId: id,
       severity: "warning",

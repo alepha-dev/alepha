@@ -1,7 +1,7 @@
 import { $inject, Alepha, AlephaError, t } from "alepha";
-import { AuditService } from "alepha/api/audits";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
+import { ParameterAudits } from "../audits/ParameterAudits.ts";
 import { activateParameterBodySchema } from "../schemas/activateParameterBodySchema.ts";
 import { createParameterVersionBodySchema } from "../schemas/createParameterVersionBodySchema.ts";
 import { parameterCurrentResponseSchema } from "../schemas/parameterCurrentResponseSchema.ts";
@@ -344,24 +344,23 @@ export class AdminParameterController {
   }
 
   /**
-   * Record a parameter mutation in the central audit log — best-effort.
+   * Record a parameter mutation via the `ParameterAudits` holder — best-effort.
    *
-   * `AuditService` is resolved lazily from the container so the parameters
-   * module stays decoupled from the audits module: when `alepha/api/audits`
-   * is not registered, auditing is silently skipped. Actor (userId / email /
-   * realm), IP, and request id are auto-filled by `AuditService` from the
-   * request context. Failures never break the underlying operation.
+   * `ParameterAudits` is resolved lazily from the container; when it is not
+   * registered, auditing is silently skipped. Actor (userId / email / realm),
+   * IP, and request id are auto-filled by `AuditService` from the request
+   * context. Failures never break the underlying operation.
    */
   protected async audit(
     action: "create" | "rollback" | "activate" | "delete",
     name: string,
     metadata?: Record<string, unknown>,
   ): Promise<void> {
-    if (!this.alepha.has(AuditService)) {
+    if (!this.alepha.has(ParameterAudits)) {
       return;
     }
     try {
-      await this.alepha.inject(AuditService).record("parameter", action, {
+      await this.alepha.inject(ParameterAudits).parameter.log(action, {
         resourceType: "parameter",
         resourceId: name,
         metadata,

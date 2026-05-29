@@ -115,138 +115,44 @@ describe("alepha/api/audits - AuditService", () => {
     });
   });
 
-  describe("recordAuth", () => {
-    it("should record login event", async ({ expect }) => {
+  describe("severity from success", () => {
+    it("defaults a failed audit to warning severity", async ({ expect }) => {
       const { auditService } = await setup();
 
-      const entry = await auditService.recordAuth("login", {
-        userId: "550e8400-e29b-41d4-a716-446655440000",
-        ipAddress: "10.0.0.1",
-      });
-
-      expect(entry.type).toBe("auth");
-      expect(entry.action).toBe("login");
-      expect(entry.severity).toBe("info");
-    });
-
-    it("should record failed login with warning severity", async ({
-      expect,
-    }) => {
-      const { auditService } = await setup();
-
-      const entry = await auditService.recordAuth("login", {
-        userEmail: "attacker@example.com",
-        ipAddress: "10.0.0.1",
+      const entry = await auditService.create({
+        type: "auth",
+        action: "login",
         success: false,
         errorMessage: "Invalid password",
       });
 
-      expect(entry.type).toBe("auth");
-      expect(entry.action).toBe("login");
       expect(entry.success).toBe(false);
       expect(entry.severity).toBe("warning");
     });
 
-    it("should record logout event", async ({ expect }) => {
+    it("defaults a successful audit to info severity", async ({ expect }) => {
       const { auditService } = await setup();
 
-      const entry = await auditService.recordAuth("logout", {
-        userId: "550e8400-e29b-41d4-a716-446655440000",
-        sessionId: "660e8400-e29b-41d4-a716-446655440001",
+      const entry = await auditService.create({
+        type: "auth",
+        action: "login",
       });
 
-      expect(entry.type).toBe("auth");
-      expect(entry.action).toBe("logout");
-    });
-  });
-
-  describe("recordUser", () => {
-    it("should record user creation event", async ({ expect }) => {
-      const { auditService } = await setup();
-
-      const entry = await auditService.recordUser("create", {
-        userId: "550e8400-e29b-41d4-a716-446655440000",
-        resourceId: "660e8400-e29b-41d4-a716-446655440001",
-        description: "New user registered",
-      });
-
-      expect(entry.type).toBe("user");
-      expect(entry.action).toBe("create");
-      expect(entry.resourceType).toBe("user");
-    });
-
-    it("should record role change event", async ({ expect }) => {
-      const { auditService } = await setup();
-
-      const entry = await auditService.recordUser("role_change", {
-        userId: "550e8400-e29b-41d4-a716-446655440000",
-        resourceId: "660e8400-e29b-41d4-a716-446655440001",
-        metadata: { oldRoles: ["user"], newRoles: ["user", "admin"] },
-      });
-
-      expect(entry.action).toBe("role_change");
-      expect(entry.metadata).toEqual({
-        oldRoles: ["user"],
-        newRoles: ["user", "admin"],
-      });
-    });
-  });
-
-  describe("recordSecurity", () => {
-    it("should record security events with warning severity", async ({
-      expect,
-    }) => {
-      const { auditService } = await setup();
-
-      const entry = await auditService.recordSecurity("permission_denied", {
-        userId: "550e8400-e29b-41d4-a716-446655440000",
-        resourceType: "admin_panel",
-        description: "Attempted to access admin panel without permission",
-      });
-
-      expect(entry.type).toBe("security");
-      expect(entry.action).toBe("permission_denied");
-      expect(entry.severity).toBe("warning");
-    });
-
-    it("should record rate limiting event", async ({ expect }) => {
-      const { auditService } = await setup();
-
-      const entry = await auditService.recordSecurity("rate_limited", {
-        ipAddress: "192.168.1.100",
-        metadata: { endpoint: "/api/login", requests: 100 },
-      });
-
-      expect(entry.action).toBe("rate_limited");
-      expect(entry.severity).toBe("warning");
-    });
-  });
-
-  describe("recordSystem", () => {
-    it("should record system startup", async ({ expect }) => {
-      const { auditService } = await setup();
-
-      const entry = await auditService.recordSystem("startup", {
-        metadata: { version: "1.0.0" },
-      });
-
-      expect(entry.type).toBe("system");
-      expect(entry.action).toBe("startup");
       expect(entry.severity).toBe("info");
     });
 
-    it("should record system error with critical severity", async ({
+    it("respects an explicit severity over the success default", async ({
       expect,
     }) => {
       const { auditService } = await setup();
 
-      const entry = await auditService.recordSystem("error", {
-        errorMessage: "Database connection failed",
-        metadata: { error: "ECONNREFUSED" },
+      const entry = await auditService.create({
+        type: "security",
+        action: "sessions_invalidated",
+        severity: "warning",
       });
 
-      expect(entry.action).toBe("error");
-      expect(entry.severity).toBe("critical");
+      expect(entry.severity).toBe("warning");
     });
   });
 
@@ -398,7 +304,7 @@ describe("alepha/api/audits - AuditService", () => {
       });
       await auditService.create({
         type: "auth",
-        action: "login_failed",
+        action: "login",
         severity: "warning",
         success: false,
       });

@@ -95,7 +95,8 @@ export class IdentityService {
 
     const realm = this.realmProvider.getRealm(userRealmName);
 
-    await this.userAudits(userRealmName)?.recordUser("update", {
+    await this.userAudits(userRealmName)?.user.log("update", {
+      resourceType: "user",
       userRealm: realm.name,
       resourceId: identity.userId,
       description: `Identity provider disconnected: ${identity.provider}`,

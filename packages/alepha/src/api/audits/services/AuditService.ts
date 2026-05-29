@@ -1,6 +1,6 @@
-import { $inject, Alepha, t } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
-import { $repository, type Page, sql } from "alepha/orm";
+import { $repository, type Page } from "alepha/orm";
 import type { ServerRequest } from "alepha/server";
 import {
   type AuditEntity,
@@ -57,21 +57,17 @@ export class AuditService {
   }
 
   /**
-   * Distinct action names actually present in the audit log, sorted.
+   * Distinct action names across all registered audit types, sorted.
    *
-   * Sourced from the stored rows — not the `$audit` type registry, which only
-   * covers registered `$audit` primitives. Framework audits are written via
-   * `recordAuth`/`recordUser`/`record` (no registry entry), so this is the
-   * only reliable source of the real action list (e.g. "login",
-   * "parameters:rollback") for the admin filter.
+   * Sourced from the `$audit` type registry. Audit types register lazily —
+   * when their holder (e.g. `SessionAudits`, `ParameterAudits`) is first
+   * injected — so the admin filter only lists actions for audit domains that
+   * are actually in use, which is the intended behaviour.
    */
-  public async getDistinctActions(): Promise<string[]> {
-    const rows = await this.repo.query(
-      (e) =>
-        sql`SELECT DISTINCT ${e.action} AS action FROM ${e} ORDER BY ${e.action} ASC`,
-      t.object({ action: t.string() }),
-    );
-    return rows.map((r) => r.action);
+  public getDistinctActions(): string[] {
+    return [
+      ...new Set(this.getRegisteredTypes().flatMap((type) => type.actions)),
+    ].sort();
   }
 
   /**
@@ -126,11 +122,16 @@ export class AuditService {
       userId: data.userId ?? contextData.userId,
     });
 
+    const success = data.success ?? true;
     const entry = await this.repo.create({
       ...contextData,
       ...data,
-      severity: data.severity ?? "info",
-      success: data.success ?? true,
+      // Outcome drives severity: a failed audit (success:false) defaults to
+      // `warning`, otherwise `info`. Explicit `severity` always wins. This is
+      // the single place the OK/Failed → severity rule lives, so holders and
+      // `$audit` primitives don't repeat it.
+      severity: data.severity ?? (success ? "info" : "warning"),
+      success,
     });
 
     this.log.debug("Audit entry created", {
@@ -151,90 +152,6 @@ export class AuditService {
     options: Omit<CreateAudit, "type" | "action"> = {},
   ): Promise<AuditEntity> {
     return this.create({ type, action, ...options });
-  }
-
-  /**
-   * Record an authentication event.
-   */
-  public async recordAuth(
-    action: "login" | "logout" | "token_refresh" | "mfa_setup" | "mfa_verify",
-    options: Omit<CreateAudit, "type" | "action"> = {},
-  ): Promise<AuditEntity> {
-    return this.create({
-      type: "auth",
-      action,
-      // Outcome lives in `success` (rendered OK/Failed in the audit log), not
-      // in a separate `*_failed` action — a failed login is `action: "login"`
-      // with `success: false`. A failed auth attempt is a warning.
-      severity: options.success === false ? "warning" : "info",
-      ...options,
-    });
-  }
-
-  /**
-   * Record a user management event.
-   */
-  public async recordUser(
-    action:
-      | "create"
-      | "update"
-      | "delete"
-      | "enable"
-      | "disable"
-      | "role_change"
-      | "password_change",
-    options: Omit<CreateAudit, "type" | "action"> = {},
-  ): Promise<AuditEntity> {
-    return this.create({
-      type: "user",
-      action,
-      resourceType: "user",
-      ...options,
-    });
-  }
-
-  /**
-   * Record a data access event.
-   */
-  public async recordAccess(
-    action: "view" | "export" | "download",
-    options: Omit<CreateAudit, "type" | "action"> = {},
-  ): Promise<AuditEntity> {
-    return this.create({ type: "access", action, ...options });
-  }
-
-  /**
-   * Record a security event.
-   */
-  public async recordSecurity(
-    action:
-      | "permission_denied"
-      | "suspicious_activity"
-      | "rate_limited"
-      | "blocked",
-    options: Omit<CreateAudit, "type" | "action"> = {},
-  ): Promise<AuditEntity> {
-    return this.create({
-      type: "security",
-      action,
-      severity: "warning",
-      ...options,
-    });
-  }
-
-  /**
-   * Record a system event.
-   */
-  public async recordSystem(
-    action: "startup" | "shutdown" | "config_change" | "maintenance" | "error",
-    options: Omit<CreateAudit, "type" | "action"> = {},
-  ): Promise<AuditEntity> {
-    return this.create({
-      type: "system",
-      action,
-      severity: action === "error" ? "critical" : "info",
-      ...options,
-    });
   }
 
   /**

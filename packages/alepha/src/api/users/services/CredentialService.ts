@@ -7,6 +7,7 @@ import { $logger } from "alepha/logger";
 import { CryptoProvider } from "alepha/security";
 import { BadRequestError, HttpError } from "alepha/server";
 import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
+import { SessionAudits } from "../audits/SessionAudits.ts";
 import { UserAudits } from "../audits/UserAudits.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
@@ -46,6 +47,14 @@ export class CredentialService {
     const realm = this.realmProvider.getRealm(realmName);
     if (realm.features.audits) {
       return this.alepha.inject(UserAudits);
+    }
+    return undefined;
+  }
+
+  protected sessionAudits(realmName?: string) {
+    const realm = this.realmProvider.getRealm(realmName);
+    if (realm.features.audits) {
+      return this.alepha.inject(SessionAudits);
     }
     return undefined;
   }
@@ -298,7 +307,8 @@ export class CredentialService {
     });
 
     // Audit: password reset
-    await this.userAudits(intent.realmName)?.recordUser("update", {
+    await this.userAudits(intent.realmName)?.user.log("update", {
+      resourceType: "user",
       userId: intent.userId,
       userEmail: intent.email,
       userRealm: realm.name,
@@ -308,8 +318,7 @@ export class CredentialService {
     });
 
     // Audit: sessions invalidated (security event)
-    await this.userAudits(intent.realmName)?.record(
-      "security",
+    await this.sessionAudits(intent.realmName)?.security.log(
       "sessions_invalidated",
       {
         userId: intent.userId,
@@ -413,7 +422,8 @@ export class CredentialService {
     });
 
     // Audit: password reset (legacy method)
-    await this.userAudits(userRealmName)?.recordUser("update", {
+    await this.userAudits(userRealmName)?.user.log("update", {
+      resourceType: "user",
       userId: user.id,
       userEmail: email,
       userRealm: realm.name,
@@ -423,8 +433,7 @@ export class CredentialService {
     });
 
     // Audit: sessions invalidated
-    await this.userAudits(userRealmName)?.record(
-      "security",
+    await this.sessionAudits(userRealmName)?.security.log(
       "sessions_invalidated",
       {
         userId: user.id,

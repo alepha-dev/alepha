@@ -13,6 +13,7 @@ import { BadRequestError, UnauthorizedError } from "alepha/server";
 import type { OAuth2Profile } from "alepha/server/auth";
 import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
+import { SessionAudits } from "../audits/SessionAudits.ts";
 import { UserAudits } from "../audits/UserAudits.ts";
 import type { UserEntity } from "../entities/users.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
@@ -34,6 +35,14 @@ export class SessionService {
     const realm = this.realmProvider.getRealm(realmName);
     if (realm.features.audits) {
       return this.alepha.inject(UserAudits);
+    }
+    return undefined;
+  }
+
+  protected sessionAudits(realmName?: string) {
+    const realm = this.realmProvider.getRealm(realmName);
+    if (realm.features.audits) {
+      return this.alepha.inject(SessionAudits);
     }
     return undefined;
   }
@@ -97,7 +106,8 @@ export class SessionService {
       realm: name,
     });
 
-    await this.userAudits(userRealmName)?.recordUser("role_change", {
+    await this.userAudits(userRealmName)?.user.log("role_change", {
+      resourceType: "user",
       userId: user.id,
       userEmail: user.email ?? undefined,
       userRealm: name,
@@ -247,7 +257,7 @@ export class SessionService {
               realm: name,
             });
 
-            await this.userAudits(userRealmName)?.recordAuth("login", {
+            await this.sessionAudits(userRealmName)?.auth.log("login", {
               userRealm: name,
               success: false,
               description: "Username does not match required format",
@@ -269,7 +279,7 @@ export class SessionService {
           realm: name,
         });
 
-        await this.userAudits(userRealmName)?.recordAuth("login", {
+        await this.sessionAudits(userRealmName)?.auth.log("login", {
           userRealm: name,
           success: false,
           description: "Invalid login identifier format",
@@ -287,7 +297,7 @@ export class SessionService {
           realm: name,
         });
 
-        await this.userAudits(userRealmName)?.recordAuth("login", {
+        await this.sessionAudits(userRealmName)?.auth.log("login", {
           userRealm: name,
           success: false,
           description: "User not found",
@@ -302,8 +312,7 @@ export class SessionService {
             loginRateLimit.windowMs,
           );
           if (justLocked) {
-            await this.userAudits(userRealmName)?.record(
-              "security",
+            await this.sessionAudits(userRealmName)?.security.log(
               "rate_limited",
               {
                 userRealm: name,
@@ -326,7 +335,7 @@ export class SessionService {
           realm: name,
         });
 
-        await this.userAudits(userRealmName)?.recordAuth("login", {
+        await this.sessionAudits(userRealmName)?.auth.log("login", {
           userRealm: name,
           success: false,
           resourceId: user.id,
@@ -381,7 +390,7 @@ export class SessionService {
           realm: name,
         });
 
-        await this.userAudits(userRealmName)?.recordAuth("login", {
+        await this.sessionAudits(userRealmName)?.auth.log("login", {
           userRealm: name,
           success: false,
           resourceId: user.id,
@@ -397,8 +406,7 @@ export class SessionService {
             loginRateLimit.windowMs,
           );
           if (ipJustLocked) {
-            await this.userAudits(userRealmName)?.record(
-              "security",
+            await this.sessionAudits(userRealmName)?.security.log(
               "rate_limited",
               {
                 userRealm: name,
@@ -417,8 +425,7 @@ export class SessionService {
           loginRateLimit.windowMs,
         );
         if (accountJustLocked) {
-          await this.userAudits(userRealmName)?.record(
-            "security",
+          await this.sessionAudits(userRealmName)?.security.log(
             "rate_limited",
             {
               userRealm: name,
@@ -443,7 +450,7 @@ export class SessionService {
         throw new InvalidCredentialsError();
       }
 
-      await this.userAudits(userRealmName)?.recordAuth("login", {
+      await this.sessionAudits(userRealmName)?.auth.log("login", {
         userId: user.id,
         userEmail: user.email ?? undefined,
         userRealm: name,
@@ -608,7 +615,7 @@ export class SessionService {
     if (session) {
       const { name } = this.realmProvider.getRealm(userRealmName);
 
-      await this.userAudits(userRealmName)?.recordAuth("logout", {
+      await this.sessionAudits(userRealmName)?.auth.log("logout", {
         userId: session.userId,
         userRealm: name,
         sessionId: session.id,
@@ -649,7 +656,7 @@ export class SessionService {
 
       const user = await users.getById(identity.userId);
 
-      await this.userAudits(userRealmName)?.recordAuth("login", {
+      await this.sessionAudits(userRealmName)?.auth.log("login", {
         userId: user.id,
         userEmail: user.email ?? undefined,
         userRealm: realm.name,
@@ -706,7 +713,7 @@ export class SessionService {
         userId: existing.id,
       });
 
-      await this.userAudits(userRealmName)?.recordAuth("login", {
+      await this.sessionAudits(userRealmName)?.auth.log("login", {
         userId: existing.id,
         userEmail: existing.email ?? undefined,
         userRealm: realm.name,
@@ -791,7 +798,8 @@ export class SessionService {
     });
 
     // Audit: user created via OAuth
-    await this.userAudits(userRealmName)?.recordUser("create", {
+    await this.userAudits(userRealmName)?.user.log("create", {
+      resourceType: "user",
       userId: user.id,
       userEmail: user.email ?? undefined,
       userRealm: realm.name,
@@ -806,7 +814,7 @@ export class SessionService {
     });
 
     // Audit: login event
-    await this.userAudits(userRealmName)?.recordAuth("login", {
+    await this.sessionAudits(userRealmName)?.auth.log("login", {
       userId: user.id,
       userEmail: user.email ?? undefined,
       userRealm: realm.name,

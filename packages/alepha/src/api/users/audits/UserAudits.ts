@@ -1,50 +1,25 @@
-import { $inject } from "alepha";
-import { AuditService, type CreateAudit } from "alepha/api/audits";
-
-type AuditContext = Omit<CreateAudit, "type" | "action">;
+import { $audit } from "alepha/api/audits";
 
 /**
- * User-specific audit wrapper service.
+ * User-management audit events.
  *
- * This service wraps the core AuditService to provide user-related audit logging.
- *
- * Declared as a module variant — not auto-injected. It is instantiated
- * lazily the first time something calls `alepha.inject(UserAudits)`.
+ * Holds the `user` audit type. Mirrors the `$notification`/`$job` holder
+ * pattern (see {@link UserNotifications}) — register as a module variant and
+ * log via the exposed primitive: `userAudits(realm)?.user.log("create", …)`.
  */
 export class UserAudits {
-  protected readonly auditService = $inject(AuditService);
-
-  /**
-   * Record a user-related audit event.
-   */
-  public recordUser(
-    action:
-      | "create"
-      | "update"
-      | "delete"
-      | "role_change"
-      | "enable"
-      | "disable"
-      | "password_change",
-    context: AuditContext,
-  ) {
-    return this.auditService.recordUser(action, context);
-  }
-
-  /**
-   * Record an authentication-related audit event.
-   */
-  public recordAuth(
-    action: "login" | "logout" | "token_refresh",
-    context: AuditContext,
-  ) {
-    return this.auditService.recordAuth(action, context);
-  }
-
-  /**
-   * Record a generic audit event.
-   */
-  public record(category: string, action: string, context: AuditContext) {
-    return this.auditService.record(category, action, context);
-  }
+  public readonly user = $audit({
+    type: "user",
+    description:
+      "User management events (create, update, delete, role/password changes).",
+    actions: [
+      "create",
+      "update",
+      "delete",
+      "role_change",
+      "password_change",
+      "enable",
+      "disable",
+    ],
+  });
 }

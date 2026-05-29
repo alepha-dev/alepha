@@ -404,7 +404,8 @@ export class RegistrationService {
       username: user.username,
     });
 
-    await this.userAudits(userRealmName)?.recordUser("create", {
+    await this.userAudits(userRealmName)?.user.log("create", {
+      resourceType: "user",
       userId: user.id,
       userEmail: user.email ?? undefined,
       userRealm: realm.name,

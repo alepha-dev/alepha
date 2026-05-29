@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { SessionAudits } from "./audits/SessionAudits.ts";
 import { UserAudits } from "./audits/UserAudits.ts";
 import { UserBuckets } from "./buckets/UserBuckets.ts";
 import { AdminIdentityController } from "./controllers/AdminIdentityController.ts";
@@ -20,6 +21,7 @@ import { UserService } from "./services/UserService.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./atoms/realmAuthSettingsAtom.ts";
+export * from "./audits/SessionAudits.ts";
 export * from "./audits/UserAudits.ts";
 export * from "./buckets/UserBuckets.ts";
 export * from "./controllers/AdminIdentityController.ts";
@@ -92,5 +94,11 @@ export const AlephaApiUsers = $module({
     AdminIdentityController,
     RealmController,
   ],
-  variants: [UserJobs, UserNotifications, UserAudits, UserBuckets],
+  variants: [
+    UserJobs,
+    UserNotifications,
+    UserAudits,
+    SessionAudits,
+    UserBuckets,
+  ],
 });
