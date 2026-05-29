@@ -11,12 +11,14 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import { Trash2 } from "lucide-react";
 import { useCallback } from "react";
 
 export function AdminAudits() {
   const client = useClient<AdminAuditController>();
   const toast = useToast();
+  const router = useRouter();
   const { l, tr } = useI18n();
 
   const fetcher = useCallback(
@@ -110,9 +112,20 @@ export function AdminAudits() {
           },
           actor: {
             label: tr("admin.audits.colActor", { default: "Actor" }),
-            cell: (a) => (
-              <span className="text-sm">{a.userEmail ?? a.userId ?? "—"}</span>
-            ),
+            cell: (a) =>
+              a.userId ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(`/admin/users/${a.userId}` as never)
+                  }
+                  className="hover:text-primary truncate text-left text-sm underline-offset-2 hover:underline"
+                >
+                  {a.userEmail ?? a.userId}
+                </button>
+              ) : (
+                <span className="text-sm">{a.userEmail ?? "—"}</span>
+              ),
           },
           status: {
             label: tr("admin.audits.colStatus", { default: "Status" }),
