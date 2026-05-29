@@ -4,7 +4,6 @@ void React;
 
 import { JobExecutionsPanel } from "@alepha/ui/components/admin/admin-jobs-executions-panel";
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { PageHeader } from "@alepha/ui/components/admin/page-header";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
@@ -130,14 +129,6 @@ export function AdminJobs() {
         pollMs={POLL_MS}
         rowKey={(j) => j.name}
         fetch={fetcher}
-        header={
-          <PageHeader
-            title={tr("admin.jobs.title", { default: "Jobs" })}
-            description={tr("admin.jobs.subtitle", {
-              default: "Registered cron, queue, and direct jobs.",
-            })}
-          />
-        }
         filters={{
           schema: jobFiltersSchema,
           render: (form) => (

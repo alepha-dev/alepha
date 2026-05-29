@@ -3,7 +3,6 @@ import * as React from "react";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { PageHeader } from "@alepha/ui/components/admin/page-header";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
@@ -94,14 +93,6 @@ export function AdminSessions() {
             onClick: (items, ctx) => bulkRevoke.run(items, ctx),
           },
         ]}
-        header={
-          <PageHeader
-            title={tr("admin.sessions.title", { default: "Sessions" })}
-            description={tr("admin.sessions.subtitle", {
-              default: "Active sign-in sessions across all users.",
-            })}
-          />
-        }
         columns={{
           user: {
             label: tr("admin.sessions.colUser", { default: "User" }),

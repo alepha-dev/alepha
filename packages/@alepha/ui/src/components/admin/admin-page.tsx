@@ -13,9 +13,7 @@ export interface AdminPageProps {
 
 /**
  * Standard admin page shell — the `p-6`, column-flex, scroll-bounding wrapper
- * that every admin page used to copy-paste. Pair with {@link PageHeader} for
- * the title block (passed to `AlephaTable`'s `header` prop on list pages, or
- * rendered directly on bespoke pages).
+ * that every admin page used to copy-paste.
  */
 export const AdminPage = (props: AdminPageProps) => (
   <div

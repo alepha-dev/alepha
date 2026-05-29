@@ -3,7 +3,6 @@ import * as React from "react";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { PageHeader } from "@alepha/ui/components/admin/page-header";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
@@ -188,14 +187,6 @@ export function AdminFiles() {
         className="min-h-0 flex-1"
         persistenceKey="admin.files"
         fetch={fetcher}
-        header={
-          <PageHeader
-            title={tr("admin.files.title", { default: "Files" })}
-            description={tr("admin.files.subtitle", {
-              default: "Uploaded files across storage buckets.",
-            })}
-          />
-        }
         actions={[
           {
             icon: Upload,

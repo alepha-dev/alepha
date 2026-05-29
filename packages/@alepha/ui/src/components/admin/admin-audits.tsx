@@ -3,17 +3,24 @@ import * as React from "react";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { PageHeader } from "@alepha/ui/components/admin/page-header";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { type Static, t } from "alepha";
 import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Trash2 } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+const auditFiltersSchema = t.object({
+  status: t.optional(t.string()),
+  action: t.optional(t.string()),
+});
+type AuditFilters = Static<typeof auditFiltersSchema>;
 
 export function AdminAudits() {
   const client = useClient<AdminAuditController>();
@@ -21,9 +28,39 @@ export function AdminAudits() {
   const router = useRouter();
   const { l, tr } = useI18n();
 
+  const [actions, setActions] = useState<string[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    client
+      .getTypes()
+      .then((rows) => {
+        if (!alive) return;
+        setActions([...new Set(rows.flatMap((r) => r.actions))].sort());
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [client]);
+
   const fetcher = useCallback(
-    async (params: { page: number; size: number; sort?: string }) => {
-      return client.findAudits({ query: params });
+    async (params: {
+      page: number;
+      size: number;
+      sort?: string;
+      filters?: AuditFilters;
+    }) => {
+      const f = params.filters;
+      return client.findAudits({
+        query: {
+          page: params.page,
+          size: params.size,
+          sort: params.sort,
+          action: f?.action || undefined,
+          success: f?.status ? f.status === "ok" : undefined,
+        },
+      });
     },
     [client],
   );
@@ -76,14 +113,47 @@ export function AdminAudits() {
             onClick: (items, ctx) => bulkDelete.run(items, ctx),
           },
         ]}
-        header={
-          <PageHeader
-            title={tr("admin.audits.title", { default: "Audit log" })}
-            description={tr("admin.audits.subtitle", {
-              default: "Read-only history of API actions and resource changes.",
-            })}
-          />
-        }
+        filters={{
+          schema: auditFiltersSchema,
+          render: (form) => (
+            <div className="flex items-center gap-2">
+              <Control
+                input={form.input.status}
+                label=""
+                clearable
+                clearLabel={String(
+                  tr("admin.audits.statusAll", { default: "All status" }),
+                )}
+                triggerClassName="w-40"
+                items={[
+                  {
+                    value: "ok",
+                    label: String(tr("admin.audits.ok", { default: "OK" })),
+                  },
+                  {
+                    value: "failed",
+                    label: String(
+                      tr("admin.audits.failed", { default: "Failed" }),
+                    ),
+                  },
+                ]}
+              />
+              <Control
+                input={form.input.action}
+                label=""
+                clearable
+                clearLabel={String(
+                  tr("admin.audits.actionAll", { default: "All actions" }),
+                )}
+                triggerClassName="w-48"
+                items={actions.map((action) => ({
+                  value: action,
+                  label: action,
+                }))}
+              />
+            </div>
+          ),
+        }}
         columns={{
           createdAt: {
             label: tr("admin.audits.colWhen", { default: "When" }),
@@ -97,7 +167,9 @@ export function AdminAudits() {
           action: {
             label: tr("admin.audits.colAction", { default: "Action" }),
             cell: (a) => (
-              <code className="text-xs font-medium">{a.action}</code>
+              <code className="text-xs font-medium">
+                {a.type}:{a.action}
+              </code>
             ),
           },
           resource: {

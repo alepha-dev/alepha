@@ -3,7 +3,6 @@ import * as React from "react";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { PageHeader } from "@alepha/ui/components/admin/page-header";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Avatar, AvatarFallback } from "@alepha/ui/components/ui/avatar";
@@ -316,14 +315,6 @@ export function AdminUsers(props: AdminUsersProps) {
         className="min-h-0 flex-1"
         persistenceKey="admin.users"
         fetch={fetcher}
-        header={
-          <PageHeader
-            title={tr("admin.users.title", { default: "Users" })}
-            description={tr("admin.users.subtitle", {
-              default: "Accounts, roles, and access across realms.",
-            })}
-          />
-        }
         filters={{
           schema: filtersSchema,
           render: (form) => (

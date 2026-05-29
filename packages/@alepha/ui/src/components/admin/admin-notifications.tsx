@@ -3,7 +3,6 @@ import * as React from "react";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { PageHeader } from "@alepha/ui/components/admin/page-header";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
@@ -80,16 +79,6 @@ export function AdminNotifications() {
             onClick: (items, ctx) => bulkDelete.run(items, ctx),
           },
         ]}
-        header={
-          <PageHeader
-            title={tr("admin.notifications.title", {
-              default: "Notifications",
-            })}
-            description={tr("admin.notifications.subtitle", {
-              default: "Delivery log for emails, SMS, and other channels.",
-            })}
-          />
-        }
         columns={{
           createdAt: {
             label: tr("admin.notifications.colWhen", { default: "When" }),

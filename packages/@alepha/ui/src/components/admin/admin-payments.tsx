@@ -3,7 +3,6 @@ import * as React from "react";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { PageHeader } from "@alepha/ui/components/admin/page-header";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import type {
@@ -38,14 +37,6 @@ export function AdminPayments() {
         className="min-h-0 flex-1"
         persistenceKey="admin.payments"
         fetch={fetcher}
-        header={
-          <PageHeader
-            title={tr("admin.payments.title", { default: "Payments" })}
-            description={tr("admin.payments.subtitle", {
-              default: "Payment intents, charges, and subscriptions.",
-            })}
-          />
-        }
         columns={{
           createdAt: {
             label: tr("admin.payments.colWhen", { default: "When" }),

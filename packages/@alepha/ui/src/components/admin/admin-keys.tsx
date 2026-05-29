@@ -3,7 +3,6 @@ import * as React from "react";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { PageHeader } from "@alepha/ui/components/admin/page-header";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
@@ -107,14 +106,6 @@ export function AdminKeys() {
             onClick: (items, ctx) => bulkRevoke.run(items, ctx),
           },
         ]}
-        header={
-          <PageHeader
-            title={tr("admin.keys.title", { default: "API keys" })}
-            description={tr("admin.keys.subtitle", {
-              default: "Programmatic access tokens.",
-            })}
-          />
-        }
         columns={{
           name: {
             label: tr("admin.keys.colName", { default: "Name" }),
